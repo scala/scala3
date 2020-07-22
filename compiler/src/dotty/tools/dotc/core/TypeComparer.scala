@@ -96,7 +96,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     assert(canCompareAtoms == true)
     assert(successCount == 0)
     assert(totalCount == 0)
-    assert(approx == FreshApprox)
+    assert(approx == ApproxState.Fresh)
     assert(leftRoot == null)
     assert(frozenGadt == false)
 
@@ -136,7 +136,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else CompareResult.OK
 
   /** The current approximation state. See `ApproxState`. */
-  private var approx: ApproxState = FreshApprox
+  private var approx: ApproxState = ApproxState.Fresh
   protected def approxState: ApproxState = approx
 
   /** The original left-hand type of the comparison. Gets reset
@@ -156,8 +156,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
     val savedApprox = approx
     val savedLeftRoot = leftRoot
-    if (a == FreshApprox) {
-      this.approx = NoApprox
+    if (a == ApproxState.Fresh) {
+      this.approx = ApproxState.None
       this.leftRoot = tp1
     }
     else this.approx = a
@@ -171,7 +171,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
   }
 
-  def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, FreshApprox)
+  def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, ApproxState.Fresh)
 
   override protected def isSub(tp1: Type, tp2: Type)(using Context): Boolean = isSubType(tp1, tp2)
 
@@ -190,7 +190,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  code would have two extra parameters for each of the many calls that go from
    *  one sub-part of isSubType to another.
    */
-  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} $approx", subtyping) {
+  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} ${approx.show}", subtyping) {
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
@@ -2509,34 +2509,37 @@ object TypeComparer {
     case _ => String.valueOf(res)
   }
 
-  private val LoApprox = 1
-  private val HiApprox = 2
 
   /** The approximation state indicates how the pair of types currently compared
    *  relates to the types compared originally.
-   *   - `NoApprox`: They are still the same types
+   *   - `None`    : They are still the same types
    *   - `LoApprox`: The left type is approximated (i.e widened)"
    *   - `HiApprox`: The right type is approximated (i.e narrowed)"
    */
-  class ApproxState(private val bits: Int) extends AnyVal {
-    override def toString: String = {
-      val lo = if ((bits & LoApprox) != 0) "LoApprox" else ""
-      val hi = if ((bits & HiApprox) != 0) "HiApprox" else ""
-      lo ++ hi
-    }
-    def addLow: ApproxState = new ApproxState(bits | LoApprox)
-    def addHigh: ApproxState = new ApproxState(bits | HiApprox)
-    def low: Boolean = (bits & LoApprox) != 0
-    def high: Boolean = (bits & HiApprox) != 0
-  }
+  object ApproxState:
+    opaque type Repr = Int
 
-  val NoApprox: ApproxState = new ApproxState(0)
+    val None: Repr = 0
+    private val LoApprox = 1
+    private val HiApprox = 2
 
-  /** A special approximation state to indicate that this is the first time we
-   *  compare (approximations of) this pair of types. It's converted to `NoApprox`
-   *  in `isSubType`, but also leads to `leftRoot` being set there.
-   */
-  val FreshApprox: ApproxState = new ApproxState(4)
+    /** A special approximation state to indicate that this is the first time we
+     *  compare (approximations of) this pair of types. It's converted to `None`
+     *  in `isSubType`, but also leads to `leftRoot` being set there.
+     */
+    val Fresh: Repr = 4
+
+    extension (approx: Repr):
+      def low: Boolean = (approx & LoApprox) != 0
+      def high: Boolean = (approx & HiApprox) != 0
+      def addLow: Repr = approx | LoApprox
+      def addHigh: Repr = approx | HiApprox
+      def show: String =
+        val lo = if low then "LoApprox" else ""
+        val hi = if high then "HiApprox" else ""
+        lo ++ hi
+  end ApproxState
+  type ApproxState = ApproxState.Repr
 
   def topLevelSubType(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.topLevelSubType(tp1, tp2))
@@ -2817,7 +2820,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       if Config.verboseExplainSubtype || ctx.settings.verbose.value
       then s" ${tp1.getClass} ${tp2.getClass}"
       else ""
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)}$moreInfo $approx ${if (frozenConstraint) " frozen" else ""}") {
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)}$moreInfo ${approx.show} ${if (frozenConstraint) " frozen" else ""}") {
       super.isSubType(tp1, tp2, approx)
     }
 
