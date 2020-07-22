@@ -14,9 +14,9 @@ import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.StdNames.str
+import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.core.Types.{MethodType, Type}
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.report
 
@@ -496,7 +496,23 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         case ValDef(name, tpt, rhs) => () // fields are added in `genPlainClass()`, via `addClassFields()`
 
-        case dd: DefDef => genDefDef(dd)
+        case dd: DefDef =>
+          /* First generate a static forwarder if this is a non-private trait
+           * trait method. This is required for super calls to this method, which
+           * go through the static forwarder in order to work around limitations
+           * of the JVM.
+           * In theory, this would go in a separate MiniPhase, but it would have to
+           * sit in a MegaPhase of its own between GenSJSIR and GenBCode, so the cost
+           * is not worth it. We directly do it in this back-end instead, which also
+           * kind of makes sense because it is JVM-specific.
+           */
+          val sym = dd.symbol
+          val needsStaticImplMethod =
+            claszSymbol.isInterface && !dd.rhs.isEmpty && !sym.isPrivate && !sym.isStaticMember
+          if needsStaticImplMethod then
+            genStaticForwarderForDefDef(dd)
+
+          genDefDef(dd)
 
         case tree: Template =>
           val body =
@@ -537,6 +553,37 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     } // end of method initJMethod
 
+    private def genStaticForwarderForDefDef(dd: DefDef): Unit =
+      val forwarderDef = makeStaticForwarder(dd)
+      genDefDef(forwarderDef)
+
+    /* Generates a synthetic static forwarder for a trait method.
+     * For a method such as
+     *   def foo(...args: Ts): R
+     * in trait X, we generate the following method:
+     *   static def foo$($this: X, ...args: Ts): R =
+     *     invokespecial $this.X::foo(...args)
+     * We force an invokespecial with the attachment UseInvokeSpecial. It is
+     * necessary to make sure that the call will not follow overrides of foo()
+     * in subtraits and subclasses, since the whole point of this forward is to
+     * encode super calls.
+     */
+    private def makeStaticForwarder(dd: DefDef): DefDef =
+      val origSym = dd.symbol.asTerm
+      val name = traitSuperAccessorName(origSym)
+      val info = origSym.info match
+        case mt: MethodType =>
+          MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
+      val sym = origSym.copy(
+        name = name.toTermName,
+        flags = Method | JavaStatic,
+        info = info
+      )
+      tpd.DefDef(sym.asTerm, { paramss =>
+        val params = paramss.head
+        tpd.Apply(params.head.select(origSym), params.tail)
+          .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
+      })
 
     def genDefDef(dd: DefDef): Unit = {
       val rhs = dd.rhs

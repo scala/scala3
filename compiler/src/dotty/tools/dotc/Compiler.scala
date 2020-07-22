@@ -86,7 +86,6 @@ class Compiler {
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
-         new AugmentScala2Traits,    // Augments Scala2 traits with additional members needed for mixin composition.
          new ResolveSuper,           // Implement super accessors
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
          new ParamForwarding,        // Add forwarders for aliases of superclass parameters
@@ -110,8 +109,7 @@ class Compiler {
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
          new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
          new Instrumentation) ::     // Count closure allocations under -Yinstrument-closures
-    List(new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to
-         new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
+    List(new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                      // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
          new ElimStaticThis,         // Replace `this` references to static objects by global identifiers
          new CountOuterAccesses) ::  // Identify outer accessors that can be dropped

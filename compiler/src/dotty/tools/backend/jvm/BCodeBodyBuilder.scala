@@ -780,6 +780,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             val invokeStyle =
               if (sym.isStaticMember) InvokeStyle.Static
               else if (sym.is(Private) || sym.isClassConstructor) InvokeStyle.Special
+              else if (app.hasAttachment(BCodeHelpers.UseInvokeSpecial)) InvokeStyle.Special
               else InvokeStyle.Virtual
 
             if (invokeStyle.hasInstance) genLoadQualifier(fun)
@@ -1165,9 +1166,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val isInterface = isEmittedInterface(receiverClass)
       import InvokeStyle._
       if (style == Super) {
-        // DOTTY: this differ from how super-calls in traits are handled in the scalac backend,
-        // this is intentional but could change in the future, see https://github.com/lampepfl/dotty/issues/5928
-        bc.invokespecial(receiverName, jname, mdescr, isInterface)
+        if (isInterface && !method.is(JavaDefined)) {
+          val args = new Array[BType](bmType.argumentTypes.length + 1)
+          val ownerBType = toTypeKind(method.owner.info)
+          bmType.argumentTypes.copyToArray(args, 1)
+          val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
+          val staticName = traitSuperAccessorName(method)
+          bc.invokestatic(receiverName, staticName, staticDesc, isInterface)
+        } else {
+          bc.invokespecial(receiverName, jname, mdescr, isInterface)
+        }
       } else {
         val opc = style match {
           case Static => Opcodes.INVOKESTATIC

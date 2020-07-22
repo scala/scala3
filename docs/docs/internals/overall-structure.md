@@ -146,7 +146,7 @@ phases. The current list of phases is specified in class [Compiler] as follows:
          new ElimByName,             // Expand by-name parameter references
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
-         new AugmentScala2Traits,    // Augments Scala2 traits with additional members needed for mixin composition.
+         new AugmentScala2Traits,    // Augments Scala2 traits so that super accessors are made non-private
          new ResolveSuper,           // Implement super accessors
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
          new TupleOptimizations,     // Optimize generic operations on tuples
@@ -168,8 +168,7 @@ phases. The current list of phases is specified in class [Compiler] as follows:
          new Instrumentation,        // Count closure allocations under -Yinstrument-closures
          new GetClass,               // Rewrites getClass calls on primitive types.
          new LiftTry) ::             // Put try expressions that might execute on non-empty stacks into their own methods their implementations
-    List(new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to
-         new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
+    List(new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                         // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
          new ElimStaticThis) ::      // Replace `this` references to static objects by global identifiers
     List(new Flatten,                // Lift all inner classes to package scope

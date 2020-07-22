@@ -13,28 +13,30 @@ import Types._
 import Decorators._
 import DenotTransformers._
 import StdNames._
+import Names._
 import NameKinds._
+import NameOps._
 import ast.Trees._
 import collection.mutable
 
 object Mixin {
   val name: String = "mixin"
+
+  def traitSetterName(getter: TermSymbol)(using Context): TermName =
+    getter.ensureNotPrivate.name
+      .expandedName(getter.owner, TraitSetterName)
+      .asTermName.setterName
 }
 
 /** This phase performs the following transformations:
  *
- *   1. (done in `traitDefs` and `transformSym`) Map every concrete trait getter
+ *   1. (done in `traitDefs` and `transformSym`) For every concrete trait getter
  *
  *       <mods> def x(): T = expr
  *
- *   to the pair of definitions:
+ *   make it non-private, and add the definition of its trait setter:
  *
- *       <mods> def x(): T
- *       protected def initial$x(): T = { stats; expr }
- *
- *   where `stats` comprises all statements between either the start of the trait
- *   or the previous field definition which are not definitions (i.e. are executed for
- *   their side effects).
+ *       <mods> def TraitName$_setter_$x(v: T): Unit
  *
  *   2. (done in `traitDefs`) Make every concrete trait setter
  *
@@ -44,12 +46,16 @@ object Mixin {
  *
  *      <mods> def x_=(y: T)
  *
- *   3. For a non-trait class C:
+ *   3. (done in `transformSym`) For every module class constructor in traits,
+ *      remove its Private flag (but do not expand its name), since it will have
+ *      to be instantiated in the classes that mix in the trait.
+ *
+ *   4. For a non-trait class C:
  *
  *        For every trait M directly implemented by the class (see SymUtils.mixin), in
  *        reverse linearization order, add the following definitions to C:
  *
- *          3.1 (done in `traitInits`) For every parameter accessor `<mods> def x(): T` in M,
+ *          4.1 (done in `traitInits`) For every parameter accessor `<mods> def x(): T` in M,
  *              in order of textual occurrence, add
  *
  *               <mods> def x() = e
@@ -57,37 +63,32 @@ object Mixin {
  *              where `e` is the constructor argument in C that corresponds to `x`. Issue
  *              an error if no such argument exists.
  *
- *          3.2 (done in `traitInits`) For every concrete trait getter `<mods> def x(): T` in M
+ *          4.2 (done in `traitInits`) For every concrete trait getter `<mods> def x(): T` in M
  *              which is not a parameter accessor, in order of textual occurrence, produce the following:
  *
- *              3.2.1 If `x` is also a member of `C`, and is a lazy val,
+ *              4.2.1 If `x` is also a member of `C`, and is a lazy val,
  *
  *                <mods> lazy val x: T = super[M].x
  *
- *              3.2.2 If `x` is also a member of `C`, and M is a Dotty trait,
+ *              4.2.2 If `x` is also a member of `C`, and is a module,
  *
- *                <mods> def x(): T = super[M].initial$x()
+ *                <mods> lazy module val x: T = new T$(this)
  *
- *              3.2.3 If `x` is also a member of `C`, and M is a Scala 2.x trait:
+ *              4.2.3 If `x` is also a member of `C`, and is something else:
  *
  *                <mods> def x(): T = _
  *
- *              3.2.4 If `x` is not a member of `C`, and M is a Dotty trait:
+ *              4.2.5 If `x` is not a member of `C`, nothing gets added.
  *
- *                super[M].initial$x()
+ *          4.3 (done in `superCallOpt`) The call:
  *
- *              3.2.5 If `x` is not a member of `C`, and M is a Scala2.x trait, nothing gets added.
+ *                super[M].$init$()
  *
- *
- *          3.3 (done in `superCallOpt`) The call:
- *
- *                super[M].<init>
- *
- *          3.4 (done in `setters`) For every concrete setter `<mods> def x_=(y: T)` in M:
+ *          4.4 (done in `setters`) For every concrete setter `<mods> def x_=(y: T)` in M:
  *
  *                <mods> def x_=(y: T) = ()
  *
- *          3.5 (done in `mixinForwarders`) For every method
+ *          4.5 (done in `mixinForwarders`) For every method
  *          `<mods> def f[Ts](ps1)...(psN): U` imn M` that needs to be disambiguated:
  *
  *                <mods> def f[Ts](ps1)...(psN): U = super[M].f[Ts](ps1)...(psN)
@@ -95,10 +96,10 @@ object Mixin {
  *          A method in M needs to be disambiguated if it is concrete, not overridden in C,
  *          and if it overrides another concrete method.
  *
- *   4. (done in `transformTemplate` and `transformSym`) Drop all parameters from trait
- *      constructors.
+ *   5. (done in `transformTemplate` and `transformSym`) Drop all parameters from trait
+ *      constructors, and rename them to `nme.TRAIT_CONSTRUCTOR`.
  *
- *   5. (done in `transformSym`) Drop ParamAccessor flag from all parameter accessors in traits.
+ *   6. (done in `transformSym`) Drop ParamAccessor flag from all parameter accessors in traits.
  *
  *  Conceptually, this is the second half of the previous mixin phase. It needs to run
  *  after erasure because it copies references to possibly private inner classes and objects
@@ -121,33 +122,57 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   override def changesMembers: Boolean = true  // the phase adds implementions of mixin accessors
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait)) {
+    def ownerIsTrait: Boolean = was(sym.owner, Trait, butNot = JavaDefined)
+
+    if (sym.is(Accessor, butNot = Deferred) && ownerIsTrait) {
       val sym1 =
         if (sym.is(Lazy)) sym
-        else sym.copySymDenotation(initFlags = sym.flags &~ ParamAccessor | Deferred)
+        else sym.copySymDenotation(initFlags = sym.flags &~ (ParamAccessor | Inline) | Deferred)
       sym1.ensureNotPrivate
     }
-    else if (sym.isConstructor && (sym.owner.is(Trait, butNot = Scala2x) || (sym.owner.isAllOf(Trait | Scala2x) && ctx.settings.scalajs.value)))
+    else if sym.isAllOf(ModuleClass | Private) && ownerIsTrait then
+      // modules in trait will be instantiated in the classes mixing in the trait; they must be made non-private
+      // do not use ensureNotPrivate because the `name` must not be expanded in this case
+      sym.copySymDenotation(initFlags = sym.flags &~ Private)
+    else if (sym.isConstructor && ownerIsTrait)
       sym.copySymDenotation(
         name = nme.TRAIT_CONSTRUCTOR,
         info = MethodType(Nil, sym.info.resultType))
+    else if sym.is(Trait, butNot = JavaDefined) then
+      val classInfo = sym.asClass.classInfo
+      lazy val decls1 = classInfo.decls.cloneScope
+      var modified: Boolean = false
+      for (decl <- classInfo.decls)
+        // !decl.isClass avoids forcing nested traits, preventing cycles
+        if !decl.isClass && needsTraitSetter(decl) then
+          val setter = makeTraitSetter(decl.asTerm)
+          decls1.enter(setter)
+          modified = true
+      if modified then
+        sym.copySymDenotation(
+          info = classInfo.derivedClassInfo(decls = decls1))
+      else
+        sym
     else
       sym
+  end transformSym
 
-  private def initializer(sym: Symbol)(using Context): TermSymbol = {
-    if (sym.is(Lazy)) sym
-    else {
-      val initName = InitializerName(sym.name.asTermName)
-      sym.owner.info.decl(initName).symbol
-        .orElse(
-          newSymbol(
-            sym.owner,
-            initName,
-            Protected | Synthetic | Method,
-            sym.info,
-            coord = sym.coord).enteredAfter(thisPhase))
-    }
-  }.asTerm
+  private def wasOneOf(sym: Symbol, flags: FlagSet)(using Context): Boolean =
+    atPhase(thisPhase) { sym.isOneOf(flags) }
+
+  private def was(sym: Symbol, flag: Flag, butNot: FlagSet)(using Context): Boolean =
+    atPhase(thisPhase) { sym.is(flag, butNot) }
+
+  private def needsTraitSetter(sym: Symbol)(using Context): Boolean =
+    sym.isGetter && !wasOneOf(sym, DeferredOrLazy | ParamAccessor)
+      && atPhase(thisPhase) { !sym.setter.exists }
+      && !sym.info.resultType.isInstanceOf[ConstantType]
+
+  private def makeTraitSetter(getter: TermSymbol)(using Context): Symbol =
+    getter.copy(
+      name = Mixin.traitSetterName(getter),
+      flags = Method | Accessor | Deferred,
+      info = MethodType(getter.info.resultType :: Nil, defn.UnitType))
 
   override def transformTemplate(impl: Template)(using Context): Template = {
     val cls = impl.symbol.owner.asClass
@@ -155,26 +180,15 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     import ops._
 
     def traitDefs(stats: List[Tree]): List[Tree] = {
-      val initBuf = new mutable.ListBuffer[Tree]
-      stats.flatMap({
-        case stat: DefDef if stat.symbol.isGetter && !stat.rhs.isEmpty && !stat.symbol.is(Lazy) =>
-          // make initializer that has all effects of previous getter,
-          // replace getter rhs with empty tree.
-          val vsym = stat.symbol
-          val isym = initializer(vsym)
-          val rhs = Block(
-            initBuf.toList.map(_.changeOwnerAfter(impl.symbol, isym, thisPhase)),
-            stat.rhs.changeOwnerAfter(vsym, isym, thisPhase).wildcardToDefault)
-          initBuf.clear()
-          cpy.DefDef(stat)(rhs = EmptyTree) :: DefDef(isym, rhs) :: Nil
+      stats.flatMap {
+        case stat: DefDef if needsTraitSetter(stat.symbol) =>
+          // add a trait setter for this getter
+          stat :: DefDef(stat.symbol.traitSetter.asTerm, EmptyTree) :: Nil
         case stat: DefDef if stat.symbol.isSetter =>
           cpy.DefDef(stat)(rhs = EmptyTree) :: Nil
-        case stat: DefTree =>
-          stat :: Nil
         case stat =>
-          initBuf += stat
-          Nil
-      }) ++ initBuf
+          stat :: Nil
+      }
     }
 
     /** Map constructor call to a triple of a supercall, and if the target
@@ -221,9 +235,6 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           //println(i"synth super call ${baseCls.primaryConstructor}: ${baseCls.primaryConstructor.info}")
           transformFollowingDeep(superRef(baseCls.primaryConstructor).appliedToNone) :: Nil
 
-    def wasOneOf(sym: Symbol, flags: FlagSet) =
-      atPhase(thisPhase) { sym.isOneOf(flags) }
-
     def traitInits(mixin: ClassSymbol): List[Tree] = {
       val argsIt = superCallsAndArgs.get(mixin) match
         case Some((_, _, args)) => args.iterator
@@ -241,33 +252,28 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           EmptyTree
 
       for (getter <- mixin.info.decls.toList if getter.isGetter && !wasOneOf(getter, Deferred)) yield {
-        val isScala2x = mixin.is(Scala2x)
-        def default = Underscore(getter.info.resultType)
-        def initial = transformFollowing(superRef(initializer(getter)).appliedToNone)
-
         if (isCurrent(getter) || getter.name.is(ExpandedName)) {
           val rhs =
             if (wasOneOf(getter, ParamAccessor))
               nextArgument()
-            else if (isScala2x)
-              if (getter.is(Lazy, butNot = Module))
-                initial
-              else if (getter.is(Module))
-                New(getter.info.resultType, List(This(cls)))
-              else
-                Underscore(getter.info.resultType)
+            else if (getter.is(Lazy, butNot = Module))
+              transformFollowing(superRef(getter).appliedToNone)
+            else if (getter.is(Module))
+              New(getter.info.resultType, List(This(cls)))
             else
-              initial
+              Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run
           transformFollowing(DefDef(mkForwarderSym(getter.asTerm), rhs))
         }
-        else if (isScala2x || wasOneOf(getter, ParamAccessor | Lazy)) EmptyTree
-        else initial
+        else EmptyTree
       }
     }
 
     def setters(mixin: ClassSymbol): List[Tree] =
-      for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !wasOneOf(setr, Deferred)))
+      val mixinSetters = mixin.info.decls.filter { sym =>
+        sym.isSetter && (!wasOneOf(sym, Deferred) || sym.name.is(TraitSetterName))
+      }
+      for (setter <- mixinSetters)
       yield transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
 
     def mixinForwarders(mixin: ClassSymbol): List[Tree] =

@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.StdNames._
 import ast._
 import Trees._
 import Flags._
+import NameOps._
 import SymUtils._
 import Symbols._
 import Decorators._
@@ -204,7 +205,33 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
                 initFlags = sym.flags &~ Private,
                 owner = constr.symbol).installAfter(thisPhase)
               constrStats += intoConstr(stat, sym)
-            }
+            } else
+              dropped += sym
+          case stat @ DefDef(name, _, _, tpt, _)
+              if stat.symbol.isGetter && stat.symbol.owner.is(Trait) && !stat.symbol.is(Lazy) =>
+            val sym = stat.symbol
+            assert(isRetained(sym), sym)
+            if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
+              /* !!! Work around #9390
+               * This should really just be `sym.setter`. However, if we do that, we'll miss
+               * setters for mixed in `private var`s. Even though the scope clearly contains the
+               * setter symbol with the correct Name structure (since the `find` finds it),
+               * `.decl(setterName)` used by `.setter` through `.accessorNamed` will *not* find it.
+               * Could it be that the hash table of the `Scope` is corrupted?
+               * We still try `sym.setter` first as an optimization, since it will work for all
+               * public vars in traits and all (public or private) vars in classes.
+               */
+              val symSetter =
+                if sym.setter.exists then
+                  sym.setter
+                else
+                  val setterName = sym.asTerm.name.setterName
+                  sym.owner.info.decls.find(d => d.is(Accessor) && d.name == setterName)
+              val setter =
+                if (symSetter.exists) symSetter
+                else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
+              constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
+            clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
           case DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
             clsStats += mapOuter(outerParam.symbol).transform(stat)
           case _: DefTree =>

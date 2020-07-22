@@ -12,6 +12,7 @@ import SymUtils._
 import Constants._
 import ast.Trees._
 import MegaPhase._
+import NameKinds.TraitSetterName
 import NameOps._
 import Flags._
 import Decorators._
@@ -117,43 +118,57 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         EmptyTree
       }
 
-    val constantFinalVal = sym.isAllOf(Accessor | Final, butNot = Mutable) && tree.rhs.isInstanceOf[Literal]
-
-    if (sym.is(Accessor, butNot = NoFieldNeeded) && !constantFinalVal) {
-      val field = sym.field.orElse(newField).asTerm
-
-      def adaptToField(tree: Tree): Tree =
+    if sym.is(Accessor, butNot = NoFieldNeeded) then
+      def adaptToField(field: Symbol, tree: Tree): Tree =
         if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
 
-      def isErasableBottomField(cls: Symbol): Boolean =
+      def isErasableBottomField(field: Symbol, cls: Symbol): Boolean =
         !field.isVolatile && ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass))
 
-      if (sym.isGetter) {
-        var rhs = tree.rhs.changeOwnerAfter(sym, field, thisPhase)
-        if (isWildcardArg(rhs)) rhs = EmptyTree
-        val fieldDef = transformFollowing(ValDef(field, adaptToField(rhs)))
-        val rhsClass = tree.tpt.tpe.widenDealias.classSymbol
-        val getterRhs =
-          if (isErasableBottomField(rhsClass)) erasedBottomTree(rhsClass)
-          else transformFollowingDeep(ref(field))(using ctx.withOwner(sym))
-        val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
-        addAnnotations(fieldDef.denot)
-        removeUnwantedAnnotations(sym)
-        Thicket(fieldDef, getterDef)
-      }
-      else if (sym.isSetter) {
+      if sym.isGetter then
+        val constantFinalVal = sym.isAllOf(Accessor | Final, butNot = Mutable) && tree.rhs.isInstanceOf[Literal]
+        if constantFinalVal then
+          // constant final vals do not need to be transformed at all, and do not need a field
+          tree
+        else
+          val field = newField.asTerm
+          var rhs = tree.rhs.changeOwnerAfter(sym, field, thisPhase)
+          if (isWildcardArg(rhs)) rhs = EmptyTree
+          val fieldDef = transformFollowing(ValDef(field, adaptToField(field, rhs)))
+          val rhsClass = tree.tpt.tpe.widenDealias.classSymbol
+          val getterRhs =
+            if isErasableBottomField(field, rhsClass) then erasedBottomTree(rhsClass)
+            else transformFollowingDeep(ref(field))(using ctx.withOwner(sym))
+          val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
+          addAnnotations(fieldDef.denot)
+          removeUnwantedAnnotations(sym)
+          Thicket(fieldDef, getterDef)
+      else if sym.isSetter then
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // This is intended as an assertion
-        field.setFlag(Mutable) // Necessary for vals mixed in from Scala2 traits
-        val initializer =
-          if (isErasableBottomField(tree.vparamss.head.head.tpt.tpe.classSymbol)) Literal(Constant(()))
-          else Assign(ref(field), adaptToField(ref(tree.vparamss.head.head.symbol)))
-        val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(using ctx.withOwner(sym)))
-        removeUnwantedAnnotations(sym)
-        setterDef
-      }
-      else tree // curiously, some accessors from Scala2 have ' ' suffixes. They count as
-                // neither getters nor setters
-    }
-    else tree
+        val field = sym.field
+        if !field.exists then
+          // When transforming the getter, we determined that no field was needed.
+          // In that case we can keep the setter as is, with a () rhs.
+          tree
+        else if field.getter.is(ParamAccessor, butNot = Mutable) then
+          // This is a trait setter (because not Mutable) for a param accessor.
+          // We must keep the () rhs of the trait setter, otherwise the value
+          // inherited from the trait will overwrite the value of the parameter.
+          // See tests/run/traitValOverriddenByParamAccessor.scala
+          tree
+        else
+          field.setFlag(Mutable) // Necessary for vals mixed in from traits
+          val initializer =
+            if (isErasableBottomField(field, tree.vparamss.head.head.tpt.tpe.classSymbol)) Literal(Constant(()))
+            else Assign(ref(field), adaptToField(field, ref(tree.vparamss.head.head.symbol)))
+          val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(using ctx.withOwner(sym)))
+          removeUnwantedAnnotations(sym)
+          setterDef
+      else
+        // Curiously, some accessors from Scala2 have ' ' suffixes.
+        // They count as neither getters nor setters.
+        tree
+    else
+      tree
   }
 }

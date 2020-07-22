@@ -152,6 +152,10 @@ class SymUtils(val self: Symbol) extends AnyVal {
     if (self.isSetter) self
     else accessorNamed(self.asTerm.name.setterName)
 
+  def traitSetter(using Context): Symbol =
+    if (self.name.is(TraitSetterName)) self
+    else accessorNamed(Mixin.traitSetterName(self.asTerm))
+
   def field(using Context): Symbol = {
     val thisName = self.name.asTermName
     val fieldName =

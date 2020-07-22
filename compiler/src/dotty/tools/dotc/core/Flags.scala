@@ -378,13 +378,8 @@ object Flags {
   /** Children were queried on this class */
   val (_, _, ChildrenQueried @ _) = newFlags(56, "<children-queried>")
 
-  /** A module variable (Scala 2.x only)
-   *    /
-   *  A Scala 2.x trait that has been partially augmented.
-   *  This is set in `AugmentScala2Trait` and reset in `LinkScala2Impls`
-   *  when the trait is fully augmented.
-   */
-  val (_, Scala2ModuleVar @ _, Scala2xPartiallyAugmented @ _) = newFlags(57, "<modulevar>", "<scala-2.x-partially-augmented>")
+  /** A module variable (Scala 2.x only) */
+  val (_, Scala2ModuleVar @ _, _) = newFlags(57, "<modulevar>")
 
   /** A macro */
   val (Macro @ _, _, _) = newFlags(58, "<macro>")
