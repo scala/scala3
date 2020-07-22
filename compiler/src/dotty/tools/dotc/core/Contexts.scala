@@ -69,7 +69,7 @@ object Contexts {
 
   /** Execute `op` at given phase */
   inline def atPhase[T](phase: Phase)(inline op: Context ?=> T)(using Context): T =
-    atPhase(phase.id)(op)
+    op(using ctx.withPhase(phase))
 
   inline def atNextPhase[T](inline op: Context ?=> T)(using Context): T =
     atPhase(ctx.phase.next)(op)
@@ -262,7 +262,7 @@ object Contexts {
 
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
-      util.Stats.record("getSource")
+      util.Stats.record("Context.getSource")
       base.sources.getOrElseUpdate(file, new SourceFile(file, codec))
     }
 
@@ -285,33 +285,49 @@ object Contexts {
     /** Sourcefile with given path, memoized */
     def getSource(path: String): SourceFile = getSource(path.toTermName)
 
-    /** Those fields are used to cache phases created in withPhase.
-      * phasedCtx is first phase with altered phase ever requested.
-      * phasedCtxs is array that uses phaseId's as indexes,
-      * contexts are created only on request and cached in this array
-      */
-    private var phasedCtx: Context = this
-    private var phasedCtxs: Array[Context] = null
+    private var related: SimpleIdentityMap[Phase | SourceFile, Context] = null
 
-    /** This context at given phase.
-     *  This method will always return a phase period equal to phaseId, thus will never return a fused phase
-     */
-    final def withPhase(phaseId: PhaseId): Context =
-      if (this.period.phaseId == phaseId) this
-      else if (phasedCtx.period.phaseId == phaseId) phasedCtx
-      else if (phasedCtxs != null && phasedCtxs(phaseId) != null) phasedCtxs(phaseId)
-      else {
-        val ctx1 = fresh.setPhase(phaseId)
-        if (phasedCtx eq this) phasedCtx = ctx1
-        else {
-          if (phasedCtxs == null) phasedCtxs = new Array[Context](base.phases.length)
-          phasedCtxs(phaseId) = ctx1
-        }
+    private def lookup(key: Phase | SourceFile): Context =
+      util.Stats.record("Context.related.lookup")
+      if related == null then
+        related = SimpleIdentityMap.Empty
+        null
+      else
+        related(key)
+
+    private def withPhase(phase: Phase, pid: PhaseId): Context =
+      util.Stats.record("Context.withPhase")
+      val curId = phaseId
+      if curId == pid then
+        this
+      else
+        var ctx1 = lookup(phase)
+        if ctx1 == null then
+          util.Stats.record("Context.withPhase.new")
+          ctx1 = fresh.setPhase(pid)
+          related = related.updated(phase, ctx1)
         ctx1
-      }
 
-    final def withPhase(phase: Phase): Context =
-      withPhase(phase.id)
+    final def withPhase(phase: Phase): Context = withPhase(phase, phase.id)
+    final def withPhase(pid: PhaseId): Context = withPhase(base.phases(pid), pid)
+
+    final def withSource(source: SourceFile): Context =
+      util.Stats.record("Context.withSource")
+      if this.source eq source then
+        this
+      else
+        var ctx1 = lookup(source)
+        if ctx1 == null then
+          util.Stats.record("Context.withSource.new")
+          val ctx2 = fresh.setSource(source)
+          if ctx2.compilationUnit == null then
+            // `source` might correspond to a file not necessarily
+            // in the current project (e.g. when inlining library code),
+            // so set `mustExist` to false.
+            ctx2.setCompilationUnit(CompilationUnit(source, mustExist = false))
+          ctx1 = ctx2
+          related = related.updated(source, ctx2)
+        ctx1
 
     // `creationTrace`-related code. To enable, uncomment the code below and the
     // call to `setCreationTrace()` in this file.
@@ -478,8 +494,7 @@ object Contexts {
 
     def reuseIn(outer: Context): this.type =
       implicitsCache = null
-      phasedCtxs = null
-      sourceCtx = null
+      related = null
       init(outer, outer)
 
     /** A fresh clone of this context embedded in this context. */
@@ -492,29 +507,6 @@ object Contexts {
 
     final def withOwner(owner: Symbol): Context =
       if (owner ne this.owner) fresh.setOwner(owner) else this
-
-    private var sourceCtx: SimpleIdentityMap[SourceFile, Context] = null
-
-    final def withSource(source: SourceFile): Context =
-      if (source `eq` this.source) this
-      else if ((source `eq` outer.source) &&
-               outer.sourceCtx != null &&
-               (outer.sourceCtx(this.source) `eq` this)) outer
-      else {
-        if (sourceCtx == null) sourceCtx = SimpleIdentityMap.Empty
-        val prev = sourceCtx(source)
-        if (prev != null) prev
-        else {
-          val newCtx = fresh.setSource(source)
-          if (newCtx.compilationUnit == null)
-            // `source` might correspond to a file not necessarily
-            // in the current project (e.g. when inlining library code),
-            // so set `mustExist` to false.
-            newCtx.setCompilationUnit(CompilationUnit(source, mustExist = false))
-          sourceCtx = sourceCtx.updated(source, newCtx)
-          newCtx
-        }
-      }
 
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
@@ -734,6 +726,7 @@ object Contexts {
       result
 
   inline def comparing[T](inline op: TypeComparer => T)(using Context): T =
+    util.Stats.record("comparing")
     val saved = ctx.base.comparersInUse
     try op(comparer)
     finally ctx.base.comparersInUse = saved
