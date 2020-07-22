@@ -797,7 +797,13 @@ object Denotations {
               val transformer = ctx.base.denotTransformers(nextTransformerId)
               //println(s"transforming $this with $transformer")
               try
-                next = atPhase(transformer)(transformer.transform(cur))
+                util.Stats.record("denot transform")
+                next = ctx.evalAt(transformer)(transformer.transform(cur))
+                  // We temporarily update the context with the new phase instead of creating a
+                  // new one. This is done for performance. We cut down on about 30% of context
+                  // creations that way, and also avoid phase caches in contexts to get large.
+                  // To work correctly, we need to demand that the context with the new phase
+                  // is not retained in the result.
               catch {
                 case ex: CyclicReference =>
                   println(s"error while transforming $this") // DEBUG
