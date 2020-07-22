@@ -2351,8 +2351,11 @@ object SymDenotations {
     if (denot.isOneOf(ValidForeverFlags) || denot.isRefinementClass || denot.isImport) true
     else {
       val initial = denot.initial
-      val firstPhaseId = initial.validFor.firstPhaseId.max(typerPhase.id)
-      if ((initial ne denot) || ctx.phaseId != firstPhaseId)
+      val firstPhaseId =
+        initial.validFor.firstPhaseId.max(typerPhase.id)
+      if firstPhaseId > ctx.lastPhaseId then
+        false
+      else if (initial ne denot) || ctx.phaseId != firstPhaseId then
         atPhase(firstPhaseId)(stillValidInOwner(initial))
       else
         stillValidInOwner(denot)

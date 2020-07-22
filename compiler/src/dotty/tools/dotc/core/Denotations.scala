@@ -716,7 +716,10 @@ object Denotations {
       this match {
         case symd: SymDenotation =>
           if (stillValid(symd)) return updateValidity()
-          if (acceptStale(symd)) return symd.currentSymbol.denot.orElse(symd).updateValidity()
+          if acceptStale(symd) && symd.initial.validFor.firstPhaseId <= ctx.lastPhaseId then
+            // New run might have fewer phases than old, so symbol might no longer be
+            // visible at all. TabCompleteTests have examples where this happens.
+            return symd.currentSymbol.denot.orElse(symd).updateValidity()
         case _ =>
       }
       if (!symbol.exists) return updateValidity()
@@ -790,7 +793,7 @@ object Denotations {
           //println(s"might need new denot for $cur, valid for ${cur.validFor} at $currentPeriod")
           // not found, cur points to highest existing variant
           val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
-          if (currentPeriod.lastPhaseId <= nextTransformerId)
+          if currentPeriod.lastPhaseId <= nextTransformerId then
             cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
           else
             var startPid = nextTransformerId + 1
