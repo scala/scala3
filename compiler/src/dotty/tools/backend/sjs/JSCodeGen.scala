@@ -30,7 +30,7 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.report
 
 import org.scalajs.ir
-import org.scalajs.ir.{ClassKind, Position, Trees => js, Types => jstpe}
+import org.scalajs.ir.{ClassKind, Position, Names => jsNames, Trees => js, Types => jstpe}
 import org.scalajs.ir.Names.{ClassName, MethodName, SimpleMethodName}
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
@@ -1176,9 +1176,7 @@ class JSCodeGen()(using genCtx: Context) {
 
       /** A Match reaching the backend is supposed to be optimized as a switch */
       case mtch: Match =>
-        // TODO Correctly handle `Match` nodes
-        //genMatch(mtch, isStat)
-        js.Throw(js.Null())
+        genMatch(mtch, isStat)
 
       case tree: Closure =>
         genClosure(tree)
@@ -2226,6 +2224,127 @@ class JSCodeGen()(using genCtx: Context) {
     val genElems = tree.elems.map(genExpr)
     val arrayTypeRef = toTypeRef(tree.tpe).asInstanceOf[jstpe.ArrayTypeRef]
     js.ArrayValue(arrayTypeRef, genElems)
+  }
+
+  /** Gen JS code for a switch-`Match`, which is translated into an IR `js.Match`. */
+  def genMatch(tree: Tree, isStat: Boolean): js.Tree = {
+    implicit val pos = tree.span
+    val Match(selector, cases) = tree
+
+    def abortMatch(msg: String): Nothing =
+      throw new FatalError(s"$msg in switch-like pattern match at ${tree.span}: $tree")
+
+    /* Although GenBCode adapts the scrutinee and the cases to `int`, only
+     * true `int`s can reach the back-end, as asserted by the String-switch
+     * transformation in `cleanup`. Therefore, we do not adapt, preserving
+     * the `string`s and `null`s that come out of the pattern matching in
+     * Scala 2.13.2+.
+     */
+    val genSelector = genExpr(selector)
+
+    // Sanity check: we can handle Ints and Strings (including `null`s), but nothing else
+    genSelector.tpe match {
+      case jstpe.IntType | jstpe.ClassType(jsNames.BoxedStringClass) | jstpe.NullType | jstpe.NothingType =>
+        // ok
+      case _ =>
+        abortMatch(s"Invalid selector type ${genSelector.tpe}")
+    }
+
+    val resultType =
+      if (isStat) jstpe.NoType
+      else toIRType(tree.tpe)
+
+    var clauses: List[(List[js.Tree], js.Tree)] = Nil
+    var optDefaultClause: Option[js.Tree] = None
+
+    for (caze @ CaseDef(pat, guard, body) <- cases) {
+      if (guard != EmptyTree)
+        abortMatch("Found a case guard")
+
+      val genBody = genStatOrExpr(body, isStat)
+
+      pat match {
+        case lit: Literal =>
+          clauses = (List(genExpr(lit)), genBody) :: clauses
+        case Ident(nme.WILDCARD) =>
+          optDefaultClause = Some(genBody)
+        case Alternative(alts) =>
+          val genAlts = alts.map {
+            case lit: Literal => genExpr(lit)
+            case _            => abortMatch("Invalid case in alternative")
+          }
+          clauses = (genAlts, genBody) :: clauses
+        case _ =>
+          abortMatch("Invalid case pattern")
+      }
+    }
+
+    clauses = clauses.reverse
+    val defaultClause = optDefaultClause.getOrElse {
+      throw new AssertionError("No elseClause in pattern match")
+    }
+
+    /* Builds a `js.Match`, but simplifies it to a `js.If` if there is only
+     * one case with one alternative, and to a `js.Block` if there is no case
+     * at all. This happens in practice in the standard library. Having no
+     * case is a typical product of `match`es that are full of
+     * `case n if ... =>`, which are used instead of `if` chains for
+     * convenience and/or readability.
+     *
+     * When no optimization applies, and any of the case values is not a
+     * literal int, we emit a series of `if..else` instead of a `js.Match`.
+     * This became necessary in 2.13.2 with strings and nulls.
+     *
+     * Note that dotc has not adopted String-switch-Matches yet, so these code
+     * paths are dead code at the moment. However, they already existed in the
+     * scalac, so were ported, to be immediately available and working when
+     * dotc starts emitting switch-Matches on Strings.
+     */
+    def isInt(tree: js.Tree): Boolean = tree.tpe == jstpe.IntType
+
+    clauses match {
+      case Nil =>
+        // Completely remove the Match. Preserve the side-effects of `genSelector`.
+        js.Block(exprToStat(genSelector), defaultClause)
+
+      case (uniqueAlt :: Nil, caseRhs) :: Nil =>
+        /* Simplify the `match` as an `if`, so that the optimizer has less
+         * work to do, and we emit less code at the end of the day.
+         * Use `Int_==` instead of `===` if possible, since it is a common case.
+         */
+        val op =
+          if (isInt(genSelector) && isInt(uniqueAlt)) js.BinaryOp.Int_==
+          else js.BinaryOp.===
+        js.If(js.BinaryOp(op, genSelector, uniqueAlt), caseRhs, defaultClause)(resultType)
+
+      case _ =>
+        if (isInt(genSelector) &&
+            clauses.forall(_._1.forall(_.isInstanceOf[js.IntLiteral]))) {
+          // We have int literals only: use a js.Match
+          val intClauses = clauses.asInstanceOf[List[(List[js.IntLiteral], js.Tree)]]
+          js.Match(genSelector, intClauses, defaultClause)(resultType)
+        } else {
+          // We have other stuff: generate an if..else chain
+          val (tempSelectorDef, tempSelectorRef) = genSelector match {
+            case varRef: js.VarRef =>
+              (js.Skip(), varRef)
+            case _ =>
+              val varDef = js.VarDef(freshLocalIdent(), NoOriginalName,
+                  genSelector.tpe, mutable = false, genSelector)
+              (varDef, varDef.ref)
+          }
+          val ifElseChain = clauses.foldRight(defaultClause) { (caze, elsep) =>
+            val conds = caze._1.map { caseValue =>
+              js.BinaryOp(js.BinaryOp.===, tempSelectorRef, caseValue)
+            }
+            val cond = conds.reduceRight[js.Tree] { (left, right) =>
+              js.If(left, js.BooleanLiteral(true), right)(jstpe.BooleanType)
+            }
+            js.If(cond, caze._2, elsep)(resultType)
+          }
+          js.Block(tempSelectorDef, ifElseChain)
+        }
+    }
   }
 
   /** Gen JS code for a closure.
