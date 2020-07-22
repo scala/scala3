@@ -4,14 +4,21 @@ import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import collection.JavaConverters._
-import org.jetbrains.dokka.model.properties.PropertyContainer
+import org.jetbrains.dokka.model.properties._
+
+case class MethodExtension(parametersListSizes: Seq[Int]) extends ExtraProperty[DFunction]:
+  override def getKey = MethodExtension
+
+object MethodExtension extends ExtraProperty.Key[DFunction, MethodExtension]:
+  override def mergeStrategyFor(left: MethodExtension, right: MethodExtension): MergeStrategy[DFunction] = 
+    MergeStrategy.Remove.INSTANCE.asInstanceOf[MergeStrategy[DFunction]] // TODO it seems that variance from Kotlin is not respected...
 
 trait ClassLikeSupport: 
   self: TastyParser =>
   import reflect._
 
   def parseClass(classDef: reflect.ClassDef)(using ctx: Context): DClasslike =
-
+    
     val parents = for
       parentTree <- classDef.parents
       parentSymbol = if (parentTree.symbol.isClassConstructor) parentTree.symbol.owner else parentTree.symbol 
@@ -58,7 +65,7 @@ trait ClassLikeSupport:
       /*receiver =*/ null,
       /*modifier =*/ sourceSet.asMap(JavaModifier.Abstract.INSTANCE),
       sourceSet.toSet(),
-      PropertyContainer.Companion.empty()
+      PropertyContainer.Companion.empty() plus MethodExtension(paramLists.map(_.size))
     )
 
   def parseArgument(argument: ValDef): DParameter = 

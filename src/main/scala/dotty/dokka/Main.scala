@@ -24,7 +24,10 @@ object Main:
       files.filter(_.getName.endsWith(".tasty")) ++ dirs.flatMap(listTastyFiles)
     
     val config = DocConfiguration(
-      tastyFiles = cp.split(File.pathSeparatorChar).toList.flatMap(p => listTastyFiles(new File(p))).map(_.toString),
+      tastyFiles = cp.split(File.pathSeparatorChar).toList
+        .flatMap(p => listTastyFiles(new File(p)))
+        .map(_.toString)
+        .filter(_.contains("tests")),
       classpath = System.getProperty("java.class.path")
     )
 
