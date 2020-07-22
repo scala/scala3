@@ -12,7 +12,7 @@ import dotc.core.Flags
 import dotc.core.Flags._
 import dotc.core.Symbols.{Symbol, defn}
 import dotc.core.StdNames.str
-import dotc.core.NameOps.NameDecorator
+import dotc.core.NameOps._
 import dotc.printing.ReplPrinter
 import dotc.reporting.{MessageRendering, Message, Diagnostic}
 import dotc.util.SourcePosition
@@ -142,11 +142,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
 object Rendering {
 
-  implicit class ShowUser(val s: Symbol) extends AnyVal {
+  extension (s: Symbol):
     def showUser(using Context): String = {
       val printer = new ReplPrinter(ctx)
       val text = printer.dclText(s)
       text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
     }
-  }
+
 }

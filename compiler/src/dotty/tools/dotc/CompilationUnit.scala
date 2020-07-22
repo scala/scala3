@@ -12,7 +12,7 @@ import tpd.{Tree, TreeTraverser}
 import typer.PrepareInlineable.InlineAccessors
 import typer.Nullables
 import transform.SymUtils._
-import core.Decorators.{given _}
+import core.Decorators._
 import config.SourceVersion
 
 class CompilationUnit protected (val source: SourceFile) {

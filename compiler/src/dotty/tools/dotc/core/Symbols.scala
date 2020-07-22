@@ -454,7 +454,7 @@ object Symbols {
 
   NoDenotation // force it in order to set `denot` field of NoSymbol
 
-  implicit class Copier[N <: Name](sym: Symbol { type ThisName = N })(using Context) {
+  extension [N <: Name](sym: Symbol { type ThisName = N })(using Context) {
     /** Copy a symbol, overriding selective fields.
      *  Note that `coord` and `associatedFile` will be set from the fields in `owner`, not
      *  the fields in `sym`.

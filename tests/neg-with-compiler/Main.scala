@@ -6,6 +6,7 @@ package dotty.tools
 package dotc
 
 import core.Contexts.Context
+import config.Settings.Setting._
 
 object Main extends Driver {
   def resident(compiler: Compiler): Unit = unsupported("resident") /*loop { line =>
@@ -17,7 +18,7 @@ object Main extends Driver {
   override def newCompiler(): Compiler = new Compiler
 
   override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Unit = {
-    if (new config.Settings.Setting.SettingDecorator(ctx.base.settings.resident).value) resident(compiler) // error
+    if (ctx.base.settings.resident.value) resident(compiler) // error
     else super.doCompile(compiler,123) // error: type mismatch
   }
 }

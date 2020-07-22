@@ -17,7 +17,7 @@ import scala.annotation.switch
 
 object Scala3:
   import Symbols._
-  import core.NameOps.{given _}
+  import core.NameOps._
 
   @sharable private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
   @sharable private val locals        = raw"local(\d+)".r

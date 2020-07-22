@@ -7,7 +7,7 @@ import java.io.File
 import java.net.URL
 
 import dotty.tools.io.{ AbstractFile, FileZipArchive }
-import FileUtils.AbstractFileOps
+import FileUtils._
 import dotty.tools.io.{ClassPath, ClassRepresentation}
 
 /**

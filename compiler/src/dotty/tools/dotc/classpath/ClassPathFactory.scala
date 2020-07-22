@@ -4,7 +4,7 @@
 package dotty.tools.dotc.classpath
 
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import FileUtils.AbstractFileOps
+import FileUtils._
 import dotty.tools.io.ClassPath
 import dotty.tools.dotc.core.Contexts._
 

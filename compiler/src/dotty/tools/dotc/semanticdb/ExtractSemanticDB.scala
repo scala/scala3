@@ -20,7 +20,7 @@ import java.nio.file.Paths
 import PartialFunction.condOpt
 
 import ast.untpd.{given _}
-import NameOps.{given _}
+import NameOps._
 
 import scala.annotation.{ threadUnsafe => tu, tailrec }
 

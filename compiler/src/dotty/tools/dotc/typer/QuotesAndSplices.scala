@@ -16,7 +16,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.reporting._
-import dotty.tools.dotc.transform.SymUtils.decorateSymbol
+import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.Implicits._
 import dotty.tools.dotc.typer.Inferencing._
 import dotty.tools.dotc.typer.ProtoTypes._

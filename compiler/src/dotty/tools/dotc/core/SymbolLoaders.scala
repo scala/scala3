@@ -9,7 +9,7 @@ import config.Config
 import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, Names._
 import NameOps._
 import StdNames.str
-import Decorators.StringInterpolators
+import Decorators._
 import classfile.ClassfileParser
 import util.Stats
 import Decorators._

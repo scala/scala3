@@ -831,7 +831,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** Structural tree comparison (since == on trees is reference equality).
    *  For the moment, only Ident, Select, Literal, Apply and TypeApply are supported
    */
-  implicit class StructuralEqDeco(t1: Tree) {
+  extension (t1: Tree) {
     def === (t2: Tree)(using Context): Boolean = (t1, t2) match {
       case (t1: Ident, t2: Ident) =>
         t1.symbol == t2.symbol

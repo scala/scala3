@@ -10,7 +10,7 @@ import Constants.Constant
 import TypeApplications.TypeParamInfo
 import Scopes.Scope
 import dotty.tools.io.AbstractFile
-import Decorators.SymbolIteratorDecorator
+import Decorators._
 import ast._
 import ast.Trees.{LambdaTypeTree, TypeBoundsTree, ValDef, TypeDef}
 import Trees.Literal

@@ -4,7 +4,7 @@ import org.junit.Test
 import org.eclipse.lsp4j.{CompletionItemKind, DocumentHighlightKind, SymbolKind}
 
 import dotty.tools.dotc.core.StdNames.nme.WorksheetWrapper
-import dotty.tools.dotc.core.NameOps.NameDecorator
+import dotty.tools.dotc.core.NameOps._
 import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.embedded.CodeMarker
 

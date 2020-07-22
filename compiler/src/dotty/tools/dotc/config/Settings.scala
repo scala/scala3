@@ -184,7 +184,7 @@ object Settings {
   }
 
   object Setting {
-    implicit class SettingDecorator[T](val setting: Setting[T]) extends AnyVal {
+    extension [T](setting: Setting[T]) {
       def value(using Context): T = setting.valueIn(ctx.settingsState)
       def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)

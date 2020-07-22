@@ -9,7 +9,7 @@ import transform.TypeUtils._
 import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import Decorators.{given _}, DenotTransformers._
+import Decorators._, DenotTransformers._
 import collection.{immutable, mutable}
 import util.{Property, SourceFile, NoSource}
 import NameKinds.{TempResultName, OuterSelectName}
@@ -1111,12 +1111,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       !(sym.is(Method) && sym.info.isInstanceOf[MethodOrPoly]) // if is a method it is parameterless
   }
 
-  implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {
+  extension (xs: List[tpd.Tree]):
     def tpes: List[Type] = xs match {
       case x :: xs1 => x.tpe :: xs1.tpes
       case nil => Nil
     }
-  }
 
   /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
   trait TreeProvider {

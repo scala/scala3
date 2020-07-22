@@ -64,12 +64,11 @@ object Parsers {
     val Spliced = 2
   }
 
-  private implicit class AddDeco(val buf: ListBuffer[Tree]) extends AnyVal {
+  extension (buf: ListBuffer[Tree]):
     def +++=(x: Tree) = x match {
       case x: Thicket => buf ++= x.trees
       case x => buf += x
     }
-  }
 
   /** The parse starting point depends on whether the source file is self-contained:
    *  if not, the AST will be supplemented.

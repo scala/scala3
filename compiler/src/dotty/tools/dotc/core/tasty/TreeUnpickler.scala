@@ -27,7 +27,7 @@ import util.Spans._
 import util.SourceFile
 import ast.{TreeTypeMap, Trees, tpd, untpd}
 import Trees._
-import Decorators.{given _}
+import Decorators._
 import transform.SymUtils._
 
 import dotty.tools.tasty.{TastyBuffer, TastyReader}

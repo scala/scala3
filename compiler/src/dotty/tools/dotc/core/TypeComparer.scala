@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
-import NullOpsDecorator.NullOps
+import NullOpsDecorator._
 
 /** Provides methods to compare types.
  */

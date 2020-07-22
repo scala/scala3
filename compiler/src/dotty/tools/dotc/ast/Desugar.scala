@@ -5,7 +5,7 @@ package ast
 import core._
 import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Symbols._, StdNames._, Trees._, Phases._, ContextOps._
-import Decorators.{given _}, transform.SymUtils._
+import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}

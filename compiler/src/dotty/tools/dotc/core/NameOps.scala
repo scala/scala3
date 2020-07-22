@@ -7,6 +7,7 @@ import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
 import scala.internal.Chars
 import Chars.isOperatorPart
 import Definitions._
+import nme._
 
 object NameOps {
 
@@ -49,8 +50,7 @@ object NameOps {
     }
   }
 
-  implicit class NameDecorator[N <: Name](private val name: N) extends AnyVal {
-    import nme._
+  extension [N <: Name](name: N) {
 
     def testSimple(f: SimpleName => Boolean): Boolean = name match {
       case name: SimpleName => f(name)
@@ -268,8 +268,7 @@ object NameOps {
     }
   }
 
-  implicit class TermNameDecorator(private val name: TermName) extends AnyVal {
-    import nme._
+  extension (name: TermName) {
 
     def setterName: TermName = name.exclude(FieldName) ++ str.SETTER_SUFFIX
 

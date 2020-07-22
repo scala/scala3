@@ -6,7 +6,7 @@ import core._
 import ast._
 import Trees._, StdNames._, Scopes._, Denotations._, NamerOps._, ContextOps._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._
-import Decorators.{given _}, Comments.{_, given _}
+import Decorators._, Comments.{_, given _}
 import NameKinds.DefaultGetterName
 import TypeApplications.TypeParamInfo
 import ast.desugar, ast.desugar._
@@ -14,7 +14,7 @@ import ProtoTypes._
 import util.Spans._
 import util.Property
 import collection.mutable
-import tpd.ListOfTreeDecorator
+import tpd.tpes
 import Variances.alwaysInvariant
 import config.{Config, Feature}
 import config.Printers.typr

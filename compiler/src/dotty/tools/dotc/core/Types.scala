@@ -5650,7 +5650,7 @@ object Types {
 
   implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
 
-  implicit class typeListDeco(val tps1: List[Type]) extends AnyVal {
+  extension (tps1: List[Type]) {
     @tailrec def hashIsStable: Boolean =
       tps1.isEmpty || tps1.head.hashIsStable && tps1.tail.hashIsStable
     @tailrec def equalElements(tps2: List[Type], bs: BinderPairs): Boolean =
