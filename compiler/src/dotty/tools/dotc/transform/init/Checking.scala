@@ -90,8 +90,6 @@ object Checking {
         if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])(state.withOwner(cls))
         else checkSecondaryConstructor(ctor)(state.withOwner(cls))
       }
-      else if (!cls.isOneOf(Flags.EffectivelyOpenFlags))
-        report.warning("Inheriting non-open class may cause initialization errors", source.srcPos)
     }
 
     def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
