@@ -1,5 +1,4 @@
 package scala
-import scala.reflect.ClassTag
 
 /** A marker trait for objects that support structural selection via
  *  `selectDynamic` and `applyDynamic`
@@ -22,3 +21,15 @@ import scala.reflect.ClassTag
  *  types of the method in the structural type.
  */
 trait Selectable extends Any
+
+object Selectable:
+  /* Scala 2 compat + allowing for cross-compilation:
+   * enable scala.reflect.Selectable.reflectiveSelectable when there is an
+   * import scala.language.reflectiveCalls in scope.
+   */
+  @deprecated(
+    "import scala.reflect.Selectable.reflectiveSelectable instead of scala.language.reflectiveCalls",
+    since = "3.0")
+  implicit def reflectiveSelectableFromLangReflectiveCalls(x: Any)(
+      using scala.languageFeature.reflectiveCalls): scala.reflect.Selectable =
+    scala.reflect.Selectable.reflectiveSelectable(x)
