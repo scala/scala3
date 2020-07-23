@@ -23,47 +23,48 @@ import scala.tasty.inspector.TastyInspector
 import dotty.tastydoc.representations
 import dotty.tastydoc.representations._
 
-case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector) extends ScaladocSupport with BasicSupport with ClassLikeSupport:
-  import reflect._
+case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector) 
+  extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport:
+    import reflect._
 
-  def sourceSet = inspector.sourceSet
+    def sourceSet = inspector.sourceSet
 
-  def parseRootTree(root: Tree): Seq[Documentable] = 
-    val docs = Seq.newBuilder[Documentable]
-    object Traverser extends TreeTraverser:
-      override def traverseTree(tree: Tree)(using ctx: Context): Unit = 
-        tree match {
-          case clazz: ClassDef  =>
-            docs += parseClass(clazz)
-            //classes += DDClass(clazz.name, "dotty.dokka", clazz.symbol.comment.fold("")(_.raw))  
-          case _ =>
-        }
-        super.traverseTree(tree)
+    def parseRootTree(root: Tree): Seq[Documentable] = 
+      val docs = Seq.newBuilder[Documentable]
+      object Traverser extends TreeTraverser:
+        override def traverseTree(tree: Tree)(using ctx: Context): Unit = 
+          tree match {
+            case clazz: ClassDef  =>
+              docs += parseClass(clazz)
+              //classes += DDClass(clazz.name, "dotty.dokka", clazz.symbol.comment.fold("")(_.raw))  
+            case _ =>
+          }
+          super.traverseTree(tree)
 
-    Traverser.traverseTree(root)(using reflect.rootContext)
-    docs.result()
+      Traverser.traverseTree(root)(using reflect.rootContext)
+      docs.result()
 
-case class DokkaTastyInspector(sourceSet: SourceSetWrapper, parser: Parser, config: DottyDokkaConfig) extends TastyInspector:
+  case class DokkaTastyInspector(sourceSet: SourceSetWrapper, parser: Parser, config: DottyDokkaConfig) extends TastyInspector:
 
-  private val topLevels = Seq.newBuilder[Documentable]
-  
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = 
-    val parser = new TastyParser(reflect, this)
-    topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.reflect.Tree])
+    private val topLevels = Seq.newBuilder[Documentable]
+    
+    protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = 
+      val parser = new TastyParser(reflect, this)
+      topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.reflect.Tree])
 
-  def result(): List[DPackage] = 
-    val all = topLevels.result()
-    val byPackage = all.filter(_.getDri != null).groupBy(_.getDri().getPackageName()) 
-    byPackage.map { case (pck, entries) =>
-      new DPackage(
-        new DRI(pck, null, null, PointingToDeclaration.INSTANCE, null),
-        Nil.asJava,
-        Nil.asJava,
-        entries.collect{ case d: DClasslike => d }.toList.asJava, // TODO add support for other things like type or package object entries
-        Nil.asJava,
-        Map.empty.asJava, // TODO find docs for package and search for package object to extract doc
-        null,
-        sourceSet.toSet,
-        PropertyContainer.Companion.empty()
-      )
-    }.toList
+    def result(): List[DPackage] = 
+      val all = topLevels.result()
+      val byPackage = all.filter(_.getDri != null).groupBy(_.getDri().getPackageName()) 
+      byPackage.map { case (pck, entries) =>
+        new DPackage(
+          new DRI(pck, null, null, PointingToDeclaration.INSTANCE, null),
+          Nil.asJava,
+          Nil.asJava,
+          entries.collect{ case d: DClasslike => d }.toList.asJava, // TODO add support for other things like type or package object entries
+          Nil.asJava,
+          Map.empty.asJava, // TODO find docs for package and search for package object to extract doc
+          null,
+          sourceSet.toSet,
+          PropertyContainer.Companion.empty()
+        )
+      }.toList
