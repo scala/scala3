@@ -11,7 +11,7 @@ import Decorators._
 import ast.Trees._
 import MegaPhase._
 import StdNames.nme
-import Names.TermName
+import Names._
 import Constants.Constant
 
 
@@ -28,14 +28,15 @@ class Instrumentation extends MiniPhase { thisPhase =>
     ctx.settings.YinstrumentClosures.value ||
     ctx.settings.YinstrumentAllocations.value
 
+  private val namesOfInterest = List("::", "+=", "toString")
+  private var namesToRecord: Set[Name] = _
+
   private var consName: TermName = _
   private var consEqName: TermName = _
 
-  override def prepareForUnit(tree: Tree)(using Context): Context = {
-    consName = "::".toTermName
-    consEqName = "+=".toTermName
+  override def prepareForUnit(tree: Tree)(using Context): Context =
+    namesToRecord = namesOfInterest.map(_.toTermName).toSet
     ctx
-  }
 
   private def record(category: String, tree: Tree)(using Context): Tree = {
     val key = Literal(Constant(s"$category${tree.sourcePos.show}"))
@@ -45,8 +46,8 @@ class Instrumentation extends MiniPhase { thisPhase =>
   override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
     case Select(nu: New, _) =>
       cpy.Block(tree)(record(i"alloc/${nu.tpe}@", tree) :: Nil, tree)
-    case Select(_, name) if name == consName || name == consEqName =>
-      cpy.Block(tree)(record("alloc/::", tree) :: Nil, tree)
+    case Select(_, name) if namesToRecord.contains(name) =>
+      cpy.Block(tree)(record(i"alloc/$name", tree) :: Nil, tree)
     case _ =>
       tree
   }
