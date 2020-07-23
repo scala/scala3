@@ -976,6 +976,35 @@ class TestBCode extends DottyBytecodeTest {
       assert((getMethod(c, "x_$eq").access & Opcodes.ACC_DEPRECATED) != 0)
     }
   }
+
+  @Test def vcElideAllocations = {
+    val source =
+      s"""class ApproxState(val bits: Int) extends AnyVal
+         |class Foo {
+         |  val FreshApprox: ApproxState = new ApproxState(4)
+         |  var approx: ApproxState = FreshApprox
+         |  def meth: Boolean = approx == FreshApprox
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      val meth       = getMethod(clsNode, "meth")
+
+      val instructions = instructionsFromMethod(meth)
+      val isFrameLine = (x: Instruction) => x.isInstanceOf[FrameEntry] || x.isInstanceOf[LineNumber]
+      // No allocations of ApproxState
+      assertSameCode(instructions.filterNot(isFrameLine), List(
+        VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "approx", "()I", false),
+        VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "FreshApprox", "()I", false),
+        Jump(IF_ICMPNE, Label(7)), Op(ICONST_1),
+        Jump(GOTO, Label(10)),
+        Label(7), Op(ICONST_0),
+        Label(10), Op(IRETURN)
+      ))
+    }
+  }
 }
 
 object invocationReceiversTestCode {
