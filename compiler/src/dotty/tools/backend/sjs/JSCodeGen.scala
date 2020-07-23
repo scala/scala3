@@ -30,7 +30,7 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.report
 
 import org.scalajs.ir
-import org.scalajs.ir.{ClassKind, Position, Trees => js, Types => jstpe}
+import org.scalajs.ir.{ClassKind, Position, Names => jsNames, Trees => js, Types => jstpe}
 import org.scalajs.ir.Names.{ClassName, MethodName, SimpleMethodName}
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
@@ -2413,9 +2413,22 @@ class JSCodeGen()(using genCtx: Context) {
        * asInstanceOf to a raw JS type is completely erased.
        */
       value
+    } else if (sym == defn.NullClass) {
+      js.If(
+          js.BinaryOp(js.BinaryOp.===, value, js.Null()),
+          js.Null(),
+          genThrowClassCastException())(
+          jstpe.NullType)
+    } else if (sym == defn.NothingClass) {
+      js.Block(value, genThrowClassCastException())
     } else {
       js.AsInstanceOf(value, toIRType(to))
     }
+  }
+
+  private def genThrowClassCastException()(implicit pos: Position): js.Tree = {
+    js.Throw(js.New(jsNames.ClassCastExceptionClass,
+        js.MethodIdent(jsNames.NoArgConstructorName), Nil))
   }
 
   /** Gen JS code for an isInstanceOf test (for reference types only) */
@@ -2437,6 +2450,9 @@ class JSCodeGen()(using genCtx: Context) {
             jstpe.BooleanType)
       }
     } else {
+      // The Scala type system prevents x.isInstanceOf[Null] and ...[Nothing]
+      assert(sym != defn.NullClass && sym != defn.NothingClass,
+          s"Found a .isInstanceOf[$sym] at $pos")
       js.IsInstanceOf(value, toIRType(to))
     }
   }
