@@ -8,7 +8,7 @@ import Phases.Phase
 import ast.tpd
 import transform.MegaPhase.MiniPhase
 import Decorators._
-import Symbols.Symbol
+import Symbols._
 import Constants.Constant
 import transform.{Pickler, Staging}
 
@@ -26,7 +26,7 @@ class DivideZero extends PluginPhase with StandardPlugin {
 
   private def isNumericDivide(sym: Symbol)(implicit ctx: Context): Boolean = {
     def test(tpe: String): Boolean =
-      (sym.owner eq ctx.requiredClass(tpe)) && sym.name.show == "/"
+      (sym.owner eq requiredClass(tpe)) && sym.name.show == "/"
 
     test("scala.Int") || test("scala.Long") || test("scala.Short") || test("scala.Float") || test("scala.Double")
   }
