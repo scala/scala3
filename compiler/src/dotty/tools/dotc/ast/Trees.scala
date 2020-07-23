@@ -1375,7 +1375,12 @@ object Trees {
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(using Context): X
 
-      def apply(x: X, trees: Traversable[Tree])(using Context): X = trees.foldLeft(x)(apply)
+      def apply(x: X, trees: List[Tree])(using Context): X = trees match
+        case tree :: rest =>
+          apply(apply(x, tree), rest)
+        case Nil =>
+          x
+
       def foldOver(x: X, tree: Tree)(using Context): X =
         if (tree.source != ctx.source && tree.source.exists)
           foldOver(x, tree)(using ctx.withSource(tree.source))
