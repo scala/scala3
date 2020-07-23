@@ -983,26 +983,38 @@ class TestBCode extends DottyBytecodeTest {
          |class Foo {
          |  val FreshApprox: ApproxState = new ApproxState(4)
          |  var approx: ApproxState = FreshApprox
-         |  def meth: Boolean = approx == FreshApprox
+         |  def meth1: Boolean = approx == FreshApprox
+         |  def meth2: Boolean = (new ApproxState(4): ApproxState) == FreshApprox
          |}
          """.stripMargin
 
     checkBCode(source) { dir =>
       val clsIn      = dir.lookupName("Foo.class", directory = false).input
       val clsNode    = loadClassNode(clsIn)
-      val meth       = getMethod(clsNode, "meth")
+      val meth1      = getMethod(clsNode, "meth1")
+      val meth2      = getMethod(clsNode, "meth2")
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
 
-      val instructions = instructionsFromMethod(meth)
       val isFrameLine = (x: Instruction) => x.isInstanceOf[FrameEntry] || x.isInstanceOf[LineNumber]
+
       // No allocations of ApproxState
-      assertSameCode(instructions.filterNot(isFrameLine), List(
+
+      assertSameCode(instructions1.filterNot(isFrameLine), List(
         VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "approx", "()I", false),
         VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "FreshApprox", "()I", false),
         Jump(IF_ICMPNE, Label(7)), Op(ICONST_1),
         Jump(GOTO, Label(10)),
         Label(7), Op(ICONST_0),
-        Label(10), Op(IRETURN)
-      ))
+        Label(10), Op(IRETURN)))
+
+      assertSameCode(instructions2.filterNot(isFrameLine), List(
+        Op(ICONST_4),
+        VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "FreshApprox", "()I", false),
+        Jump(IF_ICMPNE, Label(6)), Op(ICONST_1),
+        Jump(GOTO, Label(9)),
+        Label(6), Op(ICONST_0),
+        Label(9), Op(IRETURN)))
     }
   }
 }
