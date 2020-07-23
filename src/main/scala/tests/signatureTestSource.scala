@@ -13,6 +13,8 @@ class signatureTestSource(a: String)
      = ???
     def multipleParams(a: A, b: B): C
      = ???
+    def likeVararg(a: Seq[A]): C
+     = ??? 
     def vararg(a: A*): C
      = ???
     def multipleList(a: A)(b: B): C

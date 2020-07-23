@@ -59,9 +59,10 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
             builder.addLink(method.getName, method.getDri)
             builder.generics(method)  
             builder.functionParameters(method)
-            builder.addText(":")
-            builder.addText(" ")
-            builder.typeSignature(method.getType)
+            if !method.isConstructor then
+                builder.addText(":")
+                builder.addText(" ")
+                builder.typeSignature(method.getType)
         }
 
 
