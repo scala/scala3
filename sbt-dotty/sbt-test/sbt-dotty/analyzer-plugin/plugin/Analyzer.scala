@@ -4,6 +4,7 @@ import scala.language.implicitConversions
 
 import dotty.tools.dotc._
 import core._
+import Symbols._
 import Contexts.Context
 import plugins._
 import Phases.Phase
@@ -45,8 +46,8 @@ class InitChecker extends PluginPhase {
   private def checkRef(tree: Tree)(implicit ctx: Context): Tree =
     if (!checkable(tree.symbol)) tree
     else {
-      val helloPkgSym = ctx.requiredPackage("hello").moduleClass
-      val libPkgSym = ctx.requiredPackage("lib").moduleClass
+      val helloPkgSym = requiredPackage("hello").moduleClass
+      val libPkgSym = requiredPackage("lib").moduleClass
       val enclosingPkg = tree.symbol.enclosingPackageClass
 
       if (enclosingPkg == helloPkgSym) {  // source code
