@@ -1047,7 +1047,6 @@ object Build {
             -- "CollectionsOnSynchronizedSetTest.scala"
             -- "CollectionsTest.scala"
             -- "EventObjectTest.scala"
-            -- "FormatterTest.scala"
             -- "HashSetTest.scala"
             -- "LinkedHashSetTest.scala"
             -- "SortedSetTest.scala"

@@ -821,17 +821,31 @@ object PatternMatcher {
         }
       }
 
-    /** Emit cases of a switch */
-    private def emitSwitchCases(cases: List[(List[Tree], Plan)]): List[CaseDef] = (cases: @unchecked) match {
-      case (alts, ons) :: cases1 =>
+    /** Emit a switch-match */
+    private def emitSwitchMatch(scrutinee: Tree, cases: List[(List[Tree], Plan)]): Match = {
+      /* Make sure to adapt the scrutinee to Int, as well as all the alternatives
+       * of all cases, so that only Matches on pritimive Ints survive this phase.
+       */
+
+      val intScrutinee =
+        if (scrutinee.tpe.widen.isRef(defn.IntClass)) scrutinee
+        else scrutinee.select(nme.toInt)
+
+      def intLiteral(lit: Tree): Tree =
+        val Literal(constant) = lit
+        if (constant.tag == Constants.IntTag) lit
+        else cpy.Literal(lit)(Constant(constant.intValue))
+
+      val caseDefs = cases.map { (alts, ons) =>
         val pat = alts match {
-          case alt :: Nil => alt
+          case alt :: Nil => intLiteral(alt)
           case Nil => Underscore(defn.IntType) // default case
-          case _ => Alternative(alts)
+          case _ => Alternative(alts.map(intLiteral))
         }
-        CaseDef(pat, EmptyTree, emit(ons)) :: emitSwitchCases(cases1)
-      case nil =>
-        Nil
+        CaseDef(pat, EmptyTree, emit(ons))
+      }
+
+      Match(intScrutinee, caseDefs)
     }
 
     /** If selfCheck is `true`, used to check whether a tree gets generated twice */
@@ -892,7 +906,7 @@ object PatternMatcher {
           def maybeEmitSwitch(scrutinee: Tree): Tree = {
             val switchCases = collectSwitchCases(scrutinee, plan)
             if (hasEnoughSwitchCases(switchCases, MinSwitchCases)) // at least 3 cases + default
-              Match(scrutinee, emitSwitchCases(switchCases))
+              emitSwitchMatch(scrutinee, switchCases)
             else
               default
           }
