@@ -146,7 +146,9 @@ object Names {
     def startsWith(str: String, start: Int = 0): Boolean = firstPart.startsWith(str, start)
 
     /** Does (the last part of) this name end with `str`? */
-    def endsWith(str: String): Boolean = lastPart.endsWith(str)
+    def endsWith(suffix: String): Boolean = lastPart.endsWith(suffix)
+
+    def endsWith(suffix: SimpleName): Boolean = lastPart.endsWith(suffix)
 
     override def hashCode: Int = System.identityHashCode(this)
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
@@ -363,11 +365,15 @@ object Names {
       i == str.length
     }
 
-    override def endsWith(str: String): Boolean = {
+    override def endsWith(suffix: String): Boolean =
       var i = 1
-      while (i <= str.length && i <= length && apply(length - i) == str(str.length - i)) i += 1
-      i > str.length
-    }
+      while i <= suffix.length && i <= length && apply(length - i) == suffix(suffix.length - i) do i += 1
+      i > suffix.length
+
+    override def endsWith(suffix: SimpleName): Boolean =
+      var i = 1
+      while i <= suffix.length && i <= length && apply(length - i) == suffix(suffix.length - i) do i += 1
+      i > suffix.length
 
     override def replace(from: Char, to: Char): SimpleName = {
       val cs = new Array[Char](length)

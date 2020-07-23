@@ -216,7 +216,10 @@ class Typer extends Namer
         val termName = name.toTermName
 
         def adjustExtension(name: Name) =
-          if required.is(ExtensionMethod) then name.toExtensionName else name
+          if required.is(ExtensionMethod) && termName.endsWith(name.lastPart)
+               // pre-check to avoid forming a new string; form extension only if it has a chance of matching `termName`
+          then name.toExtensionName
+          else name
 
         def recur(selectors: List[untpd.ImportSelector]): Type = selectors match
           case selector :: rest =>
