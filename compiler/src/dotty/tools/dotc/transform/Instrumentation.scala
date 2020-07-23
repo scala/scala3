@@ -39,13 +39,13 @@ class Instrumentation extends MiniPhase { thisPhase =>
     ctx
 
   private def record(category: String, tree: Tree)(using Context): Tree = {
-    val key = Literal(Constant(s"$category${tree.sourcePos.show}"))
+    val key = Literal(Constant(s"$category@${tree.sourcePos.show}"))
     ref(defn.Stats_doRecord).appliedTo(key, Literal(Constant(1)))
   }
 
   override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
     case Select(nu: New, _) =>
-      cpy.Block(tree)(record(i"alloc/${nu.tpe}@", tree) :: Nil, tree)
+      cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) :: Nil, tree)
     case Select(_, name) if namesToRecord.contains(name) =>
       cpy.Block(tree)(record(i"alloc/$name", tree) :: Nil, tree)
     case _ =>

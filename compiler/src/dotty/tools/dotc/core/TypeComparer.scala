@@ -1087,7 +1087,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case info2: TypeBounds =>
                 compareLower(info2, tyconIsTypeRef = true)
               case info2: ClassInfo =>
-                tycon2.name.toString.startsWith("Tuple") &&
+                tycon2.name.startsWith("Tuple") &&
                   defn.isTupleType(tp2) && recur(tp1, tp2.toNestedPairs) ||
                 tryBaseType(info2.cls)
               case _ =>
