@@ -449,7 +449,20 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   }
 
   def transformTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
-    flatten(trees.mapConserve(transformTree(_, start)))
+    def recur(trees: List[Tree], count: Int): List[Tree] =
+      if count > 1000 then
+        // use a slower implementation that avoids stack overflows
+        flatten(trees.mapConserve(transformTree(_, start)))
+      else trees match
+        case tree :: rest =>
+          val tree1 = transformTree(tree, start)
+          val rest1 = recur(rest, count + 1)
+          if (tree1 eq tree) && (rest1 eq rest) then trees
+          else tree1 match
+            case Thicket(elems1) => elems1 ::: rest1
+            case _ => tree1 :: rest1
+        case nil => nil
+    recur(trees, 0)
 
   def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformTrees(trees, start).asInstanceOf[List[T]]
