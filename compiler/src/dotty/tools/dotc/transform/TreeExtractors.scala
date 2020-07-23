@@ -19,11 +19,15 @@ object TreeExtractors {
     }
   }
 
- /** Match new C(args) and extract (C, args) */
+ /** Match new C(args) and extract (C, args).
+  *  Also admit new C(args): T and {new C(args)}.
+  */
   object NewWithArgs {
     def unapply(t: Tree)(using Context): Option[(Type, List[Tree])] = t match {
       case Apply(Select(New(_), nme.CONSTRUCTOR), args) =>
         Some((t.tpe, args))
+      case Typed(expr, _) => unapply(expr)
+      case Block(Nil, expr) => unapply(expr)
       case _ =>
         None
     }
