@@ -2596,7 +2596,7 @@ class Typer extends Namer
 
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
     val buf = new mutable.ListBuffer[Tree]
-    val enumContexts = new mutable.HashMap[Symbol, Context]
+    var enumContexts: SimpleIdentityMap[Symbol, Context] = SimpleIdentityMap.Empty
     val initialNotNullInfos = ctx.notNullInfos
       // A map from `enum` symbols to the contexts enclosing their definitions
     @tailrec def traverse(stats: List[untpd.Tree])(using Context): (List[Tree], Context) = stats match {
@@ -2618,7 +2618,7 @@ class Typer extends Namer
                   // replace body with expansion, because it will be used as inlined body
                   // from separately compiled files - the original BodyAnnotation is not kept.
               case mdef1: TypeDef if mdef1.symbol.is(Enum, butNot = Case) =>
-                enumContexts(mdef1.symbol) = ctx
+                enumContexts = enumContexts.updated(mdef1.symbol, ctx)
                 buf += mdef1
               case EmptyTree =>
                 // clashing synthetic case methods are converted to empty trees, drop them here
@@ -2650,7 +2650,8 @@ class Typer extends Namer
     }
     def finalize(stat: Tree)(using Context): Tree = stat match {
       case stat: TypeDef if stat.symbol.is(Module) =>
-        for (enumContext <- enumContexts.get(stat.symbol.linkedClass))
+        val enumContext = enumContexts(stat.symbol.linkedClass)
+        if enumContext != null then
           checkEnumCaseRefsLegal(stat, enumContext)
         stat.removeAttachment(Deriver) match {
           case Some(deriver) => deriver.finalize(stat)
