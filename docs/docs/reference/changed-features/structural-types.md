@@ -128,7 +128,7 @@ the database access example given at the beginning of this document.
 Local and anonymous classes that extend `Selectable` get more refined types
 than other classes. Here is an example:
 ```scala
-class Vehicle extends reflect.Selectable {
+trait Vehicle extends reflect.Selectable {
   val wheels: Int
 }
 val i3 = new Vehicle { // i3: Vehicle { val range: Int }
