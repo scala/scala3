@@ -1164,6 +1164,8 @@ class Definitions {
 
   @tu lazy val NotRuntimeClasses: Set[Symbol] = Set(AnyClass, AnyValClass, NullClass, NothingClass)
 
+  @tu lazy val SpecialClassTagClasses: Set[Symbol] = Set(UnitClass, AnyClass, AnyValClass)
+
   /** Classes that are known not to have an initializer irrespective of
    *  whether NoInits is set. Note: FunctionXXLClass is in this set
    *  because if it is compiled by Scala2, it does not get a NoInit flag.

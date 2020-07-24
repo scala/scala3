@@ -173,6 +173,23 @@ final class JSDefinitions()(using Context) {
     @threadUnsafe lazy val Reflect_registerInstantiatableClassR = ReflectModule.requiredMethodRef("registerInstantiatableClass")
     def Reflect_registerInstantiatableClass(using Context) = Reflect_registerInstantiatableClassR.symbol
 
+  @threadUnsafe lazy val ReflectSelectableType: TypeRef = requiredClassRef("scala.reflect.Selectable")
+  def ReflectSelectableClass(using Context) = ReflectSelectableType.symbol.asClass
+    @threadUnsafe lazy val ReflectSelectable_selectDynamicR = ReflectSelectableClass.requiredMethodRef("selectDynamic")
+    def ReflectSelectable_selectDynamic(using Context) = ReflectSelectable_selectDynamicR.symbol
+    @threadUnsafe lazy val ReflectSelectable_applyDynamicR = ReflectSelectableClass.requiredMethodRef("applyDynamic")
+    def ReflectSelectable_applyDynamic(using Context) = ReflectSelectable_applyDynamicR.symbol
+
+  @threadUnsafe lazy val ReflectSelectableModuleRef = requiredModuleRef("scala.reflect.Selectable")
+  def ReflectSelectableModule(using Context) = ReflectSelectableModuleRef.symbol
+    @threadUnsafe lazy val ReflectSelectable_reflectiveSelectableR = ReflectSelectableModule.requiredMethodRef("reflectiveSelectable")
+    def ReflectSelectable_reflectiveSelectable(using Context) = ReflectSelectable_reflectiveSelectableR.symbol
+
+  @threadUnsafe lazy val SelectableModuleRef = requiredModuleRef("scala.Selectable")
+  def SelectableModule(using Context) = SelectableModuleRef.symbol
+    @threadUnsafe lazy val Selectable_reflectiveSelectableFromLangReflectiveCallsR = SelectableModule.requiredMethodRef("reflectiveSelectableFromLangReflectiveCalls")
+    def Selectable_reflectiveSelectableFromLangReflectiveCalls(using Context) = Selectable_reflectiveSelectableFromLangReflectiveCallsR.symbol
+
   private var allRefClassesCache: Set[Symbol] = _
   def allRefClasses(using Context): Set[Symbol] = {
     if (allRefClassesCache == null) {

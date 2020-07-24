@@ -36,10 +36,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             val sym = tp.typeSymbol
             val classTag = ref(defn.ClassTagModule)
             val tag =
-              if sym == defn.UnitClass
-                 || sym == defn.AnyClass
-                 || sym == defn.AnyValClass
-              then
+              if defn.SpecialClassTagClasses.contains(sym) then
                 classTag.select(sym.name.toTermName)
               else
                 classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(erasure(tp)))
