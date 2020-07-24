@@ -512,9 +512,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
         case ClazzTag   =>
           val tp = toTypeKind(const.typeValue)
-          // classOf[Int] is transformed to Integer.TYPE by ClassOf
-          assert(!tp.isPrimitive, s"expected class type in classOf[T], found primitive type $tp")
-          mnode.visitLdcInsn(tp.toASMType)
+          if tp.isPrimitive then
+            val boxedClass = boxedClassOfPrimitive(tp.asPrimitiveBType)
+            mnode.visitFieldInsn(
+              asm.Opcodes.GETSTATIC,
+              boxedClass.internalName,
+              "TYPE", // field name
+              jlClassRef.descriptor
+            )
+          else
+            mnode.visitLdcInsn(tp.toASMType)
 
         case EnumTag   =>
           val sym       = const.symbolValue

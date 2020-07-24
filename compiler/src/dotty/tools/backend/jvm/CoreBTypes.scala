@@ -124,6 +124,7 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
   lazy val jlStringBuilderRef          : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.StringBuilder])
   lazy val jlStringBufferRef           : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.StringBuffer])
   lazy val jlCharSequenceRef           : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.CharSequence])
+  lazy val jlClassRef                  : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Class[_]])
   lazy val ThrowableReference          : ClassBType = classBTypeFromSymbol(defn.ThrowableClass)
   lazy val jlCloneableReference        : ClassBType = classBTypeFromSymbol(defn.JavaCloneableClass)        // java/lang/Cloneable
   lazy val jlNPEReference              : ClassBType = classBTypeFromSymbol(defn.NullPointerExceptionClass) // java/lang/NullPointerException
@@ -248,6 +249,7 @@ final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface
   def jlStringBuilderRef          : ClassBType = _coreBTypes.jlStringBuilderRef
   def jlStringBufferRef           : ClassBType = _coreBTypes.jlStringBufferRef
   def jlCharSequenceRef           : ClassBType = _coreBTypes.jlCharSequenceRef
+  def jlClassRef                  : ClassBType = _coreBTypes.jlClassRef
   def ThrowableReference          : ClassBType = _coreBTypes.ThrowableReference
   def jlCloneableReference        : ClassBType = _coreBTypes.jlCloneableReference
   def jlNPEReference              : ClassBType = _coreBTypes.jlNPEReference
