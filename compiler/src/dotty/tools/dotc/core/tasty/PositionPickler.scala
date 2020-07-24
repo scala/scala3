@@ -16,7 +16,7 @@ import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
 import util.Spans._
 
-class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
+class PositionPickler(pickler: TastyPickler, addrOfTree: PositionPickler.TreeToAddr) {
   val buf: TastyBuffer = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
   import ast.tpd._
@@ -121,3 +121,8 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
       traverse(root, NoSource)
   }
 }
+object PositionPickler:
+  // Note: This could be just TreeToAddr => Addr if functions are specialized to value classes.
+  // We use a SAM type to avoid boxing of Addr
+  @FunctionalInterface trait TreeToAddr:
+    def apply(x: untpd.Tree): Addr
