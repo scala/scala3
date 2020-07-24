@@ -49,8 +49,9 @@ object Contexts {
   private val (profilerLoc,         store7) = store6.newLocation[Profiler]()
   private val (notNullInfosLoc,     store8) = store7.newLocation[List[NotNullInfo]]()
   private val (importInfoLoc,       store9) = store8.newLocation[ImportInfo]()
+  private val (typeAssignerLoc,    store10) = store9.newLocation[TypeAssigner](TypeAssigner)
 
-  private val initialStore = store9
+  private val initialStore = store10
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -157,11 +158,6 @@ object Contexts {
     protected def typerState_=(typerState: TyperState): Unit = _typerState = typerState
     final def typerState: TyperState = _typerState
 
-    /** The current type assigner or typer */
-    private var _typeAssigner: TypeAssigner = _
-    protected def typeAssigner_=(typeAssigner: TypeAssigner): Unit = _typeAssigner = typeAssigner
-    final def typeAssigner: TypeAssigner = _typeAssigner
-
     /** The current bounds in force for type parameters appearing in a GADT */
     private var _gadt: GadtConstraint = _
     protected def gadt_=(gadt: GadtConstraint): Unit = _gadt = gadt
@@ -227,6 +223,9 @@ object Contexts {
 
     /** The currently active import info */
     def importInfo = store(importInfoLoc)
+
+    /** The current type assigner or typer */
+    def typeAssigner: TypeAssigner = store(typeAssignerLoc)
 
     /** The new implicit references that are introduced by this scope */
     protected var implicitsCache: ContextualImplicits = null
@@ -483,7 +482,6 @@ object Contexts {
       _owner = origin.owner
       _tree = origin.tree
       _scope = origin.scope
-      _typeAssigner = origin.typeAssigner
       _gadt = origin.gadt
       _searchHistory = origin.searchHistory
       _source = origin.source
@@ -574,10 +572,6 @@ object Contexts {
     def setNewTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(true))
     def setExploreTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(false))
     def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
-    def setTypeAssigner(typeAssigner: TypeAssigner): this.type =
-      util.Stats.record("Context.setTypeAssigner")
-      this.typeAssigner = typeAssigner
-      this
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
     def setGadt(gadt: GadtConstraint): this.type =
       util.Stats.record("Context.setGadt")
@@ -615,6 +609,7 @@ object Contexts {
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setNotNullInfos(notNullInfos: List[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
     def setImportInfo(importInfo: ImportInfo): this.type = updateStore(importInfoLoc, importInfo)
+    def setTypeAssigner(typeAssigner: TypeAssigner): this.type = updateStore(typeAssignerLoc, typeAssigner)
 
     def setProperty[T](key: Key[T], value: T): this.type =
       setMoreProperties(moreProperties.updated(key, value))
@@ -742,7 +737,6 @@ object Contexts {
     typerState = TyperState.initialState()
     owner = NoSymbol
     tree = untpd.EmptyTree
-    typeAssigner = TypeAssigner
     moreProperties = Map(MessageLimiter -> DefaultMessageLimiter())
     source = NoSource
     store = initialStore
