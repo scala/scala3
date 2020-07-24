@@ -8,7 +8,8 @@ import collection.JavaConverters._
 import dotty.tastydoc.representations._
 
 case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaConfiguration:
-  override def getOutputDir: String = new File("output").getAbsolutePath
+  var _outputDir: String = new File("output").getAbsolutePath
+  override def getOutputDir: String = _outputDir
   override def getCacheRoot: String = null
   override def getOfflineMode: Boolean = false
   override def getFailOnWarning: Boolean = false

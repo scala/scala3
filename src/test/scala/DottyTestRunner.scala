@@ -8,6 +8,7 @@ import dotty.tastydoc.representations
 import dotty.tastydoc.representations._
 import dotty.dokka.{DocConfiguration, DottyDokkaConfig}
 import collection.JavaConverters._
+import org.junit.rules.TemporaryFolder
 
 abstract class DottyAbstractCoreTest extends AbstractCoreTest:
     val logger: DokkaLogger = new TestLogger(DokkaConsoleLogger.INSTANCE)
@@ -16,6 +17,11 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
       val (files, dirs) = f.listFiles().partition(_.isFile)
       files.filter(_.getName.endsWith(".tasty")) ++ dirs.flatMap(listTastyFiles)
 
+    private def getTempDir() : TemporaryFolder =
+        val folder = new TemporaryFolder()
+        folder.create()
+        folder
+
     def runTest(
         tastyDir: String,
         pluginOverrides: List[DokkaPlugin] = List[DokkaPlugin](),
@@ -23,12 +29,15 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
     ): Unit =
         val tests = new AbstractCoreTest$TestBuilder()
         testingFunction(tests)
-        val config = DocConfiguration(
-            tastyFiles = tastyDir.split(File.pathSeparatorChar).toList.flatMap(p => listTastyFiles(new File(p))).map(_.toString),
-            classpath = System.getProperty("java.class.path")
+        val config = new DottyDokkaConfig(
+            DocConfiguration(
+                tastyFiles = tastyDir.split(File.pathSeparatorChar).toList.flatMap(p => listTastyFiles(new File(p))).map(_.toString),
+                classpath = System.getProperty("java.class.path")
+            )
         )
+        config._outputDir = getTempDir().getRoot.toPath.toAbsolutePath.toString
         DokkaTestGenerator(
-            new DottyDokkaConfig(config),
+            config,
             logger,
             tests.build(),
             pluginOverrides.asJava
