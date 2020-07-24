@@ -50,7 +50,7 @@ class SparseIntArray:
     root.foreachBinding(op, 0)
 
   /** Transform each defined value with transformation `op`.
-   *  The transformation gets the element index and value as parameters.
+   *  The transformation takes the element index and value as parameters.
    */
   def transform(op: (Int, Value) => Value): Unit =
     root.transform(op, 0)
@@ -189,6 +189,9 @@ object SparseIntArray:
     private def skipUndefined(i: Int): Int =
       if i < NodeSize && elems(i) == null then skipUndefined(i + 1) else i
 
+    // Note: This takes (depth of tree) recursive steps to produce the
+    // next index. It could be more efficient if we kept all active iterators
+    // in a path.
     def keysIterator(offset: Int) = new Iterator[Value]:
       private var curIdx = skipUndefined(0)
       private var elemIt = Iterator.empty[Int]
@@ -228,35 +231,3 @@ object SparseIntArray:
     if level == 0 then LeafNode() else InnerNode(level)
 
 end SparseIntArray
-
-@main def Test =
-  val a = SparseIntArray()
-  println(s"a = $a")
-  a(1) = 22
-  println(s"a = $a")
-  a(222) = 33
-  println(s"a = $a")
-  a(55555) = 44
-  println(s"a = $a")
-  println(s"iterator of a yields ${a.keysIterator.toList}")
-  assert(a.size == 3, a)
-  assert(a.contains(1), a)
-  assert(a.contains(222), a)
-  assert(a.contains(55555), a)
-  assert(!a.contains(2))
-  assert(!a.contains(20000000))
-  a(222) = 44
-  assert(a.size == 3)
-  assert(a(1) == 22)
-  assert(a(222) == 44)
-  assert(a(55555) == 44)
-  assert(a.remove(1))
-  println(s"a = $a")
-  assert(a(222) == 44, a)
-  assert(a.remove(55555))
-  assert(a(222) == 44, a)
-  assert(a.size == 1)
-  assert(!a.contains(1))
-  assert(!a.remove(55555))
-  assert(a.remove(222))
-  assert(a.size == 0)
