@@ -680,11 +680,8 @@ object Contexts {
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
   }
 
-  /** Test `op` in a fresh context with a typerstate that is not committable.
-   *  The passed context may not survive the operation.
-   */
-   def explore[T](op: Context ?=> T)(using Context): T =
-    util.Stats.record("Context.test")
+  private def exploreCtx(using Context): Context =
+    util.Stats.record("explore")
     val base = ctx.base
     import base._
     val nestedCtx =
@@ -700,13 +697,15 @@ object Contexts {
     exploresInUse += 1
     val nestedTS = nestedCtx.typerState
     nestedTS.init(ctx.typerState, ctx.typerState.constraint)
-    val result =
-      try op(using nestedCtx)
-      finally
-        nestedTS.reporter.asInstanceOf[ExploringReporter].reset()
-        exploresInUse -= 1
-    result
-  end explore
+    nestedCtx
+
+  private def wrapUpExplore(ectx: Context) =
+    ectx.reporter.asInstanceOf[ExploringReporter].reset()
+    ectx.base.exploresInUse -= 1
+
+  inline def explore[T](inline op: Context ?=> T)(using Context): T =
+    val ectx = exploreCtx
+    try op(using ectx) finally wrapUpExplore(ectx)
 
   /** The type comparer of the kind created by `maker` to be used.
    *  This is the currently active type comparer CMP if
@@ -716,6 +715,7 @@ object Contexts {
    *  In other words: tracking or explaining is a sticky property in the same context.
    */
   private def comparer(using Context): TypeComparer =
+    util.Stats.record("comparing")
     val base = ctx.base
     if base.comparersInUse > 0
        && (base.comparers(base.comparersInUse - 1).comparerContext eq ctx)
