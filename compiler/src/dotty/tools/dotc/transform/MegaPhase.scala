@@ -438,7 +438,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case _ => transformTree(stat, start)(using ctx.exprContext(stat, exprOwner))
     }
     val nestedCtx = prepStats(trees, start)
-    val trees1 = flatten(trees.mapConserve(transformStat(_)(using nestedCtx)))
+    val trees1 = trees.mapInline(transformStat(_)(using nestedCtx))
     goStats(trees1, start)(using nestedCtx)
   }
 
@@ -449,20 +449,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   }
 
   def transformTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
-    def recur(trees: List[Tree], count: Int): List[Tree] =
-      if count > 1000 then
-        // use a slower implementation that avoids stack overflows
-        flatten(trees.mapConserve(transformTree(_, start)))
-      else trees match
-        case tree :: rest =>
-          val tree1 = transformTree(tree, start)
-          val rest1 = recur(rest, count + 1)
-          if (tree1 eq tree) && (rest1 eq rest) then trees
-          else tree1 match
-            case Thicket(elems1) => elems1 ::: rest1
-            case _ => tree1 :: rest1
-        case nil => nil
-    recur(trees, 0)
+    trees.mapInline(transformTree(_, start))
 
   def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformTrees(trees, start).asInstanceOf[List[T]]
