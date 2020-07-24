@@ -2,6 +2,7 @@ val dottyVersion = "0.25.0-RC2"
 
 libraryDependencies += "org.jetbrains.dokka" % "dokka-base" % "1.4.0-M3-dev-81"
 libraryDependencies += "org.jetbrains.dokka" % "dokka-core" % "1.4.0-M3-dev-81"
+libraryDependencies += "org.jetbrains.dokka" % "dokka-test-api" % "1.4.0-M3-dev-81"
 libraryDependencies += "ch.epfl.lamp" %% "dotty-tastydoc" % dottyVersion
 libraryDependencies += "ch.epfl.lamp" %% "dotty-compiler" % dottyVersion
 libraryDependencies += "ch.epfl.lamp" %% "dotty-library" % dottyVersion

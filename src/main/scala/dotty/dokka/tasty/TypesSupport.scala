@@ -15,7 +15,6 @@ trait TypesSupport:
                     typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
                 case tpeTree: TypeTree => inner(tpeTree.tpe)
                 case term:  Term => inner(term.tpe)
-            
             new TypeConstructor(tpeTree.symbol.dri, data.asJava, FunctionModifiers.NONE)
       
     private def text(str: String): JProjection = new UnresolvedBound(str)
@@ -32,6 +31,11 @@ trait TypesSupport:
         case List(single) => single
         case other => other.reduce((r, e) => r ++ texts(", ") ++ e)
     
+    private def isRepeated(tpeAnnotation: Term) =
+        // For some reason annotation.tpe.typeSymbol != defn.RepeatedParamClass
+        // annotation.tpe.typeSymbol prints 'class Repeated' and defn.RepeatedParamClass prints 'class <repeated>'
+        tpeAnnotation.tpe.typeSymbol.toString == "class Repeated"
+
     // TODO add support for all types signatures that makes sense
     private def inner(tp: reflect.TypeOrBounds)(using cxt: reflect.Context): List[JProjection] = tp match
         case OrType(left, right) => inner(left) ++ texts(" | ") ++ inner(right)
@@ -39,7 +43,10 @@ trait TypesSupport:
         case ByNameType(tpe) => text("=> ") :: inner(tpe)
         case ConstantType(constant) => texts(constant.value.toString) 
         case ThisType(tpe) => inner(tpe)
-        case AnnotatedType(tpe, _) => inner(tpe)
+        case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeated(annotation) =>
+            inner(tpe) :+ text("*")
+        case AnnotatedType(tpe, _) => 
+            inner(tpe)
         // case TypeLambda(paramNames, paramTypes, resType) => ConstantReference(tp.show) //TOFIX
         case Refinement(parent, name, info) =>
             // val tuple = convertTypeOrBoundsToReference(reflect)(info) match {
@@ -55,7 +62,7 @@ trait TypesSupport:
             // }
             noSupported("Refinement") 
         case AppliedType(tpe, typeOrBoundsList) =>
-            if (tpe.isFunctionType) 
+            if tpe.isFunctionType then
                 typeOrBoundsList match
                     case Nil => 
                         Nil
@@ -121,5 +128,5 @@ trait TypesSupport:
     private def typeBound(t: Type, low: Boolean) = 
         val ignore = if(low) t.typeSymbol == defn.NothingClass  else t.typeSymbol == defn.AnyClass
         if ignore then Nil 
-        else text(if low then " <: " else " >: ") :: inner(t)
+        else text(if low then " >: " else " <: ") :: inner(t)
     

@@ -49,7 +49,7 @@ trait ClassLikeSupport:
    
     new DFunction(
       methodSymbol.dri,
-      methodSymbol.name,
+      if methodSymbol.isClassConstructor then "this" else methodSymbol.name,
       /*isConstructor =*/ methodSymbol.isClassConstructor,
       /*parameters =*/ paramLists.flatten.map(parseArgument).asJava, // TODO add support for parameters
       /*documentation =*/ methodSymbol.documentation,
