@@ -1478,7 +1478,13 @@ trait CompilerInterface {
   def Definitions_Array_length: Symbol
   def Definitions_Array_update: Symbol
 
+  /** A dummy class symbol that is used to indicate repeated parameters
+   *  compiled by the Scala compiler.
+   */
   def Definitions_RepeatedParamClass: Symbol
+
+  /** The class symbol of class `scala.annotation.internal.Repeated` */
+  def Definitions_RepeatedAnnot: Symbol
 
   def Definitions_OptionClass: Symbol
   def Definitions_NoneModule: Symbol

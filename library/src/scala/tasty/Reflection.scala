@@ -2650,6 +2650,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      */
     def RepeatedParamClass: Symbol = internal.Definitions_RepeatedParamClass
 
+    /** The class symbol of class `scala.annotation.internal.Repeated` */
+    def RepeatedAnnot: Symbol = internal.Definitions_RepeatedAnnot
+
     /** The class symbol of class `scala.Option`. */
     def OptionClass: Symbol = internal.Definitions_OptionClass
 
