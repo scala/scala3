@@ -170,7 +170,8 @@ object Preparser {
           groupNames              = allSymsOneTag(SimpleTagKey("groupname")),
           groupPrio               = allSymsOneTag(SimpleTagKey("groupprio")),
           hideImplicitConversions = allTags(SimpleTagKey("hideImplicitConversion")),
-          shortDescription        = allTags(SimpleTagKey("shortDescription"))
+          shortDescription        = allTags(SimpleTagKey("shortDescription")),
+          syntax                  = allTags(SimpleTagKey("syntax")),
         )
 
         cmt

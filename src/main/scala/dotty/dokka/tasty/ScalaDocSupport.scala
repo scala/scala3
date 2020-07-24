@@ -3,10 +3,9 @@ package dotty.dokka.tasty
 import scala.jdk.CollectionConverters._
 import scala.tasty.reflect._
 
-import kotlin.collections.builders.{ListBuilder => KtListBuilder, MapBuilder => KtMapBuilder}
+import org.jetbrains.dokka.model.{doc => dkkd}
 
-import org.jetbrains.dokka.model.{doc => dokkaDoc}
-import com.vladsch.flexmark.util.{ast => mdu}
+import comments.{kt, dkk}
 
 trait ScaladocSupport { self: TastyParser =>
   import reflect.{given _, _}
@@ -14,38 +13,33 @@ trait ScaladocSupport { self: TastyParser =>
   def parseComment(
     commentNode: reflect.Comment,
     tree: reflect.Tree
-  ): dokkaDoc.DocumentationNode = {
-
-    val preparsed = comments.Preparser.preparse(comments.Cleaner.clean(commentNode.raw))
-    val parser = comments.MarkdownParser((), ())
+  ): dkkd.DocumentationNode = {
+    val preparsed =
+      comments.Preparser.preparse(comments.Cleaner.clean(commentNode.raw))
+    val parser =
+      if preparsed.syntax.headOption.contains("wiki") then
+        comments.WikiCommentParser((), ())
+      else
+        comments.MarkdownCommentParser((), ())
     val parsed = parser.parse(preparsed)
 
-    def ktEmptyList[T]() = new KtListBuilder[T]().build()
-    def ktEmptyMap[A, B]() = new KtMapBuilder[A, B]().build()
-
-    object dokkaTag {
-      def text(str: String) =
-        dokkaDoc.Text(str, ktEmptyList(), ktEmptyMap())
-    }
-
-    val bld = new KtListBuilder[dokkaDoc.TagWrapper]
+    import kotlin.collections.builders.{ListBuilder => KtListBuilder}
+    val bld = new KtListBuilder[dkkd.TagWrapper]
     // TODO determine how to have short and long descriptions
-    bld.add(dokkaDoc.Description(comments.MarkdownConverter.convertNode(
-      parser.stringToMarkup(preparsed.body)
-    )))
+    bld.add(dkkd.Description(parsed.body))
 
-    inline def addOpt(opt: Option[String])(wrap: dokkaDoc.DocTag => dokkaDoc.TagWrapper) =
-      opt.foreach { t => bld.add(wrap(dokkaTag.text(t))) }
+    inline def addOpt(opt: Option[dkkd.DocTag])(wrap: dkkd.DocTag => dkkd.TagWrapper) =
+      opt.foreach { t => bld.add(wrap(t)) }
 
-    inline def addSeq(seq: Seq[String])(wrap: dokkaDoc.DocTag => dokkaDoc.TagWrapper) =
-      seq.foreach { t => bld.add(wrap(dokkaTag.text(t))) }
+    inline def addSeq(seq: Seq[dkkd.DocTag])(wrap: dkkd.DocTag => dkkd.TagWrapper) =
+      seq.foreach { t => bld.add(wrap(t)) }
 
-    addSeq(parsed.authors)(dokkaDoc.Author(_))
-    addOpt(parsed.version)(dokkaDoc.Version(_))
-    addOpt(parsed.since)(dokkaDoc.Since(_))
-    addOpt(parsed.constructor)(dokkaDoc.Constructor(_))
-    addOpt(parsed.result)(dokkaDoc.Return(_)) // does not seem to render for classes, intentional?
+    addSeq(parsed.authors)(dkkd.Author(_))
+    addOpt(parsed.version)(dkkd.Version(_))
+    addOpt(parsed.since)(dkkd.Since(_))
+    addOpt(parsed.constructor)(dkkd.Constructor(_))
+    addOpt(parsed.result)(dkkd.Return(_)) // does not seem to render for classes, intentional?
 
-    new dokkaDoc.DocumentationNode(bld.build())
+    new dkkd.DocumentationNode(bld.build())
   }
 }

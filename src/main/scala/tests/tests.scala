@@ -9,6 +9,8 @@ package tests
   *
   * This is an *important* _test_ class. And `this` is inline code.
   *
+  * And this is the **strong** __emphasis__ test.
+  *
   * And this
   * ```scala
   * is.an("actual code block")
@@ -30,6 +32,22 @@ package tests
   * @constructor A class has a constructor, and this one is important.
   */
 class A
+
+/** = An important Wiki test class =
+  *
+  * == Very important, in fact ==
+  *
+  * === So important it gets three headers ===
+  *
+  * This is an ''important'' '''test''' __class__. And `this` is inline code.
+  *
+  * While
+  * {{{
+  * this.is("a code block")
+  * }}}
+  *
+  * @syntax wiki
+  */
 class B extends A
 class C 
 class D[T]

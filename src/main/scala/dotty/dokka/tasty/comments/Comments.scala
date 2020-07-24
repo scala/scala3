@@ -1,6 +1,8 @@
 package dotty.dokka.tasty.comments
 
-import com.vladsch.flexmark.util.ast.{ NodeIterator, Node => MarkdownNode }
+import org.jetbrains.dokka.model.{doc => dkkd}
+
+import com.vladsch.flexmark.util.{ast => mdu}
 import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.util.options.MutableDataSet
 
@@ -8,27 +10,27 @@ type Packages = Any /* Map[String, EmulatedPackageRepresentation] */
 type Repr = Any
 
 case class Comment (
-  body:                    String,
+  body:                    dkkd.DocTag,
   short:                   String,
-  authors:                 List[String],
-  see:                     List[String],
-  result:                  Option[String],
-  throws:                  Map[String, String],
-  valueParams:             Map[String, String],
-  typeParams:              Map[String, String],
-  version:                 Option[String],
-  since:                   Option[String],
-  todo:                    List[String],
-  deprecated:              Option[String],
-  note:                    List[String],
-  example:                 List[String],
-  constructor:             Option[String],
-  group:                   Option[String],
-  groupDesc:               Map[String, String],
-  groupNames:              Map[String, String],
-  groupPrio:               Map[String, String],
+  authors:                 List[dkkd.DocTag],
+  see:                     List[dkkd.DocTag],
+  result:                  Option[dkkd.DocTag],
+  throws:                  Map[String, dkkd.DocTag],
+  valueParams:             Map[String, dkkd.DocTag],
+  typeParams:              Map[String, dkkd.DocTag],
+  version:                 Option[dkkd.DocTag],
+  since:                   Option[dkkd.DocTag],
+  todo:                    List[dkkd.DocTag],
+  deprecated:              Option[dkkd.DocTag],
+  note:                    List[dkkd.DocTag],
+  example:                 List[dkkd.DocTag],
+  constructor:             Option[dkkd.DocTag],
+  group:                   Option[dkkd.DocTag],
+  groupDesc:               Map[String, dkkd.DocTag],
+  groupNames:              Map[String, dkkd.DocTag],
+  groupPrio:               Map[String, dkkd.DocTag],
   /** List of conversions to hide - containing e.g: `scala.Predef.FloatArrayOps` */
-  hideImplicitConversions: List[String]
+  hideImplicitConversions: List[dkkd.DocTag]
 )
 
 case class PreparsedComment (
@@ -51,13 +53,14 @@ case class PreparsedComment (
   groupNames:              Map[String, String],
   groupPrio:               Map[String, String],
   hideImplicitConversions: List[String],
-  shortDescription:        List[String]
+  shortDescription:        List[String],
+  syntax:                  List[String],
 )
 
 trait MarkupConversion[T] extends MemberLookup {
-  protected def linkedExceptions(m: Map[String, String]): Map[String, String]
+  protected def linkedExceptions(m: Map[String, String]): Map[String, dkkd.DocTag]
   protected def stringToMarkup(str: String): T
-  protected def markupToMarkdown(t: T): String
+  protected def markupToDokka(t: T): dkkd.DocTag
   protected def stringToShortMarkdown(str: String): String
   protected def filterEmpty(xs: List[String]): List[T]
   protected def filterEmpty(xs: Map[String, String]): Map[String, T]
@@ -70,30 +73,31 @@ trait MarkupConversion[T] extends MemberLookup {
     }
 
   final def parse(preparsed: PreparsedComment): Comment = Comment(
-    body                    = markupToMarkdown(stringToMarkup(preparsed.body)),
+    body                    = markupToDokka(stringToMarkup(preparsed.body)),
     short                   = stringToShortMarkdown(preparsed.body),
-    authors                 = filterEmpty(preparsed.authors).map(markupToMarkdown),
-    see                     = filterEmpty(preparsed.see).map(markupToMarkdown),
-    result                  = single("@result", preparsed.result).map(markupToMarkdown),
+    authors                 = filterEmpty(preparsed.authors).map(markupToDokka),
+    see                     = filterEmpty(preparsed.see).map(markupToDokka),
+    result                  = single("@result", preparsed.result).map(markupToDokka),
     throws                  = linkedExceptions(preparsed.throws),
-    valueParams             = filterEmpty(preparsed.valueParams).view.mapValues(markupToMarkdown).toMap,
-    typeParams              = filterEmpty(preparsed.typeParams).view.mapValues(markupToMarkdown).toMap,
-    version                 = single("@version", preparsed.version).map(markupToMarkdown),
-    since                   = single("@since", preparsed.since).map(markupToMarkdown),
-    todo                    = filterEmpty(preparsed.todo).map(markupToMarkdown),
-    deprecated              = single("@deprecated", preparsed.deprecated, filter = false).map(markupToMarkdown),
-    note                    = filterEmpty(preparsed.note).map(markupToMarkdown),
-    example                 = filterEmpty(preparsed.example).map(markupToMarkdown),
-    constructor             = single("@constructor", preparsed.constructor).map(markupToMarkdown),
-    group                   = single("@group", preparsed.group).map(markupToMarkdown),
-    groupDesc               = filterEmpty(preparsed.groupDesc).view.mapValues(markupToMarkdown).toMap,
-    groupNames              = filterEmpty(preparsed.groupNames).view.mapValues(markupToMarkdown).toMap,
-    groupPrio               = filterEmpty(preparsed.groupPrio).view.mapValues(markupToMarkdown).toMap,
-    hideImplicitConversions = filterEmpty(preparsed.hideImplicitConversions).map(markupToMarkdown)
+    valueParams             = filterEmpty(preparsed.valueParams).view.mapValues(markupToDokka).toMap,
+    typeParams              = filterEmpty(preparsed.typeParams).view.mapValues(markupToDokka).toMap,
+    version                 = single("@version", preparsed.version).map(markupToDokka),
+    since                   = single("@since", preparsed.since).map(markupToDokka),
+    todo                    = filterEmpty(preparsed.todo).map(markupToDokka),
+    deprecated              = single("@deprecated", preparsed.deprecated, filter = false).map(markupToDokka),
+    note                    = filterEmpty(preparsed.note).map(markupToDokka),
+    example                 = filterEmpty(preparsed.example).map(markupToDokka),
+    constructor             = single("@constructor", preparsed.constructor).map(markupToDokka),
+    group                   = single("@group", preparsed.group).map(markupToDokka),
+    groupDesc               = filterEmpty(preparsed.groupDesc).view.mapValues(markupToDokka).toMap,
+    groupNames              = filterEmpty(preparsed.groupNames).view.mapValues(markupToDokka).toMap,
+    groupPrio               = filterEmpty(preparsed.groupPrio).view.mapValues(markupToDokka).toMap,
+    hideImplicitConversions = filterEmpty(preparsed.hideImplicitConversions).map(markupToDokka)
   )
 }
 
-class MarkdownParser(repr: Repr, packages: Packages) extends MarkupConversion[MarkdownNode] {
+class MarkdownCommentParser(repr: Repr, packages: Packages)
+    extends MarkupConversion[mdu.Document] {
 
   def stringToMarkup(str: String) =
     HtmlParsers.parseToMarkdown(str, repr, packages)
@@ -103,15 +107,16 @@ class MarkdownParser(repr: Repr, packages: Packages) extends MarkupConversion[Ma
     // str.toMarkdown(ent, packages).shortenAndShow
     "short"
 
-  def markupToMarkdown(md: MarkdownNode) =
-    HtmlParsers.renderToText(md)
+  def markupToDokka(md: mdu.Document) =
+    MarkdownConverter.convertDocument(md)
 
   def linkedExceptions(m: Map[String, String]) = {
     // val inlineToMarkdown = InlineToMarkdown(ent)
     m.map { case (targetStr, body) =>
       val link = makeRepresentationLink(repr, packages, targetStr, targetStr)
       // (targetStr, inlineToMarkdown(link))
-      (targetStr, link.title)
+      // (targetStr, link.title)
+      null
     }
   }
 
@@ -124,4 +129,44 @@ class MarkdownParser(repr: Repr, packages: Packages) extends MarkupConversion[Ma
     xs.view.mapValues(_.trim).toMap
       .filterNot { case (_, v) => v.isEmpty }
       .view.mapValues(stringToMarkup).toMap
+}
+
+case class WikiCommentParser(ent: Repr, packages: Packages)
+    extends MarkupConversion[wiki.Body] {
+
+  def stringToMarkup(str: String) =
+    wiki.Parser(ent, packages, str).document()
+
+  def stringToShortMarkdown(str: String) =
+    // val parsed = stringToMarkup(str)
+    // parsed.summary.getOrElse(parsed).show(ent)
+    null
+
+  def markupToDokka(body: wiki.Body) = wiki.Converter.convertBody(body)
+
+
+  def linkedExceptions(m: Map[String, String]) = {
+    m.view.mapValues(stringToMarkup).toMap.map { case (targetStr, body) =>
+      null
+      // import wiki._
+      // val link = lookup(Some(ent), packages, targetStr)
+      // val newBody = body match {
+      //   case Body(List(Paragraph(Chain(content)))) =>
+      //     val descr = Text(" ") +: content
+      //     val link = makeRepresentationLink(ent, packages, targetStr, targetStr)
+      //     Body(List(Paragraph(Chain(link +: descr))))
+      //   case _ => body
+      // }
+
+      // (targetStr, newBody.show(ent))
+    }
+  }
+
+  def filterEmpty(xs: List[String]) =
+    xs.map(stringToMarkup)
+
+  def filterEmpty(xs: Map[String,String]) =
+    xs.view.mapValues(stringToMarkup).toMap
+      .filterNot { case (_, v) => v.blocks.isEmpty }
+
 }

@@ -1,16 +1,16 @@
 package dotty.dokka.tasty.comments
 
+case class RepresentationLink(
+  title: String,
+  link: Link
+)
+
+enum Link {
+  case Tooltip(query: String)
+}
+export Link._
+
 trait MemberLookup {
-
-  case class RepresentationLink(
-    title: String,
-    link: Link
-  )
-
-  enum Link {
-    case Tooltip(query: String)
-  }
-  export Link._
 
   /** Performs a lookup based on the provided (pruned) query string
    *

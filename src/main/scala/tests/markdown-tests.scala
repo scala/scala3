@@ -26,7 +26,7 @@ package tests
   *      * b.3.b
   *      * b.3.c
   */
-class Lists
+class MdLists
 
 /**
   * | day         | time  |   spent |
@@ -36,4 +36,4 @@ class Lists
   * | nov. 7. mon | 10:20 |  4h 20m |
   * | total:             ||     13h |
   */
-class Tables
+class MdTables
