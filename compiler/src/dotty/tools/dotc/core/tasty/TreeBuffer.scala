@@ -8,6 +8,7 @@ import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr, AddrWidth}
 
 import util.Util.bestFit
+import util.SparseIntArray
 import config.Printers.pickling
 import ast.untpd.Tree
 
@@ -22,16 +23,27 @@ class TreeBuffer extends TastyBuffer(50000) {
 
   /** A map from trees to the address at which a tree is pickled. */
   private val treeAddrs = new java.util.IdentityHashMap[Tree, Any] // really: Addr | Null
+  private val treeAddrs2 = SparseIntArray()
 
   def registerTreeAddr(tree: Tree): Addr = treeAddrs.get(tree) match {
-    case null => treeAddrs.put(tree, currentAddr); currentAddr
+    case null =>
+      treeAddrs.put(tree, currentAddr)
+      treeAddrs2(tree.uniqueId) = currentAddr.index
+      currentAddr
     case addr: Addr => addr
   }
 
-  def addrOfTree(tree: Tree): Addr = treeAddrs.get(tree) match {
-    case null => NoAddr
-    case addr: Addr => addr
-  }
+  def addrOfTree(tree: Tree): Addr =
+    val old = treeAddrs.get(tree) match {
+      case null => NoAddr
+      case addr: Addr => addr
+    }
+    val now =
+      val idx = tree.uniqueId
+      if treeAddrs2.contains(idx) then Addr(treeAddrs2(idx))
+      else NoAddr
+    assert(old == now)
+    now
 
   private def offset(i: Int): Addr = Addr(offsets(i))
 
@@ -164,6 +176,7 @@ class TreeBuffer extends TastyBuffer(50000) {
         case addr: Addr => treeAddrs.put(tree, adjusted(addr))
       }
     }
+    treeAddrs2.transform((id, addr) => adjusted(Addr(addr)).index)
   }
 
   /** Final assembly, involving the following steps:
