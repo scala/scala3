@@ -21,29 +21,20 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var delta: Array[Int] = _
   private var numOffsets = 0
 
-  /** A map from trees to the address at which a tree is pickled. */
-  private val treeAddrs = new java.util.IdentityHashMap[Tree, Any] // really: Addr | Null
-  private val treeAddrs2 = SparseIntArray()
+  /** A map from tree unique ids to the address index at which a tree is pickled. */
+  private val addrOfTree = SparseIntArray()
 
-  def registerTreeAddr(tree: Tree): Addr = treeAddrs.get(tree) match {
-    case null =>
-      treeAddrs.put(tree, currentAddr)
-      treeAddrs2(tree.uniqueId) = currentAddr.index
+  def registerTreeAddr(tree: Tree): Addr =
+    val id = tree.uniqueId
+    if addrOfTree.contains(id) then Addr(addrOfTree(id))
+    else
+      addrOfTree(tree.uniqueId) = currentAddr.index
       currentAddr
-    case addr: Addr => addr
-  }
 
   def addrOfTree(tree: Tree): Addr =
-    val old = treeAddrs.get(tree) match {
-      case null => NoAddr
-      case addr: Addr => addr
-    }
-    val now =
-      val idx = tree.uniqueId
-      if treeAddrs2.contains(idx) then Addr(treeAddrs2(idx))
-      else NoAddr
-    assert(old == now)
-    now
+    val idx = tree.uniqueId
+    if addrOfTree.contains(idx) then Addr(addrOfTree(idx))
+    else NoAddr
 
   private def offset(i: Int): Addr = Addr(offsets(i))
 
@@ -168,16 +159,8 @@ class TreeBuffer extends TastyBuffer(50000) {
     wasted
   }
 
-  def adjustTreeAddrs(): Unit = {
-    val it = treeAddrs.keySet.iterator
-    while (it.hasNext) {
-      val tree = it.next
-      treeAddrs.get(tree) match {
-        case addr: Addr => treeAddrs.put(tree, adjusted(addr))
-      }
-    }
-    treeAddrs2.transform((id, addr) => adjusted(Addr(addr)).index)
-  }
+  def adjustTreeAddrs(): Unit =
+    addrOfTree.transform((id, addr) => adjusted(Addr(addr)).index)
 
   /** Final assembly, involving the following steps:
    *   - compute deltas

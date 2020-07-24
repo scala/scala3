@@ -42,9 +42,16 @@ class SparseIntArray:
       result
     }
 
+  /** All defined indices in an iterator */
+  def keysIterator: Iterator[Int] = root.keysIterator(0)
+
+  /** Perform operation for each key/value pair */
   def foreachBinding(op: (Int, Value) => Unit): Unit =
     root.foreachBinding(op, 0)
 
+  /** Transform each defined value with transformation `op`.
+   *  The transformation gets the element index and value as parameters.
+   */
   def transform(op: (Int, Value) => Value): Unit =
     root.transform(op, 0)
 
@@ -82,6 +89,7 @@ object SparseIntArray:
     def update(index: Int, value: Value): Boolean
     def remove(index: Int): Boolean
     def isEmpty: Boolean
+    def keysIterator(offset: Int): Iterator[Int]
     def foreachBinding(op: (Int, Value) => Unit, offset: Int): Unit
     def transform(op: (Int, Value) => Value, offset: Int): Unit
     def nodeCount: Int
@@ -110,6 +118,17 @@ object SparseIntArray:
       result
 
     def isEmpty = present == 0
+
+    private def skipUndefined(i: Int): Int =
+      if i < NodeSize && !contains(i) then skipUndefined(i + 1) else i
+
+    def keysIterator(offset: Int) = new Iterator[Int]:
+      private var curIdx = skipUndefined(0)
+      def hasNext = curIdx < NodeSize
+      def next(): Int =
+        val result = curIdx + offset
+        curIdx = skipUndefined(curIdx + 1)
+        result
 
     def foreachBinding(op: (Int, Value) => Unit, offset: Int): Unit =
       var i = 0
@@ -167,6 +186,20 @@ object SparseIntArray:
 
     def isEmpty = empty
 
+    private def skipUndefined(i: Int): Int =
+      if i < NodeSize && elems(i) == null then skipUndefined(i + 1) else i
+
+    def keysIterator(offset: Int) = new Iterator[Value]:
+      private var curIdx = skipUndefined(0)
+      private var elemIt = Iterator.empty[Int]
+      def hasNext = elemIt.hasNext || curIdx < NodeSize
+      def next(): Value =
+        if elemIt.hasNext then elemIt.next()
+        else
+          elemIt = elems(curIdx).keysIterator(offset + curIdx * elemSize)
+          curIdx = skipUndefined(curIdx + 1)
+          elemIt.next()
+
     def foreachBinding(op: (Int, Value) => Unit, offset: Int): Unit =
       var i = 0
       while i < NodeSize do
@@ -205,6 +238,7 @@ end SparseIntArray
   println(s"a = $a")
   a(55555) = 44
   println(s"a = $a")
+  println(s"iterator of a yields ${a.keysIterator.toList}")
   assert(a.size == 3, a)
   assert(a.contains(1), a)
   assert(a.contains(222), a)
