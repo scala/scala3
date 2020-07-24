@@ -22,6 +22,7 @@ import Symbols._
 import Decorators._
 
 import java.io.DataOutputStream
+import java.nio.channels.ClosedByInterruptException
 
 import dotty.tools.tasty.{ TastyBuffer, TastyHeaderUnpickler }
 
@@ -190,6 +191,8 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BC
         else {
           try   { /*withCurrentUnit(item.cunit)*/(visit(item)) }
           catch {
+            case ex: InterruptedException =>
+              throw ex
             case ex: Throwable =>
               println(s"Error while emitting ${item.cunit.source.file.name}")
               throw ex
@@ -233,6 +236,11 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BC
               val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
               val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
               try outstream.write(binary)
+              catch case ex: ClosedByInterruptException =>
+                try
+                  outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
+                catch case _: Throwable =>
+                throw ex
               finally outstream.close()
 
               val uuid = new TastyHeaderUnpickler(binary).readHeader()
@@ -424,6 +432,8 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BC
               addLambdaDeserialize(plainNode, serializableLambdas)
             addToQ3(item)
           } catch {
+            case ex: InterruptedException =>
+              throw ex
             case ex: Throwable =>
               println(s"Error while emitting ${item.plain.classNode.name}")
               throw ex
