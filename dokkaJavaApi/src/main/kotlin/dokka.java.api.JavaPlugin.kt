@@ -15,6 +15,7 @@ import org.jetbrains.dokka.pages.Kind
 import org.jetbrains.dokka.pages.Style
 import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.plugability.DokkaPlugin
+import org.jetbrains.dokka.transformers.pages.PageTransformer
 import org.jetbrains.dokka.transformers.sources.SourceToDocumentableTranslator
 import org.jetbrains.dokka.utilities.DokkaLogger
 import java.util.function.Consumer
@@ -42,8 +43,15 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         } override dokkaBase.kotlinSignatureProvider
     }
 
+    val scalaLogoProvider by extending {
+        dokkaBase.htmlPreprocessors providing { ctx ->
+            createLogoInstaller(ctx)
+        } order { after(dokkaBase.resourceInstaller) }
+    }
+
     abstract fun createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule
     abstract fun createSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger): SignatureProvider
+    abstract fun createLogoInstaller(ctx: DokkaContext) : PageTransformer
 }
 
 // TODO we probably does not need that
