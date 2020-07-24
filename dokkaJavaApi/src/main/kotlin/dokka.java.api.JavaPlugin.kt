@@ -43,15 +43,22 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         } override dokkaBase.kotlinSignatureProvider
     }
 
-    val scalaLogoProvider by extending {
+    val scalaResourceInstaller by extending {
         dokkaBase.htmlPreprocessors providing { ctx ->
-            createLogoInstaller(ctx)
+            createResourceInstaller(ctx)
         } order { after(dokkaBase.resourceInstaller) }
+    }
+
+    val scalaEmbeddedResourceAppender by extending {
+        dokkaBase.htmlPreprocessors providing {ctx ->
+            createEmbeddedResourceAppender(ctx)
+        } order { after(dokkaBase.styleAndScriptsAppender) }
     }
 
     abstract fun createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule
     abstract fun createSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger): SignatureProvider
-    abstract fun createLogoInstaller(ctx: DokkaContext) : PageTransformer
+    abstract fun createResourceInstaller(ctx: DokkaContext) : PageTransformer
+    abstract fun createEmbeddedResourceAppender(ctx: DokkaContext) : PageTransformer
 }
 
 // TODO we probably does not need that
