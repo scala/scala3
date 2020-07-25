@@ -2361,19 +2361,17 @@ object SymDenotations {
         stillValidInOwner(denot)
     }
 
-  private[SymDenotations] def stillValidInOwner(denot: SymDenotation)(using Context): Boolean = try {
+  private[SymDenotations] def stillValidInOwner(denot: SymDenotation)(using Context): Boolean = try
     val owner = denot.owner.denot
-    stillValid(owner) && (
+    stillValid(owner)
+    && (
       !owner.isClass
       || owner.isRefinementClass
       || owner.is(Scala2x)
-      || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
+      || owner.unforcedDecls.contains(denot.name, denot.symbol)
       || denot.isSelfSym
       || denot.isLocalDummy)
-  }
-  catch {
-    case ex: StaleSymbol => false
-  }
+  catch case ex: StaleSymbol => false
 
   /** Explain why symbol is invalid; used for debugging only */
   def traceInvalid(denot: Denotation)(using Context): Boolean = {

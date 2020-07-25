@@ -138,6 +138,12 @@ object Scopes {
       def next(): Symbol = { val r = e.sym; e = lookupNextEntry(e); r }
     }
 
+    /** Does this scope contain a reference to `sym` when looking up `name`? */
+    final def contains(name: Name, sym: Symbol)(using Context): Boolean =
+      var e = lookupEntry(name)
+      while e != null && e.sym != sym do e = lookupNextEntry(e)
+      e != null
+
     /** The denotation set of all the symbols with given name in this scope
      *  Symbols occur in the result in reverse order relative to their occurrence
      *  in `this.toList`.
