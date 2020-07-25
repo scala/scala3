@@ -37,7 +37,7 @@ object DenotTransformers {
 
     def transform(ref: SingleDenotation)(using Context): SingleDenotation = {
       val sym = ref.symbol
-      if (sym.exists && !mayChange(sym)) ref
+      if (sym.exists && !infoMayChange(sym)) ref
       else {
         val info1 = transformInfo(ref.info, ref.symbol)
         if (info1 eq ref.info) ref
@@ -54,7 +54,7 @@ object DenotTransformers {
      *  unaffected by this transform, so `transformInfo` need not be run. This
      *  can save time, and more importantly, can help avoid forcing symbol completers.
      */
-    protected def mayChange(sym: Symbol)(using Context): Boolean = true
+    protected def infoMayChange(sym: Symbol)(using Context): Boolean = true
   }
 
   /** A transformer that only transforms SymDenotations.

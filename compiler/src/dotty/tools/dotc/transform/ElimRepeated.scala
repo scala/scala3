@@ -73,7 +73,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       case ref1 =>
         ref1
 
-  override def mayChange(sym: Symbol)(using Context): Boolean = sym.is(Method)
+  override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.is(Method)
 
   private def overridesJava(sym: Symbol)(using Context) = sym.allOverriddenSymbols.exists(_.is(JavaDefined))
 

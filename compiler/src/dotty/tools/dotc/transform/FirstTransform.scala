@@ -46,7 +46,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
       tp
   }
 
-  override protected def mayChange(sym: Symbol)(using Context): Boolean = sym.isClass
+  override protected def infoMayChange(sym: Symbol)(using Context): Boolean = sym.isClass
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
