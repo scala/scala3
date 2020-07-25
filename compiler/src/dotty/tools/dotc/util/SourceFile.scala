@@ -103,18 +103,18 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
     SourcePosition(underlying, position.span shift start)
 
-  private def isLineBreak(idx: Int) =
-    if (idx >= length) false else {
-      val ch = content()(idx)
-      // don't identify the CR in CR LF as a line break, since LF will do.
-      if (ch == CR) (idx + 1 == length) || (content()(idx + 1) != LF)
-      else isLineBreakChar(ch)
-    }
-
   private def calculateLineIndices(cs: Array[Char]) = {
     val buf = new ArrayBuffer[Int]
     buf += 0
-    for (i <- 0 until cs.length) if (isLineBreak(i)) buf += i + 1
+    var i = 0
+    while i < cs.length do
+      val isLineBreak =
+        val ch = cs(i)
+        // don't identify the CR in CR LF as a line break, since LF will do.
+        if ch == CR then i + 1 == cs.length || cs(i + 1) != LF
+        else isLineBreakChar(ch)
+      if isLineBreak then buf += i + 1
+      i += 1
     buf += cs.length // sentinel, so that findLine below works smoother
     buf.toArray
   }
