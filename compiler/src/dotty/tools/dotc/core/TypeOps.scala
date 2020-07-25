@@ -529,74 +529,79 @@ object TypeOps:
     val skolemizedArgTypes = skolemizeWildcardArgs(argTypes, app)
     val violations = new mutable.ListBuffer[BoundsViolation]
 
-    for ((arg, bounds) <- args zip boundss) {
-      def checkOverlapsBounds(lo: Type, hi: Type): Unit = {
-        //println(i" = ${instantiate(bounds.hi, argTypes)}")
+    def checkOverlapsBounds(lo: Type, hi: Type, arg: Tree, bounds: TypeBounds): Unit = {
+      //println(i" = ${instantiate(bounds.hi, argTypes)}")
 
-        var checkCtx = ctx  // the context to be used for bounds checking
-        if (argTypes ne skolemizedArgTypes) { // some of the arguments are wildcards
+      var checkCtx = ctx  // the context to be used for bounds checking
+      if (argTypes ne skolemizedArgTypes) { // some of the arguments are wildcards
 
-          /** Is there a `LazyRef(TypeRef(_, sym))` reference in `tp`? */
-          def isLazyIn(sym: Symbol, tp: Type): Boolean = {
-            def isReference(tp: Type) = tp match {
-              case tp: LazyRef => tp.ref.isInstanceOf[TypeRef] && tp.ref.typeSymbol == sym
-              case _ => false
-            }
-            tp.existsPart(isReference, forceLazy = false)
+        /** Is there a `LazyRef(TypeRef(_, sym))` reference in `tp`? */
+        def isLazyIn(sym: Symbol, tp: Type): Boolean = {
+          def isReference(tp: Type) = tp match {
+            case tp: LazyRef => tp.ref.isInstanceOf[TypeRef] && tp.ref.typeSymbol == sym
+            case _ => false
           }
-
-          /** The argument types of the form `TypeRef(_, sym)` which appear as a LazyRef in `bounds`.
-           *  This indicates that the application is used as an F-bound for the symbol referred to in the LazyRef.
-           */
-          val lazyRefs = skolemizedArgTypes collect {
-            case tp: TypeRef if isLazyIn(tp.symbol, bounds) => tp.symbol
-          }
-
-          for (sym <- lazyRefs) {
-
-            // If symbol `S` has an F-bound such as `C[?, S]` that contains wildcards,
-            // add a modifieed bound where wildcards are skolemized as a GADT bound for `S`.
-            // E.g. for `C[?, S]` we would add `C[C[?, S]#T0, S]` where `T0` is the first
-            // type parameter of `C`. The new bound is added as a GADT bound for `S` in
-            // `checkCtx`.
-            // This mirrors what we do for the bounds that are checked and allows us thus
-            // to bounds-check F-bounds with wildcards. A test case is pos/i6146.scala.
-
-            def massage(tp: Type): Type = tp match {
-              case tp @ AppliedType(tycon, args) =>
-                tp.derivedAppliedType(tycon, skolemizeWildcardArgs(args, tp))
-              case tp: AndOrType =>
-                tp.derivedAndOrType(massage(tp.tp1), massage(tp.tp2))
-              case _ => tp
-            }
-            def narrowBound(bound: Type, fromBelow: Boolean): Unit = {
-              val bound1 = massage(bound)
-              if (bound1 ne bound) {
-                if (checkCtx eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds
-                if (!checkCtx.gadt.contains(sym)) checkCtx.gadt.addToConstraint(sym)
-                checkCtx.gadt.addBound(sym, bound1, fromBelow)
-                typr.println("install GADT bound $bound1 for when checking F-bounded $sym")
-              }
-            }
-            narrowBound(sym.info.loBound, fromBelow = true)
-            narrowBound(sym.info.hiBound, fromBelow = false)
-          }
+          tp.existsPart(isReference, forceLazy = false)
         }
 
-        val hiBound = instantiate(bounds.hi, skolemizedArgTypes)
-        val loBound = instantiate(bounds.lo, skolemizedArgTypes)
-
-        def check(using Context) = {
-          if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
-          if (!(loBound <:< hi)) violations += ((arg, "lower", loBound))
+        /** The argument types of the form `TypeRef(_, sym)` which appear as a LazyRef in `bounds`.
+         *  This indicates that the application is used as an F-bound for the symbol referred to in the LazyRef.
+         */
+        val lazyRefs = skolemizedArgTypes collect {
+          case tp: TypeRef if isLazyIn(tp.symbol, bounds) => tp.symbol
         }
-        check(using checkCtx)
+
+        for (sym <- lazyRefs) {
+
+          // If symbol `S` has an F-bound such as `C[?, S]` that contains wildcards,
+          // add a modifieed bound where wildcards are skolemized as a GADT bound for `S`.
+          // E.g. for `C[?, S]` we would add `C[C[?, S]#T0, S]` where `T0` is the first
+          // type parameter of `C`. The new bound is added as a GADT bound for `S` in
+          // `checkCtx`.
+          // This mirrors what we do for the bounds that are checked and allows us thus
+          // to bounds-check F-bounds with wildcards. A test case is pos/i6146.scala.
+
+          def massage(tp: Type): Type = tp match {
+            case tp @ AppliedType(tycon, args) =>
+              tp.derivedAppliedType(tycon, skolemizeWildcardArgs(args, tp))
+            case tp: AndOrType =>
+              tp.derivedAndOrType(massage(tp.tp1), massage(tp.tp2))
+            case _ => tp
+          }
+          def narrowBound(bound: Type, fromBelow: Boolean): Unit = {
+            val bound1 = massage(bound)
+            if (bound1 ne bound) {
+              if (checkCtx eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds
+              if (!checkCtx.gadt.contains(sym)) checkCtx.gadt.addToConstraint(sym)
+              checkCtx.gadt.addBound(sym, bound1, fromBelow)
+              typr.println("install GADT bound $bound1 for when checking F-bounded $sym")
+            }
+          }
+          narrowBound(sym.info.loBound, fromBelow = true)
+          narrowBound(sym.info.hiBound, fromBelow = false)
+        }
       }
-      arg.tpe match {
-        case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi)
-        case tp => checkOverlapsBounds(tp, tp)
+      val hiBound = instantiate(bounds.hi, skolemizedArgTypes)
+      val loBound = instantiate(bounds.lo, skolemizedArgTypes)
+
+      def check(using Context) = {
+        if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
+        if (!(loBound <:< hi)) violations += ((arg, "lower", loBound))
       }
+      check(using checkCtx)
     }
+
+    def loop(args: List[Tree], boundss: List[TypeBounds]): Unit = args match
+      case arg :: args1 => boundss match
+        case bounds :: boundss1 =>
+          arg.tpe match
+            case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi, arg, bounds)
+            case tp => checkOverlapsBounds(tp, tp, arg, bounds)
+          loop(args1, boundss1)
+        case _ =>
+      case _ =>
+
+    loop(args, boundss)
     violations.toList
   }
 
