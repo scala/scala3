@@ -13,7 +13,7 @@ object TypeUtils {
   /** A decorator that provides methods on types
    *  that are needed in the transformer pipeline.
    */
-  implicit class TypeUtilsOps(val self: Type) extends AnyVal {
+  extension (self: Type) {
 
     def isErasedValueType(using Context): Boolean =
       self.isInstanceOf[ErasedValueType]

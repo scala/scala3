@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Types._
 /** Defines operations on nullable types. */
 object NullOpsDecorator {
 
-  implicit class NullOps(val self: Type) {
+  extension (self: Type) {
     /** Is this type exactly `UncheckedNull` (no vars, aliases, refinements etc allowed)? */
     def isUncheckedNullType(using Context): Boolean = {
       assert(ctx.explicitNulls)

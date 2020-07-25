@@ -5,7 +5,7 @@ package reporting
 import scala.annotation.internal.sharable
 
 import core.Contexts._
-import core.Decorators.PhaseListDecorator
+import core.Decorators._
 import collection.mutable
 import core.Mode
 import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}

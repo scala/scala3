@@ -29,7 +29,7 @@ object ValueClasses {
       d.isRealMethod &&
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&
-      !d.isSuperAccessor &&
+      !d.symbol.isSuperAccessor &&
       !d.is(Macro)
     }
 

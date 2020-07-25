@@ -14,11 +14,10 @@ object results {
   /** Result is a type alias for an Either with left value `Errors` */
   type Result[+A] = scala.util.Either[Errors, A]
 
-  implicit class ResultConversionA[A](val a: A) extends AnyVal {
+  extension [A](a: A):
     def result: Result[A] = scala.util.Right(a)
-  }
 
-  implicit class ResultConversionErr(val xs: Errors) extends AnyVal {
-    def errors[A]: Result[A] = scala.util.Left(xs)
-  }
+  extension [A](xs: Errors):
+    def errors: Result[A] = scala.util.Left(xs)
+
 }

@@ -28,7 +28,7 @@ object Decorators {
       case s: String => termName(s)
       case n: Name => n.toTermName
 
-  implicit class StringDecorator(val s: String) extends AnyVal {
+  extension (s: String):
     def splitWhere(f: Char => Boolean, doDropIndex: Boolean): Option[(String, String)] = {
       def splitAt(idx: Int, doDropIndex: Boolean): Option[(String, String)] =
         if (idx == -1) None
@@ -36,12 +36,11 @@ object Decorators {
 
       splitAt(s.indexWhere(f), doDropIndex)
     }
-  }
 
   /** Implements a findSymbol method on iterators of Symbols that
    *  works like find but avoids Option, replacing None with NoSymbol.
    */
-  implicit class SymbolIteratorDecorator(val it: Iterator[Symbol]) extends AnyVal {
+  extension (it: Iterator[Symbol]):
     final def findSymbol(p: Symbol => Boolean): Symbol = {
       while (it.hasNext) {
         val sym = it.next()
@@ -49,7 +48,6 @@ object Decorators {
       }
       NoSymbol
     }
-  }
 
   final val MaxFilterRecursions = 1000
 
@@ -161,29 +159,27 @@ object Decorators {
     def & (ys: List[T]): List[T] = xs filter (ys contains _)
   }
 
-  given ListOfListDecorator as AnyRef:
-    extension [T, U](xss: List[List[T]]):
-      def nestedMap(f: T => U): List[List[U]] =
-        xss.map(_.map(f))
-      def nestedMapConserve(f: T => U): List[List[U]] =
-        xss.mapconserve(_.mapconserve(f))
-      def nestedZipWithConserve(yss: List[List[U]])(f: (T, U) => T): List[List[T]] =
-        xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
-    end extension
+  extension [T, U](xss: List[List[T]]):
+    def nestedMap(f: T => U): List[List[U]] =
+      xss.map(_.map(f))
+    def nestedMapConserve(f: T => U): List[List[U]] =
+      xss.mapconserve(_.mapconserve(f))
+    def nestedZipWithConserve(yss: List[List[U]])(f: (T, U) => T): List[List[T]] =
+      xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
+  end extension
 
-  implicit class TextToString(val text: Text) extends AnyVal {
+  extension (text: Text):
     def show(using Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
-  }
 
   /** Test whether a list of strings representing phases contains
    *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the
    *  exact meaning of "contains" here.
    */
-  implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
+   extension (names: List[String]) {
     def containsPhase(phase: Phase): Boolean =
       names.nonEmpty && {
         phase match {
-          case phase: MegaPhase => phase.miniPhases.exists(containsPhase)
+          case phase: MegaPhase => phase.miniPhases.exists(x => names.containsPhase(x))
           case _ =>
             names exists { name =>
               name == "all" || {
@@ -197,7 +193,7 @@ object Decorators {
       }
   }
 
-  implicit class reportDeco[T](x: T) extends AnyVal {
+  extension [T](x: T) {
     def reporting(
         op: WrappedResult[T] ?=> String,
         printer: config.Printers.Printer = config.Printers.default): T = {
@@ -206,7 +202,7 @@ object Decorators {
     }
   }
 
-  implicit class genericDeco[T](val x: T) extends AnyVal {
+  extension [T](x: T) {
     def assertingErrorsReported(using Context): T = {
       assert(ctx.reporter.errorsReported)
       x
@@ -217,7 +213,7 @@ object Decorators {
     }
   }
 
-  implicit class StringInterpolators(val sc: StringContext) extends AnyVal {
+  extension (sc: StringContext) {
     /** General purpose string formatting */
     def i(args: Any*)(using Context): String =
       new StringFormatter(sc).assemble(args)
@@ -235,8 +231,8 @@ object Decorators {
       explained(em(args: _*))
   }
 
-  implicit class ArrayInterpolator[T <: AnyRef](val arr: Array[T]) extends AnyVal {
+  extension [T <: AnyRef](arr: Array[T]):
     def binarySearch(x: T): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object]], x)
-  }
+
 }
 

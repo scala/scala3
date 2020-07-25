@@ -21,7 +21,7 @@ object ModifiersParsingTest {
     stats match { case List(stat) => stat; case stats => Thicket(stats) }
   }
 
-  implicit class TreeDeco(val code: Tree) extends AnyVal {
+  extension (code: Tree) {
     def firstConstrValDef: ValDef = code match {
       case d.TypeDef(_, d.Template(constr, _, _, _)) =>
         constr.vparamss.head.head

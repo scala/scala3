@@ -21,7 +21,7 @@ import NameKinds._
 import NamerOps._
 import ContextOps._
 import Flags._
-import Decorators.{given _}
+import Decorators._
 import ErrorReporting._
 import Checking._
 import Inferencing._

@@ -5,7 +5,7 @@ import core._
 import Types._
 import Contexts._
 import Symbols._
-import Decorators.{given _}
+import Decorators._
 import TypeUtils._
 import StdNames.nme
 import NameOps._

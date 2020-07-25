@@ -214,8 +214,6 @@ trait DottyBytecodeTest {
   }
 }
 object DottyBytecodeTest {
-  implicit class listStringLines[T](val l: List[T]) extends AnyVal {
-    def stringLines = l.mkString("\n")
-  }
+  extension [T](l: List[T]) def stringLines = l.mkString("\n")
 }
 

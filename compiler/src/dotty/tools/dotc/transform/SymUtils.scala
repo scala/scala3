@@ -19,15 +19,8 @@ import language.implicitConversions
 import scala.annotation.tailrec
 
 object SymUtils {
-  implicit def decorateSymbol(sym: Symbol): SymUtils = new SymUtils(sym)
-  implicit def decorateSymDenot(d: SymDenotation): SymUtils = new SymUtils(d.symbol)
-}
 
-/** A decorator that provides methods on symbols
- *  that are needed in the transformer pipeline.
- */
-class SymUtils(val self: Symbol) extends AnyVal {
-  import SymUtils._
+  extension (self: Symbol) {
 
   /** All traits implemented by a class or trait except for those inherited through the superclass. */
   def directlyInheritedTraits(using Context): List[ClassSymbol] = {
@@ -255,4 +248,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
       case _ =>
         tp
     self.asClass.givenSelfType.stripOpaques.asSeenFrom(site, self)
+
+  }
 }

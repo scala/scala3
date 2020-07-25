@@ -678,7 +678,7 @@ object Contexts {
   end ops
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
-  implicit class ModeChanges(val c: Context) extends AnyVal {
+  extension (c: Context) {
     final def withModeBits(mode: Mode): Context =
       if (mode != c.mode) c.fresh.setMode(mode) else c
 
@@ -686,7 +686,7 @@ object Contexts {
     final def retractMode(mode: Mode): Context = withModeBits(c.mode &~ mode)
   }
 
-  implicit class FreshModeChanges(val c: FreshContext) extends AnyVal {
+  extension (c: FreshContext) {
     final def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
   }

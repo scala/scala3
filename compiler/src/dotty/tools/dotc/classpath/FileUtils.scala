@@ -12,7 +12,7 @@ import dotty.tools.io.AbstractFile
  * Common methods related to Java files and abstract files used in the context of classpath
  */
 object FileUtils {
-  implicit class AbstractFileOps(val file: AbstractFile) extends AnyVal {
+  extension (file: AbstractFile) {
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.name)
 
     def isClass: Boolean = !file.isDirectory && file.hasExtension("class") && !file.name.endsWith("$class.class")
@@ -30,7 +30,7 @@ object FileUtils {
     def toURLs(default: => Seq[URL] = Seq.empty): Seq[URL] = if (file.file == null) default else Seq(file.toURL)
   }
 
-  implicit class FileOps(val file: JFile) extends AnyVal {
+  extension (file: JFile) {
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.getName)
 
     def isClass: Boolean = file.isFile && file.getName.endsWith(".class") && !file.getName.endsWith("$class.class")

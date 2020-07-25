@@ -45,9 +45,8 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
   def fromInitialState[A](op: State => A): A =
     op(initialState)
 
-  implicit class TestingState(state: State) {
-    def andThen[A](op: State => A): A = op(state)
-  }
+  extension [A](state: State):
+    def andThen(op: State => A): A = op(state)
 
   def scripts(path: String): Array[JFile] = {
     val dir = new JFile(getClass.getResource(path).getPath)
