@@ -791,9 +791,9 @@ class JSCodeGen()(using genCtx: Context) {
             toIRType(param.info), mutable = false, rest = false)
       }
 
-      /*if (primitives.isPrimitive(sym)) {
+      if (primitives.isPrimitive(sym)) {
         None
-      } else*/ if (sym.is(Deferred)) {
+      } else if (sym.is(Deferred)) {
         Some(js.MethodDef(js.MemberFlags.empty, methodName, originalName,
             jsParams, toIRType(patchedResultType(sym)), None)(
             OptimizerHints.empty, None))

@@ -59,6 +59,9 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
   override def getPrimitive(app: Apply, tpe: Type)(using Context): Int =
     jsPrimitives.getOrElse(app.fun.symbol, super.getPrimitive(app, tpe))
 
+  override def isPrimitive(sym: Symbol): Boolean =
+    jsPrimitives.contains(sym) || super.isPrimitive(sym)
+
   override def isPrimitive(fun: Tree): Boolean =
     jsPrimitives.contains(fun.symbol(using ictx)) || super.isPrimitive(fun)
 
