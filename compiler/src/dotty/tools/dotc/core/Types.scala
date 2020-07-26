@@ -111,33 +111,37 @@ object Types {
      */
     def isProvisional(using Context): Boolean = mightBeProvisional && testProvisional
 
-    private def testProvisional(using Context) = {
-      val accu = new TypeAccumulator[Boolean] {
-        override def apply(x: Boolean, t: Type) =
-          x || t.mightBeProvisional && {
-            t.mightBeProvisional = t match {
-              case t: TypeVar =>
-                !t.inst.exists || apply(x, t.inst)
-              case t: TypeRef =>
+    private def testProvisional(using Context): Boolean =
+      def test(t: Type, theAcc: TypeAccumulator[Boolean]): Boolean =
+        if t.mightBeProvisional then
+          t.mightBeProvisional = t match
+            case t: TypeRef =>
+              !t.currentSymbol.isStatic && {
                 (t: Type).mightBeProvisional = false // break cycles
-                t.symbol.is(Provisional) ||
-                apply(x, t.prefix) || {
-                  t.info match {
-                    case info: AliasingBounds => apply(x, info.alias)
-                    case TypeBounds(lo, hi) => apply(apply(x, lo), hi)
+                t.symbol.is(Provisional)
+                || test(t.prefix, theAcc)
+                || t.info.match
+                    case info: AliasingBounds => test(info.alias, theAcc)
+                    case TypeBounds(lo, hi) => test(lo, theAcc) || test(hi, theAcc)
                     case _ => false
-                  }
-                }
-              case t: LazyRef =>
-                !t.completed || apply(x, t.ref)
-              case _ =>
-                foldOver(x, t)
-            }
-            t.mightBeProvisional
-          }
-      }
-      accu.apply(false, this)
-    }
+              }
+            case t: TermRef =>
+              !t.currentSymbol.isStatic && test(t.prefix, theAcc)
+            case t: TypeVar =>
+              !t.inst.exists || test(t.inst, theAcc)
+            case t: LazyRef =>
+              !t.completed || test(t.ref, theAcc)
+            case _ =>
+              val acc =
+                if theAcc != null then theAcc
+                else new TypeAccumulator[Boolean]:
+                  override def apply(x: Boolean, t: Type) = x || test(t, this)
+              acc.foldOver(false, t)
+        end if
+        t.mightBeProvisional
+      end test
+      test(this, null)
+    end testProvisional
 
     /** Is this type different from NoType? */
     final def exists: Boolean = this.ne(NoType)
