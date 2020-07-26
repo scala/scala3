@@ -100,6 +100,8 @@ object TypeOps:
             val sym = tp.symbol
             if (sym.isStatic && !sym.maybeOwner.seesOpaques || (tp.prefix `eq` NoPrefix)) tp
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
+          case tp: LambdaType =>
+            mapOverLambda(tp) // special cased common case
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)
           case _: BoundType =>
@@ -136,6 +138,9 @@ object TypeOps:
             tp2
           case tp1 => tp1
         }
+      case tp: AppliedType =>
+        val normed = tp.tryNormalize
+        if normed.exists then normed else tp.map(simplify(_, theMap))
       case tp: TypeParamRef =>
         val tvar = ctx.typerState.constraint.typeVarOfParam(tp)
         if (tvar.exists) tvar else tp
@@ -147,7 +152,7 @@ object TypeOps:
         simplify(l, theMap) & simplify(r, theMap)
       case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
         simplify(l, theMap) | simplify(r, theMap)
-      case _: AppliedType | _: MatchType =>
+      case _: MatchType =>
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver
       case tp: MethodicType =>

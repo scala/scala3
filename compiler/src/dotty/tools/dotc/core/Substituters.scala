@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import Types._, Symbols._, Contexts._
+import Types._, Symbols._, Contexts._, Decorators._
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
@@ -16,6 +16,8 @@ object Substituters:
         else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType =>
         tp
+      case tp: AppliedType =>
+        tp.map(subst(_, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstBindingMap(from, to))
           .mapOver(tp)
@@ -94,7 +96,7 @@ object Substituters:
           ts = ts.tail
         }
         tp
-      case _: ThisType | _: BoundType =>
+      case _: BoundType =>
         tp
       case _ =>
         (if (theMap != null) theMap else new SubstSymMap(from, to))
@@ -152,6 +154,8 @@ object Substituters:
         else tp.derivedSelect(substParams(tp.prefix, from, to, theMap))
       case _: ThisType =>
         tp
+      case tp: AppliedType =>
+        tp.map(substParams(_, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstParamsMap(from, to))
           .mapOver(tp)
