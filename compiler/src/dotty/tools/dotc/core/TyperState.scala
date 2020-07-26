@@ -138,10 +138,11 @@ class TyperState() {
    *  no-longer needed constraint entries.
    */
   def gc()(using Context): Unit = {
+    Stats.record("typerState.gc")
     val toCollect = new mutable.ListBuffer[TypeLambda]
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {
-        val inst = TypeComparer.instType(tvar)
+        val inst = constraint.instType(tvar)
         if (inst.exists && (tvar.owningState.get eq this)) {
           tvar.inst = inst
           val lam = tvar.origin.binder

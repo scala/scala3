@@ -4192,7 +4192,7 @@ object Types {
      *  uninstantiated
      */
     def instanceOpt(using Context): Type =
-      if (inst.exists) inst else TypeComparer.instType(this)
+      if (inst.exists) inst else ctx.typerState.constraint.instType(this)
 
     /** Is the variable already instantiated? */
     def isInstantiated(using Context): Boolean = instanceOpt.exists

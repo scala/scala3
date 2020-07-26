@@ -121,6 +121,13 @@ abstract class Constraint extends Showable {
   /** A new constraint with entry `tl` renamed to a fresh type lambda */
   def rename(tl: TypeLambda)(using Context): This
 
+  /** Gives for each instantiated type var that does not yet have its `inst` field
+   *  set, the instance value stored in the constraint. Storing instances in constraints
+   *  is done only in a temporary way for contexts that may be retracted
+   *  without also retracting the type var as a whole.
+   */
+  def instType(tvar: TypeVar): Type
+
   /** The given `tl` in case it is not contained in this constraint,
    *  a fresh copy of `tl` otherwise.
    */

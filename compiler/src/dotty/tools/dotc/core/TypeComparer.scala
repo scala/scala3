@@ -2605,9 +2605,6 @@ object TypeComparer {
   def subtypeCheckInProgress(using Context): Boolean =
     comparing(_.subtypeCheckInProgress)
 
-  def instType(tvar: TypeVar)(using Context): Type =
-    comparing(_.instType(tvar))
-
   def instanceType(param: TypeParamRef, fromBelow: Boolean)(using Context): Type =
     comparing(_.instanceType(param, fromBelow))
 

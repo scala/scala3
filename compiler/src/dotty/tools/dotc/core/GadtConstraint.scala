@@ -131,7 +131,7 @@ final class ProperGadtConstraint private(
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
     @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
       case tv: TypeVar =>
-        val inst = instType(tv)
+        val inst = constraint.instType(tv)
         if (inst.exists) stripInternalTypeVar(inst) else tv
       case _ => tp
     }

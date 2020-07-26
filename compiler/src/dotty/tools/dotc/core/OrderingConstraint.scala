@@ -530,6 +530,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     current.checkNonCyclic()
   }
 
+  def instType(tvar: TypeVar): Type = entry(tvar.origin) match
+    case _: TypeBounds => NoType
+    case tp: TypeParamRef => typeVarOfParam(tp).orElse(tp)
+    case tp => tp
+
   def ensureFresh(tl: TypeLambda)(using Context): TypeLambda =
     if (contains(tl)) {
       var paramInfos = tl.paramInfos
