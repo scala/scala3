@@ -3286,32 +3286,37 @@ object Types {
     private var myDependencyStatus: DependencyStatus = Unknown
     private var myParamDependencyStatus: DependencyStatus = Unknown
 
-    private def depStatus(initial: DependencyStatus, tp: Type)(using Context): DependencyStatus = {
-      def combine(x: DependencyStatus, y: DependencyStatus) = {
+    private def depStatus(initial: DependencyStatus, tp: Type)(using Context): DependencyStatus =
+      def combine(x: DependencyStatus, y: DependencyStatus) =
         val status = (x & StatusMask) max (y & StatusMask)
         val provisional = (x | y) & Provisional
-        (if (status == TrueDeps) status else status | provisional).toByte
-      }
-      val depStatusAcc = new TypeAccumulator[DependencyStatus] {
-        def apply(status: DependencyStatus, tp: Type) =
-          if (status == TrueDeps) status
-          else
-            tp match {
-              case TermParamRef(`thisLambdaType`, _) => TrueDeps
-              case tp: TypeRef =>
-                val status1 = foldOver(status, tp)
-                tp.info match { // follow type alias to avoid dependency
-                  case TypeAlias(alias) if status1 == TrueDeps && status != TrueDeps =>
-                    combine(apply(status, alias), FalseDeps)
-                  case _ =>
-                    status1
-                }
-              case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
-              case _ => foldOver(status, tp)
+        (if status == TrueDeps then status else status | provisional).toByte
+      def compute(status: DependencyStatus, tp: Type, theAcc: TypeAccumulator[DependencyStatus]): DependencyStatus =
+        def applyPrefix(tp: NamedType) =
+          if tp.currentSymbol.isStatic then status
+          else compute(status, tp.prefix, theAcc)
+        if status == TrueDeps then status
+        else tp match
+          case tp: TypeRef =>
+            val status1 = applyPrefix(tp)
+            tp.info match { // follow type alias to avoid dependency
+              case TypeAlias(alias) if status1 == TrueDeps =>
+                combine(compute(status, alias, theAcc), FalseDeps)
+              case _ =>
+                status1
             }
-      }
-      depStatusAcc(initial, tp)
-    }
+          case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
+          case TermParamRef(`thisLambdaType`, _) => TrueDeps
+          case tp: TermRef => applyPrefix(tp)
+          case _: ThisType | _: BoundType | NoPrefix => status
+          case _ =>
+            val acc =
+              if theAcc != null then theAcc
+              else new TypeAccumulator[DependencyStatus]:
+                def apply(status: DependencyStatus, tp: Type) = compute(status, tp, this)
+            acc.foldOver(status, tp)
+      compute(initial, tp, null)
+    end depStatus
 
     /** The dependency status of this method. Some examples:
      *
