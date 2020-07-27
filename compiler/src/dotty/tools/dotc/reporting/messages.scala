@@ -1279,12 +1279,20 @@ import ast.tpd
 
   class MethodDoesNotTakeParameters(tree: tpd.Tree)(using Context)
   extends TypeMsg(MethodDoesNotTakeParametersId) {
-    def methodSymbol: Symbol = tpd.methPart(tree).symbol
+    def methodSymbol: Symbol =
+      def recur(t: tpd.Tree): Symbol =
+        val sym = tpd.methPart(t).symbol
+        if sym == defn.Any_typeCast then
+          t match
+            case TypeApply(Select(qual, _), _) => recur(qual)
+            case _ => sym
+        else sym
+      recur(tree)
 
     def msg = {
       val more = if (tree.isInstanceOf[tpd.Apply]) " more" else ""
       val meth = methodSymbol
-      val methStr = if (meth.exists) methodSymbol.showLocated else "expression"
+      val methStr = if (meth.exists) meth.showLocated else "expression"
       em"$methStr does not take$more parameters"
     }
 
