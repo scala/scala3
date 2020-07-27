@@ -24,4 +24,5 @@ one warning found
 // #2461
 object arrays3 {
   def apply[X <: AnyRef](xs : X*) : java.util.List[X] = java.util.Arrays.asList(xs: _*)
+  def apply2[X](xs : X*) : java.util.List[X] = java.util.Arrays.asList(xs: _*)
 }
