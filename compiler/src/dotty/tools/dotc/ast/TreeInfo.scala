@@ -907,7 +907,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     def unapply(tree: tpd.TypeApply)(using Context): Option[tpd.Tree] = tree match
       case TypeApply(Select(qual: RefTree, nme.asInstanceOfPM), arg :: Nil) =>
         arg.tpe match
-          case AndType(ref, _) if qual.tpe eq ref => Some(qual)
+          case AndType(ref, nn1) if qual.tpe eq ref =>
+            qual.tpe.widen match
+              case OrNull(nn2) if nn1 eq nn2 =>
+              	Some(qual)
+              case _ => None
           case _ => None
       case _ => None
   end AssertNotNull
