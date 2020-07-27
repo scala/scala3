@@ -626,7 +626,7 @@ object ExtractSemanticDB:
     val doc: TextDocument = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
-      uri = relPath.toString,
+      uri = Tools.mkURIstring(relPath),
       text = "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,

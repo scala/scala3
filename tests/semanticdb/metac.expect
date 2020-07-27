@@ -2997,7 +2997,7 @@ expect/filename with spaces.scala
 
 Summary:
 Schema => SemanticDB v4
-Uri => filename with spaces.scala
+Uri => filename%20with%20spaces.scala
 Text => empty
 Language => Scala
 Symbols => 2 entries
