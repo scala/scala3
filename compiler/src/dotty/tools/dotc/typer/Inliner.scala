@@ -1192,7 +1192,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
-      checkStaging(tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))
+      tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       assert(tree.hasType, tree)
@@ -1204,13 +1204,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       else
         val res = resMaybeReduced
         ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
-        checkStaging(res)
+        res
     }
-
-    private def checkStaging(tree: Tree): tree.type =
-      if tree.symbol.isQuote then
-        ctx.compilationUnit.needsStaging = true
-      tree
 
     override def typedIf(tree: untpd.If, pt: Type)(using Context): Tree =
       typed(tree.cond, defn.BooleanType) match {

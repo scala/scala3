@@ -53,8 +53,6 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
    */
   val synthesizedTypeTag: SpecialHandler = (formal, span) =>
     def quotedType(t: Type) =
-      if StagingContext.level == 0 then
-        ctx.compilationUnit.needsStaging = true // We will need to run ReifyQuotes
       val qctx = ctx.typer.inferImplicitArg(defn.QuoteContextClass.typeRef, span)
       qctx.tpe match
         case tpe: Implicits.SearchFailureType => report.error(tpe.msg, ctx.source.atSpan(span))

@@ -40,7 +40,6 @@ trait QuotesAndSplices {
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree = {
     record("typedQuote")
-    ctx.compilationUnit.needsStaging = true
     tree.quoted match {
       case untpd.Splice(innerExpr) if tree.isTerm =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.sourcePos)
@@ -68,7 +67,6 @@ trait QuotesAndSplices {
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
     record("typedSplice")
-    ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
     tree.expr match {
       case untpd.Quote(innerExpr) if innerExpr.isTerm =>
@@ -147,7 +145,6 @@ trait QuotesAndSplices {
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
   def typedTypSplice(tree: untpd.TypSplice, pt: Type)(using Context): Tree = {
     record("typedTypSplice")
-    ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
     tree.expr match {
       case untpd.Quote(innerType) if innerType.isType =>
