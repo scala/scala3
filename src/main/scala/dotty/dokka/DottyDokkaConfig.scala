@@ -29,7 +29,7 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
     List("output/BaseDocs.md").asJava,
     true,
     true,
-    true,
+    false, /* changed because of exception in reportUndocumentedTransformer - there's 'when' which doesnt match because it contains only KotlinVisbility cases */
     true,
     true,
     8,

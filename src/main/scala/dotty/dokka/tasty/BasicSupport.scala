@@ -17,6 +17,18 @@ trait BasicSupport:
     def topLevelEntryName(using ctx: Context): Option[String] = if (sym.isPackageDef) None else
       if (sym.owner.isPackageDef) Some(sym.name) else sym.owner.topLevelEntryName
 
+    def getVisibility(): ScalaVisibility = 
+      if (sym.flags.is(Flags.Private)) ScalaVisibility.Private
+      else if (sym.flags.is(Flags.Protected)) ScalaVisibility.Protected
+      else ScalaVisibility.NoModifier
+
+    def getModifier(): ScalaModifier = 
+      if (sym.flags.is(Flags.Case)) ScalaModifier.Case
+      else if (sym.flags.is(Flags.Abstract)) ScalaModifier.Abstract
+      else if (sym.flags.is(Flags.Sealed)) ScalaModifier.Sealed
+      else if (sym.flags.is(Flags.Final)) ScalaModifier.Final
+      else ScalaModifier.Empty
+
     // TODO make sure that DRIs are unique plus probably reuse semantic db code?  
     def dri =
       if sym == Symbol.noSymbol then emptyDRI else

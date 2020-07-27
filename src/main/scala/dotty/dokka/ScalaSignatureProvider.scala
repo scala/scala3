@@ -18,6 +18,9 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
     private val default = new KotlinSignatureProvider(ctcc, logger)
     private val contentBuilder = new JPageContentBuilder(ctcc, this, logger)
 
+    def (tokens: Seq[String]).toSignatureString(): String =
+        tokens.filterNot(_.isBlank).mkString(""," "," ")
+
     override def signature(documentable: Documentable) = documentable match {
         case method: DFunction =>
            List(methodSignature(method)).asJava
@@ -35,7 +38,13 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
             val ext = clazz.get(ClasslikeExtension)
             utils.annotationsBlock(builder, clazz)
             // builder.addText("TODO modifiers")
-            builder.addText("class ")
+            builder.addText(
+                Seq(
+                    clazz.getVisibility.defaultValue.getName, 
+                    clazz.getModifier.defaultValue.getName,
+                    "class"
+                ).toSignatureString()
+            )
             builder.addLink(clazz.getName, clazz.getDri)
             builder.generics(clazz)
             ext.constructor.foreach(c => builder.functionParameters(c))
@@ -54,8 +63,13 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
         content(method){ builder =>
             utils.annotationsBlock(builder, method)
             // builder.addText("TODO modifiers")
-            builder.addText("def")
-            builder.addText(" ")
+            builder.addText(
+                Seq(
+                    method.getVisibility.defaultValue.getName, 
+                    method.getModifier.defaultValue.getName,
+                    "def"
+                ).toSignatureString()
+            )
             builder.addLink(method.getName, method.getDri)
             builder.generics(method)  
             builder.functionParameters(method)

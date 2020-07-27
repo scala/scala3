@@ -10,8 +10,9 @@ import dotty.dokka._
 trait ClassLikeSupport: 
   self: TastyParser =>
   import reflect._
-
+  import self.SymbolOps.{getVisibility, getModifier}
   def parseClass(classDef: reflect.ClassDef)(using ctx: Context): DClasslike =
+    println()
     val parents = for
       parentTree <- classDef.parents // We assume here that order is correct
       parentSymbol = if (parentTree.symbol.isClassConstructor) parentTree.symbol.owner else parentTree.symbol 
@@ -32,13 +33,13 @@ trait ClassLikeSupport:
         /*fields =*/ Nil.asJava,
         /*nested =*/ Nil.asJava,
         /*sources =*/ classDef.symbol.source,
-        /*visibility =*/ sourceSet.asMap(KotlinVisibility.Public.INSTANCE), // TODO add support for visibility
+        /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
         /*companion =*/ null,
         /*generics =*/ classDef.constructor.typeParams.map(parseTypeArgument).asJava,
         /*supertypes =*/ Map.empty.asJava, // Not used
         /*documentation =*/ classDef.symbol.documentation,
         /*expectPresentInSet =*/ null, // unused
-        /*modifier =*/ Map.empty.asJava, // TODO add support for modifers
+        /*modifier =*/ sourceSet.asMap(classDef.symbol.getModifier()),
         inspector.sourceSet.toSet,
         PropertyContainer.Companion.empty().plus(ClasslikeExtension(parents, Some(parseMethod(classDef.constructor.symbol))))
       )
@@ -55,11 +56,11 @@ trait ClassLikeSupport:
       /*documentation =*/ methodSymbol.documentation,
       /*expectPresentInSet =*/ null, // unused
       /*sources =*/ methodSymbol.source,
-      /*visibility =*/ sourceSet.asMap(KotlinVisibility.Public.INSTANCE), // TODO add support for visibility
+      /*visibility =*/ sourceSet.asMap(methodSymbol.getVisibility()),
       /*type =*/ method.returnTpt.dokkaType,
       /*generics =*/ method.typeParams.map(parseTypeArgument).asJava, 
       /*receiver =*/ null, // Not used
-      /*modifier =*/ Map.empty.asJava, // TODO add support for modifers
+      /*modifier =*/ sourceSet.asMap(methodSymbol.getModifier()),
       sourceSet.toSet(),
       PropertyContainer.Companion.empty() plus MethodExtension(paramLists.map(_.size))
     )
