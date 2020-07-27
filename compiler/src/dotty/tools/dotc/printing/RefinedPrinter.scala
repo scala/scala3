@@ -267,13 +267,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
     val isQuote = !printDebug && tree.fun.hasType && tree.fun.symbol == defn.QuotedTypeModule_apply
-    val (open, close) = if (isQuote) (keywordStr("'["), keywordStr("]")) else ("[", "]")
-    val funText = toTextLocal(tree.fun).provided(!isQuote)
+    val funText = toTextLocal(tree.fun)
     tree.fun match {
       case Select(New(tpt), nme.CONSTRUCTOR) if tpt.typeOpt.dealias.isInstanceOf[AppliedType] =>
         funText  // type was already printed by toText(new)
       case _ =>
-        funText ~ open ~ toTextGlobal(tree.args, ", ") ~ close
+        funText ~ "[" ~ toTextGlobal(tree.args, ", ") ~ "]"
     }
   }
 
@@ -632,9 +631,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case Number(digits, kind) =>
         digits
-      case Quote(tree) =>
-        if (tree.isType) keywordStr("'[") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("]")
-        else keywordStr("'{") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
+      case Quote(tree) if tree.isTerm =>
+        keywordStr("'{") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case Splice(tree) =>
         keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case TypSplice(tree) =>
