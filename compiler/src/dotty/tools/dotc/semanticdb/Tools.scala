@@ -8,6 +8,13 @@ import dotty.tools.dotc.semanticdb.Scala3.{_, given _}
 
 object Tools:
 
+  /** Converts a Path to a String that is URI encoded, without forcing absolute paths. */
+  def mkURIstring(path: Path): String =
+    // Calling `.toUri` on a relative path will convert it to absolute. Iteration through its parts instead preserves
+    // the resulting URI as relative.
+    val uriParts = for part <- path.asScala yield new java.net.URI(null, null, part.toString, null)
+    uriParts.mkString("/")
+
   /** Load SemanticDB TextDocument for a single Scala source file
    *
    * @param scalaAbsolutePath Absolute path to a Scala source file.
@@ -19,16 +26,16 @@ object Tools:
     scalaRelativePath: Path,
     semanticdbAbsolutePath: Path
   ): TextDocument =
-    val reluri = scalaRelativePath.toString
+    val reluri  = mkURIstring(scalaRelativePath)
     val sdocs = parseTextDocuments(semanticdbAbsolutePath)
     sdocs.documents.find(_.uri == reluri) match
-    case None => throw new NoSuchElementException(reluri)
+    case None => throw new NoSuchElementException(s"$scalaRelativePath")
     case Some(document) =>
       val text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8)
       // Assert the SemanticDB payload is in-sync with the contents of the Scala file on disk.
       val md5FingerprintOnDisk = internal.MD5.compute(text)
       if document.md5 != md5FingerprintOnDisk
-        throw new IllegalArgumentException("stale semanticdb: " + reluri)
+        throw new IllegalArgumentException(s"stale semanticdb: $scalaRelativePath")
       else
         // Update text document to include full text contents of the file.
         document.copy(text = text)
