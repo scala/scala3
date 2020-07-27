@@ -1,0 +1,10 @@
+#logo {
+    background-size: 125px 26px;
+    border-bottom: 1px solid #DADFE6;
+    background-repeat: no-repeat;
+    background-image: url(../images/scala_logo.svg);
+    background-origin: content-box;
+    padding-left: 24px;
+    padding-top: 24px;
+    height: 48px;
+}

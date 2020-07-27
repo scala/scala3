@@ -35,4 +35,5 @@ class DottyDokkaPlugin extends JavaDokkaPlugin:
   }
 
   override def createSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger) = new ScalaSignatureProvider(ctcc, logger) 
-  override def createLogoInstaller(ctx: DokkaContext) = new ScalaLogoInstaller()
+  override def createResourceInstaller(ctx: DokkaContext) = new ScalaResourceInstaller()
+  override def createEmbeddedResourceAppender(ctx: DokkaContext) = new ScalaEmbeddedResourceAppender()
