@@ -3,6 +3,8 @@ package backend
 package jvm
 
 import java.io.{ DataOutputStream, FileOutputStream, IOException, OutputStream, File => JFile }
+import java.nio.channels.ClosedByInterruptException
+import java.nio.file.Files
 import dotty.tools.io._
 import dotty.tools.dotc.report
 
@@ -112,6 +114,11 @@ trait BytecodeWriters {
       val outstream = new DataOutputStream(outfile.bufferedOutput)
 
       try outstream.write(jclassBytes, 0, jclassBytes.length)
+      catch case ex: ClosedByInterruptException =>
+        try
+          outfile.delete() // don't leave an empty or half-written classfile around after an interrupt
+        catch case _: Throwable =>
+        throw ex
       finally outstream.close()
       report.informProgress("wrote '" + label + "' to " + outfile)
     }
