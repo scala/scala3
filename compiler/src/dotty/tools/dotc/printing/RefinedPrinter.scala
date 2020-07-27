@@ -266,7 +266,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     ("{" ~ toText(trees, "\n") ~ "}").close
 
   protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
-    val isQuote = !printDebug && tree.fun.hasType && tree.fun.symbol == defn.InternalQuoted_typeQuote
+    val isQuote = !printDebug && tree.fun.hasType && tree.fun.symbol == defn.QuotedTypeModule_apply
     val (open, close) = if (isQuote) (keywordStr("'["), keywordStr("]")) else ("[", "]")
     val funText = toTextLocal(tree.fun).provided(!isQuote)
     tree.fun match {

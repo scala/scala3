@@ -57,7 +57,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       qctx.tpe match
         case tpe: Implicits.SearchFailureType => report.error(tpe.msg, ctx.source.atSpan(span))
         case _ =>
-      ref(defn.InternalQuoted_typeQuote).appliedToType(t).select(nme.apply).appliedTo(qctx)
+      ref(defn.QuotedTypeModule_apply).appliedToType(t).select(nme.apply).appliedTo(qctx)
     formal.argInfos match
       case arg :: Nil =>
         val deepDealias = new TypeMap:
