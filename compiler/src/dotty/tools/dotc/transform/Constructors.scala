@@ -211,22 +211,8 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
               if stat.symbol.isGetter && stat.symbol.owner.is(Trait) && !stat.symbol.is(Lazy) =>
             val sym = stat.symbol
             assert(isRetained(sym), sym)
-            if !stat.rhs.isEmpty && !isWildcardArg(stat.rhs) then
-              /* !!! Work around #9390
-               * This should really just be `sym.setter`. However, if we do that, we'll miss
-               * setters for mixed in `private var`s. Even though the scope clearly contains the
-               * setter symbol with the correct Name structure (since the `find` finds it),
-               * `.decl(setterName)` used by `.setter` through `.accessorNamed` will *not* find it.
-               * Could it be that the hash table of the `Scope` is corrupted?
-               * We still try `sym.setter` first as an optimization, since it will work for all
-               * public vars in traits and all (public or private) vars in classes.
-               */
-              val symSetter =
-                if sym.setter.exists then
-                  sym.setter
-                else
-                  val setterName = sym.asTerm.name.setterName
-                  sym.owner.info.decls.find(d => d.is(Accessor) && d.name == setterName)
+            if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
+              val symSetter = sym.setter
               val setter =
                 if (symSetter.exists) symSetter
                 else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))

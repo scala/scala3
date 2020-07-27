@@ -148,6 +148,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           val setter = makeTraitSetter(decl.asTerm)
           decls1.enter(setter)
           modified = true
+        else if decl.isAllOf(PrivateAccessor, butNot = DeferredOrLazy) then
+          decls1.unlink(decl)
+          decls1.enterUnder(decl.expandedName, decl)
+          modified = true
       if modified then
         sym.copySymDenotation(
           info = classInfo.derivedClassInfo(decls = decls1))

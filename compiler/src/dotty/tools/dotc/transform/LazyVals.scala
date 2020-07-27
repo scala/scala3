@@ -85,6 +85,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
           // For private trait members this does not work, since `ensureNotPrivate` in phase Mixins
           // does change the name but does not update the owner's scope, so `allOverriddenSymbols` does
           // not work in that case. However, we can check whether the name is an ExpandedName instead.
+          // NOTE 27-7-2020: The problem with `ensureNotPrivate` is now fixed, so we
+          // might try the originally proposed condition.
           transformSyntheticModule(tree)
         else if (sym.isThreadUnsafe || ctx.settings.scalajs.value)
           if (sym.is(Module) && !ctx.settings.scalajs.value) {

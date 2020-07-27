@@ -277,6 +277,10 @@ object Scopes {
       sym
     }
 
+    /** Enter symbol under given name in this scope */
+    final def enterUnder(name: Name, sym: Symbol)(using Context): Unit =
+      newScopeEntry(name, sym)
+
     /** enter a symbol, asserting that no symbol with same name exists in scope */
     final def enterUnique(sym: Symbol)(using Context): Unit = {
       assert(lookup(sym.name) == NoSymbol, (sym.showLocated, lookup(sym.name).showLocated))
