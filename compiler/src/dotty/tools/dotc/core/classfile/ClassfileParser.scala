@@ -280,14 +280,12 @@ class ClassfileParser(
           addConstructorTypeParams(denot)
         }
 
-        denot.info = pool.getType(in.nextChar)
+        val isVarargs = denot.is(Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0
+        denot.info = pool.getType(in.nextChar, isVarargs)
         if (isEnum) denot.info = ConstantType(Constant(sym))
         if (isConstructor) normalizeConstructorParams()
-        denot.info = translateTempPoly(parseAttributes(sym, denot.info))
+        denot.info = translateTempPoly(parseAttributes(sym, denot.info, isVarargs))
         if (isConstructor) normalizeConstructorInfo()
-
-        if (denot.is(Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
-          denot.info = arrayToRepeated(denot.info)
 
         if (ctx.explicitNulls) denot.info = JavaNullInterop.nullifyMember(denot.symbol, denot.info, isEnum)
 
@@ -324,7 +322,7 @@ class ClassfileParser(
       case BOOL_TAG   => defn.BooleanType
     }
 
-  private def sigToType(sig: SimpleName, owner: Symbol = null)(using Context): Type = {
+  private def sigToType(sig: SimpleName, owner: Symbol = null, isVarargs: Boolean = false)(using Context): Type = {
     var index = 0
     val end = sig.length
     def accept(ch: Char): Unit = {
@@ -395,13 +393,41 @@ class ClassfileParser(
           val elemtp = sig2type(tparams, skiptvs)
           defn.ArrayOf(elemtp.translateJavaArrayElementType)
         case '(' =>
-          // we need a method symbol. given in line 486 by calling getType(methodSym, ..)
+          def isMethodEnd(i: Int) = sig(i) == ')'
+          def isArray(i: Int) = sig(i) == '['
+
+          /** Is this a repeated parameter type?
+           *  This is true if we're in a vararg method and this is the last parameter.
+           */
+          def isRepeatedParam(i: Int): Boolean =
+            if !isVarargs then return false
+            var cur = i
+            // Repeated parameters are represented as arrays
+            if !isArray(cur) then return false
+            // Handle nested arrays: int[]...
+            while isArray(cur) do
+              cur += 1
+            // Simple check to see if we're the last parameter: there should be no
+            // array in the signature until the method end.
+            while !isMethodEnd(cur) do
+              if isArray(cur) then return false
+              cur += 1
+            true
+          end isRepeatedParam
+
           val paramtypes = new ListBuffer[Type]()
           var paramnames = new ListBuffer[TermName]()
-          while (sig(index) != ')') {
+          while !isMethodEnd(index) do
             paramnames += nme.syntheticParamName(paramtypes.length)
-            paramtypes += objToAny(sig2type(tparams, skiptvs))
-          }
+            paramtypes += {
+              if isRepeatedParam(index) then
+                index += 1
+                val elemType = sig2type(tparams, skiptvs)
+                defn.RepeatedParamType.appliedTo(elemType.translateJavaArrayElementType)
+              else
+                objToAny(sig2type(tparams, skiptvs))
+            }
+
           index += 1
           val restype = sig2type(tparams, skiptvs)
           JavaMethodType(paramnames.toList, paramtypes.toList, restype)
@@ -574,7 +600,7 @@ class ClassfileParser(
       None // ignore malformed annotations
   }
 
-  def parseAttributes(sym: Symbol, symtype: Type)(using Context): Type = {
+  def parseAttributes(sym: Symbol, symtype: Type, isVarargs: Boolean = false)(using Context): Type = {
     var newType = symtype
 
     def parseAttribute(): Unit = {
@@ -584,7 +610,7 @@ class ClassfileParser(
       attrName match {
         case tpnme.SignatureATTR =>
           val sig = pool.getExternalName(in.nextChar)
-          newType = sigToType(sig, sym)
+          newType = sigToType(sig, sym, isVarargs)
           if (ctx.debug && ctx.verbose)
             println("" + sym + "; signature = " + sig + " type = " + newType)
         case tpnme.SyntheticATTR =>
@@ -1103,8 +1129,8 @@ class ClassfileParser(
       c
     }
 
-    def getType(index: Int)(using Context): Type =
-      sigToType(getExternalName(index))
+    def getType(index: Int, isVarargs: Boolean = false)(using Context): Type =
+      sigToType(getExternalName(index), isVarargs = isVarargs)
 
     def getSuperClass(index: Int)(using Context): Symbol = {
       assert(index != 0, "attempt to parse java.lang.Object from classfile")
