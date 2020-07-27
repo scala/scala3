@@ -43,8 +43,8 @@ import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
  */
 object JSEncoding {
 
-  private val ScalaNothingClassName = ClassName("scala.Nothing")
-  private val ScalaNullClassName = ClassName("scala.Null")
+  private val ScalaRuntimeNothingClassName = ClassName("scala.runtime.Nothing$")
+  private val ScalaRuntimeNullClassName = ClassName("scala.runtime.Null$")
 
   // Fresh local name generator ----------------------------------------------
 
@@ -208,9 +208,9 @@ object JSEncoding {
   /** Computes the type ref for a type, to be used in a method signature. */
   private def paramOrResultTypeRef(tpe: Type)(using Context): jstpe.TypeRef = {
     toTypeRef(tpe) match {
-      case jstpe.ClassRef(ScalaNullClassName)    => jstpe.NullRef
-      case jstpe.ClassRef(ScalaNothingClassName) => jstpe.NothingRef
-      case otherTypeRef                          => otherTypeRef
+      case jstpe.ClassRef(ScalaRuntimeNullClassName)    => jstpe.NullRef
+      case jstpe.ClassRef(ScalaRuntimeNothingClassName) => jstpe.NothingRef
+      case otherTypeRef                                 => otherTypeRef
     }
   }
 
@@ -243,14 +243,20 @@ object JSEncoding {
       if (sym.isAllOf(ModuleClass | JavaDefined)) sym.linkedClass
       else sym
 
-    if (sym1 == defn.BoxedUnitClass) {
-      /* Rewire scala.runtime.BoxedUnit to java.lang.Void, as the IR expects.
-       * BoxedUnit$ is a JVM artifact.
-       */
+    /* Some rewirings:
+     * - scala.runtime.BoxedUnit to java.lang.Void, as the IR expects.
+     *   BoxedUnit$ is a JVM artifact.
+     * - scala.Nothing to scala.runtime.Nothing$.
+     * - scala.Null to scala.runtime.Null$.
+     */
+    if (sym1 == defn.BoxedUnitClass)
       ir.Names.BoxedUnitClass
-    } else {
+    else if (sym1 == defn.NothingClass)
+      ScalaRuntimeNothingClassName
+    else if (sym1 == defn.NullClass)
+      ScalaRuntimeNullClassName
+    else
       ClassName(sym1.javaClassName)
-    }
   }
 
   def toIRType(tp: Type)(using Context): jstpe.Type = {
