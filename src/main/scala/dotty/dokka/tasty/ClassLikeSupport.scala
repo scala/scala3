@@ -10,9 +10,8 @@ import dotty.dokka._
 trait ClassLikeSupport: 
   self: TastyParser =>
   import reflect._
-  import self.SymbolOps.{getVisibility, getModifier}
+  import self.SymbolOps.{getVisibility, getModifier, getExtraModifiers}
   def parseClass(classDef: reflect.ClassDef)(using ctx: Context): DClasslike =
-    println()
     val parents = for
       parentTree <- classDef.parents // We assume here that order is correct
       parentSymbol = if (parentTree.symbol.isClassConstructor) parentTree.symbol.owner else parentTree.symbol 
@@ -41,7 +40,9 @@ trait ClassLikeSupport:
         /*expectPresentInSet =*/ null, // unused
         /*modifier =*/ sourceSet.asMap(classDef.symbol.getModifier()),
         inspector.sourceSet.toSet,
-        PropertyContainer.Companion.empty().plus(ClasslikeExtension(parents, Some(parseMethod(classDef.constructor.symbol))))
+        PropertyContainer.Companion.empty()
+          .plus(ClasslikeExtension(parents, Some(parseMethod(classDef.constructor.symbol))))
+          .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
       )
 
   def parseMethod(methodSymbol: Symbol): DFunction =
@@ -62,7 +63,9 @@ trait ClassLikeSupport:
       /*receiver =*/ null, // Not used
       /*modifier =*/ sourceSet.asMap(methodSymbol.getModifier()),
       sourceSet.toSet(),
-      PropertyContainer.Companion.empty() plus MethodExtension(paramLists.map(_.size))
+      PropertyContainer.Companion.empty() 
+        plus MethodExtension(paramLists.map(_.size))
+        plus AdditionalModifiers(sourceSet.asMap(methodSymbol.getExtraModifiers().asJava))
     )
 
   def parseArgument(argument: ValDef): DParameter = 

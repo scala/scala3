@@ -2,6 +2,7 @@ package dotty.dokka
 
 import org.jetbrains.dokka.base.signatures._
 import org.jetbrains.dokka.model._
+import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.base.signatures.KotlinSignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
@@ -33,6 +34,14 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
 
     val utils: JvmSignatureUtils = KotlinSignatureUtils.INSTANCE
 
+    private def[T <: Documentable] (doc: WithExtraProperties[T]).extraModifiersPrefix =
+        val key = AdditionalModifiers(Map().asJava).getKey
+        doc.getExtra.getMap().asScala.get(key).map(_.asInstanceOf[AdditionalModifiers])
+            .map(_.getContent)
+            .map(content => content.defaultValue.asScala.map(_.getName))
+            .map(modifiers => modifiers.toSeq.toSignatureString())
+            .getOrElse("")
+
     private def classSignature(clazz: DClass): ContentNode = 
         content(clazz){ builder =>
             val ext = clazz.get(ClasslikeExtension)
@@ -40,6 +49,7 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
             // builder.addText("TODO modifiers")
             builder.addText(
                 Seq(
+                    clazz.extraModifiersPrefix.trim,
                     clazz.getVisibility.defaultValue.getName, 
                     clazz.getModifier.defaultValue.getName,
                     "class"
@@ -65,6 +75,7 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
             // builder.addText("TODO modifiers")
             builder.addText(
                 Seq(
+                    method.extraModifiersPrefix.trim,
                     method.getVisibility.defaultValue.getName, 
                     method.getModifier.defaultValue.getName,
                     "def"

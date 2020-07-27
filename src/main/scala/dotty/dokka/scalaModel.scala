@@ -21,6 +21,13 @@ object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]
 class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
   override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] = 
     MergeStrategy.Remove.INSTANCE.asInstanceOf[MergeStrategy[T]]
+
+enum ScalaOnlyModifiers(val name: String) extends ExtraModifiers(name, null):
+  case Implicit extends ScalaOnlyModifiers("implicit")
+  case Inline extends ScalaOnlyModifiers("inline")
+  case Lazy extends ScalaOnlyModifiers("lazy")
+  case Override extends ScalaOnlyModifiers("override")
+  case Erased extends ScalaOnlyModifiers("erased")
     
 enum ScalaVisibility(val name: String) extends org.jetbrains.dokka.model.Visibility(name, null):
   case NoModifier extends ScalaVisibility("")

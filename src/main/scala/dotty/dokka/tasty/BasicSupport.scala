@@ -29,6 +29,15 @@ trait BasicSupport:
       else if (sym.flags.is(Flags.Final)) ScalaModifier.Final
       else ScalaModifier.Empty
 
+    def getExtraModifiers(): Set[ScalaOnlyModifiers] = 
+      Set(
+        Option.when(sym.flags.is(Flags.Erased))(ScalaOnlyModifiers.Erased),
+        Option.when(sym.flags.is(Flags.Implicit))(ScalaOnlyModifiers.Implicit),
+        Option.when(sym.flags.is(Flags.Inline))(ScalaOnlyModifiers.Inline),
+        Option.when(sym.flags.is(Flags.Lazy))(ScalaOnlyModifiers.Lazy),
+        Option.when(sym.flags.is(Flags.Override))(ScalaOnlyModifiers.Override),
+      ).flatten
+
     // TODO make sure that DRIs are unique plus probably reuse semantic db code?  
     def dri =
       if sym == Symbol.noSymbol then emptyDRI else

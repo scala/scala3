@@ -59,9 +59,15 @@ class SignatureTests extends DottyAbstractCoreTest():
     /* There's assumption that symbols are named using letters and digits only (no Scala operators :/) to make it easier to find symbol name */
         val candidateNames = signatureList.map(extractSymbolName(_))
         val symbolName = extractSymbolName(s)
-        val index = candidateNames.indexOf(symbolName)
+        val indexes = candidateNames.zipWithIndex
+            .map((value: String, index: Int) => if(value == symbolName) Some(index) else None)
+            .flatten
         try {
-            assertTrue(signatureList(index) == s)
+            if(indexes.map(i => signatureList(i) == s).max == false){
+                assertTrue(false)
+            } else {
+                assertTrue(true)
+            }
         } catch {
             case e: IndexOutOfBoundsException => {
                 val t = AssertionError(s"Signature: $s not matched. No candidate found")
@@ -69,7 +75,7 @@ class SignatureTests extends DottyAbstractCoreTest():
                 collector.addError(t)
             }
             case e: AssertionError => {
-                val t = AssertionError(s"Signature: $s not matched. Candidate was ${signatureList(index)}")
+                val t = AssertionError(s"Signature: $s not matched. Candidates were ${indexes.map(i => signatureList(i)).mkString(""," ","")}")
                 t.setStackTrace(Array())
                 collector.addError(t)
             }
@@ -116,6 +122,34 @@ class SignatureTests extends DottyAbstractCoreTest():
         val testedFile = "target/scala-0.25/classes/tests/signatureTest/classes"
         val signatureList = parseSource(Source.fromFile("src/main/scala/tests/classSignatureTestSource.scala"))
         
+        val func = (t: AbstractCoreTest$TestBuilder) => {
+            t.setPagesTransformationStage(
+                (root: RootPageNode) => {
+                    toScalaSeq(root.getChildren).flatMap(getAllContentPages(_)).map(p => 
+                        org.jetbrains.dokka.pages.ContentNodesKt.dfs(
+                            p.getContent, 
+                            q => q.getDci.getKind == ContentKind.Symbol
+                        )
+                    ).map(
+                        flattenToText(_)
+                    ).foreach(matchSignature(_,signatureList))
+
+                    kotlin.Unit.INSTANCE
+                }
+            )
+        }
+
+        runTest(
+            testedFile,
+            List(),
+            func
+        )
+
+    @Test
+    def modifiersSignatureTest(): Unit =
+        val testedFile = "target/scala-0.25/classes/tests/signatureTest/modifiers"
+        val signatureList = parseSource(Source.fromFile("src/main/scala/tests/modifiersSignatureTestSource.scala"))
+
         val func = (t: AbstractCoreTest$TestBuilder) => {
             t.setPagesTransformationStage(
                 (root: RootPageNode) => {
