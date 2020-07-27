@@ -93,7 +93,7 @@ object report:
    */
   def log(msg: => String, pos: SourcePosition = NoSourcePosition)(using Context): Unit =
     if (ctx.settings.Ylog.value.containsPhase(ctx.phase))
-      echo(s"[log $ctx.phase] $msg", pos)
+      echo(s"[log ${ctx.phase}] $msg", pos)
 
   def debuglog(msg: => String)(using Context): Unit =
     if (ctx.debug) log(msg)
