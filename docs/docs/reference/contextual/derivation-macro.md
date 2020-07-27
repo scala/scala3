@@ -95,7 +95,7 @@ have the given instances for our primitive types:
     case '[String *: $tpes] => '{ summon[Eq[String]] }  :: summonAll(tpes)
     case '[Int *: $tpes]    => '{ summon[Eq[Int]] }     :: summonAll(tpes)
     case '[$tpe *: $tpes]   => derived(using tpe, qctx) :: summonAll(tpes)
-    case '[Unit] => Nil
+    case '[EmptyTuple] => Nil
   }
 ```
 
@@ -173,7 +173,7 @@ object Eq {
     case '[String *: $tpes] => '{ summon[Eq[String]] }  :: summonAll(tpes)
     case '[Int *: $tpes]    => '{ summon[Eq[Int]] }     :: summonAll(tpes)
     case '[$tpe *: $tpes]   => derived(using tpe, qctx) :: summonAll(tpes)
-    case '[Unit] => Nil
+    case '[EmptyTuple] => Nil
   }
 
   given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {

@@ -200,7 +200,7 @@ implementation of `summonAll` is `inline` and uses Dotty's `summonInline` constr
 ```scala
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
-  case _: Unit => Nil
+  case _: EmptyTuple => Nil
   case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
 }
 ```
@@ -244,7 +244,7 @@ import scala.deriving._
 import scala.compiletime.{erasedValue, summonInline}
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
-  case _: Unit => Nil
+  case _: EmptyTuple => Nil
   case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
 }
 
