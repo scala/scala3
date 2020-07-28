@@ -13,7 +13,8 @@ import Symbols._
 import Flags.Module
 import reporting.ThrowingReporter
 import collection.mutable
-import scala.concurrent.ExecutionContext.global
+import scala.concurrent.{Future, Await, ExecutionContext}
+import scala.concurrent.duration.Duration
 
 object Pickler {
   val name: String = "pickler"
@@ -100,12 +101,31 @@ class Pickler extends Phase {
       treePkl.compactify()
       pickler.addrOfTree = treePkl.buf.addrOfTree
       pickler.addrOfSym = treePkl.addrOfSym
-      val completer = PickleCompleter()
-      if ctx.settings.YtestPickler.value then
-        completer.complete(pickler, cls, tree)
-      else
-        global.execute(() => completer.complete(pickler, cls, tree))
-      unit.pickled += (cls -> (() => completer.bytes))
+      val pickledF = Future {
+        if tree.span.exists then
+          new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
+
+        if !ctx.settings.YdropComments.value then
+          new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
+
+        val pickled = pickler.assembleParts()
+
+        def rawBytes = // not needed right now, but useful to print raw format.
+          pickled.iterator.grouped(10).toList.zipWithIndex.map {
+            case (row, i) => s"${i}0: ${row.mkString(" ")}"
+          }
+
+        // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
+        if pickling ne noPrinter then
+          pickling.synchronized {
+            println(i"**** pickled info of $cls")
+            println(new TastyPrinter(pickled).printContents())
+          }
+        pickled
+      }(using ExecutionContext.global)
+      def force(): Array[Byte] = Await.result(pickledF, Duration.Inf)
+      if ctx.settings.YtestPickler.value then force()
+      unit.pickled += (cls -> force)
     }
   }
 
