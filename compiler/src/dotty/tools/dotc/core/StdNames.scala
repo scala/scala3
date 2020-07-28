@@ -306,6 +306,7 @@ object StdNames {
     final val Nil: N                = "Nil"
     final val Predef: N             = "Predef"
     final val ScalaRunTime: N       = "ScalaRunTime"
+    final val BoxedUnit: N          = "BoxedUnit"
     final val Some: N               = "Some"
 
     val x_0 : N  = "x$0"

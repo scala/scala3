@@ -98,10 +98,11 @@ object Scala2Unpickler {
     val tempInfo = new TempClassInfo(denot.owner.thisType, cls, decls, ost)
     denot.info = tempInfo // first rough info to avoid CyclicReferences
     val parents1 = if (parents.isEmpty) defn.ObjectType :: Nil else parents.map(_.dealias)
-    // Add extra parents to the tuple classes from the standard library
+    // Adjust parents of the tuple classes and BoxedUnit from the standard library
+    // If from Scala 2, adjust for tuple classes; if not, it's from Java, and adjust for BoxedUnit
     val normalizedParents =
       if (fromScala2) defn.adjustForTuple(cls, tparams, parents1)
-      else parents1 // We are setting the info of a Java class, so it cannot be one of the tuple classes
+      else defn.adjustForBoxedUnit(cls, parents1)
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)
