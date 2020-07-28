@@ -51,7 +51,7 @@ val i3 = new Vehicle { // i3: Vehicle { val range: Int }
 i3.range
 ```
 
-Without the `extends reflect.Selectbale`, the last line would have errored:
+Without the `extends reflect.Selectable`, the last line would have errored:
 
 ```scala
 i3.range: // error: range is not a member of `Vehicle`
