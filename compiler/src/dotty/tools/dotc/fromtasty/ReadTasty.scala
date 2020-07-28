@@ -40,7 +40,7 @@ class ReadTasty extends Phase {
               if (cls.rootTree.isEmpty) None
               else {
                 val unit = CompilationUnit(cls, cls.rootTree, forceTrees = true)
-                unit.pickled += (cls -> unpickler.unpickler.bytes)
+                unit.pickled += (cls -> (() => unpickler.unpickler.bytes))
                 Some(unit)
               }
             case tree: Tree[?] =>
