@@ -384,7 +384,31 @@ class JSCodeGen()(using genCtx: Context) {
 
   /** Gen the IR ClassDef for a Scala.js-defined JS class. */
   private def genScalaJSDefinedJSClass(td: TypeDef): js.ClassDef = {
-    ???
+    val sym = td.symbol.asClass
+    implicit val pos: SourcePosition = sym.sourcePos
+
+    assert(!sym.is(Trait),
+        "genScalaJSDefinedJSClass() must be called only for normal classes: "+sym)
+    assert(sym.superClass != NoSymbol, sym)
+
+    val classIdent = encodeClassNameIdent(sym)
+    val originalName = originalNameOfClass(sym)
+
+    report.error("cannot emit non-native JS classes yet", td.sourcePos)
+
+    // Dummy result
+    js.ClassDef(
+        classIdent,
+        originalName,
+        ClassKind.JSClass,
+        None,
+        Some(encodeClassNameIdent(sym.superClass)),
+        genClassInterfaces(sym),
+        None,
+        None,
+        Nil,
+        Nil)(
+        OptimizerHints.empty)
   }
 
   /** Gen the IR ClassDef for a raw JS class or trait.
