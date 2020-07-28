@@ -3222,21 +3222,23 @@ class Typer extends Namer
         if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
         else inlined
       }
+      else if tree.symbol.name == nme.f && tree.symbol == defn.StringContext_f then
+        // To avoid forcing StringContext_f when compiling StingContex
+        // we test the name before accession symbol StringContext_f.
+
+        // As scala.StringContext.f is defined in the standard library which
+        // we currently do not bootstrap we cannot implement the macro in the library.
+        // To overcome the current limitation we intercept the call and rewrite it into
+        // a call to dotty.internal.StringContext.f which we can implement using the new macros.
+        // As the macro is implemented in the bootstrapped library, it can only be used from the bootstrapped compiler.
+        val Apply(TypeApply(Select(sc, _), _), args) = tree
+        val newCall = ref(defn.InternalStringContextMacroModule_f).appliedTo(sc).appliedToArgs(args).withSpan(tree.span)
+        readaptSimplified(Inliner.inlineCall(newCall))
       else if (tree.symbol.isScala2Macro &&
                // raw and s are eliminated by the StringInterpolatorOpt phase
               tree.symbol != defn.StringContext_raw &&
               tree.symbol != defn.StringContext_s)
-        if (tree.symbol eq defn.StringContext_f) {
-          // As scala.StringContext.f is defined in the standard library which
-          // we currently do not bootstrap we cannot implement the macro in the library.
-          // To overcome the current limitation we intercept the call and rewrite it into
-          // a call to dotty.internal.StringContext.f which we can implement using the new macros.
-          // As the macro is implemented in the bootstrapped library, it can only be used from the bootstrapped compiler.
-          val Apply(TypeApply(Select(sc, _), _), args) = tree
-          val newCall = ref(defn.InternalStringContextMacroModule_f).appliedTo(sc).appliedToArgs(args).withSpan(tree.span)
-          readaptSimplified(Inliner.inlineCall(newCall))
-        }
-        else if (ctx.settings.XignoreScala2Macros.value) {
+        if (ctx.settings.XignoreScala2Macros.value) {
           report.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.sourcePos.startPos)
           Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
             .withType(tree.tpe)
