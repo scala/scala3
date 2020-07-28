@@ -1,4 +1,4 @@
-class A_1 {
+class A {
   public static void foo(int... args) {
   }
 

@@ -1684,10 +1684,12 @@ object desugar {
         Apply(Select(Apply(scalaDot(nme.StringContext), strs), id).withSpan(tree.span), elems)
       case PostfixOp(t, op) =>
         if ((ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR) {
-          val seqType = if (ctx.compilationUnit.isJava) defn.ArrayType else defn.SeqType
-          Annotated(
-            AppliedTypeTree(ref(seqType), t),
-            New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
+          if ctx.compilationUnit.isJava then
+            AppliedTypeTree(ref(defn.RepeatedParamType), t)
+          else
+            Annotated(
+              AppliedTypeTree(ref(defn.SeqType), t),
+              New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
         }
         else {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)

@@ -1723,7 +1723,7 @@ class Typer extends Namer
         checkedArgs = checkedArgs.mapconserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
       else if (ctx.compilationUnit.isJava)
-        if (tpt1.symbol eq defn.ArrayClass) || (tpt1.symbol eq defn.RepeatedParamClass) then
+        if (tpt1.symbol eq defn.ArrayClass) then
           checkedArgs match {
             case List(arg) =>
               val elemtp = arg.tpe.translateJavaArrayElementType

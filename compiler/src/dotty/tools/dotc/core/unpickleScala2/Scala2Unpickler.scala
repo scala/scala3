@@ -59,21 +59,6 @@ object Scala2Unpickler {
     denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
 
-  /** Convert array parameters denoting a repeated parameter of a Java method
-   *  to `RepeatedParamClass` types.
-   */
-  def arrayToRepeated(tp: Type)(using Context): Type = tp match {
-    case tp: MethodType =>
-      val lastArg = tp.paramInfos.last
-      assert(lastArg isRef defn.ArrayClass)
-      tp.derivedLambdaType(
-        tp.paramNames,
-        tp.paramInfos.init :+ lastArg.translateParameterized(defn.ArrayClass, defn.RepeatedParamClass),
-        tp.resultType)
-    case tp: PolyType =>
-      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, arrayToRepeated(tp.resultType))
-  }
-
   def ensureConstructor(cls: ClassSymbol, scope: Scope)(using Context): Unit = {
     if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
       val constr = newDefaultConstructor(cls)
