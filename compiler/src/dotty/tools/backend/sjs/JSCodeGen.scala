@@ -791,9 +791,9 @@ class JSCodeGen()(using genCtx: Context) {
             toIRType(param.info), mutable = false, rest = false)
       }
 
-      /*if (primitives.isPrimitive(sym)) {
+      if (primitives.isPrimitive(sym)) {
         None
-      } else*/ if (sym.is(Deferred)) {
+      } else if (sym.is(Deferred)) {
         Some(js.MethodDef(js.MemberFlags.empty, methodName, originalName,
             jsParams, toIRType(patchedResultType(sym)), None)(
             OptimizerHints.empty, None))
@@ -2815,7 +2815,179 @@ class JSCodeGen()(using genCtx: Context) {
             js.ForIn(objVarDef.ref, keyVarIdent, NoOriginalName, {
               js.JSFunctionApply(fVarDef.ref, List(keyVarRef))
             }))
+
+      case REFLECT_SELECTABLE_SELECTDYN =>
+        // scala.reflect.Selectable.selectDynamic
+        genReflectiveCall(tree, isSelectDynamic = true)
+      case REFLECT_SELECTABLE_APPLYDYN =>
+        // scala.reflect.Selectable.applyDynamic
+        genReflectiveCall(tree, isSelectDynamic = false)
     }
+  }
+
+  /** Gen the SJSIR for a reflective call.
+   *
+   *  Reflective calls are calls to a structural type field or method that
+   *  involve a reflective Selectable. They look like the following in source
+   *  code:
+   *  {{{
+   *  import scala.reflect.Selectable.reflectiveSelectable
+   *
+   *  type Structural = {
+   *    val foo: Int
+   *    def bar(x: Int, y: String): String
+   *  }
+   *
+   *  val structural: Structural = new {
+   *    val foo: Int = 5
+   *    def bar(x: Int, y: String): String = x.toString + y
+   *  }
+   *
+   *  structural.foo
+   *  structural.bar(6, "hello")
+   *  }}}
+   *
+   *  After expansion by the Scala 3 rules for structural member selections and
+   *  calls, they look like
+   *
+   *  {{{
+   *  reflectiveSelectable(structural).selectDynamic("foo")
+   *  reflectiveSelectable(structural).applyDynamic("bar",
+   *    ClassTag(classOf[Int]), ClassTag(classOf[String])
+   *  )(
+   *    6, "hello"
+   *  )
+   *  }}}
+   *
+   *  and eventually reach the back-end as
+   *
+   *  {{{
+   *  reflectiveSelectable(structural).selectDynamic("foo") // same as above
+   *  reflectiveSelectable(structural).applyDynamic("bar",
+   *    wrapRefArray([ ClassTag(classOf[Int]), ClassTag(classOf[String]) : ClassTag ]
+   *  )(
+   *    genericWrapArray([ Int.box(6), "hello" : Object ])
+   *  )
+   *  }}}
+   *
+   *  If we use the deprecated `import scala.language.reflectiveCalls`, the
+   *  wrapper for the receiver `structural` are the following instead:
+   *
+   *  {{{
+   *  reflectiveSelectableFromLangReflectiveCalls(structural)(
+   *    using scala.languageFeature.reflectiveCalls)
+   *  }}}
+   *
+   *  (in which case we don't care about the contextual argument).
+   *
+   *  In SJSIR, they must be encoded as follows:
+   *
+   *  {{{
+   *  structural.foo;R()
+   *  structural.bar;I;Ljava.lang.String;R(
+   *    Int.box(6).asInstanceOf[int],
+   *    "hello".asInstanceOf[java.lang.String]
+   *  )
+   *  }}}
+   *
+   *  This means that we must deconstruct the elaborated calls to recover:
+   *
+   *  - the original receiver `structural`
+   *  - the method name as a compile-time string `foo` or `bar`
+   *  - the `tp: Type`s that have been wrapped in `ClassTag(classOf[tp])`, as a
+   *    compile-time List[Type], from which we'll derive `jstpe.Type`s for the
+   *    `asInstanceOf`s and `jstpe.TypeRef`s for the `MethodName.reflectiveProxy`
+   *  - the actual arguments as a compile-time `List[Tree]`
+   *
+   *  Virtually all of the code in `genReflectiveCall` deals with recovering
+   *  those elements. Constructing the IR Tree is the easy part after that.
+   */
+  private def genReflectiveCall(tree: Apply, isSelectDynamic: Boolean): js.Tree = {
+    implicit val pos = tree.span
+    val Apply(fun @ Select(receiver0, _), args) = tree
+
+    /* Extract the real receiver, which is the first argument to one of the
+     * implicit conversions scala.reflect.Selectable.reflectiveSelectable or
+     * scala.Selectable.reflectiveSelectableFromLangReflectiveCalls.
+     */
+    val receiver = receiver0 match {
+      case Apply(fun1, receiver :: _)
+          if fun1.symbol == jsdefn.ReflectSelectable_reflectiveSelectable ||
+              fun1.symbol == jsdefn.Selectable_reflectiveSelectableFromLangReflectiveCalls =>
+        genExpr(receiver)
+
+      case _ =>
+        report.error(
+            "The receiver of Selectable.selectDynamic or Selectable.applyDynamic " +
+            "must be a call to the (implicit) method scala.reflect.Selectable.reflectiveSelectable. " +
+            "Other uses are not supported in Scala.js.",
+            tree.sourcePos)
+        js.Undefined()
+    }
+
+    // Extract the method name as a String
+    val methodNameStr = args.head match {
+      case Literal(Constants.Constant(name: String)) =>
+        name
+      case _ =>
+        report.error(
+            "The method name given to Selectable.selectDynamic or Selectable.applyDynamic " +
+            "must be a literal string. " +
+            "Other uses are not supported in Scala.js.",
+            args.head.sourcePos)
+        "erroneous"
+    }
+
+    val (formalParamTypeRefs, actualArgs) = if (isSelectDynamic) {
+      (Nil, Nil)
+    } else {
+      // Extract the param type refs and actual args from the 2nd and 3rd argument to applyDynamic
+      args.tail match {
+        case WrapArray(classTagsArray: JavaSeqLiteral) :: WrapArray(actualArgsAnyArray: JavaSeqLiteral) :: Nil =>
+          // Extract jstpe.Type's and jstpe.TypeRef's from the ClassTag.apply(_) trees
+          val formalParamTypesAndTypeRefs = classTagsArray.elems.map {
+            // ClassTag.apply(classOf[tp]) -> tp
+            case Apply(fun, Literal(const) :: Nil)
+                if fun.symbol == defn.ClassTagModule_apply && const.tag == Constants.ClazzTag =>
+              toIRTypeAndTypeRef(const.typeValue)
+            // ClassTag.SpecialType -> erasure(SepecialType.typeRef) (e.g., ClassTag.Any -> Object)
+            case Apply(Select(classTagModule, name), Nil)
+                if classTagModule.symbol == defn.ClassTagModule &&
+                    defn.SpecialClassTagClasses.exists(_.name == name.toTypeName) =>
+              toIRTypeAndTypeRef(TypeErasure.erasure(
+                  defn.SpecialClassTagClasses.find(_.name == name.toTypeName).get.typeRef))
+            // Anything else is invalid
+            case classTag =>
+              report.error(
+                  "The ClassTags passed to Selectable.applyDynamic must be " +
+                  "literal ClassTag(classOf[T]) expressions " +
+                  "(typically compiler-generated). " +
+                  "Other uses are not supported in Scala.js.",
+                  classTag.sourcePos)
+              (jstpe.AnyType, jstpe.ClassRef(jsNames.ObjectClass))
+          }
+
+          // Gen the actual args, downcasting them to the formal param types
+          val actualArgs = actualArgsAnyArray.elems.zip(formalParamTypesAndTypeRefs).map {
+            (actualArgAny, formalParamTypeAndTypeRef) =>
+              val genActualArgAny = genExpr(actualArgAny)
+              js.AsInstanceOf(genActualArgAny, formalParamTypeAndTypeRef._1)(genActualArgAny.pos)
+          }
+
+          (formalParamTypesAndTypeRefs.map(_._2), actualArgs)
+
+        case _ =>
+          report.error(
+              "Passing the varargs of Selectable.applyDynamic with `: _*` " +
+              "is not supported in Scala.js.",
+              tree.sourcePos)
+          (Nil, Nil)
+      }
+    }
+
+    val methodName = MethodName.reflectiveProxy(methodNameStr, formalParamTypeRefs)
+
+    js.Apply(js.ApplyFlags.empty, receiver, js.MethodIdent(methodName), actualArgs)(jstpe.AnyType)
   }
 
   /** Gen actual actual arguments to Scala method call.
@@ -2992,8 +3164,9 @@ class JSCodeGen()(using genCtx: Context) {
     lazy val isWrapArray: Set[Symbol] = {
       val names0 = defn.ScalaValueClasses().map(sym => nme.wrapXArray(sym.name))
       val names1 = names0 ++ Set(nme.wrapRefArray, nme.genericWrapArray)
-      val names2 = names1.map(defn.ScalaPredefModule.requiredMethod(_))
-      names2.toSet
+      val symsInPredef = names1.map(defn.ScalaPredefModule.requiredMethod(_))
+      val symsInScalaRunTime = names1.map(defn.ScalaRuntimeModule.requiredMethod(_))
+      (symsInPredef ++ symsInScalaRunTime).toSet
     }
 
     def unapply(tree: Apply): Option[Tree] = tree match {

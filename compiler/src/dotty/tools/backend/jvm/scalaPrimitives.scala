@@ -397,6 +397,9 @@ class DottyPrimitives(ictx: Context) {
     primitives.toMap
   }
 
+  def isPrimitive(sym: Symbol): Boolean =
+    primitives.contains(sym)
+
   def isPrimitive(fun: Tree): Boolean =
     given Context = ictx
     primitives.contains(fun.symbol)
@@ -407,4 +410,3 @@ class DottyPrimitives(ictx: Context) {
             case _ => true
         })
 }
-

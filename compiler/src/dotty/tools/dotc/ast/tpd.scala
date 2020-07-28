@@ -1155,20 +1155,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** A tree that corresponds to `Predef.classOf[$tp]` in source */
   def clsOf(tp: Type)(using Context): Tree =
-    if ctx.erasedTypes then
-      def TYPE(module: TermSymbol) = ref(module).select(nme.TYPE_)
-      defn.scalaClassName(tp) match
-        case tpnme.Boolean => TYPE(defn.BoxedBooleanModule)
-        case tpnme.Byte => TYPE(defn.BoxedByteModule)
-        case tpnme.Short => TYPE(defn.BoxedShortModule)
-        case tpnme.Char => TYPE(defn.BoxedCharModule)
-        case tpnme.Int => TYPE(defn.BoxedIntModule)
-        case tpnme.Long => TYPE(defn.BoxedLongModule)
-        case tpnme.Float => TYPE(defn.BoxedFloatModule)
-        case tpnme.Double => TYPE(defn.BoxedDoubleModule)
-        case tpnme.Unit => TYPE(defn.BoxedUnitModule)
-        case _ =>
-          Literal(Constant(TypeErasure.erasure(tp)))
+    if ctx.erasedTypes && !tp.isRef(defn.UnitClass) then
+      Literal(Constant(TypeErasure.erasure(tp)))
     else
       Literal(Constant(tp))
 

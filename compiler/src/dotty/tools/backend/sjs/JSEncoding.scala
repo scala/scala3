@@ -259,8 +259,15 @@ object JSEncoding {
       ClassName(sym1.javaClassName)
   }
 
-  def toIRType(tp: Type)(using Context): jstpe.Type = {
+  def toIRTypeAndTypeRef(tp: Type)(using Context): (jstpe.Type, jstpe.TypeRef) = {
     val typeRefInternal = toTypeRefInternal(tp)
+    (toIRTypeInternal(typeRefInternal), typeRefInternal._1)
+  }
+
+  def toIRType(tp: Type)(using Context): jstpe.Type =
+    toIRTypeInternal(toTypeRefInternal(tp))
+
+  private def toIRTypeInternal(typeRefInternal: (jstpe.TypeRef, Symbol))(using Context): jstpe.Type = {
     typeRefInternal._1 match {
       case jstpe.PrimRef(irTpe) =>
         irTpe

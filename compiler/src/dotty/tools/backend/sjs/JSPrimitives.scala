@@ -40,7 +40,10 @@ object JSPrimitives {
 
   final val THROW = DEBUGGER + 1
 
-  final val LastJSPrimitiveCode = THROW
+  final val REFLECT_SELECTABLE_SELECTDYN = THROW + 1                       // scala.reflect.Selectable.selectDynamic
+  final val REFLECT_SELECTABLE_APPLYDYN = REFLECT_SELECTABLE_SELECTDYN + 1 // scala.reflect.Selectable.applyDynamic
+
+  final val LastJSPrimitiveCode = REFLECT_SELECTABLE_APPLYDYN
 
   def isJSPrimitive(code: Int): Boolean =
     code >= FirstJSPrimitiveCode && code <= LastJSPrimitiveCode
@@ -58,6 +61,9 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
 
   override def getPrimitive(app: Apply, tpe: Type)(using Context): Int =
     jsPrimitives.getOrElse(app.fun.symbol, super.getPrimitive(app, tpe))
+
+  override def isPrimitive(sym: Symbol): Boolean =
+    jsPrimitives.contains(sym) || super.isPrimitive(sym)
 
   override def isPrimitive(fun: Tree): Boolean =
     jsPrimitives.contains(fun.symbol(using ictx)) || super.isPrimitive(fun)
@@ -108,6 +114,9 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Special_debugger, DEBUGGER)
 
     addPrimitive(defn.throwMethod, THROW)
+
+    addPrimitive(jsdefn.ReflectSelectable_selectDynamic, REFLECT_SELECTABLE_SELECTDYN)
+    addPrimitive(jsdefn.ReflectSelectable_applyDynamic, REFLECT_SELECTABLE_APPLYDYN)
 
     primitives.toMap
   }
