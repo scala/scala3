@@ -1008,6 +1008,9 @@ object Build {
         )
       }.taskValue,
 
+      scalaJSLinkerConfig ~= { _.withSemantics(build.TestSuiteLinkerOptions.semantics _) },
+      scalaJSModuleInitializers in Test ++= build.TestSuiteLinkerOptions.moduleInitializers,
+
       managedSources in Compile ++= {
         val dir = fetchScalaJSSource.value / "test-suite/js/src/main/scala"
         val filter = (
@@ -1063,6 +1066,83 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7/org/scalajs/testsuite/javalib/io" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk7/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk7/org/scalajs/testsuite/javalib/util" ** "*.scala").get
+
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
+            -- "InteroperabilityTest.scala" // various compile errors
+            -- "OptimizerTest.scala" // compile errors: false + string and () + string
+            -- "ReflectionTest.scala" // tests fail
+            -- "RegressionJSTest.scala" // compile error with js.Dynamic.literal
+            -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
+            )).get
+
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** (("*.scala": FileFilter)
+            -- "FormatterJSTest.scala" // compile error with the f"" interpolator
+            -- "ObjectJSTest.scala" // non-native JS classes
+            -- "StringBufferJSTest.scala" // IR checking errors
+            -- "ThrowableJSTest.scala" // test fails ("java.lang.Error: stub")
+            )).get
+
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/jsinterop" ** (("*.scala": FileFilter)
+            -- "AsyncTest.scala" // needs PromiseMock.scala
+            -- "DynamicTest.scala" // compile error with js.Dynamic.literal
+            -- "ExportsTest.scala" // JS exports
+            -- "FunctionTest.scala" // IR checking errors
+            -- "IterableTest.scala" // non-native JS classes
+            -- "JSExportStaticTest.scala" // JS exports
+            -- "JSNameTest.scala" // compile error with js.Dynamic.literal
+            -- "JSNativeInPackage.scala" // IR checking errors
+            -- "JSOptionalTest.scala" // non-native JS classes
+            -- "JSSymbolTest.scala" // compile error with js.Dynamic.literal
+            -- "MiscInteropTest.scala" // compile error with js.Dynamic.literal
+            -- "ModulesWithGlobalFallbackTest.scala" // non-native JS classes
+            -- "NestedJSClassTest.scala" // non-native JS classes
+            -- "NonNativeJSTypeTest.scala" // non-native JS classes
+            -- "PromiseMock.scala" // non-native JS classes
+            -- "SpecialTest.scala" // compile error with js.Dynamic.literal
+            -- "SymbolTest.scala" // IR checking errors
+            -- "ThisFunctionTest.scala" // compile error with js.Dynamic.literal
+            -- "UndefOrTest.scala" // StackOverflow in the compiler
+            )).get
+
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter)
+            // Tests fail
+            -- "JUnitAbstractClassTest.scala"
+            -- "JUnitNamesTest.scala"
+            -- "JUnitSubClassTest.scala"
+            -- "MultiCompilationSecondUnitTest.scala"
+            )).get
+
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/library" ** (("*.scala": FileFilter)
+            -- "BigIntTest.scala" // StackOverflow in the compiler
+            -- "ObjectTest.scala" // compile errors
+            -- "StackTraceTest.scala" // would require `npm install source-map-support`
+            -- "UnionTypeTest.scala" // requires a Scala 2 macro + StackOverflow in the compiler
+            -- "WrappedDictionaryTest.scala" // IR checking errors
+            )).get
+
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
+
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/scalalib" ** (("*.scala": FileFilter)
+            -- "ScalaRunTimeJSTest.scala" // compile error with js.Dynamic.literal
+            )).get
+
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/typedarray" ** (("*.scala": FileFilter)
+            -- "TypedArrayTest.scala" // assertion error in ExpandSAMs
+            )).get
+
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
+
+          ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
+            -- "JSOptionalTest212.scala" // non-native JS classes
+            )).get
+
+          ++ (dir / "js/src/test/require-sam" ** (("*.scala": FileFilter)
+            -- "SAMJSTest.scala" // non-native JS classes
+            )).get
+
+          ++ (dir / "js/src/test/scala-new-collections" ** (("*.scala": FileFilter)
+            -- "WrappedDictionaryToTest.scala" // IR checking errors
+            )).get
         )
       }
     )
