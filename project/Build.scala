@@ -1055,7 +1055,7 @@ object Build {
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/junit" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
           ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niocharset" ** (("*.scala": FileFilter)  -- "BaseCharsetTest.scala" -- "Latin1Test.scala" -- "USASCIITest.scala" -- "UTF16Test.scala" -- "UTF8Test.scala")).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/scalalib" ** (("*.scala": FileFilter)  -- "ArrayBuilderTest.scala" -- "ClassTagTest.scala" -- "EnumerationTest.scala" -- "SymbolTest.scala")).get
+          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/scalalib" ** (("*.scala": FileFilter) -- "EnumerationTest.scala" -- "SymbolTest.scala")).get
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter) -- "DefaultMethodsTest.scala")).get
           ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
