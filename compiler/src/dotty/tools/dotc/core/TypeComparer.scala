@@ -275,7 +275,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case _ =>
               secondTry
         end compareNamed
-        compareNamed(tp1, tp2)
+        // See the documentation of `FromJavaObjectSymbol`
+        if !ctx.erasedTypes && tp2.isFromJavaObject then
+          recur(tp1, defn.AnyType)
+        else
+          compareNamed(tp1, tp2)
       case tp2: ProtoType =>
         isMatchedByProto(tp2, tp1)
       case tp2: BoundType =>
@@ -1769,8 +1773,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`
-   *  to override `tp2` ? This is the case if they're pairwise =:=, as a special
-   *  case, we allow `Any` in Java methods to match `Object`.
+   *  to override `tp2` ? This is the case if they're pairwise `=:=`.
    */
   def matchingMethodParams(tp1: MethodType, tp2: MethodType): Boolean = {
     def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
@@ -1778,26 +1781,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         formals2 match {
           case formal2 :: rest2 =>
             val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
-            // The next two definitions handle the special case mentioned above, where
-            // the Java argument has type 'Any', and the Scala argument has type 'Object' or
-            // 'Object|Null', depending on whether explicit nulls are enabled.
-            def formal1IsObject =
-              if (ctx.explicitNulls) formal1 match {
-                case OrNull(formal1b) => formal1b.isAnyRef
-                case _ => false
-              }
-              else formal1.isAnyRef
-            def formal2IsObject =
-              if (ctx.explicitNulls) formal2 match {
-                case OrNull(formal2b) => formal2b.isAnyRef
-                case _ => false
-              }
-              else formal2.isAnyRef
-            (isSameTypeWhenFrozen(formal1, formal2a)
-             || tp1.isJavaMethod && formal2IsObject && formal1.isAny
-             || tp2.isJavaMethod && formal1IsObject && formal2.isAny
-            )
-            && loop(rest1, rest2)
+            isSameTypeWhenFrozen(formal1, formal2a) && loop(rest1, rest2)
           case nil =>
             false
         }

@@ -1036,7 +1036,6 @@ object Build {
             -- "CollectionsOnCheckedListTest.scala"
             -- "CollectionsOnCheckedMapTest.scala"
             -- "CollectionsOnCheckedSetTest.scala"
-            -- "CollectionsOnCollectionsTest.scala"
             -- "CollectionsOnListsTest.scala"
             -- "CollectionsOnMapsTest.scala"
             -- "CollectionsOnSetFromMapTest.scala"

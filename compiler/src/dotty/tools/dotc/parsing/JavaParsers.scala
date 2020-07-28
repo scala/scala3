@@ -304,7 +304,7 @@ object JavaParsers {
         if (in.token == QMARK) {
           val offset = in.offset
           in.nextToken()
-          val hi = if (in.token == EXTENDS) { in.nextToken() ; typ() } else EmptyTree
+          val hi = if (in.token == EXTENDS) { in.nextToken() ; typ() } else javaLangObject()
           val lo = if (in.token == SUPER)   { in.nextToken() ; typ() } else EmptyTree
           atSpan(offset) {
             /*
@@ -434,7 +434,7 @@ object JavaParsers {
     def typeParam(flags: FlagSet): TypeDef =
       atSpan(in.offset) {
         val name = identForType()
-        val hi = if (in.token == EXTENDS) { in.nextToken() ; bound() } else EmptyTree
+        val hi = if (in.token == EXTENDS) { in.nextToken() ; bound() } else javaLangObject()
         TypeDef(name, TypeBoundsTree(EmptyTree, hi)).withMods(Modifiers(flags))
       }
 

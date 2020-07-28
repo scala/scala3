@@ -417,20 +417,25 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  coming from Java would need to be interpreted as an `Array[T & Object]`
    *  to be erased correctly.
    *
-   *  This is necessary because a fully generic Java array erases to an array of Object,
-   *  whereas a fully generic Scala array erases to Object to allow primitive arrays
-   *  as subtypes.
+   *  `Object` is the top-level type in Java, but when it appears in a Java
+   *  signature we replace it by a special `FromJavaObject` type for
+   *  convenience, this in turns requires us to special-case generic arrays as
+   *  described in case 3 in the documentation of `FromJavaObjectSymbol`. This
+   *  is necessary because a fully generic Java array erases to an array of
+   *  Object, whereas a fully generic Scala array erases to Object to allow
+   *  primitive arrays as subtypes.
    *
    *  Note: According to
    *  <http://cr.openjdk.java.net/~briangoetz/valhalla/sov/02-object-model.html>,
-   *  in the future the JVM will consider that:
+   *  it's possible that future JVMs will consider that:
    *
    *      int[] <: Integer[] <: Object[]
    *
    *  So hopefully our grand-children will not have to deal with this non-sense!
    */
   def translateJavaArrayElementType(using Context): Type =
-    if self.typeSymbol.isAbstractOrParamType && !self.derivesFrom(defn.ObjectClass) then
+    // A type parameter upper-bounded solely by `FromJavaObject` has `ObjectClass` as its classSymbol
+    if self.typeSymbol.isAbstractOrParamType && (self.classSymbol eq defn.ObjectClass) then
       AndType(self, defn.ObjectType)
     else
       self
