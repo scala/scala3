@@ -48,20 +48,6 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case _ => EmptyTree
   end synthesizedClassTag
 
-  /** Synthesize the tree for `scala.quoted.Type[T]` for an implicit `scala.quoted.Type[T]`.
-   *  `T` is deeply dealiased to avoid references to local type aliases.
-   */
-  val synthesizedTypeTag: SpecialHandler = (formal, span) =>
-    val qctx = ctx.typer.inferImplicitArg(defn.QuoteContextClass.typeRef, span)
-    qctx.tpe match
-      case tpe: Implicits.SearchFailureType => report.error(tpe.msg, ctx.source.atSpan(span))
-      case _ =>
-    val deepDealias = new TypeMap:
-      def apply(tp: Type): Type = mapOver(tp.dealias)
-    val t = deepDealias(formal.select(tpnme.spliceType))
-    ref(defn.QuotedTypeModule_apply).appliedToType(t).select(nme.apply).appliedTo(qctx)
-  end synthesizedTypeTag
-
   val synthesizedTupleFunction: SpecialHandler = (formal, span) =>
     formal match
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
@@ -391,7 +377,6 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   val specialHandlers = List(
     defn.ClassTagClass        -> synthesizedClassTag,
-    defn.QuotedTypeClass      -> synthesizedTypeTag,
     defn.EqlClass             -> synthesizedEql,
     defn.TupledFunctionClass  -> synthesizedTupleFunction,
     defn.ValueOfClass         -> synthesizedValueOf,

@@ -25,7 +25,7 @@ object Type {
 
   /** Return a quoted.Type with the given type */
   @compileTimeOnly("Reference to `scala.quoted.Type.apply` was not handled by ReifyQuotes")
-  def apply[T <: AnyKind]: QuoteContext ?=> Type[T] = ???
+  given apply[T <: AnyKind] as (QuoteContext ?=> Type[T]) = ???
 
   def UnitTag: QuoteContext ?=> Type[Unit] =
     qctx.tasty.defn.UnitType.seal.asInstanceOf[quoted.Type[Unit]]
