@@ -1170,7 +1170,10 @@ class Namer { typer: Typer =>
       denot.info = tempInfo
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
-        ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span))
+        defn.adjustForBoxedUnit(cls,
+          ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span)
+        )
+      )
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
 
       if (impl.derived.nonEmpty) {

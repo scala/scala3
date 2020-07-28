@@ -210,6 +210,8 @@ class Definitions {
     cls
   }
   @tu lazy val ScalaPackageObject: Symbol = requiredModule("scala.package")
+  @tu lazy val ScalaRuntimePackageVal: TermSymbol = requiredPackage("scala.runtime")
+  @tu lazy val ScalaRuntimePackageClass: ClassSymbol = ScalaRuntimePackageVal.moduleClass.asClass
   @tu lazy val JavaPackageVal: TermSymbol = requiredPackage(nme.java)
   @tu lazy val JavaPackageClass: ClassSymbol = JavaPackageVal.moduleClass.asClass
   @tu lazy val JavaLangPackageVal: TermSymbol = requiredPackage(jnme.JavaLang)
@@ -1098,6 +1100,9 @@ class Definitions {
   def isTupleClass(cls: Symbol): Boolean = isVarArityClass(cls, str.Tuple)
   def isProductClass(cls: Symbol): Boolean = isVarArityClass(cls, str.Product)
 
+  def isBoxedUnitClass(cls: Symbol): Boolean =
+    cls.isClass && (cls.owner eq ScalaRuntimePackageClass) && cls.name == tpnme.BoxedUnit
+
   def isScalaShadowingPackageClass(cls: Symbol): Boolean =
     cls.name == tpnme.scalaShadowing && cls.owner == RootClass
 
@@ -1313,6 +1318,11 @@ class Definitions {
     if (isTupleClass(cls)) parents :+ syntheticParent(tparams)
     else parents
   }
+
+  /** If it is BoxedUnit, remove `java.io.Serializable` from `parents`. */
+  def adjustForBoxedUnit(cls: ClassSymbol, parents: List[Type]): List[Type] =
+    if (isBoxedUnitClass(cls)) parents.filter(_.typeSymbol != JavaSerializableClass)
+    else parents
 
   private val HasProblematicGetClass: Set[Name] = Set(
     tpnme.AnyVal, tpnme.Byte, tpnme.Short, tpnme.Char, tpnme.Int, tpnme.Long, tpnme.Float, tpnme.Double,
