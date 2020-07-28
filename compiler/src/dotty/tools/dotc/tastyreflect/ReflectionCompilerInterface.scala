@@ -1935,6 +1935,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Definitions_Array_update: Symbol = defn.Array_update.asTerm
 
   def Definitions_RepeatedParamClass: Symbol = defn.RepeatedParamClass
+  def Definitions_RepeatedAnnot: Symbol = defn.RepeatedAnnot
 
   def Definitions_OptionClass: Symbol = defn.OptionClass
   def Definitions_NoneModule: Symbol = defn.NoneModule
