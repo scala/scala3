@@ -28,7 +28,9 @@ class SparseIntArray:
 
   def update(index: Int, value: Value): Unit =
     require(index >= 0)
-    while capacity <= index do grow()
+    while capacity <= index do
+      require(root.level < MaxLevels, "array index too large, maximum is 2^30 - 1")
+      grow()
     if !root.update(index, value) then siz += 1
 
   /** Remove element at `index` if it is present
@@ -76,6 +78,7 @@ object SparseIntArray:
 
   private inline val NodeSizeLog = 5
   private inline val NodeSize = 1 << NodeSizeLog
+  private inline val MaxLevels = 5  // max size is 2 ^ ((MaxLevels + 1) * NodeSizeLog) = 2 ^ 30
 
   /** The exposed representation. Should be used just for nodeCount and
    *  low-level toString.
