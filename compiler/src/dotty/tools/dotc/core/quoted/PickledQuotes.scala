@@ -168,8 +168,6 @@ object PickledQuotes {
     val treePkl = pickler.treePkl
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
-    pickler.addrOfTree = treePkl.buf.addrOfTree
-    pickler.addrOfSym = treePkl.addrOfSym
     if (tree.span.exists)
       new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 

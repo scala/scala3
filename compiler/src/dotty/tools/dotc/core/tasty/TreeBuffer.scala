@@ -21,7 +21,10 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var delta: Array[Int] = _
   private var numOffsets = 0
 
-  /** A map from tree unique ids to the address index at which a tree is pickled. */
+  /** A map from tree unique ids to the address index at which a tree is pickled.
+   *  Note that trees are looked up by reference equality,
+   *  so one can reliably use this function only directly after `pickler`.
+   */
   private val addrOfTree = SparseIntArray()
 
   def registerTreeAddr(tree: Tree): Addr =
