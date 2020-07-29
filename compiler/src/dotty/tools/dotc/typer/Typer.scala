@@ -2432,7 +2432,7 @@ class Typer extends Namer
             case tree: untpd.Bind => typedBind(tree, pt)
             case tree: untpd.ValDef =>
               if (tree.isEmpty) tpd.EmptyValDef
-              else typedValDef(tree, sym)(using ctx.localContext(tree, sym).setNewScope)
+              else typedValDef(tree, sym)(using ctx.localContext(tree, sym))
             case tree: untpd.DefDef =>
               val typer1 = localTyper(sym)
               typer1.typedDefDef(tree, sym)(using ctx.localContext(tree, sym).setTyper(typer1))
