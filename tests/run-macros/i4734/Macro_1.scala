@@ -2,7 +2,7 @@ import scala.annotation.tailrec
 import scala.quoted._
 
 object Macros {
-  inline def unrolledForeach(seq: IndexedSeq[Int], f: => Int => Unit, inline unrollSize: Int): Unit = // or f: Int => Unit
+  inline def unrolledForeach(seq: IndexedSeq[Int], inline f: Int => Unit, inline unrollSize: Int): Unit = // or f: Int => Unit
     ${ unrolledForeachImpl('seq, 'f, 'unrollSize) }
 
   def unrolledForeachImpl(seq: Expr[IndexedSeq[Int]], f: Expr[Int => Unit], unrollSizeExpr: Expr[Int]) (using QuoteContext): Expr[Unit] =
@@ -17,7 +17,7 @@ object Macros {
         for (j <- new UnrolledRange(0, unrollSize)) '{
           val index = i + ${Expr(j)}
           val element = ($seq)(index)
-          ${ Expr.betaReduce(f)('element) } // or `($f)(element)` if `f` should not be inlined
+          ${ Expr.betaReduce('{$f(element)}) } // or `($f)(element)` if `f` should not be inlined
         }
       }
       i += ${Expr(unrollSize)}

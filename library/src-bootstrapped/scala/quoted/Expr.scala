@@ -61,30 +61,15 @@ abstract class Expr[+T] private[scala] {
 
 object Expr {
 
-  /** Converts a tuple `(T1, ..., Tn)` to `(Expr[T1], ..., Expr[Tn])` */
-  type TupleOfExpr[Tup <: Tuple] = Tuple.Map[Tup, [X] =>> QuoteContext ?=> Expr[X]]
-
-  /** `Expr.betaReduce(f)(x1, ..., xn)` is functionally the same as `'{($f)($x1, ..., $xn)}`, however it optimizes this call
-   *   by returning the result of beta-reducing `f(x1, ..., xn)` if `f` is a known lambda expression.
-   *
-   *  `Expr.betaReduce` distributes applications of `Expr` over function arrows
-   *   ```scala
-   *   Expr.betaReduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
-   *   ```
+  /** `e.betaReduce` returns a option with a expression that is functionally equivalent to `e`,
+   *   however if `e` is of the form `((y1, ..., yn) => e2)(x1, ..., xn)`
+   *   then it optimizes this the top most call by returning the result of beta-reducing the application.
+   *   Otherwise returns `expr`.
    */
-  def betaReduce[F, Args <: Tuple, R, G](f: Expr[F])(using tf: TupledFunction[F, Args => R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G =
-    tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[Any]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
-
-  /** `Expr.betaReduceGiven(f)(x1, ..., xn)` is functionally the same as `'{($f)(using $x1, ..., $xn)}`, however it optimizes this call
-   *   by returning the result of beta-reducing `f(using x1, ..., xn)` if `f` is a known lambda expression.
-   *
-   *  `Expr.betaReduceGiven` distributes applications of `Expr` over function arrows
-   *   ```scala
-   *   Expr.betaReduceGiven(_): Expr[(T1, ..., Tn) ?=> R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
-   *   ```
-   */
-  def betaReduceGiven[F, Args <: Tuple, R, G](f: Expr[F])(using tf: TupledFunction[F, Args ?=> R], tg: TupledFunction[G, TupleOfExpr[Args] => Expr[R]], qctx: QuoteContext): G =
-    tg.untupled(args => qctx.tasty.internal.betaReduce(f.unseal, args.toArray.toList.map(_.asInstanceOf[QuoteContext => Expr[Any]](qctx).unseal)).seal.asInstanceOf[Expr[R]])
+  def betaReduce[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
+    qctx.tasty.internal.betaReduce(expr.unseal) match
+      case Some(expr1) => expr1.seal.asInstanceOf[Expr[T]]
+      case _ => expr
 
   /** Returns a null expresssion equivalent to `'{null}` */
   def nullExpr: QuoteContext ?=> Expr[Null] = qctx ?=> {

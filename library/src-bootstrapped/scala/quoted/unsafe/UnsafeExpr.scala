@@ -22,7 +22,7 @@ object UnsafeExpr {
   def underlyingArgument[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
     expr.unseal.underlyingArgument.seal.asInstanceOf[Expr[T]]
 
-  // TODO generalize for any function arity (see Expr.betaReduce)
+  // TODO generalize for any function arity
   /** Allows inspection or transformation of the body of the expression of function.
    *  This body may have references to the arguments of the function which should be closed
    *  over if the expression will be spliced.

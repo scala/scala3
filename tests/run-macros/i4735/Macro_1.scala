@@ -4,7 +4,7 @@ import scala.quoted._
 
 object Macro {
 
-  inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int], f: => Int => Unit): Unit = // or f: Int => Unit
+  inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int], inline f: Int => Unit): Unit = // or f: Int => Unit
     ${ unrolledForeachImpl('unrollSize, 'seq, 'f) }
 
   private def unrolledForeachImpl(unrollSize: Expr[Int], seq: Expr[Array[Int]], f: Expr[Int => Unit]) (using QuoteContext): Expr[Unit] = '{
@@ -16,7 +16,7 @@ object Macro {
       ${
         for (j <- new UnrolledRange(0, unrollSize.unliftOrError)) '{
           val element = ($seq)(i + ${Expr(j)})
-          ${Expr.betaReduce(f)('element)} // or `($f)(element)` if `f` should not be inlined
+          ${Expr.betaReduce('{$f(element)})} // or `($f)(element)` if `f` should not be inlined
         }
       }
       i += ${unrollSize}

@@ -1,9 +1,9 @@
 
 6
 {
-  val x$1: scala.Int = {
+  val x: 3 = {
     scala.Predef.println()
     3
   }
-  x$1.+(x$1)
+  6
 }

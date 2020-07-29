@@ -13,5 +13,5 @@ def mcrProxy(expr: Expr[Boolean])(using QuoteContext): Expr[Unit] = {
 def mcrImpl[T](func: Expr[Seq[Box[T]] => Unit], expr: Expr[T])(using ctx: QuoteContext, tt: Type[T]): Expr[Unit] = {
   import ctx.tasty._
   val arg = Varargs(Seq('{(Box($expr))}))
-  Expr.betaReduce(func)(arg)
+  Expr.betaReduce('{$func($arg)})
 }

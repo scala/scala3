@@ -11,7 +11,8 @@ object Test {
       f
     }
 
-    println(run(Expr.betaReduce(f2)(x)))
-    println(withQuoteContext(Expr.betaReduce(f2)(x).show))
+    def expr(using QuoteContext) = '{$f2($x)}
+    println(run(Expr.betaReduce(expr)))
+    println(withQuoteContext(Expr.betaReduce(expr).show)) // TODO improve printer
   }
 }

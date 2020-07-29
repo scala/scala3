@@ -3,7 +3,8 @@ import scala.quoted.staging._
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def eval1(ff: Expr[Int => Int])(using QuoteContext): Expr[Int] = Expr.betaReduce(ff)('{42})
+  def eval1(ff: Expr[Int => Int])(using QuoteContext): Expr[Int] =
+    Expr.betaReduce('{ $ff(42) })
 
   def peval1()(using QuoteContext): Expr[Unit] = '{
     def f(x: Int): Int = ${eval1('f)}

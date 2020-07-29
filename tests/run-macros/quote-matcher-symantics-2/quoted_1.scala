@@ -88,7 +88,7 @@ object StringNum extends Symantics[String] {
   def value(x: Int)(using QuoteContext): Expr[String] = Expr(x.toString)
   def plus(x: Expr[String], y: Expr[String])(using QuoteContext): Expr[String] = '{ s"${$x} + ${$y}" } // '{ x + " + " + y }
   def times(x: Expr[String], y: Expr[String])(using QuoteContext): Expr[String] = '{ s"${$x} * ${$y}" }
-  def app(f: Expr[String => String], x: Expr[String])(using QuoteContext): Expr[String] = Expr.betaReduce(f)(x)
+  def app(f: Expr[String => String], x: Expr[String])(using QuoteContext): Expr[String] = Expr.betaReduce('{ $f($x) })
   def lam(body: Expr[String] => Expr[String])(using QuoteContext): Expr[String => String] = '{ (x: String) => ${body('x)} }
 }
 

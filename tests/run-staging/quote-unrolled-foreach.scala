@@ -78,7 +78,7 @@ object Test {
     var i = 0
     while (i < size) {
       val element = ($arrRef)(i)
-      ${ Expr.betaReduce(f)('element) } // Use AppliedFuntion
+      ${ Expr.betaReduce('{$f(element)}) } // Use AppliedFuntion
       i += 1
     }
   }

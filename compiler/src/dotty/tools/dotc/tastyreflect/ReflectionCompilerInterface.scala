@@ -2042,21 +2042,18 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
       case _ => None
   }
 
-  def betaReduce(fn: Term, args: List[Term])(using Context): Term = {
-    val (argVals0, argRefs0) = args.foldLeft((List.empty[ValDef], List.empty[Tree])) { case ((acc1, acc2), arg) => arg.tpe match {
-      case tpe: SingletonType if isIdempotentExpr(arg) => (acc1, arg :: acc2)
+  def betaReduce(tree: Term)(using Context): Option[Term] =
+    tree match
+      case app @ Apply(Select(fn, nme.apply), args) if defn.isFunctionType(fn.tpe) =>
+        val app1 = transform.BetaReduce(app, fn, args)
+        if app1 eq app then None
+        else Some(app1.withSpan(tree.span))
+      case Block(Nil, expr) =>
+        for e <- betaReduce(expr) yield cpy.Block(tree)(Nil, e)
+      case Inlined(_, Nil, expr) =>
+        betaReduce(expr)
       case _ =>
-        val argVal = SyntheticValDef(NameKinds.UniqueName.fresh("x".toTermName), arg).withSpan(arg.span)
-        (argVal :: acc1, ref(argVal.symbol) :: acc2)
-    }}
-    val argVals = argVals0.reverse
-    val argRefs = argRefs0.reverse
-    val reducedBody = lambdaExtractor(fn, argRefs.map(_.tpe)) match {
-      case Some(body) => body(argRefs)
-      case None => fn.select(nme.apply).appliedToArgs(argRefs)
-    }
-    seq(argVals, reducedBody).withSpan(fn.span)
-  }
+        None
 
   def lambdaExtractor(fn: Term, paramTypes: List[Type])(using Context): Option[List[Term] => Term] = {
     def rec(fn: Term, transformBody: Term => Term): Option[List[Term] => Term] = {
