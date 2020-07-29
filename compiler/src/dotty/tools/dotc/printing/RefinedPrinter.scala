@@ -266,7 +266,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     ("{" ~ toText(trees, "\n") ~ "}").close
 
   protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
-    val isQuote = !printDebug && tree.fun.hasType && tree.fun.symbol == defn.QuotedTypeModule_apply
     val funText = toTextLocal(tree.fun)
     tree.fun match {
       case Select(New(tpt), nme.CONSTRUCTOR) if tpt.typeOpt.dealias.isInstanceOf[AppliedType] =>
