@@ -20,10 +20,6 @@ object CompileTime {
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprNestedSplice`")
   def exprNestedSplice[T](ctx: QuoteContext)(x: ctx.Nested ?=> Expr[T]): T = ???
 
-  /** A type quote is desugared by the compiler into a call to this method */
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.typeQuote`")
-  def typeQuote[T <: AnyKind]: QuoteContext ?=> Type[T] = ???
-
   /** Artifact of pickled type splices
    *
    *  During quote reification a quote `'{ ... F[$t] ... }` will be transformed into

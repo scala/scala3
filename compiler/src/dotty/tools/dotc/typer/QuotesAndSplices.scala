@@ -40,7 +40,6 @@ trait QuotesAndSplices {
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree = {
     record("typedQuote")
-    ctx.compilationUnit.needsStaging = true
     tree.quoted match {
       case untpd.Splice(innerExpr) if tree.isTerm =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.sourcePos)
@@ -59,7 +58,7 @@ trait QuotesAndSplices {
       if ctx.mode.is(Mode.Pattern) then
         typedQuotePattern(tree, pt, qctx)
       else if (tree.quoted.isType)
-        typedTypeApply(untpd.TypeApply(untpd.ref(defn.InternalQuoted_typeQuote.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
+        typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_apply.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
       else
         typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(using pushQuoteContext(qctx)).select(nme.apply).appliedTo(qctx)
     tree1.withSpan(tree.span)
@@ -68,7 +67,6 @@ trait QuotesAndSplices {
   /** Translate `${ t: Expr[T] }` into expression `t.splice` while tracking the quotation level in the context */
   def typedSplice(tree: untpd.Splice, pt: Type)(using Context): Tree = {
     record("typedSplice")
-    ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
     tree.expr match {
       case untpd.Quote(innerExpr) if innerExpr.isTerm =>
@@ -147,7 +145,6 @@ trait QuotesAndSplices {
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
   def typedTypSplice(tree: untpd.TypSplice, pt: Type)(using Context): Tree = {
     record("typedTypSplice")
-    ctx.compilationUnit.needsStaging = true
     checkSpliceOutsideQuote(tree)
     tree.expr match {
       case untpd.Quote(innerType) if innerType.isType =>
@@ -442,7 +439,7 @@ trait QuotesAndSplices {
     val quoteClass = if (tree.quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeClass
     val quotedPattern =
       if (tree.quoted.isTerm) ref(defn.InternalQuoted_exprQuote.termRef).appliedToType(defn.AnyType).appliedTo(shape).select(nme.apply).appliedTo(qctx)
-      else ref(defn.InternalQuoted_typeQuote.termRef).appliedToTypeTree(shape).select(nme.apply).appliedTo(qctx)
+      else ref(defn.QuotedTypeModule_apply.termRef).appliedToTypeTree(shape).select(nme.apply).appliedTo(qctx)
     UnApply(
       fun = ref(unapplySym.termRef).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
       implicits = quotedPattern :: Literal(Constant(typeBindings.nonEmpty)) :: qctx :: Nil,

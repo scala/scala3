@@ -273,6 +273,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val patterns1 = transform(patterns)
           cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
         case tree: TypeApply =>
+          if tree.symbol.isQuote then
+            ctx.compilationUnit.needsStaging = true
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           args.foreach(checkInferredWellFormed)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)

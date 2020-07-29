@@ -175,8 +175,10 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       tp match
         case tp: TypeRef =>
           tp.prefix match
-            case NoPrefix if level > levelOf(tp.symbol) =>
-              tryHeal(tp.symbol, tp, pos)
+            case NoPrefix if level > levelOf(tp.symbol) && !tp.typeSymbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) =>
+              val tp1 = tp.dealias
+              if tp1 != tp then apply(tp1)
+              else tryHeal(tp.symbol, tp, pos)
             case prefix: ThisType if !tp.symbol.isStatic && level > levelOf(prefix.cls) =>
               tryHeal(tp.symbol, tp, pos)
             case prefix: TermRef if tp.symbol.isTypeSplice =>

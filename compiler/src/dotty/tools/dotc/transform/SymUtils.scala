@@ -203,7 +203,7 @@ object SymUtils {
 
   /** Is symbol a quote operation? */
   def isQuote(using Context): Boolean =
-    self == defn.InternalQuoted_exprQuote || self == defn.InternalQuoted_typeQuote
+    self == defn.InternalQuoted_exprQuote || self == defn.QuotedTypeModule_apply
 
   /** Is symbol a term splice operation? */
   def isExprSplice(using Context): Boolean =
