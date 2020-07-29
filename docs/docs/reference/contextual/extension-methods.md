@@ -113,6 +113,18 @@ extension (ss: Seq[String]):
   def longestString: String = longestStrings.head
 ```
 
+The same can be written with braces as follows (note that indented regions can still be used inside braces):
+```scala
+extension (ss: Seq[String]) {
+
+  def longestStrings: Seq[String] =
+    val maxLength = ss.map(_.length).max
+    ss.filter(_.length == maxLength)
+
+  def longestString: String = longestStrings.head
+}
+```
+
 Note the right-hand side of `longestString`: it calls `longestStrings` directly, implicitly
 assuming the common extended value `ss` as receiver.
 
@@ -127,16 +139,6 @@ extension (ss: Seq[String])
 
 extension (ss: Seq[String])
   def longestString: String = ss.longestStrings.head
-```
-
-Collective extensions also can take type parameters and have using clauses. Example
-
-```scala
-extension [T](xs: List[T])(using Ordering[T]):
-  def smallest(n: Int): List[T] = xs.sorted.take(n)
-  def smallestIndices(n: Int): List[Int] =
-    val limit = smallest(n).max
-    xs.zipWithIndex.collect { case (x, i) if x <= limit => i }
 ```
 
 ### Translation of Calls to Extension Methods
