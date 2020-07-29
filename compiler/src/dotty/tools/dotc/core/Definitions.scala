@@ -431,8 +431,11 @@ class Definitions {
     methodNames.map(getWrapVarargsArrayModule.requiredMethod(_))
   })
 
-  @tu lazy val ListModule: Symbol = requiredModule("scala.collection.immutable.List")
-  @tu lazy val NilModule: Symbol = requiredModule("scala.collection.immutable.Nil")
+  @tu lazy val ListClass: Symbol       = requiredClass("scala.collection.immutable.List")
+  @tu lazy val ListModule: Symbol      = requiredModule("scala.collection.immutable.List")
+  @tu lazy val NilModule: Symbol       = requiredModule("scala.collection.immutable.Nil")
+  @tu lazy val ConsClass: Symbol       = requiredClass("scala.collection.immutable.::")
+  @tu lazy val SeqFactoryClass: Symbol = requiredClass("scala.collection.SeqFactory")
 
   @tu lazy val SingletonClass: ClassSymbol =
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
