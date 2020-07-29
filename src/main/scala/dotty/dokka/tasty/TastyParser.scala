@@ -24,7 +24,7 @@ import dotty.tastydoc.representations
 import dotty.tastydoc.representations._
 
 case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector) 
-  extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport:
+  extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with PackageSupport:
     import reflect._
 
     def sourceSet = inspector.sourceSet
@@ -34,6 +34,10 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
       object Traverser extends TreeTraverser:
         override def traverseTree(tree: Tree)(using ctx: Context): Unit = 
           tree match {
+            case pck: PackageClause => 
+              docs += parsePackage(pck)
+            case packageObject: ClassDef if(packageObject.symbol.name == "package$") =>
+              docs += parsePackageObject(packageObject)
             case clazz: ClassDef  =>
               docs += parseClass(clazz)
               //classes += DDClass(clazz.name, "dotty.dokka", clazz.symbol.comment.fold("")(_.raw))  
@@ -54,17 +58,52 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
 
     def result(): List[DPackage] = 
       val all = topLevels.result()
-      val byPackage = all.filter(_.getDri != null).groupBy(_.getDri().getPackageName()) 
-      byPackage.map { case (pck, entries) =>
-        new DPackage(
-          new DRI(pck, null, null, PointingToDeclaration.INSTANCE, null),
+      val packages = all
+        .filter(_.isInstanceOf[DPackage])
+        .map(_.asInstanceOf[DPackage])
+        .groupBy(_.getDri)
+        .map((dri, pckgs) =>
+          pckgs.reduce(_.mergeWith(_))
+        )
+
+      val byPackage = all.filter(_.getDri != null).groupBy(_.getDri().getPackageName())
+      byPackage.map { 
+        case (pck, entries) => {
+          val found = packages.find(d => d.getName == pck)
+          .map( f =>
+            new DPackage(
+              f.getDri,
+              Nil.asJava,
+              Nil.asJava,
+              entries.collect{ case d: DClasslike => d }.toList.asJava, // TODO add support for other things like type or package object entries
+              Nil.asJava,
+              f.getDocumentation,
+              null,
+              sourceSet.toSet,
+              PropertyContainer.Companion.empty()
+            )
+          )
+          found.getOrElse(throw IllegalStateException("No package for entries found"))
+        }
+      }.toList
+
+    def (self: DPackage).mergeWith(other: DPackage): DPackage = 
+      val doc1 = self.getDocumentation.asScala.get(sourceSet.getSourceSet).map(_.getChildren).getOrElse(Nil.asJava)
+      val doc2 = other.getDocumentation.asScala.get(sourceSet.getSourceSet).map(_.getChildren).getOrElse(Nil.asJava)
+      DPackage(
+          self.getDri,
           Nil.asJava,
           Nil.asJava,
-          entries.collect{ case d: DClasslike => d }.toList.asJava, // TODO add support for other things like type or package object entries
+          Nil.asJava, // WARNING Merging is done before collecting classlikes, if it changes it needs to be refactored
           Nil.asJava,
-          Map.empty.asJava, // TODO find docs for package and search for package object to extract doc
+          sourceSet.asMap(
+              DocumentationNode(
+                  (
+                    doc1.asScala ++ doc2.asScala
+                  ).asJava
+              )
+          ),
           null,
           sourceSet.toSet,
           PropertyContainer.Companion.empty()
-        )
-      }.toList
+      )
