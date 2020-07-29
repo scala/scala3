@@ -22,7 +22,7 @@ circle.circumference
 ### Translation of Extension Methods
 
 Extension methods are methods that have a parameter clause in front of the defined identifier.
-An extension method named `f` translates to method named `extension_f` that takes the leading parameter section as its first argument list.
+An extension method named `f` translates to the method named `extension_f` that takes the leading parameter section as its first argument list.
 So, the definition of `circumference` above translates to the following method, and can also be invoked as such:
 
 ```scala
@@ -76,7 +76,8 @@ extension [T: Numeric](x: T)
 ```
 
 If an extension method has type parameters, they come immediately after `extension` and are followed by the extended parameter.
-When calling a generic extension method, any explicitly given type arguments follow the method name. So the `second` method could be instantiated as follows.
+When calling a generic extension method, any explicitly given type arguments follow the method name. 
+So the `second` method could be instantiated as follows:
 
 ```scala
 List(1, 2, 3).second[Int]
@@ -91,15 +92,16 @@ extension [T](x: T)(using n: Numeric[T])
   def + (y: T): T = n.plus(x, y)
 ```
 
-**Note**: Type parameters have to be given after the `extension` keyword;
-they cannot be given after the `def`. This restriction might be lifted in the future once we support multiple type parameter clauses in a method. By contrast, there can be using clauses in front as well as after the `def`.
+**Note**: Type parameters have to be given after the `extension` keyword; they cannot be given after the `def`. 
+This restriction might be lifted in the future once we support multiple type parameter clauses in a method. 
+By contrast, using clauses can be defined for the `extension` as well as per `def`.
 
 ### Collective Extensions
 
 Sometimes, one wants to define several extension methods that share the same
 left-hand parameter type. In this case one can "pull out" the common parameters into
 a single extension and enclose all methods in braces or an indented region following a '`:`'.
-Example:
+Following an example using an indented region:
 
 ```scala
 extension (ss: Seq[String]):
@@ -115,7 +117,7 @@ Note the right-hand side of `longestString`: it calls `longestStrings` directly,
 assuming the common extended value `ss` as receiver.
 
 Collective extensions like these are a shorthand for individual extensions
-where each method is defined separately. For instance, the first extension above expands to
+where each method is defined separately. For instance, the first extension above expands to:
 
 ```scala
 extension (ss: Seq[String])
@@ -211,7 +213,8 @@ List(1, 2) < List(3)
 
 The precise rules for resolving a selection to an extension method are as follows.
 
-Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type arguments `[Ts]` are optional, and where `T` is the expected type. The following two rewritings are tried in order:
+Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type arguments `[Ts]` are optional, and where `T` is the expected type. 
+The following two rewritings are tried in order:
 
  1. The selection is rewritten to `extension_m[Ts](e)`.
  2. If the first rewriting does not typecheck with expected type `T`,
@@ -252,7 +255,7 @@ def extension_position(s: String)(ch: Char, n: Int): Int =
 1. To avoid confusion, names of normal methods are not allowed to start with `extension_`.
 
 2. A named import such as `import a.m` of an extension method in `a` will make `m` only available as an extension method.
-   To access it under `extension_m` that name as to be imported separately. Example:
+   To access it under `extension_m` that name has to be imported separately. Example:
 
    ```scala
    object DoubleOps:
