@@ -18,7 +18,7 @@ trait ClassLikeSupport:
         if parentSymbol != defn.ObjectClass
     yield parentTree.dokkaType
 
-    val methods = classDef.symbol.classMethods.filterNot(_.flags.is(Flags.Synthetic))
+    val methods = classDef.symbol.classMethods.filterNot(isSyntheticFunc)
     val constuctors = classDef.body.collect {
       case d: DefDef if d.name == "<init>" && classDef.constructor.symbol != d.symbol => 
         parseMethod(d.symbol)
@@ -48,12 +48,15 @@ trait ClassLikeSupport:
       case ScalaModifier.Final if kind == Kind.Object => ScalaModifier.Empty
       case other => other
 
+    val typeDefs = classDef.body.collect { case td: TypeDef if !td.symbol.flags.is(Flags.Private) => td }
+    val valDefs = classDef.body.collect { case td: ValDef if !isSyntheticField(td.symbol)  => td}
+    
     new DClass(
         classDef.symbol.dri,
         name,
         /*constuctors =*/ constuctors.asJava,
         /*methods =*/ methods.map(parseMethod(_)).asJava,
-        /*fields =*/ Nil.asJava,
+        /*fields =*/ (typeDefs.map(parseTypeDef) ++ valDefs.map(parseValDef)).asJava,
         /*nested =*/ Nil.asJava,
         /*sources =*/ classDef.symbol.source,
         /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
@@ -120,3 +123,54 @@ trait ClassLikeSupport:
       sourceSet.toSet(),
       PropertyContainer.Companion.empty()
     )  
+    
+  def parseTypeDef(typeDef: TypeDef): DProperty =
+    val (generics, tpeTree) =  typeDef.rhs match {
+      case LambdaTypeTree(params, body) =>
+        (params.map(parseTypeArgument), body)
+      case tpe =>
+        (Nil, tpe)  
+    }
+
+    val isAbstract = tpeTree match {
+      case TypeBoundsTree(_, _) => true
+      case _ => false
+    }
+
+    new DProperty(
+      typeDef.symbol.dri,
+      typeDef.name,
+      /*documentation =*/ typeDef.symbol.documentation,
+      /*expectPresentInSet =*/ null, // unused
+      /*sources =*/ typeDef.symbol.source,
+      /*visibility =*/ sourceSet.asMap(typeDef.symbol.getVisibility()),
+      /*type =*/ tpeTree.dokkaType, // TODO this may be hard...
+      /*receiver =*/ null, // Not used
+      /*setter =*/ null,
+      /*getter =*/ null,
+      /*modifier =*/ sourceSet.asMap(typeDef.symbol.getModifier()),
+      sourceSet.toSet(),
+      /*generics =*/ generics.asJava, // TODO 
+      PropertyContainer.Companion.empty() plus PropertyExtension("type", isAbstract)
+    )
+  
+  def parseValDef(valDef: ValDef): DProperty =
+      new DProperty(
+        valDef.symbol.dri,
+        valDef.name,
+        /*documentation =*/ valDef.symbol.documentation,
+        /*expectPresentInSet =*/ null, // unused
+        /*sources =*/ valDef.symbol.source,
+        /*visibility =*/ sourceSet.asMap(valDef.symbol.getVisibility()),
+        /*type =*/ valDef.tpt.dokkaType,
+        /*receiver =*/ null, // Not used
+        /*setter =*/ null,
+        /*getter =*/ null,
+        /*modifier =*/ sourceSet.asMap(valDef.symbol.getModifier()),
+        sourceSet.toSet(),
+        /*generics =*/ Nil.asJava,
+        PropertyContainer.Companion.empty() plus 
+          PropertyExtension(
+            if valDef.symbol.flags.is(Flags.Mutable) then "var" else "val", 
+            valDef.symbol.flags.is(Flags.Abstract))
+      )

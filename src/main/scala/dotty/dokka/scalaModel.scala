@@ -24,6 +24,11 @@ case class ClasslikeExtension(parentTypes: List[Bound], constructor: Option[DFun
 object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]
   
 
+case class PropertyExtension(kind: "val" | "var" | "type", isAbstract: Boolean) extends ExtraProperty[DProperty]:
+  override def getKey = PropertyExtension
+
+object PropertyExtension extends BaseKey[DProperty, PropertyExtension]
+
 class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
   override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] = 
     MergeStrategy.Remove.INSTANCE.asInstanceOf[MergeStrategy[T]]

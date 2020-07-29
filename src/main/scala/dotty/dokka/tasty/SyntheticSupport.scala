@@ -16,3 +16,9 @@ trait SyntheticsSupport:
       val classDefTree = c.constructor.show
       c.constructor.typeParams.nonEmpty && end <= typesEnd + 1
     }
+
+  def isSyntheticFunc(c: Symbol): Boolean =
+    c.flags.is(Flags.Synthetic) || c.flags.is(Flags.FieldAccessor)  
+
+  def isSyntheticField(c: Symbol) = 
+    c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Private)

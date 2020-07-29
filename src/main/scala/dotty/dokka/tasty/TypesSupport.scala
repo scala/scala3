@@ -51,7 +51,7 @@ trait TypesSupport:
             inner(tpe) :+ text("*")
         case AnnotatedType(tpe, _) => 
             inner(tpe)
-        // case TypeLambda(paramNames, paramTypes, resType) => ConstantReference(tp.show) //TOFIX
+        case tl @ TypeLambda(paramNames, paramTypes, resType) => noSupported(s"TypeLambda: ${paramNames} , ")  //TOFIX
         case Refinement(parent, name, info) =>
             // val tuple = convertTypeOrBoundsToReference(reflect)(info) match {
             //     case r if (info match {case info: TypeBounds => true case _ => false}) => ("type", name, r)

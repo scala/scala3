@@ -3,8 +3,7 @@ package objectSignatures
 
 class A[T]
 
-// TODO companion objects are not supported
-// object A
+object A
 
 trait C
 

@@ -8,12 +8,14 @@ import example.level2.Documentation
 
 abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c2: List[T]) extends Seq[T] with Product with Serializable
 {
-    // TODO why we want to compare that?
-    // def this(ac: String) = this(ac, Nil)
+    def this(ac: String) 
+    = this(ac, Nil)
 
-    def this() = this("", Nil)
+    def this() 
+    = this("", Nil)
 
-    def this(x: T) = this()
+    def this(x: T) 
+    = this()
 
     class innerDocumentationClass
     {
@@ -22,14 +24,11 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
 
     sealed trait CaseImplementThis(id: Int)
 
-    case class IAmACaseClass(x: T, id: Int) extends CaseImplementThis/*<-*/(id)/*->*/
+    // TODO add support for nested objects case class IAmACaseClass(x: T, id: Int) extends CaseImplementThis/*<-*/(id)/*->*/
 
-    case object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/
+    // TODO add support for nested objects case object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/
 
-    object testObject
-    {
-
-    }
+    // TODO add support for nested objects  object testObject
 
     class Graph
     {
@@ -43,7 +42,7 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
 
 object Documentation
 {
-  val valInsideDocObject = ???
+  // TODO We do not see members from companions val valInsideDocObject = ???
 }
 
 sealed  // TODO support acess and modifiers! // TODO support variance
@@ -60,6 +59,6 @@ trait TraitWithCompanion{} //expect: trait TraitWithCompanion
 object TraitWithCompanion
 {}
 
-
+// TODO do we need to add 'val' in case class signatures?
 case class ManyModifiers(/*<-*/val /*->*/x: Int, var y: Double, z: String)
 class ManyModifiers2(val x: Int, var y: Double, z: String)

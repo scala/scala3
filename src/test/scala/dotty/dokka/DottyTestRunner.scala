@@ -37,9 +37,7 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
             case default => default.getChildren.asScala.toSeq.flatMap(getAllContentPages)
 
         tests.setPagesTransformationStage { root => 
-            val res = root.getChildren.asScala
-                .flatMap(p => p.getChildren.asScala)
-                .flatMap(getAllContentPages)
+            val res = root.getChildren.asScala.flatMap(getAllContentPages)
             signatures = res.toSeq
             kotlin.Unit.INSTANCE
         }
@@ -74,7 +72,12 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
                 else c.getChildren.asScala.flatMap(flattenToText).toSeq
             case _ => Seq()
     
-        val nodes = listPages(tastyDir).map(p => ContentNodesKt.dfs(p.getContent, _.getDci.getKind == ContentKind.Symbol))
+        def all(p: ContentNode => Boolean)(n: ContentNode): Seq[ContentNode] =
+            if p(n) then Seq(n) else n.getChildren.asScala.toSeq.flatMap(all(p))
+            
+
+        val pages = listPages(tastyDir)
+        val nodes = pages.flatMap(p => all(_.getDci.getKind == ContentKind.Symbol)(p.getContent))
         nodes.map(flattenToText(_).map(_.getText).mkString)
 
     def signaturesFromSource(s: Source): Seq[String] =

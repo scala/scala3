@@ -22,15 +22,13 @@ abstract class SingleFileTest(val fileName: String, signatureKinds: Seq[String],
 
   /* There's assumption that symbols are named using letters and digits only (no Scala operators :/) to make it easier to find symbol name */
   def extractSymbolName(signature: String) = 
-      val helper = signatureKinds
-        .map(_ + " ") // We want to have at least one space after kind however why code below does not work!!
-        .maxBy(p => signature.indexOf("xxxxx")) // is this a bug in dotty?
+      val helper = signatureKinds.find(k => signature.contains(s"$k "))
       
-      val helperIndex = signature.indexOf(helper)
-
-      if  helperIndex == -1 then "NULL" 
-      else signature.substring(helperIndex + helper.size + 1).takeWhile(_.isLetterOrDigit)
-
+      helper.fold("NULL"){ h =>
+        val helperIndex = signature.indexOf(h)
+        signature.substring(helperIndex + helper.size + 1).takeWhile(_.isLetterOrDigit)
+      }  
+      
   def matchSignature(s: String, signatureList: List[String]): Seq[String] = 
       val symbolName = extractSymbolName(s)
       val candidates = signatureList.filter(extractSymbolName(_) == symbolName)
@@ -56,7 +54,7 @@ abstract class SingleFileTest(val fileName: String, signatureKinds: Seq[String],
       val fromDocumentation = allFromDocumentation.filter(extractSymbolName(_) != "NULL")
       
       val documentedSignature = fromDocumentation.flatMap(matchSignature(_, fromSource)).toSet
-      val missingSignatures = fromDocumentation.filterNot(documentedSignature.contains)
+      val missingSignatures = fromSource.filterNot(documentedSignature.contains)
       
       if !ignoreUndocumented && missingSignatures.nonEmpty then reportError(
            s"""Not documented signatures:\n ${missingSignatures.mkString("\n")} \n All signatures: ${fromDocumentation.mkString("\n")}"""
