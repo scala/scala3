@@ -28,7 +28,10 @@ class Instrumentation extends MiniPhase { thisPhase =>
     ctx.settings.YinstrumentClosures.value ||
     ctx.settings.YinstrumentAllocations.value
 
-  private val namesOfInterest = List("::", "+=", "toString")
+  private val namesOfInterest = List(
+    "::", "+=", "toString",
+    "map", "flatMap", "filter", "withFilter", "collect", "foldLeft", "foldRight", "take",
+    "reverse", "mapConserve", "mapconserve", "filterConserve", "zip")
   private var namesToRecord: Set[Name] = _
 
   private var consName: TermName = _
@@ -46,8 +49,8 @@ class Instrumentation extends MiniPhase { thisPhase =>
   override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
     case Select(nu: New, _) =>
       cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) :: Nil, tree)
-    case Select(_, name) if namesToRecord.contains(name) =>
-      cpy.Block(tree)(record(i"alloc/$name", tree) :: Nil, tree)
+    case ref: RefTree if namesToRecord.contains(ref.name) =>
+      cpy.Block(tree)(record(i"call/${ref.name}", tree) :: Nil, tree)
     case _ =>
       tree
   }
