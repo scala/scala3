@@ -34,9 +34,19 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
                 override fun invoke(sourceSet: DokkaConfiguration.DokkaSourceSet, context: DokkaContext): DModule =
                     createSourceToDocumentableTranslator(context, SourceSetWrapper(sourceSet))
             }
-        } override dokkaBase.descriptorToDocumentableTranslator
+        }  override dokkaBase.psiToDocumentableTranslator
     }
 
+    // Just turn off another translator sicnce multiple overrids does not work
+    val diableOtherTranslator by extending {
+        CoreExtensions.sourceToDocumentableTranslator providing { ctx ->
+            object : SourceToDocumentableTranslator {
+                override fun invoke(sourceSet: DokkaConfiguration.DokkaSourceSet, context: DokkaContext): DModule =
+                    TODO()
+            }
+        }  override dokkaBase.descriptorToDocumentableTranslator applyIf{ false }
+    }
+    
     val scalaSignatureProvider by extending {
         dokkaBase.signatureProvider providing { ctx ->
             createSignatureProvider(ctx.single(dokkaBase.commentsToContentConverter), ctx.logger)

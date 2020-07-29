@@ -1,4 +1,4 @@
-package tests.signatureTest.modifiers
+package tests.modifiersSignatureTestSource
 
 case class Case()
 
@@ -12,7 +12,7 @@ sealed class Sealed()
 
 abstract class Methods()
 {
-    def method1(): Unit
+    def method1(): Unit 
 
     inline def inlineMethod(): Unit
         = Unit
@@ -21,14 +21,14 @@ abstract class Methods()
      = "asd"
 }
 
-class ImplementedMethods() extends Methods()
+class ImplementedMethods() extends Methods/*<-*/()/*->*/
 {
     override def method1(): Unit
         = ???
 
 }
 
-case class ReimplementedMethods() extends ImplementedMethods()
+case class ReimplementedMethods() extends ImplementedMethods/*<-*/()/*->*/
 {
     override def method1(): Unit
         = ???

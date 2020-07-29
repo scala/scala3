@@ -12,7 +12,13 @@ case class MethodExtension(parametersListSizes: Seq[Int]) extends ExtraProperty[
 
 object MethodExtension extends BaseKey[DFunction, MethodExtension]
 
-case class ClasslikeExtension(parentTypes: List[Bound], constructor: Option[DFunction]) extends ExtraProperty[DClasslike]:
+enum Kind(val name: String){
+  case Class extends Kind("class")
+  case Object extends Kind("object")
+  case Trait extends Kind("trait")
+}
+
+case class ClasslikeExtension(parentTypes: List[Bound], constructor: Option[DFunction], kind: Kind) extends ExtraProperty[DClasslike]:
   override def getKey = ClasslikeExtension
 
 object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]

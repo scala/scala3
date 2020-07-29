@@ -20,7 +20,7 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
     private val contentBuilder = new JPageContentBuilder(ctcc, this, logger)
 
     def (tokens: Seq[String]).toSignatureString(): String =
-        tokens.filterNot(_.isBlank).mkString(""," "," ")
+        tokens.filter(_.trim.nonEmpty).mkString(""," "," ")
 
     override def signature(documentable: Documentable) = documentable match {
         case method: DFunction =>
@@ -46,13 +46,12 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
         content(clazz){ builder =>
             val ext = clazz.get(ClasslikeExtension)
             utils.annotationsBlock(builder, clazz)
-            // builder.addText("TODO modifiers")
             builder.addText(
                 Seq(
                     clazz.extraModifiersPrefix.trim,
                     clazz.getVisibility.defaultValue.getName, 
                     clazz.getModifier.defaultValue.getName,
-                    "class"
+                    ext.kind.name
                 ).toSignatureString()
             )
             builder.addLink(clazz.getName, clazz.getDri)
@@ -63,9 +62,9 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
                 case extendType :: withTypes =>
                     builder.addText(" extends ") 
                     builder.typeSignature(extendType)
-                    withTypes.foreach { t => 
+                    withTypes.foreach { withType => 
                         builder.addText(" with ")  
-                        builder.typeSignature(extendType)
+                        builder.typeSignature(withType)
                     }
         }
 

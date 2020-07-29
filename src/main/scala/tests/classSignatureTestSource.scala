@@ -1,4 +1,4 @@
-package tests.signatureTest.classes
+package tests.classSignatureTestSource
 
 import scala.collection._
 import scala.deprecated
@@ -8,7 +8,8 @@ import example.level2.Documentation
 
 abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c2: List[T]) extends Seq[T] with Product with Serializable
 {
-    def this(ac: String) = this(ac, Nil)
+    // TODO why we want to compare that?
+    // def this(ac: String) = this(ac, Nil)
 
     def this() = this("", Nil)
 
@@ -21,9 +22,9 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
 
     sealed trait CaseImplementThis(id: Int)
 
-    case class IAmACaseClass(x: T, id: Int) extends CaseImplementThis(id)
+    case class IAmACaseClass(x: T, id: Int) extends CaseImplementThis/*<-*/(id)/*->*/
 
-    case object IAmACaseObject extends CaseImplementThis(0)
+    case object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/
 
     object testObject
     {
@@ -45,7 +46,8 @@ object Documentation
   val valInsideDocObject = ???
 }
 
-sealed abstract class ClassExtendingDocumentation[T, A <: Int, B >: String, -X, +Y] extends Documentation[T, A, B, X, Y]
+sealed  // TODO support acess and modifiers! // TODO support variance
+abstract class ClassExtendingDocumentation[T, A <: Int, B >: String, -X, +Y] extends Documentation[T, A, B, X, Y]
 {}
 
 trait TraitTest
@@ -53,7 +55,11 @@ trait TraitTest
 
 }
 
-trait TraitWithCompanion{}
+trait TraitWithCompanion{} //expect: trait TraitWithCompanion
 
-object TraitWithCompanion{}
+object TraitWithCompanion
+{}
 
+
+case class ManyModifiers(/*<-*/val /*->*/x: Int, var y: Double, z: String)
+class ManyModifiers2(val x: Int, var y: Double, z: String)

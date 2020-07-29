@@ -46,5 +46,8 @@ unmanagedJars in Compile += dokkaJavaApiJar
 //javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:5005,suspend=y"
 
 fork.in(run) := true
+// There is a bug in dokka that prevents parallel tests withing the same jvm
+fork.in(test) := true
+Test / parallelExecution := false
 
 scalacOptions in Compile += "-language:implicitConversions"

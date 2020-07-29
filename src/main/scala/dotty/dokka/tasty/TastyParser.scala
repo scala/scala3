@@ -24,7 +24,7 @@ import dotty.tastydoc.representations
 import dotty.tastydoc.representations._
 
 case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector) 
-  extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with PackageSupport:
+  extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport:
     import reflect._
 
     def sourceSet = inspector.sourceSet
@@ -40,7 +40,6 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
               docs += parsePackageObject(packageObject)
             case clazz: ClassDef  =>
               docs += parseClass(clazz)
-              //classes += DDClass(clazz.name, "dotty.dokka", clazz.symbol.comment.fold("")(_.raw))  
             case _ =>
           }
           super.traverseTree(tree)

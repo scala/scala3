@@ -1,11 +1,11 @@
-package tests.signatureTest
+package tests.signatureTestSource
 class A
 class B extends A
 class C 
 class D[T]
 class E[T] extends D[T]
 
-class signatureTestSource(a: String)
+class SignatureTestClass(a: String)
 :
     def simple(): B
      = ???
