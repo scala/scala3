@@ -1018,8 +1018,11 @@ object Types {
      */
     def safe_& (that: Type)(using Context): Type = (this, that) match {
       case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) =>
-        TypeBounds(OrType(lo1.stripLazyRef, lo2.stripLazyRef), AndType(hi1.stripLazyRef, hi2.stripLazyRef))
-      case _ => this & that
+        TypeBounds(
+           OrType.makeHk(lo1.stripLazyRef, lo2.stripLazyRef),
+          AndType.makeHk(hi1.stripLazyRef, hi2.stripLazyRef))
+      case _ =>
+        this & that
     }
 
     /** `this & that`, but handle CyclicReferences by falling back to `safe_&`.
@@ -2934,6 +2937,10 @@ object Types {
         tp2
       else
         if (checkValid) apply(tp1, tp2) else unchecked(tp1, tp2)
+
+    /** Like `make`, but also supports higher-kinded types as argument */
+    def makeHk(tp1: Type, tp2: Type)(using Context): Type =
+      ctx.typeComparer.liftIfHK(tp1, tp2, AndType.make(_, _, checkValid = false), makeHk, _ | _)
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType {
@@ -3020,6 +3027,10 @@ object Types {
     def make(tp1: Type, tp2: Type)(using Context): Type =
       if (tp1 eq tp2) tp1
       else apply(tp1, tp2)
+
+    /** Like `make`, but also supports higher-kinded types as argument */
+    def makeHk(tp1: Type, tp2: Type)(using Context): Type =
+      ctx.typeComparer.liftIfHK(tp1, tp2, OrType(_, _), makeHk, _ & _)
   }
 
   /** An extractor object to pattern match against a nullable union.
