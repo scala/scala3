@@ -13,4 +13,4 @@ def mcr2Impl(using ctx: QuoteContext): Expr[Unit] =
     '{ (esx: Seq[Foo]) => varargsFunc(esx: _*) }
   val trees: Expr[Seq[Foo]] =
     '{Nil}
-  Expr.betaReduce(func)(trees)
+  Expr.betaReduce('{$func($trees)})
