@@ -38,6 +38,8 @@ trait BasicSupport:
         Option.when(sym.flags.is(Flags.Override))(ScalaOnlyModifiers.Override),
       ).flatten
 
+    def isCompanionObject(): Boolean = sym.flags.is(Flags.Object) && sym.companionClass.exists
+
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?  
     def dri =
       if sym == Symbol.noSymbol then emptyDRI else

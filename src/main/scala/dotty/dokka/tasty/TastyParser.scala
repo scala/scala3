@@ -14,6 +14,7 @@ import org.jetbrains.dokka.plugability.DokkaContext
 import dokka.java.api._
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties.PropertyContainer
+import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 import java.util.{List => JList}
 import dotty.tastydoc.representations._
 
@@ -29,25 +30,26 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
 
     def sourceSet = inspector.sourceSet
 
-    def parseRootTree(root: Tree): Seq[Documentable] = 
+    def parseRootTree(root: Tree): Seq[Documentable] =
       val docs = Seq.newBuilder[Documentable]
       object Traverser extends TreeTraverser:
-        override def traverseTree(tree: Tree)(using ctx: Context): Unit = tree match 
-          case pck: PackageClause => 
-            docs += parsePackage(pck)
-            super.traverseTree(tree)
-          case packageObject: ClassDef if(packageObject.symbol.name == "package$") =>
-            docs += parsePackageObject(packageObject)
-          case clazz: ClassDef  =>
-            docs += parseClass(clazz)
-          case _ =>
-            super.traverseTree(tree)
-          
+        override def traverseTree(tree: Tree)(using ctx: Context): Unit = 
+          tree match {
+            case pck: PackageClause => 
+              docs += parsePackage(pck)
+              super.traverseTree(tree)
+            case packageObject: ClassDef if(packageObject.symbol.name == "package$") =>
+              docs += parsePackageObject(packageObject)
+            case clazz: ClassDef if(!clazz.symbol.isCompanionObject()) =>
+              docs += parseClass(clazz)
+            case _ =>
+              super.traverseTree(tree)
+          }
+
       Traverser.traverseTree(root)(using reflect.rootContext)
       docs.result()
 
   case class DokkaTastyInspector(sourceSet: SourceSetWrapper, parser: Parser, config: DottyDokkaConfig) extends TastyInspector:
-
     private val topLevels = Seq.newBuilder[Documentable]
     
     protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = 
@@ -105,3 +107,5 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
           sourceSet.toSet,
           PropertyContainer.Companion.empty()
       )
+
+

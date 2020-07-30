@@ -23,8 +23,36 @@ extension  on[T, V] (a: WithExtraProperties[T]):
 extension on[V] (map: JMap[DokkaConfiguration$DokkaSourceSet, V]):
     def defaultValue: V = map.values.asScala.toSeq(0)
 
+extension on (builder: PageContentBuilder):
+    def contentFor(d: Documentable)(
+        func: Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit],
+        kind: ContentKind = ContentKind.Main,
+        styles: Set[Style] = Set(),
+        extras: PropertyContainer[ContentNode] = PropertyContainer.Companion.empty(),
+        sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = d.getSourceSets.asScala.toSet
+    ): ContentGroup = builder.contentFor(d, kind, styles.asJava, extras, sourceSets.asJava, a => func(a))
+
+/* Need to do it this way, because Dotty seems to not support named parameters of extensions and I couldn't change kind */
+def group(builder: PageContentBuilder#DocumentableContentBuilder)(
+    func: Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit],
+    dri: JSet[DRI] = builder.getMainDRI,
+    sourceSets: JSet[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData,
+    kind: Kind = ContentKind.Main,
+    styles: JSet[Style] = builder.getMainStyles,
+    extra: PropertyContainer[ContentNode] = builder.getMainExtra
+): Unit = builder.group(dri, sourceSets, kind, styles, extra, a => func(a))
+
+def sourceSetDependentHint(builder: PageContentBuilder#DocumentableContentBuilder)(
+    func: Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit],
+    dri: JSet[DRI] = builder.getMainDRI,
+    sourceSets: JSet[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData,
+    kind: Kind = ContentKind.Main,
+    styles: JSet[Style] = builder.getMainStyles,
+    extra: PropertyContainer[ContentNode] = builder.getMainExtra
+): Unit = builder.sourceSetDependentHint(dri, sourceSets, kind, styles, extra, a => func(a))
 
 extension on(builder: PageContentBuilder$DocumentableContentBuilder):
+
     def addText(str: String) = builder.text(str, ContentKind.Main, builder.getMainSourcesetData, builder.getMainStyles, builder.getMainExtra) 
     
     def addList[T](
