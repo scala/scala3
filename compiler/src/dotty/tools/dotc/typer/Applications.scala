@@ -1357,11 +1357,10 @@ trait Applications extends Compatibility {
       followApply && tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
   }
 
-  /** Does `tp` have an extension method named `extension_name` with this-argument `argType` and
-   *  result matching `resultType`?
+  /** Does `tp` have an extension method named `xname` with this-argument `argType` and
+   *  result matching `resultType`? `xname` is supposed to start with `extension_`.
    */
-  def hasExtensionMethod(tp: Type, name: TermName, argType: Type, resultType: Type)(using Context) = {
-    val xname = name.toExtensionName
+  def hasExtensionMethodNamed(tp: Type, xname: TermName, argType: Type, resultType: Type)(using Context) = {
     def qualifies(mbr: Denotation) =
       mbr.exists && isApplicableType(tp.select(xname, mbr), argType :: Nil, resultType)
     tp.memberBasedOnFlags(xname, required = ExtensionMethod) match {
