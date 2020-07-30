@@ -21,4 +21,10 @@ class Base
 {
   type A
   type B = Int
+
+  // Tests not support multiline signatures
+  type MatchT[T] = T match { case String => Char case Int => Byte }
+
+  // Tests do not support multiline signatures
+  type Elem[X] = X match { case String => Char case Array[t] => t case Iterable[t] => t }
 }

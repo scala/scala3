@@ -129,6 +129,20 @@ trait TypesSupport:
         
         case reflect.NoPrefix() => Nil
 
+        case MatchType(bond, sc, cases) =>
+            def asCase(on: List[JProjection], ret: List[JProjection]) = texts("  case ") ++ on ++ texts(" => ") ++ ret ++ texts("\n")
+            val casesTexts = cases.flatMap {
+                case AppliedType(t, Seq(from, to)) if t == MatchCaseType =>
+                    asCase(inner(from), inner(to))
+                case TypeLambda(paramNames, paramTypes, AppliedType(t, Seq(from, to))) if t == MatchCaseType =>
+                    asCase(inner(from), inner(to))
+            }
+            inner(sc) ++ texts(" match {\n") ++ casesTexts ++ texts("}")
+        
+        case TypeIdent(t) => texts(t)
+
+        case ParamRef(TypeLambda(names, _, _), i) => texts(names.apply(i))
+
     private def typeBound(t: Type, low: Boolean) = 
         val ignore = if(low) t.typeSymbol == defn.NothingClass  else t.typeSymbol == defn.AnyClass
         if ignore then Nil 
