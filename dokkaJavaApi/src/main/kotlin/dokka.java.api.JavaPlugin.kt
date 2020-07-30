@@ -70,17 +70,3 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
     abstract fun createResourceInstaller(ctx: DokkaContext) : PageTransformer
     abstract fun createEmbeddedResourceAppender(ctx: DokkaContext) : PageTransformer
 }
-
-// TODO we probably does not need that
-class JPageContentBuilder(cc: CommentsToContentConverter, sp: SignatureProvider, l: DokkaLogger) :
-    PageContentBuilder(cc, sp, l) {
-    fun mkContent(
-        d: Documentable,
-        kind: Kind = ContentKind.Main,
-        styles: Set<Style>,
-        op: Consumer<DocumentableContentBuilder>
-    ): ContentGroup =
-        contentFor(d.dri, d.sourceSets, kind, styles) {
-            op.accept(this)
-        }
-}

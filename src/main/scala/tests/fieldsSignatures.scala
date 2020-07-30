@@ -18,7 +18,7 @@ trait C
 
 abstract class D extends C
 {
-  override // TODO override does not work
+  override // TODO #21 override does not work
   val d: Int
    = 1
 }
@@ -31,7 +31,7 @@ trait C2
 
 abstract class D2 extends C
 {
-  override // TODO override does not work
+  override // TODO #21 override does not work
   val d: Int
   = 1
 }
