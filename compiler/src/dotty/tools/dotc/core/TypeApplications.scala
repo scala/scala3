@@ -413,13 +413,13 @@ class TypeApplications(val self: Type) extends AnyVal {
   def translateToRepeated(from: ClassSymbol)(using Context): Type =
     translateParameterized(from, defn.RepeatedParamClass)
 
-  /** Translate `T` by `T & Object` in the situations where an `Array[T]`
+  /** Translate `T` to `T & Object` in the situations where an `Array[T]`
    *  coming from Java would need to be interpreted as an `Array[T & Object]`
    *  to be erased correctly.
    *
    *  This is necessary because a fully generic Java array erases to an array of Object,
-   *  whereas a fully generic Java array erases to Object to allow primitive arrays
-   *  as subtypeS.
+   *  whereas a fully generic Scala array erases to Object to allow primitive arrays
+   *  as subtypes.
    *
    *  Note: According to
    *  <http://cr.openjdk.java.net/~briangoetz/valhalla/sov/02-object-model.html>,
