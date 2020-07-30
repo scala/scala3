@@ -8,7 +8,8 @@ import collection.JavaConverters._
 import dotty.tastydoc.representations._
 
 case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaConfiguration:
-  override def getOutputDir: String = new File("output").getAbsolutePath
+  var _outputDir: String = new File("output").getAbsolutePath
+  override def getOutputDir: String = _outputDir
   override def getCacheRoot: String = null
   override def getOfflineMode: Boolean = false
   override def getFailOnWarning: Boolean = false
@@ -27,8 +28,8 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
     Nil.asJava,
     List("output/BaseDocs.md").asJava,
     true,
-    true,
-    true,
+    /*includeRootPackage*/ false,
+    false, /* changed because of exception in reportUndocumentedTransformer - there's 'when' which doesnt match because it contains only KotlinVisbility cases */
     true,
     true,
     8,

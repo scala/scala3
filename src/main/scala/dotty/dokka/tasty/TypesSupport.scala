@@ -9,12 +9,12 @@ trait TypesSupport:
     import reflect._
 
     extension on (tpeTree: Tree):
-        def dokkaType(using cxt: reflect.Context): Bound = 
+        def dokkaType(using cxt: reflect.Context): Bound =
             val data = tpeTree match
-                case TypeBoundsTree(low, high) => 
-                    typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
-                case tpeTree: TypeTree => inner(tpeTree.tpe)
+                case TypeBoundsTree(low, high) => typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
+                case tpeTree: TypeTree =>  inner(tpeTree.tpe)
                 case term:  Term => inner(term.tpe)
+
             new TypeConstructor(tpeTree.symbol.dri, data.asJava, FunctionModifiers.NONE)
       
     private def text(str: String): JProjection = new UnresolvedBound(str)
@@ -41,13 +41,17 @@ trait TypesSupport:
         case OrType(left, right) => inner(left) ++ texts(" | ") ++ inner(right)
         case AndType(left, right) => inner(left) ++ texts(" & ") ++ inner(right)
         case ByNameType(tpe) => text("=> ") :: inner(tpe)
-        case ConstantType(constant) => texts(constant.value.toString) 
+        case ConstantType(constant) => 
+            texts(constant.value match
+                case c: Char => s"'$c'"
+                case other => other.toString
+            )
         case ThisType(tpe) => inner(tpe)
         case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeated(annotation) =>
             inner(tpe) :+ text("*")
         case AnnotatedType(tpe, _) => 
             inner(tpe)
-        // case TypeLambda(paramNames, paramTypes, resType) => ConstantReference(tp.show) //TOFIX
+        case tl @ TypeLambda(paramNames, paramTypes, resType) => noSupported(s"TypeLambda: ${paramNames} , ")  //TOFIX
         case Refinement(parent, name, info) =>
             // val tuple = convertTypeOrBoundsToReference(reflect)(info) match {
             //     case r if (info match {case info: TypeBounds => true case _ => false}) => ("type", name, r)
