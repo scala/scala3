@@ -20,5 +20,5 @@ trait SyntheticsSupport:
   def isSyntheticFunc(c: Symbol): Boolean =
     c.flags.is(Flags.Synthetic) || c.flags.is(Flags.FieldAccessor)  
 
-  def isSyntheticField(c: Symbol) = 
-    c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Private)
+  def isSyntheticField(c: Symbol, classDef: ClassDef) = 
+    c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Private) || c.flags.is(Flags.Object)

@@ -24,11 +24,11 @@ abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c
 
     sealed trait CaseImplementThis(id: Int)
 
-    // TODO add support for nested objects case class IAmACaseClass(x: T, id: Int) extends CaseImplementThis/*<-*/(id)/*->*/
+    case class IAmACaseClass(x: T, id: Int) extends CaseImplementThis/*<-*/(id)/*->*/
 
-    // TODO add support for nested objects case object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/
+    case object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/
 
-    // TODO add support for nested objects  object testObject
+    object testObject
 
     class Graph
     {

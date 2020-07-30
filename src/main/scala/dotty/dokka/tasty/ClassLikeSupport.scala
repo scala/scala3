@@ -24,6 +24,11 @@ trait ClassLikeSupport:
         parseMethod(d.symbol)
     }
 
+    val nested = classDef.body.collect {
+      case c: ClassDef =>
+        parseClass(c)
+    }
+
     val flags = classDef.symbol.flags
     val kind = 
       if flags.is(Flags.Object) then Kind.Object 
@@ -49,7 +54,7 @@ trait ClassLikeSupport:
       case other => other
 
     val typeDefs = classDef.body.collect { case td: TypeDef if !td.symbol.flags.is(Flags.Private) => td }
-    val valDefs = classDef.body.collect { case td: ValDef if !isSyntheticField(td.symbol)  => td}
+    val valDefs = classDef.body.collect { case td: ValDef if !isSyntheticField(td.symbol, classDef)  => td}
     
     new DClass(
         classDef.symbol.dri,
@@ -57,7 +62,7 @@ trait ClassLikeSupport:
         /*constuctors =*/ constuctors.asJava,
         /*methods =*/ methods.map(parseMethod(_)).asJava,
         /*fields =*/ (typeDefs.map(parseTypeDef) ++ valDefs.map(parseValDef)).asJava,
-        /*nested =*/ Nil.asJava,
+        /*nested =*/ nested.asJava,
         /*sources =*/ classDef.symbol.source,
         /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
         /*companion =*/ null,
