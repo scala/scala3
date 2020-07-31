@@ -24,3 +24,5 @@ class MethodsAndConstructors extends SingleFileTest("methodsAndConstructors", Se
 class TypesSignatures extends SingleFileTest("typesSignatures", SingleFileTest.all)
 
 class FieldsSignatures extends SingleFileTest("fieldsSignatures", SingleFileTest.all.filter(_ != "object"))
+
+class NestedSignatures extends SingleFileTest("nested", SingleFileTest.all)

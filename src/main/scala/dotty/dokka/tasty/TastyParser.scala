@@ -32,18 +32,17 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
     def parseRootTree(root: Tree): Seq[Documentable] = 
       val docs = Seq.newBuilder[Documentable]
       object Traverser extends TreeTraverser:
-        override def traverseTree(tree: Tree)(using ctx: Context): Unit = 
-          tree match {
-            case pck: PackageClause => 
-              docs += parsePackage(pck)
-            case packageObject: ClassDef if(packageObject.symbol.name == "package$") =>
-              docs += parsePackageObject(packageObject)
-            case clazz: ClassDef  =>
-              docs += parseClass(clazz)
-            case _ =>
-          }
-          super.traverseTree(tree)
-
+        override def traverseTree(tree: Tree)(using ctx: Context): Unit = tree match 
+          case pck: PackageClause => 
+            docs += parsePackage(pck)
+            super.traverseTree(tree)
+          case packageObject: ClassDef if(packageObject.symbol.name == "package$") =>
+            docs += parsePackageObject(packageObject)
+          case clazz: ClassDef  =>
+            docs += parseClass(clazz)
+          case _ =>
+            super.traverseTree(tree)
+          
       Traverser.traverseTree(root)(using reflect.rootContext)
       docs.result()
 
