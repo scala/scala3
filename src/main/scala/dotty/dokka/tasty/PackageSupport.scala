@@ -27,18 +27,22 @@ trait PackageSupport:
         )
     }
 
-    def parsePackageObject(pckObj: ClassDef): DPackage = 
-        DPackage(
-          new DRI(pckObj.symbol.dri.getPackageName, null, null, PointingToDeclaration.INSTANCE, null),
-          Nil.asJava,
-          Nil.asJava,
-          Nil.asJava,
-          Nil.asJava,
-          pckObj.symbol.documentation,
-          null,
-          sourceSet.toSet,
-          PropertyContainer.Companion.empty()
-        )
+    def parsePackageObject(pckObj: ClassDef): DPackage =
+        parseClass(pckObj) match{
+          case clazz:DClass =>
+            DPackage(
+              new DRI(pckObj.symbol.dri.getPackageName, null, null, PointingToDeclaration.INSTANCE, null),
+              clazz.getFunctions,
+              clazz.getProperties,
+              Nil.asJava,
+              Nil.asJava,
+              pckObj.symbol.documentation,
+              null,
+              sourceSet.toSet,
+              PropertyContainer.Companion.empty()
+            )
+        }
+        
 
     private def extractPackageName(pidShowNoColor: String): String = {
         val pidSplit = pidShowNoColor.split("\\.")

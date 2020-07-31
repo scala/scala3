@@ -38,7 +38,7 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
             case pck: PackageClause => 
               docs += parsePackage(pck)
               super.traverseTree(tree)
-            case packageObject: ClassDef if(packageObject.symbol.name == "package$") =>
+            case packageObject: ClassDef if(packageObject.symbol.name.contains("package$")) =>
               docs += parsePackageObject(packageObject)
             case clazz: ClassDef if(!clazz.symbol.isCompanionObject()) =>
               docs += parseClass(clazz)
@@ -73,8 +73,8 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
           .map( f =>
             new DPackage(
               f.getDri,
-              Nil.asJava,
-              Nil.asJava,
+              f.getFunctions,
+              f.getProperties,
               entries.collect{ case d: DClasslike => d }.toList.asJava, // TODO add support for other things like type or package object entries
               Nil.asJava,
               f.getDocumentation,
@@ -92,8 +92,8 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
       val doc2 = other.getDocumentation.asScala.get(sourceSet.getSourceSet).map(_.getChildren).getOrElse(Nil.asJava)
       DPackage(
           self.getDri,
-          Nil.asJava,
-          Nil.asJava,
+          (self.getFunctions.asScala ++ other.getFunctions.asScala).asJava,
+          (self.getProperties.asScala ++ other.getProperties.asScala).asJava,
           Nil.asJava, // WARNING Merging is done before collecting classlikes, if it changes it needs to be refactored
           Nil.asJava,
           sourceSet.asMap(
