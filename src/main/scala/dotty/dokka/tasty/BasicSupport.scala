@@ -38,7 +38,7 @@ trait BasicSupport:
         Option.when(sym.flags.is(Flags.Override))(ScalaOnlyModifiers.Override),
       ).flatten
 
-    // TODO make sure that DRIs are unique plus probably reuse semantic db code?  
+    // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?  
     def dri =
       if sym == Symbol.noSymbol then emptyDRI else
         val pointsTo = 

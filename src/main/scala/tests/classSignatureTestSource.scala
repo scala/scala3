@@ -45,7 +45,7 @@ object Documentation
   // TODO We do not see members from companions val valInsideDocObject = ???
 }
 
-sealed  // TODO support acess and modifiers! // TODO support variance
+sealed  // TODO #23 support access and modifiers!
 abstract class ClassExtendingDocumentation[T, A <: Int, B >: String, -X, +Y] extends Documentation[T, A, B, X, Y]
 {}
 
@@ -59,6 +59,6 @@ trait TraitWithCompanion{} //expect: trait TraitWithCompanion
 object TraitWithCompanion
 {}
 
-// TODO do we need to add 'val' in case class signatures?
+// TODO #25 do we need to add 'val' in case class signatures?
 case class ManyModifiers(/*<-*/val /*->*/x: Int, var y: Double, z: String)
 class ManyModifiers2(val x: Int, var y: Double, z: String)

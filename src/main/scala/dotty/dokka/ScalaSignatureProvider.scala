@@ -15,9 +15,9 @@ import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
 import java.util.{List => JList}
 
-class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger) extends SignatureProvider:
-    private val default = new KotlinSignatureProvider(ctcc, logger)
-    private val contentBuilder = new JPageContentBuilder(ctcc, this, logger)
+class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logger: DokkaLogger) extends SignatureProvider:
+    private val default = new KotlinSignatureProvider(contentConverter, logger)
+    private val contentBuilder = new PageContentBuilder(contentConverter, this, logger)
 
     def (tokens: Seq[String]).toSignatureString(): String =
         tokens.filter(_.trim.nonEmpty).mkString(""," "," ")
@@ -127,7 +127,7 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
                         builder.addText(s"TODO($other)")
                 }
             case other =>
-             builder.addText(s"TODO: $other")
+                builder.addText(s"TODO: $other")
         }
 
         def generics(on: WithGenerics) = builder.addList(on.getGenerics, "[", "]"){ e => 
@@ -151,7 +151,9 @@ class ScalaSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogg
             }
 
     private def content(d: Documentable)(render: PageContentBuilder$DocumentableContentBuilder => Unit): ContentGroup = 
-        val lambda: Consumer[PageContentBuilder$DocumentableContentBuilder] = new Consumer:
-          override def accept(v: PageContentBuilder$DocumentableContentBuilder) = render(v)
+        val lambda : kotlin.jvm.functions.Function1[? >: PageContentBuilder#DocumentableContentBuilder, kotlin.Unit] = 
+            r => 
+                render(r.asInstanceOf[PageContentBuilder$DocumentableContentBuilder])
+                kotlin.Unit.INSTANCE
 
-        contentBuilder.mkContent(d, ContentKind.Symbol, styles, lambda)
+        contentBuilder.contentFor(d.getDri, d.getSourceSets, ContentKind.Symbol, styles, PropertyContainer.Companion.empty(), lambda)

@@ -36,7 +36,7 @@ trait TypesSupport:
         // annotation.tpe.typeSymbol prints 'class Repeated' and defn.RepeatedParamClass prints 'class <repeated>'
         tpeAnnotation.tpe.typeSymbol.toString == "class Repeated"
 
-    // TODO add support for all types signatures that makes sense
+    // TODO #23 add support for all types signatures that makes sense
     private def inner(tp: reflect.TypeOrBounds)(using cxt: reflect.Context): List[JProjection] = tp match
         case OrType(left, right) => inner(left) ++ texts(" | ") ++ inner(right)
         case AndType(left, right) => inner(left) ++ texts(" & ") ++ inner(right)

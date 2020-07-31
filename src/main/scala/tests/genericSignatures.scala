@@ -2,7 +2,7 @@ package tests.genericSignatures
 
 class D[T]
 
-// TODO this is not supported :( class D1[T ]
+// TODO #26 this is not supported :( class D1[T ]
 
 class D2[T]()
 
