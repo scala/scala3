@@ -17,46 +17,10 @@ object SingleFileTest {
   val all = classlikeKinds ++ members
 }
 
-abstract class SingleFileTest(val fileName: String, signatureKinds: Seq[String], ignoreUndocumented: Boolean = false) extends DottyAbstractCoreTest:
-  private val _collector = new ErrorCollector();
+abstract class SingleFileTest(val fileName: String, signatureKinds: Seq[String], ignoreUndocumented: Boolean = false) extends MultipleFileTest(
+    List(fileName),
+    List(fileName),
+    signatureKinds,
+    ignoreUndocumented
+)
 
-  /* There's assumption that symbols are named using letters and digits only (no Scala operators :/) to make it easier to find symbol name */
-  def extractSymbolName(signature: String) = 
-      val helper = signatureKinds.find(k => signature.contains(s"$k "))
-      
-      helper.fold("NULL"){ h =>
-        val helperIndex = signature.indexOf(h)
-        signature.substring(helperIndex + helper.size + 1).takeWhile(_.isLetterOrDigit)
-      }  
-      
-  def matchSignature(s: String, signatureList: List[String]): Seq[String] = 
-      val symbolName = extractSymbolName(s)
-      val candidates = signatureList.filter(extractSymbolName(_) == symbolName)
-
-      candidates.filter(_ == s) match {
-          case Nil =>
-              val candidateMsg = 
-                  if candidates.isEmpty then s"No candidate found for symbol name $symbolName"
-                  else s"Candidates:\n${candidates.mkString("\n")}\n"
-
-              reportError(s"No match for:\n$s\n$candidateMsg")
-              Nil
-          case matching =>
-              matching
-      }
-
-  @Test
-  def testSignatures(): Unit = 
-      def cleanup(s: String) = s.replace("\n", " ").replaceAll(" +", " ")
-      val allFromSource = signaturesFromSource(Source.fromFile(s"src/main/scala/tests/$fileName.scala")).toList
-      val fromSource = allFromSource.filter(extractSymbolName(_) != "NULL").map(cleanup)
-
-      val allFromDocumentation = signaturesFromDocumentation(s"target/scala-0.26/classes/tests/$fileName")
-      val fromDocumentation = allFromDocumentation.filter(extractSymbolName(_) != "NULL").map(cleanup)
-      
-      val documentedSignature = fromDocumentation.flatMap(matchSignature(_, fromSource)).toSet
-      val missingSignatures = fromSource.filterNot(documentedSignature.contains)
-      
-      if !ignoreUndocumented && missingSignatures.nonEmpty then reportError(
-           s"""Not documented signatures:\n ${missingSignatures.mkString("\n")} \n All signatures: ${fromDocumentation.mkString("\n")}"""
-      )

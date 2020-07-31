@@ -31,3 +31,5 @@ class CompanionObjectSignatures extends SingleFileTest("companionObjectSignature
 class PackageSymbolSignatures extends SingleFileTest("packageSymbolSignatures", SingleFileTest.all)
 
 class PackageObjectSymbolSignatures extends SingleFileTest("packageObjectSymbolSignatures", SingleFileTest.all.filter(_ != "object"))
+
+class MergedPackageSignatures extends MultipleFileTest(List("mergedPackage1", "mergedPackage2", "mergedPackage3"), List("mergedPackage"), SingleFileTest.all.filter(_ != "object"))
