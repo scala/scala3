@@ -1,4 +1,4 @@
-val dottyVersion = "0.25.0-RC2"
+val dottyVersion = "0.26.0-RC1"
 
 libraryDependencies += "org.jetbrains.dokka" % "dokka-base" % "1.4.0-M3-dev-81"
 libraryDependencies += "org.jetbrains.dokka" % "dokka-core" % "1.4.0-M3-dev-81"
