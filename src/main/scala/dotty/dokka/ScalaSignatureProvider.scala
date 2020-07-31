@@ -101,7 +101,11 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
     extension on (builder: PageContentBuilder$DocumentableContentBuilder):
 
         def modifiersAndVisibility[T <: Documentable](t: WithAbstraction with WithVisibility with WithExtraProperties[T], kind: String) =
-            val prefixes = t.getExtra.getMap().asScala.get(AdditionalModifiers.Companion).map(_.asInstanceOf[AdditionalModifiers])
+            import org.jetbrains.dokka.model.properties._
+            val extras = t.getExtra.getMap()
+            val additionalModifiers =
+              Option(extras.get(AdditionalModifiers.Companion).asInstanceOf[AdditionalModifiers])
+            val prefixes = additionalModifiers
                 .map(_.getContent)
                 .map(content => content.defaultValue.asScala.map(_.getName))
                 .map(modifiers => modifiers.toSeq.toSignatureString())
