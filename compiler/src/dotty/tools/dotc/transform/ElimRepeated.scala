@@ -4,7 +4,7 @@ package transform
 import core._
 import StdNames.nme
 import Types._
-import dotty.tools.dotc.transform.MegaPhase._
+import transform.MegaPhase._
 import ast.Trees._
 import Flags._
 import Contexts._
@@ -12,7 +12,6 @@ import Symbols._
 import Constants._
 import Decorators._
 import Denotations._, SymDenotations._
-import dotty.tools.dotc.ast.tpd
 import TypeErasure.erasure
 import DenotTransformers._
 
@@ -34,12 +33,43 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type =
     elimRepeated(tp)
 
+  /** Create forwarder symbols for the methods that are annotated
+   *  with `@varargs` or that override java varargs.
+   *
+   *  The definitions (DefDef) for these symbols are created by transformDefDef.
+   */
   override def transform(ref: SingleDenotation)(using Context): SingleDenotation =
+    def transformVarArgs(sym: Symbol, isJavaOverride: Boolean): Unit =
+      val hasAnnotation = hasVarargsAnnotation(sym)
+      val hasRepeatedParam = hasRepeatedParams(sym)
+      if hasRepeatedParam then
+        if isJavaOverride || hasAnnotation || parentHasAnnotation(sym) then
+          // java varargs are more restrictive than scala's
+          // see https://github.com/scala/bug/issues/11714
+          val validJava = isValidJavaVarArgs(sym.info)
+          if !validJava then
+            report.error("""To generate java-compatible varargs:
+                      |  - there must be a single repeated parameter
+                      |  - it must be the last argument in the last parameter list
+                      |""".stripMargin,
+              sym.sourcePos)
+          else
+            addVarArgsForwarder(sym, isJavaOverride)
+      else if hasAnnotation
+        report.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
+    end
+
     super.transform(ref) match
-      case ref1: SymDenotation if (ref1 ne ref) && overridesJava(ref1.symbol) =>
-        // This method won't override the corresponding Java method at the end of this phase,
-        // only the forwarder added by `addVarArgsForwarder` will.
-        ref1.copySymDenotation(initFlags = ref1.flags &~ Override)
+      case ref1: SymDenotation if ref1.is(Method) =>
+        val sym = ref1.symbol
+        val isJavaOverride = overridesJava(sym)
+        transformVarArgs(sym, isJavaOverride)
+        if (ref1 ne ref) && isJavaOverride then
+          // This method won't override the corresponding Java method at the end of this phase,
+          // only the forwarder added by `addVarArgsForwarder` will.
+          ref1.copySymDenotation(initFlags = ref1.flags &~ Override)
+        else
+          ref1
       case ref1 =>
         ref1
 
@@ -50,6 +80,11 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   private def hasVarargsAnnotation(sym: Symbol)(using Context) = sym.hasAnnotation(defn.VarargsAnnot)
 
   private def parentHasAnnotation(sym: Symbol)(using Context) = sym.allOverriddenSymbols.exists(hasVarargsAnnotation)
+
+  private def isVarargsMethod(sym: Symbol)(using Context) =
+    hasVarargsAnnotation(sym) ||
+      hasRepeatedParams(sym) &&
+      (sym.allOverriddenSymbols.exists(s => s.is(JavaDefined) || hasVarargsAnnotation(s)))
 
   /** Eliminate repeated parameters from method types. */
   private def elimRepeated(tp: Type)(using Context): Type = tp.stripTypeVar match
@@ -162,39 +197,36 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Convert an Array into a scala.Seq */
   private def arrayToSeq(tree: Tree)(using Context): Tree =
-    tpd.wrapArray(tree, tree.tpe.elemType)
+    wrapArray(tree, tree.tpe.elemType)
 
-  /** If method overrides a Java varargs method or is annotated with @varargs, add a varargs bridge.
-   *  Also transform trees inside method annotation.
-   */
+  /** Generate the method definitions for the varargs forwarders created in transform */
   override def transformDefDef(tree: DefDef)(using Context): Tree =
-    val sym = tree.symbol
-    val hasAnnotation = hasVarargsAnnotation(sym)
+    // If transform reported an error, don't go further
+    if ctx.reporter.hasErrors then
+      return tree
 
-    // atPhase(thisPhase) is used where necessary to see the repeated
-    // parameters before their elimination
-    val hasRepeatedParam = atPhase(thisPhase)(hasRepeatedParams(sym))
-    if hasRepeatedParam then
-      val isOverride = atPhase(thisPhase)(overridesJava(sym))
-      if isOverride || hasAnnotation || parentHasAnnotation(sym) then
-        // java varargs are more restrictive than scala's
-        // see https://github.com/scala/bug/issues/11714
-        val validJava = atPhase(thisPhase)(isValidJavaVarArgs(sym.info))
-        if !validJava then
-          report.error("""To generate java-compatible varargs:
-                    |  - there must be a single repeated parameter
-                    |  - it must be the last argument in the last parameter list
-                    |""".stripMargin,
-            sym.sourcePos)
-          tree
-        else
-          // non-overrides cannot be synthetic otherwise javac refuses to call them
-          addVarArgsForwarder(tree, isBridge = isOverride)
-      else
-        tree
+    val sym = tree.symbol
+    val isVarArgs = atPhase(thisPhase)(isVarargsMethod(sym))
+    if isVarArgs then
+      // Get the symbol generated in transform
+      val forwarderType = atPhase(thisPhase)(toJavaVarArgs(sym.info))
+      val forwarderSym = currentClass.info.decl(sym.name).alternatives
+        .find(_.info.matches(forwarderType))
+        .get
+        .symbol.asTerm
+      // Generate the method
+      val forwarderDef = polyDefDef(forwarderSym, trefs => vrefss => {
+        val init :+ (last :+ vararg) = vrefss
+        // Can't call `.argTypes` here because the underlying array type is of the
+        // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
+        val elemtp = vararg.tpe.widen.argInfos.head
+        ref(sym.termRef)
+          .appliedToTypes(trefs)
+          .appliedToArgss(init)
+          .appliedToArgs(last :+ wrapArray(vararg, elemtp))
+        })
+      Thicket(tree, forwarderDef)
     else
-      if hasAnnotation then
-        report.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
       tree
 
   /** Is there a repeated parameter in some parameter list? */
@@ -216,61 +248,45 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     case _ =>
       throw new Exception("Match error in @varargs checks. This should not happen, please open an issue " + tp)
 
-
-  /** Add a Java varargs forwarder
-   *  @param ddef     the original method definition
+  /** Add the symbol of a Java varargs forwarder to the scope.
+   *  It retains all the flags of the original method.
+   *
+   *  @param original the original method symbol
    *  @param isBridge true if we are generating a "bridge" (synthetic override forwarder)
    *
-   *  @return a thicket consisting of `ddef` and an additional method
-   *          that forwards java varargs to `ddef`. It retains all the
-   *          flags of `ddef` except `Private`.
-   *
-   *  A forwarder is necessary because the following hold:
-   *    - the varargs in `ddef` will change from `RepeatedParam[T]` to `Seq[T]` after this phase
-   *    - _but_ the callers of `ddef` expect its varargs to be changed to `Array[? <: T]`
+   *  A forwarder is necessary because the following holds:
+   *    - the varargs in `original` will change from `RepeatedParam[T]` to `Seq[T]` after this phase
+   *    - _but_ the callers of the method expect its varargs to be changed to `Array[? <: T]`
    *  The solution is to add a method that converts its argument from `Array[? <: T]` to `Seq[T]` and
-   *  forwards it to `ddef`.
+   *  forwards it to the original method.
    */
-  private def addVarArgsForwarder(ddef: DefDef, isBridge: Boolean)(using Context): Tree =
-    val original = ddef.symbol
+  private def addVarArgsForwarder(original: Symbol, isBridge: Boolean)(using Context): Unit =
+    val classInfo = original.owner.info
+    val decls = classInfo.decls.cloneScope
+
+    // For simplicity we always set the varargs flag,
+    // although it's not strictly necessary for overrides.
+    val flags = original.flags | JavaVarargs
 
     // The java-compatible forwarder symbol
-    val sym = atPhase(thisPhase) {
-      // Capture the flags before they get modified by #transform.
-      // For simplicity we always set the varargs flag,
-      // although it's not strictly necessary for overrides.
-      val flags = original.flags | JavaVarargs
+    val forwarder =
       original.copy(
         flags = if isBridge then flags | Artifact else flags,
-        info = toJavaVarArgs(ddef.symbol.info)
+        info = toJavaVarArgs(original.info)
       ).asTerm
-    }
 
     // Find a method that would conflict with the forwarder if the latter existed.
     // This needs to be done at thisPhase so that parent @varargs don't conflict.
-    val conflict = atPhase(thisPhase) {
-      currentClass.info.member(sym.name).alternatives.find { s =>
-        s.matches(sym) &&
+    val conflict =
+      classInfo.member(original.name).alternatives.find { s =>
+        s.matches(forwarder) &&
         !(isBridge && s.asSymDenotation.is(JavaDefined))
       }
-    }
-
     conflict match
       case Some(conflict) =>
         report.error(s"@varargs produces a forwarder method that conflicts with ${conflict.showDcl}", original.sourcePos)
-        ddef
       case None =>
-        val bridgeDef = polyDefDef(sym.enteredAfter(thisPhase), trefs => vrefss => {
-          val init :+ (last :+ vararg) = vrefss
-          // Can't call `.argTypes` here because the underlying array type is of the
-          // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
-          val elemtp = vararg.tpe.widen.argInfos.head
-          ref(original.termRef)
-            .appliedToTypes(trefs)
-            .appliedToArgss(init)
-            .appliedToArgs(last :+ tpd.wrapArray(vararg, elemtp))
-          })
-        Thicket(ddef, bridgeDef)
+        decls.enter(forwarder.enteredAfter(thisPhase))
 
   /** Convert type from Scala to Java varargs method */
   private def toJavaVarArgs(tp: Type)(using Context): Type = tp match
