@@ -51,7 +51,7 @@ abstract class SingleFileTest(val fileName: String, signatureKinds: Seq[String],
       val allFromSource = signaturesFromSource(Source.fromFile(s"src/main/scala/tests/$fileName.scala")).toList
       val fromSource = allFromSource.filter(extractSymbolName(_) != "NULL").map(cleanup)
 
-      val allFromDocumentation = signaturesFromDocumentation(s"target/scala-0.25/classes/tests/$fileName")
+      val allFromDocumentation = signaturesFromDocumentation(s"target/scala-0.26/classes/tests/$fileName")
       val fromDocumentation = allFromDocumentation.filter(extractSymbolName(_) != "NULL").map(cleanup)
       
       val documentedSignature = fromDocumentation.flatMap(matchSignature(_, fromSource)).toSet

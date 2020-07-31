@@ -18,7 +18,7 @@ case class DocConfiguration(tastyFiles: List[String], classpath: String)
 object Main:
   def main(args: Array[String]): Unit =
     // TODO #20 change the default to something more reasonable...
-    val cp = args.headOption.getOrElse("target/scala-0.25/classes")
+    val cp = args.headOption.getOrElse("target/scala-0.26/classes")
     def listTastyFiles(f: File): Seq[String] = 
       val (files, dirs) = f.listFiles().partition(_.isFile)
       files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
