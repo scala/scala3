@@ -18,7 +18,7 @@ enum Kind(val name: String){
   case Trait extends Kind("trait")
 }
 
-case class ClasslikeExtension(parentTypes: List[Bound], constructor: Option[DFunction], kind: Kind) extends ExtraProperty[DClasslike]:
+case class ClasslikeExtension(parentTypes: List[Bound], constructor: Option[DFunction], kind: Kind, companion: Option[DClasslike]) extends ExtraProperty[DClasslike]:
   override def getKey = ClasslikeExtension
 
 object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]

@@ -15,6 +15,7 @@ import org.jetbrains.dokka.pages.Kind
 import org.jetbrains.dokka.pages.Style
 import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.plugability.DokkaPlugin
+import org.jetbrains.dokka.transformers.documentation.DocumentableToPageTranslator
 import org.jetbrains.dokka.transformers.pages.PageTransformer
 import org.jetbrains.dokka.transformers.sources.SourceToDocumentableTranslator
 import org.jetbrains.dokka.utilities.DokkaLogger
@@ -65,8 +66,37 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         } order { after(dokkaBase.styleAndScriptsAppender) }
     }
 
+    val scalaDocumentableToPageTranslator by extending {
+        CoreExtensions.documentableToPageTranslator providing { ctx ->
+            createDocumentableToPageTranslator(
+                ctx.single(dokkaBase.commentsToContentConverter),
+                ctx.single(dokkaBase.signatureProvider),
+                ctx.logger
+            )
+        } override dokkaBase.documentableToPageTranslator
+    }
+
     abstract fun createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule
     abstract fun createSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger): SignatureProvider
     abstract fun createResourceInstaller(ctx: DokkaContext) : PageTransformer
     abstract fun createEmbeddedResourceAppender(ctx: DokkaContext) : PageTransformer
+    abstract fun createDocumentableToPageTranslator(
+        commentsToContentConverter: CommentsToContentConverter,
+        signatureProvider: SignatureProvider,
+        logger: DokkaLogger
+    ) : DocumentableToPageTranslator
+}
+
+// TODO we probably does not need that
+class JPageContentBuilder(cc: CommentsToContentConverter, sp: SignatureProvider, l: DokkaLogger) :
+    PageContentBuilder(cc, sp, l) {
+    fun mkContent(
+        d: Documentable,
+        kind: Kind = ContentKind.Main,
+        styles: Set<Style>,
+        op: Consumer<DocumentableContentBuilder>
+    ): ContentGroup =
+        contentFor(d.dri, d.sourceSets, kind, styles) {
+            op.accept(this)
+        }
 }

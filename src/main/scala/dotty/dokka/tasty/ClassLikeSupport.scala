@@ -25,7 +25,7 @@ trait ClassLikeSupport:
     }
 
     val nested = classDef.body.collect {
-      case c: ClassDef =>
+      case c: ClassDef if !c.symbol.isCompanionObject() =>
         parseClass(c)
     }
 
@@ -54,8 +54,19 @@ trait ClassLikeSupport:
       case other => other
 
     val typeDefs = classDef.body.collect { case td: TypeDef if !td.symbol.flags.is(Flags.Private) => td }
+
     val valDefs = classDef.body.collect { case td: ValDef if !isSyntheticField(td.symbol, classDef)  => td}
-    
+
+    val companion = kind match {
+      case Kind.Object => None
+      case _ =>
+        Some(classDef.symbol.companionClass)
+          .filter(_.exists)
+          .filter(!_.flags.is(Flags.Synthetic))
+          .map(_.tree.asInstanceOf[ClassDef])
+          .map(parseClass(_))
+    }
+
     new DClass(
         classDef.symbol.dri,
         name,
@@ -73,7 +84,7 @@ trait ClassLikeSupport:
         /*modifier =*/ sourceSet.asMap(modifier),
         inspector.sourceSet.toSet,
         PropertyContainer.Companion.empty()
-          .plus(ClasslikeExtension(parents, constructorMethod, kind))
+          .plus(ClasslikeExtension(parents, constructorMethod, kind, companion))
           .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
       )
 

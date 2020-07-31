@@ -15,6 +15,8 @@ import org.jetbrains.dokka.model.properties.PropertyContainer
 import dotty.dokka.tasty.DokkaTastyInspector
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.utilities.DokkaLogger
+import org.jetbrains.dokka.base.signatures.SignatureProvider
+
 
 class DottyDokkaPlugin extends JavaDokkaPlugin:
   override def createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule = cxt.getConfiguration match {
@@ -37,3 +39,8 @@ class DottyDokkaPlugin extends JavaDokkaPlugin:
   override def createSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger) = new ScalaSignatureProvider(ctcc, logger) 
   override def createResourceInstaller(ctx: DokkaContext) = new ScalaResourceInstaller()
   override def createEmbeddedResourceAppender(ctx: DokkaContext) = new ScalaEmbeddedResourceAppender()
+  override def createDocumentableToPageTranslator(
+        commentsToContentConverter: CommentsToContentConverter,
+        signatureProvider: SignatureProvider,
+        logger: DokkaLogger
+    ) = new ScalaDocumentableToPageTranslator(commentsToContentConverter,signatureProvider, logger)
