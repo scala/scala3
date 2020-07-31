@@ -47,11 +47,12 @@ abstract class SingleFileTest(val fileName: String, signatureKinds: Seq[String],
 
   @Test
   def testSignatures(): Unit = 
+      def cleanup(s: String) = s.replace("\n", " ").replaceAll(" +", " ")
       val allFromSource = signaturesFromSource(Source.fromFile(s"src/main/scala/tests/$fileName.scala")).toList
-      val fromSource = allFromSource.filter(extractSymbolName(_) != "NULL")
+      val fromSource = allFromSource.filter(extractSymbolName(_) != "NULL").map(cleanup)
 
       val allFromDocumentation = signaturesFromDocumentation(s"target/scala-0.25/classes/tests/$fileName")
-      val fromDocumentation = allFromDocumentation.filter(extractSymbolName(_) != "NULL")
+      val fromDocumentation = allFromDocumentation.filter(extractSymbolName(_) != "NULL").map(cleanup)
       
       val documentedSignature = fromDocumentation.flatMap(matchSignature(_, fromSource)).toSet
       val missingSignatures = fromSource.filterNot(documentedSignature.contains)
