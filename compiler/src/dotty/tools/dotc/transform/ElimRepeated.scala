@@ -261,7 +261,12 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  forwards it to the original method.
    */
   private def addVarArgsForwarder(original: Symbol, isBridge: Boolean)(using Context): Unit =
-    val classInfo = original.owner.info
+    val owner = original.owner
+    if !owner.isClass then
+      report.error("inner methods cannot be annotated with @varargs", original.sourcePos)
+      return
+
+    val classInfo = owner.info
     val decls = classInfo.decls.cloneScope
 
     // For simplicity we always set the varargs flag,

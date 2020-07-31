@@ -25,4 +25,10 @@ object Test {
   @varargs def v6: Int = 1 // error
   @varargs def v7(i: Int*)() = i.sum // error
 
+  def f() =
+    @varargs def inner(s: String*) = () // error
+    inner("wrong")
+
 }
+
+@varargs def topLevel(s: String*) = () // ok
