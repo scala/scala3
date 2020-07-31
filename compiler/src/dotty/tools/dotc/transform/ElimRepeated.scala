@@ -54,7 +54,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
                       |""".stripMargin,
               sym.sourcePos)
           else
-            addVarArgsForwarder(sym, isJavaOverride)
+            addVarArgsForwarder(sym, isJavaOverride, hasAnnotation)
       else if hasAnnotation
         report.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
     end
@@ -260,7 +260,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  The solution is to add a method that converts its argument from `Array[? <: T]` to `Seq[T]` and
    *  forwards it to the original method.
    */
-  private def addVarArgsForwarder(original: Symbol, isBridge: Boolean)(using Context): Unit =
+  private def addVarArgsForwarder(original: Symbol, isBridge: Boolean, hasAnnotation: Boolean)(using Context): Unit =
     val owner = original.owner
     if !owner.isClass then
       report.error("inner methods cannot be annotated with @varargs", original.sourcePos)
@@ -289,7 +289,11 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       }
     conflict match
       case Some(conflict) =>
-        report.error(s"@varargs produces a forwarder method that conflicts with ${conflict.showDcl}", original.sourcePos)
+        val src =
+          if hasAnnotation then "@varargs"
+          else if isBridge then "overriding a java varargs method"
+          else "@varargs (on overriden method)"
+        report.error(s"$src produces a forwarder method that conflicts with ${conflict.showDcl}", original.sourcePos)
       case None =>
         decls.enter(forwarder.enteredAfter(thisPhase))
 
