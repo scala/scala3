@@ -62,6 +62,9 @@ class Constructors(a: String):
 /** Some methods to tests */
 class Methods:
  def nobraces: A = ???
+ /** Class doc test.
+   * @throws [[Error]] Throws errors.
+   */
  def simple(): B = ???
  def oneParam(a: A): B = ???
  def multipleParams(a: A, b: B): C = ???

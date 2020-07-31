@@ -113,10 +113,9 @@ class MarkdownCommentParser(repr: Repr, packages: Packages)
   def linkedExceptions(m: Map[String, String]) = {
     // val inlineToMarkdown = InlineToMarkdown(ent)
     m.map { case (targetStr, body) =>
-      val link = makeRepresentationLink(repr, packages, targetStr, targetStr)
+      // val link = makeRepresentationLink(repr, packages, targetStr, targetStr)
       // (targetStr, inlineToMarkdown(link))
-      // (targetStr, link.title)
-      null
+      (targetStr, dkk.text(body))
     }
   }
 
@@ -147,7 +146,6 @@ case class WikiCommentParser(ent: Repr, packages: Packages)
 
   def linkedExceptions(m: Map[String, String]) = {
     m.view.mapValues(stringToMarkup).toMap.map { case (targetStr, body) =>
-      null
       // import wiki._
       // val link = lookup(Some(ent), packages, targetStr)
       // val newBody = body match {
@@ -157,8 +155,8 @@ case class WikiCommentParser(ent: Repr, packages: Packages)
       //     Body(List(Paragraph(Chain(link +: descr))))
       //   case _ => body
       // }
-
       // (targetStr, newBody.show(ent))
+      (targetStr, wiki.Converter.convertBody(body))
     }
   }
 
