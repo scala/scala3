@@ -495,7 +495,7 @@ object Flags {
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
-    Override | Final | Method | Implicit | Given | Lazy | Extension |
+    Override | Final | Method | Implicit | Given | Lazy |
     Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased
 
   /** Flags that can apply to a module class */

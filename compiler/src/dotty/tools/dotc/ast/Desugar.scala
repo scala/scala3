@@ -837,36 +837,10 @@ object desugar {
    *
    *    <module> val name: name$ = New(name$)
    *    <module> final class name$ extends parents { self: name.type => body }
-   *
-   *  Special case for extension methods with collective parameters. Expand:
-   *
-   *     given object name[tparams](x: T) extends parents { self => bpdy }
-   *
-   *  to:
-   *
-   *     given object name extends parents { self => body' }
-   *
-   *  where every definition in `body` is expanded to an extension method
-   *  taking type parameters `tparams` and a leading paramter `(x: T)`.
-   *  See: collectiveExtensionBody
-   *  TODO: drop this part
    */
   def moduleDef(mdef: ModuleDef)(using Context): Tree = {
     val impl = mdef.impl
     val mods = mdef.mods
-    impl.constr match {
-      case DefDef(_, tparams, vparamss @ (vparam :: Nil) :: givenParamss, _, _) =>
-        // Transform collective extension
-        assert(mods.is(Given))
-        return moduleDef(
-          cpy.ModuleDef(mdef)(
-            mdef.name,
-            cpy.Template(impl)(
-              constr = emptyConstructor,
-              body = collectiveExtensionBody(impl.body, tparams, vparamss))))
-      case _ =>
-    }
-
     val moduleName = normalizeName(mdef, impl).asTermName
     def isEnumCase = mods.isEnumCase
 

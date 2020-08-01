@@ -152,11 +152,6 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     }
   }
 
-  /** A hook that can be overridden if overlap checking in `checkPos` should be
-   *  disabled for this node.
-   */
-  def disableOverlapChecks = false
-
   /** Check that all positioned items in this tree satisfy the following conditions:
    *  - Parent spans contain child spans
    *  - If item is a non-empty tree, it has a position
