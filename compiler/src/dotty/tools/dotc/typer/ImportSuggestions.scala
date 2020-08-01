@@ -220,7 +220,7 @@ trait ImportSuggestions:
         .alternatives
         .map(mbr => TermRef(site, mbr.symbol))
         .filter(ref =>
-          ref.symbol.isAllOf(ExtensionMethod)
+          ref.symbol.is(ExtensionMethod)
           && isApplicableMethodRef(ref, argType :: Nil, WildcardType))
         .headOption
 
@@ -317,7 +317,7 @@ trait ImportSuggestions:
       else (headMatches, "make progress towards fixing")
     def importString(ref: TermRef): String =
       val imported =
-        if ref.symbol.isAllOf(ExtensionMethod) then
+        if ref.symbol.is(ExtensionMethod) then
           s"${ctx.printer.toTextPrefix(ref.prefix).show}${ref.symbol.name.dropExtension}"
         else
           ctx.printer.toTextRef(ref).show

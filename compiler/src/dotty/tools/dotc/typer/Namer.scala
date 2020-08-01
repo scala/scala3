@@ -992,7 +992,7 @@ class Namer { typer: Typer =>
                   else
                     (EmptyFlags, mbr.info.ensureMethodic)
                 var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
-                if sym.isAllOf(ExtensionMethod) then mbrFlags |= Extension
+                if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
                 val forwarderName = checkNoConflict(alias, isPrivate = false, span)
                 newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
               }

@@ -745,7 +745,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def nameIdText[T >: Untyped](tree: NameTree[T], dropExtension: Boolean = false): Text =
     if (tree.hasType && tree.symbol.exists) {
       var str = nameString(tree.symbol)
-      if tree.symbol.isAllOf(ExtensionMethod) && dropExtension && str.startsWith("extension_") then
+      if tree.symbol.is(ExtensionMethod) && dropExtension && str.startsWith("extension_") then
         str = str.drop("extension_".length)
       tree match {
         case tree: RefTree => withPos(str, tree.sourcePos)
@@ -788,7 +788,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     import untpd._
     dclTextOr(tree) {
       val defKeyword = modText(tree.mods, tree.symbol, keywordStr("def"), isType = false)
-      val isExtension = tree.hasType && tree.symbol.isAllOf(ExtensionMethod)
+      val isExtension = tree.hasType && tree.symbol.is(ExtensionMethod)
       withEnclosingDef(tree) {
         val (prefix, vparamss) =
           if isExtension then

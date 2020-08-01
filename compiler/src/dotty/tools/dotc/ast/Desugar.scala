@@ -895,45 +895,9 @@ object desugar {
               vparams1 :: ext.vparamss ::: vparamss1
             case _ =>
               ext.vparamss ++ mdef.vparamss
-        ).withMods(mdef.mods | Extension)
+        ).withMods(mdef.mods | ExtensionMethod)
       )
   }
-
-  /** Transform the statements of a collective extension
-   *   @param stats    the original statements as they were parsed
-   *   @param tparams  the collective type parameters
-   *   @param vparamss the collective value parameters, consisting
-   *                   of a single leading value parameter, followed by
-   *                   zero or more context parameter clauses
-   *
-   *  Note: It is already assured by Parser.checkExtensionMethod that all
-   *  statements conform to requirements.
-   *
-   *  Each method in stats is transformed into an extension method. Example:
-   *
-   *    extension on [Ts](x: T)(using C):
-   *      def f(y: T) = ???
-   *      def g(z: T) = f(z)
-   *
-   *  is turned into
-   *
-   *    extension:
-   *      <extension> def f[Ts](x: T)(using C)(y: T) = ???
-   *      <extension> def g[Ts](x: T)(using C)(z: T) = f(z)
-   */
-  def collectiveExtensionBody(stats: List[Tree],
-      tparams: List[TypeDef], vparamss: List[List[ValDef]])(using Context): List[Tree] =
-    for stat <- stats yield
-      stat match
-        case mdef: DefDef =>
-          cpy.DefDef(mdef)(
-            name = mdef.name.toExtensionName,
-            tparams = tparams ++ mdef.tparams,
-            vparamss = vparamss ::: mdef.vparamss,
-          ).withMods(mdef.mods | Extension)
-        case mdef =>
-          mdef
-  end collectiveExtensionBody
 
   /** Transforms
    *
@@ -971,7 +935,7 @@ object desugar {
       report.error(IllegalRedefinitionOfStandardKind(kind, name), errPos)
       name = name.errorName
     }
-    if name.isExtensionName && !mdef.mods.is(Extension) then
+    if name.isExtensionName && !mdef.mods.is(ExtensionMethod) then
       report.error(em"illegal method name: $name may not start with `extension_`", errPos)
     name
   }
@@ -982,7 +946,7 @@ object desugar {
       case impl: Template =>
         if impl.parents.isEmpty then
           impl.body.find {
-            case dd: DefDef if dd.mods.is(Extension) => true
+            case dd: DefDef if dd.mods.is(ExtensionMethod) => true
             case _ => false
           }
           match

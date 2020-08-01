@@ -3291,7 +3291,7 @@ object Parsers {
         def extParamss() =
           try paramClause(0, prefix = true) :: Nil
           finally
-            mods1 = addFlag(mods, Extension)
+            mods1 = addFlag(mods, ExtensionMethod)
             if in.token == DOT then in.nextToken()
             else
               isInfix = true
@@ -3305,14 +3305,14 @@ object Parsers {
             (Nil, Nil)
         val ident = termIdent()
         var name = ident.name.asTermName
-        if mods1.is(Extension) then name = name.toExtensionName
+        if mods1.is(ExtensionMethod) then name = name.toExtensionName
         if isInfix && !name.isOperatorName then
           val infixAnnot = Apply(wrapNew(scalaAnnotationDot(tpnme.infix)), Nil)
               .withSpan(Span(start, start))
           mods1 = mods1.withAddedAnnotation(infixAnnot)
         val tparams =
           if in.token == LBRACKET then
-            if mods1.is(Extension) then syntaxError("no type parameters allowed here")
+            if mods1.is(ExtensionMethod) then syntaxError("no type parameters allowed here")
             typeParamClause(ParamOwner.Def)
           else leadingTparams
         val vparamss = paramClauses() match
@@ -3546,9 +3546,9 @@ object Parsers {
     def checkExtensionMethod(tparams: List[Tree],
         vparamss: List[List[Tree]], stat: Tree): Unit = stat match {
       case stat: DefDef =>
-        if stat.mods.is(Extension) && vparamss.nonEmpty then
+        if stat.mods.is(ExtensionMethod) && vparamss.nonEmpty then
           syntaxError(i"no extension method allowed here since leading parameter was already given", stat.span)
-        else if !stat.mods.is(Extension) && vparamss.isEmpty then
+        else if !stat.mods.is(ExtensionMethod) && vparamss.isEmpty then
           syntaxError(i"an extension method is required here", stat.span)
         else if tparams.nonEmpty && stat.tparams.nonEmpty then
           syntaxError(i"extension method cannot have type parameters since some were already given previously",

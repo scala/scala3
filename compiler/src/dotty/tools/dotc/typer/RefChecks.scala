@@ -354,9 +354,9 @@ object RefChecks {
         overrideError("cannot be used here - classes can only override abstract types")
       else if (other.isEffectivelyFinal) // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
-      else if (member.isAllOf(ExtensionMethod) && !other.isAllOf(ExtensionMethod)) // (1.3)
+      else if (member.is(ExtensionMethod) && !other.is(ExtensionMethod)) // (1.3)
         overrideError("is an extension method, cannot override a normal method")
-      else if (other.isAllOf(ExtensionMethod) && !member.isAllOf(ExtensionMethod)) // (1.3)
+      else if (other.is(ExtensionMethod) && !member.is(ExtensionMethod)) // (1.3)
         overrideError("is a normal method, cannot override an extension method")
       else if (!other.is(Deferred) &&
                  !other.name.is(DefaultGetterName) &&

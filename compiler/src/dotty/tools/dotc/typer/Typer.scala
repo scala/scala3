@@ -215,7 +215,7 @@ class Typer extends Namer
         val termName = name.toTermName
 
         def adjustExtension(name: Name) =
-          if required.is(Extension) then name.toExtensionName else name
+          if required.is(ExtensionMethod) then name.toExtensionName else name
 
         def recur(selectors: List[untpd.ImportSelector]): Type = selectors match
           case selector :: rest =>
@@ -829,7 +829,7 @@ class Typer extends Namer
           ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
 
         lhsCore match
-          case Apply(fn, _) if fn.symbol.isExtensionMethod =>
+          case Apply(fn, _) if fn.symbol.is(ExtensionMethod) =>
             def toSetter(fn: Tree): untpd.Tree = fn match
               case fn @ Ident(name: TermName) =>
                 untpd.cpy.Ident(fn)(name.setterName)
