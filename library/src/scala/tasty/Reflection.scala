@@ -1821,7 +1821,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
      *    ThisType(C).baseType(D) = p.D[Int]
      * }}}
      */
-      def baseType(using ctx: Context)(cls: Symbol): Type = internal.Type_baseType(self)(cls)
+      def baseType(cls: Symbol)(using ctx: Context): Type = internal.Type_baseType(self)(cls)
 
       /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
       def derivesFrom(cls: Symbol)(using ctx: Context): Boolean =
