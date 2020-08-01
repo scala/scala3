@@ -62,9 +62,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     super.transform(ref) match
       case ref1: SymDenotation if ref1.is(Method) =>
         val sym = ref1.symbol
-        val isJavaOverride = overridesJava(sym)
+        val isJavaOverride = (ref1 ne ref) && overridesJava(sym) // (ref1 ne ref) avoids cycles
         transformVarArgs(sym, isJavaOverride)
-        if (ref1 ne ref) && isJavaOverride then
+        if isJavaOverride then
           // This method won't override the corresponding Java method at the end of this phase,
           // only the forwarder added by `addVarArgsForwarder` will.
           ref1.copySymDenotation(initFlags = ref1.flags &~ Override)
