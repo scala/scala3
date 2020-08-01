@@ -876,6 +876,16 @@ trait CompilerInterface {
   /** The base classes of this type with the class itself as first element. */
   def Type_baseClasses(self: Type)(using ctx: Context): List[Symbol]
 
+  /** The least type instance of given class which is a super-type
+    *  of this type.  Example:
+    *  {{{
+    *    class D[T]
+    *    class C extends p.D[Int]
+    *    ThisType(C).baseType(D) = p.D[Int]
+    * }}}
+    */
+  def Type_baseType(self: Type)(cls: Symbol)(using ctx: Context): Type
+
   /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
   def Type_derivesFrom(self: Type)(cls: Symbol)(using ctx: Context): Boolean
 
