@@ -263,13 +263,15 @@ object Types {
 
     /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
     def isBottomType(using Context): Boolean = this match {
-      case tp: TypeRef => tp.symbol eq defn.NothingClass
+      case tp: TypeRef =>
+        tp.name == tpnme.Nothing && (tp.symbol eq defn.NothingClass)
       case _ => false
     }
 
       /** Is this type exactly Any (no vars, aliases, refinements etc allowed)? */
     def isTopType(using Context): Boolean = this match {
-      case tp: TypeRef => tp.symbol eq defn.AnyClass
+      case tp: TypeRef =>
+        tp.name == tpnme.Any && (tp.symbol eq defn.AnyClass)
       case _ => false
     }
 
@@ -4647,7 +4649,13 @@ object Types {
   object TypeBounds {
     def apply(lo: Type, hi: Type)(using Context): TypeBounds =
       unique(new RealTypeBounds(lo, hi))
-    def empty(using Context): TypeBounds = apply(defn.NothingType, defn.AnyType)
+    def empty(using Context): TypeBounds =
+      val result = ctx.base.emptyTypeBounds
+      if result == null then
+        ctx.base.emptyTypeBounds = apply(defn.NothingType, defn.AnyType)
+        empty
+      else
+        result
     def emptyPolyKind(using Context): TypeBounds = apply(defn.NothingType, defn.AnyKindType)
     def upper(hi: Type)(using Context): TypeBounds = apply(defn.NothingType, hi)
     def lower(lo: Type)(using Context): TypeBounds = apply(lo, defn.AnyType)
@@ -4790,7 +4798,15 @@ object Types {
   final class CachedWildcardType(optBounds: Type) extends WildcardType(optBounds)
 
   @sharable object WildcardType extends WildcardType(NoType) {
-    def apply(bounds: TypeBounds)(using Context): WildcardType = unique(new CachedWildcardType(bounds))
+    def apply(bounds: TypeBounds)(using Context): WildcardType =
+      if bounds eq TypeBounds.empty then
+        val result = ctx.base.emptyWildcardBounds
+        if result == null then
+          ctx.base.emptyWildcardBounds = unique(CachedWildcardType(bounds))
+          apply(bounds)
+        else
+          result
+      else unique(CachedWildcardType(bounds))
   }
 
   /** An extractor for single abstract method types.

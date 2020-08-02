@@ -841,6 +841,9 @@ object Contexts {
     def uniquesSizes: Map[String, (Int, Int, Int)] =
       uniqueSets.transform((_, s) => (s.size, s.accesses, s.misses))
 
+    var emptyTypeBounds: TypeBounds = null
+    var emptyWildcardBounds: WildcardType = null
+
     /** Number of findMember calls on stack */
     private[core] var findMemberCount: Int = 0
 
@@ -894,6 +897,8 @@ object Contexts {
 
     def reset(): Unit = {
       for ((_, set) <- uniqueSets) set.clear()
+      emptyTypeBounds = null
+      emptyWildcardBounds = null
       errorTypeMsg.clear()
       sources.clear()
       sourceNamed.clear()
