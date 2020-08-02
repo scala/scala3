@@ -21,6 +21,7 @@ import NameKinds._
 import NamerOps._
 import ContextOps._
 import Variances.Invariant
+import TastyUnpickler.NameTable
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import util.Spans._
@@ -51,7 +52,7 @@ import scala.annotation.internal.sharable
  *  @param commentUnpicklerOpt the unpickler for comments, if it exists
  */
 class TreeUnpickler(reader: TastyReader,
-                    nameAtRef: NameRef => TermName,
+                    nameAtRef: NameTable,
                     posUnpicklerOpt: Option[PositionUnpickler],
                     commentUnpicklerOpt: Option[CommentUnpickler]) {
   import TreeUnpickler._
