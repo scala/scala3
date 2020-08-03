@@ -61,7 +61,7 @@ abstract class Expr[+T] private[scala] {
 
 object Expr {
 
-  /** `e.betaReduce` returns a option with a expression that is functionally equivalent to `e`,
+  /** `e.betaReduce` returns an expression that is functionally equivalent to `e`,
    *   however if `e` is of the form `((y1, ..., yn) => e2)(x1, ..., xn)`
    *   then it optimizes this the top most call by returning the result of beta-reducing the application.
    *   Otherwise returns `expr`.
