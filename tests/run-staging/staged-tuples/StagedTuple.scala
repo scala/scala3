@@ -35,7 +35,7 @@ object StagedTuple {
     }
   }
 
-  def fromArrayStaged[T <: Tuple : Type](xs: Expr[Array[Object]], size: Option[Int])(using QuoteContext): Expr[T] = {
+  def fromArrayStaged[T <: Tuple : Staged](xs: Expr[Array[Object]], size: Option[Int])(using QuoteContext): Expr[T] = {
     if (!specialize) '{scala.runtime.Tuple.fromArray($xs)}.as[T]
     else xs.bind { xs =>
       val tup: Expr[Any] = size match {
@@ -69,7 +69,7 @@ object StagedTuple {
     }
   }
 
-  def sizeStaged[Res <: Int : Type](tup: Expr[Tuple], size: Option[Int])(using QuoteContext): Expr[Res] = {
+  def sizeStaged[Res <: Int : Staged](tup: Expr[Tuple], size: Option[Int])(using QuoteContext): Expr[Res] = {
     val res =
       if (!specialize) '{scala.runtime.Tuple.size($tup)}
       else size match {
@@ -79,7 +79,7 @@ object StagedTuple {
     res.as[Res]
   }
 
-  def headStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int])(using QuoteContext): Expr[Head[Tup]] = {
+  def headStaged[Tup <: NonEmptyTuple : Staged](tup: Expr[Tup], size: Option[Int])(using QuoteContext): Expr[Head[Tup]] = {
     if (!specialize) '{scala.runtime.Tuple.apply($tup, 0)}.as[Head[Tup]]
     else {
       val resVal = size match {
@@ -102,7 +102,7 @@ object StagedTuple {
     }
   }
 
-  def tailStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int])(using QuoteContext): Expr[Tail[Tup]] = {
+  def tailStaged[Tup <: NonEmptyTuple : Staged](tup: Expr[Tup], size: Option[Int])(using QuoteContext): Expr[Tail[Tup]] = {
     if (!specialize) '{scala.runtime.Tuple.tail($tup)}.as[Tail[Tup]]
     else {
       val res = size match {
@@ -126,7 +126,7 @@ object StagedTuple {
     }
   }
 
-  def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int])(using qctx: QuoteContext): Expr[Elem[Tup, N]] = {
+  def applyStaged[Tup <: NonEmptyTuple : Staged, N <: Int : Staged](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int])(using qctx: QuoteContext): Expr[Elem[Tup, N]] = {
 
     if (!specialize) '{scala.runtime.Tuple.apply($tup, $n)}.as[Elem[Tup, N]]
     else {
@@ -185,7 +185,7 @@ object StagedTuple {
     }
   }
 
-  def consStaged[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int])(using QuoteContext): Expr[H *: T] =
+  def consStaged[T <: Tuple & Singleton : Staged, H : Staged](self: Expr[T], x: Expr[H], tailSize: Option[Int])(using QuoteContext): Expr[H *: T] =
   if (!specialize) '{scala.runtime.Tuple.cons($x, $self)}.as[H *: T]
   else {
     val res = tailSize match {
@@ -205,7 +205,7 @@ object StagedTuple {
     res.as[H *: T]
   }
 
-  def concatStaged[Self <: Tuple & Singleton : Type, That <: Tuple & Singleton : Type](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int])(using QuoteContext): Expr[Concat[Self, That]] = {
+  def concatStaged[Self <: Tuple & Singleton : Staged, That <: Tuple & Singleton : Staged](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int])(using QuoteContext): Expr[Concat[Self, That]] = {
     if (!specialize) '{scala.runtime.Tuple.concat($self, $that)}.as[Concat[Self, That]]
     else {
       def genericConcat(xs: Expr[Tuple], ys: Expr[Tuple]): Expr[Tuple] =
@@ -254,11 +254,11 @@ object StagedTuple {
     }
   }
 
-  private implicit class ExprOps[U: Type](expr: Expr[U]) {
+  private implicit class ExprOps[U: Staged](expr: Expr[U]) {
 
-    def as[T: Type](using QuoteContext): Expr[T] = '{ $expr.asInstanceOf[T] }
+    def as[T: Staged](using QuoteContext): Expr[T] = '{ $expr.asInstanceOf[T] }
 
-    def bind[T: Type](in: Expr[U] => Expr[T])(using QuoteContext): Expr[T] = '{
+    def bind[T: Staged](in: Expr[U] => Expr[T])(using QuoteContext): Expr[T] = '{
       val t: U = $expr
       ${in('t)}
     }

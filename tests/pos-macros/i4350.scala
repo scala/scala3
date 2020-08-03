@@ -1,5 +1,5 @@
 import scala.quoted._
 
-class Foo[T: Type](using QuoteContext) {
+class Foo[T: Staged](using QuoteContext) {
   '{null.asInstanceOf[T]}
 }

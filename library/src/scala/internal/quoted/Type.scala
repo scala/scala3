@@ -3,7 +3,7 @@ package scala.internal.quoted
 import scala.quoted._
 
 /** Quoted type (or kind) `T` backed by a tree */
-final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quoted.Type[Any] {
+final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quoted.Type {
   override def equals(that: Any): Boolean = that match {
     case that: Type[_] => typeTree ==
       // TastyTreeExpr are wrappers around trees, therfore they are equals if their trees are equal.
@@ -37,7 +37,7 @@ object Type {
    *  @param qctx the current QuoteContext
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Type[Ti]``
    */
-  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: scala.quoted.Type[_])(using patternType: scala.quoted.Type[_],
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: scala.quoted.Type)(using patternType: scala.quoted.Type,
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
     new Matcher.QuoteMatcher[qctx.type].typeTreeMatch(scrutineeType.unseal, patternType.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }

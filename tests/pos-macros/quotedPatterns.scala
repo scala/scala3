@@ -35,6 +35,6 @@ object Test {
   def poly[T](x: T): Unit = ()
 
   object Foo {
-    def unapply[T](arg: quoted.Type[T]): Option[quoted.Type[T]] = Some(arg)
+    def unapply[T](arg: quoted.Staged[T]): Option[quoted.Staged[T]] = Some(arg)
   }
 }

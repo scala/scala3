@@ -4,7 +4,7 @@ object Test {
 
   import scala.quoted._
 
-  def impl[T](t: T)(using qctx: QuoteContext, tt: Type[T]): Expr[Any] = {
+  def impl[T](t: T)(using qctx: QuoteContext, tt: Staged[T]): Expr[Any] = {
 
     import qctx.tasty._
     import util._

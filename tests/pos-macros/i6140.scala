@@ -4,5 +4,5 @@ sealed trait Trait[T] {
 }
 
 object O {
-  def fn[T:Type](t : Trait[T])(using QuoteContext): Type[T] = '[t.t]
+  def fn[T: Staged](t : Trait[T])(using QuoteContext): Staged[T] = '[t.t]
 }

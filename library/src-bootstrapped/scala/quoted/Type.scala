@@ -3,9 +3,9 @@ package scala.quoted
 import scala.annotation.compileTimeOnly
 import scala.quoted.show.SyntaxHighlight
 
-/** Quoted type (or kind) `T` */
-abstract class Type[X <: AnyKind] private[scala] {
-  type T = X
+/** Staged type (or kind) `T` */
+abstract class Type private[scala] {
+  type T <: AnyKind
 
   /** Show a source code like representation of this type without syntax highlight */
   def show(using qctx: QuoteContext): String =
@@ -20,38 +20,41 @@ abstract class Type[X <: AnyKind] private[scala] {
 
 }
 
+/** Staged type (or kind) `X` */
+type Staged[X <: AnyKind] = Type { type T = X }
+
 /** Some basic type tags, currently incomplete */
 object Type {
 
   /** Return a quoted.Type with the given type */
   @compileTimeOnly("Reference to `scala.quoted.Type.apply` was not handled by ReifyQuotes")
-  given apply[T <: AnyKind] as (QuoteContext ?=> Type[T]) = ???
+  given apply[T <: AnyKind] as (QuoteContext ?=> Staged[T]) = ???
 
-  def UnitTag: QuoteContext ?=> Type[Unit] =
-    qctx.tasty.defn.UnitType.seal.asInstanceOf[quoted.Type[Unit]]
+  def UnitTag: QuoteContext ?=> Staged[Unit] =
+    qctx.tasty.defn.UnitType.seal.asInstanceOf[quoted.Staged[Unit]]
 
-  def BooleanTag: QuoteContext ?=> Type[Boolean] =
-    qctx.tasty.defn.BooleanType.seal.asInstanceOf[quoted.Type[Boolean]]
+  def BooleanTag: QuoteContext ?=> Staged[Boolean] =
+    qctx.tasty.defn.BooleanType.seal.asInstanceOf[quoted.Staged[Boolean]]
 
-  def ByteTag: QuoteContext ?=> Type[Byte] =
-    qctx.tasty.defn.ByteType.seal.asInstanceOf[quoted.Type[Byte]]
+  def ByteTag: QuoteContext ?=> Staged[Byte] =
+    qctx.tasty.defn.ByteType.seal.asInstanceOf[quoted.Staged[Byte]]
 
-  def CharTag: QuoteContext ?=> Type[Char] =
-    qctx.tasty.defn.CharType.seal.asInstanceOf[quoted.Type[Char]]
+  def CharTag: QuoteContext ?=> Staged[Char] =
+    qctx.tasty.defn.CharType.seal.asInstanceOf[quoted.Staged[Char]]
 
-  def ShortTag: QuoteContext ?=> Type[Short] =
-    qctx.tasty.defn.ShortType.seal.asInstanceOf[quoted.Type[Short]]
+  def ShortTag: QuoteContext ?=> Staged[Short] =
+    qctx.tasty.defn.ShortType.seal.asInstanceOf[quoted.Staged[Short]]
 
-  def IntTag: QuoteContext ?=> Type[Int] =
-    qctx.tasty.defn.IntType.seal.asInstanceOf[quoted.Type[Int]]
+  def IntTag: QuoteContext ?=> Staged[Int] =
+    qctx.tasty.defn.IntType.seal.asInstanceOf[quoted.Staged[Int]]
 
-  def LongTag: QuoteContext ?=> Type[Long] =
-    qctx.tasty.defn.LongType.seal.asInstanceOf[quoted.Type[Long]]
+  def LongTag: QuoteContext ?=> Staged[Long] =
+    qctx.tasty.defn.LongType.seal.asInstanceOf[quoted.Staged[Long]]
 
-  def FloatTag: QuoteContext ?=> Type[Float] =
-    qctx.tasty.defn.FloatType.seal.asInstanceOf[quoted.Type[Float]]
+  def FloatTag: QuoteContext ?=> Staged[Float] =
+    qctx.tasty.defn.FloatType.seal.asInstanceOf[quoted.Staged[Float]]
 
-  def DoubleTag: QuoteContext ?=> Type[Double] =
-    qctx.tasty.defn.DoubleType.seal.asInstanceOf[quoted.Type[Double]]
+  def DoubleTag: QuoteContext ?=> Staged[Double] =
+    qctx.tasty.defn.DoubleType.seal.asInstanceOf[quoted.Staged[Double]]
 
 }

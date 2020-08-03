@@ -6,10 +6,10 @@ object E {
 
   inline def eval[T](inline x: E[T]): T = ${ impl('x) }
 
-  def impl[T: Type](expr: Expr[E[T]]) (using QuoteContext): Expr[T] =
+  def impl[T: Staged](expr: Expr[E[T]]) (using QuoteContext): Expr[T] =
     expr.unliftOrError.lift
 
-  implicit def ev1[T: Type]: Unliftable[E[T]] = new Unliftable { // TODO use type class derivation
+  implicit def ev1[T: Staged]: Unliftable[E[T]] = new Unliftable { // TODO use type class derivation
     def apply(x: Expr[E[T]]) (using QuoteContext): Option[E[T]] = (x match {
       case '{ I(${Const(n)}) } => Some(I(n))
       case '{ D(${Const(n)}) } => Some(D(n))

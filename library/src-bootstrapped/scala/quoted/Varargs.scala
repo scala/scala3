@@ -15,7 +15,7 @@ object Varargs {
    *  '{ List(${Varargs(List(1, 2, 3))}: _*) } // equvalent to '{ List(1, 2, 3) }
    *  ```
    */
-  def apply[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
+  def apply[T](xs: Seq[Expr[T]])(using tp: Staged[T], qctx: QuoteContext): Expr[Seq[T]] = {
     import qctx.tasty._
     Repeated(xs.map[Term](_.unseal).toList, tp.unseal).seal.asInstanceOf[Expr[Seq[T]]]
   }

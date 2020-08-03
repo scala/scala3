@@ -6,9 +6,9 @@ object E {
 
   inline def eval[T](inline x: E[T]): T = ${ impl('x) }
 
-  def impl[T: Type](x: Expr[E[T]]) (using QuoteContext): Expr[T] = x.unliftOrError.lift
+  def impl[T: Staged](x: Expr[E[T]]) (using QuoteContext): Expr[T] = x.unliftOrError.lift
 
-  implicit def ev1[T: Type]: Unliftable[E[T]] = new Unliftable {
+  implicit def ev1[T: Staged]: Unliftable[E[T]] = new Unliftable {
     def apply(x: Expr[E[T]]) (using QuoteContext): Option[E[T]] = x match {
       case '{ I(${Const(n)}) } => Some(I(n).asInstanceOf[E[T]])
       case '{ Plus[T](${Value(x)}, ${Value(y)})(using $op) } if op.matches('{Plus2.IPlus}) => Some(Plus(x, y)(using Plus2.IPlus.asInstanceOf[Plus2[T]]).asInstanceOf[E[T]])

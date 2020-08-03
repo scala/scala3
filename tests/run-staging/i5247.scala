@@ -7,11 +7,11 @@ object Test {
     println(foo[Object].show)
     println(bar[Object].show)
   }
-  def foo[H : Type](using QuoteContext): Expr[H] = {
+  def foo[H : Staged](using QuoteContext): Expr[H] = {
     val t = '[H]
     '{ null.asInstanceOf[$t] }
   }
-  def bar[H : Type](using QuoteContext): Expr[List[H]] = {
+  def bar[H : Staged](using QuoteContext): Expr[List[H]] = {
     val t = '[List[H]]
     '{ null.asInstanceOf[$t] }
   }

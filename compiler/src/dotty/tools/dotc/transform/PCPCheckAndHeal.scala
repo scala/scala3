@@ -222,7 +222,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  Emits and error if `T` cannot be healed and returns `T`.
    */
   protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(using Context): TypeRef = {
-    val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
+    val reqType = defn.QuotedStagedClass.typeRef.appliedTo(tp)
     val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
     tag.tpe match
 

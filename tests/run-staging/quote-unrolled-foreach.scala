@@ -53,7 +53,7 @@ object Test {
     }
   }
 
-  def foreach1Tpe1[T](arrRef: Expr[Array[T]], f: Expr[T => Unit])(implicit t: Type[T], qctx: QuoteContext): Expr[Unit] = '{
+  def foreach1Tpe1[T](arrRef: Expr[Array[T]], f: Expr[T => Unit])(implicit t: Staged[T], qctx: QuoteContext): Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
@@ -63,7 +63,7 @@ object Test {
     }
   }
 
-  def foreach1Tpe2[T: Type](arrRef: Expr[Array[T]], f: Expr[T => Unit])(using QuoteContext): Expr[Unit] = '{
+  def foreach1Tpe2[T: Staged](arrRef: Expr[Array[T]], f: Expr[T => Unit])(using QuoteContext): Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
     while (i < size) {

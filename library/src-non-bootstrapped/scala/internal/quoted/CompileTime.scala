@@ -16,7 +16,7 @@ object CompileTime {
   def exprNestedSplice[T](ctx: QuoteContext)(x: ctx.Nested ?=> Expr[T]): T = ???
 
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.typeQuote`")
-  def typeQuote[T <: AnyKind]: Type[T] = ???
+  def typeQuote[T <: AnyKind]: Staged[T] = ???
 
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHole`")
   def patternHole[T]: T = ???

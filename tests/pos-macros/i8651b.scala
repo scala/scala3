@@ -8,7 +8,7 @@ object Macros {
 
  inline def coroutine[T](inline body: Any): Coroutine[T] = ${ coroutineImpl('{body}) }
 
- def coroutineImpl[T: Type](expr: Expr[_ <: Any])(implicit qtx: QuoteContext): Expr[Coroutine[T]] = {
+ def coroutineImpl[T: Staged](expr: Expr[_ <: Any])(implicit qtx: QuoteContext): Expr[Coroutine[T]] = {
    import qtx.tasty.{_, given _}
 
    '{

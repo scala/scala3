@@ -3,7 +3,7 @@ object Test {
   def test(x: quoted.Expr[Int])(using QuoteContext) = x match {
     case '{ type $t; poly[$t]($x); 4 } => ??? // error: duplicate pattern variable: $t
     case '{ type `$t`; poly[`$t`]($x); 4 } =>
-      val tt: quoted.Type[_] = t // error
+      val tt: quoted.Staged[_] = t // error
       ???
     case _ =>
   }

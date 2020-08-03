@@ -10,7 +10,7 @@ class Foo {
       val x: X = ???
       type Z = x.Y
       ${
-        val t: Type[Z] = '[Z]
+        val t: Staged[Z] = '[Z]
         '{ val y: $t = x.y }
       }
     }

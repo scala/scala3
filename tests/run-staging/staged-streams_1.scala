@@ -70,7 +70,7 @@ object Test {
   case class Linear[A](producer: Producer[A]) extends StagedStream[A]
   case class Nested[A, B](producer: Producer[B], nestedf: B => StagedStream[A]) extends StagedStream[A]
 
-  case class Stream[A: Type](stream: StagedStream[Expr[A]]) {
+  case class Stream[A: Staged](stream: StagedStream[Expr[A]]) {
 
     /** Main consumer
       *
@@ -81,7 +81,7 @@ object Test {
       * @tparam W  the type of the accumulator
       * @return
       */
-    def fold[W: Type](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): E[W] = {
+    def fold[W: Staged](z: Expr[W], f: ((Expr[W], Expr[A]) => Expr[W])): E[W] = {
       Var(z) { s =>
         '{
           ${ foldRaw[Expr[A]]((a: Expr[A]) => s.update(f(s.get, a)), stream) }
@@ -121,7 +121,7 @@ object Test {
       * @tparam B the element type of the returned stream
       * @return   a new stream resulting from applying `mapRaw` and threading the element of the first stream downstream.
       */
-    def map[B : Type](f: (Expr[A] => Expr[B])): Stream[B] = {
+    def map[B : Staged](f: (Expr[A] => Expr[B])): Stream[B] = {
       Stream(mapRaw[Expr[A], Expr[B]](a => k => k(f(a)), stream))
     }
 
@@ -169,7 +169,7 @@ object Test {
     }
 
     /** Flatmap */
-    def flatMap[B : Type](f: (Expr[A] => Stream[B])): Stream[B] = {
+    def flatMap[B : Staged](f: (Expr[A] => Stream[B])): Stream[B] = {
       Stream(flatMapRaw[Expr[A], Expr[B]]((a => { val Stream (nested) = f(a); nested }), stream))
     }
 
@@ -303,7 +303,7 @@ object Test {
       * @tparam A      the type of the producer's elements.
       * @return        a linear or nested stream aware of the variable reference to decrement.
       */
-    private def takeRaw[A: Type](n: Expr[Int], stream: StagedStream[A])(using QuoteContext): StagedStream[A] = {
+    private def takeRaw[A: Staged](n: Expr[Int], stream: StagedStream[A])(using QuoteContext): StagedStream[A] = {
       stream match {
         case linear: Linear[A] => {
           val enhancedProducer: Producer[(Var[Int], A)] = addCounter[A](n, linear.producer)
@@ -334,7 +334,7 @@ object Test {
     /** A stream containing the first `n` elements of this stream. */
     def take(n: Expr[Int])(using QuoteContext): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
 
-    private def zipRaw[A: Type, B: Type](stream1: StagedStream[Expr[A]], stream2: StagedStream[B])(using QuoteContext): StagedStream[(Expr[A], B)] = {
+    private def zipRaw[A: Staged, B: Staged](stream1: StagedStream[Expr[A]], stream2: StagedStream[B])(using QuoteContext): StagedStream[(Expr[A], B)] = {
       (stream1, stream2) match {
 
         case (Linear(producer1), Linear(producer2)) =>
@@ -402,7 +402,7 @@ object Test {
       * @tparam A
       * @return
       */
-    private def makeLinear[A: Type](stream: StagedStream[Expr[A]])(using QuoteContext): Producer[Expr[A]] = {
+    private def makeLinear[A: Staged](stream: StagedStream[Expr[A]])(using QuoteContext): Producer[Expr[A]] = {
       stream match {
         case Linear(producer) => producer
         case Nested(producer, nestedf) => {
@@ -563,14 +563,14 @@ object Test {
     }
 
     /** zip **/
-    def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B])(using QuoteContext): Stream[C] = {
+    def zip[B: Staged, C: Staged](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B])(using QuoteContext): Stream[C] = {
       val Stream(stream_b) = stream2
       Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => k(f(t._1)(t._2))), zipRaw[A, Expr[B]](stream, stream_b)))
     }
   }
 
   object Stream {
-    def of[A: Type](arr: Expr[Array[A]])(using QuoteContext): Stream[A] = {
+    def of[A: Staged](arr: Expr[Array[A]])(using QuoteContext): Stream[A] = {
       val prod = new Producer[Expr[A]] {
         type St = (Var[Int], Var[Int], Expr[Array[A]])
 

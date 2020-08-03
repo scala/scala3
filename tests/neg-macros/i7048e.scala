@@ -3,9 +3,9 @@ import scala.quoted._
 abstract class Test {
   type T
 
-  val T: Type[T]
-  val getT: Type[T] = T // need this to avoid getting `null`
-  given Type[T] = getT
+  val T: Staged[T]
+  val getT: Staged[T] = T // need this to avoid getting `null`
+  given Staged[T] = getT
 
   def foo(using QuoteContext): Expr[Any] = {
 
@@ -14,7 +14,7 @@ abstract class Test {
     {
       val t: Test = this
       import t.{given _}
-      println(summon[Type[t.T]].show)
+      println(summon[Staged[t.T]].show)
       // val r = '{Option.empty[t.T]} // access to value t from wrong staging level
       val r2 = '{Option.empty[${t.T}]} // works
     }
@@ -22,7 +22,7 @@ abstract class Test {
     {
       val r1 = '{Option.empty[${T}]} // works
       val r2 = '{Option.empty[List[${T}]]} // works
-      val r3 = '{summon[Type[${T}]]} // error: is not stable
+      val r3 = '{summon[Staged[${T}]]} // error: is not stable
       val r4 = '{summon[${T} <:< Any]} // error: is not stable
     }
 

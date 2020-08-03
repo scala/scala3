@@ -24,7 +24,7 @@ object Test {
       }
     }
 
-    implicit def UnliftableList[T: Unliftable: Type]: Unliftable[List[T]] = new {
+    implicit def UnliftableList[T: Unliftable: Staged]: Unliftable[List[T]] = new {
       def apply(xs: Expr[List[T]])(using QuoteContext): Option[List[T]] = (xs: Expr[Any]) match {
         case '{ ($xs1: List[T]).::($x) } =>
           for { head <- x.unlift; tail <- xs1.unlift }
@@ -34,7 +34,7 @@ object Test {
       }
     }
 
-    implicit def UnliftableOption[T: Unliftable: Type]: Unliftable[Option[T]] = new {
+    implicit def UnliftableOption[T: Unliftable: Staged]: Unliftable[Option[T]] = new {
       def apply(expr: Expr[Option[T]])(using QuoteContext): Option[Option[T]] = expr match {
         case '{ Some[T]($x) } => for (v <- x.unlift) yield Some(v)
         case '{ None } => Some(None)

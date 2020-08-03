@@ -13,10 +13,10 @@ def test(using QuoteContext) = {
     '[String]
   }
 
-  def bar[T](t: quoted.Type[T]) = ???
+  def bar[T](t: quoted.Staged[T]) = ???
   bar('[String])
 
-  class Baz[T](t: quoted.Type[T])
+  class Baz[T](t: quoted.Staged[T])
   new Baz('[String])
 
 }

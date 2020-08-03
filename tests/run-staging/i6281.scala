@@ -18,17 +18,17 @@ object Test extends App {
   }
 
   trait Effects[L <: HList] {
-    def reify[A](using Type[A]): STM[A, L] => Expr[Stm[A, L]]
-    def reflect[A](using Type[A]): Expr[Stm[A, L]] => STM[A, L]
+    def reify[A](using Staged[A]): STM[A, L] => Expr[Stm[A, L]]
+    def reflect[A](using Staged[A]): Expr[Stm[A, L]] => STM[A, L]
   }
   given empty as Effects[HNil] {
-    def reify[A](using Type[A]) = m => m
-    def reflect[A](using Type[A]) = m => m
+    def reify[A](using Staged[A]) = m => m
+    def reflect[A](using Staged[A]) = m => m
   }
   // for reify, we need type tags for E and also strangely for L.
-  implicit def cons [E, L <: HList](using Effects[L])(using Type[E])(using Type[L])(using QuoteContext): Effects[E :: L] =  new Effects[E :: L] {
-    def reify[A](using Type[A])   = m => '{ k => ${ Effects[L].reify[E] {   m(   a =>    Effects[L].reflect[E](Expr.betaReduce('k)(a))) } }}
-    def reflect[A](using Type[A]) = m =>    k =>    Effects[L].reflect[E] { Expr.betaReduce(m)('{ a => ${ Effects[L].reify[E](   k('a)) } })}
+  implicit def cons [E, L <: HList](using Effects[L])(using Staged[E])(using Staged[L])(using QuoteContext): Effects[E :: L] =  new Effects[E :: L] {
+    def reify[A](using Staged[A])   = m => '{ k => ${ Effects[L].reify[E] {   m(   a =>    Effects[L].reflect[E](Expr.betaReduce('k)(a))) } }}
+    def reflect[A](using Staged[A]) = m =>    k =>    Effects[L].reflect[E] { Expr.betaReduce(m)('{ a => ${ Effects[L].reify[E](   k('a)) } })}
   }
   def Effects[L <: HList](using Effects[L]): Effects[L] = summon[Effects[L]]
 

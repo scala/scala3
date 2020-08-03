@@ -15,7 +15,7 @@ object Lambda {
    *       body('{3}) // returns '{ println(3) }
    *   ```
    */
-  def unapply[F, Args <: Tuple, Res, G](expr: Expr[F])(using qctx: QuoteContext, tf: TupledFunction[F, Args => Res], tg: TupledFunction[G, Tuple.Map[Args, Expr] => Expr[Res]], functionType: Type[F]): Option[/*QuoteContext ?=>*/ G] = {
+  def unapply[F, Args <: Tuple, Res, G](expr: Expr[F])(using qctx: QuoteContext, tf: TupledFunction[F, Args => Res], tg: TupledFunction[G, Tuple.Map[Args, Expr] => Expr[Res]], functionType: Staged[F]): Option[/*QuoteContext ?=>*/ G] = {
     import qctx.tasty._
     val argTypes = functionType.unseal.tpe match
       case AppliedType(_, functionArguments) => functionArguments.init.asInstanceOf[List[Type]]

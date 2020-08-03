@@ -8,7 +8,7 @@ object Macros {
   inline def lift[R[_]](sym: Symantics { type Repr[X] = R[X] })(inline a: Int): R[Int] = ${impl('sym, 'a)}
 
 
-  private def impl[R[_]: Type](sym: Expr[Symantics { type Repr[X] = R[X] }], expr: Expr[Int])(using QuoteContext): Expr[R[Int]] = {
+  private def impl[R[_]: Staged](sym: Expr[Symantics { type Repr[X] = R[X] }], expr: Expr[Int])(using QuoteContext): Expr[R[Int]] = {
 
     type Env = Map[Int, Any]
 
@@ -26,7 +26,7 @@ object Macros {
             None
     }
 
-    def lift[T: Type](e: Expr[T])(using env: Env): Expr[R[T]] = ((e: Expr[Any]) match {
+    def lift[T: Staged](e: Expr[T])(using env: Env): Expr[R[T]] = ((e: Expr[Any]) match {
       case Const(e: Int) => '{ $sym.int(${Expr(e)}).asInstanceOf[R[T]] }
       case Const(e: Boolean) => '{ $sym.bool(${Expr(e)}).asInstanceOf[R[T]] }
 
@@ -76,7 +76,7 @@ object Macros {
 
 }
 
-def freshEnvVar[T: Type]()(using QuoteContext): (Int, Expr[T]) = {
+def freshEnvVar[T: Staged]()(using QuoteContext): (Int, Expr[T]) = {
   v += 1
   (v, '{envVar[T](${Expr(v)})})
 }

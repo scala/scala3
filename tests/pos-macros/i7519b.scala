@@ -7,7 +7,7 @@ class Quoted[T]
 
 inline def quote[T]: Quoted[T] = ${ quoteImpl[T] }
 
-def quoteImpl[T: Type](using qctx: QuoteContext): Expr[Quoted[T]] = {
+def quoteImpl[T: Staged](using qctx: QuoteContext): Expr[Quoted[T]] = {
   val value: Expr[Int] = '{ 42 }
   '{ new Quoted[T @Annot($value)] }
 }

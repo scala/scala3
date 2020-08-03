@@ -3,7 +3,7 @@ import scala.tasty._
 
 inline def diveInto[T]: String = ${ diveIntoImpl[T]() }
 
-def diveIntoImpl[T]()(implicit qctx: QuoteContext, ttype: scala.quoted.Type[T]): Expr[String] =
+def diveIntoImpl[T]()(implicit qctx: QuoteContext, ttype: scala.quoted.Staged[T]): Expr[String] =
   import qctx.tasty._
   Expr( unwindType(qctx.tasty)(typeOf[T]) )
 

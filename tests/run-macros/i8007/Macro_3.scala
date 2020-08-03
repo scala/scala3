@@ -25,14 +25,14 @@ object Eq {
       def eqv(x: T, y: T): Boolean = body(x, y)
     }
 
-  def summonAll[T](t: Type[T])(using qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
+  def summonAll[T](t: Staged[T])(using qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
     case '[String *: $tpes] => '{ summon[Eq[String]] }  :: summonAll(tpes)
     case '[Int *: $tpes]    => '{ summon[Eq[Int]] }     :: summonAll(tpes)
     case '[$tpe *: $tpes]   => derived(using tpe, qctx) :: summonAll(tpes)
     case '[EmptyTuple] => Nil
   }
 
-  given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
+  given derived[T: Staged](using qctx: QuoteContext) as Expr[Eq[T]] = {
     import qctx.tasty._
 
     val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get

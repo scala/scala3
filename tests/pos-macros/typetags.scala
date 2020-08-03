@@ -2,10 +2,10 @@ import scala.quoted._
 
 object Test {
 
-  def f[T: Type](using QuoteContext) = {
-    implicitly[Type[Int]]
-    implicitly[Type[List[Int]]]
-    implicitly[Type[T]]
-    implicitly[Type[List[T]]]
+  def f[T: Staged](using QuoteContext) = {
+    implicitly[Staged[Int]]
+    implicitly[Staged[List[Int]]]
+    implicitly[Staged[T]]
+    implicitly[Staged[List[T]]]
   }
 }

@@ -7,7 +7,7 @@ sealed abstract class VarRef[T] {
 }
 
 object VarRef {
-  def apply[T: Type, U: Type](init: Expr[T])(body: VarRef[T] => Expr[U])(using QuoteContext): Expr[U] = '{
+  def apply[T: Staged, U: Staged](init: Expr[T])(body: VarRef[T] => Expr[U])(using QuoteContext): Expr[U] = '{
     var x = $init
     ${body(
       new VarRef {

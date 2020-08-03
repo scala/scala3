@@ -7,7 +7,7 @@ object Macros {
   def mImpl()(using QuoteContext): Expr[Any] =
     List(Expr(1), Expr(2), Expr(3)).toExprOfList
 
-  extension [T](list: List[Expr[T]]) def toExprOfList(using Type[T], QuoteContext): Expr[List[T]] = '{
+  extension [T](list: List[Expr[T]]) def toExprOfList(using Staged[T], QuoteContext): Expr[List[T]] = '{
     val buff = List.newBuilder[T]
     ${ Expr.block(list.map(v => '{ buff +=  $v }), '{ buff.result() }) }
   }

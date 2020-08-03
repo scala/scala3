@@ -10,7 +10,7 @@ object Test {
     '{ println($q) }
   }
 
-  def f(t: Type[List[Int]])(using QuoteContext): Expr[Int] = '{
+  def f(t: Staged[List[Int]])(using QuoteContext): Expr[Int] = '{
     def ff: Int = {
       val a: $t = {
         type T = $t
@@ -22,5 +22,5 @@ object Test {
     ff
   }
 
-  def g[T](a: Type[T])(using QuoteContext): Type[List[T]] = '[List[$a]]
+  def g[T](a: Staged[T])(using QuoteContext): Staged[List[T]] = '[List[$a]]
 }

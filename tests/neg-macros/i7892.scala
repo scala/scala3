@@ -9,4 +9,4 @@ def run(using qctx: QuoteContext): Unit = {
   run1(cpsLeft) // error
 }
 
-def run1[L:Type](cpsLeft: x.CExprResult1[L]): Unit = ???
+def run1[L: Staged](cpsLeft: x.CExprResult1[L]): Unit = ???

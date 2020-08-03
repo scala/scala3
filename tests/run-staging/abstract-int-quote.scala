@@ -6,7 +6,7 @@ object Test:
   given Toolbox = Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit =
-    def reduce[T: Type](using QuoteContext)(succ: Expr[T] => Expr[T], zero: Expr[T]): Expr[T] = '{
+    def reduce[T: Staged](using QuoteContext)(succ: Expr[T] => Expr[T], zero: Expr[T]): Expr[T] = '{
       var z = $zero
       ${ succ('z) }
     }

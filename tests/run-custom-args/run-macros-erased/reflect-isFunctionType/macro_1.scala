@@ -3,7 +3,7 @@ import scala.quoted._
 
 inline def isFunctionType[T]: Boolean = ${ isFunctionTypeImpl('[T]) }
 
-def isFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean] = {
+def isFunctionTypeImpl[T](tp: Staged[T])(using qctx: QuoteContext) : Expr[Boolean] = {
   import qctx.tasty._
   Expr(tp.unseal.tpe.isFunctionType)
 }
@@ -11,7 +11,7 @@ def isFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean]
 
 inline def isContextFunctionType[T]: Boolean = ${ isContextFunctionTypeImpl('[T]) }
 
-def isContextFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean] = {
+def isContextFunctionTypeImpl[T](tp: Staged[T])(using qctx: QuoteContext) : Expr[Boolean] = {
   import qctx.tasty._
   Expr(tp.unseal.tpe.isContextFunctionType)
 }
@@ -19,14 +19,14 @@ def isContextFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[B
 
 inline def isErasedFunctionType[T]: Boolean = ${ isErasedFunctionTypeImpl('[T]) }
 
-def isErasedFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean] = {
+def isErasedFunctionTypeImpl[T](tp: Staged[T])(using qctx: QuoteContext) : Expr[Boolean] = {
   import qctx.tasty._
   Expr(tp.unseal.tpe.isErasedFunctionType)
 }
 
 inline def isDependentFunctionType[T]: Boolean = ${ isDependentFunctionTypeImpl('[T]) }
 
-def isDependentFunctionTypeImpl[T](tp: Type[T])(using qctx: QuoteContext) : Expr[Boolean] = {
+def isDependentFunctionTypeImpl[T](tp: Staged[T])(using qctx: QuoteContext) : Expr[Boolean] = {
   import qctx.tasty._
   Expr(tp.unseal.tpe.isDependentFunctionType)
 }

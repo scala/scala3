@@ -3,7 +3,7 @@ import scala.quoted._
 class Var[T]
 
 object Var {
-  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(using qctx: QuoteContext): Expr[U] = '{
+  def apply[T: Staged, U: Staged](init: Expr[T])(body: Var[T] => Expr[U])(using qctx: QuoteContext): Expr[U] = '{
     var x = $init
     ${
       body(

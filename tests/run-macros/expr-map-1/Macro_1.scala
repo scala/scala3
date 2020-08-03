@@ -8,7 +8,7 @@ private def stringRewriter(e: Expr[Any])(using QuoteContext): Expr[Any] =
 
 private object StringRewriter extends util.ExprMap {
 
-  def transform[T](e: Expr[T])(using QuoteContext, Type[T]): Expr[T] = e match
+  def transform[T](e: Expr[T])(using QuoteContext, Staged[T]): Expr[T] = e match
     case Const(s: String) =>
       Expr(s.reverse) match
         case '{ $x: T } => x

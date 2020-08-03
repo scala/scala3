@@ -1733,7 +1733,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   ///////////////
 
   /** Returns the type (Type) of T */
-  def typeOf[T](using qtype: scala.quoted.Type[T], ctx: Context): Type =
+  def typeOf[T](using qtype: scala.quoted.Staged[T], ctx: Context): Type =
     qtype.asInstanceOf[scala.internal.quoted.Type[T]].typeTree.asInstanceOf[TypeTree].tpe
 
   given TypeOrBoundsOps as AnyRef:
@@ -1764,9 +1764,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
     extension (self: Type):
 
-      /** Convert `Type` to an `quoted.Type[_]` */
-      def seal(using ctx: Context): scala.quoted.Type[_] =
-        new scala.internal.quoted.Type(Inferred(self), internal.compilerId)
+      /** Convert `Type` to an `quoted.Type` */
+      def seal(using ctx: Context): scala.quoted.Type =
+        new scala.internal.quoted.Type(Inferred(self), internal.compilerId).asInstanceOf[scala.quoted.Type]
 
       /** Is `self` type the same as `that` type?
         *  This is the case iff `self <:< that` and `that <:< self`.

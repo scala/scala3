@@ -5,10 +5,10 @@ import scala.quoted._
 trait ExprMap {
 
   /** Map an expression `e` with a type `tpe` */
-  def transform[T](e: Expr[T])(using qctx: QuoteContext, tpe: Type[T]): Expr[T]
+  def transform[T](e: Expr[T])(using qctx: QuoteContext, tpe: Staged[T]): Expr[T]
 
   /** Map subexpressions an expression `e` with a type `tpe` */
-  def transformChildren[T](e: Expr[T])(using qctx: QuoteContext, tpe: Type[T]): Expr[T] = {
+  def transformChildren[T](e: Expr[T])(using qctx: QuoteContext, tpe: Staged[T]): Expr[T] = {
     import qctx.tasty._
     final class MapChildren() {
 
@@ -65,10 +65,8 @@ trait ExprMap {
             // TODO improve code
             case AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "<repeated>"), List(tp0: Type)) =>
               // TODO rewrite without using quotes
-              type T
-              val qtp: quoted.Type[T] = tp0.seal.asInstanceOf[quoted.Type[T]]
-              given qtp.type = qtp
-              '[Seq[T]].unseal.tpe
+              val t = tp0.seal.asInstanceOf[quoted.Type { type T <: Any }]
+              '[Seq[$t]].unseal.tpe
             case tp => tp
           Typed.copy(tree)(transformTerm(expr, tp), transformTypeTree(tpt))
         case tree: NamedArg =>
@@ -114,7 +112,7 @@ trait ExprMap {
             case _ =>
               type X
               val expr = tree.seal.asInstanceOf[Expr[X]]
-              val t = tpe.seal.asInstanceOf[quoted.Type[X]]
+              val t = tpe.seal.asInstanceOf[quoted.Staged[X]]
               transform(expr)(using qctx, t).unseal
           }
       }

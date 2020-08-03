@@ -41,7 +41,7 @@ abstract class Expr[+T] private[scala] {
     !scala.internal.quoted.Expr.unapply[EmptyTuple, EmptyTuple](this)(using that, false, qctx).isEmpty
 
   /** Checked cast to a `quoted.Expr[U]` */
-  def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = {
+  def cast[U](using tp: scala.quoted.Staged[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = {
     val tree = this.unseal
     val expectedType = tp.unseal.tpe
     if (tree.tpe <:< expectedType)
@@ -118,7 +118,7 @@ object Expr {
    *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
    *  ```
    */
-  def ofSeq[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = Varargs(xs)
+  def ofSeq[T](xs: Seq[Expr[T]])(using tp: Staged[T], qctx: QuoteContext): Expr[Seq[T]] = Varargs(xs)
 
   /** Lifts this list of expressions into an expression of a list
    *
@@ -127,7 +127,7 @@ object Expr {
    *  to an expression equivalent to
    *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
    */
-  def  ofList[T](xs: Seq[Expr[T]])(using Type[T], QuoteContext): Expr[List[T]] =
+  def  ofList[T](xs: Seq[Expr[T]])(using Staged[T], QuoteContext): Expr[List[T]] =
     if (xs.isEmpty) '{ Nil } else '{ List(${Varargs(xs)}: _*) }
 
   /** Lifts this sequence of expressions into an expression of a tuple
@@ -191,7 +191,7 @@ object Expr {
   }
 
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
-  def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
+  def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Staged](tup: T)(using qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
     val elems: Seq[Expr[Any]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[Any]]]
     ofTupleFromSeq(elems).cast[Tuple.InverseMap[T, Expr]]
   }
@@ -204,7 +204,7 @@ object Expr {
    *  @param tpe quoted type of the implicit parameter
    *  @param qctx current context
    */
-  def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
+  def summon[T](using tpe: Staged[T])(using qctx: QuoteContext): Option[Expr[T]] = {
     import qctx.tasty._
     searchImplicit(tpe.unseal.tpe) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])

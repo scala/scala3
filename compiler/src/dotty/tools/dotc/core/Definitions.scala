@@ -682,6 +682,14 @@ class Definitions {
     @tu lazy val QuotedExprModule_nullExpr: Symbol = QuotedExprModule.requiredMethod(nme.nullExpr)
     @tu lazy val QuotedExprModule_unitExpr: Symbol = QuotedExprModule.requiredMethod(nme.unitExpr)
 
+  @tu lazy val QuotedStagedClass: Symbol = requiredPackage("scala.quoted").typeRef.select("Staged".toTypeName).typeSymbol
+
+  @tu lazy val QuotedTypeClass: ClassSymbol = requiredClass("scala.quoted.Type")
+    @tu lazy val QuotedType_splice: Symbol = QuotedTypeClass.requiredType(tpnme.spliceType)
+
+  @tu lazy val QuotedTypeModule: Symbol = QuotedTypeClass.companionModule
+    @tu lazy val QuotedTypeModule_apply: Symbol = QuotedTypeModule.requiredMethod("apply")
+
   @tu lazy val QuoteContextClass: ClassSymbol = requiredClass("scala.quoted.QuoteContext")
 
   @tu lazy val LiftableModule: Symbol = requiredModule("scala.quoted.Liftable")
@@ -713,12 +721,6 @@ class Definitions {
 
   @tu lazy val InternalQuotedTypeModule: Symbol = requiredModule("scala.internal.quoted.Type")
     @tu lazy val InternalQuotedType_unapply: Symbol = InternalQuotedTypeModule.requiredMethod(nme.unapply)
-
-  @tu lazy val QuotedTypeClass: ClassSymbol = requiredClass("scala.quoted.Type")
-    @tu lazy val QuotedType_splice: Symbol = QuotedTypeClass.requiredType(tpnme.spliceType)
-
-  @tu lazy val QuotedTypeModule: Symbol = QuotedTypeClass.companionModule
-    @tu lazy val QuotedTypeModule_apply: Symbol = QuotedTypeModule.requiredMethod("apply")
 
   @tu lazy val TastyReflectionClass: ClassSymbol = requiredClass("scala.tasty.Reflection")
 

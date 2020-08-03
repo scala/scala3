@@ -48,7 +48,7 @@ object Macro {
     Expr.ofTupleFromSeq(ret)
   }
 
-  private def fromTupleImpl[T: Type](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T])(using qctx:QuoteContext) : Expr[Any] = {
+  private def fromTupleImpl[T: Staged](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T])(using qctx:QuoteContext) : Expr[Any] = {
     import qctx.tasty._
 
     val repr = s.unseal.tpe.widenTermRefExpr.dealias

@@ -8,7 +8,7 @@ object Macro {
   inline def foo[T]: String =
     ${ fooImpl[T] }
 
-  def fooImpl[T](implicit t: Type[T], qctx: QuoteContext): Expr[String] = {
+  def fooImpl[T](implicit t: Staged[T], qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
     val sym = t.unseal.symbol
     if sym.isClassDef then '{ "symbol" }

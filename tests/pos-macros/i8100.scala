@@ -4,7 +4,7 @@ class M {
   type E
 }
 
-def f[T: Type](using QuoteContext) =
+def f[T: Staged](using QuoteContext) =
   Expr.summon[M] match
     case Some('{ $mm : $tt }) =>
       '{
@@ -18,4 +18,4 @@ def f[T: Type](using QuoteContext) =
         // ${ g[m.E] } // FIXME: issue seems to be in ReifyQuotes
       }
 
-def g[T](using Type[T]) = ???
+def g[T](using Staged[T]) = ???

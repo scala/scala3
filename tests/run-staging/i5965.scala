@@ -20,7 +20,7 @@ object Test {
     println(run(map))
   }
 
-  def bound[T: Type, S[_]: Type](x: Expr[S[T]])(using QuoteContext): Expr[S[T]] = '{
+  def bound[T: Staged, S[_]: Staged](x: Expr[S[T]])(using QuoteContext): Expr[S[T]] = '{
     val y: S[T] = $x
     y
   }

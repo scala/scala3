@@ -1,6 +1,6 @@
 package scala.internal.quoted
 
-import scala.quoted.{Expr, QuoteContext, Type}
+import scala.quoted.{Expr, QuoteContext, Staged, Type}
 
 /** Provides methods to unpickle `Expr` and `Type` trees. */
 object Unpickler {
@@ -19,9 +19,9 @@ object Unpickler {
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `args`
    */
-  def unpickleType[T](repr: PickledQuote, args: PickledArgs): QuoteContext ?=> Type[T] =
+  def unpickleType[T](repr: PickledQuote, args: PickledArgs): QuoteContext ?=> Staged[T] =
     val ctx = summon[QuoteContext]
     val tree = ctx.tasty.internal.unpickleType(repr, args)
-    new scala.internal.quoted.Type(tree, ctx.tasty.internal.compilerId).asInstanceOf[Type[T]]
+    new scala.internal.quoted.Type(tree, ctx.tasty.internal.compilerId).asInstanceOf[Staged[T]]
 
 }
