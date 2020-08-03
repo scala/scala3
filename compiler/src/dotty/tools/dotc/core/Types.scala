@@ -1118,15 +1118,15 @@ object Types {
 
     /** Widen this type and if the result contains embedded union types, replace
      *  them by their joins.
-     *  "Embedded" means: inside intersectons or recursive types, or in prefixes of refined types.
+     *  "Embedded" means: inside type lambdas, intersections or recursive types, or in prefixes of refined types.
      *  If an embedded union is found, we first try to simplify or eliminate it by
      *  re-lubbing it while allowing type parameters to be constrained further.
      *  Any remaining union types are replaced by their joins.
      *
-	   *  For instance, if `A` is an unconstrained type variable, then
-  	 *
-  	 * 	      ArrayBuffer[Int] | ArrayBuffer[A]
-  	 *
+     *  For instance, if `A` is an unconstrained type variable, then
+     *
+     * 	      ArrayBuffer[Int] | ArrayBuffer[A]
+     *
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
      *  instead of `ArrayBuffer[? >: Int | A <: Int & A]`
      *
@@ -1155,6 +1155,8 @@ object Types {
         tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
       case tp: RecType =>
         tp.rebind(tp.parent.widenUnion)
+      case tp: HKTypeLambda =>
+        tp.derivedLambdaType(resType = tp.resType.widenUnion)
       case tp =>
         tp
     }
