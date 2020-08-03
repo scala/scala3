@@ -14,6 +14,7 @@ import Uniques._
 import config.Printers.typr
 import util.SourceFile
 import util.Property
+import TypeComparer.necessarySubType
 
 import scala.annotation.internal.sharable
 
@@ -36,6 +37,14 @@ object ProtoTypes {
      */
     def isCompatible(tp: Type, pt: Type)(using Context): Boolean =
       (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
+
+    /** Like isCompatibe, but using a subtype comparison with necessary eithers
+     *  that don't unnecessarily truncate the constraint space, returning false instead.
+     */
+    def necessarilyCompatible(tp: Type, pt: Type)(using Context): Boolean =
+      val tpw = tp.widenExpr
+      val ptw = pt.widenExpr
+      necessarySubType(tpw, ptw) || tpw.isValueSubType(ptw) || viewExists(tp, pt)
 
     /** Test compatibility after normalization.
      *  Do this in a fresh typerstate unless `keepConstraint` is true.
@@ -67,24 +76,22 @@ object ProtoTypes {
      *  fits the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type)(using Context): Boolean =
-      withMode(Mode.ConstrainResult) {
-        val savedConstraint = ctx.typerState.constraint
-        val res = pt.widenExpr match {
-          case pt: FunProto =>
-            mt match {
-              case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)
-              case _ => true
-            }
-          case _: ValueTypeOrProto if !disregardProto(pt) =>
-            isCompatible(normalize(mt, pt), pt)
-          case pt: WildcardType if pt.optBounds.exists =>
-            isCompatible(normalize(mt, pt), pt)
-          case _ =>
-            true
-        }
-        if !res then ctx.typerState.constraint = savedConstraint
-        res
+      val savedConstraint = ctx.typerState.constraint
+      val res = pt.widenExpr match {
+        case pt: FunProto =>
+          mt match {
+            case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)
+            case _ => true
+          }
+        case _: ValueTypeOrProto if !disregardProto(pt) =>
+          necessarilyCompatible(normalize(mt, pt), pt)
+        case pt: WildcardType if pt.optBounds.exists =>
+          necessarilyCompatible(normalize(mt, pt), pt)
+        case _ =>
+          true
       }
+      if !res then ctx.typerState.constraint = savedConstraint
+      res
 
     /** Constrain result with special case if `meth` is an inlineable method in an inlineable context.
      *  In that case, we should always succeed and not constrain type parameters in the expected type,

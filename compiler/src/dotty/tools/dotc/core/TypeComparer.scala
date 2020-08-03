@@ -63,6 +63,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var myInstance: TypeComparer = this
   def currentInstance: TypeComparer = myInstance
 
+  private var useNecessaryEither = false
+
   /** Is a subtype check in progress? In that case we may not
    *  permanently instantiate type variables, because the corresponding
    *  constraint might still be retracted and the instantiation should
@@ -128,6 +130,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         assert(isSatisfiable, constraint.show)
     }
   }
+
+  def necessarySubType(tp1: Type, tp2: Type): Boolean =
+    val saved = useNecessaryEither
+    useNecessaryEither = true
+    try topLevelSubType(tp1, tp2)
+    finally useNecessaryEither = saved
 
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false
@@ -1481,7 +1489,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @see [[sufficientEither]] for the normal case
    */
   protected def either(op1: => Boolean, op2: => Boolean): Boolean =
-    if ctx.mode.is(Mode.GadtConstraintInference) || ctx.mode.is(Mode.ConstrainResult) then
+    if ctx.mode.is(Mode.GadtConstraintInference) || useNecessaryEither then
       necessaryEither(op1, op2)
     else
       sufficientEither(op1, op2)
@@ -2527,6 +2535,9 @@ object TypeComparer {
 
   def topLevelSubType(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.topLevelSubType(tp1, tp2))
+
+  def necessarySubType(tp1: Type, tp2: Type)(using Context): Boolean =
+    comparing(_.necessarySubType(tp1, tp2))
 
   def isSubType(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.isSubType(tp1, tp2))
