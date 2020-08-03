@@ -129,7 +129,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         // reverse all the effects of this transformation, which would be counter-productive.
 
 
-        // TODO: enable once we change lazy val encoding
+        // TODO: enable once we change lazy val encoding (https://github.com/lampepfl/dotty/issues/7140)
         //
         // Lazy val encoding assumes bitmap fields are non-static
         //
