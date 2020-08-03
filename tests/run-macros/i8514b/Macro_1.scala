@@ -10,7 +10,9 @@ def testExpr(using QuoteContext): Expr[Unit] = {
   import qctx.tasty._
 
   val t = '[B].unseal.tpe
+  val baseTypes = t.baseClasses.map(b => t.baseType(b))
+
   '{
-    println(${Expr(t.baseClasses.map(b => t.baseType(b).toString))})
+    println(${Expr(baseTypes.map(_.show).mkString("\n"))})
   }
 }
