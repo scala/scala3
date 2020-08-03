@@ -1610,10 +1610,8 @@ trait CompilerInterface {
    */
   def searchImplicit(tpe: Type)(using ctx: Context): ImplicitSearchResult
 
-  /** Inline fn if it is an explicit closure possibly nested inside the expression of a block.
-   *  Otherwise apply the arguments to the closure.
-   */
-  def betaReduce(f: Term, args: List[Term])(using ctx: Context): Term
+  /** Returns Some with a beta-reduced application or None */
+  def betaReduce(tree: Term)(using Context): Option[Term]
 
   def lambdaExtractor(term: Term, paramTypes: List[Type])(using ctx: Context): Option[List[Term] => Term]
 

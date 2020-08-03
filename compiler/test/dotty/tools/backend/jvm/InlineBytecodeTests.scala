@@ -399,22 +399,15 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val instructions = instructionsFromMethod(fun)
       val expected =
         List(
-          // Head tested separatly
           VarOp(ALOAD, 0),
           Invoke(INVOKEVIRTUAL, "Test", "given_Int", "()I", false),
-          Invoke(INVOKESTATIC, "scala/runtime/BoxesRunTime", "boxToInteger", "(I)Ljava/lang/Integer;", false),
-          Invoke(INVOKEINTERFACE, "dotty/runtime/function/JFunction1$mcZI$sp", "apply", "(Ljava/lang/Object;)Ljava/lang/Object;", true),
-          Invoke(INVOKESTATIC, "scala/runtime/BoxesRunTime", "unboxToBoolean", "(Ljava/lang/Object;)Z", false),
+          VarOp(ISTORE, 1),
+          Op(ICONST_1),
           Op(IRETURN)
         )
 
-      instructions.head match {
-        case InvokeDynamic(INVOKEDYNAMIC, "apply$mcZI$sp", "()Ldotty/runtime/function/JFunction1$mcZI$sp;", _, _) =>
-        case _ => assert(false, "`g` was not properly inlined in `test`\n")
-      }
-
-      assert(instructions.tail == expected,
-        "`fg was not properly inlined in `test`\n" + diffInstructions(instructions.tail, expected))
+      assert(instructions == expected,
+        "`fg was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
 
     }
   }
@@ -505,4 +498,30 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+
+  @Test def i9466 = {
+    val source = """class Test:
+                   |  inline def i(inline f: Int => Boolean): String =
+                   |   if f(34) then "a"
+                   |   else "b"
+                   |  def test = i(f = _ == 34)
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected =
+        List(
+          Ldc(LDC, "a"),
+          Op(ARETURN)
+        )
+
+      assert(instructions == expected,
+        "`i was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
 }

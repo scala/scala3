@@ -12,8 +12,8 @@ object Test {
     println(f(43))
   }
 
-  def f1(using QuoteContext): Expr[Int => Int] = '{ n => ${Expr.betaReduce(f2)('n)} }
-  def f2(using QuoteContext): Expr[Int => Int] = '{ n => ${Expr.betaReduce(f3)('n)} }
-  def f3(using QuoteContext): Expr[Int => Int] = '{ n => ${Expr.betaReduce(f4)('n)} }
+  def f1(using QuoteContext): Expr[Int => Int] = '{ n => ${Expr.betaReduce('{$f2(n)})} }
+  def f2(using QuoteContext): Expr[Int => Int] = '{ n => ${Expr.betaReduce('{$f3(n)})} }
+  def f3(using QuoteContext): Expr[Int => Int] = '{ n => ${Expr.betaReduce('{$f4(n)})} }
   def f4(using QuoteContext): Expr[Int => Int] = '{ n => n }
 }

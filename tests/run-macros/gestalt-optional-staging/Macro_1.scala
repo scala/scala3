@@ -9,7 +9,7 @@ final class Optional[+A >: Null](val value: A) extends AnyVal {
 
   inline def getOrElse[B >: A](alt: => B): B = ${ Optional.getOrElseImpl('this, 'alt) }
 
-  inline def map[B >: Null](f: A => B): Optional[B] = ${ Optional.mapImpl('this, 'f) }
+  inline def map[B >: Null](inline f: A => B): Optional[B] = ${ Optional.mapImpl('this, 'f) }
 
   override def toString = if (isEmpty) "<empty>" else s"$value"
 }
@@ -24,7 +24,7 @@ object Optional {
   // FIXME fix issue #5097 and enable private
   /*private*/ def mapImpl[A >: Null : Type, B >: Null : Type](opt: Expr[Optional[A]], f: Expr[A => B])(using QuoteContext): Expr[Optional[B]] = '{
     if ($opt.isEmpty) new Optional(null)
-    else new Optional(${Expr.betaReduce(f)('{$opt.value})})
+    else new Optional(${Expr.betaReduce('{$f($opt.value)})})
   }
 
 }

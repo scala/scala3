@@ -1,5 +1,5 @@
 6
 {
   def f(x: scala.Int): scala.Int = x.+(x)
-  f(3)
-}
+  ((`x₂`: scala.Int) => f(`x₂`))
+}.apply(3)

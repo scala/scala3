@@ -18,15 +18,15 @@ Result: ()
 
 Original: ls.map[scala.Int](((a: scala.Int) => a.*(2))).map[java.lang.String](((b: scala.Int) => b.toString()))
 Optimized: ls.map[java.lang.String](((x: scala.Int) => {
-  val x$1: scala.Int = x.*(2)
-  x$1.toString()
+  val b: scala.Int = x.*(2)
+  b.toString()
 }))
 Result: List(2, 4, 6)
 
 Original: ls.map[scala.Char](((a: scala.Int) => a.toChar)).map[java.lang.String](((b: scala.Char) => b.toString()))
 Optimized: ls.map[java.lang.String](((x: scala.Int) => {
-  val x$2: scala.Char = x.toChar
-  x$2.toString()
+  val b: scala.Char = x.toChar
+  b.toString()
 }))
 Result: List(, , )
 

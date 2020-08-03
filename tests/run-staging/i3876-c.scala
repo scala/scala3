@@ -10,8 +10,8 @@ object Test {
       val f: (x: Int) => Int = x => x + x
       f
     }
-
-    println(run(Expr.betaReduce(f3)(x)))
-    println(withQuoteContext(Expr.betaReduce(f3)(x).show)) // TODO improve printer
+    def expr(using QuoteContext) = '{$f3($x)}
+    println(run(Expr.betaReduce(expr)))
+    println(withQuoteContext(Expr.betaReduce(expr).show)) // TODO improve printer
   }
 }

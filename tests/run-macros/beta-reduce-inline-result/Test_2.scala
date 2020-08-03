@@ -74,4 +74,3 @@ object Test {
     println(s"run-time: ${Macros.betaReduce(dummy7)(8)}")
   }
 }
-
