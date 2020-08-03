@@ -1205,6 +1205,9 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Type_baseClasses(self: Type)(using Context): List[Symbol] =
     self.baseClasses
 
+  def Type_baseType(self: Type)(cls: Symbol)(using Context): Type =
+    self.baseType(cls)
+
   def Type_derivesFrom(self: Type)(cls: Symbol)(using Context): Boolean =
     self.derivesFrom(cls)
 

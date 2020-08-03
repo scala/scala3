@@ -1812,6 +1812,17 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       /** The base classes of this type with the class itself as first element. */
       def baseClasses(using ctx: Context): List[Symbol] = internal.Type_baseClasses(self)
 
+
+    /** The least type instance of given class which is a super-type
+     *  of this type.  Example:
+     *  {{{
+     *    class D[T]
+     *    class C extends p.D[Int]
+     *    ThisType(C).baseType(D) = p.D[Int]
+     * }}}
+     */
+      def baseType(cls: Symbol)(using ctx: Context): Type = internal.Type_baseType(self)(cls)
+
       /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
       def derivesFrom(cls: Symbol)(using ctx: Context): Boolean =
         internal.Type_derivesFrom(self)(cls)
