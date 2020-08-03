@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Contexts._
@@ -129,14 +130,18 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         // reverse all the effects of this transformation, which would be counter-productive.
 
 
-        // TODO: enable once we change lazy val encoding (https://github.com/lampepfl/dotty/issues/7140)
+        // TODO: remove `!f.name.is(LazyBitMapName)` once we change lazy val encoding
+        //       https://github.com/lampepfl/dotty/issues/7140
         //
         // Lazy val encoding assumes bitmap fields are non-static
         //
         // See `tests/run/given-var.scala`
         //
-        // for (f <- claszSymbol.info.decls.filter(_.isField))
-        //   f.setFlag(JavaStatic)
+
+        claszSymbol.info.decls.foreach { f =>
+          if f.isField && !f.name.is(LazyBitMapName) then
+            f.setFlag(JavaStatic)
+        }
 
         val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.isStaticConstructor)
 
