@@ -3,9 +3,12 @@ package scala.quoted
 import scala.annotation.compileTimeOnly
 import scala.quoted.show.SyntaxHighlight
 
-/** Quoted type (or kind) `T` */
-abstract class Type[X <: AnyKind] private[scala] {
-  type T = X
+/** Quoted type (or kind) `X` */
+type Type[X <: AnyKind] = QuotedType { type T = X }
+
+/** A TypeTree with a known type (or kind) `T` */
+abstract class QuotedType private[scala] {
+  type T <: AnyKind
 
   /** Show a source code like representation of this type without syntax highlight */
   def show(using qctx: QuoteContext): String =
@@ -21,11 +24,16 @@ abstract class Type[X <: AnyKind] private[scala] {
 }
 
 /** Some basic type tags, currently incomplete */
-object Type {
+object QuotedType {
 
   /** Return a quoted.Type with the given type */
-  @compileTimeOnly("Reference to `scala.quoted.Type.apply` was not handled by ReifyQuotes")
+  @compileTimeOnly("Reference to `scala.quoted.QuotedType.apply` was not handled by ReifyQuotes")
   given apply[T <: AnyKind] as (QuoteContext ?=> Type[T]) = ???
+
+
+  // TODO: Move Tags
+  //       these are here for a compiler optimization not for the user. users should write '[Int] directly
+  //       they should be in sclaa.internal.quoted.Type
 
   def UnitTag: QuoteContext ?=> Type[Unit] =
     qctx.tasty.defn.UnitType.seal.asInstanceOf[quoted.Type[Unit]]

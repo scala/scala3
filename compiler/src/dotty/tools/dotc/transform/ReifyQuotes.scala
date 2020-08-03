@@ -265,7 +265,7 @@ class ReifyQuotes extends MacroTransform {
                 }
                 assert(tpw.isInstanceOf[ValueType])
                 val argTpe =
-                  if (tree.isType) defn.QuotedTypeClass.typeRef.appliedTo(tpw)
+                  if (tree.isType) defn.QuotedTypeAliasClass.typeRef.appliedTo(tpw)
                   else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuoteContextClass.typeRef, defn.QuotedExprClass.typeRef.appliedTo(tpw))
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).cast(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
@@ -335,7 +335,9 @@ class ReifyQuotes extends MacroTransform {
       def getTypeHoleType(using Context) = new TypeMap() {
         override def apply(tp: Type): Type = tp match
           case tp: TypeRef if tp.typeSymbol.isTypeSplice =>
-            apply(tp.dealias)
+            val dealiased = tp.dealias
+            if tp == dealiased then apply(tp.symbol.info.hiBound)
+            else apply(tp.dealias)
           case tp @ TypeRef(pre, _) if pre == NoPrefix || pre.termSymbol.isLocal =>
             val hiBound = tp.typeSymbol.info match
               case info @ ClassInfo(_, _, classParents, _, _) => classParents.reduce(_ & _)
