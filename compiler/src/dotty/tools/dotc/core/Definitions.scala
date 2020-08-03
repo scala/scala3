@@ -585,13 +585,18 @@ class Definitions {
 
    @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
+    // jl.Enum has a single constructor protected(name: String, ordinal: Int).
+    // We remove the arguments from the primary constructor, and enter
+    // a new constructor symbol with 2 arguments, so that both
+    // `X extends jl.Enum[X]` and `X extends jl.Enum[X](name, ordinal)`
+    // pass typer and go through jl.Enum-specific checks in RefChecks.
     cls.infoOrCompleter match {
       case completer: ClassfileLoader =>
         cls.info = new ClassfileLoader(completer.classfile) {
           override def complete(root: SymDenotation)(using Context): Unit = {
             super.complete(root)
             val constr = cls.primaryConstructor
-            val newInfo = constr.info match {
+            val noArgInfo = constr.info match {
               case info: PolyType =>
                 info.resType match {
                   case meth: MethodType =>
@@ -600,7 +605,8 @@ class Definitions {
                       paramNames = Nil, paramInfos = Nil))
                 }
             }
-            constr.info = newInfo
+            val argConstr = constr.copy().entered
+            constr.info = noArgInfo
             constr.termRef.recomputeDenot()
           }
         }

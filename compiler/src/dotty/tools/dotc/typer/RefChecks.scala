@@ -88,8 +88,9 @@ object RefChecks {
       cls.thisType
   }
 
-  /** Check that self type of this class conforms to self types of parents.
-   *  and required classes.
+  /** Check that self type of this class conforms to self types of parents
+   *  and required classes. Also check that only `enum` constructs extend
+   *  `java.lang.Enum`.
    */
   private def checkParents(cls: Symbol)(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
@@ -99,10 +100,14 @@ object RefChecks {
           report.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
             cls.sourcePos)
       }
-      for (parent <- cinfo.classParents)
+      val parents = cinfo.classParents
+      for (parent <- parents)
         checkSelfConforms(parent.classSymbol.asClass, "illegal inheritance", "parent")
       for (reqd <- cinfo.cls.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
+
+      if !cls.is(Enum) && parents.exists(_.classSymbol == defn.JavaEnumClass) then
+        report.error(CannotExtendJavaEnum(cls), cls.sourcePos)
     case _ =>
   }
 
