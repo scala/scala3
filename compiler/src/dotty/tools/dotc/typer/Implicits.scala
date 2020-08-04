@@ -975,13 +975,10 @@ trait Implicits:
         if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
         else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
       val result0 =
-        try
-          new ImplicitSearch(pt, argument, span).bestImplicit(contextual = true)
-        catch {
-          case ce: CyclicReference =>
-            ce.inImplicitSearch = true
-            throw ce
-        }
+        try ImplicitSearch(pt, argument, span).bestImplicit
+        catch case ce: CyclicReference =>
+          ce.inImplicitSearch = true
+          throw ce
 
       val result =
         result0 match {
@@ -1121,7 +1118,7 @@ trait Implicits:
       }
 
     /** Search a list of eligible implicit references */
-    def searchImplicits(eligible: List[Candidate], contextual: Boolean): SearchResult = {
+    private def searchImplicit(eligible: List[Candidate], contextual: Boolean): SearchResult =
 
       /** Compare previous success with reference and level to determine which one would be chosen, if
        *  an implicit starting with the reference was found.
@@ -1292,11 +1289,33 @@ trait Implicits:
       }
 
       rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
-    }
-    // end searchImplicits
+    end searchImplicit
+
+    private def searchImplicit(contextual: Boolean): SearchResult =
+      val eligible =
+        if contextual then ctx.implicits.eligible(wildProto)
+        else implicitScope(wildProto).eligible
+      searchImplicit(eligible, contextual) match
+        case result: SearchSuccess =>
+          result
+        case failure: SearchFailure =>
+          failure.reason match
+            case _: AmbiguousImplicits => failure
+            case reason =>
+              if contextual then
+                searchImplicit(contextual = false).recoverWith {
+                  failure2 => failure2.reason match
+                    case _: AmbiguousImplicits => failure2
+                    case _ =>
+                      reason match
+                        case (_: DivergingImplicit) => failure
+                        case _ => List(failure, failure2).maxBy(_.tree.treeSize)
+                }
+              else failure
+    end searchImplicit
 
     /** Find a unique best implicit reference */
-    def bestImplicit(contextual: Boolean): SearchResult =
+    def bestImplicit: SearchResult =
       // Before searching for contextual or implicit scope candidates we first check if
       // there is an under construction or already constructed term with which we can tie
       // the knot.
@@ -1305,35 +1324,12 @@ trait Implicits:
       // effectively in a more inner context than any other definition provided by
       // explicit definitions. Consequently these terms have the highest priority and no
       // other candidates need to be considered.
-      recursiveRef(pt) match {
+      recursiveRef match
         case ref: TermRef =>
           SearchSuccess(tpd.ref(ref).withSpan(span.startPos), ref, 0)(ctx.typerState, ctx.gadt)
         case _ =>
-          val eligible =
-            if (contextual) ctx.implicits.eligible(wildProto)
-            else implicitScope(wildProto).eligible
-          searchImplicits(eligible, contextual) match {
-            case result: SearchSuccess =>
-              result
-            case failure: SearchFailure =>
-              failure.reason match {
-                case _: AmbiguousImplicits => failure
-                case reason =>
-                  if (contextual)
-                    bestImplicit(contextual = false).recoverWith {
-                      failure2 => failure2.reason match {
-                        case _: AmbiguousImplicits => failure2
-                        case _ =>
-                          reason match {
-                            case (_: DivergingImplicit) => failure
-                            case _ => List(failure, failure2).maxBy(_.tree.treeSize)
-                          }
-                      }
-                    }
-                  else failure
-              }
-          }
-      }
+          searchImplicit(contextual = true)
+    end bestImplicit
 
     def implicitScope(tp: Type): OfTypeImplicits = ctx.run.implicitScope(tp)
 
@@ -1413,7 +1409,7 @@ trait Implicits:
      * @param pt  The target type being searched for.
      * @result    The corresponding dictionary reference if any, NoType otherwise.
      */
-    def recursiveRef(pt: Type)(using Context): Type =
+    def recursiveRef(using Context): Type =
       val widePt = pt.widenExpr
 
       ctx.searchHistory.refBynameImplicit(widePt).orElse {
