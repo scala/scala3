@@ -10,7 +10,7 @@ abstract class Expr[+T] private[scala] {
     this.unseal.showWith(SyntaxHighlight.plain)
 
   /** Show a source code like representation of this expression */
-  def show(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
+  def showWith(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
     this.unseal.showWith(syntaxHighlight)
 
   /** Return the unlifted value of this expression.

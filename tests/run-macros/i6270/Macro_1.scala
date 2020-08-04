@@ -15,6 +15,6 @@ object api {
 
   private def reflImplColor(x: Expr[String])(using qctx: QuoteContext) : Expr[String] = {
     import qctx.tasty._
-    Expr(x.show(ANSI))
+    Expr(x.showWith(ANSI))
   }
 }
