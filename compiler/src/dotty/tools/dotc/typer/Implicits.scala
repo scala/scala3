@@ -1362,11 +1362,11 @@ trait Implicits { self: Typer =>
  * recursive references and emit a complete implicit dictionary when the outermost search
  * is complete.
  */
-abstract class SearchHistory { outer =>
+abstract class SearchHistory:
   val root: SearchRoot
-  val open: List[(Candidate, Type)]
   /** Does this search history contain any by name implicit arguments. */
   val byname: Boolean
+  def open: List[(Candidate, Type)]
 
   /**
    * Create the state for a nested implicit search.
@@ -1374,12 +1374,7 @@ abstract class SearchHistory { outer =>
    * @param pt   The target type for the above candidate.
    * @result     The nested history.
    */
-  def nest(cand: Candidate, pt: Type)(using Context): SearchHistory =
-    new SearchHistory {
-      val root = outer.root
-      val open = (cand, pt) :: outer.open
-      val byname = outer.byname || isByname(pt)
-    }
+  def nest(cand: Candidate, pt: Type)(using Context): OpenSearch = OpenSearch(cand, pt, this)
 
   def isByname(tp: Type): Boolean = tp.isInstanceOf[ExprType]
 
@@ -1410,22 +1405,25 @@ abstract class SearchHistory { outer =>
     // as we ascend the chain of open implicits to the outermost search context.
 
     @tailrec
-    def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Boolean =
-      ois match {
-        case Nil => false
-        case (hd@(cand1, tp)) :: tl =>
-          if (cand1.ref == cand.ref) {
+    def loop(history: SearchHistory, belowByname: Boolean): Boolean =
+      history match
+        case _: SearchRoot => false
+        case OpenSearch(cand1, tp, outer) =>
+          if cand1.ref == cand.ref then
             val wideTp = tp.widenExpr
             lazy val wildTp = wildApprox(wideTp)
             lazy val tpSize = wideTp.typeSize
-            if (belowByname && (wildTp <:< wildPt)) false
-            else if (tpSize > ptSize || wideTp.coveringSet != ptCoveringSet) loop(tl, isByname(tp) || belowByname)
-            else tpSize < ptSize || wildTp =:= wildPt || loop(tl, isByname(tp) || belowByname)
-          }
-          else loop(tl, isByname(tp) || belowByname)
-      }
+            if belowByname && (wildTp <:< wildPt) then
+              false
+            else if tpSize > ptSize || wideTp.coveringSet != ptCoveringSet then
+              loop(outer, isByname(tp) || belowByname)
+            else
+              tpSize < ptSize
+              || wildTp =:= wildPt
+              || loop(outer, isByname(tp) || belowByname)
+          else loop(outer, isByname(tp) || belowByname)
 
-    loop(open, isByname(pt))
+    loop(this, isByname(pt))
   }
 
   /**
@@ -1457,17 +1455,16 @@ abstract class SearchHistory { outer =>
         // argument as we ascend the chain of open implicits to the outermost search
         // context.
         @tailrec
-        def loop(ois: List[(Candidate, Type)], belowByname: Boolean): Type =
-          ois match {
-            case (hd@(cand, tp)) :: tl if (belowByname || isByname(tp)) && tp.widenExpr <:< widePt => tp
-            case (_, tp) :: tl => loop(tl, belowByname || isByname(tp))
+        def loop(history: SearchHistory, belowByname: Boolean): Type =
+          history match
+            case OpenSearch(cand, tp, outer) =>
+              if (belowByname || isByname(tp)) && tp.widenExpr <:< widePt then tp
+              else loop(outer, belowByname || isByname(tp))
             case _ => NoType
-          }
 
-        loop(open, bynamePt) match {
+        loop(this, bynamePt) match
           case NoType => NoType
           case tp => ctx.searchHistory.linkBynameImplicit(tp.widenExpr)
-        }
       }
     }
   }
@@ -1484,15 +1481,21 @@ abstract class SearchHistory { outer =>
   def emitDictionary(span: Span, result: SearchResult)(using Context): SearchResult = result
 
   override def toString: String = s"SearchHistory(open = $open, byname = $byname)"
-}
+end SearchHistory
+
+case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory) extends SearchHistory:
+  val root = outer.root
+  val byname = outer.byname || isByname(pt)
+  def open = (cand, pt) :: outer.open
+end OpenSearch
 
 /**
  * The the state corresponding to the outermost context of an implicit searcch.
  */
-final class SearchRoot extends SearchHistory {
+final class SearchRoot extends SearchHistory:
   val root = this
-  val open = Nil
   val byname = false
+  def open = Nil
 
   /** The dictionary of recursive implicit types and corresponding terms for this search. */
   var implicitDictionary0: mutable.Map[Type, (TermRef, tpd.Tree)] = null
@@ -1653,7 +1656,7 @@ final class SearchRoot extends SearchHistory {
             success.copy(tree = blk)(success.tstate, success.gstate)
           }
       }
-}
+end SearchRoot
 
 /** A set of term references where equality is =:= */
 sealed class TermRefSet(using Context):
