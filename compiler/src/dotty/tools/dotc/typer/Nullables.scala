@@ -480,10 +480,12 @@ object Nullables:
       if mt.paramInfos.exists(_.isInstanceOf[ExprType]) && !fn.symbol.is(Inline) =>
         app match
           case Apply(fn, args) =>
-            val dropNotNull = new TreeMap:
+            object dropNotNull extends TreeMap:
+              var dropped: Boolean = false
               override def transform(t: Tree)(using Context) = t match
                 case AssertNotNull(t0) if t0.symbol.is(Mutable) =>
                   nullables.println(i"dropping $t")
+                  dropped = true
                   transform(t0)
                 case t: ValDef if !t.symbol.is(Lazy) => super.transform(t)
                 case t: MemberDef =>
@@ -502,7 +504,7 @@ object Nullables:
             def postProcess(formal: Type, arg: Tree): Tree =
               val nestedCtx = ctx.fresh.setNewTyperState()
               val arg1 = dropNotNull.transform(arg)(using nestedCtx)
-              if arg1 eq arg then arg
+              if !dropNotNull.dropped then arg
               else
                 val arg2 = retyper.typed(arg1, formal)(using nestedCtx)
                 if nestedCtx.reporter.hasErrors || !(arg2.tpe <:< formal) then
