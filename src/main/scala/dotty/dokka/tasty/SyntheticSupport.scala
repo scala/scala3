@@ -22,3 +22,5 @@ trait SyntheticsSupport:
 
   def isSyntheticField(c: Symbol, classDef: ClassDef) = 
     c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Private) || c.flags.is(Flags.Object)
+
+  def isExtensionMethod(d: Symbol): Boolean = d.name.startsWith("extension_")

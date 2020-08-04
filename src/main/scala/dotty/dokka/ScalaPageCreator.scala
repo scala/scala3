@@ -9,7 +9,7 @@ import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.pages._
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties._
-
+import org.jetbrains.dokka.base.transformers.documentables.CallableExtensions
 
 class ScalaPageCreator(
     commentsToContentConverter: CommentsToContentConverter,
@@ -18,36 +18,61 @@ class ScalaPageCreator(
 ) extends DefaultPageCreator(commentsToContentConverter, signatureProvider, logger) {
     override def pageForClasslike(c: DClasslike): ClasslikePageNode = {
         val res = super.pageForClasslike(c)
-        def addCompanionObjectPage(co: DClasslike): ClasslikePageNode = {
-            res.modified(
-                res.getName,
-                res.getContent,
-                res.getDri,
-                res.getEmbeddedResources,
-                (res.getChildren.asScala ++ List(
-                    ClasslikePageNode(
-                        co.getName + "$",
-                        contentForClasslike(co),
-                        Set(co.getDri).asJava,
-                        co,
-                        (co.getClasslikes.asScala.map(pageForClasslike(_)) ++
-                        co.getFunctions.asScala.map(pageForFunction(_))).asJava,
-                        Nil.asJava
+        def addCompanionObjectPage(co: DClasslike, defContent: ClasslikePageNode): ClasslikePageNode = {
+            val page = pageForClasslike(co)
+            defContent.modified(
+                defContent.getName,
+                defContent.getContent,
+                defContent.getDri,
+                defContent.getEmbeddedResources,
+                (defContent.getChildren.asScala ++ List(
+                    page.modified(
+                        page.getName + "$",
+                        page.getContent,
+                        page.getDri,
+                        page.getEmbeddedResources,
+                        page.getChildren
                     )
                 )).asJava
             )
         }
 
+        def addExtensionMethodPages(clazz: DClass, defContent: ClasslikePageNode): ClasslikePageNode = {
+            val extensionPages = clazz.getExtra.getMap.asScala.values
+                .collect { case e: CallableExtensions => e.getExtensions.asScala }
+                .flatten
+                .collect { case f: DFunction => f }
+                .map(pageForFunction(_))
+                .map(page =>
+                    page.modified(
+                        "extension_" + page.getName,
+                        page.getContent,
+                        page.getDri,
+                        page.getEmbeddedResources,
+                        page.getChildren
+                    )
+                )
+
+            defContent.modified(
+                defContent.getName,
+                defContent.getContent,
+                defContent.getDri,
+                defContent.getEmbeddedResources,
+                (defContent.getChildren.asScala ++ extensionPages).asJava
+            )
+        }
+        
         c match {
             case clazz: DClass => 
-                clazz.get(ClasslikeExtension).companion.fold(res)(addCompanionObjectPage(_))
+                val op1 = clazz.get(ClasslikeExtension).companion.fold(res)(addCompanionObjectPage(_, res))
+                val op2 = addExtensionMethodPages(clazz, op1)
+                op2
             case _ => res
         }
     }
 
-    override def contentForClasslike(c: DClasslike): ContentGroup = {
-        val defContent = super.contentForClasslike(c)
-        def contentFunction(co: DClasslike): Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit] = builder => {
+    def insertCompanionObject(clazz: DClass, defContent: ContentGroup): ContentGroup = {
+        def companionObjectContent(co: DClasslike): Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit] = builder => {
             group(builder)(builder => {
                     sourceSetDependentHint(builder)(
                         builder => {
@@ -60,11 +85,9 @@ class ScalaPageCreator(
             )
             kotlin.Unit.INSTANCE
         }
-                    
-        c match{
-            case clazz: DClass =>
-                clazz.get(ClasslikeExtension).companion.fold(defContent)(co => {
-                    val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(contentFunction(co))
+
+        clazz.get(ClasslikeExtension).companion.fold(defContent)(co => {
+                    val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(companionObjectContent(co))
                     val newChildren = List(defContent.getChildren.asScala.head) ++ List(addedContent) ++ defContent.getChildren.asScala.tail
                     ContentGroup(
                         newChildren.asJava,
@@ -73,8 +96,16 @@ class ScalaPageCreator(
                         defContent.getStyle,
                         defContent.getExtra
                     )
-                })
-            case _ => defContent
+        })
+    }
+
+    override def contentForClasslike(c: DClasslike): ContentGroup = {
+        val defaultContent = super.contentForClasslike(c)
+      
+        c match{
+            case clazz: DClass =>
+                insertCompanionObject(clazz, defaultContent)
+            case _ => defaultContent
         }
     }
 

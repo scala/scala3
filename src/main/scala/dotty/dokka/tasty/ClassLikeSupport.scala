@@ -6,6 +6,7 @@ import org.jetbrains.dokka.model.doc._
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties._
 import dotty.dokka._
+import org.jetbrains.dokka.base.transformers.documentables.CallableExtensions
 
 trait ClassLikeSupport: 
   self: TastyParser =>
@@ -18,10 +19,14 @@ trait ClassLikeSupport:
         if parentSymbol != defn.ObjectClass
     yield parentTree.dokkaType
 
-    val methods = classDef.symbol.classMethods.filterNot(isSyntheticFunc)
+    val (extensions, methods) = classDef.symbol.classMethods.filterNot(isSyntheticFunc).partition(isExtensionMethod(_))
+
+    val parsedExtensions = extensions
+      .map(parseMethod(_, isExtension = true))
+
     val constuctors = classDef.body.collect {
       case d: DefDef if d.name == "<init>" && classDef.constructor.symbol != d.symbol => 
-        parseMethod(d.symbol)
+        parseMethod(d.symbol, isExtension = false)
     }
 
     val nested = classDef.body.collect {
@@ -45,7 +50,7 @@ trait ClassLikeSupport:
 
     val constructorMethod = 
       if kind == Kind.Object then None 
-      else Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), paramMod))
+      else Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), paramMod, isExtension = false))
 
     val typeParams = classDef.body.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam)
 
@@ -71,7 +76,7 @@ trait ClassLikeSupport:
         classDef.symbol.dri,
         name,
         /*constuctors =*/ constuctors.asJava,
-        /*methods =*/ methods.map(parseMethod(_)).asJava,
+        /*methods =*/ methods.map(parseMethod(_, isExtension = false)).asJava,
         /*fields =*/ (typeDefs.map(parseTypeDef) ++ valDefs.map(parseValDef)).asJava,
         /*nested =*/ nested.asJava,
         /*sources =*/ classDef.symbol.source,
@@ -86,16 +91,18 @@ trait ClassLikeSupport:
         PropertyContainer.Companion.empty()
           .plus(ClasslikeExtension(parents, constructorMethod, kind, companion))
           .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
+          .plus(CallableExtensions(parsedExtensions.toSet.asJava))
       )
 
-  def parseMethod(methodSymbol: Symbol, emptyParamsList: Boolean = false, paramPrefix: Symbol => String = _ => ""): DFunction =
+  def parseMethod(methodSymbol: Symbol, emptyParamsList: Boolean = false, paramPrefix: Symbol => String = _ => "", isExtension: Boolean): DFunction =
     val method = methodSymbol.tree.asInstanceOf[DefDef]
     val paramLists = if emptyParamsList then Nil else method.paramss
     val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.typeParams
+    val name =  if methodSymbol.isClassConstructor then "this" else if isExtension then methodSymbol.name.stripPrefix("extension_") else methodSymbol.name
    
     new DFunction(
       methodSymbol.dri,
-      if methodSymbol.isClassConstructor then "this" else methodSymbol.name,
+      name,
       /*isConstructor =*/ methodSymbol.isClassConstructor,
       /*parameters =*/ paramLists.flatten.map(parseArgument(_, paramPrefix)).asJava, // TODO add support for parameters
       /*documentation =*/ methodSymbol.documentation,
@@ -108,7 +115,7 @@ trait ClassLikeSupport:
       /*modifier =*/ sourceSet.asMap(methodSymbol.getModifier()),
       sourceSet.toSet(),
       PropertyContainer.Companion.empty() 
-        plus MethodExtension(paramLists.map(_.size))
+        plus MethodExtension(paramLists.map(_.size), isExtension)
         plus AdditionalModifiers(sourceSet.asMap(methodSymbol.getExtraModifiers().asJava))
     )
 
