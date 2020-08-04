@@ -101,9 +101,6 @@ jobs:
     container: lampepfl/dotty:2020-04-24
 
     steps:
-      - name: Set up JDK version
-        run: echo "::add-path::/usr/lib/jvm/java-11-openjdk-amd64/bin"
-
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
