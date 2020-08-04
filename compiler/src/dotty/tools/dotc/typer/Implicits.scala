@@ -1657,28 +1657,29 @@ final class SearchRoot extends SearchHistory {
 
 /** A set of term references where equality is =:= */
 sealed class TermRefSet(using Context):
-  private val elems = new java.util.LinkedHashMap[TermSymbol, List[Type]]
+  private val elems = new java.util.LinkedHashMap[TermSymbol, Type | List[Type]]
 
   def isEmpty = elems.size == 0
 
-  def += (ref: TermRef): Unit = {
+  def += (ref: TermRef): Unit =
     val pre = ref.prefix
     val sym = ref.symbol.asTerm
-    elems.get(sym) match {
+    elems.get(sym) match
       case null =>
-        elems.put(sym, pre :: Nil)
-      case prefixes =>
-        if (!prefixes.exists(_ =:= pre))
-          elems.put(sym, pre :: prefixes)
-    }
-  }
+        elems.put(sym, pre)
+      case prefix: Type =>
+        if !(prefix =:= pre) then elems.put(sym, pre :: prefix :: Nil)
+      case prefixes: List[Type] =>
+        if !prefixes.exists(_ =:= pre) then elems.put(sym, pre :: prefixes)
 
   def ++= (that: TermRefSet): Unit =
     that.foreach(+=)
 
   def foreach[U](f: TermRef => U): Unit =
-    elems.forEach((sym: TermSymbol, prefixes: List[Type]) =>
-      prefixes.foreach(pre => f(TermRef(pre, sym))))
+    elems.forEach((sym: TermSymbol, prefixes: Type | List[Type]) =>
+      prefixes match
+        case prefix: Type => f(TermRef(prefix, sym))
+        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym))))
 
   // used only for debugging
   def toList: List[TermRef] = {
