@@ -400,12 +400,10 @@ object Types {
      *  satisfy predicate `p`.
      *
      *  @param p                   The predicate to satisfy
-     *  @param excludeLowerBounds  If set to true, the lower bounds of abstract
-     *                             types will be ignored.
      */
-    def namedPartsWith(p: NamedType => Boolean, excludeLowerBounds: Boolean = false)
+    def namedPartsWith(p: NamedType => Boolean)
       (using Context): collection.Set[NamedType] =
-      new NamedPartsAccumulator(p, excludeLowerBounds).apply(mutable.LinkedHashSet(), this)
+      new NamedPartsAccumulator(p).apply(mutable.LinkedHashSet(), this)
 
     /** Map function `f` over elements of an AndType, rebuilding with function `g` */
     def mapReduceAnd[T](f: Type => T)(g: (T, T) => T)(using Context): T = stripTypeVar match {
@@ -5520,9 +5518,8 @@ object Types {
     override def hash(x: Type): Int = System.identityHashCode(x)
     override def isEqual(x: Type, y: Type) = x.eq(y)
 
-  class NamedPartsAccumulator(p: NamedType => Boolean, excludeLowerBounds: Boolean = false)
-    (using Context) extends TypeAccumulator[mutable.Set[NamedType]] {
-    override def stopAtStatic: Boolean = false
+  class NamedPartsAccumulator(p: NamedType => Boolean)(using Context)
+  extends TypeAccumulator[mutable.Set[NamedType]] {
     def maybeAdd(x: mutable.Set[NamedType], tp: NamedType): mutable.Set[NamedType] = if (p(tp)) x += tp else x
     val seen = TypeHashSet()
     def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] =
@@ -5541,7 +5538,7 @@ object Types {
           case tp: AppliedType =>
             foldOver(x, tp)
           case TypeBounds(lo, hi) =>
-            if (!excludeLowerBounds) apply(x, lo)
+            apply(x, lo)
             apply(x, hi)
           case tp: ParamRef =>
             apply(x, tp.underlying)
