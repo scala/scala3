@@ -31,7 +31,7 @@ import tpd._
 
 import scala.tools.asm
 import StdNames.{nme, str}
-import NameKinds.{DefaultGetterName, ExpandedName}
+import NameKinds.{DefaultGetterName, ExpandedName, LazyBitMapName}
 import Names.TermName
 import Annotations.Annotation
 import Names.Name
@@ -131,8 +131,12 @@ object DottyBackendInterface {
 
       def isStaticConstructor(using Context): Boolean = (sym.isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
+      /** Fields of static modules will be static at backend */
+      def isStaticModuleField(using Context): Boolean =
+        sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName)
+
       def isStaticMember(using Context): Boolean = (sym ne NoSymbol) &&
-        (sym.is(JavaStatic) || sym.isScalaStatic)
+        (sym.is(JavaStatic) || sym.isScalaStatic || sym.isStaticModuleField)
         // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
       /**
