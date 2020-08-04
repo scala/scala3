@@ -239,23 +239,20 @@ object Implicits:
         Nil
       else
         val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
+        val candidates = new mutable.ListBuffer[Candidate]
+        var extensionOnly = true
 
-        def matchingCandidate(ref: ImplicitRef, extensionOnly: Boolean): Option[Candidate] =
+        val tryCandidate = (ref: ImplicitRef) =>
           var ckind = explore(candidateKind(ref.underlyingRef))(using nestedCtx)
           if extensionOnly then ckind &= Candidate.Extension
-          if ckind == Candidate.None then None
-          else Some(new Candidate(ref, ckind, level))
+          if ckind != Candidate.None then
+            candidates += Candidate(ref, ckind, level)
 
-        val extensionCandidates =
-          if considerExtension then
-            companionRefs.toList
-              .filterConserve(!_.symbol.isOneOf(GivenOrImplicit))  // implicit objects are already in `refs`
-              .flatMap(matchingCandidate(_, extensionOnly = true))
-          else
-            Nil
-        val implicitCandidates =
-          refs.flatMap(matchingCandidate(_, extensionOnly = false))
-        extensionCandidates ::: implicitCandidates
+        if considerExtension then
+          companionRefs.foreach(tryCandidate)
+        extensionOnly = false
+        refs.foreach(tryCandidate)
+        candidates.toList
     }
   }
 
@@ -265,7 +262,7 @@ object Implicits:
    */
   class OfTypeImplicits(tp: Type, override val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     assert(initctx.typer != null)
-    implicits.println(i"implicit scope of type $tp = ${companionRefs.toList}%, %")
+    implicits.println(i"implicit scope of type $tp = ${companionRefs.showAsList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = new mutable.ListBuffer[TermRef]
       for (companion <- companionRefs) buf ++= companion.implicitMembers
@@ -274,7 +271,7 @@ object Implicits:
 
     /** The candidates that are eligible for expected type `tp` */
     @threadUnsafe lazy val eligible: List[Candidate] =
-      trace(i"eligible($tp), companions = ${companionRefs.toList}%, %", implicitsDetailed, show = true) {
+      trace(i"eligible($tp), companions = ${companionRefs.showAsList}%, %", implicitsDetailed, show = true) {
         if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
         filterMatching(tp)
       }
@@ -283,7 +280,7 @@ object Implicits:
       ref.symbol.exists && !ref.symbol.is(Private)
 
     override def toString: String =
-      i"OfTypeImplicits($tp), companions = ${companionRefs.toList}%, %; refs = $refs%, %."
+      i"OfTypeImplicits($tp), companions = ${companionRefs.showAsList}%, %; refs = $refs%, %."
   }
 
   /** The implicit references coming from the context.
@@ -681,41 +678,41 @@ trait ImplicitRunInfo:
    *   - If `T` is some other type, S includes the implicit scopes of all anchors of `T`.
    */
   def implicitScope(tp: Type)(using Context): OfTypeImplicits =
-    object liftToAnchors extends TypeMap:
-      override def stopAtStatic = true
-      private val seen = TypeHashSet()
+    implicitScopeCache.get(tp) match
+      case Some(is) => is
+      case None =>
+        record(i"implicitScope")
+        val liftToAnchors = new TypeMap:
+          override def stopAtStatic = true
+          private val seen = TypeHashSet()
 
-      def applyToUnderlying(t: TypeProxy) =
-        if seen.contains(t) then
-          WildcardType
+          def applyToUnderlying(t: TypeProxy) =
+            if seen.contains(t) then
+              WildcardType
+            else
+              seen.addEntry(t)
+              t.underlying match
+                case TypeBounds(lo, hi) =>
+                  if defn.isBottomTypeAfterErasure(lo) then apply(hi)
+                  else AndType.make(apply(lo), apply(hi))
+                case u => apply(u)
+
+          def apply(t: Type) = t.dealias match
+            case t: TypeRef =>
+              if t.symbol.isClass || isAnchor(t.symbol) then t else applyToUnderlying(t)
+            case t: TypeVar => apply(t.underlying)
+            case t: ParamRef => applyToUnderlying(t)
+            case t: ConstantType => apply(t.underlying)
+            case t => mapOver(t)
+        end liftToAnchors
+        val liftedTp = liftToAnchors(tp)
+        if liftedTp eq tp then
+          record(i"implicitScope unlifted")
+          computeIScope(tp)
         else
-          seen.addEntry(t)
-          t.underlying match
-            case TypeBounds(lo, hi) =>
-              if defn.isBottomTypeAfterErasure(lo) then apply(hi)
-              else AndType.make(apply(lo), apply(hi))
-            case u => apply(u)
-
-      def apply(t: Type) = t.dealias match
-        case t: TypeRef =>
-          if t.symbol.isClass || isAnchor(t.symbol) then t else applyToUnderlying(t)
-        case t: TypeVar => apply(t.underlying)
-        case t: ParamRef => applyToUnderlying(t)
-        case t: ConstantType => apply(t.underlying)
-        case t => mapOver(t)
-    end liftToAnchors
-
-    record(i"implicitScope")
-    implicitScopeCache.getOrElse(tp, {
-      val liftedTp = liftToAnchors(tp)
-      if liftedTp eq tp then
-        record(i"implicitScope unlifted")
-        computeIScope(tp)
-      else
-        record(i"implicitScope lifted")
-        val liftedIScope = implicitScopeCache.getOrElse(liftedTp, computeIScope(liftedTp))
-        OfTypeImplicits(tp, liftedIScope.companionRefs)(runContext)
-    })
+          record(i"implicitScope lifted")
+          val liftedIScope = implicitScopeCache.getOrElse(liftedTp, computeIScope(liftedTp))
+          OfTypeImplicits(tp, liftedIScope.companionRefs)(runContext)
   end implicitScope
 
   protected def reset(): Unit =
@@ -1204,7 +1201,7 @@ trait Implicits:
                 else disambiguate(found, best) match {
                   case retained: SearchSuccess =>
                     val newPending =
-                      if (retained eq found) remaining
+                      if (retained eq found) || remaining.isEmpty then remaining
                       else remaining.filter(cand =>
                         compareCandidate(retained, cand.ref, cand.level) <= 0)
                     rank(newPending, retained, rfailures)
@@ -1669,7 +1666,7 @@ sealed class TermRefSet(using Context):
         if !prefixes.exists(_ =:= pre) then elems.put(sym, pre :: prefixes)
 
   def ++= (that: TermRefSet): Unit =
-    that.foreach(+=)
+    if !that.isEmpty then that.foreach(+=)
 
   def foreach[U](f: TermRef => U): Unit =
     elems.forEach((sym: TermSymbol, prefixes: Type | List[Type]) =>
@@ -1678,13 +1675,13 @@ sealed class TermRefSet(using Context):
         case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym))))
 
   // used only for debugging
-  def toList: List[TermRef] = {
+  def showAsList: List[TermRef] = {
     val buffer = new mutable.ListBuffer[TermRef]
     foreach(tr => buffer += tr)
     buffer.toList
   }
 
-  override def toString = toList.toString
+  override def toString = showAsList.toString
 
 object TermRefSet:
 
