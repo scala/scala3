@@ -40,7 +40,7 @@ import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 /** Implicit resolution */
-object Implicits {
+object Implicits:
   import tpd._
 
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
@@ -499,7 +499,7 @@ object Implicits {
   class FailedExtension(extApp: Tree, val expectedType: Type) extends SearchFailureType:
     def argument = EmptyTree
     def explanation(using Context) = em"$extApp does not $qualify"
-}
+end Implicits
 
 import Implicits._
 
@@ -723,7 +723,8 @@ trait ImplicitRunInfo:
 end ImplicitRunInfo
 
 /** The implicit resolution part of type checking */
-trait Implicits { self: Typer =>
+trait Implicits:
+  self: Typer =>
 
   import tpd._
 
@@ -1082,24 +1083,22 @@ trait Implicits { self: Typer =>
     }
 
   /** An implicit search; parameters as in `inferImplicit` */
-  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(using Context) {
+  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(using Context):
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         em"found: $argument: ${argument.tpe}, expected: $pt")
 
     private def nestedContext() =
       ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
-    private def implicitProto(resultType: Type, f: Type => Type) =
-      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
-        // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
-
     private def isCoherent = pt.isRef(defn.EqlClass)
 
-    /** The expected type for the searched implicit */
-    @threadUnsafe lazy val fullProto: Type = implicitProto(pt, identity)
+    val wideProto = pt.widenExpr
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
-    val wildProto: Type = implicitProto(pt, wildApprox(_))
+    val wildProto: Type =
+      if argument.isEmpty then wildApprox(pt)
+      else ViewProto(wildApprox(argument.tpe.widen), wildApprox(pt))
+        // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
     val isNot: Boolean = wildProto.classSymbol == defn.NotClass
 
@@ -1107,15 +1106,15 @@ trait Implicits { self: Typer =>
       * a diverging search
       */
     def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult =
-      if (ctx.searchHistory.checkDivergence(cand, pt))
-        SearchFailure(new DivergingImplicit(cand.ref, pt.widenExpr, argument))
+      if checkDivergence(cand) then
+        SearchFailure(new DivergingImplicit(cand.ref, wideProto, argument))
       else {
         val history = ctx.searchHistory.nest(cand, pt)
         val result =
           typedImplicit(cand, pt, argument, span)(using nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history))
         result match {
           case res: SearchSuccess =>
-            ctx.searchHistory.defineBynameImplicit(pt.widenExpr, res)
+            ctx.searchHistory.defineBynameImplicit(wideProto, res)
           case _ =>
             result
         }
@@ -1306,7 +1305,7 @@ trait Implicits { self: Typer =>
       // effectively in a more inner context than any other definition provided by
       // explicit definitions. Consequently these terms have the highest priority and no
       // other candidates need to be considered.
-      ctx.searchHistory.recursiveRef(pt) match {
+      recursiveRef(pt) match {
         case ref: TermRef =>
           SearchSuccess(tpd.ref(ref).withSpan(span.startPos), ref, 0)(ctx.typerState, ctx.gadt)
         case _ =>
@@ -1346,8 +1345,101 @@ trait Implicits { self: Typer =>
         case success: SearchSuccess => success.ref
       }
     }
-  }
-}
+
+    /** Fields needed for divergence checking */
+    @threadUnsafe lazy val ptCoveringSet = wideProto.coveringSet
+    @threadUnsafe lazy val ptSize = wideProto.typeSize
+    @threadUnsafe lazy val wildPt = wildApprox(wideProto)
+
+    /**
+    * Check if the supplied candidate implicit and target type indicate a diverging
+    * implicit search.
+    *
+    * @param cand The candidate implicit to be explored.
+    * @param pt   The target type for the above candidate.
+    * @result     True if this candidate/pt are divergent, false otherwise.
+    */
+    def checkDivergence(cand: Candidate)(using Context): Boolean =
+      // For full details of the algorithm see the SIP:
+      //   https://docs.scala-lang.org/sips/byname-implicits.html
+      util.Stats.record("checkDivergence")
+
+      // Unless we are able to tie a recursive knot, we report divergence if there is an
+      // open implicit using the same candidate implicit definition which has a type which
+      // is larger (see `typeSize`) and is constructed using the same set of types and type
+      // constructors (see `coveringSet`).
+      //
+      // We are able to tie a recursive knot if there is compatible term already under
+      // construction which is separated from this context by at least one by name argument
+      // as we ascend the chain of open implicits to the outermost search context.
+
+      @tailrec
+      def loop(history: SearchHistory, belowByname: Boolean): Boolean =
+        history match
+          case OpenSearch(cand1, tp, outer) =>
+            if cand1.ref eq cand.ref then
+              util.Stats.record("checkDivergence for sure")
+              val wideTp = tp.widenExpr
+              lazy val wildTp = wildApprox(wideTp)
+              lazy val tpSize = wideTp.typeSize
+              if belowByname && (wildTp <:< wildPt) then
+                false
+              else if tpSize > ptSize || wideTp.coveringSet != ptCoveringSet then
+                loop(outer, tp.isByName || belowByname)
+              else
+                tpSize < ptSize
+                || wildTp =:= wildPt
+                || loop(outer, tp.isByName || belowByname)
+            else loop(outer, tp.isByName || belowByname)
+          case _ => false
+
+      loop(ctx.searchHistory, pt.isByName)
+    end checkDivergence
+
+    /**
+     * Return the reference, if any, to a term under construction or already constructed in
+     * the current search history corresponding to the supplied target type.
+     *
+     * A term is eligible if its type is a subtype of the target type and either it has
+     * already been constructed and is present in the current implicit dictionary, or it is
+     * currently under construction and is separated from the current search context by at
+     * least one by name argument position.
+     *
+     * Note that because any suitable term found is defined as part of this search it will
+     * always be effectively in a more inner context than any other definition provided by
+     * explicit definitions. Consequently these terms have the highest priority and no other
+     * candidates need to be considered.
+     *
+     * @param pt  The target type being searched for.
+     * @result    The corresponding dictionary reference if any, NoType otherwise.
+     */
+    def recursiveRef(pt: Type)(using Context): Type =
+      val widePt = pt.widenExpr
+
+      ctx.searchHistory.refBynameImplicit(widePt).orElse {
+        val bynamePt = pt.isByName
+        if (!ctx.searchHistory.byname && !bynamePt) NoType // No recursion unless at least one open implicit is by name ...
+        else {
+          // We are able to tie a recursive knot if there is compatible term already under
+          // construction which is separated from this context by at least one by name
+          // argument as we ascend the chain of open implicits to the outermost search
+          // context.
+          @tailrec
+          def loop(history: SearchHistory, belowByname: Boolean): Type =
+            history match
+              case OpenSearch(cand, tp, outer) =>
+                if (belowByname || tp.isByName) && tp.widenExpr <:< widePt then tp
+                else loop(outer, belowByname || tp.isByName)
+              case _ => NoType
+
+          loop(ctx.searchHistory, bynamePt) match
+            case NoType => NoType
+            case tp => ctx.searchHistory.linkBynameImplicit(tp.widenExpr)
+        }
+      }
+    end recursiveRef
+  end ImplicitSearch
+end Implicits
 
 /**
  * Records the history of currently open implicit searches.
@@ -1378,97 +1470,6 @@ abstract class SearchHistory:
 
   def isByname(tp: Type): Boolean = tp.isInstanceOf[ExprType]
 
-  /**
-   * Check if the supplied candidate implicit and target type indicate a diverging
-   * implicit search.
-   *
-   * @param cand The candidate implicit to be explored.
-   * @param pt   The target type for the above candidate.
-   * @result     True if this candidate/pt are divergent, false otherwise.
-   */
-  def checkDivergence(cand: Candidate, pt: Type)(using Context): Boolean = {
-    // For full details of the algorithm see the SIP:
-    //   https://docs.scala-lang.org/sips/byname-implicits.html
-
-    val widePt = pt.widenExpr
-    lazy val ptCoveringSet = widePt.coveringSet
-    lazy val ptSize = widePt.typeSize
-    lazy val wildPt = wildApprox(widePt)
-
-    // Unless we are able to tie a recursive knot, we report divergence if there is an
-    // open implicit using the same candidate implicit definition which has a type which
-    // is larger (see `typeSize`) and is constructed using the same set of types and type
-    // constructors (see `coveringSet`).
-    //
-    // We are able to tie a recursive knot if there is compatible term already under
-    // construction which is separated from this context by at least one by name argument
-    // as we ascend the chain of open implicits to the outermost search context.
-
-    @tailrec
-    def loop(history: SearchHistory, belowByname: Boolean): Boolean =
-      history match
-        case _: SearchRoot => false
-        case OpenSearch(cand1, tp, outer) =>
-          if cand1.ref == cand.ref then
-            val wideTp = tp.widenExpr
-            lazy val wildTp = wildApprox(wideTp)
-            lazy val tpSize = wideTp.typeSize
-            if belowByname && (wildTp <:< wildPt) then
-              false
-            else if tpSize > ptSize || wideTp.coveringSet != ptCoveringSet then
-              loop(outer, isByname(tp) || belowByname)
-            else
-              tpSize < ptSize
-              || wildTp =:= wildPt
-              || loop(outer, isByname(tp) || belowByname)
-          else loop(outer, isByname(tp) || belowByname)
-
-    loop(this, isByname(pt))
-  }
-
-  /**
-   * Return the reference, if any, to a term under construction or already constructed in
-   * the current search history corresponding to the supplied target type.
-   *
-   * A term is eligible if its type is a subtype of the target type and either it has
-   * already been constructed and is present in the current implicit dictionary, or it is
-   * currently under construction and is separated from the current search context by at
-   * least one by name argument position.
-   *
-   * Note that because any suitable term found is defined as part of this search it will
-   * always be effectively in a more inner context than any other definition provided by
-   * explicit definitions. Consequently these terms have the highest priority and no other
-   * candidates need to be considered.
-   *
-   * @param pt  The target type being searched for.
-   * @result    The corresponding dictionary reference if any, NoType otherwise.
-   */
-  def recursiveRef(pt: Type)(using Context): Type = {
-    val widePt = pt.widenExpr
-
-    refBynameImplicit(widePt).orElse {
-      val bynamePt = isByname(pt)
-      if (!byname && !bynamePt) NoType // No recursion unless at least one open implicit is by name ...
-      else {
-        // We are able to tie a recursive knot if there is compatible term already under
-        // construction which is separated from this context by at least one by name
-        // argument as we ascend the chain of open implicits to the outermost search
-        // context.
-        @tailrec
-        def loop(history: SearchHistory, belowByname: Boolean): Type =
-          history match
-            case OpenSearch(cand, tp, outer) =>
-              if (belowByname || isByname(tp)) && tp.widenExpr <:< widePt then tp
-              else loop(outer, belowByname || isByname(tp))
-            case _ => NoType
-
-        loop(this, bynamePt) match
-          case NoType => NoType
-          case tp => ctx.searchHistory.linkBynameImplicit(tp.widenExpr)
-      }
-    }
-  }
-
   // The following are delegated to the root of this search history.
   def linkBynameImplicit(tpe: Type)(using Context): TermRef =
     root.linkBynameImplicit(tpe)
@@ -1498,12 +1499,11 @@ final class SearchRoot extends SearchHistory:
   def open = Nil
 
   /** The dictionary of recursive implicit types and corresponding terms for this search. */
-  var implicitDictionary0: mutable.Map[Type, (TermRef, tpd.Tree)] = null
-  def implicitDictionary = {
-    if (implicitDictionary0 == null)
-      implicitDictionary0 = mutable.Map.empty[Type, (TermRef, tpd.Tree)]
-    implicitDictionary0
-  }
+  var myImplicitDictionary: mutable.Map[Type, (TermRef, tpd.Tree)] = null
+  private def implicitDictionary =
+    if myImplicitDictionary == null then
+      myImplicitDictionary = mutable.Map.empty[Type, (TermRef, tpd.Tree)]
+    myImplicitDictionary
 
   /**
    * Link a reference to an under-construction implicit for the provided type to its
@@ -1593,7 +1593,7 @@ final class SearchRoot extends SearchHistory:
           }
 
           val pruned = prune(List(tree), implicitDictionary.map(_._2).toList, Nil)
-          implicitDictionary0 = null
+          myImplicitDictionary = null
           if (pruned.isEmpty) result
           else if (pruned.exists(_._2 == EmptyTree)) NoMatchingImplicitsFailure
           else {

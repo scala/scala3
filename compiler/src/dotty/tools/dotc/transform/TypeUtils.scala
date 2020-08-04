@@ -21,6 +21,9 @@ object TypeUtils {
     def isPrimitiveValueType(using Context): Boolean =
       self.classSymbol.isPrimitiveValueClass
 
+    def isByName: Boolean =
+      self.isInstanceOf[ExprType]
+
     def ensureMethodic(using Context): Type = self match {
       case self: MethodicType => self
       case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)
