@@ -1355,7 +1355,7 @@ trait Implicits:
     * @param pt   The target type for the above candidate.
     * @result     True if this candidate/pt are divergent, false otherwise.
     */
-    def checkDivergence(cand: Candidate)(using Context): Boolean =
+    def checkDivergence(cand: Candidate): Boolean =
       // For full details of the algorithm see the SIP:
       //   https://docs.scala-lang.org/sips/byname-implicits.html
       util.Stats.record("checkDivergence")
@@ -1374,7 +1374,6 @@ trait Implicits:
         history match
           case OpenSearch(cand1, tp, outer) =>
             if cand1.ref eq cand.ref then
-              util.Stats.record("checkDivergence for sure")
               val wideTp = tp.widenExpr
               lazy val wildTp = wildApprox(wideTp)
               lazy val tpSize = wideTp.typeSize
@@ -1409,30 +1408,28 @@ trait Implicits:
      * @param pt  The target type being searched for.
      * @result    The corresponding dictionary reference if any, NoType otherwise.
      */
-    def recursiveRef(using Context): Type =
-      val widePt = pt.widenExpr
+    def recursiveRef: Type =
+      val found = ctx.searchHistory.refBynameImplicit(wideProto)
+      if found.exists then
+        found
+      else if !ctx.searchHistory.byname && !pt.isByName then
+        NoType // No recursion unless at least one open implicit is by name ...
+      else
+        // We are able to tie a recursive knot if there is compatible term already under
+        // construction which is separated from this context by at least one by name
+        // argument as we ascend the chain of open implicits to the outermost search
+        // context.
+        @tailrec
+        def loop(history: SearchHistory, belowByname: Boolean): Type =
+          history match
+            case OpenSearch(cand, tp, outer) =>
+              if (belowByname || tp.isByName) && tp.widenExpr <:< wideProto then tp
+              else loop(outer, belowByname || tp.isByName)
+            case _ => NoType
 
-      ctx.searchHistory.refBynameImplicit(widePt).orElse {
-        val bynamePt = pt.isByName
-        if (!ctx.searchHistory.byname && !bynamePt) NoType // No recursion unless at least one open implicit is by name ...
-        else {
-          // We are able to tie a recursive knot if there is compatible term already under
-          // construction which is separated from this context by at least one by name
-          // argument as we ascend the chain of open implicits to the outermost search
-          // context.
-          @tailrec
-          def loop(history: SearchHistory, belowByname: Boolean): Type =
-            history match
-              case OpenSearch(cand, tp, outer) =>
-                if (belowByname || tp.isByName) && tp.widenExpr <:< widePt then tp
-                else loop(outer, belowByname || tp.isByName)
-              case _ => NoType
-
-          loop(ctx.searchHistory, bynamePt) match
-            case NoType => NoType
-            case tp => ctx.searchHistory.linkBynameImplicit(tp.widenExpr)
-        }
-      }
+        loop(ctx.searchHistory, pt.isByName) match
+          case NoType => NoType
+          case tp => ctx.searchHistory.linkBynameImplicit(tp.widenExpr)
     end recursiveRef
   end ImplicitSearch
 end Implicits
@@ -1529,7 +1526,9 @@ final class SearchRoot extends SearchHistory:
    * @result    The corresponding TermRef, or NoType if none.
    */
   override def refBynameImplicit(tpe: Type)(using Context): Type =
-    implicitDictionary.get(tpe).map(_._1).getOrElse(NoType)
+    implicitDictionary.get(tpe) match
+      case Some((tp, _)) => tp
+      case None => NoType
 
   /**
    * Define a pending dictionary entry if any.
