@@ -131,7 +131,14 @@ object DottyBackendInterface {
 
       def isStaticConstructor(using Context): Boolean = (sym.isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
-      /** Fields of static modules will be static at backend */
+      /** Fields of static modules will be static at backend
+       *
+       *  Note that lazy val encoding assumes bitmap fields are non-static.
+       *  See also `genPlainClass` in `BCodeSkelBuilder.scala`.
+       *
+       *  TODO: remove the special handing of `LazyBitMapName` once we swtich to
+       *        the new lazy val encoding: https://github.com/lampepfl/dotty/issues/7140
+       */
       def isStaticModuleField(using Context): Boolean =
         sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName)
 

@@ -15,7 +15,7 @@ jobs:
     container: lampepfl/dotty:2020-04-24
 
     steps:
-      - name: Set up JDK version
+      - name: Set JDK 11 as default
         run: echo "::add-path::/usr/lib/jvm/java-11-openjdk-amd64/bin"
 
       - name: Checkout cleanup script
@@ -58,7 +58,7 @@ jobs:
     container: lampepfl/dotty:2020-04-24
 
     steps:
-      - name: Set up JDK version
+      - name: Set JDK 11 as default
         run: echo "::add-path::/usr/lib/jvm/java-11-openjdk-amd64/bin"
 
       - name: Checkout cleanup script
@@ -190,6 +190,9 @@ jobs:
         github.event_name == 'schedule'
 
     steps:
+      - name: Set JDK 8 as default
+        run: echo "::add-path::/usr/lib/jvm/java-1.8.0-openjdk-amd64/bin"
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -221,9 +224,7 @@ jobs:
           restore-keys: ${{ runner.os }}-general-
 
       - name: Test
-        run: |
-          export PATH="/usr/lib/jvm/java-1.8.0-openjdk-amd64/bin:$PATH"
-          ./project/scripts/sbt ";compile ;test"
+        run: ./project/scripts/sbt ";compile ;test"
 
   publish_nightly:
     runs-on: self-hosted

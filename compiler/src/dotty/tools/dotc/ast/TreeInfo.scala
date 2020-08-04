@@ -830,9 +830,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** Return a pair consisting of (supercall, rest)
    *
-   *  - supercall: the of superclass call, excluding trait constr calls
+   *  - supercall: the superclass call, excluding trait constr calls
    *
-   *  The supercall is always the first statement (if exists)
+   *  The supercall is always the first statement (if it exists)
    */
   final def splitAtSuper(constrStats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
     constrStats.toList match {
