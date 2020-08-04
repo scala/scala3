@@ -25,13 +25,31 @@ package tests
   * > > a
   * > blockquote
   *
+  * And this is a link: [](method).
+  *
+  * And this is another link: [](AA).
+  *
+  * And this is another link: [](AA$).
+  *
+  * And this is yet another link: [](tests.Methods).
+  *
+  * Yet another: [](tests.Methods.simple).
+  *
+  * And yet another: [](example.level2.Documentation).
   *
   * @author Gal Anonim
   * @version 1.0.0
   * @result A class doesn't actually have a result.
   * @constructor A class has a constructor, and this one is important.
   */
-class A
+class A {
+  /** This is a method. */
+  def method(s: String): String = s
+
+  class AA
+
+  object AA
+}
 
 /** = An important Wiki test class =
   *
@@ -46,9 +64,23 @@ class A
   * this.is("a code block")
   * }}}
   *
+  * And this is a link: [[otherMethod]].
+  *
+  * And this is another link: [[BB]].
+  *
+  * And this is yet another link: [[tests.Methods]].
+  *
+  * Yet another: [[tests.Methods.simple]].
+  *
+  * And yet another: [[example.level2.Documentation]].
   * @syntax wiki
   */
-class B extends A
+class B extends A {
+  /** This is a method. */
+  def otherMethod(s: String): String = s
+
+  class BB
+}
 class C 
 class D[T]
 class E[T] extends D[T]

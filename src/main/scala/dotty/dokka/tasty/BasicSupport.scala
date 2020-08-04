@@ -74,3 +74,63 @@ trait BasicSupport:
       )          
   
   private val emptyDRI =  DRI.Companion.getTopLevel
+
+import scala.tasty.Reflection
+class SymOps[R <: Reflection](val r: R) {
+  import r._
+
+  given R = r
+
+  extension SymbolOps on (sym: r.Symbol):
+    def packageName(using ctx: Context): String = 
+      if (sym.isPackageDef) sym.fullName 
+      else sym.maybeOwner.packageName
+    
+    def topLevelEntryName(using ctx: Context): Option[String] = if (sym.isPackageDef) None else
+      if (sym.owner.isPackageDef) Some(sym.name) else sym.owner.topLevelEntryName
+
+    def getVisibility(): ScalaVisibility = 
+      if (sym.flags.is(Flags.Private)) ScalaVisibility.Private
+      else if (sym.flags.is(Flags.Protected)) ScalaVisibility.Protected
+      else ScalaVisibility.NoModifier
+
+    def getModifier(): ScalaModifier = 
+      if (sym.flags.is(Flags.Case)) ScalaModifier.Case
+      else if (sym.flags.is(Flags.Abstract)) ScalaModifier.Abstract
+      else if (sym.flags.is(Flags.Sealed)) ScalaModifier.Sealed
+      else if (sym.flags.is(Flags.Final)) ScalaModifier.Final
+      else ScalaModifier.Empty
+
+    def getExtraModifiers(): Set[ScalaOnlyModifiers] = 
+      Set(
+        Option.when(sym.flags.is(Flags.Erased))(ScalaOnlyModifiers.Erased),
+        Option.when(sym.flags.is(Flags.Implicit))(ScalaOnlyModifiers.Implicit),
+        Option.when(sym.flags.is(Flags.Inline))(ScalaOnlyModifiers.Inline),
+        Option.when(sym.flags.is(Flags.Lazy))(ScalaOnlyModifiers.Lazy),
+        Option.when(sym.flags.is(Flags.Override))(ScalaOnlyModifiers.Override),
+      ).flatten
+
+    def isCompanionObject(): Boolean = sym.flags.is(Flags.Object) && sym.companionClass.exists
+
+    // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?  
+    def dri =
+      if sym == Symbol.noSymbol then emptyDRI else
+        val pointsTo = 
+          if (!sym.isTypeDef) PointingToDeclaration.INSTANCE 
+          else PointingToGenericParameters(sym.owner.typeMembers.indexOf(sym))
+
+        val method = 
+          if (sym.isDefDef) Some(sym) 
+          else if (sym.maybeOwner.isDefDef) Some(sym.owner)
+          else None 
+          
+        new DRI(
+          sym.packageName,
+          sym.topLevelEntryName.orNull, // TODO do we need any of this fields?
+          method.map(s => new org.jetbrains.dokka.links.Callable(s.name, null, Nil.asJava)).orNull,
+          pointsTo, // TODO different targets?
+          s"${sym.show}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
+        )
+
+  private val emptyDRI =  DRI.Companion.getTopLevel
+}

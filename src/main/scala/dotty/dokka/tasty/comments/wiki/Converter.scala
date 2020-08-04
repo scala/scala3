@@ -2,11 +2,17 @@ package dotty.dokka.tasty.comments
 package wiki
 
 import scala.jdk.CollectionConverters._
+import scala.tasty.Reflection
 
 import org.jetbrains.dokka.model.{doc => dkkd}
 
-object Converter {
+import dotty.dokka.tasty.SymOps
+
+class Converter(val r: Reflection)(owner: r.Symbol) {
   import Emitter._
+
+  object SymOps extends SymOps[r.type](r)
+  import SymOps.SymbolOps
 
   def convertBody(body: Body): dkkd.DocTag = {
     dkkd.P(
@@ -66,7 +72,6 @@ object Converter {
   def convertBlock(block: Block, isTopLevel: Boolean = false): Seq[dkkd.DocTag] =
     collect { emitBlock(block, isTopLevel) }
 
-
   def emitInline(inl: Inline)(using Emitter[dkkd.DocTag]): Unit = inl match {
     case Chain(items: Seq[Inline]) => items.foreach(emitInline)
     case Summary(_) => emit(dkk.text("(skipped summary)"))
@@ -75,7 +80,20 @@ object Converter {
     case Bold(text) => emit(dkkd.B(convertInline(text).asJava, kt.emptyMap))
     case Underline(text) => emit(dkkd.U(convertInline(text).asJava, kt.emptyMap))
     case Monospace(text) => emit(dkkd.CodeInline(convertInline(text).asJava, kt.emptyMap))
-    case _: (Link | Superscript | Subscript | RepresentationLink | HtmlTag) =>
+    case Link(target, text) =>
+      val SchemeUri = """[a-z]+:.*""".r
+
+      emit(target match {
+        case SchemeUri() => dkkd.A(convertInline(text).asJava, Map("href" -> target).asJava)
+        case _ => MemberLookup.lookup(using r)(target, owner) match {
+          case Some(sym) =>
+            println(s"dri of `${sym.show}` = ${sym.dri}")
+            dkkd.DocumentationLink(sym.dri, convertInline(text).asJava, kt.emptyMap)
+          case None => dkkd.A(convertInline(text).asJava, Map("href" -> "#").asJava)
+        }
+      })
+
+    case _: (Superscript | Subscript | RepresentationLink | HtmlTag) =>
       sys.error("not yet supported: Superscript | Subscript | RepresentationLink | HtmlTag")
   }
 

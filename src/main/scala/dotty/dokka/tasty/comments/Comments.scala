@@ -7,7 +7,9 @@ import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.util.options.MutableDataSet
 
 type Packages = Any /* Map[String, EmulatedPackageRepresentation] */
-type Repr = Any
+
+import scala.tasty.Reflection
+class Repr(val r: Reflection)(val sym: r.Symbol)
 
 case class Comment (
   body:                    dkkd.DocTag,
@@ -108,7 +110,7 @@ class MarkdownCommentParser(repr: Repr, packages: Packages)
     "short"
 
   def markupToDokka(md: mdu.Document) =
-    MarkdownConverter.convertDocument(md)
+    MarkdownConverter(repr.r)(repr.sym).convertDocument(md)
 
   def linkedExceptions(m: Map[String, String]) = {
     // val inlineToMarkdown = InlineToMarkdown(ent)
@@ -130,19 +132,18 @@ class MarkdownCommentParser(repr: Repr, packages: Packages)
       .view.mapValues(stringToMarkup).toMap
 }
 
-case class WikiCommentParser(ent: Repr, packages: Packages)
+case class WikiCommentParser(repr: Repr, packages: Packages)
     extends MarkupConversion[wiki.Body] {
 
   def stringToMarkup(str: String) =
-    wiki.Parser(ent, packages, str).document()
+    wiki.Parser(repr, packages, str).document()
 
   def stringToShortMarkdown(str: String) =
     // val parsed = stringToMarkup(str)
     // parsed.summary.getOrElse(parsed).show(ent)
     null
 
-  def markupToDokka(body: wiki.Body) = wiki.Converter.convertBody(body)
-
+  def markupToDokka(body: wiki.Body) = wiki.Converter(repr.r)(repr.sym).convertBody(body)
 
   def linkedExceptions(m: Map[String, String]) = {
     m.view.mapValues(stringToMarkup).toMap.map { case (targetStr, body) =>
@@ -156,7 +157,7 @@ case class WikiCommentParser(ent: Repr, packages: Packages)
       //   case _ => body
       // }
       // (targetStr, newBody.show(ent))
-      (targetStr, wiki.Converter.convertBody(body))
+      (targetStr, wiki.Converter(repr.r)(repr.sym).convertBody(body))
     }
   }
 

@@ -324,18 +324,20 @@ final class Parser(
       else None
     jump(stop)
 
-    (target, title) match {
-      case (SchemeUri(uri), optTitle) =>
-        Link(uri, optTitle getOrElse Text(uri))
-      case (qualName, optTitle) =>
-        null
-        // makeRepresentationLink(
-        //   representation,
-        //   packages,
-        //   (optTitle getOrElse Text(target)).toString,
-        //   target
-        // )
-    }
+    Link(target, title getOrElse Text(target))
+
+    // (target, title) match {
+    //   case (SchemeUri(uri), optTitle) =>
+    //     Link(uri, optTitle getOrElse Text(uri))
+    //   case (qualName, optTitle) =>
+    //     null
+    //     // makeRepresentationLink(
+    //     //   representation,
+    //     //   packages,
+    //     //   (optTitle getOrElse Text(target)).toString,
+    //     //   target
+    //     // )
+    // }
   }
 
   /* UTILITY */

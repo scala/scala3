@@ -18,9 +18,9 @@ trait ScaladocSupport { self: TastyParser =>
       comments.Preparser.preparse(comments.Cleaner.clean(commentNode.raw))
     val parser =
       if preparsed.syntax.headOption.contains("wiki") then
-        comments.WikiCommentParser((), ())
+        comments.WikiCommentParser(comments.Repr(reflect)(tree.symbol), ())
       else
-        comments.MarkdownCommentParser((), ())
+        comments.MarkdownCommentParser(comments.Repr(reflect)(tree.symbol), ())
     val parsed = parser.parse(preparsed)
 
     import kotlin.collections.builders.{ListBuilder => KtListBuilder}
