@@ -1461,8 +1461,6 @@ abstract class SearchHistory:
    */
   def nest(cand: Candidate, pt: Type)(using Context): OpenSearch = OpenSearch(cand, pt, this)
 
-  def isByname(tp: Type): Boolean = tp.isInstanceOf[ExprType]
-
   // The following are delegated to the root of this search history.
   def linkBynameImplicit(tpe: Type)(using Context): TermRef =
     root.linkBynameImplicit(tpe)
@@ -1479,7 +1477,7 @@ end SearchHistory
 
 case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory) extends SearchHistory:
   val root = outer.root
-  val byname = outer.byname || isByname(pt)
+  val byname = outer.byname || pt.isByName
   def open = (cand, pt) :: outer.open
 end OpenSearch
 
@@ -1560,7 +1558,7 @@ final class SearchRoot extends SearchHistory:
    *               substituted with references into the dictionary.
    */
   override def emitDictionary(span: Span, result: SearchResult)(using Context): SearchResult =
-    if (implicitDictionary == null || implicitDictionary.isEmpty) result
+    if (myImplicitDictionary == null || implicitDictionary.isEmpty) result
     else
       result match {
         case failure: SearchFailure => failure
