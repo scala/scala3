@@ -143,7 +143,7 @@ object Types {
     final def exists: Boolean = this.ne(NoType)
 
     /** This type, if it exists, otherwise `that` type */
-    def orElse(that: => Type): Type = if (exists) this else that
+    inline def orElse(inline that: => Type): Type = if (exists) this else that
 
     /** Is this type a value type? */
     final def isValueType: Boolean = this.isInstanceOf[ValueType]
