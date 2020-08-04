@@ -33,6 +33,3 @@ object report:
   class StopQuotedContext extends Throwable
 
 end report
-
-@deprecated("Use scala.quoted.report", "")
-def Reporting: report.type = report
