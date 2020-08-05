@@ -37,7 +37,7 @@ class Driver {
         val run = compiler.newRun
         run.compile(fileNames)
 
-        def finish(run: Run): Unit =
+        def finish(run: Run)(using Context): Unit =
           run.printSummary()
           if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
             val suspendedUnits = run.suspendedUnits.toList
@@ -46,7 +46,7 @@ class Driver {
             val run1 = compiler.newRun
             for unit <- suspendedUnits do unit.suspended = false
             run1.compileUnits(suspendedUnits)
-            finish(run1)
+            finish(run1)(using MacroClassLoader.init(ctx.fresh))
 
         finish(run)
       catch
