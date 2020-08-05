@@ -12,7 +12,7 @@ abstract class Type[X <: AnyKind] private[scala] {
     this.unseal.showWith(SyntaxHighlight.plain)
 
   /** Show a source code like representation of this type */
-  def show(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
+  def showWith(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
     this.unseal.showWith(syntaxHighlight)
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
