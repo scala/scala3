@@ -24,7 +24,7 @@ object Macro {
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
             import qctx.tasty._
-            error(msg, parts(partIdx).unseal.pos)
+            error(msg, parts(partIdx).asTerm.pos)
           }
         }
         fooCore(parts, args, reporter)
@@ -38,7 +38,7 @@ object Macro {
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
             import qctx.tasty._
-            val pos = parts(partIdx).unseal.pos
+            val pos = parts(partIdx).asTerm.pos
             errors += '{ Tuple4(${Expr(partIdx)}, ${Expr(pos.start)}, ${Expr(pos.end)}, ${Expr(msg)}) }
           }
         }

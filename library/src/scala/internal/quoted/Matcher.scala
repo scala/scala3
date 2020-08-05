@@ -253,14 +253,14 @@ object Matcher {
               if patternHole.symbol == internal.Definitions_InternalQuotedMatcher_patternHole &&
                  s.tpe <:< tpt.tpe &&
                  tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
-            matched(scrutinee.seal)
+            matched(scrutinee.asExpr)
 
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
           case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
               if patternHole.symbol == internal.Definitions_InternalQuotedMatcher_patternHole &&
                  scrutinee.tpe <:< tpt.tpe =>
-            matched(scrutinee.seal)
+            matched(scrutinee.asExpr)
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
@@ -283,7 +283,7 @@ object Matcher {
             val argTypes = args.map(x => x.tpe.widenTermRefExpr)
             val resType = pattern.tpe
             val res = Lambda(MethodType(names)(_ => argTypes, _ => resType), bodyFn)
-            matched(res.seal)
+            matched(res.asExpr)
 
           //
           // Match two equivalent trees

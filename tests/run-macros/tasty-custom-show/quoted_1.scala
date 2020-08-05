@@ -32,7 +32,7 @@ object Macros {
       }
     }
 
-    val tree = x.unseal
+    val tree = x.asTerm
     output.traverseTree(tree)
     '{print(${Expr(buff.result())})}
   }

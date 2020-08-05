@@ -7,11 +7,11 @@ abstract class Expr[+T] private[scala] {
 
   /** Show a source code like representation of this expression without syntax highlight */
   def show(using qctx: QuoteContext): String =
-    this.unseal.showWith(SyntaxHighlight.plain)
+    this.asTerm.showWith(SyntaxHighlight.plain)
 
   /** Show a source code like representation of this expression */
   def showWith(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
-    this.unseal.showWith(syntaxHighlight)
+    this.asTerm.showWith(syntaxHighlight)
 
   /** Return the unlifted value of this expression.
    *
@@ -41,11 +41,15 @@ abstract class Expr[+T] private[scala] {
     !scala.internal.quoted.Expr.unapply[EmptyTuple, EmptyTuple](this)(using that, false, qctx).isEmpty
 
   /** Checked cast to a `quoted.Expr[U]` */
-  def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = {
-    val tree = this.unseal
+  @deprecated("Replaced with `asExprOf`", "0.27.0")
+  def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = asExprOf[U]
+
+  /** Convert to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
+  def asExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): scala.quoted.Expr[X] = {
+    val tree = this.asTerm
     val expectedType = tp.unseal.tpe
     if (tree.tpe <:< expectedType)
-      this.asInstanceOf[scala.quoted.Expr[U]]
+      this.asInstanceOf[scala.quoted.Expr[X]]
     else
       throw new scala.tasty.reflect.ExprCastError(
         s"""Expr: ${tree.show}
@@ -55,7 +59,11 @@ abstract class Expr[+T] private[scala] {
   }
 
   /** View this expression `quoted.Expr[T]` as a `Term` */
-  def unseal(using qctx: QuoteContext): qctx.tasty.Term
+  @deprecated("Replaced with `asTerm`", "0.27.0")
+  def unseal(using qctx: QuoteContext): qctx.tasty.Term = asTerm
+
+  /** View this expression `quoted.Expr[T]` as a `Term` */
+  def asTerm(using qctx: QuoteContext): qctx.tasty.Term
 
 }
 
@@ -67,20 +75,20 @@ object Expr {
    *   Otherwise returns `expr`.
    */
   def betaReduce[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    qctx.tasty.internal.betaReduce(expr.unseal) match
-      case Some(expr1) => expr1.seal.asInstanceOf[Expr[T]]
+    qctx.tasty.internal.betaReduce(expr.asTerm) match
+      case Some(expr1) => expr1.asExpr.asInstanceOf[Expr[T]]
       case _ => expr
 
   /** Returns a null expresssion equivalent to `'{null}` */
   def nullExpr: QuoteContext ?=> Expr[Null] = qctx ?=> {
     import qctx.tasty._
-    Literal(Constant(null)).seal.asInstanceOf[Expr[Null]]
+    Literal(Constant(null)).asExpr.asInstanceOf[Expr[Null]]
   }
 
   /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
   def unitExpr: QuoteContext ?=> Expr[Unit] = qctx ?=> {
     import qctx.tasty._
-    Literal(Constant(())).seal.asInstanceOf[Expr[Unit]]
+    Literal(Constant(())).asExpr.asInstanceOf[Expr[Unit]]
   }
 
   /** Returns an expression containing a block with the given statements and ending with the expresion
@@ -89,7 +97,7 @@ object Expr {
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using qctx: QuoteContext): Expr[T] = {
     import qctx.tasty._
-    Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
+    Block(statements.map(_.asTerm), expr.asTerm).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Lift a value into an expression containing the construction of that value */
@@ -178,7 +186,7 @@ object Expr {
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
   def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
     val elems: Seq[Expr[Any]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[Any]]]
-    ofTupleFromSeq(elems).cast[Tuple.InverseMap[T, Expr]]
+    ofTupleFromSeq(elems).asExprOf[Tuple.InverseMap[T, Expr]]
   }
 
   /** Find an implicit of type `T` in the current scope given by `qctx`.
@@ -192,7 +200,7 @@ object Expr {
   def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
     import qctx.tasty._
     searchImplicit(tpe.unseal.tpe) match {
-      case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])
+      case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None
     }
   }

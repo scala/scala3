@@ -21,7 +21,7 @@ object Macros {
 
       case _ =>
         import qctx.tasty._
-        error("Expected explicit DSL", e.unseal.pos)
+        error("Expected explicit DSL", e.asTerm.pos)
         '{ ??? }
 
     }

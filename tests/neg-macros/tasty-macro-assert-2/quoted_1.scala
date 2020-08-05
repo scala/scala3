@@ -15,7 +15,7 @@ object Asserts {
   def impl(cond: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._
 
-    val tree = cond.unseal
+    val tree = cond.asTerm
 
     def isOps(tpe: TypeOrBounds): Boolean = tpe match {
       case tpe: TermRef => tpe.termSymbol.isDefDef && tpe.name == "Ops"// TODO check that the parent is Asserts
@@ -32,7 +32,7 @@ object Asserts {
 
     tree match {
       case Inlined(_, Nil, Apply(Select(OpsTree(left), op), right :: Nil)) =>
-        '{assertTrue(${left.seal.cast[Boolean]})} // Buggy code. To generate the errors
+        '{assertTrue(${left.asExprOf[Boolean]})} // Buggy code. To generate the errors
       case _ =>
         '{assertTrue($cond)}
     }

@@ -7,7 +7,7 @@ object Macros {
   def impl[T: Type](x: Expr[T])(using qctx: QuoteContext) : Expr[T] = {
     import qctx.tasty.{_, given _} // FIXME: #8919
     val identityMap = new TreeMap { }
-    val transformed = identityMap.transformTerm(x.unseal).seal.cast[T]
+    val transformed = identityMap.transformTerm(x.asTerm).asExprOf[T]
     transformed
   }
 

@@ -28,7 +28,7 @@ object Macros {
         "T",
         TypeBounds(typeOf[Int], typeOf[Int]))
     val x6T = AppliedType(Type(classOf[List[_]]), List(typeOf[Int]))
-    val x7T = AnnotatedType(ConstantType(Constant(7)), '{ new TestAnnotation }.unseal)
+    val x7T = AnnotatedType(ConstantType(Constant(7)), '{ new TestAnnotation }.asTerm)
     val x8T =
       MatchType(
         typeOf[Int],

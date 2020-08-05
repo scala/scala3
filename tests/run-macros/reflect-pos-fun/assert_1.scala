@@ -8,15 +8,15 @@ object scalatest {
     import qctx.tasty._
     import util._
 
-    cond.unseal.underlyingArgument match {
+    cond.asTerm.underlyingArgument match {
       case t @ Apply(TypeApply(Select(lhs, op), targs), rhs) =>
         let(lhs) { left =>
           lets(rhs) { rs =>
             val app = Select.overloaded(left, op, targs.map(_.tpe), rs)
-            val b = app.seal.cast[Boolean]
-            '{ scala.Predef.assert($b) }.unseal
+            val b = app.asExprOf[Boolean]
+            '{ scala.Predef.assert($b) }.asTerm
           }
-        }.seal.cast[Unit]
+        }.asExprOf[Unit]
     }
   }
 }

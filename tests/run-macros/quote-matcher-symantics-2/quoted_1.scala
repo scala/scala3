@@ -32,7 +32,7 @@ object Macros {
 
       case _ =>
         import qctx.tasty._
-        error("Expected explicit DSL " + e.show, e.unseal.pos)
+        error("Expected explicit DSL " + e.show, e.asTerm.pos)
         ???
     }
 
@@ -46,7 +46,7 @@ object Macros {
         )
       case _ =>
         import qctx.tasty._
-        error("Expected explicit DSL => DSL "  + e.show, e.unseal.pos)
+        error("Expected explicit DSL => DSL "  + e.show, e.asTerm.pos)
         ???
     }
 

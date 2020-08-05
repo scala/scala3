@@ -488,7 +488,28 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       /** Shows the tree as fully typed source code */
       def showWith(syntaxHighlight: SyntaxHighlight)(using ctx: Context): String =
         new SourceCodePrinter[self.type](self)(syntaxHighlight).showTree(tree)
+
+      /** Does this tree represent a valid expression? */
+      def isExpr(using ctx: Context): Boolean =
+        tree match
+          case tree: Term =>
+            tree.tpe.widen match
+              case _: MethodType | _: PolyType => false
+              case _ => true
+          case _ => false
+
+      /** Convert to an `quoted.Expr[Any]` if the tree is a valid expression or throws */
+      def asExpr(using QuoteContext): scala.quoted.Expr[Any] =
+        assert(tree.isExpr, tree)
+        new scala.internal.quoted.Expr(tree, internal.compilerId)
+
     end extension
+
+    /** Convert to an `quoted.Expr[T]` if the tree is a valid expression or throws */
+    extension [T](tree: Tree)
+      def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T] =
+        tree.asExpr.asExprOf[T]
+
   end Tree
 
   given (using ctx: Context) as TypeTest[Tree, PackageClause] = internal.PackageClause_TypeTest
@@ -654,12 +675,14 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     extension (self: Term):
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
+      @deprecated("Replaced with `asExpr` (or `asExprOf`)", "0.27.0")
       def seal(using ctx: Context): scala.quoted.Expr[Any] =
         sealOpt.getOrElse {
           throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
         }
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression */
+      @deprecated("Replaced with `isExpr` and `asExpr` (or `asExprOf`)", "0.27.0")
       def sealOpt(using ctx: Context): Option[scala.quoted.Expr[Any]] =
         self.tpe.widen match
           case _: MethodType | _: PolyType => None

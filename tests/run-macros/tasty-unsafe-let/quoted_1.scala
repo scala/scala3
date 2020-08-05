@@ -8,12 +8,12 @@ object Macros {
   private def impl[T: Type](rhs: Expr[T], body: Expr[T => Unit])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._
 
-    val rhsTerm = rhs.unseal
+    val rhsTerm = rhs.asTerm
 
     import qctx.tasty.{let => letTerm}
     letTerm(rhsTerm) { rhsId =>
-      Expr.betaReduce('{$body(${rhsId.seal.asInstanceOf[Expr[T]]})}).unseal // Dangerous uncheked cast!
-    }.seal.cast[Unit]
+      Expr.betaReduce('{$body(${rhsId.asExpr.asInstanceOf[Expr[T]]})}).asTerm // Dangerous uncheked cast!
+    }.asExprOf[Unit]
   }
 
 

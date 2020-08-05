@@ -18,7 +18,7 @@ import scala.quoted._
     case _ => false
   }
 
-  def unseal(using qctx: QuoteContext): qctx.tasty.Term =
+  def asTerm(using qctx: QuoteContext): qctx.tasty.Term =
     if (qctx.tasty.internal.compilerId != scopeId)
       throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
     tree.asInstanceOf[qctx.tasty.Term]
@@ -52,7 +52,7 @@ object Expr {
    */
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[Any])(using patternExpr: scala.quoted.Expr[Any],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
-    new Matcher.QuoteMatcher[qctx.type].termMatch(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
+    new Matcher.QuoteMatcher[qctx.type].termMatch(scrutineeExpr.asTerm, patternExpr.asTerm, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 
 }

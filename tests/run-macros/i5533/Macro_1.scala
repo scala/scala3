@@ -10,9 +10,9 @@ object scalatest {
   def assertImpl(condition: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._
 
-    val tree = condition.unseal
+    val tree = condition.asTerm
 
-    val expr = tree.seal.cast[Boolean]
+    val expr = tree.asExprOf[Boolean]
 
     '{println($expr)}
   }

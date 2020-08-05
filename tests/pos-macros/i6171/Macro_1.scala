@@ -6,7 +6,7 @@ object scalatest {
 
   def assertImpl(x: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._
-    x.unseal.underlyingArgument
+    x.asTerm.underlyingArgument
     '{ () }
   }
 }

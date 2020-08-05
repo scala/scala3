@@ -22,7 +22,7 @@ object TypeToolbox {
   inline def typeOf[T, Expected](a: T): Boolean = ${typeOfImpl('a, '[Expected])}
   private def typeOfImpl(a: Expr[_], expected: Type[_])(using qctx: QuoteContext) : Expr[Boolean] = {
     import qctx.tasty._
-    Expr(a.unseal.tpe =:= expected.unseal.tpe)
+    Expr(a.asTerm.tpe =:= expected.unseal.tpe)
   }
 
   /** does the type refer to a case class? */

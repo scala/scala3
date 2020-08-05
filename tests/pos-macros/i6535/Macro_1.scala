@@ -8,20 +8,20 @@ object scalatest {
     import qctx.tasty._
     import util._
 
-    cond.unseal.underlyingArgument match {
+    cond.asTerm.underlyingArgument match {
       case t @ Apply(Select(lhs, op), rhs :: Nil) =>
         let(lhs) { left =>
           let(rhs) { right =>
             val app = Select.overloaded(left, op, Nil, right :: Nil)
             let(app) { result =>
-              val l = left.seal
-              val r = right.seal
-              val b = result.seal.cast[Boolean]
+              val l = left.asExpr
+              val r = right.asExpr
+              val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert($b) }
-              code.unseal
+              code.asTerm
             }
           }
-        }.seal.cast[Unit]
+        }.asExprOf[Unit]
     }
   }
 

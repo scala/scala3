@@ -4,11 +4,11 @@ object Main {
 
   def myMacroImpl(body: Expr[_])(using qctx: QuoteContext) : Expr[_] = {
     import qctx.tasty._
-    val bodyTerm = UnsafeExpr.underlyingArgument(body).unseal
+    val bodyTerm = UnsafeExpr.underlyingArgument(body).asTerm
     val showed = bodyTerm.show
     '{
       println(${Expr(showed)})
-      ${bodyTerm.seal}
+      ${bodyTerm.asExpr}
     }
   }
 

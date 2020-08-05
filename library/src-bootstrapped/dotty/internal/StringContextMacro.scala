@@ -59,7 +59,7 @@ object StringContextMacro {
    */
   private def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
-    val sourceFile = strCtxExpr.unseal.pos.sourceFile
+    val sourceFile = strCtxExpr.asTerm.pos.sourceFile
 
     val (partsExpr, parts) = strCtxExpr match {
       case Expr.StringContext(p1 @ Consts(p2)) => (p1.toList, p2.toList)
@@ -76,28 +76,28 @@ object StringContextMacro {
       private[this] var oldReported = false
       def partError(message : String, index : Int, offset : Int) : Unit = {
         reported = true
-        val positionStart = partsExpr(index).unseal.pos.start + offset
+        val positionStart = partsExpr(index).asTerm.pos.start + offset
         error(message, sourceFile, positionStart, positionStart)
       }
       def partWarning(message : String, index : Int, offset : Int) : Unit = {
         reported = true
-        val positionStart = partsExpr(index).unseal.pos.start + offset
+        val positionStart = partsExpr(index).asTerm.pos.start + offset
         warning(message, sourceFile, positionStart, positionStart)
       }
 
       def argError(message : String, index : Int) : Unit = {
         reported = true
-        error(message, args(index).unseal.pos)
+        error(message, args(index).asTerm.pos)
       }
 
       def strCtxError(message : String) : Unit = {
         reported = true
-        val positionStart = strCtxExpr.unseal.pos.start
+        val positionStart = strCtxExpr.asTerm.pos.start
         error(message, sourceFile, positionStart, positionStart)
       }
       def argsError(message : String) : Unit = {
         reported = true
-        error(message, argsExpr.unseal.pos)
+        error(message, argsExpr.asTerm.pos)
       }
 
       def hasReported() : Boolean = {
@@ -658,7 +658,7 @@ object StringContextMacro {
           case Some(argIndex, arg) => {
             val (hasArgumentIndex, argumentIndex, flags, hasWidth, width, hasPrecision, precision, hasRelative, relativeIndex, conversion) = getFormatSpecifiers(part, argIndex, argIndex + 1, false, formattingStart)
             if (!reporter.hasReported()){
-              val conversionWithType = checkFormatSpecifiers(argIndex + 1, hasArgumentIndex, argumentIndex, Some(argIndex + 1), start == 0, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, Some(arg.unseal.tpe), part)
+              val conversionWithType = checkFormatSpecifiers(argIndex + 1, hasArgumentIndex, argumentIndex, Some(argIndex + 1), start == 0, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, Some(arg.asTerm.tpe), part)
               nextStart = conversion + 1
               conversionWithType :: checkPart(part, nextStart, argument, maxArgumentIndex)
             } else checkPart(part, conversion + 1, argument, maxArgumentIndex)

@@ -7,6 +7,6 @@ object Macro {
   implicit inline def XmlQuote(inline sc: StringContext): StringContextOps = new StringContextOps(sc)
   def impl(sc: Expr[StringContext], args: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[String] = {
     import qctx.tasty._
-    Expr(sc.unseal.underlyingArgument.showExtractors + "\n" + args.unseal.underlyingArgument.showExtractors)
+    Expr(sc.asTerm.underlyingArgument.showExtractors + "\n" + args.asTerm.underlyingArgument.showExtractors)
   }
 }

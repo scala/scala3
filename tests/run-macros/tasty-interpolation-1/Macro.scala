@@ -56,23 +56,23 @@ abstract class MacroStringInterpolator[T] {
 
   protected def getStaticStringContext(strCtxExpr: Expr[StringContext])(using qctx: QuoteContext) : StringContext = {
     import qctx.tasty._
-    strCtxExpr.unseal.underlyingArgument match {
+    strCtxExpr.asTerm.underlyingArgument match {
       case Select(Typed(Apply(_, List(Apply(_, List(Typed(Repeated(strCtxArgTrees, _), Inferred()))))), _), _) =>
         val strCtxArgs = strCtxArgTrees.map {
           case Literal(Constant(str: String)) => str
-          case tree => throw new NotStaticlyKnownError("Expected statically known StringContext", tree.seal)
+          case tree => throw new NotStaticlyKnownError("Expected statically known StringContext", tree.asExpr)
         }
         StringContext(strCtxArgs: _*)
       case tree =>
-        throw new NotStaticlyKnownError("Expected statically known StringContext", tree.seal)
+        throw new NotStaticlyKnownError("Expected statically known StringContext", tree.asExpr)
     }
   }
 
   protected def getArgsList(argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext) : List[Expr[Any]] = {
     import qctx.tasty._
-    argsExpr.unseal.underlyingArgument match {
-      case Typed(Repeated(args, _), _) => args.map(_.seal)
-      case tree => throw new NotStaticlyKnownError("Expected statically known argument list", tree.seal)
+    argsExpr.asTerm.underlyingArgument match {
+      case Typed(Repeated(args, _), _) => args.map(_.asExpr)
+      case tree => throw new NotStaticlyKnownError("Expected statically known argument list", tree.asExpr)
     }
   }
 

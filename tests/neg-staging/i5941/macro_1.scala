@@ -17,10 +17,10 @@ object Lens {
     import util._
     // obj.copy(field = value)
     def setterBody(obj: Expr[S], value: Expr[T], field: String): Expr[S] =
-      Select.overloaded(obj.unseal, "copy", Nil, NamedArg(field, value.unseal) :: Nil).seal.cast[S]
+      Select.overloaded(obj.asTerm, "copy", Nil, NamedArg(field, value.asTerm) :: Nil).seal.cast[S]
 
-    // exception: getter.unseal.underlyingArgument
-    getter.unseal match {
+    // exception: getter.asTerm.underlyingArgument
+    getter.asTerm match {
       case Inlined(
         None, Nil,
         Block(

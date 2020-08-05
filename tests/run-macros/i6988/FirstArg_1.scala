@@ -23,10 +23,10 @@ object Macros {
       else enclosingParamList(owner.owner)
 
     def literal(value: String): Expr[String] =
-      Literal(Constant(value)).seal.asInstanceOf[Expr[String]]
+      Literal(Constant(value)).asExpr.asInstanceOf[Expr[String]]
     val paramss = enclosingParamList(rootContext.owner)
     val firstArg = paramss.flatten.head
     val ref = Select.unique(This(enclosingClass()), firstArg.name)
-    '{ FirstArg(${ref.seal}, ${Expr(firstArg.name)}) }
+    '{ FirstArg(${ref.asExpr}, ${Expr(firstArg.name)}) }
   }
 }

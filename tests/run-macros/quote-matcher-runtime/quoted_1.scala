@@ -10,7 +10,7 @@ object Macros {
     val res = scala.internal.quoted.Expr.unapply[Tuple, Tuple](a)(using b, true, qctx).map { tup =>
       tup.toArray.toList.map {
         case r: Expr[_] =>
-          s"Expr(${r.unseal.show})"
+          s"Expr(${r.asTerm.show})"
         case r: quoted.Type[_] =>
           s"Type(${r.unseal.show})"
         case r: String =>
@@ -19,8 +19,8 @@ object Macros {
     }
 
     '{
-      println("Scrutinee: " + ${Expr(a.unseal.show)})
-      println("Pattern: " + ${Expr(b.unseal.show)})
+      println("Scrutinee: " + ${Expr(a.asTerm.show)})
+      println("Pattern: " + ${Expr(b.asTerm.show)})
       println("Result: " + ${Expr(res.toString)})
       println()
     }
