@@ -5,7 +5,7 @@ inline def f: Any = ${ fImpl }
 
 private def fImpl(using qctx: QuoteContext) : Expr[Unit] = {
   import qctx.tasty._
-  searchImplicit(('[A]).unseal.tpe) match {
+  searchImplicit(('[A]).asTypeTree.tpe) match {
     case x: ImplicitSearchSuccess =>
       '{}
     case x: DivergingImplicit => '{}

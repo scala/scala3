@@ -9,7 +9,7 @@ inline def test(): Unit = ${ testExpr }
 def testExpr(using QuoteContext): Expr[Unit] = {
   import qctx.tasty._
 
-  val t = '[B].unseal.tpe
+  val t = '[B].asTypeTree.tpe
   val baseTypes = t.baseClasses.map(b => t.baseType(b))
 
   '{

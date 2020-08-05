@@ -17,7 +17,7 @@ object Macro {
   private def toTupleImpl(s: Expr[Selectable])(using qctx:QuoteContext) : Expr[Tuple] = {
     import qctx.tasty._
 
-    val repr = s.unseal.tpe.widenTermRefExpr.dealias
+    val repr = s.asTerm.tpe.widenTermRefExpr.dealias
 
     def rec(tpe: Type): List[(String, Type)] = {
       tpe match {
@@ -38,7 +38,7 @@ object Macro {
 
     def tupleElem(name: String, info: Type): Expr[Any] = {
       val nameExpr = Expr(name)
-      info.seal match { case '[$qType] =>
+      info.asQuotedType match { case '[$qType] =>
           Expr.ofTupleFromSeq(Seq(nameExpr, '{ $s.selectDynamic($nameExpr).asInstanceOf[$qType] }))
       }
     }
@@ -51,7 +51,7 @@ object Macro {
   private def fromTupleImpl[T: Type](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T])(using qctx:QuoteContext) : Expr[Any] = {
     import qctx.tasty._
 
-    val repr = s.unseal.tpe.widenTermRefExpr.dealias
+    val repr = s.asTerm.tpe.widenTermRefExpr.dealias
 
     def isTupleCons(sym: Symbol): Boolean = sym.owner == defn.ScalaPackageClass && sym.name == "*:"
 
@@ -89,7 +89,7 @@ object Macro {
 
     val r = rec(repr, Set.empty)
 
-    val refinementType = r.foldLeft('[T].unseal.tpe)((acc, e) => Refinement(acc, e._1, e._2)).seal
+    val refinementType = r.foldLeft('[T].asTypeTree.tpe)((acc, e) => Refinement(acc, e._1, e._2)).asQuotedType
 
     refinementType match { case '[$qType] =>
         '{ $newRecord($s.toArray.map(e => e.asInstanceOf[(String, Any)])).asInstanceOf[${qType}] }

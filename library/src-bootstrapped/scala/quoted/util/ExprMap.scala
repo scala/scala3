@@ -66,9 +66,9 @@ trait ExprMap {
             case AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "<repeated>"), List(tp0: Type)) =>
               // TODO rewrite without using quotes
               type T
-              val qtp: quoted.Type[T] = tp0.seal.asInstanceOf[quoted.Type[T]]
+              val qtp: quoted.Type[T] = tp0.asQuotedType.asInstanceOf[quoted.Type[T]]
               given qtp.type = qtp
-              '[Seq[T]].unseal.tpe
+              '[Seq[T]].asTypeTree.tpe
             case tp => tp
           Typed.copy(tree)(transformTerm(expr, tp), transformTypeTree(tpt))
         case tree: NamedArg =>
@@ -110,7 +110,7 @@ trait ExprMap {
         case _ if tree.isExpr =>
           type X
           val expr = tree.asExpr.asInstanceOf[Expr[X]]
-          val t = tpe.seal.asInstanceOf[quoted.Type[X]]
+          val t = tpe.asQuotedType.asInstanceOf[quoted.Type[X]]
           transform(expr)(using qctx, t).asTerm
         case _ =>
           transformTermChildren(tree, tpe)
@@ -152,7 +152,7 @@ trait ExprMap {
         trees mapConserve (transformTypeCaseDef(_))
 
     }
-    new MapChildren().transformTermChildren(e.asTerm, tpe.unseal.tpe).asExprOf[T]
+    new MapChildren().transformTermChildren(e.asTerm, tpe.asTypeTree.tpe).asExprOf[T]
   }
 
 }

@@ -20,8 +20,8 @@ object Macros {
 
   def impl2[T](x: quoted.Type[T])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._
-    val pos = x.unseal.pos
-    val code = x.unseal.show
+    val pos = x.asTypeTree.pos
+    val code = x.asTypeTree.show
     '{
       println(${posStr(qctx)(pos)})
       println(${Expr(code)})

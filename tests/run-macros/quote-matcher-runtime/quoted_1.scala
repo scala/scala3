@@ -12,7 +12,7 @@ object Macros {
         case r: Expr[_] =>
           s"Expr(${r.asTerm.show})"
         case r: quoted.Type[_] =>
-          s"Type(${r.unseal.show})"
+          s"Type(${r.asTypeTree.show})"
         case r: String =>
           s"String($r)"
       }

@@ -4,7 +4,7 @@ object Test {
   def staged[T](using qctx: QuoteContext) = {
     import qctx.tasty._
     given typeT as quoted.Type[T] // error
-    val tTypeTree = typeT.unseal
+    val tTypeTree = typeT.asTypeTree
     val tt = typeOf[T]
     '{ "in staged" }
   }

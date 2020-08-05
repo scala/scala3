@@ -10,15 +10,15 @@ object Macros {
     val res = scala.internal.quoted.Type.unapply[Tuple, Tuple](a)(using b, true, qctx).map { tup =>
       tup.toArray.toList.map {
         case r: quoted.Type[_] =>
-          s"Type(${r.unseal.show})"
+          s"Type(${r.asTypeTree.show})"
         case r: String =>
           s"String($r)"
       }
     }
 
     '{
-      println("Scrutinee: " + ${Expr(a.unseal.show)})
-      println("Pattern: " + ${Expr(b.unseal.show)})
+      println("Scrutinee: " + ${Expr(a.asTypeTree.show)})
+      println("Pattern: " + ${Expr(b.asTypeTree.show)})
       println("Result: " + ${Expr(res.toString)})
       println()
     }

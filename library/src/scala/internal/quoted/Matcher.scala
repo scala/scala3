@@ -154,7 +154,7 @@ object Matcher {
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performance
-            case x: SymBinding => internal.Context_GADT_approximation(summon[Context])(x.sym, !x.fromAbove).seal
+            case x: SymBinding => internal.Context_GADT_approximation(summon[Context])(x.sym, !x.fromAbove).asQuotedType
             case x => x
           })
         }
@@ -175,7 +175,7 @@ object Matcher {
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performance
-            case x: SymBinding => internal.Context_GADT_approximation(summon[Context])(x.sym, !x.fromAbove).seal
+            case x: SymBinding => internal.Context_GADT_approximation(summon[Context])(x.sym, !x.fromAbove).asQuotedType
             case x => x
           })
         }

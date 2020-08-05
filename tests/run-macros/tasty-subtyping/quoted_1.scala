@@ -10,13 +10,13 @@ object Macros {
 
   def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(using QuoteContext) : Expr[Boolean] = {
     import qctx.tasty._
-    val isTypeEqual = t.unseal.tpe =:= u.unseal.tpe
+    val isTypeEqual = t.asTypeTree.tpe =:= u.asTypeTree.tpe
     Expr(isTypeEqual)
   }
 
   def isSubTypeOfImpl[T, U](t: Type[T], u: Type[U])(using QuoteContext) : Expr[Boolean] = {
     import qctx.tasty._
-    val isTypeEqual = t.unseal.tpe <:< u.unseal.tpe
+    val isTypeEqual = t.asTypeTree.tpe <:< u.asTypeTree.tpe
     Expr(isTypeEqual)
   }
 }

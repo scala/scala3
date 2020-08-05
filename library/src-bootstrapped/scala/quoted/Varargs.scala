@@ -17,7 +17,7 @@ object Varargs {
    */
   def apply[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: QuoteContext): Expr[Seq[T]] = {
     import qctx.tasty._
-    Repeated(xs.map[Term](_.asTerm).toList, tp.unseal).asExpr.asInstanceOf[Expr[Seq[T]]]
+    Repeated(xs.map[Term](_.asTerm).toList, tp.asTypeTree).asExpr.asInstanceOf[Expr[Seq[T]]]
   }
 
   /** Matches a literal sequence of expressions and return a sequence of expressions.

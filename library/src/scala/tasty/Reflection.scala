@@ -500,7 +500,7 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
       /** Convert to an `quoted.Expr[Any]` if the tree is a valid expression or throws */
       def asExpr(using QuoteContext): scala.quoted.Expr[Any] =
-        assert(tree.isExpr, tree)
+        assert(tree.isExpr, tree.show)
         new scala.internal.quoted.Expr(tree, internal.compilerId)
 
     end extension
@@ -1788,7 +1788,12 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     extension (self: Type):
 
       /** Convert `Type` to an `quoted.Type[_]` */
+      @deprecated("Replaced with `asQuotedType`", "0.27.0")
       def seal(using ctx: Context): scala.quoted.Type[_] =
+        new scala.internal.quoted.Type(Inferred(self), internal.compilerId)
+
+      /** Convert to a `quoted.Type[_]` */
+      def asQuotedType(using ctx: Context): scala.quoted.Type[_] =
         new scala.internal.quoted.Type(Inferred(self), internal.compilerId)
 
       /** Is `self` type the same as `that` type?

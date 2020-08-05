@@ -13,7 +13,7 @@ final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quote
   }
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
-  def unseal(using qctx: QuoteContext): qctx.tasty.TypeTree =
+  def asTypeTree(using qctx: QuoteContext): qctx.tasty.TypeTree =
     if (qctx.tasty.internal.compilerId != scopeId)
       throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
     typeTree.asInstanceOf[qctx.tasty.TypeTree]
@@ -39,7 +39,7 @@ object Type {
    */
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: scala.quoted.Type[_])(using patternType: scala.quoted.Type[_],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
-    new Matcher.QuoteMatcher[qctx.type].typeTreeMatch(scrutineeType.unseal, patternType.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
+    new Matcher.QuoteMatcher[qctx.type].typeTreeMatch(scrutineeType.asTypeTree, patternType.asTypeTree, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 
 }

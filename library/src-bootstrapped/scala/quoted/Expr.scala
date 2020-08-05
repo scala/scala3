@@ -47,7 +47,7 @@ abstract class Expr[+T] private[scala] {
   /** Convert to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
   def asExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): scala.quoted.Expr[X] = {
     val tree = this.asTerm
-    val expectedType = tp.unseal.tpe
+    val expectedType = tp.asTypeTree.tpe
     if (tree.tpe <:< expectedType)
       this.asInstanceOf[scala.quoted.Expr[X]]
     else
@@ -199,7 +199,7 @@ object Expr {
    */
   def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
     import qctx.tasty._
-    searchImplicit(tpe.unseal.tpe) match {
+    searchImplicit(tpe.asTypeTree.tpe) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None
     }

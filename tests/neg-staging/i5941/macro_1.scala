@@ -17,7 +17,7 @@ object Lens {
     import util._
     // obj.copy(field = value)
     def setterBody(obj: Expr[S], value: Expr[T], field: String): Expr[S] =
-      Select.overloaded(obj.asTerm, "copy", Nil, NamedArg(field, value.asTerm) :: Nil).seal.cast[S]
+      Select.overloaded(obj.asTerm, "copy", Nil, NamedArg(field, value.asTerm) :: Nil).asExprOf[S]
 
     // exception: getter.asTerm.underlyingArgument
     getter.asTerm match {

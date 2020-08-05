@@ -40,14 +40,14 @@ object Macros {
             tl => AppliedType(MatchCaseType, List(AppliedType(Type(classOf[List[_]]), List(tl.param(0))), tl.param(0)))))
       )
 
-    assert(x1T =:= '[1].unseal.tpe)
-    assert(x2T =:= '[1|2].unseal.tpe)
-    assert(x3T =:= '[3&Any].unseal.tpe)
-    assert(x4T =:= '[[A,B] =>> B].unseal.tpe)
-    assert(x5T =:= '[RefineMe { type T = Int }].unseal.tpe)
-    assert(x6T =:= '[List[Int]].unseal.tpe)
-    assert(x7T =:= '[7 @TestAnnotation].unseal.tpe)
-    assert(x8T =:= '[List[8] match { case List[t] => t }].unseal.tpe)
+    assert(x1T =:= '[1].asTypeTree.tpe)
+    assert(x2T =:= '[1|2].asTypeTree.tpe)
+    assert(x3T =:= '[3&Any].asTypeTree.tpe)
+    assert(x4T =:= '[[A,B] =>> B].asTypeTree.tpe)
+    assert(x5T =:= '[RefineMe { type T = Int }].asTypeTree.tpe)
+    assert(x6T =:= '[List[Int]].asTypeTree.tpe)
+    assert(x7T =:= '[7 @TestAnnotation].asTypeTree.tpe)
+    assert(x8T =:= '[List[8] match { case List[t] => t }].asTypeTree.tpe)
 
     '{
       println("Ok")
