@@ -76,8 +76,6 @@ class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
       })
 
     case n: mda.Link =>
-      println(s"mda.Link: ${n}")
-
       val text: String =
         if !n.getText.isEmpty then n.getText.toString
         else n.getUrl.toString
@@ -90,7 +88,6 @@ class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
         case SchemeUri() => dkkd.A(List(dkk.text(text)).asJava, Map("href" -> target).asJava)
         case _ => MemberLookup.lookup(using r)(target, owner) match {
           case Some(sym) =>
-            println(s"dri of `${sym.show}` = ${sym.dri}")
             dkkd.DocumentationLink(sym.dri, List(dkk.text(text)).asJava, kt.emptyMap)
           case None => dkkd.A(List(dkk.text(text)).asJava, Map("href" -> "#").asJava)
         }

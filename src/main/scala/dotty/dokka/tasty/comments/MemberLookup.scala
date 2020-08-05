@@ -51,7 +51,7 @@ trait MemberLookup {
         case _ => None
       }
 
-    println(s"looked up `$query` in ${owner.show}[${owner.flags.show}] as ${res.map(_.show)}")
+    // println(s"looked up `$query` in ${owner.show}[${owner.flags.show}] as ${res.map(_.show)}")
 
     res
   }
@@ -98,10 +98,8 @@ trait MemberLookup {
 
     owner.tree match {
       case tree: r.ClassDef =>
-        println(s"tree of ${owner.show} isClassDef")
         findMatch(tree.body.iterator.collect { case t: r.Definition => t.symbol })
       case _ =>
-        println(s"tree of ${owner.show} !isClassDef")
         findMatch(hackMembersOf(owner))
     }
   }
