@@ -46,7 +46,11 @@ class PositionPickler(
       lastIndex = index
       lastSpan = span
 
-      pickledIndices += index
+      pickledIndices.addOne(index)
+        // Note `+=` boxes since it is a generic @inline function in `SetOps`
+        // that forwards to the specialized `addOne` in `BitSet`. Since the
+        // current backend does not implement `@inline` we are missing the
+        // specialization.
     }
 
     def pickleSource(source: SourceFile): Unit = {
