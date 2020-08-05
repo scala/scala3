@@ -12,7 +12,7 @@ class Converter(val r: Reflection)(owner: r.Symbol) {
   import Emitter._
 
   object SymOps extends SymOps[r.type](r)
-  import SymOps.SymbolOps
+  import SymOps._
 
   def convertBody(body: Body): dkkd.DocTag = {
     dkkd.P(

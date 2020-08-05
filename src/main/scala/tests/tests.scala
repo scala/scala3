@@ -37,6 +37,10 @@ package tests
   *
   * And yet another: [](example.level2.Documentation).
   *
+  * This is my friend: [](tests.B).
+  *
+  * And this is his companion: [](tests.B$).
+  *
   * @author Gal Anonim
   * @version 1.0.0
   * @result A class doesn't actually have a result.
@@ -50,6 +54,9 @@ class A {
 
   object AA
 }
+
+/** Companion object to test linking */
+object A
 
 /** = An important Wiki test class =
   *
@@ -73,6 +80,10 @@ class A {
   * Yet another: [[tests.Methods.simple]].
   *
   * And yet another: [[example.level2.Documentation]].
+  *
+  * This is my friend: [[tests.A]].
+  *
+  * And this is his companion: [[tests.A$]].
   * @syntax wiki
   */
 class B extends A {
@@ -81,11 +92,25 @@ class B extends A {
 
   class BB
 }
+
+/** Companion object to test linking.
+  *
+  * This is my member: [](B$.Z)
+  *
+  * And this is my term member: [](B$.Z$)
+  *
+  * This is my member, addressed differently: [](this.Z)
+  *
+  * And this is my term member, addressed differently: [](this.Z$)
+  */
+object B {
+  type Z = Int
+  val Z: Int = 0
+}
+
 class C 
 class D[T]
 class E[T] extends D[T]
-
-
 
 class Constructors(a: String):
     def this() = this("Ala")
