@@ -136,7 +136,7 @@ case class WikiCommentParser(repr: Repr, packages: Packages)
     extends MarkupConversion[wiki.Body] {
 
   def stringToMarkup(str: String) =
-    wiki.Parser(repr, packages, str).document()
+    wiki.Parser(str).document()
 
   def stringToShortMarkdown(str: String) =
     // val parsed = stringToMarkup(str)

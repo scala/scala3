@@ -3,7 +3,6 @@ package dotty.dokka.tasty.comments.wiki
 import scala.collection.mutable
 
 import dotty.dokka.tasty.comments.Regexes._
-import dotty.dokka.tasty.comments.{Repr, Packages, MemberLookup}
 
 /** Original wikiparser from NSC
   * @author Ingo Maier
@@ -11,10 +10,8 @@ import dotty.dokka.tasty.comments.{Repr, Packages, MemberLookup}
   * @author Gilles Dubochet
   */
 final class Parser(
-  representation: Repr,
-  packages: Packages,
   val buffer: String,
-) extends CharReader(buffer) with MemberLookup { wiki =>
+) extends CharReader(buffer) { wiki =>
   var summaryParsed = false
 
   def document(): Body = {
@@ -311,7 +308,6 @@ final class Parser(
   }
 
   def link(): Inline = {
-    val SchemeUri = """([a-z]+:.*)""".r
     jump("[[")
     val parens = 2 + repeatJump('[')
     val stop  = "]" * parens
@@ -325,19 +321,6 @@ final class Parser(
     jump(stop)
 
     Link(target, title getOrElse Text(target))
-
-    // (target, title) match {
-    //   case (SchemeUri(uri), optTitle) =>
-    //     Link(uri, optTitle getOrElse Text(uri))
-    //   case (qualName, optTitle) =>
-    //     null
-    //     // makeRepresentationLink(
-    //     //   representation,
-    //     //   packages,
-    //     //   (optTitle getOrElse Text(target)).toString,
-    //     //   target
-    //     // )
-    // }
   }
 
   /* UTILITY */
