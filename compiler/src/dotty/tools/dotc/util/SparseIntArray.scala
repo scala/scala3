@@ -52,7 +52,7 @@ class SparseIntArray:
   /** Transform each defined value with transformation `op`.
    *  The transformation takes the element index and value as parameters.
    */
-  def transform(op: (Int, Value) => Value): Unit =
+  def transform(op: Transform): Unit =
     root.transform(op, 0)
 
   /** Access to some info about low-level representation */
@@ -70,6 +70,9 @@ class SparseIntArray:
 
 object SparseIntArray:
   type Value = Int
+
+  trait Transform:
+    def apply(key: Int, v: Value): Value
 
   private inline val NodeSizeLog = 5
   private inline val NodeSize = 1 << NodeSizeLog
@@ -91,7 +94,7 @@ object SparseIntArray:
     def isEmpty: Boolean
     def keysIterator(offset: Int): Iterator[Int]
     def foreachBinding(op: (Int, Value) => Unit, offset: Int): Unit
-    def transform(op: (Int, Value) => Value, offset: Int): Unit
+    def transform(op: Transform, offset: Int): Unit
     def nodeCount: Int
   end Node
 
@@ -136,7 +139,7 @@ object SparseIntArray:
         if contains(i) then op(offset + i, elems(i))
         i += 1
 
-    def transform(op: (Int, Value) => Value, offset: Int): Unit =
+    def transform(op: Transform, offset: Int): Unit =
       var i = 0
       while i < NodeSize do
         if contains(i) then elems(i) = op(offset + i, elems(i))
@@ -210,7 +213,7 @@ object SparseIntArray:
           elems(i).foreachBinding(op, offset + i * elemSize)
         i += 1
 
-    def transform(op: (Int, Value) => Value, offset: Int): Unit =
+    def transform(op: Transform, offset: Int): Unit =
       var i = 0
       while i < NodeSize do
         if elems(i) != null then
