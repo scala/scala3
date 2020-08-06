@@ -29,7 +29,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
     ctx.settings.YinstrumentAllocations.value
 
   private val namesOfInterest = List(
-    "::", "+=", "toString",
+    "::", "+=", "toString", "newArray", "box",
     "map", "flatMap", "filter", "withFilter", "collect", "foldLeft", "foldRight", "take",
     "reverse", "mapConserve", "mapconserve", "filterConserve", "zip")
   private var namesToRecord: Set[Name] = _
@@ -46,10 +46,13 @@ class Instrumentation extends MiniPhase { thisPhase =>
     ref(defn.Stats_doRecord).appliedTo(key, Literal(Constant(1)))
   }
 
+  private def ok(using Context) =
+    !ctx.owner.ownersIterator.exists(_.name.toString.startsWith("Stats"))
+
   override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
     case Select(nu: New, _) =>
       cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) :: Nil, tree)
-    case ref: RefTree if namesToRecord.contains(ref.name) =>
+    case ref: RefTree if namesToRecord.contains(ref.name) && ok =>
       cpy.Block(tree)(record(i"call/${ref.name}", tree) :: Nil, tree)
     case _ =>
       tree
