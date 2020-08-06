@@ -401,7 +401,7 @@ trait QuotesAndSplices {
       override def apply(tp: Type): Type = tp match {
         case tp: TypeRef =>
           val tp1 = if (tp.typeSymbol.isTypeSplice) tp.dealias else tp
-          typeBindings.get(tp1.typeSymbol).fold(tp)(_.symbol.typeRef)
+          mapOver(typeBindings.get(tp1.typeSymbol).fold(tp)(_.symbol.typeRef))
         case tp => mapOver(tp)
       }
     }
