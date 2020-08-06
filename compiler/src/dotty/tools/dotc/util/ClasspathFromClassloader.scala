@@ -27,17 +27,21 @@ object ClasspathFromClassloader {
             classpathBuff ++=
               cl.getURLs.iterator.map(url => Paths.get(url.toURI).toAbsolutePath.toString)
           case _ =>
-            // HACK: We can't just collect the classpath from arbitrary parent
-            // classloaders since the current classloader might intentionally
-            // filter loading classes from its parent (for example
-            // BootFilteredLoader in the sbt launcher does this and we really
-            // don't want to include the scala-library that sbt depends on
-            // here), but we do need to look at the parent of the REPL
-            // classloader, so we special case it. We can't do this using a type
-            // test since the REPL classloader class itself is normally loaded
-            // with a different classloader.
-            if (cl.getClass.getName == classOf[AbstractFileClassLoader].getName)
+            if cl.getClass.getName == classOf[AbstractFileClassLoader].getName then
+              // HACK: We can't just collect the classpath from arbitrary parent
+              // classloaders since the current classloader might intentionally
+              // filter loading classes from its parent (for example
+              // BootFilteredLoader in the sbt launcher does this and we really
+              // don't want to include the scala-library that sbt depends on
+              // here), but we do need to look at the parent of the REPL
+              // classloader, so we special case it. We can't do this using a type
+              // test since the REPL classloader class itself is normally loaded
+              // with a different classloader.
               collectClassLoaderPaths(cl.getParent)
+            else if cl eq ClassLoader.getSystemClassLoader then
+              // HACK: For Java 9+, if the classloader is an AppClassLoader then use the classpath from the system
+              // property `java.class.path`.
+              classpathBuff += System.getProperty("java.class.path")
         }
       }
     }
