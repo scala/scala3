@@ -63,8 +63,13 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
         content(extension){ builder =>
             utils.annotationsBlock(builder, extension)
             builder.modifiersAndVisibility(extension, "def")
-            builder.addText(s"(${extension.getParameters.asScala(0).getName}: ")
-            builder.typeSignature(extension.getParameters.asScala(0).getType)
+            val extendedSymbol = if (extension.isRightAssociative()) {
+                extension.getParameters.asScala(extension.get(MethodExtension).parametersListSizes(0))
+            } else {
+                extension.getParameters.asScala(0)
+            }
+            builder.addText(s"(${extendedSymbol.getName}: ")
+            builder.typeSignature(extendedSymbol.getType)
             builder.addText(").")
             builder.addLink(extension.getName, extension.getDri)
             builder.generics(extension)  
@@ -123,6 +128,9 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
             builder.typeSignature(parameter.getType)
         }
 
+    extension on(f: DFunction):
+        def isRightAssociative(): Boolean = f.getName.endsWith(":")
+
 
     extension on (builder: PageContentBuilder$DocumentableContentBuilder):
 
@@ -167,12 +175,13 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
         
         def functionParameters(method: DFunction) = 
             val methodExtension = method.get(MethodExtension)
-            val paramLists = if methodExtension.isExtension then methodExtension.parametersListSizes.drop(1) else methodExtension.parametersListSizes
-            val startFrom = if methodExtension.isExtension then methodExtension.parametersListSizes(0) else 0
-            paramLists.foldLeft(startFrom){ (from, size) =>
+            val receiverPos = if method.isRightAssociative() then method.get(MethodExtension).parametersListSizes(0) else 0
+            val paramLists = methodExtension.parametersListSizes
+            paramLists.foldLeft(0){ (from, size) =>
                 val toIndex = from + size
                 if from == toIndex then builder.addText("()")
-                else builder.addList(method.getParameters.subList(from, toIndex), "(", ")"){ param =>
+                else if !methodExtension.isExtension || from != receiverPos then
+                    builder.addList(method.getParameters.subList(from, toIndex), "(", ")"){ param =>
                     utils.annotationsInline(builder, param)
                     // builder.addText("TODO modifiers")
                     builder.addText(param.getName)

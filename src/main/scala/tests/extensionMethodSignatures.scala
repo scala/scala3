@@ -13,6 +13,8 @@ class ClassOne
     def (c: ClassTwo).getGivenParams(a: Int, b: Int, d: Int)(e: String): Int
         = 56
 
+    def (c: ClassTwo).|||:(a: Int, b: Int, d: Int)(e: String): Int
+        = 56
     // extension (c:ClassTwo):
     //     def getString()
     //          = c.toString()
