@@ -74,7 +74,7 @@ class Converter(val r: Reflection)(owner: r.Symbol) {
 
   def emitInline(inl: Inline)(using Emitter[dkkd.DocTag]): Unit = inl match {
     case Chain(items: Seq[Inline]) => items.foreach(emitInline)
-    case Summary(_) => emit(dkk.text("(skipped summary)"))
+    case Summary(text) => emitInline(text)
     case Text(text) => emit(dkk.text(text))
     case Italic(text) => emit(dkkd.I(convertInline(text).asJava, kt.emptyMap))
     case Bold(text) => emit(dkkd.B(convertInline(text).asJava, kt.emptyMap))

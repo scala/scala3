@@ -7,7 +7,10 @@ package tests
   *
   * ### So important it gets three headers
   *
-  * This is an *important* _test_ class. And `this` is inline code.
+  * This is an *important* _test_ class.
+  * Important enough to get multiple sentences in its summary.
+  *
+  * And `this` is inline code.
   *
   * And this is the **strong** __emphasis__ test.
   *
