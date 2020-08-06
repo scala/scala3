@@ -27,6 +27,16 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
         folder.create()
         folder
 
+    private def args = Args(
+        tastyRoots = Nil ,
+        classpath =  System.getProperty("java.class.path"),
+        None,
+        output = getTempDir().getRoot,
+        projectVersion = "1.0",
+        projectTitle = None,
+        projectLogo = None
+    )
+
     def listPages(tastyDir: String): Seq[ContentPage] =
         var signatures: Seq[ContentPage] = Nil
         val tests = new AbstractCoreTest$TestBuilder()
@@ -48,13 +58,7 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
 
         val tastyFiles = tastyDir.split(File.pathSeparatorChar).toList.flatMap(p => listTastyFiles(new File(p))).map(_.toString)
             
-        val config = new DottyDokkaConfig(
-            DocConfiguration(
-                tastyFiles = tastyFiles,
-                classpath = System.getProperty("java.class.path")
-            )
-        )
-        config._outputDir = getTempDir().getRoot.toPath.toAbsolutePath.toString
+        val config = new DottyDokkaConfig(DocConfiguration(tastyFiles, args))
         DokkaTestGenerator(
             config,
             new TestLogger(DokkaConsoleLogger.INSTANCE),

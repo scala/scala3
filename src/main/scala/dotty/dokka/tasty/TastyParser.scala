@@ -30,23 +30,39 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
 
     def sourceSet = inspector.sourceSet
 
+    def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch case e: Throwable => errorMsg(tree, tree.symbol.show, e)
+    def processSymbol[T](sym: Symbol)(op: => T): Option[T] = try Option(op) catch case e: Throwable => errorMsg(sym, sym.show, e)
+
+    private def errorMsg[T](a: Any, m: => String, e: Throwable): Option[T] = 
+      val msg = try m catch case e: Throwable => a.toString
+      println(s"ERROR: tree is faling: msg")
+      e.printStackTrace()
+      throw e    
+
     def parseRootTree(root: Tree): Seq[Documentable] =
       val docs = Seq.newBuilder[Documentable]
       object Traverser extends TreeTraverser:
+        var seen: List[Tree] = Nil 
+
         override def traverseTree(tree: Tree)(using ctx: Context): Unit = 
+          seen = tree :: seen
           tree match {
             case pck: PackageClause => 
               docs += parsePackage(pck)
               super.traverseTree(tree)
             case packageObject: ClassDef if(packageObject.symbol.name.contains("package$")) =>
               docs += parsePackageObject(packageObject)
-            case clazz: ClassDef if(!clazz.symbol.isCompanionObject()) =>
+            case clazz: ClassDef if clazz.symbol.shouldDocumentClasslike =>
               docs += parseClass(clazz)
-            case _ =>
-              super.traverseTree(tree)
+            case _ =>  
           }
+          seen = seen.tail
 
-      Traverser.traverseTree(root)(using reflect.rootContext)
+      try Traverser.traverseTree(root)(using reflect.rootContext)
+      catch case e: Throwable =>
+        println(s"Problem parsing ${root.pos}, documentation may not be generated.")
+        e.printStackTrace()
+
       docs.result()
 
   case class DokkaTastyInspector(sourceSet: SourceSetWrapper, parser: Parser, config: DottyDokkaConfig) extends TastyInspector:

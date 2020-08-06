@@ -26,6 +26,7 @@ class TypesSignatures extends SingleFileTest("typesSignatures", SingleFileTest.a
 class FieldsSignatures extends SingleFileTest("fieldsSignatures", SingleFileTest.all.filter(_ != "object"))
 
 class NestedSignatures extends SingleFileTest("nested", SingleFileTest.all)
+
 class CompanionObjectSignatures extends SingleFileTest("companionObjectSignatures", SingleFileTest.all)
 
 class PackageSymbolSignatures extends SingleFileTest("packageSymbolSignatures", SingleFileTest.all)

@@ -25,9 +25,9 @@ trait ClassLikeSupport:
     }
 
     val nested = classDef.body.collect {
-      case c: ClassDef if !c.symbol.isCompanionObject() =>
-        parseClass(c)
-    }
+      case c: ClassDef if c.symbol.shouldDocumentClasslike =>
+        processTree(c)(parseClass(c))
+    }.flatten
 
     val flags = classDef.symbol.flags
     val kind = 
