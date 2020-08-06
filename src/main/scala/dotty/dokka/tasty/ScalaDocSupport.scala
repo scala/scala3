@@ -25,7 +25,10 @@ trait ScaladocSupport { self: TastyParser =>
 
     import kotlin.collections.builders.{ListBuilder => KtListBuilder}
     val bld = new KtListBuilder[dkkd.TagWrapper]
-    // TODO determine how to have short and long descriptions
+    parsed.short match {
+      case Some(tag) => bld.add(dkkd.Description(tag))
+      case None => bld.add(dkkd.Description(dkk.text("")))
+    }
     bld.add(dkkd.Description(parsed.body))
 
     inline def addOpt(opt: Option[dkkd.DocTag])(wrap: dkkd.DocTag => dkkd.TagWrapper) =

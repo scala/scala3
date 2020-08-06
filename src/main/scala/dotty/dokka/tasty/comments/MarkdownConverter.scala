@@ -165,29 +165,34 @@ class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
       ))
   }
 
-  object dbg {
-    case class See(n: mdu.Node, c: Seq[See]) {
-      def show(sb: StringBuilder, indent: Int): Unit = {
-        sb ++= " " * indent
-        sb ++= n.toString
-        sb ++= "\n"
-        c.foreach { s => s.show(sb, indent + 2) }
-      }
+  def extractAndConvertSummary(doc: mdu.Document): Option[dkkd.DocTag] =
+    doc.getChildIterator.asScala.collectFirst { case p: mda.Paragraph =>
+      dkkd.P(convertChildren(p).asJava, kt.emptyMap)
+    }
+}
 
-      override def toString = {
-        val sb = new StringBuilder
-        show(sb, 0)
-        sb.toString
-      }
+object dbg {
+  case class See(n: mdu.Node, c: Seq[See]) {
+    def show(sb: StringBuilder, indent: Int): Unit = {
+      sb ++= " " * indent
+      sb ++= n.toString
+      sb ++= "\n"
+      c.foreach { s => s.show(sb, indent + 2) }
     }
 
-    def see(n: mdu.Node): See =
-      See(n, n.getChildIterator.asScala.map(see).toList)
-
-    def parseRaw(str: String) =
-      MarkdownCommentParser(null, ()).stringToMarkup(str)
-
-    def parse(str: String) =
-      parseRaw( Preparser.preparse( Cleaner.clean(str) ).body )
+    override def toString = {
+      val sb = new StringBuilder
+      show(sb, 0)
+      sb.toString
+    }
   }
+
+  def see(n: mdu.Node): See =
+    See(n, n.getChildIterator.asScala.map(see).toList)
+
+  def parseRaw(str: String) =
+    MarkdownCommentParser(null, ()).stringToMarkup(str)
+
+  def parse(str: String) =
+    parseRaw( Preparser.preparse( Cleaner.clean(str) ).body )
 }
