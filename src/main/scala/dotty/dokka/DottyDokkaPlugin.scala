@@ -16,13 +16,14 @@ import dotty.dokka.tasty.DokkaTastyInspector
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.utilities.DokkaLogger
 import org.jetbrains.dokka.base.signatures.SignatureProvider
+import org.jetbrains.dokka.pages._
 
 
 class DottyDokkaPlugin extends JavaDokkaPlugin:
   override def createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule = cxt.getConfiguration match {
     case dottyConfig: DottyDokkaConfig =>
       val inspector = DokkaTastyInspector(sourceSet, new MarkdownParser(null, null, cxt.getLogger), dottyConfig)
-      inspector.inspect(dottyConfig.docConfiguration.classpath, dottyConfig.docConfiguration.tastyFiles)
+      inspector.inspect(dottyConfig.docConfiguration.args.classpath, dottyConfig.docConfiguration.tastyFiles)
     
       new DModule(
         sourceSet.getSourceSet.getSourceSetID.getModuleName,

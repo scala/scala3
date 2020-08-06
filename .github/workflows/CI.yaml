@@ -33,7 +33,10 @@ jobs:
         run: sbt compile test
 
       - name: Generate test documentation
-        run: sbt generateExapleDocumentation       
+        run: sbt generateSelfDocumentation
+        
+      - name: Generate documentation for dotty library
+        run: sbt generateDottyLibDocumentation      
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1

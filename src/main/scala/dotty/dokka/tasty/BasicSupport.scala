@@ -64,6 +64,8 @@ class SymOps[R <: Reflection](val r: R) {
         Option.when(sym.flags.is(Flags.Override))(ScalaOnlyModifiers.Override),
       ).flatten
 
+    def shouldDocumentClasslike: Boolean = !isCompanionObject() && !sym.flags.is(Flags.Private)
+
     def isCompanionObject(): Boolean = sym.flags.is(Flags.Object) && sym.companionClass.exists
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?

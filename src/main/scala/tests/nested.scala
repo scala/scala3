@@ -48,3 +48,12 @@ class X
 {
   object Y
 }
+
+// bug found in dotty code, still fails with type
+sealed trait ErrorKind 
+object ErrorKind
+{
+  // This below produce some strange type
+  // case object Parser extends ErrorKind
+  //  case object Typer extends ErrorKind
+}
