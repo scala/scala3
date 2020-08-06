@@ -25,13 +25,38 @@ package tests
   * > > a
   * > blockquote
   *
+  * And this is a link: [](method).
+  *
+  * And this is another link: [](AA).
+  *
+  * And this is another link: [](AA$).
+  *
+  * And this is yet another link: [](tests.Methods).
+  *
+  * Yet another: [](tests.Methods.simple).
+  *
+  * And yet another: [](example.level2.Documentation).
+  *
+  * This is my friend: [](tests.B).
+  *
+  * And this is his companion: [](tests.B$).
   *
   * @author Gal Anonim
   * @version 1.0.0
   * @result A class doesn't actually have a result.
   * @constructor A class has a constructor, and this one is important.
   */
-class A
+class A {
+  /** This is a method. */
+  def method(s: String): String = s
+
+  class AA
+
+  object AA
+}
+
+/** Companion object to test linking */
+object A
 
 /** = An important Wiki test class =
   *
@@ -46,14 +71,46 @@ class A
   * this.is("a code block")
   * }}}
   *
+  * And this is a link: [[otherMethod]].
+  *
+  * And this is another link: [[BB]].
+  *
+  * And this is yet another link: [[tests.Methods]].
+  *
+  * Yet another: [[tests.Methods.simple]].
+  *
+  * And yet another: [[example.level2.Documentation]].
+  *
+  * This is my friend: [[tests.A]].
+  *
+  * And this is his companion: [[tests.A$]].
   * @syntax wiki
   */
-class B extends A
+class B extends A {
+  /** This is a method. */
+  def otherMethod(s: String): String = s
+
+  class BB
+}
+
+/** Companion object to test linking.
+  *
+  * This is my member: [](B$.Z)
+  *
+  * And this is my term member: [](B$.Z$)
+  *
+  * This is my member, addressed differently: [](this.Z)
+  *
+  * And this is my term member, addressed differently: [](this.Z$)
+  */
+object B {
+  type Z = Int
+  val Z: Int = 0
+}
+
 class C 
 class D[T]
 class E[T] extends D[T]
-
-
 
 class Constructors(a: String):
     def this() = this("Ala")

@@ -10,7 +10,7 @@ import collection.JavaConverters._
 trait PackageSupport:
     self: TastyParser =>
     import reflect._
-    import self.SymbolOps.{documentation}
+
     def parsePackage(pck: PackageClause): DPackage = {
         val name = extractPackageName(pck.pid.show)
         val documentation = pck.symbol.documentation

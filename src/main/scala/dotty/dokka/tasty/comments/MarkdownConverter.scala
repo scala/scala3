@@ -1,11 +1,14 @@
 package dotty.dokka.tasty.comments
 
 import scala.jdk.CollectionConverters._
+import scala.tasty.Reflection
 
 import org.jetbrains.dokka.model.{doc => dkkd}
 import com.vladsch.flexmark.{ast => mda}
 import com.vladsch.flexmark.util.{ast => mdu}
 import com.vladsch.flexmark.ext.gfm.{tables => mdt}
+
+import dotty.dokka.tasty.SymOps
 
 object kt {
   import kotlin.collections.builders.{ListBuilder => KtListBuilder, MapBuilder => KtMapBuilder}
@@ -19,8 +22,11 @@ object dkk {
       dkkd.Text(str, kt.emptyList, kt.emptyMap)
 }
 
-object MarkdownConverter {
+class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
   import Emitter._
+
+  object SymOps extends SymOps[r.type](r)
+  import SymOps._
 
   def convertDocument(doc: mdu.Document): dkkd.DocTag = {
     val res = collect {
@@ -67,6 +73,24 @@ object MarkdownConverter {
       emit(n.getOpeningMarker.toString match {
         case "**" => dkkd.B(convertChildren(n).asJava, kt.emptyMap)
         case "__" => dkkd.I(convertChildren(n).asJava, kt.emptyMap)
+      })
+
+    case n: mda.Link =>
+      val text: String =
+        if !n.getText.isEmpty then n.getText.toString
+        else n.getUrl.toString
+
+      val SchemeUri = """[a-z]+:.*""".r
+
+      val target: String = n.getUrl.toString
+
+      emit(target match {
+        case SchemeUri() => dkkd.A(List(dkk.text(text)).asJava, Map("href" -> target).asJava)
+        case _ => MemberLookup.lookup(using r)(target, owner) match {
+          case Some(sym) =>
+            dkkd.DocumentationLink(sym.dri, List(dkk.text(text)).asJava, kt.emptyMap)
+          case None => dkkd.A(List(dkk.text(text)).asJava, Map("href" -> "#").asJava)
+        }
       })
 
     case n: mda.Code => emit(dkkd.CodeInline(convertChildren(n).asJava, kt.emptyMap))
@@ -161,7 +185,7 @@ object MarkdownConverter {
       See(n, n.getChildIterator.asScala.map(see).toList)
 
     def parseRaw(str: String) =
-      MarkdownCommentParser((), ()).stringToMarkup(str)
+      MarkdownCommentParser(null, ()).stringToMarkup(str)
 
     def parse(str: String) =
       parseRaw( Preparser.preparse( Cleaner.clean(str) ).body )
