@@ -3,7 +3,6 @@ package dokka.java.api
 import org.jetbrains.dokka.CoreExtensions
 import org.jetbrains.dokka.DokkaConfiguration
 import org.jetbrains.dokka.base.DokkaBase
-import org.jetbrains.dokka.base.signatures.KotlinSignatureProvider
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.base.translators.documentables.PageContentBuilder
@@ -30,7 +29,7 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
     private val dokkaBase by lazy { plugin<DokkaBase>() }
 
     val provideDottyDocs by extending {
-        CoreExtensions.sourceToDocumentableTranslator providing { ctx ->
+        CoreExtensions.sourceToDocumentableTranslator providing { _ ->
             object : SourceToDocumentableTranslator {
                 override fun invoke(sourceSet: DokkaConfiguration.DokkaSourceSet, context: DokkaContext): DModule =
                     createSourceToDocumentableTranslator(context, SourceSetWrapper(sourceSet))
@@ -38,9 +37,9 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         }  override dokkaBase.psiToDocumentableTranslator
     }
 
-    // Just turn off another translator sicnce multiple overrids does not work
-    val diableOtherTranslator by extending {
-        CoreExtensions.sourceToDocumentableTranslator providing { ctx ->
+    // Just turn off another translator since multiple overrides does not work
+    val disableOtherTranslator by extending {
+        CoreExtensions.sourceToDocumentableTranslator providing { _ ->
             object : SourceToDocumentableTranslator {
                 override fun invoke(sourceSet: DokkaConfiguration.DokkaSourceSet, context: DokkaContext): DModule =
                     TODO()
