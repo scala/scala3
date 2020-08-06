@@ -23,12 +23,16 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
         tokens.filter(_.trim.nonEmpty).mkString(""," "," ")
 
     override def signature(documentable: Documentable) = documentable match {
+        case extension: DFunction if extension.get(MethodExtension).isExtension =>
+            List(extensionSignature(extension)).asJava
         case method: DFunction =>
-           List(methodSignature(method)).asJava
+            List(methodSignature(method)).asJava
         case clazz: DClass =>
-           List(classSignature(clazz)).asJava
+            List(classSignature(clazz)).asJava
         case property: DProperty =>
             List(propertySignature(property)).asJava
+        case parameter: DParameter =>
+            List(parameterSignature(parameter)).asJava
         case _ => default.signature(documentable)
     }
 
@@ -55,10 +59,30 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
                     }
         }
 
+    private def extensionSignature(extension: DFunction): ContentNode =
+        content(extension){ builder =>
+            utils.annotationsBlock(builder, extension)
+            builder.modifiersAndVisibility(extension, "def")
+            val extendedSymbol = if (extension.isRightAssociative()) {
+                extension.getParameters.asScala(extension.get(MethodExtension).parametersListSizes(0))
+            } else {
+                extension.getParameters.asScala(0)
+            }
+            builder.addText(s"(${extendedSymbol.getName}: ")
+            builder.typeSignature(extendedSymbol.getType)
+            builder.addText(").")
+            builder.addLink(extension.getName, extension.getDri)
+            builder.generics(extension)  
+            builder.functionParameters(extension)
+            if !extension.isConstructor then
+                builder.addText(":")
+                builder.addText(" ")
+                builder.typeSignature(extension.getType)
+        }
+
     private def methodSignature(method: DFunction): ContentNode = 
         content(method){ builder =>
             utils.annotationsBlock(builder, method)
-            // builder.addText("TODO modifiers")
             builder.modifiersAndVisibility(method, "def")
             builder.addLink(method.getName, method.getDri)
             builder.generics(method)  
@@ -96,6 +120,16 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
             builder.addText(" ")
             builder.typeSignature(property.getType)
         }    
+
+    private def parameterSignature(parameter: DParameter): ContentNode = 
+        content(parameter){ builder =>
+            builder.addText(parameter.getName)
+            builder.addText(": ")
+            builder.typeSignature(parameter.getType)
+        }
+
+    extension on(f: DFunction):
+        def isRightAssociative(): Boolean = f.getName.endsWith(":")
 
 
     extension on (builder: PageContentBuilder$DocumentableContentBuilder):
@@ -141,10 +175,13 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
         
         def functionParameters(method: DFunction) = 
             val methodExtension = method.get(MethodExtension)
-            methodExtension.parametersListSizes.foldLeft(0){ (from, size) =>
+            val receiverPos = if method.isRightAssociative() then method.get(MethodExtension).parametersListSizes(0) else 0
+            val paramLists = methodExtension.parametersListSizes
+            paramLists.foldLeft(0){ (from, size) =>
                 val toIndex = from + size
                 if from == toIndex then builder.addText("()")
-                else builder.addList(method.getParameters.subList(from, toIndex), "(", ")"){ param =>
+                else if !methodExtension.isExtension || from != receiverPos then
+                    builder.addList(method.getParameters.subList(from, toIndex), "(", ")"){ param =>
                     utils.annotationsInline(builder, param)
                     // builder.addText("TODO modifiers")
                     builder.addText(param.getName)

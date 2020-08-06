@@ -1,5 +1,7 @@
 package dotty.dokka.tasty
 
+import scala.tasty.Reflection
+
 trait SyntheticsSupport:
   self: TastyParser =>
 
@@ -22,3 +24,13 @@ trait SyntheticsSupport:
 
   def isSyntheticField(c: Symbol, classDef: ClassDef) = 
     c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Private) || c.flags.is(Flags.Object)
+
+  def isExtensionMethod(d: Symbol): Boolean = hackIsExtension(self.reflect)(d)
+
+  // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
+  def hackIsExtension(r: Reflection)(rsym: r.Symbol): Boolean = {
+    import dotty.tools.dotc
+    given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
+    sym.is(dotc.core.Flags.Extension)
+  }

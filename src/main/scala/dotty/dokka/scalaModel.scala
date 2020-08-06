@@ -7,7 +7,7 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._  
    
-case class MethodExtension(parametersListSizes: Seq[Int]) extends ExtraProperty[DFunction]:
+case class MethodExtension(parametersListSizes: Seq[Int], isExtension: Boolean) extends ExtraProperty[DFunction]:
   override def getKey = MethodExtension
 
 object MethodExtension extends BaseKey[DFunction, MethodExtension]
