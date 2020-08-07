@@ -2404,3 +2404,11 @@ import ast.tpd
     def msg = s"Modifier `${flag.flagsString}` is not allowed for this definition"
     def explain = ""
   }
+
+  class InvalidReferenceInImplicitNotFoundAnnotation(typeVar: String, owner: String)(using Context)
+    extends ReferenceMsg(InvalidReferenceInImplicitNotFoundAnnotationID) {
+    def msg = em"""|Invalid reference to a type variable "${hl(typeVar)}" found in the annotation argument.
+                   |The variable does not occur in the signature of ${hl(owner)}.
+                   |""".stripMargin
+    def explain = ""
+  }

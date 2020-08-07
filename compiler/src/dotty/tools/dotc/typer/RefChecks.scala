@@ -4,7 +4,7 @@ package typer
 import transform._
 import core._
 import Symbols._, Types._, Contexts._, Flags._, Names._, NameOps._
-import StdNames._, Denotations._, SymUtils._, Phases._
+import StdNames._, Denotations._, SymUtils._, Phases._, SymDenotations._
 import NameKinds.DefaultGetterName
 import Annotations._
 import util.Spans._
@@ -19,9 +19,11 @@ import Decorators._
 import typer.ErrorReporting._
 import config.Feature.{warnOnMigration, migrateTo3}
 import reporting._
+import scala.util.matching.Regex._
+import Constants.Constant
 
 object RefChecks {
-  import tpd.{Tree, MemberDef}
+  import tpd.{Tree, MemberDef, Literal, Template, DefDef}
 
   val name: String = "refchecks"
 
@@ -936,6 +938,74 @@ object RefChecks {
   }
 
   val NoLevelInfo: RefChecks.OptLevelInfo = new OptLevelInfo()
+
+  /** Verify that references in the user-defined `@implicitNotFound` message are valid.
+   *  (i.e. they refer to a type variable that really occurs in the signature of the annotated symbol.)
+   */
+  private object checkImplicitNotFoundAnnotation:
+
+    /** Warns if the class or trait has an @implicitNotFound annotation
+     *  with invalid type variable references.
+     */
+    def template(sd: SymDenotation)(using Context): Unit =
+      for
+        annotation <- sd.getAnnotation(defn.ImplicitNotFoundAnnot)
+        l@Literal(c: Constant) <- annotation.argument(0)
+      do forEachTypeVariableReferenceIn(c.stringValue) { case (ref, start) =>
+        if !sd.typeParams.exists(_.denot.name.show == ref) then
+          reportInvalidReferences(l, ref, start, sd)
+      }
+
+    /** Warns if the def has parameters with an `@implicitNotFound` annotation
+     *  with invalid type variable references.
+     */
+    def defDef(sd: SymDenotation)(using Context): Unit =
+      for
+        paramSymss <- sd.paramSymss
+        param <- paramSymss
+      do
+        for
+          annotation <- param.getAnnotation(defn.ImplicitNotFoundAnnot)
+          l@Literal(c: Constant) <- annotation.argument(0)
+        do forEachTypeVariableReferenceIn(c.stringValue) { case (ref, start) =>
+          if !sd.paramSymss.flatten.exists(_.name.show == ref) then
+            reportInvalidReferences(l, ref, start, sd)
+        }
+
+    /** Reports an invalid reference to a type variable `typeRef` that was found in `l` */
+    private def reportInvalidReferences(
+      l: Literal,
+      typeRef: String,
+      offsetInLiteral: Int,
+      sd: SymDenotation
+    )(using Context) =
+      val msg = InvalidReferenceInImplicitNotFoundAnnotation(
+        typeRef, if (sd.isConstructor) "the constructor" else sd.name.show)
+      val span = l.span.shift(offsetInLiteral + 1) // +1 because of 0-based index
+      val pos = ctx.source.atSpan(span.startPos)
+      report.warning(msg, pos)
+
+    /** Calls the supplied function for each quoted reference to a type variable in <pre>s</pre>.
+     *  The input
+     *
+     *  ```scala
+     *     "This is a ${T}ype re${F}erence"
+     *  //  ^0          ^12       ^22
+     *  ```
+     *
+     *  will lead to two invocations of `f`, once with `(T, 12)` and once with `(F, 22)` as argument.
+     *
+     * @param s The string to query for type variable references.
+     * @param f A function to apply to every pair of (\<type variable>, \<position in string>).
+     */
+    private def forEachTypeVariableReferenceIn(s: String)(f: (String, Int) => Unit) =
+      // matches quoted references such as "${(A)}", "${(Abc)}", etc.
+      val reference = """(?<=\$\{)[a-zA-Z]+(?=\})""".r
+      val matches = reference.findAllIn(s)
+      for m <- matches do f(m, matches.start)
+
+  end checkImplicitNotFoundAnnotation
+
 }
 import RefChecks._
 
@@ -1012,6 +1082,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformDefDef(tree: DefDef)(using Context): DefDef = {
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
+    checkImplicitNotFoundAnnotation.defDef(tree.symbol.denot)
     tree
   }
 
@@ -1022,6 +1093,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     if (cls.is(Trait)) tree.parents.foreach(checkParentPrefix(cls, _))
     checkCompanionNameClashes(cls)
     checkAllOverrides(cls)
+    checkImplicitNotFoundAnnotation.template(cls.classDenot)
     tree
   }
   catch {
