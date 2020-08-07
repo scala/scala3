@@ -19,6 +19,8 @@ trait Liftable[T] {
  */
 object Liftable {
 
+  // IMPORTANT Keep in sync with tests/run-staging/liftables.scala
+
   given BooleanIsLiftable[T <: Boolean] as Liftable[T] = new PrimitiveLiftable
   given ByteIsLiftable[T <: Byte] as Liftable[T] = new PrimitiveLiftable
   given ShortIsLiftable[T <: Short] as Liftable[T] = new PrimitiveLiftable
@@ -103,7 +105,7 @@ object Liftable {
       else '{ Array(${Expr(array(0))}, ${Expr(array.toSeq.tail)}: _*) }
   }
 
-  given iArrayIsLiftable[T: Type](using ltArray: Liftable[Array[T]]) as Liftable[IArray[T]] {
+  given IArrayIsLiftable[T: Type](using ltArray: Liftable[Array[T]]) as Liftable[IArray[T]] {
     def toExpr(iarray: IArray[T]): QuoteContext ?=> Expr[IArray[T]] =
       '{ ${ltArray.toExpr(iarray.asInstanceOf[Array[T]])}.asInstanceOf[IArray[T]] }
   }
@@ -118,6 +120,11 @@ object Liftable {
       Expr.ofList(xs.map(summon[Liftable[T]].toExpr))
   }
 
+  given NilIsLiftable as Liftable[Nil.type] = new Liftable[Nil.type] {
+    def toExpr(xs: Nil.type): QuoteContext ?=> Expr[Nil.type] =
+      '{ Nil }
+  }
+
   given [T: Type: Liftable] as Liftable[Set[T]] = new Liftable[Set[T]] {
     def toExpr(set: Set[T]): QuoteContext ?=> Expr[Set[T]] =
       '{ Set(${Expr(set.toSeq)}: _*) }
@@ -130,16 +137,40 @@ object Liftable {
 
   given [T: Type: Liftable] as Liftable[Option[T]] = new Liftable[Option[T]] {
     def toExpr(x: Option[T]): QuoteContext ?=> Expr[Option[T]] = x match {
-      case Some(x) => '{ Some[T](${Expr(x)}) }
-      case None => '{ None: Option[T] }
+      case x: Some[T] => Expr(x)
+      case None => Expr(None)
     }
   }
 
+  given [T: Type: Liftable] as Liftable[Some[T]] = new Liftable[Some[T]] {
+    def toExpr(x: Some[T]): QuoteContext ?=> Expr[Some[T]] =
+      '{ Some[T](${Expr(x.get)}) }
+  }
+
+  given Liftable[None.type] = new Liftable[None.type] {
+    def toExpr(x: None.type): QuoteContext ?=> Expr[None.type] =
+      '{ None }
+  }
+
   given [L: Type: Liftable, R: Type: Liftable] as Liftable[Either[L, R]] = new Liftable[Either[L, R]] {
-    def toExpr(x: Either[L, R]): QuoteContext ?=> Expr[Either[L, R]] = x match {
-      case Left(x) => '{ Left[L, R](${Expr(x)}) }
-      case Right(x) => '{ Right[L, R](${Expr(x)}) }
-    }
+    def toExpr(x: Either[L, R]): QuoteContext ?=> Expr[Either[L, R]] = x match
+      case x: Left[L, R] => Expr(x)
+      case x: Right[L, R] => Expr(x)
+  }
+
+  given [L: Type: Liftable, R: Type] as Liftable[Left[L, R]] = new Liftable[Left[L, R]] {
+    def toExpr(x: Left[L, R]): QuoteContext ?=> Expr[Left[L, R]] =
+      '{ Left[L, R](${Expr(x.value)}) }
+  }
+
+  given [L: Type, R: Type: Liftable] as Liftable[Right[L, R]] = new Liftable[Right[L, R]] {
+    def toExpr(x: Right[L, R]): QuoteContext ?=> Expr[Right[L, R]] =
+      '{ Right[L, R](${Expr(x.value)}) }
+  }
+
+  given EmptyTupleIsLiftable as Liftable[EmptyTuple.type] = new {
+    def toExpr(tup: EmptyTuple.type) =
+      '{ EmptyTuple }
   }
 
   given [T1: Type: Liftable] as Liftable[Tuple1[T1]] = new {
@@ -303,6 +334,13 @@ object Liftable {
   given Liftable[BigDecimal] = new Liftable[BigDecimal] {
     def toExpr(x: BigDecimal): QuoteContext ?=> Expr[BigDecimal] =
       '{ BigDecimal(${Expr(x.toString)}) }
+  }
+
+  /** Lift a StringContext */
+  given Liftable[StringContext] = new Liftable[StringContext] {
+    def toExpr(stringContext: StringContext): QuoteContext ?=> Expr[StringContext] =
+      val parts = Varargs(stringContext.parts.map(Expr(_)))
+      '{ StringContext($parts: _*) }
   }
 
 }

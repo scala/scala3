@@ -113,7 +113,7 @@ object Expr {
    *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
    */
   def  ofList[T](xs: Seq[Expr[T]])(using Type[T], QuoteContext): Expr[List[T]] =
-    if (xs.isEmpty) '{ Nil } else '{ List(${Varargs(xs)}: _*) }
+    if (xs.isEmpty) Expr(Nil) else '{ List(${Varargs(xs)}: _*) }
 
   /** Lifts this sequence of expressions into an expression of a tuple
    *
