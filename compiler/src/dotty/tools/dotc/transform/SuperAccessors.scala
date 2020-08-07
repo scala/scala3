@@ -5,13 +5,13 @@ import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.mutable
 import ValueClasses.isMethodWithExtension
 import core._
-import Contexts._, Flags._, Symbols._, NameOps._, Trees._
+import Contexts._, Flags._, Symbols._, Names._, StdNames._, NameOps._, Trees._
 import TypeUtils._, SymUtils._
 import DenotTransformers.DenotTransformer
 import Symbols._
 import util.Spans._
 import Decorators._
-import NameKinds.SuperAccessorName
+import NameKinds.{ SuperAccessorName, ExpandPrefixName }
 
 /** This class adds super accessors for all super calls that either
  *  appear in a trait or have as a target a member of some outer class.
@@ -62,11 +62,12 @@ class SuperAccessors(thisPhase: DenotTransformer) {
   private val accDefs = newMutableSymbolMap[mutable.ListBuffer[Tree]]
 
   /** A super accessor call corresponding to `sel` */
-  private def superAccessorCall(sel: Select)(using Context) = {
+  private def superAccessorCall(sel: Select, mixName: Name = nme.EMPTY)(using Context) = {
     val Select(qual, name) = sel
     val sym = sel.symbol
     val clazz = qual.symbol.asClass
-    var superName = SuperAccessorName(name.asTermName)
+    val preName = if (mixName.isEmpty) name.toTermName else ExpandPrefixName(name.toTermName, mixName.toTermName)
+    var superName = SuperAccessorName(preName)
     if (clazz.is(Trait)) superName = superName.expandedName(clazz)
     val superInfo = sel.tpe.widenSingleton.ensureMethodic
 
@@ -99,6 +100,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val sym   = sel.symbol
     assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
     val clazz = sup.symbol
+    val currentClass = ctx.owner.enclosingClass
 
     if (sym.isTerm && !sym.is(Method, butNot = Accessor) && !ctx.owner.isAllOf(ParamForwarder))
       // ParamForwaders as installed ParamForwarding.scala do use super calls to vals
@@ -145,9 +147,15 @@ class SuperAccessors(thisPhase: DenotTransformer) {
               sel.sourcePos)
         }
     }
-    if (name.isTermName && mix.name.isEmpty &&
-        (clazz.is(Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))
-      atPhase(thisPhase.next)(superAccessorCall(sel))
+
+    val needAccessor = name.isTermName && {
+      mix.name.isEmpty && (clazz.is(Trait) || clazz != currentClass || !validCurrentClass) ||
+      // SI-8803. If we access super[A] from an inner class (!= currentClass) or closure (validCurrentClass),
+      // where A is the superclass we need an accessor.
+      !mix.name.isEmpty && (clazz != currentClass || !validCurrentClass)
+    }
+
+    if (needAccessor) atPhase(thisPhase.next)(superAccessorCall(sel, mix.name))
     else sel
   }
 

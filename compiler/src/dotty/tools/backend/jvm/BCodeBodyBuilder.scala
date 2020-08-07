@@ -364,9 +364,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           else {
             mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
-            generatedType =
-              if (tree.symbol == defn.ArrayClass) ObjectReference
-              else classBTypeFromSymbol(claszSymbol)
+            // When compiling Array.scala, the constructor invokes `Array.this.super.<init>`. The expectedType
+            // is `[Object` (computed by typeToBType, the type of This(Array) is `Array[T]`). If we would set
+            // the generatedType to `Array` below, the call to adapt at the end would fail. The situation is
+            // similar for primitives (`I` vs `Int`).
+            if (tree.symbol != defn.ArrayClass && !tree.symbol.isPrimitiveValueClass) {
+              generatedType = classBTypeFromSymbol(claszSymbol)
+            }
           }
 
         case DesugaredSelect(Ident(nme.EMPTY_PACKAGE), module) =>
@@ -710,33 +714,18 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             if (t.symbol ne defn.Object_synchronized) genTypeApply(t)
             else genSynchronized(app, expectedType)
 
-        case Apply(fun @ DesugaredSelect(Super(_, _), _), args) =>
-          def initModule(): Unit = {
-            // we initialize the MODULE$ field immediately after the super ctor
-            if (!isModuleInitialized &&
-              jMethodName == INSTANCE_CONSTRUCTOR_NAME &&
-              fun.symbol.javaSimpleName == INSTANCE_CONSTRUCTOR_NAME &&
-              claszSymbol.isStaticModuleClass) {
-              isModuleInitialized = true
-              mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
-              mnode.visitFieldInsn(
-                asm.Opcodes.PUTSTATIC,
-                thisName,
-                str.MODULE_INSTANCE_FIELD,
-                "L" + thisName + ";"
-              )
-            }
-          }
+        case Apply(fun @ DesugaredSelect(Super(superQual, _), _), args) =>
           // 'super' call: Note: since constructors are supposed to
           // return an instance of what they construct, we have to take
           // special care. On JVM they are 'void', and Scala forbids (syntactically)
           // to call super constructors explicitly and/or use their 'returned' value.
           // therefore, we can ignore this fact, and generate code that leaves nothing
           // on the stack (contrary to what the type in the AST says).
-          mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
+
+          // scala/bug#10290: qual can be `this.$outer()` (not just `this`), so we call genLoad (not just ALOAD_0)
+          genLoad(superQual)
           genLoadArguments(args, paramTKs(app))
           generatedType = genCallMethod(fun.symbol, InvokeStyle.Super, app.span)
-          initModule()
 
         // 'new' constructor call: Note: since constructors are
         // thought to return an instance of what they construct,

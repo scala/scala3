@@ -413,6 +413,10 @@ class TreeChecker extends Phase with SymTransformer {
       res
     }
 
+    override def typedSuper(tree: untpd.Super, pt: Type)(using Context): Tree =
+      assert(tree.qual.tpe.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
+      super.typedSuper(tree, pt)
+
     private def checkOwner(tree: untpd.Tree)(using Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
@@ -433,7 +437,8 @@ class TreeChecker extends Phase with SymTransformer {
 
       def isNonMagicalMember(x: Symbol) =
         !x.isValueClassConvertMethod &&
-        !x.name.is(DocArtifactName)
+        !x.name.is(DocArtifactName) &&
+        !(ctx.phase.id >= genBCodePhase.id && x.name == str.MODULE_INSTANCE_FIELD.toTermName)
 
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)

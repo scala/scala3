@@ -9,6 +9,8 @@ import SymUtils._
 import Symbols._
 import Decorators._
 import DenotTransformers._
+import Names._
+import StdNames._
 import NameOps._
 import NameKinds._
 import ResolveSuper._
@@ -79,10 +81,20 @@ object ResolveSuper {
   def rebindSuper(base: Symbol, acc: Symbol)(using Context): Symbol = {
     var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
     var sym: Symbol = NoSymbol
-    val SuperAccessorName(memberName) = acc.name.unexpandedName
+
+    var mix: Name = nme.EMPTY
+    val memberName = acc.name.unexpandedName match
+      case SuperAccessorName(ExpandPrefixName(name, mixName)) =>
+        mix = mixName.toTypeName
+        name
+      case SuperAccessorName(name) =>
+        name
+
     report.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
+
     while (bcs.nonEmpty && sym == NoSymbol) {
       val other = bcs.head.info.nonPrivateDecl(memberName)
+        .filterWithPredicate(denot => mix.isEmpty || denot.symbol.owner.name == mix)
         .matchingDenotation(base.thisType, base.thisType.memberInfo(acc))
       report.debuglog(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
       if other.exists && !other.symbol.is(Deferred) then

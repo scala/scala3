@@ -15,6 +15,9 @@ jobs:
     container: lampepfl/dotty:2020-04-24
 
     steps:
+      - name: Set JDK 11 as default
+        run: echo "::add-path::/usr/lib/jvm/java-11-openjdk-amd64/bin"
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -55,6 +58,9 @@ jobs:
     container: lampepfl/dotty:2020-04-24
 
     steps:
+      - name: Set JDK 11 as default
+        run: echo "::add-path::/usr/lib/jvm/java-11-openjdk-amd64/bin"
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -174,7 +180,7 @@ jobs:
       - name: Test
         run: ./project/scripts/sbt sbt-dotty/scripted
 
-  test_java11:
+  test_java8:
     runs-on: self-hosted
     container: lampepfl/dotty:2020-04-24
     if: (
@@ -184,6 +190,9 @@ jobs:
         github.event_name == 'schedule'
 
     steps:
+      - name: Set JDK 8 as default
+        run: echo "::add-path::/usr/lib/jvm/java-1.8.0-openjdk-amd64/bin"
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -215,14 +224,12 @@ jobs:
           restore-keys: ${{ runner.os }}-general-
 
       - name: Test
-        run: |
-          export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
-          ./project/scripts/sbt ";compile ;test"
+        run: ./project/scripts/sbt ";compile ;test"
 
   publish_nightly:
     runs-on: self-hosted
     container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
+    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
     if: github.event_name == 'schedule'
     env:
       NIGHTLYBUILD: yes
@@ -323,7 +330,7 @@ jobs:
   publish_release:
     runs-on: self-hosted
     container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
+    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
         !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
@@ -475,7 +482,7 @@ jobs:
   publish_sbt_release:
     runs-on: self-hosted
     container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
+    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
 

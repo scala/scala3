@@ -1410,7 +1410,7 @@ class JSCodeGen()(using genCtx: Context) {
    */
   private def genSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
     implicit val pos = tree.span
-    val Apply(fun @ Select(sup @ Super(_, mix), _), args) = tree
+    val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
     val sym = fun.symbol
 
     if (sym == defn.Any_getClass) {
@@ -1419,8 +1419,11 @@ class JSCodeGen()(using genCtx: Context) {
     } else /*if (isScalaJSDefinedJSClass(currentClassSym)) {
       genJSSuperCall(tree, isStat)
     } else*/ {
+      /* #3013 `qual` can be `this.$outer()` in some cases since Scala 2.12,
+       * so we call `genExpr(qual)`, not just `genThis()`.
+       */
       val superCall = genApplyMethodStatically(
-          genThis()(sup.span), sym, genActualArgs(sym, args))
+          genExpr(qual), sym, genActualArgs(sym, args))
 
       // Initialize the module instance just after the super constructor call.
       if (isStaticModule(currentClassSym) && !isModuleInitialized &&

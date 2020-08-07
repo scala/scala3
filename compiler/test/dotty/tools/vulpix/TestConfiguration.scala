@@ -8,7 +8,8 @@ object TestConfiguration {
 
   val noCheckOptions = Array(
     "-pagewidth", "120",
-    "-color:never"
+    "-color:never",
+    "-target", defaultTarget
   )
 
   val checkOptions = Array(
@@ -76,4 +77,11 @@ object TestConfiguration {
 
   /** Enables explicit nulls */
   val explicitNullsOptions = defaultOptions and "-Yexplicit-nulls"
+
+  /** Default target of the generated class files */
+  private def defaultTarget: String = {
+    import scala.util.Properties.isJavaAtLeast
+
+    if isJavaAtLeast("9") then "jvm-9" else "jvm-1.8"
+  }
 }

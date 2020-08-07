@@ -35,8 +35,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options.") withAbbreviation "--help"
   val color: Setting[String] = ChoiceSetting("-color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/) withAbbreviation "--color"
   val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "3.1", "3.0-migration", "3.1-migration"), "3.0").withAbbreviation("--source")
-  val target: Setting[String] = ChoiceSetting("-target", "target", "Target platform for object files. All JVM 1.5 targets are deprecated.",
-    List("jvm-1.5", "jvm-1.5-fjbg", "jvm-1.5-asm", "jvm-1.6", "jvm-1.7", "jvm-1.8", "msil"), "jvm-1.8") withAbbreviation "--target"
+  val target: Setting[String] = ChoiceSetting("-target", "target", "Target platform for object files.", List("jvm-1.8", "jvm-9"), "jvm-1.8") withAbbreviation "--target"
   val scalajs: Setting[Boolean] = BooleanSetting("-scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).") withAbbreviation "--scalajs"
   val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.") withAbbreviation "--unchecked"
   val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.") withAbbreviation "--unique-id"

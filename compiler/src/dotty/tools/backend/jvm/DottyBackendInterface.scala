@@ -31,7 +31,7 @@ import tpd._
 
 import scala.tools.asm
 import StdNames.{nme, str}
-import NameKinds.{DefaultGetterName, ExpandedName}
+import NameKinds.{DefaultGetterName, ExpandedName, LazyBitMapName}
 import Names.TermName
 import Annotations.Annotation
 import Names.Name
@@ -131,8 +131,19 @@ object DottyBackendInterface {
 
       def isStaticConstructor(using Context): Boolean = (sym.isStaticMember && sym.isClassConstructor) || (sym.name eq nme.STATIC_CONSTRUCTOR)
 
+      /** Fields of static modules will be static at backend
+       *
+       *  Note that lazy val encoding assumes bitmap fields are non-static.
+       *  See also `genPlainClass` in `BCodeSkelBuilder.scala`.
+       *
+       *  TODO: remove the special handing of `LazyBitMapName` once we swtich to
+       *        the new lazy val encoding: https://github.com/lampepfl/dotty/issues/7140
+       */
+      def isStaticModuleField(using Context): Boolean =
+        sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName)
+
       def isStaticMember(using Context): Boolean = (sym ne NoSymbol) &&
-        (sym.is(JavaStatic) || sym.isScalaStatic)
+        (sym.is(JavaStatic) || sym.isScalaStatic || sym.isStaticModuleField)
         // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
 
       /**

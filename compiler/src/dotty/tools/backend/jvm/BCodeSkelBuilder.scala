@@ -10,15 +10,19 @@ import scala.tools.asm.util.{TraceMethodVisitor, ASMifier}
 import java.io.PrintWriter
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.TreeTypeMap
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Annotations.Annotation
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.StdNames.{nme, str}
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types.{MethodType, Type}
+import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.report
+import dotty.tools.dotc.transform.SymUtils._
 
 /*
  *
@@ -93,12 +97,12 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd: TypeDef) = cd match {
-      case TypeDef(_, impl) =>
+    def genPlainClass(cd0: TypeDef) = cd0 match {
+      case TypeDef(_, impl: Template) =>
       assert(cnode == null, "GenBCode detected nested methods.")
       innerClassBufferASM.clear()
 
-      claszSymbol       = cd.symbol
+      claszSymbol       = cd0.symbol
       isCZParcelable    = isAndroidParcelableClass(claszSymbol)
       isCZStaticModule  = claszSymbol.isStaticModuleClass
       thisName          = internalName(claszSymbol)
@@ -107,14 +111,96 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       initJClass(cnode)
 
-      val methodSymbols = for (f <- cd.symbol.info.decls.toList if f.is(Method) && f.isTerm && !f.is(Module)) yield f
-      val hasStaticCtor = methodSymbols exists (_.isStaticConstructor)
-      if (!hasStaticCtor) {
-        // but needs one ...
-        if (isCZStaticModule || isCZParcelable) {
-          fabricateStaticInit()
+      val cd = if (isCZStaticModule) {
+        // Move statements from the primary constructor following the superclass constructor call to
+        // a newly synthesised tree representing the "<clinit>", which also assigns the MODULE$ field.
+        // Because the assigments to both the module instance fields, and the fields of the module itself
+        // are in the <clinit>, these fields can be static + final.
+
+        // Should we do this transformation earlier, say in Constructors? Or would that just cause
+        // pain for scala-{js, native}?
+        //
+        // @sjrd (https://github.com/lampepfl/dotty/pull/9181#discussion_r457458205):
+        // moving that before the back-end would make things significantly more complicated for
+        // Scala.js and Native. Both have a first-class concept of ModuleClass, and encode the
+        // singleton pattern of MODULE$ in a completely different way. In the Scala.js IR, there
+        // even isn't anything that corresponds to MODULE$ per se.
+        //
+        // So if you move this before the back-end, then Scala.js and Scala Native will have to
+        // reverse all the effects of this transformation, which would be counter-productive.
+
+
+        // TODO: remove `!f.name.is(LazyBitMapName)` once we change lazy val encoding
+        //       https://github.com/lampepfl/dotty/issues/7140
+        //
+        // Lazy val encoding assumes bitmap fields are non-static
+        //
+        // See `tests/run/given-var.scala`
+        //
+
+        claszSymbol.info.decls.foreach { f =>
+          if f.isField && !f.name.is(LazyBitMapName) then
+            f.setFlag(JavaStatic)
         }
-      }
+
+        val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.isStaticConstructor)
+
+        val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats)
+        val clInitSymbol: TermSymbol =
+          if (clinits.nonEmpty) clinits.head.symbol.asTerm
+          else newSymbol(
+            claszSymbol,
+            nme.STATIC_CONSTRUCTOR,
+            JavaStatic | Method,
+            MethodType(Nil)(_ => Nil, _ => defn.UnitType),
+            privateWithin = NoSymbol,
+            coord = claszSymbol.coord
+          )
+
+        val moduleField = newSymbol(
+            claszSymbol,
+            str.MODULE_INSTANCE_FIELD.toTermName,
+            JavaStatic | Final,
+            claszSymbol.typeRef,
+            privateWithin = NoSymbol,
+            coord = claszSymbol.coord
+          ).entered
+
+        val thisMap = new TreeMap {
+          override def transform(tree: Tree)(using Context) = {
+            val tp = tree.tpe.substThis(claszSymbol.asClass, claszSymbol.sourceModule.termRef)
+            tree.withType(tp) match {
+              case tree: This if tree.symbol == claszSymbol =>
+                ref(claszSymbol.sourceModule)
+              case tree =>
+                super.transform(tree)
+            }
+          }
+        }
+
+        def rewire(stat: Tree) = thisMap.transform(stat).changeOwner(claszSymbol.primaryConstructor, clInitSymbol)
+
+        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToArgs(Nil)
+        val assignModuleField = Assign(ref(moduleField), callConstructor)
+        val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
+        val clinit = clinits match {
+          case (ddef: DefDef) :: _ =>
+            cpy.DefDef(ddef)(rhs = Block(ddef.rhs :: assignModuleField :: remainingConstrStatsSubst, unitLiteral))
+          case _ =>
+            DefDef(clInitSymbol, Block(assignModuleField :: remainingConstrStatsSubst, unitLiteral))
+        }
+
+        val constr2 = {
+          val rhs = Block(uptoSuperStats, impl.constr.rhs.asInstanceOf[Block].expr)
+          cpy.DefDef(impl.constr)(rhs = rhs)
+        }
+
+        val impl2 = cpy.Template(impl)(constr = constr2, body = clinit :: body)
+        cpy.TypeDef(cd0)(rhs = impl2)
+      } else cd0
+
+      val hasStaticCtor = isCZStaticModule || cd.symbol.info.decls.exists(_.isStaticConstructor)
+      if (!hasStaticCtor && isCZParcelable) fabricateStaticInitAndroid()
 
       val optSerial: Option[Long] =
         claszSymbol.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
@@ -134,7 +220,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       addClassFields()
 
       innerClassBufferASM ++= classBTypeFromSymbol(claszSymbol).info.memberClasses
-      gen(impl)
+      gen(cd.rhs)
       addInnerClassesASM(cnode, innerClassBufferASM.toList)
 
       if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
@@ -179,12 +265,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       cnode.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
       emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
 
-      if (isCZStaticModule || isCZParcelable) {
-
-        if (isCZStaticModule) { addModuleInstanceField() }
-
-      } else {
-
+      if (!isCZStaticModule && !isCZParcelable) {
         val skipStaticForwarders = (claszSymbol.isInterface || claszSymbol.is(Module) || ctx.settings.XnoForwarders.value)
         if (!skipStaticForwarders) {
           val lmoc = claszSymbol.companionModule
@@ -206,24 +287,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     } // end of method initJClass
 
     /*
-     * can-multi-thread
-     */
-    private def addModuleInstanceField(): Unit = {
-      val fv =
-        cnode.visitField(GenBCodeOps.PublicStaticFinal, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
-                         str.MODULE_INSTANCE_FIELD,
-                         "L" + thisName + ";",
-                         null, // no java-generic-signature
-                         null  // no initial value
-        )
-
-      fv.visitEnd()
-    }
-
-    /*
      * must-single-thread
      */
-    private def fabricateStaticInit(): Unit = {
+    private def fabricateStaticInitAndroid(): Unit = {
 
       val clinit: asm.MethodVisitor = cnode.visitMethod(
         GenBCodeOps.PublicStatic, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
@@ -234,15 +300,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       )
       clinit.visitCode()
 
-      /* "legacy static initialization" */
-      if (isCZStaticModule) {
-        clinit.visitTypeInsn(asm.Opcodes.NEW, thisName)
-        clinit.visitMethodInsn(asm.Opcodes.INVOKESPECIAL,
-                               thisName, INSTANCE_CONSTRUCTOR_NAME, "()V", false)
-      }
-      if (isCZParcelable) { legacyAddCreatorCode(clinit, cnode, thisName) }
-      clinit.visitInsn(asm.Opcodes.RETURN)
+      legacyAddCreatorCode(clinit, cnode, thisName)
 
+      clinit.visitInsn(asm.Opcodes.RETURN)
       clinit.visitMaxs(0, 0) // just to follow protocol, dummy arguments
       clinit.visitEnd()
     }
@@ -281,8 +341,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var isMethSymStaticCtor        = false
     var returnType: BType          = null
     var methSymbol: Symbol         = null
-    // in GenASM this is local to genCode(), ie should get false whenever a new method is emitted (including fabricated ones eg addStaticInit())
-    var isModuleInitialized        = false
     // used by genLoadTry() and genSynchronized()
     var earlyReturnVar: Symbol     = null
     var shouldEmitCleanup          = false
@@ -481,7 +539,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(varsInScope == null, "Unbalanced entering/exiting of GenBCode's genBlock().")
       // check previous invocation of genDefDef unregistered as many cleanups as it registered.
       assert(cleanups == Nil, "Previous invocation of genDefDef didn't unregister as many cleanups as it registered.")
-      isModuleInitialized = false
       earlyReturnVar      = null
       shouldEmitCleanup   = false
 
@@ -679,7 +736,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /*
      *  must-single-thread
      *
-     *  TODO document, explain interplay with `fabricateStaticInit()`
+     *  TODO document, explain interplay with `fabricateStaticInitAndroid()`
      */
     private def appendToStaticCtor(dd: DefDef): Unit = {
 
@@ -697,21 +754,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       var rets: List[asm.tree.AbstractInsnNode] = Nil
       mnode foreachInsn { i => if (i.getOpcode() == asm.Opcodes.RETURN) { rets ::= i  } }
       if (rets.isEmpty) { return }
-
-      var insnModA: asm.tree.AbstractInsnNode = null
-      var insnModB: asm.tree.AbstractInsnNode = null
-      // call object's private ctor from static ctor
-      if (isCZStaticModule) {
-        // NEW `moduleName`
-        val className = internalName(methSymbol.enclosingClass)
-        insnModA      = new asm.tree.TypeInsnNode(asm.Opcodes.NEW, className)
-        // INVOKESPECIAL <init>
-        val callee = methSymbol.enclosingClass.primaryConstructor
-        val jname  = callee.javaSimpleName
-        val jowner = internalName(callee.owner)
-        val jtype  = asmMethodType(callee).descriptor
-        insnModB   = new asm.tree.MethodInsnNode(asm.Opcodes.INVOKESPECIAL, jowner, jname, jtype, false)
-      }
 
       var insnParcA: asm.tree.AbstractInsnNode = null
       var insnParcB: asm.tree.AbstractInsnNode = null
@@ -738,7 +780,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       // insert a few instructions for initialization before each return instruction
       for(r <- rets) {
-        insertBefore(r, insnModA,  insnModB)
         insertBefore(r, insnParcA, insnParcB)
       }
 
