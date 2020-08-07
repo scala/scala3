@@ -1490,6 +1490,12 @@ import ast.tpd
           |"""
   }
 
+  class CannotExtendJavaEnum(sym: Symbol)(using Context)
+    extends SyntaxMsg(CannotExtendJavaEnumID) {
+      def msg = em"""$sym cannot extend ${hl("java.lang.Enum")}: only enums defined with the ${hl("enum")} syntax can"""
+      def explain = ""
+    }
+
   class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(using Context)
     extends SyntaxMsg(CannotHaveSameNameAsID) {
     import CannotHaveSameNameAs._

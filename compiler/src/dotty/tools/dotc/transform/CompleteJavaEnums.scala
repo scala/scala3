@@ -73,7 +73,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    */
   private def addEnumConstrArgs(targetCls: Symbol, parents: List[Tree], args: List[Tree])(using Context): List[Tree] =
     parents.map {
-      case app @ Apply(fn, args0) if fn.symbol.owner == targetCls => cpy.Apply(app)(fn, args0 ++ args)
+      case app @ Apply(fn, args0) if fn.symbol.owner == targetCls =>
+        if args0.nonEmpty && targetCls == defn.JavaEnumClass then
+          report.error("the constructor of java.lang.Enum cannot be called explicitly", app.sourcePos)
+        cpy.Apply(app)(fn, args0 ++ args)
       case p => p
     }
 

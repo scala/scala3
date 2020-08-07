@@ -164,7 +164,8 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     UnexpectedPatternForSummonFromID,
     AnonymousInstanceCannotBeEmptyID,
     TypeSpliceInValPatternID,
-    ModifierNotAllowedForDefinitionID
+    ModifierNotAllowedForDefinitionID,
+    CannotExtendJavaEnumID
 
   def errorNumber = ordinal - 2
 }
