@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 source $(dirname $0)/cmdTestsCommon.inc.sh
 
 # check that benchmarks can run
