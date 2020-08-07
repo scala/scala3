@@ -272,8 +272,10 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     override def unapply(x: Any): Option[Term] = x match
       case _ if Unapply_TypeTest.unapply(x).isDefined => None
       case _: tpd.PatternTree @unchecked => None
-      case x: tpd.SeqLiteral @unchecked => Some(x)
       case x: tpd.Tree @unchecked if x.isTerm => Some(x)
+      case x: tpd.SeqLiteral @unchecked => Some(x)
+      case x: tpd.Inlined @unchecked => Some(x)
+      case x: tpd.NamedArg @unchecked => Some(x)
       case _ => None
   }
 
