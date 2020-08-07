@@ -488,7 +488,28 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       /** Shows the tree as fully typed source code */
       def showWith(syntaxHighlight: SyntaxHighlight)(using ctx: Context): String =
         new SourceCodePrinter[self.type](self)(syntaxHighlight).showTree(tree)
+
+      /** Does this tree represent a valid expression? */
+      def isExpr(using ctx: Context): Boolean =
+        tree match
+          case tree: Term =>
+            tree.tpe.widen match
+              case _: MethodType | _: PolyType => false
+              case _ => true
+          case _ => false
+
     end extension
+
+
+    /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
+    extension [T](tree: Tree)
+      def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T] =
+        if tree.isExpr then
+          new scala.internal.quoted.Expr(tree, internal.compilerId).asExprOf[T]
+        else tree match
+          case tree: Term => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
+          case _ => throw new Exception("Expected a Term but was: " + tree)
+
   end Tree
 
   given (using ctx: Context) as TypeTest[Tree, PackageClause] = internal.PackageClause_TypeTest
@@ -655,15 +676,13 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
       def seal(using ctx: Context): scala.quoted.Expr[Any] =
-        sealOpt.getOrElse {
-          throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
-        }
+        if self.isExpr then new scala.internal.quoted.Expr(self, internal.compilerId)
+        else throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression */
       def sealOpt(using ctx: Context): Option[scala.quoted.Expr[Any]] =
-        self.tpe.widen match
-          case _: MethodType | _: PolyType => None
-          case _ => Some(new scala.internal.quoted.Expr(self, internal.compilerId))
+        if self.isExpr then Some(new scala.internal.quoted.Expr(self, internal.compilerId))
+        else None
 
       /** Type of this term */
       def tpe(using ctx: Context): Type = internal.Term_tpe(self)
