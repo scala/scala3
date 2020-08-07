@@ -39,11 +39,11 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  The definitions (DefDef) for these symbols are created by transformDefDef.
    */
   override def transform(ref: SingleDenotation)(using Context): SingleDenotation =
-    def transformVarArgs(sym: Symbol, isJavaOverride: Boolean): Unit =
+    def transformVarArgs(sym: Symbol, isJavaVarargsOverride: Boolean): Unit =
       val hasAnnotation = hasVarargsAnnotation(sym)
       val hasRepeatedParam = hasRepeatedParams(sym)
       if hasRepeatedParam then
-        if isJavaOverride || hasAnnotation || parentHasAnnotation(sym) then
+        if isJavaVarargsOverride || hasAnnotation || parentHasAnnotation(sym) then
           // java varargs are more restrictive than scala's
           // see https://github.com/scala/bug/issues/11714
           val validJava = isValidJavaVarArgs(sym.info)
@@ -54,17 +54,17 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
                       |""".stripMargin,
               sym.sourcePos)
           else
-            addVarArgsForwarder(sym, isJavaOverride, hasAnnotation)
+            addVarArgsForwarder(sym, isJavaVarargsOverride, hasAnnotation)
       else if hasAnnotation
         report.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
     end
 
     super.transform(ref) match
-      case ref1: SymDenotation if ref1.is(Method) =>
+      case ref1: SymDenotation if ref1.is(Method, butNot = JavaDefined) =>
         val sym = ref1.symbol
-        val isJavaOverride = (ref1 ne ref) && overridesJava(sym) // (ref1 ne ref) avoids cycles
-        transformVarArgs(sym, isJavaOverride)
-        if isJavaOverride then
+        val isJavaVarargsOverride = (ref1 ne ref) && overridesJava(sym)
+        transformVarArgs(sym, isJavaVarargsOverride)
+        if isJavaVarargsOverride then
           // This method won't override the corresponding Java method at the end of this phase,
           // only the forwarder added by `addVarArgsForwarder` will.
           ref1.copySymDenotation(initFlags = ref1.flags &~ Override)
@@ -267,7 +267,6 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       return
 
     val classInfo = owner.info
-    val decls = classInfo.decls.cloneScope
 
     // For simplicity we always set the varargs flag,
     // although it's not strictly necessary for overrides.
@@ -280,22 +279,21 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         info = toJavaVarArgs(original.info)
       ).asTerm
 
-    // Find a method that would conflict with the forwarder if the latter existed.
+    // Find methods that would conflict with the forwarder if the latter existed.
     // This needs to be done at thisPhase so that parent @varargs don't conflict.
-    val conflict =
-      classInfo.member(original.name).alternatives.find { s =>
-        s.matches(forwarder) &&
-        !(isBridge && s.asSymDenotation.is(JavaDefined))
+    val conflicts =
+      classInfo.member(original.name).altsWith { s =>
+        s.matches(forwarder) && !(isBridge && s.is(JavaDefined))
       }
-    conflict match
-      case Some(conflict) =>
+    conflicts match
+      case conflict :: _ =>
         val src =
           if hasAnnotation then "@varargs"
           else if isBridge then "overriding a java varargs method"
           else "@varargs (on overriden method)"
         report.error(s"$src produces a forwarder method that conflicts with ${conflict.showDcl}", original.sourcePos)
-      case None =>
-        decls.enter(forwarder.enteredAfter(thisPhase))
+      case Nil =>
+        forwarder.enteredAfter(thisPhase)
 
   /** Convert type from Scala to Java varargs method */
   private def toJavaVarArgs(tp: Type)(using Context): Type = tp match
