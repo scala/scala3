@@ -35,6 +35,7 @@ def test(using QuoteContext) = {
   Expr(1.0f)
   Expr(1.0)
   Expr("abc")
+  Expr(StringContext("a", "b", "c"))
 
   val xs: Expr[List[Int]] = Expr(1 :: 2 :: 3 :: Nil)
 }
