@@ -17,7 +17,7 @@ import scala.util.{Try, Failure, Success}
 import config.{ScalaVersion, NoScalaVersion}
 import Decorators._
 import typer.ErrorReporting._
-import config.Feature.warnOnMigration
+import config.Feature.{warnOnMigration, migrateTo3}
 import reporting._
 
 object RefChecks {
@@ -106,8 +106,13 @@ object RefChecks {
       for (reqd <- cinfo.cls.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
 
-      if !cls.is(Enum) && parents.exists(_.classSymbol == defn.JavaEnumClass) then
+      // Prevent wrong `extends` of java.lang.Enum
+      if !migrateTo3 &&
+         !cls.isOneOf(Enum | Trait) &&
+         parents.exists(_.classSymbol == defn.JavaEnumClass)
+      then
         report.error(CannotExtendJavaEnum(cls), cls.sourcePos)
+
     case _ =>
   }
 
