@@ -34,3 +34,9 @@ trait SyntheticsSupport:
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     sym.is(dotc.core.Flags.Extension)
   }
+
+  def getExtendedSymbol(d: Symbol): Option[ValDef] = 
+    Option.when(hackIsExtension(self.reflect)(d))(
+      if(d.name.endsWith(":")) d.tree.asInstanceOf[DefDef].paramss(1)(0)
+      else d.tree.asInstanceOf[DefDef].paramss(0)(0)
+    )

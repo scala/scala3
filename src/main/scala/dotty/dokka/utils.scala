@@ -35,12 +35,12 @@ extension on (builder: PageContentBuilder):
 /* Need to do it this way, because Dotty seems to not support named parameters of extensions and I couldn't change kind */
 def group(builder: PageContentBuilder#DocumentableContentBuilder)(
     func: Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit],
-    dri: JSet[DRI] = builder.getMainDRI,
-    sourceSets: JSet[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData,
+    dri: Set[DRI] = builder.getMainDRI.asScala.toSet,
+    sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData.asScala.toSet,
     kind: Kind = ContentKind.Main,
-    styles: JSet[Style] = builder.getMainStyles,
+    styles: Set[Style] = builder.getMainStyles.asScala.toSet,
     extra: PropertyContainer[ContentNode] = builder.getMainExtra
-): Unit = builder.group(dri, sourceSets, kind, styles, extra, a => func(a))
+): Unit = builder.group(dri.asJava, sourceSets.asJava, kind, styles.asJava, extra, a => func(a))
 
 def sourceSetDependentHint(builder: PageContentBuilder#DocumentableContentBuilder)(
     func: Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit],
@@ -50,6 +50,49 @@ def sourceSetDependentHint(builder: PageContentBuilder#DocumentableContentBuilde
     styles: JSet[Style] = builder.getMainStyles,
     extra: PropertyContainer[ContentNode] = builder.getMainExtra
 ): Unit = builder.sourceSetDependentHint(dri, sourceSets, kind, styles, extra, a => func(a))
+
+def header(builder: PageContentBuilder#DocumentableContentBuilder, level: Int, text: String)(
+    func: Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit] = builder => kotlin.Unit.INSTANCE,
+    dri: JSet[DRI] = builder.getMainDRI,
+    sourceSets: JSet[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData,
+    kind: Kind = ContentKind.Main,
+    styles: JSet[Style] = builder.getMainStyles,
+    extra: PropertyContainer[ContentNode] = builder.getMainExtra
+): Unit = builder.header(level, text, kind, sourceSets, styles, extra, a => func(a))
+
+def text(builder: PageContentBuilder#DocumentableContentBuilder, text: String)(
+    sourceSets: JSet[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData,
+    kind: Kind = ContentKind.Main,
+    styles: JSet[Style] = builder.getMainStyles,
+    extra: PropertyContainer[ContentNode] = builder.getMainExtra
+) = builder.text(text, kind, sourceSets, styles, extra)
+
+def link(builder: PageContentBuilder#DocumentableContentBuilder, text: String, address: DRI)(
+    kind: Kind = ContentKind.Main,
+    sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData.asScala.toSet,
+    styles: Set[Style] = builder.getMainStyles.asScala.toSet,
+    extra: PropertyContainer[ContentNode] = builder.getMainExtra
+) = {
+    builder.unaryPlus(linkNode(builder, text, address)(sourceSets = sourceSets, styles = styles, extra = extra))
+}
+
+def linkNode(
+    builder: PageContentBuilder#DocumentableContentBuilder,
+    text: String, 
+    address: DRI
+)(
+    kind: Kind = ContentKind.Main,
+    sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData.asScala.toSet,
+    styles: Set[Style] = builder.getMainStyles.asScala.toSet,
+    extra: PropertyContainer[ContentNode] = builder.getMainExtra
+) = ContentDRILink(
+        List(ContentText(text, DCI(builder.getMainDRI, kind), sourceSets.asJava, styles.asJava, extra)).asJava,
+        address,
+        DCI(builder.getMainDRI, kind),
+        sourceSets.asJava,
+        styles.asJava,
+        extra
+    )
 
 extension on(builder: PageContentBuilder$DocumentableContentBuilder):
 

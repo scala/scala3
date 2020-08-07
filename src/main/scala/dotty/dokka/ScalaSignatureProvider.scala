@@ -23,7 +23,7 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
         tokens.filter(_.trim.nonEmpty).mkString(""," "," ")
 
     override def signature(documentable: Documentable) = documentable match {
-        case extension: DFunction if extension.get(MethodExtension).isExtension =>
+        case extension: DFunction if extension.get(MethodExtension).extensionInfo.isDefined =>
             List(extensionSignature(extension)).asJava
         case method: DFunction =>
             List(methodSignature(method)).asJava
@@ -61,16 +61,21 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
 
     private def extensionSignature(extension: DFunction): ContentNode =
         content(extension){ builder =>
-            utils.annotationsBlock(builder, extension)
-            builder.modifiersAndVisibility(extension, "def")
+            val grouped = extension.get(MethodExtension).extensionInfo.map(_.isGrouped).getOrElse(false)
             val extendedSymbol = if (extension.isRightAssociative()) {
                 extension.getParameters.asScala(extension.get(MethodExtension).parametersListSizes(0))
             } else {
                 extension.getParameters.asScala(0)
             }
-            builder.addText(s"(${extendedSymbol.getName}: ")
-            builder.typeSignature(extendedSymbol.getType)
-            builder.addText(").")
+
+            utils.annotationsBlock(builder, extension)
+            if(!grouped){
+                builder.addText("extension ")
+                builder.addText(s" (${extendedSymbol.getName}: ")
+                builder.typeSignature(extendedSymbol.getType)
+                builder.addText(") ")
+            }
+            builder.modifiersAndVisibility(extension, "def")
             builder.addLink(extension.getName, extension.getDri)
             builder.generics(extension)  
             builder.functionParameters(extension)
@@ -122,10 +127,17 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
         }    
 
     private def parameterSignature(parameter: DParameter): ContentNode = 
+        val ext = parameter.get(ParameterExtension)
         content(parameter){ builder =>
+            if(ext.isGrouped){
+                builder.addText("extension (")
+            } else {
+                builder.addText("(")
+            }
             builder.addText(parameter.getName)
             builder.addText(": ")
             builder.typeSignature(parameter.getType)
+            builder.addText(")")
         }
 
     extension on(f: DFunction):
@@ -188,7 +200,7 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
             paramLists.foldLeft(0){ (from, size) =>
                 val toIndex = from + size
                 if from == toIndex then builder.addText("()")
-                else if !methodExtension.isExtension || from != receiverPos then
+                else if !methodExtension.extensionInfo.isDefined || from != receiverPos then
                     builder.addList(method.getParameters.subList(from, toIndex), "(", ")"){ param =>
                     utils.annotationsInline(builder, param)
                     // builder.addText("TODO modifiers")

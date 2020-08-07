@@ -21,12 +21,20 @@ trait ClassLikeSupport:
 
     val (extensions, methods) = classDef.symbol.classMethods.filterNot(isSyntheticFunc).partition(isExtensionMethod(_))
 
-    val parsedExtensions = extensions
-      .map(parseMethod(_, isExtension = true))
+    
+    val parsedExtensions = extensions.map(e => (getExtendedSymbol(e).get, e) ).groupBy{
+      case (arg, e) => arg.symbol.pos
+    }.map{
+      case (pos, list) => if(list.size == 1) {
+        ExtensionGroup(parseArgument(list(0)._1, _ => "", true, false), List(parseMethod(list(0)._2, extInfo = Some(ExtensionInformation(false)))))
+      } else {
+        ExtensionGroup(parseArgument(list(0)._1, _ => "", true, true), list.map(f => parseMethod(f._2, extInfo = Some(ExtensionInformation(true)))))
+      }
+    }.toList
 
     val constuctors = classDef.body.collect {
       case d: DefDef if d.name == "<init>" && classDef.constructor.symbol != d.symbol => 
-        parseMethod(d.symbol, isExtension = false)
+        parseMethod(d.symbol)
     }
 
     val nested = classDef.body.collect {
@@ -50,7 +58,7 @@ trait ClassLikeSupport:
 
     val constructorMethod = 
       if kind == Kind.Object then None 
-      else Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), paramMod, isExtension = false))
+      else Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), paramMod))
 
     val typeParams = classDef.body.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam)
 
@@ -76,7 +84,7 @@ trait ClassLikeSupport:
         classDef.symbol.dri,
         name,
         /*constuctors =*/ constuctors.asJava,
-        /*methods =*/ methods.map(parseMethod(_, isExtension = false)).asJava,
+        /*methods =*/ methods.map(parseMethod(_)).asJava,
         /*fields =*/ (typeDefs.map(parseTypeDef) ++ valDefs.map(parseValDef)).asJava,
         /*nested =*/ nested.asJava,
         /*sources =*/ classDef.symbol.source,
@@ -89,16 +97,15 @@ trait ClassLikeSupport:
         /*modifier =*/ sourceSet.asMap(modifier),
         inspector.sourceSet.toSet,
         PropertyContainer.Companion.empty()
-          .plus(ClasslikeExtension(parents, constructorMethod, kind, companion))
+          .plus(ClasslikeExtension(parents, constructorMethod, kind, companion, parsedExtensions))
           .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
-          .plus(CallableExtensions(parsedExtensions.toSet.asJava))
       )
 
-  def parseMethod(methodSymbol: Symbol, emptyParamsList: Boolean = false, paramPrefix: Symbol => String = _ => "", isExtension: Boolean): DFunction =
+  def parseMethod(methodSymbol: Symbol, emptyParamsList: Boolean = false, paramPrefix: Symbol => String = _ => "", extInfo: Option[ExtensionInformation] = None): DFunction =
     val method = methodSymbol.tree.asInstanceOf[DefDef]
     val paramLists = if emptyParamsList then Nil else method.paramss
     val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.typeParams
-    val name =  if methodSymbol.isClassConstructor then "this" else if isExtension then methodSymbol.name.stripPrefix("extension_") else methodSymbol.name
+    val name =  if methodSymbol.isClassConstructor then "this" else if extInfo.isDefined then methodSymbol.name.stripPrefix("extension_") else methodSymbol.name
    
     new DFunction(
       methodSymbol.dri,
@@ -115,11 +122,11 @@ trait ClassLikeSupport:
       /*modifier =*/ sourceSet.asMap(methodSymbol.getModifier()),
       sourceSet.toSet(),
       PropertyContainer.Companion.empty() 
-        plus MethodExtension(paramLists.map(_.size), isExtension)
+        plus MethodExtension(paramLists.map(_.size), extInfo)
         plus AdditionalModifiers(sourceSet.asMap(methodSymbol.getExtraModifiers().asJava))
     )
 
-  def parseArgument(argument: ValDef, prefix: Symbol => String): DParameter = 
+  def parseArgument(argument: ValDef, prefix: Symbol => String, isExtendedSymbol: Boolean = false, isGrouped: Boolean = false): DParameter = 
     new DParameter(
       argument.symbol.dri,
       prefix(argument.symbol) + argument.symbol.name,
@@ -128,6 +135,7 @@ trait ClassLikeSupport:
       argument.tpt.dokkaType,
       sourceSet.toSet(),
       PropertyContainer.Companion.empty()
+        .plus(ParameterExtension(isExtendedSymbol, isGrouped))
     )
     
   def parseTypeArgument(argument: TypeDef): DTypeParameter = 

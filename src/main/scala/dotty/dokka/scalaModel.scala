@@ -6,11 +6,18 @@ import collection.JavaConverters._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._  
+
+case class ExtensionInformation(val isGrouped: Boolean)
    
-case class MethodExtension(parametersListSizes: Seq[Int], isExtension: Boolean) extends ExtraProperty[DFunction]:
+case class MethodExtension(parametersListSizes: Seq[Int], extensionInfo: Option[ExtensionInformation]) extends ExtraProperty[DFunction]:
   override def getKey = MethodExtension
 
 object MethodExtension extends BaseKey[DFunction, MethodExtension]
+
+case class ParameterExtension(isExtendedSymbol: Boolean, isGrouped: Boolean) extends ExtraProperty[DParameter]:
+  override def getKey = ParameterExtension
+
+object ParameterExtension extends BaseKey[DParameter, ParameterExtension]
 
 enum Kind(val name: String){
   case Class extends Kind("class")
@@ -18,7 +25,15 @@ enum Kind(val name: String){
   case Trait extends Kind("trait")
 }
 
-case class ClasslikeExtension(parentTypes: List[Bound], constructor: Option[DFunction], kind: Kind, companion: Option[DClasslike]) extends ExtraProperty[DClasslike]:
+case class ExtensionGroup(val extendedSymbol: DParameter, val extensions: List[DFunction])
+
+case class ClasslikeExtension(
+  parentTypes: List[Bound], 
+  constructor: Option[DFunction], 
+  kind: Kind, 
+  companion: Option[DClasslike], 
+  extensions: List[ExtensionGroup]
+) extends ExtraProperty[DClasslike]:
   override def getKey = ClasslikeExtension
 
 object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]
@@ -51,3 +66,9 @@ enum ScalaModifier(val name: String) extends org.jetbrains.dokka.model.Modifier(
   case Abstract extends ScalaModifier("abstract")
   case Final extends ScalaModifier("final")
   case Empty extends ScalaModifier("")
+  
+extension (f: DFunction):
+  def isRightAssociative(): Boolean = f.getName.endsWith(":")
+  def getExtendedSymbol(): Option[DParameter] = Option.when(f.get(MethodExtension).extensionInfo.isDefined)(
+    f.getParameters.asScala(if f.isRightAssociative() then f.get(MethodExtension).parametersListSizes(0) else 0)
+  )
