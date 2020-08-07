@@ -41,7 +41,6 @@ abstract class Expr[+T] private[scala] {
     !scala.internal.quoted.Expr.unapply[EmptyTuple, EmptyTuple](this)(using that, false, qctx).isEmpty
 
   /** Checked cast to a `quoted.Expr[U]` */
-  @deprecated("Replaced with `asExprOf`", "0.27.0")
   def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = asExprOf[U]
 
   /** Convert to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
@@ -59,7 +58,6 @@ abstract class Expr[+T] private[scala] {
   }
 
   /** View this expression `quoted.Expr[T]` as a `Term` */
-  @deprecated("Replaced with `asTerm`", "0.27.0")
   def unseal(using qctx: QuoteContext): qctx.tasty.Term = asTerm
 
   /** View this expression `quoted.Expr[T]` as a `Term` */

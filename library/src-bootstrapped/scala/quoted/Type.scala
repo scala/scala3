@@ -16,7 +16,6 @@ abstract class Type[X <: AnyKind] private[scala] {
     this.asTypeTree.showWith(syntaxHighlight)
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
-  @deprecated("Replaced with `asExprOf`", "0.27.0")
   def unseal(using qctx: QuoteContext): qctx.tasty.TypeTree = asTypeTree
 
   /** View this expression `quoted.Type[T]` as a `qctx.tasty.TypeTree` */

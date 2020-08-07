@@ -675,14 +675,12 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     extension (self: Term):
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
-      @deprecated("Replaced with `asExpr` (or `asExprOf`)", "0.27.0")
       def seal(using ctx: Context): scala.quoted.Expr[Any] =
         sealOpt.getOrElse {
           throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
         }
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression */
-      @deprecated("Replaced with `isExpr` and `asExpr` (or `asExprOf`)", "0.27.0")
       def sealOpt(using ctx: Context): Option[scala.quoted.Expr[Any]] =
         self.tpe.widen match
           case _: MethodType | _: PolyType => None
@@ -1788,7 +1786,6 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     extension (self: Type):
 
       /** Convert `Type` to an `quoted.Type[_]` */
-      @deprecated("Replaced with `asQuotedType`", "0.27.0")
       def seal(using ctx: Context): scala.quoted.Type[_] =
         new scala.internal.quoted.Type(Inferred(self), internal.compilerId)
 
