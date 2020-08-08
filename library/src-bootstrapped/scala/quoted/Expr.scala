@@ -48,7 +48,6 @@ abstract class Expr[+T] private[scala] {
     val tree = this.unseal
     val expectedType = tp.unseal.tpe
     if (tree.tpe <:< expectedType)
-      this.asInstanceOf[scala.quoted.Expr[T]]
       this.asInstanceOf[scala.quoted.Expr[X]]
     else
       throw new scala.tasty.reflect.ExprCastError(
