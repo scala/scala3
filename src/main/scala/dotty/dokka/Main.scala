@@ -63,32 +63,42 @@ case class Args(
 case class DocConfiguration(tastyFiles: List[String], args: Args)
     
 object Main:
-  def main(args: Array[String]): Unit =
-    val rawArgs = new RawArgs
-    new CmdLineParser(rawArgs).parseArgument(args:_*)
-    val parsedArgs = rawArgs.toArgs
-
-    val (jars, dirs) = parsedArgs.tastyRoots.partition(_.isFile)
-    val extracted = jars.filter(_.exists()).map { jarFile =>
-        val tempFile = Files.createTempDirectory("jar-unzipped").toFile
-        IO.unzip(jarFile, tempFile)
-        tempFile
-    }
-
+  def main(args: Array[String]): Unit = 
     try 
-      def listTastyFiles(f: File): Seq[String] =
-        val (files, dirs) = f.listFiles().partition(_.isFile)
-        files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
+      val rawArgs = new RawArgs
+      new CmdLineParser(rawArgs).parseArgument(args:_*)
+      val parsedArgs = rawArgs.toArgs
+
+      val (jars, dirs) = parsedArgs.tastyRoots.partition(_.isFile)
+      val extracted = jars.filter(_.exists()).map { jarFile =>
+          val tempFile = Files.createTempDirectory("jar-unzipped").toFile
+          IO.unzip(jarFile, tempFile)
+          tempFile
+      }
+
+      try 
+        def listTastyFiles(f: File): Seq[String] =
+          val (files, dirs) = f.listFiles().partition(_.isFile)
+          files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
+        
+        val tastyFiles = (dirs ++ extracted).flatMap(listTastyFiles).toList
+
+        val config = DocConfiguration(tastyFiles, parsedArgs)
+
+        if (parsedArgs.output.exists()) IO.delete(parsedArgs.output)
+
+        // TODO #20 pass options, classpath etc.
+        new DokkaGenerator(new DottyDokkaConfig(config), DokkaConsoleLogger.INSTANCE).generate()
+
+        println("Done")
+        
       
-      val tastyFiles = (dirs ++ extracted).flatMap(listTastyFiles).toList
-
-      val config = DocConfiguration(tastyFiles, parsedArgs)
-
-      if (parsedArgs.output.exists()) IO.delete(parsedArgs.output)
-
-      // TODO #20 pass options, classpath etc.
-      new DokkaGenerator(new DottyDokkaConfig(config), DokkaConsoleLogger.INSTANCE).generate()
-
-      println("Done")
-    finally
-      extracted.foreach(IO.delete)  
+      finally
+        extracted.foreach(IO.delete)
+      // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
+      sys.exit(0)
+    catch 
+      case a: Exception =>
+        a.printStackTrace()
+        // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
+        sys.exit(1)     

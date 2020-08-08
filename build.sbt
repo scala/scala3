@@ -43,13 +43,13 @@ buildDokkaApi := {
 
 val generateSelfDocumentation = inputKey[Unit]("Generate example documentation")
 generateSelfDocumentation := {
-  run.in(Compile).fullInput(" -o output/self -t target/scala-0.26/classes").evaluated // TODO #35 proper sbt integration
+  run.in(Compile).fullInput(" -o output/self -t target/scala-0.26/classes -d documentation").evaluated // TODO #35 proper sbt integration
 }
 
 unmanagedJars in Compile += dokkaJavaApiJar
 
 // Uncomment to debug dokka processing (require to run debug in listen mode on 5005 port)
-// javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:5005,suspend=y"
+//javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:5005,suspend=y"
 
 fork.in(run) := true
 // There is a bug in dokka that prevents parallel tests withing the same jvm
@@ -57,6 +57,7 @@ fork.in(test) := true
 Test / parallelExecution := false
 
 scalacOptions in Compile += "-language:implicitConversions"
+
 
 // TODO #35 proper sbt integration
 val generateDottyLibDocumentation = taskKey[Unit]("Generate documentation for dotty lib")

@@ -8,3 +8,10 @@
     padding-top: 24px;
     height: 48px;
 }
+
+/* Do not make header float */
+header {
+    width: 100%;
+    position: static;
+    float: none;
+}
