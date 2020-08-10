@@ -13,22 +13,6 @@ abstract class Expr[+T] private[scala] {
   def showWith(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
     this.unseal.showWith(syntaxHighlight)
 
-  /** Return the unlifted value of this expression.
-   *
-   *  Returns `None` if the expression does not contain a value or contains side effects.
-   *  Otherwise returns the `Some` of the value.
-   */
-  final def unlift[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): Option[U] =
-    unlift(this)
-
-  /** Return the unlifted value of this expression.
-   *
-   *  Emits an error and throws if the expression does not contain a value or contains side effects.
-   *  Otherwise returns the value.
-   */
-  final def unliftOrError[U >: T](using qctx: QuoteContext, unlift: Unliftable[U]): U =
-    unlift(this).getOrElse(report.throwError(s"Expected a known value. \n\nThe value of: $show\ncould not be unlifted using $unlift", this))
-
   /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
    *  It does the equivalent of
    *  ```
@@ -63,6 +47,27 @@ abstract class Expr[+T] private[scala] {
 }
 
 object Expr {
+
+  extension [T](expr: Expr[T]):
+    /** Return the unlifted value of this expression.
+     *
+     *  Returns `None` if the expression does not contain a value or contains side effects.
+     *  Otherwise returns the `Some` of the value.
+     */
+    def unlift(using qctx: QuoteContext, unlift: Unliftable[T]): Option[T] =
+      unlift(expr)
+
+    /** Return the unlifted value of this expression.
+     *
+     *  Emits an error and throws if the expression does not contain a value or contains side effects.
+     *  Otherwise returns the value.
+     */
+    def unliftOrError(using qctx: QuoteContext, unlift: Unliftable[T]): T =
+      def reportError =
+        val msg = s"Expected a known value. \n\nThe value of: ${expr.show}\ncould not be unlifted using $unlift"
+        report.throwError(msg, expr)
+      unlift(expr).getOrElse(reportError)
+  end extension
 
   /** `e.betaReduce` returns an expression that is functionally equivalent to `e`,
    *   however if `e` is of the form `((y1, ..., yn) => e2)(x1, ..., xn)`

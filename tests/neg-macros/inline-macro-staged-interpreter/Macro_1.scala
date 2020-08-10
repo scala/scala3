@@ -17,7 +17,7 @@ object E {
   }
 
   object Value {
-    def unapply[T, U >: T](expr: Expr[T])(using Unliftable[U], QuoteContext): Option[U] = expr.unlift
+    def unapply[T](expr: Expr[T])(using Unliftable[T], QuoteContext): Option[T] = expr.unlift
   }
 }
 
