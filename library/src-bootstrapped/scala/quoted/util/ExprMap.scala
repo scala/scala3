@@ -102,22 +102,18 @@ trait ExprMap {
       }
 
       def transformTerm(tree: Term, tpe: Type)(using ctx: Context): Term =
-        tree match {
-        case _: Closure =>
-          tree
-        case _: Inlined =>
-          transformTermChildren(tree, tpe)
-        case _ =>
-          tree.tpe.widen match {
-            case _: MethodType | _: PolyType =>
-              transformTermChildren(tree, tpe)
-            case _ =>
-              type X
-              val expr = tree.seal.asInstanceOf[Expr[X]]
-              val t = tpe.seal.asInstanceOf[quoted.Type[X]]
-              transform(expr)(using qctx, t).unseal
-          }
-      }
+        tree match
+          case _: Closure =>
+            tree
+          case _: Inlined =>
+            transformTermChildren(tree, tpe)
+          case _ if tree.isExpr =>
+            type X
+            val expr = tree.seal.asInstanceOf[Expr[X]]
+            val t = tpe.seal.asInstanceOf[quoted.Type[X]]
+            transform(expr)(using qctx, t).unseal
+          case _ =>
+            transformTermChildren(tree, tpe)
 
       def transformTypeTree(tree: TypeTree)(using ctx: Context): TypeTree = tree
 
@@ -155,7 +151,7 @@ trait ExprMap {
         trees mapConserve (transformTypeCaseDef(_))
 
     }
-    new MapChildren().transformTermChildren(e.unseal, tpe.unseal.tpe).seal.cast[T] // Cast will only fail if this implementation has a bug
+    new MapChildren().transformTermChildren(e.unseal, tpe.unseal.tpe).asExprOf[T]
   }
 
 }

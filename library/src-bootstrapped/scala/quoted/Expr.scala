@@ -41,11 +41,14 @@ abstract class Expr[+T] private[scala] {
     !scala.internal.quoted.Expr.unapply[EmptyTuple, EmptyTuple](this)(using that, false, qctx).isEmpty
 
   /** Checked cast to a `quoted.Expr[U]` */
-  def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = {
+  def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = asExprOf[U]
+
+  /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
+  def asExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): scala.quoted.Expr[X] = {
     val tree = this.unseal
     val expectedType = tp.unseal.tpe
     if (tree.tpe <:< expectedType)
-      this.asInstanceOf[scala.quoted.Expr[U]]
+      this.asInstanceOf[scala.quoted.Expr[X]]
     else
       throw new scala.tasty.reflect.ExprCastError(
         s"""Expr: ${tree.show}
@@ -178,7 +181,7 @@ object Expr {
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
   def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {
     val elems: Seq[Expr[Any]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[Any]]]
-    ofTupleFromSeq(elems).cast[Tuple.InverseMap[T, Expr]]
+    ofTupleFromSeq(elems).asExprOf[Tuple.InverseMap[T, Expr]]
   }
 
   /** Find an implicit of type `T` in the current scope given by `qctx`.
