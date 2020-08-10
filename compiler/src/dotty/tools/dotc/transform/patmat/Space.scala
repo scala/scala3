@@ -664,7 +664,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
     def isOmittable(sym: Symbol) =
       sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName ||
-        ctx.definitions.UnqualifiedOwnerTypes.exists(_.symbol == sym) ||
+        ctx.definitions.unqualifiedOwnerTypes.exists(_.symbol == sym) ||
         sym.showFullName.startsWith("scala.") ||
         sym == enclosingCls || sym == enclosingCls.sourceModule
 

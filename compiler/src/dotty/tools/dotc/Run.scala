@@ -7,7 +7,8 @@ import Periods._
 import Symbols._
 import Types._
 import Scopes._
-import typer.{ImportInfo, Typer}
+import typer.Typer
+import typer.ImportInfo._
 import Decorators._
 import io.{AbstractFile, PlainFile}
 import Phases.unfusedPhases
@@ -74,9 +75,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       .addMode(Mode.ImplicitsEnabled)
       .setTyperState(ctx.typerState.fresh(ctx.reporter))
     ctx.initialize()(using start) // re-initialize the base context with start
-    def addImport(ctx: Context, rootRef: ImportInfo.RootRef) =
-      ctx.fresh.setImportInfo(ImportInfo.rootImport(rootRef))
-    defn.RootImportFns.foldLeft(start.setRun(this))(addImport)
+    start.setRun(this)
   }
 
   private var compiling = false
@@ -92,8 +91,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var myFiles: Set[AbstractFile] = _
 
   /** The compilation units currently being compiled, this may return different
-    *  results over time.
-    */
+   *  results over time.
+   */
   def units: List[CompilationUnit] = myUnits
 
   var suspendedUnits: mutable.ListBuffer[CompilationUnit] = mutable.ListBuffer()
@@ -205,7 +204,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     compiling = false
   }
 
-  /** Enter top-level definitions of classes and objects contain in Scala source file `file`.
+  /** Enter top-level definitions of classes and objects contained in source file `file`.
    *  The newly added symbols replace any previously entered symbols.
    *  If `typeCheck = true`, also run typer on the compilation unit, and set
    *  `rootTreeOrProvider`.
@@ -213,7 +212,12 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   def lateCompile(file: AbstractFile, typeCheck: Boolean)(using Context): Unit =
     if (!files.contains(file) && !lateFiles.contains(file)) {
       lateFiles += file
+
       val unit = CompilationUnit(ctx.getSource(file.path))
+      val unitCtx = runContext.fresh
+        .setCompilationUnit(unit)
+        .withRootImports
+
       def process()(using Context) = {
         unit.untpdTree =
           if (unit.isJava) new JavaParser(unit.source).parse()
@@ -227,7 +231,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
         if (typeCheck)
           if (compiling) finalizeActions += (() => processUnit()) else processUnit()
       }
-      process()(using runContext.fresh.setCompilationUnit(unit))
+      process()(using unitCtx)
     }
 
   private sealed trait PrintedTree

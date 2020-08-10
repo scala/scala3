@@ -7,7 +7,8 @@ import Phases._
 import Contexts._
 import Symbols._
 import Decorators._
-import dotty.tools.dotc.parsing.JavaParsers.JavaParser
+import ImportInfo.withRootImports
+import parsing.JavaParsers.JavaParser
 import parsing.Parsers.Parser
 import config.Config
 import config.Printers.{typr, default}
@@ -103,7 +104,7 @@ class FrontEnd extends Phase {
     val unitContexts =
       for unit <- units yield
         report.inform(s"compiling ${unit.source}")
-        ctx.fresh.setCompilationUnit(unit)
+        ctx.fresh.setCompilationUnit(unit).withRootImports
     unitContexts.foreach(parse(using _))
     record("parsedTrees", ast.Trees.ntrees)
     remaining = unitContexts

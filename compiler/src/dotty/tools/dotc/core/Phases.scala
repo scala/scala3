@@ -14,6 +14,7 @@ import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform._
 import Periods._
 import typer.{FrontEnd, RefChecks}
+import typer.ImportInfo.withRootImports
 import ast.tpd
 
 object Phases {
@@ -291,7 +292,7 @@ object Phases {
     /** @pre `isRunnable` returns true */
     def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
       units.map { unit =>
-        val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
+        val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
         run(using unitCtx)
         unitCtx.compilationUnit
       }

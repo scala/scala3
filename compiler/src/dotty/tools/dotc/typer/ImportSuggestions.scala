@@ -226,7 +226,7 @@ trait ImportSuggestions:
 
     try
       val roots = suggestionRoots
-        .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
+        .filterNot(root => defn.rootImportTypes.exists(_.symbol == root.symbol))
           // don't suggest things that are imported by default
 
       def extensionImports = pt match
