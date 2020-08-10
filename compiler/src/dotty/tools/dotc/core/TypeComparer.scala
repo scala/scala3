@@ -1036,20 +1036,17 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
           case _ => false
         }
 
-        tp1.widen match {
-          case tp1w: AppliedType => appOK(tp1w)
-          case tp1w =>
-            tp1w.typeSymbol.isClass && {
-              val classBounds = tycon2.classSymbols
-              def liftToBase(bcs: List[ClassSymbol]): Boolean = bcs match {
-                case bc :: bcs1 =>
-                  classBounds.exists(bc.derivesFrom) && appOK(nonExprBaseType(tp1, bc))
-                  || liftToBase(bcs1)
-                case _ =>
-                  false
-              }
-              liftToBase(tp1w.baseClasses)
-            }
+        val tp1w = tp1.widen
+        appOK(tp1w) || tp1w.typeSymbol.isClass && {
+          val classBounds = tycon2.classSymbols
+          def liftToBase(bcs: List[ClassSymbol]): Boolean = bcs match {
+            case bc :: bcs1 =>
+              classBounds.exists(bc.derivesFrom) && appOK(nonExprBaseType(tp1, bc))
+              || liftToBase(bcs1)
+            case _ =>
+              false
+          }
+          liftToBase(tp1w.baseClasses)
         }
       }
 
