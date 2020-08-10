@@ -26,9 +26,9 @@ trait ClassLikeSupport:
       case (arg, e) => arg.symbol.pos
     }.map{
       case (pos, list) => if(list.size == 1) {
-        ExtensionGroup(parseArgument(list(0)._1, _ => "", true, false), List(parseMethod(list(0)._2, extInfo = Some(ExtensionInformation(false)))))
+        ExtensionGroup(parseArgument(list(0)(0), _ => "", true, false), List(parseMethod(list(0)(1), extInfo = Some(ExtensionInformation(false)))))
       } else {
-        ExtensionGroup(parseArgument(list(0)._1, _ => "", true, true), list.map(f => parseMethod(f._2, extInfo = Some(ExtensionInformation(true)))))
+        ExtensionGroup(parseArgument(list(0)(0), _ => "", true, true), list.map(f => parseMethod(f(1), extInfo = Some(ExtensionInformation(true)))))
       }
     }.toList
 
@@ -70,15 +70,10 @@ trait ClassLikeSupport:
 
     val valDefs = classDef.body.collect { case td: ValDef if !isSyntheticField(td.symbol, classDef)  => td}
 
-    val companion = kind match {
-      case Kind.Object => None
-      case _ =>
-        Some(classDef.symbol.companionClass)
+    val companion = Some(classDef.symbol.companionClass)
           .filter(_.exists)
           .filter(!_.flags.is(Flags.Synthetic))
-          .map(_.tree.asInstanceOf[ClassDef])
-          .map(parseClass(_))
-    }
+          .map(_.dri)
 
     new DClass(
         classDef.symbol.dri,

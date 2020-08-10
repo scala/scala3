@@ -35,8 +35,10 @@ trait SyntheticsSupport:
     sym.is(dotc.core.Flags.Extension)
   }
 
+  def hackIsLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
+
   def getExtendedSymbol(d: Symbol): Option[ValDef] = 
     Option.when(hackIsExtension(self.reflect)(d))(
-      if(d.name.endsWith(":")) d.tree.asInstanceOf[DefDef].paramss(1)(0)
-      else d.tree.asInstanceOf[DefDef].paramss(0)(0)
+      if(hackIsLeftAssoc(d)) d.tree.asInstanceOf[DefDef].paramss(0)(0)
+      else d.tree.asInstanceOf[DefDef].paramss(1)(0)
     )

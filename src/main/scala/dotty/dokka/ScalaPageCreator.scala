@@ -12,6 +12,7 @@ import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.base.transformers.documentables.CallableExtensions
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.base.resolvers.anchors._
+import org.jetbrains.dokka.links._
 
 
 
@@ -22,24 +23,15 @@ class ScalaPageCreator(
 ) extends DefaultPageCreator(commentsToContentConverter, signatureProvider, logger) {
     override def pageForClasslike(c: DClasslike): ClasslikePageNode = {
         val res = super.pageForClasslike(c)
-        def addCompanionObjectPage(co: DClasslike, defContent: ClasslikePageNode): ClasslikePageNode = {
-            val page = pageForClasslike(co)
-            defContent.modified(
-                defContent.getName,
-                defContent.getContent,
-                defContent.getDri,
-                defContent.getEmbeddedResources,
-                (defContent.getChildren.asScala ++ List(
-                    page.modified(
-                        page.getName + "$",
-                        page.getContent,
-                        page.getDri,
-                        page.getEmbeddedResources,
-                        page.getChildren
-                    )
-                )).asJava
-            )
-        }
+
+        def renameCompanionObjectPage(objectPage: ClasslikePageNode): ClasslikePageNode = objectPage
+        .modified(
+            objectPage.getName + "$",
+            objectPage.getContent,
+            objectPage.getDri,
+            objectPage.getEmbeddedResources,
+            objectPage.getChildren
+        )
 
         def addExtensionMethodPages(clazz: DClass, defContent: ClasslikePageNode): ClasslikePageNode = {
             val extensionPages = clazz.getExtra.getMap.asScala.values
@@ -68,19 +60,27 @@ class ScalaPageCreator(
         
         c match {
             case clazz: DClass => 
-                val op1 = clazz.get(ClasslikeExtension).companion.fold(res)(addCompanionObjectPage(_, res))
-                val op2 = addExtensionMethodPages(clazz, op1)
-                op2
+                val op1 = addExtensionMethodPages(clazz, res)
+                val ext = clazz.get(ClasslikeExtension)
+                if(ext.kind == dotty.dokka.Kind.Object && ext.companion.isDefined) renameCompanionObjectPage(op1)
+                else op1
             case _ => res
         }
     }
 
-    def insertCompanionObject(clazz: DClass, defContent: ContentGroup): ContentGroup = {
-        def companionObjectContent(co: DClasslike): Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit] = builder => {
+    def insertCompanion(clazz: DClass, defContent: ContentGroup): ContentGroup = {
+        def companionContent(co: DRI): Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit] = builder => {
             group(builder)(builder => {
                     sourceSetDependentHint(builder)(
                         builder => {
-                            builder.unaryPlus(builder.buildSignature(co))
+                            group(builder)(builder => {
+                                text(builder, "Companion ")()
+                                clazz.get(ClasslikeExtension).kind match {
+                                    case dotty.dokka.Kind.Object => link(builder, "class", co)()
+                                    case _ => link(builder, "object", co)()
+                                }
+                                kotlin.Unit.INSTANCE
+                            }, kind = ContentKind.Symbol)
                             kotlin.Unit.INSTANCE
                         }
                     )
@@ -91,7 +91,7 @@ class ScalaPageCreator(
         }
 
         clazz.get(ClasslikeExtension).companion.fold(defContent)(co => {
-                    val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(companionObjectContent(co))
+                    val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(companionContent(co))
                     val newChildren = List(defContent.getChildren.asScala.head) ++ List(addedContent) ++ defContent.getChildren.asScala.tail
                     ContentGroup(
                         newChildren.asJava,
@@ -159,7 +159,7 @@ class ScalaPageCreator(
       
         c match{
             case clazz: DClass =>
-                val op1 = insertCompanionObject(clazz, defaultContent)
+                val op1 = insertCompanion(clazz, defaultContent)
                 insertCustomExtensionTab(clazz, op1)
             case _ => defaultContent
         }
@@ -167,8 +167,8 @@ class ScalaPageCreator(
 
     private def modifyContentGroup(originalContentNodeWithParents: Seq[ContentGroup], modifiedContentNode: ContentGroup): ContentGroup =
         originalContentNodeWithParents match {
-            case (head: ContentGroup) :: (tail: Seq[ContentGroup]) => tail match {
-                case (tailHead: ContentGroup) :: (tailTail: Seq[ContentGroup]) =>
+            case head :: tail => tail match {
+                case tailHead :: tailTail =>
                     val newChildren = tailHead.getChildren.asScala.map(c => if c != head then c else modifiedContentNode)
                     modifyContentGroup(
                         tailTail,
@@ -187,7 +187,7 @@ class ScalaPageCreator(
 
     private def getContentGroupWithParents(root: ContentGroup, condition: ContentGroup => Boolean): Seq[ContentGroup] = {
         def getFirstMatch(list: List[ContentNode]): Seq[ContentGroup] = list match {
-            case (head: ContentNode) :: (tail: List[ContentNode]) => head match {
+            case head :: tail => head match {
                 case g: ContentGroup => 
                     val res = getContentGroupWithParents(g, condition)
                     if(!res.isEmpty) res
