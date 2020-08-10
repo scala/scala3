@@ -367,10 +367,10 @@ object JavaParsers {
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
       var annots = new ListBuffer[Tree]
-      def addAnnot(sym: ClassSymbol) =
+      def addAnnot(tpt: Tree) =
         annots += atSpan(in.offset) {
           in.nextToken()
-          New(TypeTree(sym.typeRef))
+          New(tpt)
         }
 
       while (true)
@@ -404,11 +404,11 @@ object JavaParsers {
             flags |= Flags.DefaultMethod
             in.nextToken()
           case NATIVE =>
-            addAnnot(NativeAnnot)
+            addAnnot(scalaDot(jtpnme.NATIVEkw))
           case TRANSIENT =>
-            addAnnot(TransientAnnot)
+            addAnnot(scalaDot(jtpnme.TRANSIENTkw))
           case VOLATILE =>
-            addAnnot(VolatileAnnot)
+            addAnnot(scalaDot(jtpnme.VOLATILEkw))
           case SYNCHRONIZED | STRICTFP =>
             in.nextToken()
           case _ =>
