@@ -505,7 +505,7 @@ object desugar {
         val targ = refOfDef(tparam)
         def fullyApplied(tparam: Tree): Tree = tparam match {
           case TypeDef(_, LambdaTypeTree(tparams, body)) =>
-            AppliedTypeTree(targ, tparams.map(_ => TypeBoundsTree(EmptyTree, EmptyTree)))
+            AppliedTypeTree(targ, tparams.map(_ => WildcardTypeBoundsTree()))
           case TypeDef(_, rhs: DerivedTypeTree) =>
             fullyApplied(rhs.watched)
           case _ =>

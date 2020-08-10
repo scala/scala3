@@ -1720,7 +1720,7 @@ class Typer extends Namer
             }
           if (desugaredArg.isType)
             arg match {
-              case TypeBoundsTree(EmptyTree, EmptyTree, _)
+              case untpd.WildcardTypeBoundsTree()
               if tparam.paramInfo.isLambdaSub &&
                  tpt1.tpe.typeParamSymbols.nonEmpty &&
                  !ctx.mode.is(Mode.Pattern) =>
@@ -1739,7 +1739,7 @@ class Typer extends Namer
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }
       val paramBounds = tparams.lazyZip(args).map {
-        case (tparam, TypeBoundsTree(EmptyTree, EmptyTree, _)) =>
+        case (tparam, untpd.WildcardTypeBoundsTree()) =>
           // if type argument is a wildcard, suppress kind checking since
           // there is no real argument.
           NoType
