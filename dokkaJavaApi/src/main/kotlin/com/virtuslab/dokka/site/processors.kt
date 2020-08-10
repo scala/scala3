@@ -142,7 +142,7 @@ class SitePagesCreator(cxt: DokkaContext) : BaseStaticSiteProcessor(cxt) {
                         if (it.dri.contains(DRI.topLevel)) {
                             val packageList =
                                 PackagePageNode(
-                                    "_root_",
+                                    "all packages",
                                     it.content,
                                     setOf(apiPageDri),
                                     null,
