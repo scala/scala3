@@ -4706,14 +4706,16 @@ object Types {
 
   object ErrorType:
     def apply(m: Message)(using Context): ErrorType =
-      val et = new ErrorType:
-        def msg(using Context): Message =
-          ctx.base.errorTypeMsg.get(this) match
-            case Some(m) => m
-            case None => "error message from previous run no longer available"
+      val et = new PreviousErrorType
       ctx.base.errorTypeMsg(et) = m
       et
   end ErrorType
+
+  class PreviousErrorType extends ErrorType:
+    def msg(using Context): Message =
+      ctx.base.errorTypeMsg.get(this) match
+        case Some(m) => m
+        case None => "error message from previous run no longer available"
 
   object UnspecifiedErrorType extends ErrorType {
     override def msg(using Context): Message = "unspecified error"
