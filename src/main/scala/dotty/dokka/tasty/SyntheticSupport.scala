@@ -42,3 +42,13 @@ trait SyntheticsSupport:
       if(hackIsLeftAssoc(d)) d.tree.asInstanceOf[DefDef].paramss(0)(0)
       else d.tree.asInstanceOf[DefDef].paramss(1)(0)
     )
+
+  object MatchTypeCase:
+    def unapply(tpe: Type): Option[(TypeOrBounds, TypeOrBounds)] = 
+      tpe match
+        case AppliedType(t, Seq(from, to)) if t == MatchCaseType =>
+            Some((from, to))
+        case TypeLambda(paramNames, paramTypes, AppliedType(t, Seq(from, to))) if t == MatchCaseType =>
+            Some((from, to))
+        case _ =>
+          None    
