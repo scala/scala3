@@ -139,9 +139,16 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
             val extras = t.getExtra.getMap()
             val additionalModifiers =
               Option(extras.get(AdditionalModifiers.Companion).asInstanceOf[AdditionalModifiers])
-            val prefixes = additionalModifiers
                 .map(_.getContent)
-                .map(content => content.defaultValue.asScala.map(_.getName))
+                .map(content => content.defaultValue.asScala.collect{case s: ScalaOnlyModifiers => s})
+                
+            val prefixes = additionalModifiers
+                .map(_.filter(_.prefix).map(_.getName))
+                .map(modifiers => modifiers.toSeq.toSignatureString())
+                .getOrElse("")
+            
+            val suffixes = additionalModifiers
+                .map(_.filter(!_.prefix).map(_.getName))
                 .map(modifiers => modifiers.toSeq.toSignatureString())
                 .getOrElse("")
 
@@ -151,6 +158,7 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
                     prefixes.trim,
                     t.getVisibility.defaultValue.getName, 
                     t.getModifier.defaultValue.getName,
+                    suffixes.trim,
                     kind
                 ).toSignatureString()
             )

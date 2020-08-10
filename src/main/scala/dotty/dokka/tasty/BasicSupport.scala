@@ -49,19 +49,19 @@ class SymOps[R <: Reflection](val r: R) {
       else ScalaVisibility.NoModifier
 
     def getModifier(): ScalaModifier =
-      if (sym.flags.is(Flags.Case)) ScalaModifier.Case
-      else if (sym.flags.is(Flags.Abstract)) ScalaModifier.Abstract
-      else if (sym.flags.is(Flags.Sealed)) ScalaModifier.Sealed
+      if (sym.flags.is(Flags.Abstract)) ScalaModifier.Abstract
       else if (sym.flags.is(Flags.Final)) ScalaModifier.Final
       else ScalaModifier.Empty
 
     def getExtraModifiers(): Set[ScalaOnlyModifiers] =
       Set(
+        Option.when(sym.flags.is(Flags.Sealed))(ScalaOnlyModifiers.Sealed),
         Option.when(sym.flags.is(Flags.Erased))(ScalaOnlyModifiers.Erased),
         Option.when(sym.flags.is(Flags.Implicit))(ScalaOnlyModifiers.Implicit),
         Option.when(sym.flags.is(Flags.Inline))(ScalaOnlyModifiers.Inline),
         Option.when(sym.flags.is(Flags.Lazy))(ScalaOnlyModifiers.Lazy),
         Option.when(sym.flags.is(Flags.Override))(ScalaOnlyModifiers.Override),
+        Option.when(sym.flags.is(Flags.Case))(ScalaOnlyModifiers.Case)
       ).flatten
 
     def shouldDocumentClasslike: Boolean = !isCompanionObject() && !sym.flags.is(Flags.Private)

@@ -45,8 +45,7 @@ object Documentation
   // TODO We do not see members from companions val valInsideDocObject = ???
 }
 
-sealed  // TODO #23 support access and modifiers!
-abstract class ClassExtendingDocumentation[T, A <: Int, B >: String, -X, +Y] extends Documentation[T, A, B, X, Y]
+sealed abstract class ClassExtendingDocumentation[T, A <: Int, B >: String, -X, +Y] extends Documentation[T, A, B, X, Y]
 {}
 
 trait TraitTest
