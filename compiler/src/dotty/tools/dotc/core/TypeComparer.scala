@@ -2078,7 +2078,7 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
    *
    *    [X1, ..., Xn] -> op(tp1[X1, ..., Xn], tp2[X1, ..., Xn])
    */
-  private def liftIfHK(tp1: Type, tp2: Type,
+  def liftIfHK(tp1: Type, tp2: Type,
       op: (Type, Type) => Type, original: (Type, Type) => Type, combineVariance: (Variance, Variance) => Variance) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
