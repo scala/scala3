@@ -75,7 +75,7 @@ class Driver {
     inContext(ictx) {
       if !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments) then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
-      if Feature.enabledBySetting(nme.Scala2Compat) && false then // TODO: enable
+      if Feature.enabledBySetting(nme.Scala2Compat) then
         report.warning("-language:Scala2Compat will go away; use -source 3.0-migration instead")
       val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
       fromTastySetup(fileNames, ctx)
