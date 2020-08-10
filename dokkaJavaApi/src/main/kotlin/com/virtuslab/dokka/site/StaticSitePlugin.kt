@@ -30,4 +30,8 @@ class StaticSitePlugin: DokkaPlugin() {
                 providing { ctx -> ExternalDocsToolRenderer(ctx) }
                 override dokkaBase.htmlRenderer)
     }
+
+    val locationProvider by extending {
+        dokkaBase.locationProviderFactory providing ::StaticSiteLocationProviderFactory override dokkaBase.locationProvider
+    }
 }

@@ -56,6 +56,8 @@ data class ResolvedPage(
     val resources: List<String> = emptyList()
 )
 
+val EmptyResolvedPage = ResolvedPage("")
+
 data class TemplateFile(val file: File, val rawCode: String, private val settings: Map<String, List<String>>) {
     private fun stringSetting(name: String): String? {
         val list = settings.get(name)
@@ -78,7 +80,7 @@ data class TemplateFile(val file: File, val rawCode: String, private val setting
         if (ctx.resolving.contains(file.absolutePath))
             throw java.lang.RuntimeException("Cycle in templates involving $file: ${ctx.resolving}")
 
-        val rendered = Template.parse(this.rawCode).render(ctx.properties)
+        val rendered = Template.parse(this.rawCode).render(HashMap(ctx.properties)) // Library requires mutable maps..
         val code = if (isHtml) rendered else {
             val parser: Parser = Parser.builder().build()
             HtmlRenderer.builder(ctx.markdownOptions).build().render(parser.parse(rendered))
@@ -87,7 +89,7 @@ data class TemplateFile(val file: File, val rawCode: String, private val setting
         return layout()?.let {
             val layoutTemplate = ctx.layouts[it] ?: throw RuntimeException("No layouts named $it in ${ctx.layouts}")
             layoutTemplate.resolveInner(ctx.nest(code, file.absolutePath, resources))
-        } ?: ResolvedPage(code, resources)
+        } ?: ResolvedPage(code, resources + ctx.resources)
     }
 }
 
