@@ -33,12 +33,14 @@ class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
   override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] = 
     MergeStrategy.Remove.INSTANCE.asInstanceOf[MergeStrategy[T]]
 
-enum ScalaOnlyModifiers(val name: String) extends ExtraModifiers(name, null):
-  case Implicit extends ScalaOnlyModifiers("implicit")
-  case Inline extends ScalaOnlyModifiers("inline")
-  case Lazy extends ScalaOnlyModifiers("lazy")
-  case Override extends ScalaOnlyModifiers("override")
-  case Erased extends ScalaOnlyModifiers("erased")
+enum ScalaOnlyModifiers(val name: String, val prefix: Boolean) extends ExtraModifiers(name, null):
+  case Sealed extends ScalaOnlyModifiers("sealed", true)
+  case Case extends ScalaOnlyModifiers("case", false)
+  case Implicit extends ScalaOnlyModifiers("implicit", true)
+  case Inline extends ScalaOnlyModifiers("inline", true)
+  case Lazy extends ScalaOnlyModifiers("lazy", true)
+  case Override extends ScalaOnlyModifiers("override", true)
+  case Erased extends ScalaOnlyModifiers("erased", true)
     
 enum ScalaVisibility(val name: String) extends org.jetbrains.dokka.model.Visibility(name, null):
   case NoModifier extends ScalaVisibility("")
@@ -46,8 +48,6 @@ enum ScalaVisibility(val name: String) extends org.jetbrains.dokka.model.Visibil
   case Private extends ScalaVisibility("private")
 
 enum ScalaModifier(val name: String) extends org.jetbrains.dokka.model.Modifier(name, null):
-  case Case extends ScalaModifier("case")
   case Abstract extends ScalaModifier("abstract")
   case Final extends ScalaModifier("final")
-  case Sealed extends ScalaModifier("sealed")
   case Empty extends ScalaModifier("")
