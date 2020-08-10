@@ -1027,8 +1027,7 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
 
       /** `param2` can be instantiated to a type application prefix of the LHS
        *  or to a type application prefix of one of the LHS base class instances
-       *  and the resulting type application is a supertype of `tp1`,
-       *  or fallback to fourthTry.
+       *  and the resulting type application is a supertype of `tp1`.
        */
       def canInstantiate(tycon2: TypeParamRef): Boolean = {
         def appOK(tp1base: Type) = tp1base match {
@@ -1050,8 +1049,7 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
                   false
               }
               liftToBase(tp1w.baseClasses)
-            } ||
-            fourthTry
+            }
         }
       }
 
