@@ -860,13 +860,35 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
        */
       def isMatchingApply(tp1: Type): Boolean = tp1 match {
         case AppliedType(tycon1, args1) =>
-          def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1.dealiasKeepRefiningAnnots match {
+          // We intentionally do not dealias `tycon1` or `tycon2` here.
+          // `TypeApplications#appliedTo` already takes care of dealiasing type
+          // constructors when this can be done without affecting type
+          // inference, doing it here would not only prevent code from compiling
+          // but could also result in the wrong thing being inferred later, for example
+          // in `tests/run/hk-alias-unification.scala` we end up checking:
+          //
+          //   Foo[?F, ?T] <:< Foo[[X] =>> (X, String), Int]
+          //
+          // Naturally, we'd like to infer:
+          //
+          //   ?F := [X] => (X, String)
+          //
+          // but if we dealias `Foo` then we'll end up trying to check:
+          //
+          //   ErasedFoo[?F[?T]] <:< ErasedFoo[(Int, String)]
+          //
+          // Because of partial unification, this will succeed, but will produce the constraint:
+          //
+          //   ?F := [X] =>> (Int, X)
+          //
+          // Which is not what we wanted!
+          def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
                canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
               isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeRef =>
-              tycon2.dealiasKeepRefiningAnnots match {
+              tycon2 match {
                 case tycon2: TypeRef =>
                   val tycon1sym = tycon1.symbol
                   val tycon2sym = tycon2.symbol
