@@ -5,7 +5,6 @@ import org.jetbrains.dokka.DokkaSourceSetImpl
 import java.io.File
 import java.util.{ List => JList, Map => JMap}
 import collection.JavaConverters._
-import dotty.tastydoc.representations._
 
 case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaConfiguration:
   override def getOutputDir: String = docConfiguration.args.output.getAbsolutePath

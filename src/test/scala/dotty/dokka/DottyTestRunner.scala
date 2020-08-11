@@ -4,8 +4,6 @@ import testApi.logger.TestLogger
 import org.jetbrains.dokka.testApi.testRunner._
 import org.jetbrains.dokka.plugability.DokkaPlugin
 import java.io.File
-import dotty.tastydoc.representations
-import dotty.tastydoc.representations._
 import dotty.dokka.{DocConfiguration, DottyDokkaConfig}
 import collection.JavaConverters._
 import org.junit.rules.TemporaryFolder
