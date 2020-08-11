@@ -44,13 +44,19 @@ object Splicer {
       val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
         inContext(ctx.withOwner(macroOwner)) {
-          val interpreter = new Interpreter(pos, classLoader)
+          val oldContextClassLoader = Thread.currentThread().getContextClassLoader
+          Thread.currentThread().setContextClassLoader(classLoader)
+          try {
+            val interpreter = new Interpreter(pos, classLoader)
 
-          // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
-          val interpretedExpr = interpreter.interpret[scala.quoted.QuoteContext => scala.quoted.Expr[Any]](tree)
-          val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))
+            // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
+            val interpretedExpr = interpreter.interpret[scala.quoted.QuoteContext => scala.quoted.Expr[Any]](tree)
+            val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContext())))
 
-          checkEscapedVariables(interpretedTree, macroOwner)
+            checkEscapedVariables(interpretedTree, macroOwner)
+          } finally {
+            Thread.currentThread().setContextClassLoader(oldContextClassLoader)
+          }
         }.changeOwner(macroOwner, ctx.owner)
       catch {
         case ex: CompilationUnit.SuspendException =>
