@@ -1,9 +1,9 @@
 package scala.runtime
 
-import scala.collection.immutable.Map
+import scala.collection.immutable.TreeMap
 
 class EnumValues[E <: Enum] {
-  private[this] var myMap: Map[Int, E] = Map()
+  private[this] var myMap: Map[Int, E] = TreeMap.empty
   private[this] var fromNameCache: Map[String, E] = null
 
   def register(v: E) = {
