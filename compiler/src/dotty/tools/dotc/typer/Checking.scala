@@ -630,11 +630,6 @@ object Checking {
     }
   }
 
-  def optEnumCase(cls: Symbol)(using Context): Symbol =
-    (if cls.isAllOf(EnumCase) then cls
-    else if cls.isAnonymousClass && cls.owner.isAllOf(EnumCase) then cls.owner
-    else NoSymbol).filter(s => s.exists && s.owner.linkedClass.derivesFrom(defn.EnumClass))
-
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
     lazy val params = sym.paramSymss.flatten
@@ -1086,9 +1081,8 @@ trait Checking {
 
   /** 1. Check that all case classes that extend `scala.Enum` are `enum` cases
    *  2. Check that case class `enum` cases do not extend java.lang.Enum.
-   *  3. Check that the firstParent derives from the declaring enum class.
    */
-  def checkEnum(cdef: untpd.TypeDef, cls: Symbol, enumCase: Symbol, firstParent: Symbol)(using Context): Boolean = {
+  def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = {
     def isEnumAnonCls =
       cls.isAnonymousClass &&
       cls.owner.isTerm &&
@@ -1105,12 +1099,22 @@ trait Checking {
         // Unlike firstParent.derivesFrom(defn.EnumClass), this test allows inheriting from `Enum` by hand;
         // see enum-List-control.scala.
         report.error(ClassCannotExtendEnum(cls, firstParent), cdef.srcPos)
-    val enumCls = enumCase.owner.linkedClass
-    if !firstParent.derivesFrom(enumCls) then
-      report.error(i"enum case does not extend its enum $enumCls", enumCase.srcPos)
-      false
-    else
-      true
+  }
+
+  /** Check that the firstParent derives from the declaring enum class.
+   */
+  def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Boolean = {
+    val enumCase =
+      if cls.isAllOf(EnumCase) then cls
+      else if cls.isAnonymousClass && cls.owner.isAllOf(EnumCase) then cls.owner
+      else NoSymbol
+    def parentDerivesFrom(enumCls: Symbol)(using Context) =
+      if !firstParent.derivesFrom(enumCls) then
+        report.error(i"enum case does not extend its enum $enumCls", enumCase.srcPos)
+        false
+      else
+        true
+    !enumCase.exists || parentDerivesFrom(enumCase.owner.linkedClass)
   }
 
   /** Check that all references coming from enum cases in an enum companion object
@@ -1206,7 +1210,8 @@ trait Checking {
 
 trait ReChecking extends Checking {
   import tpd._
-  override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, enumCase: Symbol, firstParent: Symbol)(using Context): Boolean = true
+  override def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Boolean = true
+  override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(using Context): Unit = ()
   override def checkFullyAppliedType(tree: Tree)(using Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(using Context): Unit = ()
