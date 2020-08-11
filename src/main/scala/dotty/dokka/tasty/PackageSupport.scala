@@ -28,7 +28,7 @@ trait PackageSupport:
     }
 
     def parsePackageObject(pckObj: ClassDef): DPackage =
-        parseClass(pckObj) match{
+        parseClasslike(pckObj) match{
           case clazz:DClass =>
             DPackage(
               new DRI(pckObj.symbol.dri.getPackageName, null, null, PointingToDeclaration.INSTANCE, null),

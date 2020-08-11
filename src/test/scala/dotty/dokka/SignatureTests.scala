@@ -38,3 +38,5 @@ class MergedPackageSignatures extends MultipleFileTest(List("mergedPackage1", "m
 class ExtensionMethodSignature extends SingleFileTest("extensionMethodSignatures", SingleFileTest.all)
 
 class ClassModifiers extends SingleFileTest("classModifiers", SingleFileTest.classlikeKinds)
+
+// class EnumSignatures extends SingleFileTest("enumSignatures", SingleFileTest.all)

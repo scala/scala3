@@ -12,87 +12,186 @@ trait ClassLikeSupport:
   self: TastyParser =>
   import reflect._
 
-  def parseClass(classDef: reflect.ClassDef)(using ctx: Context): DClasslike =
-    val parents = for
-      parentTree <- classDef.parents if isValidPos(parentTree.pos)  // We assume here that order is correct
-      parentSymbol = if (parentTree.symbol.isClassConstructor) parentTree.symbol.owner else parentTree.symbol 
-        if parentSymbol != defn.ObjectClass
-    yield parentTree.dokkaType
+  extension (c: ClassDef):
+      def getExtensionGroups: List[ExtensionGroup] = {
+          val extensions = c.symbol.classMethods.filterNot(isSyntheticFunc).filter(isExtensionMethod(_))
 
-    val (extensions, methods) = classDef.symbol.classMethods.filterNot(isSyntheticFunc).partition(isExtensionMethod(_))
-
-    
-    val parsedExtensions = extensions.map(e => (getExtendedSymbol(e).get, e) ).groupBy{
-      case (arg, e) => arg.symbol.pos
-    }.map{
-      case (pos, list) => if(list.size == 1) {
-        ExtensionGroup(parseArgument(list(0)(0), _ => "", true, false), List(parseMethod(list(0)(1), extInfo = Some(ExtensionInformation(false)))))
-      } else {
-        ExtensionGroup(parseArgument(list(0)(0), _ => "", true, true), list.map(f => parseMethod(f(1), extInfo = Some(ExtensionInformation(true)))))
+          extensions.map(e => (getExtendedSymbol(e).get, e) ).groupBy{
+            case (arg, e) => arg.symbol.pos
+          }.map{
+            case (pos, list) => if(list.size == 1) {
+              ExtensionGroup(parseArgument(list(0)(0), _ => "", true, false), List(parseMethod(list(0)(1), extInfo = Some(ExtensionInformation(false)))))
+            } else {
+              ExtensionGroup(parseArgument(list(0)(0), _ => "", true, true), list.map(f => parseMethod(f(1), extInfo = Some(ExtensionInformation(true)))))
+            }
+          }.toList
       }
-    }.toList
 
-    val constuctors = classDef.body.collect {
-      case d: DefDef if d.name == "<init>" && classDef.constructor.symbol != d.symbol => 
-        parseMethod(d.symbol)
-    }
+      def getMethods: List[Symbol] = c.symbol.classMethods.filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_))
 
-    val nested = classDef.body.collect {
-      case c: ClassDef if c.symbol.shouldDocumentClasslike =>
-        processTree(c)(parseClass(c))
-    }.flatten
+      def getParents: List[Bound] = {
+          for
+              parentTree <- c.parents if isValidPos(parentTree.pos)  // We assume here that order is correct
+              parentSymbol = if (parentTree.symbol.isClassConstructor) parentTree.symbol.owner else parentTree.symbol 
+                  if parentSymbol != defn.ObjectClass 
+          yield parentTree.dokkaType
+      }
 
-    val flags = classDef.symbol.flags
-    val kind = 
-      if flags.is(Flags.Object) then Kind.Object 
-      else if flags.is(Flags.Trait) then Kind.Trait
-      else Kind.Class
+      def getConstructors: List[Symbol] = c.body.collect {
+          case d: DefDef if d.name == "<init>" && c.constructor.symbol != d.symbol => d.symbol
+      }.toList
 
-    val name = if kind == Kind.Object then classDef.name.stripSuffix("$") else classDef.name
+      def getNestedClasslikes: List[DClasslike] = c.body.collect {
+          case c: ClassDef if c.symbol.shouldDocumentClasslike => processTree(c)(parseClasslike(c))
+      }.flatten.toList
 
-    def paramMod(sym: Symbol): String = 
-      val fieldSymbol = classDef.symbol.field(sym.name)
-      if fieldSymbol.flags.is(Flags.Mutable) then "var "
-      else if fieldSymbol.flags.is(Flags.ParamAccessor) && !classDef.symbol.flags.is(Flags.Case) && !fieldSymbol.flags.is(Flags.Private) then "val "
-      else ""      
+      def getParameterModifier(parameter: Symbol): String = {
+          val fieldSymbol = c.symbol.field(parameter.name)
+          if fieldSymbol.flags.is(Flags.Mutable) then "var "
+          else if fieldSymbol.flags.is(Flags.ParamAccessor) && !c.symbol.flags.is(Flags.Case) && !fieldSymbol.flags.is(Flags.Private) then "val "
+          else ""  
+      }
 
-    val constructorMethod = 
-      if kind == Kind.Object then None 
-      else Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), paramMod))
+      def getTypeParams: List[TypeDef] = c.body.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam)
 
-    val typeParams = classDef.body.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam)
+      def getTypeDefs: List[TypeDef] = c.body.collect { 
+        case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && !td.symbol.flags.is(Flags.Private) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum))
+          => td 
+      }
 
-    val modifier = classDef.symbol.getModifier() match
-      case ScalaModifier.Final if kind == Kind.Object => ScalaModifier.Empty
-      case other => other
+      def getValDefs: List[ValDef] = c.body.collect { 
+        case td: ValDef if !isSyntheticField(td.symbol, c) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum))
+          => td
+      }
 
-    val typeDefs = classDef.body.collect { case td: TypeDef if !td.symbol.flags.is(Flags.Private) => td }
-
-    val valDefs = classDef.body.collect { case td: ValDef if !isSyntheticField(td.symbol, classDef)  => td}
-
-    val companion = Some(classDef.symbol.companionClass)
-          .filter(_.exists)
+      def getCompanion: Option[DRI] = c.symbol.getCompanionSymbol
           .filter(!_.flags.is(Flags.Synthetic))
           .map(_.dri)
 
+
+
+  def parseClasslike(classDef: reflect.ClassDef)(using ctx: Context): DClass = classDef match {
+    case c: ClassDef if classDef.symbol.flags.is(Flags.Object) => parseObject(c)
+    case c: ClassDef if classDef.symbol.flags.is(Flags.Trait) => parseTrait(c)
+    case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) => parseEnum(c)
+    case clazz => parseClass(clazz)
+  }
+
+  def parseObject(classDef: reflect.ClassDef)(using ctx: Context): DClass = 
+    val isEnumCompanion = classDef.symbol.getCompanionSymbol.map(s => s.flags.is(Flags.Enum)).getOrElse(false)
+    val modifier = classDef.symbol.getModifier() match
+      case ScalaModifier.Final => ScalaModifier.Empty
+      case other => other
+
     new DClass(
         classDef.symbol.dri,
-        name,
-        /*constuctors =*/ constuctors.asJava,
-        /*methods =*/ methods.map(parseMethod(_)).asJava,
-        /*fields =*/ (typeDefs.map(parseTypeDef) ++ valDefs.map(parseValDef)).asJava,
-        /*nested =*/ nested.asJava,
+        classDef.name.stripSuffix("$"),
+        /*constuctors =*/ classDef.getConstructors.map(parseMethod(_)).asJava,
+        /*methods =*/ classDef.getMethods.map(parseMethod(_)).asJava,
+        /*fields =*/ (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef)).asJava,
+        /*nested =*/ classDef.getNestedClasslikes.asJava,
         /*sources =*/ classDef.symbol.source,
         /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
         /*companion =*/ null,
-        /*generics =*/ typeParams.map(parseTypeArgument).asJava,
+        /*generics =*/ classDef.getTypeParams.map(parseTypeArgument).asJava,
         /*supertypes =*/ Map.empty.asJava, // Not used
         /*documentation =*/ classDef.symbol.documentation,
         /*expectPresentInSet =*/ null, // unused
         /*modifier =*/ sourceSet.asMap(modifier),
         inspector.sourceSet.toSet,
         PropertyContainer.Companion.empty()
-          .plus(ClasslikeExtension(parents, constructorMethod, kind, companion, parsedExtensions))
+          .plus(ClasslikeExtension(classDef.getParents, None, Kind.Object, classDef.getCompanion, classDef.getExtensionGroups))
+          .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
+      )
+
+
+  def parseEnum(classDef: reflect.ClassDef)(using ctx: Context): DClass = 
+    val constructorMethod = Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), s => classDef.getParameterModifier(s)))
+    val extraModifiers = classDef.symbol.getExtraModifiers().filter(_ != ScalaOnlyModifiers.Sealed)
+    val modifier = classDef.symbol.getModifier() match {
+      case ScalaModifier.Abstract => ScalaModifier.Empty
+      case other => other 
+    }
+    val companion = classDef.symbol.getCompanionSymbol.map(_.tree.asInstanceOf[ClassDef]).get
+
+    val enumVals = companion.body.collect {
+      case td: ValDef if !isSyntheticField(td.symbol, classDef) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
+    }.toList.map(v => parseValDef(v)).map(p => p.withNewExtras(p.getExtra plus IsEnumEntry()))
+
+    val enumTypes = companion.body.collect {
+      case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && !td.symbol.flags.is(Flags.Private) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
+    }.toList.map(parseTypeDef).map(p => p.withNewExtras(p.getExtra plus IsEnumEntry()))
+
+    val enumNested = companion.body.collect {
+      case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
+    }.flatten.toList.map(p => p.withNewExtras(p.getExtra plus IsEnumEntry()))
+
+    new DClass(
+        classDef.symbol.dri,
+        classDef.name,
+        /*constuctors =*/ classDef.getConstructors.map(parseMethod(_)).asJava,
+        /*methods =*/ classDef.getMethods.map(parseMethod(_)).asJava,
+        /*fields =*/ (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef)).asJava,
+        /*nested =*/ (classDef.getNestedClasslikes).asJava,
+        /*sources =*/ classDef.symbol.source,
+        /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
+        /*companion =*/ null,
+        /*generics =*/ classDef.getTypeParams.map(parseTypeArgument).asJava,
+        /*supertypes =*/ Map.empty.asJava, // Not used
+        /*documentation =*/ classDef.symbol.documentation,
+        /*expectPresentInSet =*/ null, // unused
+        /*modifier =*/ sourceSet.asMap(modifier),
+        inspector.sourceSet.toSet,
+        PropertyContainer.Companion.empty()
+          .plus(ClasslikeExtension(classDef.getParents, constructorMethod, Kind.Enum, classDef.getCompanion, classDef.getExtensionGroups))
+          .plus(AdditionalModifiers(sourceSet.asMap(extraModifiers.asJava)))
+          .plus(EnumExtension(enumVals ++ enumTypes ++ enumNested))
+      )
+
+  def parseTrait(classDef: reflect.ClassDef)(using ctx: Context): DClass = 
+    val constructorMethod = Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), s => classDef.getParameterModifier(s)))
+    new DClass(
+        classDef.symbol.dri,
+        classDef.name,
+        /*constuctors =*/ classDef.getConstructors.map(parseMethod(_)).asJava,
+        /*methods =*/ classDef.getMethods.map(parseMethod(_)).asJava,
+        /*fields =*/ (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef)).asJava,
+        /*nested =*/ classDef.getNestedClasslikes.asJava,
+        /*sources =*/ classDef.symbol.source,
+        /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
+        /*companion =*/ null,
+        /*generics =*/ classDef.getTypeParams.map(parseTypeArgument).asJava,
+        /*supertypes =*/ Map.empty.asJava, // Not used
+        /*documentation =*/ classDef.symbol.documentation,
+        /*expectPresentInSet =*/ null, // unused
+        /*modifier =*/ sourceSet.asMap(classDef.symbol.getModifier()),
+        inspector.sourceSet.toSet,
+        PropertyContainer.Companion.empty()
+          .plus(ClasslikeExtension(classDef.getParents, constructorMethod, Kind.Trait, classDef.getCompanion, classDef.getExtensionGroups))
+          .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
+      )
+
+
+  def parseClass(classDef: reflect.ClassDef)(using ctx: Context): DClass =
+    val constructorMethod = Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), s => classDef.getParameterModifier(s)))
+    new DClass(
+        classDef.symbol.dri,
+        classDef.name,
+        /*constuctors =*/ classDef.getConstructors.map(parseMethod(_)).asJava,
+        /*methods =*/ classDef.getMethods.map(parseMethod(_)).asJava,
+        /*fields =*/ (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef)).asJava,
+        /*nested =*/ classDef.getNestedClasslikes.asJava,
+        /*sources =*/ classDef.symbol.source,
+        /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
+        /*companion =*/ null,
+        /*generics =*/ classDef.getTypeParams.map(parseTypeArgument).asJava,
+        /*supertypes =*/ Map.empty.asJava, // Not used
+        /*documentation =*/ classDef.symbol.documentation,
+        /*expectPresentInSet =*/ null, // unused
+        /*modifier =*/ sourceSet.asMap(classDef.symbol.getModifier()),
+        inspector.sourceSet.toSet,
+        PropertyContainer.Companion.empty()
+          .plus(ClasslikeExtension(classDef.getParents, constructorMethod, Kind.Class, classDef.getCompanion, classDef.getExtensionGroups))
           .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
       )
 
@@ -199,4 +298,5 @@ trait ClassLikeSupport:
           PropertyExtension(
             if valDef.symbol.flags.is(Flags.Mutable) then "var" else "val", 
             valDef.symbol.flags.is(Flags.Abstract))
+          plus AdditionalModifiers(sourceSet.asMap(valDef.symbol.getExtraModifiers().asJava))
       )

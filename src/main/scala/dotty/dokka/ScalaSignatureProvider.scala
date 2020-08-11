@@ -27,8 +27,12 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
             List(extensionSignature(extension)).asJava
         case method: DFunction =>
             List(methodSignature(method)).asJava
+        case enumEntry: DClass if enumEntry.get(IsEnumEntry) != null => 
+            List(enumEntrySignature(enumEntry)).asJava
         case clazz: DClass =>
             List(classSignature(clazz)).asJava
+        case enumProperty: DProperty if enumProperty.get(IsEnumEntry) != null => 
+            List(enumPropertySignature(enumProperty)).asJava
         case property: DProperty =>
             List(propertySignature(property)).asJava
         case parameter: DParameter =>
@@ -39,6 +43,18 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
     val styles = Set(TextStyle.Monospace).asJava
 
     val utils: JvmSignatureUtils = KotlinSignatureUtils.INSTANCE
+
+    private def enumEntrySignature(entry: DClass): ContentNode =
+        content(entry){ builder =>
+            builder.addText("case ")
+            builder.addLink(entry.getName, entry.getDri)
+        }
+
+    private def enumPropertySignature(entry: DProperty): ContentNode = 
+        content(entry){ builder =>
+            builder.addText("case ")
+            builder.addLink(entry.getName, entry.getDri)
+        }
 
     private def classSignature(clazz: DClass): ContentNode = 
         content(clazz){ builder =>
