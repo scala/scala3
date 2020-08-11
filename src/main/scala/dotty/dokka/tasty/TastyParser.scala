@@ -16,13 +16,9 @@ import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 import java.util.{List => JList}
-import dotty.tastydoc.representations._
-
 
 import scala.tasty.Reflection
 import scala.tasty.inspector.TastyInspector
-import dotty.tastydoc.representations
-import dotty.tastydoc.representations._
 
 case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector) 
   extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport:

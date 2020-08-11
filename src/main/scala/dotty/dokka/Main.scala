@@ -10,8 +10,6 @@ import collection.JavaConverters._
 
 import scala.tasty.Reflection
 import scala.tasty.inspector.TastyInspector
-import dotty.tastydoc.representations
-import dotty.tastydoc.representations._
 import sbt.io.IO
 import java.nio.file.Files
 
