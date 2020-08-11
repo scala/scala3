@@ -294,7 +294,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
           withNoCheckNews(templ.parents.flatMap(newPart)) {
-            Checking.checkEnumParentOK(templ.symbol.owner)
             forwardParamAccessors(templ)
             synthMbr.addSyntheticMembers(
                 superAcc.wrapTemplate(templ)(

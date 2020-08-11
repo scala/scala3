@@ -5,7 +5,7 @@ import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 
-/** A serialization proxy for singleton enum values */
+/** A serialization proxy for singleton enum values, based on `scala.runtime.ModuleSerializationProxy` */
 public final class EnumValueSerializationProxy implements Serializable {
     private static final long serialVersionUID = 1L;
     private final Class<?> enumClass;
@@ -17,16 +17,12 @@ public final class EnumValueSerializationProxy implements Serializable {
                 return AccessController.doPrivileged((PrivilegedExceptionAction<Object[]>) () ->
                   (Object[])type.getMethod("values").invoke(null));
             } catch (PrivilegedActionException e) {
-                return rethrowRuntime(e.getCause());
+                Throwable cause = e.getCause();
+                if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+                else throw new RuntimeException(cause);
             }
         }
     };
-
-    private static <T> T rethrowRuntime(Throwable e) {
-        Throwable cause = e.getCause();
-        if (cause instanceof RuntimeException) throw (RuntimeException) cause;
-        else throw new RuntimeException(cause);
-    }
 
     public EnumValueSerializationProxy(Class<?> enumClass, int ordinal) {
         this.enumClass = enumClass;

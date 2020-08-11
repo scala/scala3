@@ -2103,24 +2103,27 @@ class Typer extends Namer
     val parentsWithClass = ensureFirstTreeIsClass(parents.mapconserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(using superCtx)
 
+    var forceEmptyBody: Boolean = false
+    val enumCaseDef = optEnumCase(cls)
+    if enumCaseDef.exists then
+      val firstParent = parents1.head.tpe.dealias.typeSymbol
+      forceEmptyBody = !checkEnum(cdef, cls, enumCaseDef, firstParent) // don't bother looking inside the template
+
     val self1 = typed(self)(using ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1))
       // fail fast to avoid typing the body with an error type
       cdef.withType(UnspecifiedErrorType)
     else {
       val dummy = localDummy(cls, impl)
-      val body1 = addAccessorDefs(cls,
-        typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
+      val body1 =
+        if forceEmptyBody then Nil
+        else addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
       if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
-      if (cls.derivesFrom(defn.EnumClass)) {
-        val firstParent = parents1.head.tpe.dealias.typeSymbol
-        checkEnum(cdef, cls, firstParent)
-      }
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
 
       val reportDynamicInheritance =

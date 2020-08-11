@@ -78,8 +78,7 @@ object DesugarEnums {
     Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
 
   private def registerCall(using Context): Tree =
-    val asRaw = TypeApply(Select(This(EmptyTypeIdent), nme.asInstanceOf_), rawRef(enumClass.typeRef) :: Nil) // safe to cast due to refchecks
-    Apply(valuesDot("register"), asRaw :: Nil)
+    Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil)
 
   /**  The following lists of definitions for an enum type E:
    *
