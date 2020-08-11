@@ -19,7 +19,10 @@ case class ParameterExtension(isExtendedSymbol: Boolean, isGrouped: Boolean) ext
 
 object ParameterExtension extends BaseKey[DParameter, ParameterExtension]
 
-class IsEnumEntry extends ExtraProperty[Documentable]:
+enum IsEnumEntry extends ExtraProperty[Documentable]:
+  case Val
+  case Type
+  case Class
   override def getKey = IsEnumEntry
 
 object IsEnumEntry extends BaseKey[Documentable, IsEnumEntry]

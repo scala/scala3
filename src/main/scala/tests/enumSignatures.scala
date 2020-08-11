@@ -14,6 +14,8 @@ enum Enum2(val i: Int):
     case C(val u: String) extends Enum2(3)
 
 enum Enum3(val param: Int):
-    case A extends Enum3(1)
+    case A extends Enum3(1) with A
     case B extends Enum3(2)
     case C extends Enum3(3)
+
+trait A

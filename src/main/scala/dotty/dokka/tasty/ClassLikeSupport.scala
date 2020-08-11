@@ -116,15 +116,15 @@ trait ClassLikeSupport:
 
     val enumVals = companion.body.collect {
       case td: ValDef if !isSyntheticField(td.symbol, classDef) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
-    }.toList.map(v => parseValDef(v)).map(p => p.withNewExtras(p.getExtra plus IsEnumEntry()))
+    }.toList.map(v => parseValDef(v)).map(p => p.withNewExtras(p.getExtra plus IsEnumEntry.Val))
 
     val enumTypes = companion.body.collect {
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && !td.symbol.flags.is(Flags.Private) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
-    }.toList.map(parseTypeDef).map(p => p.withNewExtras(p.getExtra plus IsEnumEntry()))
+    }.toList.map(parseTypeDef).map(p => p.withNewExtras(p.getExtra plus IsEnumEntry.Type))
 
     val enumNested = companion.body.collect {
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
-    }.flatten.toList.map(p => p.withNewExtras(p.getExtra plus IsEnumEntry()))
+    }.flatten.toList.map(p => p.withNewExtras(p.getExtra plus IsEnumEntry.Class))
 
     new DClass(
         classDef.symbol.dri,

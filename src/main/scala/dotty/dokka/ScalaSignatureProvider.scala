@@ -46,14 +46,29 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
 
     private def enumEntrySignature(entry: DClass): ContentNode =
         content(entry){ builder =>
+            val ext = entry.get(ClasslikeExtension)
             builder.addText("case ")
             builder.addLink(entry.getName, entry.getDri)
-        }
+            builder.generics(entry)
+            ext.constructor.foreach(c => builder.functionParameters(c))
+            ext.parentTypes match 
+                case Nil =>
+                case extendType :: withTypes =>
+                    builder.addText(" extends ") 
+                    builder.typeSignature(extendType)
+                    withTypes.foreach { withType => 
+                        builder.addText(" with ")  
+                        builder.typeSignature(withType)
+                    }
+            }
 
     private def enumPropertySignature(entry: DProperty): ContentNode = 
         content(entry){ builder =>
             builder.addText("case ")
             builder.addLink(entry.getName, entry.getDri)
+            builder.addText(" extends ")
+            builder.typeSignature(entry.getType)
+
         }
 
     private def classSignature(clazz: DClass): ContentNode = 
