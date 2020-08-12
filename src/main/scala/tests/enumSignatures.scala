@@ -18,4 +18,10 @@ enum Enum3(val param: Int):
     case B extends Enum3(2)
     case C extends Enum3(3)
 
+enum Enum4[+T]:
+    case G(s: String)
+    case B extends Enum4[Int] with A
+    case C[V](s:String) extends Enum4[V]
+    case D[T](s: String) extends Enum4[T]
+
 trait A

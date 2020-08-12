@@ -67,7 +67,18 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
             builder.addText("case ")
             builder.addLink(entry.getName, entry.getDri)
             builder.addText(" extends ")
-            builder.typeSignature(entry.getType)
+            val modifiedType = entry.getType match{
+                case t: TypeConstructor => TypeConstructor(
+                    t.getDri,
+                    t.getProjections.asScala.map{ 
+                        case t: UnresolvedBound if t.getName == " & " => UnresolvedBound(" with "); 
+                        case other => other
+                    }.asJava,
+                    t.getModifier
+                )
+                case other => other
+            }
+            builder.typeSignature(modifiedType)
 
         }
 
