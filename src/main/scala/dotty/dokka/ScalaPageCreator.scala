@@ -34,10 +34,7 @@ class ScalaPageCreator(
         )
 
         def addExtensionMethodPages(clazz: DClass, defContent: ClasslikePageNode): ClasslikePageNode = {
-            val extensionPages = clazz.getExtra.getMap.asScala.values
-                .collect { case e: CallableExtensions => e.getExtensions.asScala }
-                .flatten
-                .collect { case f: DFunction => f }
+            val extensionPages = clazz.get(ClasslikeExtension).extensions.flatMap(_.extensions)
                 .map(pageForFunction(_))
                 .map(page =>
                     page.modified(
