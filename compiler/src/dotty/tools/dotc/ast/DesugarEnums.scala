@@ -125,7 +125,8 @@ object DesugarEnums {
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
    *   private def $new(_$ordinal: Int, $name: String) = new E with scala.runtime.EnumValue {
-   *     def $ordinal = $tag
+   *     private[this] def $ordinal = _$ordinal // if deriving from jl.Enum
+   *     def ordinal = _$ordinal                // if not deriving from jl.Enum
    *     override def toString = $name
    *     $values.register(this)
    *   }
@@ -265,7 +266,9 @@ object DesugarEnums {
     ValDef(name, TypeTree(typ), EmptyTree).withFlags(Param)
 
   def ordinalMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.ordinalDollar, Nil, Nil, TypeTree(defn.IntType), body)
+    val isJEnum = ctx.owner.linkedClass.derivesFrom(defn.JavaEnumClass)
+    val method = DefDef(if isJEnum then nme.ordinalDollar else nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body)
+    if isJEnum then method.withMods(Modifiers(Private)) else method
 
   def toStringMeth(body: Tree)(using Context): DefDef =
     DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), body).withFlags(Override)

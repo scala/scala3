@@ -40,6 +40,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
          sym == defn.JavaEnumClass.primaryConstructor ||
          sym.owner.derivesFromJavaEnum))
       addConstrParams(sym.info)
+    else if isJavaEnumValueImpl(sym) then
+      sym.asClass.delete(tp.decl(nme.toString_).symbol)
+      sym.asClass.delete(tp.decl(nme.ordinalDollar).symbol)
+      tp
     else tp
 
   /** Add constructor parameters `$name: String` and `$ordinal: Int` to the end of
@@ -62,9 +66,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   /** The list of parameter definitions `$name: String, $ordinal: Int`, in given `owner`
    *  with given flags (either `Param` or `ParamAccessor`)
    */
-  private def addedParams(owner: Symbol, flag: FlagSet)(using Context): List[ValDef] = {
-    val nameParam = newSymbol(owner, nameParamName, flag | Synthetic, defn.StringType, coord = owner.span)
-    val ordinalParam = newSymbol(owner, ordinalParamName, flag | Synthetic, defn.IntType, coord = owner.span)
+  private def addedParams(owner: Symbol, isLocal: Boolean, flag: FlagSet)(using Context): List[ValDef] = {
+    val flags = flag | Synthetic | (if isLocal then Private | Deferred else EmptyFlags)
+    val nameParam = newSymbol(owner, nameParamName, flags, defn.StringType, coord = owner.span)
+    val ordinalParam = newSymbol(owner, ordinalParamName, flags, defn.IntType, coord = owner.span)
     List(ValDef(nameParam), ValDef(ordinalParam))
   }
 
@@ -85,7 +90,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     val sym = tree.symbol
     if (sym.isConstructor && sym.owner.derivesFromJavaEnum)
       val tree1 = cpy.DefDef(tree)(
-        vparamss = tree.vparamss.init :+ (tree.vparamss.last ++ addedParams(sym, Param)))
+        vparamss = tree.vparamss.init :+ (tree.vparamss.last ++ addedParams(sym, isLocal=false, Param)))
       sym.setParamssFromDefs(tree1.tparams, tree1.vparamss)
       tree1
     else tree
@@ -107,6 +112,11 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     }
   }
 
+  private def isJavaEnumValueImpl(cls: Symbol)(using Context): Boolean =
+    cls.isAnonymousClass
+    && ((cls.owner.name eq nme.DOLLAR_NEW) || cls.owner.isAllOf(EnumCase))
+    && cls.owner.owner.linkedClass.derivesFromJavaEnum
+
   /** 1. If this is an enum class, add $name and $ordinal parameters to its
    *     parameter accessors and pass them on to the java.lang.Enum constructor.
    *
@@ -116,38 +126,39 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    *
    *       class $anon extends E(...) {
    *          ...
-   *          def ordinal = N
-   *          def toString = S
+   *          private def $ordinal = N
+   *          override def toString = S
    *          ...
    *       }
    *
    *     After the transform it is expanded to
    *
    *       class $anon extends E(..., N, S) {
-   *         "same as before"
+   *          ...
+   *          "removed $ordinal and toString"
+   *          ...
    *       }
    */
   override def transformTemplate(templ: Template)(using Context): Template = {
     val cls = templ.symbol.owner
-    if (cls.derivesFromJavaEnum) {
+    if cls.derivesFromJavaEnum then
       val (params, rest) = decomposeTemplateBody(templ.body)
-      val addedDefs = addedParams(cls, ParamAccessor)
+      val addedDefs = addedParams(cls, isLocal=true, ParamAccessor)
       val addedSyms = addedDefs.map(_.symbol.entered)
       val addedForwarders = addedEnumForwarders(cls)
       cpy.Template(templ)(
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
         body = params ++ addedDefs ++ addedForwarders ++ rest)
-    }
-    else if (cls.isAnonymousClass && ((cls.owner.name eq nme.DOLLAR_NEW) || cls.owner.isAllOf(EnumCase)) &&
-             cls.owner.owner.linkedClass.derivesFromJavaEnum) {
+    else if isJavaEnumValueImpl(cls) then
       def rhsOf(name: TermName) =
-        templ.body.collect {
-          case mdef: DefDef if mdef.name == name => mdef.rhs
-        }.head
+        templ.body.collect({ case mdef: DefDef if mdef.name == name => mdef.rhs }).head
+      def removeDefs(body: List[Tree], names: TermName*) =
+        body.filterNot { case ndef: DefDef => names.contains(ndef.name); case _ => false }
       val args = List(rhsOf(nme.toString_), rhsOf(nme.ordinalDollar))
       cpy.Template(templ)(
-        parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args))
-    }
+        parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args),
+        body    = removeDefs(templ.body, nme.toString_, nme.ordinalDollar)
+      )
     else templ
   }
 }
