@@ -37,13 +37,13 @@ ReplMain=dotty.tools.repl.Main
 PROG_NAME=$CompilerMain
 
 addJava () {
-  java_args+=("$1")
+  java_args+=("'$1'")
 }
 addScala () {
-  scala_args+=("$1")
+  scala_args+=("'$1'")
 }
 addResidual () {
-  residual_args+=("$1")
+  residual_args+=("'$1'")
 }
 
 classpathArgs () {

@@ -20,4 +20,4 @@ if [ ! -f "$version" ] || [ ! -z "$new_files" ]; then
   (cd $ROOT && sbt "dist/pack")
 fi
 
-eval "$target" "$@"
+"$target" "$@"

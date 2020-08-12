@@ -28,11 +28,11 @@ if [ -z "$PROG_HOME" ] ; then
 fi
 
 addJvmOptions () {
-  jvm_options+=("$1")
+  jvm_options+=("'$1'")
 }
 
 addDotcOptions () {
-  java_options+=("$1")
+  java_options+=("'$1'")
 }
 
 source "$PROG_HOME/bin/common"
