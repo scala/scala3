@@ -2086,6 +2086,13 @@ trait Applications extends Compatibility {
    *  where <type-args> comes from `pt` if it is a (possibly ignored) PolyProto.
    */
   def extMethodApply(methodRef: untpd.Tree, receiver: Tree, pt: Type)(using Context): Tree = {
+    // (1) always reveal further arguments in extension method applications,
+    // (2) but do not reveal anything else in a prototype.
+    // (1) is needed for i9509.scala (2) is needed for i6900.scala
+    val normPt = pt match
+      case IgnoredProto(ignored: FunProto) => ignored
+      case _ => pt
+
     /** Integrate the type arguments from `currentPt` into `methodRef`, and produce
      *  a matching expected type.
      *  If `currentPt` is ignored, the new expected type will be ignored too.
@@ -2097,9 +2104,9 @@ trait Applications extends Compatibility {
         val core = untpd.TypeApply(methodRef, targs.map(untpd.TypedSplice(_)))
         (core, if (wasIgnored) IgnoredProto(restpe) else restpe)
       case _ =>
-        (methodRef, pt)
+        (methodRef, normPt)
     }
-    val (core, pt1) = integrateTypeArgs(pt)
+    val (core, pt1) = integrateTypeArgs(normPt)
     val app = withMode(Mode.SynthesizeExtMethodReceiver) {
       typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)
     }
