@@ -1101,21 +1101,31 @@ trait Checking {
         report.error(ClassCannotExtendEnum(cls, firstParent), cdef.srcPos)
   }
 
-  /** Check that the firstParent derives from the declaring enum class.
+  /** Check that the firstParent derives from the declaring enum class, if not, adds it as a parent after emitting an
+   *  error.
    */
-  def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Boolean = {
+  def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit =
+
+    extension (sym: Symbol) def typeRefApplied(using Context): Type =
+      typeRef.appliedTo(typeParams.map(_.info.loBound))
+
+    def ensureParentDerivesFrom(enumCase: Symbol)(using Context) =
+      val enumCls = enumCase.owner.linkedClass
+      if !firstParent.derivesFrom(enumCls) then
+        report.error(i"enum case does not extend its enum $enumCls", enumCase.srcPos)
+        cls.info match
+          case info: ClassInfo =>
+            cls.info = info.derivedClassInfo(classParents = enumCls.typeRefApplied :: info.classParents)
+          case _ =>
+
     val enumCase =
       if cls.isAllOf(EnumCase) then cls
       else if cls.isAnonymousClass && cls.owner.isAllOf(EnumCase) then cls.owner
       else NoSymbol
-    def parentDerivesFrom(enumCls: Symbol)(using Context) =
-      if !firstParent.derivesFrom(enumCls) then
-        report.error(i"enum case does not extend its enum $enumCls", enumCase.srcPos)
-        false
-      else
-        true
-    !enumCase.exists || parentDerivesFrom(enumCase.owner.linkedClass)
-  }
+    if enumCase.exists then
+      ensureParentDerivesFrom(enumCase)
+
+  end checkEnumParent
 
   /** Check that all references coming from enum cases in an enum companion object
    *  are legal.
@@ -1210,7 +1220,7 @@ trait Checking {
 
 trait ReChecking extends Checking {
   import tpd._
-  override def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Boolean = true
+  override def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(using Context): Unit = ()
   override def checkFullyAppliedType(tree: Tree)(using Context): Unit = ()

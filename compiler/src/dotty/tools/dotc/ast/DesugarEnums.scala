@@ -92,7 +92,6 @@ object DesugarEnums {
    *       }
    */
   private def enumScaffolding(using Context): List[Tree] = {
-    import dotty.tools.dotc.transform.SymUtils._
     val rawEnumClassRef = rawRef(enumClass.typeRef)
     extension (tpe: NamedType) def ofRawEnum = AppliedTypeTree(ref(tpe), rawEnumClassRef)
     val valuesDef =

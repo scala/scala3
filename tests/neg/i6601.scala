@@ -16,4 +16,7 @@ object GADTs2 {
   enum Color {
     case Red extends AnyRef // error
   }
+  enum Parameterized[T](x: T) {
+    case Foo extends AnyRef // error
+  }
 }

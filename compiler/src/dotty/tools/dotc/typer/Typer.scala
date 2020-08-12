@@ -2102,8 +2102,9 @@ class Typer extends Namer
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstTreeIsClass(parents.mapconserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(using superCtx)
+    val firstParent = parents1.head.tpe.dealias.typeSymbol
 
-    lazy val firstParent = parents1.head.tpe.dealias.typeSymbol
+    checkEnumParent(cls, firstParent)
 
     val self1 = typed(self)(using ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1))
@@ -2111,11 +2112,7 @@ class Typer extends Namer
       cdef.withType(UnspecifiedErrorType)
     else {
       val dummy = localDummy(cls, impl)
-      val body1 =
-        if checkEnumParent(cls, firstParent) then
-          addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
-        else
-          Nil
+      val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
