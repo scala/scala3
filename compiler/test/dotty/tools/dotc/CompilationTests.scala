@@ -171,6 +171,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-Yerased-terms")),
       compileFile("tests/neg-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
+      compileFile("tests/neg-custom-args/trait-extend-java-enum.scala", defaultOptions.and("-source", "3.0-migration"))
     ).checkExpectedErrors()
   }
 

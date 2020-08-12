@@ -109,10 +109,8 @@ object RefChecks {
         checkSelfConforms(reqd, "missing requirement", "required")
 
       // Prevent wrong `extends` of java.lang.Enum
-      if !migrateTo3 &&
-         !cls.isOneOf(Enum | Trait) &&
-         parents.exists(_.classSymbol == defn.JavaEnumClass)
-      then
+      val wrongJavaEnum = if migrateTo3 then cls.is(Trait) else !cls.is(Enum)
+      if wrongJavaEnum && parents.exists(_.classSymbol == defn.JavaEnumClass) then
         report.error(CannotExtendJavaEnum(cls), cls.sourcePos)
 
     case _ =>

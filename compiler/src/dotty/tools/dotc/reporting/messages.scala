@@ -1492,7 +1492,11 @@ import ast.tpd
 
   class CannotExtendJavaEnum(sym: Symbol)(using Context)
     extends SyntaxMsg(CannotExtendJavaEnumID) {
-      def msg = em"""$sym cannot extend ${hl("java.lang.Enum")}: only enums defined with the ${hl("enum")} syntax can"""
+      def msg =
+        val reason =
+          if Feature.migrateTo3 then i"only classes can (no ${hl("enum")} syntax in migration mode)"
+          else i"only enums defined with the ${hl("enum")} syntax can"
+        em"""$sym cannot extend ${hl("java.lang.Enum")}: $reason"""
       def explain = ""
     }
 
