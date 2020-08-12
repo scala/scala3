@@ -115,7 +115,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   private def isJavaEnumValueImpl(cls: Symbol)(using Context): Boolean =
     cls.isAnonymousClass
     && ((cls.owner.name eq nme.DOLLAR_NEW) || cls.owner.isAllOf(EnumCase))
-    && cls.owner.owner.linkedClass.derivesFromJavaEnum
+    && {
+      val enumCls = cls.owner.owner.linkedClass
+      enumCls.derivesFromJavaEnum && enumCls.is(Enum)
+    }
 
   /** 1. If this is an enum class, add $name and $ordinal parameters to its
    *     parameter accessors and pass them on to the java.lang.Enum constructor.
