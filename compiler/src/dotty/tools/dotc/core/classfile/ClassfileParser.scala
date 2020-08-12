@@ -555,14 +555,25 @@ class ClassfileParser(
           Some(untpd.JavaSeqLiteral(elems, TypeTree()))
         }
       case ANNOTATION_TAG =>
-        parseAnnotation(index, skip) map (_.tree)
+        parseAnnotation(index, skip).map(_.untpdTree)
     }
+  }
+
+  class ClassfileAnnotation(annotType: Type, args: List[untpd.Tree]) extends LazyAnnotation {
+    protected var mySym: Symbol | (Context ?=> Symbol) =
+      (using ctx: Context) => annotType.classSymbol
+
+    protected var myTree: Tree | (Context ?=> Tree) =
+      (using ctx: Context) => untpd.resolveConstructor(annotType, args)
+
+    def untpdTree(using Context): untpd.Tree =
+      untpd.New(untpd.TypeTree(annotType), List(args))
   }
 
   /** Parse and return a single annotation.  If it is malformed,
    *  return None.
    */
-  def parseAnnotation(attrNameIndex: Char, skip: Boolean = false)(using Context): Option[Annotation] = try {
+  def parseAnnotation(attrNameIndex: Char, skip: Boolean = false)(using Context): Option[ClassfileAnnotation] = try {
     val attrType = pool.getType(attrNameIndex)
     attrType match
       case tp: TypeRef =>
@@ -584,7 +595,7 @@ class ClassfileParser(
       }
     }
     if (hasError || skip) None
-    else Some(Annotation.deferredResolve(attrType, argbuf.toList))
+    else Some(ClassfileAnnotation(attrType, argbuf.toList))
   }
   catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found

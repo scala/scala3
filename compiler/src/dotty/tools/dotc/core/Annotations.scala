@@ -163,12 +163,6 @@ object Annotations {
         protected var myTree: Tree | (Context ?=> Tree) = (using ctx) => treeFn(using ctx)
       }
 
-    def deferred(atp: Type, args: List[Tree])(using Context): Annotation =
-      deferred(atp.classSymbol)(New(atp, args))
-
-    def deferredResolve(atp: Type, args: List[ast.untpd.Tree])(using Context): Annotation =
-      deferred(atp.classSymbol)(ast.untpd.resolveConstructor(atp, args))
-
     /** Extractor for child annotations */
     object Child {
 
