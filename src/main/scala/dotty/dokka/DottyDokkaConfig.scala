@@ -21,9 +21,9 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
     ).asJava
 
   def mkSourceSet: DokkaConfiguration.DokkaSourceSet = new DokkaSourceSetImpl(
-    "main",
+    docConfiguration.args.name,
     "Main",
-    new DokkaSourceSetID("main", "main"),
+    new DokkaSourceSetID(docConfiguration.args.name, "main"),
     Nil.asJava,
     Nil.asJava,
     Set().asJava,

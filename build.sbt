@@ -43,7 +43,7 @@ buildDokkaApi := {
 
 val generateSelfDocumentation = inputKey[Unit]("Generate example documentation")
 generateSelfDocumentation := {
-  run.in(Compile).fullInput(" -o output/self -t target/scala-0.26/classes -d documentation").evaluated // TODO #35 proper sbt integration
+  run.in(Compile).fullInput(" -o output/self -t target/scala-0.26/classes -d documentation -n scala3doc").evaluated // TODO #35 proper sbt integration
 }
 
 unmanagedJars in Compile += dokkaJavaApiJar
@@ -71,7 +71,7 @@ generateDottyLibDocumentation :=  Def.taskDyn {
   if (dotttyLib.isEmpty) Def.task {
     streams.value.log.error("Dotty lib wasn't found")
   } else Def.task {
-    run.in(Compile).toTask(s" -o output/stdLib -t ${dotttyLib.get.data} -d dotty-docs/docs").value
+    run.in(Compile).toTask(s" -o output/stdLib -t ${dotttyLib.get.data} -d dotty-docs/docs -n dotty-lib").value
   } 
 }.value
 
