@@ -429,23 +429,32 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     extension (self: Context):
       /** Returns the owner of the context */
       def owner: Symbol = internal.Context_owner(self)
-
-      /** Returns the source file being compiled. The path is relative to the current working directory. */
-      def source: java.nio.file.Path = internal.Context_source(self)
-
-      /** Returns true if we've tried to reflect on a Java class. */
-      def isJavaCompilationUnit(): Boolean = internal Context_isJavaCompilationUnit(self)
-
-      /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
-      def isScala2CompilationUnit(): Boolean = internal Context_isScala2CompilationUnit(self)
-
-      /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
-      def isAlreadyLoadedCompilationUnit(): Boolean = internal.Context_isAlreadyLoadedCompilationUnit(self)
-
-      /** Class name of the current CompilationUnit */
-      def compilationUnitClassname(): String = internal.Context_compilationUnitClassname(self)
     end extension
   end Context
+
+
+  ///////////////
+  //   Source  //
+  ///////////////
+
+  object Source:
+
+    /** Returns the source file being compiled. The path is relative to the current working directory. */
+    def path(using ctx: Context): java.nio.file.Path = internal.Source_path
+
+    /** Returns true if we've tried to reflect on a Java class. */
+    def isJavaCompilationUnit(using ctx: Context): Boolean = internal.Source_isJavaCompilationUnit
+
+    /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
+    def isScala2CompilationUnit(using ctx: Context): Boolean = internal.Source_isScala2CompilationUnit
+
+    /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
+    def isAlreadyLoadedCompilationUnit(using ctx: Context): Boolean = internal.Source_isAlreadyLoadedCompilationUnit
+
+    /** Class name of the current CompilationUnit */
+    def compilationUnitClassname(using ctx: Context): String = internal.Source_compilationUnitClassname
+
+  end Source
 
 
   ///////////////
