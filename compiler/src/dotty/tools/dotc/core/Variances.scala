@@ -118,7 +118,7 @@ object Variances {
           lam.typeParams(t.paramNum).storedVariance &= varianceFromInt(variance)
         case t: LazyRef =>
           try traverse(t.ref)
-          catch case _: LazyRefCycle =>
+          catch case _: CyclicReference =>
             () // can happen with deeply entangled F-bounds, such as in i9364.scala under -Ytest-pickler
         case _ =>
           traverseChildren(t)
