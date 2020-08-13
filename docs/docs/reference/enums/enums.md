@@ -130,7 +130,8 @@ For instance, the `Venus` value above would be defined like this:
 val Venus: Planet =
   new Planet(4.869E24, 6051800.0) {
     def ordinal: Int = 1
-    override def toString: String = "Venus"
+    override def productPrefix: String = "Venus"
+    override def toString: String = productPrefix
     // internal code to register value
   }
 ```
