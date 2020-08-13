@@ -20,7 +20,7 @@ trait PackageSupport:
           Nil.asJava,
           Nil.asJava,
           Nil.asJava,
-          documentation,
+          documentation.asJava,
           null,
           sourceSet.toSet,
           PropertyContainer.Companion.empty()
@@ -36,7 +36,7 @@ trait PackageSupport:
               clazz.getProperties,
               Nil.asJava,
               Nil.asJava,
-              pckObj.symbol.documentation,
+              pckObj.symbol.documentation.asJava,
               null,
               sourceSet.toSet,
               PropertyContainer.Companion.empty()

@@ -17,16 +17,16 @@ trait BasicSupport:
   extension (sym: reflect.Symbol):
     def documentation(using cxt: reflect.Context) = sym.comment match 
         case Some(comment) => 
-            sourceSet.asMap(parseComment(comment, sym.tree))
+            Map(sourceSet.getSourceSet -> parseComment(comment, sym.tree))
         case None =>  
-            Map.empty.asJava
+            Map.empty
 
     def source(using ctx: Context) =
       val path = sym.pos.sourceFile.jpath.toString
-      sourceSet.asMap(
+      Map(sourceSet.getSourceSet -> (
         new DocumentableSource:
           override def getPath = path
-      )          
+      ))         
   
   private val emptyDRI =  DRI.Companion.getTopLevel
 

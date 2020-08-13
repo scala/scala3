@@ -1,11 +1,13 @@
 package dotty.dokka
 
+import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model._
 import collection.JavaConverters._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._  
+
 
 case class ExtensionInformation(val isGrouped: Boolean)
    

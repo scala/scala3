@@ -3,6 +3,7 @@ package dotty.dokka.tasty
 import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
+import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties._
 import dotty.dokka._
@@ -12,17 +13,55 @@ trait ClassLikeSupport:
   self: TastyParser =>
   import reflect._
 
+  object DClass:
+    def apply(classDef: ClassDef)(
+      kind: Kind,
+      dri: DRI = classDef.symbol.dri,
+      name: String = classDef.name,
+      constructors: List[DFunction] = classDef.getConstructors.map(parseMethod(_)),
+      methods: List[DFunction] = classDef.getMethods.map(parseMethod(_)),
+      fields: List[DProperty] = (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef)),
+      nested: List[DClasslike] = classDef.getNestedClasslikes,
+      sources: Map[DokkaConfiguration$DokkaSourceSet, DocumentableSource] = classDef.symbol.source,
+      visibility: Map[DokkaConfiguration$DokkaSourceSet, Visibility] = Map(sourceSet.getSourceSet -> (classDef.symbol.getVisibility())),
+      generics: List[DTypeParameter] = classDef.getTypeParams.map(parseTypeArgument),
+      supertypes: Map[DokkaConfiguration$DokkaSourceSet, List[DriWithKind]] = Map.empty,
+      documentation: Map[DokkaConfiguration$DokkaSourceSet, DocumentationNode] = classDef.symbol.documentation,
+      modifier: Map[DokkaConfiguration$DokkaSourceSet, Modifier] = Map(sourceSet.getSourceSet -> classDef.symbol.getModifier()),
+      additionalExtras: Seq[ExtraProperty[DClass]] = Seq.empty
+    ): DClass = new DClass(
+        dri,
+        name,
+        constructors.asJava,
+        methods.asJava,
+        fields.asJava,
+        nested.asJava,
+        sources.asJava,
+        visibility.asJava,
+        null,
+        generics.asJava,
+        supertypes.map{case (key,value) => (key, value.asJava)}.asJava,
+        documentation.asJava,
+        null,
+        modifier.asJava,
+        inspector.sourceSet.toSet,
+        PropertyContainer.Companion.empty()
+          .plus(ClasslikeExtension(classDef.getParents, classDef.getConstructorMethod, kind, classDef.getCompanion, classDef.getExtensionGroups))
+          .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
+          .addAll(additionalExtras.asJava)
+    )
+
   extension (c: ClassDef):
       def getExtensionGroups: List[ExtensionGroup] = {
+          case class ExtensionRepr(arg: ValDef, method: Symbol)
           val extensions = c.symbol.classMethods.filterNot(isSyntheticFunc).filter(isExtensionMethod(_))
-
-          extensions.map(e => (getExtendedSymbol(e).get, e) ).groupBy{
-            case (arg, e) => arg.symbol.pos
-          }.map{
-            case (pos, list) => if(list.size == 1) {
-              ExtensionGroup(parseArgument(list(0)(0), _ => "", true, false), List(parseMethod(list(0)(1), extInfo = Some(ExtensionInformation(false)))))
-            } else {
-              ExtensionGroup(parseArgument(list(0)(0), _ => "", true, true), list.map(f => parseMethod(f(1), extInfo = Some(ExtensionInformation(true)))))
+            .map(m => ExtensionRepr(getExtendedSymbol(m).get, m))
+          val groupped = extensions.groupBy( e => e.arg.pos)
+          groupped.map {
+            case (pos, extensions) => {
+              val isGroupped = extensions.size > 1
+              val dMethods = extensions.map( (arg, m) => parseMethod(m, extInfo = Some(ExtensionInformation(isGroupped))))
+              ExtensionGroup(parseArgument(extensions(0).arg, _ => "", isExtendedSymbol = true, isGroupped), dMethods)
             }
           }.toList
       }
@@ -68,6 +107,10 @@ trait ClassLikeSupport:
           .filter(!_.flags.is(Flags.Synthetic))
           .map(_.dri)
 
+      def getConstructorMethod: Option[DFunction] = Some(c.constructor.symbol).filter(_.exists).map( d =>
+          parseMethod(d, constructorWithoutParamLists(c), s => c.getParameterModifier(s))
+      )
+
 
 
   def parseClasslike(classDef: reflect.ClassDef)(using ctx: Context): DClass = classDef match {
@@ -78,35 +121,18 @@ trait ClassLikeSupport:
   }
 
   def parseObject(classDef: reflect.ClassDef)(using ctx: Context): DClass = 
-    val isEnumCompanion = classDef.symbol.getCompanionSymbol.map(s => s.flags.is(Flags.Enum)).getOrElse(false)
     val modifier = classDef.symbol.getModifier() match
       case ScalaModifier.Final => ScalaModifier.Empty
       case other => other
 
-    new DClass(
-        classDef.symbol.dri,
-        classDef.name.stripSuffix("$"),
-        /*constuctors =*/ classDef.getConstructors.map(parseMethod(_)).asJava,
-        /*methods =*/ classDef.getMethods.map(parseMethod(_)).asJava,
-        /*fields =*/ (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef)).asJava,
-        /*nested =*/ classDef.getNestedClasslikes.asJava,
-        /*sources =*/ classDef.symbol.source,
-        /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
-        /*companion =*/ null,
-        /*generics =*/ classDef.getTypeParams.map(parseTypeArgument).asJava,
-        /*supertypes =*/ Map.empty.asJava, // Not used
-        /*documentation =*/ classDef.symbol.documentation,
-        /*expectPresentInSet =*/ null, // unused
-        /*modifier =*/ sourceSet.asMap(modifier),
-        inspector.sourceSet.toSet,
-        PropertyContainer.Companion.empty()
-          .plus(ClasslikeExtension(classDef.getParents, None, Kind.Object, classDef.getCompanion, classDef.getExtensionGroups))
-          .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
+    DClass(classDef)(
+        name = classDef.name.stripSuffix("$"),
+        modifier = Map(sourceSet.getSourceSet -> modifier),
+        kind = Kind.Object
       )
 
 
   def parseEnum(classDef: reflect.ClassDef)(using ctx: Context): DClass = 
-    val constructorMethod = Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), s => classDef.getParameterModifier(s)))
     val extraModifiers = classDef.symbol.getExtraModifiers().filter(_ != ScalaOnlyModifiers.Sealed)
     val modifier = classDef.symbol.getModifier() match {
       case ScalaModifier.Abstract => ScalaModifier.Empty
@@ -126,73 +152,20 @@ trait ClassLikeSupport:
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
     }.flatten.toList.map(p => p.withNewExtras(p.getExtra plus IsEnumEntry.Class))
 
-    new DClass(
-        classDef.symbol.dri,
-        classDef.name,
-        /*constuctors =*/ classDef.getConstructors.map(parseMethod(_)).asJava,
-        /*methods =*/ classDef.getMethods.map(parseMethod(_)).asJava,
-        /*fields =*/ (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef)).asJava,
-        /*nested =*/ (classDef.getNestedClasslikes).asJava,
-        /*sources =*/ classDef.symbol.source,
-        /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
-        /*companion =*/ null,
-        /*generics =*/ classDef.getTypeParams.map(parseTypeArgument).asJava,
-        /*supertypes =*/ Map.empty.asJava, // Not used
-        /*documentation =*/ classDef.symbol.documentation,
-        /*expectPresentInSet =*/ null, // unused
-        /*modifier =*/ sourceSet.asMap(modifier),
-        inspector.sourceSet.toSet,
-        PropertyContainer.Companion.empty()
-          .plus(ClasslikeExtension(classDef.getParents, constructorMethod, Kind.Enum, classDef.getCompanion, classDef.getExtensionGroups))
-          .plus(AdditionalModifiers(sourceSet.asMap(extraModifiers.asJava)))
-          .plus(EnumExtension(enumVals ++ enumTypes ++ enumNested))
+    DClass(classDef)(
+        modifier = Map(sourceSet.getSourceSet -> modifier),
+        kind = Kind.Enum,
+        additionalExtras = Seq(EnumExtension(enumVals ++ enumTypes ++ enumNested))
       )
 
   def parseTrait(classDef: reflect.ClassDef)(using ctx: Context): DClass = 
-    val constructorMethod = Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), s => classDef.getParameterModifier(s)))
-    new DClass(
-        classDef.symbol.dri,
-        classDef.name,
-        /*constuctors =*/ classDef.getConstructors.map(parseMethod(_)).asJava,
-        /*methods =*/ classDef.getMethods.map(parseMethod(_)).asJava,
-        /*fields =*/ (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef)).asJava,
-        /*nested =*/ classDef.getNestedClasslikes.asJava,
-        /*sources =*/ classDef.symbol.source,
-        /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
-        /*companion =*/ null,
-        /*generics =*/ classDef.getTypeParams.map(parseTypeArgument).asJava,
-        /*supertypes =*/ Map.empty.asJava, // Not used
-        /*documentation =*/ classDef.symbol.documentation,
-        /*expectPresentInSet =*/ null, // unused
-        /*modifier =*/ sourceSet.asMap(classDef.symbol.getModifier()),
-        inspector.sourceSet.toSet,
-        PropertyContainer.Companion.empty()
-          .plus(ClasslikeExtension(classDef.getParents, constructorMethod, Kind.Trait, classDef.getCompanion, classDef.getExtensionGroups))
-          .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
+    DClass(classDef)(
+        kind = Kind.Trait
       )
 
 
-  def parseClass(classDef: reflect.ClassDef)(using ctx: Context): DClass =
-    val constructorMethod = Some(parseMethod(classDef.constructor.symbol, constructorWithoutParamLists(classDef), s => classDef.getParameterModifier(s)))
-    new DClass(
-        classDef.symbol.dri,
-        classDef.name,
-        /*constuctors =*/ classDef.getConstructors.map(parseMethod(_)).asJava,
-        /*methods =*/ classDef.getMethods.map(parseMethod(_)).asJava,
-        /*fields =*/ (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef)).asJava,
-        /*nested =*/ classDef.getNestedClasslikes.asJava,
-        /*sources =*/ classDef.symbol.source,
-        /*visibility =*/ sourceSet.asMap(classDef.symbol.getVisibility()),
-        /*companion =*/ null,
-        /*generics =*/ classDef.getTypeParams.map(parseTypeArgument).asJava,
-        /*supertypes =*/ Map.empty.asJava, // Not used
-        /*documentation =*/ classDef.symbol.documentation,
-        /*expectPresentInSet =*/ null, // unused
-        /*modifier =*/ sourceSet.asMap(classDef.symbol.getModifier()),
-        inspector.sourceSet.toSet,
-        PropertyContainer.Companion.empty()
-          .plus(ClasslikeExtension(classDef.getParents, constructorMethod, Kind.Class, classDef.getCompanion, classDef.getExtensionGroups))
-          .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
+  def parseClass(classDef: reflect.ClassDef)(using ctx: Context): DClass = DClass(classDef)(
+        kind = Kind.Class
       )
 
   def parseMethod(methodSymbol: Symbol, emptyParamsList: Boolean = false, paramPrefix: Symbol => String = _ => "", extInfo: Option[ExtensionInformation] = None): DFunction =
@@ -206,9 +179,9 @@ trait ClassLikeSupport:
       name,
       /*isConstructor =*/ methodSymbol.isClassConstructor,
       /*parameters =*/ paramLists.flatten.map(parseArgument(_, paramPrefix)).asJava, // TODO add support for parameters
-      /*documentation =*/ methodSymbol.documentation,
+      /*documentation =*/ methodSymbol.documentation.asJava,
       /*expectPresentInSet =*/ null, // unused
-      /*sources =*/ methodSymbol.source,
+      /*sources =*/ methodSymbol.source.asJava,
       /*visibility =*/ sourceSet.asMap(methodSymbol.getVisibility()),
       /*type =*/ method.returnTpt.dokkaType,
       /*generics =*/ genericTypes.map(parseTypeArgument).asJava, 
@@ -224,7 +197,7 @@ trait ClassLikeSupport:
     new DParameter(
       argument.symbol.dri,
       prefix(argument.symbol) + argument.symbol.name,
-      argument.symbol.documentation,
+      argument.symbol.documentation.asJava,
       null,
       argument.tpt.dokkaType,
       sourceSet.toSet(),
@@ -242,7 +215,7 @@ trait ClassLikeSupport:
     new DTypeParameter(
       argument.symbol.dri,
       variancePrefix + argument.symbol.name,
-      argument.symbol.documentation,
+      argument.symbol.documentation.asJava,
       null,
       List(argument.rhs.dokkaType).asJava,
       sourceSet.toSet(),
@@ -265,9 +238,9 @@ trait ClassLikeSupport:
     new DProperty(
       typeDef.symbol.dri,
       typeDef.name,
-      /*documentation =*/ typeDef.symbol.documentation,
+      /*documentation =*/ typeDef.symbol.documentation.asJava,
       /*expectPresentInSet =*/ null, // unused
-      /*sources =*/ typeDef.symbol.source,
+      /*sources =*/ typeDef.symbol.source.asJava,
       /*visibility =*/ sourceSet.asMap(typeDef.symbol.getVisibility()),
       /*type =*/ tpeTree.dokkaType, // TODO this may be hard...
       /*receiver =*/ null, // Not used
@@ -283,9 +256,9 @@ trait ClassLikeSupport:
       new DProperty(
         valDef.symbol.dri,
         valDef.name,
-        /*documentation =*/ valDef.symbol.documentation,
+        /*documentation =*/ valDef.symbol.documentation.asJava,
         /*expectPresentInSet =*/ null, // unused
-        /*sources =*/ valDef.symbol.source,
+        /*sources =*/ valDef.symbol.source.asJava,
         /*visibility =*/ sourceSet.asMap(valDef.symbol.getVisibility()),
         /*type =*/ valDef.tpt.dokkaType,
         /*receiver =*/ null, // Not used

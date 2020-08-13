@@ -119,3 +119,11 @@ extension on(builder: PageContentBuilder$DocumentableContentBuilder):
             styles: JSet[Style] = builder.getMainStyles,
             extra: PropertyContainer[ContentNode]= builder.getMainExtra) =
             builder.link(text, address, kind, sourceSets, styles, extra)
+
+object JList:
+    def apply[T](elem: T): JList[T] = List(elem).asJava
+    def apply[T]() = List[T]().asJava
+
+object JSet:
+    def apply[T](elem: T): JSet[T] = Set(elem).asJava
+    def apply[T]() = Set[T]().asJava

@@ -13,7 +13,6 @@ import org.jetbrains.dokka.model.properties.PropertyContainer
 import dokka.java.api._
 import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
-import java.util.{List => JList}
 
 class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logger: DokkaLogger) extends SignatureProvider:
     private val default = new KotlinSignatureProvider(contentConverter, logger)
@@ -24,23 +23,23 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
 
     override def signature(documentable: Documentable) = documentable match {
         case extension: DFunction if extension.get(MethodExtension).extensionInfo.isDefined =>
-            List(extensionSignature(extension)).asJava
+            JList(extensionSignature(extension))
         case method: DFunction =>
-            List(methodSignature(method)).asJava
+            JList(methodSignature(method))
         case enumEntry: DClass if enumEntry.get(IsEnumEntry) != null => 
-            List(enumEntrySignature(enumEntry)).asJava
+            JList(enumEntrySignature(enumEntry))
         case clazz: DClass =>
-            List(classSignature(clazz)).asJava
+            JList(classSignature(clazz))
         case enumProperty: DProperty if enumProperty.get(IsEnumEntry) != null => 
-            List(enumPropertySignature(enumProperty)).asJava
+            JList(enumPropertySignature(enumProperty))
         case property: DProperty =>
-            List(propertySignature(property)).asJava
+            JList(propertySignature(property))
         case parameter: DParameter =>
-            List(parameterSignature(parameter)).asJava
+            JList(parameterSignature(parameter))
         case _ => default.signature(documentable)
     }
 
-    val styles = Set(TextStyle.Monospace).asJava
+    val styles = JSet(TextStyle.Monospace)
 
     val utils: JvmSignatureUtils = KotlinSignatureUtils.INSTANCE
 

@@ -60,10 +60,10 @@ class ScalaPageCreator(
         
         c match {
             case clazz: DClass => 
-                val op1 = addExtensionMethodPages(clazz, res)
+                val pagesWithExtensions = addExtensionMethodPages(clazz, res)
                 val ext = clazz.get(ClasslikeExtension)
-                if(ext.kind == dotty.dokka.Kind.Object && ext.companion.isDefined) renameCompanionObjectPage(op1)
-                else op1
+                if(ext.kind == dotty.dokka.Kind.Object && ext.companion.isDefined) renameCompanionObjectPage(pagesWithExtensions)
+                else pagesWithExtensions
             case _ => res
         }
     }
@@ -124,10 +124,10 @@ class ScalaPageCreator(
                             builder.unaryPlus(builder.buildSignature(elem))
                             kotlin.Unit.INSTANCE
                         },
-                        dri = Set(elem.getDri).asJava,
+                        dri = JSet(elem.getDri),
                         sourceSets = elem.getSourceSets,
                         kind = ContentKind.SourceSetDependentHint,
-                        styles = Set().asJava
+                        styles = JSet()
                     )
                     kotlin.Unit.INSTANCE
                 }
@@ -172,10 +172,10 @@ class ScalaPageCreator(
                             builder.unaryPlus(builder.buildSignature(elem))
                             kotlin.Unit.INSTANCE
                         },
-                        dri = Set(elem.getDri).asJava,
+                        dri = JSet(elem.getDri),
                         sourceSets = elem.getSourceSets,
                         kind = ContentKind.SourceSetDependentHint,
-                        styles = Set().asJava
+                        styles = JSet()
                     )
                     kotlin.Unit.INSTANCE
                 }
@@ -208,9 +208,9 @@ class ScalaPageCreator(
       
         c match{
             case clazz: DClass =>
-                val op1 = insertCompanion(clazz, defaultContent)
-                val op2 = insertCustomExtensionTab(clazz, op1)
-                if clazz.get(ClasslikeExtension).kind == dotty.dokka.Kind.Enum then insertEnumTab(clazz, op2) else op2
+                val pageWithCompanion = insertCompanion(clazz, defaultContent)
+                val pageWithExtensionsTab = insertCustomExtensionTab(clazz, pageWithCompanion)
+                if clazz.get(ClasslikeExtension).kind == dotty.dokka.Kind.Enum then insertEnumTab(clazz, pageWithExtensionsTab) else pageWithExtensionsTab
             case _ => defaultContent
         }
     }
@@ -323,7 +323,7 @@ class ScalaPageCreator(
                                     //TODO: There's problem with using extra property containers from Dokka in Scala
                                     //val newExtra = if(needsAnchors) then extra.plus(SymbolAnchorHint) else extra
                                     val newExtra = extra
-                                    builder.buildGroup(Set(elem.getDri).asJava, elem.getSourceSets, kind, styles.asJava, newExtra, bdr => { 
+                                    builder.buildGroup(JSet(elem.getDri), elem.getSourceSets, kind, styles.asJava, newExtra, bdr => { 
                                         elementFunc(bdr, elem)
                                         kotlin.Unit.INSTANCE
                                     })
