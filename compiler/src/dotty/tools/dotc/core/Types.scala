@@ -1034,6 +1034,8 @@ object Types {
           // A test case where this happens is tests/pos/i536.scala.
           // The & causes a subtype check which calls baseTypeRef again with the same
           // superclass.
+        case ex: LazyRefCycle => this safe_& that
+          // A test case where this happens is tests/pos/i9364.scala
       }
 
     def | (that: Type)(using Context): Type = {
@@ -2643,8 +2645,10 @@ object Types {
         if myRef == null then
           // if errors were reported previously handle this by throwing a CyclicReference
           // instead of crashing immediately. A test case is neg/i6057.scala.
-          assert(reportCycles || ctx.reporter.errorsReported)
-          throw CyclicReference(NoDenotation)
+          if reportCycles || ctx.reporter.errorsReported then
+            throw CyclicReference(NoDenotation) // recoverable
+          else
+            throw LazyRefCycle()  // generally not recoverable, but there are a few exceptions
       else
         computed = true
         val result = refFn
@@ -2669,6 +2673,8 @@ object Types {
     override def equals(other: Any): Boolean = this.eq(other.asInstanceOf[AnyRef])
     override def hashCode: Int = System.identityHashCode(this)
   }
+
+  class LazyRefCycle extends Error("Illegal cycle: LazyRef depends on itself")
 
   // --- Refined Type and RecType ------------------------------------------------
 

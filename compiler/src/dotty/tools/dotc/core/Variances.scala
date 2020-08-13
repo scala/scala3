@@ -116,6 +116,10 @@ object Variances {
       def traverse(t: Type): Unit = t match
         case t: TypeParamRef if t.binder eq lam =>
           lam.typeParams(t.paramNum).storedVariance &= varianceFromInt(variance)
+        case t: LazyRef =>
+          try traverse(t.ref)
+          catch case _: LazyRefCycle =>
+            () // can happen with deeply entangled F-bounds, such as in i9364.scala under -Ytest-pickler
         case _ =>
           traverseChildren(t)
     }
