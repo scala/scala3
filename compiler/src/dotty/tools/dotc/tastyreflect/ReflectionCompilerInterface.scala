@@ -52,13 +52,17 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Context_owner(self: Context): Symbol = self.owner
 
 
-  def Context_GADT_setFreshGADTBounds(self: Context): Context =
+  /////////////////
+  // Constraints //
+  /////////////////
+
+  def Constraints_init(self: Context): Context =
     self.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
 
-  def Context_GADT_addToConstraint(self: Context)(syms: List[Symbol]): Boolean =
+  def Constraints_add(self: Context)(syms: List[Symbol]): Boolean =
     self.gadt.addToConstraint(syms)
 
-  def Context_GADT_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type =
+  def Constraints_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type =
     self.gadt.approximation(sym, fromBelow)
 
   ////////////

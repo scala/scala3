@@ -143,10 +143,13 @@ trait CompilerInterface {
   /** Returns the owner of the context */
   def Context_owner(self: Context): Symbol
 
-  def Context_GADT_setFreshGADTBounds(self: Context): Context
-  def Context_GADT_addToConstraint(self: Context)(syms: List[Symbol]): Boolean
-  def Context_GADT_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type
+  /////////////////
+  // Constraints //
+  /////////////////
 
+  def Constraints_init(self: Context): Context
+  def Constraints_add(self: Context)(syms: List[Symbol]): Boolean
+  def Constraints_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type
 
   ////////////
   // Source //
