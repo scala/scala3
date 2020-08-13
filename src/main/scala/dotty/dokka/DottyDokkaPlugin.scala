@@ -45,3 +45,4 @@ class DottyDokkaPlugin extends JavaDokkaPlugin:
         signatureProvider: SignatureProvider,
         logger: DokkaLogger
     ) = new ScalaDocumentableToPageTranslator(commentsToContentConverter,signatureProvider, logger)
+  override def createPackageHierarchyTransformer(ctx: DokkaContext) = PackageHierarchyTransformer(ctx)

@@ -75,6 +75,12 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         } override dokkaBase.documentableToPageTranslator
     }
 
+    val packageHierarchyTransformer by extending {
+        CoreExtensions.pageTransformer providing { ctx ->
+            createPackageHierarchyTransformer(ctx)
+        } order { before(dokkaBase.rootCreator) }
+    }
+
     abstract fun createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule
     abstract fun createSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger): SignatureProvider
     abstract fun createResourceInstaller(ctx: DokkaContext) : PageTransformer
@@ -84,6 +90,7 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         signatureProvider: SignatureProvider,
         logger: DokkaLogger
     ) : DocumentableToPageTranslator
+    abstract fun createPackageHierarchyTransformer(ctx: DokkaContext) : PageTransformer
 }
 
 // TODO we probably does not need that
