@@ -42,4 +42,31 @@ object Type {
     new Matcher.QuoteMatcher[qctx.type].typeTreeMatch(scrutineeType.unseal, patternType.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 
+  def Unit: QuoteContext ?=> quoted.Type[Unit] =
+    qctx.tasty.defn.UnitType.seal.asInstanceOf[quoted.Type[Unit]]
+
+  def Boolean: QuoteContext ?=> quoted.Type[Boolean] =
+    qctx.tasty.defn.BooleanType.seal.asInstanceOf[quoted.Type[Boolean]]
+
+  def Byte: QuoteContext ?=> quoted.Type[Byte] =
+    qctx.tasty.defn.ByteType.seal.asInstanceOf[quoted.Type[Byte]]
+
+  def Char: QuoteContext ?=> quoted.Type[Char] =
+    qctx.tasty.defn.CharType.seal.asInstanceOf[quoted.Type[Char]]
+
+  def Short: QuoteContext ?=> quoted.Type[Short] =
+    qctx.tasty.defn.ShortType.seal.asInstanceOf[quoted.Type[Short]]
+
+  def Int: QuoteContext ?=> quoted.Type[Int] =
+    qctx.tasty.defn.IntType.seal.asInstanceOf[quoted.Type[Int]]
+
+  def Long: QuoteContext ?=> quoted.Type[Long] =
+    qctx.tasty.defn.LongType.seal.asInstanceOf[quoted.Type[Long]]
+
+  def Float: QuoteContext ?=> quoted.Type[Float] =
+    qctx.tasty.defn.FloatType.seal.asInstanceOf[quoted.Type[Float]]
+
+  def Double: QuoteContext ?=> quoted.Type[Double] =
+    qctx.tasty.defn.DoubleType.seal.asInstanceOf[quoted.Type[Double]]
+
 }

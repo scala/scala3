@@ -27,31 +27,4 @@ object Type {
   @compileTimeOnly("Reference to `scala.quoted.Type.apply` was not handled by ReifyQuotes")
   given apply[T <: AnyKind] as (QuoteContext ?=> Type[T]) = ???
 
-  def UnitTag: QuoteContext ?=> Type[Unit] =
-    qctx.tasty.defn.UnitType.seal.asInstanceOf[quoted.Type[Unit]]
-
-  def BooleanTag: QuoteContext ?=> Type[Boolean] =
-    qctx.tasty.defn.BooleanType.seal.asInstanceOf[quoted.Type[Boolean]]
-
-  def ByteTag: QuoteContext ?=> Type[Byte] =
-    qctx.tasty.defn.ByteType.seal.asInstanceOf[quoted.Type[Byte]]
-
-  def CharTag: QuoteContext ?=> Type[Char] =
-    qctx.tasty.defn.CharType.seal.asInstanceOf[quoted.Type[Char]]
-
-  def ShortTag: QuoteContext ?=> Type[Short] =
-    qctx.tasty.defn.ShortType.seal.asInstanceOf[quoted.Type[Short]]
-
-  def IntTag: QuoteContext ?=> Type[Int] =
-    qctx.tasty.defn.IntType.seal.asInstanceOf[quoted.Type[Int]]
-
-  def LongTag: QuoteContext ?=> Type[Long] =
-    qctx.tasty.defn.LongType.seal.asInstanceOf[quoted.Type[Long]]
-
-  def FloatTag: QuoteContext ?=> Type[Float] =
-    qctx.tasty.defn.FloatType.seal.asInstanceOf[quoted.Type[Float]]
-
-  def DoubleTag: QuoteContext ?=> Type[Double] =
-    qctx.tasty.defn.DoubleType.seal.asInstanceOf[quoted.Type[Double]]
-
 }
