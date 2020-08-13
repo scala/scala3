@@ -1473,17 +1473,21 @@ class Typer extends Namer
             instantiateCFT(appType.instantiate(paramss.head.map(_.termRef)), paramss.tail)
       else pt
 
-    def returnProto(owner: Symbol, locals: Scope): Type =
+    def returnProto(owner: Symbol): Type =
       if (owner.isConstructor) defn.UnitType
       else
-        val rt = owner.info match
+        // We need to get the return type of the enclosing function, with all parameters replaced
+        // by the local type and value parameters. It would be nice if we could look up that
+        // type simply in the tpt field of the enclosing function. But the tree argument in
+        // a context is an untyped tree, so we cannot extract its type.
+        def instantiateRT(info: Type, psymss: List[List[Symbol]]): Type = info match
           case info: PolyType =>
-            val tparams = locals.toList.takeWhile(_ is TypeParam)
-            assert(info.paramNames.length == tparams.length,
-                  i"return mismatch from $owner, tparams = $tparams, locals = ${locals.toList}%, %")
-            info.instantiate(tparams.map(_.typeRef)).finalResultType
+            instantiateRT(info.instantiate(psymss.head.map(_.typeRef)), psymss.tail)
+          case info: MethodType =>
+            instantiateRT(info.instantiate(psymss.head.map(_.termRef)), psymss.tail)
           case info =>
-            info.finalResultType
+            info.widenExpr
+        val rt = instantiateRT(owner.info, owner.paramSymss)
         def iftParamss = ctx.owner.ownersIterator
           .filter(_.is(Method, butNot = Accessor))
           .takeWhile(_.isAnonymousFunction)
@@ -1505,7 +1509,7 @@ class Typer extends Namer
           (EmptyTree, errorType(MissingReturnTypeWithReturnStatement(owner), tree.sourcePos))
         else {
           val from = Ident(TermRef(NoPrefix, owner.asTerm))
-          val proto = returnProto(owner, cx.scope)
+          val proto = returnProto(owner)
           (from, proto)
         }
       else enclMethInfo(cx.outer)
