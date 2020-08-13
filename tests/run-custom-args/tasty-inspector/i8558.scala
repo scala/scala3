@@ -17,7 +17,6 @@ class TestInspector_NonTasty() extends TastyInspector:
   var isAlreadyLoaded: Boolean = false
   var className: String = ""
 
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = 
-    import reflect.{_, given _}
-    isAlreadyLoaded = reflect.rootContext.isAlreadyLoadedCompilationUnit()
-    className = reflect.rootContext.compilationUnitClassname()
+  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit =
+    isAlreadyLoaded = reflect.Source.isAlreadyLoadedCompilationUnit
+    className = reflect.Source.compilationUnitClassname

@@ -147,14 +147,14 @@ object Matcher {
     def termMatch(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] = {
       given Env = Map.empty
       if (hasTypeSplices) {
-        val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
+        val ctx: Context = internal.Constraints_init(rootContext)
         given Context = ctx
         val matchings = scrutineeTerm =?= patternTerm
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performance
-            case x: SymBinding => internal.Context_GADT_approximation(summon[Context])(x.sym, !x.fromAbove).seal
+            case x: SymBinding => internal.Constraints_approximation(summon[Context])(x.sym, !x.fromAbove).seal
             case x => x
           })
         }
@@ -168,14 +168,14 @@ object Matcher {
     def typeTreeMatch(scrutineeTypeTree: TypeTree, patternTypeTree: TypeTree, hasTypeSplices: Boolean): Option[Tuple] = {
       given Env = Map.empty
       if (hasTypeSplices) {
-        val ctx: Context = internal.Context_GADT_setFreshGADTBounds(rootContext)
+        val ctx: Context = internal.Constraints_init(rootContext)
         given Context = ctx
         val matchings = scrutineeTypeTree =?= patternTypeTree
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performance
-            case x: SymBinding => internal.Context_GADT_approximation(summon[Context])(x.sym, !x.fromAbove).seal
+            case x: SymBinding => internal.Constraints_approximation(summon[Context])(x.sym, !x.fromAbove).seal
             case x => x
           })
         }
@@ -323,7 +323,7 @@ object Matcher {
             fn1 =?= fn2 &&& args1 =?= args2
 
           case (Block(stats1, expr1), Block(binding :: stats2, expr2)) if isTypeBinding(binding) =>
-            qctx.tasty.internal.Context_GADT_addToConstraint(summon[Context])(binding.symbol :: Nil)
+            qctx.tasty.internal.Constraints_add(summon[Context])(binding.symbol :: Nil)
             matched(new SymBinding(binding.symbol, hasFromAboveAnnotation(binding.symbol))) &&& Block(stats1, expr1) =?= Block(stats2, expr2)
 
           /* Match block */
@@ -340,7 +340,7 @@ object Matcher {
 
           case (scrutinee, Block(typeBindings, expr2)) if typeBindings.forall(isTypeBinding) =>
             val bindingSymbols = typeBindings.map(_.symbol)
-            qctx.tasty.internal.Context_GADT_addToConstraint(summon[Context])(bindingSymbols)
+            qctx.tasty.internal.Constraints_add(summon[Context])(bindingSymbols)
             bindingSymbols.foldRight(scrutinee =?= expr2)((x, acc) => matched(new SymBinding(x, hasFromAboveAnnotation(x))) &&& acc)
 
           /* Match if */

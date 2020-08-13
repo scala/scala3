@@ -141,37 +141,32 @@ trait CompilerInterface {
   /** Returns the owner of the context */
   def Context_owner(self: Context): Symbol
 
+  /////////////////
+  // Constraints //
+  /////////////////
+
+  def Constraints_init(self: Context): Context
+  def Constraints_add(self: Context)(syms: List[Symbol]): Boolean
+  def Constraints_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type
+
+  ////////////
+  // Source //
+  ////////////
+
   /** Returns the source file being compiled. The path is relative to the current working directory. */
-  def Context_source(self: Context): java.nio.file.Path
-
-  def Context_GADT_setFreshGADTBounds(self: Context): Context
-  def Context_GADT_addToConstraint(self: Context)(syms: List[Symbol]): Boolean
-  def Context_GADT_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type
-
-  /** Get package symbol if package is either defined in current compilation run or present on classpath. */
-  def Context_requiredPackage(self: Context)(path: String): Symbol
-
-  /** Get class symbol if class is either defined in current compilation run or present on classpath. */
-  def Context_requiredClass(self: Context)(path: String): Symbol
-
-  /** Get module symbol if module is either defined in current compilation run or present on classpath. */
-  def Context_requiredModule(self: Context)(path: String): Symbol
-
-  /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
-  def Context_requiredMethod(self: Context)(path: String): Symbol
+  def Source_path(using ctx: Context): java.nio.file.Path
 
   /** Returns true if we've tried to reflect on a Java class. */
-  def Context_isJavaCompilationUnit(self: Context): Boolean
+  def Source_isJavaCompilationUnit(using ctx: Context): Boolean
 
   /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
-  def Context_isScala2CompilationUnit(self: Context): Boolean
+  def Source_isScala2CompilationUnit(using ctx: Context): Boolean
 
   /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
-  def Context_isAlreadyLoadedCompilationUnit(self: Context): Boolean
+  def Source_isAlreadyLoadedCompilationUnit(using ctx: Context): Boolean
 
   /** Class name of the current CompilationUnit */
-  def Context_compilationUnitClassname(self: Context): String
-
+  def Source_compilationUnitClassname(using ctx: Context): String
 
   ///////////////
   // REPORTING //
@@ -1329,6 +1324,18 @@ trait CompilerInterface {
 
   /** Fields of a case class type -- only the ones declared in primary constructor */
   def Symbol_caseFields(self: Symbol)(using ctx: Context): List[Symbol]
+
+  /** Get package symbol if package is either defined in current compilation run or present on classpath. */
+  def Symbol_requiredPackage(path: String)(using ctx: Context): Symbol
+
+  /** Get class symbol if class is either defined in current compilation run or present on classpath. */
+  def Symbol_requiredClass(path: String)(using ctx: Context): Symbol
+
+  /** Get module symbol if module is either defined in current compilation run or present on classpath. */
+  def Symbol_requiredModule(path: String)(using ctx: Context): Symbol
+
+  /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
+  def Symbol_requiredMethod(path: String)(using ctx: Context): Symbol
 
   def Symbol_of(fullName: String)(using ctx: Context): Symbol
 

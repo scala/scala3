@@ -5,22 +5,22 @@ object Macro {
   def fooImpl(using qctx: QuoteContext) : Expr[String] = {
     import qctx.tasty._
     val list = List(
-      rootContext.requiredPackage("java"),
-      rootContext.requiredPackage("java.lang"),
-      rootContext.requiredPackage("scala"),
-      rootContext.requiredPackage("scala.collection"),
+      Symbol.requiredPackage("java"),
+      Symbol.requiredPackage("java.lang"),
+      Symbol.requiredPackage("scala"),
+      Symbol.requiredPackage("scala.collection"),
 
-      rootContext.requiredClass("java.lang.Object"),
-      rootContext.requiredClass("scala.Any"),
-      rootContext.requiredClass("scala.AnyRef"),
-      rootContext.requiredClass("scala.AnyVal"),
-      rootContext.requiredClass("scala.Unit"),
-      rootContext.requiredClass("scala.Null"),
+      Symbol.requiredClass("java.lang.Object"),
+      Symbol.requiredClass("scala.Any"),
+      Symbol.requiredClass("scala.AnyRef"),
+      Symbol.requiredClass("scala.AnyVal"),
+      Symbol.requiredClass("scala.Unit"),
+      Symbol.requiredClass("scala.Null"),
 
-      rootContext.requiredModule("scala.None"),
-      rootContext.requiredModule("scala.Nil"),
+      Symbol.requiredModule("scala.None"),
+      Symbol.requiredModule("scala.Nil"),
 
-      rootContext.requiredMethod("scala.List.empty"),
+      Symbol.requiredMethod("scala.List.empty"),
     )
     Expr(list.map(_.fullName).mkString("\n"))
   }

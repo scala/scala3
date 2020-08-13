@@ -49,26 +49,30 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def Context_owner(self: Context): Symbol = self.owner
 
-  def Context_source(self: Context): java.nio.file.Path = self.compilationUnit.source.file.jpath
 
-  def Context_GADT_setFreshGADTBounds(self: Context): Context =
+  /////////////////
+  // Constraints //
+  /////////////////
+
+  def Constraints_init(self: Context): Context =
     self.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
 
-  def Context_GADT_addToConstraint(self: Context)(syms: List[Symbol]): Boolean =
+  def Constraints_add(self: Context)(syms: List[Symbol]): Boolean =
     self.gadt.addToConstraint(syms)
 
-  def Context_GADT_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type =
+  def Constraints_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type =
     self.gadt.approximation(sym, fromBelow)
 
-  def Context_requiredPackage(self: Context)(path: String): Symbol = requiredPackage(path)(using self)
-  def Context_requiredClass(self: Context)(path: String): Symbol = requiredClass(path)(using self)
-  def Context_requiredModule(self: Context)(path: String): Symbol = requiredModule(path)(using self)
-  def Context_requiredMethod(self: Context)(path: String): Symbol = requiredMethod(path)(using self)
-  def Context_isJavaCompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
-  def Context_isScala2CompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
-  def Context_isAlreadyLoadedCompilationUnit(self: Context): Boolean = self.compilationUnit.isInstanceOf[fromtasty.AlreadyLoadedCompilationUnit]
-  def Context_compilationUnitClassname(self: Context): String =
-    self.compilationUnit match {
+  ////////////
+  // Source //
+  ////////////
+
+  def Source_path(using Context): java.nio.file.Path = ctx.compilationUnit.source.file.jpath
+  def Source_isJavaCompilationUnit(using Context): Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
+  def Source_isScala2CompilationUnit(using Context): Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
+  def Source_isAlreadyLoadedCompilationUnit(using Context): Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.AlreadyLoadedCompilationUnit]
+  def Source_compilationUnitClassname(using Context): String =
+    ctx.compilationUnit match {
       case cu: fromtasty.JavaCompilationUnit => cu.className
       case cu: fromtasty.Scala2CompilationUnit => cu.className
       case cu: fromtasty.AlreadyLoadedCompilationUnit => cu.className
@@ -1778,6 +1782,11 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
     self.children
 
   private def isField(sym: Symbol)(using Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
+
+  def Symbol_requiredPackage(path: String)(using Context): Symbol = requiredPackage(path)
+  def Symbol_requiredClass(path: String)(using Context): Symbol = requiredClass(path)
+  def Symbol_requiredModule(path: String)(using Context): Symbol = requiredModule(path)
+  def Symbol_requiredMethod(path: String)(using Context): Symbol = requiredMethod(path)
 
   def Symbol_of(fullName: String)(using Context): Symbol =
     requiredClass(fullName)
