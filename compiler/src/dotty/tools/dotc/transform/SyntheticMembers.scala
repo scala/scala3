@@ -57,6 +57,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   private var myValueSymbols: List[Symbol] = Nil
   private var myCaseSymbols: List[Symbol] = Nil
   private var myCaseModuleSymbols: List[Symbol] = Nil
+  private var myEnumValueSymbols: List[Symbol] = Nil
 
   private def initSymbols(using Context) =
     if (myValueSymbols.isEmpty) {
@@ -65,11 +66,13 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement,
         defn.Product_productElementName)
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
+      myEnumValueSymbols = List(defn.Any_toString)
     }
 
   def valueSymbols(using Context): List[Symbol] = { initSymbols; myValueSymbols }
   def caseSymbols(using Context): List[Symbol] = { initSymbols; myCaseSymbols }
   def caseModuleSymbols(using Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
+  def enumValueSymbols(using Context): List[Symbol] = { initSymbols; myEnumValueSymbols }
 
   private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol = {
     val existing = sym.matchingMember(clazz.thisType)
@@ -89,11 +92,17 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
       else clazz.caseAccessors
     val isEnumCase = clazz.derivesFrom(defn.EnumClass) && clazz != defn.EnumClass
+    val isNonJavaEnumValue =
+      isEnumCase
+      && clazz.isAnonymousClass
+      && clazz.classParents.head.classSymbol.is(Enum)
+      && !clazz.derivesFrom(defn.JavaEnumClass)
 
     val symbolsToSynthesize: List[Symbol] =
       if (clazz.is(Case))
         if (clazz.is(Module)) caseModuleSymbols
         else caseSymbols
+      else if (isNonJavaEnumValue) enumValueSymbols
       else if (isDerivedValueClass(clazz)) valueSymbols
       else Nil
 
@@ -113,10 +122,18 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       def ownName: Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
 
+      def callProductPrefix: Tree =
+        Select(This(clazz), nme.productPrefix).ensureApplied
+
+      def toStringBody(vrefss: List[List[Tree]]): Tree =
+        if (clazz.is(ModuleClass)) ownName
+        else if (isNonJavaEnumValue) callProductPrefix
+        else forwardToRuntime(vrefss.head)
+
       def syntheticRHS(vrefss: List[List[Tree]])(using Context): Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => valueHashCodeBody
         case nme.hashCode_ => chooseHashcode
-        case nme.toString_ => if (clazz.is(ModuleClass)) ownName else forwardToRuntime(vrefss.head)
+        case nme.toString_ => toStringBody(vrefss)
         case nme.equals_ => equalsBody(vrefss.head.head)
         case nme.canEqual_ => canEqualBody(vrefss.head.head)
         case nme.productArity => Literal(Constant(accessors.length))
