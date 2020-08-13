@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters._
 import scala.math.max
 
 object SingleFileTest {
-  val classlikeKinds = Seq("class",  "object", "trait") // TODO add docs for packages
+  val classlikeKinds = Seq("class",  "object", "trait", "enum") // TODO add docs for packages
   val members = Seq("type", "def", "val", "var")
   val all = classlikeKinds ++ members
 }

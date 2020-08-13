@@ -13,7 +13,6 @@ import org.jetbrains.dokka.model.properties.PropertyContainer
 import dokka.java.api._
 import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
-import java.util.{List => JList}
 
 class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logger: DokkaLogger) extends SignatureProvider:
     private val default = new KotlinSignatureProvider(contentConverter, logger)
@@ -24,21 +23,63 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
 
     override def signature(documentable: Documentable) = documentable match {
         case extension: DFunction if extension.get(MethodExtension).extensionInfo.isDefined =>
-            List(extensionSignature(extension)).asJava
+            JList(extensionSignature(extension))
         case method: DFunction =>
-            List(methodSignature(method)).asJava
+            JList(methodSignature(method))
+        case enumEntry: DClass if enumEntry.get(IsEnumEntry) != null => 
+            JList(enumEntrySignature(enumEntry))
         case clazz: DClass =>
-            List(classSignature(clazz)).asJava
+            JList(classSignature(clazz))
+        case enumProperty: DProperty if enumProperty.get(IsEnumEntry) != null => 
+            JList(enumPropertySignature(enumProperty))
         case property: DProperty =>
-            List(propertySignature(property)).asJava
+            JList(propertySignature(property))
         case parameter: DParameter =>
-            List(parameterSignature(parameter)).asJava
+            JList(parameterSignature(parameter))
         case _ => default.signature(documentable)
     }
 
-    val styles = Set(TextStyle.Monospace).asJava
+    val styles = JSet(TextStyle.Monospace)
 
     val utils: JvmSignatureUtils = KotlinSignatureUtils.INSTANCE
+
+    private def enumEntrySignature(entry: DClass): ContentNode =
+        content(entry){ builder =>
+            val ext = entry.get(ClasslikeExtension)
+            builder.addText("case ")
+            builder.addLink(entry.getName, entry.getDri)
+            builder.generics(entry)
+            ext.constructor.foreach(c => builder.functionParameters(c))
+            ext.parentTypes match 
+                case Nil =>
+                case extendType :: withTypes =>
+                    builder.addText(" extends ") 
+                    builder.typeSignature(extendType)
+                    withTypes.foreach { withType => 
+                        builder.addText(" with ")  
+                        builder.typeSignature(withType)
+                    }
+            }
+
+    private def enumPropertySignature(entry: DProperty): ContentNode = 
+        content(entry){ builder =>
+            builder.addText("case ")
+            builder.addLink(entry.getName, entry.getDri)
+            builder.addText(" extends ")
+            val modifiedType = entry.getType match{
+                case t: TypeConstructor => TypeConstructor(
+                    t.getDri,
+                    t.getProjections.asScala.map{ 
+                        case t: UnresolvedBound if t.getName == " & " => UnresolvedBound(" with "); 
+                        case other => other
+                    }.asJava,
+                    t.getModifier
+                )
+                case other => other
+            }
+            builder.typeSignature(modifiedType)
+
+        }
 
     private def classSignature(clazz: DClass): ContentNode = 
         content(clazz){ builder =>

@@ -17,16 +17,16 @@ trait BasicSupport:
   extension (sym: reflect.Symbol):
     def documentation(using cxt: reflect.Context) = sym.comment match 
         case Some(comment) => 
-            sourceSet.asMap(parseComment(comment, sym.tree))
+            Map(sourceSet.getSourceSet -> parseComment(comment, sym.tree))
         case None =>  
-            Map.empty.asJava
+            Map.empty
 
     def source(using ctx: Context) =
       val path = sym.pos.sourceFile.jpath.toString
-      sourceSet.asMap(
+      Map(sourceSet.getSourceSet -> (
         new DocumentableSource:
           override def getPath = path
-      )          
+      ))         
   
   private val emptyDRI =  DRI.Companion.getTopLevel
 
@@ -64,7 +64,9 @@ class SymOps[R <: Reflection](val r: R) {
         Option.when(sym.flags.is(Flags.Case))(ScalaOnlyModifiers.Case)
       ).flatten
 
-    def shouldDocumentClasslike: Boolean = !sym.flags.is(Flags.Private) && !sym.flags.is(Flags.Synthetic)
+    def shouldDocumentClasslike: Boolean = !sym.flags.is(Flags.Private) && !sym.flags.is(Flags.Synthetic) && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
+
+    def getCompanionSymbol: Option[Symbol] = Some(sym.companionClass).filter(_.exists)
 
     def isCompanionObject(): Boolean = sym.flags.is(Flags.Object) && sym.companionClass.exists
 

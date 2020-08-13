@@ -1,11 +1,13 @@
 package dotty.dokka
 
+import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model._
 import collection.JavaConverters._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._  
+
 
 case class ExtensionInformation(val isGrouped: Boolean)
    
@@ -19,13 +21,27 @@ case class ParameterExtension(isExtendedSymbol: Boolean, isGrouped: Boolean) ext
 
 object ParameterExtension extends BaseKey[DParameter, ParameterExtension]
 
+enum IsEnumEntry extends ExtraProperty[Documentable]:
+  case Val
+  case Type
+  case Class
+  override def getKey = IsEnumEntry
+
+object IsEnumEntry extends BaseKey[Documentable, IsEnumEntry]
+
 enum Kind(val name: String){
   case Class extends Kind("class")
   case Object extends Kind("object")
   case Trait extends Kind("trait")
+  case Enum extends Kind("enum")
 }
 
 case class ExtensionGroup(val extendedSymbol: DParameter, val extensions: List[DFunction])
+
+case class EnumExtension(val enumEntries: Seq[Documentable]) extends ExtraProperty[DClass]:
+  override def getKey = EnumExtension
+
+object EnumExtension extends BaseKey[DClass, EnumExtension]
 
 case class ClasslikeExtension(
   parentTypes: List[Bound], 
@@ -66,7 +82,7 @@ enum ScalaModifier(val name: String) extends org.jetbrains.dokka.model.Modifier(
   case Abstract extends ScalaModifier("abstract")
   case Final extends ScalaModifier("final")
   case Empty extends ScalaModifier("")
-  
+
 extension (f: DFunction):
   def isRightAssociative(): Boolean = f.getName.endsWith(":")
   def getExtendedSymbol(): Option[DParameter] = Option.when(f.get(MethodExtension).extensionInfo.isDefined)(

@@ -49,7 +49,7 @@ case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
             case packageObject: ClassDef if(packageObject.symbol.name.contains("package$")) =>
               docs += parsePackageObject(packageObject)
             case clazz: ClassDef if clazz.symbol.shouldDocumentClasslike =>
-              docs += parseClass(clazz)
+              docs += parseClasslike(clazz)
             case _ =>  
           }
           seen = seen.tail

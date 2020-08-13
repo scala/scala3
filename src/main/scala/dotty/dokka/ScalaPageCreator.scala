@@ -57,10 +57,10 @@ class ScalaPageCreator(
         
         c match {
             case clazz: DClass => 
-                val op1 = addExtensionMethodPages(clazz, res)
+                val pagesWithExtensions = addExtensionMethodPages(clazz, res)
                 val ext = clazz.get(ClasslikeExtension)
-                if(ext.kind == dotty.dokka.Kind.Object && ext.companion.isDefined) renameCompanionObjectPage(op1)
-                else op1
+                if(ext.kind == dotty.dokka.Kind.Object && ext.companion.isDefined) renameCompanionObjectPage(pagesWithExtensions)
+                else pagesWithExtensions
             case _ => res
         }
     }
@@ -121,10 +121,10 @@ class ScalaPageCreator(
                             builder.unaryPlus(builder.buildSignature(elem))
                             kotlin.Unit.INSTANCE
                         },
-                        dri = Set(elem.getDri).asJava,
+                        dri = JSet(elem.getDri),
                         sourceSets = elem.getSourceSets,
                         kind = ContentKind.SourceSetDependentHint,
-                        styles = Set().asJava
+                        styles = JSet()
                     )
                     kotlin.Unit.INSTANCE
                 }
@@ -151,13 +151,63 @@ class ScalaPageCreator(
         modifyContentGroup(content, modifiedContent)
     }
 
+    def insertEnumTab(clazz: DClass, defContent: ContentGroup): ContentGroup = {
+        val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
+        val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(builder => {
+            groupingBlock(
+                builder,
+                "Entries",
+                List(() -> clazz.get(EnumExtension).enumEntries.sortBy(_.getName).toList),
+                (builder, _) => {
+                    kotlin.Unit.INSTANCE
+                },
+                (builder, elem) => {
+                    link(builder, elem.getName, elem.getDri)(kind = ContentKind.Main)
+                    sourceSetDependentHint(builder)( builder =>
+                        {
+                            contentForBrief(builder, elem)
+                            builder.unaryPlus(builder.buildSignature(elem))
+                            kotlin.Unit.INSTANCE
+                        },
+                        dri = JSet(elem.getDri),
+                        sourceSets = elem.getSourceSets,
+                        kind = ContentKind.SourceSetDependentHint,
+                        styles = JSet()
+                    )
+                    kotlin.Unit.INSTANCE
+                }
+            )(
+                kind = ContentKind.Main,
+                sourceSets = builder.getMainSourcesetData.asScala.toSet,
+                styles = Set(),
+                extra = PropertyContainer.Companion.empty().plus(SimpleAttr.Companion.header("Entries")),
+                false,
+                true,
+                Nil,
+                false,
+                true
+            )
+            kotlin.Unit.INSTANCE
+        })
+
+        val modifiedContent = content(0).copy(
+            (content(0).getChildren.asScala ++ List(addedContent)).asJava,
+            content(0).getDci,
+            content(0).getSourceSets,
+            content(0).getStyle,
+            content(0).getExtra
+        )
+        modifyContentGroup(content, modifiedContent)
+    }
+
     override def contentForClasslike(c: DClasslike): ContentGroup = {
         val defaultContent = super.contentForClasslike(c)
       
         c match{
             case clazz: DClass =>
-                val op1 = insertCompanion(clazz, defaultContent)
-                insertCustomExtensionTab(clazz, op1)
+                val pageWithCompanion = insertCompanion(clazz, defaultContent)
+                val pageWithExtensionsTab = insertCustomExtensionTab(clazz, pageWithCompanion)
+                if clazz.get(ClasslikeExtension).kind == dotty.dokka.Kind.Enum then insertEnumTab(clazz, pageWithExtensionsTab) else pageWithExtensionsTab
             case _ => defaultContent
         }
     }
@@ -270,7 +320,7 @@ class ScalaPageCreator(
                                     //TODO: There's problem with using extra property containers from Dokka in Scala
                                     //val newExtra = if(needsAnchors) then extra.plus(SymbolAnchorHint) else extra
                                     val newExtra = extra
-                                    builder.buildGroup(Set(elem.getDri).asJava, elem.getSourceSets, kind, styles.asJava, newExtra, bdr => { 
+                                    builder.buildGroup(JSet(elem.getDri), elem.getSourceSets, kind, styles.asJava, newExtra, bdr => { 
                                         elementFunc(bdr, elem)
                                         kotlin.Unit.INSTANCE
                                     })
