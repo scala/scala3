@@ -177,10 +177,10 @@ class ReifyQuotes extends MacroTransform {
         meth.appliedTo(pickledQuoteStrings, splicesList)
       }
 
-      def tagedType(sym: Symbol) = ref(defn.InternalQuotedTypeModule).select(sym.name.toTermName)
+      def taggedType(sym: Symbol) = ref(defn.InternalQuotedTypeModule).select(sym.name.toTermName)
 
       if (isType) {
-        if (splices.isEmpty && body.symbol.isPrimitiveValueClass) tagedType(body.symbol)
+        if (splices.isEmpty && body.symbol.isPrimitiveValueClass) taggedType(body.symbol)
         else pickleAsTasty()
       }
       else getLiteral(body) match {
@@ -443,4 +443,3 @@ object ReifyQuotes {
     override def toString: String = s"Embedded($trees, $map)"
   }
 }
-
