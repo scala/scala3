@@ -2086,27 +2086,23 @@ trait Applications extends Compatibility {
    *  where <type-args> comes from `pt` if it is a (possibly ignored) PolyProto.
    */
   def extMethodApply(methodRef: untpd.Tree, receiver: Tree, pt: Type)(using Context): Tree = {
-    // (1) always reveal further arguments in extension method applications,
-    // (2) but do not reveal anything else in a prototype.
-    // (1) is needed for i9509.scala (2) is needed for i6900.scala
-    val normPt = pt match
-      case IgnoredProto(ignored: FunProto) => ignored
-      case _ => pt
-
-    /** Integrate the type arguments from `currentPt` into `methodRef`, and produce
-     *  a matching expected type.
-     *  If `currentPt` is ignored, the new expected type will be ignored too.
+    /** Integrate the type arguments (if any) from `currentPt` into `tree`, and produce
+     *  an expected type that hides the appropriate amount of information through IgnoreProto.
      */
-    def integrateTypeArgs(currentPt: Type, wasIgnored: Boolean = false): (untpd.Tree, Type) = currentPt match {
-      case IgnoredProto(ignored) =>
-        integrateTypeArgs(ignored, wasIgnored = true)
+    def normalizePt(tree: untpd.Tree, currentPt: Type): (untpd.Tree, Type) = currentPt match
+      // Always reveal expected arguments to guide inference (needed for i9509.scala)
+      case IgnoredProto(ignored: FunOrPolyProto) =>
+        normalizePt(tree, ignored)
+      // Always hide expected member to allow for chained extensions (needed for i6900.scala)
+      case _: SelectionProto =>
+        (tree, IgnoredProto(currentPt))
       case PolyProto(targs, restpe) =>
-        val core = untpd.TypeApply(methodRef, targs.map(untpd.TypedSplice(_)))
-        (core, if (wasIgnored) IgnoredProto(restpe) else restpe)
+        val tree1 = untpd.TypeApply(tree, targs.map(untpd.TypedSplice(_)))
+        normalizePt(tree1, restpe)
       case _ =>
-        (methodRef, normPt)
-    }
-    val (core, pt1) = integrateTypeArgs(normPt)
+        (tree, currentPt)
+
+    val (core, pt1) = normalizePt(methodRef, pt)
     val app = withMode(Mode.SynthesizeExtMethodReceiver) {
       typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)
     }

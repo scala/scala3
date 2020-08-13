@@ -1,5 +1,5 @@
 enum AList[+A] {
-  case Cons(head: A, tail: AList[A])
+  case Cons[X](head: X, tail: AList[X]) extends AList[X]
   case Nil
 }
 
