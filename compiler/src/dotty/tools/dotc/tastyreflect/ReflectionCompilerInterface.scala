@@ -17,7 +17,7 @@ import dotty.tools.dotc.typer.Implicits.{AmbiguousImplicits, DivergingImplicit, 
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, Spans}
 
 import scala.internal.quoted.Unpickler
-import scala.tasty.reflect.CompilerInterface
+import scala.internal.tasty.CompilerInterface
 
 import scala.tasty.reflect.TypeTest
 

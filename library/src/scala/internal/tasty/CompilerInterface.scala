@@ -1,7 +1,7 @@
-package scala.tasty.reflect // TODO move to scala.internal.tasty.reflect
+package scala.internal.tasty
 
 import scala.quoted.QuoteContext
-import scala.tasty.Reflection
+import scala.tasty.reflect._
 import scala.internal.quoted.Unpickler
 
 /** Tasty reflect abstract types
@@ -57,7 +57,7 @@ import scala.internal.quoted.Unpickler
  *           |
  *           +- TypeBoundsTree
  *           +- WildcardTypeTree
-*            |
+ *           |
  *           +- CaseDef
  *           +- TypeCaseDef
  *           |

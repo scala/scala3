@@ -1,5 +1,7 @@
 package scala.tasty
 
+import scala.internal.tasty.CompilerInterface
+
 import scala.quoted.QuoteContext
 import scala.quoted.show.SyntaxHighlight
 import scala.tasty.reflect._
