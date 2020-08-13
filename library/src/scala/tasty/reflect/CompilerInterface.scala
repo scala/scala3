@@ -115,8 +115,6 @@ trait CompilerInterface {
   /** Root position of this tasty context. For macros it corresponds to the expansion site. */
   def rootPosition: Position
 
-  def settings: Settings
-
 
   //////////////////////
   // QUOTE UNPICKLING //
@@ -190,16 +188,6 @@ trait CompilerInterface {
 
   /** Report a compilation warning with the given message at the given position range */
   def warning(msg: => String, source: SourceFile, start: Int, end: Int)(using ctx: Context): Unit
-
-
-  //////////////
-  // Settings //
-  //////////////
-
-  /** Settings */
-  type Settings <: AnyRef
-
-  def Settings_color(self: Settings): Boolean
 
 
   /////////////

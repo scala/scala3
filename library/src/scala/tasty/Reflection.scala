@@ -115,9 +115,6 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   /** Compilation context */
   type Context = internal.Context
 
-  /** Settings */
-  type Settings = internal.Settings
-
   /** Tree representing code written in the source */
   type Tree = internal.Tree
 

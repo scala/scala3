@@ -26,8 +26,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   private given core.Contexts.Context = rootContext
 
-  def settings: Settings = rootContext.settings
-
   def rootPosition: util.SourcePosition =
     tastyreflect.MacroExpansion.position.getOrElse(SourcePosition(rootContext.source, Spans.NoSpan))
 
@@ -93,15 +91,6 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
 
   def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(using Context): Unit =
     report.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
-
-
-  //////////////
-  // Settings //
-  //////////////
-
-  type Settings = config.ScalaSettings
-
-  def Settings_color(self: Settings): Boolean = self.color.value(using rootContext) == "always"
 
 
   ///////////
