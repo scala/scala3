@@ -55,4 +55,17 @@ object Expr {
     new Matcher.QuoteMatcher[qctx.type].termMatch(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 
+
+  /** Returns a null expresssion equivalent to `'{null}` */
+  def nullExpr: QuoteContext ?=> quoted.Expr[Null] = qctx ?=> {
+    import qctx.tasty._
+    Literal(Constant(null)).seal.asInstanceOf[quoted.Expr[Null]]
+  }
+
+  /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
+  def unitExpr: QuoteContext ?=> quoted.Expr[Unit] = qctx ?=> {
+    import qctx.tasty._
+    Literal(Constant(())).seal.asInstanceOf[quoted.Expr[Unit]]
+  }
+
 }

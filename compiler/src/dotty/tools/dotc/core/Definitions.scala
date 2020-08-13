@@ -685,8 +685,6 @@ class Definitions {
 
   @tu lazy val QuotedExprClass: ClassSymbol = requiredClass("scala.quoted.Expr")
   @tu lazy val QuotedExprModule: Symbol = QuotedExprClass.companionModule
-    @tu lazy val QuotedExprModule_nullExpr: Symbol = QuotedExprModule.requiredMethod(nme.nullExpr)
-    @tu lazy val QuotedExprModule_unitExpr: Symbol = QuotedExprModule.requiredMethod(nme.unitExpr)
 
   @tu lazy val QuoteContextClass: ClassSymbol = requiredClass("scala.quoted.QuoteContext")
 
@@ -716,6 +714,8 @@ class Definitions {
 
   @tu lazy val InternalQuotedExprModule: Symbol = requiredModule("scala.internal.quoted.Expr")
     @tu lazy val InternalQuotedExpr_unapply: Symbol = InternalQuotedExprModule.requiredMethod(nme.unapply)
+    @tu lazy val InternalQuotedExpr_nullExpr: Symbol = InternalQuotedExprModule.requiredMethod(nme.nullExpr)
+    @tu lazy val InternalQuotedExpr_unitExpr: Symbol = InternalQuotedExprModule.requiredMethod(nme.unitExpr)
 
   @tu lazy val InternalQuotedTypeModule: Symbol = requiredModule("scala.internal.quoted.Type")
     @tu lazy val InternalQuotedType_unapply: Symbol = InternalQuotedTypeModule.requiredMethod(nme.unapply)
