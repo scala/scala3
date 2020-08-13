@@ -177,9 +177,10 @@ class ReifyQuotes extends MacroTransform {
         meth.appliedTo(pickledQuoteStrings, splicesList)
       }
 
+      def tagedType(sym: Symbol) = ref(defn.InternalQuotedTypeModule).select(sym.name.toTermName)
+
       if (isType) {
-        def tag(tagName: String) = ref(defn.QuotedTypeModule).select(tagName.toTermName)
-        if (splices.isEmpty && body.symbol.isPrimitiveValueClass) tag(s"${body.symbol.name}Tag")
+        if (splices.isEmpty && body.symbol.isPrimitiveValueClass) tagedType(body.symbol)
         else pickleAsTasty()
       }
       else getLiteral(body) match {
