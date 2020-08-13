@@ -1084,9 +1084,10 @@ trait Checking {
    */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = {
     def isEnumAnonCls =
-      cls.isAnonymousClass &&
-      cls.owner.isTerm &&
-      (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
+      cls.isAnonymousClass
+      && cls.owner.isTerm
+      && (cls.owner.flagsUNSAFE.isAllOf(EnumCase)
+        || ((cls.owner.name eq nme.DOLLAR_NEW) && cls.owner.flagsUNSAFE.isAllOf(Private | Synthetic)))
     if (!isEnumAnonCls)
       if (cdef.mods.isEnumCase) {
         if (cls.derivesFrom(defn.JavaEnumClass))
@@ -1101,8 +1102,10 @@ trait Checking {
         report.error(ClassCannotExtendEnum(cls, firstParent), cdef.srcPos)
   }
 
-  /** Check that the firstParent derives from the declaring enum class, if not, adds it as a parent after emitting an
-   *  error.
+  /** Check that the firstParent for an enum case derives from the declaring enum class, if not, adds it as a parent
+   *  after emitting an error.
+   *
+   *  This check will have no effect on simple enum cases as their parents are inferred by the compiler.
    */
   def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit =
 
@@ -1119,8 +1122,8 @@ trait Checking {
           case _ =>
 
     val enumCase =
-      if cls.isAllOf(EnumCase) then cls
-      else if cls.isAnonymousClass && cls.owner.isAllOf(EnumCase) then cls.owner
+      if cls.flagsUNSAFE.isAllOf(EnumCase) then cls
+      else if cls.isAnonymousClass && cls.owner.flagsUNSAFE.isAllOf(EnumCase) then cls.owner
       else NoSymbol
     if enumCase.exists then
       ensureParentDerivesFrom(enumCase)

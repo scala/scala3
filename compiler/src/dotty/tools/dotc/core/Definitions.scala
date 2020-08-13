@@ -651,7 +651,6 @@ class Definitions {
     @tu lazy val Enum_ordinal: Symbol = EnumClass.requiredMethod(nme.ordinal)
 
   @tu lazy val EnumValuesClass: ClassSymbol = requiredClass("scala.runtime.EnumValues")
-  @tu lazy val EnumValueClass: ClassSymbol = requiredClass("scala.runtime.EnumValue")
 
   @tu lazy val EnumValueSerializationProxyClass: ClassSymbol = requiredClass("scala.runtime.EnumValueSerializationProxy")
     @tu lazy val EnumValueSerializationProxyConstructor: TermSymbol =

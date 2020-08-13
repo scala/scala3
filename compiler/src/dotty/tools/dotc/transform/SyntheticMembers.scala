@@ -382,8 +382,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     else
       Nil
 
+  /** Is this an anonymous class deriving from an enum definition? */
   extension (cls: ClassSymbol) private def isEnumValueImplementation(using Context): Boolean =
-    derivesFrom(defn.EnumValueClass) && classParents.exists(_.typeSymbol.flags.is(Enum))
+    isAnonymousClass && classParents.head.typeSymbol.is(Enum) // asserted in Typer
 
   /** If this is the class backing a serializable singleton enum value with base class `MyEnum`,
    *  and not deriving from `java.lang.Enum` add the method:
