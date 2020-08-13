@@ -2169,11 +2169,11 @@ object Parsers {
                 // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
                 // is not supported by Scala2.x
               report.errorOrMigrationWarning(
-                s"This syntax is no longer supported; parameter needs to be enclosed in (...)",
+                s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice()}",
                 in.sourcePos())
             in.nextToken()
             val t = infixType()
-            if (false && migrateTo3) {
+            if (sourceVersion == `3.1-migration`) {
               patch(source, Span(start), "(")
               patch(source, Span(in.lastOffset), ")")
             }
