@@ -714,8 +714,8 @@ class Definitions {
 
   @tu lazy val InternalQuotedExprModule: Symbol = requiredModule("scala.internal.quoted.Expr")
     @tu lazy val InternalQuotedExpr_unapply: Symbol = InternalQuotedExprModule.requiredMethod(nme.unapply)
-    @tu lazy val InternalQuotedExpr_nullExpr: Symbol = InternalQuotedExprModule.requiredMethod(nme.nullExpr)
-    @tu lazy val InternalQuotedExpr_unitExpr: Symbol = InternalQuotedExprModule.requiredMethod(nme.unitExpr)
+    @tu lazy val InternalQuotedExpr_null: Symbol = InternalQuotedExprModule.requiredMethod(nme.null_)
+    @tu lazy val InternalQuotedExpr_unit: Symbol = InternalQuotedExprModule.requiredMethod(nme.Unit)
 
   @tu lazy val InternalQuotedTypeModule: Symbol = requiredModule("scala.internal.quoted.Type")
     @tu lazy val InternalQuotedType_unapply: Symbol = InternalQuotedTypeModule.requiredMethod(nme.unapply)
