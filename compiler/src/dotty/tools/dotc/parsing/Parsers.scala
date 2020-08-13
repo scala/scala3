@@ -2170,7 +2170,7 @@ object Parsers {
                 // is not supported by Scala2.x
               report.errorOrMigrationWarning(
                 s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice()}",
-                in.sourcePos())
+                Span(start, in.lastOffset))
             in.nextToken()
             val t = infixType()
             if (sourceVersion == `3.1-migration`) {
