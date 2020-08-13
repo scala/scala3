@@ -840,7 +840,7 @@ class Typer extends Namer
               case fn @ Apply(fn1, args) =>
                 val result = untpd.cpy.Apply(fn)(toSetter(fn1), args.map(untpd.TypedSplice(_)))
                 fn1 match
-                  case Apply(_, _) =>
+                  case Apply(_, _) => // current apply is to implicit arguments
                     result.setApplyKind(ApplyKind.Using)
                       // Note that we cannot copy the apply kind of `fn` since `fn` is a typed
                       // tree and applyKinds are not preserved for those.
@@ -852,9 +852,10 @@ class Typer extends Namer
             if setter.isEmpty then reassignmentToVal
             else tryEither {
               val assign = untpd.Apply(setter, tree.rhs :: Nil)
-              //println(i"converted $tree / $lhsCore --> $setter / $assign")
               typed(assign, IgnoredProto(pt))
-            } { (_, _) => reassignmentToVal }
+            } {
+              (_, _) => reassignmentToVal
+            }
           case _ => lhsCore.tpe match {
             case ref: TermRef =>
               val lhsVal = lhsCore.denot.suchThat(!_.is(Method))
@@ -870,7 +871,6 @@ class Typer extends Namer
                 val pre = ref.prefix
                 val setterName = ref.name.setterName
                 val setter = pre.member(setterName)
-                //println(i"assign $ref")
                 lhsCore match {
                   case lhsCore: RefTree if setter.exists =>
                     val setterTypeRaw = pre.select(setterName, setter)
