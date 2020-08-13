@@ -150,18 +150,6 @@ trait CompilerInterface {
   def Context_GADT_addToConstraint(self: Context)(syms: List[Symbol]): Boolean
   def Context_GADT_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type
 
-  /** Get package symbol if package is either defined in current compilation run or present on classpath. */
-  def Context_requiredPackage(self: Context)(path: String): Symbol
-
-  /** Get class symbol if class is either defined in current compilation run or present on classpath. */
-  def Context_requiredClass(self: Context)(path: String): Symbol
-
-  /** Get module symbol if module is either defined in current compilation run or present on classpath. */
-  def Context_requiredModule(self: Context)(path: String): Symbol
-
-  /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
-  def Context_requiredMethod(self: Context)(path: String): Symbol
-
   /** Returns true if we've tried to reflect on a Java class. */
   def Context_isJavaCompilationUnit(self: Context): Boolean
 
@@ -1341,6 +1329,18 @@ trait CompilerInterface {
 
   /** Fields of a case class type -- only the ones declared in primary constructor */
   def Symbol_caseFields(self: Symbol)(using ctx: Context): List[Symbol]
+
+  /** Get package symbol if package is either defined in current compilation run or present on classpath. */
+  def Symbol_requiredPackage(path: String)(using ctx: Context): Symbol
+
+  /** Get class symbol if class is either defined in current compilation run or present on classpath. */
+  def Symbol_requiredClass(path: String)(using ctx: Context): Symbol
+
+  /** Get module symbol if module is either defined in current compilation run or present on classpath. */
+  def Symbol_requiredModule(path: String)(using ctx: Context): Symbol
+
+  /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
+  def Symbol_requiredMethod(path: String)(using ctx: Context): Symbol
 
   def Symbol_of(fullName: String)(using ctx: Context): Symbol
 

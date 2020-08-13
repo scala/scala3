@@ -433,18 +433,6 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
       /** Returns the source file being compiled. The path is relative to the current working directory. */
       def source: java.nio.file.Path = internal.Context_source(self)
 
-      /** Get package symbol if package is either defined in current compilation run or present on classpath. */
-      def requiredPackage(path: String): Symbol = internal.Context_requiredPackage(self)(path)
-
-      /** Get class symbol if class is either defined in current compilation run or present on classpath. */
-      def requiredClass(path: String): Symbol = internal.Context_requiredClass(self)(path)
-
-      /** Get module symbol if module is either defined in current compilation run or present on classpath. */
-      def requiredModule(path: String): Symbol = internal.Context_requiredModule(self)(path)
-
-      /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
-      def requiredMethod(path: String): Symbol = internal.Context_requiredMethod(self)(path)
-
       /** Returns true if we've tried to reflect on a Java class. */
       def isJavaCompilationUnit(): Boolean = internal Context_isJavaCompilationUnit(self)
 
@@ -2309,6 +2297,19 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
   given SymbolOps as Symbol.type = Symbol
 
   object Symbol:
+
+    /** Get package symbol if package is either defined in current compilation run or present on classpath. */
+    def requiredPackage(path: String)(using ctx: Context): Symbol = internal.Symbol_requiredPackage(path)
+
+    /** Get class symbol if class is either defined in current compilation run or present on classpath. */
+    def requiredClass(path: String)(using ctx: Context): Symbol = internal.Symbol_requiredClass(path)
+
+    /** Get module symbol if module is either defined in current compilation run or present on classpath. */
+    def requiredModule(path: String)(using ctx: Context): Symbol = internal.Symbol_requiredModule(path)
+
+    /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
+    def requiredMethod(path: String)(using ctx: Context): Symbol = internal.Symbol_requiredMethod(path)
+
     /** The class Symbol of a global class definition */
     def classSymbol(fullName: String)(using ctx: Context): Symbol =
       internal.Symbol_of(fullName)
