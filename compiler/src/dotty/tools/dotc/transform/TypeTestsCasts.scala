@@ -198,8 +198,8 @@ object TypeTestsCasts {
 
           def unreachable(why: => String)(using Context): Boolean = {
             if (flagUnrelated)
-              if (inMatch) report.error(em"this case is unreachable since $why", expr.sourcePos)
-              else report.warning(em"this will always yield false since $why", expr.sourcePos)
+              if (inMatch) report.error(em"this case is unreachable since $why", expr.srcPos)
+              else report.warning(em"this will always yield false since $why", expr.srcPos)
             false
           }
 
@@ -241,14 +241,14 @@ object TypeTestsCasts {
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
             if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
-              report.error(i"cannot test if value of $exprType is a reference of $testCls", tree.sourcePos)
+              report.error(i"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
               false
             else foundClasses.exists(check)
           end checkSensical
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
-              if (!inMatch) report.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.sourcePos)
+              if (!inMatch) report.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.srcPos)
               constant(expr, Literal(Constant(true)))
             }
             else expr.testNotNull
@@ -349,7 +349,7 @@ object TypeTestsCasts {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
           if (!isTrusted && !checkable(expr.tpe, argType, tree.span))
-            report.warning(i"the type test for $argType cannot be checked at runtime", tree.sourcePos)
+            report.warning(i"the type test for $argType cannot be checked at runtime", tree.srcPos)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
         }
         else if (sym.isTypeCast)

@@ -84,7 +84,7 @@ class TreePickler(pickler: TastyPickler) {
       // I believe it's a bug in typer: the type of an implicit argument refers
       // to a closure parameter outside the closure itself. TODO: track this down, so that we
       // can eliminate this case.
-      report.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.sourcePos)
+      report.log(i"pickling reference to as yet undefined $sym in ${sym.owner}", sym.srcPos)
       pickleForwardSymRef(sym)
   }
 
@@ -622,7 +622,7 @@ class TreePickler(pickler: TastyPickler) {
       }
       catch {
         case ex: TypeError =>
-          report.error(ex.toMessage, tree.sourcePos.focus)
+          report.error(ex.toMessage, tree.srcPos.focus)
         case ex: AssertionError =>
           println(i"error when pickling tree $tree")
           throw ex
@@ -734,7 +734,7 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickle(trees: List[Tree])(using Context): Unit = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
-    def missing = forwardSymRefs.keysIterator.map(sym => sym.showLocated + "(line " + sym.sourcePos.line + ")").toList
+    def missing = forwardSymRefs.keysIterator.map(sym => sym.showLocated + "(line " + sym.srcPos.line + ")").toList
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
   }
 

@@ -8,7 +8,7 @@ import Decorators._
 import Variances._
 import NameKinds._
 import util.Spans._
-import util.SourcePosition
+import util.SrcPos
 import config.Printers.variances
 import config.Feature.migrateTo3
 import reporting.trace
@@ -43,8 +43,8 @@ object VarianceChecker {
             }
             val pos = tree.tparams
               .find(_.name.toTermName == paramName)
-              .map(_.sourcePos)
-              .getOrElse(tree.sourcePos)
+              .map(_.srcPos)
+              .getOrElse(tree.srcPos)
             report.error(em"${paramVarianceStr}variant type parameter $paramName occurs in ${occursStr}variant position in ${tl.resType}", pos)
           }
           def apply(x: Boolean, t: Type) = x && {
@@ -164,7 +164,7 @@ class VarianceChecker(using Context) {
   }
 
   private object Traverser extends TreeTraverser {
-    def checkVariance(sym: Symbol, pos: SourcePosition) = Validator.validateDefinition(sym) match {
+    def checkVariance(sym: Symbol, pos: SrcPos) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
         def msg = i"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym"
         if (migrateTo3 &&
@@ -191,21 +191,21 @@ class VarianceChecker(using Context) {
         case defn: MemberDef if skip =>
           report.debuglog(s"Skipping variance check of ${sym.showDcl}")
         case tree: TypeDef =>
-          checkVariance(sym, tree.sourcePos)
+          checkVariance(sym, tree.srcPos)
           tree.rhs match {
             case rhs: Template => traverseChildren(rhs)
             case _ =>
           }
         case tree: ValDef =>
-          checkVariance(sym, tree.sourcePos)
+          checkVariance(sym, tree.srcPos)
         case DefDef(_, tparams, vparamss, _, _) =>
-          checkVariance(sym, tree.sourcePos)
+          checkVariance(sym, tree.srcPos)
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)
         case _ =>
       }
       catch {
-        case ex: TypeError => report.error(ex, tree.sourcePos.focus)
+        case ex: TypeError => report.error(ex, tree.srcPos.focus)
       }
     }
   }

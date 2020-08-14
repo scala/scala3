@@ -10,7 +10,7 @@ import language.higherKinds
 import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
-import util.{Stats, Attachment, Property, SourceFile, NoSource, SourcePosition}
+import util.{Stats, Attachment, Property, SourceFile, NoSource, SrcPos, SourcePosition}
 import config.Config
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
@@ -54,17 +54,9 @@ object Trees {
    *     nodes.
    */
   abstract class Tree[-T >: Untyped](implicit @constructorOnly src: SourceFile)
-  extends Positioned
-     with Product
-     with Attachment.Container
-     with printing.Showable {
+  extends Positioned, SrcPos, Product, Attachment.Container, printing.Showable {
 
     if (Stats.enabled) ntrees += 1
-
-    /** This tree, widened to `Positioned`. Used to make clear we only need the
-     *  position, typically for error reporting.
-     */
-    final def posd: Positioned = this
 
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]

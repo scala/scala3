@@ -124,7 +124,7 @@ class TailRec extends MiniPhase {
       // We don't report a new error if failures were reported
       // during the transformation.
       if (mandatory && !failureReported)
-        report.error(TailrecNotApplicable(method), method.sourcePos)
+        report.error(TailrecNotApplicable(method), method.srcPos)
 
       tree
     }
@@ -197,7 +197,7 @@ class TailRec extends MiniPhase {
         }
 
         if isInfiniteRecCall(rhsFullyTransformed) then
-          report.warning("Infinite recursive call", tree.sourcePos)
+          report.warning("Infinite recursive call", tree.srcPos)
 
         cpy.DefDef(tree)(rhs =
           Block(
@@ -304,7 +304,7 @@ class TailRec extends MiniPhase {
         def fail(reason: String) = {
           if (isMandatory) {
             failureReported = true
-            report.error(s"Cannot rewrite recursive call: $reason", tree.sourcePos)
+            report.error(s"Cannot rewrite recursive call: $reason", tree.srcPos)
           }
           else
             tailrec.println("Cannot rewrite recursive call at: " + tree.span + " because: " + reason)

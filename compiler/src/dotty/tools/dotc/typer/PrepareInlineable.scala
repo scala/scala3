@@ -19,7 +19,7 @@ import NameOps._
 import Annotations._
 import transform.{AccessProxies, PCPCheckAndHeal, Splicer, TreeMapWithStages}
 import config.Printers.inlining
-import util.{Property, SourcePosition}
+import util.Property
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 
@@ -78,7 +78,7 @@ object PrepareInlineable {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if (tree.symbol.isConstructor) {
-            report.error("Implementation restriction: cannot use private constructors in inlineinline methods", tree.sourcePos)
+            report.error("Implementation restriction: cannot use private constructors in inlineinline methods", tree.srcPos)
             tree // TODO: create a proper accessor for the private constructor
           }
           else useAccessor(tree)
@@ -251,16 +251,16 @@ object PrepareInlineable {
 
   def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
     if (inlined.owner.isClass && inlined.owner.seesOpaques)
-      report.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.sourcePos)
+      report.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.srcPos)
     if Inliner.inInlineMethod(using ctx.outer) then
-      report.error(ex"Implementation restriction: nested inline methods are not supported", inlined.sourcePos)
+      report.error(ex"Implementation restriction: nested inline methods are not supported", inlined.srcPos)
 
     if (inlined.is(Macro) && !ctx.isAfterTyper) {
 
       def checkMacro(tree: Tree): Unit = tree match {
         case Spliced(code) =>
           if (code.symbol.flags.is(Inline))
-            report.error("Macro cannot be implemented with an `inline` method", code.sourcePos)
+            report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)
           new PCPCheckAndHeal(freshStagingContext).transform(body) // Ignore output, only check PCP
         case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
@@ -272,7 +272,7 @@ object PrepareInlineable {
             """Macros using a return type of the form `foo(): X ?=> Y` are not yet supported.
               |
               |Place the implicit as an argument (`foo()(using X): Y`) to overcome this limitation.
-              |""".stripMargin, tree.sourcePos)
+              |""".stripMargin, tree.srcPos)
         case _ =>
           report.error(
             """Malformed macro.
@@ -282,7 +282,7 @@ object PrepareInlineable {
               |
               | * The contents of the splice must call a static method
               | * All arguments must be quoted or inline
-            """.stripMargin, inlined.sourcePos)
+            """.stripMargin, inlined.srcPos)
       }
       checkMacro(body)
     }

@@ -2508,7 +2508,7 @@ object SymDenotations {
     def complete(denot: SymDenotation)(using Context): Unit = {
       val sym = denot.symbol
       val errMsg = BadSymbolicReference(denot)
-      report.error(errMsg, sym.sourcePos)
+      report.error(errMsg, sym.srcPos)
       if (ctx.debug) throw new scala.Error()
       initializeToDefaults(denot, errMsg)
     }

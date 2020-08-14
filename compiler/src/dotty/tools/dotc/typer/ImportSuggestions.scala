@@ -189,7 +189,7 @@ trait ImportSuggestions:
           def run() =
             println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
             ctx.run.isCancelled = true
-        val span = ctx.owner.sourcePos.span
+        val span = ctx.owner.srcPos.span
         val (expectedType, argument, kind) = pt match
           case ViewProto(argType, resType) =>
             (resType,

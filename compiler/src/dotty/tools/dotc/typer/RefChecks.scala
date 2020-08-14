@@ -8,7 +8,7 @@ import StdNames._, Denotations._, SymUtils._, Phases._, SymDenotations._
 import NameKinds.DefaultGetterName
 import Annotations._
 import util.Spans._
-import util.{Store, SourcePosition}
+import util.{Store, SrcPos}
 import scala.collection.{ mutable, immutable }
 import ast._
 import MegaPhase._
@@ -62,7 +62,7 @@ object RefChecks {
                 " define default arguments" + (
                   if (owners.forall(_ == clazz)) "."
                   else ".\nThe members with defaults are defined in " + owners.map(_.showLocated).mkString("", " and ", ".")),
-              clazz.sourcePos)
+              clazz.srcPos)
         }
       }
     }
@@ -71,7 +71,7 @@ object RefChecks {
     if (clazz derivesFrom defn.DynamicClass)
       for ((_, m1 :: m2 :: _) <- (clazz.info member nme.applyDynamic).alternatives groupBy (_.symbol.typeParams.length))
         report.error("implementation restriction: applyDynamic cannot be overloaded except by methods with different numbers of type parameters, e.g. applyDynamic[T1](method: String)(arg: T1) and applyDynamic[T1, T2](method: String)(arg1: T1, arg2: T2)",
-          m1.symbol.sourcePos)
+          m1.symbol.srcPos)
   }
 
   /** The this-type of `cls` which should be used when looking at the types of
@@ -100,7 +100,7 @@ object RefChecks {
         val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
         if otherSelf.exists && !(cinfo.selfType <:< otherSelf) then
           report.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
-            cls.sourcePos)
+            cls.srcPos)
       }
       val parents = cinfo.classParents
       for (parent <- parents)
@@ -128,7 +128,7 @@ object RefChecks {
       case TypeRef(ref: TermRef, _) =>
         val paramRefs = ref.namedPartsWith(ntp => ntp.symbol.enclosingClass == cls)
         if (paramRefs.nonEmpty)
-          report.error(TraitParameterUsedAsParentPrefix(cls), parent.sourcePos)
+          report.error(TraitParameterUsedAsParentPrefix(cls), parent.srcPos)
       case _ =>
     }
 
@@ -143,7 +143,7 @@ object RefChecks {
 
       val others = cls.owner.linkedClass.info.decls.filter(clashes)
       others.foreach { other =>
-        report.error(ClassAndCompanionNameClash(cls, other), cls.sourcePos)
+        report.error(ClassAndCompanionNameClash(cls, other), cls.srcPos)
       }
     }
 
@@ -193,7 +193,7 @@ object RefChecks {
       mixinOverrideErrors.toList match {
         case Nil =>
         case List(MixinOverrideError(_, msg)) =>
-          report.error(msg, clazz.sourcePos)
+          report.error(msg, clazz.srcPos)
         case MixinOverrideError(member, msg) :: others =>
           val others1 = others.map(_.member).filter(_.name != member.name).distinct
           def othersMsg = {
@@ -203,7 +203,7 @@ object RefChecks {
             if (others1.isEmpty) ""
             else i";\nother members with override errors are:: $others1%, %"
           }
-          report.error(msg + othersMsg, clazz.sourcePos)
+          report.error(msg + othersMsg, clazz.srcPos)
       }
 
     def infoString(sym: Symbol) = infoString0(sym, sym.owner != clazz)
@@ -254,7 +254,7 @@ object RefChecks {
         if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
           // suppress errors relating toi synthetic companion objects if other override
           // errors (e.g. relating to the companion class) have already been reported.
-          if (member.owner == clazz) report.error(fullmsg, member.sourcePos)
+          if (member.owner == clazz) report.error(fullmsg, member.srcPos)
           else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
           hasErrors = true
         }
@@ -292,7 +292,7 @@ object RefChecks {
             memberTp.overrides(otherTp,
                 member.matchNullaryLoosely || other.matchNullaryLoosely ||
                 warnOnMigration(overrideErrorMsg("no longer has compatible type"),
-                   (if (member.owner == clazz) member else clazz).sourcePos))
+                   (if (member.owner == clazz) member else clazz).srcPos))
         catch {
           case ex: MissingType =>
             // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
@@ -367,7 +367,7 @@ object RefChecks {
         // Also excluded under Scala2 mode are overrides of default methods of Java traits.
         if (autoOverride(member) ||
             other.owner.isAllOf(JavaInterface) &&
-            warnOnMigration("`override` modifier required when a Java 8 default method is re-implemented", member.sourcePos))
+            warnOnMigration("`override` modifier required when a Java 8 default method is re-implemented", member.srcPos))
           member.setFlag(Override)
         else if (member.isType && self.memberInfo(member) =:= self.memberInfo(other))
           () // OK, don't complain about type aliases which are equal
@@ -401,7 +401,7 @@ object RefChecks {
       else if (member.is(ModuleVal) && !other.isRealMethod && !other.isOneOf(Deferred | Lazy))
         overrideError("may not override a concrete non-lazy value")
       else if (member.is(Lazy, butNot = Module) && !other.isRealMethod && !other.is(Lazy) &&
-                 !warnOnMigration(overrideErrorMsg("may not override a non-lazy value"), member.sourcePos))
+                 !warnOnMigration(overrideErrorMsg("may not override a non-lazy value"), member.srcPos))
         overrideError("may not override a non-lazy value")
       else if (other.is(Lazy) && !other.isRealMethod && !member.is(Lazy))
         overrideError("must be declared lazy to override a lazy value")
@@ -674,7 +674,7 @@ object RefChecks {
                 em"""${mbr.showLocated} is not a legal implementation of `$name` in $clazz
                     |  its type             $mbrType
                     |  does not conform to  ${mbrd.info}""",
-                (if (mbr.owner == clazz) mbr else clazz).sourcePos)
+                (if (mbr.owner == clazz) mbr else clazz).srcPos)
           }
       }
 
@@ -687,13 +687,13 @@ object RefChecks {
           for (baseCls <- caseCls.info.baseClasses.tail)
             if (baseCls.typeParams.exists(_.paramVarianceSign != 0))
               for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
-                report.errorOrMigrationWarning(problem(), clazz.sourcePos)
+                report.errorOrMigrationWarning(problem(), clazz.srcPos)
       checkNoAbstractMembers()
       if (abstractErrors.isEmpty)
         checkNoAbstractDecls(clazz)
 
       if (abstractErrors.nonEmpty)
-        report.error(abstractErrorMessage, clazz.sourcePos)
+        report.error(abstractErrorMessage, clazz.srcPos)
 
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
@@ -707,7 +707,7 @@ object RefChecks {
         // override a concrete method in Object. The jvm, however, does not.
         val overridden = decl.matchingDecl(defn.ObjectClass, defn.ObjectType)
         if (overridden.is(Final))
-          report.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.sourcePos)
+          report.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.srcPos)
       }
 
     if (!clazz.is(Trait)) {
@@ -729,7 +729,7 @@ object RefChecks {
           if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
           problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super")
         }
-        report.error(problem(), clazz.sourcePos)
+        report.error(problem(), clazz.srcPos)
       }
 
       checkParameterizedTraitsOK()
@@ -809,7 +809,7 @@ object RefChecks {
         val nonMatching = clazz.info.member(member.name).altsWith(alt => alt.owner != clazz)
         nonMatching match {
           case Nil =>
-            report.error(OverridesNothing(member), member.sourcePos)
+            report.error(OverridesNothing(member), member.srcPos)
           case ms =>
             // getClass in primitive value classes is defined in the standard library as:
             //     override def getClass(): Class[Int] = ???
@@ -818,7 +818,7 @@ object RefChecks {
             // the standard library, we need to drop the override flag without reporting
             // an error.
             if (!(member.name == nme.getClass_ && clazz.isPrimitiveValueClass))
-              report.error(OverridesNothingButNameExists(member, ms), member.sourcePos)
+              report.error(OverridesNothingButNameExists(member, ms), member.srcPos)
         }
         member.resetFlag(Override)
         member.resetFlag(AbsOverride)
@@ -830,7 +830,7 @@ object RefChecks {
   // I assume that's a consequence of some code trying to avoid noise by suppressing
   // warnings after the first, but I think it'd be better if we didn't have to
   // arbitrarily choose one as more important than the other.
-  private def checkUndesiredProperties(sym: Symbol, pos: SourcePosition)(using Context): Unit =
+  private def checkUndesiredProperties(sym: Symbol, pos: SrcPos)(using Context): Unit =
     checkDeprecated(sym, pos)
 
     val xMigrationValue = ctx.settings.Xmigration.value
@@ -841,19 +841,17 @@ object RefChecks {
   /** If @deprecated is present, and the point of reference is not enclosed
    * in either a deprecated member or a scala bridge method, issue a warning.
    */
-  private def checkDeprecated(sym: Symbol, pos: SourcePosition)(using Context): Unit =
-    for
-      annot <- sym.getAnnotation(defn.DeprecatedAnnot)
-      if !ctx.owner.ownersIterator.exists(_.isDeprecated)
-    do
-      val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
-      val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
-      report.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)
+  private def checkDeprecated(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    for annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
+      if !ctx.owner.ownersIterator.exists(_.isDeprecated) then
+        val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
+        val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
+        report.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)
 
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
    */
-  private def checkMigration(sym: Symbol, pos: SourcePosition, xMigrationValue: ScalaVersion)(using Context): Unit =
+  private def checkMigration(sym: Symbol, pos: SrcPos, xMigrationValue: ScalaVersion)(using Context): Unit =
     for annot <- sym.getAnnotation(defn.MigrationAnnot) do
       val migrationVersion = ScalaVersion.parse(annot.argumentConstant(1).get.stringValue)
       migrationVersion match
@@ -877,7 +875,7 @@ object RefChecks {
       if (!concrOvers.isEmpty)
         report.deprecationWarning(
           symbol.toString + " overrides concrete, non-deprecated symbol(s):" +
-            concrOvers.map(_.name).mkString("    ", ", ", ""), tree.sourcePos)
+            concrOvers.map(_.name).mkString("    ", ", ", ""), tree.srcPos)
     }
   }
 
@@ -902,7 +900,7 @@ object RefChecks {
       for bc <- cls.baseClasses.tail do
         val other = sym.matchingDecl(bc, cls.thisType)
         if other.exists then
-          report.error(i"private $sym cannot override ${other.showLocated}", sym.sourcePos)
+          report.error(i"private $sym cannot override ${other.showLocated}", sym.srcPos)
   end checkNoPrivateOverrides
 
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
@@ -1067,7 +1065,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
       tree.rhs match {
-        case Ident(nme.WILDCARD) => report.error(UnboundPlaceholderParameter(), sym.sourcePos)
+        case Ident(nme.WILDCARD) => report.error(UnboundPlaceholderParameter(), sym.srcPos)
         case _ =>
       }
       if (!sym.is(Lazy))
@@ -1100,18 +1098,18 @@ class RefChecks extends MiniPhase { thisPhase =>
   }
   catch {
     case ex: TypeError =>
-      report.error(ex, tree.sourcePos)
+      report.error(ex, tree.srcPos)
       tree
   }
 
   override def transformIdent(tree: Ident)(using Context): Ident = {
-    checkUndesiredProperties(tree.symbol, tree.sourcePos)
+    checkUndesiredProperties(tree.symbol, tree.srcPos)
     currentLevel.enterReference(tree.symbol, tree.span)
     tree
   }
 
   override def transformSelect(tree: Select)(using Context): Select = {
-    checkUndesiredProperties(tree.symbol, tree.sourcePos)
+    checkUndesiredProperties(tree.symbol, tree.srcPos)
     tree
   }
 
@@ -1132,7 +1130,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformNew(tree: New)(using Context): New = {
     val tpe = tree.tpe
     val sym = tpe.typeSymbol
-    checkUndesiredProperties(sym, tree.sourcePos)
+    checkUndesiredProperties(sym, tree.srcPos)
     currentLevel.enterReference(sym, tree.span)
     tpe.dealias.foreachPart {
       case TermRef(_, s: Symbol) => currentLevel.enterReference(s, tree.span)

@@ -121,7 +121,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     }
     catch {
       case ex: TypeError =>
-        report.error(ex, tree.sourcePos)
+        report.error(ex, tree.srcPos)
         tree
     }
   }

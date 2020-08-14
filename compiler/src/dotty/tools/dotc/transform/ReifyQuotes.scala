@@ -11,7 +11,6 @@ import Constants._
 import ast.Trees._
 import ast.{TreeTypeMap, untpd}
 import util.Spans._
-import util.SourcePosition
 import tasty.TreePickler.Hole
 import SymUtils._
 import NameKinds._
@@ -25,7 +24,6 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Inliner
-import dotty.tools.dotc.util.SourcePosition
 
 import scala.annotation.constructorOnly
 

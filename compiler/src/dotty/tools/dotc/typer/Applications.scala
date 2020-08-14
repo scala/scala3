@@ -6,7 +6,7 @@ import core._
 import ast.{Trees, tpd, untpd, desugar}
 import util.Spans._
 import util.Stats.record
-import util.{SourcePosition, NoSourcePosition, SourceFile}
+import util.{SrcPos, NoSourcePosition, SourceFile}
 import Trees.Untyped
 import Contexts._
 import Flags._
@@ -42,7 +42,7 @@ object Applications {
   def extractorMember(tp: Type, name: Name)(using Context): SingleDenotation =
     tp.member(name).suchThat(sym => sym.info.isParameterless && sym.info.widenExpr.isValueType)
 
-  def extractorMemberType(tp: Type, name: Name, errorPos: SourcePosition)(using Context): Type = {
+  def extractorMemberType(tp: Type, name: Name, errorPos: SrcPos)(using Context): Type = {
     val ref = extractorMember(tp, name)
     if (ref.isOverloaded)
       errorType(i"Overloaded reference to $ref is not allowed in extractor", errorPos)
@@ -53,7 +53,7 @@ object Applications {
    *  for a pattern with `numArgs` subpatterns?
    *  This is the case if `tp` has members `_1` to `_N` where `N == numArgs`.
    */
-  def isProductMatch(tp: Type, numArgs: Int, errorPos: SourcePosition = NoSourcePosition)(using Context): Boolean =
+  def isProductMatch(tp: Type, numArgs: Int, errorPos: SrcPos = NoSourcePosition)(using Context): Boolean =
     numArgs > 0 && productArity(tp, errorPos) == numArgs
 
   /** Does `tp` fit the "product-seq match" conditions as an unapply result type
@@ -61,7 +61,7 @@ object Applications {
    *  This is the case if (1) `tp` has members `_1` to `_N` where `N <= numArgs + 1`.
    *                      (2) `tp._N` conforms to Seq match
    */
-  def isProductSeqMatch(tp: Type, numArgs: Int, errorPos: SourcePosition = NoSourcePosition)(using Context): Boolean = {
+  def isProductSeqMatch(tp: Type, numArgs: Int, errorPos: SrcPos = NoSourcePosition)(using Context): Boolean = {
     val arity = productArity(tp, errorPos)
     arity > 0 && arity <= numArgs + 1 &&
       unapplySeqTypeElemTp(productSelectorTypes(tp, errorPos).last).exists
@@ -71,7 +71,7 @@ object Applications {
    *  This is the case of `tp` has a `get` member as well as a
    *  parameterless `isEmpty` member of result type `Boolean`.
    */
-  def isGetMatch(tp: Type, errorPos: SourcePosition = NoSourcePosition)(using Context): Boolean =
+  def isGetMatch(tp: Type, errorPos: SrcPos = NoSourcePosition)(using Context): Boolean =
     extractorMemberType(tp, nme.isEmpty, errorPos).widenSingleton.isRef(defn.BooleanClass) &&
     extractorMemberType(tp, nme.get, errorPos).exists
 
@@ -108,7 +108,7 @@ object Applications {
     if (isValid) elemTp else NoType
   }
 
-  def productSelectorTypes(tp: Type, errorPos: SourcePosition)(using Context): List[Type] = {
+  def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
     def tupleSelectors(n: Int, tp: Type): List[Type] = {
       val sel = extractorMemberType(tp, nme.selectorName(n), errorPos)
       // extractorMemberType will return NoType if this is the tail of tuple with an unknown tail
@@ -124,7 +124,7 @@ object Applications {
     genTupleSelectors(0, tp)
   }
 
-  def productArity(tp: Type, errorPos: SourcePosition = NoSourcePosition)(using Context): Int =
+  def productArity(tp: Type, errorPos: SrcPos = NoSourcePosition)(using Context): Int =
     if (defn.isProductSubType(tp)) productSelectorTypes(tp, errorPos).size else -1
 
   def productSelectors(tp: Type)(using Context): List[Symbol] = {
@@ -133,7 +133,7 @@ object Applications {
     sels.takeWhile(_.exists).toList
   }
 
-  def getUnapplySelectors(tp: Type, args: List[untpd.Tree], pos: SourcePosition)(using Context): List[Type] =
+  def getUnapplySelectors(tp: Type, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] =
     if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass))) {
       val sels = productSelectorTypes(tp, pos)
       if (sels.length == args.length) sels
@@ -141,14 +141,14 @@ object Applications {
     }
     else tp :: Nil
 
-  def productSeqSelectors(tp: Type, argsNum: Int, pos: SourcePosition)(using Context): List[Type] = {
+  def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] = {
     val selTps = productSelectorTypes(tp, pos)
     val arity = selTps.length
     val elemTp = unapplySeqTypeElemTp(selTps.last)
     (0 until argsNum).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
   }
 
-  def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SourcePosition)(using Context): List[Type] = {
+  def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] = {
     def getName(fn: Tree): Name =
       fn match
         case TypeApply(fn, _) => getName(fn)
@@ -283,7 +283,7 @@ trait Applications extends Compatibility {
     /** Signal failure with given message at position of the application itself */
     protected def fail(msg: Message): Unit
 
-    protected def appPos: SourcePosition
+    protected def appPos: SrcPos
 
     /** The current function part, which might be affected by lifting.
      */
@@ -662,7 +662,7 @@ trait Applications extends Compatibility {
       ok = false
     def fail(msg: Message): Unit =
       ok = false
-    def appPos: SourcePosition = NoSourcePosition
+    def appPos: SrcPos = NoSourcePosition
     @threadUnsafe lazy val normalizedFun:   Tree = ref(methRef)
     init()
   }
@@ -724,15 +724,15 @@ trait Applications extends Compatibility {
 
     def harmonizeArgs(args: List[TypedArg]): List[Tree] = harmonize(args)
 
-    override def appPos: SourcePosition = app.sourcePos
+    override def appPos: SrcPos = app.srcPos
 
     def fail(msg: Message, arg: Trees.Tree[T]): Unit = {
-      report.error(msg, arg.sourcePos)
+      report.error(msg, arg.srcPos)
       ok = false
     }
 
     def fail(msg: Message): Unit = {
-      report.error(msg, app.sourcePos)
+      report.error(msg, app.srcPos)
       ok = false
     }
 
@@ -941,7 +941,7 @@ trait Applications extends Compatibility {
                   case CaseDef(Bind(_, Typed(_: untpd.Ident, _)), _, _) => // OK
                   case CaseDef(Ident(name), _, _) if name == nme.WILDCARD => // Ok
                   case CaseDef(pat, _, _) =>
-                    report.error(UnexpectedPatternForSummonFrom(pat), pat.sourcePos)
+                    report.error(UnexpectedPatternForSummonFrom(pat), pat.srcPos)
                 }
                 typed(untpd.InlineMatch(EmptyTree, cases).withSpan(arg.span), pt)
               case _ =>
@@ -1057,7 +1057,7 @@ trait Applications extends Compatibility {
               if (typedFn.symbol == defn.Predef_classOf && typedArgs.nonEmpty) {
                 val arg = typedArgs.head
                 if (!arg.symbol.is(Module)) // Allow `classOf[Foo.type]` if `Foo` is an object
-                  checkClassType(arg.tpe, arg.sourcePos, traitReq = false, stablePrefixReq = false)
+                  checkClassType(arg.tpe, arg.srcPos, traitReq = false, stablePrefixReq = false)
               }
           case _ =>
         }
@@ -1256,7 +1256,7 @@ trait Applications extends Compatibility {
             case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
             case Apply(unapply, `dummyArg` :: Nil) =>
             case Inlined(u, _, _) => loop(u)
-            case DynamicUnapply(_) => report.error("Structural unapply is not supported", unapplyFn.sourcePos)
+            case DynamicUnapply(_) => report.error("Structural unapply is not supported", unapplyFn.srcPos)
             case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
             case _ => ().assertingErrorsReported
           }
@@ -1264,7 +1264,7 @@ trait Applications extends Compatibility {
           res.result()
         }
 
-        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.sourcePos)
+        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil =>
@@ -1273,7 +1273,7 @@ trait Applications extends Compatibility {
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
-          report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.sourcePos)
+          report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), tree.srcPos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
@@ -2109,7 +2109,7 @@ trait Applications extends Compatibility {
       case tree => tree.symbol.is(Extension)
     }
     if (!isExtension(app))
-      report.error(em"not an extension method: $methodRef", receiver.sourcePos)
+      report.error(em"not an extension method: $methodRef", receiver.srcPos)
     app
   }
 }

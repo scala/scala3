@@ -58,7 +58,7 @@ class ProtectedAccessors extends MiniPhase {
         val curCls = ctx.owner.enclosingClass
         transforms.println(i"${curCls.ownersIterator.toList}%, %")
         report.error(i"illegal access to protected ${reference.symbol.showLocated} from $curCls",
-          reference.sourcePos)
+          reference.srcPos)
         reference
       }
     }

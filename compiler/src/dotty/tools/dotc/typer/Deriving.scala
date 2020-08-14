@@ -9,7 +9,7 @@ import StdNames._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import ProtoTypes._, ContextOps._
 import util.Spans._
-import util.SourcePosition
+import util.SrcPos
 import collection.mutable
 import Constants.Constant
 import config.Printers.derive
@@ -28,7 +28,7 @@ trait Deriving {
    *                   synthesized infrastructure code that is not connected with a
    *                   `derives` instance.
    */
-  class Deriver(cls: ClassSymbol, codePos: SourcePosition)(using Context) {
+  class Deriver(cls: ClassSymbol, codePos: SrcPos)(using Context) {
 
     /** A buffer for synthesized symbols for type class instances */
     private var synthetics = new mutable.ListBuffer[Symbol]
@@ -46,7 +46,7 @@ trait Deriving {
      *  an instance with the same name does not exist already.
      *  @param  reportErrors  Report an error if an instance with the same name exists already
      */
-    private def addDerivedInstance(clsName: Name, info: Type, pos: SourcePosition): Unit = {
+    private def addDerivedInstance(clsName: Name, info: Type, pos: SrcPos): Unit = {
       val instanceName = s"derived$$$clsName".toTermName
       if (ctx.denotNamed(instanceName).exists)
         report.error(i"duplicate type class derivation for $clsName", pos)
@@ -82,7 +82,7 @@ trait Deriving {
      */
     private def processDerivedInstance(derived: untpd.Tree): Unit = {
       val originalTypeClassType = typedAheadType(derived, AnyTypeConstructorProto).tpe
-      val typeClassType = checkClassType(underlyingClassRef(originalTypeClassType), derived.sourcePos, traitReq = false, stablePrefixReq = true)
+      val typeClassType = checkClassType(underlyingClassRef(originalTypeClassType), derived.srcPos, traitReq = false, stablePrefixReq = true)
       val typeClass = typeClassType.classSymbol
       val typeClassParams = typeClass.typeParams
       val typeClassArity = typeClassParams.length
@@ -91,7 +91,7 @@ trait Deriving {
         xs.corresponds(ys)((x, y) => x.paramInfo.hasSameKindAs(y.paramInfo))
 
       def cannotBeUnified =
-        report.error(i"${cls.name} cannot be unified with the type argument of ${typeClass.name}", derived.sourcePos)
+        report.error(i"${cls.name} cannot be unified with the type argument of ${typeClass.name}", derived.srcPos)
 
       def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type]): Unit = {
         val resultType = typeClassType.appliedTo(instanceTypes)
@@ -99,7 +99,7 @@ trait Deriving {
           if (evidenceParamInfos.isEmpty) ExprType(resultType)
           else ImplicitMethodType(evidenceParamInfos.map(typeClassType.appliedTo), resultType)
         val derivedInfo = if (derivedParams.isEmpty) methodOrExpr else PolyType.fromParams(derivedParams, methodOrExpr)
-        addDerivedInstance(originalTypeClassType.typeSymbol.name, derivedInfo, derived.sourcePos)
+        addDerivedInstance(originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
       }
 
       def deriveSingleParameter: Unit = {
@@ -251,7 +251,7 @@ trait Deriving {
       if (typeClassArity == 1) deriveSingleParameter
       else if (typeClass == defn.EqlClass) deriveEql
       else if (typeClassArity == 0)
-        report.error(i"type ${typeClass.name} in derives clause of ${cls.name} has no type parameters", derived.sourcePos)
+        report.error(i"type ${typeClass.name} in derives clause of ${cls.name} has no type parameters", derived.srcPos)
       else
         cannotBeUnified
     }

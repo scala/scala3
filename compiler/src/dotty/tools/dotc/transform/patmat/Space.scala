@@ -20,7 +20,7 @@ import ProtoTypes._
 import transform.SymUtils._
 import reporting._
 import config.Printers.{exhaustivity => debug}
-import util.SourcePosition
+import util.SrcPos
 import NullOpsDecorator._
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
@@ -291,7 +291,7 @@ object SpaceEngine {
     unappResult <:< ConstantType(Constant(true)) ||
     (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case)) ||  // scala2 compatibility
     (patSize != -1 && productArity(unappResult) == patSize) || {
-      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, unapp.sourcePos)
+      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, unapp.srcPos)
       isEmptyTp <:< ConstantType(Constant(false))
     }
   }
@@ -306,7 +306,7 @@ object SpaceEngine {
     unapplySeqTypeElemTp(unappResult).exists ||
     isProductSeqMatch(unappResult, patSize) ||
     {
-      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, unapp.sourcePos)
+      val isEmptyTp = extractorMemberType(unappResult, nme.isEmpty, unapp.srcPos)
       isEmptyTp <:< ConstantType(Constant(false))
     }
   }
@@ -387,7 +387,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         if (fun.symbol.owner == scalaSeqFactoryClass)
           projectSeq(pats)
         else {
-          val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.sourcePos)
+          val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
           if (elemTp.exists)
             Prod(erase(pat.tpe.stripAnnots), funRef, projectSeq(pats) :: Nil, isIrrefutableUnapplySeq(fun, pats.size))
           else
@@ -421,7 +421,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
     case tp => Typ(tp, decomposed = true)
   }
 
-  private def unapplySeqInfo(resTp: Type, pos: SourcePosition)(using Context): (Int, Type, Type) = {
+  private def unapplySeqInfo(resTp: Type, pos: SrcPos)(using Context): (Int, Type, Type) = {
     var resultTp = resTp
     var elemTp = unapplySeqTypeElemTp(resultTp)
     var arity = productArity(resultTp, pos)
@@ -559,21 +559,21 @@ class SpaceEngine(using Context) extends SpaceLogic {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
 
         if (isUnapplySeq) {
-          val (arity, elemTp, resultTp) = unapplySeqInfo(resTp, unappSym.sourcePos)
+          val (arity, elemTp, resultTp) = unapplySeqInfo(resTp, unappSym.srcPos)
           if (elemTp.exists) scalaListType.appliedTo(elemTp) :: Nil
           else {
-            val sels = productSeqSelectors(resultTp, arity, unappSym.sourcePos)
+            val sels = productSeqSelectors(resultTp, arity, unappSym.srcPos)
             sels.init :+ scalaListType.appliedTo(sels.last)
           }
         }
         else {
-          val arity = productArity(resTp, unappSym.sourcePos)
+          val arity = productArity(resTp, unappSym.srcPos)
           if (arity > 0)
-            productSelectorTypes(resTp, unappSym.sourcePos)
+            productSelectorTypes(resTp, unappSym.srcPos)
           else {
             val getTp = resTp.select(nme.get).finalResultType.widen
             if (argLen == 1) getTp :: Nil
-            else productSelectorTypes(getTp, unappSym.sourcePos)
+            else productSelectorTypes(getTp, unappSym.srcPos)
           }
         }
       }
@@ -835,7 +835,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       }
 
     if (uncovered.nonEmpty)
-      report.warning(PatternMatchExhaustivity(show(uncovered)), sel.sourcePos)
+      report.warning(PatternMatchExhaustivity(show(uncovered)), sel.srcPos)
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =
@@ -886,7 +886,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         if (covered == Empty && !isNullLit(pat)) covered = curr
 
         if (isSubspace(covered, prevs)) {
-          report.warning(MatchCaseUnreachable(), pat.sourcePos)
+          report.warning(MatchCaseUnreachable(), pat.srcPos)
         }
 
         // if last case is `_` and only matches `null`, produce a warning
@@ -895,7 +895,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         if (!ctx.explicitNulls && i == cases.length - 1 && !isNullLit(pat) ) {
           simplify(minus(covered, prevs)) match {
             case Typ(`constantNullType`, _) =>
-              report.warning(MatchCaseOnlyNullWarning(), pat.sourcePos)
+              report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
             case _ =>
           }
         }

@@ -7,7 +7,7 @@ import core._
 import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Implicits._, Flags._, Constants.Constant
 import util.Spans._
-import util.SourcePosition
+import util.SrcPos
 import config.Feature
 import java.util.regex.Matcher.quoteReplacement
 import reporting._
@@ -16,26 +16,26 @@ object ErrorReporting {
 
   import tpd._
 
-  def errorTree(tree: untpd.Tree, msg: Message, pos: SourcePosition)(using Context): tpd.Tree =
+  def errorTree(tree: untpd.Tree, msg: Message, pos: SrcPos)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))
 
   def errorTree(tree: untpd.Tree, msg: Message)(using Context): tpd.Tree =
-    errorTree(tree, msg, tree.sourcePos)
+    errorTree(tree, msg, tree.srcPos)
 
-  def errorTree(tree: untpd.Tree, msg: TypeError, pos: SourcePosition)(using Context): tpd.Tree =
+  def errorTree(tree: untpd.Tree, msg: TypeError, pos: SrcPos)(using Context): tpd.Tree =
     tree.withType(errorType(msg, pos))
 
-  def errorType(msg: Message, pos: SourcePosition)(using Context): ErrorType = {
+  def errorType(msg: Message, pos: SrcPos)(using Context): ErrorType = {
     report.error(msg, pos)
     ErrorType(msg)
   }
 
-  def errorType(ex: TypeError, pos: SourcePosition)(using Context): ErrorType = {
+  def errorType(ex: TypeError, pos: SrcPos)(using Context): ErrorType = {
     report.error(ex, pos)
     ErrorType(ex.toMessage)
   }
 
-  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SourcePosition)(using Context): ErrorType =
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual), pos)
 
   class Errors(using Context) {

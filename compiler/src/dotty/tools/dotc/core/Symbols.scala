@@ -30,7 +30,7 @@ import reporting.Message
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{SourceFile, NoSource, Property, SourcePosition}
+import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -47,7 +47,7 @@ object Symbols {
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
   class Symbol private[Symbols] (private var myCoord: Coord, val id: Int)
-    extends Designator with ParamInfo with printing.Showable {
+    extends Designator, ParamInfo, SrcPos, printing.Showable {
 
     type ThisName <: Name
 
@@ -320,6 +320,11 @@ object Symbols {
       val src = source
       (if (src.exists) src else ctx.source).atSpan(span)
     }
+
+    /** This positioned item, widened to `SrcPos`. Used to make clear we only need the
+     *  position, typically for error reporting.
+     */
+    final def srcPos: SrcPos = this
 
     // ParamInfo types and methods
     def isTypeParam(using Context): Boolean = denot.is(TypeParam)

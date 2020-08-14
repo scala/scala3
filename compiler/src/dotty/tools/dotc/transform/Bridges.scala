@@ -8,7 +8,7 @@ import DenotTransformers._
 import ast.untpd
 import collection.{mutable, immutable}
 import util.Spans.Span
-import util.SourcePosition
+import util.SrcPos
 
 /** A helper class for generating bridge methods in class `root`. */
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
@@ -38,8 +38,8 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   private val bridgesScope = newScope
   private val bridgeTarget = newMutableSymbolMap[Symbol]
 
-  def bridgePosFor(member: Symbol): SourcePosition =
-    (if (member.owner == root && member.span.exists) member else root).sourcePos
+  def bridgePosFor(member: Symbol): SrcPos =
+    (if (member.owner == root && member.span.exists) member else root).srcPos
 
   /** Add a bridge between `member` and `other`, where `member` overrides `other`
    *  before erasure, if the following conditions are satisfied.

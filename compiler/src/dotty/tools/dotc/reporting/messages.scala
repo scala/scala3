@@ -2041,7 +2041,7 @@ import ast.tpd
       def symLocation(sym: Symbol) = {
         val lineDesc =
           if (sym.span.exists && sym.span != sym.owner.span)
-            s" at line ${sym.sourcePos.line + 1}"
+            s" at line ${sym.srcPos.line + 1}"
           else ""
         i"in ${sym.owner}${lineDesc}"
       }

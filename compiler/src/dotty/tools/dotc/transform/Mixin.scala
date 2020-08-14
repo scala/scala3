@@ -248,7 +248,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           report.error(
               em"""parameterized $mixin is indirectly implemented,
                   |needs to be implemented directly so that arguments can be passed""",
-              cls.sourcePos)
+              cls.srcPos)
           EmptyTree
 
       for (getter <- mixin.info.decls.toList if getter.isGetter && !wasOneOf(getter, Deferred)) yield {

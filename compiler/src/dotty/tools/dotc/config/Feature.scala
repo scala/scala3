@@ -6,7 +6,7 @@ import core._
 import Contexts._, Symbols._, Names._, NameOps._, Phases._
 import StdNames.nme
 import Decorators.{given _}
-import util.SourcePosition
+import util.SrcPos
 import SourceVersion._
 import reporting.Message
 
@@ -76,7 +76,7 @@ object Feature:
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.
    */
-  def warnOnMigration(msg: Message, pos: SourcePosition,
+  def warnOnMigration(msg: Message, pos: SrcPos,
       version: SourceVersion = defaultSourceVersion)(using Context): Boolean =
     if sourceVersion.isMigrating && sourceVersion.stable == version
        || version == `3.0` && migrateTo3

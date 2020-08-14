@@ -15,14 +15,13 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.util.{SourceFile, SourcePosition}
+import dotty.tools.dotc.util.{SourceFile, SrcPos}
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.typer.Inliner
 
 import scala.collection.mutable
-import dotty.tools.dotc.util.SourcePosition
 
 import scala.annotation.constructorOnly
 
@@ -44,7 +43,7 @@ class Staging extends MacroTransform {
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
           val checker = new PCPCheckAndHeal(freshStagingContext) {
-            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(using Context): TypeRef = {
+            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos)(using Context): TypeRef = {
               def symStr =
                 if (sym.is(ModuleClass)) sym.sourceModule.show
                 else i"${sym.name}.this"

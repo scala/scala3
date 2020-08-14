@@ -22,14 +22,13 @@ import Inferencing.isFullyDefined
 import config.Printers.inlining
 import ErrorReporting.errorTree
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
-import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition}
+import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition, SrcPos}
 import dotty.tools.dotc.parsing.Parsers.Parser
 import Nullables.{given _}
 
 import collection.mutable
 import reporting.trace
 import util.Spans.Span
-import util.NoSourcePosition
 import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
 
 object Inliner {
@@ -124,7 +123,7 @@ object Inliner {
         cpy.Block(tree)(bindings.toList, inlineCall(tree1))
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
         val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
-        new Inliner(tree, body).inlined(tree.sourcePos)
+        new Inliner(tree, body).inlined(tree.srcPos)
       else
         val (reason, setting) =
           if reachedInlinedTreesLimit then ("inlined trees", ctx.settings.XmaxInlinedTrees)
@@ -134,7 +133,7 @@ object Inliner {
           i"""|Maximal number of $reason (${setting.value}) exceeded,
               |Maybe this is caused by a recursive inline method?
               |You can use ${setting.name} to change the limit.""",
-          (tree :: enclosingInlineds).last.sourcePos
+          (tree :: enclosingInlineds).last.srcPos
         )
 
     val endId = ctx.source.nextId
@@ -306,7 +305,7 @@ object Inliner {
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
           res.toList
         case t =>
-          report.error("argument to compileError must be a statically known String", underlyingCodeArg.sourcePos)
+          report.error("argument to compileError must be a statically known String", underlyingCodeArg.srcPos)
           Nil
       }
 
@@ -443,7 +442,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       computeParamBindings(tp.resultType, Nil, argss)
     case tp: MethodType =>
       if argss.isEmpty then
-        report.error(i"missing arguments for inline method $inlinedMethod", call.sourcePos)
+        report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
         false
       else
         tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
@@ -618,14 +617,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
 
   /** The Inlined node representing the inlined call */
-  def inlined(sourcePos: SourcePosition): Tree = {
+  def inlined(sourcePos: SrcPos): Tree = {
 
   	// Special handling of `constValue[T]` and `constValueOpt[T]`
     if (callTypeArgs.length == 1)
       if (inlinedMethod == defn.Compiletime_constValue) {
         val constVal = tryConstValue
         if (!constVal.isEmpty) return constVal
-        report.error(em"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.sourcePos)
+        report.error(em"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.srcPos)
       }
       else if (inlinedMethod == defn.Compiletime_constValueOpt) {
         val constVal = tryConstValue
@@ -720,7 +719,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
         val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next
         inContext(ctxToReport) {
-          report.error(message, callToReport.sourcePos)
+          report.error(message, callToReport.srcPos)
         }
       case _ =>
     }
@@ -989,7 +988,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(using evCtx)
           evidence.tpe match {
             case fail: Implicits.AmbiguousImplicits =>
-              report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.sourcePos)
+              report.error(evTyper.missingArgMsg(evidence, tpt.tpe, ""), tpt.srcPos)
               true // hard error: return true to stop implicit search here
             case fail: Implicits.SearchFailureType =>
               false
@@ -1178,7 +1177,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   class InlineTyper(initialErrorCount: Int) extends ReTyper {
     import reducer._
 
-    override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SourcePosition)(using Context): Type = {
+    override def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SrcPos)(using Context): Type = {
       tpe match {
         case tpe: NamedType if tpe.symbol.exists && !tpe.symbol.isAccessibleFrom(tpe.prefix, superAccess) =>
           tpe.info match {
@@ -1203,7 +1202,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         typed(resMaybeReduced, pt) // redo typecheck if reduction changed something
       else
         val res = resMaybeReduced
-        ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.sourcePos)
+        ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.srcPos)
         res
     }
 
@@ -1405,14 +1404,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     if dependencies.nonEmpty && !ctx.reporter.errorsReported then
       for sym <- dependencies do
         if ctx.compilationUnit.source.file == sym.associatedFile then
-          report.error(em"Cannot call macro $sym defined in the same source file", call.sourcePos)
+          report.error(em"Cannot call macro $sym defined in the same source file", call.srcPos)
         if (suspendable && ctx.settings.XprintSuspension.value)
-          report.echo(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}", call.sourcePos)
+          report.echo(i"suspension triggered by macro call to ${sym.showLocated} in ${sym.associatedFile}", call.srcPos)
       if suspendable then
         ctx.compilationUnit.suspend() // this throws a SuspendException
 
     val evaluatedSplice = inContext(tastyreflect.MacroExpansion.context(inlinedFrom)) {
-      Splicer.splice(body, inlinedFrom.sourcePos, MacroClassLoader.fromContext)
+      Splicer.splice(body, inlinedFrom.srcPos, MacroClassLoader.fromContext)
     }
     val inlinedNormailizer = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
