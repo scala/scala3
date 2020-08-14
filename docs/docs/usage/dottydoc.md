@@ -92,7 +92,7 @@ It is also possible to use one of the [default layouts](#default-layouts) that s
 Blog
 ====
 Dottydoc also allows for a simple blogging platform in the same vein as Jekyll.
-Blog posts are placed within the `./blog/_posts` directory and have to be on
+Blog posts are placed within the `./blog/_posts` directory and have to be in
 the form `year-month-day-title.{md,html}`.
 
 An example of this would be:
