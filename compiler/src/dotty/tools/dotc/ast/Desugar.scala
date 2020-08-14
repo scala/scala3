@@ -1715,6 +1715,8 @@ object desugar {
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
+      case ext: ExtMethods =>
+        Block(List(ext), Literal(Constant(())).withSpan(ext.span))
     }
     desugared.withSpan(tree.span)
   }
