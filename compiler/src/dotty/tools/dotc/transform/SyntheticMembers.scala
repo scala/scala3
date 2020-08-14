@@ -57,7 +57,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   private var myValueSymbols: List[Symbol] = Nil
   private var myCaseSymbols: List[Symbol] = Nil
   private var myCaseModuleSymbols: List[Symbol] = Nil
-  private var myEnumCaseClassSymbols: List[Symbol] = Nil
+  private var myEnumValueSymbols: List[Symbol] = Nil
   private var myNonJavaEnumValueSymbols: List[Symbol] = Nil
 
   private def initSymbols(using Context) =
@@ -67,14 +67,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement,
         defn.Product_productElementName)
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
-      myEnumCaseClassSymbols = List(defn.Enum_enumLabel)
-      myNonJavaEnumValueSymbols = List(defn.Any_toString)
+      myEnumValueSymbols = List(defn.Product_productPrefix)
+      myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString
     }
 
   def valueSymbols(using Context): List[Symbol] = { initSymbols; myValueSymbols }
   def caseSymbols(using Context): List[Symbol] = { initSymbols; myCaseSymbols }
   def caseModuleSymbols(using Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
-  def enumCaseClassSymbols(using Context): List[Symbol] = { initSymbols; myEnumCaseClassSymbols }
+  def enumValueSymbols(using Context): List[Symbol] = { initSymbols; myEnumValueSymbols }
   def nonJavaEnumValueSymbols(using Context): List[Symbol] = { initSymbols; myNonJavaEnumValueSymbols }
 
   private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol = {
@@ -101,9 +101,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val symbolsToSynthesize: List[Symbol] =
       if (clazz.is(Case))
         if (clazz.is(Module)) caseModuleSymbols
-        else if (isEnumCase) caseSymbols ++ enumCaseClassSymbols
         else caseSymbols
       else if (isNonJavaEnumValue) nonJavaEnumValueSymbols
+      else if (isEnumValue) enumValueSymbols
       else if (isDerivedValueClass(clazz)) valueSymbols
       else Nil
 
@@ -138,7 +138,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.equals_ => equalsBody(vrefss.head.head)
         case nme.canEqual_ => canEqualBody(vrefss.head.head)
         case nme.productArity => Literal(Constant(accessors.length))
-        case nme.productPrefix | nme.enumLabel => ownName
+        case nme.productPrefix if isEnumValue => callEnumLabel
+        case nme.productPrefix => ownName
         case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
       }

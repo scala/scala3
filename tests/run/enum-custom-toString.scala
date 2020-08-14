@@ -6,7 +6,9 @@ enum EJ extends java.lang.Enum[EJ]:
   case B
   override def toString: String = "overridden"
 
-trait Mixin:
+trait Mixin extends Enum:
+  override def enumLabel: String = "nolabel"
+  override def productPrefix: String = "noprefix"
   override def toString: String = "overridden"
 
 enum EM extends Mixin:
@@ -27,21 +29,13 @@ enum EC: // control case
 enum EO:
   case H
   case I(arg: Int)
-  // TODO: allow `productPrefix` to be overridden in singleton enum values - until `scala.Enum` is bootstrapped with
-  // `enumLabel`, `runtime.EnumValues` uses `productPrefix` for by-name lookup.
   override def productPrefix: String = "noprefix"
+  override def toString: String = "overridden"
 end EO
 
-enum EL {
-  case J
-  case K(arg: Int)
-  override def enumLabel: String = "nolabel" // will always be overridden by simple cases
-}
-
-enum EQ[T] {
-  case L extends EQ[Int]
-  override def enumLabel: String = "nolabel" // will always be overridden by value cases
-}
+enum EQ:
+  case J           extends EQ with Mixin
+  case K(arg: Int) extends EQ with Mixin
 
 abstract class Tag[T] extends Enum
 object Tag:
@@ -61,8 +55,8 @@ object Tag:
   assert(EJ.B.enumLabel == "B",               s"EJ.B.enumLabel = ${EJ.B.enumLabel}")
   assert(EJ.valueOf("B") == EJ.B,             s"EJ.valueOf(B) = ${EJ.valueOf("B")}")
   assert(EM.C.toString == "overridden",       s"EM.C.toString = ${EM.C.toString}")
-  assert(EM.C.productPrefix == "C",           s"EM.C.productPrefix = ${EM.C.productPrefix}")
-  assert(EM.C.enumLabel == "C",               s"EM.C.enumLabel = ${EM.C.enumLabel}")
+  assert(EM.C.productPrefix == "noprefix",    s"EM.C.productPrefix = ${EM.C.productPrefix}")
+  assert(EM.C.enumLabel == "C",               s"EM.C.enumLabel = ${EM.C.enumLabel}") // enumLabel override is useless
   assert(EM.valueOf("C") == EM.C,             s"EM.valueOf(C) = ${EM.valueOf("C")}")
   assert(ET.D.toString == "overridden",       s"ET.D.toString = ${ET.D.toString}")
   assert(ET.D.productPrefix == "D",           s"ET.D.productPrefix = ${ET.D.productPrefix}")
@@ -77,27 +71,23 @@ object Tag:
   assert(EC.G(0).toString == "G(0)",          s"EC.G(0).toString = ${EC.G(0).toString}")
   assert(EC.G(0).productPrefix == "G",        s"EC.G(0).productPrefix = ${EC.G(0).productPrefix}")
   assert(EC.G(0).enumLabel == "G",            s"EC.G(0).enumLabel = ${EC.G(0).enumLabel}")
-  assert(EO.H.toString == "H",                s"EO.H.toString = ${EO.H.toString}")
-  assert(EO.H.productPrefix == "H",           s"EO.H.productPrefix = ${EO.H.productPrefix}") // TODO: enable override
+  assert(EO.H.toString == "overridden",       s"EO.H.toString = ${EO.H.toString}")
+  assert(EO.H.productPrefix == "noprefix",    s"EO.H.productPrefix = ${EO.H.productPrefix}")
   assert(EO.H.enumLabel == "H",               s"EO.H.enumLabel = ${EO.H.enumLabel}")
   assert(EO.valueOf("H") == EO.H,             s"EO.valueOf(H) = ${EO.valueOf("H")}")
-  assert(EO.I(0).toString == "noprefix(0)",   s"EO.I(0).toString = ${EO.I(0).toString}")
+  assert(EO.I(0).toString == "overridden",    s"EO.I(0).toString = ${EO.I(0).toString}")
   assert(EO.I(0).productPrefix == "noprefix", s"EO.I(0).productPrefix = ${EO.I(0).productPrefix}")
   assert(EO.I(0).enumLabel == "I",            s"EO.I(0).enumLabel = ${EO.I(0).enumLabel}")
-  assert(EL.J.toString == "J",                s"EL.J.toString = ${EL.J.toString}")
-  assert(EL.J.productPrefix == "J",           s"EL.J.productPrefix = ${EL.J.productPrefix}")
-  assert(EL.J.enumLabel == "J",               s"EL.J.enumLabel = ${EL.J.enumLabel}") // can't override label in simple case
-  assert(EL.valueOf("J") == EL.J,             s"EL.valueOf(J) = ${EL.valueOf("J")}")
-  assert(EL.K(0).toString == "K(0)",          s"EL.K(0).toString = ${EL.K(0).toString}")
-  assert(EL.K(0).productPrefix == "K",        s"EL.K(0).productPrefix = ${EL.K(0).productPrefix}")
-  assert(EL.K(0).enumLabel == "nolabel",      s"EL.K(0).enumLabel = ${EL.K(0).enumLabel}") // enum label overridden in class case
-  assert(EQ.L.toString == "L",                s"EQ.L.toString = ${EQ.L.toString}")
-  assert(EQ.L.productPrefix == "L",           s"EQ.L.productPrefix = ${EQ.L.productPrefix}")
-  assert(EQ.L.enumLabel == "L",               s"EQ.L.enumLabel = ${EQ.L.enumLabel}") // can't override label in value case
-
+  assert(EQ.J.toString == "overridden",       s"EQ.J.toString = ${EQ.J.toString}")
+  assert(EQ.J.productPrefix == "noprefix",    s"EQ.J.productPrefix = ${EQ.J.productPrefix}")
+  assert(EQ.J.enumLabel == "J",               s"EQ.J.enumLabel = ${EQ.J.enumLabel}") // enumLabel override is useless
+  assert(EQ.valueOf("J") == EQ.J,             s"EQ.valueOf(J) = ${EQ.valueOf("J")}")
+  assert(EQ.K(0).toString == "overridden",    s"EQ.K(0).toString = ${EQ.K(0).toString}")
+  assert(EQ.K(0).productPrefix == "noprefix", s"EQ.K(0).productPrefix = ${EQ.K(0).productPrefix}")
+  assert(EQ.K(0).enumLabel == "K",            s"EQ.K(0).enumLabel = ${EQ.K(0).enumLabel}") // enumLabel override is useless
+  assert(Tag.IntTag.productPrefix == "",      s"Tag.IntTag.productPrefix = ${Tag.IntTag.productPrefix}")
+  assert(Tag.IntTag.enumLabel == "IntTag",    s"Tag.IntTag.enumLabel = ${Tag.IntTag.enumLabel}")
   assert(
     assertion = Tag.IntTag.toString == s"${Tag.IntTag.getClass.getName}@${Integer.toHexString(123)}",
     message   = s"Tag.IntTag.toString = ${Tag.IntTag.toString}"
   )
-  assert(Tag.IntTag.productPrefix == Tag.IntTag.toString, s"Tag.IntTag.productPrefix = ${Tag.IntTag.productPrefix}")
-  assert(Tag.IntTag.enumLabel     == "IntTag", s"Tag.IntTag.enumLabel = ${Tag.IntTag.enumLabel}")

@@ -14,7 +14,7 @@ class EnumValues[E <: Enum] {
 
   def fromInt: Map[Int, E] = myMap
   def fromName: Map[String, E] = {
-    if (fromNameCache == null) fromNameCache = myMap.values.map(v => v.productPrefix -> v).toMap
+    if (fromNameCache == null) fromNameCache = myMap.values.map(v => v.toString -> v).toMap
     fromNameCache
   }
   def values: Iterable[E] = myMap.values

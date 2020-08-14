@@ -110,7 +110,7 @@ For a more in-depth example of using Scala 3 enums from Java, see [this test](ht
 ### Implementation
 
 Enums are represented as `sealed` classes that extend the `scala.Enum` trait.
-This trait defines a two public methods, `ordinal` and `enumLabel`:
+This trait defines two public methods, `ordinal` and `enumLabel`:
 
 ```scala
 package scala
@@ -132,8 +132,8 @@ For instance, the `Venus` value above would be defined like this:
 ```scala
 val Venus: Planet =
   new Planet(4.869E24, 6051800.0) {
-    def ordinal: Int = 1
-    def enumLabel: String = "Venus"
+    override def ordinal: Int = 1
+    override def enumLabel: String = "Venus"
     override def productPrefix: String = enumLabel
     override def toString: String = enumLabel
     // internal code to register value

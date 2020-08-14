@@ -125,9 +125,9 @@ object DesugarEnums {
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
    *   private def $new(_$ordinal: Int, $name: String) = new E with scala.runtime.EnumValue {
-   *     def ordinal = _$ordinal                // if `E` does not derive from jl.Enum
-   *     override def productPrefix = $name     // if `E` does not derive from `java.lang.Enum`
-   *     override def productPrefix = this.name // if `E` derives from `java.lang.Enum`
+   *     override def ordinal = _$ordinal   // if `E` does not derive from `java.lang.Enum`
+   *     override def enumLabel = $name     // if `E` does not derive from `java.lang.Enum`
+   *     override def enumLabel = this.name // if `E` derives from `java.lang.Enum`
    *     $values.register(this)
    *   }
    */
@@ -145,7 +145,7 @@ object DesugarEnums {
       parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
       derived = Nil,
       self = EmptyValDef,
-      body = fieldMethods ::: productPrefixMeth :: registerCall :: Nil
+      body = fieldMethods ::: registerCall :: Nil
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
@@ -274,15 +274,10 @@ object DesugarEnums {
   private def isJavaEnum(using Context): Boolean = ctx.owner.linkedClass.derivesFrom(defn.JavaEnumClass)
 
   def ordinalMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body)
+    DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body).withFlags(Override)
 
   def enumLabelMeth(body: Tree)(using Context): DefDef =
     DefDef(nme.enumLabel, Nil, Nil, TypeTree(defn.StringType), body).withFlags(Override)
-
-  def productPrefixMeth(using Context): DefDef =
-    // TODO: once `scala.Enum` is rebootstrapped and `.valueOf` is implemented in terms of `enumLabel` we can make
-    // `productPrefix` overrideable in SyntheticMembers
-    DefDef(nme.productPrefix, Nil, Nil, TypeTree(defn.StringType), Select(This(EmptyTypeIdent), nme.enumLabel)).withFlags(Override)
 
   def ordinalMethLit(ord: Int)(using Context): DefDef =
     ordinalMeth(Literal(Constant(ord)))
@@ -302,7 +297,7 @@ object DesugarEnums {
       val enumLabelDef = enumLabelLit(name.toString)
       val impl1 = cpy.Template(impl)(
         parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue),
-        body = ordinalDef ::: enumLabelDef :: productPrefixMeth :: registerCall :: Nil
+        body = ordinalDef ::: enumLabelDef :: registerCall :: Nil
       ).withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
