@@ -240,18 +240,18 @@ object Implicits:
       else
         val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
         val candidates = new mutable.ListBuffer[Candidate]
-        var extensionOnly = true
-
-        val tryCandidate = (ref: ImplicitRef) =>
+        def tryCandidate(extensionOnly: Boolean)(ref: ImplicitRef) =
           var ckind = explore(candidateKind(ref.underlyingRef))(using nestedCtx)
           if extensionOnly then ckind &= Candidate.Extension
           if ckind != Candidate.None then
             candidates += Candidate(ref, ckind, level)
 
         if considerExtension then
-          companionRefs.foreach(tryCandidate)
-        extensionOnly = false
-        refs.foreach(tryCandidate)
+          val tryExtension = tryCandidate(extensionOnly = true)
+          companionRefs.foreach(tryExtension)
+        if refs.nonEmpty then
+          val tryGiven = tryCandidate(extensionOnly = false)
+          refs.foreach(tryGiven)
         candidates.toList
     }
   }
