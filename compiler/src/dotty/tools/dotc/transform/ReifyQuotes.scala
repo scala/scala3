@@ -150,8 +150,8 @@ class ReifyQuotes extends MacroTransform {
         def liftedValue(lifter: Symbol) =
           ref(lifter).appliedToType(originalTp).select(nme.toExpr).appliedTo(lit)
         lit.const.tag match {
-          case Constants.NullTag => ref(defn.QuotedExprModule_nullExpr)
-          case Constants.UnitTag => ref(defn.QuotedExprModule_unitExpr)
+          case Constants.NullTag => ref(defn.InternalQuotedExpr_null)
+          case Constants.UnitTag => ref(defn.InternalQuotedExpr_unit)
           case Constants.BooleanTag => liftedValue(defn.LiftableModule_BooleanIsLiftable)
           case Constants.ByteTag => liftedValue(defn.LiftableModule_ByteIsLiftable)
           case Constants.ShortTag => liftedValue(defn.LiftableModule_ShortIsLiftable)

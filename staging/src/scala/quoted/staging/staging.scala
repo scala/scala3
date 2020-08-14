@@ -37,7 +37,7 @@ package object staging:
     var result: T = noResult.asInstanceOf[T]
     def dummyRun(using QuoteContext): Expr[Unit] = {
       result = thunk
-      Expr.unitExpr
+      '{}
     }
     toolbox.run(dummyRun(using _))
     assert(result != noResult) // toolbox.run should have thrown an exception

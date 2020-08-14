@@ -79,18 +79,6 @@ object Expr {
       case Some(expr1) => expr1.seal.asInstanceOf[Expr[T]]
       case _ => expr
 
-  /** Returns a null expresssion equivalent to `'{null}` */
-  def nullExpr: QuoteContext ?=> Expr[Null] = qctx ?=> {
-    import qctx.tasty._
-    Literal(Constant(null)).seal.asInstanceOf[Expr[Null]]
-  }
-
-  /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
-  def unitExpr: QuoteContext ?=> Expr[Unit] = qctx ?=> {
-    import qctx.tasty._
-    Literal(Constant(())).seal.asInstanceOf[Expr[Unit]]
-  }
-
   /** Returns an expression containing a block with the given statements and ending with the expresion
    *  Given list of statements `s1 :: s2 :: ... :: Nil` and an expression `e` the resulting expression
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
