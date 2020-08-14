@@ -14,8 +14,7 @@ class EnumValues[E <: Enum] {
 
   def fromInt: Map[Int, E] = myMap
   def fromName: Map[String, E] = {
-    // TODO remove cast when scala.Enum is bootstrapped
-    if (fromNameCache == null) fromNameCache = myMap.values.map(v => v.asInstanceOf[Product].productPrefix -> v).toMap
+    if (fromNameCache == null) fromNameCache = myMap.values.map(v => v.productPrefix -> v).toMap
     fromNameCache
   }
   def values: Iterable[E] = myMap.values

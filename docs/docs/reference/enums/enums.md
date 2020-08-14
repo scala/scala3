@@ -110,13 +110,16 @@ For a more in-depth example of using Scala 3 enums from Java, see [this test](ht
 ### Implementation
 
 Enums are represented as `sealed` classes that extend the `scala.Enum` trait.
-This trait defines a single public method, `ordinal`:
+This trait defines a two public methods, `ordinal` and `enumLabel`:
 
 ```scala
 package scala
 
 /** A base trait of all enum classes */
 trait Enum extends Product with Serializable {
+
+  /** A string uniquely identifying a case of an enum */
+  final def enumLabel: String = productPrefix
 
   /** A number uniquely identifying a case of an enum */
   def ordinal: Int
