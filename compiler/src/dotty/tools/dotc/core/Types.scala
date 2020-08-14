@@ -671,7 +671,8 @@ object Types {
         val rinfo = tp.refinedInfo
         if (name.isTypeName && !pinfo.isInstanceOf[ClassInfo]) { // simplified case that runs more efficiently
           val jointInfo =
-            if (ctx.base.pendingMemberSearches.contains(name)) pinfo safe_& rinfo
+            if rinfo.isInstanceOf[TypeAlias] then rinfo
+            else if (ctx.base.pendingMemberSearches.contains(name)) pinfo safe_& rinfo
             else pinfo recoverable_& rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }

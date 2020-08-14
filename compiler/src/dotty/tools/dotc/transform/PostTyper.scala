@@ -340,6 +340,34 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           else
             Checking.checkAppliedType(tree)
           super.transform(tree)
+        case tree: RefinedTypeTree =>
+          //println(i"checking $tree: ${tree.tpe}")
+          def checkRefinements(tp: Type): Unit = tp match
+            case RefinedType(parent, name, info) =>
+              info match
+                case info: TypeAlias =>
+                  val mbr = parent.member(name)
+                  mbr.info match
+                    case bounds: TypeBounds if !bounds.contains(info) =>
+                      //println(i"falling back to checking F-bounded ${tree.tpe}")
+                      val site = tree.tpe.narrow
+                      val narrowMbr = mbr.asSeenFrom(site)
+                      val owner = mbr.symbol.maybeOwner
+                      val narrowInfo = info.asSeenFrom(site, owner)
+                      val ok = narrowMbr.info match
+                        case bounds: TypeBounds => bounds.contains(narrowInfo)
+                        case _ => false
+                      //println(i"fall back ${narrowMbr.info} $narrowInfo")
+                      if !ok then
+                        report.error(
+                          em"""type alias     type $name$info
+                              |out of bounds: $bounds / ${bounds.toString}""", tree.sourcePos)
+                    case _ =>
+                case _ =>
+              checkRefinements(parent)
+            case _ =>
+          checkRefinements(tree.tpe)
+          super.transform(tree)
         case SingletonTypeTree(ref) =>
           Checking.checkRealizable(ref.tpe, ref.posd)
           super.transform(tree)

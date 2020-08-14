@@ -123,6 +123,18 @@ object Checking {
     withMode(Mode.AllowLambdaWildcardApply)(checkValidIfApply)
   }
 
+  /** Check refined type for well-formedness. This means
+   *   - all arguments are within their corresponding bounds
+   *   - if type is a higher-kinded application with wildcard arguments,
+   *     check that it or one of its supertypes can be reduced to a normal application.
+   *     Unreducible applications correspond to general existentials, and we
+   *     cannot handle those.
+   *  @param tree The applied type tree to check
+   *  @param tpt  If `tree` is synthesized from a type in a TypeTree,
+   *              the original TypeTree, or EmptyTree otherwise.
+  def checkRefinedType(tp: RefinedType)
+   */
+
   /** Check all applied type trees in inferred type `tpt` for well-formedness */
   def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit =
     val checker = new TypeTraverser:
