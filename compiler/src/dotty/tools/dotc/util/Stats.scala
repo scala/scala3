@@ -9,7 +9,7 @@ import collection.mutable
 
 @sharable object Stats {
 
-  final val enabled = false
+  final val enabled = true
 
   var monitored: Boolean = false
 

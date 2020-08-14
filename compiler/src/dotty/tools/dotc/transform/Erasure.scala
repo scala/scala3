@@ -543,19 +543,19 @@ object Erasure {
       if (sym is Flags.Package)
          || (sym.isAllOf(Flags.JavaModule) && !ctx.compilationUnit.isJava)
       then
-        report.error(JavaSymbolIsNotAValue(sym), tree.sourcePos)
+        report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
 
     private def checkNotErased(tree: Tree)(using Context): tree.type = {
       if (!ctx.mode.is(Mode.Type)) {
         if (isErased(tree))
-          report.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.sourcePos)
+          report.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.srcPos)
         tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match {
           case Some(annot) =>
             def defaultMsg =
               i"""Reference to ${tree.symbol.showLocated} should not have survived,
                  |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
             val message = annot.argumentConstant(0).fold(defaultMsg)(_.stringValue)
-            report.error(message, tree.sourcePos)
+            report.error(message, tree.srcPos)
           case _ => // OK
         }
       }

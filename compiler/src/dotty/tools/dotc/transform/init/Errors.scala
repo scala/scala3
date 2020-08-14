@@ -8,7 +8,6 @@ import ast.tpd._
 import core._
 import Decorators._, printing.SyntaxHighlighting
 import Types._, Symbols._, Contexts._
-import util.SourcePosition
 
 import Effects._, Potentials._
 
@@ -25,7 +24,7 @@ object Errors {
     def show(using Context): String
 
     def issue(using Context): Unit =
-      report.warning(show + stacktrace, source.sourcePos)
+      report.warning(show + stacktrace, source.srcPos)
 
     def toErrors: Errors = Set(this)
 
@@ -67,7 +66,7 @@ object Errors {
       "Access non-initialized field " + field.name.show + "."
 
     override def issue(using Context): Unit =
-      report.error(show + stacktrace, field.sourcePos)
+      report.error(show + stacktrace, field.srcPos)
   }
 
   /** Promote `this` under initialization to fully-initialized */
@@ -107,7 +106,7 @@ object Errors {
     assert(errors.nonEmpty)
 
     override def issue(using Context): Unit =
-      report.warning(show, source.sourcePos)
+      report.warning(show, source.srcPos)
 
     def show(using Context): String = {
       var index = 0

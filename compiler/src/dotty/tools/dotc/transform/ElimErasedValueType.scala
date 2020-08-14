@@ -103,7 +103,7 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
       def bothSuperAccessors = sym1.name.is(SuperAccessorName) && sym2.name.is(SuperAccessorName)
       if (sym1.name != sym2.name && !bothSuperAccessors ||
           !info1.matchesLoosely(info2) && !bothPolyApply)
-        report.error(DoubleDefinition(sym1, sym2, root), root.sourcePos)
+        report.error(DoubleDefinition(sym1, sym2, root), root.srcPos)
     }
     while (opc.hasNext) {
       val sym1 = opc.overriding

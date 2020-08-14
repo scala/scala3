@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import util.Spans._
-import util.{SourceFile, NoSource, SourcePosition}
+import util.{SourceFile, NoSource, SourcePosition, SrcPos}
 import core.Contexts._
 import core.Decorators._
 import core.Flags.{JavaDefined, Extension}
@@ -17,7 +17,7 @@ import java.io.{ PrintWriter }
 
 /** A base class for things that have positions (currently: modifiers and trees)
  */
-abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Product with Cloneable {
+abstract class Positioned(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable {
 
   private var myUniqueId: Int = _
   private var mySpan: Span = _
@@ -46,7 +46,12 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Pro
   span = envelope(src)
 
   def source: SourceFile = SourceFile.fromId(uniqueId)
-  def sourcePos: SourcePosition = source.atSpan(span)
+  def sourcePos(using Context): SourcePosition = source.atSpan(span)
+
+  /** This positioned item, widened to `SrcPos`. Used to make clear we only need the
+   *  position, typically for error reporting.
+   */
+  final def srcPos: SrcPos = this
 
   /** A positioned item like this one with given `span`.
    *  If the positioned item is source-derived, a clone is returned.

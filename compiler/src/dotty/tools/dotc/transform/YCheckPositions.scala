@@ -8,7 +8,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Phases.{Phase, postTyperPhase}
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.util.{SourceFile, SourcePosition}
+import dotty.tools.dotc.util.SourceFile
 
 /** Ycheck inlined positions */
 class YCheckPositions extends Phase {

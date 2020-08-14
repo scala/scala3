@@ -145,7 +145,7 @@ abstract class AccessProxies {
     def accessorIfNeeded(tree: Tree)(using Context): Tree = tree match {
       case tree: RefTree if needsAccessor(tree.symbol) =>
         if (tree.symbol.isConstructor) {
-          report.error("Implementation restriction: cannot use private constructors in inlineable methods", tree.sourcePos)
+          report.error("Implementation restriction: cannot use private constructors in inlineable methods", tree.srcPos)
           tree // TODO: create a proper accessor for the private constructor
         }
         else useAccessor(tree)

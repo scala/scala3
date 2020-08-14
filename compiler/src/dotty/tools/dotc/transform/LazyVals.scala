@@ -88,7 +88,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
           transformSyntheticModule(tree)
         else if (sym.isThreadUnsafe || ctx.settings.scalajs.value)
           if (sym.is(Module) && !ctx.settings.scalajs.value) {
-            report.error(em"@threadUnsafe is only supported on lazy vals", sym.sourcePos)
+            report.error(em"@threadUnsafe is only supported on lazy vals", sym.srcPos)
             transformMemberDefThreadSafe(tree)
           }
           else

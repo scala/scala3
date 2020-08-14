@@ -200,7 +200,7 @@ class Namer { typer: Typer =>
           case tree: MemberDef => SymDenotations.canBeLocal(tree.name, flags)
           case _ => false
         if !ok then
-          report.error(i"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.sourcePos)
+          report.error(i"modifier(s) `${flags.flagsString}` incompatible with $kind definition", tree.srcPos)
         if adapted.is(Private) && canBeLocal then adapted | Local else adapted
       }
 
@@ -328,7 +328,7 @@ class Namer { typer: Typer =>
       /** If there's already an existing type, then the package is a dup of this type */
       val existingType = pkgOwner.info.decls.lookup(pid.name.toTypeName)
       if (existingType.exists) {
-        report.error(PkgDuplicateSymbol(existingType), pid.sourcePos)
+        report.error(PkgDuplicateSymbol(existingType), pid.srcPos)
         newCompletePackageSymbol(pkgOwner, (pid.name ++ "$_error_").toTermName).entered
       }
       else newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
@@ -491,8 +491,8 @@ class Namer { typer: Typer =>
               body = fromTempl.body ++ modTempl.body))
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
-              report.error(em"a class and its companion cannot both have `derives` clauses", mdef.sourcePos)
-            res.putAttachment(desugar.DerivingCompanion, fromTempl.sourcePos.startPos)
+              report.error(em"a class and its companion cannot both have `derives` clauses", mdef.srcPos)
+            res.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
           }
           res
         }
@@ -659,7 +659,7 @@ class Namer { typer: Typer =>
     }
 
   def missingType(sym: Symbol, modifier: String)(using Context): Unit = {
-    report.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.sourcePos)
+    report.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.srcPos)
     sym.resetFlag(GivenOrImplicit)
   }
 
@@ -724,7 +724,7 @@ class Namer { typer: Typer =>
         for (annotTree <- original.mods.annotations) {
           val cls = typedAheadAnnotationClass(annotTree)(using annotCtx)
           if (cls eq sym)
-            report.error("An annotation class cannot be annotated with iself", annotTree.sourcePos)
+            report.error("An annotation class cannot be annotated with iself", annotTree.srcPos)
           else {
             val ann = Annotation.deferred(cls)(typedAheadAnnotation(annotTree)(using annotCtx))
             sym.addAnnotation(ann)
@@ -779,7 +779,7 @@ class Namer { typer: Typer =>
           else
             report.error(em"""children of $parentCls were already queried before $sym was discovered.
                           |As a remedy, you could move $sym on the same nesting level as $parentCls.""",
-                      child.sourcePos)
+                      child.srcPos)
       }
 
       if denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass then
@@ -889,7 +889,7 @@ class Namer { typer: Typer =>
 
       def opaqueToBounds(info: Type): Type =
         if sym.isOpaqueAlias && tparamSyms.isEmpty && info.typeParams.nonEmpty then
-          report.error(em"opaque type alias must be fully applied", rhs.sourcePos)
+          report.error(em"opaque type alias must be fully applied", rhs.srcPos)
         sym.opaqueToBounds(info, rhs1, tparamSyms)
 
       if (isDerived) sym.info = unsafeInfo
@@ -1091,7 +1091,7 @@ class Namer { typer: Typer =>
           // See issue #8073 for background
           report.error(
               i"""Implementation restriction: case classes cannot have dependencies between parameters""",
-              cls.sourcePos)
+              cls.srcPos)
         case _ =>
 
       tempInfo = denot.asClass.classInfo.integrateOpaqueMembers.asInstanceOf[TempClassInfo]
@@ -1138,7 +1138,7 @@ class Namer { typer: Typer =>
         val ptype = parentType(parent)(using completerCtx.superCallContext).dealiasKeepAnnots
         if (cls.isRefinementClass) ptype
         else {
-          val pt = checkClassType(ptype, parent.sourcePos,
+          val pt = checkClassType(ptype, parent.srcPos,
               traitReq = parent ne parents.head, stablePrefixReq = true)
           if (pt.derivesFrom(cls)) {
             val addendum = parent match {
@@ -1146,21 +1146,21 @@ class Namer { typer: Typer =>
                 "\n(Note that inheriting a class of the same name is no longer allowed)"
               case _ => ""
             }
-            report.error(CyclicInheritance(cls, addendum), parent.sourcePos)
+            report.error(CyclicInheritance(cls, addendum), parent.srcPos)
             defn.ObjectType
           }
           else {
             val pclazz = pt.typeSymbol
             if pclazz.is(Final) then
-              report.error(ExtendFinalClass(cls, pclazz), cls.sourcePos)
+              report.error(ExtendFinalClass(cls, pclazz), cls.srcPos)
             else if pclazz.isEffectivelySealed && pclazz.associatedFile != cls.associatedFile then
               if pclazz.is(Sealed) then
-                report.error(UnableToExtendSealedClass(pclazz), cls.sourcePos)
+                report.error(UnableToExtendSealedClass(pclazz), cls.srcPos)
               else if sourceVersion.isAtLeast(`3.1`) then
                 checkFeature(nme.adhocExtensions,
                   i"Unless $pclazz is declared 'open', its extension in a separate file",
                   cls.topLevelClass,
-                  parent.sourcePos)
+                  parent.srcPos)
             pt
           }
         }
@@ -1179,7 +1179,7 @@ class Namer { typer: Typer =>
       if (impl.derived.nonEmpty) {
         val (derivingClass, derivePos) = original.removeAttachment(desugar.DerivingCompanion) match {
           case Some(pos) => (cls.companionClass.orElse(cls).asClass, pos)
-          case None => (cls, impl.sourcePos.startPos)
+          case None => (cls, impl.srcPos.startPos)
         }
         val deriver = new Deriver(derivingClass, derivePos)(using localCtx)
         deriver.enterDerived(impl.derived)
@@ -1390,7 +1390,7 @@ class Namer { typer: Typer =>
       case _: untpd.DerivedTypeTree =>
         WildcardType
       case TypeTree() =>
-        checkMembersOK(inferredType, mdef.sourcePos)
+        checkMembersOK(inferredType, mdef.srcPos)
       case DependentTypeTree(tpFun) =>
         val tpe = tpFun(paramss.head)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
@@ -1414,7 +1414,7 @@ class Namer { typer: Typer =>
             val hygienicType = TypeOps.avoid(rhsType, paramss.flatten)
             if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
               report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
-                i"it is not a supertype of the hygienic type $hygienicType", mdef.sourcePos)
+                i"it is not a supertype of the hygienic type $hygienicType", mdef.srcPos)
             //println(i"lifting $rhsType over $paramss -> $hygienicType = ${tpt.tpe}")
             //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>

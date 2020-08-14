@@ -21,7 +21,7 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import scala.util.control.NonFatal
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.SrcPos
 import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
@@ -38,7 +38,7 @@ object Splicer {
    *
    *  See: `Staging`
    */
-  def splice(tree: Tree, pos: SourcePosition, classLoader: ClassLoader)(using Context): Tree = tree match {
+  def splice(tree: Tree, pos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
       val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
@@ -95,7 +95,7 @@ object Splicer {
         tree match
           case tree: Ident if isEscapedVariable(tree.symbol) =>
             val sym = tree.symbol
-            report.error(em"While expanding a macro, a reference to $sym was used outside the scope where it was defined", tree.sourcePos)
+            report.error(em"While expanding a macro, a reference to $sym was used outside the scope where it was defined", tree.srcPos)
           case Block(stats, _) =>
             val last = locals
             stats.foreach(markDef)
@@ -136,7 +136,7 @@ object Splicer {
           checkIfValidArgument(tree.rhs)
           summon[Env] + tree.symbol
         case _ =>
-          report.error("Macro should not have statements", tree.sourcePos)
+          report.error("Macro should not have statements", tree.srcPos)
           summon[Env]
       }
 
@@ -176,7 +176,7 @@ object Splicer {
               |Parameters may only be:
               | * Quoted parameters or fields
               | * Literal values of primitive types
-              |""".stripMargin, tree.sourcePos)
+              |""".stripMargin, tree.srcPos)
       }
 
       def checkIfValidStaticCall(tree: Tree)(using Env): Unit = tree match {
@@ -195,7 +195,7 @@ object Splicer {
                fn.symbol.is(Module) || fn.symbol.isStatic ||
                (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) =>
           if (fn.symbol.flags.is(Inline))
-            report.error("Macro cannot be implemented with an `inline` method", fn.sourcePos)
+            report.error("Macro cannot be implemented with an `inline` method", fn.srcPos)
           args.flatten.foreach(checkIfValidArgument)
 
         case _ =>
@@ -203,14 +203,14 @@ object Splicer {
             """Malformed macro.
               |
               |Expected the splice ${...} to contain a single call to a static method.
-              |""".stripMargin, tree.sourcePos)
+              |""".stripMargin, tree.srcPos)
       }
 
       checkIfValidStaticCall(tree)(using Set.empty)
   }
 
   /** Tree interpreter that evaluates the tree */
-  private class Interpreter(pos: SourcePosition, classLoader: ClassLoader)(using Context) {
+  private class Interpreter(pos: SrcPos, classLoader: ClassLoader)(using Context) {
 
     type Env = Map[Symbol, Object]
 
@@ -345,7 +345,7 @@ object Splicer {
     }
 
     private def unexpectedTree(tree: Tree)(implicit env: Env): Object =
-      throw new StopInterpretation("Unexpected tree could not be interpreted: " + tree, tree.sourcePos)
+      throw new StopInterpretation("Unexpected tree could not be interpreted: " + tree, tree.srcPos)
 
     private def loadModule(sym: Symbol): Object =
       if (sym.owner.is(Package)) {
@@ -491,7 +491,7 @@ object Splicer {
 
 
   /** Exception that stops interpretation if some issue is found */
-  private class StopInterpretation(val msg: String, val pos: SourcePosition) extends Exception
+  private class StopInterpretation(val msg: String, val pos: SrcPos) extends Exception
 
   object Call {
     /** Matches an expression that is either a field access or an application

@@ -329,8 +329,8 @@ object PatternMatcher {
                 .map(ref(unappResult).select(_))
               matchArgsPlan(selectors, args, onSuccess)
             }
-            else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length, unapp.sourcePos)) {
-              val arity = productArity(unapp.tpe.widen, unapp.sourcePos)
+            else if (isUnapplySeq && isProductSeqMatch(unapp.tpe.widen, args.length, unapp.srcPos)) {
+              val arity = productArity(unapp.tpe.widen, unapp.srcPos)
               unapplyProductSeqPlan(unappResult, args, arity)
             }
             else if (isUnapplySeq && unapplySeqTypeElemTp(unapp.tpe.widen.finalResultType).exists) {
@@ -340,7 +340,7 @@ object PatternMatcher {
               assert(isGetMatch(unapp.tpe))
               val argsPlan = {
                 val get = ref(unappResult).select(nme.get, _.info.isParameterless)
-                val arity = productArity(get.tpe, unapp.sourcePos)
+                val arity = productArity(get.tpe, unapp.srcPos)
                 if (isUnapplySeq)
                   letAbstract(get) { getResult =>
                     if (arity > 0) unapplyProductSeqPlan(getResult, args, arity)
@@ -988,7 +988,7 @@ object PatternMatcher {
           patmatch.println(i"original types: ${typesInCases(original.cases)}%, %")
           patmatch.println(i"switch types  : ${typesInCases(resultCases)}%, %")
           patmatch.println(i"tree = $result")
-          report.warning(UnableToEmitSwitch(numTypes(original.cases) < MinSwitchCases), original.sourcePos)
+          report.warning(UnableToEmitSwitch(numTypes(original.cases) < MinSwitchCases), original.srcPos)
         }
       case _ =>
     }

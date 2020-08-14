@@ -5,7 +5,7 @@ package core
 import annotation.tailrec
 import Symbols._
 import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
-import util.Spans.Span, util.SourcePosition
+import util.Spans.Span
 import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase
 import ast.tpd._

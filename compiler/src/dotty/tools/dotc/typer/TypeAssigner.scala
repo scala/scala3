@@ -7,7 +7,7 @@ import ast._
 import Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
 import util.Spans._
-import util.SourcePosition
+import util.SrcPos
 import config.Printers.typr
 import ast.Trees._
 import NameOps._
@@ -34,7 +34,7 @@ trait TypeAssigner {
       case _ =>
         report.error(
           if (qual.isEmpty) tree.show + " can be used only in a class, object, or template"
-          else qual.show + " is not an enclosing class", tree.sourcePos)
+          else qual.show + " is not an enclosing class", tree.srcPos)
         NoSymbol
     }
   }
@@ -78,7 +78,7 @@ trait TypeAssigner {
    *  (2) if the owner of the denotation is a package object, it is assured
    *      that the package object shows up as the prefix.
    */
-  def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SourcePosition)(using Context): Type = {
+  def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SrcPos)(using Context): Type = {
     def test(tpe: Type, firstTry: Boolean): Type = tpe match {
       case tpe: NamedType =>
         val pre = tpe.prefix
@@ -133,9 +133,9 @@ trait TypeAssigner {
     var qualType = qual1.tpe.widenIfUnstable
     if (!qualType.hasSimpleKind && tree.name != nme.CONSTRUCTOR)
       // constructors are selected on typeconstructor, type arguments are passed afterwards
-      qualType = errorType(em"$qualType takes type parameters", qual1.sourcePos)
+      qualType = errorType(em"$qualType takes type parameters", qual1.srcPos)
     else if (!qualType.isInstanceOf[TermType])
-      qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.sourcePos)
+      qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.srcPos)
 
     val name = tree.name
     val pre = maybeSkolemizePrefix(qualType, name)
@@ -157,11 +157,11 @@ trait TypeAssigner {
     else if (qualType.isErroneous || name.toTermName == nme.ERROR)
       UnspecifiedErrorType
     else if (name == nme.CONSTRUCTOR)
-      errorType(ex"$qualType does not have a constructor", tree.sourcePos)
+      errorType(ex"$qualType does not have a constructor", tree.srcPos)
     else {
       val kind = if (name.isTypeName) "type" else "value"
       def addendum = err.selectErrorAddendum(tree, qual1, qualType, importSuggestionAddendum)
-      errorType(NotAMember(qualType, name, kind, addendum), tree.sourcePos)
+      errorType(NotAMember(qualType, name, kind, addendum), tree.srcPos)
     }
   }
 
@@ -173,7 +173,7 @@ trait TypeAssigner {
   def accessibleSelectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type = {
     val ownType = selectionType(tree, qual1)
     if (tree.hasAttachment(desugar.SuppressAccessCheck)) ownType
-    else ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.sourcePos)
+    else ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.srcPos)
   }
 
   /** Type assignment method. Each method takes as parameters
@@ -190,7 +190,7 @@ trait TypeAssigner {
       qualType match {
         case JavaArrayType(elemtp) => elemtp
         case _ =>
-          report.error("Expected Array but was " + qualType.show, tree.sourcePos)
+          report.error("Expected Array but was " + qualType.show, tree.srcPos)
           defn.NothingType
       }
     }
@@ -236,7 +236,7 @@ trait TypeAssigner {
     val cls = qualifyingClass(tree, tree.qual.name, packageOK = false)
     tree.withType(
         if (cls.isClass) cls.thisType
-        else errorType("not a legal qualifying class for this", tree.sourcePos))
+        else errorType("not a legal qualifying class for this", tree.srcPos))
   }
 
   def assignType(tree: untpd.Super, qual: Tree, mixinClass: Symbol = NoSymbol)(using Context): Super = {
@@ -249,9 +249,9 @@ trait TypeAssigner {
           case p :: Nil =>
             p.typeConstructor
           case Nil =>
-            errorType(SuperQualMustBeParent(mix, cls), tree.sourcePos)
+            errorType(SuperQualMustBeParent(mix, cls), tree.srcPos)
           case p :: q :: _ =>
-            errorType("ambiguous parent class qualifier", tree.sourcePos)
+            errorType("ambiguous parent class qualifier", tree.srcPos)
         }
         val owntype =
           if (mixinClass.exists) mixinClass.appliedRef
@@ -293,16 +293,16 @@ trait TypeAssigner {
           if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
           else fntpe.resultType
         else
-          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.sourcePos)
+          errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
       case t =>
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
-        errorType(err.takesNoParamsStr(fn, ""), tree.sourcePos)
+        errorType(err.takesNoParamsStr(fn, ""), tree.srcPos)
     }
     ConstFold(tree.withType(ownType))
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(using Context): TypeApply = {
-    def fail = tree.withType(errorType(err.takesNoParamsStr(fn, "type "), tree.sourcePos))
+    def fail = tree.withType(errorType(err.takesNoParamsStr(fn, "type "), tree.srcPos))
     ConstFold(fn.tpe.widen match {
       case pt: TypeLambda =>
         tree.withType {
@@ -314,9 +314,9 @@ trait TypeAssigner {
             val namedArgMap = new mutable.HashMap[Name, Type]
             for (NamedArg(name, arg) <- args)
               if (namedArgMap.contains(name))
-                report.error(DuplicateNamedTypeParameter(name), arg.sourcePos)
+                report.error(DuplicateNamedTypeParameter(name), arg.srcPos)
               else if (!paramNames.contains(name))
-                report.error(UndefinedNamedTypeParameter(name, paramNames), arg.sourcePos)
+                report.error(UndefinedNamedTypeParameter(name, paramNames), arg.srcPos)
               else
                 namedArgMap(name) = arg.tpe
 
@@ -353,7 +353,7 @@ trait TypeAssigner {
           else {
             val argTypes = args.tpes
             if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
-            else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.sourcePos)
+            else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
           }
         }
       case err: ErrorType =>
@@ -462,7 +462,7 @@ trait TypeAssigner {
         if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
         else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe)
         else tycon.tpe.appliedTo(args.tpes)
-      else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.sourcePos)
+      else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
     tree.withType(ownType)
   }
 

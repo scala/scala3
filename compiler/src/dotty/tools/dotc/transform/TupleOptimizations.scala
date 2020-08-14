@@ -147,7 +147,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         val size = tpes.size
         val n = nTpe.value.intValue
         if (n < 0 || n >= size) {
-          report.error("index out of bounds: " + n, nTree.underlyingArgument.sourcePos)
+          report.error("index out of bounds: " + n, nTree.underlyingArgument.srcPos)
           tree
         }
         else if (size <= MaxTupleArity)
@@ -157,7 +157,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           // tup.asInstanceOf[TupleXXL].productElement(n)
           tup.asInstance(defn.TupleXXLClass.typeRef).select(nme.productElement).appliedTo(Literal(nTpe.value))
       case (None, nTpe: ConstantType) if nTpe.value.intValue < 0 =>
-        report.error("index out of bounds: " + nTpe.value.intValue, nTree.sourcePos)
+        report.error("index out of bounds: " + nTpe.value.intValue, nTree.srcPos)
         tree
       case _ =>
         // No optimization, keep:

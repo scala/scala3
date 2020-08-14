@@ -153,7 +153,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                // This should be removed on Scala 3.1
                && sym.owner != defn.ReflectPackageClass
             then
-              report.error("No Scala 3 implementation found for this Scala 2 macro.", tree.sourcePos)
+              report.error("No Scala 3 implementation found for this Scala 2 macro.", tree.srcPos)
         case _ =>
       processMemberDef(tree)
 
@@ -239,7 +239,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
         case tree @ Select(qual, name) =>
           if (name.isTypeName) {
-            Checking.checkRealizable(qual.tpe, qual.posd)
+            Checking.checkRealizable(qual.tpe, qual.srcPos)
             withMode(Mode.Type)(super.transform(tree))
           }
           else
@@ -264,7 +264,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
               // need to check instantiability here, because the type of the New itself
               // might be a type constructor.
-              Checking.checkInstantiable(tree.tpe, nu.posd)
+              Checking.checkInstantiable(tree.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>
               app1
@@ -323,16 +323,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case _ =>
           processMemberDef(super.transform(tree))
         case tree: New if isCheckable(tree) =>
-          Checking.checkInstantiable(tree.tpe, tree.posd)
+          Checking.checkInstantiable(tree.tpe, tree.srcPos)
           super.transform(tree)
         case tree: Closure if !tree.tpt.isEmpty =>
-          Checking.checkRealizable(tree.tpt.tpe, tree.posd, "SAM type")
+          Checking.checkRealizable(tree.tpt.tpe, tree.srcPos, "SAM type")
           super.transform(tree)
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
         case tree: AppliedTypeTree =>
           if (tree.tpt.symbol == defn.andType)
-            Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.posd)
+            Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.srcPos)
               // Ideally, this should be done by Typer, but we run into cyclic references
               // when trying to typecheck self types which are intersections.
           else if (tree.tpt.symbol == defn.orType)
@@ -341,7 +341,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             Checking.checkAppliedType(tree)
           super.transform(tree)
         case SingletonTypeTree(ref) =>
-          Checking.checkRealizable(ref.tpe, ref.posd)
+          Checking.checkRealizable(ref.tpe, ref.srcPos)
           super.transform(tree)
         case tree: TypeTree =>
           tree.withType(
@@ -358,9 +358,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             if !exprTpe.member(sel.name).exists
                && !exprTpe.member(sel.name.toTypeName).exists
                && !exprTpe.member(sel.name.toExtensionName).exists then
-              report.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.sourcePos)
+              report.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.srcPos)
             if seen.contains(sel.name) then
-              report.error(ImportRenamedTwice(sel.imported), sel.imported.sourcePos)
+              report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
             seen += sel.name
 
           for sel <- selectors do

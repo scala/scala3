@@ -210,7 +210,7 @@ class TreeChecker extends Phase with SymTransformer {
         assert(
           sym.isPatternBound,
           "patBoundSyms.contains(sym) => sym.isPatternBound is broken." +
-          i" Pattern bound symbol $sym has incorrect flags: " + sym.flagsString + ", line " + sym.sourcePos.line
+          i" Pattern bound symbol $sym has incorrect flags: " + sym.flagsString + ", line " + sym.srcPos.line
         )
       }
       patBoundSyms ++= syms
@@ -234,13 +234,13 @@ class TreeChecker extends Phase with SymTransformer {
         val sym = tree.symbol
         assert(
           nowDefinedSyms.contains(sym) || patBoundSyms.contains(sym),
-          i"undefined symbol ${sym} at line " + tree.sourcePos.line
+          i"undefined symbol ${sym} at line " + tree.srcPos.line
         )
 
         if (!ctx.phase.patternTranslated)
           assert(
             !sym.isPatternBound || patBoundSyms.contains(sym),
-            i"sym.isPatternBound => patBoundSyms.contains(sym) is broken, sym = $sym, line " + tree.sourcePos.line
+            i"sym.isPatternBound => patBoundSyms.contains(sym) is broken, sym = $sym, line " + tree.srcPos.line
           )
       }
 

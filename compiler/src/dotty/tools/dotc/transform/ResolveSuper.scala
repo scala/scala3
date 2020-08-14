@@ -104,7 +104,7 @@ object ResolveSuper {
         val otherTp = other.asSeenFrom(base.typeRef).info
         val accTp = acc.asSeenFrom(base.typeRef).info
         if (!(otherTp.overrides(accTp, matchLoosely = true)))
-          report.error(IllegalSuperAccessor(base, memberName, acc, accTp, other.symbol, otherTp), base.sourcePos)
+          report.error(IllegalSuperAccessor(base, memberName, acc, accTp, other.symbol, otherTp), base.srcPos)
 
       bcs = bcs.tail
     }

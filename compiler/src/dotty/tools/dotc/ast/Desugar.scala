@@ -533,7 +533,7 @@ object desugar {
         appliedRef(enumClassRef)
       else {
         report.error(TypedCaseDoesNotExplicitlyExtendTypedEnum(enumClass, cdef)
-            , cdef.sourcePos.startPos)
+            , cdef.srcPos.startPos)
         appliedTypeTree(enumClassRef, constrTparams map (_ => anyRef))
       }
 
@@ -633,7 +633,7 @@ object desugar {
         .withSpan(cdef.span).toList
       if (companionDerived.nonEmpty)
         for (modClsDef @ TypeDef(_, _) <- mdefs)
-          modClsDef.putAttachment(DerivingCompanion, impl.sourcePos.startPos)
+          modClsDef.putAttachment(DerivingCompanion, impl.srcPos.startPos)
       mdefs
     }
 
@@ -741,19 +741,19 @@ object desugar {
       if (!mods.isOneOf(GivenOrImplicit))
         Nil
       else if (ctx.owner.is(Package)) {
-        report.error(TopLevelImplicitClass(cdef), cdef.sourcePos)
+        report.error(TopLevelImplicitClass(cdef), cdef.srcPos)
         Nil
       }
       else if (mods.is(Trait)) {
-        report.error(TypesAndTraitsCantBeImplicit(), cdef.sourcePos)
+        report.error(TypesAndTraitsCantBeImplicit(), cdef.srcPos)
         Nil
       }
       else if (isCaseClass) {
-        report.error(ImplicitCaseClass(cdef), cdef.sourcePos)
+        report.error(ImplicitCaseClass(cdef), cdef.srcPos)
         Nil
       }
       else if (arity != 1 && !mods.is(Given)) {
-        report.error(ImplicitClassPrimaryConstructorArity(), cdef.sourcePos)
+        report.error(ImplicitClassPrimaryConstructorArity(), cdef.srcPos)
         Nil
       }
       else {
@@ -895,7 +895,7 @@ object desugar {
         .withSpan(mdef.span.startPos)
       val ValDef(selfName, selfTpt, _) = impl.self
       val selfMods = impl.self.mods
-      if (!selfTpt.isEmpty) report.error(ObjectMayNotHaveSelfType(mdef), impl.self.sourcePos)
+      if (!selfTpt.isEmpty) report.error(ObjectMayNotHaveSelfType(mdef), impl.self.srcPos)
       val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(moduleName)), impl.self.rhs)
         .withMods(selfMods)
         .withSpan(impl.self.span.orElse(impl.span.startPos))
@@ -911,7 +911,7 @@ object desugar {
     for mdef <- ext.methods yield
       if mdef.tparams.nonEmpty then
         report.error("extension method cannot have type parameters here, all type parameters go after `extension`",
-          mdef.tparams.head.sourcePos)
+          mdef.tparams.head.srcPos)
       defDef(
         cpy.DefDef(mdef)(
           name = mdef.name.toExtensionName,
@@ -1015,7 +1015,7 @@ object desugar {
             case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
               s"extension_${name}_${inventTypeName(vparam.tpt)}"
             case _ =>
-              report.error(AnonymousInstanceCannotBeEmpty(impl), impl.sourcePos)
+              report.error(AnonymousInstanceCannotBeEmpty(impl), impl.srcPos)
               nme.ERROR.toString
         else
           impl.parents.map(inventTypeName(_)).mkString("given_", "_", "")
@@ -1189,7 +1189,7 @@ object desugar {
       var tested: MemberDef = tree
       def checkApplicable(flag: Flag, test: MemberDefTest): Unit =
         if (tested.mods.is(flag) && !test.applyOrElse(tree, (md: MemberDef) => false)) {
-          report.error(ModifierNotAllowedForDefinition(flag), tree.sourcePos)
+          report.error(ModifierNotAllowedForDefinition(flag), tree.srcPos)
           tested = tested.withMods(tested.mods.withoutFlags(flag))
         }
       checkApplicable(Opaque, legalOpaque)
@@ -1701,7 +1701,7 @@ object desugar {
                  |This can be achieved by adding the import clause 'import scala.language.postfixOps'
                  |or by setting the compiler option -language:postfixOps.
                  |See the Scaladoc for value scala.language.postfixOps for a discussion
-                 |why the feature needs to be explicitly enabled.""".stripMargin, t.sourcePos)
+                 |why the feature needs to be explicitly enabled.""".stripMargin, t.srcPos)
           }
           Select(t, op.name)
         }
@@ -1821,7 +1821,7 @@ object desugar {
         elems foreach collect
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree))
-          report.error(IllegalVariableInPatternAlternative(), vble.sourcePos)
+          report.error(IllegalVariableInPatternAlternative(), vble.srcPos)
       case Annotated(arg, _) =>
         collect(arg)
       case InterpolatedString(_, segments) =>
@@ -1844,7 +1844,7 @@ object desugar {
           def traverse(tree: untpd.Tree)(using Context): Unit = tree match {
             case Splice(expr) => collect(expr)
             case TypSplice(expr) =>
-              report.error(TypeSpliceInValPattern(expr), tree.sourcePos)
+              report.error(TypeSpliceInValPattern(expr), tree.srcPos)
             case _ => traverseChildren(tree)
           }
         }.traverse(expr)

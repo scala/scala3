@@ -134,7 +134,7 @@ object SymbolLoaders {
             report.warning(i"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
                            |But it is found in directory     ${filePath.reverse.mkString(File.separator)}""",
-              tree.sourcePos.focus)
+              tree.srcPos.focus)
           ok
         }
 

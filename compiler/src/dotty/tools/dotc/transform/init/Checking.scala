@@ -87,7 +87,7 @@ object Checking {
         else checkSecondaryConstructor(ctor)
       }
       else if (!cls.isOneOf(Flags.EffectivelyOpenFlags))
-        report.warning("Inheriting non-open class may cause initialization errors", source.sourcePos)
+        report.warning("Inheriting non-open class may cause initialization errors", source.srcPos)
     }
 
     cls.paramAccessors.foreach { acc =>

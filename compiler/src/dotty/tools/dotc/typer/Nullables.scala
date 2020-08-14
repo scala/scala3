@@ -513,7 +513,7 @@ object Nullables:
                                 |Wrapping the argument in `byName(...)` fixes the problem by disabling the flow assumptions.
                                 |
                                 |`byName` needs to be imported from the `scala.compiletime` package.""",
-                            arg.sourcePos)
+                            arg.srcPos)
                   arg
                 else
                   nestedCtx.typerState.commit()

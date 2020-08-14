@@ -6,7 +6,6 @@ import Contexts._, Types._, Symbols._, Names._, Flags._
 import SymDenotations._
 import util.Spans._
 import util.Stats
-import util.SourcePosition
 import NameKinds.DepParamName
 import Decorators._
 import StdNames._
