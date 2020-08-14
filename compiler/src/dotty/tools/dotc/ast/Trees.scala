@@ -445,6 +445,7 @@ object Trees {
     def forwardTo: Tree[T] = fun
   }
 
+  /** The kind of application */
   enum ApplyKind:
     case Regular      // r.f(x)
     case Using        // r.f(using x)
@@ -459,6 +460,9 @@ object Trees {
       putAttachment(untpd.KindOfApply, kind)
       this
 
+    /** The kind of this application. Works reliably only for untyped trees; typed trees
+     *  are under no obligation to update it correctly.
+     */
     def applyKind: ApplyKind =
       attachmentOrElse(untpd.KindOfApply, ApplyKind.Regular)
   }

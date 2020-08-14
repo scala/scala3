@@ -828,35 +828,63 @@ class Typer extends Namer
             // allow assignments from the primary constructor to class fields
           ctx.owner.name.is(TraitSetterName) || ctx.owner.isStaticConstructor
 
-        lhsCore.tpe match {
-          case ref: TermRef =>
-            val lhsVal = lhsCore.denot.suchThat(!_.is(Method))
-            if (canAssign(lhsVal.symbol)) {
-              // lhsBounds: (T .. Any) as seen from lhs prefix, where T is the type of lhsVal.symbol
-              // This ensures we do the as-seen-from on T with variance -1. Test case neg/i2928.scala
-              val lhsBounds =
-                TypeBounds.lower(lhsVal.symbol.info).asSeenFrom(ref.prefix, lhsVal.symbol.owner)
-              assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, lhsBounds.loBound)))
-                .computeAssignNullable()
+        lhsCore match
+          case Apply(fn, _) if fn.symbol.isExtensionMethod =>
+            def toSetter(fn: Tree): untpd.Tree = fn match
+              case fn @ Ident(name: TermName) =>
+                untpd.cpy.Ident(fn)(name.setterName)
+              case fn @ Select(qual, name: TermName) =>
+                untpd.cpy.Select(fn)(untpd.TypedSplice(qual), name.setterName)
+              case fn @ TypeApply(fn1, targs) =>
+                untpd.cpy.TypeApply(fn)(toSetter(fn1), targs.map(untpd.TypedSplice(_)))
+              case fn @ Apply(fn1, args) =>
+                val result = untpd.cpy.Apply(fn)(toSetter(fn1), args.map(untpd.TypedSplice(_)))
+                fn1 match
+                  case Apply(_, _) => // current apply is to implicit arguments
+                    result.setApplyKind(ApplyKind.Using)
+                      // Note that we cannot copy the apply kind of `fn` since `fn` is a typed
+                      // tree and applyKinds are not preserved for those.
+                  case _ => result
+              case _ =>
+                EmptyTree
+
+            val setter = toSetter(lhsCore)
+            if setter.isEmpty then reassignmentToVal
+            else tryEither {
+              val assign = untpd.Apply(setter, tree.rhs :: Nil)
+              typed(assign, IgnoredProto(pt))
+            } {
+              (_, _) => reassignmentToVal
             }
-            else {
-              val pre = ref.prefix
-              val setterName = ref.name.setterName
-              val setter = pre.member(setterName)
-              lhsCore match {
-                case lhsCore: RefTree if setter.exists =>
-                  val setterTypeRaw = pre.select(setterName, setter)
-                  val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.sourcePos)
-                  val lhs2 = untpd.rename(lhsCore, setterName).withType(setterType)
-                  typedUnadapted(untpd.Apply(untpd.TypedSplice(lhs2), tree.rhs :: Nil), WildcardType, locked)
-                case _ =>
-                  reassignmentToVal
+          case _ => lhsCore.tpe match {
+            case ref: TermRef =>
+              val lhsVal = lhsCore.denot.suchThat(!_.is(Method))
+              if (canAssign(lhsVal.symbol)) {
+                // lhsBounds: (T .. Any) as seen from lhs prefix, where T is the type of lhsVal.symbol
+                // This ensures we do the as-seen-from on T with variance -1. Test case neg/i2928.scala
+                val lhsBounds =
+                  TypeBounds.lower(lhsVal.symbol.info).asSeenFrom(ref.prefix, lhsVal.symbol.owner)
+                assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, lhsBounds.loBound)))
+                  .computeAssignNullable()
               }
-            }
-          case TryDynamicCallType =>
-            typedDynamicAssign(tree, pt)
-          case tpe =>
-            reassignmentToVal
+              else {
+                val pre = ref.prefix
+                val setterName = ref.name.setterName
+                val setter = pre.member(setterName)
+                lhsCore match {
+                  case lhsCore: RefTree if setter.exists =>
+                    val setterTypeRaw = pre.select(setterName, setter)
+                    val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.sourcePos)
+                    val lhs2 = untpd.rename(lhsCore, setterName).withType(setterType)
+                    typedUnadapted(untpd.Apply(untpd.TypedSplice(lhs2), tree.rhs :: Nil), WildcardType, locked)
+                  case _ =>
+                    reassignmentToVal
+                }
+              }
+            case TryDynamicCallType =>
+              typedDynamicAssign(tree, pt)
+            case tpe =>
+              reassignmentToVal
         }
     }
 
