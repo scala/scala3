@@ -119,7 +119,7 @@ package scala
 trait Enum extends Product with Serializable {
 
   /** A string uniquely identifying a case of an enum */
-  final def enumLabel: String = productPrefix
+  def enumLabel: String
 
   /** A number uniquely identifying a case of an enum */
   def ordinal: Int
@@ -133,8 +133,9 @@ For instance, the `Venus` value above would be defined like this:
 val Venus: Planet =
   new Planet(4.869E24, 6051800.0) {
     def ordinal: Int = 1
-    override def productPrefix: String = "Venus"
-    override def toString: String = productPrefix
+    def enumLabel: String = "Venus"
+    override def productPrefix: String = enumLabel
+    override def toString: String = enumLabel
     // internal code to register value
   }
 ```

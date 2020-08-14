@@ -4,7 +4,7 @@ package scala
 trait Enum extends Product, Serializable:
 
   /** A string uniquely identifying a case of an enum */
-  final def enumLabel: String = productPrefix
+  def enumLabel: String
 
   /** A number uniquely identifying a case of an enum */
   def ordinal: Int

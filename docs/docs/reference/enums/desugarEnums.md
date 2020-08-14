@@ -175,15 +175,18 @@ If `E` contains at least one simple case, its companion object will define in ad
      ```scala
      private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue {
        def ordinal = _$ordinal
-       override def productPrefix = $name
-       override def toString = productPrefix
+       def enumLabel = $name
+       override def productPrefix = enumLabel // if not overridden in `E`
+       override def toString = enumLabel      // if not overridden in `E`
        $values.register(this) // register enum value so that `valueOf` and `values` can return it.
      }
      ```
 
 The anonymous class also implements the abstract `Product` methods that it inherits from `Enum`.
-The `ordinal` method is only generated if the enum does not extend from `java.lang.Enum` (as Scala enums do not extend `java.lang.Enum`s unless explicitly specified). In case it does, there is no need to generate `ordinal` as `java.lang.Enum` defines it. Similarly there is no need to override `toString` as that is defined in terms of `name` in
-`java.lang.Enum`.
+The `ordinal` method is only generated if the enum does not extend from `java.lang.Enum` (as Scala enums do not extend
+`java.lang.Enum`s unless explicitly specified). In case it does, there is no need to generate `ordinal` as
+`java.lang.Enum` defines it. Similarly there is no need to override `toString` as that is defined in terms of `name` in
+`java.lang.Enum`. Finally, `enumLabel` will call `this.name` when `E` extends `java.lang.Enum`.
 
 ### Scopes for Enum Cases
 

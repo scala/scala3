@@ -134,18 +134,18 @@ object DesugarEnums {
   private def enumValueCreator(using Context) = {
     val fieldMethods =
       if isJavaEnum then
-        val productPrefixDef = productPrefixMeth(Select(This(Ident(tpnme.EMPTY)), nme.name))
-        productPrefixDef :: Nil
+        val enumLabelDef = enumLabelMeth(Select(This(Ident(tpnme.EMPTY)), nme.name))
+        enumLabelDef :: Nil
       else
-        val ordinalDef       = ordinalMeth(Ident(nme.ordinalDollar_))
-        val productPrefixDef = productPrefixMeth(Ident(nme.nameDollar))
-        ordinalDef :: productPrefixDef :: Nil
+        val ordinalDef   = ordinalMeth(Ident(nme.ordinalDollar_))
+        val enumLabelDef = enumLabelMeth(Ident(nme.nameDollar))
+        ordinalDef :: enumLabelDef :: Nil
     val creator = New(Template(
       constr = emptyConstructor,
       parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
       derived = Nil,
       self = EmptyValDef,
-      body = fieldMethods ::: registerCall :: Nil
+      body = fieldMethods ::: productPrefixMeth :: registerCall :: Nil
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
@@ -276,14 +276,19 @@ object DesugarEnums {
   def ordinalMeth(body: Tree)(using Context): DefDef =
     DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body)
 
-  def productPrefixMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.productPrefix, Nil, Nil, TypeTree(defn.StringType), body).withFlags(Override)
+  def enumLabelMeth(body: Tree)(using Context): DefDef =
+    DefDef(nme.enumLabel, Nil, Nil, TypeTree(defn.StringType), body).withFlags(Override)
+
+  def productPrefixMeth(using Context): DefDef =
+    // TODO: once `scala.Enum` is rebootstrapped and `.valueOf` is implemented in terms of `enumLabel` we can make
+    // `productPrefix` overrideable in SyntheticMembers
+    DefDef(nme.productPrefix, Nil, Nil, TypeTree(defn.StringType), Select(This(EmptyTypeIdent), nme.enumLabel)).withFlags(Override)
 
   def ordinalMethLit(ord: Int)(using Context): DefDef =
     ordinalMeth(Literal(Constant(ord)))
 
-  def productPrefixLit(name: String)(using Context): DefDef =
-    productPrefixMeth(Literal(Constant(name)))
+  def enumLabelLit(name: String)(using Context): DefDef =
+    enumLabelMeth(Literal(Constant(name)))
 
   /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, span: Span)(using Context): Tree = {
@@ -293,12 +298,12 @@ object DesugarEnums {
       expandSimpleEnumCase(name, mods, span)
     else {
       val (tag, scaffolding) = nextOrdinal(CaseKind.Object)
-      val productPrefixDef   = productPrefixLit(name.toString)
-      val ordinalDef         = if isJavaEnum then Nil else ordinalMethLit(tag) :: Nil
+      val ordinalDef   = if isJavaEnum then Nil else ordinalMethLit(tag) :: Nil
+      val enumLabelDef = enumLabelLit(name.toString)
       val impl1 = cpy.Template(impl)(
         parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue),
-        body = ordinalDef ::: productPrefixDef :: registerCall :: Nil)
-        .withAttachment(ExtendsSingletonMirror, ())
+        body = ordinalDef ::: enumLabelDef :: productPrefixMeth :: registerCall :: Nil
+      ).withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
