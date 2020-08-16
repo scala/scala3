@@ -180,7 +180,7 @@ class DocTests extends ReplTest {
   @Test def docOfEmpty =
     fromInitialState { implicit s =>
     run(":doc")
-    assertEquals(":doc <expression>.", storedOutput().trim)
+    assertEquals(":doc <expression>", storedOutput().trim)
   }
 
   private def eval(code: String): State =

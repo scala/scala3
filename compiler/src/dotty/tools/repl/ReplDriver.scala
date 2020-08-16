@@ -377,7 +377,7 @@ class ReplDriver(settings: Array[String],
 
     case TypeOf(expr) =>
       expr match {
-        case "" => out.println(s":type <expression>.")
+        case "" => out.println(s":type <expression>")
         case _  =>
           compiler.typeOf(expr)(newRun(state)).fold(
             displayErrors,
@@ -388,7 +388,7 @@ class ReplDriver(settings: Array[String],
 
     case DocOf(expr) =>
       expr match {
-        case "" => out.println(s":doc <expression>.")
+        case "" => out.println(s":doc <expression>")
         case _  =>
           compiler.docOf(expr)(newRun(state)).fold(
             displayErrors,
