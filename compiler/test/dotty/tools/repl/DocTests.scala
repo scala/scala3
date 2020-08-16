@@ -177,6 +177,12 @@ class DocTests extends ReplTest {
       assertEquals("Expansion: some-value", doc("Foo.hello"))
     }
 
+  @Test def docOfEmpty =
+    fromInitialState { implicit s =>
+    run(":doc")
+    assertEquals(":doc <expression>.", storedOutput().trim)
+  }
+
   private def eval(code: String): State =
     fromInitialState { implicit s => run(code) }
 

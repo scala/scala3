@@ -387,10 +387,14 @@ class ReplDriver(settings: Array[String],
       state
 
     case DocOf(expr) =>
-      compiler.docOf(expr)(newRun(state)).fold(
-        displayErrors,
-        res => out.println(res)
-      )
+      expr match {
+        case "" => out.println(s":doc <expression>.")
+        case _  =>
+          compiler.docOf(expr)(newRun(state)).fold(
+            displayErrors,
+            res => out.println(res)
+          )
+      }
       state
 
     case Quit =>
