@@ -1110,7 +1110,7 @@ trait Checking {
   def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit =
 
     extension (sym: Symbol) def typeRefApplied(using Context): Type =
-      typeRef.appliedTo(typeParams.map(_.info.loBound))
+      sym.typeRef.appliedTo(sym.typeParams.map(_.info.loBound))
 
     def ensureParentDerivesFrom(enumCase: Symbol)(using Context) =
       val enumCls = enumCase.owner.linkedClass
