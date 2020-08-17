@@ -208,7 +208,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         check(tree.vparamss)
       case tree: DefDef if tree.mods.is(ExtensionMethod) =>
         tree.vparamss match {
-          case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+          case vparams1 :: vparams2 :: rest if tree.name.isRightAssocOperatorName =>
             check(tree.tparams)
             check(vparams2)
             check(vparams1)

@@ -1620,7 +1620,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     private def checkByNameRightAssociativeDef(tree: DefDef) {
       tree match {
         case DefDef(_, name, _, params :: _, _, _) =>
-          if (settings.lint && !treeInfo.isLeftAssoc(name.decodedName) && params.exists(p => isByName(p.symbol)))
+          if (settings.lint && name.decodedName.isRightAssocOperatorName && params.exists(p => isByName(p.symbol)))
             unit.warning(tree.pos,
               "by-name parameters will be evaluated eagerly when called as a right-associative infix operator. For more details, see SI-1980.")
         case _ =>

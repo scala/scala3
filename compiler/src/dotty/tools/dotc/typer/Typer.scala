@@ -446,7 +446,7 @@ class Typer extends Namer
     // cyclic references.
     if (name == nme.ROOTPKG)
       return tree.withType(defn.RootPackage.termRef)
-      
+
     val rawType = {
       val saved1 = unimported
       val saved2 = foundUnderScala2
@@ -2342,10 +2342,9 @@ class Typer extends Namer
         typedUnApply(cpy.Apply(tree)(op, l :: r :: Nil), pt)
       else {
         val app = typedApply(desugar.binop(l, op, r), pt)
-        if (untpd.isLeftAssoc(op.name)) app
-        else {
+        if op.name.isRightAssocOperatorName then
           val defs = new mutable.ListBuffer[Tree]
-          def lift(app: Tree): Tree = (app: @unchecked) match {
+          def lift(app: Tree): Tree = (app: @unchecked) match
             case Apply(fn, args) =>
               if (app.tpe.isError) app
               else tpd.cpy.Apply(app)(fn, LiftImpure.liftArgs(defs, fn.tpe, args))
@@ -2353,9 +2352,8 @@ class Typer extends Namer
               tpd.cpy.Assign(app)(lhs, lift(rhs))
             case Block(stats, expr) =>
               tpd.cpy.Block(app)(stats, lift(expr))
-          }
           wrapDefs(defs, lift(app))
-        }
+        else app
       }
     checkValidInfix(tree, result.symbol)
     result

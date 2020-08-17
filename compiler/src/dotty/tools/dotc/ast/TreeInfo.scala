@@ -185,9 +185,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  /** Is name a left-associative operator? */
-  def isLeftAssoc(operator: Name): Boolean = !operator.isEmpty && (operator.toSimpleName.last != ':')
-
   /** Is this argument node of the form <expr> : _*, or is it a reference to
    *  such an argument ? The latter case can happen when an argument is lifted.
    */
