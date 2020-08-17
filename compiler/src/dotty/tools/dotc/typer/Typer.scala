@@ -452,16 +452,14 @@ class Typer extends Namer
      */
     def extensionMethodSelect: untpd.Tree =
       val xmethod = ctx.owner.enclosingExtensionMethod
+      def leadingParam(paramss: List[List[Symbol]]): Symbol = paramss match
+        case (param :: _) :: paramss1 if param.isType => leadingParam(paramss1)
+        case _ :: (snd :: Nil) :: _ if !isLeftAssoc(xmethod.name) => snd
+        case (fst :: Nil) :: _ => fst
+        case _ => NoSymbol
       val qualifier =
-        if xmethod.exists then // TODO: see whether we can use paramss for that
-          val leadParamName = xmethod.info.paramNamess.head.head
-          def isLeadParam(sym: Symbol) =
-            sym.is(Param) && sym.owner.owner == xmethod.owner && sym.name == leadParamName
-          def leadParam(ctx: Context): Symbol =
-            ctx.scope.lookupAll(leadParamName).find(isLeadParam) match
-              case Some(param) => param
-              case None => leadParam(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next)
-          untpd.ref(leadParam(ctx).termRef)
+        if xmethod.exists then
+          untpd.ref(leadingParam(xmethod.rawParamss).termRef)
         else
           untpd.This(untpd.EmptyTypeIdent)
       untpd.cpy.Select(tree)(qualifier, name)
