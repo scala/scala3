@@ -77,9 +77,8 @@ object DesugarEnums {
   private def valuesDot(name: PreName)(implicit src: SourceFile) =
     Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
 
-  private def registerCall(using Context): List[Tree] =
-    if (enumClass.typeParams.nonEmpty) Nil
-    else Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil) :: Nil
+  private def registerCall(using Context): Tree =
+    Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil)
 
   /**  The following lists of definitions for an enum type E:
    *
@@ -93,12 +92,13 @@ object DesugarEnums {
    *       }
    */
   private def enumScaffolding(using Context): List[Tree] = {
+    val rawEnumClassRef = rawRef(enumClass.typeRef)
+    extension (tpe: NamedType) def ofRawEnum = AppliedTypeTree(ref(tpe), rawEnumClassRef)
     val valuesDef =
-      DefDef(nme.values, Nil, Nil, TypeTree(defn.ArrayOf(enumClass.typeRef)), Select(valuesDot(nme.values), nme.toArray))
+      DefDef(nme.values, Nil, Nil, defn.ArrayType.ofRawEnum, Select(valuesDot(nme.values), nme.toArray))
         .withFlags(Synthetic)
     val privateValuesDef =
-      ValDef(nme.DOLLAR_VALUES, TypeTree(),
-        New(TypeTree(defn.EnumValuesClass.typeRef.appliedTo(enumClass.typeRef :: Nil)), ListOfNil))
+      ValDef(nme.DOLLAR_VALUES, TypeTree(), New(defn.EnumValuesClass.typeRef.ofRawEnum, ListOfNil))
         .withFlags(Private | Synthetic)
 
     val valuesOfExnMessage = Apply(
@@ -138,7 +138,7 @@ object DesugarEnums {
       parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
       derived = Nil,
       self = EmptyValDef,
-      body = List(ordinalDef, toStringDef) ++ registerCall
+      body = ordinalDef :: toStringDef :: registerCall :: Nil
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
@@ -254,7 +254,7 @@ object DesugarEnums {
     val minKind = if (kind < seenKind) kind else seenKind
     ctx.tree.pushAttachment(EnumCaseCount, (count + 1, minKind))
     val scaffolding =
-      if (enumClass.typeParams.nonEmpty || kind >= seenKind) Nil
+      if (kind >= seenKind) Nil
       else if (kind == CaseKind.Object) enumScaffolding
       else if (seenKind == CaseKind.Object) enumValueCreator :: Nil
       else enumScaffolding :+ enumValueCreator
@@ -288,8 +288,8 @@ object DesugarEnums {
       val toStringDef = toStringMethLit(name.toString)
       val impl1 = cpy.Template(impl)(
         parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue),
-        body = List(ordinalDef, toStringDef) ++ registerCall)
-        .withAttachment(ExtendsSingletonMirror, ())
+        body = ordinalDef :: toStringDef :: registerCall :: Nil
+      ).withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }

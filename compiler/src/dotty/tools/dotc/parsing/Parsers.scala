@@ -1491,7 +1491,7 @@ object Parsers {
     }
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef =
-      TypeDef(name, TypeBoundsTree(EmptyTree, EmptyTree)).withFlags(Param)
+      TypeDef(name, WildcardTypeBoundsTree()).withFlags(Param)
 
     /** Replaces kind-projector's `*` in a list of types arguments with synthetic names,
      *  returning the new argument list and the synthetic type definitions.

@@ -156,31 +156,30 @@ map into `case class`es or `val`s.
    a type parameter of the case, i.e. the parameter name is defined in `<params>`.
 
 
-### Translation of Enumerations
+### Translation of Enums with Singleton Cases
 
-Non-generic enums `E` that define one or more singleton cases
-are called _enumerations_. Companion objects of enumerations define
-the following additional synthetic members.
+An enum `E` (possibly generic) that defines one or more singleton cases
+will define the following additional synthetic members in its companion object (where `E'` denotes `E` with
+any type parameters replaced by wildcards):
 
-   - A method `valueOf(name: String): E`. It returns the singleton case value whose
+   - A method `valueOf(name: String): E'`. It returns the singleton case value whose
      `toString` representation is `name`.
-   - A method `values` which returns an `Array[E]` of all singleton case
-     values in `E`, in the order of their definitions.
+   - A method `values` which returns an `Array[E']` of all singleton case
+     values defined by `E`, in the order of their definitions.
 
-Companion objects of enumerations that contain at least one simple case define in addition:
+If `E` contains at least one simple case, its companion object will define in addition:
 
    - A private method `$new` which defines a new simple case value with given
      ordinal number and name. This method can be thought as being defined as
      follows.
      ```scala
-     private def $new(_$ordinal: Int, $name: String) = new E {
+     private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue {
        def $ordinal = $_ordinal
        override def toString = $name
        $values.register(this) // register enum value so that `valueOf` and `values` can return it.
      }
      ```
 
-The anonymous class also implements the abstract `Product` methods that it inherits from `Enum`.
 The `$ordinal` method above is used to generate the `ordinal` method if the enum does not extend a `java.lang.Enum` (as Scala enums do not extend `java.lang.Enum`s unless explicitly specified). In case it does, there is no need to generate `ordinal` as `java.lang.Enum` defines it.
 
 ### Scopes for Enum Cases

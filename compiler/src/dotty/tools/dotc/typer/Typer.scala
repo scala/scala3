@@ -1720,7 +1720,7 @@ class Typer extends Namer
             }
           if (desugaredArg.isType)
             arg match {
-              case TypeBoundsTree(EmptyTree, EmptyTree, _)
+              case untpd.WildcardTypeBoundsTree()
               if tparam.paramInfo.isLambdaSub &&
                  tpt1.tpe.typeParamSymbols.nonEmpty &&
                  !ctx.mode.is(Mode.Pattern) =>
@@ -1739,7 +1739,7 @@ class Typer extends Namer
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }
       val paramBounds = tparams.lazyZip(args).map {
-        case (tparam, TypeBoundsTree(EmptyTree, EmptyTree, _)) =>
+        case (tparam, untpd.WildcardTypeBoundsTree()) =>
           // if type argument is a wildcard, suppress kind checking since
           // there is no real argument.
           NoType
@@ -2102,6 +2102,9 @@ class Typer extends Namer
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstTreeIsClass(parents.mapconserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(using superCtx)
+    val firstParent = parents1.head.tpe.dealias.typeSymbol
+
+    checkEnumParent(cls, firstParent)
 
     val self1 = typed(self)(using ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     if (self1.tpt.tpe.isError || classExistsOnSelf(cls.unforcedDecls, self1))
@@ -2109,18 +2112,15 @@ class Typer extends Namer
       cdef.withType(UnspecifiedErrorType)
     else {
       val dummy = localDummy(cls, impl)
-      val body1 = addAccessorDefs(cls,
-        typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
+      val body1 = addAccessorDefs(cls, typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)
 
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
       if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
-      if (cls.derivesFrom(defn.EnumClass)) {
-        val firstParent = parents1.head.tpe.dealias.typeSymbol
+      if cls.derivesFrom(defn.EnumClass) then
         checkEnum(cdef, cls, firstParent)
-      }
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
 
       val reportDynamicInheritance =

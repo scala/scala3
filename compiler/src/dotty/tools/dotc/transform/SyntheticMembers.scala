@@ -355,6 +355,15 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     symbolsToSynthesize.flatMap(syntheticDefIfMissing)
   }
 
+  private def hasWriteReplace(clazz: ClassSymbol)(using Context): Boolean =
+    clazz.membersNamed(nme.writeReplace)
+      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, isJava = false))
+      .exists
+
+  private def writeReplaceDef(clazz: ClassSymbol)(using Context): TermSymbol =
+    newSymbol(clazz, nme.writeReplace, Method | Private | Synthetic,
+        MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
+
   /** If this is a serializable static object `Foo`, add the method:
    *
    *      private def writeReplace(): AnyRef =
@@ -362,24 +371,43 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *
    *  unless an implementation already exists, otherwise do nothing.
    */
-  def serializableObjectMethod(clazz: ClassSymbol)(using Context): List[Tree] = {
-    def hasWriteReplace: Boolean =
-      clazz.membersNamed(nme.writeReplace)
-        .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, isJava = false))
-        .exists
-    if (clazz.is(Module) && clazz.isStatic && clazz.isSerializable && !hasWriteReplace) {
-      val writeReplace = newSymbol(clazz, nme.writeReplace, Method | Private | Synthetic,
-        MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
+  def serializableObjectMethod(clazz: ClassSymbol)(using Context): List[Tree] =
+    if clazz.is(Module) && clazz.isStatic && clazz.isSerializable && !hasWriteReplace(clazz) then
       List(
-        DefDef(writeReplace,
+        DefDef(writeReplaceDef(clazz),
           _ => New(defn.ModuleSerializationProxyClass.typeRef,
                    defn.ModuleSerializationProxyConstructor,
                    List(Literal(Constant(clazz.sourceModule.termRef)))))
           .withSpan(ctx.owner.span.focus))
-    }
     else
       Nil
-  }
+
+  /** Is this an anonymous class deriving from an enum definition? */
+  extension (cls: ClassSymbol) private def isEnumValueImplementation(using Context): Boolean =
+    isAnonymousClass && classParents.head.typeSymbol.is(Enum) // asserted in Typer
+
+  /** If this is the class backing a serializable singleton enum value with base class `MyEnum`,
+   *  and not deriving from `java.lang.Enum` add the method:
+   *
+   *      private def writeReplace(): AnyRef =
+   *        new scala.runtime.EnumValueSerializationProxy(classOf[MyEnum], this.ordinal)
+   *
+   *  unless an implementation already exists, otherwise do nothing.
+   */
+   def serializableEnumValueMethod(clazz: ClassSymbol)(using Context): List[Tree] =
+    if clazz.isEnumValueImplementation
+      && !clazz.derivesFrom(defn.JavaEnumClass)
+      && clazz.isSerializable
+      && !hasWriteReplace(clazz)
+    then
+      List(
+        DefDef(writeReplaceDef(clazz),
+          _ => New(defn.EnumValueSerializationProxyClass.typeRef,
+                   defn.EnumValueSerializationProxyConstructor,
+                   List(Literal(Constant(clazz.classParents.head)), This(clazz).select(nme.ordinal).ensureApplied)))
+          .withSpan(ctx.owner.span.focus))
+    else
+      Nil
 
   /** The class
    *
@@ -528,6 +556,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   def addSyntheticMembers(impl: Template)(using Context): Template = {
     val clazz = ctx.owner.asClass
     addMirrorSupport(
-      cpy.Template(impl)(body = serializableObjectMethod(clazz) ::: caseAndValueMethods(clazz) ::: impl.body))
+      cpy.Template(impl)(body = serializableObjectMethod(clazz) ::: serializableEnumValueMethod(clazz) ::: caseAndValueMethods(clazz) ::: impl.body))
   }
 }

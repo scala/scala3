@@ -40,6 +40,20 @@ enum Option[+T] derives Eql {
   case None
 }
 
+object DollarNew {
+
+  enum MyEnum:
+    case A
+
+  object MyEnum:
+
+    def $new: MyEnum = new MyEnum with runtime.EnumValue { // error: anonymous class in method $new extends enum MyEnum, but extending enums is prohibited.
+      override def $ordinal = 1
+    }
+
+    final val F = $new
+}
+
 object Test {
 
   class Unrelated
@@ -48,4 +62,3 @@ object Test {
   x == new Unrelated // error: cannot compare
 
 }
-

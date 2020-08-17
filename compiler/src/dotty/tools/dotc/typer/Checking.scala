@@ -630,17 +630,6 @@ object Checking {
     }
   }
 
-  /** Check that an enum case extends its enum class */
-  def checkEnumParentOK(cls: Symbol)(using Context): Unit =
-    val enumCase =
-      if cls.isAllOf(EnumCase) then cls
-      else if cls.isAnonymousClass && cls.owner.isAllOf(EnumCase) then cls.owner
-      else NoSymbol
-    if enumCase.exists then
-      val enumCls = enumCase.owner.linkedClass
-      if !cls.info.parents.exists(_.typeSymbol == enumCls) then
-        report.error(i"enum case does not extend its enum $enumCls", enumCase.srcPos)
-
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
     lazy val params = sym.paramSymss.flatten
@@ -1095,9 +1084,10 @@ trait Checking {
    */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = {
     def isEnumAnonCls =
-      cls.isAnonymousClass &&
-      cls.owner.isTerm &&
-      (cls.owner.flagsUNSAFE.is(Case) || cls.owner.name == nme.DOLLAR_NEW)
+      cls.isAnonymousClass
+      && cls.owner.isTerm
+      && (cls.owner.flagsUNSAFE.isAllOf(EnumCase)
+        || ((cls.owner.name eq nme.DOLLAR_NEW) && cls.owner.flagsUNSAFE.isAllOf(Private | Synthetic)))
     if (!isEnumAnonCls)
       if (cdef.mods.isEnumCase) {
         if (cls.derivesFrom(defn.JavaEnumClass))
@@ -1111,6 +1101,34 @@ trait Checking {
         // see enum-List-control.scala.
         report.error(ClassCannotExtendEnum(cls, firstParent), cdef.srcPos)
   }
+
+  /** Check that the firstParent for an enum case derives from the declaring enum class, if not, adds it as a parent
+   *  after emitting an error.
+   *
+   *  This check will have no effect on simple enum cases as their parents are inferred by the compiler.
+   */
+  def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit =
+
+    extension (sym: Symbol) def typeRefApplied(using Context): Type =
+      typeRef.appliedTo(typeParams.map(_.info.loBound))
+
+    def ensureParentDerivesFrom(enumCase: Symbol)(using Context) =
+      val enumCls = enumCase.owner.linkedClass
+      if !firstParent.derivesFrom(enumCls) then
+        report.error(i"enum case does not extend its enum $enumCls", enumCase.srcPos)
+        cls.info match
+          case info: ClassInfo =>
+            cls.info = info.derivedClassInfo(classParents = enumCls.typeRefApplied :: info.classParents)
+          case _ =>
+
+    val enumCase =
+      if cls.flagsUNSAFE.isAllOf(EnumCase) then cls
+      else if cls.isAnonymousClass && cls.owner.flagsUNSAFE.isAllOf(EnumCase) then cls.owner
+      else NoSymbol
+    if enumCase.exists then
+      ensureParentDerivesFrom(enumCase)
+
+  end checkEnumParent
 
   /** Check that all references coming from enum cases in an enum companion object
    *  are legal.
@@ -1205,6 +1223,7 @@ trait Checking {
 
 trait ReChecking extends Checking {
   import tpd._
+  override def checkEnumParent(cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = ()
   override def checkRefsLegal(tree: tpd.Tree, badOwner: Symbol, allowed: (Name, Symbol) => Boolean, where: String)(using Context): Unit = ()
   override def checkFullyAppliedType(tree: Tree)(using Context): Unit = ()
