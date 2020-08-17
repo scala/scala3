@@ -849,6 +849,85 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
         case _ =>
       isSubType(pre1, pre2)
 
+    /** Compare `tycon[args]` with `other := otherTycon[otherArgs]`, via `>:>` if fromBelow is true, `<:<` otherwise
+     *  (we call this relationship `~:~` in the rest of this comment).
+     *
+     *  This method works by:
+     *
+     *  1. Choosing an appropriate type constructor `adaptedTycon`
+     *  2. Constraining `tycon` such that `tycon ~:~ adaptedTycon`
+     *  3. Recursing on `adaptedTycon[args] ~:~ other`
+     *
+     *  So, how do we pick `adaptedTycon`? When `args` and `otherArgs` have the
+     *  same length the answer is simply:
+     *
+     *    adaptedTycon := otherTycon
+     *
+     *  But we also handle having `args.length < otherArgs.length`, in which
+     *  case we need to make up a type constructor of the right kind. For
+     *  example, if `fromBelow = false` and we're comparing:
+     *
+     *    ?F[A] <:< Either[String, B] where `?F <: [X] =>> Any`
+     *
+     *  we will choose:
+     *
+     *    adaptedTycon := [X] =>> Either[String, X]
+     *
+     *  this allows us to constrain:
+     *
+     *    ?F <: adaptedTycon
+     *
+     *  and then recurse on:
+     *
+     *    adaptedTycon[A] <:< Either[String, B]
+     *
+     *  In general, given:
+     *
+     *  - k := args.length
+     *  - d := otherArgs.length - k
+     *
+     *  `adaptedTycon` will be:
+     *
+     *    [T_0, ..., T_k-1] =>> otherTycon[otherArgs(0), ..., otherArgs(d-1), T_0, ..., T_k-1]
+     *
+     *  where `T_n` has the same bounds as `otherTycon.typeParams(d+n)`
+     *
+     *  Historical note: this strategy is known in Scala as "partial unification"
+     *  (even though the type constructor variable isn't actually unified but only
+     *  has one of its bounds constrained), for background see:
+     *  - The infamous SI-2712: https://github.com/scala/bug/issues/2712
+     *  - The PR against Scala 2.12 implementing -Ypartial-unification: https://github.com/scala/scala/pull/5102
+     *  - Some explanations on how this impacts API design: https://gist.github.com/djspiewak/7a81a395c461fd3a09a6941d4cd040f2
+     */
+    def compareAppliedTypeParamRef(tycon: TypeParamRef, args: List[Type], other: AppliedType, fromBelow: Boolean): Boolean =
+      def directionalIsSubType(tp1: Type, tp2: Type): Boolean =
+        if fromBelow then isSubType(tp2, tp1) else isSubType(tp1, tp2)
+      def directionalRecur(tp1: Type, tp2: Type): Boolean =
+        if fromBelow then recur(tp2, tp1) else recur(tp1, tp2)
+
+      val otherTycon = other.tycon
+      val otherArgs = other.args
+
+      val d = otherArgs.length - args.length
+      d >= 0 && {
+        val tparams = tycon.typeParams
+        val remainingTparams = otherTycon.typeParams.drop(d)
+        variancesConform(remainingTparams, tparams) && {
+          val adaptedTycon =
+            if d > 0 then
+              HKTypeLambda(remainingTparams.map(_.paramName))(
+                tl => remainingTparams.map(remainingTparam =>
+                  tl.integrate(remainingTparams, remainingTparam.paramInfo).bounds),
+                tl => otherTycon.appliedTo(
+                  otherArgs.take(d) ++ tl.paramRefs))
+            else
+              otherTycon
+          (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon.ensureLambdaSub)) &&
+          directionalRecur(adaptedTycon.appliedTo(args), other)
+        }
+      }
+    end compareAppliedTypeParamRef
+
     /** Subtype test for the hk application `tp2 = tycon2[args2]`.
      */
     def compareAppliedType2(tp2: AppliedType, tycon2: Type, args2: List[Type]): Boolean = {
@@ -860,13 +939,35 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
        */
       def isMatchingApply(tp1: Type): Boolean = tp1 match {
         case AppliedType(tycon1, args1) =>
-          def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1.dealiasKeepRefiningAnnots match {
+          // We intentionally do not dealias `tycon1` or `tycon2` here.
+          // `TypeApplications#appliedTo` already takes care of dealiasing type
+          // constructors when this can be done without affecting type
+          // inference, doing it here would not only prevent code from compiling
+          // but could also result in the wrong thing being inferred later, for example
+          // in `tests/run/hk-alias-unification.scala` we end up checking:
+          //
+          //   Foo[?F, ?T] <:< Foo[[X] =>> (X, String), Int]
+          //
+          // Naturally, we'd like to infer:
+          //
+          //   ?F := [X] => (X, String)
+          //
+          // but if we dealias `Foo` then we'll end up trying to check:
+          //
+          //   ErasedFoo[?F[?T]] <:< ErasedFoo[(Int, String)]
+          //
+          // Because of partial unification, this will succeed, but will produce the constraint:
+          //
+          //   ?F := [X] =>> (Int, X)
+          //
+          // Which is not what we wanted!
+          def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
                canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
               isSubArgs(args1, args2, tp1, tparams)
             case tycon1: TypeRef =>
-              tycon2.dealiasKeepRefiningAnnots match {
+              tycon2 match {
                 case tycon2: TypeRef =>
                   val tycon1sym = tycon1.symbol
                   val tycon2sym = tycon2.symbol
@@ -926,60 +1027,26 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
 
       /** `param2` can be instantiated to a type application prefix of the LHS
        *  or to a type application prefix of one of the LHS base class instances
-       *  and the resulting type application is a supertype of `tp1`,
-       *  or fallback to fourthTry.
+       *  and the resulting type application is a supertype of `tp1`.
        */
       def canInstantiate(tycon2: TypeParamRef): Boolean = {
-
-        /** Let
-         *
-         *    `tparams_1, ..., tparams_k-1`    be the type parameters of the rhs
-         *    `tparams1_1, ..., tparams1_n-1`  be the type parameters of the constructor of the lhs
-         *    `args1_1, ..., args1_n-1`        be the type arguments of the lhs
-         *    `d  =  n - k`
-         *
-         *  Returns `true` iff `d >= 0` and `tycon2` can be instantiated to
-         *
-         *      [tparams1_d, ... tparams1_n-1] -> tycon1[args_1, ..., args_d-1, tparams_d, ... tparams_n-1]
-         *
-         *  such that the resulting type application is a supertype of `tp1`.
-         */
         def appOK(tp1base: Type) = tp1base match {
           case tp1base: AppliedType =>
-            var tycon1 = tp1base.tycon
-            val args1 = tp1base.args
-            val tparams1all = tycon1.typeParams
-            val lengthDiff = tparams1all.length - tparams.length
-            lengthDiff >= 0 && {
-              val tparams1 = tparams1all.drop(lengthDiff)
-              variancesConform(tparams1, tparams) && {
-                if (lengthDiff > 0)
-                  tycon1 = HKTypeLambda(tparams1.map(_.paramName))(
-                    tl => tparams1.map(tparam => tl.integrate(tparams, tparam.paramInfo).bounds),
-                    tl => tp1base.tycon.appliedTo(args1.take(lengthDiff) ++
-                            tparams1.indices.toList.map(tl.paramRefs(_))))
-                (assumedTrue(tycon2) || isSubType(tycon1.ensureLambdaSub, tycon2)) &&
-                recur(tp1, tycon1.appliedTo(args2))
-              }
-            }
+            compareAppliedTypeParamRef(tycon2, args2, tp1base, fromBelow = true)
           case _ => false
         }
 
-        tp1.widen match {
-          case tp1w: AppliedType => appOK(tp1w)
-          case tp1w =>
-            tp1w.typeSymbol.isClass && {
-              val classBounds = tycon2.classSymbols
-              def liftToBase(bcs: List[ClassSymbol]): Boolean = bcs match {
-                case bc :: bcs1 =>
-                  classBounds.exists(bc.derivesFrom) && appOK(nonExprBaseType(tp1, bc))
-                  || liftToBase(bcs1)
-                case _ =>
-                  false
-              }
-              liftToBase(tp1w.baseClasses)
-            } ||
-            fourthTry
+        val tp1w = tp1.widen
+        appOK(tp1w) || tp1w.typeSymbol.isClass && {
+          val classBounds = tycon2.classSymbols
+          def liftToBase(bcs: List[ClassSymbol]): Boolean = bcs match {
+            case bc :: bcs1 =>
+              classBounds.exists(bc.derivesFrom) && appOK(nonExprBaseType(tp1, bc))
+              || liftToBase(bcs1)
+            case _ =>
+              false
+          }
+          liftToBase(tp1w.baseClasses)
         }
       }
 
@@ -1043,8 +1110,8 @@ class TypeComparer(using val comparerCtx: Context) extends ConstraintHandling wi
       tycon1 match {
         case param1: TypeParamRef =>
           def canInstantiate = tp2 match {
-            case AppliedType(tycon2, args2) =>
-              isSubType(param1, tycon2.ensureLambdaSub) && isSubArgs(args1, args2, tp1, tycon2.typeParams)
+            case tp2base: AppliedType =>
+              compareAppliedTypeParamRef(param1, args1, tp2base, fromBelow = false)
             case _ =>
               false
           }

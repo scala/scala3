@@ -15,6 +15,7 @@ import scala.io.Source
 import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
+import scala.collection.mutable.ListBuffer
 
 import dotc.{Compiler, Driver}
 import dotc.core.Contexts._
@@ -543,11 +544,18 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         }
 
         pool.shutdown()
+
         if (!pool.awaitTermination(20, TimeUnit.MINUTES)) {
+          val remaining = new ListBuffer[TestSource]
+          filteredSources.lazyZip(eventualResults).foreach { (src, res) =>
+            if (!res.isDone)
+              remaining += src
+          }
+
           pool.shutdownNow()
           System.setOut(realStdout)
           System.setErr(realStderr)
-          throw new TimeoutException("Compiling targets timed out")
+          throw new TimeoutException(s"Compiling targets timed out, remaining targets: ${remaining.mkString(", ")}")
         }
 
         eventualResults.foreach { x =>
