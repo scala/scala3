@@ -1234,7 +1234,7 @@ trait Implicits:
              |According to the new implicit resolution rules this is no longer possible;
              |the search will fail with a global ambiguity error instead.
              |
-             |Consider using the scala.implicits.Not class to implement similar functionality.""",
+             |Consider using the scala.util.Not class to implement similar functionality.""",
              ctx.source.atSpan(span))
 
       /** A relation that influences the order in which implicits are tried.

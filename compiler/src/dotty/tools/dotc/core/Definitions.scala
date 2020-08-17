@@ -738,7 +738,7 @@ class Definitions {
     @tu lazy val TypeBox_CAP: TypeSymbol = TypeBoxClass.requiredType(tpnme.CAP)
 
   @tu lazy val MatchCaseClass: ClassSymbol = requiredClass("scala.internal.MatchCase")
-  @tu lazy val NotClass: ClassSymbol = requiredClass("scala.implicits.Not")
+  @tu lazy val NotClass: ClassSymbol = requiredClass("scala.util.Not")
     @tu lazy val Not_value: Symbol = NotClass.companionModule.requiredMethod(nme.value)
 
   @tu lazy val ValueOfClass: ClassSymbol = requiredClass("scala.ValueOf")
