@@ -247,11 +247,9 @@ object Implicits:
             candidates += Candidate(ref, ckind, level)
 
         if considerExtension then
-          val tryExtension = tryCandidate(extensionOnly = true)
-          companionRefs.foreach(tryExtension)
+          companionRefs.foreach(tryCandidate(extensionOnly = true))
         if refs.nonEmpty then
-          val tryGiven = tryCandidate(extensionOnly = false)
-          refs.foreach(tryGiven)
+          refs.foreach(tryCandidate(extensionOnly = false))
         candidates.toList
     }
   }
@@ -488,9 +486,10 @@ object Implicits:
 
   class DivergingImplicit(ref: TermRef,
                           val expectedType: Type,
-                          val argument: Tree) extends SearchFailureType {
+                          val argument: Tree,
+                          addendum: => String = "") extends SearchFailureType {
     def explanation(using Context): String =
-      em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
+      em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify$addendum"
   }
 
   class FailedExtension(extApp: Tree, val expectedType: Type) extends SearchFailureType:
@@ -1101,7 +1100,13 @@ trait Implicits:
       */
     def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult =
       if checkDivergence(cand) then
-        SearchFailure(new DivergingImplicit(cand.ref, wideProto, argument))
+        val addendum = ctx.searchHistory.disqualifiedType match
+          case NoType => ""
+          case disTp =>
+            em""".
+                |Note that open search type $disTp cannot be re-used as a by-name implicit parameter
+                |since it is not fully defined"""
+        SearchFailure(new DivergingImplicit(cand.ref, wideProto, argument, addendum))
       else {
         val history = ctx.searchHistory.nest(cand, pt)
         val result =
@@ -1371,8 +1376,12 @@ trait Implicits:
         history match
           case prev @ OpenSearch(cand1, tp, outer) =>
             if cand1.ref eq cand.ref then
+              def checkFullyDefined =
+                val result = isFullyDefined(tp, ForceDegree.failBottom)
+                if !result then prev.disqualified = true
+                result
               lazy val wildTp = wildApprox(tp.widenExpr)
-              if belowByname && (wildTp <:< wildPt) then
+              if belowByname && (wildTp <:< wildPt) && checkFullyDefined then
                 false
               else if prev.typeSize > ptSize || prev.coveringSet != ptCoveringSet then
                 loop(outer, tp.isByName || belowByname)
@@ -1464,6 +1473,15 @@ abstract class SearchHistory:
   def defineBynameImplicit(tpe: Type, result: SearchSuccess)(using Context): SearchResult =
     root.defineBynameImplicit(tpe, result)
 
+  /** There is a qualifying call-by-name parameter in the history
+   *  that cannot be used since is it not fully defined. Used for error reporting.
+   */
+  def disqualifiedType: Type =
+    def loop(h: SearchHistory): Type = h match
+      case h: OpenSearch => if h.disqualified then h.pt else loop(h.outer)
+      case _ => NoType
+    loop(this)
+
   // This is NOOP unless at the root of this search history.
   def emitDictionary(span: Span, result: SearchResult)(using Context): SearchResult = result
 
@@ -1483,6 +1501,10 @@ case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory)(using Con
   // An example is in neg/9504.scala
   lazy val typeSize = pt.typeSize
   lazy val coveringSet = pt.coveringSet
+
+  // Set if there would be a qualifying call-by-name parameter
+  // that cannot be used since is it not fully defined
+  var disqualified: Boolean = false
 end OpenSearch
 
 /**

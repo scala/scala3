@@ -1,0 +1,11 @@
+-- Error: tests/neg/i9568.scala:13:10 ----------------------------------------------------------------------------------
+13 |  blaMonad.foo(bla) // error: diverges
+   |          ^
+   |no implicit argument of type => Monad[([_$3] =>> Any)] was found for parameter ev of method blaMonad in object Test.
+   |I found:
+   |
+   |    Test.blaMonad[F, S](/* missing */summon[Monad[F]])
+   |
+   |But method blaMonad in object Test produces a diverging implicit search when trying to match type Monad[F].
+   |Note that open search type => Monad[([X] =>> Bla[F, X])] cannot be re-used as a by-name implicit parameter
+   |since it is not fully defined.
