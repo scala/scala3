@@ -21,4 +21,9 @@ class TypeTests extends ReplTest {
       run(":type x")
       assertEquals("Int", storedOutput().trim)
     }
+
+  @Test def typeOfEmpty = fromInitialState { implicit s =>
+    run(":type")
+    assertEquals(":type <expression>", storedOutput().trim)
+  }
 }

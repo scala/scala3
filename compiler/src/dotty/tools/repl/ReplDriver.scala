@@ -376,17 +376,25 @@ class ReplDriver(settings: Array[String],
       }
 
     case TypeOf(expr) =>
-      compiler.typeOf(expr)(newRun(state)).fold(
-        displayErrors,
-        res => out.println(SyntaxHighlighting.highlight(res)(using state.context))
-      )
+      expr match {
+        case "" => out.println(s":type <expression>")
+        case _  =>
+          compiler.typeOf(expr)(newRun(state)).fold(
+            displayErrors,
+            res => out.println(SyntaxHighlighting.highlight(res)(using state.context))
+          )
+      }
       state
 
     case DocOf(expr) =>
-      compiler.docOf(expr)(newRun(state)).fold(
-        displayErrors,
-        res => out.println(res)
-      )
+      expr match {
+        case "" => out.println(s":doc <expression>")
+        case _  =>
+          compiler.docOf(expr)(newRun(state)).fold(
+            displayErrors,
+            res => out.println(res)
+          )
+      }
       state
 
     case Quit =>
