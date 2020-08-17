@@ -16,7 +16,6 @@ import dotty.tools.dotc.ast.Trees._
 import SymUtils._
 
 import annotation.threadUnsafe
-import collection.mutable
 
 object CompleteJavaEnums {
   val name: String = "completeJavaEnums"
@@ -116,13 +115,13 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     && (((cls.owner.name eq nme.DOLLAR_NEW) && cls.owner.isAllOf(Private|Synthetic)) || cls.owner.isAllOf(EnumCase))
     && cls.owner.owner.linkedClass.derivesFromJavaEnum
 
-  @threadUnsafe
-  private lazy val enumCaseOrdinals: mutable.Map[Symbol, Int] = mutable.AnyRefMap.empty
+  private val enumCaseOrdinals: MutableSymbolMap[Int] = newMutableSymbolMap
 
   private def registerEnumClass(cls: Symbol)(using Context): Unit =
     cls.children.zipWithIndex.foreach(enumCaseOrdinals.put)
 
-  private def ordinalFor(enumCase: Symbol): Int = enumCaseOrdinals.remove(enumCase).get
+  private def ordinalFor(enumCase: Symbol): Int =
+    enumCaseOrdinals.remove(enumCase).get
 
   /** 1. If this is an enum class, add $name and $ordinal parameters to its
    *     parameter accessors and pass them on to the java.lang.Enum constructor.
@@ -145,10 +144,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    *          "same as before"
    *       }
    */
-  override def transformTemplate(templ: Template)(using Context): Template = {
+  override def transformTemplate(templ: Template)(using Context): Tree = {
     val cls = templ.symbol.owner
     if cls.derivesFromJavaEnum then
-      registerEnumClass(cls)
+      registerEnumClass(cls) // invariant: class is visited before cases: see tests/pos/enum-companion-first.scala
       val (params, rest) = decomposeTemplateBody(templ.body)
       val addedDefs = addedParams(cls, isLocal=true, ParamAccessor)
       val addedSyms = addedDefs.map(_.symbol.entered)
@@ -156,6 +155,9 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       cpy.Template(templ)(
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
         body = params ++ addedDefs ++ addedForwarders ++ rest)
+    else if cls.linkedClass.derivesFromJavaEnum then
+      enumCaseOrdinals.clear() // remove simple cases // invariant: companion is visited after cases
+      templ
     else if isJavaEnumValueImpl(cls) then
       def creatorParamRef(name: TermName) =
         ref(cls.owner.paramSymss.head.find(_.name == name).get)
