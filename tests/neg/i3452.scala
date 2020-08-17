@@ -6,7 +6,7 @@ object Test {
   implicit def case1[F[_]](implicit t: => TC[F[Any]]): TC[Tuple2K[[_] =>> Any, F, Any]] = ???
   implicit def case2[A, F[_]](implicit r: TC[F[Any]]): TC[A] = ???
 
-  implicitly[TC[Int]] // error
+  implicitly[TC[Int]] // typechecks because we infer F := Nothing (should we avoid inferring Nothing for higher-kinded types?)
 }
 
 object Test1 {

@@ -4,8 +4,6 @@
    |no implicit argument of type => Monad[([_$3] =>> Any)] was found for parameter ev of method blaMonad in object Test.
    |I found:
    |
-   |    Test.blaMonad[F, S](/* missing */summon[Monad[F]])
+   |    Test.blaMonad[Nothing, S](Test.blaMonad[F, S])
    |
-   |But method blaMonad in object Test produces a diverging implicit search when trying to match type Monad[F].
-   |Note that open search type => Monad[([X] =>> Bla[F, X])] cannot be re-used as a by-name implicit parameter
-   |since it is not fully defined.
+   |But method blaMonad in object Test does not match type => Monad[Nothing].
