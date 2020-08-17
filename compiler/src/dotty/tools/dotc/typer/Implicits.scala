@@ -247,11 +247,9 @@ object Implicits:
             candidates += Candidate(ref, ckind, level)
 
         if considerExtension then
-          val tryExtension = tryCandidate(extensionOnly = true)
-          companionRefs.foreach(tryExtension)
+          companionRefs.foreach(tryCandidate(extensionOnly = true))
         if refs.nonEmpty then
-          val tryGiven = tryCandidate(extensionOnly = false)
-          refs.foreach(tryGiven)
+          refs.foreach(tryCandidate(extensionOnly = false))
         candidates.toList
     }
   }
@@ -1373,6 +1371,7 @@ trait Implicits:
             if cand1.ref eq cand.ref then
               lazy val wildTp = wildApprox(tp.widenExpr)
               if belowByname && (wildTp <:< wildPt) then
+                fullyDefinedType(tp, "by-name implicit parameter", span)
                 false
               else if prev.typeSize > ptSize || prev.coveringSet != ptCoveringSet then
                 loop(outer, tp.isByName || belowByname)
