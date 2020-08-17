@@ -64,11 +64,17 @@ class SymOps[R <: Reflection](val r: R) {
         Option.when(sym.flags.is(Flags.Case))(ScalaOnlyModifiers.Case)
       ).flatten
 
-    def shouldDocumentClasslike: Boolean = !sym.flags.is(Flags.Private) && !sym.flags.is(Flags.Synthetic) && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
+    def shouldDocumentClasslike: Boolean = !sym.flags.is(Flags.Private) 
+        && !sym.flags.is(Flags.Synthetic) 
+        && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
+        && !(sym.companionModule.flags.is(Flags.Given))
+
 
     def getCompanionSymbol: Option[Symbol] = Some(sym.companionClass).filter(_.exists)
 
     def isCompanionObject(): Boolean = sym.flags.is(Flags.Object) && sym.companionClass.exists
+
+    def isGiven(): Boolean = sym.flags.is(Flags.Given)
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri =

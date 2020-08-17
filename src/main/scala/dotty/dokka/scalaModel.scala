@@ -8,6 +8,10 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._  
 
+case class IsGiven(givenInstance: Option[Bound]) extends ExtraProperty[Documentable]:
+  override def getKey = IsGiven
+
+object IsGiven extends BaseKey[Documentable, IsGiven]
 
 case class ExtensionInformation(val isGrouped: Boolean)
    
@@ -49,7 +53,8 @@ case class ClasslikeExtension(
   kind: Kind, 
   companion: Option[DRI], 
   extensions: List[ExtensionGroup],
-  inheritedMethods: List[DFunction]
+  inheritedMethods: List[DFunction],
+  givens: List[Documentable]
 ) extends ExtraProperty[DClasslike]:
   override def getKey = ClasslikeExtension
 

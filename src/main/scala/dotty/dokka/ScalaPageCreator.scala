@@ -235,7 +235,57 @@ class ScalaPageCreator(
             case o => o
         }
         val modifiedContent = content(0).copy(
-            (filteredChildren ++ List(addedContent)).asJava,
+            (filteredChildren ++ List(addedContent)).asJava,            
+            content(0).getDci,
+            content(0).getSourceSets,
+            content(0).getStyle,
+            content(0).getExtra
+        )
+        modifyContentGroup(content, modifiedContent)
+    }
+
+    def insertGivenTab(clazz: DClass, defContent: ContentGroup): ContentGroup = {
+        val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
+        val givens = clazz.get(ClasslikeExtension).givens
+        val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(builder => {
+            groupingBlock(
+                builder,
+                "Given",
+                if(!givens.isEmpty) List(() -> givens.sortBy(_.getName).toList) else List.empty,
+                (builder, _) => {
+                    kotlin.Unit.INSTANCE
+                },
+                (builder, elem) => {
+                    link(builder, elem.getName, elem.getDri)(kind = ContentKind.Main)
+                    sourceSetDependentHint(builder)( builder =>
+                        {
+                            contentForBrief(builder, elem)
+                            builder.unaryPlus(builder.buildSignature(elem))
+                            kotlin.Unit.INSTANCE
+                        },
+                        dri = JSet(elem.getDri),
+                        sourceSets = elem.getSourceSets,
+                        kind = ContentKind.SourceSetDependentHint,
+                        styles = JSet()
+                    )
+                    kotlin.Unit.INSTANCE
+                }
+            )(
+                kind = ContentKind.Main,
+                sourceSets = builder.getMainSourcesetData.asScala.toSet,
+                styles = Set(),
+                extra = PropertyContainer.Companion.empty().plus(SimpleAttr.Companion.header("Given")),
+                false,
+                true,
+                Nil,
+                false,
+                true
+            )
+            kotlin.Unit.INSTANCE
+        })
+
+        val modifiedContent = content(0).copy(
+            (content(0).getChildren.asScala ++ List(addedContent)).asJava,
             content(0).getDci,
             content(0).getSourceSets,
             content(0).getStyle,
@@ -253,7 +303,8 @@ class ScalaPageCreator(
                 val pageWithCompanion = insertCompanion(clazz, pageWithInheritedMethods)
                 // val pageWithCompanion = insertCompanion(clazz, defaultContent)
                 val pageWithExtensionsTab = insertCustomExtensionTab(clazz, pageWithCompanion)
-                if clazz.get(ClasslikeExtension).kind == dotty.dokka.Kind.Enum then insertEnumTab(clazz, pageWithExtensionsTab) else pageWithExtensionsTab
+                val pageWithGivens = insertGivenTab(clazz, pageWithExtensionsTab)
+                if clazz.get(ClasslikeExtension).kind == dotty.dokka.Kind.Enum then insertEnumTab(clazz, pageWithGivens) else pageWithGivens
             case _ => defaultContent
         }
     }
@@ -452,7 +503,7 @@ class ScalaPageCreator(
         headers: List[ContentGroup],
         needsAnchors: Boolean,
         omitSplitterOnSingletons: Boolean
-    ): Unit = if (renderWhenEmpty || !elements.isEmpty) {     
+    ): Unit = if (renderWhenEmpty || !elements.isEmpty) {
             header(builder, 3, name)(kind = kind)
             group(builder)(builder =>
             {

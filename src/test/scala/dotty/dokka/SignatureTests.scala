@@ -44,3 +44,5 @@ class ClassModifiers extends SingleFileTest("classModifiers", SingleFileTest.cla
 class StructuralTypes extends SingleFileTest("structuralTypes", SingleFileTest.members)
 
 class OpaqueTypes extends SingleFileTest("opaqueTypes", SingleFileTest.all)
+
+// class GivenSignatures extends SingleFileTest("givenSignatures", SingleFileTest.all)

@@ -128,15 +128,29 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
 
     private def methodSignature(method: DFunction): ContentNode = 
         content(method){ builder =>
+            val isGiven = method.get(IsGiven)
             utils.annotationsBlock(builder, method)
-            builder.modifiersAndVisibility(method, "def")
-            builder.addLink(method.getName, method.getDri)
+            if(isGiven != null) {
+                builder.addText("given ")
+                if(isGiven.givenInstance.isDefined){
+                    builder.addLink(method.getName, method.getDri)
+                } else {
+                    builder.typeSignature(method.getType)
+                }
+            } else {
+                builder.modifiersAndVisibility(method, "def")
+                builder.addLink(method.getName, method.getDri)
+            }
+            
             builder.generics(method)  
             builder.functionParameters(method)
-            if !method.isConstructor then
+            if !method.isConstructor && isGiven == null then
                 builder.addText(":")
                 builder.addText(" ")
                 builder.typeSignature(method.getType)
+            else if isGiven != null && isGiven.givenInstance.isDefined then
+                builder.addText(" as ")
+                isGiven.givenInstance.foreach(t => builder.typeSignature(t))
         }
 
     private def propertySignature(property: DProperty): ContentNode = 
@@ -162,12 +176,23 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
     private def fieldSignature(property: DProperty, kind: String): ContentNode =
         content(property){ builder =>
             utils.annotationsBlock(builder, property)
+            val isGiven = property.get(IsGiven)
+            if(isGiven != null) {
+                builder.addText("given ")
+            }
+            else {
+                builder.modifiersAndVisibility(property, kind)
+            }
             // builder.addText("TODO modifiers")
-            builder.modifiersAndVisibility(property, kind)
             builder.addLink(property.getName, property.getDri)
-            builder.addText(":")
-            builder.addText(" ")
-            builder.typeSignature(property.getType)
+            if(isGiven != null && isGiven.givenInstance.isDefined) {
+                builder.addText(" as ")
+                isGiven.givenInstance.foreach(t => builder.typeSignature(t))
+            } else if (isGiven == null) {
+                builder.addText(":")
+                builder.addText(" ")
+                builder.typeSignature(property.getType)
+            }
         }    
 
     private def parameterSignature(parameter: DParameter): ContentNode = 

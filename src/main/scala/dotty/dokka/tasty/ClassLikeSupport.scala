@@ -14,13 +14,13 @@ trait ClassLikeSupport:
   import reflect._
 
   object DClass:
-    def apply(classDef: ClassDef)(
+    def apply[T >: DClass](classDef: ClassDef)(
       kind: Kind,
       dri: DRI = classDef.symbol.dri,
       name: String = classDef.name,
       constructors: List[DFunction] = classDef.getConstructors.map(parseMethod(_)),
       methods: List[DFunction] = classDef.getMethods.map(parseMethod(_)),
-      fields: List[DProperty] = (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef)),
+      fields: List[DProperty] = (classDef.getTypeDefs.map(parseTypeDef) ++ classDef.getValDefs.map(parseValDef(_))),
       nested: List[DClasslike] = classDef.getNestedClasslikes,
       sources: Map[DokkaConfiguration$DokkaSourceSet, DocumentableSource] = classDef.symbol.source,
       visibility: Map[DokkaConfiguration$DokkaSourceSet, Visibility] = Map(sourceSet.getSourceSet -> (classDef.symbol.getVisibility())),
@@ -53,11 +53,12 @@ trait ClassLikeSupport:
               kind, 
               classDef.getCompanion, 
               classDef.getExtensionGroups, 
-              classDef.getInheritedMethods.map(parseMethod(_)))
-            )
+              classDef.getInheritedMethods.map(parseMethod(_)),
+              classDef.getGivenMethods ++ classDef.getGivenFields
+            ))
             .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
             .addAll(additionalExtras.asJava) 
-        )
+      )
 
   extension (c: ClassDef):
       def getExtensionGroups: List[ExtensionGroup] = {
@@ -74,7 +75,19 @@ trait ClassLikeSupport:
           }.toList
       }
 
-      def getMethods: List[Symbol] = c.symbol.classMethods.filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_))
+      def getGivenMethods: List[DFunction] = {
+        c.symbol.classMethods.filter(_.isGiven()).map(m => parseMethod(m, paramPrefix = _ => "using ", isGiven = true))
+      }
+
+      def getGivenFields: List[DProperty] = {
+        val valDefs = c.body.collect { 
+          case td: ValDef if td.symbol.isGiven() => td
+        }
+        
+        valDefs.map(parseValDef(_, isGiven = true))
+      }
+
+      def getMethods: List[Symbol] = c.symbol.classMethods.filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_)).filterNot(_.isGiven())
 
       def getInheritedMethods: List[Symbol] = c.symbol.methods.filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_))
           .filter(s => s.maybeOwner != c.symbol)
@@ -92,8 +105,8 @@ trait ClassLikeSupport:
       }.toList
 
       def getNestedClasslikes: List[DClasslike] = c.body.collect {
-          case c: ClassDef if c.symbol.shouldDocumentClasslike => processTree(c)(parseClasslike(c))
-      }.flatten.toList
+          case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven() => processTree(c)(parseClasslike(c))
+        }.flatten.toList
 
       def getParameterModifier(parameter: Symbol): String = {
           val fieldSymbol = c.symbol.field(parameter.name)
@@ -166,25 +179,63 @@ trait ClassLikeSupport:
     DClass(classDef)(
         modifier = Map(sourceSet.getSourceSet -> modifier),
         kind = Kind.Enum,
-        additionalExtras = Seq(EnumExtension(enumVals ++ enumTypes ++ enumNested))
+        additionalExtras = Seq(EnumExtension(enumVals ++ enumTypes ++ enumNested)) 
       )
 
   def parseTrait(classDef: reflect.ClassDef)(using ctx: Context): DClass = 
     DClass(classDef)(
-        kind = Kind.Trait
-      )
+        kind = Kind.Trait,
+    )
 
 
-  def parseClass(classDef: reflect.ClassDef)(using ctx: Context): DClass = DClass(classDef)(
+  def parseClass(classDef: reflect.ClassDef)(using ctx: Context): DClass = 
+    DClass(classDef)(
         kind = Kind.Class
-      )
+    )
 
-  def parseMethod(methodSymbol: Symbol, emptyParamsList: Boolean = false, paramPrefix: Symbol => String = _ => "", extInfo: Option[ExtensionInformation] = None): DFunction =
+  def parseMethod(
+      methodSymbol: Symbol, 
+      emptyParamsList: Boolean = false, 
+      paramPrefix: Symbol => String = _ => "", 
+      extInfo: Option[ExtensionInformation] = None,
+      isGiven: Boolean = false
+    ): DFunction =
     val method = methodSymbol.tree.asInstanceOf[DefDef]
     val paramLists = if emptyParamsList then Nil else method.paramss
     val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.typeParams
-    val name =  if methodSymbol.isClassConstructor then "this" else if extInfo.isDefined then methodSymbol.name.stripPrefix("extension_") else methodSymbol.name
-   
+    val name =  if methodSymbol.isClassConstructor then "this" 
+      else if extInfo.isDefined then methodSymbol.name.stripPrefix("extension_") 
+      else if isGiven then methodSymbol.name.stripPrefix("given_")
+      else methodSymbol.name
+    
+
+    def getGivenInstance: Option[Bound] = {
+      def extractTypeSymbol(t: Tree): Option[Symbol] = t match {
+          case tpeTree: TypeTree =>  inner(tpeTree.tpe)   
+          case other => None
+      }
+
+      def inner(tpe: TypeOrBounds): Option[Symbol] = tpe match {
+          case ThisType(tpe) => inner(tpe)
+          case AnnotatedType(tpe, _) => inner(tpe)
+          case AppliedType(tpe, typeOrBoundsList) => inner(tpe)
+          case TermRef(qual, typeName) => inner(qual)
+          case tp @ TypeRef(qual, typeName) =>
+              qual match {
+              case _: Type | _: NoPrefix => Some(tp.typeSymbol)
+              case other => None
+              } 
+      }
+
+      val typeSymbol = extractTypeSymbol(method.returnTpt)
+
+      typeSymbol.map(_.tree).collect {
+        case c: ClassDef => c.getParents.headOption
+      }.flatten
+    }
+    val optionalExtras = Seq(Option.when(isGiven)(IsGiven(getGivenInstance))).flatten
+
+
     new DFunction(
       methodSymbol.dri,
       name,
@@ -202,6 +253,7 @@ trait ClassLikeSupport:
       PropertyContainer.Companion.empty() 
         plus MethodExtension(paramLists.map(_.size), extInfo)
         plus AdditionalModifiers(sourceSet.asMap(methodSymbol.getExtraModifiers().asJava))
+        addAll optionalExtras.asJava
     )
 
   def parseArgument(argument: ValDef, prefix: Symbol => String, isExtendedSymbol: Boolean = false, isGrouped: Boolean = false): DParameter = 
@@ -267,7 +319,15 @@ trait ClassLikeSupport:
         plus AdditionalModifiers(sourceSet.asMap(extraModifiers.asJava))
     )
   
-  def parseValDef(valDef: ValDef): DProperty =
+  def parseValDef(valDef: ValDef, isGiven: Boolean = false): DProperty = {
+      def givenInstance = Some(valDef.symbol.moduleClass)
+          .filter(_.exists)
+          .map(_.tree.asInstanceOf[ClassDef])
+          .map(_.getParents)
+          .filter(!_.isEmpty)
+          .map(_.headOption)
+          .flatten
+      val optionalExtras = Seq(Option.when(isGiven)(IsGiven(givenInstance))).flatten
       new DProperty(
         valDef.symbol.dri,
         valDef.name,
@@ -287,4 +347,6 @@ trait ClassLikeSupport:
             if valDef.symbol.flags.is(Flags.Mutable) then "var" else "val", 
             valDef.symbol.flags.is(Flags.Abstract))
           plus AdditionalModifiers(sourceSet.asMap(valDef.symbol.getExtraModifiers().asJava))
+          addAll optionalExtras.asJava
       )
+  }
