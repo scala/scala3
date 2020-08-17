@@ -125,9 +125,8 @@ object DesugarEnums {
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
    *   private def $new(_$ordinal: Int, $name: String) = new E with scala.runtime.EnumValue {
-   *     private[this] def $ordinal = _$ordinal // if deriving from jl.Enum
-   *     def ordinal = _$ordinal                // if not deriving from jl.Enum
-   *     override def toString = $name
+   *     def ordinal = _$ordinal       // if `E` does not derive from jl.Enum
+   *     override def toString = $name // if `E` does not derive from jl.Enum
    *     $values.register(this)
    *   }
    */
