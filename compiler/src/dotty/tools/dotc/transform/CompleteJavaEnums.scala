@@ -15,6 +15,9 @@ import DenotTransformers._
 import dotty.tools.dotc.ast.Trees._
 import SymUtils._
 
+import annotation.threadUnsafe
+import collection.mutable
+
 object CompleteJavaEnums {
   val name: String = "completeJavaEnums"
 
@@ -40,10 +43,6 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
          sym == defn.JavaEnumClass.primaryConstructor ||
          sym.owner.derivesFromJavaEnum))
       addConstrParams(sym.info)
-    else if isJavaEnumValueImpl(sym) then
-      sym.asClass.delete(tp.decl(nme.toString_).symbol)
-      sym.asClass.delete(tp.decl(nme.ordinalDollar).symbol)
-      tp
     else tp
 
   /** Add constructor parameters `$name: String` and `$ordinal: Int` to the end of
@@ -114,37 +113,42 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
 
   private def isJavaEnumValueImpl(cls: Symbol)(using Context): Boolean =
     cls.isAnonymousClass
-    && ((cls.owner.name eq nme.DOLLAR_NEW) || cls.owner.isAllOf(EnumCase))
-    && {
-      val enumCls = cls.owner.owner.linkedClass
-      enumCls.derivesFromJavaEnum && enumCls.is(Enum)
-    }
+    && (((cls.owner.name eq nme.DOLLAR_NEW) && cls.owner.isAllOf(Private|Synthetic)) || cls.owner.isAllOf(EnumCase))
+    && cls.owner.owner.linkedClass.derivesFromJavaEnum
+
+  @threadUnsafe
+  private lazy val enumCaseOrdinals: mutable.Map[Symbol, Int] = mutable.AnyRefMap.empty
+
+  private def registerEnumClass(cls: Symbol)(using Context): Unit =
+    cls.children.zipWithIndex.foreach(enumCaseOrdinals.put)
+
+  private def ordinalFor(enumCase: Symbol): Int = enumCaseOrdinals.remove(enumCase).get
 
   /** 1. If this is an enum class, add $name and $ordinal parameters to its
    *     parameter accessors and pass them on to the java.lang.Enum constructor.
    *
-   *  2. If this is an anonymous class that implement a value enum case,
+   *  2. If this is an anonymous class that implement a singleton enum case,
    *     pass $name and $ordinal parameters to the enum superclass. The class
    *     looks like this:
    *
    *       class $anon extends E(...) {
    *          ...
-   *          private def $ordinal = N
-   *          override def toString = S
-   *          ...
    *       }
    *
    *     After the transform it is expanded to
    *
-   *       class $anon extends E(..., N, S) {
-   *          ...
-   *          "removed $ordinal and toString"
-   *          ...
+   *       class $anon extends E(..., $name, _$ordinal) { // if class implements a simple enum case
+   *          "same as before"
+   *       }
+   *
+   *       class $anon extends E(..., "A", 0) { // if class implements a value enum case `A` with ordinal 0
+   *          "same as before"
    *       }
    */
   override def transformTemplate(templ: Template)(using Context): Template = {
     val cls = templ.symbol.owner
     if cls.derivesFromJavaEnum then
+      registerEnumClass(cls)
       val (params, rest) = decomposeTemplateBody(templ.body)
       val addedDefs = addedParams(cls, isLocal=true, ParamAccessor)
       val addedSyms = addedDefs.map(_.symbol.entered)
@@ -153,14 +157,15 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
         body = params ++ addedDefs ++ addedForwarders ++ rest)
     else if isJavaEnumValueImpl(cls) then
-      def rhsOf(name: TermName) =
-        templ.body.collect({ case mdef: DefDef if mdef.name == name => mdef.rhs }).head
-      def removeDefs(body: List[Tree], names: TermName*) =
-        body.filterNot { case ndef: DefDef => names.contains(ndef.name); case _ => false }
-      val args = List(rhsOf(nme.toString_), rhsOf(nme.ordinalDollar))
+      def creatorParamRef(name: TermName) =
+        ref(cls.owner.paramSymss.head.find(_.name == name).get)
+      val args =
+        if cls.owner.isAllOf(EnumCase) then
+          List(Literal(Constant(cls.owner.name.toString)), Literal(Constant(ordinalFor(cls.owner))))
+        else
+          List(creatorParamRef(nme.nameDollar), creatorParamRef(nme.ordinalDollar_))
       cpy.Template(templ)(
         parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args),
-        body    = removeDefs(templ.body, nme.toString_, nme.ordinalDollar)
       )
     else templ
   }
