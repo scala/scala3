@@ -155,9 +155,6 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       cpy.Template(templ)(
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
         body = params ++ addedDefs ++ addedForwarders ++ rest)
-    else if cls.linkedClass.derivesFromJavaEnum then
-      enumCaseOrdinals.clear() // remove simple cases // invariant: companion is visited after cases
-      templ
     else if isJavaEnumValueImpl(cls) then
       def creatorParamRef(name: TermName) =
         ref(cls.owner.paramSymss.head.find(_.name == name).get)
@@ -169,6 +166,12 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       cpy.Template(templ)(
         parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args),
       )
+    else if cls.linkedClass.derivesFromJavaEnum then
+      enumCaseOrdinals.clear() // remove simple cases // invariant: companion is visited after cases
+      templ
     else templ
   }
+
+  override def checkPostCondition(tree: Tree)(using Context): Unit =
+    assert(enumCaseOrdinals.isEmpty, "Java based enum ordinal cache was not cleared")
 }
