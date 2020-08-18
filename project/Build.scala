@@ -1068,7 +1068,7 @@ object Build {
             -- "InteroperabilityTest.scala" // various compile errors
             -- "OptimizerTest.scala" // compile errors: false + string and () + string
             -- "ReflectionTest.scala" // tests fail
-            -- "RegressionJSTest.scala" // compile error with js.Dynamic.literal
+            -- "RegressionJSTest.scala" // non-native JS classes
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
             )).get
 
@@ -1081,23 +1081,22 @@ object Build {
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/jsinterop" ** (("*.scala": FileFilter)
             -- "AsyncTest.scala" // needs PromiseMock.scala
-            -- "DynamicTest.scala" // compile error with js.Dynamic.literal
+            -- "DynamicTest.scala" // one test requires JS exports, all other tests pass
             -- "ExportsTest.scala" // JS exports
             -- "FunctionTest.scala" // IR checking errors
             -- "IterableTest.scala" // non-native JS classes
             -- "JSExportStaticTest.scala" // JS exports
-            -- "JSNameTest.scala" // compile error with js.Dynamic.literal
             -- "JSNativeInPackage.scala" // IR checking errors
             -- "JSOptionalTest.scala" // non-native JS classes
-            -- "JSSymbolTest.scala" // compile error with js.Dynamic.literal
-            -- "MiscInteropTest.scala" // compile error with js.Dynamic.literal
+            -- "JSSymbolTest.scala" // non-native JS classes
+            -- "MiscInteropTest.scala" // non-native JS classes
             -- "ModulesWithGlobalFallbackTest.scala" // non-native JS classes
             -- "NestedJSClassTest.scala" // non-native JS classes
             -- "NonNativeJSTypeTest.scala" // non-native JS classes
             -- "PromiseMock.scala" // non-native JS classes
-            -- "SpecialTest.scala" // compile error with js.Dynamic.literal
+            -- "SpecialTest.scala" // assertion error in ExpandSAMs
             -- "SymbolTest.scala" // IR checking errors
-            -- "ThisFunctionTest.scala" // compile error with js.Dynamic.literal
+            -- "ThisFunctionTest.scala" // assertion error in ExpandSAMs
             -- "UndefOrTest.scala" // StackOverflow in the compiler
             )).get
 
@@ -1118,10 +1117,7 @@ object Build {
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
-
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/scalalib" ** (("*.scala": FileFilter)
-            -- "ScalaRunTimeJSTest.scala" // compile error with js.Dynamic.literal
-            )).get
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/scalalib" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/typedarray" ** (("*.scala": FileFilter)
             -- "TypedArrayTest.scala" // assertion error in ExpandSAMs

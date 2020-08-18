@@ -61,7 +61,7 @@ trait Dynamic {
    *    foo.bar(x = bazX, y = bazY, baz, ...)          ~~> foo.applyDynamicNamed("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
    *    foo.bar[T0, ...](x = bazX, y = bazY, baz, ...) ~~> foo.applyDynamicNamed[T0, ...]("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
    */
-  def typedDynamicApply(tree: untpd.Apply, pt: Type)(using Context): Tree = {
+  def typedDynamicApply(tree: untpd.Apply, isInsertedApply: Boolean, pt: Type)(using Context): Tree = {
     def typedDynamicApply(qual: untpd.Tree, name: Name, selSpan: Span, targs: List[untpd.Tree]): Tree = {
       def isNamedArg(arg: untpd.Tree): Boolean = arg match { case NamedArg(_, _) => true; case _ => false }
       val args = tree.args
@@ -79,15 +79,22 @@ trait Dynamic {
       }
     }
 
-    tree.fun match {
-      case sel @ Select(qual, name) if !isDynamicMethod(name) =>
-        typedDynamicApply(qual, name, sel.span, Nil)
-      case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
-        typedDynamicApply(qual, name, sel.span, targs)
-      case TypeApply(fun, targs) =>
-        typedDynamicApply(fun, nme.apply, fun.span, targs)
-      case fun =>
-        typedDynamicApply(fun, nme.apply, fun.span, Nil)
+    if (isInsertedApply) {
+      tree.fun match {
+        case TypeApply(fun, targs) =>
+          typedDynamicApply(fun, nme.apply, fun.span, targs)
+        case fun =>
+          typedDynamicApply(fun, nme.apply, fun.span, Nil)
+      }
+    } else {
+      tree.fun match {
+        case sel @ Select(qual, name) if !isDynamicMethod(name) =>
+          typedDynamicApply(qual, name, sel.span, Nil)
+        case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
+          typedDynamicApply(qual, name, sel.span, targs)
+        case _ =>
+          errorTree(tree, em"Dynamic insertion not applicable")
+      }
     }
   }
 

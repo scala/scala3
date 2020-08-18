@@ -49,6 +49,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     runFooTests1()
     runFooTests2()
+    runFooTests3()
     runBarTests()
     runBazTests()
     runQuxTests()
@@ -100,6 +101,63 @@ object Test {
     assertEquals("Bar.bazApplyNamed(1, abc)", foo.bazApplyNamed(a = 1, "abc"))
 
     assertEquals("selectDynamic(bazSelectUpdate).update(key, value)", foo.bazSelectUpdate("key") = "value")
+  }
+
+  /** Test apply insertions kick in before dynamic calls. */
+  def runFooTests3() = {
+    val foo = new Foo
+
+    assertEquals("applyDynamic(apply)()", foo())
+    assertEquals("applyDynamic(apply)(1)", foo(1))
+    assertEquals("applyDynamic(apply)(1, 2, 3)", foo(1, 2, 3))
+    assertEquals("applyDynamic(apply)(1, 2, a)", foo(1, 2, "a"))
+    assertEquals("applyDynamic(apply)(1, 2, a)", foo(List(1, 2, "a"): _*))
+
+    assertEquals("applyDynamicNamed(apply)((a,1))", foo(a = 1))
+    assertEquals("applyDynamicNamed(apply)((a,1), (b,2))", foo(a = 1, b = 2))
+    assertEquals("applyDynamicNamed(apply)((a,1), (,0))", foo(a = 1, 0))
+    assertEquals("applyDynamicNamed(apply)((a,1), (a,5))", foo(a = 1, a = 5))
+    assertEquals("applyDynamicNamed(apply)((,d), (a,1), (,5), (a,c))", foo("d", a = 1, 5, a = 'c'))
+
+    assertEquals("applyDynamic(apply)()", foo.apply())
+    assertEquals("applyDynamic(apply)(1)", foo.apply(1))
+    assertEquals("applyDynamic(apply)(1, 2, 3)", foo.apply(1, 2, 3))
+    assertEquals("applyDynamic(apply)(1, 2, a)", foo.apply(1, 2, "a"))
+    assertEquals("applyDynamic(apply)(1, 2, a)", foo.apply(List(1, 2, "a"): _*))
+
+    assertEquals("applyDynamicNamed(apply)((a,1))", foo.apply(a = 1))
+    assertEquals("applyDynamicNamed(apply)((a,1), (b,2))", foo.apply(a = 1, b = 2))
+    assertEquals("applyDynamicNamed(apply)((a,1), (,0))", foo.apply(a = 1, 0))
+    assertEquals("applyDynamicNamed(apply)((a,1), (a,5))", foo.apply(a = 1, a = 5))
+    assertEquals("applyDynamicNamed(apply)((,d), (a,1), (,5), (a,c))", foo.apply("d", a = 1, 5, a = 'c'))
+
+    object bar {
+      val foo: Foo = new Foo
+    }
+
+    assertEquals("applyDynamic(apply)()", bar.foo())
+    assertEquals("applyDynamic(apply)(1)", bar.foo(1))
+    assertEquals("applyDynamic(apply)(1, 2, 3)", bar.foo(1, 2, 3))
+    assertEquals("applyDynamic(apply)(1, 2, a)", bar.foo(1, 2, "a"))
+    assertEquals("applyDynamic(apply)(1, 2, a)", bar.foo(List(1, 2, "a"): _*))
+
+    assertEquals("applyDynamicNamed(apply)((a,1))", bar.foo(a = 1))
+    assertEquals("applyDynamicNamed(apply)((a,1), (b,2))", bar.foo(a = 1, b = 2))
+    assertEquals("applyDynamicNamed(apply)((a,1), (,0))", bar.foo(a = 1, 0))
+    assertEquals("applyDynamicNamed(apply)((a,1), (a,5))", bar.foo(a = 1, a = 5))
+    assertEquals("applyDynamicNamed(apply)((,d), (a,1), (,5), (a,c))", bar.foo("d", a = 1, 5, a = 'c'))
+
+    assertEquals("applyDynamic(apply)()", bar.foo.apply())
+    assertEquals("applyDynamic(apply)(1)", bar.foo.apply(1))
+    assertEquals("applyDynamic(apply)(1, 2, 3)", bar.foo.apply(1, 2, 3))
+    assertEquals("applyDynamic(apply)(1, 2, a)", bar.foo.apply(1, 2, "a"))
+    assertEquals("applyDynamic(apply)(1, 2, a)", bar.foo.apply(List(1, 2, "a"): _*))
+
+    assertEquals("applyDynamicNamed(apply)((a,1))", bar.foo.apply(a = 1))
+    assertEquals("applyDynamicNamed(apply)((a,1), (b,2))", bar.foo.apply(a = 1, b = 2))
+    assertEquals("applyDynamicNamed(apply)((a,1), (,0))", bar.foo.apply(a = 1, 0))
+    assertEquals("applyDynamicNamed(apply)((a,1), (a,5))", bar.foo.apply(a = 1, a = 5))
+    assertEquals("applyDynamicNamed(apply)((,d), (a,1), (,5), (a,c))", bar.foo.apply("d", a = 1, 5, a = 'c'))
   }
 
   /** Test cains of dynamic calls. */
