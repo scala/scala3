@@ -757,11 +757,6 @@ object Trees {
     assert(tpt != genericEmptyTree)
     def unforced: LazyTree[T] = preRhs
     protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
-
-    override def disableOverlapChecks = rawMods.is(Extension)
-      // disable order checks for extension methods as long as we parse
-      // type parameters both before and after the leading parameter section.
-      // TODO drop this once syntax of type parameters has settled.
   }
 
   /** mods class name template     or

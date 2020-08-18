@@ -1104,7 +1104,7 @@ object SymDenotations {
      *  provided the extension method appears in the same class.
      */
     final def enclosingExtensionMethod(using Context): Symbol =
-      if this.isAllOf(ExtensionMethod) then symbol
+      if this.is(ExtensionMethod) then symbol
       else if this.isClass then NoSymbol
       else if this.exists then owner.enclosingExtensionMethod
       else NoSymbol

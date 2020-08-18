@@ -225,7 +225,6 @@ object Parsers {
       || defIntroTokens.contains(in.token)
       || allowedMods.contains(in.token)
       || in.isSoftModifierInModifierPosition && !excludedSoftModifiers.contains(in.name)
-      || isIdent(nme.extension) && followingIsOldExtension()
 
     def isStatSep: Boolean = in.isNewLine || in.token == SEMI
 
@@ -919,22 +918,9 @@ object Parsers {
       skipParams()
       lookahead.isIdent(nme.as)
 
-    def followingIsNewExtension() =
+    def followingIsExtension() =
       val next = in.lookahead.token
       next == LBRACKET || next == LPAREN
-
-    def followingIsOldExtension() =
-      val lookahead = in.LookaheadScanner()
-      lookahead.nextToken()
-      if lookahead.isIdent && !lookahead.isIdent(nme.on) then
-        lookahead.nextToken()
-      if lookahead.isNewLine then
-        lookahead.nextToken()
-      lookahead.isIdent(nme.on)
-      || lookahead.token == LBRACE
-      || lookahead.token == COLON
-
-    def followingIsExtension() = followingIsOldExtension() || followingIsNewExtension()
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -1311,7 +1297,7 @@ object Parsers {
         case stat: MemberDef if !stat.name.isEmpty =>
           if stat.name == nme.CONSTRUCTOR then in.token == THIS
           else in.isIdent && in.name == stat.name.toTermName
-        case ModuleDef(_, Template(_, Nil, _, _)) | ExtMethods(_, _, _) =>
+        case ExtMethods(_, _, _) =>
           in.token == IDENTIFIER && in.name == nme.extension
         case PackageDef(pid: RefTree, _) =>
           in.isIdent && in.name == pid.name
@@ -3305,7 +3291,7 @@ object Parsers {
         def extParamss() =
           try paramClause(0, prefix = true) :: Nil
           finally
-            mods1 = addFlag(mods, Extension)
+            mods1 = addFlag(mods, ExtensionMethod)
             if in.token == DOT then in.nextToken()
             else
               isInfix = true
@@ -3319,14 +3305,14 @@ object Parsers {
             (Nil, Nil)
         val ident = termIdent()
         var name = ident.name.asTermName
-        if mods1.is(Extension) then name = name.toExtensionName
+        if mods1.is(ExtensionMethod) then name = name.toExtensionName
         if isInfix && !name.isOperatorName then
           val infixAnnot = Apply(wrapNew(scalaAnnotationDot(tpnme.infix)), Nil)
               .withSpan(Span(start, start))
           mods1 = mods1.withAddedAnnotation(infixAnnot)
         val tparams =
           if in.token == LBRACKET then
-            if mods1.is(Extension) then syntaxError("no type parameters allowed here")
+            if mods1.is(ExtensionMethod) then syntaxError("no type parameters allowed here")
             typeParamClause(ParamOwner.Def)
           else leadingTparams
         val vparamss = paramClauses() match
@@ -3465,11 +3451,8 @@ object Parsers {
         case GIVEN =>
           givenDef(start, mods, atSpan(in.skipToken()) { Mod.Given() })
         case _ =>
-          if isIdent(nme.extension) && followingIsOldExtension() then
-            extensionDef(start, mods)
-          else
-            syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
-            EmptyTree
+          syntaxErrorOrIncomplete(ExpectedStartOfTopLevelDefinition())
+          EmptyTree
       }
 
     /** ClassDef ::= id ClassConstr TemplateOpt
@@ -3563,9 +3546,9 @@ object Parsers {
     def checkExtensionMethod(tparams: List[Tree],
         vparamss: List[List[Tree]], stat: Tree): Unit = stat match {
       case stat: DefDef =>
-        if stat.mods.is(Extension) && vparamss.nonEmpty then
+        if stat.mods.is(ExtensionMethod) && vparamss.nonEmpty then
           syntaxError(i"no extension method allowed here since leading parameter was already given", stat.span)
-        else if !stat.mods.is(Extension) && vparamss.isEmpty then
+        else if !stat.mods.is(ExtensionMethod) && vparamss.isEmpty then
           syntaxError(i"an extension method is required here", stat.span)
         else if tparams.nonEmpty && stat.tparams.nonEmpty then
           syntaxError(i"extension method cannot have type parameters since some were already given previously",
@@ -3613,28 +3596,6 @@ object Parsers {
       end gdef
       finalizeDef(gdef, mods1, start)
     }
-
-    /** ExtensionDef  ::=  [id] [‘on’ ExtParamClause {UsingParamClause}] TemplateBody
-     */
-    def extensionDef(start: Offset, mods: Modifiers): ModuleDef =
-      in.nextToken()
-      val nameOffset = in.offset
-      val name = if isIdent && !isIdent(nme.on) then ident() else EmptyTermName
-      val (tparams, vparamss, extensionFlag) =
-        if isIdent(nme.on) then
-          in.nextToken()
-          val tparams = typeParamClauseOpt(ParamOwner.Def)
-          val extParams = paramClause(0, prefix = true)
-          val givenParamss = paramClauses(givenOnly = true)
-          (tparams, extParams :: givenParamss, Extension)
-        else
-          (Nil, Nil, EmptyFlags)
-      possibleTemplateStart()
-      if !in.isNestedStart then syntaxError("Extension without extension methods")
-      val templ = templateBodyOpt(makeConstructor(tparams, vparamss), Nil, Nil)
-      templ.body.foreach(checkExtensionMethod(tparams, vparamss, _))
-      val edef = atSpan(start, nameOffset, in.offset)(ModuleDef(name, templ))
-      finalizeDef(edef, addFlag(mods, Given | extensionFlag), start)
 
     /** Extension  ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
      *                  {UsingParamClause} ExtMethods
@@ -3816,7 +3777,7 @@ object Parsers {
           stats ++= importClause(IMPORT, mkImport(outermost))
         else if (in.token == EXPORT)
           stats ++= importClause(EXPORT, Export.apply)
-        else if isIdent(nme.extension) && followingIsNewExtension() then
+        else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()
         else if isDefIntro(modifierTokens)
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
@@ -3870,7 +3831,7 @@ object Parsers {
           stats ++= importClause(IMPORT, mkImport())
         else if (in.token == EXPORT)
           stats ++= importClause(EXPORT, Export.apply)
-        else if isIdent(nme.extension) && followingIsNewExtension() then
+        else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()
         else if (isDefIntro(modifierTokensOrCase))
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
@@ -3952,7 +3913,7 @@ object Parsers {
           stats += expr(Location.InBlock)
         else if in.token == IMPLICIT && !in.inModifierPosition() then
           stats += closure(in.offset, Location.InBlock, modifiers(BitSet(IMPLICIT)))
-        else if isIdent(nme.extension) && followingIsNewExtension() then
+        else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()
         else if isDefIntro(localModifierTokens, excludedSoftModifiers = Set(nme.`opaque`)) then
           stats +++= localDef(in.offset)

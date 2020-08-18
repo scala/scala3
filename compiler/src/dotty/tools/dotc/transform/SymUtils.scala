@@ -213,16 +213,6 @@ object SymUtils {
   def isTypeSplice(using Context): Boolean =
     self == defn.QuotedType_splice
 
-  /** Is symbol an extension method? Accessors are excluded since
-   *  after the getters phase collective extension objects become accessors
-   */
-  def isExtensionMethod(using Context): Boolean =
-    self.isAllOf(ExtensionMethod, butNot = Accessor)
-
-  /** Is symbol the module class of a collective extension object? */
-  def isCollectiveExtensionClass(using Context): Boolean =
-    self.is(ModuleClass) && self.sourceModule.is(Extension) && !self.sourceModule.isExtensionMethod
-
   def isScalaStatic(using Context): Boolean =
     self.hasAnnotation(defn.ScalaStaticAnnot)
 

@@ -2108,8 +2108,8 @@ trait Applications extends Compatibility {
     }
     def isExtension(tree: Tree): Boolean = methPart(tree) match {
       case Inlined(call, _, _) => isExtension(call)
-      case tree @ Select(qual, nme.apply) => tree.symbol.is(Extension) || isExtension(qual)
-      case tree => tree.symbol.is(Extension)
+      case tree @ Select(qual, nme.apply) => tree.symbol.is(ExtensionMethod) || isExtension(qual)
+      case tree => tree.symbol.is(ExtensionMethod)
     }
     if (!isExtension(app))
       report.error(em"not an extension method: $methodRef", receiver.srcPos)
