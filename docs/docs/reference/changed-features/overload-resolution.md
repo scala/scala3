@@ -52,9 +52,10 @@ that the remaining parameters suffice for picking a variant of the overloaded fu
 For example, the following code compiles in Dotty, while it results in an
 missing parameter type error in Scala2:
 ```scala
-def f(x: Int, f: Int => Int) = f(x)
-def f(x: String, f: String => String) = f(x)
-f("a", _.length)
+def f(x: Int, f2: Int => Int) = f2(x)
+def f(x: String, f2: String => String) = f2(x)
+f("a", _.toUpperCase)
+f(2, _ * 2)
 ```
 To make this work, the rules for overloading resolution in section 6.23.3 of the SLS are modified
 as follows:
