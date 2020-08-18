@@ -468,7 +468,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case AndType(tp1, tp2) =>
       erasedGlb(this(tp1), this(tp2), isJava)
     case OrType(tp1, tp2) =>
-      ctx.typeComparer.orType(this(tp1), this(tp2), isErased = true)
+      TypeComparer.orType(this(tp1), this(tp2), isErased = true)
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
         erasureFn(tp.isJavaMethod, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)

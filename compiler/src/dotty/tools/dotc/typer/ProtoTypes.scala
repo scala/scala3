@@ -512,7 +512,7 @@ object ProtoTypes {
 
     val added = state.constraint.ensureFresh(tl)
     val tvars = if (addTypeVars) newTypeVars(added) else Nil
-    ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
+    TypeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
     (added, tvars)
   }
 

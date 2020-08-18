@@ -49,6 +49,9 @@ object Config {
    */
   final val checkBackendNames = false
 
+  /** Check that re-used type comparers are in their initialization state */
+  final val checkTypeComparerReset = false
+
   /** Type comparer will fail with an assert if the upper bound
    *  of a constrained parameter becomes Nothing. This should be turned
    *  on only for specific debugging as normally instantiation to Nothing

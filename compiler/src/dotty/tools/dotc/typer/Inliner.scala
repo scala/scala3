@@ -611,7 +611,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     tree.changeOwner(originalOwner, ctx.owner)
 
   def tryConstValue: Tree =
-    ctx.typeComparer.constValue(callTypeArgs.head.tpe) match {
+    TypeComparer.constValue(callTypeArgs.head.tpe) match {
       case Some(c) => Literal(c).withSpan(call.span)
       case _ => EmptyTree
     }

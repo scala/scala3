@@ -69,7 +69,7 @@ object Inferencing {
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
         if !tp.isInstantiated &&
-            accCtx.typeComparer.bounds(tp.origin)
+            TypeComparer.bounds(tp.origin)
               .namedPartsWith(ref => params.contains(ref.symbol))
               .nonEmpty =>
           tvars + tp
@@ -242,7 +242,7 @@ object Inferencing {
             constraint.entry(param) match {
               case TypeBounds(lo, hi)
               if (hi frozen_<:< lo) =>
-                val inst = accCtx.typeComparer.approximation(param, fromBelow = true)
+                val inst = TypeComparer.approximation(param, fromBelow = true)
                 typr.println(i"replace singleton $param := $inst")
                 accCtx.typerState.constraint = constraint.replace(param, inst)
               case _ =>
@@ -319,9 +319,9 @@ object Inferencing {
    *            0 if unconstrained, or constraint is from below and above.
    */
   private def instDirection(param: TypeParamRef)(using Context): Int = {
-    val constrained = ctx.typeComparer.fullBounds(param)
+    val constrained = TypeComparer.fullBounds(param)
     val original = param.binder.paramInfos(param.paramNum)
-    val cmp = ctx.typeComparer
+    val cmp = TypeComparer
     val approxBelow =
       if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0
     val approxAbove =
@@ -355,7 +355,7 @@ object Inferencing {
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
       else {
-        val bounds = ctx.typeComparer.fullBounds(tvar.origin)
+        val bounds = TypeComparer.fullBounds(tvar.origin)
         if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
           tvar.instantiate(fromBelow = false)
         else {

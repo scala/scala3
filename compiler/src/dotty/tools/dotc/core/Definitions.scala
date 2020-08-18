@@ -1324,7 +1324,7 @@ class Definitions {
   def asContextFunctionType(tp: Type)(using Context): Type =
     tp.stripTypeVar.dealias match {
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
-        asContextFunctionType(ctx.typeComparer.bounds(tp1).hiBound)
+        asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 =>
         if (isFunctionType(tp1) && tp1.typeSymbol.name.isContextFunction) tp1
         else NoType

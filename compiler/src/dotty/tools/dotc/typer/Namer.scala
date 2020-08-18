@@ -1343,7 +1343,7 @@ class Namer { typer: Typer =>
       def widenRhs(tp: Type): Type =
         tp.widenTermRefExpr.simplified match
           case ctp: ConstantType if isInlineVal => ctp
-          case tp => ctx.typeComparer.widenInferred(tp, rhsProto)
+          case tp => TypeComparer.widenInferred(tp, rhsProto)
 
       // Replace aliases to Unit by Unit itself. If we leave the alias in
       // it would be erased to BoxedUnit.

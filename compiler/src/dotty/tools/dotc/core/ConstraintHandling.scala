@@ -54,11 +54,18 @@ trait ConstraintHandling {
    */
   protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
+  def checkReset() =
+    assert(addConstraintInvocations == 0)
+    assert(frozenConstraint == false)
+    assert(caseLambda == NoType)
+    assert(homogenizeArgs == false)
+    assert(comparedTypeLambdas == Set.empty)
+
   /** Gives for each instantiated type var that does not yet have its `inst` field
-    *  set, the instance value stored in the constraint. Storing instances in constraints
-    *  is done only in a temporary way for contexts that may be retracted
-    *  without also retracting the type var as a whole.
-    */
+   *  set, the instance value stored in the constraint. Storing instances in constraints
+   *  is done only in a temporary way for contexts that may be retracted
+   *  without also retracting the type var as a whole.
+   */
   def instType(tvar: TypeVar): Type = constraint.entry(tvar.origin) match {
     case _: TypeBounds => NoType
     case tp: TypeParamRef =>

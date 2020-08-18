@@ -216,7 +216,7 @@ object TypeOps:
             case AppliedType(tycon2, args2) =>
               tp1.derivedAppliedType(
                 mergeRefinedOrApplied(tycon1, tycon2),
-                ctx.typeComparer.lubArgs(args1, args2, tycon1.typeParams))
+                TypeComparer.lubArgs(args1, args2, tycon1.typeParams))
             case _ => fallback
           }
         case tp1 @ TypeRef(pre1, _) =>
@@ -334,7 +334,7 @@ object TypeOps:
    */
   def classBound(info: ClassInfo)(using Context): Type = {
     val cls = info.cls
-    val parentType = info.parents.reduceLeft(ctx.typeComparer.andType(_, _))
+    val parentType = info.parents.reduceLeft(TypeComparer.andType(_, _))
 
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
@@ -420,8 +420,8 @@ object TypeOps:
         case tp: SkolemType if partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
           range(defn.NothingType, apply(tp.info))
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
-          val lo = mapCtx.typeComparer.instanceType(
-            tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)
+          val lo = TypeComparer.instanceType(
+            tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
         case _ =>
