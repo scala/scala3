@@ -2591,6 +2591,11 @@ object TypeComparer {
   def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean =
     comparing(_.provablyDisjoint(tp1, tp2))
 
+  def liftIfHK(tp1: Type, tp2: Type,
+      op: (Type, Type) => Type, original: (Type, Type) => Type,
+      combineVariance: (Variance, Variance) => Variance)(using Context): Type =
+    comparing(_.liftIfHK(tp1, tp2, op, original, combineVariance))
+
   def constValue(tp: Type)(using Context): Option[Constant] =
     comparing(_.constValue(tp))
 

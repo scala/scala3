@@ -2948,7 +2948,7 @@ object Types {
 
     /** Like `make`, but also supports higher-kinded types as argument */
     def makeHk(tp1: Type, tp2: Type)(using Context): Type =
-      ctx.typeComparer.liftIfHK(tp1, tp2, AndType.make(_, _, checkValid = false), makeHk, _ | _)
+      TypeComparer.liftIfHK(tp1, tp2, AndType.make(_, _, checkValid = false), makeHk, _ | _)
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType {
@@ -3038,7 +3038,7 @@ object Types {
 
     /** Like `make`, but also supports higher-kinded types as argument */
     def makeHk(tp1: Type, tp2: Type)(using Context): Type =
-      ctx.typeComparer.liftIfHK(tp1, tp2, OrType(_, _), makeHk, _ & _)
+      TypeComparer.liftIfHK(tp1, tp2, OrType(_, _), makeHk, _ & _)
   }
 
   /** An extractor object to pattern match against a nullable union.
