@@ -146,14 +146,17 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
 
     private def typeSignature(typeDef: DProperty): ContentNode =
         content(typeDef){ builder =>
+            val modifiers = typeDef.getExtra.getMap.get(AdditionalModifiers.Companion).asInstanceOf[AdditionalModifiers]
+            val isOpaque = modifiers != null && modifiers.getContent.defaultValue.asScala.contains(ScalaOnlyModifiers.Opaque)
             utils.annotationsBlock(builder, typeDef)
             // builder.addText("TODO modifiers")
             builder.modifiersAndVisibility(typeDef, "type")
             builder.addLink(typeDef.getName, typeDef.getDri)
             builder.generics(typeDef)
-            if !typeDef.get(PropertyExtension).isAbstract then builder.addText(" = ")
-            builder.typeSignature(typeDef.getType)
-                    
+            if(!isOpaque){
+                if !typeDef.get(PropertyExtension).isAbstract then builder.addText(" = ")
+                builder.typeSignature(typeDef.getType)
+            } 
         } 
 
     private def fieldSignature(property: DProperty, kind: String): ContentNode =

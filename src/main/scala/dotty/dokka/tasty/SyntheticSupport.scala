@@ -35,6 +35,13 @@ trait SyntheticsSupport:
     sym.is(dotc.core.Flags.Extension)
   }
 
+  def hackIsOpaque(r: Reflection)(rsym: r.Symbol): Boolean = {
+    import dotty.tools.dotc
+    given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
+    sym.is(dotc.core.Flags.Opaque)
+  }
+
   def hackIsLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
 
   def getExtendedSymbol(d: Symbol): Option[ValDef] = 

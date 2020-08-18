@@ -235,6 +235,8 @@ trait ClassLikeSupport:
       case _ => false
     }
 
+    val extraModifiers = Set(Option.when(hackIsOpaque(self.reflect)(typeDef.symbol))(ScalaOnlyModifiers.Opaque)).flatten
+
     new DProperty(
       typeDef.symbol.dri,
       typeDef.name,
@@ -249,7 +251,9 @@ trait ClassLikeSupport:
       /*modifier =*/ sourceSet.asMap(typeDef.symbol.getModifier()),
       sourceSet.toSet(),
       /*generics =*/ generics.asJava, // TODO 
-      PropertyContainer.Companion.empty() plus PropertyExtension("type", isAbstract)
+      PropertyContainer.Companion.empty() 
+        plus PropertyExtension("type", isAbstract)
+        plus AdditionalModifiers(sourceSet.asMap(extraModifiers.asJava))
     )
   
   def parseValDef(valDef: ValDef): DProperty =

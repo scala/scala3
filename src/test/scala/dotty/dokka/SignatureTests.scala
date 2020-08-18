@@ -42,3 +42,5 @@ class ClassModifiers extends SingleFileTest("classModifiers", SingleFileTest.cla
 // class EnumSignatures extends SingleFileTest("enumSignatures", SingleFileTest.all)
 
 class StructuralTypes extends SingleFileTest("structuralTypes", SingleFileTest.members)
+
+class OpaqueTypes extends SingleFileTest("opaqueTypes", SingleFileTest.all)
