@@ -36,8 +36,8 @@ map into `case class`es or `val`s.
    ```
    expands to a `sealed abstract` class that extends the `scala.Enum` trait and
    an associated companion object that contains the defined cases, expanded according
-   to rules (2 - 8). The enum trait starts with a compiler-generated import that imports
-   the names `<caseIds>` of all cases so that they can be used without prefix in the trait.
+   to rules (2 - 8). The enum class starts with a compiler-generated import that imports
+   the names `<caseIds>` of all cases so that they can be used without prefix in the class.
    ```scala
    sealed abstract class E ... extends <parents> with scala.Enum {
      import E.{ <caseIds> }
@@ -174,13 +174,15 @@ If `E` contains at least one simple case, its companion object will define in ad
      follows.
      ```scala
      private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue {
-       def $ordinal = $_ordinal
-       override def toString = $name
+       def ordinal = _$ordinal       // if `E` does not have `java.lang.Enum` as a parent
+       override def toString = $name // if `E` does not have `java.lang.Enum` as a parent
        $values.register(this) // register enum value so that `valueOf` and `values` can return it.
      }
      ```
 
-The `$ordinal` method above is used to generate the `ordinal` method if the enum does not extend a `java.lang.Enum` (as Scala enums do not extend `java.lang.Enum`s unless explicitly specified). In case it does, there is no need to generate `ordinal` as `java.lang.Enum` defines it.
+The anonymous class also implements the abstract `Product` methods that it inherits from `Enum`.
+The `ordinal` method is only generated if the enum does not extend from `java.lang.Enum` (as Scala enums do not extend `java.lang.Enum`s unless explicitly specified). In case it does, there is no need to generate `ordinal` as `java.lang.Enum` defines it. Similarly there is no need to override `toString` as that is defined in terms of `name` in
+`java.lang.Enum`.
 
 ### Scopes for Enum Cases
 

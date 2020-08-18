@@ -57,7 +57,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   private var myValueSymbols: List[Symbol] = Nil
   private var myCaseSymbols: List[Symbol] = Nil
   private var myCaseModuleSymbols: List[Symbol] = Nil
-  private var myEnumCaseSymbols: List[Symbol] = Nil
 
   private def initSymbols(using Context) =
     if (myValueSymbols.isEmpty) {
@@ -66,13 +65,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         defn.Product_productArity, defn.Product_productPrefix, defn.Product_productElement,
         defn.Product_productElementName)
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
-      myEnumCaseSymbols = List(defn.Enum_ordinal)
     }
 
   def valueSymbols(using Context): List[Symbol] = { initSymbols; myValueSymbols }
   def caseSymbols(using Context): List[Symbol] = { initSymbols; myCaseSymbols }
   def caseModuleSymbols(using Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
-  def enumCaseSymbols(using Context): List[Symbol] = { initSymbols; myEnumCaseSymbols }
 
   private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol = {
     val existing = sym.matchingMember(clazz.thisType)
@@ -96,9 +93,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val symbolsToSynthesize: List[Symbol] =
       if (clazz.is(Case))
         if (clazz.is(Module)) caseModuleSymbols
-        else if (isEnumCase) caseSymbols ++ enumCaseSymbols
         else caseSymbols
-      else if (isEnumCase) enumCaseSymbols
       else if (isDerivedValueClass(clazz)) valueSymbols
       else Nil
 
@@ -128,7 +123,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.productPrefix => ownName
         case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
-        case nme.ordinal => Select(This(clazz), nme.ordinalDollar)
       }
       report.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       synthesizeDef(synthetic, syntheticRHS)

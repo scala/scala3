@@ -15,6 +15,8 @@ import DenotTransformers._
 import dotty.tools.dotc.ast.Trees._
 import SymUtils._
 
+import annotation.threadUnsafe
+
 object CompleteJavaEnums {
   val name: String = "completeJavaEnums"
 
@@ -62,9 +64,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   /** The list of parameter definitions `$name: String, $ordinal: Int`, in given `owner`
    *  with given flags (either `Param` or `ParamAccessor`)
    */
-  private def addedParams(owner: Symbol, flag: FlagSet)(using Context): List[ValDef] = {
-    val nameParam = newSymbol(owner, nameParamName, flag | Synthetic, defn.StringType, coord = owner.span)
-    val ordinalParam = newSymbol(owner, ordinalParamName, flag | Synthetic, defn.IntType, coord = owner.span)
+  private def addedParams(owner: Symbol, isLocal: Boolean, flag: FlagSet)(using Context): List[ValDef] = {
+    val flags = flag | Synthetic | (if isLocal then Private | Deferred else EmptyFlags)
+    val nameParam = newSymbol(owner, nameParamName, flags, defn.StringType, coord = owner.span)
+    val ordinalParam = newSymbol(owner, ordinalParamName, flags, defn.IntType, coord = owner.span)
     List(ValDef(nameParam), ValDef(ordinalParam))
   }
 
@@ -85,7 +88,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     val sym = tree.symbol
     if (sym.isConstructor && sym.owner.derivesFromJavaEnum)
       val tree1 = cpy.DefDef(tree)(
-        vparamss = tree.vparamss.init :+ (tree.vparamss.last ++ addedParams(sym, Param)))
+        vparamss = tree.vparamss.init :+ (tree.vparamss.last ++ addedParams(sym, isLocal=false, Param)))
       sym.setParamssFromDefs(tree1.tparams, tree1.vparamss)
       tree1
     else tree
@@ -107,47 +110,68 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     }
   }
 
+  private def isJavaEnumValueImpl(cls: Symbol)(using Context): Boolean =
+    cls.isAnonymousClass
+    && (((cls.owner.name eq nme.DOLLAR_NEW) && cls.owner.isAllOf(Private|Synthetic)) || cls.owner.isAllOf(EnumCase))
+    && cls.owner.owner.linkedClass.derivesFromJavaEnum
+
+  private val enumCaseOrdinals: MutableSymbolMap[Int] = newMutableSymbolMap
+
+  private def registerEnumClass(cls: Symbol)(using Context): Unit =
+    cls.children.zipWithIndex.foreach(enumCaseOrdinals.put)
+
+  private def ordinalFor(enumCase: Symbol): Int =
+    enumCaseOrdinals.remove(enumCase).get
+
   /** 1. If this is an enum class, add $name and $ordinal parameters to its
    *     parameter accessors and pass them on to the java.lang.Enum constructor.
    *
-   *  2. If this is an anonymous class that implement a value enum case,
+   *  2. If this is an anonymous class that implement a singleton enum case,
    *     pass $name and $ordinal parameters to the enum superclass. The class
    *     looks like this:
    *
    *       class $anon extends E(...) {
    *          ...
-   *          def ordinal = N
-   *          def toString = S
-   *          ...
    *       }
    *
    *     After the transform it is expanded to
    *
-   *       class $anon extends E(..., N, S) {
-   *         "same as before"
+   *       class $anon extends E(..., $name, _$ordinal) { // if class implements a simple enum case
+   *          "same as before"
+   *       }
+   *
+   *       class $anon extends E(..., "A", 0) { // if class implements a value enum case `A` with ordinal 0
+   *          "same as before"
    *       }
    */
-  override def transformTemplate(templ: Template)(using Context): Template = {
+  override def transformTemplate(templ: Template)(using Context): Tree = {
     val cls = templ.symbol.owner
-    if (cls.derivesFromJavaEnum) {
+    if cls.derivesFromJavaEnum then
+      registerEnumClass(cls) // invariant: class is visited before cases: see tests/pos/enum-companion-first.scala
       val (params, rest) = decomposeTemplateBody(templ.body)
-      val addedDefs = addedParams(cls, ParamAccessor)
+      val addedDefs = addedParams(cls, isLocal=true, ParamAccessor)
       val addedSyms = addedDefs.map(_.symbol.entered)
       val addedForwarders = addedEnumForwarders(cls)
       cpy.Template(templ)(
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
         body = params ++ addedDefs ++ addedForwarders ++ rest)
-    }
-    else if (cls.isAnonymousClass && ((cls.owner.name eq nme.DOLLAR_NEW) || cls.owner.isAllOf(EnumCase)) &&
-             cls.owner.owner.linkedClass.derivesFromJavaEnum) {
-      def rhsOf(name: TermName) =
-        templ.body.collect {
-          case mdef: DefDef if mdef.name == name => mdef.rhs
-        }.head
-      val args = List(rhsOf(nme.toString_), rhsOf(nme.ordinalDollar))
+    else if isJavaEnumValueImpl(cls) then
+      def creatorParamRef(name: TermName) =
+        ref(cls.owner.paramSymss.head.find(_.name == name).get)
+      val args =
+        if cls.owner.isAllOf(EnumCase) then
+          List(Literal(Constant(cls.owner.name.toString)), Literal(Constant(ordinalFor(cls.owner))))
+        else
+          List(creatorParamRef(nme.nameDollar), creatorParamRef(nme.ordinalDollar_))
       cpy.Template(templ)(
-        parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args))
-    }
+        parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args),
+      )
+    else if cls.linkedClass.derivesFromJavaEnum then
+      enumCaseOrdinals.clear() // remove simple cases // invariant: companion is visited after cases
+      templ
     else templ
   }
+
+  override def checkPostCondition(tree: Tree)(using Context): Unit =
+    assert(enumCaseOrdinals.isEmpty, "Java based enum ordinal cache was not cleared")
 }

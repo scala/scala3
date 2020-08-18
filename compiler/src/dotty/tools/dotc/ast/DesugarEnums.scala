@@ -125,20 +125,24 @@ object DesugarEnums {
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
    *   private def $new(_$ordinal: Int, $name: String) = new E with scala.runtime.EnumValue {
-   *     def $ordinal = $tag
-   *     override def toString = $name
+   *     def ordinal = _$ordinal       // if `E` does not derive from jl.Enum
+   *     override def toString = $name // if `E` does not derive from jl.Enum
    *     $values.register(this)
    *   }
    */
   private def enumValueCreator(using Context) = {
-    val ordinalDef = ordinalMeth(Ident(nme.ordinalDollar_))
-    val toStringDef = toStringMeth(Ident(nme.nameDollar))
+    val fieldMethods =
+        if isJavaEnum then Nil
+        else
+          val ordinalDef  = ordinalMeth(Ident(nme.ordinalDollar_))
+          val toStringDef = toStringMeth(Ident(nme.nameDollar))
+          List(ordinalDef, toStringDef)
     val creator = New(Template(
       constr = emptyConstructor,
       parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
       derived = Nil,
       self = EmptyValDef,
-      body = ordinalDef :: toStringDef :: registerCall :: Nil
+      body = fieldMethods ::: registerCall :: Nil
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
@@ -264,8 +268,10 @@ object DesugarEnums {
   def param(name: TermName, typ: Type)(using Context) =
     ValDef(name, TypeTree(typ), EmptyTree).withFlags(Param)
 
+  private def isJavaEnum(using Context): Boolean = ctx.owner.linkedClass.derivesFrom(defn.JavaEnumClass)
+
   def ordinalMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.ordinalDollar, Nil, Nil, TypeTree(defn.IntType), body)
+    DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body)
 
   def toStringMeth(body: Tree)(using Context): DefDef =
     DefDef(nme.toString_, Nil, Nil, TypeTree(defn.StringType), body).withFlags(Override)
@@ -284,12 +290,16 @@ object DesugarEnums {
       expandSimpleEnumCase(name, mods, span)
     else {
       val (tag, scaffolding) = nextOrdinal(CaseKind.Object)
-      val ordinalDef = ordinalMethLit(tag)
-      val toStringDef = toStringMethLit(name.toString)
+      val fieldMethods =
+        if isJavaEnum then Nil
+        else
+          val ordinalDef  = ordinalMethLit(tag)
+          val toStringDef = toStringMethLit(name.toString)
+          List(ordinalDef, toStringDef)
       val impl1 = cpy.Template(impl)(
         parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue),
-        body = ordinalDef :: toStringDef :: registerCall :: Nil
-      ).withAttachment(ExtendsSingletonMirror, ())
+        body = fieldMethods ::: registerCall :: Nil)
+        .withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
     }
