@@ -1093,9 +1093,8 @@ object Build {
             -- "NestedJSClassTest.scala" // non-native JS classes
             -- "NonNativeJSTypeTest.scala" // non-native JS classes
             -- "PromiseMock.scala" // non-native JS classes
-            -- "SpecialTest.scala" // assertion error in ExpandSAMs
+            -- "SpecialTest.scala" // not yet implemented JS-specific primitive
             -- "SymbolTest.scala" // IR checking errors
-            -- "ThisFunctionTest.scala" // assertion error in ExpandSAMs
             -- "UndefOrTest.scala" // StackOverflow in the compiler
             )).get
 
@@ -1117,11 +1116,7 @@ object Build {
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/scalalib" ** "*.scala").get
-
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/typedarray" ** (("*.scala": FileFilter)
-            -- "TypedArrayTest.scala" // assertion error in ExpandSAMs
-            )).get
-
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/typedarray" ** "*.scala").get
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
 
           ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
