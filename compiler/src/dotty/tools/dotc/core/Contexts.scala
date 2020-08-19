@@ -343,6 +343,8 @@ object Contexts {
     final def runId = period.runId
     final def phaseId = period.phaseId
 
+    final def lastPhaseId = base.phases.length - 1
+
     /** Does current phase use an erased types interpretation? */
     final def erasedTypes = phase.erasedTypes
 

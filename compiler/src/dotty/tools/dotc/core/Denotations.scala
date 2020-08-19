@@ -716,7 +716,10 @@ object Denotations {
       this match {
         case symd: SymDenotation =>
           if (stillValid(symd)) return updateValidity()
-          if (acceptStale(symd)) return symd.currentSymbol.denot.orElse(symd).updateValidity()
+          if acceptStale(symd) && symd.initial.validFor.firstPhaseId <= ctx.lastPhaseId then
+            // New run might have fewer phases than old, so symbol might no longer be
+            // visible at all. TabCompleteTests have examples where this happens.
+            return symd.currentSymbol.denot.orElse(symd).updateValidity()
         case _ =>
       }
       if (!symbol.exists) return updateValidity()
@@ -757,89 +760,102 @@ object Denotations {
      *  is brought forward to be valid in the new runId. Otherwise
      *  the symbol is stale, which constitutes an internal error.
      */
-    def current(using Context): SingleDenotation = {
+    def current(using Context): SingleDenotation =
+      util.Stats.record("current")
       val currentPeriod = ctx.period
       val valid = myValidFor
-      if (valid.code <= 0) {
+
+      def signalError() = println(s"error while transforming $this")
+
+      def assertNotPackage(d: SingleDenotation, transformer: DenotTransformer) = d match
+        case d: ClassDenotation =>
+          assert(!d.is(Package), s"illegal transformation of package denotation by transformer $transformer")
+        case _ =>
+
+      def escapeToNext = nextDefined.ensuring(_.validFor != Nowhere)
+
+      def toNewRun =
+        util.Stats.record("current.bringForward")
+        if exists then initial.bringForward().current else this
+
+      def goForward =
+        var cur = this
+        // search for containing period as long as nextInRun increases.
+        var next = nextInRun
+        while next.validFor.code > valid.code && !(next.validFor contains currentPeriod) do
+          cur = next
+          next = next.nextInRun
+        if next.validFor.code > valid.code then
+          // in this case, next.validFor contains currentPeriod
+          cur = next
+          cur
+        else
+          //println(s"might need new denot for $cur, valid for ${cur.validFor} at $currentPeriod")
+          // not found, cur points to highest existing variant
+          val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
+          if currentPeriod.lastPhaseId <= nextTransformerId then
+            cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
+          else
+            var startPid = nextTransformerId + 1
+            val transformer = ctx.base.denotTransformers(nextTransformerId)
+            //println(s"transforming $this with $transformer")
+            val savedPeriod = ctx.period
+            val mutCtx = ctx.asInstanceOf[FreshContext]
+            try
+              mutCtx.setPhase(transformer)
+              next = transformer.transform(cur)
+                // We temporarily update the context with the new phase instead of creating a
+                // new one. This is done for performance. We cut down on about 30% of context
+                // creations that way, and also avoid phase caches in contexts to get large.
+                // To work correctly, we need to demand that the context with the new phase
+                // is not retained in the result.
+            catch case ex: CyclicReference =>
+              signalError()
+              throw ex
+            finally
+              mutCtx.setPeriod(savedPeriod)
+            if next eq cur then
+              startPid = cur.validFor.firstPhaseId
+            else
+              assertNotPackage(next, transformer)
+              next.insertAfter(cur)
+              cur = next
+            cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
+            //printPeriods(cur)
+            //println(s"new denot: $cur, valid for ${cur.validFor}")
+          cur.current // multiple transformations could be required
+      end goForward
+
+      def goBack: SingleDenotation =
+        // currentPeriod < end of valid; in this case a version must exist
+        // but to be defensive we check for infinite loop anyway
+        var cur = this
+        var cnt = 0
+        while !(cur.validFor contains currentPeriod) do
+          //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
+          cur = cur.nextInRun
+          // Note: One might be tempted to add a `prev` field to get to the new denotation
+          // more directly here. I tried that, but it degrades rather than improves
+          // performance: Test setup: Compile everything in dotc and immediate subdirectories
+          // 10 times. Best out of 10: 18154ms with `prev` field, 17777ms without.
+          cnt += 1
+          if cnt > MaxPossiblePhaseId then
+            return atPhase(coveredInterval.firstPhaseId)(current)
+        cur
+      end goBack
+
+      if valid.code <= 0 then
         // can happen if we sit on a stale denotation which has been replaced
         // wholesale by an installAfter; in this case, proceed to the next
         // denotation and try again.
-        val nxt = nextDefined
-        if (nxt.validFor != Nowhere) return nxt
-        assert(false, this)
-      }
-
-      if (valid.runId != currentPeriod.runId)
-        if (exists) initial.bringForward().current
-        else this
-      else {
-        var cur = this
-        if (currentPeriod.code > valid.code) {
-          // search for containing period as long as nextInRun increases.
-          var next = nextInRun
-          while (next.validFor.code > valid.code && !(next.validFor contains currentPeriod)) {
-            cur = next
-            next = next.nextInRun
-          }
-          if (next.validFor.code > valid.code) {
-            // in this case, next.validFor contains currentPeriod
-            cur = next
-            cur
-          }
-          else {
-            //println(s"might need new denot for $cur, valid for ${cur.validFor} at $currentPeriod")
-            // not found, cur points to highest existing variant
-            val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
-            if (currentPeriod.lastPhaseId <= nextTransformerId)
-              cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
-            else {
-              var startPid = nextTransformerId + 1
-              val transformer = ctx.base.denotTransformers(nextTransformerId)
-              //println(s"transforming $this with $transformer")
-              try
-                next = atPhase(transformer)(transformer.transform(cur))
-              catch {
-                case ex: CyclicReference =>
-                  println(s"error while transforming $this") // DEBUG
-                  throw ex
-              }
-              if (next eq cur)
-                startPid = cur.validFor.firstPhaseId
-              else {
-                next match {
-                  case next: ClassDenotation =>
-                    assert(!next.is(Package), s"illegal transformation of package denotation by transformer $transformer")
-                  case _ =>
-                }
-                next.insertAfter(cur)
-                cur = next
-              }
-              cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
-              //printPeriods(cur)
-              //println(s"new denot: $cur, valid for ${cur.validFor}")
-            }
-            cur.current // multiple transformations could be required
-          }
-        }
-        else {
-          // currentPeriod < end of valid; in this case a version must exist
-          // but to be defensive we check for infinite loop anyway
-          var cnt = 0
-          while (!(cur.validFor contains currentPeriod)) {
-            //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
-            cur = cur.nextInRun
-            // Note: One might be tempted to add a `prev` field to get to the new denotation
-            // more directly here. I tried that, but it degrades rather than improves
-            // performance: Test setup: Compile everything in dotc and immediate subdirectories
-            // 10 times. Best out of 10: 18154ms with `prev` field, 17777ms without.
-            cnt += 1
-            if (cnt > MaxPossiblePhaseId)
-              return atPhase(coveredInterval.firstPhaseId)(current)
-          }
-          cur
-        }
-      }
-    }
+        escapeToNext
+      else if valid.runId != currentPeriod.runId then
+        toNewRun
+      else if currentPeriod.code > valid.code then
+        goForward
+      else
+        goBack
+    end current
 
     private def demandOutsideDefinedMsg(using Context): String =
       s"demanding denotation of $this at phase ${ctx.phase}(${ctx.phaseId}) outside defined interval: defined periods are${definedPeriodsString}"
@@ -894,7 +910,7 @@ object Denotations {
 
     /** Insert this denotation instead of `old`.
      *  Also ensure that `old` refers with `nextInRun` to this denotation
-     *  and set its `validFor` field to `NoWhere`. This is necessary so that
+     *  and set its `validFor` field to `Nowhere`. This is necessary so that
      *  references to the old denotation can be brought forward via `current`
      *  to a valid denotation.
      *
