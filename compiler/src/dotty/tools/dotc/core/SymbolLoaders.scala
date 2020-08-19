@@ -185,7 +185,7 @@ object SymbolLoaders {
    */
   def binaryOnly(owner: Symbol, name: TermName)(using Context): Boolean =
     name == nme.PACKAGEkw &&
-      (owner.fullName.toString == "scala" || owner.fullName.toString == "scala.reflect")
+      (owner.name == nme.scala || owner.name == nme.reflect && owner.owner.name == nme.scala)
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
