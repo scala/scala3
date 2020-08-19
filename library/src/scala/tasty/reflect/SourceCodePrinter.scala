@@ -31,6 +31,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     if (flags.is(Flags.Covariant)) flagList += "covariant"
     if (flags.is(Flags.Enum)) flagList += "enum"
     if (flags.is(Flags.Erased)) flagList += "erased"
+    if (flags.is(Flags.ExtensionMethod)) flagList += "extension"
     if (flags.is(Flags.FieldAccessor)) flagList += "accessor"
     if (flags.is(Flags.Final)) flagList += "final"
     if (flags.is(Flags.HasDefault)) flagList += "hasDefault"

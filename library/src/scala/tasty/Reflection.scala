@@ -2858,6 +2858,9 @@ class Reflection(private[scala] val internal: CompilerInterface) { self =>
     /** Is this symbol `erased` */
     def Erased: Flags = internal.Flags_Erased
 
+    /** Is this symbol a `def` defined in an `extension` */
+    def ExtensionMethod: Flags = internal.Flags_ExtensionMethod
+
     /** Is this symbol a getter or a setter */
     def FieldAccessor: Flags = internal.Flags_FieldAccessor
 

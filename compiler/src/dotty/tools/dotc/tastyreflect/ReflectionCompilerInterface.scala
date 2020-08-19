@@ -1864,6 +1864,7 @@ class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extend
   def Flags_EmptyFlags: Flags = core.Flags.EmptyFlags
   def Flags_Enum: Flags = core.Flags.Enum
   def Flags_Erased: Flags = core.Flags.Erased
+  def Flags_ExtensionMethod: Flags = core.Flags.ExtensionMethod
   def Flags_FieldAccessor: Flags = core.Flags.Accessor
   def Flags_Final: Flags = core.Flags.Final
   def Flags_Given: Flags = core.Flags.Given

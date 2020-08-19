@@ -1413,6 +1413,7 @@ trait CompilerInterface {
   def Flags_EmptyFlags: Flags
   def Flags_Enum: Flags
   def Flags_Erased: Flags
+  def Flags_ExtensionMethod: Flags
   def Flags_FieldAccessor: Flags
   def Flags_Final: Flags
   def Flags_Given: Flags

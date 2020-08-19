@@ -26,6 +26,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
     if (flags.is(Flags.Covariant)) flagList += "Flags.Covariant"
     if (flags.is(Flags.Enum)) flagList += "Flags.Enum"
     if (flags.is(Flags.Erased)) flagList += "Flags.Erased"
+    if (flags.is(Flags.ExtensionMethod)) flagList += "Flags.ExtensionMethod"
     if (flags.is(Flags.FieldAccessor)) flagList += "Flags.FieldAccessor"
     if (flags.is(Flags.Final)) flagList += "Flags.Final"
     if (flags.is(Flags.HasDefault)) flagList += "Flags.HasDefault"
