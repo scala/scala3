@@ -7,14 +7,18 @@ trait MemberLookup {
   def lookup(using r: Reflection)(
     query: String,
     owner: r.Symbol,
-  ): Option[r.Symbol] = {
+  ): Option[(r.Symbol, String)] = {
     val parsedQuery: List[String] = query.split("\\.").toList
 
     val res =
       parsedQuery match {
-        case q :: Nil => localLookup(q, owner)
-        case q :: qs if q == owner.name || q == "this" => downwardLookup(qs, owner)
-        case q :: qs => downwardLookup(q :: qs, r.defn.RootPackage)
+        case q :: Nil =>
+          (localLookup(q, owner) orElse localLookup(q, owner.owner)).map(_ -> q)
+        case "this" :: qs => downwardLookup(qs, owner).map(_ -> qs.mkString("."))
+        case "package" :: qs => downwardLookup(qs, owner.owner).map(_ -> qs.mkString("."))
+        case q :: qs if q == owner.name => downwardLookup(qs, owner).map(_ -> qs.mkString("."))
+        case q :: qs if q == owner.owner.name => downwardLookup(qs, owner.owner).map(_ -> qs.mkString("."))
+        case q :: qs => downwardLookup(q :: qs, r.defn.RootPackage).map(_ -> query)
         case _ => None
       }
 

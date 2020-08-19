@@ -19,6 +19,13 @@ import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.pages._
 
 
+/** Main Dokka plugin for the doctool.
+  *
+  * Wires together classes responsible for consuming Tasty and generating
+  * documentation.
+  *
+  * Most of the work of parsing Tasty is done by [](DokkaTastyInspector).
+  */
 class DottyDokkaPlugin extends JavaDokkaPlugin:
   override def createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule = cxt.getConfiguration match {
     case dottyConfig: DottyDokkaConfig =>

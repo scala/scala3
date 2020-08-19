@@ -22,9 +22,8 @@ class RawArgs:
     @COption(name="--output",required = true, aliases = Array("-o"), usage="Output to generate documentation to")
     private var output: String = "output"
 
-    @COption(name="--classpath", aliases = Array("--cp", "-c"), usage="Classpath to load depenecies from")
+    @COption(name="--classpath", aliases = Array("--cp", "-c"), usage="Classpath to load dependencies from")
     private var classpath: String = System.getProperty("java.class.path")
-
 
     @COption(name="--docs", aliases = Array("-d"), usage="Root of project docs")
     private var docsRoot: String =  null
@@ -59,7 +58,18 @@ case class Args(
 )    
 
 case class DocConfiguration(tastyFiles: List[String], args: Args)
-    
+
+/** Main class for the doctool.
+  *
+  * The `main` method is mostly responsible just for parsing arguments and
+  * configuring Dokka. After that, we hand control to Dokka.
+  *
+  * Other important classes:
+  *
+  * - [](package.DottyDokkaPlugin) is our class that Dokka calls back and which
+  *   actually generates the documentation.
+  * - [](package.DottyDokkaConfig) is our config for Dokka.
+  */
 object Main:
   def main(args: Array[String]): Unit = 
     try 

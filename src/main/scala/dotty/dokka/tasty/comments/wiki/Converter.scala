@@ -80,16 +80,21 @@ class Converter(val r: Reflection)(owner: r.Symbol) {
     case Bold(text) => emit(dkkd.B(convertInline(text).asJava, kt.emptyMap))
     case Underline(text) => emit(dkkd.U(convertInline(text).asJava, kt.emptyMap))
     case Monospace(text) => emit(dkkd.CodeInline(convertInline(text).asJava, kt.emptyMap))
-    case Link(target, text) =>
+    case Link(target, userText) =>
       val SchemeUri = """[a-z]+:.*""".r
+      def resolveText(default: String) =
+        if !userText.isEmpty
+        then convertInline(userText).asJava
+        else Seq(dkk.text(default)).asJava
 
       emit(target match {
-        case SchemeUri() => dkkd.A(convertInline(text).asJava, Map("href" -> target).asJava)
+        case SchemeUri() =>
+          dkkd.A(resolveText(default = target), Map("href" -> target).asJava)
         case _ => MemberLookup.lookup(using r)(target, owner) match {
-          case Some(sym) =>
-            println(s"dri of `${sym.show}` = ${sym.dri}")
-            dkkd.DocumentationLink(sym.dri, convertInline(text).asJava, kt.emptyMap)
-          case None => dkkd.A(convertInline(text).asJava, Map("href" -> "#").asJava)
+          case Some((sym, targetText)) =>
+            dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
+          case None =>
+            dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
         }
       })
 

@@ -61,7 +61,7 @@ case class PreparsedComment (
 
 case class DokkaCommentBody(summary: Option[dkkd.DocTag], body: dkkd.DocTag)
 
-trait MarkupConversion[T] extends MemberLookup {
+trait MarkupConversion[T] {
   protected def linkedExceptions(m: Map[String, String]): Map[String, dkkd.DocTag]
   protected def stringToMarkup(str: String): T
   protected def markupToDokka(t: T): dkkd.DocTag
