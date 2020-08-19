@@ -1,3 +1,0 @@
-## Static page
-
-TBD
