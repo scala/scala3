@@ -1404,41 +1404,42 @@ trait CompilerInterface {
   /** Intersection of the two flag sets */
   def Flags_and(self: Flags)(that: Flags): Flags
 
-  def Flags_EmptyFlags: Flags
-  def Flags_Private: Flags
-  def Flags_Protected: Flags
   def Flags_Abstract: Flags
-  def Flags_Final: Flags
-  def Flags_Sealed: Flags
-  def Flags_Case: Flags
-  def Flags_Implicit: Flags
-  def Flags_Given: Flags
-  def Flags_Erased: Flags
-  def Flags_Lazy: Flags
-  def Flags_Override: Flags
-  def Flags_Inline: Flags
-  def Flags_Macro: Flags
-  def Flags_Static: Flags
-  def Flags_JavaDefined: Flags
-  def Flags_Object: Flags
-  def Flags_Trait: Flags
-  def Flags_Local: Flags
-  def Flags_Synthetic: Flags
   def Flags_Artifact: Flags
-  def Flags_Mutable: Flags
-  def Flags_FieldAccessor: Flags
+  def Flags_Case: Flags
   def Flags_CaseAcessor: Flags
-  def Flags_Covariant: Flags
   def Flags_Contravariant: Flags
-  def Flags_Scala2X: Flags
+  def Flags_Covariant: Flags
+  def Flags_EmptyFlags: Flags
+  def Flags_Enum: Flags
+  def Flags_Erased: Flags
+  def Flags_ExtensionMethod: Flags
+  def Flags_FieldAccessor: Flags
+  def Flags_Final: Flags
+  def Flags_Given: Flags
   def Flags_HasDefault: Flags
-  def Flags_StableRealizable: Flags
+  def Flags_Implicit: Flags
+  def Flags_Inline: Flags
+  def Flags_JavaDefined: Flags
+  def Flags_Lazy: Flags
+  def Flags_Local: Flags
+  def Flags_Macro: Flags
+  def Flags_ModuleClass: Flags
+  def Flags_Mutable: Flags
+  def Flags_Object: Flags
+  def Flags_Override: Flags
+  def Flags_Package: Flags
   def Flags_Param: Flags
   def Flags_ParamAccessor: Flags
-  def Flags_Enum: Flags
-  def Flags_ModuleClass: Flags
+  def Flags_Private: Flags
   def Flags_PrivateLocal: Flags
-  def Flags_Package: Flags
+  def Flags_Protected: Flags
+  def Flags_Scala2X: Flags
+  def Flags_Sealed: Flags
+  def Flags_StableRealizable: Flags
+  def Flags_Static: Flags
+  def Flags_Synthetic: Flags
+  def Flags_Trait: Flags
 
 
   /////////////////
