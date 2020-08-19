@@ -47,6 +47,9 @@ final class JSDefinitions()(using Context) {
   @threadUnsafe lazy val JSBaseThisFunctionType: TypeRef = requiredClassRef("scala.scalajs.js.ThisFunction")
   def JSBaseThisFunctionClass(using Context) = JSBaseThisFunctionType.symbol.asClass
 
+  @threadUnsafe lazy val PseudoUnionType: TypeRef = requiredClassRef("scala.scalajs.js.|")
+  def PseudoUnionClass(using Context) = PseudoUnionType.symbol.asClass
+
   @threadUnsafe lazy val JSArrayType: TypeRef = requiredClassRef("scala.scalajs.js.Array")
   def JSArrayClass(using Context) = JSArrayType.symbol.asClass
 

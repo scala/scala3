@@ -16,9 +16,8 @@ object JSInterop {
 
   /** Is this symbol a JavaScript type? */
   def isJSType(sym: Symbol)(using Context): Boolean = {
-    //sym.hasAnnotation(jsdefn.RawJSTypeAnnot)
     atPhase(erasurePhase) {
-      sym.derivesFrom(jsdefn.JSAnyClass)
+      sym.derivesFrom(jsdefn.JSAnyClass) || sym == jsdefn.PseudoUnionClass
     }
   }
 

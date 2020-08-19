@@ -1074,7 +1074,6 @@ object Build {
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** (("*.scala": FileFilter)
             -- "FormatterJSTest.scala" // compile error with the f"" interpolator
             -- "ObjectJSTest.scala" // non-native JS classes
-            -- "StringBufferJSTest.scala" // IR checking errors
             -- "ThrowableJSTest.scala" // test fails ("java.lang.Error: stub")
             )).get
 
@@ -1082,7 +1081,6 @@ object Build {
             -- "AsyncTest.scala" // needs PromiseMock.scala
             -- "DynamicTest.scala" // one test requires JS exports, all other tests pass
             -- "ExportsTest.scala" // JS exports
-            -- "FunctionTest.scala" // IR checking errors
             -- "IterableTest.scala" // non-native JS classes
             -- "JSExportStaticTest.scala" // JS exports
             -- "JSNativeInPackage.scala" // IR checking errors
@@ -1094,8 +1092,6 @@ object Build {
             -- "NonNativeJSTypeTest.scala" // non-native JS classes
             -- "PromiseMock.scala" // non-native JS classes
             -- "SpecialTest.scala" // not yet implemented JS-specific primitive
-            -- "SymbolTest.scala" // IR checking errors
-            -- "UndefOrTest.scala" // StackOverflow in the compiler
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter)
@@ -1111,7 +1107,6 @@ object Build {
             -- "ObjectTest.scala" // compile errors
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires a Scala 2 macro + StackOverflow in the compiler
-            -- "WrappedDictionaryTest.scala" // IR checking errors
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
@@ -1127,9 +1122,7 @@ object Build {
             -- "SAMJSTest.scala" // non-native JS classes
             )).get
 
-          ++ (dir / "js/src/test/scala-new-collections" ** (("*.scala": FileFilter)
-            -- "WrappedDictionaryToTest.scala" // IR checking errors
-            )).get
+          ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
         )
       }
     )
