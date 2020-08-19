@@ -68,7 +68,9 @@ object Feature:
 
   def sourceVersion(using Context): SourceVersion =
     if ctx.compilationUnit == null then sourceVersionSetting
-    else ctx.compilationUnit.sourceVersion.getOrElse(sourceVersionSetting)
+    else ctx.compilationUnit.sourceVersion match
+      case Some(v) => v
+      case none => sourceVersionSetting
 
   def migrateTo3(using Context): Boolean =
     sourceVersion == `3.0-migration` || enabledBySetting(nme.Scala2Compat)

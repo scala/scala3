@@ -277,7 +277,7 @@ object Denotations {
      *  single-denotations that do not satisfy the predicate are left alone
      *  (whereas suchThat would map them to NoDenotation).
      */
-    def disambiguate(p: Symbol => Boolean)(using Context): SingleDenotation = this match {
+    inline def disambiguate(inline p: Symbol => Boolean)(using Context): SingleDenotation = this match {
       case sdenot: SingleDenotation => sdenot
       case mdenot => suchThat(p) orElse NoQualifyingRef(alternatives)
     }

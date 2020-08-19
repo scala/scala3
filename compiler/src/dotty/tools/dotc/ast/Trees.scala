@@ -846,7 +846,11 @@ object Trees {
     override def isEmpty: Boolean = trees.isEmpty
     override def toList: List[Tree[T]] = flatten(trees)
     override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
-    override def span: Span = trees.foldLeft(NoSpan) ((span, t) => span union t.span)
+    override def span: Span =
+      def combine(s: Span, ts: List[Tree[T]]): Span = ts match
+        case t :: ts1 => combine(s.union(t.span), ts1)
+        case nil => s
+      combine(NoSpan, trees)
 
     override def withSpan(span: Span): this.type =
       mapElems(_.withSpan(span)).asInstanceOf[this.type]
@@ -1375,7 +1379,12 @@ object Trees {
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(using Context): X
 
-      def apply(x: X, trees: Traversable[Tree])(using Context): X = trees.foldLeft(x)(apply)
+      def apply(x: X, trees: List[Tree])(using Context): X = trees match
+        case tree :: rest =>
+          apply(apply(x, tree), rest)
+        case Nil =>
+          x
+
       def foldOver(x: X, tree: Tree)(using Context): X =
         if (tree.source != ctx.source && tree.source.exists)
           foldOver(x, tree)(using ctx.withSource(tree.source))
