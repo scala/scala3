@@ -47,7 +47,7 @@ jobs:
 
       - name: Publish all
         run: |
-              dest=s3://contextbuddy/dokka-dotty/$([ $GITHUB_REF = "master" ] && echo master || echo pr-$(echo $GITHUB_REF | cut '-d/' -f3))
+              dest=s3://scala3doc/$([ $GITHUB_REF = "master" ] && echo master || echo pr-$(echo $GITHUB_REF | cut '-d/' -f3))
               aws s3 rm $dest
               aws s3 sync output $dest
 
