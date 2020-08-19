@@ -1094,12 +1094,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  and falls back to it after `MaxRecursionLimit` recursions.
      *  Before that it uses a simpler method that uses stackspace
      *  instead of heap.
-     *  Note `op` is duplicated in the generatee code, so it should be
-     *  kept small
+     *  Note `op` is duplicated in the generated code, so it should be
+     *  kept small.
      */
     inline def mapInline(inline op: Tree => Tree): List[Tree] =
       def recur(trees: List[Tree], count: Int): List[Tree] =
-        if count > 1000 then
+        if count > MapRecursionLimit then
           // use a slower implementation that avoids stack overflows
           flatten(trees.mapConserve(op))
         else trees match
