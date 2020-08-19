@@ -1074,7 +1074,7 @@ object Build {
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** (("*.scala": FileFilter)
             -- "FormatterJSTest.scala" // compile error with the f"" interpolator
             -- "ObjectJSTest.scala" // non-native JS classes
-            -- "ThrowableJSTest.scala" // test fails ("java.lang.Error: stub")
+            -- "ThrowableJSTest.scala" // test fails ("java.lang.Error: stub") because it uses js.constructorOf
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/jsinterop" ** (("*.scala": FileFilter)
@@ -1091,7 +1091,7 @@ object Build {
             -- "NestedJSClassTest.scala" // non-native JS classes
             -- "NonNativeJSTypeTest.scala" // non-native JS classes
             -- "PromiseMock.scala" // non-native JS classes
-            -- "SpecialTest.scala" // not yet implemented JS-specific primitive
+            -- "SpecialTest.scala" // test fails ("java.lang.Error: stub") because it uses js.constructorOf
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter)

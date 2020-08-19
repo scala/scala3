@@ -154,6 +154,8 @@ final class JSDefinitions()(using Context) {
     def Special_in(using Context) = Special_inR.symbol
     @threadUnsafe lazy val Special_instanceofR = SpecialPackageClass.requiredMethodRef("instanceof")
     def Special_instanceof(using Context) = Special_instanceofR.symbol
+    @threadUnsafe lazy val Special_strictEqualsR = SpecialPackageClass.requiredMethodRef("strictEquals")
+    def Special_strictEquals(using Context) = Special_strictEqualsR.symbol
 
   @threadUnsafe lazy val WrappedArrayType: TypeRef = requiredClassRef("scala.scalajs.js.WrappedArray")
   def WrappedArrayClass(using Context) = WrappedArrayType.symbol.asClass

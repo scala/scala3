@@ -2812,6 +2812,11 @@ class JSCodeGen()(using genCtx: Context) {
         val arg = genArgs1
         genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg), defn.StringType)
 
+      case STRICT_EQ =>
+        // js.special.strictEquals(arg1, arg2)
+        val (arg1, arg2) = genArgs2
+        js.JSBinaryOp(js.JSBinaryOp.===, arg1, arg2)
+
       case IN =>
         // js.special.in(arg1, arg2)
         val (arg1, arg2) = genArgs2
