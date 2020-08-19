@@ -11,7 +11,7 @@ import Decorators._
 import ast.Trees._
 import MegaPhase._
 import StdNames.nme
-import Names.TermName
+import Names._
 import Constants.Constant
 
 
@@ -28,25 +28,32 @@ class Instrumentation extends MiniPhase { thisPhase =>
     ctx.settings.YinstrumentClosures.value ||
     ctx.settings.YinstrumentAllocations.value
 
+  private val namesOfInterest = List(
+    "::", "+=", "toString", "newArray", "box",
+    "map", "flatMap", "filter", "withFilter", "collect", "foldLeft", "foldRight", "take",
+    "reverse", "mapConserve", "mapconserve", "filterConserve", "zip")
+  private var namesToRecord: Set[Name] = _
+
   private var consName: TermName = _
   private var consEqName: TermName = _
 
-  override def prepareForUnit(tree: Tree)(using Context): Context = {
-    consName = "::".toTermName
-    consEqName = "+=".toTermName
+  override def prepareForUnit(tree: Tree)(using Context): Context =
+    namesToRecord = namesOfInterest.map(_.toTermName).toSet
     ctx
-  }
 
   private def record(category: String, tree: Tree)(using Context): Tree = {
-    val key = Literal(Constant(s"$category${tree.sourcePos.show}"))
+    val key = Literal(Constant(s"$category@${tree.sourcePos.show}"))
     ref(defn.Stats_doRecord).appliedTo(key, Literal(Constant(1)))
   }
 
+  private def ok(using Context) =
+    !ctx.owner.ownersIterator.exists(_.name.toString.startsWith("Stats"))
+
   override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
     case Select(nu: New, _) =>
-      cpy.Block(tree)(record(i"alloc/${nu.tpe}@", tree) :: Nil, tree)
-    case Select(_, name) if name == consName || name == consEqName =>
-      cpy.Block(tree)(record("alloc/::", tree) :: Nil, tree)
+      cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) :: Nil, tree)
+    case ref: RefTree if namesToRecord.contains(ref.name) && ok =>
+      cpy.Block(tree)(record(i"call/${ref.name}", tree) :: Nil, tree)
     case _ =>
       tree
   }
