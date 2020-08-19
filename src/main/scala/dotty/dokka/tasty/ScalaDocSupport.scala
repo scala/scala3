@@ -5,6 +5,7 @@ import scala.tasty.reflect._
 
 import org.jetbrains.dokka.model.{doc => dkkd}
 
+import dotty.dokka.Args.CommentSyntax
 import comments.{kt, dkk}
 
 trait ScaladocSupport { self: TastyParser =>
@@ -16,11 +17,24 @@ trait ScaladocSupport { self: TastyParser =>
   ): dkkd.DocumentationNode = {
     val preparsed =
       comments.Preparser.preparse(comments.Cleaner.clean(commentNode.raw))
-    val parser =
-      if preparsed.syntax.headOption.contains("wiki") then
+
+    val commentSyntax =
+      preparsed.syntax.headOption match {
+        case Some(commentSetting) =>
+          CommentSyntax.fromString(commentSetting).getOrElse {
+            println(s"WARN: not a valid comment syntax: $commentSetting")
+            println(s"WARN: Defaulting to Markdown syntax.")
+            CommentSyntax.Markdown
+          }
+        case None => defaultCommentSyntax
+      }
+
+    val parser = commentSyntax match {
+      case CommentSyntax.Wiki =>
         comments.WikiCommentParser(comments.Repr(reflect)(tree.symbol), ())
-      else
+      case CommentSyntax.Markdown =>
         comments.MarkdownCommentParser(comments.Repr(reflect)(tree.symbol), ())
+    }
     val parsed = parser.parse(preparsed)
 
     import kotlin.collections.builders.{ListBuilder => KtListBuilder}
@@ -45,4 +59,7 @@ trait ScaladocSupport { self: TastyParser =>
 
     new dkkd.DocumentationNode(bld.build())
   }
+
+  private val defaultCommentSyntax =
+    self.config.docConfiguration.args.defaultSyntax getOrElse CommentSyntax.Markdown
 }

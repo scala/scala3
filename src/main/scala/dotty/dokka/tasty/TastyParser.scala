@@ -27,7 +27,7 @@ case class DokkaTastyInspector(sourceSet: SourceSetWrapper, parser: Parser, conf
   private val topLevels = Seq.newBuilder[Documentable]
 
   protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit =
-    val parser = new TastyParser(reflect, this)
+    val parser = new TastyParser(reflect, this, config)
     topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.reflect.Tree])
 
   def result(): List[DPackage] =
@@ -83,7 +83,7 @@ case class DokkaTastyInspector(sourceSet: SourceSetWrapper, parser: Parser, conf
     )
 
 /** Parses a single Tasty compilation unit. */
-case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector)
+case class TastyParser(reflect: Reflection, inspector: DokkaTastyInspector, config: DottyDokkaConfig)
     extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport:
   import reflect._
 
