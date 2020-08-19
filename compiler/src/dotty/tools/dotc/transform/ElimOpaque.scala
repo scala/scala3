@@ -22,6 +22,7 @@ object ElimOpaque {
 
 /** Rewrites opaque type aliases to normal alias types */
 class ElimOpaque extends MiniPhase with DenotTransformer {
+  thisPhase =>
   import ast.tpd._
 
   override def phaseName: String = ElimOpaque.name
@@ -58,13 +59,14 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
   }
 
   /** Resolve overloading of `==` and `!=` methods with the representation
-   *  types in order to avoid boxing. TODO: This should be in the SLS.
+   *  types in order to avoid boxing.
    */
   override def transformApply(tree: Apply)(using Context): Tree =
     val sym = tree.symbol
     if sym == defn.Any_== || sym == defn.Any_!= then
       tree match
-        case Apply(Select(receiver, name: TermName), args) =>
+        case Apply(Select(receiver, name: TermName), args)
+        if atPhase(thisPhase)(receiver.tpe.widen.typeSymbol.isOpaqueAlias) =>
           applyOverloaded(receiver, name, args, Nil, defn.BooleanType)
         case _ =>
           tree
