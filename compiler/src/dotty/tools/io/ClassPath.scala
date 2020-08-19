@@ -14,12 +14,20 @@ import java.util.regex.PatternSyntaxException
 import File.pathSeparator
 import Jar.isJarOrZip
 
+import dotc.classpath.{ PackageEntry, ClassPathEntries, PackageName }
+
 /**
   * A representation of the compiler's class- or sourcepath.
   */
 trait ClassPath {
   import dotty.tools.dotc.classpath._
   def asURLs: Seq[URL]
+
+  final def hasPackage(pkg: String): Boolean = hasPackage(PackageName(pkg))
+  final def packages(inPackage: String): Seq[PackageEntry] = packages(PackageName(inPackage))
+  final def classes(inPackage: String): Seq[ClassFileEntry] = classes(PackageName(inPackage))
+  final def sources(inPackage: String): Seq[SourceFileEntry] = sources(PackageName(inPackage))
+  final def list(inPackage: String): ClassPathEntries = list(PackageName(inPackage))
 
   /*
    * These methods are mostly used in the ClassPath implementation to implement the `list` and
@@ -29,22 +37,22 @@ trait ClassPath {
    * which is used by the repl's `:require` (and maybe the spark repl, https://github.com/scala/scala/pull/4051).
    * Using these methods directly is more efficient than calling `list`.
    *
-   * The `inPackage` string is a full package name, e.g. "" or "scala.collection".
+   * The `inPackage` contains a full package name, e.g. "" or "scala.collection".
    */
 
-  private[dotty] def hasPackage(pkg: String): Boolean
-  private[dotty] def packages(inPackage: String): Seq[PackageEntry]
-  private[dotty] def classes(inPackage: String): Seq[ClassFileEntry]
-  private[dotty] def sources(inPackage: String): Seq[SourceFileEntry]
+  private[dotty] def hasPackage(pkg: PackageName): Boolean
+  private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry]
+  private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry]
+  private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry]
 
   /**
     * Returns packages and classes (source or classfile) that are members of `inPackage` (not
-    * recursively). The `inPackage` string is a full package name, e.g., "scala.collection".
+    * recursively). The `inPackage` contains a full package name, e.g., "scala.collection".
     *
     * This is the main method uses to find classes, see class `PackageLoader`. The
     * `rootMirror.rootLoader` is created with `inPackage = ""`.
     */
-  private[dotty] def list(inPackage: String): ClassPathEntries
+  private[dotty] def list(inPackage: PackageName): ClassPathEntries
 
   /**
     * Returns the class file and / or source file for a given external name, e.g., "java.lang.String".
@@ -63,8 +71,9 @@ trait ClassPath {
     // solution for a given type of ClassPath
     val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
 
-    val foundClassFromClassFiles = classes(pkg).find(_.name == simpleClassName)
-    def findClassInSources = sources(pkg).find(_.name == simpleClassName)
+    val packageName = PackageName(pkg)
+    val foundClassFromClassFiles = classes(packageName).find(_.name == simpleClassName)
+    def findClassInSources = sources(packageName).find(_.name == simpleClassName)
 
     foundClassFromClassFiles orElse findClassInSources
   }
@@ -92,6 +101,23 @@ trait ClassPath {
   /** The whole sourcepath in the form of one String.
     */
   def asSourcePathString: String
+}
+
+trait EfficientClassPath extends ClassPath {
+  def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit
+
+  override def list(inPackage: PackageName): ClassPathEntries = {
+    val packageBuf = collection.mutable.ArrayBuffer.empty[PackageEntry]
+    val classRepBuf = collection.mutable.ArrayBuffer.empty[ClassRepresentation]
+    list(inPackage, packageBuf += _, classRepBuf += _)
+    if (packageBuf.isEmpty && classRepBuf.isEmpty) ClassPathEntries.empty
+    else ClassPathEntries(packageBuf, classRepBuf)
+  }
+}
+
+trait EfficientClassPathCallBack {
+  def packageEntry(entry: PackageEntry): Unit
+  def classesAndSources(entry: ClassRepresentation): Unit
 }
 
 object ClassPath {

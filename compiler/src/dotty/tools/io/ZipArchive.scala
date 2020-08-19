@@ -85,7 +85,7 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
     }
   }
 
-  private def ensureDir(dirs: mutable.Map[String, DirEntry], path: String): DirEntry =
+  private def ensureDir(dirs: java.util.Map[String, DirEntry], path: String): DirEntry =
     //OPT inlined from getOrElseUpdate; saves ~50K closures on test run.
     // was:
     // dirs.getOrElseUpdate(path, {
@@ -95,16 +95,16 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
     //   dir
     // })
     dirs get path match {
-      case Some(v) => v
-      case None =>
+      case null =>
         val parent = ensureDir(dirs, dirName(path))
         val dir    = new DirEntry(path, parent)
         parent.entries(baseName(path)) = dir
-        dirs(path) = dir
+        dirs.put(path, dir)
         dir
+      case v => v
     }
 
-  protected def getDir(dirs: mutable.Map[String, DirEntry], entry: ZipEntry): DirEntry = {
+  protected def getDir(dirs: java.util.Map[String, DirEntry], entry: ZipEntry): DirEntry = {
     if (entry.isDirectory) ensureDir(dirs, entry.getName)
     else ensureDir(dirs, dirName(entry.getName))
   }
@@ -149,9 +149,9 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
     override def sizeOption: Option[Int] = Some(zipEntry.getSize.toInt)
   }
 
-  @volatile lazy val (root, allDirs): (DirEntry, collection.Map[String, DirEntry]) = {
+  @volatile lazy val (root, allDirs): (DirEntry, java.util.Map[String, DirEntry]) = {
     val root = new DirEntry("/", null)
-    val dirs = mutable.HashMap[String, DirEntry]("/" -> root)
+    val dirs = new java.util.HashMap[String, DirEntry]; dirs.put("/", root)
     val zipFile = openZipFile()
     val entries = zipFile.entries()
 
@@ -199,7 +199,7 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
 final class ManifestResources(val url: URL) extends ZipArchive(null) {
   def iterator(): Iterator[AbstractFile] = {
     val root     = new DirEntry("/", null)
-    val dirs     = mutable.HashMap[String, DirEntry]("/" -> root)
+    val dirs     = new java.util.HashMap[String, DirEntry]; dirs.put("/", root)
     val manifest = new Manifest(input)
     val iter     = manifest.getEntries().keySet().iterator().asScala.filter(_.endsWith(".class")).map(new ZipEntry(_))
 
