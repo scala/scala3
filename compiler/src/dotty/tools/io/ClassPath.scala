@@ -170,9 +170,22 @@ object ClassPath {
 }
 
 trait ClassRepresentation {
+  def fileName: String
   def name: String
   def binary: Option[AbstractFile]
   def source: Option[AbstractFile]
+
+  /** Low level way to extract the entry name without allocation. */
+  final def nameChars(buffer: Array[Char]): Int = {
+    val ix = fileName.lastIndexOf('.')
+    val nameLength = if (ix < 0) fileName.length else ix
+    if (nameLength > buffer.length)
+      -1
+    else {
+      fileName.getChars(0, nameLength, buffer, 0)
+      nameLength
+    }
+  }
 }
 
 @deprecated("shim for sbt's compiler interface", since = "2.12.0")
