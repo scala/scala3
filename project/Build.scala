@@ -1103,10 +1103,10 @@ object Build {
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/library" ** (("*.scala": FileFilter)
-            -- "BigIntTest.scala" // StackOverflow in the compiler
+            -- "BigIntTest.scala" // Ambiguous reference because of new non-shadowing rule in Scala 3, pending update upstream
             -- "ObjectTest.scala" // compile errors
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
-            -- "UnionTypeTest.scala" // requires a Scala 2 macro + StackOverflow in the compiler
+            -- "UnionTypeTest.scala" // requires a Scala 2 macro
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
