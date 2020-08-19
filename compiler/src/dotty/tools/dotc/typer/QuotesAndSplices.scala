@@ -278,6 +278,10 @@ trait QuotesAndSplices {
             }
             cpy.AppliedTypeTree(tree)(transform(tpt), args1)
         case tree: NamedDefTree =>
+          if tree.name.is(NameKinds.WildcardParamName) then
+            report.warning(
+              "Use of `_` for lambda in quoted pattern. Use explicit lambda instead or use `$_` to match any term.",
+              tree.srcPos)
           if tree.name.isTermName && !tree.nameSpan.isSynthetic && tree.name.startsWith("$") then
             report.error("Names cannot start with $ quote pattern ", tree.namePos)
           super.transform(tree)
