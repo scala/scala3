@@ -175,16 +175,13 @@ trait ClassRepresentation {
   def binary: Option[AbstractFile]
   def source: Option[AbstractFile]
 
-  /** Low level way to extract the entry name without allocation. */
-  final def nameChars(buffer: Array[Char]): Int = {
+  /** returns the length of `name` by stripping the extension of `fileName`
+   *
+   *  Used to avoid creating String instance of `name`.
+   */
+  final def nameLength: Int = {
     val ix = fileName.lastIndexOf('.')
-    val nameLength = if (ix < 0) fileName.length else ix
-    if (nameLength > buffer.length)
-      -1
-    else {
-      fileName.getChars(0, nameLength, buffer, 0)
-      nameLength
-    }
+    if (ix < 0) fileName.length else ix
   }
 }
 

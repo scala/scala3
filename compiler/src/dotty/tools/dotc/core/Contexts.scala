@@ -89,16 +89,6 @@ object Contexts {
   inline def withoutMode[T](mode: Mode)(inline op: Context ?=> T)(using ctx: Context): T =
     inMode(ctx.mode &~ mode)(op)
 
-  private[dotc] inline def withNameBuffer(inline op: Array[Char] => Int)(using ctx: Context): Names.TermName = {
-    val base = ctx.base
-    var len = op(base.nameCharBuffer)
-    while(len == -1) {
-      base.nameCharBuffer = new Array[Char](base.nameCharBuffer.length * 2)
-      len = op(base.nameCharBuffer)
-    }
-    Names.termName(base.nameCharBuffer, 0, len)
-  }
-
   /** A context is passed basically everywhere in dotc.
    *  This is convenient but carries the risk of captured contexts in
    *  objects that turn into space leaks. To combat this risk, here are some

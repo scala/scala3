@@ -644,6 +644,19 @@ object Names {
   /** Create a type name from a string, without encoding operators */
   def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
 
+  def termName(s: String, from: Int, len: Int)(using ctx: Contexts.Context): TermName = {
+    val base = ctx.base
+
+    while (len > base.nameCharBuffer.length)
+      base.nameCharBuffer = new Array[Char](base.nameCharBuffer.length * 2)
+
+    s.getChars(from, from + len, base.nameCharBuffer, 0)
+    termName(base.nameCharBuffer, 0, len)
+  }
+
+  def typeName(s: String, from: Int, len: Int)(using ctx: Contexts.Context): TypeName =
+    termName(s, from, len).toTypeName
+
   table(0) = new SimpleName(-1, 0, null)
 
   /** The term name represented by the empty string */
