@@ -104,7 +104,10 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def negMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
-    compileFilesInDir("tests/neg-macros", defaultOptions).checkExpectedErrors()
+    aggregateTests(
+      compileFilesInDir("tests/neg-macros", defaultOptions),
+      compileFile("tests/pos-macros/i9570.scala", defaultOptions.and("-Xfatal-warnings")),
+    ).checkExpectedErrors()
   }
 
   @Test def negWithCompiler: Unit = {
