@@ -238,11 +238,30 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val ps = claszSymbol.info.parents
       val superClass: String = if (ps.isEmpty) ObjectReference.internalName else internalName(ps.head.widenDealias.typeSymbol)
-      val interfaceNames = classBTypeFromSymbol(claszSymbol).info.interfaces map {
+      val interfaceNames0 = classBTypeFromSymbol(claszSymbol).info.interfaces map {
         case classBType =>
           if (classBType.isNestedClass) { innerClassBufferASM += classBType }
           classBType.internalName
       }
+      /* To avoid deadlocks when combining objects, lambdas and multi-threading,
+       * lambdas in objects are compiled to instance methods of the module class
+       * instead of static methods (see tests/run/deadlock.scala and
+       * https://github.com/scala/scala-dev/issues/195 for details).
+       * This has worked well for us so far but this is problematic for
+       * serialization: serializing a lambda requires serializing all the values
+       * it captures, if this lambda is in an object, this means serializing the
+       * enclosing object, which fails if the object does not extend
+       * Serializable.
+       * Because serializing objects is basically free since #5775, it seems like
+       * the simplest solution is to simply make all objects Serializable, this
+       * certainly seems preferable to deadlocks.
+       * This cannot be done earlier because Scala.js would not like it (#9596).
+       */
+      val interfaceNames =
+        if (claszSymbol.is(ModuleClass) && !interfaceNames0.contains("java/io/Serializable"))
+          interfaceNames0 :+ "java/io/Serializable"
+        else
+          interfaceNames0
 
       val flags = javaFlags(claszSymbol)
 
