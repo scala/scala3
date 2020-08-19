@@ -56,6 +56,7 @@ class CacheAliasImplicits extends MiniPhase with IdentityDenotTransformer { this
             if rhsTpe.isStable => false
             case rhsTpe @ TermRef(pre: ThisType, _)
             if rhsTpe.isStable && pre.cls == sym.owner.enclosingClass => false
+            case rhsTpe: ThisType => false
             case _ => true
           }
         case _ => false
