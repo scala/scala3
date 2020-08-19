@@ -221,171 +221,203 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
     def transformNamed(tree: Tree, start: Int, outerCtx: Context): Tree = tree match {
       case tree: Ident =>
-        given Context = prepIdent(tree, start)(using outerCtx)
-        goIdent(tree, start)
+        inContext(prepIdent(tree, start)(using outerCtx)) {
+          goIdent(tree, start)
+        }
       case tree: Select =>
-        given Context = prepSelect(tree, start)(using outerCtx)
-        val qual = transformTree(tree.qualifier, start)
-        goSelect(cpy.Select(tree)(qual, tree.name), start)
+        inContext(prepSelect(tree, start)(using outerCtx)) {
+          val qual = transformTree(tree.qualifier, start)
+          goSelect(cpy.Select(tree)(qual, tree.name), start)
+        }
       case tree: ValDef =>
-        given Context = prepValDef(tree, start)(using outerCtx)
-        def mapValDef(using Context) = {
-          val tpt = transformTree(tree.tpt, start)
-          val rhs = transformTree(tree.rhs, start)
-          cpy.ValDef(tree)(tree.name, tpt, rhs)
+        inContext(prepValDef(tree, start)(using outerCtx)) {
+          def mapValDef(using Context) = {
+            val tpt = transformTree(tree.tpt, start)
+            val rhs = transformTree(tree.rhs, start)
+            cpy.ValDef(tree)(tree.name, tpt, rhs)
+          }
+          if (tree.isEmpty) tree
+          else goValDef(mapValDef(using if (tree.symbol.exists) localContext else ctx), start)
         }
-        if (tree.isEmpty) tree
-        else goValDef(mapValDef(using if (tree.symbol.exists) localContext else ctx), start)
       case tree: DefDef =>
-        given Context = prepDefDef(tree, start)(using outerCtx)
-        def mapDefDef(using Context) = {
-          val tparams = transformSpecificTrees(tree.tparams, start)
-          val vparamss = tree.vparamss.mapConserve(transformSpecificTrees(_, start))
-          val tpt = transformTree(tree.tpt, start)
-          val rhs = transformTree(tree.rhs, start)
-          cpy.DefDef(tree)(tree.name, tparams, vparamss, tpt, rhs)
+        inContext(prepDefDef(tree, start)(using outerCtx)) {
+          def mapDefDef(using Context) = {
+            val tparams = transformSpecificTrees(tree.tparams, start)
+            val vparamss = tree.vparamss.mapConserve(transformSpecificTrees(_, start))
+            val tpt = transformTree(tree.tpt, start)
+            val rhs = transformTree(tree.rhs, start)
+            cpy.DefDef(tree)(tree.name, tparams, vparamss, tpt, rhs)
+          }
+          goDefDef(mapDefDef(using localContext), start)
         }
-        goDefDef(mapDefDef(using localContext), start)
       case tree: TypeDef =>
-        given Context = prepTypeDef(tree, start)(using outerCtx)
-        val rhs = transformTree(tree.rhs, start)(using localContext)
-        goTypeDef(cpy.TypeDef(tree)(tree.name, rhs), start)
+        inContext(prepTypeDef(tree, start)(using outerCtx)) {
+          val rhs = transformTree(tree.rhs, start)(using localContext)
+          goTypeDef(cpy.TypeDef(tree)(tree.name, rhs), start)
+        }
       case tree: Labeled =>
-        given Context = prepLabeled(tree, start)(using outerCtx)
-        val bind = transformTree(tree.bind, start).asInstanceOf[Bind]
-        val expr = transformTree(tree.expr, start)
-        goLabeled(cpy.Labeled(tree)(bind, expr), start)
+        inContext(prepLabeled(tree, start)(using outerCtx)) {
+          val bind = transformTree(tree.bind, start).asInstanceOf[Bind]
+          val expr = transformTree(tree.expr, start)
+          goLabeled(cpy.Labeled(tree)(bind, expr), start)
+        }
       case tree: Bind =>
-        given Context = prepBind(tree, start)(using outerCtx)
-        val body = transformTree(tree.body, start)
-        goBind(cpy.Bind(tree)(tree.name, body), start)
+        inContext(prepBind(tree, start)(using outerCtx)) {
+          val body = transformTree(tree.body, start)
+          goBind(cpy.Bind(tree)(tree.name, body), start)
+        }
       case _ =>
-        given Context = prepOther(tree, start)(using outerCtx)
-        goOther(tree, start)
+        inContext(prepOther(tree, start)(using outerCtx)) {
+          goOther(tree, start)
+        }
     }
 
     def transformUnnamed(tree: Tree, start: Int, outerCtx: Context): Tree = tree match {
       case tree: Apply =>
-        given Context = prepApply(tree, start)(using outerCtx)
-        val fun = transformTree(tree.fun, start)
-        val args = transformTrees(tree.args, start)
-        goApply(cpy.Apply(tree)(fun, args), start)
+        inContext(prepApply(tree, start)(using outerCtx)) {
+          val fun = transformTree(tree.fun, start)
+          val args = transformTrees(tree.args, start)
+          goApply(cpy.Apply(tree)(fun, args), start)
+        }
       case tree: TypeTree =>
-        given Context = prepTypeTree(tree, start)(using outerCtx)
-        goTypeTree(tree, start)
+        inContext(prepTypeTree(tree, start)(using outerCtx)) {
+          goTypeTree(tree, start)
+        }
       case tree: Thicket =>
         cpy.Thicket(tree)(transformTrees(tree.trees, start))
       case tree: This =>
-        given Context = prepThis(tree, start)(using outerCtx)
-        goThis(tree, start)
-      case tree: Literal =>
-        given Context = prepLiteral(tree, start)(using outerCtx)
-        goLiteral(tree, start)
-      case tree: Block =>
-        given Context = prepBlock(tree, start)(using outerCtx)
-        val stats = transformStats(tree.stats, ctx.owner, start)
-        val expr = transformTree(tree.expr, start)
-        goBlock(cpy.Block(tree)(stats, expr), start)
-      case tree: TypeApply =>
-        given Context = prepTypeApply(tree, start)(using outerCtx)
-        val fun = transformTree(tree.fun, start)
-        val args = transformTrees(tree.args, start)
-        goTypeApply(cpy.TypeApply(tree)(fun, args), start)
-      case tree: If =>
-        given Context = prepIf(tree, start)(using outerCtx)
-        val cond = transformTree(tree.cond, start)
-        val thenp = transformTree(tree.thenp, start)
-        val elsep = transformTree(tree.elsep, start)
-        goIf(cpy.If(tree)(cond, thenp, elsep), start)
-      case tree: New =>
-        given Context = prepNew(tree, start)(using outerCtx)
-        val tpt = transformTree(tree.tpt, start)
-        goNew(cpy.New(tree)(tpt), start)
-      case tree: Typed =>
-        given Context = prepTyped(tree, start)(using outerCtx)
-        val expr = transformTree(tree.expr, start)
-        val tpt = transformTree(tree.tpt, start)
-        goTyped(cpy.Typed(tree)(expr, tpt), start)
-      case tree: CaseDef =>
-        given Context = prepCaseDef(tree, start)(using outerCtx)
-        val pat = withMode(Mode.Pattern)(transformTree(tree.pat, start))
-        val guard = transformTree(tree.guard, start)
-        val body = transformTree(tree.body, start)
-        goCaseDef(cpy.CaseDef(tree)(pat, guard, body), start)
-      case tree: Closure =>
-        given Context = prepClosure(tree, start)(using outerCtx)
-        val env = transformTrees(tree.env, start)
-        val meth = transformTree(tree.meth, start)
-        val tpt = transformTree(tree.tpt, start)
-        goClosure(cpy.Closure(tree)(env, meth, tpt), start)
-      case tree: Assign =>
-        given Context = prepAssign(tree, start)(using outerCtx)
-        val lhs = transformTree(tree.lhs, start)
-        val rhs = transformTree(tree.rhs, start)
-        goAssign(cpy.Assign(tree)(lhs, rhs), start)
-      case tree: SeqLiteral =>
-        given Context = prepSeqLiteral(tree, start)(using outerCtx)
-        val elems = transformTrees(tree.elems, start)
-        val elemtpt = transformTree(tree.elemtpt, start)
-        goSeqLiteral(cpy.SeqLiteral(tree)(elems, elemtpt), start)
-      case tree: Super =>
-        given Context = prepSuper(tree, start)(using outerCtx)
-        goSuper(tree, start)
-      case tree: Template =>
-        given Context = prepTemplate(tree, start)(using outerCtx)
-        val constr = transformSpecificTree(tree.constr, start)
-        val parents = transformTrees(tree.parents, start)(using ctx.superCallContext)
-        val self = transformSpecificTree(tree.self, start)
-        val body = transformStats(tree.body, tree.symbol, start)
-        goTemplate(cpy.Template(tree)(constr, parents, Nil, self, body), start)
-      case tree: Match =>
-        given Context = prepMatch(tree, start)(using outerCtx)
-        val selector = transformTree(tree.selector, start)
-        val cases = transformSpecificTrees(tree.cases, start)
-        goMatch(cpy.Match(tree)(selector, cases), start)
-      case tree: UnApply =>
-        given Context = prepUnApply(tree, start)(using outerCtx)
-        val fun = transformTree(tree.fun, start)
-        val implicits = transformTrees(tree.implicits, start)
-        val patterns = transformTrees(tree.patterns, start)
-        goUnApply(cpy.UnApply(tree)(fun, implicits, patterns), start)
-      case tree: PackageDef =>
-        given Context = prepPackageDef(tree, start)(using outerCtx)
-        def mapPackage(using Context) = {
-          val pid = transformSpecificTree(tree.pid, start)
-          val stats = transformStats(tree.stats, tree.symbol, start)
-          cpy.PackageDef(tree)(pid, stats)
+        inContext(prepThis(tree, start)(using outerCtx)) {
+          goThis(tree, start)
         }
-        goPackageDef(mapPackage(using localContext), start)
+      case tree: Literal =>
+        inContext(prepLiteral(tree, start)(using outerCtx)) {
+          goLiteral(tree, start)
+        }
+      case tree: Block =>
+        inContext(prepBlock(tree, start)(using outerCtx)) {
+          val stats = transformStats(tree.stats, ctx.owner, start)
+          val expr = transformTree(tree.expr, start)
+          goBlock(cpy.Block(tree)(stats, expr), start)
+        }
+      case tree: TypeApply =>
+        inContext(prepTypeApply(tree, start)(using outerCtx)) {
+          val fun = transformTree(tree.fun, start)
+          val args = transformTrees(tree.args, start)
+          goTypeApply(cpy.TypeApply(tree)(fun, args), start)
+        }
+      case tree: If =>
+        inContext(prepIf(tree, start)(using outerCtx)) {
+          val cond = transformTree(tree.cond, start)
+          val thenp = transformTree(tree.thenp, start)
+          val elsep = transformTree(tree.elsep, start)
+          goIf(cpy.If(tree)(cond, thenp, elsep), start)
+        }
+      case tree: New =>
+        inContext(prepNew(tree, start)(using outerCtx)) {
+          val tpt = transformTree(tree.tpt, start)
+          goNew(cpy.New(tree)(tpt), start)
+        }
+      case tree: Typed =>
+        inContext(prepTyped(tree, start)(using outerCtx)) {
+          val expr = transformTree(tree.expr, start)
+          val tpt = transformTree(tree.tpt, start)
+          goTyped(cpy.Typed(tree)(expr, tpt), start)
+        }
+      case tree: CaseDef =>
+        inContext(prepCaseDef(tree, start)(using outerCtx)) {
+          val pat = withMode(Mode.Pattern)(transformTree(tree.pat, start))
+          val guard = transformTree(tree.guard, start)
+          val body = transformTree(tree.body, start)
+          goCaseDef(cpy.CaseDef(tree)(pat, guard, body), start)
+        }
+      case tree: Closure =>
+        inContext(prepClosure(tree, start)(using outerCtx)) {
+          val env = transformTrees(tree.env, start)
+          val meth = transformTree(tree.meth, start)
+          val tpt = transformTree(tree.tpt, start)
+          goClosure(cpy.Closure(tree)(env, meth, tpt), start)
+        }
+      case tree: Assign =>
+        inContext(prepAssign(tree, start)(using outerCtx)) {
+          val lhs = transformTree(tree.lhs, start)
+          val rhs = transformTree(tree.rhs, start)
+          goAssign(cpy.Assign(tree)(lhs, rhs), start)
+        }
+      case tree: SeqLiteral =>
+        inContext(prepSeqLiteral(tree, start)(using outerCtx)) {
+          val elems = transformTrees(tree.elems, start)
+          val elemtpt = transformTree(tree.elemtpt, start)
+          goSeqLiteral(cpy.SeqLiteral(tree)(elems, elemtpt), start)
+        }
+      case tree: Super =>
+        inContext(prepSuper(tree, start)(using outerCtx)) {
+          goSuper(tree, start)
+        }
+      case tree: Template =>
+        inContext(prepTemplate(tree, start)(using outerCtx)) {
+          val constr = transformSpecificTree(tree.constr, start)
+          val parents = transformTrees(tree.parents, start)(using ctx.superCallContext)
+          val self = transformSpecificTree(tree.self, start)
+          val body = transformStats(tree.body, tree.symbol, start)
+          goTemplate(cpy.Template(tree)(constr, parents, Nil, self, body), start)
+        }
+      case tree: Match =>
+        inContext(prepMatch(tree, start)(using outerCtx)) {
+          val selector = transformTree(tree.selector, start)
+          val cases = transformSpecificTrees(tree.cases, start)
+          goMatch(cpy.Match(tree)(selector, cases), start)
+        }
+      case tree: UnApply =>
+        inContext(prepUnApply(tree, start)(using outerCtx)) {
+          val fun = transformTree(tree.fun, start)
+          val implicits = transformTrees(tree.implicits, start)
+          val patterns = transformTrees(tree.patterns, start)
+          goUnApply(cpy.UnApply(tree)(fun, implicits, patterns), start)
+        }
+      case tree: PackageDef =>
+        inContext(prepPackageDef(tree, start)(using outerCtx)) {
+          def mapPackage(using Context) = {
+            val pid = transformSpecificTree(tree.pid, start)
+            val stats = transformStats(tree.stats, tree.symbol, start)
+            cpy.PackageDef(tree)(pid, stats)
+          }
+          goPackageDef(mapPackage(using localContext), start)
+        }
       case tree: Try =>
-        given Context = prepTry(tree, start)(using outerCtx)
-        val expr = transformTree(tree.expr, start)
-        val cases = transformSpecificTrees(tree.cases, start)
-        val finalizer = transformTree(tree.finalizer, start)
-        goTry(cpy.Try(tree)(expr, cases, finalizer), start)
+        inContext(prepTry(tree, start)(using outerCtx)) {
+          val expr = transformTree(tree.expr, start)
+          val cases = transformSpecificTrees(tree.cases, start)
+          val finalizer = transformTree(tree.finalizer, start)
+          goTry(cpy.Try(tree)(expr, cases, finalizer), start)
+        }
       case tree: Inlined =>
-        given Context = prepInlined(tree, start)(using outerCtx)
-        val bindings = transformSpecificTrees(tree.bindings, start)
-        val expansion = transformTree(tree.expansion, start)(using inlineContext(tree.call))
-        goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), start)
+        inContext(prepInlined(tree, start)(using outerCtx)) {
+          val bindings = transformSpecificTrees(tree.bindings, start)
+          val expansion = transformTree(tree.expansion, start)(using inlineContext(tree.call))
+          goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), start)
+        }
       case tree: Return =>
-        given Context = prepReturn(tree, start)(using outerCtx)
-        val expr = transformTree(tree.expr, start)
-        goReturn(cpy.Return(tree)(expr, tree.from), start)
-          // don't transform `tree.from`, as this is not a normal ident, but
-          // a pointer to the enclosing method.
+        inContext(prepReturn(tree, start)(using outerCtx)) {
+          val expr = transformTree(tree.expr, start)
+          goReturn(cpy.Return(tree)(expr, tree.from), start)
+            // don't transform `tree.from`, as this is not a normal ident, but
+            // a pointer to the enclosing method.
+        }
       case tree: WhileDo =>
-        given Context = prepWhileDo(tree, start)(using outerCtx)
-        val cond = transformTree(tree.cond, start)
-        val body = transformTree(tree.body, start)
-        goWhileDo(cpy.WhileDo(tree)(cond, body), start)
+        inContext(prepWhileDo(tree, start)(using outerCtx)) {
+          val cond = transformTree(tree.cond, start)
+          val body = transformTree(tree.body, start)
+          goWhileDo(cpy.WhileDo(tree)(cond, body), start)
+        }
       case tree: Alternative =>
-        given Context = prepAlternative(tree, start)(using outerCtx)
-        val trees = transformTrees(tree.trees, start)
-        goAlternative(cpy.Alternative(tree)(trees), start)
+        inContext(prepAlternative(tree, start)(using outerCtx)) {
+          val trees = transformTrees(tree.trees, start)
+          goAlternative(cpy.Alternative(tree)(trees), start)
+        }
       case tree =>
-        given Context = prepOther(tree, start)(using outerCtx)
-        goOther(tree, start)
+        inContext(prepOther(tree, start)(using outerCtx)) {
+          goOther(tree, start)
+        }
     }
 
     if (tree.source != ctx.source && tree.source.exists)
