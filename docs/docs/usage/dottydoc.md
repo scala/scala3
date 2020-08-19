@@ -192,11 +192,11 @@ Linking to members is done in the same fashion:
 [Seq](scala.collection.immutable.Seq.isEmpty)
 ```
 
-Dottydoc denotes objects by ending their names in "$". To select `Object.range`
-you would therefore write:
+Dottydoc denotes objects by ending their names in "$". To select `List.range`
+you'd therefore write:
 
 ```markdown
-[Object.range](scala.collection.immutable.List$.range)
+[List.range](scala.collection.immutable.List$.range)
 ```
 
 Rendering Docstrings
