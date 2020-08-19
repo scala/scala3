@@ -15,3 +15,8 @@ header {
     position: static;
     float: none;
 }
+
+.tabs-section-body {
+    margin: 12px 0;
+    background-color: transparent;
+}

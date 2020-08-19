@@ -67,6 +67,26 @@ def text(builder: PageContentBuilder#DocumentableContentBuilder, text: String)(
     extra: PropertyContainer[ContentNode] = builder.getMainExtra
 ) = builder.text(text, kind, sourceSets, styles, extra)
 
+def divergentGroup(
+    builder: PageContentBuilder#DocumentableContentBuilder,
+    groupId: ContentDivergentGroup$GroupID
+)(
+    func: Function1[PageContentBuilder$DivergentBuilder, kotlin.Unit],
+    dri: Set[DRI] = builder.getMainDRI.asScala.toSet,
+    kind: Kind = ContentKind.Main,
+    styles: Set[Style] = builder.getMainStyles.asScala.toSet,
+    extra: PropertyContainer[ContentNode] = builder.getMainExtra,
+    implicitlySourceSetHinted: Boolean = true,
+) = builder.divergentGroup(
+    groupId,
+    dri.asJava,
+    kind,
+    styles.asJava,
+    extra,
+    implicitlySourceSetHinted,
+    a => func(a)
+)
+
 def link(builder: PageContentBuilder#DocumentableContentBuilder, text: String, address: DRI)(
     kind: Kind = ContentKind.Main,
     sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData.asScala.toSet,

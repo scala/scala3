@@ -48,7 +48,8 @@ case class ClasslikeExtension(
   constructor: Option[DFunction], 
   kind: Kind, 
   companion: Option[DRI], 
-  extensions: List[ExtensionGroup]
+  extensions: List[ExtensionGroup],
+  inheritedMethods: List[DFunction]
 ) extends ExtraProperty[DClasslike]:
   override def getKey = ClasslikeExtension
 

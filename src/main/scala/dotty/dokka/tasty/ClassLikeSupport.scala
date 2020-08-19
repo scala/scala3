@@ -29,27 +29,35 @@ trait ClassLikeSupport:
       documentation: Map[DokkaConfiguration$DokkaSourceSet, DocumentationNode] = classDef.symbol.documentation,
       modifier: Map[DokkaConfiguration$DokkaSourceSet, Modifier] = Map(sourceSet.getSourceSet -> classDef.symbol.getModifier()),
       additionalExtras: Seq[ExtraProperty[DClass]] = Seq.empty
-    ): DClass = new DClass(
-        dri,
-        name,
-        constructors.asJava,
-        methods.asJava,
-        fields.asJava,
-        nested.asJava,
-        sources.asJava,
-        visibility.asJava,
-        null,
-        generics.asJava,
-        supertypes.map{case (key,value) => (key, value.asJava)}.asJava,
-        documentation.asJava,
-        null,
-        modifier.asJava,
-        inspector.sourceSet.toSet,
-        PropertyContainer.Companion.empty()
-          .plus(ClasslikeExtension(classDef.getParents, classDef.getConstructorMethod, kind, classDef.getCompanion, classDef.getExtensionGroups))
-          .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
-          .addAll(additionalExtras.asJava)
-    )
+    ): DClass =
+        new DClass(
+          dri,
+          name,
+          constructors.asJava,
+          methods.asJava,
+          fields.asJava,
+          nested.asJava,
+          sources.asJava,
+          visibility.asJava,
+          null,
+          generics.asJava,
+          supertypes.map{case (key,value) => (key, value.asJava)}.asJava,
+          documentation.asJava,
+          null,
+          modifier.asJava,
+          inspector.sourceSet.toSet,
+          PropertyContainer.Companion.empty()
+            .plus(ClasslikeExtension(
+              classDef.getParents, 
+              classDef.getConstructorMethod, 
+              kind, 
+              classDef.getCompanion, 
+              classDef.getExtensionGroups, 
+              classDef.getInheritedMethods.map(parseMethod(_)))
+            )
+            .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
+            .addAll(additionalExtras.asJava) 
+        )
 
   extension (c: ClassDef):
       def getExtensionGroups: List[ExtensionGroup] = {
@@ -67,6 +75,9 @@ trait ClassLikeSupport:
       }
 
       def getMethods: List[Symbol] = c.symbol.classMethods.filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_))
+
+      def getInheritedMethods: List[Symbol] = c.symbol.methods.filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_))
+          .filter(s => s.maybeOwner != c.symbol)
 
       def getParents: List[Bound] = {
           for
