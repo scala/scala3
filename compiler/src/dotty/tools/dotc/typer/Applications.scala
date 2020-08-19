@@ -913,7 +913,23 @@ trait Applications extends Compatibility {
 
       fun1.tpe match {
         case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
-        case TryDynamicCallType => typedDynamicApply(tree, pt)
+        case TryDynamicCallType =>
+          val isInsertedApply = fun1 match {
+            case Select(_, nme.apply) => fun1.span.isSynthetic
+            case TypeApply(sel @ Select(_, nme.apply), _) => sel.span.isSynthetic
+            /* TODO Get rid of this case. It is still syntax-based, therefore unreliable.
+             * It is necessary for things like `someDynamic[T](...)`, because in that case,
+             * somehow typedFunPart returns a tree that was typed as `TryDynamicCallType`,
+             * so clearly with the view that an apply insertion was necessary, but doesn't
+             * actually insert the apply!
+             * This is probably something wrong in apply insertion, but I (@sjrd) am out of
+             * my depth there.
+             * In the meantime, this makes tests pass.
+             */
+            case TypeApply(fun, _) => !fun.isInstanceOf[Select]
+            case _ => false
+          }
+          typedDynamicApply(tree, isInsertedApply, pt)
         case _ =>
           if (originalProto.isDropped) fun1
           else if (fun1.symbol == defn.Compiletime_summonFrom)
