@@ -7,7 +7,6 @@ enum EJ extends java.lang.Enum[EJ]:
   override def toString: String = "overridden"
 
 trait Mixin extends Enum:
-  override def enumLabel: String = "nolabel"
   override def productPrefix: String = "noprefix"
   override def toString: String = "overridden"
 
@@ -56,7 +55,7 @@ object Tag:
   assert(EJ.valueOf("B") == EJ.B,             s"EJ.valueOf(B) = ${EJ.valueOf("B")}")
   assert(EM.C.toString == "overridden",       s"EM.C.toString = ${EM.C.toString}")
   assert(EM.C.productPrefix == "noprefix",    s"EM.C.productPrefix = ${EM.C.productPrefix}")
-  assert(EM.C.enumLabel == "C",               s"EM.C.enumLabel = ${EM.C.enumLabel}") // enumLabel override is useless
+  assert(EM.C.enumLabel == "C",               s"EM.C.enumLabel = ${EM.C.enumLabel}")
   assert(EM.valueOf("C") == EM.C,             s"EM.valueOf(C) = ${EM.valueOf("C")}")
   assert(ET.D.toString == "overridden",       s"ET.D.toString = ${ET.D.toString}")
   assert(ET.D.productPrefix == "D",           s"ET.D.productPrefix = ${ET.D.productPrefix}")
@@ -80,11 +79,11 @@ object Tag:
   assert(EO.I(0).enumLabel == "I",            s"EO.I(0).enumLabel = ${EO.I(0).enumLabel}")
   assert(EQ.J.toString == "overridden",       s"EQ.J.toString = ${EQ.J.toString}")
   assert(EQ.J.productPrefix == "noprefix",    s"EQ.J.productPrefix = ${EQ.J.productPrefix}")
-  assert(EQ.J.enumLabel == "J",               s"EQ.J.enumLabel = ${EQ.J.enumLabel}") // enumLabel override is useless
+  assert(EQ.J.enumLabel == "J",               s"EQ.J.enumLabel = ${EQ.J.enumLabel}")
   assert(EQ.valueOf("J") == EQ.J,             s"EQ.valueOf(J) = ${EQ.valueOf("J")}")
   assert(EQ.K(0).toString == "overridden",    s"EQ.K(0).toString = ${EQ.K(0).toString}")
   assert(EQ.K(0).productPrefix == "noprefix", s"EQ.K(0).productPrefix = ${EQ.K(0).productPrefix}")
-  assert(EQ.K(0).enumLabel == "K",            s"EQ.K(0).enumLabel = ${EQ.K(0).enumLabel}") // enumLabel override is useless
+  assert(EQ.K(0).enumLabel == "K",            s"EQ.K(0).enumLabel = ${EQ.K(0).enumLabel}")
   assert(Tag.IntTag.productPrefix == "",      s"Tag.IntTag.productPrefix = ${Tag.IntTag.productPrefix}")
   assert(Tag.IntTag.enumLabel == "IntTag",    s"Tag.IntTag.enumLabel = ${Tag.IntTag.enumLabel}")
   assert(

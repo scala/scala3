@@ -132,8 +132,8 @@ For instance, the `Venus` value above would be defined like this:
 ```scala
 val Venus: Planet =
   new Planet(4.869E24, 6051800.0) {
-    override def ordinal: Int = 1
-    override def enumLabel: String = "Venus"
+    def ordinal: Int = 1
+    def enumLabel: String = "Venus"
     override def productPrefix: String = enumLabel
     override def toString: String = enumLabel
     // internal code to register value

@@ -125,9 +125,9 @@ object DesugarEnums {
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
    *   private def $new(_$ordinal: Int, $name: String) = new E with scala.runtime.EnumValue {
-   *     override def ordinal = _$ordinal   // if `E` does not derive from `java.lang.Enum`
-   *     override def enumLabel = $name     // if `E` does not derive from `java.lang.Enum`
-   *     override def enumLabel = this.name // if `E` derives from `java.lang.Enum`
+   *     def ordinal = _$ordinal   // if `E` does not derive from `java.lang.Enum`
+   *     def enumLabel = $name     // if `E` does not derive from `java.lang.Enum`
+   *     def enumLabel = this.name // if `E` derives from `java.lang.Enum`
    *     $values.register(this)
    *   }
    */
@@ -274,10 +274,10 @@ object DesugarEnums {
   private def isJavaEnum(using Context): Boolean = ctx.owner.linkedClass.derivesFrom(defn.JavaEnumClass)
 
   def ordinalMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body).withFlags(Override)
+    DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body)
 
   def enumLabelMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.enumLabel, Nil, Nil, TypeTree(defn.StringType), body).withFlags(Override)
+    DefDef(nme.enumLabel, Nil, Nil, TypeTree(defn.StringType), body)
 
   def ordinalMethLit(ord: Int)(using Context): DefDef =
     ordinalMeth(Literal(Constant(ord)))
