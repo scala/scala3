@@ -72,6 +72,7 @@ enum ScalaOnlyModifiers(val name: String, val prefix: Boolean) extends ExtraModi
   case Lazy extends ScalaOnlyModifiers("lazy", true)
   case Override extends ScalaOnlyModifiers("override", true)
   case Erased extends ScalaOnlyModifiers("erased", true)
+  case Opaque extends ScalaOnlyModifiers("opaque", true)
     
 enum ScalaVisibility(val name: String) extends org.jetbrains.dokka.model.Visibility(name, null):
   case NoModifier extends ScalaVisibility("")
