@@ -54,19 +54,30 @@ trait TypesSupport:
             case AnnotatedType(tpe, _) => 
                 inner(tpe)
             case tl @ TypeLambda(paramNames, paramTypes, resType) => noSupported(s"TypeLambda: ${paramNames} , ")  //TOFIX
-            case Refinement(parent, name, info) =>
-                // val tuple = convertTypeOrBoundsToReference(reflect)(info) match {
-                //     case r if (info match {case info: TypeBounds => true case _ => false}) => ("type", name, r)
-                //     case r@TypeReference(_, _, _, _) => ("val", name, r)
-                //     case ByNameReference(rChild) => ("def", name, rChild)
-                //     case r => throw new Exception("Match error in info of Refinement. This should not happen, please open an issue. " + r)
-                // }
-                // convertTypeToReference(reflect)(parent) match {
-                //     case RefinedReference(p, ls) =>
-                //     RefinedReference(p, ls:+tuple)
-                //     case t => RefinedReference(t, List(tuple))
-                // }
-                noSupported("Refinement") 
+            case r: Refinement => { //(parent, name, info)
+                def parseRefinedType(r: Refinement): List[JProjection] = {
+                    (r.parent match{
+                        case t: TypeRef if t.typeSymbol == defn.ObjectClass => texts("{ ")
+                        case t: TypeRef => inner(t) ++ texts(" { ")
+                        case r: Refinement => parseRefinedType(r) ++ texts("; ")
+                    }) ++ parseRefinedElem(r.name, r.info)
+                }
+                def parseRefinedElem(name: String, info: TypeOrBounds): List[JProjection] = info match {
+                    case m: MethodType => {
+                        def getParamList: List[JProjection] = 
+                            texts("(")
+                            ++ m.paramNames.zip(m.paramTypes).map{ case (name, tp) => texts(s"$name: ") ++ inner(tp)}
+                                .reduceLeftOption((acc: List[JProjection], elem: List[JProjection]) => acc ++ texts(", ") ++ elem).getOrElse(List())
+                            ++ texts(")")
+                        texts(s"def $name") ++ getParamList ++ texts(": ") ++ inner(m.resType)
+                    }
+                    case ByNameType(tp) => texts(s"def $name: ") ++ inner(tp)
+                    case t: TypeBounds => texts(s"type $name") ++ inner(t)
+                    case t: TypeRef => texts(s"val $name: ") ++ inner(t)
+                    case other => {println(info); noSupported("Not supported type in refinement"); List()}
+                }
+                parseRefinedType(r) ++ texts(" }")
+            }
             case AppliedType(tpe, typeOrBoundsList) =>
                 if tpe.isFunctionType then
                     typeOrBoundsList match
@@ -83,8 +94,9 @@ trait TypesSupport:
 
             case tp @ TypeRef(qual, typeName) =>
                 qual match {
-                case _: Type | _: NoPrefix => List(link(tp.typeSymbol))
-                case other => noSupported(s"Type.qual: $other") 
+                    case r: RecursiveThis => texts(s"this.$typeName")
+                    case _: Type | _: NoPrefix => List(link(tp.typeSymbol))
+                    case other => noSupported(s"Type.qual: $other") 
                 }    
                 // convertTypeOrBoundsToReference(reflect)(qual) match {
                 //     case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true)
@@ -127,7 +139,8 @@ trait TypesSupport:
             // }
             // case _ => throw Exception("No match for type in conversion to Reference. This should not happen, please open an issue. " + tp)
             case TypeBounds(low, hi) =>
-                typeBound(low, low = true) ++ typeBound(low, low = false)
+                if(low == hi) texts(" = ") ++ inner(low)
+                else typeBound(low, low = true) ++ typeBound(hi, low = false)
             
             case reflect.NoPrefix() => Nil
 
@@ -141,6 +154,8 @@ trait TypesSupport:
             case TypeIdent(t) => texts(t)
 
             case ParamRef(TypeLambda(names, _, _), i) => texts(names.apply(i))
+
+            case RecursiveType(tp) => inner(tp)
 
     private def typeBound(t: Type, low: Boolean) = 
         val ignore = if(low) t.typeSymbol == defn.NothingClass  else t.typeSymbol == defn.AnyClass

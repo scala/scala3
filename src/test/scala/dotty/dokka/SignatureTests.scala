@@ -40,3 +40,5 @@ class ExtensionMethodSignature extends SingleFileTest("extensionMethodSignatures
 class ClassModifiers extends SingleFileTest("classModifiers", SingleFileTest.classlikeKinds)
 
 // class EnumSignatures extends SingleFileTest("enumSignatures", SingleFileTest.all)
+
+class StructuralTypes extends SingleFileTest("structuralTypes", SingleFileTest.members)
