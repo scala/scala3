@@ -49,9 +49,17 @@ final case class DefinitionList(items: SortedMap[Inline, Block]) extends Block
 final case class HorizontalRule() extends Block
 
 /** An section of text inside a block, possibly with formatting. */
-sealed abstract class Inline
+sealed abstract class Inline {
+  def isEmpty = this match {
+    case Chain(items) if items.isEmpty => true
+    case _ => false
+  }
+}
 
 final case class Chain(items: Seq[Inline]) extends Inline
+object Chain {
+  val Empty = Chain(Nil)
+}
 final case class Italic(text: Inline) extends Inline
 final case class Bold(text: Inline) extends Inline
 final case class Underline(text: Inline) extends Inline

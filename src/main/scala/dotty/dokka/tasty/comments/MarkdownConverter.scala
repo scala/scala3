@@ -76,20 +76,21 @@ class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
       })
 
     case n: mda.Link =>
-      val text: String =
-        if !n.getText.isEmpty then n.getText.toString
-        else n.getUrl.toString
-
       val SchemeUri = """[a-z]+:.*""".r
-
+      val userText: String = n.getText.toString
       val target: String = n.getUrl.toString
+      def resolveText(default: String) =
+        val resolved = if !userText.isEmpty then userText else default
+        List(dkk.text(resolved)).asJava
 
       emit(target match {
-        case SchemeUri() => dkkd.A(List(dkk.text(text)).asJava, Map("href" -> target).asJava)
+        case SchemeUri() =>
+          dkkd.A(resolveText(default = target), Map("href" -> target).asJava)
         case _ => MemberLookup.lookup(using r)(target, owner) match {
-          case Some(sym) =>
-            dkkd.DocumentationLink(sym.dri, List(dkk.text(text)).asJava, kt.emptyMap)
-          case None => dkkd.A(List(dkk.text(text)).asJava, Map("href" -> "#").asJava)
+          case Some((sym, targetText)) =>
+            dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
+          case None =>
+            dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
         }
       })
 

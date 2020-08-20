@@ -320,7 +320,7 @@ final class Parser(
       else None
     jump(stop)
 
-    Link(target, title getOrElse Text(target))
+    Link(target, title getOrElse Chain.Empty)
   }
 
   /* UTILITY */
