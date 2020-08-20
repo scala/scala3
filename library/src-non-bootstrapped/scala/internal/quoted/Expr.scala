@@ -33,4 +33,10 @@ object Expr {
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] =
     throw new Exception("Non bootstrapped lib")
 
+  def `null`: QuoteContext ?=> quoted.Expr[Null] =
+    throw new Exception("Non bootstrapped lib")
+
+  def Unit: QuoteContext ?=> quoted.Expr[Unit] =
+    throw new Exception("Non bootstrapped lib")
+
 }

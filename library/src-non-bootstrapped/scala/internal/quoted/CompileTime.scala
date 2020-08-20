@@ -15,21 +15,6 @@ object CompileTime {
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprNestedSplice`")
   def exprNestedSplice[T](ctx: QuoteContext)(x: ctx.Nested ?=> Expr[T]): T = ???
 
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.typeQuote`")
-  def typeQuote[T <: AnyKind]: Type[T] = ???
-
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHole`")
-  def patternHole[T]: T = ???
-
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternBindHole`")
-  class patternBindHole extends Annotation
-
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternType`")
-  class patternType extends Annotation
-
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.fromAbove`")
-  class fromAbove extends Annotation
-
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.quoteTypeTag`")
   class quoteTypeTag extends Annotation
 
