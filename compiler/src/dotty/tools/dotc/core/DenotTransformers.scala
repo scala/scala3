@@ -50,7 +50,7 @@ object DenotTransformers {
       }
     }
 
-    /** Denotations with a symbol where `mayChange` is false are guaranteed to be
+    /** Denotations with a symbol where `infoMayChange` is false are guaranteed to be
      *  unaffected by this transform, so `transformInfo` need not be run. This
      *  can save time, and more importantly, can help avoid forcing symbol completers.
      */

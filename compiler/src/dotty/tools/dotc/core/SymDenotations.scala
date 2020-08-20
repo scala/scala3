@@ -2641,7 +2641,11 @@ object SymDenotations {
     private var locked = false
     private var provisional = false
 
-    final def isValid(using Context): Boolean = valid && isValidAt(ctx.phase)
+    final def isValid(using Context): Boolean =
+      valid && createdAt.runId == ctx.runId
+        // Note: We rely on the fact that whenever base types of classes change,
+        // the affected classes will get new denotations with new basedata caches.
+        // So basedata caches can become invalid only if the run changes.
 
     def invalidate(): Unit =
       if (valid && !locked) {
