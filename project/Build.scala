@@ -1064,9 +1064,9 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7/org/scalajs/testsuite/javalib/util" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
-            -- "InteroperabilityTest.scala" // various compile errors
-            -- "OptimizerTest.scala" // compile errors: false + string and () + string
-            -- "ReflectionTest.scala" // tests fail
+            -- "InteroperabilityTest.scala" // various compile errors, pending update upstream
+            -- "OptimizerTest.scala" // compile errors: false + string and () + string, pending update upstream
+            -- "ReflectionTest.scala" // tests fail (wrong load spec for JS globals)
             -- "RegressionJSTest.scala" // non-native JS classes
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
             )).get
@@ -1074,7 +1074,6 @@ object Build {
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** (("*.scala": FileFilter)
             -- "FormatterJSTest.scala" // compile error with the f"" interpolator
             -- "ObjectJSTest.scala" // non-native JS classes
-            -- "ThrowableJSTest.scala" // test fails ("java.lang.Error: stub") because it uses js.constructorOf
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/jsinterop" ** (("*.scala": FileFilter)
@@ -1083,7 +1082,7 @@ object Build {
             -- "ExportsTest.scala" // JS exports
             -- "IterableTest.scala" // non-native JS classes
             -- "JSExportStaticTest.scala" // JS exports
-            -- "JSNativeInPackage.scala" // IR checking errors
+            -- "JSNativeInPackage.scala" // tests fail (wrong load spec for JS globals)
             -- "JSOptionalTest.scala" // non-native JS classes
             -- "JSSymbolTest.scala" // non-native JS classes
             -- "MiscInteropTest.scala" // non-native JS classes
@@ -1091,7 +1090,6 @@ object Build {
             -- "NestedJSClassTest.scala" // non-native JS classes
             -- "NonNativeJSTypeTest.scala" // non-native JS classes
             -- "PromiseMock.scala" // non-native JS classes
-            -- "SpecialTest.scala" // test fails ("java.lang.Error: stub") because it uses js.constructorOf
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter)
@@ -1104,7 +1102,7 @@ object Build {
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/library" ** (("*.scala": FileFilter)
             -- "BigIntTest.scala" // Ambiguous reference because of new non-shadowing rule in Scala 3, pending update upstream
-            -- "ObjectTest.scala" // compile errors
+            -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires a Scala 2 macro
             )).get

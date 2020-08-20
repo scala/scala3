@@ -72,6 +72,7 @@ class Compiler {
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
+         new ExplicitJSClasses,      // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
          new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
