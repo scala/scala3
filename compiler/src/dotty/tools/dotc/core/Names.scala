@@ -638,10 +638,13 @@ object Names {
   def typeName(bs: Array[Byte], offset: Int, len: Int): TypeName =
     termName(bs, offset, len).toTypeName
 
-  /** Create a term name from a string, without encoding operators */
+  /** Create a term name from a string.
+   *  See `sliceToTermName` in `Decorators` for a more efficient version
+   *  which however requires a Context for its operation.
+   */
   def termName(s: String): SimpleName = termName(s.toCharArray, 0, s.length)
 
-  /** Create a type name from a string, without encoding operators */
+  /** Create a type name from a string */
   def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
 
   table(0) = new SimpleName(-1, 0, null)

@@ -20,22 +20,34 @@ object Decorators {
    *  with a normal wildcard. In the future, once #9255 is in trunk, replace with
    *  a simple collective extension.
    */
-  implicit object PreNamedString:
-    extension (pn: PreName) def toTypeName: TypeName = pn match
-      case s: String => typeName(s)
-      case n: Name => n.toTypeName
-    extension (pn: PreName) def toTermName: TermName = pn match
+  extension (pn: PreName)
+    def toTermName: TermName = pn match
       case s: String => termName(s)
       case n: Name => n.toTermName
+    def toTypeName: TypeName = pn match
+      case s: String => typeName(s)
+      case n: Name => n.toTypeName
 
   extension (s: String):
-    def splitWhere(f: Char => Boolean, doDropIndex: Boolean): Option[(String, String)] = {
+    def splitWhere(f: Char => Boolean, doDropIndex: Boolean): Option[(String, String)] =
       def splitAt(idx: Int, doDropIndex: Boolean): Option[(String, String)] =
         if (idx == -1) None
         else Some((s.take(idx), s.drop(if (doDropIndex) idx + 1 else idx)))
-
       splitAt(s.indexWhere(f), doDropIndex)
-    }
+
+    /** Create a term name from a string slice, using a common buffer.
+     *  This avoids some allocation relative to `termName(s)`
+     */
+    def sliceToTermName(start: Int, end: Int)(using Context): SimpleName =
+      val base = ctx.base
+      val len = end - start
+      while len > base.nameCharBuffer.length do
+        base.nameCharBuffer = new Array[Char](base.nameCharBuffer.length * 2)
+      s.getChars(start, end, base.nameCharBuffer, 0)
+      termName(base.nameCharBuffer, 0, len)
+
+    def sliceToTypeName(start: Int, end: Int)(using Context): TypeName =
+      sliceToTermName(start, end).toTypeName
 
   /** Implements a findSymbol method on iterators of Symbols that
    *  works like find but avoids Option, replacing None with NoSymbol.

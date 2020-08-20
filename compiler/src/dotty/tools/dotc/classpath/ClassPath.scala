@@ -23,24 +23,27 @@ trait PackageEntry {
 }
 
 private[dotty] case class ClassFileEntryImpl(file: AbstractFile) extends ClassFileEntry {
-  override def name: String = FileUtils.stripClassExtension(file.name) // class name
+  final def fileName: String = file.name
+  def name: String = FileUtils.stripClassExtension(file.name) // class name
 
-  override def binary: Option[AbstractFile] = Some(file)
-  override def source: Option[AbstractFile] = None
+  def binary: Option[AbstractFile] = Some(file)
+  def source: Option[AbstractFile] = None
 }
 
 private[dotty] case class SourceFileEntryImpl(file: AbstractFile) extends SourceFileEntry {
-  override def name: String = FileUtils.stripSourceExtension(file.name)
+  final def fileName: String = file.name
+  def name: String = FileUtils.stripSourceExtension(file.name)
 
-  override def binary: Option[AbstractFile] = None
-  override def source: Option[AbstractFile] = Some(file)
+  def binary: Option[AbstractFile] = None
+  def source: Option[AbstractFile] = Some(file)
 }
 
 private[dotty] case class ClassAndSourceFilesEntry(classFile: AbstractFile, srcFile: AbstractFile) extends ClassRepresentation {
-  override def name: String = FileUtils.stripClassExtension(classFile.name)
+  final def fileName: String = classFile.name
+  def name: String = FileUtils.stripClassExtension(classFile.name)
 
-  override def binary: Option[AbstractFile] = Some(classFile)
-  override def source: Option[AbstractFile] = Some(srcFile)
+  def binary: Option[AbstractFile] = Some(classFile)
+  def source: Option[AbstractFile] = Some(srcFile)
 }
 
 private[dotty] case class PackageEntryImpl(name: String) extends PackageEntry

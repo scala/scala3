@@ -4,24 +4,29 @@ package core
 
 import java.io.{IOException, File}
 import java.nio.channels.ClosedByInterruptException
+
 import scala.compat.Platform.currentTime
+import scala.util.control.NonFatal
+
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
-import config.Config
+import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
+
 import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, Names._
 import NameOps._
-import StdNames.str
-import Decorators._
+import StdNames._
 import classfile.ClassfileParser
-import util.Stats
 import Decorators._
-import scala.util.control.NonFatal
-import ast.Trees._
-import parsing.JavaParsers.OutlineJavaParser
-import parsing.Parsers.OutlineParser
+
+import util.Stats
 import reporting.trace
+import config.Config
+
+import ast.Trees._
 import ast.desugar
 
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
+import parsing.JavaParsers.OutlineJavaParser
+import parsing.Parsers.OutlineParser
+
 
 object SymbolLoaders {
   import ast.untpd._
@@ -178,26 +183,29 @@ object SymbolLoaders {
    *  Note: We do a name-base comparison here because the method is called before we even
    *  have ReflectPackage defined.
    */
-  def binaryOnly(owner: Symbol, name: String)(using Context): Boolean =
-    name == "package" &&
-      (owner.fullName.toString == "scala" || owner.fullName.toString == "scala.reflect")
+  def binaryOnly(owner: Symbol, name: TermName)(using Context): Boolean =
+    name == nme.PACKAGEkw &&
+      (owner.name == nme.scala || owner.name == nme.reflect && owner.owner.name == nme.scala)
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
   def initializeFromClassPath(owner: Symbol, classRep: ClassRepresentation)(using Context): Unit =
     ((classRep.binary, classRep.source): @unchecked) match {
-      case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
+      case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, nameOf(classRep)) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] picked up newer source file for " + src.path)
-        enterToplevelsFromSource(owner, classRep.name, src)
+        enterToplevelsFromSource(owner, nameOf(classRep), src)
       case (None, Some(src)) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] no class, picked up source file for " + src.path)
-        enterToplevelsFromSource(owner, classRep.name, src)
+        enterToplevelsFromSource(owner, nameOf(classRep), src)
       case (Some(bin), _) =>
-        enterClassAndModule(owner, classRep.name, ctx.platform.newClassLoader(bin))
+        enterClassAndModule(owner, nameOf(classRep), ctx.platform.newClassLoader(bin))
     }
 
   def needCompile(bin: AbstractFile, src: AbstractFile): Boolean =
     src.lastModified >= bin.lastModified
+
+  private def nameOf(classRep: ClassRepresentation)(using Context): TermName =
+    classRep.fileName.sliceToTermName(0, classRep.nameLength)
 
   /** Load contents of a package
    */
