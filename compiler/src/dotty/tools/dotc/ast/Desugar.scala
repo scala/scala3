@@ -616,8 +616,6 @@ object desugar {
       parents1 = enumClassTypeRef :: Nil
     if (isCaseClass | isCaseObject)
       parents1 = parents1 :+ scalaDot(str.Product.toTypeName) :+ scalaDot(nme.Serializable.toTypeName)
-    else if (isObject)
-      parents1 = parents1 :+ scalaDot(nme.Serializable.toTypeName)
     if (isEnum)
       parents1 = parents1 :+ ref(defn.EnumClass.typeRef)
 

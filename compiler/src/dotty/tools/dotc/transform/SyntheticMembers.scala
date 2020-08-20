@@ -377,15 +377,18 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     newSymbol(clazz, nme.writeReplace, Method | Private | Synthetic,
         MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
 
-  /** If this is a serializable static object `Foo`, add the method:
+  /** If this is a static object `Foo`, add the method:
    *
    *      private def writeReplace(): AnyRef =
    *        new scala.runtime.ModuleSerializationProxy(classOf[Foo.type])
    *
    *  unless an implementation already exists, otherwise do nothing.
+   *
+   *  All static objects receive the `Serializable` flag in the back-end, so
+   *  we do that even for objects that are not serializable at this phase.
    */
   def serializableObjectMethod(clazz: ClassSymbol)(using Context): List[Tree] =
-    if clazz.is(Module) && clazz.isStatic && clazz.isSerializable && !hasWriteReplace(clazz) then
+    if clazz.is(Module) && clazz.isStatic && !hasWriteReplace(clazz) then
       List(
         DefDef(writeReplaceDef(clazz),
           _ => New(defn.ModuleSerializationProxyClass.typeRef,
