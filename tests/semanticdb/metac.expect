@@ -638,7 +638,7 @@ Schema => SemanticDB v4
 Uri => Enums.scala
 Text => empty
 Language => Scala
-Symbols => 165 entries
+Symbols => 167 entries
 Occurrences => 203 entries
 
 Symbols:
@@ -699,6 +699,7 @@ _empty_/Enums.Maybe.Just#copy$default$1().[A] => typeparam A
 _empty_/Enums.Maybe.Just#copy(). => method copy
 _empty_/Enums.Maybe.Just#copy().(value) => param value
 _empty_/Enums.Maybe.Just#copy().[A] => typeparam A
+_empty_/Enums.Maybe.Just#enumLabel(). => method enumLabel
 _empty_/Enums.Maybe.Just#ordinal(). => method ordinal
 _empty_/Enums.Maybe.Just#value. => val method value
 _empty_/Enums.Maybe.Just. => final object Just
@@ -791,6 +792,7 @@ _empty_/Enums.`<:<`.Refl#[C] => typeparam C
 _empty_/Enums.`<:<`.Refl#`<init>`(). => primary ctor <init>
 _empty_/Enums.`<:<`.Refl#copy(). => method copy
 _empty_/Enums.`<:<`.Refl#copy().[C] => typeparam C
+_empty_/Enums.`<:<`.Refl#enumLabel(). => method enumLabel
 _empty_/Enums.`<:<`.Refl#ordinal(). => method ordinal
 _empty_/Enums.`<:<`.Refl. => final object Refl
 _empty_/Enums.`<:<`.Refl.apply(). => method apply

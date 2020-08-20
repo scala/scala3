@@ -1130,6 +1130,7 @@ trait Checking {
 
   end checkEnumParent
 
+
   /** Check that all references coming from enum cases in an enum companion object
    *  are legal.
    *  @param  cdef     the enum companion object class

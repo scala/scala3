@@ -586,7 +586,9 @@ object desugar {
         yield syntheticProperty(selName, caseParams(i).tpt,
           Select(This(EmptyTypeIdent), caseParams(i).name))
 
-      def ordinalMeths = if (isEnumCase) ordinalMethLit(nextOrdinal(CaseKind.Class)._1) :: Nil else Nil
+      def enumMeths =
+        if (isEnumCase) ordinalMethLit(nextOrdinal(CaseKind.Class)._1) :: enumLabelLit(className.toString) :: Nil
+        else Nil
       def copyMeths = {
         val hasRepeatedParam = constrVparamss.exists(_.exists {
           case ValDef(_, tpt, _) => isRepeated(tpt)
@@ -605,7 +607,7 @@ object desugar {
       }
 
       if (isCaseClass)
-        copyMeths ::: ordinalMeths ::: productElemMeths
+        copyMeths ::: enumMeths ::: productElemMeths
       else Nil
     }
 

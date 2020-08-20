@@ -453,6 +453,7 @@ object StdNames {
     val emptyValDef: N          = "emptyValDef"
     val end: N                  = "end"
     val ensureAccessible : N    = "ensureAccessible"
+    val enumLabel: N            = "enumLabel"
     val eq: N                   = "eq"
     val eqInstance: N           = "eqInstance"
     val equalsNumChar : N       = "equalsNumChar"
