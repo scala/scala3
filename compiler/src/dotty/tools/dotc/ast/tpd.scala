@@ -1083,7 +1083,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  inline val MapRecursionLimit = 1000
+  inline val MapRecursionLimit = 10
 
   extension (trees: List[Tree])
 
