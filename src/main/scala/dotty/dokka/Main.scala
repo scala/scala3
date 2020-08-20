@@ -37,15 +37,29 @@ class RawArgs:
     @COption(name="--projectLogo")
     private var projectLogo: String = null
 
-    def toArgs = Args(
-      tastyRoots.split(File.pathSeparatorChar).toList.map(new File(_)),
-      classpath,
-      new File(output),
-      Option(docsRoot),
-      projectVersion,
-      Option(projectTitle),
-      Option(projectLogo)
-    )
+    @COption(name="--syntax")
+    private var syntax: String = null
+
+    def toArgs =
+      val parsedSyntax = syntax match
+        case null => None
+        case other =>
+          Args.CommentSyntax.fromString(other) match
+            case None =>
+              sys.error(s"unrecognized value for --syntax option: $other")
+            case some => some
+
+      Args(
+        tastyRoots.split(File.pathSeparatorChar).toList.map(new File(_)),
+        classpath,
+        new File(output),
+        Option(docsRoot),
+        projectVersion,
+        Option(projectTitle),
+        Option(projectLogo),
+        parsedSyntax
+      )
+
 
 case class Args(
   tastyRoots: Seq[File],
@@ -54,8 +68,22 @@ case class Args(
   docsRoot: Option[String],
   projectVersion: String,
   projectTitle: Option[String],
-  projectLogo: Option[String]
+  projectLogo: Option[String],
+  defaultSyntax: Option[Args.CommentSyntax]
 )    
+
+object Args:
+  enum CommentSyntax:
+    case Wiki
+    case Markdown
+
+  object CommentSyntax:
+    def fromString(str: String): Option[CommentSyntax] =
+      str match
+        case "wiki" => Some(Wiki)
+        case "markdown" => Some(Markdown)
+        case _ => None
+end Args
 
 case class DocConfiguration(tastyFiles: List[String], args: Args)
 

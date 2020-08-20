@@ -32,7 +32,8 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
         output = getTempDir().getRoot,
         projectVersion = "1.0",
         projectTitle = None,
-        projectLogo = None
+        projectLogo = None,
+        defaultSyntax = None,
     )
 
     def listPages(tastyDir: String): Seq[ContentPage] =
