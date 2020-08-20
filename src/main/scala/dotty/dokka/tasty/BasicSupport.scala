@@ -22,11 +22,11 @@ trait BasicSupport:
             Map.empty
 
     def source(using ctx: Context) =
-      val path = sym.pos.sourceFile.jpath.toString
-      Map(sourceSet.getSourceSet -> (
-        new DocumentableSource:
-          override def getPath = path
-      ))         
+      val path = Some(sym.pos.sourceFile.jpath).filter(_ != null).map(_.toString)
+      path match{
+        case Some(p) => Map(sourceSet.getSourceSet -> new DocumentableSource { override def getPath = p })
+        case None => Map.empty
+      }   
   
   private val emptyDRI =  DRI.Companion.getTopLevel
 
