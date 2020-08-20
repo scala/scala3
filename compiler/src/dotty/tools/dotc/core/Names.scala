@@ -11,7 +11,6 @@ import scala.internal.Chars.isIdentifierStart
 import collection.immutable
 import config.Config
 import java.util.HashMap
-import Contexts.{Context, ctx}
 
 import scala.annotation.internal.sharable
 
@@ -640,32 +639,13 @@ object Names {
     termName(bs, offset, len).toTypeName
 
   /** Create a term name from a string.
-   *  See `termName(s: String, from: Int, len: Int) for a more efficient version
-   *  which however requires a Context for its operation
+   *  See `sliceToTermName` in `Decorators` for a more efficient version
+   *  which however requires a Context for its operation.
    */
   def termName(s: String): SimpleName = termName(s.toCharArray, 0, s.length)
 
   /** Create a type name from a string */
   def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
-
-  /** Create a term name from a string slice, using a common buffer.
-   *  This avoids some allocation relative to `termName(s: String)`
-   */
-  def termName(s: String, from: Int, len: Int)(using ctx: Contexts.Context): TermName = {
-    val base = ctx.base
-
-    while (len > base.nameCharBuffer.length)
-      base.nameCharBuffer = new Array[Char](base.nameCharBuffer.length * 2)
-
-    s.getChars(from, from + len, base.nameCharBuffer, 0)
-    termName(base.nameCharBuffer, 0, len)
-  }
-
-  /** Create a type name from a string slice, using a common buffer.
-   *  This avoids some allocation relative to `typeName(s: String)`
-   */
-  def typeName(s: String, from: Int, len: Int)(using Context): TypeName =
-    termName(s, from, len).toTypeName
 
   table(0) = new SimpleName(-1, 0, null)
 

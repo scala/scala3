@@ -5,7 +5,7 @@ package config
 import core.Contexts._
 import core.Names.TermName
 import core.StdNames.nme
-import core.Decorators.{given _}
+import core.Decorators.{_, given _}
 import util.Property
 
 enum SourceVersion:

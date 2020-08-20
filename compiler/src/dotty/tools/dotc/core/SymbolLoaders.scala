@@ -205,7 +205,7 @@ object SymbolLoaders {
     src.lastModified >= bin.lastModified
 
   private def nameOf(classRep: ClassRepresentation)(using Context): TermName =
-    termName(classRep.fileName, 0, classRep.nameLength)
+    classRep.fileName.sliceToTermName(0, classRep.nameLength)
 
   /** Load contents of a package
    */
