@@ -338,7 +338,7 @@ Schema => SemanticDB v4
 Uri => Classes.scala
 Text => empty
 Language => Scala
-Symbols => 106 entries
+Symbols => 109 entries
 Occurrences => 130 entries
 
 Symbols:
@@ -363,6 +363,7 @@ classes/C3#x. => val method x
 classes/C3. => final object C3
 classes/C3.apply(). => method apply
 classes/C3.apply().(x) => param x
+classes/C3.toString(). => method toString
 classes/C3.unapply(). => method unapply
 classes/C3.unapply().(x$1) => param x$1
 classes/C4# => case class C4
@@ -376,6 +377,7 @@ classes/C4#x. => val method x
 classes/C4. => final object C4
 classes/C4.apply(). => method apply
 classes/C4.apply().(x) => param x
+classes/C4.toString(). => method toString
 classes/C4.unapply(). => method unapply
 classes/C4.unapply().(x$1) => param x$1
 classes/C6# => case class C6
@@ -389,6 +391,7 @@ classes/C6#x. => val method x
 classes/C6. => final object C6
 classes/C6.apply(). => method apply
 classes/C6.apply().(x) => param x
+classes/C6.toString(). => method toString
 classes/C6.unapply(). => method unapply
 classes/C6.unapply().(x$1) => param x$1
 classes/C7# => class C7
@@ -638,7 +641,7 @@ Schema => SemanticDB v4
 Uri => Enums.scala
 Text => empty
 Language => Scala
-Symbols => 167 entries
+Symbols => 169 entries
 Occurrences => 203 entries
 
 Symbols:
@@ -706,6 +709,7 @@ _empty_/Enums.Maybe.Just. => final object Just
 _empty_/Enums.Maybe.Just.apply(). => method apply
 _empty_/Enums.Maybe.Just.apply().(value) => param value
 _empty_/Enums.Maybe.Just.apply().[A] => typeparam A
+_empty_/Enums.Maybe.Just.toString(). => method toString
 _empty_/Enums.Maybe.Just.unapply(). => method unapply
 _empty_/Enums.Maybe.Just.unapply().(x$1) => param x$1
 _empty_/Enums.Maybe.Just.unapply().[A] => typeparam A
@@ -797,6 +801,7 @@ _empty_/Enums.`<:<`.Refl#ordinal(). => method ordinal
 _empty_/Enums.`<:<`.Refl. => final object Refl
 _empty_/Enums.`<:<`.Refl.apply(). => method apply
 _empty_/Enums.`<:<`.Refl.apply().[C] => typeparam C
+_empty_/Enums.`<:<`.Refl.toString(). => method toString
 _empty_/Enums.`<:<`.Refl.unapply(). => method unapply
 _empty_/Enums.`<:<`.Refl.unapply().(x$1) => param x$1
 _empty_/Enums.`<:<`.Refl.unapply().[C] => typeparam C
@@ -2075,7 +2080,7 @@ Schema => SemanticDB v4
 Uri => NamedApplyBlock.scala
 Text => empty
 Language => Scala
-Symbols => 45 entries
+Symbols => 46 entries
 Occurrences => 46 entries
 
 Symbols:
@@ -2104,6 +2109,7 @@ example/NamedApplyBlockCaseClassConstruction.Msg.apply(). => method apply
 example/NamedApplyBlockCaseClassConstruction.Msg.apply().(body) => param body
 example/NamedApplyBlockCaseClassConstruction.Msg.apply().(head) => param head
 example/NamedApplyBlockCaseClassConstruction.Msg.apply().(tail) => param tail
+example/NamedApplyBlockCaseClassConstruction.Msg.toString(). => method toString
 example/NamedApplyBlockCaseClassConstruction.Msg.unapply(). => method unapply
 example/NamedApplyBlockCaseClassConstruction.Msg.unapply().(x$1) => param x$1
 example/NamedApplyBlockCaseClassConstruction.bodyText. => val method bodyText
@@ -2181,7 +2187,7 @@ Schema => SemanticDB v4
 Uri => NamedArguments.scala
 Text => empty
 Language => Scala
-Symbols => 15 entries
+Symbols => 16 entries
 Occurrences => 13 entries
 
 Symbols:
@@ -2197,6 +2203,7 @@ example/NamedArguments#User#name. => val method name
 example/NamedArguments#User. => final object User
 example/NamedArguments#User.apply(). => method apply
 example/NamedArguments#User.apply().(name) => param name
+example/NamedArguments#User.toString(). => method toString
 example/NamedArguments#User.unapply(). => method unapply
 example/NamedArguments#User.unapply().(x$1) => param x$1
 example/NamedArguments#`<init>`(). => primary ctor <init>
@@ -2434,7 +2441,7 @@ Schema => SemanticDB v4
 Uri => Synthetic.scala
 Text => empty
 Language => Scala
-Symbols => 37 entries
+Symbols => 38 entries
 Occurrences => 162 entries
 
 Symbols:
@@ -2460,6 +2467,7 @@ example/Synthetic#s.Bar#`<init>`(). => primary ctor <init>
 example/Synthetic#s.Bar#copy(). => method copy
 example/Synthetic#s.Bar. => final object Bar
 example/Synthetic#s.Bar.apply(). => method apply
+example/Synthetic#s.Bar.toString(). => method toString
 example/Synthetic#s.Bar.unapply(). => method unapply
 example/Synthetic#s.Bar.unapply().(x$1) => param x$1
 example/Synthetic#s.apply(). => method apply
@@ -3116,7 +3124,7 @@ Schema => SemanticDB v4
 Uri => recursion.scala
 Text => empty
 Language => Scala
-Symbols => 35 entries
+Symbols => 36 entries
 Occurrences => 56 entries
 
 Symbols:
@@ -3148,6 +3156,7 @@ recursion/Nats.Succ. => final object Succ
 recursion/Nats.Succ.apply(). => method apply
 recursion/Nats.Succ.apply().(p) => param p
 recursion/Nats.Succ.apply().[N] => typeparam N
+recursion/Nats.Succ.toString(). => method toString
 recursion/Nats.Succ.unapply(). => method unapply
 recursion/Nats.Succ.unapply().(x$1) => param x$1
 recursion/Nats.Succ.unapply().[N] => typeparam N
@@ -3403,7 +3412,7 @@ Schema => SemanticDB v4
 Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
-Symbols => 140 entries
+Symbols => 142 entries
 Occurrences => 250 entries
 
 Symbols:
@@ -3431,6 +3440,7 @@ types/Foo#s. => val method s
 types/Foo. => final object Foo
 types/Foo.apply(). => method apply
 types/Foo.apply().(s) => param s
+types/Foo.toString(). => method toString
 types/Foo.unapply(). => method unapply
 types/Foo.unapply().(x$1) => param x$1
 types/Foo.x. => val method x
@@ -3482,6 +3492,7 @@ types/Test.C#RepeatedType#s. => val method s
 types/Test.C#RepeatedType. => final object RepeatedType
 types/Test.C#RepeatedType.apply(). => method apply
 types/Test.C#RepeatedType.apply().(s) => param s
+types/Test.C#RepeatedType.toString(). => method toString
 types/Test.C#RepeatedType.unapplySeq(). => method unapplySeq
 types/Test.C#RepeatedType.unapplySeq().(x$1) => param x$1
 types/Test.C#TypeType. => final object TypeType
@@ -3808,7 +3819,7 @@ Schema => SemanticDB v4
 Uri => semanticdb-extract.scala
 Text => empty
 Language => Scala
-Symbols => 17 entries
+Symbols => 18 entries
 Occurrences => 22 entries
 
 Symbols:
@@ -3824,6 +3835,7 @@ _empty_/AnObject.Foo#x. => val method x
 _empty_/AnObject.Foo. => final object Foo
 _empty_/AnObject.Foo.apply(). => method apply
 _empty_/AnObject.Foo.apply().(x) => param x
+_empty_/AnObject.Foo.toString(). => method toString
 _empty_/AnObject.Foo.unapply(). => method unapply
 _empty_/AnObject.Foo.unapply().(x$1) => param x$1
 _empty_/AnObject.foo(). => method foo
