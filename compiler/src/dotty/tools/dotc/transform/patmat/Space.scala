@@ -466,16 +466,25 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
     tp match {
       case tp @ AppliedType(tycon, args) =>
-        if (tycon.isRef(defn.ArrayClass)) tp.derivedAppliedType(tycon, args.map(arg => erase(arg, inArray = true)))
-        else tp.derivedAppliedType(tycon, args.map(arg => erase(arg, inArray = false)))
+        if tycon.typeSymbol.isPatternBound then return WildcardType
+
+        val args2 =
+          if (tycon.isRef(defn.ArrayClass)) args.map(arg => erase(arg, inArray = true))
+          else args.map(arg => erase(arg, inArray = false))
+        tp.derivedAppliedType(erase(tycon, inArray), args2)
+
       case OrType(tp1, tp2) =>
         OrType(erase(tp1, inArray), erase(tp2, inArray))
+
       case AndType(tp1, tp2) =>
         AndType(erase(tp1, inArray), erase(tp2, inArray))
+
       case tp @ RefinedType(parent, _, _) =>
         erase(parent)
+
       case tref: TypeRef if tref.typeSymbol.isPatternBound =>
         if (inArray) tref.underlying else WildcardType
+
       case _ => tp
     }
   }
@@ -526,7 +535,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
-        inContext(ctx.fresh.setNewTyperState()) {
+        inContext(ctx.fresh.setExploreTyperState()) {
           val tvars = pt.paramInfos.map(newTypeVar)
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
           scrutineeTp <:< mt.paramInfos(0)
