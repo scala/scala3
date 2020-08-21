@@ -1083,6 +1083,37 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
+  inline val MapRecursionLimit = 10
+
+  extension (trees: List[Tree])
+
+    /** A map that expands to a recursive function. It's equivalent to
+     *
+     *    flatten(trees.mapConserve(op))
+     *
+     *  and falls back to it after `MaxRecursionLimit` recursions.
+     *  Before that it uses a simpler method that uses stackspace
+     *  instead of heap.
+     *  Note `op` is duplicated in the generated code, so it should be
+     *  kept small.
+     */
+    inline def mapInline(inline op: Tree => Tree): List[Tree] =
+      def recur(trees: List[Tree], count: Int): List[Tree] =
+        if count > MapRecursionLimit then
+          // use a slower implementation that avoids stack overflows
+          flatten(trees.mapConserve(op))
+        else trees match
+          case tree :: rest =>
+            val tree1 = op(tree)
+            val rest1 = recur(rest, count + 1)
+            if (tree1 eq tree) && (rest1 eq rest) then trees
+            else tree1 match
+              case Thicket(elems1) => elems1 ::: rest1
+              case _ => tree1 :: rest1
+          case nil => nil
+      recur(trees, 0)
+  end extension
+
   /** Map Inlined nodes, NamedArgs, Blocks with no statements and local references to underlying arguments.
    *  Also drops Inline and Block with no statements.
    */
