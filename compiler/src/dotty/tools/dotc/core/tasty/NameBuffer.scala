@@ -35,7 +35,7 @@ class NameBuffer extends TastyBuffer(10000) {
           case AnyQualifiedName(prefix, name) =>
             nameIndex(prefix); nameIndex(name)
           case AnyUniqueName(original, separator, num) =>
-            nameIndex(separator.toTermName)
+            nameIndex(separator)
             if (!original.isEmpty) nameIndex(original)
           case DerivedName(original, _) =>
             nameIndex(original)
@@ -82,7 +82,7 @@ class NameBuffer extends TastyBuffer(10000) {
         withLength { writeNameRef(prefix); writeNameRef(name) }
       case AnyUniqueName(original, separator, num) =>
         withLength {
-          writeNameRef(separator.toTermName)
+          writeNameRef(separator)
           writeNat(num)
           if (!original.isEmpty) writeNameRef(original)
         }
