@@ -174,6 +174,8 @@ object Build {
     fork in Test := true,
     parallelExecution in Test := false,
 
+    outputStrategy := Some(StdoutOutput),
+
     // enable verbose exception messages for JUnit
     testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
   )
@@ -335,7 +337,6 @@ object Build {
   )
 
   lazy val commonBenchmarkSettings = Seq(
-    outputStrategy := Some(StdoutOutput),
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
     javaOptions += "-DBENCH_COMPILER_CLASS_PATH=" + Attributed.data((fullClasspath in (`dotty-bootstrapped`, Compile)).value).mkString("", File.pathSeparator, ""),
     javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in (`dotty-library-bootstrapped`, Compile)).value).mkString("", File.pathSeparator, "")
@@ -404,7 +405,6 @@ object Build {
 
   def dottyDocSettings(implicit mode: Mode) = Seq(
     connectInput in run := true,
-    outputStrategy := Some(StdoutOutput),
 
     javaOptions ++= (javaOptions in `dotty-compiler`).value,
 
@@ -466,7 +466,6 @@ object Build {
   lazy val commonDottyCompilerSettings = Seq(
       // set system in/out for repl
       connectInput in run := true,
-      outputStrategy := Some(StdoutOutput),
 
       // Generate compiler.properties, used by sbt
       resourceGenerators in Compile += Def.task {
@@ -1138,6 +1137,26 @@ object Build {
             )).get
         )
       }
+    )
+
+  lazy val sjsCompilerTests = project.in(file("sjs-compiler-tests")).
+    dependsOn(`dotty-compiler` % "test->test").
+    settings(
+      commonNonBootstrappedSettings,
+
+      // Change the baseDirectory when running the tests
+      baseDirectory in Test := baseDirectory.value.getParentFile,
+
+      javaOptions ++= (javaOptions in `dotty-compiler`).value,
+      javaOptions ++= {
+        val externalJSDeps = (externalDependencyClasspath in (`dotty-library-bootstrappedJS`, Compile)).value
+        val dottyLibraryJSJar = (packageBin in (`dotty-library-bootstrappedJS`, Compile)).value.getAbsolutePath
+
+        Seq(
+          "-Ddotty.tests.classes.dottyLibraryJS=" + dottyLibraryJSJar,
+          "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
+        )
+      },
     )
 
   lazy val `dotty-bench` = project.in(file("bench")).asDottyBench(NonBootstrapped)
