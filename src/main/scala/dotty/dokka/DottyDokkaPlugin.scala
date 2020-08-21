@@ -33,7 +33,7 @@ class DottyDokkaPlugin extends JavaDokkaPlugin:
       inspector.inspect(dottyConfig.docConfiguration.args.classpath, dottyConfig.docConfiguration.tastyFiles)
     
       new DModule(
-        sourceSet.getSourceSet.getSourceSetID.getModuleName,
+        sourceSet.getSourceSet.getModuleDisplayName,
         inspector.result().asJava,
         Map().asJava,
         null,

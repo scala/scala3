@@ -25,6 +25,9 @@ class RawArgs:
     @COption(name="--classpath", aliases = Array("--cp", "-c"), usage="Classpath to load dependencies from")
     private var classpath: String = System.getProperty("java.class.path")
 
+    @COption(name="--name", required = true, aliases = Array("-n"), usage="Name of module in generated documentation")
+    private var name: String = "main"
+
     @COption(name="--docs", aliases = Array("-d"), usage="Root of project docs")
     private var docsRoot: String =  null
     
@@ -50,6 +53,7 @@ class RawArgs:
             case some => some
 
       Args(
+        name,
         tastyRoots.split(File.pathSeparatorChar).toList.map(new File(_)),
         classpath,
         new File(output),
@@ -62,6 +66,7 @@ class RawArgs:
 
 
 case class Args(
+  name: String,
   tastyRoots: Seq[File],
   classpath: String,
   output: File,
