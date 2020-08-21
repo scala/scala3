@@ -1,6 +1,7 @@
 package scala.internal.quoted
 
 import scala.quoted._
+import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
 /** An Expr backed by a tree. Only the current compiler trees are allowed.
  *
@@ -19,7 +20,7 @@ import scala.quoted._
   }
 
   def unseal(using qctx: QuoteContext): qctx.tasty.Term =
-    if (qctx.tasty.internal.compilerId != scopeId)
+    if (quoteContextWithCompilerInterface(qctx).tasty.compilerId != scopeId)
       throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
     tree.asInstanceOf[qctx.tasty.Term]
 

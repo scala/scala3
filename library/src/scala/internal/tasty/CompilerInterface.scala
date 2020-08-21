@@ -4,110 +4,8 @@ import scala.quoted.QuoteContext
 import scala.tasty.reflect._
 import scala.internal.quoted.Unpickler
 
-/** Tasty reflect abstract types
- *
- *  ```none
- *
- *  +- Tree -+- PackageClause
- *           +- Import
- *           +- Statement -+- Definition --+- PackageDef
- *           |             |               +- ClassDef
- *           |             |               +- TypeDef
- *           |             |               +- DefDef
- *           |             |               +- ValDef
- *           |             |
- *           |             +- Term --------+- Ref -+- Ident
- *           |                             |       +- Select
- *           |                             |
- *           |                             +- Literal
- *           |                             +- This
- *           |                             +- New
- *           |                             +- NamedArg
- *           |                             +- Apply
- *           |                             +- TypeApply
- *           |                             +- Super
- *           |                             +- Typed
- *           |                             +- Assign
- *           |                             +- Block
- *           |                             +- Closure
- *           |                             +- If
- *           |                             +- Match
- *           |                             +- GivenMatch
- *           |                             +- Try
- *           |                             +- Return
- *           |                             +- Repeated
- *           |                             +- Inlined
- *           |                             +- SelectOuter
- *           |                             +- While
- *           |
- *           |
- *           +- TypeTree ----+- Inferred
- *           |               +- TypeIdent
- *           |               +- TypeSelect
- *           |               +- Projection
- *           |               +- Singleton
- *           |               +- Refined
- *           |               +- Applied
- *           |               +- Annotated
- *           |               +- MatchTypeTree
- *           |               +- ByName
- *           |               +- LambdaTypeTree
- *           |               +- TypeBind
- *           |               +- TypeBlock
- *           |
- *           +- TypeBoundsTree
- *           +- WildcardTypeTree
- *           |
- *           +- CaseDef
- *           +- TypeCaseDef
- *           |
- *           +- Bind
- *           +- Unapply
- *           +- Alternatives
- *
- *                   +- NoPrefix
- *  +- TypeOrBounds -+- TypeBounds
- *                   |
- *                   +- Type -------+- ConstantType
- *                                  +- TermRef
- *                                  +- TypeRef
- *                                  +- SuperType
- *                                  +- Refinement
- *                                  +- AppliedType
- *                                  +- AnnotatedType
- *                                  +- AndType
- *                                  +- OrType
- *                                  +- MatchType
- *                                  +- ByNameType
- *                                  +- ParamRef
- *                                  +- ThisType
- *                                  +- RecursiveThis
- *                                  +- RecursiveType
- *                                  +- LambdaType[ParamInfo <: TypeOrBounds] -+- MethodType
- *                                                                            +- PolyType
- *                                                                            +- TypeLambda
- *
- *  +- ImportSelector -+- SimpleSelector
- *                     +- RenameSelector
- *                     +- OmitSelector
- *
- *  +- Id
- *
- *  +- Signature
- *
- *  +- Position
- *
- *  +- Comment
- *
- *  +- Constant
- *
- *  +- Symbol
- *
- *  +- Flags
- *
- *  ```
- */
-trait CompilerInterface {
+/** Part of the reflection interface that needs to be implemented by the compiler */
+trait CompilerInterface extends scala.tasty.reflect.Types {
 
   /** Context of the macro expansion */
   def rootContext: Context
@@ -134,9 +32,6 @@ trait CompilerInterface {
   /////////////
   // CONTEXT //
   /////////////
-
-  /** Compilation context */
-  type Context <: AnyRef
 
   /** Returns the owner of the context */
   def Context_owner(self: Context): Symbol
@@ -189,14 +84,8 @@ trait CompilerInterface {
   //  TREES  //
   /////////////
 
-  /** Tree representing code written in the source */
-  type Tree <: AnyRef
-
   def Tree_pos(self: Tree)(using ctx: Context): Position
   def Tree_symbol(self: Tree)(using ctx: Context): Symbol
-
-  /** Tree representing a pacakage clause in the source code */
-  type PackageClause <: Tree
 
   def PackageClause_TypeTest(using ctx: Context): TypeTest[Tree, PackageClause]
 
@@ -207,13 +96,7 @@ trait CompilerInterface {
 
   def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree])(using ctx: Context): PackageClause
 
-  /** Tree representing a statement in the source code */
-  type Statement <: Tree
-
   def Statement_TypeTest(using ctx: Context): TypeTest[Tree, Statement]
-
-  /** Tree representing an import in the source code */
-  type Import <: Statement
 
   def Import_TypeTest(using ctx: Context): TypeTest[Tree, Import]
 
@@ -225,23 +108,14 @@ trait CompilerInterface {
 
   def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(using ctx: Context): Import
 
-  /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
-  type Definition <: Statement
-
   def Definition_TypeTest(using ctx: Context): TypeTest[Tree, Definition]
 
   def Definition_name(self: Definition)(using ctx: Context): String
-
-  /** Tree representing a package definition. This includes definitions in all source files */
-  type PackageDef <: Definition
 
   def PackageDef_TypeTest(using ctx: Context): TypeTest[Tree, PackageDef]
 
   def PackageDef_owner(self: PackageDef)(using ctx: Context): PackageDef
   def PackageDef_members(self: PackageDef)(using ctx: Context): List[Statement]
-
-  /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
-  type ClassDef <: Definition
 
   def ClassDef_TypeTest(using ctx: Context): TypeTest[Tree, ClassDef]
 
@@ -253,18 +127,12 @@ trait CompilerInterface {
 
   def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(using ctx: Context): ClassDef
 
-  /** Tree representing a type (parameter or member) definition in the source code */
-  type TypeDef <: Definition
-
   def TypeDef_TypeTest(using ctx: Context): TypeTest[Tree, TypeDef]
 
   def TypeDef_rhs(self: TypeDef)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
 
   def TypeDef_apply(symbol: Symbol)(using ctx: Context): TypeDef
   def TypeDef_copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): TypeDef
-
-  /** Tree representing a method definition in the source code */
-  type DefDef <: Definition
 
   def DefDef_TypeTest(using ctx: Context): TypeTest[Tree, DefDef]
 
@@ -276,9 +144,6 @@ trait CompilerInterface {
   def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(using ctx: Context): DefDef
   def DefDef_copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(using ctx: Context): DefDef
 
-  /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter definitions. */
-  type ValDef <: Definition
-
   def ValDef_TypeTest(using ctx: Context): TypeTest[Tree, ValDef]
 
   def ValDef_tpt(self: ValDef)(using ctx: Context): TypeTree
@@ -287,18 +152,12 @@ trait CompilerInterface {
   def ValDef_apply(symbol: Symbol, rhs: Option[Term])(using ctx: Context): ValDef
   def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(using ctx: Context): ValDef
 
-  /** Tree representing an expression in the source code */
-  type Term <: Statement
-
   def Term_TypeTest(using ctx: Context): TypeTest[Tree, Term]
 
   def Term_tpe(self: Term)(using ctx: Context): Type
   def Term_underlyingArgument(self: Term)(using ctx: Context): Term
   def Term_underlying(self: Term)(using ctx: Context): Term
   def Term_etaExpand(term: Term)(using ctx: Context): Term
-
-  /** Tree representing a reference to definition */
-  type Ref <: Term
 
   def Ref_TypeTest(using ctx: Context): TypeTest[Tree, Ref]
 
@@ -307,18 +166,12 @@ trait CompilerInterface {
 
   def Ref_apply(sym: Symbol)(using ctx: Context): Ref
 
-  /** Tree representing a reference to definition with a given name */
-  type Ident <: Ref
-
   def Ident_TypeTest(using ctx: Context): TypeTest[Tree, Ident]
 
   def Ident_name(self: Ident)(using ctx: Context): String
 
   def Ident_apply(tmref: TermRef)(using ctx: Context): Term
   def Ident_copy(original: Tree)(name: String)(using ctx: Context): Ident
-
-  /** Tree representing a selection of definition with a given name on a given prefix */
-  type Select <: Ref
 
   def Select_TypeTest(using ctx: Context): TypeTest[Tree, Select]
 
@@ -332,18 +185,12 @@ trait CompilerInterface {
   def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(using ctx: Context): Apply
   def Select_copy(original: Tree)(qualifier: Term, name: String)(using ctx: Context): Select
 
-  /** Tree representing a literal value in the source code */
-  type Literal <: Term
-
   def Literal_TypeTest(using ctx: Context): TypeTest[Tree, Literal]
 
   def Literal_constant(self: Literal)(using ctx: Context): Constant
 
   def Literal_apply(constant: Constant)(using ctx: Context): Literal
   def Literal_copy(original: Tree)(constant: Constant)(using ctx: Context): Literal
-
-  /** Tree representing `this` in the source code */
-  type This <: Term
 
   def This_TypeTest(using ctx: Context): TypeTest[Tree, This]
 
@@ -352,18 +199,12 @@ trait CompilerInterface {
   def This_apply(cls: Symbol)(using ctx: Context): This
   def This_copy(original: Tree)(qual: Option[Id])(using ctx: Context): This
 
-  /** Tree representing `new` in the source code */
-  type New <: Term
-
   def New_TypeTest(using ctx: Context): TypeTest[Tree, New]
 
   def New_tpt(self: New)(using ctx: Context): TypeTree
 
   def New_apply(tpt: TypeTree)(using ctx: Context): New
   def New_copy(original: Tree)(tpt: TypeTree)(using ctx: Context): New
-
-  /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
-  type NamedArg <: Term
 
   def NamedArg_TypeTest(using ctx: Context): TypeTest[Tree, NamedArg]
 
@@ -373,9 +214,6 @@ trait CompilerInterface {
   def NamedArg_apply(name: String, arg: Term)(using ctx: Context): NamedArg
   def NamedArg_copy(original: Tree)(name: String, arg: Term)(using ctx: Context): NamedArg
 
-  /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s */
-  type Apply <: Term
-
   def Apply_TypeTest(using ctx: Context): TypeTest[Tree, Apply]
 
   def Apply_fun(self: Apply)(using ctx: Context): Term
@@ -383,9 +221,6 @@ trait CompilerInterface {
 
   def Apply_apply(fn: Term, args: List[Term])(using ctx: Context): Apply
   def Apply_copy(original: Tree)(fun: Term, args: List[Term])(using ctx: Context): Apply
-
-  /** Tree an application of type arguments */
-  type TypeApply <: Term
 
   def TypeApply_TypeTest(using ctx: Context): TypeTest[Tree, TypeApply]
 
@@ -395,9 +230,6 @@ trait CompilerInterface {
   def TypeApply_apply(fn: Term, args: List[TypeTree])(using ctx: Context): TypeApply
   def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(using ctx: Context): TypeApply
 
-  /** Tree representing `super` in the source code */
-  type Super <: Term
-
   def Super_TypeTest(using ctx: Context): TypeTest[Tree, Super]
 
   def Super_qualifier(self: Super)(using ctx: Context): Term
@@ -405,9 +237,6 @@ trait CompilerInterface {
 
   def Super_apply(qual: Term, mix: Option[Id])(using ctx: Context): Super
   def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(using ctx: Context): Super
-
-  /** Tree representing a type ascription `x: T` in the source code */
-  type Typed <: Term
 
   def Typed_TypeTest(using ctx: Context): TypeTest[Tree, Typed]
 
@@ -417,9 +246,6 @@ trait CompilerInterface {
   def Typed_apply(expr: Term, tpt: TypeTree)(using ctx: Context): Typed
   def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(using ctx: Context): Typed
 
-  /** Tree representing an assignment `x = y` in the source code */
-  type Assign <: Term
-
   def Assign_TypeTest(using ctx: Context): TypeTest[Tree, Assign]
 
   def Assign_lhs(self: Assign)(using ctx: Context): Term
@@ -428,9 +254,6 @@ trait CompilerInterface {
   def Assign_apply(lhs: Term, rhs: Term)(using ctx: Context): Assign
   def Assign_copy(original: Tree)(lhs: Term, rhs: Term)(using ctx: Context): Assign
 
-  /** Tree representing a block `{ ... }` in the source code */
-  type Block <: Term
-
   def Block_TypeTest(using ctx: Context): TypeTest[Tree, Block]
 
   def Block_statements(self: Block)(using ctx: Context): List[Statement]
@@ -438,17 +261,6 @@ trait CompilerInterface {
 
   def Block_apply(stats: List[Statement], expr: Term)(using ctx: Context): Block
   def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(using ctx: Context): Block
-
-  /** A lambda `(...) => ...` in the source code is represented as
-   *  a local method and a closure:
-   *
-   *  {
-   *    def m(...) = ...
-   *    closure(m)
-   *  }
-   *
-   */
-  type Closure <: Term
 
   def Closure_TypeTest(using ctx: Context): TypeTest[Tree, Closure]
 
@@ -460,9 +272,6 @@ trait CompilerInterface {
 
   def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(using ctx: Context): Block
 
-  /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
-  type If <: Term
-
   def If_TypeTest(using ctx: Context): TypeTest[Tree, If]
 
   def If_cond(self: If)(using ctx: Context): Term
@@ -472,9 +281,6 @@ trait CompilerInterface {
   def If_apply(cond: Term, thenp: Term, elsep: Term)(using ctx: Context): If
   def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(using ctx: Context): If
 
-  /** Tree representing a pattern match `x match  { ... }` in the source code */
-  type Match <: Term
-
   def Match_TypeTest(using ctx: Context): TypeTest[Tree, Match]
 
   def Match_scrutinee(self: Match)(using ctx: Context): Term
@@ -483,18 +289,12 @@ trait CompilerInterface {
   def Match_apply(selector: Term, cases: List[CaseDef])(using ctx: Context): Match
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(using ctx: Context): Match
 
-  /** Tree representing a pattern match `given match  { ... }` in the source code */
-  type GivenMatch <: Term
-
   def GivenMatch_TypeTest(using ctx: Context): TypeTest[Tree, GivenMatch]
 
   def GivenMatch_cases(self: GivenMatch)(using ctx: Context): List[CaseDef]
 
   def GivenMatch_apply(cases: List[CaseDef])(using ctx: Context): GivenMatch
   def GivenMatch_copy(original: Tree)(cases: List[CaseDef])(using ctx: Context): GivenMatch
-
-  /** Tree representing a tyr catch `try x catch { ... } finally { ... }` in the source code */
-  type Try <: Term
 
   def Try_TypeTest(using ctx: Context): TypeTest[Tree, Try]
 
@@ -505,18 +305,12 @@ trait CompilerInterface {
   def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using ctx: Context): Try
   def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using ctx: Context): Try
 
-  /** Tree representing a `return` in the source code */
-  type Return <: Term
-
   def Return_TypeTest(using ctx: Context): TypeTest[Tree, Return]
 
   def Return_expr(self: Return)(using ctx: Context): Term
 
   def Return_apply(expr: Term)(using ctx: Context): Return
   def Return_copy(original: Tree)(expr: Term)(using ctx: Context): Return
-
-  /** Tree representing a variable argument list in the source code */
-  type Repeated <: Term
 
   def Repeated_TypeTest(using ctx: Context): TypeTest[Tree, Repeated]
 
@@ -525,9 +319,6 @@ trait CompilerInterface {
 
   def Repeated_apply(elems: List[Term], elemtpt: TypeTree)(using ctx: Context): Repeated
   def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(using ctx: Context): Repeated
-
-  /** Tree representing the scope of an inlined tree */
-  type Inlined <: Term
 
   def Inlined_TypeTest(using ctx: Context): TypeTest[Tree, Inlined]
 
@@ -538,9 +329,6 @@ trait CompilerInterface {
   def Inlined_apply(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(using ctx: Context): Inlined
   def Inlined_copy(original: Tree)(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(using ctx: Context): Inlined
 
-  /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
-  type SelectOuter <: Term
-
   def SelectOuter_TypeTest(using ctx: Context): TypeTest[Tree, SelectOuter]
 
   def SelectOuter_qualifier(self: SelectOuter)(using ctx: Context): Term
@@ -548,9 +336,6 @@ trait CompilerInterface {
 
   def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(using ctx: Context): SelectOuter
   def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(using ctx: Context): SelectOuter
-
-  /** Tree representing a while loop */
-  type While <: Term
 
   def While_TypeTest(using ctx: Context): TypeTest[Tree, While]
 
@@ -560,15 +345,9 @@ trait CompilerInterface {
   def While_apply(cond: Term, body: Term)(using ctx: Context): While
   def While_copy(original: Tree)(cond: Term, body: Term)(using ctx: Context): While
 
-  /** Type tree representing a type written in the source */
-  type TypeTree <: Tree
-
   def TypeTree_TypeTest(using ctx: Context): TypeTest[Tree, TypeTree]
 
   def TypeTree_tpe(self: TypeTree)(using ctx: Context): Type
-
-  /** Type tree representing an inferred type */
-  type Inferred <: TypeTree
 
   def Inferred_TypeTest(using ctx: Context): TypeTest[Tree, Inferred]
 
@@ -576,17 +355,11 @@ trait CompilerInterface {
 
   def TypeRef_apply(sym: Symbol)(using ctx: Context): TypeTree
 
-  /** Type tree representing a reference to definition with a given name */
-  type TypeIdent <: TypeTree
-
   def TypeIdent_TypeTest(using ctx: Context): TypeTest[Tree, TypeIdent]
 
   def TypeIdent_name(self: TypeIdent)(using ctx: Context): String
 
   def TypeIdent_copy(original: Tree)(name: String)(using ctx: Context): TypeIdent
-
-  /** Type tree representing a selection of definition with a given name on a given term prefix */
-  type TypeSelect <: TypeTree
 
   def TypeSelect_TypeTest(using ctx: Context): TypeTest[Tree, TypeSelect]
 
@@ -596,18 +369,12 @@ trait CompilerInterface {
   def TypeSelect_apply(qualifier: Term, name: String)(using ctx: Context): TypeSelect
   def TypeSelect_copy(original: Tree)(qualifier: Term, name: String)(using ctx: Context): TypeSelect
 
-  /** Type tree representing a selection of definition with a given name on a given type prefix */
-  type Projection <: TypeTree
-
   def Projection_TypeTest(using ctx: Context): TypeTest[Tree, Projection]
 
   def Projection_qualifier(self: Projection)(using ctx: Context): TypeTree
   def Projection_name(self: Projection)(using ctx: Context): String
 
   def Projection_copy(original: Tree)(qualifier: TypeTree, name: String)(using ctx: Context): Projection
-
-  /** Type tree representing a singleton type */
-  type Singleton <: TypeTree
 
   def Singleton_TypeTest(using ctx: Context): TypeTest[Tree, Singleton]
 
@@ -616,18 +383,12 @@ trait CompilerInterface {
   def Singleton_apply(ref: Term)(using ctx: Context): Singleton
   def Singleton_copy(original: Tree)(ref: Term)(using ctx: Context): Singleton
 
-  /** Type tree representing a type refinement */
-  type Refined <: TypeTree
-
   def Refined_TypeTest(using ctx: Context): TypeTest[Tree, Refined]
 
   def Refined_tpt(self: Refined)(using ctx: Context): TypeTree
   def Refined_refinements(self: Refined)(using ctx: Context): List[Definition]
 
   def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(using ctx: Context): Refined
-
-  /** Type tree representing a type application */
-  type Applied <: TypeTree
 
   def Applied_TypeTest(using ctx: Context): TypeTest[Tree, Applied]
 
@@ -637,9 +398,6 @@ trait CompilerInterface {
   def Applied_apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(using ctx: Context): Applied
   def Applied_copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(using ctx: Context): Applied
 
-  /** Type tree representing an annotated type */
-  type Annotated <: TypeTree
-
   def Annotated_TypeTest(using ctx: Context): TypeTest[Tree, Annotated]
 
   def Annotated_arg(self: Annotated)(using ctx: Context): TypeTree
@@ -647,9 +405,6 @@ trait CompilerInterface {
 
   def Annotated_apply(arg: TypeTree, annotation: Term)(using ctx: Context): Annotated
   def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term)(using ctx: Context): Annotated
-
-  /** Type tree representing a type match */
-  type MatchTypeTree <: TypeTree
 
   def MatchTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, MatchTypeTree]
 
@@ -660,18 +415,12 @@ trait CompilerInterface {
   def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using ctx: Context): MatchTypeTree
   def MatchTypeTree_copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using ctx: Context): MatchTypeTree
 
-  /** Type tree representing a by name parameter */
-  type ByName <: TypeTree
-
   def ByName_result(self: ByName)(using ctx: Context): TypeTree
 
   def ByName_TypeTest(using ctx: Context): TypeTest[Tree, ByName]
 
   def ByName_apply(result: TypeTree)(using ctx: Context): ByName
   def ByName_copy(original: Tree)(result: TypeTree)(using ctx: Context): ByName
-
-  /** Type tree representing a lambda abstraction type */
-  type LambdaTypeTree <: TypeTree
 
   def LambdaTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, LambdaTypeTree]
 
@@ -681,18 +430,12 @@ trait CompilerInterface {
   def Lambdaapply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): LambdaTypeTree
   def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): LambdaTypeTree
 
-  /** Type tree representing a type binding */
-  type TypeBind <: TypeTree
-
   def TypeBind_TypeTest(using ctx: Context): TypeTest[Tree, TypeBind]
 
   def TypeBind_name(self: TypeBind)(using ctx: Context): String
   def TypeBind_body(self: TypeBind)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
 
   def TypeBind_copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): TypeBind
-
-  /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
-  type TypeBlock <: TypeTree
 
   def TypeBlock_TypeTest(using ctx: Context): TypeTest[Tree, TypeBlock]
 
@@ -702,27 +445,15 @@ trait CompilerInterface {
   def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(using ctx: Context): TypeBlock
   def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(using ctx: Context): TypeBlock
 
-  /** Type tree representing a type bound written in the source */
-  type TypeBoundsTree <: Tree /*TypeTree | TypeBoundsTree*/
-
   def TypeBoundsTree_TypeTest(using ctx: Context): TypeTest[Tree, TypeBoundsTree]
 
   def TypeBoundsTree_tpe(self: TypeBoundsTree)(using ctx: Context): TypeBounds
   def TypeBoundsTree_low(self: TypeBoundsTree)(using ctx: Context): TypeTree
   def TypeBoundsTree_hi(self: TypeBoundsTree)(using ctx: Context): TypeTree
 
-  /** Type tree representing wildcard type bounds written in the source.
-    *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
-    *  represents a type but has `TypeBound`a inside.
-    */
-  type WildcardTypeTree <: Tree
-
   def WildcardTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, WildcardTypeTree]
 
   def WildcardTypeTree_tpe(self: WildcardTypeTree)(using ctx: Context): TypeOrBounds
-
-  /** Branch of a pattern match or catch clause */
-  type CaseDef <: Tree
 
   def CaseDef_TypeTest(using ctx: Context): TypeTest[Tree, CaseDef]
 
@@ -732,9 +463,6 @@ trait CompilerInterface {
 
   def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term)(using ctx: Context): CaseDef
   def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term)(using ctx: Context): CaseDef
-
-  /** Branch of a type pattern match */
-  type TypeCaseDef <: Tree
 
   def TypeCaseDef_TypeTest(using ctx: Context): TypeTest[Tree, TypeCaseDef]
 
@@ -748,9 +476,6 @@ trait CompilerInterface {
   // PATTERNS
   //
 
-  /** Tree representing a binding pattern `_ @ _` */
-  type Bind <: Tree
-
   def Bind_TypeTest(using ctx: Context): TypeTest[Tree, Bind]
 
   def Tree_Bind_name(self: Bind)(using ctx: Context): String
@@ -761,9 +486,6 @@ trait CompilerInterface {
 
   def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree)(using ctx: Context): Bind
 
-  /** Tree representing an unapply pattern `Xyz(...)` */
-  type Unapply <: Tree
-
   def Unapply_TypeTest(using ctx: Context): TypeTest[Tree, Unapply]
 
   def Tree_Unapply_fun(self: Unapply)(using ctx: Context): Term
@@ -773,9 +495,6 @@ trait CompilerInterface {
   def Tree_Unapply_patterns(self: Unapply)(using ctx: Context): List[Tree]
 
   def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(using ctx: Context): Unapply
-
-  /** Tree representing pattern alternatives `X | Y | ...` */
-  type Alternatives <: Tree
 
   def Alternatives_TypeTest(using ctx: Context): TypeTest[Tree, Alternatives]
 
@@ -789,16 +508,7 @@ trait CompilerInterface {
   // TYPES
   //
 
-  /** Type or bounds */
-  type TypeOrBounds <: AnyRef
-
-  /** NoPrefix for a type selection */
-  type NoPrefix <: TypeOrBounds
-
   def NoPrefix_TypeTest(using ctx: Context): TypeTest[Tree, NoPrefix]
-
-  /** Type bounds */
-  type TypeBounds <: TypeOrBounds
 
   def TypeBounds_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeBounds]
 
@@ -806,9 +516,6 @@ trait CompilerInterface {
 
   def TypeBounds_low(self: TypeBounds)(using ctx: Context): Type
   def TypeBounds_hi(self: TypeBounds)(using ctx: Context): Type
-
-  /** A type */
-  type Type <: TypeOrBounds
 
   def Type_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, Type]
 
@@ -904,17 +611,11 @@ trait CompilerInterface {
   /** The type <this . sym>, reduced if possible */
   def Type_select(self: Type)(sym: Symbol)(using ctx: Context): Type
 
-  /** A singleton type representing a known constant value */
-  type ConstantType <: Type
-
   def ConstantType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ConstantType]
 
   def ConstantType_apply(const : Constant)(using ctx : Context) : ConstantType
 
   def ConstantType_constant(self: ConstantType)(using ctx: Context): Constant
-
-  /** Type of a reference to a term symbol */
-  type TermRef <: Type
 
   def TermRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TermRef]
 
@@ -923,9 +624,6 @@ trait CompilerInterface {
   def TermRef_qualifier(self: TermRef)(using ctx: Context): TypeOrBounds
   def TermRef_name(self: TermRef)(using ctx: Context): String
 
-  /** Type of a reference to a type symbol */
-  type TypeRef <: Type
-
   def TypeRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeRef]
 
   def TypeRef_qualifier(self: TypeRef)(using ctx: Context): TypeOrBounds
@@ -933,18 +631,12 @@ trait CompilerInterface {
   def TypeRef_isOpaqueAlias(self: TypeRef)(using ctx: Context): Boolean
   def TypeRef_translucentSuperType(self: TypeRef)(using ctx: Context): Type
 
-  /** Type of a `super` reference */
-  type SuperType <: Type
-
   def SuperType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, SuperType]
 
   def SuperType_apply(thistpe: Type, supertpe: Type)(using ctx: Context): SuperType
 
   def SuperType_thistpe(self: SuperType)(using ctx: Context): Type
   def SuperType_supertpe(self: SuperType)(using ctx: Context): Type
-
-  /** A type with a type refinement `T { type U }` */
-  type Refinement <: Type
 
   def Refinement_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, Refinement]
 
@@ -954,18 +646,12 @@ trait CompilerInterface {
   def Refinement_name(self: Refinement)(using ctx: Context): String
   def Refinement_info(self: Refinement)(using ctx: Context): TypeOrBounds
 
-  /** A higher kinded type applied to some types `T[U]` */
-  type AppliedType <: Type
-
   def AppliedType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AppliedType]
 
   def AppliedType_tycon(self: AppliedType)(using ctx: Context): Type
   def AppliedType_args(self: AppliedType)(using ctx: Context): List[TypeOrBounds]
 
   def AppliedType_apply(tycon: Type, args: List[TypeOrBounds])(using ctx: Context) : AppliedType
-
-  /** A type with an anottation `T @foo` */
-  type AnnotatedType <: Type
 
   def AnnotatedType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AnnotatedType]
 
@@ -974,9 +660,6 @@ trait CompilerInterface {
   def AnnotatedType_underlying(self: AnnotatedType)(using ctx: Context): Type
   def AnnotatedType_annot(self: AnnotatedType)(using ctx: Context): Term
 
-  /** Intersection type `T & U` */
-  type AndType <: Type
-
   def AndType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AndType]
 
   def AndType_apply(lhs: Type, rhs: Type)(using ctx: Context): AndType
@@ -984,18 +667,12 @@ trait CompilerInterface {
   def AndType_left(self: AndType)(using ctx: Context): Type
   def AndType_right(self: AndType)(using ctx: Context): Type
 
-  /** Union type `T | U` */
-  type OrType <: Type
-
   def OrType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, OrType]
 
   def OrType_apply(lhs : Type, rhs : Type)(using ctx : Context): OrType
 
   def OrType_left(self: OrType)(using ctx: Context): Type
   def OrType_right(self: OrType)(using ctx: Context): Type
-
-  /** Type match `T match { case U => ... }` */
-  type MatchType <: Type
 
   def MatchType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, MatchType]
 
@@ -1005,39 +682,24 @@ trait CompilerInterface {
   def MatchType_scrutinee(self: MatchType)(using ctx: Context): Type
   def MatchType_cases(self: MatchType)(using ctx: Context): List[Type]
 
-  /** Type of a by by name parameter */
-  type ByNameType <: Type
-
   def ByNameType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ByNameType]
 
   def ByNameType_apply(underlying: Type)(using ctx: Context): Type
 
   def ByNameType_underlying(self: ByNameType)(using ctx: Context): Type
 
-  /** Type of a parameter reference */
-  type ParamRef <: Type
-
   def ParamRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ParamRef]
 
   def ParamRef_binder(self: ParamRef)(using ctx: Context): LambdaType[TypeOrBounds]
   def ParamRef_paramNum(self: ParamRef)(using ctx: Context): Int
 
-  /** Type of `this` */
-  type ThisType <: Type
-
   def ThisType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ThisType]
 
   def ThisType_tref(self: ThisType)(using ctx: Context): Type
 
-  /** A type that is recursively defined `this` */
-  type RecursiveThis <: Type
-
   def RecursiveThis_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, RecursiveThis]
 
   def RecursiveThis_binder(self: RecursiveThis)(using ctx: Context): RecursiveType
-
-  /** A type that is recursively defined */
-  type RecursiveType <: Type
 
   def RecursiveType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, RecursiveType]
 
@@ -1055,14 +717,6 @@ trait CompilerInterface {
 
   def RecursiveThis_recThis(self: RecursiveType)(using ctx: Context): RecursiveThis
 
-  // TODO can we add the bound back without an cake?
-  // TODO is LambdaType really needed? ParamRefExtractor could be split into more precise extractors
-  /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
-  type LambdaType[ParamInfo /*<: TypeOrBounds*/] <: Type
-
-  /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
-  type MethodType <: LambdaType[Type]
-
   def MethodType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, MethodType]
 
   def MethodType_apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType
@@ -1074,9 +728,6 @@ trait CompilerInterface {
   def MethodType_paramTypes(self: MethodType)(using ctx: Context): List[Type]
   def MethodType_resType(self: MethodType)(using ctx: Context): Type
 
-  /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
-  type PolyType <: LambdaType[TypeBounds]
-
   def PolyType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, PolyType]
 
   def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using ctx: Context): PolyType
@@ -1085,9 +736,6 @@ trait CompilerInterface {
   def PolyType_paramNames(self: PolyType)(using ctx: Context): List[String]
   def PolyType_paramBounds(self: PolyType)(using ctx: Context): List[TypeBounds]
   def PolyType_resType(self: PolyType)(using ctx: Context): Type
-
-  /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
-  type TypeLambda <: LambdaType[TypeBounds]
 
   def TypeLambda_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeLambda]
 
@@ -1103,27 +751,14 @@ trait CompilerInterface {
   // IMPORT SELECTORS //
   //////////////////////
 
-  /** Import selectors:
-   *  * SimpleSelector: `.bar` in `import foo.bar`
-   *  * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
-   *  * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
-   */
-  type ImportSelector <: AnyRef
-
-  type SimpleSelector <: ImportSelector
-
   def SimpleSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, SimpleSelector]
 
   def SimpleSelector_selection(self: SimpleSelector)(using ctx: Context): Id
-
-  type RenameSelector <: ImportSelector
 
   def RenameSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, RenameSelector]
 
   def RenameSelector_from(self: RenameSelector)(using ctx: Context): Id
   def RenameSelector_to(self: RenameSelector)(using ctx: Context): Id
-
-  type OmitSelector <: ImportSelector
 
   def OmitSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, OmitSelector]
 
@@ -1133,9 +768,6 @@ trait CompilerInterface {
   /////////////////
   // IDENTIFIERS //
   /////////////////
-
-  /** Untyped identifier */
-  type Id <: AnyRef
 
   /** Position in the source code */
   def Id_pos(self: Id)(using ctx: Context): Position
@@ -1148,8 +780,6 @@ trait CompilerInterface {
   // SIGNATURES //
   ////////////////
 
-  type Signature <: AnyRef
-
   def Signature_paramSigs(self: Signature): List[String | Int]
 
   def Signature_resultSig(self: Signature): String
@@ -1158,9 +788,6 @@ trait CompilerInterface {
   ///////////////
   // POSITIONS //
   ///////////////
-
-  /** Position in a source file */
-  type Position <: AnyRef
 
   /** The start offset in the source file */
   def Position_start(self: Position): Int
@@ -1193,9 +820,6 @@ trait CompilerInterface {
   // SOURCE FILE //
   /////////////////
 
-  /** Scala source file */
-  type SourceFile <: AnyRef
-
   /** Path to a source file */
   def SourceFile_jpath(self: SourceFile): java.nio.file.Path
 
@@ -1207,9 +831,6 @@ trait CompilerInterface {
   // COMMENTS //
   //////////////
 
-  /** Comment */
-  type Comment <: AnyRef
-
   def Comment_raw(self: Comment): String
   def Comment_expanded(self: Comment): Option[String]
   def Comment_usecases(self: Comment): List[(String, Option[DefDef])]
@@ -1218,9 +839,6 @@ trait CompilerInterface {
   ///////////////
   // CONSTANTS //
   ///////////////
-
-  /** Constant value represented as the constant itself */
-  type Constant <: AnyRef
 
   def Constant_value(const: Constant): Any
 
@@ -1234,11 +852,6 @@ trait CompilerInterface {
   /////////////
   // SYMBOLS //
   /////////////
-
-  /** Symbol of a definition.
-   *  Then can be compared with == to know if the definition is the same.
-   */
-  type Symbol <: AnyRef
 
   /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
   def Symbol_owner(self: Symbol)(using ctx: Context): Symbol
@@ -1391,9 +1004,6 @@ trait CompilerInterface {
   ///////////
   // FLAGS //
   ///////////
-
-  /** FlagSet of a Symbol */
-  type Flags
 
   /** Is the given flag set a subset of this flag sets */
   def Flags_is(self: Flags)(that: Flags): Boolean
@@ -1579,23 +1189,16 @@ trait CompilerInterface {
   // IMPLICITS //
   ///////////////
 
-  type ImplicitSearchResult <: AnyRef
-
-  type ImplicitSearchSuccess <: ImplicitSearchResult
   def ImplicitSearchSuccess_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
   def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess)(using ctx: Context): Term
 
-  type ImplicitSearchFailure <: ImplicitSearchResult
   def ImplicitSearchFailure_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
   def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure)(using ctx: Context): String
 
-  type DivergingImplicit <: ImplicitSearchFailure
   def DivergingImplicit_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, DivergingImplicit]
 
-  type NoMatchingImplicits <: ImplicitSearchFailure
   def NoMatchingImplicits_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, NoMatchingImplicits]
 
-  type AmbiguousImplicits <: ImplicitSearchFailure
   def AmbiguousImplicits_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, AmbiguousImplicits]
 
   /** Find an implicit of type `T` in the current scope given by `ctx`.
@@ -1612,5 +1215,13 @@ trait CompilerInterface {
   def lambdaExtractor(term: Term, paramTypes: List[Type])(using ctx: Context): Option[List[Term] => Term]
 
   def compilerId: Int
+
+}
+
+
+object CompilerInterface {
+
+  private[scala] def quoteContextWithCompilerInterface(qctx: QuoteContext): qctx.type { val tasty: qctx.tasty.type & scala.internal.tasty.CompilerInterface } =
+    qctx.asInstanceOf[qctx.type { val tasty: qctx.tasty.type & scala.internal.tasty.CompilerInterface }]
 
 }

@@ -21,7 +21,10 @@ import scala.internal.tasty.CompilerInterface
 
 import scala.tasty.reflect.TypeTest
 
-class ReflectionCompilerInterface(val rootContext: core.Contexts.Context) extends CompilerInterface {
+// NOTE: `ReflectionCompilerInterface` should be a class to make sure that all functionality of
+//       `CompilerInterface` is implemented here.
+
+class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInterface {
   import tpd._
 
   private given core.Contexts.Context = rootContext
