@@ -110,7 +110,7 @@ trait TypeAssigner {
             if (tpe.isError) tpe
             else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
           }
-        else if ctx.compilationUnit != null && ctx.compilationUnit.isJava && tpe.isAnyRef then
+        else if ctx.isJava && tpe.isAnyRef then
           defn.FromJavaObjectType
         else
           TypeOps.makePackageObjPrefixExplicit(tpe withDenot d)
