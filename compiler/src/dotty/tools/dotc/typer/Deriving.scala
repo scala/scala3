@@ -47,7 +47,7 @@ trait Deriving {
      *  @param  reportErrors  Report an error if an instance with the same name exists already
      */
     private def addDerivedInstance(clsName: Name, info: Type, pos: SrcPos): Unit = {
-      val instanceName = s"derived$$$clsName".toTermName
+      val instanceName = "derived$".concat(clsName)
       if (ctx.denotNamed(instanceName).exists)
         report.error(i"duplicate type class derivation for $clsName", pos)
       else

@@ -137,7 +137,7 @@ object ProtoTypes {
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
     private var myExtensionName: TermName = null
-    def extensionName: TermName =
+    def extensionName(using Context): TermName =
       if myExtensionName == null then myExtensionName = name.toExtensionName
       myExtensionName
 
