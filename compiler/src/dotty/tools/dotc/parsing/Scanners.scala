@@ -7,7 +7,7 @@ import core.StdNames._, core.Comments._
 import util.SourceFile
 import java.lang.Character.isDigit
 import scala.internal.Chars._
-import util.SourcePosition
+import util.{SourcePosition, CharBuffer}
 import util.Spans.Span
 import config.Config
 import config.Printers.lexical
@@ -20,38 +20,6 @@ import rewrites.Rewrites.patch
 import config.Feature.migrateTo3
 import config.SourceVersion._
 import reporting.Message
-
-object Cbufs {
-  import java.lang.StringBuilder
-
-  private final val TargetCapacity = 256
-
-  opaque type Cbuf = StringBuilder
-  object Cbuf:
-    def apply(): Cbuf = new StringBuilder(TargetCapacity)
-
-  extension (buf: Cbuf):
-    def clear(): Unit = {
-      if buf.capacity() > TargetCapacity then
-        buf.setLength(TargetCapacity)
-        buf.trimToSize()
-      end if
-      buf.setLength(0)
-    }
-    def toCharArray: Array[Char] = {
-      val n = buf.length()
-      val res = new Array[Char](n)
-      buf.getChars(0, n, res, 0)
-      res
-    }
-    def append(c: Char): buf.type = { buf.append(c) ; buf }
-    def isEmpty: Boolean = buf.length() == 0
-    def length: Int = buf.length()
-    def last: Char = buf.charAt(buf.length() - 1)
-  end extension
-}
-
-import Cbufs._
 
 object Scanners {
 
@@ -142,22 +110,16 @@ object Scanners {
 
     /** A character buffer for literals
       */
-    protected val litBuf = Cbuf()
+    protected val litBuf = CharBuffer()
 
     /** append Unicode character to "litBuf" buffer
       */
     protected def putChar(c: Char): Unit = litBuf.append(c)
 
-    /** Return buffer contents and clear */
-    def flushBuf(buf: Cbuf): String = {
-      val str = buf.toString
-      buf.clear()
-      str
-    }
-
     /** Clear buffer and set name and token */
     def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit = {
-      target.name = termName(flushBuf(litBuf))
+      target.name = termName(litBuf.chars, 0, litBuf.length)
+      litBuf.clear()
       target.token = idtoken
       if (idtoken == IDENTIFIER)
         target.token = toToken(target.name)
@@ -168,7 +130,8 @@ object Scanners {
 
     /** Clear buffer and set string */
     def setStrVal(): Unit =
-      strVal = flushBuf(litBuf)
+      strVal = litBuf.toString
+      litBuf.clear()
 
     @inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
@@ -241,7 +204,7 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    private val commentBuf = Cbuf()
+    private val commentBuf = CharBuffer()
 
     private def handleMigration(keyword: Token): Token =
       if keyword == ERASED && !ctx.settings.YerasedTerms.value then IDENTIFIER
@@ -888,7 +851,8 @@ object Scanners {
       def finishComment(): Boolean = {
         if (keepComments) {
           val pos = Span(start, charOffset - 1, start)
-          val comment = Comment(pos, flushBuf(commentBuf))
+          val comment = Comment(pos, commentBuf.toString)
+          commentBuf.clear()
           commentPosBuf += pos
 
           if (comment.isDocComment)
