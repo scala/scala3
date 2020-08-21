@@ -295,13 +295,10 @@ object Denotations {
                       (p: Symbol => Boolean)
                       (using Context): Symbol =
       disambiguate(p) match {
-        case m @ MissingRef(ownerd, name) =>
-          if (generateStubs) {
-            if (ctx.settings.YdebugMissingRefs.value) m.ex.printStackTrace()
-            newStubSymbol(ownerd.symbol, name, source)
-          }
-          else NoSymbol
-        case NoDenotation | _: NoQualifyingRef =>
+        case m @ MissingRef(ownerd, name) if generateStubs =>
+          if ctx.settings.YdebugMissingRefs.value then m.ex.printStackTrace()
+          newStubSymbol(ownerd.symbol, name, source)
+        case NoDenotation | _: NoQualifyingRef | _: MissingRef =>
           def argStr = if (args.isEmpty) "" else i" matching ($args%, %)"
           val msg =
             if (site.exists) i"$site does not have a member $kind $name$argStr"

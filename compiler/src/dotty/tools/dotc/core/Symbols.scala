@@ -908,13 +908,11 @@ object Symbols {
   def requiredClassRef(path: PreName)(using Context): TypeRef = requiredClass(path).typeRef
 
   /** Get ClassSymbol if class is either defined in current compilation run
-   *  or present on classpath.
-   *  Returns NoSymbol otherwise. */
-  def getClassIfDefined(path: PreName)(using Context): Symbol = {
-    val name = path.toTypeName
-    staticRef(name, generateStubs = false)
-      .requiredSymbol("class", name, generateStubs = false)(_.isClass)
-  }
+   *  or present on classpath. Returns NoSymbol otherwise.
+   */
+  def getClassIfDefined(path: PreName)(using Context): Symbol =
+    staticRef(path.toTypeName, generateStubs = false)
+      .disambiguate(_.isClass).symbol
 
   /** Get a List of ClassSymbols which are either defined in current compilation
    *  run or present on classpath.
@@ -923,13 +921,11 @@ object Symbols {
     paths.map(getClassIfDefined).filter(_.exists).map(_.asInstanceOf[ClassSymbol])
 
   /** Get ClassSymbol if package is either defined in current compilation run
-   *  or present on classpath.
-   *  Returns NoSymbol otherwise. */
-  def getPackageClassIfDefined(path: PreName)(using Context): Symbol = {
-    val name = path.toTypeName
-    staticRef(name, isPackage = true, generateStubs = false)
-      .requiredSymbol("package", name, generateStubs = false)(_ is PackageClass)
-  }
+   *  or present on classpath. Returns NoSymbol otherwise.
+   */
+  def getPackageClassIfDefined(path: PreName)(using Context): Symbol =
+    staticRef(path.toTypeName, isPackage = true, generateStubs = false)
+      .disambiguate(_ is PackageClass).symbol
 
   def requiredModule(path: PreName)(using Context): TermSymbol = {
     val name = path.toTermName
