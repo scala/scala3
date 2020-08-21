@@ -484,9 +484,7 @@ trait ConstraintHandling {
    *  way isSubType is organized.
    */
   protected def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(using Context): Boolean =
-    if !bound.isValueTypeOrLambda then
-      assert(ctx.reporter.errorsReported)
-      return false
+    if !bound.isValueTypeOrLambda then return false
 
     /** When comparing lambdas we might get constraints such as
      *  `A <: X0` or `A = List[X0]` where `A` is a constrained parameter
