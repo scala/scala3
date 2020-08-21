@@ -66,7 +66,7 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
     if sym == defn.Any_== || sym == defn.Any_!= then
       tree match
         case Apply(Select(receiver, name: TermName), args)
-        if atPhase(thisPhase)(receiver.tpe.widen.typeSymbol.isOpaqueAlias) =>
+        if atPhase(thisPhase)(receiver.tpe.widen.dealias.typeSymbol.isOpaqueAlias) =>
           applyOverloaded(receiver, name, args, Nil, defn.BooleanType)
         case _ =>
           tree
