@@ -3226,13 +3226,6 @@ object Types {
           x => substParams(paramInfos, x),
           x => resType.subst(this, x))
 
-    inline def map(inline op: Type => Type)(using Context) =
-      def mapParams(pinfos: List[PInfo]): List[PInfo] = pinfos match
-        case pinfos @ (pinfo :: rest) =>
-          pinfos.derivedCons(op(pinfo).asInstanceOf[PInfo], mapParams(rest))
-        case nil => nil
-      derivedLambdaType(paramNames, mapParams(paramInfos), op(resType))
-
     protected def prefixString: String
     override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
   }
