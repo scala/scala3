@@ -62,8 +62,8 @@ class Pickler extends Phase {
         picklers(cls) = pickler
       val treePkl = pickler.treePkl
       treePkl.pickle(tree :: Nil)
-      treePkl.compactify()
       val pickledF = Future {
+        treePkl.compactify()
         if tree.span.exists then
           new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
@@ -86,7 +86,7 @@ class Pickler extends Phase {
         pickled
       }(using ExecutionContext.global)
       def force(): Array[Byte] = Await.result(pickledF, Duration.Inf)
-      if ctx.settings.YtestPickler.value then force()
+      if ctx.settings.YtestPickler.value || ctx.mode.is(Mode.Interactive) then force()
       unit.pickled += (cls -> force)
     }
   }
