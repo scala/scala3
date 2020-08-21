@@ -1050,11 +1050,15 @@ class Definitions {
   def scalaClassName(ref: Type)(using Context): TypeName = scalaClassName(ref.classSymbol)
 
   private def isVarArityClass(cls: Symbol, prefix: String) =
-    cls.isClass && cls.owner.eq(ScalaPackageClass) &&
-    cls.name.testSimple(name =>
-      name.startsWith(prefix) &&
-      name.length > prefix.length &&
-      name.drop(prefix.length).forall(_.isDigit))
+    cls.isClass
+    && cls.owner.eq(ScalaPackageClass)
+    && cls.name.testSimple(name =>
+      name.startsWith(prefix)
+      && name.length > prefix.length
+      && digitsOnlyAfter(name, prefix.length))
+
+  private def digitsOnlyAfter(name: SimpleName, idx: Int): Boolean =
+    idx == name.length || name(idx).isDigit && digitsOnlyAfter(name, idx + 1)
 
   def isBottomClass(cls: Symbol): Boolean =
     if (ctx.explicitNulls && !ctx.phase.erasedTypes) cls == NothingClass

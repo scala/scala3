@@ -29,7 +29,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
     ctx.settings.YinstrumentAllocations.value
 
   private val namesOfInterest = List(
-    "::", "+=", "toString", "newArray", "box",
+    "::", "+=", "toString", "newArray", "box", "toCharArray",
     "map", "flatMap", "filter", "withFilter", "collect", "foldLeft", "foldRight", "take",
     "reverse", "mapConserve", "mapconserve", "filterConserve", "zip")
   private var namesToRecord: Set[Name] = _
