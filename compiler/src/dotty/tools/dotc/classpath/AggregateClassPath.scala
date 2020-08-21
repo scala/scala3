@@ -107,14 +107,14 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   private def mergeClassesAndSources(entries: scala.collection.Seq[ClassRepresentation]): Seq[ClassRepresentation] = {
     // based on the implementation from MergedClassPath
     var count = 0
-    val indices = new java.util.HashMap[String, Int]((entries.size * 1.25).toInt)
+    val indices = new collection.mutable.HashMap[String, Int]()
     val mergedEntries = new ArrayBuffer[ClassRepresentation](entries.size)
     for {
       entry <- entries
     } {
       val name = entry.name
-      if (indices.containsKey(name)) {
-        val index = indices.get(name)
+      if (indices.contains(name)) {
+        val index = indices(name)
         val existing = mergedEntries(index)
 
         if (existing.binary.isEmpty && entry.binary.isDefined)
@@ -123,12 +123,12 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
           mergedEntries(index) = ClassAndSourceFilesEntry(existing.binary.get, entry.source.get)
       }
       else {
-        indices.put(name, count)
+        indices(name) = count
         mergedEntries += entry
         count += 1
       }
     }
-    if (mergedEntries isEmpty) Nil else mergedEntries.toIndexedSeq
+    if (mergedEntries.isEmpty) Nil else mergedEntries.toIndexedSeq
   }
 
   private def getDistinctEntries[EntryType <: ClassRepresentation](getEntries: ClassPath => Seq[EntryType]): Seq[EntryType] = {
