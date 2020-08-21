@@ -91,13 +91,10 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
       }
     }
 
-    val distinctPackages: Seq[PackageEntry] =
-      if (packages == null) Nil
-      else {
-        val arr = packages.toArray(new Array[PackageEntry](packages.size()))
-        ArraySeq.unsafeWrapArray(arr)
-      }
-
+    val distinctPackages: Seq[PackageEntry] = {
+      val arr = packages.toArray(new Array[PackageEntry](packages.size()))
+      ArraySeq.unsafeWrapArray(arr)
+    }
     val distinctClassesAndSources = mergeClassesAndSources(classesAndSourcesBuffer)
     ClassPathEntries(distinctPackages, distinctClassesAndSources)
   }
