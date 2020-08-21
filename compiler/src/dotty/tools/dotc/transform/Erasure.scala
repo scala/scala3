@@ -90,16 +90,17 @@ class Erasure extends Phase with DenotTransformer {
           newFlags = newFlags &~ Flags.Inline
           newAnnotations = newAnnotations.filterConserve(!_.isInstanceOf[BodyAnnotation])
         // TODO: define derivedSymDenotation?
-        if (oldSymbol eq newSymbol)
-            && (oldOwner eq newOwner)
-            && (oldName eq newName)
-            && (oldInfo eq newInfo)
-            && (oldFlags == newFlags)
-            && (oldAnnotations eq newAnnotations)
+        if ref.is(Flags.PackageClass)
+           || !ref.isClass  // non-package classes are always copied since their base types change
+              && (oldSymbol eq newSymbol)
+              && (oldOwner eq newOwner)
+              && (oldName eq newName)
+              && (oldInfo eq newInfo)
+              && (oldFlags == newFlags)
+              && (oldAnnotations eq newAnnotations)
         then
           ref
         else
-          assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
           ref.copySymDenotation(
             symbol = newSymbol,
             owner = newOwner,

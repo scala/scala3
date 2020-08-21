@@ -72,7 +72,7 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
     case _ => tp
   }
 
-  override def mayChange(sym: Symbol)(using Context): Boolean = sym.isTerm && exprBecomesFunction(sym)
+  override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.isTerm && exprBecomesFunction(sym)
 }
 
 object ElimByName {

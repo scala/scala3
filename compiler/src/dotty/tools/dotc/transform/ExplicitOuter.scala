@@ -57,7 +57,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
       tp
   }
 
-  override def mayChange(sym: Symbol)(using Context): Boolean = sym.isClass && !sym.is(JavaDefined)
+  override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.isClass && !sym.is(JavaDefined)
 
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
