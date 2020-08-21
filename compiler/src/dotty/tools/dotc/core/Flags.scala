@@ -24,7 +24,7 @@ object Flags {
 
   extension (x: FlagSet) {
 
-    def bits: Long = opaques.toBits(x)
+    inline def bits: Long = opaques.toBits(x)
 
     /** The union of the given flag sets.
      *  Combining two FlagSets with `|` will give a FlagSet
