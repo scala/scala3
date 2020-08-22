@@ -576,7 +576,7 @@ class Typer extends Namer
       val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
       assignType(cpy.Select(tree)(qual1, tree.name), qual1)
     }
-    else if (ctx.compilationUnit.isJava && tree.name.isTypeName)
+    else if (ctx.isJava && tree.name.isTypeName)
       // SI-3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both.
       selectWithFallback(tryJavaSelectOnType) // !!! possibly exponential bcs of qualifier retyping
@@ -1760,7 +1760,7 @@ class Typer extends Namer
       else if (tpt1.symbol == defn.orType)
         checkedArgs = checkedArgs.mapconserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
-      else if (ctx.compilationUnit.isJava)
+      else if (ctx.isJava)
         if (tpt1.symbol eq defn.ArrayClass) then
           checkedArgs match {
             case List(arg) =>
@@ -3524,7 +3524,7 @@ class Typer extends Namer
         if ((pt eq AnyTypeConstructorProto) || tp.typeParamSymbols.isEmpty) tree
         else {
           val tp1 =
-            if (ctx.compilationUnit.isJava)
+            if (ctx.isJava)
               // Cook raw type
               AppliedType(tree.tpe, tp.typeParams.map(Function.const(TypeBounds.empty)))
             else

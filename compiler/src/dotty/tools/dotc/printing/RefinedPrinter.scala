@@ -76,7 +76,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   override def nameString(name: Name): String =
-    if (ctx.settings.YdebugNames.value) name.debugString else name.toString
+    if ctx.settings.YdebugNames.value
+    then name.debugString
+    else super.nameString(name)
 
   override protected def simpleNameString(sym: Symbol): String =
     nameString(if (ctx.property(XprintMode).isEmpty) sym.initial.name else sym.name)

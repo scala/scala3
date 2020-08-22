@@ -77,6 +77,7 @@ trait TypeAssigner {
    *  (1) parameter accessors are always dereferenced.
    *  (2) if the owner of the denotation is a package object, it is assured
    *      that the package object shows up as the prefix.
+   *  (3) in Java compilation units, `Object` is replaced by `defn.FromJavaObjectType`
    */
   def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SrcPos)(using Context): Type = {
     def test(tpe: Type, firstTry: Boolean): Type = tpe match {
@@ -84,7 +85,7 @@ trait TypeAssigner {
         val pre = tpe.prefix
         val name = tpe.name
         val d = tpe.denot.accessibleFrom(pre, superAccess)
-        if (!d.exists) {
+        if !d.exists then
           // it could be that we found an inaccessible private member, but there is
           // an inherited non-private member with the same name and signature.
           val d2 = pre.nonPrivateMember(name)
@@ -109,8 +110,10 @@ trait TypeAssigner {
             if (tpe.isError) tpe
             else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
           }
-        }
-        else TypeOps.makePackageObjPrefixExplicit(tpe withDenot d)
+        else if ctx.isJava && tpe.isAnyRef then
+          defn.FromJavaObjectType
+        else
+          TypeOps.makePackageObjPrefixExplicit(tpe withDenot d)
       case _ =>
         tpe
     }

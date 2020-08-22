@@ -943,7 +943,7 @@ trait Checking {
 
   /** Check that `tpt` does not define a higher-kinded type */
   def checkSimpleKinded(tpt: Tree)(using Context): Tree =
-    if (!tpt.tpe.hasSimpleKind && !ctx.compilationUnit.isJava)
+    if (!tpt.tpe.hasSimpleKind && !ctx.isJava)
         // be more lenient with missing type params in Java,
         // needed to make pos/java-interop/t1196 work.
       errorTree(tpt, MissingTypeParameterFor(tpt.tpe))

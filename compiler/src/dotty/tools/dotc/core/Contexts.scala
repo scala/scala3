@@ -363,6 +363,13 @@ object Contexts {
     /** Does current phase use an erased types interpretation? */
     final def erasedTypes = phase.erasedTypes
 
+    /** Are we in a Java compilation unit? */
+    final def isJava: Boolean =
+      // FIXME: It would be much nicer if compilationUnit was non-nullable,
+      // perhaps we need to introduce a `NoCompilationUnit` compilation unit
+      // to be used as a default value.
+      compilationUnit != null && compilationUnit.isJava
+
     /** Is current phase after FrontEnd? */
     final def isAfterTyper = base.isAfterTyper(phase)
 

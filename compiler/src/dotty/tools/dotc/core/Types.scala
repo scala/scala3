@@ -205,6 +205,8 @@ object Types {
     def isAnyRef(using Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
     def isAnyKind(using Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
 
+    def isFromJavaObject(using Context): Boolean = typeSymbol eq defn.FromJavaObjectSymbol
+
     /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
      *  Implemented like `isRef`, but follows more types: all type proxies as well as and- and or-types
      */

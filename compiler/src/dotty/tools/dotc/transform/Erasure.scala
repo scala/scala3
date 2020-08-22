@@ -542,7 +542,7 @@ object Erasure {
     private def checkValue(tree: Tree)(using Context): Unit =
       val sym = tree.tpe.termSymbol
       if (sym is Flags.Package)
-         || (sym.isAllOf(Flags.JavaModule) && !ctx.compilationUnit.isJava)
+         || (sym.isAllOf(Flags.JavaModule) && !ctx.isJava)
       then
         report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
 

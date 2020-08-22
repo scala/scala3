@@ -195,7 +195,7 @@ class Definitions {
     RootClass, nme.EMPTY_PACKAGE, (emptypkg, emptycls) => ctx.base.rootLoader(emptypkg)).entered
   @tu lazy val EmptyPackageClass: ClassSymbol = EmptyPackageVal.moduleClass.asClass
 
-  /** A package in which we can place all methods that are interpreted specially by the compiler */
+  /** A package in which we can place all methods and types that are interpreted specially by the compiler */
   @tu lazy val OpsPackageVal: TermSymbol = newCompletePackageSymbol(RootClass, nme.OPS_PACKAGE).entered
   @tu lazy val OpsPackageClass: ClassSymbol = OpsPackageVal.moduleClass.asClass
 
@@ -309,6 +309,103 @@ class Definitions {
     completeClass(cls)
   }
   def ObjectType: TypeRef = ObjectClass.typeRef
+
+  /** A type alias of Object used to represent any reference to Object in a Java
+   *  signature, the secret sauce is that subtype checking treats it specially:
+   *
+   *    tp <:< FromJavaObject
+   *
+   *  is equivalent to:
+   *
+   *    tp <:< Any
+   *
+   *  This is useful to avoid usability problems when interacting with Java
+   *  code where Object is the top type. This is safe because this type will
+   *  only appear in signatures of Java definitions in positions where `Object`
+   *  might appear, let's enumerate all possible cases this gives us:
+   *
+   *  1. At the top level:
+   *
+   *       // A.java
+   *       void meth1(Object arg) {}
+   *       <T> void meth2(T arg) {} // T implicitly extends Object
+   *
+   *       // B.scala
+   *       meth1(1) // OK
+   *       meth2(1) // OK
+   *
+   *     This is safe even though Int is not a subtype of Object, because Erasure
+   *     will detect the mismatch and box the value type.
+   *
+   *  2. In a class type parameter:
+   *
+   *       // A.java
+   *       void meth3(scala.List<Object> arg) {}
+   *       <T> void meth4(scala.List<T> arg) {}
+   *
+   *       // B.scala
+   *       meth3(List[Int](1)) // OK
+   *       meth4(List[Int](1)) // OK
+   *
+   *     At erasure, type parameters are removed and value types are boxed.
+   *
+   *  3. As the type parameter of an array:
+   *
+   *       // A.java
+   *       void meth5(Object[] arg) {}
+   *       <T> void meth6(T[] arg) {}
+   *
+   *       // B.scala
+   *       meth5(Array[Int](1)) // error: Array[Int] is not a subtype of Array[Object]
+   *       meth6(Array[Int](1)) // error: Array[Int] is not a subtype of Array[T & Object]
+   *
+   *
+   *     This is a bit more subtle: at erasure, Arrays keep their type parameter,
+   *     and primitive Arrays are not subtypes of reference Arrays on the JVM,
+   *     so we can't pass an Array of Int where a reference Array is expected.
+   *     Array is invariant in Scala, so `meth5` is safe even if we use `FromJavaObject`,
+   *     but generic Arrays are treated specially: we always add `& Object` (and here
+   *     we mean the normal java.lang.Object type) to these types when they come from
+   *     Java signatures (see `translateJavaArrayElementType`), this ensure that `meth6`
+   *     is safe to use.
+   *
+   *  4. As the repeated argument of a varargs method:
+   *
+   *       // A.java
+   *       void meth7(Object... args) {}
+   *       <T> void meth8(T... args) {}
+   *
+   *       // B.scala
+   *       meth7(1) // OK
+   *       meth8(1) // OK
+   *       val ai = Array[Int](1)
+   *       meth7(ai: _*) // OK (will copy the array)
+   *       meth8(ai: _*) // OK (will copy the array)
+   *
+   *     Java repeated arguments are erased to arrays, so it would be safe to treat
+   *     them in the same way: add an `& Object` to the parameter type to disallow
+   *     passing primitives, but that would be very inconvenient as it is common to
+   *     want to pass a primitive to an Object repeated argument (e.g.
+   *     `String.format("foo: %d", 1)`). So instead we type them _without_ adding the
+   *     `& Object` and let `ElimRepeated` take care of doing any necessary adaptation
+   *     (note that adapting a primitive array to a reference array requires
+   *     copying the whole array, so this transformation only preserves semantics
+   *     if the callee does not try to mutate the varargs array which is a reasonable
+   *     assumption to make).
+   *
+   *
+   *  This mechanism is similar to `ObjectTpeJavaRef` in Scala 2, except that we
+   *  create a new symbol with its own name, this is needed because this type
+   *  can show up in inferred types and therefore needs to be preserved when
+   *  pickling so that unpickled trees pass `-Ycheck`.
+   *
+   *  Note that by default we pretty-print `FromJavaObject` as `Object` or simply omit it
+   *  if it's the sole upper-bound of a type parameter, use `-Yprint-debug` to explicitly
+   *  display it.
+   */
+  @tu lazy val FromJavaObjectSymbol: TypeSymbol =
+    newPermanentSymbol(OpsPackageClass, tpnme.FromJavaObject, JavaDefined, TypeAlias(ObjectType)).entered
+  def FromJavaObjectType: TypeRef = FromJavaObjectSymbol.typeRef
 
   @tu lazy val AnyRefAlias: TypeSymbol = enterAliasType(tpnme.AnyRef, ObjectType)
   def AnyRefType: TypeRef = AnyRefAlias.typeRef

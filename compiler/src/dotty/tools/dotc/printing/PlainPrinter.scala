@@ -3,6 +3,7 @@ package printing
 
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
+import StdNames._
 import Contexts._
 import Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
@@ -89,7 +90,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     || (sym.name == nme.PACKAGE)               // package
   )
 
-  def nameString(name: Name): String = name.toString
+  def nameString(name: Name): String =
+    if (name eq tpnme.FromJavaObject) && !printDebug
+    then nameString(tpnme.Object)
+    else name.toString
 
   def toText(name: Name): Text = Str(nameString(name))
 
@@ -123,11 +127,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
     })
 
   /** Direct references to these symbols are printed without their prefix for convenience.
-   *  They are either aliased in scala.Predef or in the scala package object.
+   *  They are either aliased in scala.Predef or in the scala package object, as well as `Object`
    */
   private lazy val printWithoutPrefix: Set[Symbol] =
     (defn.ScalaPredefModule.termRef.typeAliasMembers
       ++ defn.ScalaPackageObject.termRef.typeAliasMembers).map(_.info.classSymbol).toSet
+    + defn.ObjectClass
+    + defn.FromJavaObjectSymbol
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -267,7 +273,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     simpleNameString(sym) + idString(sym) // + "<" + (if (sym.exists) sym.owner else "") + ">"
 
   def fullNameString(sym: Symbol): String =
-    if (sym.isRoot || sym == NoSymbol || sym.owner.isEffectiveRoot)
+    if (sym eq defn.FromJavaObjectSymbol) && !printDebug then
+      fullNameString(defn.ObjectClass)
+    else if sym.isRoot || sym == NoSymbol || sym.owner.isEffectiveRoot then
       nameString(sym)
     else
       fullNameString(fullNameOwner(sym)) + "." + nameString(sym)
@@ -365,7 +373,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
             " = " ~ toText(tp.alias)
           case TypeBounds(lo, hi) =>
             (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo))
-            ~ (if hi.isAny then Text() else " <: " ~ toText(hi))
+            ~ (if hi.isAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
         tparamStr ~ binder
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)

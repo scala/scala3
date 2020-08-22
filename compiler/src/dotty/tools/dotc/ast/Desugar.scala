@@ -1625,7 +1625,7 @@ object desugar {
         Apply(Select(Apply(scalaDot(nme.StringContext), strs), id).withSpan(tree.span), elems)
       case PostfixOp(t, op) =>
         if ((ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR) {
-          if ctx.compilationUnit.isJava then
+          if ctx.isJava then
             AppliedTypeTree(ref(defn.RepeatedParamType), t)
           else
             Annotated(
