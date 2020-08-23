@@ -319,6 +319,7 @@ object Completion {
     private object completionsFilter extends NameFilter {
       def apply(pre: Type, name: Name)(using Context): Boolean =
         !name.isConstructorName && name.toTermName.info.kind == SimpleNameKind
+      def isStable = true
     }
   }
 
