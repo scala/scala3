@@ -133,16 +133,15 @@ class DottyPrimitives(ictx: Context) {
     }
 
     def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
-      val alts = cls.info.member(method).alternatives.map(_.symbol)
-      if (alts.isEmpty)
+      val alts = cls.info.member(method).alternatives
+      if alts.isEmpty then
         report.error(s"Unknown primitive method $cls.$method")
-      else alts foreach (s =>
+      else for d <- alts do
+        val s = d.symbol
         addPrimitive(s,
-          s.info.paramInfoss match {
-            case List(tp :: _) if code == ADD && tp =:= ctx.definitions.StringType => CONCAT
-            case _                                          => code
-          }
-        )
+          s.info.paramInfoss match
+            case (tp :: _) :: Nil if code == ADD && tp =:= ctx.definitions.StringType => CONCAT
+            case _ => code
         )
     }
 

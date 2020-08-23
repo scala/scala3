@@ -339,16 +339,15 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]]): Unit =
-      val annotationss = pannotss map (_ filter shouldEmitAnnotation)
-      if (annotationss forall (_.isEmpty)) return
-      for ((annots, idx) <- annotationss.zipWithIndex;
-        annot <- annots) {
-        val typ = annot.tree.tpe
-        val assocs = assocsFromApply(annot.tree)
-        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, typeDescriptor(typ.asInstanceOf[Type]), isRuntimeVisible(annot))
-        emitAssocs(pannVisitor, assocs, BCodeHelpers.this)(this)
-      }
-
+      if pannotss.nestedExists(shouldEmitAnnotation) then
+        for (annots, idx) <- pannotss.zipWithIndex
+            annot <- annots
+            if shouldEmitAnnotation(annot)
+        do
+          val typ = annot.tree.tpe
+          val assocs = assocsFromApply(annot.tree)
+          val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, typeDescriptor(typ.asInstanceOf[Type]), isRuntimeVisible(annot))
+          emitAssocs(pannVisitor, assocs, BCodeHelpers.this)(this)
 
     private def shouldEmitAnnotation(annot: Annotation): Boolean = {
       annot.symbol.is(JavaDefined) &&
