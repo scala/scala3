@@ -793,7 +793,8 @@ object Types {
      */
     final def memberNames(keepOnly: NameFilter, pre: Type = this)(using Context): Set[Name] = this match {
       case tp: ClassInfo =>
-        tp.cls.classDenot.memberNames(keepOnly) filter (keepOnly(pre, _))
+        val names = tp.cls.classDenot.memberNames(keepOnly)
+        if keepOnly.isStable then names else names.filter(keepOnly(pre, _))
       case tp: RefinedType =>
         val ns = tp.parent.memberNames(keepOnly, pre)
         if (keepOnly(pre, tp.refinedName)) ns + tp.refinedName else ns
@@ -5665,6 +5666,11 @@ object Types {
    */
   abstract class NameFilter {
     def apply(pre: Type, name: Name)(using Context): Boolean
+
+    /** Filter does not need to be rechecked with full prefix, if it
+     *  has been already checked for the class denotation of the prefix
+     */
+    def isStable: Boolean
   }
 
   /** A filter for names of abstract types of a given type */
@@ -5674,6 +5680,7 @@ object Types {
         val mbr = pre.nonPrivateMember(name)
         mbr.symbol.is(Deferred) && mbr.info.isInstanceOf[RealTypeBounds]
       }
+    def isStable = false
   }
 
   /** A filter for names of abstract types of a given type */
@@ -5683,12 +5690,14 @@ object Types {
         val mbr = pre.member(name)
         mbr.symbol.isType && !mbr.symbol.isClass
       }
+    def isStable = false
   }
 
   /** A filter for names of deferred term definitions of a given type */
   object abstractTermNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(using Context): Boolean =
       name.isTermName && pre.nonPrivateMember(name).hasAltWith(_.symbol.is(Deferred))
+    def isStable = false
   }
 
   /** A filter for names of type aliases of a given type */
@@ -5698,19 +5707,23 @@ object Types {
         val mbr = pre.nonPrivateMember(name)
         mbr.symbol.isAliasType
       }
+    def isStable = false
   }
 
   object typeNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(using Context): Boolean = name.isTypeName
+    def isStable = true
   }
 
   object fieldFilter extends NameFilter {
     def apply(pre: Type, name: Name)(using Context): Boolean =
       name.isTermName && (pre member name).hasAltWith(!_.symbol.is(Method))
+    def isStable = true
   }
 
   object takeAllFilter extends NameFilter {
     def apply(pre: Type, name: Name)(using Context): Boolean = true
+    def isStable = true
   }
 
   object implicitFilter extends NameFilter {
@@ -5719,6 +5732,7 @@ object Types {
      *  no post-filtering is needed.
      */
     def apply(pre: Type, name: Name)(using Context): Boolean = true
+    def isStable = true
   }
 
   // ----- Debug ---------------------------------------------------------

@@ -29,6 +29,7 @@ object RefChecks {
 
   private val defaultMethodFilter = new NameFilter {
     def apply(pre: Type, name: Name)(using Context): Boolean = name.is(DefaultGetterName)
+    def isStable = true
   }
 
   /** Only one overloaded alternative is allowed to define default arguments */
