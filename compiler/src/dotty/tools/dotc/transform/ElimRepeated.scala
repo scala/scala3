@@ -237,7 +237,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Is there a repeated parameter in some parameter list? */
   private def hasRepeatedParams(sym: Symbol)(using Context): Boolean =
-    sym.info.paramInfoss.flatten.exists(_.isRepeatedParam)
+    sym.info.paramInfoss.nestedExists(_.isRepeatedParam)
 
   /** Is this the type of a method that has a repeated parameter type as
    *  its last parameter in the last parameter list?
