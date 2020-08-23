@@ -844,8 +844,6 @@ class Definitions {
     @tu lazy val Not_value: Symbol = NotClass.companionModule.requiredMethod(nme.value)
 
   @tu lazy val ValueOfClass: ClassSymbol = requiredClass("scala.ValueOf")
-  @tu lazy val StatsModule: Symbol = requiredModule("dotty.tools.dotc.util.Stats")
-    @tu lazy val Stats_doRecord: Symbol = StatsModule.requiredMethod("doRecord")
 
   @tu lazy val FromDigitsClass: ClassSymbol           = requiredClass("scala.util.FromDigits")
   @tu lazy val FromDigits_WithRadixClass: ClassSymbol = requiredClass("scala.util.FromDigits.WithRadix")
