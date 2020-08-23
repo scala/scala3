@@ -649,14 +649,13 @@ abstract class BTypes {
 
     def innerClassAttributeEntry: Option[InnerClassEntry] = info.nestedInfo map {
       case NestedInfo(_, outerName, innerName, isStaticNestedClass) =>
+        import GenBCodeOps.addFlagIf
         InnerClassEntry(
           internalName,
           outerName.orNull,
           innerName.orNull,
-          GenBCodeOps.mkFlags(
-            info.flags,
-            if (isStaticNestedClass) asm.Opcodes.ACC_STATIC else 0
-          ) & ClassBType.INNER_CLASSES_FLAGS
+          info.flags.addFlagIf(isStaticNestedClass, asm.Opcodes.ACC_STATIC)
+            & ClassBType.INNER_CLASSES_FLAGS
         )
     }
 
