@@ -1549,7 +1549,13 @@ object SymDenotations {
           completeChildrenIn(companionClass)
           setFlag(ChildrenQueried)
 
-      annotations.collect { case Annotation.Child(child) => child }.reverse
+      /** The children recorded in `annots`, in reverse order */
+      def getChildren(annots: List[Annotation], acc: List[Symbol]): List[Symbol] = annots match
+        case Annotation.Child(child) :: annots1 => getChildren(annots1, child :: acc)
+        case _ :: annots1 => getChildren(annots1, acc)
+        case nil => acc
+
+      getChildren(annotations, Nil)
     end children
   }
 

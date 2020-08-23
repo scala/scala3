@@ -1223,21 +1223,24 @@ class Typer extends Namer
       }
 
     val desugared =
-      if (protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head)) {
+      if (protoFormals.length == 1 && params.length != 1 && ptIsCorrectProduct(protoFormals.head))
         val isGenericTuple =
           protoFormals.head.derivesFrom(defn.TupleClass)
           && !defn.isTupleClass(protoFormals.head.typeSymbol)
         desugar.makeTupledFunction(params, fnBody, isGenericTuple)
-      }
-      else {
-        val inferredParams: List[untpd.ValDef] =
-          for ((param, i) <- params.zipWithIndex) yield
-            if (!param.tpt.isEmpty) param
-            else cpy.ValDef(param)(
-              tpt = untpd.TypeTree(
-                inferredParamType(param, protoFormal(i)).translateFromRepeated(toArray = false)))
-        desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual)
-      }
+      else
+        def inferredParams(params: List[untpd.ValDef], idx: Int): List[untpd.ValDef] = params match
+          case param :: rest =>
+            val param1 =
+              if !param.tpt.isEmpty then param
+              else cpy.ValDef(param)(
+                tpt = untpd.TypeTree(
+                  inferredParamType(param, protoFormal(idx)).translateFromRepeated(toArray = false)))
+            param1 :: inferredParams(rest, idx + 1)
+          case nil =>
+            Nil
+        desugar.makeClosure(inferredParams(params, 0), fnBody, resultTpt, isContextual)
+
     typed(desugared, pt)
   }
 

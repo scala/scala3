@@ -97,14 +97,14 @@ class NameBuffer extends TastyBuffer(10000) {
     }
   }
 
-  override def assemble(): Unit = {
+  override def assemble(): Unit =
     var i = 0
-    for ((name, ref) <- nameRefs) {
+    val nr = nameRefs.iterator
+    while nr.hasNext do
+      val (name, ref) = nr.next()
       assert(ref.index == i)
       i += 1
       pickleNameContents(name)
-    }
-  }
 }
 
 object NameBuffer {
