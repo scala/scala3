@@ -7,7 +7,8 @@ import scala.tools.asm
 object GenBCodeOps extends GenBCodeOps
 
 class GenBCodeOps {
-  def mkFlags(args: Int*) = args.foldLeft(0)(_ | _)
+  extension (flags: Int)
+    def addFlagIf(cond: Boolean, flag: Int): Int = if cond then flags | flag else flags
 
   final val PublicStatic      = asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_STATIC
   final val PublicStaticFinal = asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL

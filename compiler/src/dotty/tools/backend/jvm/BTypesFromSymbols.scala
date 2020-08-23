@@ -304,39 +304,36 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
     val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable) && !sym.enclosingClass.is(Trait)
 
     import asm.Opcodes._
-    GenBCodeOps.mkFlags(
-      if (privateFlag) ACC_PRIVATE else ACC_PUBLIC,
-      if (sym.is(Deferred) || sym.isOneOf(AbstractOrTrait)) ACC_ABSTRACT else 0,
-      if (sym.isInterface) ACC_INTERFACE else 0,
-
-      if (finalFlag &&
+    import GenBCodeOps.addFlagIf
+    0 .addFlagIf(privateFlag, ACC_PRIVATE)
+      .addFlagIf(!privateFlag, ACC_PUBLIC)
+      .addFlagIf(sym.is(Deferred) || sym.isOneOf(AbstractOrTrait), ACC_ABSTRACT)
+      .addFlagIf(sym.isInterface, ACC_INTERFACE)
+      .addFlagIf(finalFlag
         // Primitives are "abstract final" to prohibit instantiation
         // without having to provide any implementations, but that is an
         // illegal combination of modifiers at the bytecode level so
         // suppress final if abstract if present.
-        !sym.isOneOf(AbstractOrTrait) &&
+        && !sym.isOneOf(AbstractOrTrait)
         //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
-        !sym.is(Bridge))
-        ACC_FINAL else 0,
-
-      if (sym.isStaticMember) ACC_STATIC else 0,
-      if (sym.is(Bridge)) ACC_BRIDGE | ACC_SYNTHETIC else 0,
-      if (sym.is(Artifact)) ACC_SYNTHETIC else 0,
-      if (sym.isClass && !sym.isInterface) ACC_SUPER else 0,
-      if (sym.isAllOf(JavaEnumTrait)) ACC_ENUM else 0,
-      if (sym.is(JavaVarargs)) ACC_VARARGS else 0,
-      if (sym.is(Synchronized)) ACC_SYNCHRONIZED else 0,
-      if (sym.isDeprecated) ACC_DEPRECATED else 0,
-      if (sym.is(Enum)) ACC_ENUM else 0
-    )
+        && !sym.is(Bridge), ACC_FINAL)
+      .addFlagIf(sym.isStaticMember, ACC_STATIC)
+      .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
+      .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
+      .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
+      .addFlagIf(sym.isAllOf(JavaEnumTrait), ACC_ENUM)
+      .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
+      .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)
+      .addFlagIf(sym.isDeprecated, ACC_DEPRECATED)
+      .addFlagIf(sym.is(Enum), ACC_ENUM)
   }
 
   def javaFieldFlags(sym: Symbol) = {
     import asm.Opcodes._
-    javaFlags(sym) | GenBCodeOps.mkFlags(
-      if (sym.hasAnnotation(TransientAttr)) ACC_TRANSIENT else 0,
-      if (sym.hasAnnotation(VolatileAttr)) ACC_VOLATILE else 0,
-      if (sym.is(Mutable)) 0 else ACC_FINAL
-    )
+    import GenBCodeOps.addFlagIf
+    javaFlags(sym)
+      .addFlagIf(sym.hasAnnotation(TransientAttr), ACC_TRANSIENT)
+      .addFlagIf(sym.hasAnnotation(VolatileAttr), ACC_VOLATILE)
+      .addFlagIf(!sym.is(Mutable), ACC_FINAL)
   }
 }
