@@ -476,6 +476,8 @@ object desugar {
         val (enumCases, enumStats) = stats.partition(DesugarEnums.isEnumCase)
         if (enumCases.isEmpty)
           report.error(EnumerationsShouldNotBeEmpty(cdef), namePos)
+        else
+          enumCases.last.pushAttachment(DesugarEnums.DefinesEnumLookupMethods, ())
         val enumCompanionRef = TermRefTree()
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
@@ -568,7 +570,7 @@ object desugar {
     // Note: copy default parameters need @uncheckedVariance; see
     // neg/t1843-variances.scala for a test case. The test would give
     // two errors without @uncheckedVariance, one of them spurious.
-    val caseClassMeths = {
+    val (caseClassMeths, enumScaffolding) = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
         DefDef(name, Nil, Nil, tpt, rhs).withMods(synthetic)
 
@@ -586,9 +588,11 @@ object desugar {
         yield syntheticProperty(selName, caseParams(i).tpt,
           Select(This(EmptyTypeIdent), caseParams(i).name))
 
-      def enumMeths =
-        if (isEnumCase) ordinalMethLit(nextOrdinal(CaseKind.Class)._1) :: enumLabelLit(className.toString) :: Nil
-        else Nil
+      def enumCaseMeths =
+        if isEnumCase then
+          val (ordinal, scaffolding) = nextOrdinal(className, CaseKind.Class, definesEnumLookupMethods(cdef))
+          (ordinalMethLit(ordinal) :: enumLabelLit(className.toString) :: Nil, scaffolding)
+        else (Nil, Nil)
       def copyMeths = {
         val hasRepeatedParam = constrVparamss.exists(_.exists {
           case ValDef(_, tpt, _) => isRepeated(tpt)
@@ -607,8 +611,9 @@ object desugar {
       }
 
       if (isCaseClass)
-        copyMeths ::: enumMeths ::: productElemMeths
-      else Nil
+        val (enumMeths, enumScaffolding) = enumCaseMeths
+        (copyMeths ::: enumMeths ::: productElemMeths, enumScaffolding)
+      else (Nil, Nil)
     }
 
     var parents1 = parents
@@ -809,7 +814,7 @@ object desugar {
       case _ =>
     }
 
-    flatTree(cdef1 :: companions ::: implicitWrappers)
+    flatTree(cdef1 :: companions ::: implicitWrappers ::: enumScaffolding)
   }.reporting(i"desugared: $result", Printers.desugar)
 
   /** Expand
@@ -862,7 +867,7 @@ object desugar {
     else if (isEnumCase) {
       typeParamIsReferenced(enumClass.typeParams, Nil, Nil, impl.parents)
         // used to check there are no illegal references to enum's type parameters in parents
-      expandEnumModule(moduleName, impl, mods, mdef.span)
+      expandEnumModule(moduleName, impl, mods, definesEnumLookupMethods(mdef), mdef.span)
     }
     else {
       val clsName = moduleName.moduleClassName
@@ -990,6 +995,12 @@ object desugar {
 
   private def inventTypeName(tree: Tree)(using Context): String = typeNameExtractor("", tree)
 
+  /**This will check if this def tree is marked to define enum lookup methods,
+   * this is not recommended to call more than once per tree
+   */
+  private def definesEnumLookupMethods(ddef: DefTree): Boolean =
+    ddef.removeAttachment(DefinesEnumLookupMethods).isDefined
+
   /**     val p1, ..., pN: T = E
    *  ==>
    *      makePatDef[[val p1: T1 = E]]; ...; makePatDef[[val pN: TN = E]]
@@ -1001,11 +1012,15 @@ object desugar {
   def patDef(pdef: PatDef)(using Context): Tree = flatTree {
     val PatDef(mods, pats, tpt, rhs) = pdef
     if (mods.isEnumCase)
-      pats map {
-        case id: Ident =>
-          expandSimpleEnumCase(id.name.asTermName, mods,
+      def expand(id: Ident, definesLookups: Boolean) =
+        expandSimpleEnumCase(id.name.asTermName, mods, definesLookups,
             Span(id.span.start, id.span.end, id.span.start))
-      }
+
+      val ids = pats.asInstanceOf[List[Ident]]
+      if definesEnumLookupMethods(pdef) then
+        ids.init.map(expand(_, false)) ::: expand(ids.last, true) :: Nil
+      else
+        ids.map(expand(_, false))
     else {
       val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
       pats1 map (makePatDef(pdef, mods, _, rhs))
