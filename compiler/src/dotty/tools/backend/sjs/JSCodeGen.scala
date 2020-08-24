@@ -1976,10 +1976,11 @@ class JSCodeGen()(using genCtx: Context) {
         genArg
       case _ =>
         implicit val pos = tree.span
-        /* TODO Check for a null receiver?
-         * In theory, it's UB, but that decision should be left for link time.
-         */
-        js.Block(genReceiver, genArg)
+        js.Block(
+            js.If(js.BinaryOp(js.BinaryOp.===, genReceiver, js.Null()),
+                js.Throw(js.New(NullPointerExceptionClass, js.MethodIdent(jsNames.NoArgConstructorName), Nil)),
+                js.Skip())(jstpe.NoType),
+            genArg)
     }
   }
 
@@ -3472,6 +3473,7 @@ class JSCodeGen()(using genCtx: Context) {
 
 object JSCodeGen {
 
+  private val NullPointerExceptionClass = ClassName("java.lang.NullPointerException")
   private val JSObjectClassName = ClassName("scala.scalajs.js.Object")
 
   private val newSimpleMethodName = SimpleMethodName("new")
