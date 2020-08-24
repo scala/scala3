@@ -2472,20 +2472,34 @@ class JSCodeGen()(using genCtx: Context) {
       box(call, sym.info.finalResultType)
     }
 
-    val closure = js.Closure(arrow = true, formalCaptures, formalParams, genBody, actualCaptures)
-    report.debuglog(closure.toString)
-
     val funInterfaceSym = functionalInterface.tpe.widenDealias.typeSymbol
-    if (jsdefn.isJSFunctionClass(funInterfaceSym)) {
-      closure
+
+    if (jsdefn.isJSThisFunctionClass(funInterfaceSym)) {
+      val thisParam :: otherParams = formalParams
+      js.Closure(
+          arrow = false,
+          formalCaptures,
+          otherParams,
+          js.Block(
+              js.VarDef(thisParam.name, thisParam.originalName,
+                  thisParam.ptpe, mutable = false,
+                  js.This()(thisParam.ptpe)(thisParam.pos))(thisParam.pos),
+              genBody),
+          actualCaptures)
     } else {
-      assert(!funInterfaceSym.exists || defn.isFunctionClass(funInterfaceSym),
-          s"Invalid functional interface $funInterfaceSym reached the back-end")
-      val formalCount = formalParams.size
-      val cls = ClassName("scala.scalajs.runtime.AnonFunction" + formalCount)
-      val ctorName = MethodName.constructor(
-          jstpe.ClassRef(ClassName("scala.scalajs.js.Function" + formalCount)) :: Nil)
-      js.New(cls, js.MethodIdent(ctorName), List(closure))
+      val closure = js.Closure(arrow = true, formalCaptures, formalParams, genBody, actualCaptures)
+
+      if (jsdefn.isJSFunctionClass(funInterfaceSym)) {
+        closure
+      } else {
+        assert(!funInterfaceSym.exists || defn.isFunctionClass(funInterfaceSym),
+            s"Invalid functional interface $funInterfaceSym reached the back-end")
+        val formalCount = formalParams.size
+        val cls = ClassName("scala.scalajs.runtime.AnonFunction" + formalCount)
+        val ctorName = MethodName.constructor(
+            jstpe.ClassRef(ClassName("scala.scalajs.js.Function" + formalCount)) :: Nil)
+        js.New(cls, js.MethodIdent(ctorName), List(closure))
+      }
     }
   }
 
@@ -2797,6 +2811,11 @@ class JSCodeGen()(using genCtx: Context) {
         // js.typeOf(arg)
         val arg = genArgs1
         genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg), defn.StringType)
+
+      case STRICT_EQ =>
+        // js.special.strictEquals(arg1, arg2)
+        val (arg1, arg2) = genArgs2
+        js.JSBinaryOp(js.JSBinaryOp.===, arg1, arg2)
 
       case IN =>
         // js.special.in(arg1, arg2)

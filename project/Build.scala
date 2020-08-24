@@ -1063,9 +1063,9 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7/org/scalajs/testsuite/javalib/util" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
-            -- "InteroperabilityTest.scala" // various compile errors
-            -- "OptimizerTest.scala" // compile errors: false + string and () + string
-            -- "ReflectionTest.scala" // tests fail
+            -- "InteroperabilityTest.scala" // various compile errors, pending update upstream
+            -- "OptimizerTest.scala" // compile errors: false + string and () + string, pending update upstream
+            -- "ReflectionTest.scala" // tests fail (wrong load spec for JS globals)
             -- "RegressionJSTest.scala" // non-native JS classes
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
             )).get
@@ -1073,18 +1073,15 @@ object Build {
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** (("*.scala": FileFilter)
             -- "FormatterJSTest.scala" // compile error with the f"" interpolator
             -- "ObjectJSTest.scala" // non-native JS classes
-            -- "StringBufferJSTest.scala" // IR checking errors
-            -- "ThrowableJSTest.scala" // test fails ("java.lang.Error: stub")
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/jsinterop" ** (("*.scala": FileFilter)
             -- "AsyncTest.scala" // needs PromiseMock.scala
             -- "DynamicTest.scala" // one test requires JS exports, all other tests pass
             -- "ExportsTest.scala" // JS exports
-            -- "FunctionTest.scala" // IR checking errors
             -- "IterableTest.scala" // non-native JS classes
             -- "JSExportStaticTest.scala" // JS exports
-            -- "JSNativeInPackage.scala" // IR checking errors
+            -- "JSNativeInPackage.scala" // tests fail (wrong load spec for JS globals)
             -- "JSOptionalTest.scala" // non-native JS classes
             -- "JSSymbolTest.scala" // non-native JS classes
             -- "MiscInteropTest.scala" // non-native JS classes
@@ -1092,10 +1089,6 @@ object Build {
             -- "NestedJSClassTest.scala" // non-native JS classes
             -- "NonNativeJSTypeTest.scala" // non-native JS classes
             -- "PromiseMock.scala" // non-native JS classes
-            -- "SpecialTest.scala" // assertion error in ExpandSAMs
-            -- "SymbolTest.scala" // IR checking errors
-            -- "ThisFunctionTest.scala" // assertion error in ExpandSAMs
-            -- "UndefOrTest.scala" // StackOverflow in the compiler
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter)
@@ -1107,20 +1100,15 @@ object Build {
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/library" ** (("*.scala": FileFilter)
-            -- "BigIntTest.scala" // StackOverflow in the compiler
-            -- "ObjectTest.scala" // compile errors
+            -- "BigIntTest.scala" // Ambiguous reference because of new non-shadowing rule in Scala 3, pending update upstream
+            -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
-            -- "UnionTypeTest.scala" // requires a Scala 2 macro + StackOverflow in the compiler
-            -- "WrappedDictionaryTest.scala" // IR checking errors
+            -- "UnionTypeTest.scala" // requires a Scala 2 macro
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/scalalib" ** "*.scala").get
-
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/typedarray" ** (("*.scala": FileFilter)
-            -- "TypedArrayTest.scala" // assertion error in ExpandSAMs
-            )).get
-
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/typedarray" ** "*.scala").get
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
 
           ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
@@ -1131,9 +1119,7 @@ object Build {
             -- "SAMJSTest.scala" // non-native JS classes
             )).get
 
-          ++ (dir / "js/src/test/scala-new-collections" ** (("*.scala": FileFilter)
-            -- "WrappedDictionaryToTest.scala" // IR checking errors
-            )).get
+          ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
         )
       }
     )

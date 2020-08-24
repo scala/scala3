@@ -13,6 +13,7 @@ class SJSPlatform()(using Context) extends JavaPlatform {
 
   /** Is the SAMType `cls` also a SAM under the rules of the Scala.js back-end? */
   override def isSam(cls: ClassSymbol)(using Context): Boolean =
-    defn.isFunctionClass(cls) || jsDefinitions.isJSFunctionClass(cls)
+    defn.isFunctionClass(cls)
+      || jsDefinitions.isJSFunctionClass(cls)
+      || jsDefinitions.isJSThisFunctionClass(cls)
 }
-

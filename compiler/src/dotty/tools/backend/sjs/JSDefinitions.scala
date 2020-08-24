@@ -47,6 +47,9 @@ final class JSDefinitions()(using Context) {
   @threadUnsafe lazy val JSBaseThisFunctionType: TypeRef = requiredClassRef("scala.scalajs.js.ThisFunction")
   def JSBaseThisFunctionClass(using Context) = JSBaseThisFunctionType.symbol.asClass
 
+  @threadUnsafe lazy val PseudoUnionType: TypeRef = requiredClassRef("scala.scalajs.js.|")
+  def PseudoUnionClass(using Context) = PseudoUnionType.symbol.asClass
+
   @threadUnsafe lazy val JSArrayType: TypeRef = requiredClassRef("scala.scalajs.js.Array")
   def JSArrayClass(using Context) = JSArrayType.symbol.asClass
 
@@ -151,6 +154,8 @@ final class JSDefinitions()(using Context) {
     def Special_in(using Context) = Special_inR.symbol
     @threadUnsafe lazy val Special_instanceofR = SpecialPackageClass.requiredMethodRef("instanceof")
     def Special_instanceof(using Context) = Special_instanceofR.symbol
+    @threadUnsafe lazy val Special_strictEqualsR = SpecialPackageClass.requiredMethodRef("strictEquals")
+    def Special_strictEquals(using Context) = Special_strictEqualsR.symbol
 
   @threadUnsafe lazy val WrappedArrayType: TypeRef = requiredClassRef("scala.scalajs.js.WrappedArray")
   def WrappedArrayClass(using Context) = WrappedArrayType.symbol.asClass
