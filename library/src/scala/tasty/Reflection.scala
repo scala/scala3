@@ -20,15 +20,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   def rootContext: Context // TODO: Should this be moved to QuoteContext?
   given Context = rootContext // TODO: Should be an implicit converion from QuoteContext to Context
 
-  given ContextOps as Context.type = Context
-
-  object Context:
-    extension (self: Context):
-      /** Returns the owner of the context */
-      def owner: Symbol = reflectSelf.Context_owner(self)
-    end extension
-  end Context
-
 
   ///////////////
   //   Source  //
@@ -1903,6 +1894,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   object Symbol:
 
+    /** Returns the symbol of the current enclosing definition */
+    def currentOwner(using ctx: Context): Symbol = reflectSelf.Symbol_currentOwner
+
     /** Get package symbol if package is either defined in current compilation run or present on classpath. */
     def requiredPackage(path: String)(using ctx: Context): Symbol = reflectSelf.Symbol_requiredPackage(path)
 
@@ -2680,7 +2674,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   /** Bind the `rhs` to a `val` and use it in `body` */
   def let(rhs: Term)(body: Ident => Term)(using ctx: Context): Term = {
-    val sym = Symbol.newVal(ctx.owner, "x", rhs.tpe.widen, Flags.EmptyFlags, Symbol.noSymbol)
+    val sym = Symbol.newVal(Symbol.currentOwner, "x", rhs.tpe.widen, Flags.EmptyFlags, Symbol.noSymbol)
     Block(List(ValDef(sym, Some(rhs))), body(Ref(sym).asInstanceOf[Ident]))
   }
 

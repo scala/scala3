@@ -50,9 +50,6 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Context = core.Contexts.Context
 
-  def Context_owner(self: Context): Symbol = self.owner
-
-
   /////////////////
   // Constraints //
   /////////////////
@@ -1673,6 +1670,8 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   /////////////
 
   type Symbol = core.Symbols.Symbol
+
+  def Symbol_currentOwner(using ctx: Context): Symbol = ctx.owner
 
   def Symbol_owner(self: Symbol)(using Context): Symbol = self.owner
   def Symbol_maybeOwner(self: Symbol)(using Context): Symbol = self.maybeOwner
