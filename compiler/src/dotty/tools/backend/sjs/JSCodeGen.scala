@@ -2277,9 +2277,11 @@ class JSCodeGen()(using genCtx: Context) {
         abortMatch(s"Invalid selector type ${genSelector.tpe}")
     }
 
-    val resultType =
-      if (isStat) jstpe.NoType
-      else toIRType(tree.tpe)
+    val resultType = toIRType(tree.tpe) match {
+      case jstpe.NothingType => jstpe.NothingType // must take priority over NoType below
+      case _ if isStat       => jstpe.NoType
+      case resType           => resType
+    }
 
     var clauses: List[(List[js.Tree], js.Tree)] = Nil
     var optDefaultClause: Option[js.Tree] = None
