@@ -1,6 +1,7 @@
 package scala.internal.quoted
 
 import scala.quoted._
+import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
 /** Quoted type (or kind) `T` backed by a tree */
 final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quoted.Type[Any] {
@@ -14,7 +15,7 @@ final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quote
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
   def unseal(using qctx: QuoteContext): qctx.tasty.TypeTree =
-    if (qctx.tasty.internal.compilerId != scopeId)
+    if (quoteContextWithCompilerInterface(qctx).tasty.compilerId != scopeId)
       throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
     typeTree.asInstanceOf[qctx.tasty.TypeTree]
 

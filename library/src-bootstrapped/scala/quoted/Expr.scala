@@ -1,6 +1,7 @@
 package scala.quoted
 
 import scala.quoted.show.SyntaxHighlight
+import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
 /** Quoted expression of type `T` */
 abstract class Expr[+T] private[scala] {
@@ -75,7 +76,8 @@ object Expr {
    *   Otherwise returns `expr`.
    */
   def betaReduce[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    qctx.tasty.internal.betaReduce(expr.unseal) match
+    val qctx2 = quoteContextWithCompilerInterface(qctx)
+    qctx2.tasty.betaReduce(expr.unseal) match
       case Some(expr1) => expr1.seal.asInstanceOf[Expr[T]]
       case _ => expr
 
