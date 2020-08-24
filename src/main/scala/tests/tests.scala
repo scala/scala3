@@ -40,9 +40,9 @@ package tests
   *
   * And yet another: [](example.level2.Documentation).
   *
-  * This is my friend: [](tests.B).
+  * This is my friend: [[tests.B]].
   *
-  * And this is his companion: [](tests.B$).
+  * And this is his companion: [[tests.B$ link to the companion]].
   *
   * @author Gal Anonim
   * @version 1.0.0

@@ -14,6 +14,7 @@ import com.vladsch.flexmark.ext.emoji.EmojiExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
+import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
 object HtmlParsers {
@@ -28,10 +29,12 @@ object HtmlParsers {
         AnchorLinkExtension.create(),
         EmojiExtension.create(),
         YamlFrontMatterExtension.create(),
-        StrikethroughExtension.create()
+        StrikethroughExtension.create(),
+        WikiLinkExtension.create(),
       ))
       .set(EmojiExtension.ROOT_IMAGE_PATH,
         "https://github.global.ssl.fastly.net/images/icons/emoji/")
+      .set(WikiLinkExtension.LINK_ESCAPE_CHARS, "")
 
   val RENDERER = Formatter.builder(markdownOptions).build()
 
