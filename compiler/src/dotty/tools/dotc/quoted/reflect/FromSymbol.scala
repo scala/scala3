@@ -1,4 +1,5 @@
-package dotty.tools.dotc.tastyreflect
+package dotty.tools.dotc.quoted
+package reflect
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd

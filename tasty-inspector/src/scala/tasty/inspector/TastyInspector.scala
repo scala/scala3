@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.fromtasty._
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
+import dotty.tools.dotc.quoted.reflect.ReflectionImpl
 import dotty.tools.dotc.util.ClasspathFromClassloader
 
 import java.io.File.pathSeparator

@@ -37,8 +37,7 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.ListBuffer
 import scala.collection.mutable
 import config.Printers.pickling
-import core.quoted.PickledQuotes
-import dotty.tools.dotc.quoted.QuoteContext
+import quoted.PickledQuotes
 
 import dotty.tools.tasty.TastyFormat._
 

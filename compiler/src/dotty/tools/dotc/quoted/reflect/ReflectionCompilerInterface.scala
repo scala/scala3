@@ -1,5 +1,6 @@
 package dotty.tools.dotc
-package tastyreflect
+package quoted
+package reflect
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, Trees, tpd, untpd}
@@ -8,11 +9,11 @@ import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.quoted.PickledQuotes
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Types.SingletonType
-import dotty.tools.dotc.tastyreflect.FromSymbol.{definitionFromSym, packageDefFromSym}
+import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.quoted.reflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 import dotty.tools.dotc.typer.Implicits.{AmbiguousImplicits, DivergingImplicit, NoMatchingImplicits, SearchFailure, SearchFailureType}
 import dotty.tools.dotc.util.{SourceFile, SourcePosition, Spans}
 
@@ -30,7 +31,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   private given core.Contexts.Context = rootContext
 
   def rootPosition: util.SourcePosition =
-    tastyreflect.MacroExpansion.position.getOrElse(SourcePosition(rootContext.source, Spans.NoSpan))
+    MacroExpansion.position.getOrElse(SourcePosition(rootContext.source, Spans.NoSpan))
 
 
   //////////////////////

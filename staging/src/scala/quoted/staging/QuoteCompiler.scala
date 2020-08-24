@@ -14,8 +14,8 @@ import dotty.tools.dotc.core.Scopes.{EmptyScope, newScope}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.ExprType
-import dotty.tools.dotc.core.quoted.PickledQuotes
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
+import dotty.tools.dotc.quoted.PickledQuotes
+import dotty.tools.dotc.quoted.reflect.ReflectionImpl
 import dotty.tools.dotc.transform.Splicer.checkEscapedVariables
 import dotty.tools.dotc.transform.ReifyQuotes
 import dotty.tools.dotc.util.Spans.Span
@@ -69,7 +69,7 @@ private class QuoteCompiler extends Compiler:
 
           val quoted =
             given Context = unitCtx.withOwner(meth)
-            val qctx = dotty.tools.dotc.quoted.QuoteContext()
+            val qctx = dotty.tools.dotc.quoted.QuoteContextImpl()
             val quoted = PickledQuotes.quotedExprToTree(exprUnit.exprBuilder.apply(qctx))
             checkEscapedVariables(quoted, meth)
           end quoted

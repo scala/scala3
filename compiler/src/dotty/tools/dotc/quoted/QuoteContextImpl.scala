@@ -1,12 +1,13 @@
 package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
-object QuoteContext {
+import scala.quoted.QuoteContext
 
-  def apply()(using Context): scala.quoted.QuoteContext =
-    new QuoteContext(ReflectionImpl(summon[Context]))
+object QuoteContextImpl {
+
+  def apply()(using Context): QuoteContext =
+    new QuoteContextImpl(reflect.ReflectionImpl(ctx))
 
   type ScopeId = Int
 
@@ -17,7 +18,7 @@ object QuoteContext {
   // TODO Explore more fine grained scope ids.
   //      This id can only differentiate scope extrusion from one compiler instance to another.
   private[dotty] def scopeId(using Context): ScopeId =
-    summon[Context].outersIterator.toList.last.hashCode()
+    ctx.outersIterator.toList.last.hashCode()
 }
 
-class QuoteContext(val tasty: scala.tasty.Reflection) extends scala.quoted.QuoteContext
+class QuoteContextImpl(val tasty: scala.tasty.Reflection) extends QuoteContext

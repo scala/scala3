@@ -6,7 +6,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.tasty.TastyHTMLPrinter
 import dotty.tools.dotc.reporting._
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
+import dotty.tools.dotc.quoted.reflect.ReflectionImpl
 
 /**
   * Decompiler to be used with IDEs
