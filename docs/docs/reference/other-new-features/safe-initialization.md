@@ -236,7 +236,7 @@ and avoids accidental violation of contracts across library versions.
 
 We can impose the following rules to enforce modularity:
 
-4. A class or trait that may be extended in another project should not
+1. A class or trait that may be extended in another project should not
    call _virtual_ methods on `this` in its template/mixin evaluation,
    directly or indirectly.
 
