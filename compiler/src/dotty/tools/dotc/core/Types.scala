@@ -3217,14 +3217,15 @@ object Types {
       if ((paramNames eq this.paramNames) && (paramInfos eq this.paramInfos) && (resType eq this.resType)) this
       else newLikeThis(paramNames, paramInfos, resType)
 
+    protected def substParams(pinfos: List[PInfo], from: LambdaType, to: This)(using Context): List[PInfo] = pinfos match
+      case pinfos @ (pinfo :: rest) =>
+        pinfos.derivedCons(pinfo.subst(from, to).asInstanceOf[PInfo], substParams(rest, from, to))
+      case nil =>
+        nil
+
     def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(using Context): This =
-      def substParams(pinfos: List[PInfo], to: This): List[PInfo] = pinfos match
-        case pinfos @ (pinfo :: rest) =>
-          pinfos.derivedCons(pinfo.subst(this, to).asInstanceOf[PInfo], substParams(rest, to))
-        case nil =>
-          nil
       companion(paramNames)(
-          x => substParams(paramInfos, x),
+          x => substParams(paramInfos, this, x),
           x => resType.subst(this, x))
 
     protected def prefixString: String
@@ -3371,17 +3372,10 @@ object Types {
       else resultType
   }
 
-  abstract case class MethodType(paramNames: List[TermName])(
-      paramInfosExp: MethodType => List[Type],
-      resultTypeExp: MethodType => Type)
-    extends MethodOrPoly with TermLambda with NarrowCached { thisMethodType =>
+  abstract case class MethodType(paramNames: List[TermName])
+  extends MethodOrPoly, TermLambda, NarrowCached { thisMethodType =>
 
     type This = MethodType
-
-    val paramInfos: List[Type] = paramInfosExp(this)
-    val resType: Type = resultTypeExp(this)
-    assert(resType.exists)
-
     def companion: MethodTypeCompanion
 
     final override def isJavaMethod: Boolean = companion eq JavaMethodType
@@ -3397,6 +3391,57 @@ object Types {
       companion.eq(ContextualMethodType) ||
       companion.eq(ErasedContextualMethodType)
 
+    /** A type is _clean_ if a substituting this method type for some other method
+     *  type in a binder substitution yields the type itself. This is the case if:
+     *   - the type does not reference this method type
+     *   - the type does not contain parts that are mapped to something else in
+     *     a type map. In particular, it does not contain instantiated type variables,
+     *     skolems, or LazyRefs.
+     *  The purpose for having this method is to avoid binder substitutions
+     *  if the new method type elements are all known to be clean.
+     *  The method is a conservative approximation. It also returns false for
+     *  some less common types that are not worth chasing down in detail.
+     */
+    private def isClean(tp: Type)(using Context): Boolean = tp match
+      case tp: NamedType =>
+        tp.symbol.is(Package) || (tp.prefix eq NoPrefix) || isClean(tp.prefix)
+      case tp: AppliedType =>
+        isClean(tp.tycon) && isClean(tp.args)
+      case tp: BoundType =>
+        tp.binder ne this
+      case _: ThisType =>
+        true
+      case tp: TypeVar =>
+        !tp.instanceOpt.exists
+      case RefinedType(parent, _, refinedInfo) =>
+        isClean(parent) && isClean(refinedInfo)
+      case TypeAlias(alias) =>
+        isClean(alias)
+      case TypeBounds(lo, hi) =>
+        isClean(lo) && isClean(hi)
+      case tp: AnnotatedType =>
+        isClean(tp.underlying)
+      case tp: AndOrType =>
+        isClean(tp.tp1) && isClean(tp.tp2)
+      case WildcardType(bounds) =>
+        isClean(bounds)
+      case mt: MethodType =>
+        isClean(mt.paramInfos) && isClean(mt.resType)
+      case _: TypeErasure.ErasedValueType | _: ConstantType | NoType =>
+        true
+      case _ =>
+        false
+
+    private def isClean(tps: List[Type])(using Context): Boolean = tps match
+      case tp :: tps1 => isClean(tp) && isClean(tps1)
+      case nil => true
+
+    final override def newLikeThis(paramNames: List[TermName], paramInfos: List[Type], resType: Type)(using Context): This =
+      if isClean(resType) && isClean(paramInfos) then
+        companion(paramNames, paramInfos, resType)
+      else
+        companion(paramNames, paramInfos, resType, this)
+
     protected[dotc] def computeSignature(using Context): Signature = {
       val params = if (isErasedMethod) Nil else paramInfos
       resultSignature.prependTermParams(params, isJavaMethod)
@@ -3405,8 +3450,24 @@ object Types {
     protected def prefixString: String = companion.prefixString
   }
 
-  final class CachedMethodType(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type, val companion: MethodTypeCompanion)
-    extends MethodType(paramNames)(paramInfosExp, resultTypeExp)
+  final class CachedMethodType(paramNames: List[TermName])
+    (paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type,
+     val companion: MethodTypeCompanion)
+  extends MethodType(paramNames):
+    val paramInfos: List[Type] = paramInfosExp(this)
+    val resType: Type = resultTypeExp(this)
+    assert(resType.exists)
+
+  final class CopiedCachedMethodType(paramNames: List[TermName],
+    @constructorOnly initParamInfos: List[Type], @constructorOnly initResType: Type,
+    @constructorOnly from: MethodType, val companion: MethodTypeCompanion)(using @constructorOnly ctx: Context)
+  extends MethodType(paramNames):
+    val paramInfos: List[Type] = substParams(initParamInfos, from, this)
+    val resType: Type = initResType.subst(from, this)
+
+  final class SimpleCachedMethodType(paramNames: List[TermName],
+    val paramInfos: List[Type], val resType: Type, val companion: MethodTypeCompanion)
+  extends MethodType(paramNames)
 
   abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] {
     def syntheticParamName(n: Int): N
@@ -3471,7 +3532,14 @@ object Types {
     }
 
     final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
-      checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
+      checkValid(unique(CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
+
+    /** Method type with given fields where references to `origin` are substituted with the result */
+    final def apply(paramNames: List[TermName], paramInfos: List[Type], resultType: Type, origin: MethodType)(using Context): MethodType =
+      checkValid(unique(CopiedCachedMethodType(paramNames, paramInfos, resultType, origin, self)))
+
+    override def apply(paramNames: List[TermName], paramInfos: List[Type], resultType: Type)(using Context): MethodType =
+      checkValid(unique(SimpleCachedMethodType(paramNames, paramInfos, resultType, self)))
 
     def checkValid(mt: MethodType)(using Context): mt.type = {
       if (Config.checkMethodTypes)
@@ -3553,7 +3621,7 @@ object Types {
    *
    *  Variances are stored in the `typeParams` list of the lambda.
    */
-  class HKTypeLambda(val paramNames: List[TypeName], @constructorOnly variances: List[Variance])(
+  class HKTypeLambda(val paramNames: List[TypeName], /*@constructorOnly*/ variances: List[Variance])(
       paramInfosExp: HKTypeLambda => List[TypeBounds], resultTypeExp: HKTypeLambda => Type)
   extends HKLambda with TypeLambda {
     type This = HKTypeLambda
