@@ -213,30 +213,38 @@ trait ClassLikeSupport:
 
     def getGivenInstance: Option[Bound] = {
       def extractTypeSymbol(t: Tree): Option[Symbol] = t match {
-          case tpeTree: TypeTree =>  inner(tpeTree.tpe)   
+          case tpeTree: TypeTree =>  
+            inner(tpeTree.tpe) 
           case other => None
       }
 
-      def inner(tpe: TypeOrBounds): Option[Symbol] = tpe match {
+      def inner(tpe: TypeOrBounds): Option[Symbol] = { 
+        tpe match {
           case ThisType(tpe) => inner(tpe)
           case AnnotatedType(tpe, _) => inner(tpe)
           case AppliedType(tpe, typeOrBoundsList) => inner(tpe)
-          case TermRef(qual, typeName) => inner(qual)
+          case tp @ TermRef(qual, typeName) => 
+            qual match {
+              case _: Type | _: NoPrefix => Some(tp.termSymbol)
+              case other => None
+              } 
           case tp @ TypeRef(qual, typeName) =>
               qual match {
               case _: Type | _: NoPrefix => Some(tp.typeSymbol)
               case other => None
               } 
       }
+    }
 
       val typeSymbol = extractTypeSymbol(method.returnTpt)
 
       typeSymbol.map(_.tree).collect {
         case c: ClassDef => c.getParents.headOption
+        case _ => Some(method.returnTpt.dokkaType)
       }.flatten
     }
     val optionalExtras = Seq(Option.when(isGiven)(IsGiven(getGivenInstance))).flatten
-
+    
 
     new DFunction(
       methodSymbol.dri,
