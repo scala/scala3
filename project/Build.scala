@@ -1021,7 +1021,6 @@ object Build {
         val dir = fetchScalaJSSource.value / "test-suite"
         (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
-            -- "RegressionTest.scala" // IR checking errors
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
             -- "EnumerationTest.scala" // scala.Enumeration support for Scala.js is not implemented in dotc (yet)
             -- "SymbolTest.scala" // uses the old literal symbol syntax, pending update upstream

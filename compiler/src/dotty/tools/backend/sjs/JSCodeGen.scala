@@ -1838,13 +1838,17 @@ class JSCodeGen()(using genCtx: Context) {
      * **which includes when either is a JS type**.
      * When it is statically known that both sides are equal and subtypes of
      * Number or Character, not using the rich equality is possible (their
-     * own equals method will do ok.)
+     * own equals method will do ok), except for java.lang.Float and
+     * java.lang.Double: their `equals` have different behavior around `NaN`
+     * and `-0.0`, see Javadoc (scala-dev#329, scala-js#2799).
      */
     val mustUseAnyComparator: Boolean = {
       isJSType(lsym) || isJSType(rsym) || {
         val p = ctx.platform
-        val areSameFinals = lsym.is(Final) && rsym.is(Final) && (ltpe =:= rtpe)
-        !areSameFinals && p.isMaybeBoxed(lsym) && p.isMaybeBoxed(rsym)
+        p.isMaybeBoxed(lsym) && p.isMaybeBoxed(rsym) && {
+          val areSameFinals = lsym.is(Final) && rsym.is(Final) && (ltpe =:= rtpe)
+          !areSameFinals || lsym == defn.BoxedFloatClass || lsym == defn.BoxedDoubleClass
+        }
       }
     }
 
