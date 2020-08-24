@@ -40,7 +40,7 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
                     else s"Candidates:\n${candidates.mkString("\n")}\n"
 
                 //reportError(s"No match for:\n$s\n$candidateMsg") All test would fail because of documented inherited methods
-                println(s"No match for:\n$s\n$candidateMsg")
+                //println(s"No match for:\n$s\n$candidateMsg")
                 Nil
             case matching =>
                 matching

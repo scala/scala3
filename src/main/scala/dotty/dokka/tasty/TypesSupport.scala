@@ -61,7 +61,14 @@ trait TypesSupport:
                 inner(tpe) :+ text("*")
             case AnnotatedType(tpe, _) => 
                 inner(tpe)
-            case tl @ TypeLambda(paramNames, paramTypes, resType) => noSupported(s"TypeLambda: ${paramNames} , ")  //TOFIX
+            case tl @ TypeLambda(params, paramBounds, resType) => 
+                // println(params)
+                // println(paramBounds)
+                texts("[") ++ commas(params.zip(paramBounds).map( (name, typ) => texts(s"${name}") ++ inner(typ) )) ++ texts("]")
+                ++ texts(" =>> ")
+                ++ inner(resType)
+            
+                
             case r: Refinement => { //(parent, name, info)
                 def parseRefinedType(r: Refinement): List[JProjection] = {
                     (r.parent match{
@@ -167,6 +174,11 @@ trait TypesSupport:
 
     private def typeBound(t: Type, low: Boolean) = 
         val ignore = if(low) t.typeSymbol == defn.NothingClass  else t.typeSymbol == defn.AnyClass
-        if ignore then Nil 
-        else text(if low then " >: " else " <: ") :: inner(t)
+        val prefix = text(if low then " >: " else " <: ")
+        t match {
+            case l: TypeLambda => prefix :: texts("(") ++ inner(l) ++ texts(")")
+            case p: ParamRef => prefix :: inner(p)
+            case other if !ignore => prefix :: inner(other)
+            case _ => Nil
+        }
     

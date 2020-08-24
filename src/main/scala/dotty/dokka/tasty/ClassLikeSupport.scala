@@ -288,19 +288,25 @@ trait ClassLikeSupport:
     )  
     
   def parseTypeDef(typeDef: TypeDef): DProperty =
+
+    def isTreeAbstract(typ: Tree): Boolean = typ match {
+      case TypeBoundsTree(_, _) => true
+      case LambdaTypeTree(params, body) => isTreeAbstract(body)
+      case _ => false
+    }
+
+    val isAbstract = isTreeAbstract(typeDef.rhs)
+
+    val isOpaque = hackIsOpaque(self.reflect)(typeDef.symbol)
+
     val (generics, tpeTree) =  typeDef.rhs match {
-      case LambdaTypeTree(params, body) =>
+      case LambdaTypeTree(params, body) if isAbstract || isOpaque =>
         (params.map(parseTypeArgument), body)
       case tpe =>
         (Nil, tpe)  
     }
 
-    val isAbstract = tpeTree match {
-      case TypeBoundsTree(_, _) => true
-      case _ => false
-    }
-
-    val extraModifiers = Set(Option.when(hackIsOpaque(self.reflect)(typeDef.symbol))(ScalaOnlyModifiers.Opaque)).flatten
+    val extraModifiers = Set(Option.when(isOpaque)(ScalaOnlyModifiers.Opaque)).flatten
 
     new DProperty(
       typeDef.symbol.dri,
