@@ -3213,8 +3213,16 @@ object Types {
       else newLikeThis(paramNames, paramInfos, resType)
 
     def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(using Context): This =
+      def substParams(pinfos: List[PInfo], to: This): List[PInfo] = pinfos match
+        case pinfo :: rest =>
+          val pinfo1 = pinfo.subst(this, to).asInstanceOf[PInfo]
+          val rest1 = substParams(rest, to)
+          if (pinfo1 eq pinfo) && (rest1 eq rest) then pinfos
+          else pinfo1 :: rest1
+        case nil =>
+          nil
       companion(paramNames)(
-          x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
+          x => substParams(paramInfos, x),
           x => resType.subst(this, x))
 
     protected def prefixString: String
@@ -4186,7 +4194,7 @@ object Types {
      *  uninstantiated
      */
     def instanceOpt(using Context): Type =
-      if (inst.exists) inst else TypeComparer.instType(this)
+      if (inst.exists) inst else ctx.typerState.constraint.instType(this)
 
     /** Is the variable already instantiated? */
     def isInstantiated(using Context): Boolean = instanceOpt.exists
