@@ -1020,47 +1020,29 @@ object Build {
       managedSources in Test ++= {
         val dir = fetchScalaJSSource.value / "test-suite"
         (
-          (dir / "shared/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala":FileFilter) -- "RegressionTest.scala" -- "ReflectiveCallTest.scala")).get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/io" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/math" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/net" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/security" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util/regex" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util/concurrent" ** "*.scala").get
+          (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
+            -- "RegressionTest.scala" // IR checking errors
+            -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
+            -- "EnumerationTest.scala" // scala.Enumeration support for Scala.js is not implemented in dotc (yet)
+            -- "SymbolTest.scala" // uses the old literal symbol syntax, pending update upstream
 
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/javalib/util" * (("*.scala": FileFilter)
-            -- "AbstractSetTest.scala"
+            // all the following depend on HashSetTest and LinkedHashSetTest ...
             -- "CollectionsOnCheckedCollectionTest.scala"
             -- "CollectionsOnCheckedListTest.scala"
-            -- "CollectionsOnCheckedMapTest.scala"
             -- "CollectionsOnCheckedSetTest.scala"
-            -- "CollectionsOnListsTest.scala"
-            -- "CollectionsOnMapsTest.scala"
-            -- "CollectionsOnSetFromMapTest.scala"
             -- "CollectionsOnSetsTest.scala"
             -- "CollectionsOnSynchronizedCollectionTest.scala"
             -- "CollectionsOnSynchronizedListTest.scala"
-            -- "CollectionsOnSynchronizedMapTest.scala"
             -- "CollectionsOnSynchronizedSetTest.scala"
+
+            // ... which do not compile because of an abstract method shadowing a concrete method, pending update upstream
             -- "HashSetTest.scala"
             -- "LinkedHashSetTest.scala"
-            -- "SortedSetTest.scala"
-            -- "TreeSetTest.scala"
             )).get
 
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/junit" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/niocharset" ** "*.scala").get
-          ++ (dir / "shared/src/test/scala/org/scalajs/testsuite/scalalib" ** (("*.scala": FileFilter) -- "EnumerationTest.scala" -- "SymbolTest.scala")).get
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/compiler" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk8/org/scalajs/testsuite/javalib/util" ** (("*.scala": FileFilter) -- "CollectionsOnCopyOnWriteArrayListTestOnJDK8.scala")).get
-          ++ (dir / "shared/src/test/require-jdk7/org/scalajs/testsuite/javalib/io" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk7/org/scalajs/testsuite/javalib/lang" ** "*.scala").get
-          ++ (dir / "shared/src/test/require-jdk7/org/scalajs/testsuite/javalib/util" ** "*.scala").get
+          ++ (dir / "shared/src/test/require-jdk8" ** "*.scala").get
+          ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
             -- "InteroperabilityTest.scala" // various compile errors, pending update upstream
