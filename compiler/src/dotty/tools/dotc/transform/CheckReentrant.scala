@@ -46,12 +46,9 @@ class CheckReentrant extends MiniPhase {
   def isIgnored(sym: Symbol)(using Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
     sym.hasAnnotation(unsharedAnnot()) ||
-    sym.topLevelClass.owner == scalaJSIRPackageClass() ||
+    sym.topLevelClass.owner == scalaJSIRPackageClass()
       // We would add @sharable annotations on ScalaJSVersions and
       // VersionChecks but we do not have control over that code
-    sym.owner == defn.EnumValuesClass
-      // enum values are initialized eagerly before use
-      // in the long run, we should make them vals
 
   def scanning(sym: Symbol)(op: => Unit)(using Context): Unit = {
     report.log(i"${"  " * indent}scanning $sym")

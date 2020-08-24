@@ -121,12 +121,10 @@ map into `case class`es or `val`s.
    ```
    expands to a value definition in `E`'s companion object:
    ```scala
-   val C = new <parents> { <body>; def ordinal = n; $values.register(this) }
+   val C = new <parents> { <body>; def ordinal = n }
    ```
    where `n` is the ordinal number of the case in the companion object,
-   starting from 0.  The statement `$values.register(this)` registers the value
-   as one of the `values` of the enumeration (see below). `$values` is a
-   compiler-defined private value in the companion object. The anonymous class also
+   starting from 0. The anonymous class also
    implements the abstract `Product` methods that it inherits from `Enum`.
 
 
@@ -162,8 +160,7 @@ An enum `E` (possibly generic) that defines one or more singleton cases
 will define the following additional synthetic members in its companion object (where `E'` denotes `E` with
 any type parameters replaced by wildcards):
 
-   - A method `valueOf(name: String): E'`. It returns the singleton case value whose
-     `toString` representation is `name`.
+   - A method `valueOf(name: String): E'`. It returns the singleton case value whose `enumLabel` is `name`.
    - A method `values` which returns an `Array[E']` of all singleton case
      values defined by `E`, in the order of their definitions.
 
@@ -178,7 +175,6 @@ If `E` contains at least one simple case, its companion object will define in ad
        def enumLabel = $name
        override def productPrefix = enumLabel // if not overridden in `E`
        override def toString = enumLabel      // if not overridden in `E`
-       $values.register(this) // register enum value so that `valueOf` and `values` can return it.
      }
      ```
 

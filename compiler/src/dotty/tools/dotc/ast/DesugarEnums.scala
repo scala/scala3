@@ -20,10 +20,18 @@ object DesugarEnums {
     val Simple, Object, Class: Value = Value
   }
 
+  final class EnumConstraints(minKind: CaseKind.Value, maxKind: CaseKind.Value, cases: List[(Int, TermName)]):
+    require(minKind <= maxKind && !(cached && cachedValues.isEmpty))
+    def requiresCreator = minKind == CaseKind.Simple
+    def isEnumeration   = maxKind < CaseKind.Class
+    def cached          = minKind < CaseKind.Class
+    def cachedValues    = cases
+  end EnumConstraints
+
   /** Attachment containing the number of enum cases, the smallest kind that was seen so far,
    *  and a list of all the value cases with their ordinals.
    */
-  val EnumCaseCount: Property.Key[(Int, CaseKind.Value, List[(Int, TermName)])] = Property.Key()
+  val EnumCaseCount: Property.Key[(Int, CaseKind.Value, CaseKind.Value, List[(Int, TermName)])] = Property.Key()
 
   /** Attachment signalling that when this definition is desugared, it should add any additional
    *  lookup methods for enums.
@@ -84,35 +92,55 @@ object DesugarEnums {
   private def valuesDot(name: PreName)(implicit src: SourceFile) =
     Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
 
-  private def registerCall(using Context): Tree =
-    Apply(valuesDot("register"), This(EmptyTypeIdent) :: Nil)
+  private def ArrayLiteral(values: List[Tree], tpt: Tree)(using Context): Tree =
+    val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), tpt :: Nil)
+    val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), tpt :: Nil), clazzOf :: Nil)
+    val apply   = Select(ref(defn.ArrayModule.termRef), nme.apply)
+    Apply(Apply(TypeApply(apply, tpt :: Nil), values), ctag :: Nil)
 
-  /**  The following lists of definitions for an enum type E:
+  /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *
-   *   private val $values = new EnumValues[E]
-   *   def values = $values.values.toArray
+   *   private val $values = Array[E](e_0,...,e_n)(ClassTag[E](classOf[E]))
+   *   @annotation.threadUnsafe private lazy val $valuesReverse =
+   *     scala.runtime.ScalaRuntime.wrapRefArray($values).map((x_0: E) => (x_0.enumLabel, x_0)).toMap
+   *   def values = $values.clone
    *   def valueOf($name: String) =
-   *     try $values.fromName($name) catch
+   *     try $valuesReverse($name) catch
    *       {
-   *         case ex$:NoSuchElementException =>
-   *           throw new IllegalArgumentException("key not found: ".concat(name))
+   *         case ex$: NoSuchElementException =>
+   *           throw new IllegalArgumentException("enum case not found: " + $name)
    *       }
    */
-  private def enumScaffolding(using Context): List[Tree] = {
+  private def enumScaffolding(enumCases: List[(Int, TermName)])(using Context): List[Tree] = {
+    import dotty.tools.dotc.transform.SymUtils.rawTypeRef
     val rawEnumClassRef = rawRef(enumClass.typeRef)
     extension (tpe: NamedType) def ofRawEnum = AppliedTypeTree(ref(tpe), rawEnumClassRef)
-    val valuesDef =
-      DefDef(nme.values, Nil, Nil, defn.ArrayType.ofRawEnum, Select(valuesDot(nme.values), nme.toArray))
-        .withFlags(Synthetic)
+
     val privateValuesDef =
-      ValDef(nme.DOLLAR_VALUES, TypeTree(), New(defn.EnumValuesClass.typeRef.ofRawEnum, ListOfNil))
-        .withFlags(Private | Synthetic)
+      ValDef(nme.DOLLAR_VALUES, TypeTree(),
+        ArrayLiteral(enumCases.map((_, name) => Ident(name)), rawEnumClassRef))
+          .withFlags(Private | Synthetic)
+
+    val privateReverseValuesDef =
+      val wrapped = Apply(Select(ref(defn.ScalaRuntimeModule.termRef), nme.wrapRefArray), Ident(nme.DOLLAR_VALUES))
+      val mapper =
+        val paramName = nme.syntheticParamName(0)
+        val paramDef = param(paramName, rawEnumClassRef)
+        Function(paramDef :: Nil, Tuple(Select(Ident(paramName), nme.enumLabel) :: Ident(paramName) :: Nil))
+      val mapBody = Select(Apply(Select(wrapped, nme.map), mapper), nme.toMap)
+      val annot = New(ref(defn.ThreadUnsafeAnnot.typeRef), Nil).withSpan(ctx.tree.span)
+      ValDef(nme.DOLLAR_VALUES_REVERSE, TypeTree(), mapBody)
+          .withFlags(Private | Synthetic | Lazy).withAnnotations(annot :: Nil)
+
+    val valuesDef =
+      DefDef(nme.values, Nil, Nil, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
+        .withFlags(Synthetic)
 
     val valuesOfExnMessage = Apply(
-      Select(Literal(Constant("key not found: ")), "concat".toTermName),
-      Ident(nme.nameDollar) :: Nil)
+      Select(Literal(Constant("enum case not found: ")), nme.PLUS), Ident(nme.nameDollar))
+
     val valuesOfBody = Try(
-      expr = Apply(valuesDot("fromName"), Ident(nme.nameDollar) :: Nil),
+      expr = Apply(Ident(nme.DOLLAR_VALUES_REVERSE), Ident(nme.nameDollar) :: Nil),
       cases = CaseDef(
         pat = Typed(Ident(nme.DEFAULT_EXCEPTION_NAME), TypeTree(defn.NoSuchElementExceptionType)),
         guard = EmptyTree,
@@ -124,25 +152,32 @@ object DesugarEnums {
       TypeTree(), valuesOfBody)
         .withFlags(Synthetic)
 
-    valuesDef ::
     privateValuesDef ::
+    privateReverseValuesDef ::
+    valuesDef ::
     valueOfDef :: Nil
   }
 
-  private def enumLookupMethods(cases: List[(Int, TermName)])(using Context): List[Tree] =
-    if isJavaEnum || cases.isEmpty then Nil
-    else
-      val defaultCase =
-        val ord = Ident(nme.ordinal)
-        val err = Throw(New(TypeTree(defn.IndexOutOfBoundsException.typeRef), List(Select(ord, nme.toString_) :: Nil)))
-        CaseDef(ord, EmptyTree, err)
-      val valueCases = cases.map((i, name) =>
-        CaseDef(Literal(Constant(i)), EmptyTree, Ident(name))
-      ) ::: defaultCase :: Nil
-      val fromOrdinalDef = DefDef(nme.fromOrdinalDollar, Nil, List(param(nme.ordinalDollar_, defn.IntType) :: Nil),
-        rawRef(enumClass.typeRef), Match(Ident(nme.ordinalDollar_), valueCases))
-          .withFlags(Synthetic | Private)
-      fromOrdinalDef :: Nil
+  private def enumLookupMethods(constraints: EnumConstraints)(using Context): List[Tree] =
+    def scaffolding: List[Tree] = if constraints.cached then enumScaffolding(constraints.cachedValues) else Nil
+    def valueCtor: List[Tree] = if constraints.requiresCreator then enumValueCreator :: Nil else Nil
+    def byOrdinal: List[Tree] =
+      if isJavaEnum || !constraints.cached then Nil
+      else
+        val defaultCase =
+          val ord = Ident(nme.ordinal)
+          val err = Throw(New(TypeTree(defn.IndexOutOfBoundsException.typeRef), List(Select(ord, nme.toString_) :: Nil)))
+          CaseDef(ord, EmptyTree, err)
+        val valueCases = constraints.cachedValues.map((i, name) =>
+          CaseDef(Literal(Constant(i)), EmptyTree, Ident(name))
+        ) ::: defaultCase :: Nil
+        val fromOrdinalDef = DefDef(nme.fromOrdinalDollar, Nil, List(param(nme.ordinalDollar_, defn.IntType) :: Nil),
+          rawRef(enumClass.typeRef), Match(Ident(nme.ordinalDollar_), valueCases))
+            .withFlags(Synthetic | Private)
+        fromOrdinalDef :: Nil
+
+    scaffolding ::: valueCtor ::: byOrdinal
+  end enumLookupMethods
 
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
@@ -167,7 +202,7 @@ object DesugarEnums {
       parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
       derived = Nil,
       self = EmptyValDef,
-      body = fieldMethods ::: registerCall :: Nil
+      body = fieldMethods
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
@@ -279,25 +314,22 @@ object DesugarEnums {
    *     unless that scaffolding was already generated by a previous call to `nextEnumKind`.
    */
   def nextOrdinal(name: Name, kind: CaseKind.Value, definesLookups: Boolean)(using Context): (Int, List[Tree]) = {
-    val (ordinal, seenKind, seenCases) = ctx.tree.removeAttachment(EnumCaseCount).getOrElse((0, CaseKind.Class, Nil))
-    val minKind = if kind < seenKind then kind else seenKind
+    val (ordinal, seenMinKind, seenMaxKind, seenCases) =
+      ctx.tree.removeAttachment(EnumCaseCount).getOrElse((0, CaseKind.Class, CaseKind.Simple, Nil))
+    val minKind = if kind < seenMinKind then kind else seenMinKind
+    val maxKind = if kind > seenMaxKind then kind else seenMaxKind
     val cases = name match
       case name: TermName => (ordinal, name) :: seenCases
       case _              => seenCases
-    ctx.tree.pushAttachment(EnumCaseCount, (ordinal + 1, minKind, cases))
-    val scaffolding0 =
-      if (kind >= seenKind) Nil
-      else if (kind == CaseKind.Object) enumScaffolding
-      else if (seenKind == CaseKind.Object) enumValueCreator :: Nil
-      else enumScaffolding :+ enumValueCreator
-    val scaffolding =
-      if definesLookups then scaffolding0 ::: enumLookupMethods(cases.reverse)
-      else scaffolding0
-    (ordinal, scaffolding)
+    if definesLookups then
+      (ordinal, enumLookupMethods(EnumConstraints(minKind, maxKind, cases.reverse)))
+    else
+      ctx.tree.pushAttachment(EnumCaseCount, (ordinal + 1, minKind, maxKind, cases))
+      (ordinal, Nil)
   }
 
-  def param(name: TermName, typ: Type)(using Context) =
-    ValDef(name, TypeTree(typ), EmptyTree).withFlags(Param)
+  def param(name: TermName, typ: Type)(using Context): ValDef = param(name, TypeTree(typ))
+  def param(name: TermName, tpt: Tree)(using Context): ValDef = ValDef(name, tpt, EmptyTree).withFlags(Param)
 
   private def isJavaEnum(using Context): Boolean = ctx.owner.linkedClass.derivesFrom(defn.JavaEnumClass)
 
@@ -325,10 +357,10 @@ object DesugarEnums {
       val enumLabelDef = enumLabelLit(name.toString)
       val impl1 = cpy.Template(impl)(
         parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue),
-        body = ordinalDef ::: enumLabelDef :: registerCall :: Nil
+        body = ordinalDef ::: enumLabelDef :: Nil
       ).withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
-      flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
+      flatTree(vdef :: scaffolding).withSpan(span)
     }
   }
 
@@ -344,6 +376,6 @@ object DesugarEnums {
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Simple, definesLookups)
       val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
       val vdef = ValDef(name, enumClassRef, creator).withMods(mods.withAddedFlags(EnumValue, span))
-      flatTree(scaffolding ::: vdef :: Nil).withSpan(span)
+      flatTree(vdef :: scaffolding).withSpan(span)
     }
 }
