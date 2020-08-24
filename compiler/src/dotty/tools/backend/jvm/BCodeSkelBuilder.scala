@@ -535,7 +535,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
     def lineNumber(tree: Tree): Unit = {
       if (!emitLines || !tree.span.exists) return;
-      val nr = ctx.source.atSpan(tree.span).line + 1
+      val nr = ctx.source.offsetToLine(tree.span.point) + 1
       if (nr != lastEmittedLineNr) {
         lastEmittedLineNr = nr
         lastInsn match {
