@@ -16,13 +16,14 @@ object QuoteContextImpl {
 
   def showTree(tree: tpd.Tree)(using Context): String = {
     val qctx = QuoteContextImpl()(using MacroExpansion.context(tree))
-    val reflCtx = ctx.asInstanceOf[qctx.tasty.Context]
-    val reflTree = tree.asInstanceOf[qctx.tasty.Tree]
     val syntaxHighlight =
       if (ctx.settings.color.value == "always") SyntaxHighlight.ANSI
       else SyntaxHighlight.plain
-    new scala.tasty.reflect.SourceCodePrinter[qctx.tasty.type](qctx.tasty)(syntaxHighlight).showTree(reflTree)(using reflCtx)
+    show(using qctx)(tree.asInstanceOf[qctx.tasty.Tree], syntaxHighlight)(using ctx.asInstanceOf[qctx.tasty.Context])
   }
+
+  private def show(using qctx: QuoteContext)(tree: qctx.tasty.Tree, syntaxHighlight: SyntaxHighlight)(using qctx.tasty.Context) =
+    tree.showWith(syntaxHighlight)
 
   private[dotty] def checkScopeId(id: ScopeId)(using Context): Unit =
     if (id != scopeId)
