@@ -86,7 +86,7 @@ class Pickler extends Phase {
         pickled
       }(using ExecutionContext.global)
       def force(): Array[Byte] = Await.result(pickledF, Duration.Inf)
-      if ctx.settings.YtestPickler.value || ctx.mode.is(Mode.Interactive) then force()
+      if ctx.settings.YtestPickler.value then force()
       unit.pickled += (cls -> force)
     }
   }
