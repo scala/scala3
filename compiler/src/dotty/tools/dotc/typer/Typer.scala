@@ -2432,7 +2432,7 @@ class Typer extends Namer
             case tree: untpd.Bind => typedBind(tree, pt)
             case tree: untpd.ValDef =>
               if (tree.isEmpty) tpd.EmptyValDef
-              else typedValDef(tree, sym)(using ctx.localContext(tree, sym).setNewScope)
+              else typedValDef(tree, sym)(using ctx.localContext(tree, sym))
             case tree: untpd.DefDef =>
               val typer1 = localTyper(sym)
               typer1.typedDefDef(tree, sym)(using ctx.localContext(tree, sym).setTyper(typer1))
@@ -3468,10 +3468,10 @@ class Typer extends Namer
 
       // try an extension method in scope
       pt match {
-        case SelectionProto(name, mbrType, _, _) =>
+        case selProto @ SelectionProto(_: TermName, mbrType, _, _) =>
           def tryExtension(using Context): Tree =
             try
-              findRef(name.toExtensionName, WildcardType, ExtensionMethod, tree.srcPos) match {
+              findRef(selProto.extensionName, WildcardType, ExtensionMethod, tree.srcPos) match {
                 case ref: TermRef =>
                   extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
                 case _ => EmptyTree

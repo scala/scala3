@@ -433,7 +433,7 @@ object Checking {
     def checkNoConflict(flag1: FlagSet, flag2: FlagSet, msg: => String) =
       if (sym.isAllOf(flag1 | flag2)) fail(msg)
     def checkCombination(flag1: FlagSet, flag2: FlagSet) =
-      checkNoConflict(flag1, flag2, i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
+      if sym.isAllOf(flag1 | flag2) then fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =
       if (!ok && !sym.is(Synthetic))
         fail(i"modifier `${flag.flagsString}` is not allowed for this definition")
