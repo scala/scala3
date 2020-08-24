@@ -15,7 +15,6 @@ import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter }
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
-import dotty.tools.dotc.quoted.reflect.ReflectionImpl
 
 import dotty.tools.tasty.TastyString
 

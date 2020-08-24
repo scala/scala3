@@ -15,7 +15,6 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.quoted.PickledQuotes
-import dotty.tools.dotc.quoted.reflect.ReflectionImpl
 import dotty.tools.dotc.transform.Splicer.checkEscapedVariables
 import dotty.tools.dotc.transform.ReifyQuotes
 import dotty.tools.dotc.util.Spans.Span
