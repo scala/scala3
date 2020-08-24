@@ -1267,7 +1267,6 @@ object Denotations {
     recur(path)
   }
 
-  private val identity: TermName => Name = x => x
 
   /** If we are looking for a non-existing term name in a package,
     *  assume it is a package for which we do not have a directory and
