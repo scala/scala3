@@ -80,19 +80,30 @@ trait TypesSupport:
                         case r: Refinement => parseRefinedType(r) ++ texts("; ")
                     }) ++ parseRefinedElem(r.name, r.info)
                 }
-                def parseRefinedElem(name: String, info: TypeOrBounds): List[JProjection] = info match {
+                def parseRefinedElem(name: String, info: TypeOrBounds, polyTyped: List[JProjection] = Nil): List[JProjection] = info match {
                     case m: MethodType => {
                         def getParamList: List[JProjection] = 
                             texts("(")
                             ++ m.paramNames.zip(m.paramTypes).map{ case (name, tp) => texts(s"$name: ") ++ inner(tp)}
                                 .reduceLeftOption((acc: List[JProjection], elem: List[JProjection]) => acc ++ texts(", ") ++ elem).getOrElse(List())
                             ++ texts(")")
-                        texts(s"def $name") ++ getParamList ++ texts(": ") ++ inner(m.resType)
+                        texts(s"def $name") ++ polyTyped ++ getParamList++ texts(": ") ++ inner(m.resType)
+                    }
+                    case t: PolyType => {
+                        def getParamBounds: List[JProjection] = commas(
+                                t.paramNames.zip(t.paramBounds.map(inner(_)))
+                                    .map(b => texts(b(0)) ++ b(1))
+                            )
+                        val parsedMethod = parseRefinedElem(name,t.resType)
+                        if (!getParamBounds.isEmpty){
+                            parseRefinedElem(name, t.resType, texts("[") ++ getParamBounds ++ texts("]"))
+                        } else parseRefinedElem(name, t.resType)
                     }
                     case ByNameType(tp) => texts(s"def $name: ") ++ inner(tp)
                     case t: TypeBounds => texts(s"type $name") ++ inner(t)
                     case t: TypeRef => texts(s"val $name: ") ++ inner(t)
-                    case other => {noSupported("Not supported type in refinement"); List()}
+                    case t: TermRef => texts(s"val $name: ") ++ inner(t)
+                    case other => noSupported(s"Not supported type in refinement $info")
                 }
                 parseRefinedType(r) ++ texts(" }")
             }

@@ -305,16 +305,16 @@ trait ClassLikeSupport:
 
     val isAbstract = isTreeAbstract(typeDef.rhs)
 
-    val isOpaque = hackIsOpaque(self.reflect)(typeDef.symbol)
+    val isTypeOpaque = isOpaque(typeDef.symbol)
 
     val (generics, tpeTree) =  typeDef.rhs match {
-      case LambdaTypeTree(params, body) if isAbstract || isOpaque =>
+      case LambdaTypeTree(params, body) =>
         (params.map(parseTypeArgument), body)
       case tpe =>
         (Nil, tpe)  
     }
 
-    val extraModifiers = Set(Option.when(isOpaque)(ScalaOnlyModifiers.Opaque)).flatten
+    val extraModifiers = Set(Option.when(isTypeOpaque)(ScalaOnlyModifiers.Opaque)).flatten
 
     new DProperty(
       typeDef.symbol.dri,

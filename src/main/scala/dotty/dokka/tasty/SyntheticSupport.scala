@@ -27,6 +27,8 @@ trait SyntheticsSupport:
 
   def isExtensionMethod(d: Symbol): Boolean = hackIsExtension(self.reflect)(d)
 
+  def isOpaque(t: Symbol): Boolean = hackIsOpaque(self.reflect)(t)
+
   // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
   def hackIsExtension(r: Reflection)(rsym: r.Symbol): Boolean = {
     import dotty.tools.dotc
