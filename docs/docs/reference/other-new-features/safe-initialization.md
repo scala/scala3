@@ -13,14 +13,14 @@ To get a feel of how it works, we first show several examples below.
 
 Given the following code snippet:
 
-``` Scala
+``` scala
 abstract class AbstractFile {
    def name: String
    val extension: String = name.substring(4)
 }
 
 class RemoteFile(url: String) extends AbstractFile {
-   val localFile: String = url.hashCode + ".tmp"       // error: usge of `localFile` before it's initialized
+   val localFile: String = s"${url.##}.tmp"  // error: usage of `localFile` before it's initialized
    def name: String = localFile
 }
 ```
@@ -227,14 +227,14 @@ and avoids accidental violation of contracts across library versions.
 
 We impose the following rules to enforce modularity:
 
-4. A class or trait that may be extended in another project should not
+1. A class or trait that may be extended in another project should not
    call virtual methods on `this` in its template/mixin evaluation,
    directly or indirectly.
 
-5. The method call `o.m(args)` is forbidden if `o` is not transitively
+2. The method call `o.m(args)` is forbidden if `o` is not transitively
    initialized and the target of `m` is defined in an external project.
 
-6. The expression `new p.C(args)` is forbidden, if `p` is not transitively
+3. The expression `new p.C(args)` is forbidden, if `p` is not transitively
    initialized and `C` is defined in an external project.
 
 Theoretically, we may analyze across project boundaries based on tasty. However,
@@ -262,7 +262,7 @@ Potentials (π) represent values that are possibly under initialization.
 - `π.super[D]`: essentially the object π, used for virtual method resolution
 - `Cold`: an object with unknown initialization status
 - `Fun(Π, Φ)`: a function, when called produce effects Φ and return potentials Π.
-- `Outer(C, π)`: the potential of `this` for the enclosing class of `C` when `C.this` is ` π`.
+- `Outer(C, π)`: the potential of `this` for the enclosing class of `C` when `C.this` is `π`.
 
 Effects are triggered from potentials:
 
