@@ -61,16 +61,16 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   ///////////////
 
   /** Report a compilation error with the given message at the given position */
-  def error(msg: => String, pos: Position)(using ctx: Context): Unit
+  def error(msg: => String, pos: Position): Unit
 
   /** Report a compilation error with the given message at the given position range */
-  def error(msg: => String, source: SourceFile, start: Int, end: Int)(using ctx: Context): Unit
+  def error(msg: => String, source: SourceFile, start: Int, end: Int): Unit
 
   /** Report a compilation warning with the given message at the given position */
-  def warning(msg: => String, pos: Position)(using ctx: Context): Unit
+  def warning(msg: => String, pos: Position): Unit
 
   /** Report a compilation warning with the given message at the given position range */
-  def warning(msg: => String, source: SourceFile, start: Int, end: Int)(using ctx: Context): Unit
+  def warning(msg: => String, source: SourceFile, start: Int, end: Int): Unit
 
 
   /////////////

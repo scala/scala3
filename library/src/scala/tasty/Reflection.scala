@@ -2617,16 +2617,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   ///////////////
 
   /** Emits an error message */
-  def error(msg: => String, pos: Position)(using ctx: Context): Unit
+  def error(msg: => String, pos: Position): Unit
 
   /** Emits an error at a specific range of a file */
-  def error(msg: => String, source: SourceFile, start: Int, end: Int)(using ctx: Context): Unit
+  def error(msg: => String, source: SourceFile, start: Int, end: Int): Unit
 
   /** Emits an error message */
-  def warning(msg: => String, pos: Position)(using ctx: Context): Unit
+  def warning(msg: => String, pos: Position): Unit
 
   /** Emits a warning at a specific range of a file */
-  def warning(msg: => String, source: SourceFile, start: Int, end: Int)(using ctx: Context): Unit
+  def warning(msg: => String, source: SourceFile, start: Int, end: Int): Unit
 
 
   //////////////

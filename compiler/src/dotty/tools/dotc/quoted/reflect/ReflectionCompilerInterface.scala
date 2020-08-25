@@ -85,16 +85,16 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   // REPORTING //
   ///////////////
 
-  def error(msg: => String, pos: Position)(using Context): Unit =
+  def error(msg: => String, pos: Position): Unit =
     report.error(msg, pos)
 
-  def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(using Context): Unit =
+  def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
     report.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
-  def warning(msg: => String, pos: Position)(using Context): Unit =
+  def warning(msg: => String, pos: Position): Unit =
     report.warning(msg, pos)
 
-  def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(using Context): Unit =
+  def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
     report.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
 
