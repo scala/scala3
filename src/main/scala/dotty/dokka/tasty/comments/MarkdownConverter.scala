@@ -7,20 +7,9 @@ import org.jetbrains.dokka.model.{doc => dkkd}
 import com.vladsch.flexmark.{ast => mda}
 import com.vladsch.flexmark.util.{ast => mdu}
 import com.vladsch.flexmark.ext.gfm.{tables => mdt}
+import com.vladsch.flexmark.ext.{wikilink => mdw}
 
 import dotty.dokka.tasty.SymOps
-
-object kt {
-  import kotlin.collections.builders.{ListBuilder => KtListBuilder, MapBuilder => KtMapBuilder}
-
-  def emptyList[T] = new KtListBuilder[T]().build()
-  def emptyMap[A, B] = new KtMapBuilder[A, B]().build()
-}
-
-object dkk {
-    def text(str: String) =
-      dkkd.Text(str, kt.emptyList, kt.emptyMap)
-}
 
 class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
   import Emitter._
@@ -92,6 +81,25 @@ class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
           case None =>
             dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
         }
+      })
+
+    case n: mdw.WikiLink =>
+      val (target, userText) =
+        val chars: String = n.getChars.toString
+        chars.substring(2, chars.length - 2).split(" ", /*max*/ 2) match {
+          case Array(s) => (s, "")
+          case Array(s1, s2) => (s1, s2)
+        }
+
+      def resolveText(default: String) =
+        val resolved = if !userText.isEmpty then userText else default
+        List(dkk.text(resolved)).asJava
+
+      emit(MemberLookup.lookup(using r)(target, owner) match {
+        case Some((sym, targetText)) =>
+          dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
+        case None =>
+          dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
       })
 
     case n: mda.Code => emit(dkkd.CodeInline(convertChildren(n).asJava, kt.emptyMap))
