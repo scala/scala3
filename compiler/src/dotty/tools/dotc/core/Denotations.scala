@@ -1267,6 +1267,7 @@ object Denotations {
     recur(path)
   }
 
+
   /** If we are looking for a non-existing term name in a package,
     *  assume it is a package for which we do not have a directory and
     *  enter it.

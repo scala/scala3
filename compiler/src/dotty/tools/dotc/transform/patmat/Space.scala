@@ -317,10 +317,10 @@ class SpaceEngine(using Context) extends SpaceLogic {
   import tpd._
   import SpaceEngine._
 
-  private val scalaSeqFactoryClass = requiredClass("scala.collection.SeqFactory")
-  private val scalaListType        = requiredClassRef("scala.collection.immutable.List")
-  private val scalaNilType         = requiredModuleRef("scala.collection.immutable.Nil")
-  private val scalaConsType        = requiredClassRef("scala.collection.immutable.::")
+  private val scalaSeqFactoryClass = defn.SeqFactoryClass
+  private val scalaListType        = defn.ListClass.typeRef
+  private val scalaNilType         = defn.NilModule.termRef
+  private val scalaConsType        = defn.ConsClass.typeRef
 
   private val constantNullType     = ConstantType(Constant(null))
   private val constantNullSpace    = Typ(constantNullType)

@@ -487,10 +487,10 @@ class Definitions {
     @tu lazy val Predef_identity : Symbol = ScalaPredefModule.requiredMethod(nme.identity)
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
 
-  def SubTypeClass(using Context): ClassSymbol = requiredClass("scala.<:<")
+  @tu lazy val SubTypeClass: ClassSymbol = requiredClass("scala.<:<")
   @tu lazy val SubType_refl: Symbol = SubTypeClass.companionModule.requiredMethod(nme.refl)
 
-  def DummyImplicitClass(using Context): ClassSymbol = requiredClass("scala.DummyImplicit")
+  @tu lazy val DummyImplicitClass: ClassSymbol = requiredClass("scala.DummyImplicit")
 
   @tu lazy val ScalaRuntimeModule: Symbol = requiredModule("scala.runtime.ScalaRunTime")
     def runtimeMethodRef(name: PreName): TermRef = ScalaRuntimeModule.requiredMethodRef(name)
@@ -528,8 +528,11 @@ class Definitions {
     methodNames.map(getWrapVarargsArrayModule.requiredMethod(_))
   })
 
-  @tu lazy val ListModule: Symbol = requiredModule("scala.collection.immutable.List")
-  @tu lazy val NilModule: Symbol = requiredModule("scala.collection.immutable.Nil")
+  @tu lazy val ListClass: Symbol       = requiredClass("scala.collection.immutable.List")
+  @tu lazy val ListModule: Symbol      = requiredModule("scala.collection.immutable.List")
+  @tu lazy val NilModule: Symbol       = requiredModule("scala.collection.immutable.Nil")
+  @tu lazy val ConsClass: Symbol       = requiredClass("scala.collection.immutable.::")
+  @tu lazy val SeqFactoryClass: Symbol = requiredClass("scala.collection.SeqFactory")
 
   @tu lazy val SingletonClass: ClassSymbol =
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
