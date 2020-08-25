@@ -93,7 +93,7 @@ object DottyPlugin extends AutoPlugin {
         val name = moduleID.name
         if (name != "dotty" && name != "dotty-library" && name != "dotty-compiler")
           moduleID.crossVersion match {
-            case _: librarymanagement.Binary =>
+            case binary: librarymanagement.Binary =>
               val compatVersion =
                 CrossVersion.partialVersion(scalaVersion) match {
                   case Some((3, _)) =>
@@ -107,7 +107,7 @@ object DottyPlugin extends AutoPlugin {
                     ""
                 }
               if (compatVersion.nonEmpty)
-                moduleID.cross(CrossVersion.constant(compatVersion))
+                moduleID.cross(CrossVersion.constant(binary.prefix + compatVersion + binary.suffix))
               else
                 moduleID
             case _ =>
