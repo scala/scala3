@@ -1838,13 +1838,17 @@ class JSCodeGen()(using genCtx: Context) {
      * **which includes when either is a JS type**.
      * When it is statically known that both sides are equal and subtypes of
      * Number or Character, not using the rich equality is possible (their
-     * own equals method will do ok.)
+     * own equals method will do ok), except for java.lang.Float and
+     * java.lang.Double: their `equals` have different behavior around `NaN`
+     * and `-0.0`, see Javadoc (scala-dev#329, scala-js#2799).
      */
     val mustUseAnyComparator: Boolean = {
       isJSType(lsym) || isJSType(rsym) || {
         val p = ctx.platform
-        val areSameFinals = lsym.is(Final) && rsym.is(Final) && (ltpe =:= rtpe)
-        !areSameFinals && p.isMaybeBoxed(lsym) && p.isMaybeBoxed(rsym)
+        p.isMaybeBoxed(lsym) && p.isMaybeBoxed(rsym) && {
+          val areSameFinals = lsym.is(Final) && rsym.is(Final) && (ltpe =:= rtpe)
+          !areSameFinals || lsym == defn.BoxedFloatClass || lsym == defn.BoxedDoubleClass
+        }
       }
     }
 
@@ -1976,10 +1980,11 @@ class JSCodeGen()(using genCtx: Context) {
         genArg
       case _ =>
         implicit val pos = tree.span
-        /* TODO Check for a null receiver?
-         * In theory, it's UB, but that decision should be left for link time.
-         */
-        js.Block(genReceiver, genArg)
+        js.Block(
+            js.If(js.BinaryOp(js.BinaryOp.===, genReceiver, js.Null()),
+                js.Throw(js.New(NullPointerExceptionClass, js.MethodIdent(jsNames.NoArgConstructorName), Nil)),
+                js.Skip())(jstpe.NoType),
+            genArg)
     }
   }
 
@@ -2277,9 +2282,11 @@ class JSCodeGen()(using genCtx: Context) {
         abortMatch(s"Invalid selector type ${genSelector.tpe}")
     }
 
-    val resultType =
-      if (isStat) jstpe.NoType
-      else toIRType(tree.tpe)
+    val resultType = toIRType(tree.tpe) match {
+      case jstpe.NothingType => jstpe.NothingType // must take priority over NoType below
+      case _ if isStat       => jstpe.NoType
+      case resType           => resType
+    }
 
     var clauses: List[(List[js.Tree], js.Tree)] = Nil
     var optDefaultClause: Option[js.Tree] = None
@@ -3470,6 +3477,7 @@ class JSCodeGen()(using genCtx: Context) {
 
 object JSCodeGen {
 
+  private val NullPointerExceptionClass = ClassName("java.lang.NullPointerException")
   private val JSObjectClassName = ClassName("scala.scalajs.js.Object")
 
   private val newSimpleMethodName = SimpleMethodName("new")
