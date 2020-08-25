@@ -2147,7 +2147,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   /** The signature of a method */
   object Signature:
     /** Matches the method signature and returns its parameters and result type. */
-    def unapply(sig: Signature)(using ctx: Context): Option[(List[String | Int], String)] =
+    def unapply(sig: Signature): Option[(List[String | Int], String)] =
       Some((sig.paramSigs, sig.resultSig))
 
     extension (sig: Signature):
