@@ -235,7 +235,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BC
             if (!ctx.settings.YemitTastyInClass.value) {
               val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
               val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
-              try outstream.write(binary)
+              try outstream.write(binary())
               catch case ex: ClosedByInterruptException =>
                 try
                   outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
@@ -243,7 +243,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BC
                 throw ex
               finally outstream.close()
 
-              val uuid = new TastyHeaderUnpickler(binary).readHeader()
+              val uuid = new TastyHeaderUnpickler(binary()).readHeader()
               val lo = uuid.getMostSignificantBits
               val hi = uuid.getLeastSignificantBits
 
@@ -257,7 +257,7 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BC
               // Create an empty file to signal that a tasty section exist in the corresponding .class
               // This is much cheaper and simpler to check than doing classfile parsing
               getFileForClassfile(outF, store.name, ".hasTasty")
-              binary
+              binary()
             }
           val dataAttr = createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
           store.visitAttribute(dataAttr)

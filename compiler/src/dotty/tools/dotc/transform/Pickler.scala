@@ -13,6 +13,8 @@ import Symbols._
 import Flags.Module
 import reporting.ThrowingReporter
 import collection.mutable
+import scala.concurrent.{Future, Await, ExecutionContext}
+import scala.concurrent.duration.Duration
 
 object Pickler {
   val name: String = "pickler"
@@ -55,35 +57,37 @@ class Pickler extends Phase {
     }
     {
       val pickler = new TastyPickler(cls)
-      if (ctx.settings.YtestPickler.value) {
+      if ctx.settings.YtestPickler.value then
         beforePickling(cls) = tree.show
         picklers(cls) = pickler
-      }
       val treePkl = pickler.treePkl
       treePkl.pickle(tree :: Nil)
-      treePkl.compactify()
-      pickler.addrOfTree = treePkl.buf.addrOfTree
-      pickler.addrOfSym = treePkl.addrOfSym
-      if (tree.span.exists)
-        new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
+      val pickledF = Future {
+        treePkl.compactify()
+        if tree.span.exists then
+          new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
-      if (!ctx.settings.YdropComments.value)
-        new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
+        if !ctx.settings.YdropComments.value then
+          new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
 
-      // other pickle sections go here.
-      val pickled = pickler.assembleParts()
-      unit.pickled += (cls -> pickled)
+        val pickled = pickler.assembleParts()
 
-      def rawBytes = // not needed right now, but useful to print raw format.
-        pickled.iterator.grouped(10).toList.zipWithIndex.map {
-          case (row, i) => s"${i}0: ${row.mkString(" ")}"
-        }
+        def rawBytes = // not needed right now, but useful to print raw format.
+          pickled.iterator.grouped(10).toList.zipWithIndex.map {
+            case (row, i) => s"${i}0: ${row.mkString(" ")}"
+          }
 
-      // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-      if (pickling ne noPrinter) {
-        println(i"**** pickled info of $cls")
-        println(new TastyPrinter(pickled).printContents())
-      }
+        // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
+        if pickling ne noPrinter then
+          pickling.synchronized {
+            println(i"**** pickled info of $cls")
+            println(new TastyPrinter(pickled).printContents())
+          }
+        pickled
+      }(using ExecutionContext.global)
+      def force(): Array[Byte] = Await.result(pickledF, Duration.Inf)
+      if ctx.settings.YtestPickler.value then force()
+      unit.pickled += (cls -> force)
     }
   }
 

@@ -65,18 +65,5 @@ class TastyPickler(val rootCls: ClassSymbol) {
     all.bytes
   }
 
-  /** The address in the TASTY file of a given tree, or None if unknown.
-   *  Note that trees are looked up by reference equality,
-   *  so one can reliably use this function only directly after `pickler`.
-   */
-  var addrOfTree: tpd.Tree => Addr = (_ => NoAddr)
-
-  /**
-   * Addresses in TASTY file of symbols, stored by pickling.
-   * Note that trees are checked for reference equality,
-   * so one can reliably use this function only dirrectly after `pickler`
-   */
-  var addrOfSym: Symbol => Option[Addr] = (_ => None)
-
   val treePkl: TreePickler = new TreePickler(this)
 }
