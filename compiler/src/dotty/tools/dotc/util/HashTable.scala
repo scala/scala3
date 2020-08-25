@@ -1,7 +1,10 @@
 package dotty.tools.dotc.util
 
 object HashTable:
-  inline val MaxDense = 8
+  /** The number of elements up to which dense packing is used.
+   *  If the number of elements reaches `DenseLimit` a hash table is used instead
+   */
+  inline val DenseLimit = 8
 
 /** A hash table using open hashing with linear scan which is also very space efficient
  *  at small sizes.
@@ -10,15 +13,16 @@ object HashTable:
  *                           initial size of the table will be the smallest power of two
  *                           that is equal or greater than the given `initialCapacity`.
  *                           Minimum value is 4.
- *  @param  loadFactor       The maximum fraction of used elements relative to capacity.
- *                           The hash table will be re-sized once the number of elements exceeds
- *                           the current size of the hash table multiplied by loadFactor.
- *                           However, a table of size up to MaxDense will be re-sized to only
+ *  @param  capacityMultiple The minimum multiple of capacity relative to used elements.
+ *                           The hash table will be re-sized once the number of elements
+ *                           multiplied by capacityMultiple exceeds the current size of the hash table.
+ *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
 class HashTable[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
-    (initialCapacity: Int = 8: Int, loadFactor: Float = 0.33f):
-  import HashTable.MaxDense
+    (initialCapacity: Int = 8, capacityMultiple: Int = 3):
+  import HashTable.DenseLimit
+
   private var used: Int = _
   private var limit: Int = _
   private var table: Array[AnyRef] = _
@@ -26,15 +30,11 @@ class HashTable[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
 
   private def allocate(capacity: Int) =
     table = new Array[AnyRef](capacity * 2)
-    limit = if capacity <= MaxDense then capacity - 1 else (capacity * loadFactor).toInt
+    limit = if capacity <= DenseLimit then capacity - 1 else capacity / capacityMultiple
 
   private def roundToPower(n: Int) =
     if Integer.bitCount(n) == 1 then n
-    else
-      def recur(n: Int): Int =
-        if n == 1 then 2
-        else recur(n >>> 1) << 1
-      recur(n)
+    else 1 << (32 - Integer.numberOfLeadingZeros(n))
 
   /** Remove all elements from this table and set back to initial configuration */
   def clear(): Unit =
@@ -44,7 +44,7 @@ class HashTable[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
   /** The number of elements in the set */
   def size: Int = used
 
-  private def isDense = limit < MaxDense
+  private def isDense = limit < DenseLimit
 
   /** Hashcode, by default `System.identityHashCode`, but can be overriden */
   protected def hash(x: Key): Int = System.identityHashCode(x)
@@ -119,7 +119,10 @@ class HashTable[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
 
   private def growTable(): Unit =
     val oldTable = table
-    allocate(table.length)
+    val newLength =
+      if oldTable.length == DenseLimit then DenseLimit * 2 * roundToPower(capacityMultiple)
+      else table.length
+    allocate(newLength)
     if isDense then
       Array.copy(oldTable, 0, table, 0, oldTable.length)
     else
