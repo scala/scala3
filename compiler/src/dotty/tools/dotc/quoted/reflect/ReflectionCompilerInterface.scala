@@ -2062,7 +2062,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ =>
         None
 
-  def lambdaExtractor(fn: Term, paramTypes: List[Type])(using Context): Option[List[Term] => Term] = {
+  def lambdaExtractor(fn: Term, paramTypes: List[Type]): Option[List[Term] => Term] = {
     def rec(fn: Term, transformBody: Term => Term): Option[List[Term] => Term] = {
       fn match {
         case Inlined(call, bindings, expansion) =>

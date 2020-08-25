@@ -1208,7 +1208,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   /** Returns Some with a beta-reduced application or None */
   def betaReduce(tree: Term): Option[Term]
 
-  def lambdaExtractor(term: Term, paramTypes: List[Type])(using ctx: Context): Option[List[Term] => Term]
+  def lambdaExtractor(term: Term, paramTypes: List[Type]): Option[List[Term] => Term]
 
   def compilerId: Int
 
