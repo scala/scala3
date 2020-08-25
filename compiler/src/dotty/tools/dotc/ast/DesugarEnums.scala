@@ -101,18 +101,15 @@ object DesugarEnums {
   /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *
    *   private val $values = Array[E](e_0,...,e_n)(ClassTag[E](classOf[E]))
-   *   @annotation.threadUnsafe private lazy val $valuesReverse =
-   *     scala.runtime.ScalaRuntime.wrapRefArray($values).map((x_0: E) => (x_0.enumLabel, x_0)).toMap
    *   def values = $values.clone
-   *   def valueOf($name: String) =
-   *     try $valuesReverse($name) catch
-   *       {
-   *         case ex$: NoSuchElementException =>
-   *           throw new IllegalArgumentException("enum case not found: " + $name)
-   *       }
+   *   def valueOf($name: String) = $name match {
+   *     case "e_0" => e_0
+   *     ...
+   *     case "e_n" => e_n
+   *     case _ => throw new IllegalArgumentException("case not found: " + $name)
+   *   }
    */
   private def enumScaffolding(enumCases: List[(Int, TermName)])(using Context): List[Tree] = {
-    import dotty.tools.dotc.transform.SymUtils.rawTypeRef
     val rawEnumClassRef = rawRef(enumClass.typeRef)
     extension (tpe: NamedType) def ofRawEnum = AppliedTypeTree(ref(tpe), rawEnumClassRef)
 
@@ -121,39 +118,24 @@ object DesugarEnums {
         ArrayLiteral(enumCases.map((_, name) => Ident(name)), rawEnumClassRef))
           .withFlags(Private | Synthetic)
 
-    val privateReverseValuesDef =
-      val wrapped = Apply(Select(ref(defn.ScalaRuntimeModule.termRef), nme.wrapRefArray), Ident(nme.DOLLAR_VALUES))
-      val mapper =
-        val paramName = nme.syntheticParamName(0)
-        val paramDef = param(paramName, rawEnumClassRef)
-        Function(paramDef :: Nil, Tuple(Select(Ident(paramName), nme.enumLabel) :: Ident(paramName) :: Nil))
-      val mapBody = Select(Apply(Select(wrapped, nme.map), mapper), nme.toMap)
-      val annot = New(ref(defn.ThreadUnsafeAnnot.typeRef), Nil).withSpan(ctx.tree.span)
-      ValDef(nme.DOLLAR_VALUES_REVERSE, TypeTree(), mapBody)
-          .withFlags(Private | Synthetic | Lazy).withAnnotations(annot :: Nil)
-
     val valuesDef =
       DefDef(nme.values, Nil, Nil, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
         .withFlags(Synthetic)
 
-    val valuesOfExnMessage = Apply(
-      Select(Literal(Constant("enum case not found: ")), nme.PLUS), Ident(nme.nameDollar))
-
-    val valuesOfBody = Try(
-      expr = Apply(Ident(nme.DOLLAR_VALUES_REVERSE), Ident(nme.nameDollar) :: Nil),
-      cases = CaseDef(
-        pat = Typed(Ident(nme.DEFAULT_EXCEPTION_NAME), TypeTree(defn.NoSuchElementExceptionType)),
-        guard = EmptyTree,
-        body = Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(valuesOfExnMessage :: Nil)))
-      ) :: Nil,
-      finalizer = EmptyTree
-    )
+    val valuesOfBody: Tree =
+      val defaultCase =
+        val msg = Apply(Select(Literal(Constant("enum case not found: ")), nme.PLUS), Ident(nme.nameDollar))
+        CaseDef(Ident(nme.WILDCARD), EmptyTree,
+          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(msg :: Nil))))
+      val stringCases = enumCases.map((_, name) =>
+        CaseDef(Literal(Constant(name.toString)), EmptyTree, Ident(name))
+      ) ::: defaultCase :: Nil
+      Match(Ident(nme.nameDollar), stringCases)
     val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.nameDollar, defn.StringType) :: Nil),
       TypeTree(), valuesOfBody)
         .withFlags(Synthetic)
 
     privateValuesDef ::
-    privateReverseValuesDef ::
     valuesDef ::
     valueOfDef :: Nil
   }
