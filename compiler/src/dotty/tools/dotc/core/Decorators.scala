@@ -171,7 +171,7 @@ object Decorators {
     def & (ys: List[T]): List[T] = xs filter (ys contains _)
   }
 
-  extension [T, U](xss: List[List[T]]):
+  extension [T, U](xss: List[List[T]])
     def nestedMap(f: T => U): List[List[U]] =
       xss.map(_.map(f))
     def nestedMapConserve(f: T => U): List[List[U]] =
@@ -180,14 +180,14 @@ object Decorators {
       xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
   end extension
 
-  extension (text: Text):
+  extension (text: Text)
     def show(using Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
 
   /** Test whether a list of strings representing phases contains
    *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the
    *  exact meaning of "contains" here.
    */
-   extension (names: List[String]) {
+   extension (names: List[String])
     def containsPhase(phase: Phase): Boolean =
       names.nonEmpty && {
         phase match {
@@ -203,18 +203,16 @@ object Decorators {
             }
         }
       }
-  }
 
-  extension [T](x: T) {
+  extension [T](x: T)
     def reporting(
         op: WrappedResult[T] ?=> String,
         printer: config.Printers.Printer = config.Printers.default): T = {
       printer.println(op(using WrappedResult(x)))
       x
     }
-  }
 
-  extension [T](x: T) {
+  extension [T](x: T)
     def assertingErrorsReported(using Context): T = {
       assert(ctx.reporter.errorsReported)
       x
@@ -223,9 +221,12 @@ object Decorators {
       assert(ctx.reporter.errorsReported, msg)
       x
     }
-  }
 
-  extension (sc: StringContext) {
+  extension [T <: AnyRef](xs: ::[T])
+    def derivedCons(x1: T, xs1: List[T]) =
+      if (xs.head eq x1) && (xs.tail eq xs1) then xs else x1 :: xs1
+
+  extension (sc: StringContext)
     /** General purpose string formatting */
     def i(args: Any*)(using Context): String =
       new StringFormatter(sc).assemble(args)
@@ -241,9 +242,8 @@ object Decorators {
      */
     def ex(args: Any*)(using Context): String =
       explained(em(args: _*))
-  }
 
-  extension [T <: AnyRef](arr: Array[T]):
+  extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object]], x)
 
 }

@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import Types._, Symbols._, Contexts._
+import Types._, Symbols._, Contexts._, Decorators._
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
@@ -16,6 +16,8 @@ object Substituters:
         else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType =>
         tp
+      case tp: AppliedType =>
+        tp.map(subst(_, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstBindingMap(from, to))
           .mapOver(tp)
@@ -94,7 +96,7 @@ object Substituters:
           ts = ts.tail
         }
         tp
-      case _: ThisType | _: BoundType =>
+      case _: BoundType =>
         tp
       case _ =>
         (if (theMap != null) theMap else new SubstSymMap(from, to))
@@ -152,45 +154,47 @@ object Substituters:
         else tp.derivedSelect(substParams(tp.prefix, from, to, theMap))
       case _: ThisType =>
         tp
+      case tp: AppliedType =>
+        tp.map(substParams(_, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstParamsMap(from, to))
           .mapOver(tp)
     }
 
   final class SubstBindingMap(from: BindingType, to: BindingType)(using Context) extends DeepTypeMap {
-    def apply(tp: Type): Type = subst(tp, from, to, this)
+    def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
   final class Subst1Map(from: Symbol, to: Type)(using Context) extends DeepTypeMap {
-    def apply(tp: Type): Type = subst1(tp, from, to, this)
+    def apply(tp: Type): Type = subst1(tp, from, to, this)(using mapCtx)
   }
 
   final class Subst2Map(from1: Symbol, to1: Type, from2: Symbol, to2: Type)(using Context) extends DeepTypeMap {
-    def apply(tp: Type): Type = subst2(tp, from1, to1, from2, to2, this)
+    def apply(tp: Type): Type = subst2(tp, from1, to1, from2, to2, this)(using mapCtx)
   }
 
   final class SubstMap(from: List[Symbol], to: List[Type])(using Context) extends DeepTypeMap {
-    def apply(tp: Type): Type = subst(tp, from, to, this)
+    def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
   final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap {
-    def apply(tp: Type): Type = substSym(tp, from, to, this)
+    def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
   }
 
   final class SubstThisMap(from: ClassSymbol, to: Type)(using Context) extends DeepTypeMap {
-    def apply(tp: Type): Type = substThis(tp, from, to, this)
+    def apply(tp: Type): Type = substThis(tp, from, to, this)(using mapCtx)
   }
 
   final class SubstRecThisMap(from: Type, to: Type)(using Context) extends DeepTypeMap {
-    def apply(tp: Type): Type = substRecThis(tp, from, to, this)
+    def apply(tp: Type): Type = substRecThis(tp, from, to, this)(using mapCtx)
   }
 
   final class SubstParamMap(from: ParamRef, to: Type)(using Context) extends DeepTypeMap {
-    def apply(tp: Type): Type = substParam(tp, from, to, this)
+    def apply(tp: Type): Type = substParam(tp, from, to, this)(using mapCtx)
   }
 
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap {
-    def apply(tp: Type): Type = substParams(tp, from, to, this)
+    def apply(tp: Type): Type = substParams(tp, from, to, this)(using mapCtx)
   }
 
   /** An approximating substitution that can handle wildcards in the `to` list */

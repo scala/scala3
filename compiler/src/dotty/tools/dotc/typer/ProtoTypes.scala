@@ -622,6 +622,10 @@ object ProtoTypes {
           wildApprox(tp.refinedInfo, theMap, seen, internal))
     case tp: AliasingBounds => // default case, inlined for speed
       tp.derivedAlias(wildApprox(tp.alias, theMap, seen, internal))
+    case tp: TypeBounds =>
+      tp.derivedTypeBounds(
+        wildApprox(tp.lo, theMap, seen, internal),
+        wildApprox(tp.hi, theMap, seen, internal))
     case tp @ TypeParamRef(tl, _) if internal.contains(tl) => tp
     case tp @ TypeParamRef(poly, pnum) =>
       def wildApproxBounds(bounds: TypeBounds) =
