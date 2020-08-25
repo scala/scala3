@@ -36,15 +36,6 @@ object MyScalaJSPlugin extends AutoPlugin {
   override def projectSettings: Seq[Setting[_]] = Def.settings(
     commonBootstrappedSettings,
 
-    /* Remove the Scala.js compiler plugin for scalac, and enable the
-     * Scala.js back-end of dotty instead.
-     */
-    libraryDependencies := {
-      val deps = libraryDependencies.value
-      deps.filterNot(_.name.startsWith("scalajs-compiler")).map(_.withDottyCompat(scalaVersion.value))
-    },
-    scalacOptions += "-scalajs",
-
     // Replace the JVM JUnit dependency by the Scala.js one
     libraryDependencies ~= {
       _.filter(!_.name.startsWith("junit-interface"))
@@ -781,6 +772,8 @@ object Build {
     asDottyLibrary(Bootstrapped).
     enablePlugins(MyScalaJSPlugin).
     settings(
+      libraryDependencies +=
+        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).withDottyCompat(scalaVersion.value),
       unmanagedSourceDirectories in Compile :=
         (unmanagedSourceDirectories in (`dotty-library-bootstrapped`, Compile)).value,
 
