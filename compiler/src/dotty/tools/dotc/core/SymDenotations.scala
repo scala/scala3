@@ -1564,14 +1564,14 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
-    import util.LinearTable
+    import util.HashTable
 
     // ----- caches -------------------------------------------------------
 
     private var myTypeParams: List[TypeSymbol] = null
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
 
-    private var myMemberCache: LinearTable[Name, PreDenotation] = null
+    private var myMemberCache: HashTable[Name, PreDenotation] = null
     private var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
@@ -1582,9 +1582,9 @@ object SymDenotations {
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
 
-    private def memberCache(using Context): LinearTable[Name, PreDenotation] = {
+    private def memberCache(using Context): HashTable[Name, PreDenotation] = {
       if (myMemberCachePeriod != ctx.period) {
-        myMemberCache = LinearTable.empty
+        myMemberCache = HashTable()
         myMemberCachePeriod = ctx.period
       }
       myMemberCache
@@ -1871,7 +1871,7 @@ object SymDenotations {
         var denots: PreDenotation = memberCache.lookup(name)
         if (denots == null) {
           denots = computeNPMembersNamed(name)
-          myMemberCache = memberCache.enter(name, denots)
+          memberCache.enter(name, denots)
         }
         else if (Config.checkCacheMembersNamed) {
           val denots1 = computeNPMembersNamed(name)
