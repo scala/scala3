@@ -6,6 +6,7 @@ import util.Spans._
 import util.{SourceFile, NoSource, SourcePosition, SrcPos}
 import core.Contexts._
 import core.Decorators._
+import core.NameOps._
 import core.Flags.{JavaDefined, ExtensionMethod}
 import core.StdNames.nme
 import ast.Trees.mods

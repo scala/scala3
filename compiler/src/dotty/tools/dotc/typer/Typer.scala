@@ -506,7 +506,7 @@ class Typer extends Namer
       val selection = untpd.cpy.Select(tree)(qualifier, name)
       val result = tryEither(typed(selection, pt))((_, _) => fail)
       def canAccessUnqualified(sym: Symbol) =
-        sym.isExtensionMethod && (sym.extensionParam.span == xmethod.extensionParam.span)
+        sym.is(ExtensionMethod) && (sym.extensionParam.span == xmethod.extensionParam.span)
       if !xmethod.exists || result.tpe.isError || canAccessUnqualified(result.symbol) then
         result
       else
