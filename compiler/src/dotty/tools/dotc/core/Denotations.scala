@@ -237,7 +237,7 @@ object Denotations {
     def mapInfo(f: Type => Type)(using Context): Denotation
 
     /** If this denotation does not exist, fallback to alternative */
-    final def orElse(that: => Denotation): Denotation = if (this.exists) this else that
+    inline def orElse(inline that: Denotation): Denotation = if (this.exists) this else that
 
     /** The set of alternative single-denotations making up this denotation */
     final def alternatives: List[SingleDenotation] = altsWith(alwaysTrue)
@@ -596,7 +596,7 @@ object Denotations {
     def mapInfo(f: Type => Type)(using Context): SingleDenotation =
       derivedSingleDenotation(symbol, f(info))
 
-    def orElse(that: => SingleDenotation): SingleDenotation = if (this.exists) this else that
+    inline def orElse(inline that: SingleDenotation): SingleDenotation = if (this.exists) this else that
 
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
       if (exists && p(symbol)) this :: Nil else Nil

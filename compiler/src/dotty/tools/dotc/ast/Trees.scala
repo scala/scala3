@@ -174,7 +174,7 @@ object Trees {
     def toList: List[Tree[T]] = this :: Nil
 
     /** if this tree is the empty tree, the alternative, else this tree */
-    def orElse[U >: Untyped <: T](that: => Tree[U]): Tree[U] =
+    inline def orElse[U >: Untyped <: T](inline that: Tree[U]): Tree[U] =
       if (this eq genericEmptyTree) that else this
 
     /** The number of nodes in this tree */
