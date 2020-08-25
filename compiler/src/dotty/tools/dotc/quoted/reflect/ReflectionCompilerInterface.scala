@@ -2049,7 +2049,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def betaReduce(tree: Term)(using Context): Option[Term] =
+  def betaReduce(tree: Term): Option[Term] =
     tree match
       case app @ Apply(Select(fn, nme.apply), args) if defn.isFunctionType(fn.tpe) =>
         val app1 = transform.BetaReduce(app, fn, args)

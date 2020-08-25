@@ -1206,7 +1206,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def searchImplicit(tpe: Type): ImplicitSearchResult
 
   /** Returns Some with a beta-reduced application or None */
-  def betaReduce(tree: Term)(using Context): Option[Term]
+  def betaReduce(tree: Term): Option[Term]
 
   def lambdaExtractor(term: Term, paramTypes: List[Type])(using ctx: Context): Option[List[Term] => Term]
 
