@@ -1195,19 +1195,19 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given CaseDefOps as CaseDef.type = CaseDef
 
   object CaseDef:
-    def apply(pattern: Tree, guard: Option[Term], rhs: Term)(using ctx: Context): CaseDef =
+    def apply(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef =
       reflectSelf.CaseDef_module_apply(pattern, guard, rhs)
 
-    def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term)(using ctx: Context): CaseDef =
+    def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef =
       reflectSelf.CaseDef_module_copy(original)(pattern, guard, rhs)
 
-    def unapply(x: CaseDef)(using ctx: Context): Option[(Tree, Option[Term], Term)] =
+    def unapply(x: CaseDef): Option[(Tree, Option[Term], Term)] =
       Some((x.pattern, x.guard, x.rhs))
 
     extension (caseDef: CaseDef):
-      def pattern(using ctx: Context): Tree = reflectSelf.CaseDef_pattern(caseDef)
-      def guard(using ctx: Context): Option[Term] = reflectSelf.CaseDef_guard(caseDef)
-      def rhs(using ctx: Context): Term = reflectSelf.CaseDef_rhs(caseDef)
+      def pattern: Tree = reflectSelf.CaseDef_pattern(caseDef)
+      def guard: Option[Term] = reflectSelf.CaseDef_guard(caseDef)
+      def rhs: Term = reflectSelf.CaseDef_rhs(caseDef)
     end extension
   end CaseDef
 
@@ -1218,18 +1218,18 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given TypeCaseDefOps as TypeCaseDef.type = TypeCaseDef
 
   object TypeCaseDef:
-    def apply(pattern: TypeTree, rhs: TypeTree)(using ctx: Context): TypeCaseDef =
+    def apply(pattern: TypeTree, rhs: TypeTree): TypeCaseDef =
       reflectSelf.TypeCaseDef_module_apply(pattern, rhs)
 
-    def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree)(using ctx: Context): TypeCaseDef =
+    def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree): TypeCaseDef =
       reflectSelf.TypeCaseDef_module_copy(original)(pattern, rhs)
 
-    def unapply(tree: TypeCaseDef)(using ctx: Context): Option[(TypeTree, TypeTree)] =
+    def unapply(tree: TypeCaseDef): Option[(TypeTree, TypeTree)] =
       Some((tree.pattern, tree.rhs))
 
     extension (caseDef: TypeCaseDef):
-      def pattern(using ctx: Context): TypeTree = reflectSelf.TypeCaseDef_pattern(caseDef)
-      def rhs(using ctx: Context): TypeTree = reflectSelf.TypeCaseDef_rhs(caseDef)
+      def pattern: TypeTree = reflectSelf.TypeCaseDef_pattern(caseDef)
+      def rhs: TypeTree = reflectSelf.TypeCaseDef_rhs(caseDef)
     end extension
   end TypeCaseDef
 
@@ -1239,16 +1239,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given BindOps as Bind.type = Bind
 
   object Bind:
-    def apply(sym: Symbol, pattern: Tree)(using ctx: Context): Bind =
+    def apply(sym: Symbol, pattern: Tree): Bind =
       reflectSelf.Tree_Bind_module_apply(sym, pattern)
-    def copy(original: Tree)(name: String, pattern: Tree)(using ctx: Context): Bind =
+    def copy(original: Tree)(name: String, pattern: Tree): Bind =
       reflectSelf.Tree_Bind_module_copy(original)(name, pattern)
-    def unapply(pattern: Bind)(using ctx: Context): Option[(String, Tree)] =
+    def unapply(pattern: Bind): Option[(String, Tree)] =
       Some((pattern.name, pattern.pattern))
 
     extension (bind: Bind):
-      def name(using ctx: Context): String = reflectSelf.Tree_Bind_name(bind)
-      def pattern(using ctx: Context): Tree = reflectSelf.Tree_Bind_pattern(bind)
+      def name: String = reflectSelf.Tree_Bind_name(bind)
+      def pattern: Tree = reflectSelf.Tree_Bind_pattern(bind)
     end extension
   end Bind
 
@@ -1257,16 +1257,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given UnapplyOps as Unapply.type = Unapply
 
   object Unapply:
-    // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree])(using ctx: Context): Unapply
-    def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(using ctx: Context): Unapply =
+    // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
+    def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
       reflectSelf.Tree_Unapply_module_copy(original)(fun, implicits, patterns)
-    def unapply(x: Unapply)(using ctx: Context): Option[(Term, List[Term], List[Tree])] =
+    def unapply(x: Unapply): Option[(Term, List[Term], List[Tree])] =
       Some((x.fun, x.implicits, x.patterns))
 
     extension (unapply: Unapply):
-      def fun(using ctx: Context): Term = reflectSelf.Tree_Unapply_fun(unapply)
-      def implicits(using ctx: Context): List[Term] = reflectSelf.Tree_Unapply_implicits(unapply)
-      def patterns(using ctx: Context): List[Tree] = reflectSelf.Tree_Unapply_patterns(unapply)
+      def fun: Term = reflectSelf.Tree_Unapply_fun(unapply)
+      def implicits: List[Term] = reflectSelf.Tree_Unapply_implicits(unapply)
+      def patterns: List[Tree] = reflectSelf.Tree_Unapply_patterns(unapply)
     end extension
   end Unapply
 
@@ -1275,15 +1275,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given AlternativesOps as Alternatives.type = Alternatives
 
   object Alternatives:
-    def apply(patterns: List[Tree])(using ctx: Context): Alternatives =
+    def apply(patterns: List[Tree]): Alternatives =
       reflectSelf.Tree_Alternatives_module_apply(patterns)
-    def copy(original: Tree)(patterns: List[Tree])(using ctx: Context): Alternatives =
+    def copy(original: Tree)(patterns: List[Tree]): Alternatives =
       reflectSelf.Tree_Alternatives_module_copy(original)(patterns)
-    def unapply(x: Alternatives)(using ctx: Context): Option[List[Tree]] =
+    def unapply(x: Alternatives): Option[List[Tree]] =
       Some(x.patterns)
 
     extension (alternatives: Alternatives):
-      def patterns(using ctx: Context): List[Tree] = reflectSelf.Tree_Alternatives_patterns(alternatives)
+      def patterns: List[Tree] = reflectSelf.Tree_Alternatives_patterns(alternatives)
     end extension
   end Alternatives
 

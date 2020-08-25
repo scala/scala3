@@ -450,20 +450,20 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def CaseDef_TypeTest: TypeTest[Tree, CaseDef]
 
-  def CaseDef_pattern(self: CaseDef)(using ctx: Context): Tree
-  def CaseDef_guard(self: CaseDef)(using ctx: Context): Option[Term]
-  def CaseDef_rhs(self: CaseDef)(using ctx: Context): Term
+  def CaseDef_pattern(self: CaseDef): Tree
+  def CaseDef_guard(self: CaseDef): Option[Term]
+  def CaseDef_rhs(self: CaseDef): Term
 
-  def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term)(using ctx: Context): CaseDef
-  def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term)(using ctx: Context): CaseDef
+  def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term): CaseDef
+  def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term): CaseDef
 
   def TypeCaseDef_TypeTest: TypeTest[Tree, TypeCaseDef]
 
-  def TypeCaseDef_pattern(self: TypeCaseDef)(using ctx: Context): TypeTree
-  def TypeCaseDef_rhs(self: TypeCaseDef)(using ctx: Context): TypeTree
+  def TypeCaseDef_pattern(self: TypeCaseDef): TypeTree
+  def TypeCaseDef_rhs(self: TypeCaseDef): TypeTree
 
-  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree)(using ctx: Context): TypeCaseDef
-  def TypeCaseDef_module_copy(original: Tree)(pattern: TypeTree, body: TypeTree)(using ctx: Context): TypeCaseDef
+  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree): TypeCaseDef
+  def TypeCaseDef_module_copy(original: Tree)(pattern: TypeTree, body: TypeTree): TypeCaseDef
 
   //
   // PATTERNS
@@ -471,30 +471,30 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def Bind_TypeTest: TypeTest[Tree, Bind]
 
-  def Tree_Bind_name(self: Bind)(using ctx: Context): String
+  def Tree_Bind_name(self: Bind): String
 
-  def Tree_Bind_pattern(self: Bind)(using ctx: Context): Tree
+  def Tree_Bind_pattern(self: Bind): Tree
 
-  def Tree_Bind_module_apply(sym: Symbol, body: Tree)(using ctx: Context): Bind
+  def Tree_Bind_module_apply(sym: Symbol, body: Tree): Bind
 
-  def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree)(using ctx: Context): Bind
+  def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree): Bind
 
   def Unapply_TypeTest: TypeTest[Tree, Unapply]
 
-  def Tree_Unapply_fun(self: Unapply)(using ctx: Context): Term
+  def Tree_Unapply_fun(self: Unapply): Term
 
-  def Tree_Unapply_implicits(self: Unapply)(using ctx: Context): List[Term]
+  def Tree_Unapply_implicits(self: Unapply): List[Term]
 
-  def Tree_Unapply_patterns(self: Unapply)(using ctx: Context): List[Tree]
+  def Tree_Unapply_patterns(self: Unapply): List[Tree]
 
-  def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(using ctx: Context): Unapply
+  def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
 
   def Alternatives_TypeTest: TypeTest[Tree, Alternatives]
 
-  def Tree_Alternatives_patterns(self: Alternatives)(using ctx: Context): List[Tree]
+  def Tree_Alternatives_patterns(self: Alternatives): List[Tree]
 
-  def Tree_Alternatives_module_apply(patterns: List[Tree])(using ctx: Context): Alternatives
-  def Tree_Alternatives_module_copy(original: Tree)(patterns: List[Tree])(using ctx: Context): Alternatives
+  def Tree_Alternatives_module_apply(patterns: List[Tree]): Alternatives
+  def Tree_Alternatives_module_copy(original: Tree)(patterns: List[Tree]): Alternatives
 
 
   //

@@ -1026,14 +1026,14 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def CaseDef_pattern(self: CaseDef)(using Context): Tree = self.pat
-  def CaseDef_guard(self: CaseDef)(using Context): Option[Term] = optional(self.guard)
-  def CaseDef_rhs(self: CaseDef)(using Context): Term = self.body
+  def CaseDef_pattern(self: CaseDef): Tree = self.pat
+  def CaseDef_guard(self: CaseDef): Option[Term] = optional(self.guard)
+  def CaseDef_rhs(self: CaseDef): Term = self.body
 
-  def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term)(using Context): CaseDef =
+  def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term): CaseDef =
     tpd.CaseDef(pattern, guard.getOrElse(tpd.EmptyTree), body)
 
-  def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term)(using Context): CaseDef =
+  def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term): CaseDef =
     tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), body)
 
   type TypeCaseDef = tpd.CaseDef
@@ -1045,13 +1045,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeCaseDef_pattern(self: TypeCaseDef)(using Context): TypeTree = self.pat
-  def TypeCaseDef_rhs(self: TypeCaseDef)(using Context): TypeTree = self.body
+  def TypeCaseDef_pattern(self: TypeCaseDef): TypeTree = self.pat
+  def TypeCaseDef_rhs(self: TypeCaseDef): TypeTree = self.body
 
-  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree)(using Context): TypeCaseDef =
+  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree): TypeCaseDef =
     tpd.CaseDef(pattern, tpd.EmptyTree, body)
 
-  def TypeCaseDef_module_copy(original: Tree)(pattern: TypeTree, body: TypeTree)(using Context): TypeCaseDef =
+  def TypeCaseDef_module_copy(original: Tree)(pattern: TypeTree, body: TypeTree): TypeCaseDef =
     tpd.cpy.CaseDef(original)(pattern, tpd.EmptyTree, body)
 
   type Bind = tpd.Bind
@@ -1063,14 +1063,14 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Tree_Bind_name(self: Bind)(using Context): String = self.name.toString
+  def Tree_Bind_name(self: Bind): String = self.name.toString
 
-  def Tree_Bind_pattern(self: Bind)(using Context): Tree = self.body
+  def Tree_Bind_pattern(self: Bind): Tree = self.body
 
-  def Tree_Bind_module_apply(sym: Symbol, body: Tree)(using Context): Bind =
+  def Tree_Bind_module_apply(sym: Symbol, body: Tree): Bind =
     tpd.Bind(sym, body)
 
-  def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree)(using Context): Bind =
+  def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree): Bind =
     withDefaultPos(tpd.cpy.Bind(original)(name.toTermName, pattern))
 
   type Unapply = tpd.UnApply
@@ -1083,11 +1083,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Tree_Unapply_fun(self: Unapply)(using Context): Term = self.fun
-  def Tree_Unapply_implicits(self: Unapply)(using Context): List[Term] = self.implicits
-  def Tree_Unapply_patterns(self: Unapply)(using Context): List[Tree] = effectivePatterns(self.patterns)
+  def Tree_Unapply_fun(self: Unapply): Term = self.fun
+  def Tree_Unapply_implicits(self: Unapply): List[Term] = self.implicits
+  def Tree_Unapply_patterns(self: Unapply): List[Tree] = effectivePatterns(self.patterns)
 
-  def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(using Context): Unapply =
+  def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
     withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
 
   private def effectivePatterns(patterns: List[Tree]): List[Tree] = patterns match {
@@ -1104,12 +1104,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Tree_Alternatives_patterns(self: Alternatives)(using Context): List[Tree] = self.trees
+  def Tree_Alternatives_patterns(self: Alternatives): List[Tree] = self.trees
 
-  def Tree_Alternatives_module_apply(patterns: List[Tree])(using Context): Alternatives =
+  def Tree_Alternatives_module_apply(patterns: List[Tree]): Alternatives =
     withDefaultPos(tpd.Alternative(patterns))
 
-  def Tree_Alternatives_module_copy(original: Tree)(patterns: List[Tree])(using Context): Alternatives =
+  def Tree_Alternatives_module_copy(original: Tree)(patterns: List[Tree]): Alternatives =
     tpd.cpy.Alternative(original)(patterns)
 
 
