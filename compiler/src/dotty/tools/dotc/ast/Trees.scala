@@ -393,9 +393,10 @@ object Trees {
     def isBackquoted: Boolean = hasAttachment(Backquoted)
   }
 
-  class SearchFailureIdent[-T >: Untyped] private[ast] (name: Name)(implicit @constructorOnly src: SourceFile)
+  class SearchFailureIdent[-T >: Untyped] private[ast] (name: Name, expl: => String)(implicit @constructorOnly src: SourceFile)
     extends Ident[T](name) {
-    override def toString: String = s"SearchFailureIdent($name)"
+    def explanation = expl
+    override def toString: String = s"SearchFailureIdent($explanation)"
   }
 
   /** qualifier.name, or qualifier#name, if qualifier is a type */

@@ -352,10 +352,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case id: Trees.SearchFailureIdent[?] =>
         tree.typeOpt match {
           case reason: Implicits.SearchFailureType =>
-            toText(id.name)
+            Str(id.explanation)
             ~ ("summon[" ~ toText(reason.clarify(reason.expectedType)) ~ "]").close
           case _ =>
-            toText(id.name)
+            Str(id.explanation)
         }
       case id @ Ident(name) =>
         val txt = tree.typeOpt match {

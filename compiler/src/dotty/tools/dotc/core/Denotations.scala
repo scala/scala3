@@ -317,7 +317,7 @@ object Denotations {
 
     def requiredMethod(pname: PreName, argTypes: List[Type])(using Context): TermSymbol = {
       val name = pname.toTermName
-      info.member(name).requiredSymbol(i"method", name, this, argTypes) { x =>
+      info.member(name).requiredSymbol("method", name, this, argTypes) { x =>
         x.is(Method) && {
           x.info.paramInfoss match {
             case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)

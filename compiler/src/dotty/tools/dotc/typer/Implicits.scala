@@ -393,9 +393,11 @@ object Implicits:
   object SearchFailure {
     def apply(tpe: SearchFailureType)(using Context): SearchFailure = {
       val id = tpe match
-        case tpe: AmbiguousImplicits => i"/* ambiguous: ${tpe.explanation} */"
-        case _ => "/* missing */"
-      SearchFailure(untpd.SearchFailureIdent(id.toTermName).withTypeUnchecked(tpe))
+        case tpe: AmbiguousImplicits =>
+          untpd.SearchFailureIdent(nme.AMBIGUOUS, s"/* ambiguous: ${tpe.explanation} */")
+        case _ =>
+          untpd.SearchFailureIdent(nme.MISSING, "/* missing */")
+      SearchFailure(id.withTypeUnchecked(tpe))
     }
   }
 
