@@ -27,24 +27,27 @@ resolvers += Resolver.bintrayRepo("kotlin", "kotlin-dev")
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "dotty-dokka",
-    version := "0.1.0",
+    name := "scala3doc",
+    version := "0.1.1",
     scalaVersion := dottyVersion
   )
 
 
 val dokkaJavaApiJar = file("libs") / "dokkaJavaApi-0.1.1.jar"
+val gradleRootDir = file("dokkaJavaApi")
 
 val buildDokkaApi = taskKey[File]("Compile dokka wrapper and put jar in lib")
 buildDokkaApi := {
-  val gradleRootDir = file("dokkaJavaApi")
+  streams.value.log.info("Building Dokka API with Gradle...")
   sys.process.Process(Seq("./gradlew", "build"), gradleRootDir).!
 
   if (dokkaJavaApiJar.exists()) IO.delete(dokkaJavaApiJar)
   IO.move(gradleRootDir / "build" / "libs" / "dokkaJavaApi-0.1.1.jar", dokkaJavaApiJar)
-  streams.value.log.success(s"Dokka api copied to $dokkaJavaApiJar")
+  streams.value.log.success(s"Dokka API copied to $dokkaJavaApiJar")
   dokkaJavaApiJar
 }
+
+compile.in(Compile) := (compile.in(Compile).dependsOn(buildDokkaApi)).value
 
 val generateSelfDocumentation = inputKey[Unit]("Generate example documentation")
 generateSelfDocumentation := {
