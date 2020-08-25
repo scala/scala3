@@ -1535,7 +1535,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None // TODO: handle import bounds
   }
 
-  def SimpleSelector_selection(self: SimpleSelector)(using Context): Id = self.imported
+  def SimpleSelector_selection(self: SimpleSelector): Id = self.imported
 
   type RenameSelector = untpd.ImportSelector
 
@@ -1546,9 +1546,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def RenameSelector_from(self: RenameSelector)(using Context): Id =
+  def RenameSelector_from(self: RenameSelector): Id =
     self.imported
-  def RenameSelector_to(self: RenameSelector)(using Context): Id =
+  def RenameSelector_to(self: RenameSelector): Id =
     self.renamed.asInstanceOf[untpd.Ident]
 
   type OmitSelector = untpd.ImportSelector
@@ -1565,7 +1565,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   }
 
-  def SimpleSelector_omitted(self: OmitSelector)(using Context): Id =
+  def SimpleSelector_omitted(self: OmitSelector): Id =
     self.imported
 
 
@@ -1575,9 +1575,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Id = untpd.Ident
 
-  def Id_pos(self: Id)(using Context): Position = self.sourcePos
+  def Id_pos(self: Id): Position = self.sourcePos
 
-  def Id_name(self: Id)(using Context): String = self.name.toString
+  def Id_name(self: Id): String = self.name.toString
 
 
   ////////////////

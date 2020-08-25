@@ -746,16 +746,16 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def SimpleSelector_TypeTest: TypeTest[ImportSelector, SimpleSelector]
 
-  def SimpleSelector_selection(self: SimpleSelector)(using ctx: Context): Id
+  def SimpleSelector_selection(self: SimpleSelector): Id
 
   def RenameSelector_TypeTest: TypeTest[ImportSelector, RenameSelector]
 
-  def RenameSelector_from(self: RenameSelector)(using ctx: Context): Id
-  def RenameSelector_to(self: RenameSelector)(using ctx: Context): Id
+  def RenameSelector_from(self: RenameSelector): Id
+  def RenameSelector_to(self: RenameSelector): Id
 
   def OmitSelector_TypeTest: TypeTest[ImportSelector, OmitSelector]
 
-  def SimpleSelector_omitted(self: OmitSelector)(using ctx: Context): Id
+  def SimpleSelector_omitted(self: OmitSelector): Id
 
 
   /////////////////
@@ -763,10 +763,10 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   /////////////////
 
   /** Position in the source code */
-  def Id_pos(self: Id)(using ctx: Context): Position
+  def Id_pos(self: Id): Position
 
   /** Name of the identifier */
-  def Id_name(self: Id)(using ctx: Context): String
+  def Id_name(self: Id): String
 
 
   ////////////////

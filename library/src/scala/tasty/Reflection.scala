@@ -1297,10 +1297,10 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given SimpleSelectorOps as SimpleSelector.type = SimpleSelector
 
   object SimpleSelector:
-    def unapply(x: SimpleSelector)(using ctx: Context): Option[Id] = Some(x.selection)
+    def unapply(x: SimpleSelector): Option[Id] = Some(x.selection)
 
     extension (self: SimpleSelector):
-      def selection(using ctx: Context): Id =
+      def selection: Id =
         reflectSelf.SimpleSelector_selection(self)
     end extension
   end SimpleSelector
@@ -1310,12 +1310,12 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given RenameSelectorOps as RenameSelector.type = RenameSelector
 
   object RenameSelector:
-    def unapply(x: RenameSelector)(using ctx: Context): Option[(Id, Id)] = Some((x.from, x.to))
+    def unapply(x: RenameSelector): Option[(Id, Id)] = Some((x.from, x.to))
     extension (self: RenameSelector):
-      def from(using ctx: Context): Id =
+      def from: Id =
         reflectSelf.RenameSelector_from(self)
 
-      def to(using ctx: Context): Id =
+      def to: Id =
         reflectSelf.RenameSelector_to(self)
   end RenameSelector
 
@@ -1324,10 +1324,10 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given OmitSelectorOmitSelectorOps as OmitSelector.type = OmitSelector
 
   object OmitSelector:
-    def unapply(x: OmitSelector)(using ctx: Context): Option[Id] = Some(x.omitted)
+    def unapply(x: OmitSelector): Option[Id] = Some(x.omitted)
 
     extension (self: OmitSelector):
-      def omitted(using ctx: Context): Id =
+      def omitted: Id =
         reflectSelf.SimpleSelector_omitted(self)
   end OmitSelector
 
@@ -1843,14 +1843,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given IdOps as Id.type = Id
 
   object Id:
-    def unapply(id: Id)(using ctx: Context): Option[String] = Some(id.name)
+    def unapply(id: Id): Option[String] = Some(id.name)
 
     extension (id: Id):
       /** Position in the source code */
-      def pos(using ctx: Context): Position = reflectSelf.Id_pos(id)
+      def pos: Position = reflectSelf.Id_pos(id)
 
       /** Name of the identifier */
-      def name(using ctx: Context): String = reflectSelf.Id_name(id)
+      def name: String = reflectSelf.Id_name(id)
     end extension
   end Id
 
