@@ -447,25 +447,6 @@ class Typer extends Namer
     if (name == nme.ROOTPKG)
       return tree.withType(defn.RootPackage.termRef)
 
-    /** Convert a reference `f` to an extension method select `p.f`, where
-     *  `p` is the closest enclosing extension parameter, or else `this`.
-     */
-    def extensionMethodSelect: untpd.Tree =
-      val xmethod = ctx.owner.enclosingExtensionMethod
-      val qualifier =
-        if xmethod.exists then // TODO: see whether we can use paramss for that
-          val leadParamName = xmethod.info.paramNamess.head.head
-          def isLeadParam(sym: Symbol) =
-            sym.is(Param) && sym.owner.owner == xmethod.owner && sym.name == leadParamName
-          def leadParam(ctx: Context): Symbol =
-            ctx.scope.lookupAll(leadParamName).find(isLeadParam) match
-              case Some(param) => param
-              case None => leadParam(ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next)
-          untpd.ref(leadParam(ctx).termRef)
-        else
-          untpd.This(untpd.EmptyTypeIdent)
-      untpd.cpy.Select(tree)(qualifier, name)
-
     val rawType = {
       val saved1 = unimported
       val saved2 = foundUnderScala2
@@ -516,7 +497,20 @@ class Typer extends Namer
     else if name.toTermName == nme.ERROR then
       setType(UnspecifiedErrorType)
     else if name.isTermName then
-      tryEither(typed(extensionMethodSelect, pt))((_, _) => fail)
+      // Convert a reference `f` to an extension method select `p.f`, where
+      // `p` is the closest enclosing extension parameter, or else convert to `this.f`.
+      val xmethod = ctx.owner.enclosingExtensionMethod
+      val qualifier =
+        if xmethod.exists then untpd.ref(xmethod.extensionParam.termRef)
+        else untpd.This(untpd.EmptyTypeIdent)
+      val selection = untpd.cpy.Select(tree)(qualifier, name)
+      val result = tryEither(typed(selection, pt))((_, _) => fail)
+      def canAccessUnqualified(sym: Symbol) =
+        sym.is(ExtensionMethod) && (sym.extensionParam.span == xmethod.extensionParam.span)
+      if !xmethod.exists || result.tpe.isError || canAccessUnqualified(result.symbol) then
+        result
+      else
+        fail
     else
       fail
   end typedIdent
@@ -2348,10 +2342,9 @@ class Typer extends Namer
         typedUnApply(cpy.Apply(tree)(op, l :: r :: Nil), pt)
       else {
         val app = typedApply(desugar.binop(l, op, r), pt)
-        if (untpd.isLeftAssoc(op.name)) app
-        else {
+        if op.name.isRightAssocOperatorName then
           val defs = new mutable.ListBuffer[Tree]
-          def lift(app: Tree): Tree = (app: @unchecked) match {
+          def lift(app: Tree): Tree = (app: @unchecked) match
             case Apply(fn, args) =>
               if (app.tpe.isError) app
               else tpd.cpy.Apply(app)(fn, LiftImpure.liftArgs(defs, fn.tpe, args))
@@ -2359,9 +2352,8 @@ class Typer extends Namer
               tpd.cpy.Assign(app)(lhs, lift(rhs))
             case Block(stats, expr) =>
               tpd.cpy.Block(app)(stats, lift(expr))
-          }
           wrapDefs(defs, lift(app))
-        }
+        else app
       }
     checkValidInfix(tree, result.symbol)
     result

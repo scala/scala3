@@ -6,6 +6,7 @@ import util.Spans._
 import util.{SourceFile, NoSource, SourcePosition, SrcPos}
 import core.Contexts._
 import core.Decorators._
+import core.NameOps._
 import core.Flags.{JavaDefined, ExtensionMethod}
 import core.StdNames.nme
 import ast.Trees.mods
@@ -208,7 +209,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         check(tree.vparamss)
       case tree: DefDef if tree.mods.is(ExtensionMethod) =>
         tree.vparamss match {
-          case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+          case vparams1 :: vparams2 :: rest if tree.name.isRightAssocOperatorName =>
             check(tree.tparams)
             check(vparams2)
             check(vparams1)

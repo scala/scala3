@@ -927,7 +927,7 @@ object Parsers {
     var opStack: List[OpInfo] = Nil
 
     def checkAssoc(offset: Token, op1: Name, op2: Name, op2LeftAssoc: Boolean): Unit =
-      if (isLeftAssoc(op1) != op2LeftAssoc)
+      if (op1.isRightAssocOperatorName == op2LeftAssoc)
         syntaxError(MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc), offset)
 
     def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name, isType: Boolean): Tree = {
@@ -967,7 +967,7 @@ object Parsers {
       def recur(top: Tree): Tree =
         if (isIdent && isOperator) {
           val op = if (isType) typeIdent() else termIdent()
-          val top1 = reduceStack(base, top, precedence(op.name), isLeftAssoc(op.name), op.name, isType)
+          val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
           opStack = OpInfo(top1, op, in.offset) :: opStack
           colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
@@ -3316,7 +3316,7 @@ object Parsers {
             typeParamClause(ParamOwner.Def)
           else leadingTparams
         val vparamss = paramClauses() match
-          case rparams :: rparamss if leadingVparamss.nonEmpty && !isLeftAssoc(ident.name) =>
+          case rparams :: rparamss if leadingVparamss.nonEmpty && ident.name.isRightAssocOperatorName =>
             rparams :: leadingVparamss ::: rparamss
           case rparamss =>
             leadingVparamss ::: rparamss

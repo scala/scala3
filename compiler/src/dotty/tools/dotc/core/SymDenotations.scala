@@ -325,6 +325,18 @@ object SymDenotations {
       else recurWithParamss(info, rawParamss)
     end paramSymss
 
+    /** The extension parameter of this extension method
+     *  @pre this symbol is an extension method
+     */
+    final def extensionParam(using Context): Symbol =
+      def leadParam(paramss: List[List[Symbol]]): Symbol = paramss match
+        case (param :: _) :: paramss1 if param.isType => leadParam(paramss1)
+        case _ :: (snd :: Nil) :: _ if name.isRightAssocOperatorName => snd
+        case (fst :: Nil) :: _ => fst
+        case _ => NoSymbol
+      assert(isAllOf(ExtensionMethod))
+      leadParam(rawParamss)
+
     /** The denotation is completed: info is not a lazy type and attributes have defined values */
     final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
 

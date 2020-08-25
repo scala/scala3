@@ -199,9 +199,10 @@ object Applications {
    *  I.e., if the expected type is a PolyProto, then `app` will be a `TypeApply(_, args)` where
    *  `args` are the type arguments of the expected type.
    */
-  class IntegratedTypeArgs(val app: Tree)(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
+  class IntegratedTypeArgs(val app: Tree)(implicit @constructorOnly src: SourceFile) extends ProxyTree {
     override def span = app.span
 
+    def forwardTo = app
     def canEqual(that: Any): Boolean = app.canEqual(that)
     def productArity: Int = app.productArity
     def productElement(n: Int): Any = app.productElement(n)

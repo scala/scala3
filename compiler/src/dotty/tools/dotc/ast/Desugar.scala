@@ -899,7 +899,7 @@ object desugar {
           name = mdef.name.toExtensionName,
           tparams = ext.tparams ++ mdef.tparams,
           vparamss = mdef.vparamss match
-            case vparams1 :: vparamss1 if !isLeftAssoc(mdef.name) =>
+            case vparams1 :: vparamss1 if mdef.name.isRightAssocOperatorName =>
               vparams1 :: ext.vparamss ::: vparamss1
             case _ =>
               ext.vparamss ++ mdef.vparamss
@@ -1204,10 +1204,10 @@ object desugar {
         case _ =>
           Apply(sel, arg :: Nil)
 
-    if (isLeftAssoc(op.name))
-      makeOp(left, right, Span(left.span.start, op.span.end, op.span.start))
-    else
+    if op.name.isRightAssocOperatorName then
       makeOp(right, left, Span(op.span.start, right.span.end))
+    else
+      makeOp(left, right, Span(left.span.start, op.span.end, op.span.start))
   }
 
   /** Translate tuple expressions of arity <= 22

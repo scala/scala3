@@ -795,7 +795,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val (prefix, vparamss) =
           if isExtension then
             val (leadingParams, otherParamss) = (tree.vparamss: @unchecked) match
-              case vparams1 :: vparams2 :: rest if !isLeftAssoc(tree.name) =>
+              case vparams1 :: vparams2 :: rest if tree.name.isRightAssocOperatorName =>
                 (vparams2, vparams1 :: rest)
               case vparams1 :: rest =>
                 (vparams1, rest)

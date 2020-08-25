@@ -76,7 +76,7 @@ extension [T: Numeric](x: T)
 ```
 
 If an extension method has type parameters, they come immediately after `extension` and are followed by the extended parameter.
-When calling a generic extension method, any explicitly given type arguments follow the method name. 
+When calling a generic extension method, any explicitly given type arguments follow the method name.
 So the `second` method could be instantiated as follows:
 
 ```scala
@@ -92,8 +92,8 @@ extension [T](x: T)(using n: Numeric[T])
   def + (y: T): T = n.plus(x, y)
 ```
 
-**Note**: Type parameters have to be given after the `extension` keyword; they cannot be given after the `def`. 
-This restriction might be lifted in the future once we support multiple type parameter clauses in a method. 
+**Note**: Type parameters have to be given after the `extension` keyword; they cannot be given after the `def`.
+This restriction might be lifted in the future once we support multiple type parameter clauses in a method.
 By contrast, using clauses can be defined for the `extension` as well as per `def`.
 
 ### Collective Extensions
@@ -215,7 +215,7 @@ List(1, 2) < List(3)
 
 The precise rules for resolving a selection to an extension method are as follows.
 
-Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type arguments `[Ts]` are optional, and where `T` is the expected type. 
+Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type arguments `[Ts]` are optional, and where `T` is the expected type.
 The following two rewritings are tried in order:
 
  1. The selection is rewritten to `extension_m[Ts](e)`.
@@ -233,9 +233,11 @@ An extension method can also be used as an identifier by itself. If an identifie
 resolve, the identifier is rewritten to:
 
 - `x.m`    if the identifier appears in an extension with parameter `x`
+           and the method `m` resolves to an extension method in
+           a (possibly collective) extension that also contains the call,
 - `this.m` otherwise
 
-and the rewritten term is again tried as an application of an extension method. Example:
+and the rewritten term is again tried as an application of an extension method. In
 
 ```scala
 extension (s: String)
@@ -264,7 +266,7 @@ def extension_position(s: String)(ch: Char, n: Int): Int =
      extension (x: Double) def ** (exponent: Int): Double =
        require(exponent >= 0)
        if exponent == 0 then 1 else x * (x ** (exponent - 1))
-  
+
    import DoubleOps.{**, extension_**}
    assert(2.0 ** 3 == extension_**(2.0)(3))
    ```
