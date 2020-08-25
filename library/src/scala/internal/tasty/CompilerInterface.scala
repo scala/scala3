@@ -847,154 +847,154 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   /////////////
 
   /** Returns the symbol of the enclosing definition of the given context */
-  def Symbol_currentOwner(using ctx: Context): Symbol
+  def Symbol_currentOwner: Symbol
 
   /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
-  def Symbol_owner(self: Symbol)(using ctx: Context): Symbol
+  def Symbol_owner(self: Symbol): Symbol
 
   /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Returns `NoSymbol` if this symbol does not have an owner. */
-  def Symbol_maybeOwner(self: Symbol)(using ctx: Context): Symbol
+  def Symbol_maybeOwner(self: Symbol): Symbol
 
   /** Flags of this symbol */
-  def Symbol_flags(self: Symbol)(using ctx: Context): Flags
+  def Symbol_flags(self: Symbol): Flags
 
-  def Symbol_tree(self: Symbol)(using ctx: Context): Tree
+  def Symbol_tree(self: Symbol): Tree
 
-  def Symbol_isLocalDummy(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isLocalDummy(self: Symbol): Boolean
 
-  def Symbol_isRefinementClass(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isRefinementClass(self: Symbol): Boolean
 
-  def Symbol_isAliasType(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isAliasType(self: Symbol): Boolean
 
-  def Symbol_isAnonymousClass(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isAnonymousClass(self: Symbol): Boolean
 
-  def Symbol_isAnonymousFunction(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isAnonymousFunction(self: Symbol): Boolean
 
-  def Symbol_isAbstractType(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isAbstractType(self: Symbol): Boolean
 
-  def Symbol_isClassConstructor(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isClassConstructor(self: Symbol): Boolean
 
   /** This symbol is private within the resulting type. */
-  def Symbol_privateWithin(self: Symbol)(using ctx: Context): Option[Type]
+  def Symbol_privateWithin(self: Symbol): Option[Type]
 
   /** This symbol is protected within the resulting type. */
-  def Symbol_protectedWithin(self: Symbol)(using ctx: Context): Option[Type]
+  def Symbol_protectedWithin(self: Symbol): Option[Type]
 
   /** The name of this symbol. */
-  def Symbol_name(self: Symbol)(using ctx: Context): String
+  def Symbol_name(self: Symbol): String
 
   /** The full name of this symbol up to the root package. */
-  def Symbol_fullName(self: Symbol)(using ctx: Context): String
+  def Symbol_fullName(self: Symbol): String
 
   /** The position of this symbol */
-  def Symbol_pos(self: Symbol)(using ctx: Context): Position
+  def Symbol_pos(self: Symbol): Position
 
-  def Symbol_localContext(self: Symbol)(using ctx: Context): Context
+  def Symbol_localContext(self: Symbol): Context
 
   /** The comment of the symbol */
-  def Symbol_comment(self: Symbol)(using ctx: Context): Option[Comment]
+  def Symbol_comment(self: Symbol): Option[Comment]
 
   /** Annotations attached to this symbol */
-  def Symbol_annots(self: Symbol)(using ctx: Context): List[Term]
+  def Symbol_annots(self: Symbol): List[Term]
 
-  def Symbol_isDefinedInCurrentRun(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isDefinedInCurrentRun(self: Symbol): Boolean
 
   /** Fields directly declared in the class */
-  def Symbol_fields(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_fields(self: Symbol): List[Symbol]
 
   /** Field with the given name directly declared in the class */
-  def Symbol_field(self: Symbol)(name: String)(using ctx: Context): Symbol
+  def Symbol_field(self: Symbol)(name: String): Symbol
 
   /** Get non-private named methods defined directly inside the class */
-  def Symbol_classMethod(self: Symbol)(name: String)(using ctx: Context): List[Symbol]
+  def Symbol_classMethod(self: Symbol)(name: String): List[Symbol]
 
   /** Get all non-private methods defined directly inside the class, excluding constructors */
-  def Symbol_classMethods(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_classMethods(self: Symbol): List[Symbol]
 
   /** Get named non-private methods declared or inherited */
-  def Symbol_method(self: Symbol)(name: String)(using ctx: Context): List[Symbol]
+  def Symbol_method(self: Symbol)(name: String): List[Symbol]
 
   /** Get all non-private methods declared or inherited */
-  def Symbol_methods(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_methods(self: Symbol): List[Symbol]
 
   /** Type member directly declared in the class */
-  def Symbol_typeMembers(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_typeMembers(self: Symbol): List[Symbol]
 
   /** Type member with the given name directly declared in the class */
-  def Symbol_typeMember(self: Symbol)(name: String)(using ctx: Context): Symbol
+  def Symbol_typeMember(self: Symbol)(name: String): Symbol
 
   /** The symbols of each type parameter list and value parameter list of this
    *  method, or Nil if this isn't a method.
    */
-  def Symbol_paramSymss(self: Symbol)(using ctx: Context): List[List[Symbol]]
+  def Symbol_paramSymss(self: Symbol): List[List[Symbol]]
 
   /** The primary constructor of a class or trait, `noSymbol` if not applicable. */
-  def Symbol_primaryConstructor(self: Symbol)(using Context): Symbol
+  def Symbol_primaryConstructor(self: Symbol): Symbol
 
   /** Fields of a case class type -- only the ones declared in primary constructor */
-  def Symbol_caseFields(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_caseFields(self: Symbol): List[Symbol]
 
   /** Get package symbol if package is either defined in current compilation run or present on classpath. */
-  def Symbol_requiredPackage(path: String)(using ctx: Context): Symbol
+  def Symbol_requiredPackage(path: String): Symbol
 
   /** Get class symbol if class is either defined in current compilation run or present on classpath. */
-  def Symbol_requiredClass(path: String)(using ctx: Context): Symbol
+  def Symbol_requiredClass(path: String): Symbol
 
   /** Get module symbol if module is either defined in current compilation run or present on classpath. */
-  def Symbol_requiredModule(path: String)(using ctx: Context): Symbol
+  def Symbol_requiredModule(path: String): Symbol
 
   /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
-  def Symbol_requiredMethod(path: String)(using ctx: Context): Symbol
+  def Symbol_requiredMethod(path: String): Symbol
 
-  def Symbol_of(fullName: String)(using ctx: Context): Symbol
+  def Symbol_of(fullName: String): Symbol
 
-  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol
+  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol): Symbol
 
-  def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol
+  def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol): Symbol
 
-  def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type)(using ctx: Context): Symbol
+  def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type): Symbol
 
-  def Symbol_isTypeParam(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isTypeParam(self: Symbol): Boolean
 
-  def Symbol_isPackageDef(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isPackageDef(symbol: Symbol): Boolean
 
   /** Is this the definition of a type? */
-  def Symbol_isType(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isType(symbol: Symbol): Boolean
 
   /** Is this the definition of a term? */
-  def Symbol_isTerm(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isTerm(symbol: Symbol): Boolean
 
   /** Is this the definition of a ClassDef tree? */
-  def Symbol_isClassDef(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isClassDef(symbol: Symbol): Boolean
 
   /** Is this the definition of a TypeDef tree? */
-  def Symbol_isTypeDef(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isTypeDef(symbol: Symbol): Boolean
 
   /** Is this the definition of a DefDef tree? */
-  def Symbol_isDefDef(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isDefDef(symbol: Symbol): Boolean
 
   /** Is this the definition of a ValDef tree? */
-  def Symbol_isValDef(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isValDef(symbol: Symbol): Boolean
 
   /** Is this the definition of a Bind pattern? */
-  def Symbol_isBind(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isBind(symbol: Symbol): Boolean
 
   /** Signature of this definition */
-  def Symbol_signature(self: Symbol)(using ctx: Context): Signature
+  def Symbol_signature(self: Symbol): Signature
 
   /** The class symbol of the companion module class */
-  def Symbol_moduleClass(self: Symbol)(using ctx: Context): Symbol
+  def Symbol_moduleClass(self: Symbol): Symbol
 
   /** The symbol of the companion class */
-  def Symbol_companionClass(self: Symbol)(using ctx: Context): Symbol
+  def Symbol_companionClass(self: Symbol): Symbol
 
   /** The symbol of the companion module */
-  def Symbol_companionModule(self: Symbol)(using ctx: Context): Symbol
+  def Symbol_companionModule(self: Symbol): Symbol
 
-  def Symbol_noSymbol(using ctx: Context): Symbol
+  def Symbol_noSymbol: Symbol
 
   /** Case class or case object children of a sealed trait */
-  def Symbol_children(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_children(self: Symbol): List[Symbol]
 
 
   ///////////

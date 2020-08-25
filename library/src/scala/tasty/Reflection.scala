@@ -1895,22 +1895,22 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   object Symbol:
 
     /** Returns the symbol of the current enclosing definition */
-    def currentOwner(using ctx: Context): Symbol = reflectSelf.Symbol_currentOwner
+    def currentOwner: Symbol = reflectSelf.Symbol_currentOwner
 
     /** Get package symbol if package is either defined in current compilation run or present on classpath. */
-    def requiredPackage(path: String)(using ctx: Context): Symbol = reflectSelf.Symbol_requiredPackage(path)
+    def requiredPackage(path: String): Symbol = reflectSelf.Symbol_requiredPackage(path)
 
     /** Get class symbol if class is either defined in current compilation run or present on classpath. */
-    def requiredClass(path: String)(using ctx: Context): Symbol = reflectSelf.Symbol_requiredClass(path)
+    def requiredClass(path: String): Symbol = reflectSelf.Symbol_requiredClass(path)
 
     /** Get module symbol if module is either defined in current compilation run or present on classpath. */
-    def requiredModule(path: String)(using ctx: Context): Symbol = reflectSelf.Symbol_requiredModule(path)
+    def requiredModule(path: String): Symbol = reflectSelf.Symbol_requiredModule(path)
 
     /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
-    def requiredMethod(path: String)(using ctx: Context): Symbol = reflectSelf.Symbol_requiredMethod(path)
+    def requiredMethod(path: String): Symbol = reflectSelf.Symbol_requiredMethod(path)
 
     /** The class Symbol of a global class definition */
-    def classSymbol(fullName: String)(using ctx: Context): Symbol =
+    def classSymbol(fullName: String): Symbol =
       reflectSelf.Symbol_of(fullName)
 
     /** Generates a new method symbol with the given parent, name and type.
@@ -1922,7 +1922,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
      *        direct or indirect children of the reflection context's owner.
      */
-    def newMethod(parent: Symbol, name: String, tpe: Type)(using ctx: Context): Symbol =
+    def newMethod(parent: Symbol, name: String, tpe: Type): Symbol =
       newMethod(parent, name, tpe, Flags.EmptyFlags, noSymbol)
 
     /** Works as the other newMethod, but with additional parameters.
@@ -1930,7 +1930,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *  @param flags extra flags to with which the symbol should be constructed
      *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
      */
-    def newMethod(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol)(using ctx: Context): Symbol =
+    def newMethod(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol): Symbol =
       reflectSelf.Symbol_newMethod(parent, name, flags, tpe, privateWithin)
 
     /** Generates a new val/var/lazy val symbol with the given parent, name and type.
@@ -1946,7 +1946,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
      *        direct or indirect children of the reflection context's owner.
      */
-    def newVal(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol)(using ctx: Context): Symbol =
+    def newVal(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol): Symbol =
       reflectSelf.Symbol_newVal(parent, name, flags, tpe, privateWithin)
 
     /** Generates a pattern bind symbol with the given parent, name and type.
@@ -1959,43 +1959,43 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
      *        direct or indirect children of the reflection context's owner.
      */
-    def newBind(parent: Symbol, name: String, flags: Flags, tpe: Type)(using ctx: Context): Symbol =
+    def newBind(parent: Symbol, name: String, flags: Flags, tpe: Type): Symbol =
       reflectSelf.Symbol_newBind(parent, name, flags, tpe)
 
     /** Definition not available */
-    def noSymbol(using ctx: Context): Symbol =
+    def noSymbol: Symbol =
       reflectSelf.Symbol_noSymbol
 
     extension (sym: Symbol):
 
       /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
-      def owner(using ctx: Context): Symbol = reflectSelf.Symbol_owner(sym)
+      def owner: Symbol = reflectSelf.Symbol_owner(sym)
 
       /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Returns `NoSymbol` if this symbol does not have an owner. */
-      def maybeOwner(using ctx: Context): Symbol = reflectSelf.Symbol_maybeOwner(sym)
+      def maybeOwner: Symbol = reflectSelf.Symbol_maybeOwner(sym)
 
       /** Flags of this symbol */
-      def flags(using ctx: Context): Flags = reflectSelf.Symbol_flags(sym)
+      def flags: Flags = reflectSelf.Symbol_flags(sym)
 
       /** This symbol is private within the resulting type */
-      def privateWithin(using ctx: Context): Option[Type] = reflectSelf.Symbol_privateWithin(sym)
+      def privateWithin: Option[Type] = reflectSelf.Symbol_privateWithin(sym)
 
       /** This symbol is protected within the resulting type */
-      def protectedWithin(using ctx: Context): Option[Type] = reflectSelf.Symbol_protectedWithin(sym)
+      def protectedWithin: Option[Type] = reflectSelf.Symbol_protectedWithin(sym)
 
       /** The name of this symbol */
-      def name(using ctx: Context): String = reflectSelf.Symbol_name(sym)
+      def name: String = reflectSelf.Symbol_name(sym)
 
       /** The full name of this symbol up to the root package */
-      def fullName(using ctx: Context): String = reflectSelf.Symbol_fullName(sym)
+      def fullName: String = reflectSelf.Symbol_fullName(sym)
 
       /** The position of this symbol */
-      def pos(using ctx: Context): Position = reflectSelf.Symbol_pos(sym)
+      def pos: Position = reflectSelf.Symbol_pos(sym)
 
       def localContext(using ctx: Context): Context = reflectSelf.Symbol_localContext(sym)
 
       /** The comment for this symbol, if any */
-      def comment(using ctx: Context): Option[Comment] = reflectSelf.Symbol_comment(sym)
+      def comment: Option[Comment] = reflectSelf.Symbol_comment(sym)
 
       /** Tree of this definition
         *
@@ -2006,131 +2006,131 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
         * if this symbol `isDefDef` it will return a `DefDef`
         * if this symbol `isBind` it will return a `Bind`
         */
-      def tree(using ctx: Context): Tree =
+      def tree: Tree =
         reflectSelf.Symbol_tree(sym)
 
       /** Annotations attached to this symbol */
-      def annots(using ctx: Context): List[Term] = reflectSelf.Symbol_annots(sym)
+      def annots: List[Term] = reflectSelf.Symbol_annots(sym)
 
-      def isDefinedInCurrentRun(using ctx: Context): Boolean = reflectSelf.Symbol_isDefinedInCurrentRun(sym)
+      def isDefinedInCurrentRun: Boolean = reflectSelf.Symbol_isDefinedInCurrentRun(sym)
 
-      def isLocalDummy(using ctx: Context): Boolean = reflectSelf.Symbol_isLocalDummy(sym)
-      def isRefinementClass(using ctx: Context): Boolean = reflectSelf.Symbol_isRefinementClass(sym)
-      def isAliasType(using ctx: Context): Boolean = reflectSelf.Symbol_isAliasType(sym)
-      def isAnonymousClass(using ctx: Context): Boolean = reflectSelf.Symbol_isAnonymousClass(sym)
-      def isAnonymousFunction(using ctx: Context): Boolean = reflectSelf.Symbol_isAnonymousFunction(sym)
-      def isAbstractType(using ctx: Context): Boolean = reflectSelf.Symbol_isAbstractType(sym)
-      def isClassConstructor(using ctx: Context): Boolean = reflectSelf.Symbol_isClassConstructor(sym)
+      def isLocalDummy: Boolean = reflectSelf.Symbol_isLocalDummy(sym)
+      def isRefinementClass: Boolean = reflectSelf.Symbol_isRefinementClass(sym)
+      def isAliasType: Boolean = reflectSelf.Symbol_isAliasType(sym)
+      def isAnonymousClass: Boolean = reflectSelf.Symbol_isAnonymousClass(sym)
+      def isAnonymousFunction: Boolean = reflectSelf.Symbol_isAnonymousFunction(sym)
+      def isAbstractType: Boolean = reflectSelf.Symbol_isAbstractType(sym)
+      def isClassConstructor: Boolean = reflectSelf.Symbol_isClassConstructor(sym)
 
       /** Is this the definition of a type? */
-      def isType(using ctx: Context): Boolean = reflectSelf.Symbol_isType(sym)
+      def isType: Boolean = reflectSelf.Symbol_isType(sym)
 
       /** Is this the definition of a term? */
-      def isTerm(using ctx: Context): Boolean = reflectSelf.Symbol_isTerm(sym)
+      def isTerm: Boolean = reflectSelf.Symbol_isTerm(sym)
 
       /** Is this the definition of a PackageDef tree? */
-      def isPackageDef(using ctx: Context): Boolean = reflectSelf.Symbol_isPackageDef(sym)
+      def isPackageDef: Boolean = reflectSelf.Symbol_isPackageDef(sym)
 
       /** Is this the definition of a ClassDef tree? */
-      def isClassDef(using ctx: Context): Boolean = reflectSelf.Symbol_isClassDef(sym)
+      def isClassDef: Boolean = reflectSelf.Symbol_isClassDef(sym)
 
       /** Is this the definition of a TypeDef tree */
-      def isTypeDef(using ctx: Context): Boolean = reflectSelf.Symbol_isTypeDef(sym)
+      def isTypeDef: Boolean = reflectSelf.Symbol_isTypeDef(sym)
 
       /** Is this the definition of a ValDef tree? */
-      def isValDef(using ctx: Context): Boolean = reflectSelf.Symbol_isValDef(sym)
+      def isValDef: Boolean = reflectSelf.Symbol_isValDef(sym)
 
       /** Is this the definition of a DefDef tree? */
-      def isDefDef(using ctx: Context): Boolean = reflectSelf.Symbol_isDefDef(sym)
+      def isDefDef: Boolean = reflectSelf.Symbol_isDefDef(sym)
 
       /** Is this the definition of a Bind pattern? */
-      def isBind(using ctx: Context): Boolean = reflectSelf.Symbol_isBind(sym)
+      def isBind: Boolean = reflectSelf.Symbol_isBind(sym)
 
       /** Does this symbol represent a no definition? */
-      def isNoSymbol(using ctx: Context): Boolean = sym == Symbol.noSymbol
+      def isNoSymbol: Boolean = sym == Symbol.noSymbol
 
       /** Does this symbol represent a definition? */
-      def exists(using ctx: Context): Boolean = sym != Symbol.noSymbol
+      def exists: Boolean = sym != Symbol.noSymbol
 
       /** Fields directly declared in the class */
-      def fields(using ctx: Context): List[Symbol] =
+      def fields: List[Symbol] =
         reflectSelf.Symbol_fields(sym)
 
       /** Field with the given name directly declared in the class */
-      def field(name: String)(using ctx: Context): Symbol =
+      def field(name: String): Symbol =
         reflectSelf.Symbol_field(sym)(name)
 
       /** Get non-private named methods defined directly inside the class */
-      def classMethod(name: String)(using ctx: Context): List[Symbol] =
+      def classMethod(name: String): List[Symbol] =
         reflectSelf.Symbol_classMethod(sym)(name)
 
       /** Get all non-private methods defined directly inside the class, exluding constructors */
-      def classMethods(using ctx: Context): List[Symbol] =
+      def classMethods: List[Symbol] =
         reflectSelf.Symbol_classMethods(sym)
 
       /** Type member directly declared in the class */
-      def typeMembers(using ctx: Context): List[Symbol] =
+      def typeMembers: List[Symbol] =
         reflectSelf.Symbol_typeMembers(sym)
 
       /** Type member with the given name directly declared in the class */
-      def typeMember(name: String)(using ctx: Context): Symbol =
+      def typeMember(name: String): Symbol =
         reflectSelf.Symbol_typeMember(sym)(name)
 
       /** Get named non-private methods declared or inherited */
-      def method(name: String)(using ctx: Context): List[Symbol] =
+      def method(name: String): List[Symbol] =
         reflectSelf.Symbol_method(sym)(name)
 
       /** Get all non-private methods declared or inherited */
-      def methods(using ctx: Context): List[Symbol] =
+      def methods: List[Symbol] =
         reflectSelf.Symbol_methods(sym)
 
       /** The symbols of each type parameter list and value parameter list of this
         *  method, or Nil if this isn't a method.
         */
-      def paramSymss(using ctx: Context): List[List[Symbol]] =
+      def paramSymss: List[List[Symbol]] =
         reflectSelf.Symbol_paramSymss(sym)
 
       /** The primary constructor of a class or trait, `noSymbol` if not applicable. */
-      def primaryConstructor(using Context): Symbol =
+      def primaryConstructor: Symbol =
         reflectSelf.Symbol_primaryConstructor(sym)
 
       /** Fields of a case class type -- only the ones declared in primary constructor */
-      def caseFields(using ctx: Context): List[Symbol] =
+      def caseFields: List[Symbol] =
         reflectSelf.Symbol_caseFields(sym)
 
-      def isTypeParam(using ctx: Context): Boolean =
+      def isTypeParam: Boolean =
         reflectSelf.Symbol_isTypeParam(sym)
 
       /** Signature of this definition */
-      def signature(using ctx: Context): Signature =
+      def signature: Signature =
         reflectSelf.Symbol_signature(sym)
 
       /** The class symbol of the companion module class */
-      def moduleClass(using ctx: Context): Symbol =
+      def moduleClass: Symbol =
         reflectSelf.Symbol_moduleClass(sym)
 
       /** The symbol of the companion class */
-      def companionClass(using ctx: Context): Symbol =
+      def companionClass: Symbol =
         reflectSelf.Symbol_companionClass(sym)
 
       /** The symbol of the companion module */
-      def companionModule(using ctx: Context): Symbol =
+      def companionModule: Symbol =
         reflectSelf.Symbol_companionModule(sym)
 
       /** Shows the tree as extractors */
-      def showExtractors(using ctx: Context): String =
+      def showExtractors: String =
         new ExtractorsPrinter[reflectSelf.type](reflectSelf).showSymbol(sym)
 
       /** Shows the tree as fully typed source code */
-      def show(using ctx: Context): String =
+      def show: String =
         sym.showWith(SyntaxHighlight.plain)
 
       /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight)(using ctx: Context): String =
+      def showWith(syntaxHighlight: SyntaxHighlight): String =
         new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showSymbol(sym)
 
       /** Case class or case object children of a sealed trait */
-      def children(using ctx: Context): List[Symbol] =
+      def children: List[Symbol] =
         reflectSelf.Symbol_children(sym)
     end extension
   end Symbol

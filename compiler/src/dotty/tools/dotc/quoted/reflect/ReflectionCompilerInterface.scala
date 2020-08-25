@@ -1672,39 +1672,39 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Symbol = core.Symbols.Symbol
 
-  def Symbol_currentOwner(using ctx: Context): Symbol = ctx.owner
+  def Symbol_currentOwner: Symbol = ctx.owner
 
-  def Symbol_owner(self: Symbol)(using Context): Symbol = self.owner
-  def Symbol_maybeOwner(self: Symbol)(using Context): Symbol = self.maybeOwner
+  def Symbol_owner(self: Symbol): Symbol = self.owner
+  def Symbol_maybeOwner(self: Symbol): Symbol = self.maybeOwner
 
-  def Symbol_flags(self: Symbol)(using Context): Flags = self.flags
+  def Symbol_flags(self: Symbol): Flags = self.flags
 
-  def Symbol_tree(self: Symbol)(using Context): Tree =
+  def Symbol_tree(self: Symbol): Tree =
     FromSymbol.definitionFromSym(self)
 
-  def Symbol_privateWithin(self: Symbol)(using Context): Option[Type] = {
+  def Symbol_privateWithin(self: Symbol): Option[Type] = {
     val within = self.privateWithin
     if (within.exists && !self.is(core.Flags.Protected)) Some(within.typeRef)
     else None
   }
 
-  def Symbol_protectedWithin(self: Symbol)(using Context): Option[Type] = {
+  def Symbol_protectedWithin(self: Symbol): Option[Type] = {
     val within = self.privateWithin
     if (within.exists && self.is(core.Flags.Protected)) Some(within.typeRef)
     else None
   }
 
-  def Symbol_name(self: Symbol)(using Context): String = self.name.toString
+  def Symbol_name(self: Symbol): String = self.name.toString
 
-  def Symbol_fullName(self: Symbol)(using Context): String = self.fullName.toString
+  def Symbol_fullName(self: Symbol): String = self.fullName.toString
 
-  def Symbol_pos(self: Symbol)(using Context): Position = self.sourcePos
+  def Symbol_pos(self: Symbol): Position = self.sourcePos
 
-  def Symbol_localContext(self: Symbol)(using Context): Context =
+  def Symbol_localContext(self: Symbol): Context =
     if (self.exists) ctx.withOwner(self)
     else ctx
 
-  def Symbol_comment(self: Symbol)(using Context): Option[Comment] = {
+  def Symbol_comment(self: Symbol): Option[Comment] = {
     import dotty.tools.dotc.core.Comments.CommentsContext
     val docCtx = ctx.docCtx.getOrElse {
       throw new RuntimeException(
@@ -1713,134 +1713,134 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     }
     docCtx.docstring(self)
   }
-  def Symbol_annots(self: Symbol)(using Context): List[Term] =
+  def Symbol_annots(self: Symbol): List[Term] =
     self.annotations.flatMap {
       case _: core.Annotations.BodyAnnotation => Nil
       case annot => annot.tree :: Nil
     }
 
-  def Symbol_isDefinedInCurrentRun(self: Symbol)(using Context): Boolean =
+  def Symbol_isDefinedInCurrentRun(self: Symbol): Boolean =
     self.topLevelClass.asClass.isDefinedInCurrentRun
 
-  def Symbol_isLocalDummy(self: Symbol)(using Context): Boolean = self.isLocalDummy
-  def Symbol_isRefinementClass(self: Symbol)(using Context): Boolean = self.isRefinementClass
-  def Symbol_isAliasType(self: Symbol)(using Context): Boolean = self.isAliasType
-  def Symbol_isAnonymousClass(self: Symbol)(using Context): Boolean = self.isAnonymousClass
-  def Symbol_isAnonymousFunction(self: Symbol)(using Context): Boolean = self.isAnonymousFunction
-  def Symbol_isAbstractType(self: Symbol)(using Context): Boolean = self.isAbstractType
-  def Symbol_isClassConstructor(self: Symbol)(using Context): Boolean = self.isClassConstructor
+  def Symbol_isLocalDummy(self: Symbol): Boolean = self.isLocalDummy
+  def Symbol_isRefinementClass(self: Symbol): Boolean = self.isRefinementClass
+  def Symbol_isAliasType(self: Symbol): Boolean = self.isAliasType
+  def Symbol_isAnonymousClass(self: Symbol): Boolean = self.isAnonymousClass
+  def Symbol_isAnonymousFunction(self: Symbol): Boolean = self.isAnonymousFunction
+  def Symbol_isAbstractType(self: Symbol): Boolean = self.isAbstractType
+  def Symbol_isClassConstructor(self: Symbol): Boolean = self.isClassConstructor
 
-  def Symbol_fields(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_fields(self: Symbol): List[Symbol] =
     self.unforcedDecls.filter(isField)
 
-  def Symbol_field(self: Symbol)(name: String)(using Context): Symbol = {
+  def Symbol_field(self: Symbol)(name: String): Symbol = {
     val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
     if (isField(sym)) sym else core.Symbols.NoSymbol
   }
 
-  def Symbol_classMethod(self: Symbol)(name: String)(using Context): List[Symbol] =
+  def Symbol_classMethod(self: Symbol)(name: String): List[Symbol] =
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
 
-  def Symbol_typeMembers(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_typeMembers(self: Symbol): List[Symbol] =
     self.unforcedDecls.filter(_.isType)
 
-  def Symbol_typeMember(self: Symbol)(name: String)(using Context): Symbol =
+  def Symbol_typeMember(self: Symbol)(name: String): Symbol =
     self.unforcedDecls.find(sym => sym.name == name.toTypeName)
 
-  def Symbol_classMethods(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_classMethods(self: Symbol): List[Symbol] =
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
 
   private def appliedTypeRef(sym: Symbol): Type = sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef))
 
-  def Symbol_method(self: Symbol)(name: String)(using Context): List[Symbol] =
+  def Symbol_method(self: Symbol)(name: String): List[Symbol] =
     appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
 
-  def Symbol_methods(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_methods(self: Symbol): List[Symbol] =
     appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
 
-  private def isMethod(sym: Symbol)(using Context): Boolean =
+  private def isMethod(sym: Symbol): Boolean =
     sym.isTerm && sym.is(Flags.Method) && !sym.isConstructor
 
-  def Symbol_paramSymss(self: Symbol)(using Context): List[List[Symbol]] =
+  def Symbol_paramSymss(self: Symbol): List[List[Symbol]] =
     self.paramSymss
 
-  def Symbol_primaryConstructor(self: Symbol)(using Context): Symbol =
+  def Symbol_primaryConstructor(self: Symbol): Symbol =
     self.primaryConstructor
 
-  def Symbol_caseFields(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_caseFields(self: Symbol): List[Symbol] =
     if (!self.isClass) Nil
     else self.asClass.paramAccessors.collect {
       case sym if sym.is(Flags.CaseAccessor) => sym.asTerm
     }
 
-  def Symbol_children(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_children(self: Symbol): List[Symbol] =
     self.children
 
-  private def isField(sym: Symbol)(using Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
+  private def isField(sym: Symbol): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
-  def Symbol_requiredPackage(path: String)(using Context): Symbol = requiredPackage(path)
-  def Symbol_requiredClass(path: String)(using Context): Symbol = requiredClass(path)
-  def Symbol_requiredModule(path: String)(using Context): Symbol = requiredModule(path)
-  def Symbol_requiredMethod(path: String)(using Context): Symbol = requiredMethod(path)
+  def Symbol_requiredPackage(path: String): Symbol = requiredPackage(path)
+  def Symbol_requiredClass(path: String): Symbol = requiredClass(path)
+  def Symbol_requiredModule(path: String): Symbol = requiredModule(path)
+  def Symbol_requiredMethod(path: String): Symbol = requiredMethod(path)
 
-  def Symbol_of(fullName: String)(using Context): Symbol =
+  def Symbol_of(fullName: String): Symbol =
     requiredClass(fullName)
 
-  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using Context): Symbol =
+  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol): Symbol =
     newSymbol(parent, name.toTermName, flags | Flags.Method, tpe, privateWithin)
 
-  def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using Context): Symbol =
+  def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol): Symbol =
     newSymbol(parent, name.toTermName, flags, tpe, privateWithin)
 
-  def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type)(using Context): Symbol =
+  def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type): Symbol =
     newSymbol(parent, name.toTermName, flags | Case, tpe)
 
-  def Symbol_isTypeParam(self: Symbol)(using Context): Boolean =
+  def Symbol_isTypeParam(self: Symbol): Boolean =
     self.isTypeParam
 
-  def Symbol_isType(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isType(symbol: Symbol): Boolean =
     symbol.isType
 
-  def Symbol_isTerm(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isTerm(symbol: Symbol): Boolean =
     symbol.isTerm
 
-  def Symbol_isPackageDef(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isPackageDef(symbol: Symbol): Boolean =
     symbol.is(Flags.Package)
 
-  def Symbol_isClassDef(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isClassDef(symbol: Symbol): Boolean =
     symbol.isClass
 
-  def Symbol_isTypeDef(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isTypeDef(symbol: Symbol): Boolean =
     symbol.isType && !symbol.isClass && !symbol.is(Flags.Case)
 
-  def Symbol_isValDef(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isValDef(symbol: Symbol): Boolean =
     symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case/*, FIXME add this check and fix sourcecode butNot = Enum | Module*/)
 
-  def Symbol_isDefDef(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isDefDef(symbol: Symbol): Boolean =
     symbol.is(core.Flags.Method)
 
-  def Symbol_isBind(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isBind(symbol: Symbol): Boolean =
     symbol.is(core.Flags.Case, butNot = Enum | Module) && !symbol.isClass
 
-  def Symbol_signature(self: Symbol)(using Context): Signature =
+  def Symbol_signature(self: Symbol): Signature =
     self.signature
 
 
-  def Symbol_moduleClass(self: Symbol)(using Context): Symbol = self.moduleClass
+  def Symbol_moduleClass(self: Symbol): Symbol = self.moduleClass
 
-  def Symbol_companionClass(self: Symbol)(using Context): Symbol = self.companionClass
+  def Symbol_companionClass(self: Symbol): Symbol = self.companionClass
 
-  def Symbol_companionModule(self: Symbol)(using Context): Symbol = self.companionModule
+  def Symbol_companionModule(self: Symbol): Symbol = self.companionModule
 
-  def Symbol_noSymbol(using Context): Symbol = core.Symbols.NoSymbol
+  def Symbol_noSymbol: Symbol = core.Symbols.NoSymbol
 
 
   ///////////
