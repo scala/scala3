@@ -56,3 +56,43 @@ object JList:
 object JSet:
     def apply[T](elem: T): JSet[T] = Set(elem).asJava
     def apply[T]() = Set[T]().asJava
+
+def modifyContentGroup(originalContentNodeWithParents: Seq[ContentGroup], modifiedContentNode: ContentGroup): ContentGroup =
+    originalContentNodeWithParents match {
+        case head :: tail => tail match {
+            case tailHead :: tailTail =>
+                val newChildren = tailHead.getChildren.asScala.map(c => if c != head then c else modifiedContentNode)
+                modifyContentGroup(
+                    tailTail,
+                    tailHead.copy(
+                        newChildren.asJava,
+                        tailHead.getDci,
+                        tailHead.getSourceSets,
+                        tailHead.getStyle,
+                        tailHead.getExtra
+                    )
+                )
+            case _ => head
+        }
+        case _ => modifiedContentNode
+    }
+
+def getContentGroupWithParents(root: ContentGroup, condition: ContentGroup => Boolean): Seq[ContentGroup] = {
+    def getFirstMatch(list: List[ContentNode]): Seq[ContentGroup] = list match {
+        case head :: tail => head match {
+            case g: ContentGroup => 
+                val res = getContentGroupWithParents(g, condition)
+                if(!res.isEmpty) res
+                else getFirstMatch(tail)
+            case _ => getFirstMatch(tail)
+        }
+            
+        case _ => Seq()
+    }
+    if(condition(root)) Seq(root)
+    else {
+        val res = getFirstMatch(root.getChildren.asScala.toList)
+        if(!res.isEmpty) res ++ Seq(root)
+        else Seq()
+    }
+}

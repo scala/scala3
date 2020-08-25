@@ -35,7 +35,7 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
     true,
     true,
     8,
-    Nil.asJava,
+    docConfiguration.args.sourceLinks.map(SourceLinkDefinitionImpl.Companion.parseSourceLinkDefinition(_)).asJava,
     Nil.asJava,
     Nil.asJava,
     null,

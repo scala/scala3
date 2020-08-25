@@ -47,6 +47,10 @@ case class EnumExtension(val enumEntries: Seq[Documentable]) extends ExtraProper
 
 object EnumExtension extends BaseKey[DClass, EnumExtension]
 
+case class TastyDocumentableSource(val path: String, val lineNumber: Int) extends DocumentableSource {
+    override def getPath = path
+}
+
 case class ClasslikeExtension(
   parentTypes: List[Bound], 
   constructor: Option[DFunction], 

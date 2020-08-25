@@ -88,6 +88,18 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         }
     }
 
+    val sourceLinksTransformer by extending {
+        CoreExtensions.pageTransformer providing { ctx ->
+            createSourceLinksTransformer(
+                ctx,
+                ctx.single(dokkaBase.commentsToContentConverter),
+                ctx.single(dokkaBase.signatureProvider),
+                ctx.logger
+            )
+        } override dokkaBase.sourceLinksTransformer
+    }
+
+
     abstract fun createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule
     abstract fun createSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger): SignatureProvider
     abstract fun createResourceInstaller(ctx: DokkaContext) : PageTransformer
@@ -99,6 +111,12 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
     ) : DocumentableToPageTranslator
     abstract fun createPackageHierarchyTransformer(ctx: DokkaContext) : PageTransformer
     abstract fun createInheritanceInformationTransformer(ctx: DokkaContext): DocumentableTransformer
+    abstract fun createSourceLinksTransformer(
+            ctx: DokkaContext,
+            commentsToContentConverter: CommentsToContentConverter,
+            signatureProvider: SignatureProvider,
+            logger: DokkaLogger
+    ): PageTransformer
 }
 
 // TODO we probably does not need that

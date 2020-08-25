@@ -35,6 +35,7 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
         projectTitle = None,
         projectLogo = None,
         defaultSyntax = None,
+        sourceLinks = List.empty
     )
 
     def listPages(tastyDir: String): Seq[ContentPage] =
