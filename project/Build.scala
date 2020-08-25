@@ -289,8 +289,11 @@ object Build {
       Some((packageBin in (`dotty-sbt-bridge`, Compile)).value)
     },
 
-    // Use the same name as the non-bootstrapped projects for the artifacts
-    moduleName ~= { _.stripSuffix("-bootstrapped") },
+    // Use the same name as the non-bootstrapped projects for the artifacts.
+    // Remove the `js` suffix because JS artifacts are published using their special crossVersion.
+    // The order of the two `stripSuffix`es is important, so that
+    // dotty-library-bootstrappedjs becomes dotty-library.
+    moduleName ~= { _.stripSuffix("js").stripSuffix("-bootstrapped") },
 
     // Enforce that the only Scala 2 classfiles we unpickle come from scala-library
     /*
