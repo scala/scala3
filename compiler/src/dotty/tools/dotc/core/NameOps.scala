@@ -252,15 +252,21 @@ object NameOps {
     }
 
     def unmangle(kind: NameKind): N = likeSpacedN {
-      name replace {
-        case unmangled: SimpleName =>
-          kind.unmangle(unmangled)
-        case ExpandedName(prefix, last) =>
-          kind.unmangle(last) replace {
-            case kernel: SimpleName =>
-              ExpandedName(prefix, kernel)
+      name match
+        case name: SimpleName =>
+          kind.unmangle(name)
+        case name: TypeName =>
+          name.toTermName.unmangle(kind).toTypeName
+        case _ =>
+          name replace {
+            case unmangled: SimpleName =>
+              kind.unmangle(unmangled)
+            case ExpandedName(prefix, last) =>
+              kind.unmangle(last) replace {
+                case kernel: SimpleName =>
+                  ExpandedName(prefix, kernel)
+              }
           }
-      }
     }
 
     def unmangle(kinds: List[NameKind]): N = {
