@@ -1,8 +1,7 @@
 package dotty.dokka
 
 import org.jetbrains.dokka.transformers.pages.{PageTransformer}
-import org.jetbrains.dokka.pages.{RootPageNode, RendererSpecificResourcePage, RenderingStrategy$Copy, PageNode}
-import collection.JavaConverters
+import org.jetbrains.dokka.pages.{RootPageNode, PageNode}
 import collection.JavaConverters._
 
 class ScalaEmbeddedResourceAppender extends PageTransformer:
@@ -12,9 +11,10 @@ class ScalaEmbeddedResourceAppender extends PageTransformer:
                 page.getName,
                 page.getContent,
                 page.getDri,
-                JavaConverters.asJava(page.getEmbeddedResources.asScala.toSeq ++ Seq(
+                // Remove default CSS and add our own
+                (page.getEmbeddedResources.asScala.filterNot(_.endsWith(".css")) :+
                     "styles/scalastyle.css"
-                )),
+                ).asJava,
                 page.getChildren
             )
         )
