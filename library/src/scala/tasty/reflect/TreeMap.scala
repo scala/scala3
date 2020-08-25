@@ -132,7 +132,7 @@ trait TreeMap {
     case tree: ByName =>
       ByName.copy(tree)(transformTypeTree(tree.result))
     case tree: LambdaTypeTree =>
-      LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))(using tree.symbol.localContext)
+      LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))//(using tree.symbol.localContext)
     case tree: TypeBind =>
       TypeBind.copy(tree)(tree.name, tree.body)
     case tree: TypeBlock =>

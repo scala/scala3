@@ -104,8 +104,8 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Tree = tpd.Tree
 
-  def Tree_pos(self: Tree)(using Context): Position = self.sourcePos
-  def Tree_symbol(self: Tree)(using Context): Symbol = self.symbol
+  def Tree_pos(self: Tree): Position = self.sourcePos
+  def Tree_symbol(self: Tree): Symbol = self.symbol
 
   type PackageClause = tpd.PackageDef
 
@@ -116,13 +116,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def PackageClause_pid(self: PackageClause)(using Context): Ref = self.pid
-  def PackageClause_stats(self: PackageClause)(using Context): List[Tree] = self.stats
+  def PackageClause_pid(self: PackageClause): Ref = self.pid
+  def PackageClause_stats(self: PackageClause): List[Tree] = self.stats
 
-  def PackageClause_apply(pid: Ref, stats: List[Tree])(using Context): PackageClause =
+  def PackageClause_apply(pid: Ref, stats: List[Tree]): PackageClause =
     withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats))
 
-  def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree])(using Context): PackageClause =
+  def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause =
     tpd.cpy.PackageDef(original)(pid, stats)
 
   type Statement = tpd.Tree
@@ -146,13 +146,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   }
 
   def Import_implied(self: Import): Boolean = false // TODO: adapt to new import scheme
-  def Import_expr(self: Import)(using Context): Tree = self.expr
-  def Import_selectors(self: Import)(using Context): List[ImportSelector] = self.selectors
+  def Import_expr(self: Import): Tree = self.expr
+  def Import_selectors(self: Import): List[ImportSelector] = self.selectors
 
-  def Import_apply(expr: Term, selectors: List[ImportSelector])(using Context): Import =
+  def Import_apply(expr: Term, selectors: List[ImportSelector]): Import =
     withDefaultPos(tpd.Import(expr, selectors))
 
-  def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(using Context): Import =
+  def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import =
     tpd.cpy.Import(original)(expr, selectors)
 
   type Definition = tpd.Tree
@@ -165,7 +165,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Definition_name(self: Definition)(using Context): String = self match {
+  def Definition_name(self: Definition): String = self match {
     case self: tpd.MemberDef => self.name.toString
     case self: PackageDefinition => self.symbol.name.toString // TODO make PackageDefinition a MemberDef or NameTree
   }
@@ -179,9 +179,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def PackageDef_owner(self: PackageDef)(using Context): PackageDef = packageDefFromSym(self.symbol.owner)
+  def PackageDef_owner(self: PackageDef): PackageDef = packageDefFromSym(self.symbol.owner)
 
-  def PackageDef_members(self: PackageDef)(using Context): List[Statement] =
+  def PackageDef_members(self: PackageDef): List[Statement] =
     if (self.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
     else self.symbol.info.decls.iterator.map(definitionFromSym).toList
 
@@ -194,14 +194,14 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def ClassDef_constructor(self: ClassDef)(using Context): DefDef = ClassDef_rhs(self).constr
-  def ClassDef_parents(self: ClassDef)(using Context): List[Term | TypeTree] = ClassDef_rhs(self).parents
-  def ClassDef_derived(self: ClassDef)(using Context): List[TypeTree] = ClassDef_rhs(self).derived.asInstanceOf[List[TypeTree]]
-  def ClassDef_self(self: ClassDef)(using Context): Option[ValDef] = optional(ClassDef_rhs(self).self)
-  def ClassDef_body(self: ClassDef)(using Context): List[Statement] = ClassDef_rhs(self).body
+  def ClassDef_constructor(self: ClassDef): DefDef = ClassDef_rhs(self).constr
+  def ClassDef_parents(self: ClassDef): List[Term | TypeTree] = ClassDef_rhs(self).parents
+  def ClassDef_derived(self: ClassDef): List[TypeTree] = ClassDef_rhs(self).derived.asInstanceOf[List[TypeTree]]
+  def ClassDef_self(self: ClassDef): Option[ValDef] = optional(ClassDef_rhs(self).self)
+  def ClassDef_body(self: ClassDef): List[Statement] = ClassDef_rhs(self).body
   private def ClassDef_rhs(self: ClassDef) = self.rhs.asInstanceOf[tpd.Template]
 
-  def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Term | TypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(using Context): ClassDef = {
+  def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Term | TypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
     val Trees.TypeDef(_, originalImpl: tpd.Template) = original
     tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
   }
@@ -215,10 +215,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeDef_rhs(self: TypeDef)(using Context): TypeTree | TypeBoundsTree = self.rhs
+  def TypeDef_rhs(self: TypeDef): TypeTree | TypeBoundsTree = self.rhs
 
-  def TypeDef_apply(symbol: Symbol)(using Context): TypeDef = withDefaultPos(tpd.TypeDef(symbol.asType))
-  def TypeDef_copy(original: Tree)(name: String, rhs: TypeTree | TypeBoundsTree)(using Context): TypeDef =
+  def TypeDef_apply(symbol: Symbol): TypeDef = withDefaultPos(tpd.TypeDef(symbol.asType))
+  def TypeDef_copy(original: Tree)(name: String, rhs: TypeTree | TypeBoundsTree): TypeDef =
     tpd.cpy.TypeDef(original)(name.toTypeName, rhs)
 
   type DefDef = tpd.DefDef
@@ -230,15 +230,15 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def DefDef_typeParams(self: DefDef)(using Context): List[TypeDef] = self.tparams
-  def DefDef_paramss(self: DefDef)(using Context): List[List[ValDef]] = self.vparamss
-  def DefDef_returnTpt(self: DefDef)(using Context): TypeTree = self.tpt
-  def DefDef_rhs(self: DefDef)(using Context): Option[Tree] = optional(self.rhs)
+  def DefDef_typeParams(self: DefDef): List[TypeDef] = self.tparams
+  def DefDef_paramss(self: DefDef): List[List[ValDef]] = self.vparamss
+  def DefDef_returnTpt(self: DefDef): TypeTree = self.tpt
+  def DefDef_rhs(self: DefDef): Option[Tree] = optional(self.rhs)
 
-  def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(using Context): DefDef =
+  def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]): DefDef =
     withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => rhsFn(tparams)(vparamss).getOrElse(tpd.EmptyTree)))
 
-  def DefDef_copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(using Context): DefDef =
+  def DefDef_copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
     tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, rhs.getOrElse(tpd.EmptyTree))
 
   type ValDef = tpd.ValDef
@@ -250,13 +250,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def ValDef_tpt(self: ValDef)(using Context): TypeTree = self.tpt
-  def ValDef_rhs(self: ValDef)(using Context): Option[Tree] = optional(self.rhs)
+  def ValDef_tpt(self: ValDef): TypeTree = self.tpt
+  def ValDef_rhs(self: ValDef): Option[Tree] = optional(self.rhs)
 
-  def ValDef_apply(symbol: Symbol, rhs: Option[Term])(using Context): ValDef =
+  def ValDef_apply(symbol: Symbol, rhs: Option[Term]): ValDef =
     tpd.ValDef(symbol.asTerm, rhs.getOrElse(tpd.EmptyTree))
 
-  def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(using Context): ValDef =
+  def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef =
     tpd.cpy.ValDef(original)(name.toTermName, tpt, rhs.getOrElse(tpd.EmptyTree))
 
   type Term = tpd.Tree
@@ -273,11 +273,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Term_tpe(self: Term)(using Context): Type = self.tpe
-  def Term_underlyingArgument(self: Term)(using Context): Term = self.underlyingArgument
-  def Term_underlying(self: Term)(using Context): Term = self.underlying
+  def Term_tpe(self: Term): Type = self.tpe
+  def Term_underlyingArgument(self: Term): Term = self.underlyingArgument
+  def Term_underlying(self: Term): Term = self.underlying
 
-  def Term_etaExpand(term: Term)(using Context): Term = term.tpe.widen match {
+  def Term_etaExpand(term: Term): Term = term.tpe.widen match {
     case mtpe: Types.MethodType if !mtpe.isParamDependent =>
       val closureResType = mtpe.resType match {
         case t: Types.MethodType @unchecked => t.toFunctionType()
@@ -289,7 +289,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     case _ => term
   }
 
-  def TypeRef_apply(sym: Symbol)(using Context): TypeTree = {
+  def TypeRef_apply(sym: Symbol): TypeTree = {
     assert(sym.isType)
     withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.TypeTree])
   }
@@ -303,10 +303,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Ref_term(tp: TermRef)(using Context): Ref =
+  def Ref_term(tp: TermRef): Ref =
     withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree])
 
-  def Ref_apply(sym: Symbol)(using Context): Ref = {
+  def Ref_apply(sym: Symbol): Ref = {
     assert(sym.isTerm)
     withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.RefTree])
   }
@@ -320,12 +320,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Ident_name(self: Ident)(using Context): String = self.name.show
+  def Ident_name(self: Ident): String = self.name.show
 
-  def Ident_apply(tmref: TermRef)(using Context): Term =
+  def Ident_apply(tmref: TermRef): Term =
     withDefaultPos(tpd.ref(tmref).asInstanceOf[Term])
 
-  def Ident_copy(original: Tree)(name: String)(using Context): Ident =
+  def Ident_copy(original: Tree)(name: String): Ident =
     tpd.cpy.Ident(original)(name.toTermName)
 
   type Select = tpd.Select
@@ -337,26 +337,26 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Select_qualifier(self: Select)(using Context): Term = self.qualifier
-  def Select_name(self: Select)(using Context): String = self.name.toString
-  def Select_signature(self: Select)(using Context): Option[Signature] =
+  def Select_qualifier(self: Select): Term = self.qualifier
+  def Select_name(self: Select): String = self.name.toString
+  def Select_signature(self: Select): Option[Signature] =
     if (self.symbol.signature == core.Signature.NotAMethod) None
     else Some(self.symbol.signature)
 
-  def Select_apply(qualifier: Term, symbol: Symbol)(using Context): Select =
+  def Select_apply(qualifier: Term, symbol: Symbol): Select =
     withDefaultPos(tpd.Select(qualifier, Types.TermRef(qualifier.tpe, symbol)))
 
-  def Select_unique(qualifier: Term, name: String)(using Context): Select = {
+  def Select_unique(qualifier: Term, name: String): Select = {
     val denot = qualifier.tpe.member(name.toTermName)
     assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
     withDefaultPos(tpd.Select(qualifier, name.toTermName))
   }
 
   // TODO rename, this returns an Apply and not a Select
-  def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(using Context): Apply =
+  def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply =
     withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
 
-  def Select_copy(original: Tree)(qualifier: Term, name: String)(using Context): Select =
+  def Select_copy(original: Tree)(qualifier: Term, name: String): Select =
     tpd.cpy.Select(original)(qualifier, name.toTermName)
 
   type Literal = tpd.Literal
@@ -368,12 +368,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Literal_constant(self: Literal)(using Context): Constant = self.const
+  def Literal_constant(self: Literal): Constant = self.const
 
-  def Literal_apply(constant: Constant)(using Context): Literal =
+  def Literal_apply(constant: Constant): Literal =
     withDefaultPos(tpd.Literal(constant))
 
-  def Literal_copy(original: Tree)(constant: Constant)(using Context): Literal =
+  def Literal_copy(original: Tree)(constant: Constant): Literal =
     tpd.cpy.Literal(original)(constant)
 
   type This = tpd.This
@@ -385,12 +385,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def This_id(self: This)(using Context): Option[Id] = optional(self.qual)
+  def This_id(self: This): Option[Id] = optional(self.qual)
 
-  def This_apply(cls: Symbol)(using Context): This =
+  def This_apply(cls: Symbol): This =
     withDefaultPos(tpd.This(cls.asClass))
 
-  def This_copy(original: Tree)(qual: Option[Id])(using Context): This =
+  def This_copy(original: Tree)(qual: Option[Id]): This =
     tpd.cpy.This(original)(qual.getOrElse(untpd.EmptyTypeIdent))
 
   type New = tpd.New
@@ -402,11 +402,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def New_tpt(self: New)(using Context): TypeTree = self.tpt
+  def New_tpt(self: New): TypeTree = self.tpt
 
-  def New_apply(tpt: TypeTree)(using Context): New = withDefaultPos(tpd.New(tpt))
+  def New_apply(tpt: TypeTree): New = withDefaultPos(tpd.New(tpt))
 
-  def New_copy(original: Tree)(tpt: TypeTree)(using Context): New =
+  def New_copy(original: Tree)(tpt: TypeTree): New =
     tpd.cpy.New(original)(tpt)
 
   type NamedArg = tpd.NamedArg
@@ -418,13 +418,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def NamedArg_name(self: NamedArg)(using Context): String = self.name.toString
-  def NamedArg_value(self: NamedArg)(using Context): Term = self.arg
+  def NamedArg_name(self: NamedArg): String = self.name.toString
+  def NamedArg_value(self: NamedArg): Term = self.arg
 
-  def NamedArg_apply(name: String, arg: Term)(using Context): NamedArg =
+  def NamedArg_apply(name: String, arg: Term): NamedArg =
     withDefaultPos(tpd.NamedArg(name.toTermName, arg))
 
-  def NamedArg_copy(original: Tree)(name: String, arg: Term)(using Context): NamedArg =
+  def NamedArg_copy(original: Tree)(name: String, arg: Term): NamedArg =
     tpd.cpy.NamedArg(original)(name.toTermName, arg)
 
   type Apply = tpd.Apply
@@ -436,14 +436,14 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Apply_fun(self: Apply)(using Context): Term = self.fun
-  def Apply_args(self: Apply)(using Context): List[Term] = self.args
+  def Apply_fun(self: Apply): Term = self.fun
+  def Apply_args(self: Apply): List[Term] = self.args
 
 
-  def Apply_apply(fn: Term, args: List[Term])(using Context): Apply =
+  def Apply_apply(fn: Term, args: List[Term]): Apply =
     withDefaultPos(tpd.Apply(fn, args))
 
-  def Apply_copy(original: Tree)(fun: Term, args: List[Term])(using Context): Apply =
+  def Apply_copy(original: Tree)(fun: Term, args: List[Term]): Apply =
     tpd.cpy.Apply(original)(fun, args)
 
   type TypeApply = tpd.TypeApply
@@ -455,13 +455,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeApply_fun(self: TypeApply)(using Context): Term = self.fun
-  def TypeApply_args(self: TypeApply)(using Context): List[TypeTree] = self.args
+  def TypeApply_fun(self: TypeApply): Term = self.fun
+  def TypeApply_args(self: TypeApply): List[TypeTree] = self.args
 
-  def TypeApply_apply(fn: Term, args: List[TypeTree])(using Context): TypeApply =
+  def TypeApply_apply(fn: Term, args: List[TypeTree]): TypeApply =
     withDefaultPos(tpd.TypeApply(fn, args))
 
-  def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(using Context): TypeApply =
+  def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
     tpd.cpy.TypeApply(original)(fun, args)
 
   type Super = tpd.Super
@@ -473,13 +473,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Super_qualifier(self: Super)(using Context): Term = self.qual
-  def Super_id(self: Super)(using Context): Option[Id] = optional(self.mix)
+  def Super_qualifier(self: Super): Term = self.qual
+  def Super_id(self: Super): Option[Id] = optional(self.mix)
 
-  def Super_apply(qual: Term, mix: Option[Id])(using Context): Super =
+  def Super_apply(qual: Term, mix: Option[Id]): Super =
     withDefaultPos(tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), NoSymbol))
 
-  def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(using Context): Super =
+  def Super_copy(original: Tree)(qual: Term, mix: Option[Id]): Super =
     tpd.cpy.Super(original)(qual, mix.getOrElse(untpd.EmptyTypeIdent))
 
   type Typed = tpd.Typed
@@ -491,13 +491,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Typed_expr(self: Typed)(using Context): Term = self.expr
-  def Typed_tpt(self: Typed)(using Context): TypeTree = self.tpt
+  def Typed_expr(self: Typed): Term = self.expr
+  def Typed_tpt(self: Typed): TypeTree = self.tpt
 
-  def Typed_apply(expr: Term, tpt: TypeTree)(using Context): Typed =
+  def Typed_apply(expr: Term, tpt: TypeTree): Typed =
     withDefaultPos(tpd.Typed(expr, tpt))
 
-  def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(using Context): Typed =
+  def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree): Typed =
     tpd.cpy.Typed(original)(expr, tpt)
 
   type Assign = tpd.Assign
@@ -509,13 +509,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Assign_lhs(self: Assign)(using Context): Term = self.lhs
-  def Assign_rhs(self: Assign)(using Context): Term = self.rhs
+  def Assign_lhs(self: Assign): Term = self.lhs
+  def Assign_rhs(self: Assign): Term = self.rhs
 
-  def Assign_apply(lhs: Term, rhs: Term)(using Context): Assign =
+  def Assign_apply(lhs: Term, rhs: Term): Assign =
     withDefaultPos(tpd.Assign(lhs, rhs))
 
-  def Assign_copy(original: Tree)(lhs: Term, rhs: Term)(using Context): Assign =
+  def Assign_copy(original: Tree)(lhs: Term, rhs: Term): Assign =
     tpd.cpy.Assign(original)(lhs, rhs)
 
   type Block = tpd.Block
@@ -535,7 +535,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
    *  i) Put `while` loops in their own blocks: `{ def while$() = ...; while$() }`
    *  ii) Put closures in their own blocks: `{ def anon$() = ...; closure(anon$, ...) }`
    */
-  private def normalizedLoops(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
+  private def normalizedLoops(tree: tpd.Tree): tpd.Tree = tree match {
     case block: tpd.Block if block.stats.size > 1 =>
       def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
         case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
@@ -556,18 +556,18 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   }
 
   /** If it is the second statement of a closure. See: `normalizedLoops` */
-  private def needsNormalization(tree: tpd.Tree)(using Context): Boolean = tree match {
+  private def needsNormalization(tree: tpd.Tree): Boolean = tree match {
     case _: tpd.Closure => true
     case _ => false
   }
 
-  def Block_statements(self: Block)(using Context): List[Statement] = self.stats
-  def Block_expr(self: Block)(using Context): Term = self.expr
+  def Block_statements(self: Block): List[Statement] = self.stats
+  def Block_expr(self: Block): Term = self.expr
 
-  def Block_apply(stats: List[Statement], expr: Term)(using Context): Block =
+  def Block_apply(stats: List[Statement], expr: Term): Block =
     withDefaultPos(tpd.Block(stats, expr))
 
-  def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(using Context): Block =
+  def Block_copy(original: Tree)(stats: List[Statement], expr: Term): Block =
     tpd.cpy.Block(original)(stats, expr)
 
   type Inlined = tpd.Inlined
@@ -579,14 +579,14 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Inlined_call(self: Inlined)(using Context): Option[Term | TypeTree] = optional(self.call)
-  def Inlined_bindings(self: Inlined)(using Context): List[Definition] = self.bindings
-  def Inlined_body(self: Inlined)(using Context): Term = self.expansion
+  def Inlined_call(self: Inlined): Option[Term | TypeTree] = optional(self.call)
+  def Inlined_bindings(self: Inlined): List[Definition] = self.bindings
+  def Inlined_body(self: Inlined): Term = self.expansion
 
-  def Inlined_apply(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term)(using Context): Inlined =
+  def Inlined_apply(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term): Inlined =
     withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion))
 
-  def Inlined_copy(original: Tree)(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term)(using Context): Inlined =
+  def Inlined_copy(original: Tree)(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term): Inlined =
     tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
 
   type Closure = tpd.Closure
@@ -598,16 +598,16 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Closure_meth(self: Closure)(using Context): Term = self.meth
-  def Closure_tpeOpt(self: Closure)(using Context): Option[Type] = optional(self.tpt).map(_.tpe)
+  def Closure_meth(self: Closure): Term = self.meth
+  def Closure_tpeOpt(self: Closure): Option[Type] = optional(self.tpt).map(_.tpe)
 
-  def Closure_apply(meth: Term, tpe: Option[Type])(using Context): Closure =
+  def Closure_apply(meth: Term, tpe: Option[Type]): Closure =
     withDefaultPos(tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
 
-  def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type])(using Context): Closure =
+  def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type]): Closure =
     tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
 
-  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(using Context): Block =
+  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block =
     tpd.Lambda(tpe, rhsFn)
 
   type If = tpd.If
@@ -619,14 +619,14 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def If_cond(self: If)(using Context): Term = self.cond
-  def If_thenp(self: If)(using Context): Term = self.thenp
-  def If_elsep(self: If)(using Context): Term = self.elsep
+  def If_cond(self: If): Term = self.cond
+  def If_thenp(self: If): Term = self.thenp
+  def If_elsep(self: If): Term = self.elsep
 
-  def If_apply(cond: Term, thenp: Term, elsep: Term)(using Context): If =
+  def If_apply(cond: Term, thenp: Term, elsep: Term): If =
     withDefaultPos(tpd.If(cond, thenp, elsep))
 
-  def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(using Context): If =
+  def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If =
     tpd.cpy.If(original)(cond, thenp, elsep)
 
   type Match = tpd.Match
@@ -638,13 +638,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Match_scrutinee(self: Match)(using Context): Term = self.selector
-  def Match_cases(self: Match)(using Context): List[CaseDef] = self.cases
+  def Match_scrutinee(self: Match): Term = self.selector
+  def Match_cases(self: Match): List[CaseDef] = self.cases
 
-  def Match_apply(selector: Term, cases: List[CaseDef])(using Context): Match =
+  def Match_apply(selector: Term, cases: List[CaseDef]): Match =
     withDefaultPos(tpd.Match(selector, cases))
 
-  def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(using Context): Match =
+  def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match =
     tpd.cpy.Match(original)(selector, cases)
 
   type GivenMatch = tpd.Match
@@ -656,12 +656,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def GivenMatch_cases(self: Match)(using Context): List[CaseDef] = self.cases
+  def GivenMatch_cases(self: Match): List[CaseDef] = self.cases
 
-  def GivenMatch_apply(cases: List[CaseDef])(using Context): GivenMatch =
+  def GivenMatch_apply(cases: List[CaseDef]): GivenMatch =
     withDefaultPos(tpd.Match(tpd.EmptyTree, cases))
 
-  def GivenMatch_copy(original: Tree)(cases: List[CaseDef])(using Context): GivenMatch =
+  def GivenMatch_copy(original: Tree)(cases: List[CaseDef]): GivenMatch =
     tpd.cpy.Match(original)(tpd.EmptyTree, cases)
 
   type Try = tpd.Try
@@ -673,14 +673,14 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Try_body(self: Try)(using Context): Term = self.expr
-  def Try_cases(self: Try)(using Context): List[CaseDef] = self.cases
-  def Try_finalizer(self: Try)(using Context): Option[Term] = optional(self.finalizer)
+  def Try_body(self: Try): Term = self.expr
+  def Try_cases(self: Try): List[CaseDef] = self.cases
+  def Try_finalizer(self: Try): Option[Term] = optional(self.finalizer)
 
-  def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using Context): Try =
+  def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
     withDefaultPos(tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree)))
 
-  def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using Context): Try =
+  def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
     tpd.cpy.Try(original)(expr, cases, finalizer.getOrElse(tpd.EmptyTree))
 
   type Return = tpd.Return
@@ -692,12 +692,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Return_expr(self: Return)(using Context): Term = self.expr
+  def Return_expr(self: Return): Term = self.expr
 
-  def Return_apply(expr: Term)(using Context): Return =
+  def Return_apply(expr: Term): Return =
     withDefaultPos(tpd.Return(expr, ctx.owner))
 
-  def Return_copy(original: Tree)(expr: Term)(using Context): Return =
+  def Return_copy(original: Tree)(expr: Term): Return =
     tpd.cpy.Return(original)(expr, tpd.ref(ctx.owner))
 
   type Repeated = tpd.SeqLiteral
@@ -709,13 +709,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Repeated_elems(self: Repeated)(using Context): List[Term] = self.elems
-  def Repeated_elemtpt(self: Repeated)(using Context): TypeTree = self.elemtpt
+  def Repeated_elems(self: Repeated): List[Term] = self.elems
+  def Repeated_elemtpt(self: Repeated): TypeTree = self.elemtpt
 
-  def Repeated_apply(elems: List[Term], elemtpt: TypeTree)(using Context): Repeated =
+  def Repeated_apply(elems: List[Term], elemtpt: TypeTree): Repeated =
     withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
 
-  def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(using Context): Repeated =
+  def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated =
     tpd.cpy.SeqLiteral(original)(elems, elemtpt)
 
   type SelectOuter = tpd.Select
@@ -730,16 +730,16 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     case _ => None
   }
 
-  def SelectOuter_qualifier(self: SelectOuter)(using Context): Term = self.qualifier
-  def SelectOuter_level(self: SelectOuter)(using Context): Int = {
+  def SelectOuter_qualifier(self: SelectOuter): Term = self.qualifier
+  def SelectOuter_level(self: SelectOuter): Int = {
     val NameKinds.OuterSelectName(_, levels) = self.name
     levels
   }
 
-  def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(using Context): SelectOuter =
+  def SelectOuter_apply(qualifier: Term, name: String, levels: Int): SelectOuter =
     withDefaultPos(tpd.Select(qualifier, NameKinds.OuterSelectName(name.toTermName, levels)))
 
-  def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(using Context): SelectOuter =
+  def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter =
     tpd.cpy.Select(original)(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))
 
   type While = tpd.WhileDo
@@ -751,13 +751,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def While_cond(self: While)(using Context): Term = self.cond
-  def While_body(self: While)(using Context): Term = self.body
+  def While_cond(self: While): Term = self.cond
+  def While_body(self: While): Term = self.body
 
-  def While_apply(cond: Term, body: Term)(using Context): While =
+  def While_apply(cond: Term, body: Term): While =
     withDefaultPos(tpd.WhileDo(cond, body))
 
-  def While_copy(original: Tree)(cond: Term, body: Term)(using Context): While =
+  def While_copy(original: Tree)(cond: Term, body: Term): While =
     tpd.cpy.WhileDo(original)(cond, body)
 
   type TypeTree = tpd.Tree
@@ -770,7 +770,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeTree_tpe(self: TypeTree)(using Context): Type = self.tpe.stripTypeVar
+  def TypeTree_tpe(self: TypeTree): Type = self.tpe.stripTypeVar
 
   type Inferred = tpd.TypeTree
 
@@ -781,7 +781,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Inferred_apply(tpe: Type)(using Context): Inferred = withDefaultPos(tpd.TypeTree(tpe))
+  def Inferred_apply(tpe: Type): Inferred = withDefaultPos(tpd.TypeTree(tpe))
 
   type TypeIdent = tpd.Ident
 
@@ -792,9 +792,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeIdent_name(self: TypeIdent)(using Context): String = self.name.toString
+  def TypeIdent_name(self: TypeIdent): String = self.name.toString
 
-  def TypeIdent_copy(original: Tree)(name: String)(using Context): TypeIdent =
+  def TypeIdent_copy(original: Tree)(name: String): TypeIdent =
     tpd.cpy.Ident(original)(name.toTypeName)
 
   type TypeSelect = tpd.Select
@@ -806,13 +806,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeSelect_qualifier(self: TypeSelect)(using Context): Term = self.qualifier
-  def TypeSelect_name(self: TypeSelect)(using Context): String = self.name.toString
+  def TypeSelect_qualifier(self: TypeSelect): Term = self.qualifier
+  def TypeSelect_name(self: TypeSelect): String = self.name.toString
 
-  def TypeSelect_apply(qualifier: Term, name: String)(using Context): TypeSelect =
+  def TypeSelect_apply(qualifier: Term, name: String): TypeSelect =
     withDefaultPos(tpd.Select(qualifier, name.toTypeName))
 
-  def TypeSelect_copy(original: Tree)(qualifier: Term, name: String)(using Context): TypeSelect =
+  def TypeSelect_copy(original: Tree)(qualifier: Term, name: String): TypeSelect =
     tpd.cpy.Select(original)(qualifier, name.toTypeName)
 
 
@@ -825,10 +825,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Projection_qualifier(self: Projection)(using Context): TypeTree = self.qualifier
-  def Projection_name(self: Projection)(using Context): String = self.name.toString
+  def Projection_qualifier(self: Projection): TypeTree = self.qualifier
+  def Projection_name(self: Projection): String = self.name.toString
 
-  def Projection_copy(original: Tree)(qualifier: TypeTree, name: String)(using Context): Projection =
+  def Projection_copy(original: Tree)(qualifier: TypeTree, name: String): Projection =
     tpd.cpy.Select(original)(qualifier, name.toTypeName)
 
   type Singleton = tpd.SingletonTypeTree
@@ -840,12 +840,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Singleton_ref(self: Singleton)(using Context): Term = self.ref
+  def Singleton_ref(self: Singleton): Term = self.ref
 
-  def Singleton_apply(ref: Term)(using Context): Singleton =
+  def Singleton_apply(ref: Term): Singleton =
     withDefaultPos(tpd.SingletonTypeTree(ref))
 
-  def Singleton_copy(original: Tree)(ref: Term)(using Context): Singleton =
+  def Singleton_copy(original: Tree)(ref: Term): Singleton =
     tpd.cpy.SingletonTypeTree(original)(ref)
 
   type Refined = tpd.RefinedTypeTree
@@ -857,10 +857,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Refined_tpt(self: Refined)(using Context): TypeTree = self.tpt
-  def Refined_refinements(self: Refined)(using Context): List[Definition] = self.refinements
+  def Refined_tpt(self: Refined): TypeTree = self.tpt
+  def Refined_refinements(self: Refined): List[Definition] = self.refinements
 
-  def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(using Context): Refined =
+  def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
     tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
 
   type Applied = tpd.AppliedTypeTree
@@ -872,13 +872,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Applied_tpt(self: Applied)(using Context): TypeTree = self.tpt
-  def Applied_args(self: Applied)(using Context): List[TypeTree | TypeBoundsTree] = self.args
+  def Applied_tpt(self: Applied): TypeTree = self.tpt
+  def Applied_args(self: Applied): List[TypeTree | TypeBoundsTree] = self.args
 
-  def Applied_apply(tpt: TypeTree, args: List[TypeTree | TypeBoundsTree])(using Context): Applied =
+  def Applied_apply(tpt: TypeTree, args: List[TypeTree | TypeBoundsTree]): Applied =
     withDefaultPos(tpd.AppliedTypeTree(tpt, args))
 
-  def Applied_copy(original: Tree)(tpt: TypeTree, args: List[TypeTree | TypeBoundsTree])(using Context): Applied =
+  def Applied_copy(original: Tree)(tpt: TypeTree, args: List[TypeTree | TypeBoundsTree]): Applied =
     tpd.cpy.AppliedTypeTree(original)(tpt, args)
 
   type Annotated = tpd.Annotated
@@ -890,13 +890,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Annotated_arg(self: Annotated)(using Context): TypeTree = self.arg
-  def Annotated_annotation(self: Annotated)(using Context): Term = self.annot
+  def Annotated_arg(self: Annotated): TypeTree = self.arg
+  def Annotated_annotation(self: Annotated): Term = self.annot
 
-  def Annotated_apply(arg: TypeTree, annotation: Term)(using Context): Annotated =
+  def Annotated_apply(arg: TypeTree, annotation: Term): Annotated =
     withDefaultPos(tpd.Annotated(arg, annotation))
 
-  def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term)(using Context): Annotated =
+  def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated =
     tpd.cpy.Annotated(original)(arg, annotation)
 
   type MatchTypeTree = tpd.MatchTypeTree
@@ -908,14 +908,14 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def MatchTypeTree_bound(self: MatchTypeTree)(using Context): Option[TypeTree] = if (self.bound == tpd.EmptyTree) None else Some(self.bound)
-  def MatchTypeTree_selector(self: MatchTypeTree)(using Context): TypeTree = self.selector
-  def MatchTypeTree_cases(self: MatchTypeTree)(using Context): List[CaseDef] = self.cases
+  def MatchTypeTree_bound(self: MatchTypeTree): Option[TypeTree] = if (self.bound == tpd.EmptyTree) None else Some(self.bound)
+  def MatchTypeTree_selector(self: MatchTypeTree): TypeTree = self.selector
+  def MatchTypeTree_cases(self: MatchTypeTree): List[CaseDef] = self.cases
 
-  def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using Context): MatchTypeTree =
+  def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
     withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases))
 
-  def MatchTypeTree_copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using Context): MatchTypeTree =
+  def MatchTypeTree_copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
     tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
 
   type ByName = tpd.ByNameTypeTree
@@ -927,12 +927,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def ByName_result(self: ByName)(using Context): TypeTree = self.result
+  def ByName_result(self: ByName): TypeTree = self.result
 
-  def ByName_apply(result: TypeTree)(using Context): ByName =
+  def ByName_apply(result: TypeTree): ByName =
     withDefaultPos(tpd.ByNameTypeTree(result))
 
-  def ByName_copy(original: Tree)(result: TypeTree)(using Context): ByName =
+  def ByName_copy(original: Tree)(result: TypeTree): ByName =
     tpd.cpy.ByNameTypeTree(original)(result)
 
   type LambdaTypeTree = tpd.LambdaTypeTree
@@ -944,13 +944,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Lambdatparams(self: LambdaTypeTree)(using Context): List[TypeDef] = self.tparams
-  def Lambdabody(self: LambdaTypeTree)(using Context): TypeTree | TypeBoundsTree = self.body
+  def Lambdatparams(self: LambdaTypeTree): List[TypeDef] = self.tparams
+  def Lambdabody(self: LambdaTypeTree): TypeTree | TypeBoundsTree = self.body
 
-  def Lambdaapply(tparams: List[TypeDef], body: TypeTree | TypeBoundsTree)(using Context): LambdaTypeTree =
+  def Lambdaapply(tparams: List[TypeDef], body: TypeTree | TypeBoundsTree): LambdaTypeTree =
     withDefaultPos(tpd.LambdaTypeTree(tparams, body))
 
-  def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: TypeTree | TypeBoundsTree)(using Context): LambdaTypeTree =
+  def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: TypeTree | TypeBoundsTree): LambdaTypeTree =
     tpd.cpy.LambdaTypeTree(original)(tparams, body)
 
   type TypeBind = tpd.Bind
@@ -962,10 +962,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeBind_name(self: TypeBind)(using Context): String = self.name.toString
-  def TypeBind_body(self: TypeBind)(using Context): TypeTree | TypeBoundsTree = self.body
+  def TypeBind_name(self: TypeBind): String = self.name.toString
+  def TypeBind_body(self: TypeBind): TypeTree | TypeBoundsTree = self.body
 
-  def TypeBind_copy(original: Tree)(name: String, tpt: TypeTree | TypeBoundsTree)(using Context): TypeBind =
+  def TypeBind_copy(original: Tree)(name: String, tpt: TypeTree | TypeBoundsTree): TypeBind =
     tpd.cpy.Bind(original)(name.toTypeName, tpt)
 
   type TypeBlock = tpd.Block
@@ -977,13 +977,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeBlock_aliases(self: TypeBlock)(using Context): List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
-  def TypeBlock_tpt(self: TypeBlock)(using Context): TypeTree = self.expr
+  def TypeBlock_aliases(self: TypeBlock): List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
+  def TypeBlock_tpt(self: TypeBlock): TypeTree = self.expr
 
-  def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(using Context): TypeBlock =
+  def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
     withDefaultPos(tpd.Block(aliases, tpt))
 
-  def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(using Context): TypeBlock =
+  def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
     tpd.cpy.Block(original)(aliases, tpt)
 
   type TypeBoundsTree = tpd.TypeBoundsTree
@@ -1002,9 +1002,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeBoundsTree_tpe(self: TypeBoundsTree)(using Context): TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
-  def TypeBoundsTree_low(self: TypeBoundsTree)(using Context): TypeTree = self.lo
-  def TypeBoundsTree_hi(self: TypeBoundsTree)(using Context): TypeTree = self.hi
+  def TypeBoundsTree_tpe(self: TypeBoundsTree): TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
+  def TypeBoundsTree_low(self: TypeBoundsTree): TypeTree = self.lo
+  def TypeBoundsTree_hi(self: TypeBoundsTree): TypeTree = self.hi
 
   type WildcardTypeTree = tpd.Ident
 
@@ -1015,7 +1015,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def WildcardTypeTree_tpe(self: WildcardTypeTree)(using Context): TypeOrBounds = self.tpe.stripTypeVar
+  def WildcardTypeTree_tpe(self: WildcardTypeTree): TypeOrBounds = self.tpe.stripTypeVar
 
   type CaseDef = tpd.CaseDef
 

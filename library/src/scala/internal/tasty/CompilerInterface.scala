@@ -77,376 +77,376 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   //  TREES  //
   /////////////
 
-  def Tree_pos(self: Tree)(using ctx: Context): Position
-  def Tree_symbol(self: Tree)(using ctx: Context): Symbol
+  def Tree_pos(self: Tree): Position
+  def Tree_symbol(self: Tree): Symbol
 
   def PackageClause_TypeTest: TypeTest[Tree, PackageClause]
 
-  def PackageClause_pid(self: PackageClause)(using ctx: Context): Ref
-  def PackageClause_stats(self: PackageClause)(using ctx: Context): List[Tree]
+  def PackageClause_pid(self: PackageClause): Ref
+  def PackageClause_stats(self: PackageClause): List[Tree]
 
-  def PackageClause_apply(pid: Ref, stats: List[Tree])(using ctx: Context): PackageClause
+  def PackageClause_apply(pid: Ref, stats: List[Tree]): PackageClause
 
-  def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree])(using ctx: Context): PackageClause
+  def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause
 
   def Statement_TypeTest: TypeTest[Tree, Statement]
 
   def Import_TypeTest: TypeTest[Tree, Import]
 
   def Import_implied(self: Import): Boolean
-  def Import_expr(self: Import)(using ctx: Context): Term
-  def Import_selectors(self: Import)(using ctx: Context): List[ImportSelector]
+  def Import_expr(self: Import): Term
+  def Import_selectors(self: Import): List[ImportSelector]
 
-  def Import_apply(iexpr: Term, selectors: List[ImportSelector])(using ctx: Context): Import
+  def Import_apply(iexpr: Term, selectors: List[ImportSelector]): Import
 
-  def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(using ctx: Context): Import
+  def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import
 
   def Definition_TypeTest: TypeTest[Tree, Definition]
 
-  def Definition_name(self: Definition)(using ctx: Context): String
+  def Definition_name(self: Definition): String
 
   def PackageDef_TypeTest: TypeTest[Tree, PackageDef]
 
-  def PackageDef_owner(self: PackageDef)(using ctx: Context): PackageDef
-  def PackageDef_members(self: PackageDef)(using ctx: Context): List[Statement]
+  def PackageDef_owner(self: PackageDef): PackageDef
+  def PackageDef_members(self: PackageDef): List[Statement]
 
   def ClassDef_TypeTest: TypeTest[Tree, ClassDef]
 
-  def ClassDef_constructor(self: ClassDef)(using ctx: Context): DefDef
-  def ClassDef_parents(self: ClassDef)(using ctx: Context): List[Tree/* Term | TypeTree */]
-  def ClassDef_derived(self: ClassDef)(using ctx: Context): List[TypeTree]
-  def ClassDef_self(self: ClassDef)(using ctx: Context): Option[ValDef]
-  def ClassDef_body(self: ClassDef)(using ctx: Context): List[Statement]
+  def ClassDef_constructor(self: ClassDef): DefDef
+  def ClassDef_parents(self: ClassDef): List[Tree/* Term | TypeTree */]
+  def ClassDef_derived(self: ClassDef): List[TypeTree]
+  def ClassDef_self(self: ClassDef): Option[ValDef]
+  def ClassDef_body(self: ClassDef): List[Statement]
 
-  def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(using ctx: Context): ClassDef
+  def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
 
   def TypeDef_TypeTest: TypeTest[Tree, TypeDef]
 
-  def TypeDef_rhs(self: TypeDef)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
+  def TypeDef_rhs(self: TypeDef): Tree /*TypeTree | TypeBoundsTree*/
 
-  def TypeDef_apply(symbol: Symbol)(using ctx: Context): TypeDef
-  def TypeDef_copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): TypeDef
+  def TypeDef_apply(symbol: Symbol): TypeDef
+  def TypeDef_copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/): TypeDef
 
   def DefDef_TypeTest: TypeTest[Tree, DefDef]
 
-  def DefDef_typeParams(self: DefDef)(using ctx: Context): List[TypeDef]
-  def DefDef_paramss(self: DefDef)(using ctx: Context): List[List[ValDef]]
-  def DefDef_returnTpt(self: DefDef)(using ctx: Context): TypeTree
-  def DefDef_rhs(self: DefDef)(using ctx: Context): Option[Term]
+  def DefDef_typeParams(self: DefDef): List[TypeDef]
+  def DefDef_paramss(self: DefDef): List[List[ValDef]]
+  def DefDef_returnTpt(self: DefDef): TypeTree
+  def DefDef_rhs(self: DefDef): Option[Term]
 
-  def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(using ctx: Context): DefDef
-  def DefDef_copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(using ctx: Context): DefDef
+  def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]): DefDef
+  def DefDef_copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef
 
   def ValDef_TypeTest: TypeTest[Tree, ValDef]
 
-  def ValDef_tpt(self: ValDef)(using ctx: Context): TypeTree
-  def ValDef_rhs(self: ValDef)(using ctx: Context): Option[Term]
+  def ValDef_tpt(self: ValDef): TypeTree
+  def ValDef_rhs(self: ValDef): Option[Term]
 
-  def ValDef_apply(symbol: Symbol, rhs: Option[Term])(using ctx: Context): ValDef
-  def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(using ctx: Context): ValDef
+  def ValDef_apply(symbol: Symbol, rhs: Option[Term]): ValDef
+  def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
 
   def Term_TypeTest: TypeTest[Tree, Term]
 
-  def Term_tpe(self: Term)(using ctx: Context): Type
-  def Term_underlyingArgument(self: Term)(using ctx: Context): Term
-  def Term_underlying(self: Term)(using ctx: Context): Term
-  def Term_etaExpand(term: Term)(using ctx: Context): Term
+  def Term_tpe(self: Term): Type
+  def Term_underlyingArgument(self: Term): Term
+  def Term_underlying(self: Term): Term
+  def Term_etaExpand(term: Term): Term
 
   def Ref_TypeTest: TypeTest[Tree, Ref]
 
   /** A tree representing the same reference as the given type */
-  def Ref_term(tp: TermRef)(using ctx: Context): Ref
+  def Ref_term(tp: TermRef): Ref
 
-  def Ref_apply(sym: Symbol)(using ctx: Context): Ref
+  def Ref_apply(sym: Symbol): Ref
 
   def Ident_TypeTest: TypeTest[Tree, Ident]
 
-  def Ident_name(self: Ident)(using ctx: Context): String
+  def Ident_name(self: Ident): String
 
-  def Ident_apply(tmref: TermRef)(using ctx: Context): Term
-  def Ident_copy(original: Tree)(name: String)(using ctx: Context): Ident
+  def Ident_apply(tmref: TermRef): Term
+  def Ident_copy(original: Tree)(name: String): Ident
 
   def Select_TypeTest: TypeTest[Tree, Select]
 
-  def Select_qualifier(self: Select)(using ctx: Context): Term
-  def Select_name(self: Select)(using ctx: Context): String
-  def Select_signature(self: Select)(using ctx: Context): Option[Signature]
+  def Select_qualifier(self: Select): Term
+  def Select_name(self: Select): String
+  def Select_signature(self: Select): Option[Signature]
 
-  def Select_apply(qualifier: Term, symbol: Symbol)(using ctx: Context): Select
-  def Select_unique(qualifier: Term, name: String)(using ctx: Context): Select
+  def Select_apply(qualifier: Term, symbol: Symbol): Select
+  def Select_unique(qualifier: Term, name: String): Select
   // TODO rename, this returns an Apply and not a Select
-  def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(using ctx: Context): Apply
-  def Select_copy(original: Tree)(qualifier: Term, name: String)(using ctx: Context): Select
+  def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply
+  def Select_copy(original: Tree)(qualifier: Term, name: String): Select
 
   def Literal_TypeTest: TypeTest[Tree, Literal]
 
-  def Literal_constant(self: Literal)(using ctx: Context): Constant
+  def Literal_constant(self: Literal): Constant
 
-  def Literal_apply(constant: Constant)(using ctx: Context): Literal
-  def Literal_copy(original: Tree)(constant: Constant)(using ctx: Context): Literal
+  def Literal_apply(constant: Constant): Literal
+  def Literal_copy(original: Tree)(constant: Constant): Literal
 
   def This_TypeTest: TypeTest[Tree, This]
 
-  def This_id(self: This)(using ctx: Context): Option[Id]
+  def This_id(self: This): Option[Id]
 
-  def This_apply(cls: Symbol)(using ctx: Context): This
-  def This_copy(original: Tree)(qual: Option[Id])(using ctx: Context): This
+  def This_apply(cls: Symbol): This
+  def This_copy(original: Tree)(qual: Option[Id]): This
 
   def New_TypeTest: TypeTest[Tree, New]
 
-  def New_tpt(self: New)(using ctx: Context): TypeTree
+  def New_tpt(self: New): TypeTree
 
-  def New_apply(tpt: TypeTree)(using ctx: Context): New
-  def New_copy(original: Tree)(tpt: TypeTree)(using ctx: Context): New
+  def New_apply(tpt: TypeTree): New
+  def New_copy(original: Tree)(tpt: TypeTree): New
 
   def NamedArg_TypeTest: TypeTest[Tree, NamedArg]
 
-  def NamedArg_name(self: NamedArg)(using ctx: Context): String
-  def NamedArg_value(self: NamedArg)(using ctx: Context): Term
+  def NamedArg_name(self: NamedArg): String
+  def NamedArg_value(self: NamedArg): Term
 
-  def NamedArg_apply(name: String, arg: Term)(using ctx: Context): NamedArg
-  def NamedArg_copy(original: Tree)(name: String, arg: Term)(using ctx: Context): NamedArg
+  def NamedArg_apply(name: String, arg: Term): NamedArg
+  def NamedArg_copy(original: Tree)(name: String, arg: Term): NamedArg
 
   def Apply_TypeTest: TypeTest[Tree, Apply]
 
-  def Apply_fun(self: Apply)(using ctx: Context): Term
-  def Apply_args(self: Apply)(using ctx: Context): List[Term]
+  def Apply_fun(self: Apply): Term
+  def Apply_args(self: Apply): List[Term]
 
-  def Apply_apply(fn: Term, args: List[Term])(using ctx: Context): Apply
-  def Apply_copy(original: Tree)(fun: Term, args: List[Term])(using ctx: Context): Apply
+  def Apply_apply(fn: Term, args: List[Term]): Apply
+  def Apply_copy(original: Tree)(fun: Term, args: List[Term]): Apply
 
   def TypeApply_TypeTest: TypeTest[Tree, TypeApply]
 
-  def TypeApply_fun(self: TypeApply)(using ctx: Context): Term
-  def TypeApply_args(self: TypeApply)(using ctx: Context): List[TypeTree]
+  def TypeApply_fun(self: TypeApply): Term
+  def TypeApply_args(self: TypeApply): List[TypeTree]
 
-  def TypeApply_apply(fn: Term, args: List[TypeTree])(using ctx: Context): TypeApply
-  def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(using ctx: Context): TypeApply
+  def TypeApply_apply(fn: Term, args: List[TypeTree]): TypeApply
+  def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply
 
   def Super_TypeTest: TypeTest[Tree, Super]
 
-  def Super_qualifier(self: Super)(using ctx: Context): Term
-  def Super_id(self: Super)(using ctx: Context): Option[Id]
+  def Super_qualifier(self: Super): Term
+  def Super_id(self: Super): Option[Id]
 
-  def Super_apply(qual: Term, mix: Option[Id])(using ctx: Context): Super
-  def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(using ctx: Context): Super
+  def Super_apply(qual: Term, mix: Option[Id]): Super
+  def Super_copy(original: Tree)(qual: Term, mix: Option[Id]): Super
 
   def Typed_TypeTest: TypeTest[Tree, Typed]
 
-  def Typed_expr(self: Typed)(using ctx: Context): Term
-  def Typed_tpt(self: Typed)(using ctx: Context): TypeTree
+  def Typed_expr(self: Typed): Term
+  def Typed_tpt(self: Typed): TypeTree
 
-  def Typed_apply(expr: Term, tpt: TypeTree)(using ctx: Context): Typed
-  def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(using ctx: Context): Typed
+  def Typed_apply(expr: Term, tpt: TypeTree): Typed
+  def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree): Typed
 
   def Assign_TypeTest: TypeTest[Tree, Assign]
 
-  def Assign_lhs(self: Assign)(using ctx: Context): Term
-  def Assign_rhs(self: Assign)(using ctx: Context): Term
+  def Assign_lhs(self: Assign): Term
+  def Assign_rhs(self: Assign): Term
 
-  def Assign_apply(lhs: Term, rhs: Term)(using ctx: Context): Assign
-  def Assign_copy(original: Tree)(lhs: Term, rhs: Term)(using ctx: Context): Assign
+  def Assign_apply(lhs: Term, rhs: Term): Assign
+  def Assign_copy(original: Tree)(lhs: Term, rhs: Term): Assign
 
   def Block_TypeTest: TypeTest[Tree, Block]
 
-  def Block_statements(self: Block)(using ctx: Context): List[Statement]
-  def Block_expr(self: Block)(using ctx: Context): Term
+  def Block_statements(self: Block): List[Statement]
+  def Block_expr(self: Block): Term
 
-  def Block_apply(stats: List[Statement], expr: Term)(using ctx: Context): Block
-  def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(using ctx: Context): Block
+  def Block_apply(stats: List[Statement], expr: Term): Block
+  def Block_copy(original: Tree)(stats: List[Statement], expr: Term): Block
 
   def Closure_TypeTest: TypeTest[Tree, Closure]
 
-  def Closure_meth(self: Closure)(using ctx: Context): Term
-  def Closure_tpeOpt(self: Closure)(using ctx: Context): Option[Type]
+  def Closure_meth(self: Closure): Term
+  def Closure_tpeOpt(self: Closure): Option[Type]
 
-  def Closure_apply(meth: Term, tpe: Option[Type])(using ctx: Context): Closure
-  def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type])(using ctx: Context): Closure
+  def Closure_apply(meth: Term, tpe: Option[Type]): Closure
+  def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type]): Closure
 
-  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(using ctx: Context): Block
+  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block
 
   def If_TypeTest: TypeTest[Tree, If]
 
-  def If_cond(self: If)(using ctx: Context): Term
-  def If_thenp(self: If)(using ctx: Context): Term
-  def If_elsep(self: If)(using ctx: Context): Term
+  def If_cond(self: If): Term
+  def If_thenp(self: If): Term
+  def If_elsep(self: If): Term
 
-  def If_apply(cond: Term, thenp: Term, elsep: Term)(using ctx: Context): If
-  def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(using ctx: Context): If
+  def If_apply(cond: Term, thenp: Term, elsep: Term): If
+  def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If
 
   def Match_TypeTest: TypeTest[Tree, Match]
 
-  def Match_scrutinee(self: Match)(using ctx: Context): Term
-  def Match_cases(self: Match)(using ctx: Context): List[CaseDef]
+  def Match_scrutinee(self: Match): Term
+  def Match_cases(self: Match): List[CaseDef]
 
-  def Match_apply(selector: Term, cases: List[CaseDef])(using ctx: Context): Match
-  def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(using ctx: Context): Match
+  def Match_apply(selector: Term, cases: List[CaseDef]): Match
+  def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match
 
   def GivenMatch_TypeTest: TypeTest[Tree, GivenMatch]
 
-  def GivenMatch_cases(self: GivenMatch)(using ctx: Context): List[CaseDef]
+  def GivenMatch_cases(self: GivenMatch): List[CaseDef]
 
-  def GivenMatch_apply(cases: List[CaseDef])(using ctx: Context): GivenMatch
-  def GivenMatch_copy(original: Tree)(cases: List[CaseDef])(using ctx: Context): GivenMatch
+  def GivenMatch_apply(cases: List[CaseDef]): GivenMatch
+  def GivenMatch_copy(original: Tree)(cases: List[CaseDef]): GivenMatch
 
   def Try_TypeTest: TypeTest[Tree, Try]
 
-  def Try_body(self: Try)(using ctx: Context): Term
-  def Try_cases(self: Try)(using ctx: Context): List[CaseDef]
-  def Try_finalizer(self: Try)(using ctx: Context): Option[Term]
+  def Try_body(self: Try): Term
+  def Try_cases(self: Try): List[CaseDef]
+  def Try_finalizer(self: Try): Option[Term]
 
-  def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using ctx: Context): Try
-  def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using ctx: Context): Try
+  def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
+  def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
 
   def Return_TypeTest: TypeTest[Tree, Return]
 
-  def Return_expr(self: Return)(using ctx: Context): Term
+  def Return_expr(self: Return): Term
 
-  def Return_apply(expr: Term)(using ctx: Context): Return
-  def Return_copy(original: Tree)(expr: Term)(using ctx: Context): Return
+  def Return_apply(expr: Term): Return
+  def Return_copy(original: Tree)(expr: Term): Return
 
   def Repeated_TypeTest: TypeTest[Tree, Repeated]
 
-  def Repeated_elems(self: Repeated)(using ctx: Context): List[Term]
-  def Repeated_elemtpt(self: Repeated)(using ctx: Context): TypeTree
+  def Repeated_elems(self: Repeated): List[Term]
+  def Repeated_elemtpt(self: Repeated): TypeTree
 
-  def Repeated_apply(elems: List[Term], elemtpt: TypeTree)(using ctx: Context): Repeated
-  def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(using ctx: Context): Repeated
+  def Repeated_apply(elems: List[Term], elemtpt: TypeTree): Repeated
+  def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated
 
   def Inlined_TypeTest: TypeTest[Tree, Inlined]
 
-  def Inlined_call(self: Inlined)(using ctx: Context): Option[Tree/* Term | TypeTree */]
-  def Inlined_bindings(self: Inlined)(using ctx: Context): List[Definition]
-  def Inlined_body(self: Inlined)(using ctx: Context): Term
+  def Inlined_call(self: Inlined): Option[Tree/* Term | TypeTree */]
+  def Inlined_bindings(self: Inlined): List[Definition]
+  def Inlined_body(self: Inlined): Term
 
-  def Inlined_apply(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(using ctx: Context): Inlined
-  def Inlined_copy(original: Tree)(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(using ctx: Context): Inlined
+  def Inlined_apply(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
+  def Inlined_copy(original: Tree)(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
 
   def SelectOuter_TypeTest: TypeTest[Tree, SelectOuter]
 
-  def SelectOuter_qualifier(self: SelectOuter)(using ctx: Context): Term
-  def SelectOuter_level(self: SelectOuter)(using ctx: Context): Int
+  def SelectOuter_qualifier(self: SelectOuter): Term
+  def SelectOuter_level(self: SelectOuter): Int
 
-  def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(using ctx: Context): SelectOuter
-  def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(using ctx: Context): SelectOuter
+  def SelectOuter_apply(qualifier: Term, name: String, levels: Int): SelectOuter
+  def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter
 
   def While_TypeTest: TypeTest[Tree, While]
 
-  def While_cond(self: While)(using ctx: Context): Term
-  def While_body(self: While)(using ctx: Context): Term
+  def While_cond(self: While): Term
+  def While_body(self: While): Term
 
-  def While_apply(cond: Term, body: Term)(using ctx: Context): While
-  def While_copy(original: Tree)(cond: Term, body: Term)(using ctx: Context): While
+  def While_apply(cond: Term, body: Term): While
+  def While_copy(original: Tree)(cond: Term, body: Term): While
 
   def TypeTree_TypeTest: TypeTest[Tree, TypeTree]
 
-  def TypeTree_tpe(self: TypeTree)(using ctx: Context): Type
+  def TypeTree_tpe(self: TypeTree): Type
 
   def Inferred_TypeTest: TypeTest[Tree, Inferred]
 
-  def Inferred_apply(tpe: Type)(using ctx: Context): Inferred
+  def Inferred_apply(tpe: Type): Inferred
 
-  def TypeRef_apply(sym: Symbol)(using ctx: Context): TypeTree
+  def TypeRef_apply(sym: Symbol): TypeTree
 
   def TypeIdent_TypeTest: TypeTest[Tree, TypeIdent]
 
-  def TypeIdent_name(self: TypeIdent)(using ctx: Context): String
+  def TypeIdent_name(self: TypeIdent): String
 
-  def TypeIdent_copy(original: Tree)(name: String)(using ctx: Context): TypeIdent
+  def TypeIdent_copy(original: Tree)(name: String): TypeIdent
 
   def TypeSelect_TypeTest: TypeTest[Tree, TypeSelect]
 
-  def TypeSelect_qualifier(self: TypeSelect)(using ctx: Context): Term
-  def TypeSelect_name(self: TypeSelect)(using ctx: Context): String
+  def TypeSelect_qualifier(self: TypeSelect): Term
+  def TypeSelect_name(self: TypeSelect): String
 
-  def TypeSelect_apply(qualifier: Term, name: String)(using ctx: Context): TypeSelect
-  def TypeSelect_copy(original: Tree)(qualifier: Term, name: String)(using ctx: Context): TypeSelect
+  def TypeSelect_apply(qualifier: Term, name: String): TypeSelect
+  def TypeSelect_copy(original: Tree)(qualifier: Term, name: String): TypeSelect
 
   def Projection_TypeTest: TypeTest[Tree, Projection]
 
-  def Projection_qualifier(self: Projection)(using ctx: Context): TypeTree
-  def Projection_name(self: Projection)(using ctx: Context): String
+  def Projection_qualifier(self: Projection): TypeTree
+  def Projection_name(self: Projection): String
 
-  def Projection_copy(original: Tree)(qualifier: TypeTree, name: String)(using ctx: Context): Projection
+  def Projection_copy(original: Tree)(qualifier: TypeTree, name: String): Projection
 
   def Singleton_TypeTest: TypeTest[Tree, Singleton]
 
-  def Singleton_ref(self: Singleton)(using ctx: Context): Term
+  def Singleton_ref(self: Singleton): Term
 
-  def Singleton_apply(ref: Term)(using ctx: Context): Singleton
-  def Singleton_copy(original: Tree)(ref: Term)(using ctx: Context): Singleton
+  def Singleton_apply(ref: Term): Singleton
+  def Singleton_copy(original: Tree)(ref: Term): Singleton
 
   def Refined_TypeTest: TypeTest[Tree, Refined]
 
-  def Refined_tpt(self: Refined)(using ctx: Context): TypeTree
-  def Refined_refinements(self: Refined)(using ctx: Context): List[Definition]
+  def Refined_tpt(self: Refined): TypeTree
+  def Refined_refinements(self: Refined): List[Definition]
 
-  def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(using ctx: Context): Refined
+  def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined
 
   def Applied_TypeTest: TypeTest[Tree, Applied]
 
-  def Applied_tpt(self: Applied)(using ctx: Context): TypeTree
-  def Applied_args(self: Applied)(using ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/]
+  def Applied_tpt(self: Applied): TypeTree
+  def Applied_args(self: Applied): List[Tree /*TypeTree | TypeBoundsTree*/]
 
-  def Applied_apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(using ctx: Context): Applied
-  def Applied_copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(using ctx: Context): Applied
+  def Applied_apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
+  def Applied_copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
 
   def Annotated_TypeTest: TypeTest[Tree, Annotated]
 
-  def Annotated_arg(self: Annotated)(using ctx: Context): TypeTree
-  def Annotated_annotation(self: Annotated)(using ctx: Context): Term
+  def Annotated_arg(self: Annotated): TypeTree
+  def Annotated_annotation(self: Annotated): Term
 
-  def Annotated_apply(arg: TypeTree, annotation: Term)(using ctx: Context): Annotated
-  def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term)(using ctx: Context): Annotated
+  def Annotated_apply(arg: TypeTree, annotation: Term): Annotated
+  def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated
 
   def MatchTypeTree_TypeTest: TypeTest[Tree, MatchTypeTree]
 
-  def MatchTypeTree_bound(self: MatchTypeTree)(using ctx: Context): Option[TypeTree]
-  def MatchTypeTree_selector(self: MatchTypeTree)(using ctx: Context): TypeTree
-  def MatchTypeTree_cases(self: MatchTypeTree)(using ctx: Context): List[TypeCaseDef]
+  def MatchTypeTree_bound(self: MatchTypeTree): Option[TypeTree]
+  def MatchTypeTree_selector(self: MatchTypeTree): TypeTree
+  def MatchTypeTree_cases(self: MatchTypeTree): List[TypeCaseDef]
 
-  def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using ctx: Context): MatchTypeTree
-  def MatchTypeTree_copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using ctx: Context): MatchTypeTree
+  def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
+  def MatchTypeTree_copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
 
-  def ByName_result(self: ByName)(using ctx: Context): TypeTree
+  def ByName_result(self: ByName): TypeTree
 
   def ByName_TypeTest: TypeTest[Tree, ByName]
 
-  def ByName_apply(result: TypeTree)(using ctx: Context): ByName
-  def ByName_copy(original: Tree)(result: TypeTree)(using ctx: Context): ByName
+  def ByName_apply(result: TypeTree): ByName
+  def ByName_copy(original: Tree)(result: TypeTree): ByName
 
   def LambdaTypeTree_TypeTest: TypeTest[Tree, LambdaTypeTree]
 
-  def Lambdatparams(self: LambdaTypeTree)(using ctx: Context): List[TypeDef]
-  def Lambdabody(self: LambdaTypeTree)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
+  def Lambdatparams(self: LambdaTypeTree): List[TypeDef]
+  def Lambdabody(self: LambdaTypeTree): Tree /*TypeTree | TypeBoundsTree*/
 
-  def Lambdaapply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): LambdaTypeTree
-  def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): LambdaTypeTree
+  def Lambdaapply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
+  def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
 
   def TypeBind_TypeTest: TypeTest[Tree, TypeBind]
 
-  def TypeBind_name(self: TypeBind)(using ctx: Context): String
-  def TypeBind_body(self: TypeBind)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
+  def TypeBind_name(self: TypeBind): String
+  def TypeBind_body(self: TypeBind): Tree /*TypeTree | TypeBoundsTree*/
 
-  def TypeBind_copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): TypeBind
+  def TypeBind_copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/): TypeBind
 
   def TypeBlock_TypeTest: TypeTest[Tree, TypeBlock]
 
-  def TypeBlock_aliases(self: TypeBlock)(using ctx: Context): List[TypeDef]
-  def TypeBlock_tpt(self: TypeBlock)(using ctx: Context): TypeTree
+  def TypeBlock_aliases(self: TypeBlock): List[TypeDef]
+  def TypeBlock_tpt(self: TypeBlock): TypeTree
 
-  def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(using ctx: Context): TypeBlock
-  def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(using ctx: Context): TypeBlock
+  def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
+  def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
 
   def TypeBoundsTree_TypeTest: TypeTest[Tree, TypeBoundsTree]
 
-  def TypeBoundsTree_tpe(self: TypeBoundsTree)(using ctx: Context): TypeBounds
-  def TypeBoundsTree_low(self: TypeBoundsTree)(using ctx: Context): TypeTree
-  def TypeBoundsTree_hi(self: TypeBoundsTree)(using ctx: Context): TypeTree
+  def TypeBoundsTree_tpe(self: TypeBoundsTree): TypeBounds
+  def TypeBoundsTree_low(self: TypeBoundsTree): TypeTree
+  def TypeBoundsTree_hi(self: TypeBoundsTree): TypeTree
 
   def WildcardTypeTree_TypeTest: TypeTest[Tree, WildcardTypeTree]
 
-  def WildcardTypeTree_tpe(self: WildcardTypeTree)(using ctx: Context): TypeOrBounds
+  def WildcardTypeTree_tpe(self: WildcardTypeTree): TypeOrBounds
 
   def CaseDef_TypeTest: TypeTest[Tree, CaseDef]
 
