@@ -783,6 +783,10 @@ object Build {
     settings(
       unmanagedSourceDirectories in Compile :=
         (unmanagedSourceDirectories in (`dotty-library-bootstrapped`, Compile)).value,
+
+      // Make sure `dotty-bootstrapped/test` doesn't fail on this project for no reason
+      test in Test := {},
+      testOnly in Test := {},
     )
 
   lazy val tastyCoreSettings = Seq(
@@ -1400,7 +1404,8 @@ object Build {
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`dotty-interfaces`, dottyLibrary, dottyCompiler, tastyCore, dottyDoc, `dotty-sbt-bridge`).
       bootstrappedAggregate(`scala-library`, `scala-compiler`, `scala-reflect`, scalap,
-        `dotty-language-server`, `dotty-staging`, `dotty-tasty-inspector`, `dotty-tastydoc`).
+        `dotty-language-server`, `dotty-staging`, `dotty-tasty-inspector`, `dotty-tastydoc`,
+        `dotty-library-bootstrappedJS`).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
