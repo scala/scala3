@@ -2673,13 +2673,13 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   // TODO extract from Reflection
 
   /** Bind the `rhs` to a `val` and use it in `body` */
-  def let(rhs: Term)(body: Ident => Term)(using ctx: Context): Term = {
+  def let(rhs: Term)(body: Ident => Term): Term = {
     val sym = Symbol.newVal(Symbol.currentOwner, "x", rhs.tpe.widen, Flags.EmptyFlags, Symbol.noSymbol)
     Block(List(ValDef(sym, Some(rhs))), body(Ref(sym).asInstanceOf[Ident]))
   }
 
   /** Bind the given `terms` to names and use them in the `body` */
-  def lets(terms: List[Term])(body: List[Term] => Term)(using ctx: Context): Term = {
+  def lets(terms: List[Term])(body: List[Term] => Term): Term = {
     def rec(xs: List[Term], acc: List[Term]): Term = xs match {
       case Nil => body(acc)
       case x :: xs => let(x) { (x: Term) => rec(xs, x :: acc) }
