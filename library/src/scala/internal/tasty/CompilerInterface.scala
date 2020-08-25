@@ -1186,10 +1186,10 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   ///////////////
 
   def ImplicitSearchSuccess_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
-  def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess)(using ctx: Context): Term
+  def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess): Term
 
   def ImplicitSearchFailure_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
-  def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure)(using ctx: Context): String
+  def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure): String
 
   def DivergingImplicit_TypeTest: TypeTest[ImplicitSearchResult, DivergingImplicit]
 
@@ -1203,7 +1203,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
    *  @param tpe type of the implicit parameter
    *  @param ctx current context
    */
-  def searchImplicit(tpe: Type)(using ctx: Context): ImplicitSearchResult
+  def searchImplicit(tpe: Type): ImplicitSearchResult
 
   /** Returns Some with a beta-reduced application or None */
   def betaReduce(tree: Term)(using Context): Option[Term]

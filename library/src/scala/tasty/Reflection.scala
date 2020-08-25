@@ -1859,14 +1859,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   // IMPLICIT SEARCH //
   /////////////////////
 
-  def searchImplicit(tpe: Type)(using ctx: Context): ImplicitSearchResult
+  def searchImplicit(tpe: Type): ImplicitSearchResult
 
   given TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = reflectSelf.ImplicitSearchSuccess_TypeTest
   given ImplicitSearchSuccessOps as ImplicitSearchSuccess.type = ImplicitSearchSuccess
 
   object ImplicitSearchSuccess:
     extension (self: ImplicitSearchSuccess):
-      def tree(using ctx: Context): Term = reflectSelf.ImplicitSearchSuccess_tree(self)
+      def tree: Term = reflectSelf.ImplicitSearchSuccess_tree(self)
     end extension
   end ImplicitSearchSuccess
 
@@ -1875,7 +1875,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   object ImplicitSearchFailure:
     extension (self: ImplicitSearchFailure):
-      def explanation(using ctx: Context): String = reflectSelf.ImplicitSearchFailure_explanation(self)
+      def explanation: String = reflectSelf.ImplicitSearchFailure_explanation(self)
     end extension
   end ImplicitSearchFailure
 

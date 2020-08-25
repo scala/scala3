@@ -1988,7 +1988,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ImplicitSearchResult = Tree
 
-  def searchImplicit(tpe: Type)(using Context): ImplicitSearchResult =
+  def searchImplicit(tpe: Type): ImplicitSearchResult =
     ctx.typer.inferImplicitArg(tpe, rootPosition.span)
 
   type ImplicitSearchSuccess = Tree
@@ -2001,7 +2001,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
           case _ => Some(x)
       case _ => None
   }
-  def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess)(using Context): Term = self
+  def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess): Term = self
 
   type ImplicitSearchFailure = Tree
   def ImplicitSearchFailure_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = new {
@@ -2013,7 +2013,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
           case _ => None
       case _ => None
   }
-  def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure)(using Context): String =
+  def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure): String =
     self.tpe.asInstanceOf[SearchFailureType].explanation
 
   type DivergingImplicit = Tree
