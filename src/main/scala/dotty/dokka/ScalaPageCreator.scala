@@ -13,7 +13,7 @@ import org.jetbrains.dokka.base.transformers.documentables.CallableExtensions
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.base.resolvers.anchors._
 import org.jetbrains.dokka.links._
-
+import org.jetbrains.dokka.model.doc._
 
 
 class ScalaPageCreator(
@@ -66,29 +66,30 @@ class ScalaPageCreator(
     }
 
     def insertCompanion(clazz: DClass, defContent: ContentGroup): ContentGroup = {
-        def companionContent(co: DRI): Function1[PageContentBuilder#DocumentableContentBuilder, kotlin.Unit] = builder => {
-            group(builder)(builder => {
-                    sourceSetDependentHint(builder)(
-                        builder => {
-                            group(builder)(builder => {
-                                text(builder, "Companion ")()
+        def companionContent(co: DRI): ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder = 
+            bdr => bdr
+                .group(kind = ContentKind.Cover){ grpbdr => grpbdr
+                    .sourceSetDependentHint(){ srcsetbdr => srcsetbdr
+                        .group(kind = ContentKind.Symbol){ gbdr => gbdr
+                            .text("Companion ")
+                            .driLink(
                                 clazz.get(ClasslikeExtension).kind match {
-                                    case dotty.dokka.Kind.Object => link(builder, "class", co)()
-                                    case _ => link(builder, "object", co)()
-                                }
-                                kotlin.Unit.INSTANCE
-                            }, kind = ContentKind.Symbol)
-                            kotlin.Unit.INSTANCE
-                        }
-                    )
-                    kotlin.Unit.INSTANCE
-                }, kind = ContentKind.Cover
-            )
-            kotlin.Unit.INSTANCE
-        }
+                                    case dotty.dokka.Kind.Object => "class"
+                                    case _ => "object"
+                                },
+                                co
+                            )
 
+                        }
+
+                    }
+
+                }
         clazz.get(ClasslikeExtension).companion.fold(defContent)(co => {
-                    val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(companionContent(co))
+                    val addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(
+                        clazz, 
+                        buildBlock = companionContent(co)
+                    )
                     val newChildren = List(defContent.getChildren.asScala.head) ++ List(addedContent) ++ defContent.getChildren.asScala.tail
                     ContentGroup(
                         newChildren.asJava,
@@ -102,45 +103,27 @@ class ScalaPageCreator(
 
     def insertCustomExtensionTab(clazz: DClass, defContent: ContentGroup): ContentGroup = {
         val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
-        val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(builder => {
-            groupingBlock(
-                builder,
+        val addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(clazz, buildBlock = bdr =>
+            bdr.groupingBlock(
                 "Extensions",
                 clazz.get(ClasslikeExtension).extensions.map(e => e.extendedSymbol -> e.extensions).sortBy(_._2.size),
-                (builder, receiver) => {
-                    group(builder)(builder => {
-                        builder.unaryPlus(builder.buildSignature(receiver))
-                        kotlin.Unit.INSTANCE
-                    })
-                },
-                (builder, elem) => {
-                    link(builder, elem.getName, elem.getDri)(kind = ContentKind.Main)
-                    sourceSetDependentHint(builder)( builder =>
-                        {
-                            contentForBrief(builder, elem)
-                            builder.unaryPlus(builder.buildSignature(elem))
-                            kotlin.Unit.INSTANCE
-                        },
-                        dri = JSet(elem.getDri),
-                        sourceSets = elem.getSourceSets,
-                        kind = ContentKind.SourceSetDependentHint,
-                        styles = JSet()
-                    )
-                    kotlin.Unit.INSTANCE
+            )( (bdr, receiver) => bdr 
+                .group(){ grpbdr => grpbdr
+                    .signature(receiver)
                 }
-            )(
-                kind = ContentKind.Main,
-                sourceSets = builder.getMainSourcesetData.asScala.toSet,
-                styles = Set(),
-                extra = PropertyContainer.Companion.empty().plus(SimpleAttr.Companion.header("Extensions")),
-                false,
-                true,
-                Nil,
-                false,
-                true
-            )
-            kotlin.Unit.INSTANCE
-        })
+            ){ (bdr, elem) => bdr
+                .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
+                .sourceSetDependentHint(
+                    dri = Set(elem.getDri), 
+                    sourceSets = elem.getSourceSets.asScala.toSet, 
+                    kind = ContentKind.SourceSetDependentHint
+                ){ srcsetbdr => srcsetbdr
+                    .contentForBrief(elem)
+                    .signature(elem)
+                }
+            }
+        )
+
         val modifiedContent = content(0).copy(
             (content(0).getChildren.asScala ++ List(addedContent)).asJava,
             content(0).getDci,
@@ -153,42 +136,22 @@ class ScalaPageCreator(
 
     def insertEnumTab(clazz: DClass, defContent: ContentGroup): ContentGroup = {
         val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
-        val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(builder => {
-            groupingBlock(
-                builder,
+        val addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(clazz, buildBlock = bdr =>
+            bdr.groupingBlock(
                 "Entries",
                 List(() -> clazz.get(EnumExtension).enumEntries.sortBy(_.getName).toList),
-                (builder, _) => {
-                    kotlin.Unit.INSTANCE
-                },
-                (builder, elem) => {
-                    link(builder, elem.getName, elem.getDri)(kind = ContentKind.Main)
-                    sourceSetDependentHint(builder)( builder =>
-                        {
-                            contentForBrief(builder, elem)
-                            builder.unaryPlus(builder.buildSignature(elem))
-                            kotlin.Unit.INSTANCE
-                        },
-                        dri = JSet(elem.getDri),
-                        sourceSets = elem.getSourceSets,
-                        kind = ContentKind.SourceSetDependentHint,
-                        styles = JSet()
-                    )
-                    kotlin.Unit.INSTANCE
+            )( (bdr, splitter) => bdr ){ (bdr, elem) => bdr
+                .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
+                .sourceSetDependentHint(
+                    dri = Set(elem.getDri), 
+                    sourceSets = elem.getSourceSets.asScala.toSet, 
+                    kind = ContentKind.SourceSetDependentHint
+                ){ srcsetbdr => srcsetbdr
+                    .contentForBrief(elem)
+                    .signature(elem)
                 }
-            )(
-                kind = ContentKind.Main,
-                sourceSets = builder.getMainSourcesetData.asScala.toSet,
-                styles = Set(),
-                extra = PropertyContainer.Companion.empty().plus(SimpleAttr.Companion.header("Entries")),
-                false,
-                true,
-                Nil,
-                false,
-                true
-            )
-            kotlin.Unit.INSTANCE
-        })
+            }
+        )
 
         val modifiedContent = content(0).copy(
             (content(0).getChildren.asScala ++ List(addedContent)).asJava,
@@ -202,28 +165,19 @@ class ScalaPageCreator(
 
     def insertInheritedMethods(clazz: DClass, defContent: ContentGroup): ContentGroup = {
         val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
-        val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(builder => {
-            divergentBlock(
-                builder,
+        val addedContent = ScalaPageContentBuilder(
+            commentsToContentConverter, 
+            signatureProvider, 
+            logger
+        ).contentForDocumentable(clazz, buildBlock = builder => builder
+            .divergentBlock(
                 "Methods",
-                List("Class methods" -> clazz.getFunctions.asScala.toList, "Inherited" -> clazz.get(ClasslikeExtension).inheritedMethods),
-                (builder, txt) => {
-                    header(builder, 3, txt)()
-                    kotlin.Unit.INSTANCE
-                }
+                List("Class methods" -> clazz.getFunctions.asScala.toList, "Inherited" -> clazz.get(ClasslikeExtension).inheritedMethods)
             )(
-                kind = ContentKind.Functions,
-                sourceSets = builder.getMainSourcesetData.asScala.toSet,
-                styles = Set(),
-                extra = PropertyContainer.Companion.empty().plus(SimpleAttr.Companion.header("Methods")),
-                false,
-                true,
-                Nil,
-                false,
-                true
+                (builder, txt) => builder.header(3, txt)()
             )
-            kotlin.Unit.INSTANCE
-        })
+        )
+
         val filteredChildren = content(0).getChildren.asScala.map{ 
             case c: ContentGroup => c.copy(
                 c.getChildren.asScala.filter(c => c.getDci.getKind != ContentKind.Functions).asJava,
@@ -247,42 +201,23 @@ class ScalaPageCreator(
     def insertGivenTab(clazz: DClass, defContent: ContentGroup): ContentGroup = {
         val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
         val givens = clazz.get(ClasslikeExtension).givens
-        val addedContent = PageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentFor(clazz)(builder => {
-            groupingBlock(
-                builder,
+
+        val addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(clazz, buildBlock = bdr =>
+            bdr.groupingBlock(
                 "Given",
                 if(!givens.isEmpty) List(() -> givens.sortBy(_.getName).toList) else List.empty,
-                (builder, _) => {
-                    kotlin.Unit.INSTANCE
-                },
-                (builder, elem) => {
-                    link(builder, elem.getName, elem.getDri)(kind = ContentKind.Main)
-                    sourceSetDependentHint(builder)( builder =>
-                        {
-                            contentForBrief(builder, elem)
-                            builder.unaryPlus(builder.buildSignature(elem))
-                            kotlin.Unit.INSTANCE
-                        },
-                        dri = JSet(elem.getDri),
-                        sourceSets = elem.getSourceSets,
-                        kind = ContentKind.SourceSetDependentHint,
-                        styles = JSet()
-                    )
-                    kotlin.Unit.INSTANCE
+            )( (bdr, splitter) => bdr ){ (bdr, elem) => bdr
+                .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
+                .sourceSetDependentHint(
+                    dri = Set(elem.getDri), 
+                    sourceSets = elem.getSourceSets.asScala.toSet, 
+                    kind = ContentKind.SourceSetDependentHint
+                ){ srcsetbdr => srcsetbdr
+                    .contentForBrief(elem)
+                    .signature(elem)
                 }
-            )(
-                kind = ContentKind.Main,
-                sourceSets = builder.getMainSourcesetData.asScala.toSet,
-                styles = Set(),
-                extra = PropertyContainer.Companion.empty().plus(SimpleAttr.Companion.header("Given")),
-                false,
-                true,
-                Nil,
-                false,
-                true
-            )
-            kotlin.Unit.INSTANCE
-        })
+            }
+        )
 
         val modifiedContent = content(0).copy(
             (content(0).getChildren.asScala ++ List(addedContent)).asJava,
@@ -348,204 +283,4 @@ class ScalaPageCreator(
             else Seq()
         }
     }
-
-    private def divergentBlock[A, T <: Documentable, G <: List[(A, List[T])]](
-        builder: PageContentBuilder#DocumentableContentBuilder,
-        name: String,
-        elements: G,
-        groupSplitterFunc: (PageContentBuilder#DocumentableContentBuilder, A) => Unit,
-    )(
-        kind: Kind = ContentKind.Main,
-        sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData.asScala.toSet,
-        styles: Set[Style] = builder.getMainStyles.asScala.toSet,
-        extra: PropertyContainer[ContentNode] = builder.getMainExtra,
-        renderWhenEmpty: Boolean = false,
-        needsSorting: Boolean = true,
-        headers: List[ContentGroup] = Nil,
-        needsAnchors: Boolean = false,
-        omitSplitterOnSingletons: Boolean = false
-    ): Unit = if (renderWhenEmpty || !elements.isEmpty) {     
-            header(builder, 3, name)(kind = kind)
-            group(builder)(builder =>
-            {
-                elements.foreach((a, elems) => {
-                    if(elems.size > 1 || !omitSplitterOnSingletons) groupSplitterFunc(builder, a)
-                    builder.unaryPlus(
-                        ContentTable(
-                            headers.asJava,
-                            (if(needsSorting) then elems.sortBy(_.getName) else elems)
-                                .groupBy(_.getName)
-                                .toList
-                                .map( (elemName, divergentElems) => {
-                                    //TODO: There's problem with using extra property containers from Dokka in Scala
-                                    //val newExtra = if(needsAnchors) then extra.plus(SymbolAnchorHint) else extra
-                                    val newExtra = extra
-                                    builder.buildGroup(
-                                        divergentElems.map(_.getDri).toSet.asJava, 
-                                        divergentElems.flatMap(_.getSourceSets.asScala).toSet.asJava, 
-                                        kind, 
-                                        Set().asJava, 
-                                        newExtra, 
-                                        bdr => { 
-                                            link(bdr, elemName, divergentElems.head.getDri)(kind = ContentKind.Main)
-                                            divergentGroup(bdr, ContentDivergentGroup$GroupID(name))( dbdr =>
-                                                {
-                                                    divergentElems.map( e =>
-                                                        dbdr.instance(
-                                                            Set(e.getDri).asJava,
-                                                            e.getSourceSets,
-                                                            kind,
-                                                            Set().asJava,
-                                                            extra,
-                                                            insbdr => {
-                                                                insbdr.before(
-                                                                    Set(e.getDri).asJava,
-                                                                    e.getSourceSets,
-                                                                    kind,
-                                                                    Set().asJava,
-                                                                    extra,
-                                                                    befbdr => {
-                                                                        contentForBrief(befbdr, e)
-                                                                        kotlin.Unit.INSTANCE
-                                                                    }
-                                                                )
-                                                                insbdr.divergent(
-                                                                    Set(e.getDri).asJava,
-                                                                    e.getSourceSets,
-                                                                    kind,
-                                                                    Set().asJava,
-                                                                    extra,
-                                                                    divbdr => {
-                                                                        group(divbdr.asInstanceOf[PageContentBuilder#DocumentableContentBuilder])( 
-                                                                        bdr => {
-                                                                            bdr.unaryPlus(bdr.buildSignature(e))
-                                                                            kotlin.Unit.INSTANCE
-                                                                        })
-                                                                        kotlin.Unit.INSTANCE
-                                                                    }
-                                                                )
-                                                                kotlin.Unit.INSTANCE
-                                                            }
-                                                        )
-                                                    )
-                                                    kotlin.Unit.INSTANCE
-                                                },
-                                                dri = elems.map(_.getDri).toSet,
-                                                kind = kind
-                                            )
-                                            kotlin.Unit.INSTANCE
-                                        }
-                                    )
-                                }).asJava,
-                            DCI(builder.getMainDRI, kind),
-                            sourceSets.asJava, Set().asJava, extra
-                        )
-                    )
-                })
-                kotlin.Unit.INSTANCE
-            },
-            styles = Set(ContentStyle.WithExtraAttributes),
-            extra = extra
-        )
-    }
-
-    private def groupingBlock[G, T <: Documentable](
-        builder: PageContentBuilder#DocumentableContentBuilder,
-        name: String,
-        elements: List[T],
-        groupingFunc: T => G,
-        groupSplitterFunc: (PageContentBuilder#DocumentableContentBuilder, G) => Unit,
-        elementFunc: (PageContentBuilder#DocumentableContentBuilder, T) => Unit
-    )(
-        kind: Kind = ContentKind.Main,
-        sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData.asScala.toSet,
-        styles: Set[Style] = builder.getMainStyles.asScala.toSet,
-        extra: PropertyContainer[ContentNode] = builder.getMainExtra,
-        renderWhenEmpty: Boolean = false,
-        needsSorting: Boolean = true,
-        headers: List[ContentGroup] = Nil,
-        needsAnchors: Boolean = false,
-        omitSplitterOnSingletons: Boolean = false
-    ): Unit = {
-        val grouped = elements.groupBy(groupingFunc).toList
-        groupingBlock(
-            builder, 
-            name, 
-            grouped, 
-            groupSplitterFunc, 
-            elementFunc
-        )(
-            kind, 
-            sourceSets, 
-            styles, 
-            extra, 
-            renderWhenEmpty, 
-            needsSorting, 
-            headers, 
-            needsAnchors,
-            omitSplitterOnSingletons
-        )
-    }
-
-    private def groupingBlock[A, T <: Documentable, G <: List[(A, List[T])]](
-        builder: PageContentBuilder#DocumentableContentBuilder,
-        name: String,
-        elements: G,
-        groupSplitterFunc: (PageContentBuilder#DocumentableContentBuilder, A) => Unit,
-        elementFunc: (PageContentBuilder#DocumentableContentBuilder, T) => Unit
-    )(
-        kind: Kind,
-        sourceSets: Set[DokkaConfiguration$DokkaSourceSet],
-        styles: Set[Style],
-        extra: PropertyContainer[ContentNode],
-        renderWhenEmpty: Boolean,
-        needsSorting: Boolean,
-        headers: List[ContentGroup],
-        needsAnchors: Boolean,
-        omitSplitterOnSingletons: Boolean
-    ): Unit = if (renderWhenEmpty || !elements.isEmpty) {
-            header(builder, 3, name)(kind = kind)
-            group(builder)(builder =>
-            {
-                elements.foreach((a, elems) => {
-                    if(elems.size > 1 || !omitSplitterOnSingletons) groupSplitterFunc(builder, a)
-                    builder.unaryPlus(
-                        ContentTable(
-                            headers.asJava,
-                            (if(needsSorting) then elems.sortBy(_.getName) else elems)
-                                .map( elem => {
-                                    //TODO: There's problem with using extra property containers from Dokka in Scala
-                                    //val newExtra = if(needsAnchors) then extra.plus(SymbolAnchorHint) else extra
-                                    val newExtra = extra
-                                    builder.buildGroup(JSet(elem.getDri), elem.getSourceSets, kind, styles.asJava, newExtra, bdr => { 
-                                        elementFunc(bdr, elem)
-                                        kotlin.Unit.INSTANCE
-                                    })
-                                }).asJava,
-                            DCI(builder.getMainDRI, kind),
-                            sourceSets.asJava, styles.asJava, extra
-                        )
-                    )
-                })
-                kotlin.Unit.INSTANCE
-            },
-            styles = Set(ContentStyle.WithExtraAttributes),
-            extra = extra
-        )
-    }
-
-    private def contentForBrief(builder: PageContentBuilder#DocumentableContentBuilder, d: Documentable) = d.getSourceSets.asScala.foreach( ss =>
-        d.getDocumentation.asScala.toMap.get(ss).flatMap(_.getChildren.asScala.headOption).map(_.getRoot).map( dt =>
-            group(builder)(builder => 
-                {
-                    builder.comment(dt, ContentKind.Comment, builder.getMainSourcesetData, builder.getMainStyles, builder.getMainExtra)
-                    kotlin.Unit.INSTANCE
-                },
-            sourceSets = Set(ss),
-            kind = ContentKind.BriefComment
-            )
-        )
-    )
-        
-
 }
