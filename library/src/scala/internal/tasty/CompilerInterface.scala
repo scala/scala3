@@ -80,7 +80,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Tree_pos(self: Tree)(using ctx: Context): Position
   def Tree_symbol(self: Tree)(using ctx: Context): Symbol
 
-  def PackageClause_TypeTest(using ctx: Context): TypeTest[Tree, PackageClause]
+  def PackageClause_TypeTest: TypeTest[Tree, PackageClause]
 
   def PackageClause_pid(self: PackageClause)(using ctx: Context): Ref
   def PackageClause_stats(self: PackageClause)(using ctx: Context): List[Tree]
@@ -89,9 +89,9 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree])(using ctx: Context): PackageClause
 
-  def Statement_TypeTest(using ctx: Context): TypeTest[Tree, Statement]
+  def Statement_TypeTest: TypeTest[Tree, Statement]
 
-  def Import_TypeTest(using ctx: Context): TypeTest[Tree, Import]
+  def Import_TypeTest: TypeTest[Tree, Import]
 
   def Import_implied(self: Import): Boolean
   def Import_expr(self: Import)(using ctx: Context): Term
@@ -101,16 +101,16 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(using ctx: Context): Import
 
-  def Definition_TypeTest(using ctx: Context): TypeTest[Tree, Definition]
+  def Definition_TypeTest: TypeTest[Tree, Definition]
 
   def Definition_name(self: Definition)(using ctx: Context): String
 
-  def PackageDef_TypeTest(using ctx: Context): TypeTest[Tree, PackageDef]
+  def PackageDef_TypeTest: TypeTest[Tree, PackageDef]
 
   def PackageDef_owner(self: PackageDef)(using ctx: Context): PackageDef
   def PackageDef_members(self: PackageDef)(using ctx: Context): List[Statement]
 
-  def ClassDef_TypeTest(using ctx: Context): TypeTest[Tree, ClassDef]
+  def ClassDef_TypeTest: TypeTest[Tree, ClassDef]
 
   def ClassDef_constructor(self: ClassDef)(using ctx: Context): DefDef
   def ClassDef_parents(self: ClassDef)(using ctx: Context): List[Tree/* Term | TypeTree */]
@@ -120,14 +120,14 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(using ctx: Context): ClassDef
 
-  def TypeDef_TypeTest(using ctx: Context): TypeTest[Tree, TypeDef]
+  def TypeDef_TypeTest: TypeTest[Tree, TypeDef]
 
   def TypeDef_rhs(self: TypeDef)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
 
   def TypeDef_apply(symbol: Symbol)(using ctx: Context): TypeDef
   def TypeDef_copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): TypeDef
 
-  def DefDef_TypeTest(using ctx: Context): TypeTest[Tree, DefDef]
+  def DefDef_TypeTest: TypeTest[Tree, DefDef]
 
   def DefDef_typeParams(self: DefDef)(using ctx: Context): List[TypeDef]
   def DefDef_paramss(self: DefDef)(using ctx: Context): List[List[ValDef]]
@@ -137,7 +137,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(using ctx: Context): DefDef
   def DefDef_copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(using ctx: Context): DefDef
 
-  def ValDef_TypeTest(using ctx: Context): TypeTest[Tree, ValDef]
+  def ValDef_TypeTest: TypeTest[Tree, ValDef]
 
   def ValDef_tpt(self: ValDef)(using ctx: Context): TypeTree
   def ValDef_rhs(self: ValDef)(using ctx: Context): Option[Term]
@@ -145,28 +145,28 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def ValDef_apply(symbol: Symbol, rhs: Option[Term])(using ctx: Context): ValDef
   def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(using ctx: Context): ValDef
 
-  def Term_TypeTest(using ctx: Context): TypeTest[Tree, Term]
+  def Term_TypeTest: TypeTest[Tree, Term]
 
   def Term_tpe(self: Term)(using ctx: Context): Type
   def Term_underlyingArgument(self: Term)(using ctx: Context): Term
   def Term_underlying(self: Term)(using ctx: Context): Term
   def Term_etaExpand(term: Term)(using ctx: Context): Term
 
-  def Ref_TypeTest(using ctx: Context): TypeTest[Tree, Ref]
+  def Ref_TypeTest: TypeTest[Tree, Ref]
 
   /** A tree representing the same reference as the given type */
   def Ref_term(tp: TermRef)(using ctx: Context): Ref
 
   def Ref_apply(sym: Symbol)(using ctx: Context): Ref
 
-  def Ident_TypeTest(using ctx: Context): TypeTest[Tree, Ident]
+  def Ident_TypeTest: TypeTest[Tree, Ident]
 
   def Ident_name(self: Ident)(using ctx: Context): String
 
   def Ident_apply(tmref: TermRef)(using ctx: Context): Term
   def Ident_copy(original: Tree)(name: String)(using ctx: Context): Ident
 
-  def Select_TypeTest(using ctx: Context): TypeTest[Tree, Select]
+  def Select_TypeTest: TypeTest[Tree, Select]
 
   def Select_qualifier(self: Select)(using ctx: Context): Term
   def Select_name(self: Select)(using ctx: Context): String
@@ -178,28 +178,28 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(using ctx: Context): Apply
   def Select_copy(original: Tree)(qualifier: Term, name: String)(using ctx: Context): Select
 
-  def Literal_TypeTest(using ctx: Context): TypeTest[Tree, Literal]
+  def Literal_TypeTest: TypeTest[Tree, Literal]
 
   def Literal_constant(self: Literal)(using ctx: Context): Constant
 
   def Literal_apply(constant: Constant)(using ctx: Context): Literal
   def Literal_copy(original: Tree)(constant: Constant)(using ctx: Context): Literal
 
-  def This_TypeTest(using ctx: Context): TypeTest[Tree, This]
+  def This_TypeTest: TypeTest[Tree, This]
 
   def This_id(self: This)(using ctx: Context): Option[Id]
 
   def This_apply(cls: Symbol)(using ctx: Context): This
   def This_copy(original: Tree)(qual: Option[Id])(using ctx: Context): This
 
-  def New_TypeTest(using ctx: Context): TypeTest[Tree, New]
+  def New_TypeTest: TypeTest[Tree, New]
 
   def New_tpt(self: New)(using ctx: Context): TypeTree
 
   def New_apply(tpt: TypeTree)(using ctx: Context): New
   def New_copy(original: Tree)(tpt: TypeTree)(using ctx: Context): New
 
-  def NamedArg_TypeTest(using ctx: Context): TypeTest[Tree, NamedArg]
+  def NamedArg_TypeTest: TypeTest[Tree, NamedArg]
 
   def NamedArg_name(self: NamedArg)(using ctx: Context): String
   def NamedArg_value(self: NamedArg)(using ctx: Context): Term
@@ -207,7 +207,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def NamedArg_apply(name: String, arg: Term)(using ctx: Context): NamedArg
   def NamedArg_copy(original: Tree)(name: String, arg: Term)(using ctx: Context): NamedArg
 
-  def Apply_TypeTest(using ctx: Context): TypeTest[Tree, Apply]
+  def Apply_TypeTest: TypeTest[Tree, Apply]
 
   def Apply_fun(self: Apply)(using ctx: Context): Term
   def Apply_args(self: Apply)(using ctx: Context): List[Term]
@@ -215,7 +215,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Apply_apply(fn: Term, args: List[Term])(using ctx: Context): Apply
   def Apply_copy(original: Tree)(fun: Term, args: List[Term])(using ctx: Context): Apply
 
-  def TypeApply_TypeTest(using ctx: Context): TypeTest[Tree, TypeApply]
+  def TypeApply_TypeTest: TypeTest[Tree, TypeApply]
 
   def TypeApply_fun(self: TypeApply)(using ctx: Context): Term
   def TypeApply_args(self: TypeApply)(using ctx: Context): List[TypeTree]
@@ -223,7 +223,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def TypeApply_apply(fn: Term, args: List[TypeTree])(using ctx: Context): TypeApply
   def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(using ctx: Context): TypeApply
 
-  def Super_TypeTest(using ctx: Context): TypeTest[Tree, Super]
+  def Super_TypeTest: TypeTest[Tree, Super]
 
   def Super_qualifier(self: Super)(using ctx: Context): Term
   def Super_id(self: Super)(using ctx: Context): Option[Id]
@@ -231,7 +231,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Super_apply(qual: Term, mix: Option[Id])(using ctx: Context): Super
   def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(using ctx: Context): Super
 
-  def Typed_TypeTest(using ctx: Context): TypeTest[Tree, Typed]
+  def Typed_TypeTest: TypeTest[Tree, Typed]
 
   def Typed_expr(self: Typed)(using ctx: Context): Term
   def Typed_tpt(self: Typed)(using ctx: Context): TypeTree
@@ -239,7 +239,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Typed_apply(expr: Term, tpt: TypeTree)(using ctx: Context): Typed
   def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(using ctx: Context): Typed
 
-  def Assign_TypeTest(using ctx: Context): TypeTest[Tree, Assign]
+  def Assign_TypeTest: TypeTest[Tree, Assign]
 
   def Assign_lhs(self: Assign)(using ctx: Context): Term
   def Assign_rhs(self: Assign)(using ctx: Context): Term
@@ -247,7 +247,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Assign_apply(lhs: Term, rhs: Term)(using ctx: Context): Assign
   def Assign_copy(original: Tree)(lhs: Term, rhs: Term)(using ctx: Context): Assign
 
-  def Block_TypeTest(using ctx: Context): TypeTest[Tree, Block]
+  def Block_TypeTest: TypeTest[Tree, Block]
 
   def Block_statements(self: Block)(using ctx: Context): List[Statement]
   def Block_expr(self: Block)(using ctx: Context): Term
@@ -255,7 +255,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Block_apply(stats: List[Statement], expr: Term)(using ctx: Context): Block
   def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(using ctx: Context): Block
 
-  def Closure_TypeTest(using ctx: Context): TypeTest[Tree, Closure]
+  def Closure_TypeTest: TypeTest[Tree, Closure]
 
   def Closure_meth(self: Closure)(using ctx: Context): Term
   def Closure_tpeOpt(self: Closure)(using ctx: Context): Option[Type]
@@ -265,7 +265,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(using ctx: Context): Block
 
-  def If_TypeTest(using ctx: Context): TypeTest[Tree, If]
+  def If_TypeTest: TypeTest[Tree, If]
 
   def If_cond(self: If)(using ctx: Context): Term
   def If_thenp(self: If)(using ctx: Context): Term
@@ -274,7 +274,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def If_apply(cond: Term, thenp: Term, elsep: Term)(using ctx: Context): If
   def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(using ctx: Context): If
 
-  def Match_TypeTest(using ctx: Context): TypeTest[Tree, Match]
+  def Match_TypeTest: TypeTest[Tree, Match]
 
   def Match_scrutinee(self: Match)(using ctx: Context): Term
   def Match_cases(self: Match)(using ctx: Context): List[CaseDef]
@@ -282,14 +282,14 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Match_apply(selector: Term, cases: List[CaseDef])(using ctx: Context): Match
   def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(using ctx: Context): Match
 
-  def GivenMatch_TypeTest(using ctx: Context): TypeTest[Tree, GivenMatch]
+  def GivenMatch_TypeTest: TypeTest[Tree, GivenMatch]
 
   def GivenMatch_cases(self: GivenMatch)(using ctx: Context): List[CaseDef]
 
   def GivenMatch_apply(cases: List[CaseDef])(using ctx: Context): GivenMatch
   def GivenMatch_copy(original: Tree)(cases: List[CaseDef])(using ctx: Context): GivenMatch
 
-  def Try_TypeTest(using ctx: Context): TypeTest[Tree, Try]
+  def Try_TypeTest: TypeTest[Tree, Try]
 
   def Try_body(self: Try)(using ctx: Context): Term
   def Try_cases(self: Try)(using ctx: Context): List[CaseDef]
@@ -298,14 +298,14 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using ctx: Context): Try
   def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using ctx: Context): Try
 
-  def Return_TypeTest(using ctx: Context): TypeTest[Tree, Return]
+  def Return_TypeTest: TypeTest[Tree, Return]
 
   def Return_expr(self: Return)(using ctx: Context): Term
 
   def Return_apply(expr: Term)(using ctx: Context): Return
   def Return_copy(original: Tree)(expr: Term)(using ctx: Context): Return
 
-  def Repeated_TypeTest(using ctx: Context): TypeTest[Tree, Repeated]
+  def Repeated_TypeTest: TypeTest[Tree, Repeated]
 
   def Repeated_elems(self: Repeated)(using ctx: Context): List[Term]
   def Repeated_elemtpt(self: Repeated)(using ctx: Context): TypeTree
@@ -313,7 +313,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Repeated_apply(elems: List[Term], elemtpt: TypeTree)(using ctx: Context): Repeated
   def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(using ctx: Context): Repeated
 
-  def Inlined_TypeTest(using ctx: Context): TypeTest[Tree, Inlined]
+  def Inlined_TypeTest: TypeTest[Tree, Inlined]
 
   def Inlined_call(self: Inlined)(using ctx: Context): Option[Tree/* Term | TypeTree */]
   def Inlined_bindings(self: Inlined)(using ctx: Context): List[Definition]
@@ -322,7 +322,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Inlined_apply(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(using ctx: Context): Inlined
   def Inlined_copy(original: Tree)(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(using ctx: Context): Inlined
 
-  def SelectOuter_TypeTest(using ctx: Context): TypeTest[Tree, SelectOuter]
+  def SelectOuter_TypeTest: TypeTest[Tree, SelectOuter]
 
   def SelectOuter_qualifier(self: SelectOuter)(using ctx: Context): Term
   def SelectOuter_level(self: SelectOuter)(using ctx: Context): Int
@@ -330,7 +330,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(using ctx: Context): SelectOuter
   def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(using ctx: Context): SelectOuter
 
-  def While_TypeTest(using ctx: Context): TypeTest[Tree, While]
+  def While_TypeTest: TypeTest[Tree, While]
 
   def While_cond(self: While)(using ctx: Context): Term
   def While_body(self: While)(using ctx: Context): Term
@@ -338,23 +338,23 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def While_apply(cond: Term, body: Term)(using ctx: Context): While
   def While_copy(original: Tree)(cond: Term, body: Term)(using ctx: Context): While
 
-  def TypeTree_TypeTest(using ctx: Context): TypeTest[Tree, TypeTree]
+  def TypeTree_TypeTest: TypeTest[Tree, TypeTree]
 
   def TypeTree_tpe(self: TypeTree)(using ctx: Context): Type
 
-  def Inferred_TypeTest(using ctx: Context): TypeTest[Tree, Inferred]
+  def Inferred_TypeTest: TypeTest[Tree, Inferred]
 
   def Inferred_apply(tpe: Type)(using ctx: Context): Inferred
 
   def TypeRef_apply(sym: Symbol)(using ctx: Context): TypeTree
 
-  def TypeIdent_TypeTest(using ctx: Context): TypeTest[Tree, TypeIdent]
+  def TypeIdent_TypeTest: TypeTest[Tree, TypeIdent]
 
   def TypeIdent_name(self: TypeIdent)(using ctx: Context): String
 
   def TypeIdent_copy(original: Tree)(name: String)(using ctx: Context): TypeIdent
 
-  def TypeSelect_TypeTest(using ctx: Context): TypeTest[Tree, TypeSelect]
+  def TypeSelect_TypeTest: TypeTest[Tree, TypeSelect]
 
   def TypeSelect_qualifier(self: TypeSelect)(using ctx: Context): Term
   def TypeSelect_name(self: TypeSelect)(using ctx: Context): String
@@ -362,28 +362,28 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def TypeSelect_apply(qualifier: Term, name: String)(using ctx: Context): TypeSelect
   def TypeSelect_copy(original: Tree)(qualifier: Term, name: String)(using ctx: Context): TypeSelect
 
-  def Projection_TypeTest(using ctx: Context): TypeTest[Tree, Projection]
+  def Projection_TypeTest: TypeTest[Tree, Projection]
 
   def Projection_qualifier(self: Projection)(using ctx: Context): TypeTree
   def Projection_name(self: Projection)(using ctx: Context): String
 
   def Projection_copy(original: Tree)(qualifier: TypeTree, name: String)(using ctx: Context): Projection
 
-  def Singleton_TypeTest(using ctx: Context): TypeTest[Tree, Singleton]
+  def Singleton_TypeTest: TypeTest[Tree, Singleton]
 
   def Singleton_ref(self: Singleton)(using ctx: Context): Term
 
   def Singleton_apply(ref: Term)(using ctx: Context): Singleton
   def Singleton_copy(original: Tree)(ref: Term)(using ctx: Context): Singleton
 
-  def Refined_TypeTest(using ctx: Context): TypeTest[Tree, Refined]
+  def Refined_TypeTest: TypeTest[Tree, Refined]
 
   def Refined_tpt(self: Refined)(using ctx: Context): TypeTree
   def Refined_refinements(self: Refined)(using ctx: Context): List[Definition]
 
   def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(using ctx: Context): Refined
 
-  def Applied_TypeTest(using ctx: Context): TypeTest[Tree, Applied]
+  def Applied_TypeTest: TypeTest[Tree, Applied]
 
   def Applied_tpt(self: Applied)(using ctx: Context): TypeTree
   def Applied_args(self: Applied)(using ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/]
@@ -391,7 +391,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Applied_apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(using ctx: Context): Applied
   def Applied_copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(using ctx: Context): Applied
 
-  def Annotated_TypeTest(using ctx: Context): TypeTest[Tree, Annotated]
+  def Annotated_TypeTest: TypeTest[Tree, Annotated]
 
   def Annotated_arg(self: Annotated)(using ctx: Context): TypeTree
   def Annotated_annotation(self: Annotated)(using ctx: Context): Term
@@ -399,7 +399,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Annotated_apply(arg: TypeTree, annotation: Term)(using ctx: Context): Annotated
   def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term)(using ctx: Context): Annotated
 
-  def MatchTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, MatchTypeTree]
+  def MatchTypeTree_TypeTest: TypeTest[Tree, MatchTypeTree]
 
   def MatchTypeTree_bound(self: MatchTypeTree)(using ctx: Context): Option[TypeTree]
   def MatchTypeTree_selector(self: MatchTypeTree)(using ctx: Context): TypeTree
@@ -410,12 +410,12 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def ByName_result(self: ByName)(using ctx: Context): TypeTree
 
-  def ByName_TypeTest(using ctx: Context): TypeTest[Tree, ByName]
+  def ByName_TypeTest: TypeTest[Tree, ByName]
 
   def ByName_apply(result: TypeTree)(using ctx: Context): ByName
   def ByName_copy(original: Tree)(result: TypeTree)(using ctx: Context): ByName
 
-  def LambdaTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, LambdaTypeTree]
+  def LambdaTypeTree_TypeTest: TypeTest[Tree, LambdaTypeTree]
 
   def Lambdatparams(self: LambdaTypeTree)(using ctx: Context): List[TypeDef]
   def Lambdabody(self: LambdaTypeTree)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
@@ -423,14 +423,14 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Lambdaapply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): LambdaTypeTree
   def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): LambdaTypeTree
 
-  def TypeBind_TypeTest(using ctx: Context): TypeTest[Tree, TypeBind]
+  def TypeBind_TypeTest: TypeTest[Tree, TypeBind]
 
   def TypeBind_name(self: TypeBind)(using ctx: Context): String
   def TypeBind_body(self: TypeBind)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
 
   def TypeBind_copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): TypeBind
 
-  def TypeBlock_TypeTest(using ctx: Context): TypeTest[Tree, TypeBlock]
+  def TypeBlock_TypeTest: TypeTest[Tree, TypeBlock]
 
   def TypeBlock_aliases(self: TypeBlock)(using ctx: Context): List[TypeDef]
   def TypeBlock_tpt(self: TypeBlock)(using ctx: Context): TypeTree
@@ -438,17 +438,17 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(using ctx: Context): TypeBlock
   def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(using ctx: Context): TypeBlock
 
-  def TypeBoundsTree_TypeTest(using ctx: Context): TypeTest[Tree, TypeBoundsTree]
+  def TypeBoundsTree_TypeTest: TypeTest[Tree, TypeBoundsTree]
 
   def TypeBoundsTree_tpe(self: TypeBoundsTree)(using ctx: Context): TypeBounds
   def TypeBoundsTree_low(self: TypeBoundsTree)(using ctx: Context): TypeTree
   def TypeBoundsTree_hi(self: TypeBoundsTree)(using ctx: Context): TypeTree
 
-  def WildcardTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, WildcardTypeTree]
+  def WildcardTypeTree_TypeTest: TypeTest[Tree, WildcardTypeTree]
 
   def WildcardTypeTree_tpe(self: WildcardTypeTree)(using ctx: Context): TypeOrBounds
 
-  def CaseDef_TypeTest(using ctx: Context): TypeTest[Tree, CaseDef]
+  def CaseDef_TypeTest: TypeTest[Tree, CaseDef]
 
   def CaseDef_pattern(self: CaseDef)(using ctx: Context): Tree
   def CaseDef_guard(self: CaseDef)(using ctx: Context): Option[Term]
@@ -457,7 +457,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term)(using ctx: Context): CaseDef
   def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term)(using ctx: Context): CaseDef
 
-  def TypeCaseDef_TypeTest(using ctx: Context): TypeTest[Tree, TypeCaseDef]
+  def TypeCaseDef_TypeTest: TypeTest[Tree, TypeCaseDef]
 
   def TypeCaseDef_pattern(self: TypeCaseDef)(using ctx: Context): TypeTree
   def TypeCaseDef_rhs(self: TypeCaseDef)(using ctx: Context): TypeTree
@@ -469,7 +469,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   // PATTERNS
   //
 
-  def Bind_TypeTest(using ctx: Context): TypeTest[Tree, Bind]
+  def Bind_TypeTest: TypeTest[Tree, Bind]
 
   def Tree_Bind_name(self: Bind)(using ctx: Context): String
 
@@ -479,7 +479,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree)(using ctx: Context): Bind
 
-  def Unapply_TypeTest(using ctx: Context): TypeTest[Tree, Unapply]
+  def Unapply_TypeTest: TypeTest[Tree, Unapply]
 
   def Tree_Unapply_fun(self: Unapply)(using ctx: Context): Term
 
@@ -489,7 +489,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(using ctx: Context): Unapply
 
-  def Alternatives_TypeTest(using ctx: Context): TypeTest[Tree, Alternatives]
+  def Alternatives_TypeTest: TypeTest[Tree, Alternatives]
 
   def Tree_Alternatives_patterns(self: Alternatives)(using ctx: Context): List[Tree]
 
@@ -501,16 +501,16 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   // TYPES
   //
 
-  def NoPrefix_TypeTest(using ctx: Context): TypeTest[Tree, NoPrefix]
+  def NoPrefix_TypeTest: TypeTest[Tree, NoPrefix]
 
-  def TypeBounds_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeBounds]
+  def TypeBounds_TypeTest: TypeTest[TypeOrBounds, TypeBounds]
 
   def TypeBounds_apply(low: Type, hi: Type)(using ctx: Context): TypeBounds
 
   def TypeBounds_low(self: TypeBounds)(using ctx: Context): Type
   def TypeBounds_hi(self: TypeBounds)(using ctx: Context): Type
 
-  def Type_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, Type]
+  def Type_TypeTest: TypeTest[TypeOrBounds, Type]
 
   def Type_apply(clazz: Class[_])(using ctx: Context): Type
 
@@ -604,34 +604,34 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   /** The type <this . sym>, reduced if possible */
   def Type_select(self: Type)(sym: Symbol)(using ctx: Context): Type
 
-  def ConstantType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ConstantType]
+  def ConstantType_TypeTest: TypeTest[TypeOrBounds, ConstantType]
 
   def ConstantType_apply(const : Constant)(using ctx : Context) : ConstantType
 
   def ConstantType_constant(self: ConstantType)(using ctx: Context): Constant
 
-  def TermRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TermRef]
+  def TermRef_TypeTest: TypeTest[TypeOrBounds, TermRef]
 
   def TermRef_apply(qual: TypeOrBounds, name: String)(using ctx: Context): TermRef
 
   def TermRef_qualifier(self: TermRef)(using ctx: Context): TypeOrBounds
   def TermRef_name(self: TermRef)(using ctx: Context): String
 
-  def TypeRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeRef]
+  def TypeRef_TypeTest: TypeTest[TypeOrBounds, TypeRef]
 
   def TypeRef_qualifier(self: TypeRef)(using ctx: Context): TypeOrBounds
   def TypeRef_name(self: TypeRef)(using ctx: Context): String
   def TypeRef_isOpaqueAlias(self: TypeRef)(using ctx: Context): Boolean
   def TypeRef_translucentSuperType(self: TypeRef)(using ctx: Context): Type
 
-  def SuperType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, SuperType]
+  def SuperType_TypeTest: TypeTest[TypeOrBounds, SuperType]
 
   def SuperType_apply(thistpe: Type, supertpe: Type)(using ctx: Context): SuperType
 
   def SuperType_thistpe(self: SuperType)(using ctx: Context): Type
   def SuperType_supertpe(self: SuperType)(using ctx: Context): Type
 
-  def Refinement_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, Refinement]
+  def Refinement_TypeTest: TypeTest[TypeOrBounds, Refinement]
 
   def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(using ctx: Context): Refinement
 
@@ -639,35 +639,35 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Refinement_name(self: Refinement)(using ctx: Context): String
   def Refinement_info(self: Refinement)(using ctx: Context): TypeOrBounds
 
-  def AppliedType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AppliedType]
+  def AppliedType_TypeTest: TypeTest[TypeOrBounds, AppliedType]
 
   def AppliedType_tycon(self: AppliedType)(using ctx: Context): Type
   def AppliedType_args(self: AppliedType)(using ctx: Context): List[TypeOrBounds]
 
   def AppliedType_apply(tycon: Type, args: List[TypeOrBounds])(using ctx: Context) : AppliedType
 
-  def AnnotatedType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AnnotatedType]
+  def AnnotatedType_TypeTest: TypeTest[TypeOrBounds, AnnotatedType]
 
   def AnnotatedType_apply(underlying: Type, annot: Term)(using ctx: Context): AnnotatedType
 
   def AnnotatedType_underlying(self: AnnotatedType)(using ctx: Context): Type
   def AnnotatedType_annot(self: AnnotatedType)(using ctx: Context): Term
 
-  def AndType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AndType]
+  def AndType_TypeTest: TypeTest[TypeOrBounds, AndType]
 
   def AndType_apply(lhs: Type, rhs: Type)(using ctx: Context): AndType
 
   def AndType_left(self: AndType)(using ctx: Context): Type
   def AndType_right(self: AndType)(using ctx: Context): Type
 
-  def OrType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, OrType]
+  def OrType_TypeTest: TypeTest[TypeOrBounds, OrType]
 
   def OrType_apply(lhs : Type, rhs : Type)(using ctx : Context): OrType
 
   def OrType_left(self: OrType)(using ctx: Context): Type
   def OrType_right(self: OrType)(using ctx: Context): Type
 
-  def MatchType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, MatchType]
+  def MatchType_TypeTest: TypeTest[TypeOrBounds, MatchType]
 
   def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type])(using ctx: Context): MatchType
 
@@ -675,26 +675,26 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def MatchType_scrutinee(self: MatchType)(using ctx: Context): Type
   def MatchType_cases(self: MatchType)(using ctx: Context): List[Type]
 
-  def ByNameType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ByNameType]
+  def ByNameType_TypeTest: TypeTest[TypeOrBounds, ByNameType]
 
   def ByNameType_apply(underlying: Type)(using ctx: Context): Type
 
   def ByNameType_underlying(self: ByNameType)(using ctx: Context): Type
 
-  def ParamRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ParamRef]
+  def ParamRef_TypeTest: TypeTest[TypeOrBounds, ParamRef]
 
   def ParamRef_binder(self: ParamRef)(using ctx: Context): LambdaType[TypeOrBounds]
   def ParamRef_paramNum(self: ParamRef)(using ctx: Context): Int
 
-  def ThisType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ThisType]
+  def ThisType_TypeTest: TypeTest[TypeOrBounds, ThisType]
 
   def ThisType_tref(self: ThisType)(using ctx: Context): Type
 
-  def RecursiveThis_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, RecursiveThis]
+  def RecursiveThis_TypeTest: TypeTest[TypeOrBounds, RecursiveThis]
 
   def RecursiveThis_binder(self: RecursiveThis)(using ctx: Context): RecursiveType
 
-  def RecursiveType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, RecursiveType]
+  def RecursiveType_TypeTest: TypeTest[TypeOrBounds, RecursiveType]
 
   /** Create a RecType, normalizing its contents. This means:
    *
@@ -710,7 +710,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def RecursiveThis_recThis(self: RecursiveType)(using ctx: Context): RecursiveThis
 
-  def MethodType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, MethodType]
+  def MethodType_TypeTest: TypeTest[TypeOrBounds, MethodType]
 
   def MethodType_apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType
 
@@ -721,7 +721,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def MethodType_paramTypes(self: MethodType)(using ctx: Context): List[Type]
   def MethodType_resType(self: MethodType)(using ctx: Context): Type
 
-  def PolyType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, PolyType]
+  def PolyType_TypeTest: TypeTest[TypeOrBounds, PolyType]
 
   def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using ctx: Context): PolyType
 
@@ -730,7 +730,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def PolyType_paramBounds(self: PolyType)(using ctx: Context): List[TypeBounds]
   def PolyType_resType(self: PolyType)(using ctx: Context): Type
 
-  def TypeLambda_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeLambda]
+  def TypeLambda_TypeTest: TypeTest[TypeOrBounds, TypeLambda]
 
   def TypeLambda_apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda
 
@@ -744,16 +744,16 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   // IMPORT SELECTORS //
   //////////////////////
 
-  def SimpleSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, SimpleSelector]
+  def SimpleSelector_TypeTest: TypeTest[ImportSelector, SimpleSelector]
 
   def SimpleSelector_selection(self: SimpleSelector)(using ctx: Context): Id
 
-  def RenameSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, RenameSelector]
+  def RenameSelector_TypeTest: TypeTest[ImportSelector, RenameSelector]
 
   def RenameSelector_from(self: RenameSelector)(using ctx: Context): Id
   def RenameSelector_to(self: RenameSelector)(using ctx: Context): Id
 
-  def OmitSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, OmitSelector]
+  def OmitSelector_TypeTest: TypeTest[ImportSelector, OmitSelector]
 
   def SimpleSelector_omitted(self: OmitSelector)(using ctx: Context): Id
 
@@ -1185,17 +1185,17 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   // IMPLICITS //
   ///////////////
 
-  def ImplicitSearchSuccess_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
+  def ImplicitSearchSuccess_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
   def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess)(using ctx: Context): Term
 
-  def ImplicitSearchFailure_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
+  def ImplicitSearchFailure_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
   def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure)(using ctx: Context): String
 
-  def DivergingImplicit_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, DivergingImplicit]
+  def DivergingImplicit_TypeTest: TypeTest[ImplicitSearchResult, DivergingImplicit]
 
-  def NoMatchingImplicits_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, NoMatchingImplicits]
+  def NoMatchingImplicits_TypeTest: TypeTest[ImplicitSearchResult, NoMatchingImplicits]
 
-  def AmbiguousImplicits_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, AmbiguousImplicits]
+  def AmbiguousImplicits_TypeTest: TypeTest[ImplicitSearchResult, AmbiguousImplicits]
 
   /** Find an implicit of type `T` in the current scope given by `ctx`.
    *  Return an `ImplicitSearchResult`.

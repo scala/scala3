@@ -109,7 +109,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type PackageClause = tpd.PackageDef
 
-  def PackageClause_TypeTest(using Context): TypeTest[Tree, PackageClause] = new {
+  def PackageClause_TypeTest: TypeTest[Tree, PackageClause] = new {
     def runtimeClass: Class[?] = classOf[PackageClause]
     override def unapply(x: Any): Option[PackageClause] = x match
       case x: tpd.PackageDef @unchecked => Some(x)
@@ -127,7 +127,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Statement = tpd.Tree
 
-  def Statement_TypeTest(using Context): TypeTest[Tree, Statement] = new {
+  def Statement_TypeTest: TypeTest[Tree, Statement] = new {
     def runtimeClass: Class[?] = classOf[Statement]
     override def unapply(x: Any): Option[Statement] = x match
       case _: PatternTree @unchecked => None
@@ -138,7 +138,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Import = tpd.Import
 
-  def Import_TypeTest(using Context): TypeTest[Tree, Import] = new {
+  def Import_TypeTest: TypeTest[Tree, Import] = new {
     def runtimeClass: Class[?] = classOf[Import]
     override def unapply(x: Any): Option[Import] = x match
       case tree: tpd.Import @unchecked => Some(tree)
@@ -157,7 +157,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Definition = tpd.Tree
 
-  def Definition_TypeTest(using Context): TypeTest[Tree, Definition] = new {
+  def Definition_TypeTest: TypeTest[Tree, Definition] = new {
     def runtimeClass: Class[?] = classOf[Definition]
     override def unapply(x: Any): Option[Definition] = x match
       case x: tpd.MemberDef @unchecked => Some(x)
@@ -172,7 +172,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type PackageDef = PackageDefinition
 
-  def PackageDef_TypeTest(using Context): TypeTest[Tree, PackageDef] = new {
+  def PackageDef_TypeTest: TypeTest[Tree, PackageDef] = new {
     def runtimeClass: Class[?] = classOf[PackageDef]
     override def unapply(x: Any): Option[PackageDef] = x match
       case x: PackageDefinition @unchecked => Some(x)
@@ -187,7 +187,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ClassDef = tpd.TypeDef
 
-  def ClassDef_TypeTest(using Context): TypeTest[Tree, ClassDef] = new {
+  def ClassDef_TypeTest: TypeTest[Tree, ClassDef] = new {
     def runtimeClass: Class[?] = classOf[ClassDef]
     override def unapply(x: Any): Option[ClassDef] = x match
       case x: tpd.TypeDef @unchecked if x.isClassDef => Some(x)
@@ -208,7 +208,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeDef = tpd.TypeDef
 
-  def TypeDef_TypeTest(using Context): TypeTest[Tree, TypeDef] = new {
+  def TypeDef_TypeTest: TypeTest[Tree, TypeDef] = new {
     def runtimeClass: Class[?] = classOf[TypeDef]
     override def unapply(x: Any): Option[TypeDef] = x match
       case x: tpd.TypeDef @unchecked if !x.isClassDef => Some(x)
@@ -223,7 +223,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type DefDef = tpd.DefDef
 
-  def DefDef_TypeTest(using Context): TypeTest[Tree, DefDef] = new {
+  def DefDef_TypeTest: TypeTest[Tree, DefDef] = new {
     def runtimeClass: Class[?] = classOf[DefDef]
     override def unapply(x: Any): Option[DefDef] = x match
       case x: tpd.DefDef @unchecked => Some(x)
@@ -243,7 +243,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ValDef = tpd.ValDef
 
-  def ValDef_TypeTest(using Context): TypeTest[Tree, ValDef] = new {
+  def ValDef_TypeTest: TypeTest[Tree, ValDef] = new {
     def runtimeClass: Class[?] = classOf[ValDef]
     override def unapply(x: Any): Option[ValDef] = x match
       case x: tpd.ValDef @unchecked => Some(x)
@@ -261,7 +261,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Term = tpd.Tree
 
-  def Term_TypeTest(using Context): TypeTest[Tree, Term] = new {
+  def Term_TypeTest: TypeTest[Tree, Term] = new {
     def runtimeClass: Class[?] = classOf[Term]
     override def unapply(x: Any): Option[Term] = x match
       case _ if Unapply_TypeTest.unapply(x).isDefined => None
@@ -296,7 +296,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Ref = tpd.RefTree
 
-  def Ref_TypeTest(using Context): TypeTest[Tree, Ref] = new {
+  def Ref_TypeTest: TypeTest[Tree, Ref] = new {
     def runtimeClass: Class[?] = classOf[Ref]
     override def unapply(x: Any): Option[Ref] = x match
       case x: tpd.RefTree @unchecked if x.isTerm => Some(x)
@@ -313,7 +313,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Ident = tpd.Ident
 
-  def Ident_TypeTest(using Context): TypeTest[Tree, Ident] = new {
+  def Ident_TypeTest: TypeTest[Tree, Ident] = new {
     def runtimeClass: Class[?] = classOf[Ident]
     override def unapply(x: Any): Option[Ident] = x match
       case x: tpd.Ident @unchecked if x.isTerm => Some(x)
@@ -330,7 +330,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Select = tpd.Select
 
-  def Select_TypeTest(using Context): TypeTest[Tree, Select] = new {
+  def Select_TypeTest: TypeTest[Tree, Select] = new {
     def runtimeClass: Class[?] = classOf[Select]
     override def unapply(x: Any): Option[Select] = x match
       case x: tpd.Select @unchecked if x.isTerm => Some(x)
@@ -361,7 +361,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Literal = tpd.Literal
 
-  def Literal_TypeTest(using Context): TypeTest[Tree, Literal] = new {
+  def Literal_TypeTest: TypeTest[Tree, Literal] = new {
     def runtimeClass: Class[?] = classOf[Literal]
     override def unapply(x: Any): Option[Literal] = x match
       case x: tpd.Literal @unchecked => Some(x)
@@ -378,7 +378,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type This = tpd.This
 
-  def This_TypeTest(using Context): TypeTest[Tree, This] = new {
+  def This_TypeTest: TypeTest[Tree, This] = new {
     def runtimeClass: Class[?] = classOf[This]
     override def unapply(x: Any): Option[This] = x match
       case x: tpd.This @unchecked => Some(x)
@@ -395,7 +395,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type New = tpd.New
 
-  def New_TypeTest(using Context): TypeTest[Tree, New] = new {
+  def New_TypeTest: TypeTest[Tree, New] = new {
     def runtimeClass: Class[?] = classOf[New]
     override def unapply(x: Any): Option[New] = x match
       case x: tpd.New @unchecked => Some(x)
@@ -411,7 +411,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type NamedArg = tpd.NamedArg
 
-  def NamedArg_TypeTest(using Context): TypeTest[Tree, NamedArg] = new {
+  def NamedArg_TypeTest: TypeTest[Tree, NamedArg] = new {
     def runtimeClass: Class[?] = classOf[NamedArg]
     override def unapply(x: Any): Option[NamedArg] = x match
       case x: tpd.NamedArg @unchecked if x.name.isInstanceOf[core.Names.TermName] => Some(x) // TODO: Now, the name should alwas be a term name
@@ -429,7 +429,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Apply = tpd.Apply
 
-  def Apply_TypeTest(using Context): TypeTest[Tree, Apply] = new {
+  def Apply_TypeTest: TypeTest[Tree, Apply] = new {
     def runtimeClass: Class[?] = classOf[Apply]
     override def unapply(x: Any): Option[Apply] = x match
       case x: tpd.Apply @unchecked => Some(x)
@@ -448,7 +448,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeApply = tpd.TypeApply
 
-  def TypeApply_TypeTest(using Context): TypeTest[Tree, TypeApply] = new {
+  def TypeApply_TypeTest: TypeTest[Tree, TypeApply] = new {
     def runtimeClass: Class[?] = classOf[TypeApply]
     override def unapply(x: Any): Option[TypeApply] = x match
       case x: tpd.TypeApply @unchecked => Some(x)
@@ -466,7 +466,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Super = tpd.Super
 
-  def Super_TypeTest(using Context): TypeTest[Tree, Super] = new {
+  def Super_TypeTest: TypeTest[Tree, Super] = new {
     def runtimeClass: Class[?] = classOf[Super]
     override def unapply(x: Any): Option[Super] = x match
       case x: tpd.Super @unchecked => Some(x)
@@ -484,7 +484,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Typed = tpd.Typed
 
-  def Typed_TypeTest(using Context): TypeTest[Tree, Typed] = new {
+  def Typed_TypeTest: TypeTest[Tree, Typed] = new {
     def runtimeClass: Class[?] = classOf[Typed]
     override def unapply(x: Any): Option[Typed] = x match
       case x: tpd.Typed @unchecked => Some(x)
@@ -502,7 +502,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Assign = tpd.Assign
 
-  def Assign_TypeTest(using Context): TypeTest[Tree, Assign] = new {
+  def Assign_TypeTest: TypeTest[Tree, Assign] = new {
     def runtimeClass: Class[?] = classOf[Assign]
     override def unapply(x: Any): Option[Assign] = x match
       case x: tpd.Assign @unchecked => Some(x)
@@ -520,7 +520,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Block = tpd.Block
 
-  def Block_TypeTest(using Context): TypeTest[Tree, Block] = new {
+  def Block_TypeTest: TypeTest[Tree, Block] = new {
     def runtimeClass: Class[?] = classOf[Block]
     override def unapply(x: Any): Option[Block] =
       x match
@@ -572,7 +572,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Inlined = tpd.Inlined
 
-  def Inlined_TypeTest(using Context): TypeTest[Tree, Inlined] = new {
+  def Inlined_TypeTest: TypeTest[Tree, Inlined] = new {
     def runtimeClass: Class[?] = classOf[Inlined]
     override def unapply(x: Any): Option[Inlined] = x match
       case x: tpd.Inlined @unchecked => Some(x)
@@ -591,7 +591,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Closure = tpd.Closure
 
-  def Closure_TypeTest(using Context): TypeTest[Tree, Closure] = new {
+  def Closure_TypeTest: TypeTest[Tree, Closure] = new {
     def runtimeClass: Class[?] = classOf[Closure]
     override def unapply(x: Any): Option[Closure] = x match
       case x: tpd.Closure @unchecked => Some(x)
@@ -612,7 +612,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type If = tpd.If
 
-  def If_TypeTest(using Context): TypeTest[Tree, If] = new {
+  def If_TypeTest: TypeTest[Tree, If] = new {
     def runtimeClass: Class[?] = classOf[If]
     override def unapply(x: Any): Option[If] = x match
       case x: tpd.If @unchecked => Some(x)
@@ -631,7 +631,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Match = tpd.Match
 
-  def Match_TypeTest(using Context): TypeTest[Tree, Match] = new {
+  def Match_TypeTest: TypeTest[Tree, Match] = new {
     def runtimeClass: Class[?] = classOf[Match]
     override def unapply(x: Any): Option[Match] = x match
       case x: tpd.Match @unchecked if !x.selector.isEmpty => Some(x)
@@ -649,7 +649,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type GivenMatch = tpd.Match
 
-  def GivenMatch_TypeTest(using Context): TypeTest[Tree, GivenMatch] = new {
+  def GivenMatch_TypeTest: TypeTest[Tree, GivenMatch] = new {
     def runtimeClass: Class[?] = classOf[GivenMatch]
     override def unapply(x: Any): Option[GivenMatch] = x match
       case x: tpd.Match @unchecked if x.selector.isEmpty => Some(x)
@@ -666,7 +666,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Try = tpd.Try
 
-  def Try_TypeTest(using Context): TypeTest[Tree, Try] = new {
+  def Try_TypeTest: TypeTest[Tree, Try] = new {
     def runtimeClass: Class[?] = classOf[Try]
     override def unapply(x: Any): Option[Try] = x match
       case x: tpd.Try @unchecked => Some(x)
@@ -685,7 +685,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Return = tpd.Return
 
-  def Return_TypeTest(using Context): TypeTest[Tree, Return] = new {
+  def Return_TypeTest: TypeTest[Tree, Return] = new {
     def runtimeClass: Class[?] = classOf[Return]
     override def unapply(x: Any): Option[Return] = x match
       case x: tpd.Return @unchecked => Some(x)
@@ -702,7 +702,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Repeated = tpd.SeqLiteral
 
-  def Repeated_TypeTest(using Context): TypeTest[Tree, Repeated] = new {
+  def Repeated_TypeTest: TypeTest[Tree, Repeated] = new {
     def runtimeClass: Class[?] = classOf[Repeated]
     override def unapply(x: Any): Option[Repeated] = x match
       case x: tpd.SeqLiteral @unchecked => Some(x)
@@ -720,7 +720,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type SelectOuter = tpd.Select
 
-  def SelectOuter_TypeTest(using Context): TypeTest[Tree, SelectOuter] = new {
+  def SelectOuter_TypeTest: TypeTest[Tree, SelectOuter] = new {
     def runtimeClass: Class[?] = classOf[SelectOuter]
     override def unapply(x: Any): Option[SelectOuter] = x match
     case x: tpd.Select @unchecked =>
@@ -744,7 +744,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type While = tpd.WhileDo
 
-  def While_TypeTest(using Context): TypeTest[Tree, While] = new {
+  def While_TypeTest: TypeTest[Tree, While] = new {
     def runtimeClass: Class[?] = classOf[While]
     override def unapply(x: Any): Option[While] = x match
       case x: tpd.WhileDo @unchecked => Some(x)
@@ -762,7 +762,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeTree = tpd.Tree
 
-  def TypeTree_TypeTest(using Context): TypeTest[Tree, TypeTree] = new {
+  def TypeTree_TypeTest: TypeTest[Tree, TypeTree] = new {
     def runtimeClass: Class[?] = classOf[TypeTree]
     override def unapply(x: Any): Option[TypeTree] = x match
       case x: tpd.TypeBoundsTree @unchecked => None
@@ -774,7 +774,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Inferred = tpd.TypeTree
 
-  def Inferred_TypeTest(using Context): TypeTest[Tree, Inferred] = new {
+  def Inferred_TypeTest: TypeTest[Tree, Inferred] = new {
     def runtimeClass: Class[?] = classOf[Inferred]
     override def unapply(x: Any): Option[Inferred] = x match
       case tpt: tpd.TypeTree @unchecked if !tpt.tpe.isInstanceOf[Types.TypeBounds] => Some(tpt)
@@ -785,7 +785,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeIdent = tpd.Ident
 
-  def TypeIdent_TypeTest(using Context): TypeTest[Tree, TypeIdent] = new {
+  def TypeIdent_TypeTest: TypeTest[Tree, TypeIdent] = new {
     def runtimeClass: Class[?] = classOf[TypeIdent]
     override def unapply(x: Any): Option[TypeIdent] = x match
       case tpt: tpd.Ident @unchecked if tpt.isType => Some(tpt)
@@ -799,7 +799,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeSelect = tpd.Select
 
-  def TypeSelect_TypeTest(using Context): TypeTest[Tree, TypeSelect] = new {
+  def TypeSelect_TypeTest: TypeTest[Tree, TypeSelect] = new {
     def runtimeClass: Class[?] = classOf[TypeSelect]
     override def unapply(x: Any): Option[TypeSelect] = x match
       case tpt: tpd.Select @unchecked if tpt.isType && tpt.qualifier.isTerm  => Some(tpt)
@@ -818,7 +818,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Projection = tpd.Select
 
-  def Projection_TypeTest(using Context): TypeTest[Tree, Projection] = new {
+  def Projection_TypeTest: TypeTest[Tree, Projection] = new {
     def runtimeClass: Class[?] = classOf[Projection]
     override def unapply(x: Any): Option[Projection] = x match
       case tpt: tpd.Select @unchecked if tpt.isType && tpt.qualifier.isType => Some(tpt)
@@ -833,7 +833,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Singleton = tpd.SingletonTypeTree
 
-  def Singleton_TypeTest(using Context): TypeTest[Tree, Singleton] = new {
+  def Singleton_TypeTest: TypeTest[Tree, Singleton] = new {
     def runtimeClass: Class[?] = classOf[Singleton]
     override def unapply(x: Any): Option[Singleton] = x match
       case tpt: tpd.SingletonTypeTree @unchecked => Some(tpt)
@@ -850,7 +850,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Refined = tpd.RefinedTypeTree
 
-  def Refined_TypeTest(using Context): TypeTest[Tree, Refined] = new {
+  def Refined_TypeTest: TypeTest[Tree, Refined] = new {
     def runtimeClass: Class[?] = classOf[Refined]
     override def unapply(x: Any): Option[Refined] = x match
       case tpt: tpd.RefinedTypeTree @unchecked => Some(tpt)
@@ -865,7 +865,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Applied = tpd.AppliedTypeTree
 
-  def Applied_TypeTest(using Context): TypeTest[Tree, Applied] = new {
+  def Applied_TypeTest: TypeTest[Tree, Applied] = new {
     def runtimeClass: Class[?] = classOf[Applied]
     override def unapply(x: Any): Option[Applied] = x match
       case tpt: tpd.AppliedTypeTree @unchecked => Some(tpt)
@@ -883,7 +883,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Annotated = tpd.Annotated
 
-  def Annotated_TypeTest(using Context): TypeTest[Tree, Annotated] = new {
+  def Annotated_TypeTest: TypeTest[Tree, Annotated] = new {
     def runtimeClass: Class[?] = classOf[Annotated]
     override def unapply(x: Any): Option[Annotated] = x match
       case tpt: tpd.Annotated @unchecked => Some(tpt)
@@ -901,7 +901,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type MatchTypeTree = tpd.MatchTypeTree
 
-  def MatchTypeTree_TypeTest(using Context): TypeTest[Tree, MatchTypeTree] = new {
+  def MatchTypeTree_TypeTest: TypeTest[Tree, MatchTypeTree] = new {
     def runtimeClass: Class[?] = classOf[MatchTypeTree]
     override def unapply(x: Any): Option[MatchTypeTree] = x match
       case tpt: tpd.MatchTypeTree @unchecked => Some(tpt)
@@ -920,7 +920,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ByName = tpd.ByNameTypeTree
 
-  def ByName_TypeTest(using Context): TypeTest[Tree, ByName] = new {
+  def ByName_TypeTest: TypeTest[Tree, ByName] = new {
     def runtimeClass: Class[?] = classOf[ByName]
     override def unapply(x: Any): Option[ByName] = x match
       case tpt: tpd.ByNameTypeTree @unchecked => Some(tpt)
@@ -937,7 +937,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type LambdaTypeTree = tpd.LambdaTypeTree
 
-  def LambdaTypeTree_TypeTest(using Context): TypeTest[Tree, LambdaTypeTree] = new {
+  def LambdaTypeTree_TypeTest: TypeTest[Tree, LambdaTypeTree] = new {
     def runtimeClass: Class[?] = classOf[LambdaTypeTree]
     override def unapply(x: Any): Option[LambdaTypeTree] = x match
       case tpt: tpd.LambdaTypeTree @unchecked => Some(tpt)
@@ -955,7 +955,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeBind = tpd.Bind
 
-  def TypeBind_TypeTest(using Context): TypeTest[Tree, TypeBind] = new {
+  def TypeBind_TypeTest: TypeTest[Tree, TypeBind] = new {
     def runtimeClass: Class[?] = classOf[TypeBind]
     override def unapply(x: Any): Option[TypeBind] = x match
       case tpt: tpd.Bind @unchecked if tpt.name.isTypeName => Some(tpt)
@@ -970,7 +970,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeBlock = tpd.Block
 
-  def TypeBlock_TypeTest(using Context): TypeTest[Tree, TypeBlock] = new {
+  def TypeBlock_TypeTest: TypeTest[Tree, TypeBlock] = new {
     def runtimeClass: Class[?] = classOf[TypeBlock]
     override def unapply(x: Any): Option[TypeBlock] = x match
       case tpt: tpd.Block @unchecked => Some(tpt)
@@ -988,7 +988,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeBoundsTree = tpd.TypeBoundsTree
 
-  def TypeBoundsTree_TypeTest(using Context): TypeTest[Tree, TypeBoundsTree] = new {
+  def TypeBoundsTree_TypeTest: TypeTest[Tree, TypeBoundsTree] = new {
     def runtimeClass: Class[?] = classOf[TypeBoundsTree]
     override def unapply(x: Any): Option[TypeBoundsTree] = x match
       case x: tpd.TypeBoundsTree @unchecked => Some(x)
@@ -1008,7 +1008,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type WildcardTypeTree = tpd.Ident
 
-  def WildcardTypeTree_TypeTest(using Context): TypeTest[Tree, WildcardTypeTree] = new {
+  def WildcardTypeTree_TypeTest: TypeTest[Tree, WildcardTypeTree] = new {
     def runtimeClass: Class[?] = classOf[WildcardTypeTree]
     override def unapply(x: Any): Option[WildcardTypeTree] = x match
       case x: tpd.Ident @unchecked if x.name == nme.WILDCARD => Some(x)
@@ -1019,7 +1019,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type CaseDef = tpd.CaseDef
 
-  def CaseDef_TypeTest(using Context): TypeTest[Tree, CaseDef] = new {
+  def CaseDef_TypeTest: TypeTest[Tree, CaseDef] = new {
     def runtimeClass: Class[?] = classOf[CaseDef]
     override def unapply(x: Any): Option[CaseDef] = x match
       case tree: tpd.CaseDef @unchecked if tree.body.isTerm => Some(tree)
@@ -1038,7 +1038,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeCaseDef = tpd.CaseDef
 
-  def TypeCaseDef_TypeTest(using Context): TypeTest[Tree, TypeCaseDef] = new {
+  def TypeCaseDef_TypeTest: TypeTest[Tree, TypeCaseDef] = new {
     def runtimeClass: Class[?] = classOf[TypeCaseDef]
     override def unapply(x: Any): Option[TypeCaseDef] = x match
       case tree: tpd.CaseDef @unchecked if tree.body.isType => Some(tree)
@@ -1056,7 +1056,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Bind = tpd.Bind
 
-  def Bind_TypeTest(using Context): TypeTest[Tree, Bind] = new {
+  def Bind_TypeTest: TypeTest[Tree, Bind] = new {
     def runtimeClass: Class[?] = classOf[Bind]
     override def unapply(x: Any): Option[Bind] = x match
       case x: tpd.Bind @unchecked if x.name.isTermName => Some(x)
@@ -1075,7 +1075,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Unapply = tpd.UnApply
 
-  def Unapply_TypeTest(using Context): TypeTest[Tree, Unapply] = new {
+  def Unapply_TypeTest: TypeTest[Tree, Unapply] = new {
     def runtimeClass: Class[?] = classOf[Unapply]
     override def unapply(x: Any): Option[Unapply] = x match
       case pattern: tpd.UnApply @unchecked => Some(pattern)
@@ -1097,7 +1097,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Alternatives = tpd.Alternative
 
-  def Alternatives_TypeTest(using Context): TypeTest[Tree, Alternatives] = new {
+  def Alternatives_TypeTest: TypeTest[Tree, Alternatives] = new {
     def runtimeClass: Class[?] = classOf[Alternatives]
     override def unapply(x: Any): Option[Alternatives] = x match
       case x: tpd.Alternative @unchecked => Some(x)
@@ -1121,7 +1121,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type NoPrefix = Types.NoPrefix.type
 
-  def NoPrefix_TypeTest(using Context): TypeTest[TypeOrBounds, NoPrefix] = new {
+  def NoPrefix_TypeTest: TypeTest[TypeOrBounds, NoPrefix] = new {
     def runtimeClass: Class[?] = classOf[Types.NoPrefix.type]
     override def unapply(x: Any): Option[NoPrefix] =
       if (x == Types.NoPrefix) Some(Types.NoPrefix) else None
@@ -1129,7 +1129,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeBounds = Types.TypeBounds
 
-  def TypeBounds_TypeTest(using Context): TypeTest[TypeOrBounds, TypeBounds] = new {
+  def TypeBounds_TypeTest: TypeTest[TypeOrBounds, TypeBounds] = new {
     def runtimeClass: Class[?] = classOf[TypeBounds]
     override def unapply(x: Any): Option[TypeBounds] = x match
       case x: Types.TypeBounds => Some(x)
@@ -1144,7 +1144,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Type = Types.Type
 
-  def Type_TypeTest(using Context): TypeTest[TypeOrBounds, Type] = new {
+  def Type_TypeTest: TypeTest[TypeOrBounds, Type] = new {
     def runtimeClass: Class[?] = classOf[Type]
     override def unapply(x: Any): Option[Type] = x match
       case x: TypeBounds => None
@@ -1226,7 +1226,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ConstantType = Types.ConstantType
 
-  def ConstantType_TypeTest(using Context): TypeTest[TypeOrBounds, ConstantType] = new {
+  def ConstantType_TypeTest: TypeTest[TypeOrBounds, ConstantType] = new {
     def runtimeClass: Class[?] = classOf[ConstantType]
     override def unapply(x: Any): Option[ConstantType] = x match
       case tpe: Types.ConstantType => Some(tpe)
@@ -1240,7 +1240,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TermRef = Types.NamedType
 
-  def TermRef_TypeTest(using Context): TypeTest[TypeOrBounds, TermRef] = new {
+  def TermRef_TypeTest: TypeTest[TypeOrBounds, TermRef] = new {
     def runtimeClass: Class[?] = classOf[TermRef]
     override def unapply(x: Any): Option[TermRef] = x match
       case tp: Types.TermRef => Some(tp)
@@ -1256,7 +1256,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeRef = Types.NamedType
 
-  def TypeRef_TypeTest(using Context): TypeTest[TypeOrBounds, TypeRef] = new {
+  def TypeRef_TypeTest: TypeTest[TypeOrBounds, TypeRef] = new {
     def runtimeClass: Class[?] = classOf[TypeRef]
     override def unapply(x: Any): Option[TypeRef] = x match
       case tp: Types.TypeRef => Some(tp)
@@ -1273,7 +1273,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type NamedTermRef = Types.NamedType
 
-  def NamedTermRef_TypeTest(using Context): TypeTest[TypeOrBounds, NamedTermRef] = new {
+  def NamedTermRef_TypeTest: TypeTest[TypeOrBounds, NamedTermRef] = new {
     def runtimeClass: Class[?] = classOf[NamedTermRef]
     override def unapply(x: Any): Option[NamedTermRef] = x match
       case tpe: Types.NamedType =>
@@ -1289,7 +1289,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type SuperType = Types.SuperType
 
-  def SuperType_TypeTest(using Context): TypeTest[TypeOrBounds, SuperType] = new {
+  def SuperType_TypeTest: TypeTest[TypeOrBounds, SuperType] = new {
     def runtimeClass: Class[?] = classOf[SuperType]
     override def unapply(x: Any): Option[SuperType] = x match
       case tpe: Types.SuperType => Some(tpe)
@@ -1304,7 +1304,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Refinement = Types.RefinedType
 
-  def Refinement_TypeTest(using Context): TypeTest[TypeOrBounds, Refinement] = new {
+  def Refinement_TypeTest: TypeTest[TypeOrBounds, Refinement] = new {
     def runtimeClass: Class[?] = classOf[Refinement]
     override def unapply(x: Any): Option[Refinement] = x match
       case tpe: Types.RefinedType => Some(tpe)
@@ -1325,7 +1325,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type AppliedType = Types.AppliedType
 
-  def AppliedType_TypeTest(using Context): TypeTest[TypeOrBounds, AppliedType] = new {
+  def AppliedType_TypeTest: TypeTest[TypeOrBounds, AppliedType] = new {
     def runtimeClass: Class[?] = classOf[AppliedType]
     override def unapply(x: Any): Option[AppliedType] = x match
       case tpe: Types.AppliedType => Some(tpe)
@@ -1339,7 +1339,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type AnnotatedType = Types.AnnotatedType
 
-  def AnnotatedType_TypeTest(using Context): TypeTest[TypeOrBounds, AnnotatedType] = new {
+  def AnnotatedType_TypeTest: TypeTest[TypeOrBounds, AnnotatedType] = new {
     def runtimeClass: Class[?] = classOf[AnnotatedType]
     override def unapply(x: Any): Option[AnnotatedType] = x match
       case tpe: Types.AnnotatedType => Some(tpe)
@@ -1354,7 +1354,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type AndType = Types.AndType
 
-  def AndType_TypeTest(using Context): TypeTest[TypeOrBounds, AndType] = new {
+  def AndType_TypeTest: TypeTest[TypeOrBounds, AndType] = new {
     def runtimeClass: Class[?] = classOf[AndType]
     override def unapply(x: Any): Option[AndType] = x match
       case tpe: Types.AndType => Some(tpe)
@@ -1369,7 +1369,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type OrType = Types.OrType
 
-  def OrType_TypeTest(using Context): TypeTest[TypeOrBounds, OrType] = new {
+  def OrType_TypeTest: TypeTest[TypeOrBounds, OrType] = new {
     def runtimeClass: Class[?] = classOf[OrType]
     override def unapply(x: Any): Option[OrType] = x match
       case tpe: Types.OrType => Some(tpe)
@@ -1384,7 +1384,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type MatchType = Types.MatchType
 
-  def MatchType_TypeTest(using Context): TypeTest[TypeOrBounds, MatchType] = new {
+  def MatchType_TypeTest: TypeTest[TypeOrBounds, MatchType] = new {
     def runtimeClass: Class[?] = classOf[MatchType]
     override def unapply(x: Any): Option[MatchType] = x match
       case tpe: Types.MatchType => Some(tpe)
@@ -1400,7 +1400,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ByNameType = Types.ExprType
 
-  def ByNameType_TypeTest(using Context): TypeTest[TypeOrBounds, ByNameType] = new {
+  def ByNameType_TypeTest: TypeTest[TypeOrBounds, ByNameType] = new {
     def runtimeClass: Class[?] = classOf[ByNameType]
     override def unapply(x: Any): Option[ByNameType] = x match
       case tpe: Types.ExprType => Some(tpe)
@@ -1413,7 +1413,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ParamRef = Types.ParamRef
 
-  def ParamRef_TypeTest(using Context): TypeTest[TypeOrBounds, ParamRef] = new {
+  def ParamRef_TypeTest: TypeTest[TypeOrBounds, ParamRef] = new {
     def runtimeClass: Class[?] = classOf[ParamRef]
     override def unapply(x: Any): Option[ParamRef] = x match
       case tpe: Types.TypeParamRef => Some(tpe)
@@ -1427,7 +1427,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ThisType = Types.ThisType
 
-  def ThisType_TypeTest(using Context): TypeTest[TypeOrBounds, ThisType] = new {
+  def ThisType_TypeTest: TypeTest[TypeOrBounds, ThisType] = new {
     def runtimeClass: Class[?] = classOf[ThisType]
     override def unapply(x: Any): Option[ThisType] = x match
       case tpe: Types.ThisType => Some(tpe)
@@ -1438,7 +1438,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type RecursiveThis = Types.RecThis
 
-  def RecursiveThis_TypeTest(using Context): TypeTest[TypeOrBounds, RecursiveThis] = new {
+  def RecursiveThis_TypeTest: TypeTest[TypeOrBounds, RecursiveThis] = new {
     def runtimeClass: Class[?] = classOf[RecursiveThis]
     override def unapply(x: Any): Option[RecursiveThis] = x match
       case tpe: Types.RecThis => Some(tpe)
@@ -1449,7 +1449,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type RecursiveType = Types.RecType
 
-  def RecursiveType_TypeTest(using Context): TypeTest[TypeOrBounds, RecursiveType] = new {
+  def RecursiveType_TypeTest: TypeTest[TypeOrBounds, RecursiveType] = new {
     def runtimeClass: Class[?] = classOf[RecursiveType]
     override def unapply(x: Any): Option[RecursiveType] = x match
       case tpe: Types.RecType => Some(tpe)
@@ -1467,7 +1467,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type MethodType = Types.MethodType
 
-  def MethodType_TypeTest(using Context): TypeTest[TypeOrBounds, MethodType] = new {
+  def MethodType_TypeTest: TypeTest[TypeOrBounds, MethodType] = new {
     def runtimeClass: Class[?] = classOf[MethodType]
     override def unapply(x: Any): Option[MethodType] = x match
       case tpe: Types.MethodType => Some(tpe)
@@ -1486,7 +1486,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type PolyType = Types.PolyType
 
-  def PolyType_TypeTest(using Context): TypeTest[TypeOrBounds, PolyType] = new {
+  def PolyType_TypeTest: TypeTest[TypeOrBounds, PolyType] = new {
     def runtimeClass: Class[?] = classOf[PolyType]
     override def unapply(x: Any): Option[PolyType] = x match
       case tpe: Types.PolyType => Some(tpe)
@@ -1503,7 +1503,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeLambda = Types.TypeLambda
 
-  def TypeLambda_TypeTest(using Context): TypeTest[TypeOrBounds, TypeLambda] = new {
+  def TypeLambda_TypeTest: TypeTest[TypeOrBounds, TypeLambda] = new {
     def runtimeClass: Class[?] = classOf[TypeLambda]
     override def unapply(x: Any): Option[TypeLambda] = x match
       case tpe: Types.TypeLambda => Some(tpe)
@@ -1528,7 +1528,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type SimpleSelector = untpd.ImportSelector
 
-  def SimpleSelector_TypeTest(using Context): TypeTest[ImportSelector, SimpleSelector] = new {
+  def SimpleSelector_TypeTest: TypeTest[ImportSelector, SimpleSelector] = new {
     def runtimeClass: Class[?] = classOf[SimpleSelector]
     override def unapply(x: Any): Option[SimpleSelector] = x match
       case x: untpd.ImportSelector if x.renamed.isEmpty => Some(x)
@@ -1539,7 +1539,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type RenameSelector = untpd.ImportSelector
 
-  def RenameSelector_TypeTest(using Context): TypeTest[ImportSelector, RenameSelector] = new {
+  def RenameSelector_TypeTest: TypeTest[ImportSelector, RenameSelector] = new {
     def runtimeClass: Class[?] = classOf[RenameSelector]
     override def unapply(x: Any): Option[RenameSelector] = x match
       case x: untpd.ImportSelector if !x.renamed.isEmpty => Some(x)
@@ -1553,7 +1553,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type OmitSelector = untpd.ImportSelector
 
-  def OmitSelector_TypeTest(using Context): TypeTest[ImportSelector, OmitSelector] = new {
+  def OmitSelector_TypeTest: TypeTest[ImportSelector, OmitSelector] = new {
     def runtimeClass: Class[?] = classOf[OmitSelector]
     override def unapply(x: Any): Option[OmitSelector] = x match {
       case self: untpd.ImportSelector =>
@@ -1992,7 +1992,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     ctx.typer.inferImplicitArg(tpe, rootPosition.span)
 
   type ImplicitSearchSuccess = Tree
-  def ImplicitSearchSuccess_TypeTest(using Context): TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = new {
+  def ImplicitSearchSuccess_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = new {
     def runtimeClass: Class[?] = classOf[ImplicitSearchSuccess]
     override def unapply(x: Any): Option[ImplicitSearchSuccess] = x match
       case x: Tree @unchecked =>
@@ -2004,7 +2004,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess)(using Context): Term = self
 
   type ImplicitSearchFailure = Tree
-  def ImplicitSearchFailure_TypeTest(using Context): TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = new {
+  def ImplicitSearchFailure_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = new {
     def runtimeClass: Class[?] = classOf[ImplicitSearchFailure]
     override def unapply(x: Any): Option[ImplicitSearchFailure] = x match
       case x: Tree @unchecked =>
@@ -2017,7 +2017,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     self.tpe.asInstanceOf[SearchFailureType].explanation
 
   type DivergingImplicit = Tree
-  def DivergingImplicit_TypeTest(using Context): TypeTest[ImplicitSearchResult, DivergingImplicit] = new {
+  def DivergingImplicit_TypeTest: TypeTest[ImplicitSearchResult, DivergingImplicit] = new {
     def runtimeClass: Class[?] = classOf[DivergingImplicit]
     override def unapply(x: Any): Option[DivergingImplicit] = x match
       case x: Tree @unchecked =>
@@ -2028,7 +2028,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   }
 
   type NoMatchingImplicits = Tree
-  def NoMatchingImplicits_TypeTest(using Context): TypeTest[ImplicitSearchResult, NoMatchingImplicits] = new {
+  def NoMatchingImplicits_TypeTest: TypeTest[ImplicitSearchResult, NoMatchingImplicits] = new {
     def runtimeClass: Class[?] = classOf[NoMatchingImplicits]
     override def unapply(x: Any): Option[NoMatchingImplicits] = x match
       case x: Tree @unchecked =>
@@ -2039,7 +2039,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   }
 
   type AmbiguousImplicits = Tree
-  def AmbiguousImplicits_TypeTest(using Context): TypeTest[ImplicitSearchResult, AmbiguousImplicits] = new {
+  def AmbiguousImplicits_TypeTest: TypeTest[ImplicitSearchResult, AmbiguousImplicits] = new {
     def runtimeClass: Class[?] = classOf[AmbiguousImplicits]
     override def unapply(x: Any): Option[AmbiguousImplicits] = x match
       case x: Tree @unchecked =>

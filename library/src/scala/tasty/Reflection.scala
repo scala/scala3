@@ -97,7 +97,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   end Tree
 
-  given (using ctx: Context) as TypeTest[Tree, PackageClause] = reflectSelf.PackageClause_TypeTest
+  given TypeTest[Tree, PackageClause] = reflectSelf.PackageClause_TypeTest
 
   given PackageClauseOps as PackageClause.type = PackageClause
 
@@ -116,7 +116,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end PackageClause
 
 
-  given (using ctx: Context) as TypeTest[Tree, Import] = reflectSelf.Import_TypeTest
+  given TypeTest[Tree, Import] = reflectSelf.Import_TypeTest
 
   given ImportOps as Import.type = Import
 
@@ -136,11 +136,11 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Import
 
 
-  given (using ctx: Context) as TypeTest[Tree, Statement] = reflectSelf.Statement_TypeTest
+  given TypeTest[Tree, Statement] = reflectSelf.Statement_TypeTest
 
   // ----- Definitions ----------------------------------------------
 
-  given (using ctx: Context) as TypeTest[Tree, Definition] = reflectSelf.Definition_TypeTest
+  given TypeTest[Tree, Definition] = reflectSelf.Definition_TypeTest
 
   given DefinitionOps as Definition.type = Definition
 
@@ -152,7 +152,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ClassDef
 
-  given (using ctx: Context) as TypeTest[Tree, ClassDef] = reflectSelf.ClassDef_TypeTest
+  given TypeTest[Tree, ClassDef] = reflectSelf.ClassDef_TypeTest
 
   given ClassDefOps as ClassDef.type = ClassDef
 
@@ -175,7 +175,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // DefDef
 
-  given (using ctx: Context) as TypeTest[Tree, DefDef] = reflectSelf.DefDef_TypeTest
+  given TypeTest[Tree, DefDef] = reflectSelf.DefDef_TypeTest
 
   given DefDefOps as DefDef.type = DefDef
 
@@ -198,7 +198,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ValDef
 
-  given (using ctx: Context) as TypeTest[Tree, ValDef] = reflectSelf.ValDef_TypeTest
+  given TypeTest[Tree, ValDef] = reflectSelf.ValDef_TypeTest
 
   given ValDefOps as ValDef.type = ValDef
 
@@ -219,7 +219,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // TypeDef
 
-  given (using ctx: Context) as TypeTest[Tree, TypeDef] = reflectSelf.TypeDef_TypeTest
+  given TypeTest[Tree, TypeDef] = reflectSelf.TypeDef_TypeTest
 
   given TypeDefOps as TypeDef.type = TypeDef
 
@@ -238,7 +238,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // PackageDef
 
-  given (using ctx: Context) as TypeTest[Tree, PackageDef] = reflectSelf.PackageDef_TypeTest
+  given TypeTest[Tree, PackageDef] = reflectSelf.PackageDef_TypeTest
 
   given PackageDefOps as PackageDef.type = PackageDef
 
@@ -323,9 +323,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   end Term
 
-  given (using ctx: Context) as TypeTest[Tree, Term] = reflectSelf.Term_TypeTest
+  given TypeTest[Tree, Term] = reflectSelf.Term_TypeTest
 
-  given (using ctx: Context) as TypeTest[Tree, Ref] = reflectSelf.Ref_TypeTest
+  given TypeTest[Tree, Ref] = reflectSelf.Ref_TypeTest
 
   object Ref:
 
@@ -351,7 +351,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Ref_apply(sym)
   end Ref
 
-  given (using ctx: Context) as TypeTest[Tree, Ident] = reflectSelf.Ident_TypeTest
+  given TypeTest[Tree, Ident] = reflectSelf.Ident_TypeTest
 
   given IdentOps as Ident.type = Ident
 
@@ -372,7 +372,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end Ident
 
-  given (using ctx: Context) as TypeTest[Tree, Select] = reflectSelf.Select_TypeTest
+  given TypeTest[Tree, Select] = reflectSelf.Select_TypeTest
   given SelectOps as Select.type = Select
 
   /** Scala term selection */
@@ -409,7 +409,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end Select
 
-  given (using ctx: Context) as TypeTest[Tree, Literal] =
+  given TypeTest[Tree, Literal] =
     reflectSelf.Literal_TypeTest
 
   given LiteralOps as Literal.type = Literal
@@ -433,7 +433,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end Literal
 
-  given (using ctx: Context) as TypeTest[Tree, This] = reflectSelf.This_TypeTest
+  given TypeTest[Tree, This] = reflectSelf.This_TypeTest
 
   given ThisOps as This.type = This
 
@@ -455,7 +455,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end This
 
-  given (using ctx: Context) as TypeTest[Tree, New] = reflectSelf.New_TypeTest
+  given TypeTest[Tree, New] = reflectSelf.New_TypeTest
 
   given NewOps as New.type = New
 
@@ -477,7 +477,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end New
 
-  given (using ctx: Context) as TypeTest[Tree, NamedArg] = reflectSelf.NamedArg_TypeTest
+  given TypeTest[Tree, NamedArg] = reflectSelf.NamedArg_TypeTest
 
   given NamedArgOps as NamedArg.type = NamedArg
 
@@ -501,7 +501,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end NamedArg
 
-  given (using ctx: Context) as TypeTest[Tree, Apply] = reflectSelf.Apply_TypeTest
+  given TypeTest[Tree, Apply] = reflectSelf.Apply_TypeTest
 
   given ApplyOps as Apply.type = Apply
 
@@ -525,7 +525,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end Apply
 
-  given (using ctx: Context) as TypeTest[Tree, TypeApply] = reflectSelf.TypeApply_TypeTest
+  given TypeTest[Tree, TypeApply] = reflectSelf.TypeApply_TypeTest
 
   given TypeApplyOps as TypeApply.type = TypeApply
 
@@ -549,7 +549,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end TypeApply
 
-  given (using ctx: Context) as TypeTest[Tree, Super] = reflectSelf.Super_TypeTest
+  given TypeTest[Tree, Super] = reflectSelf.Super_TypeTest
 
   given SuperOps as Super.type = Super
 
@@ -574,7 +574,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Super
 
 
-  given (using ctx: Context) as TypeTest[Tree, Typed] = reflectSelf.Typed_TypeTest
+  given TypeTest[Tree, Typed] = reflectSelf.Typed_TypeTest
 
   given TypedOps as Typed.type = Typed
 
@@ -599,7 +599,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Typed
 
 
-  given (using ctx: Context) as TypeTest[Tree, Assign] = reflectSelf.Assign_TypeTest
+  given TypeTest[Tree, Assign] = reflectSelf.Assign_TypeTest
 
   given AssignOps as Assign.type = Assign
 
@@ -624,7 +624,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Assign
 
 
-  given (using ctx: Context) as TypeTest[Tree, Block] = reflectSelf.Block_TypeTest
+  given TypeTest[Tree, Block] = reflectSelf.Block_TypeTest
 
   given BlockOps as Block.type = Block
 
@@ -649,7 +649,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Block
 
 
-  given (using ctx: Context) as TypeTest[Tree, Closure] = reflectSelf.Closure_TypeTest
+  given TypeTest[Tree, Closure] = reflectSelf.Closure_TypeTest
 
   given ClosureOps as Closure.type = Closure
 
@@ -697,7 +697,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   end Lambda
 
-  given (using ctx: Context) as TypeTest[Tree, If] = reflectSelf.If_TypeTest
+  given TypeTest[Tree, If] = reflectSelf.If_TypeTest
 
   given IfOps as If.type = If
 
@@ -722,7 +722,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end If
 
-  given (using ctx: Context) as TypeTest[Tree, Match] = reflectSelf.Match_TypeTest
+  given TypeTest[Tree, Match] = reflectSelf.Match_TypeTest
 
   given MatchOps as Match.type = Match
 
@@ -747,7 +747,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Match
 
 
-  given (using ctx: Context) as TypeTest[Tree, GivenMatch] = reflectSelf.GivenMatch_TypeTest
+  given TypeTest[Tree, GivenMatch] = reflectSelf.GivenMatch_TypeTest
 
   given GivenMatchOps as GivenMatch.type = GivenMatch
 
@@ -771,7 +771,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end GivenMatch
 
 
-  given (using ctx: Context) as TypeTest[Tree, Try] = reflectSelf.Try_TypeTest
+  given TypeTest[Tree, Try] = reflectSelf.Try_TypeTest
 
   given TryOps as Try.type = Try
 
@@ -797,7 +797,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Try
 
 
-  given (using ctx: Context) as TypeTest[Tree, Return] = reflectSelf.Return_TypeTest
+  given TypeTest[Tree, Return] = reflectSelf.Return_TypeTest
 
   given ReturnOps as Return.type = Return
 
@@ -820,7 +820,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Return
 
 
-  given (using ctx: Context) as TypeTest[Tree, Repeated] = reflectSelf.Repeated_TypeTest
+  given TypeTest[Tree, Repeated] = reflectSelf.Repeated_TypeTest
 
   given RepeatedOps as Repeated.type = Repeated
 
@@ -842,7 +842,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Repeated
 
 
-  given (using ctx: Context) as TypeTest[Tree, Inlined] = reflectSelf.Inlined_TypeTest
+  given TypeTest[Tree, Inlined] = reflectSelf.Inlined_TypeTest
 
   given InlinedOps as Inlined.type = Inlined
 
@@ -865,7 +865,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Inlined
 
 
-  given (using ctx: Context) as TypeTest[Tree, SelectOuter] = reflectSelf.SelectOuter_TypeTest
+  given TypeTest[Tree, SelectOuter] = reflectSelf.SelectOuter_TypeTest
 
   given SelectOuterOps as SelectOuter.type = SelectOuter
 
@@ -887,7 +887,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end SelectOuter
 
 
-  given (using ctx: Context) as TypeTest[Tree, While] = reflectSelf.While_TypeTest
+  given TypeTest[Tree, While] = reflectSelf.While_TypeTest
 
   given WhileOps as While.type = While
 
@@ -913,7 +913,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ----- TypeTrees ------------------------------------------------
 
-  given (using ctx: Context) as TypeTest[Tree, TypeTree] = reflectSelf.TypeTree_TypeTest
+  given TypeTest[Tree, TypeTree] = reflectSelf.TypeTree_TypeTest
 
   given TypeTreeOps as TypeTree.type = TypeTree
 
@@ -924,7 +924,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end TypeTree
 
-  given (using ctx: Context) as TypeTest[Tree, Inferred] = reflectSelf.Inferred_TypeTest
+  given TypeTest[Tree, Inferred] = reflectSelf.Inferred_TypeTest
 
   /** TypeTree containing an inferred type */
   object Inferred:
@@ -934,7 +934,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     def unapply(x: Inferred)(using ctx: Context): Boolean = true
   end Inferred
 
-  given (using ctx: Context) as TypeTest[Tree, TypeIdent] = reflectSelf.TypeIdent_TypeTest
+  given TypeTest[Tree, TypeIdent] = reflectSelf.TypeIdent_TypeTest
 
   given TypeIdentOps as TypeIdent.type = TypeIdent
 
@@ -950,7 +950,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end TypeIdent
 
-  given (using ctx: Context) as TypeTest[Tree, TypeSelect] = reflectSelf.TypeSelect_TypeTest
+  given TypeTest[Tree, TypeSelect] = reflectSelf.TypeSelect_TypeTest
 
   given TypeSelectOps as TypeSelect.type = TypeSelect
 
@@ -969,7 +969,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end TypeSelect
 
 
-  given (using ctx: Context) as TypeTest[Tree, Projection] = reflectSelf.Projection_TypeTest
+  given TypeTest[Tree, Projection] = reflectSelf.Projection_TypeTest
 
   given ProjectionOps as Projection.type = Projection
 
@@ -987,7 +987,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Projection
 
 
-  given (using ctx: Context) as TypeTest[Tree, Singleton] = reflectSelf.Singleton_TypeTest
+  given TypeTest[Tree, Singleton] = reflectSelf.Singleton_TypeTest
 
   given SingletonOps as Singleton.type = Singleton
 
@@ -1005,7 +1005,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Singleton
 
 
-  given (using ctx: Context) as TypeTest[Tree, Refined] = reflectSelf.Refined_TypeTest
+  given TypeTest[Tree, Refined] = reflectSelf.Refined_TypeTest
 
   given RefinedOps as Refined.type = Refined
 
@@ -1023,7 +1023,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Refined
 
 
-  given (using ctx: Context) as TypeTest[Tree, Applied] = reflectSelf.Applied_TypeTest
+  given TypeTest[Tree, Applied] = reflectSelf.Applied_TypeTest
 
   given AppliedOps as Applied.type = Applied
 
@@ -1042,7 +1042,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Applied
 
 
-  given (using ctx: Context) as TypeTest[Tree, Annotated] =
+  given TypeTest[Tree, Annotated] =
     reflectSelf.Annotated_TypeTest
 
   given AnnotatedOps as Annotated.type = Annotated
@@ -1062,7 +1062,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Annotated
 
 
-  given (using ctx: Context) as TypeTest[Tree, MatchTypeTree] =
+  given TypeTest[Tree, MatchTypeTree] =
     reflectSelf.MatchTypeTree_TypeTest
 
   given MatchTypeTreeOps as MatchTypeTree.type = MatchTypeTree
@@ -1083,7 +1083,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end MatchTypeTree
 
 
-  given (using ctx: Context) as TypeTest[Tree, ByName] =
+  given TypeTest[Tree, ByName] =
     reflectSelf.ByName_TypeTest
 
   given ByNameOps as ByName.type = ByName
@@ -1102,7 +1102,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end ByName
 
 
-  given (using ctx: Context) as TypeTest[Tree, LambdaTypeTree] = reflectSelf.LambdaTypeTree_TypeTest
+  given TypeTest[Tree, LambdaTypeTree] = reflectSelf.LambdaTypeTree_TypeTest
 
   given LambdaTypeTreeOps as LambdaTypeTree.type = LambdaTypeTree
 
@@ -1121,7 +1121,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end LambdaTypeTree
 
 
-  given (using ctx: Context) as TypeTest[Tree, TypeBind] = reflectSelf.TypeBind_TypeTest
+  given TypeTest[Tree, TypeBind] = reflectSelf.TypeBind_TypeTest
 
   given TypeBindOps as TypeBind.type = TypeBind
 
@@ -1139,7 +1139,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end TypeBind
 
 
-  given (using ctx: Context) as TypeTest[Tree, TypeBlock] = reflectSelf.TypeBlock_TypeTest
+  given TypeTest[Tree, TypeBlock] = reflectSelf.TypeBlock_TypeTest
 
   given TypeBlockOps as TypeBlock.type = TypeBlock
 
@@ -1160,7 +1160,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ----- TypeBoundsTrees ------------------------------------------------
 
-  given (using ctx: Context) as TypeTest[Tree, TypeBoundsTree] = reflectSelf.TypeBoundsTree_TypeTest
+  given TypeTest[Tree, TypeBoundsTree] = reflectSelf.TypeBoundsTree_TypeTest
 
   given TypeBoundsTreeOps as TypeBoundsTree.type = TypeBoundsTree
 
@@ -1176,7 +1176,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end TypeBoundsTree
 
 
-  given (using ctx: Context) as TypeTest[Tree, WildcardTypeTree] = reflectSelf.WildcardTypeTree_TypeTest
+  given TypeTest[Tree, WildcardTypeTree] = reflectSelf.WildcardTypeTree_TypeTest
 
   given WildcardTypeTreeOps as WildcardTypeTree.type = WildcardTypeTree
 
@@ -1191,7 +1191,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ----- CaseDefs ------------------------------------------------
 
-  given (using ctx: Context) as TypeTest[Tree, CaseDef] = reflectSelf.CaseDef_TypeTest
+  given TypeTest[Tree, CaseDef] = reflectSelf.CaseDef_TypeTest
   given CaseDefOps as CaseDef.type = CaseDef
 
   object CaseDef:
@@ -1212,7 +1212,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end CaseDef
 
 
-  given (using ctx: Context) as TypeTest[Tree, TypeCaseDef] =
+  given TypeTest[Tree, TypeCaseDef] =
     reflectSelf.TypeCaseDef_TypeTest
 
   given TypeCaseDefOps as TypeCaseDef.type = TypeCaseDef
@@ -1235,7 +1235,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ----- Patterns ------------------------------------------------
 
-  given (using ctx: Context) as TypeTest[Tree, Bind] = reflectSelf.Bind_TypeTest
+  given TypeTest[Tree, Bind] = reflectSelf.Bind_TypeTest
   given BindOps as Bind.type = Bind
 
   object Bind:
@@ -1253,7 +1253,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Bind
 
 
-  given (using ctx: Context) as TypeTest[Tree, Unapply] = reflectSelf.Unapply_TypeTest
+  given TypeTest[Tree, Unapply] = reflectSelf.Unapply_TypeTest
   given UnapplyOps as Unapply.type = Unapply
 
   object Unapply:
@@ -1271,7 +1271,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Unapply
 
 
-  given (using ctx: Context) as TypeTest[Tree, Alternatives] = reflectSelf.Alternatives_TypeTest
+  given TypeTest[Tree, Alternatives] = reflectSelf.Alternatives_TypeTest
   given AlternativesOps as Alternatives.type = Alternatives
 
   object Alternatives:
@@ -1293,7 +1293,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   // IMPORT SELECTORS //
   /////////////////////
 
-  given (using ctx: Context) as TypeTest[ImportSelector, SimpleSelector] = reflectSelf.SimpleSelector_TypeTest
+  given TypeTest[ImportSelector, SimpleSelector] = reflectSelf.SimpleSelector_TypeTest
   given SimpleSelectorOps as SimpleSelector.type = SimpleSelector
 
   object SimpleSelector:
@@ -1306,7 +1306,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end SimpleSelector
 
 
-  given (using ctx: Context) as TypeTest[ImportSelector, RenameSelector] = reflectSelf.RenameSelector_TypeTest
+  given TypeTest[ImportSelector, RenameSelector] = reflectSelf.RenameSelector_TypeTest
   given RenameSelectorOps as RenameSelector.type = RenameSelector
 
   object RenameSelector:
@@ -1320,7 +1320,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end RenameSelector
 
 
-  given (using ctx: Context) as TypeTest[ImportSelector, OmitSelector] = reflectSelf.OmitSelector_TypeTest
+  given TypeTest[ImportSelector, OmitSelector] = reflectSelf.OmitSelector_TypeTest
   given OmitSelectorOmitSelectorOps as OmitSelector.type = OmitSelector
 
   object OmitSelector:
@@ -1358,7 +1358,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ----- Types ----------------------------------------------------
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, Type] = reflectSelf.Type_TypeTest
+  given TypeTest[TypeOrBounds, Type] = reflectSelf.Type_TypeTest
   given TypeOps as Type.type = Type
 
   object Type:
@@ -1465,7 +1465,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end Type
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, ConstantType] = reflectSelf.ConstantType_TypeTest
+  given TypeTest[TypeOrBounds, ConstantType] = reflectSelf.ConstantType_TypeTest
   given ConstantTypeOps as ConstantType.type = ConstantType
 
   object ConstantType:
@@ -1478,7 +1478,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end ConstantType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, TermRef] = reflectSelf.TermRef_TypeTest
+  given TypeTest[TypeOrBounds, TermRef] = reflectSelf.TermRef_TypeTest
   given TermRefOps as TermRef.type = TermRef
 
   object TermRef:
@@ -1494,7 +1494,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end TermRef
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, TypeRef] = reflectSelf.TypeRef_TypeTest
+  given TypeTest[TypeOrBounds, TypeRef] = reflectSelf.TypeRef_TypeTest
   given TypeRefOps as TypeRef.type = TypeRef
 
   object TypeRef:
@@ -1510,7 +1510,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end TypeRef
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, SuperType] = reflectSelf.SuperType_TypeTest
+  given TypeTest[TypeOrBounds, SuperType] = reflectSelf.SuperType_TypeTest
   given SuperTypeOps as SuperType.type = SuperType
 
   object SuperType:
@@ -1527,7 +1527,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end SuperType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, Refinement] = reflectSelf.Refinement_TypeTest
+  given TypeTest[TypeOrBounds, Refinement] = reflectSelf.Refinement_TypeTest
   given RefinementOps as Refinement.type = Refinement
 
   object Refinement:
@@ -1545,7 +1545,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end Refinement
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, AppliedType] = reflectSelf.AppliedType_TypeTest
+  given TypeTest[TypeOrBounds, AppliedType] = reflectSelf.AppliedType_TypeTest
   given AppliedTypeOps as AppliedType.type = AppliedType
 
   object AppliedType:
@@ -1561,7 +1561,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end AppliedType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, AnnotatedType] = reflectSelf.AnnotatedType_TypeTest
+  given TypeTest[TypeOrBounds, AnnotatedType] = reflectSelf.AnnotatedType_TypeTest
   given AnnotatedTypeOps as AnnotatedType.type = AnnotatedType
 
   object AnnotatedType:
@@ -1577,7 +1577,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end AnnotatedType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, AndType] = reflectSelf.AndType_TypeTest
+  given TypeTest[TypeOrBounds, AndType] = reflectSelf.AndType_TypeTest
   given AndTypeOps as AndType.type = AndType
 
   object AndType:
@@ -1593,7 +1593,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end AndType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, OrType] = reflectSelf.OrType_TypeTest
+  given TypeTest[TypeOrBounds, OrType] = reflectSelf.OrType_TypeTest
   given OrTypeOps as OrType.type = OrType
 
   object OrType:
@@ -1608,7 +1608,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end OrType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, MatchType] = reflectSelf.MatchType_TypeTest
+  given TypeTest[TypeOrBounds, MatchType] = reflectSelf.MatchType_TypeTest
   given MatchTypeOps as MatchType.type = MatchType
 
   object MatchType:
@@ -1633,7 +1633,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     Type(classOf[MatchCase[_,_]])
   }
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, ByNameType] = reflectSelf.ByNameType_TypeTest
+  given TypeTest[TypeOrBounds, ByNameType] = reflectSelf.ByNameType_TypeTest
   given ByNameTypeOps as ByNameType.type = ByNameType
 
   object ByNameType:
@@ -1646,7 +1646,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end ByNameType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, ParamRef] = reflectSelf.ParamRef_TypeTest
+  given TypeTest[TypeOrBounds, ParamRef] = reflectSelf.ParamRef_TypeTest
   given ParamRefOps as ParamRef.type = ParamRef
 
   object ParamRef:
@@ -1660,7 +1660,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end ParamRef
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, ThisType] = reflectSelf.ThisType_TypeTest
+  given TypeTest[TypeOrBounds, ThisType] = reflectSelf.ThisType_TypeTest
   given ThisTypeOps as ThisType.type = ThisType
 
   object ThisType:
@@ -1672,7 +1672,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end ThisType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, RecursiveThis] = reflectSelf.RecursiveThis_TypeTest
+  given TypeTest[TypeOrBounds, RecursiveThis] = reflectSelf.RecursiveThis_TypeTest
   given RecursiveThisOps as RecursiveThis.type = RecursiveThis
 
   object RecursiveThis:
@@ -1684,7 +1684,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end RecursiveThis
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, RecursiveType] = reflectSelf.RecursiveType_TypeTest
+  given TypeTest[TypeOrBounds, RecursiveType] = reflectSelf.RecursiveType_TypeTest
   given RecursiveTypeOps as RecursiveType.type = RecursiveType
 
   object RecursiveType:
@@ -1709,7 +1709,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end RecursiveType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, MethodType] = reflectSelf.MethodType_TypeTest
+  given TypeTest[TypeOrBounds, MethodType] = reflectSelf.MethodType_TypeTest
   given MethodTypeOps as MethodType.type = MethodType
 
   object MethodType:
@@ -1730,7 +1730,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end MethodType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, PolyType] = reflectSelf.PolyType_TypeTest
+  given TypeTest[TypeOrBounds, PolyType] = reflectSelf.PolyType_TypeTest
   given PolyTypeOps as PolyType.type = PolyType
 
   object PolyType:
@@ -1748,7 +1748,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end PolyType
 
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, TypeLambda] = reflectSelf.TypeLambda_TypeTest
+  given TypeTest[TypeOrBounds, TypeLambda] = reflectSelf.TypeLambda_TypeTest
   given TypeLambdaOps as TypeLambda.type = TypeLambda
 
   object TypeLambda:
@@ -1768,7 +1768,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ----- TypeBounds -----------------------------------------------
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, TypeBounds] = reflectSelf.TypeBounds_TypeTest
+  given TypeTest[TypeOrBounds, TypeBounds] = reflectSelf.TypeBounds_TypeTest
   given TypeBoundsOps as TypeBounds.type = TypeBounds
 
   object TypeBounds:
@@ -1785,7 +1785,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ----- NoPrefix -------------------------------------------------
 
-  given (using ctx: Context) as TypeTest[TypeOrBounds, NoPrefix] = reflectSelf.NoPrefix_TypeTest
+  given TypeTest[TypeOrBounds, NoPrefix] = reflectSelf.NoPrefix_TypeTest
 
   object NoPrefix:
     def unapply(x: NoPrefix)(using ctx: Context): Boolean = true
@@ -1861,7 +1861,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   def searchImplicit(tpe: Type)(using ctx: Context): ImplicitSearchResult
 
-  given (using ctx: Context) as TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = reflectSelf.ImplicitSearchSuccess_TypeTest
+  given TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = reflectSelf.ImplicitSearchSuccess_TypeTest
   given ImplicitSearchSuccessOps as ImplicitSearchSuccess.type = ImplicitSearchSuccess
 
   object ImplicitSearchSuccess:
@@ -1870,7 +1870,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end ImplicitSearchSuccess
 
-  given (using ctx: Context) as TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = reflectSelf.ImplicitSearchFailure_TypeTest
+  given TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = reflectSelf.ImplicitSearchFailure_TypeTest
   given ImplicitSearchFailureOps as ImplicitSearchFailure.type = ImplicitSearchFailure
 
   object ImplicitSearchFailure:
@@ -1879,11 +1879,11 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end ImplicitSearchFailure
 
-  given (using ctx: Context) as TypeTest[ImplicitSearchResult, DivergingImplicit] = reflectSelf.DivergingImplicit_TypeTest
+  given TypeTest[ImplicitSearchResult, DivergingImplicit] = reflectSelf.DivergingImplicit_TypeTest
 
-  given (using ctx: Context) as TypeTest[ImplicitSearchResult, NoMatchingImplicits] = reflectSelf.NoMatchingImplicits_TypeTest
+  given TypeTest[ImplicitSearchResult, NoMatchingImplicits] = reflectSelf.NoMatchingImplicits_TypeTest
 
-  given (using ctx: Context) as TypeTest[ImplicitSearchResult, AmbiguousImplicits] = reflectSelf.AmbiguousImplicits_TypeTest
+  given TypeTest[ImplicitSearchResult, AmbiguousImplicits] = reflectSelf.AmbiguousImplicits_TypeTest
 
 
   /////////////
