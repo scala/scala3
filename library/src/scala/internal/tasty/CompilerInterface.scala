@@ -42,19 +42,19 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   ////////////
 
   /** Returns the source file being compiled. The path is relative to the current working directory. */
-  def Source_path(using ctx: Context): java.nio.file.Path
+  def Source_path: java.nio.file.Path
 
   /** Returns true if we've tried to reflect on a Java class. */
-  def Source_isJavaCompilationUnit(using ctx: Context): Boolean
+  def Source_isJavaCompilationUnit: Boolean
 
   /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
-  def Source_isScala2CompilationUnit(using ctx: Context): Boolean
+  def Source_isScala2CompilationUnit: Boolean
 
   /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
-  def Source_isAlreadyLoadedCompilationUnit(using ctx: Context): Boolean
+  def Source_isAlreadyLoadedCompilationUnit: Boolean
 
   /** Class name of the current CompilationUnit */
-  def Source_compilationUnitClassname(using ctx: Context): String
+  def Source_compilationUnitClassname: String
 
   ///////////////
   // REPORTING //

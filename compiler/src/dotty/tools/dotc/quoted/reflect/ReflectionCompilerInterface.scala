@@ -68,11 +68,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   // Source //
   ////////////
 
-  def Source_path(using Context): java.nio.file.Path = ctx.compilationUnit.source.file.jpath
-  def Source_isJavaCompilationUnit(using Context): Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
-  def Source_isScala2CompilationUnit(using Context): Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
-  def Source_isAlreadyLoadedCompilationUnit(using Context): Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.AlreadyLoadedCompilationUnit]
-  def Source_compilationUnitClassname(using Context): String =
+  def Source_path: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
+  def Source_isJavaCompilationUnit: Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
+  def Source_isScala2CompilationUnit: Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
+  def Source_isAlreadyLoadedCompilationUnit: Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.AlreadyLoadedCompilationUnit]
+  def Source_compilationUnitClassname: String =
     ctx.compilationUnit match {
       case cu: fromtasty.JavaCompilationUnit => cu.className
       case cu: fromtasty.Scala2CompilationUnit => cu.className

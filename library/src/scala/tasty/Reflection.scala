@@ -28,19 +28,19 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   object Source:
 
     /** Returns the source file being compiled. The path is relative to the current working directory. */
-    def path(using ctx: Context): java.nio.file.Path = reflectSelf.Source_path
+    def path: java.nio.file.Path = reflectSelf.Source_path
 
     /** Returns true if we've tried to reflect on a Java class. */
-    def isJavaCompilationUnit(using ctx: Context): Boolean = reflectSelf.Source_isJavaCompilationUnit
+    def isJavaCompilationUnit: Boolean = reflectSelf.Source_isJavaCompilationUnit
 
     /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
-    def isScala2CompilationUnit(using ctx: Context): Boolean = reflectSelf.Source_isScala2CompilationUnit
+    def isScala2CompilationUnit: Boolean = reflectSelf.Source_isScala2CompilationUnit
 
     /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
-    def isAlreadyLoadedCompilationUnit(using ctx: Context): Boolean = reflectSelf.Source_isAlreadyLoadedCompilationUnit
+    def isAlreadyLoadedCompilationUnit: Boolean = reflectSelf.Source_isAlreadyLoadedCompilationUnit
 
     /** Class name of the current CompilationUnit */
-    def compilationUnitClassname(using ctx: Context): String = reflectSelf.Source_compilationUnitClassname
+    def compilationUnitClassname: String = reflectSelf.Source_compilationUnitClassname
 
   end Source
 
