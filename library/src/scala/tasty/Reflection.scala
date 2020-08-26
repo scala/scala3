@@ -1389,32 +1389,32 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
         *  def o: Outer
         *  <o.x.type>.widen = o.C
         */
-      def widen(using ctx: Context): Type = reflectSelf.Type_widen(self)
+      def widen: Type = reflectSelf.Type_widen(self)
 
       /** Widen from TermRef to its underlying non-termref
         *  base type, while also skipping `=>T` types.
         */
-      def widenTermRefExpr(using ctx: Context): Type = reflectSelf.Type_widenTermRefExpr(self)
+      def widenTermRefExpr: Type = reflectSelf.Type_widenTermRefExpr(self)
 
       /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
         *  TypeVars until type is no longer alias type, annotated type, LazyRef,
         *  or instantiated type variable.
         */
-      def dealias(using ctx: Context): Type = reflectSelf.Type_dealias(self)
+      def dealias: Type = reflectSelf.Type_dealias(self)
 
       /** A simplified version of this type which is equivalent wrt =:= to this type.
         *  Reduces typerefs, applied match types, and and or types.
         */
-      def simplified(using ctx: Context): Type = reflectSelf.Type_simplified(self)
+      def simplified: Type = reflectSelf.Type_simplified(self)
 
-      def classSymbol(using ctx: Context): Option[Symbol] = reflectSelf.Type_classSymbol(self)
-      def typeSymbol(using ctx: Context): Symbol = reflectSelf.Type_typeSymbol(self)
-      def termSymbol(using ctx: Context): Symbol = reflectSelf.Type_termSymbol(self)
-      def isSingleton(using ctx: Context): Boolean = reflectSelf.Type_isSingleton(self)
-      def memberType(member: Symbol)(using ctx: Context): Type = reflectSelf.Type_memberType(self)(member)
+      def classSymbol: Option[Symbol] = reflectSelf.Type_classSymbol(self)
+      def typeSymbol: Symbol = reflectSelf.Type_typeSymbol(self)
+      def termSymbol: Symbol = reflectSelf.Type_termSymbol(self)
+      def isSingleton: Boolean = reflectSelf.Type_isSingleton(self)
+      def memberType(member: Symbol): Type = reflectSelf.Type_memberType(self)(member)
 
       /** The base classes of this type with the class itself as first element. */
-      def baseClasses(using ctx: Context): List[Symbol] = reflectSelf.Type_baseClasses(self)
+      def baseClasses: List[Symbol] = reflectSelf.Type_baseClasses(self)
 
 
     /** The least type instance of given class which is a super-type
@@ -1425,10 +1425,10 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *    ThisType(C).baseType(D) = p.D[Int]
      * }}}
      */
-      def baseType(cls: Symbol)(using ctx: Context): Type = reflectSelf.Type_baseType(self)(cls)
+      def baseType(cls: Symbol): Type = reflectSelf.Type_baseType(self)(cls)
 
       /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-      def derivesFrom(cls: Symbol)(using ctx: Context): Boolean =
+      def derivesFrom(cls: Symbol): Boolean =
         reflectSelf.Type_derivesFrom(self)(cls)
 
       /** Is this type a function type?
@@ -1440,28 +1440,28 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
         *     - returns true for `given Int => Int` and `erased Int => Int`
         *     - returns false for `List[Int]`, despite that `List[Int] <:< Int => Int`.
         */
-      def isFunctionType(using ctx: Context): Boolean = reflectSelf.Type_isFunctionType(self)
+      def isFunctionType: Boolean = reflectSelf.Type_isFunctionType(self)
 
       /** Is this type an context function type?
         *
         *  @see `isFunctionType`
         */
-      def isContextFunctionType(using ctx: Context): Boolean = reflectSelf.Type_isContextFunctionType(self)
+      def isContextFunctionType: Boolean = reflectSelf.Type_isContextFunctionType(self)
 
       /** Is this type an erased function type?
         *
         *  @see `isFunctionType`
         */
-      def isErasedFunctionType(using ctx: Context): Boolean = reflectSelf.Type_isErasedFunctionType(self)
+      def isErasedFunctionType: Boolean = reflectSelf.Type_isErasedFunctionType(self)
 
       /** Is this type a dependent function type?
         *
         *  @see `isFunctionType`
         */
-      def isDependentFunctionType(using ctx: Context): Boolean = reflectSelf.Type_isDependentFunctionType(self)
+      def isDependentFunctionType: Boolean = reflectSelf.Type_isDependentFunctionType(self)
 
       /** The type <this . sym>, reduced if possible */
-      def select(sym: Symbol)(using ctx: Context): Type = reflectSelf.Type_select(self)(sym)
+      def select(sym: Symbol): Type = reflectSelf.Type_select(self)(sym)
     end extension
   end Type
 
@@ -1469,11 +1469,11 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given ConstantTypeOps as ConstantType.type = ConstantType
 
   object ConstantType:
-    def apply(x : Constant)(using ctx: Context): ConstantType = reflectSelf.ConstantType_apply(x)
-    def unapply(x: ConstantType)(using ctx: Context): Option[Constant] = Some(x.constant)
+    def apply(x : Constant): ConstantType = reflectSelf.ConstantType_apply(x)
+    def unapply(x: ConstantType): Option[Constant] = Some(x.constant)
 
     extension (self: ConstantType):
-      def constant(using ctx: Context): Constant = reflectSelf.ConstantType_constant(self)
+      def constant: Constant = reflectSelf.ConstantType_constant(self)
     end extension
   end ConstantType
 
@@ -1482,14 +1482,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given TermRefOps as TermRef.type = TermRef
 
   object TermRef:
-    def apply(qual: TypeOrBounds, name: String)(using ctx: Context): TermRef =
+    def apply(qual: TypeOrBounds, name: String): TermRef =
       reflectSelf.TermRef_apply(qual, name)
-    def unapply(x: TermRef)(using ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+    def unapply(x: TermRef): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
       Some((x.qualifier, x.name))
 
     extension (self: TermRef):
-      def qualifier(using ctx: Context): TypeOrBounds /* Type | NoPrefix */ = reflectSelf.TermRef_qualifier(self)
-      def name(using ctx: Context): String = reflectSelf.TermRef_name(self)
+      def qualifier: TypeOrBounds /* Type | NoPrefix */ = reflectSelf.TermRef_qualifier(self)
+      def name: String = reflectSelf.TermRef_name(self)
     end extension
   end TermRef
 
@@ -1498,14 +1498,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given TypeRefOps as TypeRef.type = TypeRef
 
   object TypeRef:
-    def unapply(x: TypeRef)(using ctx: Context): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
+    def unapply(x: TypeRef): Option[(TypeOrBounds /* Type | NoPrefix */, String)] =
       Some((x.qualifier, x.name))
 
     extension (self: TypeRef):
-      def qualifier(using ctx: Context): TypeOrBounds /* Type | NoPrefix */ = reflectSelf.TypeRef_qualifier(self)
-      def name(using ctx: Context): String = reflectSelf.TypeRef_name(self)
-      def isOpaqueAlias(using ctx: Context): Boolean = reflectSelf.TypeRef_isOpaqueAlias(self)
-      def translucentSuperType(using ctx: Context): Type = reflectSelf.TypeRef_translucentSuperType(self)
+      def qualifier: TypeOrBounds /* Type | NoPrefix */ = reflectSelf.TypeRef_qualifier(self)
+      def name: String = reflectSelf.TypeRef_name(self)
+      def isOpaqueAlias: Boolean = reflectSelf.TypeRef_isOpaqueAlias(self)
+      def translucentSuperType: Type = reflectSelf.TypeRef_translucentSuperType(self)
     end extension
   end TypeRef
 
@@ -1514,15 +1514,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given SuperTypeOps as SuperType.type = SuperType
 
   object SuperType:
-    def apply(thistpe: Type, supertpe: Type)(using ctx: Context): SuperType =
+    def apply(thistpe: Type, supertpe: Type): SuperType =
       reflectSelf.SuperType_apply(thistpe, supertpe)
 
-    def unapply(x: SuperType)(using ctx: Context): Option[(Type, Type)] =
+    def unapply(x: SuperType): Option[(Type, Type)] =
       Some((x.thistpe, x.supertpe))
 
     extension (self: SuperType):
-      def thistpe(using ctx: Context): Type = reflectSelf.SuperType_thistpe(self)
-      def supertpe(using ctx: Context): Type = reflectSelf.SuperType_supertpe(self)
+      def thistpe: Type = reflectSelf.SuperType_thistpe(self)
+      def supertpe: Type = reflectSelf.SuperType_supertpe(self)
     end extension
   end SuperType
 
@@ -1531,16 +1531,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given RefinementOps as Refinement.type = Refinement
 
   object Refinement:
-    def apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(using ctx: Context): Refinement =
+    def apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */): Refinement =
       reflectSelf.Refinement_apply(parent, name, info)
 
-    def unapply(x: Refinement)(using ctx: Context): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
+    def unapply(x: Refinement): Option[(Type, String, TypeOrBounds /* Type | TypeBounds */)] =
       Some((x.parent, x.name, x.info))
 
     extension (self: Refinement):
-      def parent(using ctx: Context): Type = reflectSelf.Refinement_parent(self)
-      def name(using ctx: Context): String = reflectSelf.Refinement_name(self)
-      def info(using ctx: Context): TypeOrBounds = reflectSelf.Refinement_info(self)
+      def parent: Type = reflectSelf.Refinement_parent(self)
+      def name: String = reflectSelf.Refinement_name(self)
+      def info: TypeOrBounds = reflectSelf.Refinement_info(self)
     end extension
   end Refinement
 
@@ -1549,14 +1549,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given AppliedTypeOps as AppliedType.type = AppliedType
 
   object AppliedType:
-    def apply(tycon: Type, args: List[TypeOrBounds])(using ctx: Context): AppliedType =
+    def apply(tycon: Type, args: List[TypeOrBounds]): AppliedType =
       reflectSelf.AppliedType_apply(tycon, args)
-    def unapply(x: AppliedType)(using ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
+    def unapply(x: AppliedType): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
       Some((x.tycon, x.args))
 
     extension (self: AppliedType):
-      def tycon(using ctx: Context): Type = reflectSelf.AppliedType_tycon(self)
-      def args(using ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = reflectSelf.AppliedType_args(self)
+      def tycon: Type = reflectSelf.AppliedType_tycon(self)
+      def args: List[TypeOrBounds /* Type | TypeBounds */] = reflectSelf.AppliedType_args(self)
     end extension
   end AppliedType
 
@@ -1565,14 +1565,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given AnnotatedTypeOps as AnnotatedType.type = AnnotatedType
 
   object AnnotatedType:
-    def apply(underlying: Type, annot: Term)(using ctx: Context): AnnotatedType =
+    def apply(underlying: Type, annot: Term): AnnotatedType =
       reflectSelf.AnnotatedType_apply(underlying, annot)
-    def unapply(x: AnnotatedType)(using ctx: Context): Option[(Type, Term)] =
+    def unapply(x: AnnotatedType): Option[(Type, Term)] =
       Some((x.underlying, x.annot))
 
     extension (self: AnnotatedType):
-      def underlying(using ctx: Context): Type = reflectSelf.AnnotatedType_underlying(self)
-      def annot(using ctx: Context): Term = reflectSelf.AnnotatedType_annot(self)
+      def underlying: Type = reflectSelf.AnnotatedType_underlying(self)
+      def annot: Term = reflectSelf.AnnotatedType_annot(self)
     end extension
   end AnnotatedType
 
@@ -1581,14 +1581,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given AndTypeOps as AndType.type = AndType
 
   object AndType:
-    def apply(lhs: Type, rhs: Type)(using ctx: Context): AndType =
+    def apply(lhs: Type, rhs: Type): AndType =
       reflectSelf.AndType_apply(lhs, rhs)
-    def unapply(x: AndType)(using ctx: Context): Option[(Type, Type)] =
+    def unapply(x: AndType): Option[(Type, Type)] =
       Some((x.left, x.right))
 
     extension (self: AndType):
-      def left(using ctx: Context): Type = reflectSelf.AndType_left(self)
-      def right(using ctx: Context): Type = reflectSelf.AndType_right(self)
+      def left: Type = reflectSelf.AndType_left(self)
+      def right: Type = reflectSelf.AndType_right(self)
     end extension
   end AndType
 
@@ -1597,13 +1597,13 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given OrTypeOps as OrType.type = OrType
 
   object OrType:
-    def apply(lhs: Type, rhs: Type)(using ctx: Context): OrType = reflectSelf.OrType_apply(lhs, rhs)
-    def unapply(x: OrType)(using ctx: Context): Option[(Type, Type)] =
+    def apply(lhs: Type, rhs: Type): OrType = reflectSelf.OrType_apply(lhs, rhs)
+    def unapply(x: OrType): Option[(Type, Type)] =
       Some((x.left, x.right))
 
     extension (self: OrType):
-      def left(using ctx: Context): Type = reflectSelf.OrType_left(self)
-      def right(using ctx: Context): Type = reflectSelf.OrType_right(self)
+      def left: Type = reflectSelf.OrType_left(self)
+      def right: Type = reflectSelf.OrType_right(self)
     end extension
   end OrType
 
@@ -1612,15 +1612,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given MatchTypeOps as MatchType.type = MatchType
 
   object MatchType:
-    def apply(bound: Type, scrutinee: Type, cases: List[Type])(using ctx: Context): MatchType =
+    def apply(bound: Type, scrutinee: Type, cases: List[Type]): MatchType =
       reflectSelf.MatchType_apply(bound, scrutinee, cases)
-    def unapply(x: MatchType)(using ctx: Context): Option[(Type, Type, List[Type])] =
+    def unapply(x: MatchType): Option[(Type, Type, List[Type])] =
       Some((x.bound, x.scrutinee, x.cases))
 
     extension (self: MatchType):
-      def bound(using ctx: Context): Type = reflectSelf.MatchType_bound(self)
-      def scrutinee(using ctx: Context): Type = reflectSelf.MatchType_scrutinee(self)
-      def cases(using ctx: Context): List[Type] = reflectSelf.MatchType_cases(self)
+      def bound: Type = reflectSelf.MatchType_bound(self)
+      def scrutinee: Type = reflectSelf.MatchType_scrutinee(self)
+      def cases: List[Type] = reflectSelf.MatchType_cases(self)
     end extension
   end MatchType
 
@@ -1628,7 +1628,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   /**
    * An accessor for `scala.internal.MatchCase[_,_]`, the representation of a `MatchType` case.
    */
-  def MatchCaseType(using ctx: Context): Type = {
+  def MatchCaseType: Type = {
     import scala.internal.MatchCase
     Type(classOf[MatchCase[_,_]])
   }
@@ -1637,11 +1637,11 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given ByNameTypeOps as ByNameType.type = ByNameType
 
   object ByNameType:
-    def apply(underlying: Type)(using ctx: Context): Type = reflectSelf.ByNameType_apply(underlying)
-    def unapply(x: ByNameType)(using ctx: Context): Option[Type] = Some(x.underlying)
+    def apply(underlying: Type): Type = reflectSelf.ByNameType_apply(underlying)
+    def unapply(x: ByNameType): Option[Type] = Some(x.underlying)
 
     extension (self: ByNameType):
-      def underlying(using ctx: Context): Type = reflectSelf.ByNameType_underlying(self)
+      def underlying: Type = reflectSelf.ByNameType_underlying(self)
     end extension
   end ByNameType
 
@@ -1650,12 +1650,12 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given ParamRefOps as ParamRef.type = ParamRef
 
   object ParamRef:
-    def unapply(x: ParamRef)(using ctx: Context): Option[(LambdaType[TypeOrBounds], Int)] =
+    def unapply(x: ParamRef): Option[(LambdaType[TypeOrBounds], Int)] =
       Some((x.binder, x.paramNum))
 
     extension (self: ParamRef):
-      def binder(using ctx: Context): LambdaType[TypeOrBounds] = reflectSelf.ParamRef_binder(self)
-      def paramNum(using ctx: Context): Int = reflectSelf.ParamRef_paramNum(self)
+      def binder: LambdaType[TypeOrBounds] = reflectSelf.ParamRef_binder(self)
+      def paramNum: Int = reflectSelf.ParamRef_paramNum(self)
     end extension
   end ParamRef
 
@@ -1664,10 +1664,10 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given ThisTypeOps as ThisType.type = ThisType
 
   object ThisType:
-    def unapply(x: ThisType)(using ctx: Context): Option[Type] = Some(x.tref)
+    def unapply(x: ThisType): Option[Type] = Some(x.tref)
 
     extension (self: ThisType):
-      def tref(using ctx: Context): Type = reflectSelf.ThisType_tref(self)
+      def tref: Type = reflectSelf.ThisType_tref(self)
     end extension
   end ThisType
 
@@ -1676,10 +1676,10 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given RecursiveThisOps as RecursiveThis.type = RecursiveThis
 
   object RecursiveThis:
-    def unapply(x: RecursiveThis)(using ctx: Context): Option[RecursiveType] = Some(x.binder)
+    def unapply(x: RecursiveThis): Option[RecursiveType] = Some(x.binder)
 
     extension (self: RecursiveThis):
-      def binder(using ctx: Context): RecursiveType = reflectSelf.RecursiveThis_binder(self)
+      def binder: RecursiveType = reflectSelf.RecursiveThis_binder(self)
     end extension
   end RecursiveThis
 
@@ -1697,14 +1697,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *      `type T`. This avoids infinite recursions later when we
      *      try to follow these references.
      */
-    def apply(parentExp: RecursiveType => Type)(using ctx: Context): RecursiveType =
+    def apply(parentExp: RecursiveType => Type): RecursiveType =
       reflectSelf.RecursiveType_apply(parentExp)
 
-    def unapply(x: RecursiveType)(using ctx: Context): Option[Type] = Some(x.underlying)
+    def unapply(x: RecursiveType): Option[Type] = Some(x.underlying)
 
     extension (self: RecursiveType):
-      def underlying(using ctx: Context): Type = reflectSelf.RecursiveType_underlying(self)
-      def recThis(using ctx: Context): RecursiveThis = reflectSelf.RecursiveThis_recThis(self)
+      def underlying: Type = reflectSelf.RecursiveType_underlying(self)
+      def recThis: RecursiveThis = reflectSelf.RecursiveThis_recThis(self)
     end extension
   end RecursiveType
 
@@ -1716,16 +1716,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     def apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType =
       reflectSelf.MethodType_apply(paramNames)(paramInfosExp, resultTypeExp)
 
-    def unapply(x: MethodType)(using ctx: Context): Option[(List[String], List[Type], Type)] =
+    def unapply(x: MethodType): Option[(List[String], List[Type], Type)] =
       Some((x.paramNames, x.paramTypes, x.resType))
 
     extension (self: MethodType):
       def isImplicit: Boolean = reflectSelf.MethodType_isImplicit(self)
       def isErased: Boolean = reflectSelf.MethodType_isErased(self)
-      def param(idx: Int)(using ctx: Context): Type = reflectSelf.MethodType_param(self, idx)
-      def paramNames(using ctx: Context): List[String] = reflectSelf.MethodType_paramNames(self)
-      def paramTypes(using ctx: Context): List[Type] = reflectSelf.MethodType_paramTypes(self)
-      def resType(using ctx: Context): Type = reflectSelf.MethodType_resType(self)
+      def param(idx: Int): Type = reflectSelf.MethodType_param(self, idx)
+      def paramNames: List[String] = reflectSelf.MethodType_paramNames(self)
+      def paramTypes: List[Type] = reflectSelf.MethodType_paramTypes(self)
+      def resType: Type = reflectSelf.MethodType_resType(self)
     end extension
   end MethodType
 
@@ -1734,16 +1734,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given PolyTypeOps as PolyType.type = PolyType
 
   object PolyType:
-    def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using ctx: Context): PolyType =
+    def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type): PolyType =
       reflectSelf.PolyType_apply(paramNames)(paramBoundsExp, resultTypeExp)
-    def unapply(x: PolyType)(using ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
+    def unapply(x: PolyType): Option[(List[String], List[TypeBounds], Type)] =
       Some((x.paramNames, x.paramBounds, x.resType))
 
     extension (self: PolyType):
-      def param(idx: Int)(using ctx: Context): Type = reflectSelf.PolyType_param(self, idx)
-      def paramNames(using ctx: Context): List[String] = reflectSelf.PolyType_paramNames(self)
-      def paramBounds(using ctx: Context): List[TypeBounds] = reflectSelf.PolyType_paramBounds(self)
-      def resType(using ctx: Context): Type = reflectSelf.PolyType_resType(self)
+      def param(idx: Int): Type = reflectSelf.PolyType_param(self, idx)
+      def paramNames: List[String] = reflectSelf.PolyType_paramNames(self)
+      def paramBounds: List[TypeBounds] = reflectSelf.PolyType_paramBounds(self)
+      def resType: Type = reflectSelf.PolyType_resType(self)
     end extension
   end PolyType
 
@@ -1754,14 +1754,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   object TypeLambda:
     def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda =
       reflectSelf.TypeLambda_apply(paramNames, boundsFn, bodyFn)
-    def unapply(x: TypeLambda)(using ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
+    def unapply(x: TypeLambda): Option[(List[String], List[TypeBounds], Type)] =
       Some((x.paramNames, x.paramBounds, x.resType))
 
     extension (self: TypeLambda):
-      def paramNames(using ctx: Context): List[String] = reflectSelf.TypeLambda_paramNames(self)
-      def paramBounds(using ctx: Context): List[TypeBounds] = reflectSelf.TypeLambda_paramBounds(self)
-      def param(idx: Int)(using ctx: Context) : Type = reflectSelf.TypeLambda_param(self, idx)
-      def resType(using ctx: Context): Type = reflectSelf.TypeLambda_resType(self)
+      def paramNames: List[String] = reflectSelf.TypeLambda_paramNames(self)
+      def paramBounds: List[TypeBounds] = reflectSelf.TypeLambda_paramBounds(self)
+      def param(idx: Int) : Type = reflectSelf.TypeLambda_param(self, idx)
+      def resType: Type = reflectSelf.TypeLambda_resType(self)
     end extension
   end TypeLambda
 
@@ -1772,13 +1772,13 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given TypeBoundsOps as TypeBounds.type = TypeBounds
 
   object TypeBounds:
-    def apply(low: Type, hi: Type)(using ctx: Context): TypeBounds =
+    def apply(low: Type, hi: Type): TypeBounds =
       reflectSelf.TypeBounds_apply(low, hi)
-    def unapply(x: TypeBounds)(using ctx: Context): Option[(Type, Type)] = Some((x.low, x.hi))
+    def unapply(x: TypeBounds): Option[(Type, Type)] = Some((x.low, x.hi))
 
     extension (self: TypeBounds):
-      def low(using ctx: Context): Type = reflectSelf.TypeBounds_low(self)
-      def hi(using ctx: Context): Type = reflectSelf.TypeBounds_hi(self)
+      def low: Type = reflectSelf.TypeBounds_low(self)
+      def hi: Type = reflectSelf.TypeBounds_hi(self)
     end extension
   end TypeBounds
 
@@ -1788,7 +1788,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given TypeTest[TypeOrBounds, NoPrefix] = reflectSelf.NoPrefix_TypeTest
 
   object NoPrefix:
-    def unapply(x: NoPrefix)(using ctx: Context): Boolean = true
+    def unapply(x: NoPrefix): Boolean = true
 
 
   ///////////////
