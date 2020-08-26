@@ -7,7 +7,7 @@ plugins {
 
 
 group = "org.jetbrains.dokka"
-version = "0.1.0"
+version = "0.1.1"
 
 val language_version: String by project
 
@@ -28,12 +28,11 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.dokka:dokka-core:1.4-mc-1")
-    implementation("org.jetbrains.dokka:dokka-base:1.4-mc-1")
+    implementation("org.jetbrains.dokka:dokka-core:1.4.0-rc")
+    implementation("org.jetbrains.dokka:dokka-base:1.4.0-rc")
     implementation("com.vladsch.flexmark:flexmark-all:0.42.12")
     implementation("nl.big-o:liqp:0.6.7")
-    implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.6.10")
-
+    implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.7.1")
     implementation("junit:junit:4.13")
 }
 
