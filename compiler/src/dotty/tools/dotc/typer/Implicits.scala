@@ -338,10 +338,13 @@ object Implicits:
       if (monitored) record(s"check eligible refs in irefCtx", refs.length)
       val ownEligible = filterMatching(tp)
       if (isOuterMost) ownEligible
-      else ownEligible ::: {
-        val shadowed = ownEligible.map(_.ref.implicitName).toSet
-        outerImplicits.eligible(tp).filterNot(cand => shadowed.contains(cand.ref.implicitName))
-      }
+      else if ownEligible.isEmpty then outerImplicits.eligible(tp)
+      else
+        val outerEligible = outerImplicits.eligible(tp)
+        if outerEligible.isEmpty then ownEligible
+        else
+          val shadowed = ownEligible.map(_.ref.implicitName).toSet
+          ownEligible ::: outerEligible.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
     }
 
     override def isAccessible(ref: TermRef)(using Context): Boolean =
