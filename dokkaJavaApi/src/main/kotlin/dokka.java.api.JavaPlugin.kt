@@ -15,6 +15,7 @@ import org.jetbrains.dokka.pages.Style
 import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.plugability.DokkaPlugin
 import org.jetbrains.dokka.transformers.documentation.DocumentableToPageTranslator
+import org.jetbrains.dokka.transformers.documentation.DocumentableTransformer
 import org.jetbrains.dokka.transformers.pages.PageTransformer
 import org.jetbrains.dokka.transformers.sources.SourceToDocumentableTranslator
 import org.jetbrains.dokka.utilities.DokkaLogger
@@ -81,6 +82,12 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         } order { before(dokkaBase.rootCreator) }
     }
 
+    val inheritanceInformationTransformer by extending {
+        CoreExtensions.documentableTransformer providing { ctx ->
+            createInheritanceInformationTransformer(ctx)
+        }
+    }
+
     abstract fun createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule
     abstract fun createSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger): SignatureProvider
     abstract fun createResourceInstaller(ctx: DokkaContext) : PageTransformer
@@ -91,6 +98,7 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         logger: DokkaLogger
     ) : DocumentableToPageTranslator
     abstract fun createPackageHierarchyTransformer(ctx: DokkaContext) : PageTransformer
+    abstract fun createInheritanceInformationTransformer(ctx: DokkaContext): DocumentableTransformer
 }
 
 // TODO we probably does not need that

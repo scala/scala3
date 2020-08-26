@@ -16,6 +16,14 @@ trait TypesSupport:
                 case term:  Term => inner(term.tpe)
 
             new TypeConstructor(tpeTree.symbol.dri, data.asJava, FunctionModifiers.NONE)
+
+    extension on (tpe: TypeOrBounds):
+        def dokkaType(using ctx: reflect.Context): Bound =
+            val data = inner(tpe)
+            val dri = data.collect{
+                case o: OtherParameter => o
+            }.headOption.map(_.getDeclarationDRI).getOrElse(defn.AnyClass.dri)
+            new TypeConstructor(dri, data.asJava, FunctionModifiers.NONE)
      
     private def text(str: String): JProjection = new UnresolvedBound(str)
     

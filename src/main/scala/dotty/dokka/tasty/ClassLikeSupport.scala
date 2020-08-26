@@ -29,8 +29,7 @@ trait ClassLikeSupport:
       documentation: Map[DokkaConfiguration$DokkaSourceSet, DocumentationNode] = classDef.symbol.documentation,
       modifier: Map[DokkaConfiguration$DokkaSourceSet, Modifier] = Map(sourceSet.getSourceSet -> classDef.symbol.getModifier()),
       additionalExtras: Seq[ExtraProperty[DClass]] = Seq.empty
-    ): DClass =
-        new DClass(
+    ): DClass = new DClass(
           dri,
           name,
           constructors.asJava,
@@ -57,6 +56,7 @@ trait ClassLikeSupport:
               classDef.getGivenMethods ++ classDef.getGivenFields
             ))
             .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
+            .plus(InheritanceInfo(classDef.getSupertypes, List.empty))
             .addAll(additionalExtras.asJava) 
       )
 
@@ -99,6 +99,8 @@ trait ClassLikeSupport:
                   if parentSymbol != defn.ObjectClass 
           yield parentTree.dokkaType
       }
+
+      def getSupertypes: List[Bound] = getSupertypes(c).map(_.dokkaType)
 
       def getConstructors: List[Symbol] = c.body.collect {
           case d: DefDef if d.name == "<init>" && c.constructor.symbol != d.symbol => d.symbol

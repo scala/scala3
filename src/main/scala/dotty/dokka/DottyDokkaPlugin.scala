@@ -53,3 +53,4 @@ class DottyDokkaPlugin extends JavaDokkaPlugin:
         logger: DokkaLogger
     ) = new ScalaDocumentableToPageTranslator(commentsToContentConverter,signatureProvider, logger)
   override def createPackageHierarchyTransformer(ctx: DokkaContext) = PackageHierarchyTransformer(ctx)
+  override def createInheritanceInformationTransformer(ctx: DokkaContext) = InheritanceInformationTransformer(ctx)
