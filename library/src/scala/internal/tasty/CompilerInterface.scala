@@ -505,22 +505,22 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def TypeBounds_TypeTest: TypeTest[TypeOrBounds, TypeBounds]
 
-  def TypeBounds_apply(low: Type, hi: Type)(using ctx: Context): TypeBounds
+  def TypeBounds_apply(low: Type, hi: Type): TypeBounds
 
-  def TypeBounds_low(self: TypeBounds)(using ctx: Context): Type
-  def TypeBounds_hi(self: TypeBounds)(using ctx: Context): Type
+  def TypeBounds_low(self: TypeBounds): Type
+  def TypeBounds_hi(self: TypeBounds): Type
 
   def Type_TypeTest: TypeTest[TypeOrBounds, Type]
 
-  def Type_apply(clazz: Class[_])(using ctx: Context): Type
+  def Type_apply(clazz: Class[_]): Type
 
   /** Is `self` type the same as `that` type?
    *  This is the case iff `Type_isSubType(self, that)` and `Type_isSubType(that, self)`.
    */
-  def Type_isTypeEq(self: Type)(that: Type)(using ctx: Context): Boolean
+  def Type_isTypeEq(self: Type)(that: Type): Boolean
 
   /** Is this type a subtype of that type? */
-  def Type_isSubType(self: Type)(that: Type)(using ctx: Context): Boolean
+  def Type_isSubType(self: Type)(that: Type): Boolean
 
   /** Widen from singleton type to its underlying non-singleton
     *  base type by applying one or more `underlying` dereferences,
@@ -531,33 +531,33 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
     *  def o: Outer
     *  <o.x.type>.widen = o.C
     */
-  def Type_widen(self: Type)(using ctx: Context): Type
+  def Type_widen(self: Type): Type
 
   /** Widen from TermRef to its underlying non-termref
    *  base type, while also skipping Expr types.
    */
-  def Type_widenTermRefExpr(self: Type)(using ctx: Context): Type
+  def Type_widenTermRefExpr(self: Type): Type
 
   /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
    *  TypeVars until type is no longer alias type, annotated type, LazyRef,
    *  or instantiated type variable.
    */
-  def Type_dealias(self: Type)(using ctx: Context): Type
+  def Type_dealias(self: Type): Type
 
-  def Type_simplified(self: Type)(using ctx: Context): Type
+  def Type_simplified(self: Type): Type
 
-  def Type_classSymbol(self: Type)(using ctx: Context): Option[Symbol] // TODO remove Option and use NoSymbol
+  def Type_classSymbol(self: Type): Option[Symbol] // TODO remove Option and use NoSymbol
 
-  def Type_typeSymbol(self: Type)(using ctx: Context): Symbol
+  def Type_typeSymbol(self: Type): Symbol
 
-  def Type_termSymbol(self: Type)(using ctx: Context): Symbol
+  def Type_termSymbol(self: Type): Symbol
 
-  def Type_isSingleton(self: Type)(using ctx: Context): Boolean
+  def Type_isSingleton(self: Type): Boolean
 
-  def Type_memberType(self: Type)(member: Symbol)(using ctx: Context): Type
+  def Type_memberType(self: Type)(member: Symbol): Type
 
   /** The base classes of this type with the class itself as first element. */
-  def Type_baseClasses(self: Type)(using ctx: Context): List[Symbol]
+  def Type_baseClasses(self: Type): List[Symbol]
 
   /** The least type instance of given class which is a super-type
     *  of this type.  Example:
@@ -567,10 +567,10 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
     *    ThisType(C).baseType(D) = p.D[Int]
     * }}}
     */
-  def Type_baseType(self: Type)(cls: Symbol)(using ctx: Context): Type
+  def Type_baseType(self: Type)(cls: Symbol): Type
 
   /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-  def Type_derivesFrom(self: Type)(cls: Symbol)(using ctx: Context): Boolean
+  def Type_derivesFrom(self: Type)(cls: Symbol): Boolean
 
   /** Is this type a function type?
    *
@@ -581,118 +581,118 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
    *     - returns true for `given Int => Int` and `erased Int => Int`
    *     - returns false for `List[Int]`, despite that `List[Int] <:< Int => Int`.
    */
-  def Type_isFunctionType(self: Type)(using ctx: Context): Boolean
+  def Type_isFunctionType(self: Type): Boolean
 
   /** Is this type an context function type?
    *
    *  @see `Type_isFunctionType`
    */
-  def Type_isContextFunctionType(self: Type)(using ctx: Context): Boolean
+  def Type_isContextFunctionType(self: Type): Boolean
 
   /** Is this type an erased function type?
    *
    *  @see `Type_isFunctionType`
    */
-  def Type_isErasedFunctionType(self: Type)(using ctx: Context): Boolean
+  def Type_isErasedFunctionType(self: Type): Boolean
 
   /** Is this type a dependent function type?
    *
    *  @see `Type_isFunctionType`
    */
-  def Type_isDependentFunctionType(self: Type)(using ctx: Context): Boolean
+  def Type_isDependentFunctionType(self: Type): Boolean
 
   /** The type <this . sym>, reduced if possible */
-  def Type_select(self: Type)(sym: Symbol)(using ctx: Context): Type
+  def Type_select(self: Type)(sym: Symbol): Type
 
   def ConstantType_TypeTest: TypeTest[TypeOrBounds, ConstantType]
 
-  def ConstantType_apply(const : Constant)(using ctx : Context) : ConstantType
+  def ConstantType_apply(const: Constant): ConstantType
 
-  def ConstantType_constant(self: ConstantType)(using ctx: Context): Constant
+  def ConstantType_constant(self: ConstantType): Constant
 
   def TermRef_TypeTest: TypeTest[TypeOrBounds, TermRef]
 
-  def TermRef_apply(qual: TypeOrBounds, name: String)(using ctx: Context): TermRef
+  def TermRef_apply(qual: TypeOrBounds, name: String): TermRef
 
-  def TermRef_qualifier(self: TermRef)(using ctx: Context): TypeOrBounds
-  def TermRef_name(self: TermRef)(using ctx: Context): String
+  def TermRef_qualifier(self: TermRef): TypeOrBounds
+  def TermRef_name(self: TermRef): String
 
   def TypeRef_TypeTest: TypeTest[TypeOrBounds, TypeRef]
 
-  def TypeRef_qualifier(self: TypeRef)(using ctx: Context): TypeOrBounds
-  def TypeRef_name(self: TypeRef)(using ctx: Context): String
-  def TypeRef_isOpaqueAlias(self: TypeRef)(using ctx: Context): Boolean
-  def TypeRef_translucentSuperType(self: TypeRef)(using ctx: Context): Type
+  def TypeRef_qualifier(self: TypeRef): TypeOrBounds
+  def TypeRef_name(self: TypeRef): String
+  def TypeRef_isOpaqueAlias(self: TypeRef): Boolean
+  def TypeRef_translucentSuperType(self: TypeRef): Type
 
   def SuperType_TypeTest: TypeTest[TypeOrBounds, SuperType]
 
-  def SuperType_apply(thistpe: Type, supertpe: Type)(using ctx: Context): SuperType
+  def SuperType_apply(thistpe: Type, supertpe: Type): SuperType
 
-  def SuperType_thistpe(self: SuperType)(using ctx: Context): Type
-  def SuperType_supertpe(self: SuperType)(using ctx: Context): Type
+  def SuperType_thistpe(self: SuperType): Type
+  def SuperType_supertpe(self: SuperType): Type
 
   def Refinement_TypeTest: TypeTest[TypeOrBounds, Refinement]
 
-  def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(using ctx: Context): Refinement
+  def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */): Refinement
 
-  def Refinement_parent(self: Refinement)(using ctx: Context): Type
-  def Refinement_name(self: Refinement)(using ctx: Context): String
-  def Refinement_info(self: Refinement)(using ctx: Context): TypeOrBounds
+  def Refinement_parent(self: Refinement): Type
+  def Refinement_name(self: Refinement): String
+  def Refinement_info(self: Refinement): TypeOrBounds
 
   def AppliedType_TypeTest: TypeTest[TypeOrBounds, AppliedType]
 
-  def AppliedType_tycon(self: AppliedType)(using ctx: Context): Type
-  def AppliedType_args(self: AppliedType)(using ctx: Context): List[TypeOrBounds]
+  def AppliedType_tycon(self: AppliedType): Type
+  def AppliedType_args(self: AppliedType): List[TypeOrBounds]
 
-  def AppliedType_apply(tycon: Type, args: List[TypeOrBounds])(using ctx: Context) : AppliedType
+  def AppliedType_apply(tycon: Type, args: List[TypeOrBounds]): AppliedType
 
   def AnnotatedType_TypeTest: TypeTest[TypeOrBounds, AnnotatedType]
 
-  def AnnotatedType_apply(underlying: Type, annot: Term)(using ctx: Context): AnnotatedType
+  def AnnotatedType_apply(underlying: Type, annot: Term): AnnotatedType
 
-  def AnnotatedType_underlying(self: AnnotatedType)(using ctx: Context): Type
-  def AnnotatedType_annot(self: AnnotatedType)(using ctx: Context): Term
+  def AnnotatedType_underlying(self: AnnotatedType): Type
+  def AnnotatedType_annot(self: AnnotatedType): Term
 
   def AndType_TypeTest: TypeTest[TypeOrBounds, AndType]
 
-  def AndType_apply(lhs: Type, rhs: Type)(using ctx: Context): AndType
+  def AndType_apply(lhs: Type, rhs: Type): AndType
 
-  def AndType_left(self: AndType)(using ctx: Context): Type
-  def AndType_right(self: AndType)(using ctx: Context): Type
+  def AndType_left(self: AndType): Type
+  def AndType_right(self: AndType): Type
 
   def OrType_TypeTest: TypeTest[TypeOrBounds, OrType]
 
-  def OrType_apply(lhs : Type, rhs : Type)(using ctx : Context): OrType
+  def OrType_apply(lhs: Type, rhs: Type): OrType
 
-  def OrType_left(self: OrType)(using ctx: Context): Type
-  def OrType_right(self: OrType)(using ctx: Context): Type
+  def OrType_left(self: OrType): Type
+  def OrType_right(self: OrType): Type
 
   def MatchType_TypeTest: TypeTest[TypeOrBounds, MatchType]
 
-  def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type])(using ctx: Context): MatchType
+  def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type]): MatchType
 
-  def MatchType_bound(self: MatchType)(using ctx: Context): Type
-  def MatchType_scrutinee(self: MatchType)(using ctx: Context): Type
-  def MatchType_cases(self: MatchType)(using ctx: Context): List[Type]
+  def MatchType_bound(self: MatchType): Type
+  def MatchType_scrutinee(self: MatchType): Type
+  def MatchType_cases(self: MatchType): List[Type]
 
   def ByNameType_TypeTest: TypeTest[TypeOrBounds, ByNameType]
 
-  def ByNameType_apply(underlying: Type)(using ctx: Context): Type
+  def ByNameType_apply(underlying: Type): Type
 
-  def ByNameType_underlying(self: ByNameType)(using ctx: Context): Type
+  def ByNameType_underlying(self: ByNameType): Type
 
   def ParamRef_TypeTest: TypeTest[TypeOrBounds, ParamRef]
 
-  def ParamRef_binder(self: ParamRef)(using ctx: Context): LambdaType[TypeOrBounds]
-  def ParamRef_paramNum(self: ParamRef)(using ctx: Context): Int
+  def ParamRef_binder(self: ParamRef): LambdaType[TypeOrBounds]
+  def ParamRef_paramNum(self: ParamRef): Int
 
   def ThisType_TypeTest: TypeTest[TypeOrBounds, ThisType]
 
-  def ThisType_tref(self: ThisType)(using ctx: Context): Type
+  def ThisType_tref(self: ThisType): Type
 
   def RecursiveThis_TypeTest: TypeTest[TypeOrBounds, RecursiveThis]
 
-  def RecursiveThis_binder(self: RecursiveThis)(using ctx: Context): RecursiveType
+  def RecursiveThis_binder(self: RecursiveThis): RecursiveType
 
   def RecursiveType_TypeTest: TypeTest[TypeOrBounds, RecursiveType]
 
@@ -704,11 +704,11 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
    *      `type T`. This avoids infinite recursions later when we
    *      try to follow these references.
    */
-  def RecursiveType_apply(parentExp: RecursiveType => Type)(using ctx: Context): RecursiveType
+  def RecursiveType_apply(parentExp: RecursiveType => Type): RecursiveType
 
-  def RecursiveType_underlying(self: RecursiveType)(using ctx: Context): Type
+  def RecursiveType_underlying(self: RecursiveType): Type
 
-  def RecursiveThis_recThis(self: RecursiveType)(using ctx: Context): RecursiveThis
+  def RecursiveThis_recThis(self: RecursiveType): RecursiveThis
 
   def MethodType_TypeTest: TypeTest[TypeOrBounds, MethodType]
 
@@ -716,28 +716,28 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def MethodType_isErased(self: MethodType): Boolean
   def MethodType_isImplicit(self: MethodType): Boolean
-  def MethodType_param(self: MethodType, ids: Int)(using ctx: Context): Type
-  def MethodType_paramNames(self: MethodType)(using ctx: Context): List[String]
-  def MethodType_paramTypes(self: MethodType)(using ctx: Context): List[Type]
-  def MethodType_resType(self: MethodType)(using ctx: Context): Type
+  def MethodType_param(self: MethodType, ids: Int): Type
+  def MethodType_paramNames(self: MethodType): List[String]
+  def MethodType_paramTypes(self: MethodType): List[Type]
+  def MethodType_resType(self: MethodType): Type
 
   def PolyType_TypeTest: TypeTest[TypeOrBounds, PolyType]
 
-  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using ctx: Context): PolyType
+  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type): PolyType
 
-  def PolyType_param(self: PolyType, idx: Int)(using ctx: Context): Type
-  def PolyType_paramNames(self: PolyType)(using ctx: Context): List[String]
-  def PolyType_paramBounds(self: PolyType)(using ctx: Context): List[TypeBounds]
-  def PolyType_resType(self: PolyType)(using ctx: Context): Type
+  def PolyType_param(self: PolyType, idx: Int): Type
+  def PolyType_paramNames(self: PolyType): List[String]
+  def PolyType_paramBounds(self: PolyType): List[TypeBounds]
+  def PolyType_resType(self: PolyType): Type
 
   def TypeLambda_TypeTest: TypeTest[TypeOrBounds, TypeLambda]
 
   def TypeLambda_apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda
 
-  def TypeLambda_paramNames(self: TypeLambda)(using ctx: Context): List[String]
-  def TypeLambda_paramBounds(self: TypeLambda)(using ctx: Context): List[TypeBounds]
-  def TypeLambda_param(self: TypeLambda, idx: Int)(using ctx: Context): Type
-  def TypeLambda_resType(self: TypeLambda)(using ctx: Context): Type
+  def TypeLambda_paramNames(self: TypeLambda): List[String]
+  def TypeLambda_paramBounds(self: TypeLambda): List[TypeBounds]
+  def TypeLambda_param(self: TypeLambda, idx: Int): Type
+  def TypeLambda_resType(self: TypeLambda): Type
 
 
   //////////////////////
@@ -889,7 +889,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   /** The position of this symbol */
   def Symbol_pos(self: Symbol): Position
 
-  def Symbol_localContext(self: Symbol): Context
+  // def Symbol_localContext(self: Symbol): Context
 
   /** The comment of the symbol */
   def Symbol_comment(self: Symbol): Option[Comment]

@@ -1138,11 +1138,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeBounds_apply(low: Type, hi: Type)(using Context): TypeBounds =
+  def TypeBounds_apply(low: Type, hi: Type): TypeBounds =
     Types.TypeBounds(low, hi)
 
-  def TypeBounds_low(self: TypeBounds)(using Context): Type = self.lo
-  def TypeBounds_hi(self: TypeBounds)(using Context): Type = self.hi
+  def TypeBounds_low(self: TypeBounds): Type = self.lo
+  def TypeBounds_hi(self: TypeBounds): Type = self.hi
 
   type Type = Types.Type
 
@@ -1154,7 +1154,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Type_apply(clazz: Class[?])(using Context): Type =
+  def Type_apply(clazz: Class[?]): Type =
     if (clazz.isPrimitive)
       if (clazz == classOf[Boolean]) defn.BooleanType
       else if (clazz == classOf[Byte]) defn.ByteType
@@ -1176,54 +1176,54 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     }
     else getClassIfDefined(clazz.getCanonicalName).typeRef
 
-  def Type_isTypeEq(self: Type)(that: Type)(using Context): Boolean = self =:= that
+  def Type_isTypeEq(self: Type)(that: Type): Boolean = self =:= that
 
-  def Type_isSubType(self: Type)(that: Type)(using Context): Boolean = self <:< that
+  def Type_isSubType(self: Type)(that: Type): Boolean = self <:< that
 
-  def Type_widen(self: Type)(using Context): Type = self.widen
+  def Type_widen(self: Type): Type = self.widen
 
-  def Type_widenTermRefExpr(self: Type)(using Context): Type = self.widenTermRefExpr
+  def Type_widenTermRefExpr(self: Type): Type = self.widenTermRefExpr
 
-  def Type_dealias(self: Type)(using Context): Type = self.dealias
+  def Type_dealias(self: Type): Type = self.dealias
 
-  def Type_simplified(self: Type)(using Context): Type = self.simplified
+  def Type_simplified(self: Type): Type = self.simplified
 
-  def Type_classSymbol(self: Type)(using Context): Option[Symbol] =
+  def Type_classSymbol(self: Type): Option[Symbol] =
     if (self.classSymbol.exists) Some(self.classSymbol.asClass) else None
 
-  def Type_typeSymbol(self: Type)(using Context): Symbol = self.typeSymbol
+  def Type_typeSymbol(self: Type): Symbol = self.typeSymbol
 
-  def Type_termSymbol(self: Type)(using Context): Symbol = self.termSymbol
+  def Type_termSymbol(self: Type): Symbol = self.termSymbol
 
-  def Type_isSingleton(self: Type)(using Context): Boolean = self.isSingleton
+  def Type_isSingleton(self: Type): Boolean = self.isSingleton
 
-  def Type_memberType(self: Type)(member: Symbol)(using Context): Type =
+  def Type_memberType(self: Type)(member: Symbol): Type =
     member.info.asSeenFrom(self, member.owner)
 
-  def Type_baseClasses(self: Type)(using Context): List[Symbol] =
+  def Type_baseClasses(self: Type): List[Symbol] =
     self.baseClasses
 
-  def Type_baseType(self: Type)(cls: Symbol)(using Context): Type =
+  def Type_baseType(self: Type)(cls: Symbol): Type =
     self.baseType(cls)
 
-  def Type_derivesFrom(self: Type)(cls: Symbol)(using Context): Boolean =
+  def Type_derivesFrom(self: Type)(cls: Symbol): Boolean =
     self.derivesFrom(cls)
 
-  def Type_isFunctionType(self: Type)(using Context): Boolean =
+  def Type_isFunctionType(self: Type): Boolean =
     defn.isFunctionType(self)
 
-  def Type_isContextFunctionType(self: Type)(using Context): Boolean =
+  def Type_isContextFunctionType(self: Type): Boolean =
     defn.isContextFunctionType(self)
 
-  def Type_isErasedFunctionType(self: Type)(using Context): Boolean =
+  def Type_isErasedFunctionType(self: Type): Boolean =
     defn.isErasedFunctionType(self)
 
-  def Type_isDependentFunctionType(self: Type)(using Context): Boolean = {
+  def Type_isDependentFunctionType(self: Type): Boolean = {
     val tpNoRefinement = self.dropDependentRefinement
     tpNoRefinement != self && defn.isNonRefinedFunction(tpNoRefinement)
   }
 
-  def Type_select(self: Type)(sym: Symbol)(using Context): Type =
+  def Type_select(self: Type)(sym: Symbol): Type =
     self.select(sym)
 
   type ConstantType = Types.ConstantType
@@ -1235,10 +1235,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def ConstantType_apply(const: Constant)(using Context): ConstantType =
+  def ConstantType_apply(const: Constant): ConstantType =
     Types.ConstantType(const)
 
-  def ConstantType_constant(self: ConstantType)(using Context): Constant = self.value
+  def ConstantType_constant(self: ConstantType): Constant = self.value
 
   type TermRef = Types.NamedType
 
@@ -1249,12 +1249,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TermRef_apply(qual: TypeOrBounds, name: String)(using Context): TermRef =
+  def TermRef_apply(qual: TypeOrBounds, name: String): TermRef =
     Types.TermRef(qual, name.toTermName)
 
-  def TermRef_qualifier(self: TermRef)(using Context): TypeOrBounds = self.prefix
+  def TermRef_qualifier(self: TermRef): TypeOrBounds = self.prefix
 
-  def TermRef_name(self: TermRef)(using Context): String = self.name.toString
+  def TermRef_name(self: TermRef): String = self.name.toString
 
   type TypeRef = Types.NamedType
 
@@ -1265,13 +1265,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeRef_qualifier(self: TypeRef)(using Context): TypeOrBounds = self.prefix
+  def TypeRef_qualifier(self: TypeRef): TypeOrBounds = self.prefix
 
-  def TypeRef_name(self: TypeRef)(using Context): String = self.name.toString
+  def TypeRef_name(self: TypeRef): String = self.name.toString
 
-  def TypeRef_isOpaqueAlias(self: TypeRef)(using Context): Boolean = self.symbol.isOpaqueAlias
+  def TypeRef_isOpaqueAlias(self: TypeRef): Boolean = self.symbol.isOpaqueAlias
 
-  def TypeRef_translucentSuperType(self: TypeRef)(using Context): Type = self.translucentSuperType
+  def TypeRef_translucentSuperType(self: TypeRef): Type = self.translucentSuperType
 
   type NamedTermRef = Types.NamedType
 
@@ -1286,8 +1286,8 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def NamedTermRef_name(self: NamedTermRef)(using Context): String = self.name.toString
-  def NamedTermRef_qualifier(self: NamedTermRef)(using Context): TypeOrBounds = self.prefix
+  def NamedTermRef_name(self: NamedTermRef): String = self.name.toString
+  def NamedTermRef_qualifier(self: NamedTermRef): TypeOrBounds = self.prefix
 
   type SuperType = Types.SuperType
 
@@ -1298,11 +1298,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def SuperType_apply(thistpe: Type, supertpe: Type)(using Context): SuperType =
+  def SuperType_apply(thistpe: Type, supertpe: Type): SuperType =
     Types.SuperType(thistpe, supertpe)
 
-  def SuperType_thistpe(self: SuperType)(using Context): Type = self.thistpe
-  def SuperType_supertpe(self: SuperType)(using Context): Type = self.supertpe
+  def SuperType_thistpe(self: SuperType): Type = self.thistpe
+  def SuperType_supertpe(self: SuperType): Type = self.supertpe
 
   type Refinement = Types.RefinedType
 
@@ -1313,7 +1313,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(using Context): Refinement = {
+  def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */): Refinement = {
     val name1 =
       info match
         case _: TypeBounds => name.toTypeName
@@ -1321,9 +1321,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     Types.RefinedType(parent, name1, info)
   }
 
-  def Refinement_parent(self: Refinement)(using Context): Type = self.parent
-  def Refinement_name(self: Refinement)(using Context): String = self.refinedName.toString
-  def Refinement_info(self: Refinement)(using Context): TypeOrBounds = self.refinedInfo
+  def Refinement_parent(self: Refinement): Type = self.parent
+  def Refinement_name(self: Refinement): String = self.refinedName.toString
+  def Refinement_info(self: Refinement): TypeOrBounds = self.refinedInfo
 
   type AppliedType = Types.AppliedType
 
@@ -1334,10 +1334,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def AppliedType_tycon(self: AppliedType)(using Context): Type = self.tycon
-  def AppliedType_args(self: AppliedType)(using Context): List[TypeOrBounds] = self.args
+  def AppliedType_tycon(self: AppliedType): Type = self.tycon
+  def AppliedType_args(self: AppliedType): List[TypeOrBounds] = self.args
 
-  def AppliedType_apply(tycon: Type, args: List[TypeOrBounds])(using Context): AppliedType = Types.AppliedType(tycon, args)
+  def AppliedType_apply(tycon: Type, args: List[TypeOrBounds]): AppliedType = Types.AppliedType(tycon, args)
 
   type AnnotatedType = Types.AnnotatedType
 
@@ -1348,11 +1348,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def AnnotatedType_apply(underlying: Type, annot: Term)(using Context): AnnotatedType =
+  def AnnotatedType_apply(underlying: Type, annot: Term): AnnotatedType =
     Types.AnnotatedType(underlying, Annotations.Annotation(annot))
 
-  def AnnotatedType_underlying(self: AnnotatedType)(using Context): Type = self.underlying.stripTypeVar
-  def AnnotatedType_annot(self: AnnotatedType)(using Context): Term = self.annot.tree
+  def AnnotatedType_underlying(self: AnnotatedType): Type = self.underlying.stripTypeVar
+  def AnnotatedType_annot(self: AnnotatedType): Term = self.annot.tree
 
   type AndType = Types.AndType
 
@@ -1363,11 +1363,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def AndType_apply(lhs: Type, rhs: Type)(using Context): AndType =
+  def AndType_apply(lhs: Type, rhs: Type): AndType =
     Types.AndType(lhs, rhs)
 
-  def AndType_left(self: AndType)(using Context): Type = self.tp1.stripTypeVar
-  def AndType_right(self: AndType)(using Context): Type = self.tp2.stripTypeVar
+  def AndType_left(self: AndType): Type = self.tp1.stripTypeVar
+  def AndType_right(self: AndType): Type = self.tp2.stripTypeVar
 
   type OrType = Types.OrType
 
@@ -1378,11 +1378,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def OrType_apply(lhs: Type, rhs: Type)(using Context): OrType =
+  def OrType_apply(lhs: Type, rhs: Type): OrType =
     Types.OrType(lhs, rhs)
 
-  def OrType_left(self: OrType)(using Context): Type = self.tp1.stripTypeVar
-  def OrType_right(self: OrType)(using Context): Type = self.tp2.stripTypeVar
+  def OrType_left(self: OrType): Type = self.tp1.stripTypeVar
+  def OrType_right(self: OrType): Type = self.tp2.stripTypeVar
 
   type MatchType = Types.MatchType
 
@@ -1393,12 +1393,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type])(using Context): MatchType =
+  def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type]): MatchType =
     Types.MatchType(bound, scrutinee, cases)
 
-  def MatchType_bound(self: MatchType)(using Context): Type = self.bound
-  def MatchType_scrutinee(self: MatchType)(using Context): Type = self.scrutinee
-  def MatchType_cases(self: MatchType)(using Context): List[Type] = self.cases
+  def MatchType_bound(self: MatchType): Type = self.bound
+  def MatchType_scrutinee(self: MatchType): Type = self.scrutinee
+  def MatchType_cases(self: MatchType): List[Type] = self.cases
 
   type ByNameType = Types.ExprType
 
@@ -1409,9 +1409,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def ByNameType_apply(underlying: Type)(using Context): Type = Types.ExprType(underlying)
+  def ByNameType_apply(underlying: Type): Type = Types.ExprType(underlying)
 
-  def ByNameType_underlying(self: ByNameType)(using Context): Type = self.resType.stripTypeVar
+  def ByNameType_underlying(self: ByNameType): Type = self.resType.stripTypeVar
 
   type ParamRef = Types.ParamRef
 
@@ -1423,9 +1423,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def ParamRef_binder(self: ParamRef)(using Context): LambdaType[TypeOrBounds] =
+  def ParamRef_binder(self: ParamRef): LambdaType[TypeOrBounds] =
     self.binder.asInstanceOf[LambdaType[TypeOrBounds]] // Cast to tpd
-  def ParamRef_paramNum(self: ParamRef)(using Context): Int = self.paramNum
+  def ParamRef_paramNum(self: ParamRef): Int = self.paramNum
 
   type ThisType = Types.ThisType
 
@@ -1436,7 +1436,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def ThisType_tref(self: ThisType)(using Context): Type = self.tref
+  def ThisType_tref(self: ThisType): Type = self.tref
 
   type RecursiveThis = Types.RecThis
 
@@ -1447,7 +1447,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def RecursiveThis_binder(self: RecursiveThis)(using Context): RecursiveType = self.binder
+  def RecursiveThis_binder(self: RecursiveThis): RecursiveType = self.binder
 
   type RecursiveType = Types.RecType
 
@@ -1458,12 +1458,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def RecursiveType_apply(parentExp: RecursiveType => Type)(using Context): RecursiveType =
+  def RecursiveType_apply(parentExp: RecursiveType => Type): RecursiveType =
     Types.RecType(parentExp)
 
-  def RecursiveType_underlying(self: RecursiveType)(using Context): Type = self.underlying.stripTypeVar
+  def RecursiveType_underlying(self: RecursiveType): Type = self.underlying.stripTypeVar
 
-  def RecursiveThis_recThis(self: RecursiveType)(using Context): RecursiveThis = self.recThis
+  def RecursiveThis_recThis(self: RecursiveType): RecursiveThis = self.recThis
 
   type LambdaType[ParamInfo] = Types.LambdaType { type PInfo = ParamInfo }
 
@@ -1481,10 +1481,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   def MethodType_isErased(self: MethodType): Boolean = self.isErasedMethod
   def MethodType_isImplicit(self: MethodType): Boolean = self.isImplicitMethod
-  def MethodType_param(self: MethodType, idx: Int)(using Context): Type = self.newParamRef(idx)
-  def MethodType_paramNames(self: MethodType)(using Context): List[String] = self.paramNames.map(_.toString)
-  def MethodType_paramTypes(self: MethodType)(using Context): List[Type] = self.paramInfos
-  def MethodType_resType(self: MethodType)(using Context): Type = self.resType
+  def MethodType_param(self: MethodType, idx: Int): Type = self.newParamRef(idx)
+  def MethodType_paramNames(self: MethodType): List[String] = self.paramNames.map(_.toString)
+  def MethodType_paramTypes(self: MethodType): List[Type] = self.paramInfos
+  def MethodType_resType(self: MethodType): Type = self.resType
 
   type PolyType = Types.PolyType
 
@@ -1495,13 +1495,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using Context): PolyType =
+  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type): PolyType =
     Types.PolyType(paramNames.map(_.toTypeName))(paramBoundsExp, resultTypeExp)
 
-  def PolyType_param(self: PolyType, idx: Int)(using Context): Type = self.newParamRef(idx)
-  def PolyType_paramNames(self: PolyType)(using Context): List[String] = self.paramNames.map(_.toString)
-  def PolyType_paramBounds(self: PolyType)(using Context): List[TypeBounds] = self.paramInfos
-  def PolyType_resType(self: PolyType)(using Context): Type = self.resType
+  def PolyType_param(self: PolyType, idx: Int): Type = self.newParamRef(idx)
+  def PolyType_paramNames(self: PolyType): List[String] = self.paramNames.map(_.toString)
+  def PolyType_paramBounds(self: PolyType): List[TypeBounds] = self.paramInfos
+  def PolyType_resType(self: PolyType): Type = self.resType
 
   type TypeLambda = Types.TypeLambda
 
@@ -1515,11 +1515,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   def TypeLambda_apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda =
     Types.HKTypeLambda(paramNames.map(_.toTypeName))(boundsFn, bodyFn)
 
-  def TypeLambda_paramNames(self: TypeLambda)(using Context): List[String] = self.paramNames.map(_.toString)
-  def TypeLambda_paramBounds(self: TypeLambda)(using Context): List[TypeBounds] = self.paramInfos
-  def TypeLambda_param(self: TypeLambda, idx: Int)(using Context): Type =
+  def TypeLambda_paramNames(self: TypeLambda): List[String] = self.paramNames.map(_.toString)
+  def TypeLambda_paramBounds(self: TypeLambda): List[TypeBounds] = self.paramInfos
+  def TypeLambda_param(self: TypeLambda, idx: Int): Type =
     self.newParamRef(idx)
-  def TypeLambda_resType(self: TypeLambda)(using Context): Type = self.resType
+  def TypeLambda_resType(self: TypeLambda): Type = self.resType
 
 
   //////////////////////
@@ -1702,9 +1702,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   def Symbol_pos(self: Symbol): Position = self.sourcePos
 
-  def Symbol_localContext(self: Symbol): Context =
-    if (self.exists) ctx.withOwner(self)
-    else ctx
+  // def Symbol_localContext(self: Symbol): Context =
+  //   if (self.exists) ctx.withOwner(self)
+  //   else ctx
 
   def Symbol_comment(self: Symbol): Option[Comment] = {
     import dotty.tools.dotc.core.Comments.CommentsContext
