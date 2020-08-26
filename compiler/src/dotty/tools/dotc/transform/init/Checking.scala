@@ -30,7 +30,7 @@ object Checking {
    *
    */
   case class State(
-    visited: mutable.Set[Effect],              // effects that have been expanded
+    visited: mutable.Set[Effect],              // effects that have been checked
     path: Vector[Tree],                        // the path that leads to the current effect
     thisClass: ClassSymbol,                    // the concrete class of `this`
     fieldsInited: mutable.Set[Symbol],
@@ -41,6 +41,8 @@ object Checking {
       visited += eff
       copy(path = this.path :+ eff.source)
     }
+
+    def withOwner(sym: Symbol): State = copy(env = env.withOwner(sym))
   }
 
   private implicit def theEnv(implicit state: State): Env = state.env
@@ -51,17 +53,19 @@ object Checking {
    *  However, summarization can be done lazily on-demand to improve
    *  performance.
    */
-  def checkClassBody(cdef: TypeDef)(implicit state: State): Unit = traceOp("checking " + cdef.symbol.show, init) {
+  def checkClassBody(cdef: TypeDef)(implicit state: State): Unit = {
+    traceIndented("\n\n>>>> checking " + cdef.symbol.show, init)
+
     val cls = cdef.symbol.asClass
     val tpl = cdef.rhs.asInstanceOf[Template]
 
     // mark current class as initialized, required for linearization
     state.parentsInited += cls
 
-    def checkClassBodyStat(tree: Tree)(using Context): Unit = traceOp("checking " + tree.show, init) {
+    def checkClassBodyStat(tree: Tree)(implicit state: State): Unit = traceOp("checking " + tree.show, init) {
       tree match {
         case vdef : ValDef =>
-          val (pots, effs) = Summarization.analyze(vdef.rhs)(theEnv.withOwner(vdef.symbol))
+          val (pots, effs) = Summarization.analyze(vdef.rhs)
           theEnv.summaryOf(cls).cacheFor(vdef.symbol, (pots, effs))
           if (!vdef.symbol.is(Flags.Lazy)) {
             checkEffectsIn(effs, cls)
@@ -79,15 +83,31 @@ object Checking {
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
 
-    def checkCtor(ctor: Symbol, tp: Type, source: Tree)(using Context): Unit = {
+    def checkConstructor(ctor: Symbol, tp: Type, source: Tree)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
       val cls = ctor.owner
       val classDef = cls.defTree
       if (!classDef.isEmpty) {
-        if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])
-        else checkSecondaryConstructor(ctor)
+        if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])(state.withOwner(cls))
+        else checkSecondaryConstructor(ctor)(state.withOwner(cls))
       }
-      else if (!cls.isOneOf(Flags.EffectivelyOpenFlags))
-        report.warning("Inheriting non-open class may cause initialization errors", source.srcPos)
+    }
+
+    def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
+      val Block(ctorCall :: stats, expr) = ctor.defTree.asInstanceOf[DefDef].rhs
+      val cls = ctor.owner.asClass
+
+      traceOp("check ctor: " + ctorCall.show, init) {
+        val ctor = ctorCall.symbol
+        if (ctor.isPrimaryConstructor)
+          checkClassBody(cls.defTree.asInstanceOf[TypeDef])
+        else
+          checkSecondaryConstructor(ctor)
+      }
+
+      (stats :+ expr).foreach { stat =>
+        val (_, effs) = Summarization.analyze(stat)(theEnv.withOwner(ctor))
+        checkEffectsIn(effs, cls)
+      }
     }
 
     cls.paramAccessors.foreach { acc =>
@@ -100,61 +120,42 @@ object Checking {
     tpl.parents.foreach {
       case tree @ Block(_, parent) =>
         val (ctor, _, _) = decomposeCall(parent)
-        checkCtor(ctor.symbol, parent.tpe, tree)
+        checkConstructor(ctor.symbol, parent.tpe, tree)
 
       case tree @ Apply(Block(_, parent), _) =>
         val (ctor, _, _) = decomposeCall(parent)
-        checkCtor(ctor.symbol, tree.tpe, tree)
+        checkConstructor(ctor.symbol, tree.tpe, tree)
 
       case parent : Apply =>
         val (ctor, _, argss) = decomposeCall(parent)
-        checkCtor(ctor.symbol, parent.tpe, parent)
+        checkConstructor(ctor.symbol, parent.tpe, parent)
 
       case ref =>
         val cls = ref.tpe.classSymbol.asClass
         if (!state.parentsInited.contains(cls) && cls.primaryConstructor.exists)
-          checkCtor(cls.primaryConstructor, ref.tpe, ref)
+          checkConstructor(cls.primaryConstructor, ref.tpe, ref)
     }
 
     // check class body
     tpl.body.foreach { checkClassBodyStat(_) }
   }
 
-  def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
-    val Block(ctorCall :: stats, expr) = ctor.defTree.asInstanceOf[DefDef].rhs
-    val cls = ctor.owner.asClass
-
-    traceOp("check ctor: " + ctorCall.show, init) {
-      val ctor = ctorCall.symbol
-      if (ctor.isPrimaryConstructor)
-        checkClassBody(cls.defTree.asInstanceOf[TypeDef])
-      else
-        checkSecondaryConstructor(ctor)
-    }
-
-    (stats :+ expr).foreach { stat =>
-      val (_, effs) = Summarization.analyze(stat)(theEnv.withOwner(ctor))
-      checkEffectsIn(effs, cls)
-    }
-  }
-
   private def checkEffectsIn(effs: Effects, cls: ClassSymbol)(implicit state: State): Unit = traceOp("checking effects " + Effects.show(effs), init) {
-    val rebased = Effects.asSeenFrom(effs, ThisRef(state.thisClass)(null), cls, Potentials.empty)
     for {
-      eff <- rebased
+      eff <- effs
       error <- check(eff)
     } error.issue
   }
 
   private def check(eff: Effect)(implicit state: State): Errors =
-    if (state.visited.contains(eff)) Errors.empty else trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
+    if (state.visited.contains(eff)) Errors.empty
+    else trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
       implicit val state2: State = state.withVisited(eff)
 
       eff match {
         case Promote(pot) =>
           pot match {
-            case pot @ ThisRef(cls) =>
-              assert(cls == state.thisClass, "unexpected potential " + pot.show)
+            case pot: ThisRef =>
               PromoteThis(pot, eff.source, state2.path).toErrors
 
             case _: Cold =>
@@ -180,18 +181,14 @@ object Checking {
         case FieldAccess(pot, field) =>
 
           pot match {
-            case ThisRef(cls) =>
-              assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-              val target = resolve(cls, field)
+            case _: ThisRef =>
+              val target = resolve(state.thisClass, field)
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
               else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state2.path).toErrors
               else Errors.empty
 
-            case SuperRef(ThisRef(cls), supercls) =>
-              assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-              val target = resolveSuper(cls, supercls, field)
+            case SuperRef(_: ThisRef, supercls) =>
+              val target = resolveSuper(state.thisClass, supercls, field)
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
               else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state2.path).toErrors
               else Errors.empty
@@ -217,10 +214,8 @@ object Checking {
 
         case MethodCall(pot, sym) =>
           pot match {
-            case thisRef @ ThisRef(cls) =>
-              assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-              val target = resolve(cls, sym)
+            case thisRef: ThisRef =>
+              val target = resolve(state.thisClass, sym)
               if (!target.isOneOf(Flags.Method | Flags.Lazy))
                 check(FieldAccess(pot, target)(eff.source))
               else if (target.isInternal) {
@@ -229,10 +224,8 @@ object Checking {
               }
               else CallUnknown(target, eff.source, state2.path).toErrors
 
-            case SuperRef(thisRef @ ThisRef(cls), supercls) =>
-              assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-              val target = resolveSuper(cls, supercls, sym)
+            case SuperRef(thisRef: ThisRef, supercls) =>
+              val target = resolveSuper(state.thisClass, supercls, sym)
               if (!target.is(Flags.Method))
                 check(FieldAccess(pot, target)(eff.source))
               else if (target.isInternal) {
@@ -272,17 +265,13 @@ object Checking {
     pot match {
       case MethodReturn(pot1, sym) =>
         pot1 match {
-          case thisRef @ ThisRef(cls) =>
-            assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-            val target = resolve(cls, sym)
+          case thisRef: ThisRef =>
+            val target = resolve(state.thisClass, sym)
             if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
-          case SuperRef(thisRef @ ThisRef(cls), supercls) =>
-            assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-            val target = resolveSuper(cls, supercls, sym)
+          case SuperRef(thisRef: ThisRef, supercls) =>
+            val target = resolveSuper(state.thisClass, supercls, sym)
             if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
@@ -314,17 +303,13 @@ object Checking {
 
       case FieldReturn(pot1, sym) =>
         pot1 match {
-          case thisRef @ ThisRef(cls) =>
-            assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-            val target = resolve(cls, sym)
+          case thisRef: ThisRef =>
+            val target = resolve(state.thisClass, sym)
             if (sym.isInternal) (thisRef.potentialsOf(target), Effects.empty)
             else (Cold()(pot.source).toPots, Effects.empty)
 
-          case SuperRef(thisRef @ ThisRef(cls), supercls) =>
-            assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
-            val target = resolveSuper(cls, supercls, sym)
+          case SuperRef(thisRef: ThisRef, supercls) =>
+            val target = resolveSuper(state.thisClass, supercls, sym)
             if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
             else (Cold()(pot.source).toPots, Effects.empty)
 
@@ -347,19 +332,15 @@ object Checking {
 
       case Outer(pot1, cls) =>
         pot1 match {
-          case ThisRef(cls) =>
-            assert(cls == state.thisClass, "unexpected potential " + pot.show)
-
+          case _: ThisRef =>
+            // all outers for `this` are assumed to be hot
             Summary.empty
 
           case _: Fun =>
             throw new Exception("Unexpected code reached")
 
           case warm: Warm =>
-            (warm.outerFor(cls), Effects.empty)
-
-          case _: Cold =>
-            throw new Exception("Unexpected code reached")
+            (warm.resolveOuter(cls), Effects.empty)
 
           case _ =>
             val (pots, effs) = expand(pot1)

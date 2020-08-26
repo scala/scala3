@@ -18,10 +18,12 @@ object Effects {
   def show(effs: Effects)(using Context): String =
     effs.map(_.show).mkString(", ")
 
-  /** Effects that are related to safe initialization */
+  /** Effects that are related to safe initialization performed on potentials */
   sealed trait Effect {
-    def size: Int
+    def potential: Potential
+
     def show(using Context): String
+
     def source: Tree
   }
 
@@ -37,25 +39,20 @@ object Effects {
    *  - the selection chain on a potential is too long
    */
   case class Promote(potential: Potential)(val source: Tree) extends Effect {
-    def size: Int = potential.size
-    def show(using Context): String =
-      potential.show + "↑"
+    def show(using Context): String = potential.show + "↑"
   }
 
   /** Field access, `a.f` */
   case class FieldAccess(potential: Potential, field: Symbol)(val source: Tree) extends Effect {
     assert(field != NoSymbol)
 
-    def size: Int = potential.size
-    def show(using Context): String =
-      potential.show + "." + field.name.show + "!"
+    def show(using Context): String = potential.show + "." + field.name.show + "!"
   }
 
   /** Method call, `a.m()` */
   case class MethodCall(potential: Potential, method: Symbol)(val source: Tree) extends Effect {
     assert(method != NoSymbol)
 
-    def size: Int = potential.size
     def show(using Context): String = potential.show + "." + method.name.show + "!"
   }
 
@@ -63,22 +60,21 @@ object Effects {
 
   extension (eff: Effect) def toEffs: Effects = Effects.empty + eff
 
-  def asSeenFrom(eff: Effect, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
-    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show + ", outer = " + Potentials.show(outer), init, effs => show(effs.asInstanceOf[Effects])) { eff match {
+  def asSeenFrom(eff: Effect, thisValue: Potential)(implicit env: Env): Effect =
+    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show, init, effs => show(effs.asInstanceOf[Effects])) { eff match {
       case Promote(pot) =>
-        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).promote(eff.source)
+        val pot1 = Potentials.asSeenFrom(pot, thisValue)
+        Promote(pot1)(eff.source)
 
       case FieldAccess(pot, field) =>
-        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).map { pot =>
-          FieldAccess(pot, field)(eff.source)
-        }
+        val pot1 = Potentials.asSeenFrom(pot, thisValue)
+        FieldAccess(pot1, field)(eff.source)
 
       case MethodCall(pot, sym) =>
-        Potentials.asSeenFrom(pot, thisValue, currentClass, outer).map { pot =>
-          MethodCall(pot, sym)(eff.source)
-        }
+        val pot1 = Potentials.asSeenFrom(pot, thisValue)
+        MethodCall(pot1, sym)(eff.source)
     } }
 
-  def asSeenFrom(effs: Effects, thisValue: Potential, currentClass: ClassSymbol, outer: Potentials)(implicit env: Env): Effects =
-    effs.flatMap(asSeenFrom(_, thisValue, currentClass, outer))
+  def asSeenFrom(effs: Effects, thisValue: Potential)(implicit env: Env): Effects =
+    effs.map(asSeenFrom(_, thisValue))
 }
