@@ -2325,6 +2325,13 @@ object SymDenotations {
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = this
     override def mapInfo(f: Type => Type)(using Context): SingleDenotation = this
+
+    override def matches(other: SingleDenotation)(using Context): Boolean = false
+    override def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(using Context): SingleDenotation = this
+    override def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation = this
+    override def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation = this
+    override def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation = this
+
     NoSymbol.denot = this
     validFor = Period.allInRun(NoRunId)
   }
