@@ -115,16 +115,17 @@ class TyperState() {
    */
   def commit()(using Context): Unit = {
     Stats.record("typerState.commit")
-    val targetState = ctx.typerState
-    if (constraint ne targetState.constraint)
-      constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
     assert(isCommittable)
-    if (targetState.constraint eq previousConstraint) targetState.constraint = constraint
-    else targetState.mergeConstraintWith(this)
-    constraint foreachTypeVar { tvar =>
-      if (tvar.owningState.get eq this) tvar.owningState = new WeakReference(targetState)
-    }
-    targetState.ownedVars ++= ownedVars
+    val targetState = ctx.typerState
+    if constraint ne targetState.constraint then
+      Stats.record("typerState.commit.new constraint")
+      constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
+      if targetState.constraint eq previousConstraint then targetState.constraint = constraint
+      else targetState.mergeConstraintWith(this)
+    if !ownedVars.isEmpty then
+      for tvar <- ownedVars do
+        tvar.owningState = new WeakReference(targetState)
+      targetState.ownedVars ++= ownedVars
     targetState.gc()
     reporter.flush()
     isCommitted = true
@@ -137,22 +138,19 @@ class TyperState() {
    *  type variable instantiation cannot be retracted anymore. Then, remove
    *  no-longer needed constraint entries.
    */
-  def gc()(using Context): Unit = {
-    Stats.record("typerState.gc")
-    val toCollect = new mutable.ListBuffer[TypeLambda]
-    constraint foreachTypeVar { tvar =>
-      if (!tvar.inst.exists) {
-        val inst = constraint.instType(tvar)
-        if (inst.exists && (tvar.owningState.get eq this)) {
-          tvar.inst = inst
-          val lam = tvar.origin.binder
-          if (constraint.isRemovable(lam)) toCollect += lam
-        }
-      }
-    }
-    for (poly <- toCollect)
-      constraint = constraint.remove(poly)
-  }
+  def gc()(using Context): Unit =
+    if !ownedVars.isEmpty then
+      Stats.record("typerState.gc")
+      val toCollect = new mutable.ListBuffer[TypeLambda]
+      for tvar <- ownedVars do
+        if !tvar.inst.exists then
+          val inst = constraint.instType(tvar)
+          if inst.exists then
+            tvar.inst = inst
+            val lam = tvar.origin.binder
+            if constraint.isRemovable(lam) then toCollect += lam
+      for poly <- toCollect do
+        constraint = constraint.remove(poly)
 
   override def toString: String = {
     def ids(state: TyperState): List[String] =

@@ -23,7 +23,7 @@ object Feature:
     def toPrefix(sym: Symbol): String =
       if !sym.exists || sym == defn.LanguageModule.moduleClass then ""
       else toPrefix(sym.owner) + sym.name.stripModuleClassSuffix + "."
-    val prefix = if owner.exists then toPrefix(owner) else ""
+    val prefix = if owner ne NoSymbol then toPrefix(owner) else ""
     ctx.base.settings.language.value.contains(prefix + feature)
 
   /** Is `feature` enabled by by an import? This is the case if the feature

@@ -1084,17 +1084,22 @@ class Definitions {
   )
   private val compiletimePackageBooleanTypes: Set[Name] = Set(tpnme.Not, tpnme.Xor, tpnme.And, tpnme.Or)
   private val compiletimePackageStringTypes: Set[Name] = Set(tpnme.Plus)
+  private val compiletimePackageOpTypes: Set[Name] =
+    Set(tpnme.S)
+    ++ compiletimePackageAnyTypes
+    ++ compiletimePackageIntTypes
+    ++ compiletimePackageBooleanTypes
+    ++ compiletimePackageStringTypes
 
-  final def isCompiletimeAppliedType(sym: Symbol)(using Context): Boolean = {
-    def isOpsPackageObjectAppliedType: Boolean =
-      sym.owner == CompiletimeOpsPackageObjectAny.moduleClass && compiletimePackageAnyTypes.contains(sym.name) ||
-      sym.owner == CompiletimeOpsPackageObjectInt.moduleClass && compiletimePackageIntTypes.contains(sym.name) ||
-      sym.owner == CompiletimeOpsPackageObjectBoolean.moduleClass && compiletimePackageBooleanTypes.contains(sym.name) ||
-      sym.owner == CompiletimeOpsPackageObjectString.moduleClass && compiletimePackageStringTypes.contains(sym.name)
-
-    sym.isType && (isCompiletime_S(sym) || isOpsPackageObjectAppliedType)
-  }
-
+  final def isCompiletimeAppliedType(sym: Symbol)(using Context): Boolean =
+    compiletimePackageOpTypes.contains(sym.name)
+    && (
+         sym.owner == CompiletimePackageObject.moduleClass && sym.name == tpnme.S
+      || sym.owner == CompiletimeOpsPackageObjectAny.moduleClass && compiletimePackageAnyTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsPackageObjectInt.moduleClass && compiletimePackageIntTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsPackageObjectBoolean.moduleClass && compiletimePackageBooleanTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsPackageObjectString.moduleClass && compiletimePackageStringTypes.contains(sym.name)
+    )
 
   // ----- Symbol sets ---------------------------------------------------
 
@@ -1143,8 +1148,11 @@ class Definitions {
   def PolyFunctionType = PolyFunctionClass.typeRef
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
-  def scalaClassName(cls: Symbol)(using Context): TypeName =
-    if (cls.isClass && cls.owner == ScalaPackageClass) cls.asClass.name else EmptyTypeName
+  def scalaClassName(cls: Symbol)(using Context): TypeName = cls.denot match
+    case clsd: ClassDenotation if clsd.owner eq ScalaPackageClass =>
+      clsd.name.asInstanceOf[TypeName]
+    case _ =>
+      EmptyTypeName
 
   /** If type `ref` refers to a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(ref: Type)(using Context): TypeName = scalaClassName(ref.classSymbol)
