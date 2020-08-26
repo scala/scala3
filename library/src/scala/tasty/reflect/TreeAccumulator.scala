@@ -7,23 +7,23 @@ package reflect
  *  ```
  *  class MyTreeAccumulator[R <: scala.tasty.Reflection & Singleton](val reflect: R)
  *      extends scala.tasty.reflect.TreeAccumulator[X] {
- *    import reflect.{given _, _}
- *    def foldTree(x: X, tree: Tree)(using ctx: Context): X = ...
+ *    import reflect._
+ *    def foldTree(x: X, tree: Tree): X = ...
  *  }
  *  ```
  */
 trait TreeAccumulator[X] {
 
   val reflect: Reflection
-  import reflect.{given _, _}
+  import reflect._
 
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
-  def foldTree(x: X, tree: Tree)(using ctx: Context): X
+  def foldTree(x: X, tree: Tree): X
 
-  def foldTrees(x: X, trees: Iterable[Tree])(using ctx: Context): X = trees.foldLeft(x)(foldTree)
+  def foldTrees(x: X, trees: Iterable[Tree]): X = trees.foldLeft(x)(foldTree)
 
-  def foldOverTree(x: X, tree: Tree)(using ctx: Context): X = {
-    def localCtx(definition: Definition): Context = ctx // definition.symbol.localContext // FIXME
+  def foldOverTree(x: X, tree: Tree): X = {
+    // def localCtx(definition: Definition): Context = ctx // definition.symbol.localContext // FIXME
     tree match {
       case Ident(_) =>
         x
@@ -66,20 +66,20 @@ trait TreeAccumulator[X] {
       case Inlined(call, bindings, expansion) =>
         foldTree(foldTrees(x, bindings), expansion)
       case vdef @ ValDef(_, tpt, rhs) =>
-        val ctx = localCtx(vdef)
-        given Context = ctx
+        // val ctx = localCtx(vdef)
+        // given Context = ctx
         foldTrees(foldTree(x, tpt), rhs)
       case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
-        val ctx = localCtx(ddef)
-        given Context = ctx
+        // val ctx = localCtx(ddef)
+        // given Context = ctx
         foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams))(foldTrees), tpt), rhs)
       case tdef @ TypeDef(_, rhs) =>
-        val ctx = localCtx(tdef)
-        given Context = ctx
+        // val ctx = localCtx(tdef)
+        // given Context = ctx
         foldTree(x, rhs)
       case cdef @ ClassDef(_, constr, parents, derived, self, body) =>
-        val ctx = localCtx(cdef)
-        given Context = ctx
+        // val ctx = localCtx(cdef)
+        // given Context = ctx
         foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr), parents), derived), self), body)
       case Import(expr, _) =>
         foldTree(x, expr)

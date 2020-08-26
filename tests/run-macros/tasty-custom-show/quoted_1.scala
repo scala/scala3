@@ -12,7 +12,7 @@ object Macros {
     val buff = new StringBuilder
 
     val output = new TreeTraverser {
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
+      override def traverseTree(tree: Tree): Unit = {
         // Use custom Show[_] here
         val printer = dummyShow
         tree match {

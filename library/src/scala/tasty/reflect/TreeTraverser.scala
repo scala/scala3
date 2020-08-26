@@ -7,8 +7,8 @@ package reflect
  *  ```
  *  class MyTraverser[R <: scala.tasty.Reflection & Singleton](val reflect: R)
  *      extends scala.tasty.reflect.TreeTraverser {
- *    import reflect.{given _, _}
- *    override def traverseTree(tree: Tree)(using ctx: Context): Unit = ...
+ *    import reflect._
+ *    override def traverseTree(tree: Tree): Unit = ...
  *  }
  *  ```
  */
@@ -16,10 +16,10 @@ trait TreeTraverser extends TreeAccumulator[Unit] {
 
   import reflect._
 
-  def traverseTree(tree: Tree)(using ctx: Context): Unit = traverseTreeChildren(tree)
+  def traverseTree(tree: Tree): Unit = traverseTreeChildren(tree)
 
-  def foldTree(x: Unit, tree: Tree)(using ctx: Context): Unit = traverseTree(tree)
+  def foldTree(x: Unit, tree: Tree): Unit = traverseTree(tree)
 
-  protected def traverseTreeChildren(tree: Tree)(using ctx: Context): Unit = foldOverTree((), tree)
+  protected def traverseTreeChildren(tree: Tree): Unit = foldOverTree((), tree)
 
 }
