@@ -143,6 +143,8 @@ object StdNames {
     val QUOTE: N                      = "'"
     val TYPE_QUOTE: N                 = "type_'"
     val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
+    val AMBIGUOUS: N                  = "/* ambiguous */"
+    val MISSING: N                    = "/* missing */"
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.

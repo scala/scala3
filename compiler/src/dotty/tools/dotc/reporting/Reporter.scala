@@ -17,7 +17,6 @@ import util.NoSourcePosition
 
 import java.io.{ BufferedReader, PrintWriter }
 
-
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
   def fromSimpleReporter(simple: interfaces.SimpleReporter): Reporter =
@@ -142,9 +141,14 @@ abstract class Reporter extends interfaces.ReporterResult {
   var unreportedWarnings: Map[String, Int] = Map.empty
 
   def report(dia: Diagnostic)(using Context): Unit =
-    if (!isHidden(dia)) {
+    val isSummarized = dia match
+      case dia: ConditionalWarning => !dia.enablingOption.value
+      case _ => false
+    if isSummarized  // avoid isHidden test for summarized warnings so that message is not forced
+       || !isHidden(dia)
+    then
       withMode(Mode.Printing)(doReport(dia))
-      dia match {
+      dia match
         case dia: ConditionalWarning if !dia.enablingOption.value =>
           val key = dia.enablingOption.name
           unreportedWarnings =
@@ -155,8 +159,6 @@ abstract class Reporter extends interfaces.ReporterResult {
           _errorCount += 1
         case dia: Info => // nothing to do here
         // match error if d is something else
-      }
-    }
 
   def incomplete(dia: Diagnostic)(using Context): Unit =
     incompleteHandler(dia, ctx)

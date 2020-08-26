@@ -43,7 +43,7 @@ object report:
   def featureWarning(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     issueWarning(new FeatureWarning(msg, pos.sourcePos))
 
-  def featureWarning(feature: String, featureDescription: String,
+  def featureWarning(feature: String, featureDescription: => String,
       featureUseSite: Symbol, required: Boolean, pos: SrcPos)(using Context): Unit = {
     val req = if (required) "needs to" else "should"
     val fqname = s"scala.language.$feature"
@@ -56,7 +56,7 @@ object report:
            |See the Scala docs for value $fqname for a discussion
            |why the feature $req be explicitly enabled.""".stripMargin
 
-    val msg = s"""$featureDescription $req be enabled
+    def msg = s"""$featureDescription $req be enabled
                  |by adding the import clause 'import $fqname'
                  |or by setting the compiler option -language:$feature.$explain""".stripMargin
     if (required) error(msg, pos)

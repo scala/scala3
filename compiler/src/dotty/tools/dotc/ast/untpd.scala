@@ -359,7 +359,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   // ------ Creation methods for untyped only -----------------
 
   def Ident(name: Name)(implicit src: SourceFile): Ident = new Ident(name)
-  def SearchFailureIdent(name: Name)(implicit src: SourceFile): SearchFailureIdent = new SearchFailureIdent(name)
+  def SearchFailureIdent(name: Name, explanation: => String)(implicit src: SourceFile): SearchFailureIdent = new SearchFailureIdent(name, explanation)
   def Select(qualifier: Tree, name: Name)(implicit src: SourceFile): Select = new Select(qualifier, name)
   def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit src: SourceFile): Select = new SelectWithSig(qualifier, name, sig)
   def This(qual: Ident)(implicit src: SourceFile): This = new This(qual)
