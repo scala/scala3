@@ -4,19 +4,19 @@ package reflect
 class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Printer[R] {
   import tasty._
 
-  def showTree(tree: Tree)(using ctx: Context): String =
+  def showTree(tree: Tree): String =
     new Buffer().visitTree(tree).result()
 
-  def showTypeOrBounds(tpe: TypeOrBounds)(using ctx: Context): String =
+  def showTypeOrBounds(tpe: TypeOrBounds): String =
     new Buffer().visitType(tpe).result()
 
-  def showConstant(const: Constant)(using ctx: Context): String =
+  def showConstant(const: Constant): String =
     new Buffer().visitConstant(const).result()
 
-  def showSymbol(symbol: Symbol)(using ctx: Context): String =
+  def showSymbol(symbol: Symbol): String =
     new Buffer().visitSymbol(symbol).result()
 
-  def showFlags(flags: Flags)(using ctx: Context): String = {
+  def showFlags(flags: Flags): String = {
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "Flags.Abstract"
     if (flags.is(Flags.Artifact)) flagList += "Flags.Artifact"
@@ -55,7 +55,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
     flagList.result().mkString(" | ")
   }
 
-  private class Buffer(using ctx: Context) { self =>
+  private class Buffer { self =>
 
     private val sb: StringBuilder = new StringBuilder
 
