@@ -149,10 +149,9 @@ object Matcher {
 
     def termMatch(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] = {
       given Env = Map.empty
-      if (hasTypeSplices) {
-        val ctx: Context = qctx.tasty.Constraints_init(rootContext)
-        given Context = ctx
-        val matchings = scrutineeTerm =?= patternTerm
+      val matchings = scrutineeTerm =?= patternTerm
+      if !hasTypeSplices then matchings
+      else {
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
@@ -161,19 +160,15 @@ object Matcher {
             case x => x
           })
         }
-      }
-      else {
-        scrutineeTerm =?= patternTerm
       }
     }
 
     // TODO factor out common logic with `termMatch`
     def typeTreeMatch(scrutineeTypeTree: TypeTree, patternTypeTree: TypeTree, hasTypeSplices: Boolean): Option[Tuple] = {
       given Env = Map.empty
-      if (hasTypeSplices) {
-        val ctx: Context = qctx.tasty.Constraints_init(rootContext)
-        given Context = ctx
-        val matchings = scrutineeTypeTree =?= patternTypeTree
+      val matchings = scrutineeTypeTree =?= patternTypeTree
+      if !hasTypeSplices then matchings
+      else {
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
@@ -182,9 +177,6 @@ object Matcher {
             case x => x
           })
         }
-      }
-      else {
-        scrutineeTypeTree =?= patternTypeTree
       }
     }
 

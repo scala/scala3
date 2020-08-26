@@ -53,7 +53,10 @@ object Expr {
    */
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[Any])(using patternExpr: scala.quoted.Expr[Any],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
-    new Matcher.QuoteMatcher[qctx.type](qctx).termMatch(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
+    val qctx1 = quoteContextWithCompilerInterface(qctx)
+    val qctx2 = if hasTypeSplices then qctx1.tasty.Constraints_context else qctx1
+    given qctx2.type = qctx2
+    new Matcher.QuoteMatcher[qctx2.type](qctx2).termMatch(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 
   /** Returns a null expresssion equivalent to `'{null}` */

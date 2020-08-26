@@ -1363,22 +1363,22 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   object Type:
 
-    def apply(clazz: Class[_])(using ctx: Context): Type =
+    def apply(clazz: Class[_]): Type =
       reflectSelf.Type_apply(clazz)
 
     extension (self: Type):
 
       /** Convert `Type` to an `quoted.Type[_]` */
-      def seal(using ctx: Context): scala.quoted.Type[_] =
+      def seal: scala.quoted.Type[_] =
         new scala.internal.quoted.Type(Inferred(self), reflectSelf.compilerId)
 
       /** Is `self` type the same as `that` type?
         *  This is the case iff `self <:< that` and `that <:< self`.
         */
-      def =:=(that: Type)(using ctx: Context): Boolean = reflectSelf.Type_isTypeEq(self)(that)
+      def =:=(that: Type): Boolean = reflectSelf.Type_isTypeEq(self)(that)
 
       /** Is this type a subtype of that type? */
-      def <:<(that: Type)(using ctx: Context): Boolean = reflectSelf.Type_isSubType(self)(that)
+      def <:<(that: Type): Boolean = reflectSelf.Type_isSubType(self)(that)
 
       /** Widen from singleton type to its underlying non-singleton
         *  base type by applying one or more `underlying` dereferences,
@@ -1992,6 +1992,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       /** The position of this symbol */
       def pos: Position = reflectSelf.Symbol_pos(sym)
 
+      // TODO replace with different abstraction
       def localContext(using ctx: Context): Context = ctx // reflectSelf.Symbol_localContext(sym)
 
       /** The comment for this symbol, if any */

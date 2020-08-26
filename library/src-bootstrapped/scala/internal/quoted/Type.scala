@@ -40,7 +40,10 @@ object Type {
    */
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: scala.quoted.Type[_])(using patternType: scala.quoted.Type[_],
         hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
-    new Matcher.QuoteMatcher[qctx.type](qctx).typeTreeMatch(scrutineeType.unseal, patternType.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
+    val qctx1 = quoteContextWithCompilerInterface(qctx)
+    val qctx2 = if hasTypeSplices then qctx1.tasty.Constraints_context else qctx1
+    given qctx2.type = qctx2
+    new Matcher.QuoteMatcher[qctx2.type](qctx2).typeTreeMatch(scrutineeType.unseal, patternType.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 
   def Unit: QuoteContext ?=> quoted.Type[Unit] =

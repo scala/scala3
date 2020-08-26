@@ -55,8 +55,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   // Constraints //
   /////////////////
 
-  def Constraints_init(self: Context): Context =
-    self.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
+
+  def Constraints_context[T]: scala.quoted.QuoteContext =
+    val ctx = rootContext.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
+    dotty.tools.dotc.quoted.QuoteContext()(using ctx)
 
   def Constraints_add(self: Context)(syms: List[Symbol]): Boolean =
     self.gadt.addToConstraint(syms)
