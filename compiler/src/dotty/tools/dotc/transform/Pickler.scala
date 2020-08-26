@@ -86,7 +86,17 @@ class Pickler extends Phase {
         pickled
       }(using ExecutionContext.global)
       def force(): Array[Byte] = Await.result(pickledF, Duration.Inf)
-      if ctx.settings.YtestPickler.value then force()
+
+      // Turn off parallelism because it lead to non-deterministic CI failures:
+      // - https://github.com/lampepfl/dotty/runs/1029579877?check_suite_focus=true#step:10:967
+      // - https://github.com/lampepfl/dotty/runs/1027582846?check_suite_focus=true#step:10:564
+      //
+      // Turning off parallelism in -Ytest-pickler and Interactive mode seems to
+      // work around the problem but I would prefer to not enable this at all
+      // until the root cause of the issue is understood since it might manifest
+      // itself in other situations too.
+      if !ctx.settings.YparallelPickler.value then force()
+
       unit.pickled += (cls -> force)
     }
   }
