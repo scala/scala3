@@ -60,9 +60,6 @@ object Mode {
    */
   val Printing: Mode = newMode(10, "Printing")
 
-  /** We are constraining a method based on its expected type. */
-  val ConstrainResult: Mode = newMode(11, "ConstrainResult")
-
   /** We are currently in a `viewExists` check. In that case, ambiguous
    *  implicits checks are disabled and we succeed with the first implicit
    *  found.
