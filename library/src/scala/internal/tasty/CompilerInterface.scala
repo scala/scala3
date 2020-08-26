@@ -7,9 +7,6 @@ import scala.internal.quoted.Unpickler
 /** Part of the reflection interface that needs to be implemented by the compiler */
 trait CompilerInterface extends scala.tasty.reflect.Types {
 
-  /** Context of the macro expansion */
-  def rootContext: Context
-
   /** Root position of this tasty context. For macros it corresponds to the expansion site. */
   def rootPosition: Position
 
