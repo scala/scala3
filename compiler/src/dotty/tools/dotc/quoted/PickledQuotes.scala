@@ -1,4 +1,4 @@
-package dotty.tools.dotc.core.quoted
+package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
@@ -15,14 +15,13 @@ import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter }
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
-import dotty.tools.dotc.quoted.QuoteContext
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
 
 import dotty.tools.tasty.TastyString
 
 import scala.reflect.ClassTag
 
 import scala.internal.quoted.Unpickler._
+import scala.quoted.QuoteContext
 
 object PickledQuotes {
   import tpd._
@@ -39,14 +38,14 @@ object PickledQuotes {
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(using Context): Tree = {
     val expr1 = expr.asInstanceOf[scala.internal.quoted.Expr[Tree]]
-    QuoteContext.checkScopeId(expr1.scopeId)
+    QuoteContextImpl.checkScopeId(expr1.scopeId)
     healOwner(expr1.tree)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(tpe: quoted.Type[?])(using Context): Tree = {
     val tpe1 = tpe.asInstanceOf[scala.internal.quoted.Type[Tree]]
-    QuoteContext.checkScopeId(tpe1.scopeId)
+    QuoteContextImpl.checkScopeId(tpe1.scopeId)
     healOwner(tpe1.typeTree)
   }
 
@@ -76,12 +75,12 @@ object PickledQuotes {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args) =>
           val reifiedArgs = args.map { arg =>
-            if (arg.isTerm) (using qctx: scala.quoted.QuoteContext) => new scala.internal.quoted.Expr(arg, QuoteContext.scopeId)
-            else new scala.internal.quoted.Type(arg, QuoteContext.scopeId)
+            if (arg.isTerm) (using qctx: QuoteContext) => new scala.internal.quoted.Expr(arg, QuoteContextImpl.scopeId)
+            else new scala.internal.quoted.Type(arg, QuoteContextImpl.scopeId)
           }
           if isTerm then
-            val splice1 = splices(idx).asInstanceOf[Seq[Any] => scala.quoted.QuoteContext ?=> quoted.Expr[?]]
-            val quotedExpr = splice1(reifiedArgs)(using dotty.tools.dotc.quoted.QuoteContext())
+            val splice1 = splices(idx).asInstanceOf[Seq[Any] => QuoteContext ?=> quoted.Expr[?]]
+            val quotedExpr = splice1(reifiedArgs)(using dotty.tools.dotc.quoted.QuoteContextImpl())
             val filled = PickledQuotes.quotedExprToTree(quotedExpr)
 
             // We need to make sure a hole is created with the source file of the surrounding context, even if

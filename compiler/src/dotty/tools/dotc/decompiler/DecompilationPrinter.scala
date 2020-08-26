@@ -8,7 +8,7 @@ import scala.io.Codec
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.tasty.TastyPrinter
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
+import dotty.tools.dotc.quoted.QuoteContextImpl
 import dotty.tools.io.File
 
 /** Phase that prints the trees in all loaded compilation units.
@@ -43,7 +43,7 @@ class DecompilationPrinter extends Phase {
     else {
       val unitFile = unit.source.toString.replace("\\", "/").replace(".class", ".tasty")
       out.println(s"/** Decompiled from $unitFile */")
-      out.println(ReflectionImpl.showTree(unit.tpdTree))
+      out.println(QuoteContextImpl.showTree(unit.tpdTree))
     }
   }
 }
