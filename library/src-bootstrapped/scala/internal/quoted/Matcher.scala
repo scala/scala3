@@ -156,7 +156,7 @@ object Matcher {
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performance
-            case x: SymBinding => qctx.tasty.Constraints_approximation(summon[Context])(x.sym, !x.fromAbove).seal
+            case x: SymBinding => qctx.tasty.Constraints_approximation(x.sym, !x.fromAbove).seal
             case x => x
           })
         }
@@ -173,7 +173,7 @@ object Matcher {
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performance
-            case x: SymBinding => qctx.tasty.Constraints_approximation(summon[Context])(x.sym, !x.fromAbove).seal
+            case x: SymBinding => qctx.tasty.Constraints_approximation(x.sym, !x.fromAbove).seal
             case x => x
           })
         }
@@ -318,7 +318,7 @@ object Matcher {
             fn1 =?= fn2 &&& args1 =?= args2
 
           case (Block(stats1, expr1), Block(binding :: stats2, expr2)) if isTypeBinding(binding) =>
-            qctx.tasty.Constraints_add(summon[Context])(binding.symbol :: Nil)
+            qctx.tasty.Constraints_add(binding.symbol :: Nil)
             matched(new SymBinding(binding.symbol, hasFromAboveAnnotation(binding.symbol))) &&& Block(stats1, expr1) =?= Block(stats2, expr2)
 
           /* Match block */
@@ -335,7 +335,7 @@ object Matcher {
 
           case (scrutinee, Block(typeBindings, expr2)) if typeBindings.forall(isTypeBinding) =>
             val bindingSymbols = typeBindings.map(_.symbol)
-            qctx.tasty.Constraints_add(summon[Context])(bindingSymbols)
+            qctx.tasty.Constraints_add(bindingSymbols)
             bindingSymbols.foldRight(scrutinee =?= expr2)((x, acc) => matched(new SymBinding(x, hasFromAboveAnnotation(x))) &&& acc)
 
           /* Match if */

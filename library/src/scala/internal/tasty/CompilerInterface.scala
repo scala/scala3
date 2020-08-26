@@ -34,8 +34,8 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   /////////////////
 
   def Constraints_context[T]: scala.quoted.QuoteContext
-  def Constraints_add(self: Context)(syms: List[Symbol]): Boolean
-  def Constraints_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type
+  def Constraints_add(syms: List[Symbol]): Boolean
+  def Constraints_approximation(sym: Symbol, fromBelow: Boolean): Type
 
   ////////////
   // Source //

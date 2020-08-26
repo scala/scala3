@@ -60,11 +60,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     val ctx = rootContext.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
     dotty.tools.dotc.quoted.QuoteContext()(using ctx)
 
-  def Constraints_add(self: Context)(syms: List[Symbol]): Boolean =
-    self.gadt.addToConstraint(syms)
+  def Constraints_add(syms: List[Symbol]): Boolean =
+    rootContext.gadt.addToConstraint(syms)
 
-  def Constraints_approximation(self: Context)(sym: Symbol, fromBelow: Boolean): Type =
-    self.gadt.approximation(sym, fromBelow)
+  def Constraints_approximation(sym: Symbol, fromBelow: Boolean): Type =
+    rootContext.gadt.approximation(sym, fromBelow)
 
   ////////////
   // Source //
