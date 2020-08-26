@@ -2455,6 +2455,8 @@ object SymDenotations {
     def apply(module: TermSymbol, modcls: ClassSymbol): LazyType = this
 
     private var myDecls: Scope = EmptyScope
+    private var mySourceModule: Symbol = null
+    private var myModuleClass: Symbol = null
     private var mySourceModuleFn: Context ?=> Symbol = LazyType.NoSymbolFn
     private var myModuleClassFn: Context ?=> Symbol = LazyType.NoSymbolFn
 
@@ -2464,8 +2466,12 @@ object SymDenotations {
       else sym.info.typeParams
 
     def decls: Scope = myDecls
-    def sourceModule(using Context): Symbol = mySourceModuleFn
-    def moduleClass(using Context): Symbol = myModuleClassFn
+    def sourceModule(using Context): Symbol =
+      if mySourceModule == null then mySourceModule = mySourceModuleFn
+      mySourceModule
+    def moduleClass(using Context): Symbol =
+      if myModuleClass == null then myModuleClass = myModuleClassFn
+      myModuleClass
 
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
     def withSourceModule(sourceModuleFn: Context ?=> Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
