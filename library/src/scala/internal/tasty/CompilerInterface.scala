@@ -846,7 +846,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   // SYMBOLS //
   /////////////
 
-  /** Returns the symbol of the current enclosing definition */
+  /** Returns the symbol of the enclosing definition of the given context */
   def Symbol_currentOwner(using ctx: Context): Symbol
 
   /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
