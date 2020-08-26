@@ -146,6 +146,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowPrintErrors: Setting[Boolean] = BooleanSetting("-Yshow-print-errors", "Don't suppress exceptions thrown during tree printing.")
   val YshowRawQuoteTrees: Setting[Boolean] = BooleanSetting("-Yshow-raw-tree", "Don't remove quote artifacts.")
   val YtestPickler: Setting[Boolean] = BooleanSetting("-Ytest-pickler", "Self-test for pickling functionality; should be used with -Ystop-after:pickler.")
+  val YparallelPickler: Setting[Boolean] = BooleanSetting("-Yparallel-pickler", "Run part of the pickling phase in parallel, disable because it breaks some tests.")
   val YcheckReentrant: Setting[Boolean] = BooleanSetting("-Ycheck-reentrant", "Check that compiled program does not contain vars that can be accessed from a global root.")
   val YdropComments: Setting[Boolean] = BooleanSetting("-Ydrop-comments", "Drop comments when scanning source files.")
   val YcookComments: Setting[Boolean] = BooleanSetting("-Ycook-comments", "Cook the comments (type check `@usecase`, etc.)")
