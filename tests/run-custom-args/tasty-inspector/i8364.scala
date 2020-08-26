@@ -1,10 +1,9 @@
-import scala.tasty._
+import scala.quoted._
 import scala.tasty.inspector._
 
 @main def Test = {
   val inspector = new TastyInspector {
-    def processCompilationUnit(reflect: Reflection)(tree: reflect.Tree): Unit = {
-      import reflect.{_, given _}
+    protected def processCompilationUnit(using QuoteContext)(tree: qctx.tasty.Tree): Unit = {
       println(tree.show)
     }
   }

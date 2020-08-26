@@ -1,6 +1,6 @@
 package scala.tasty.inspector
 
-import scala.tasty.Reflection
+import scala.quoted._
 
 import dotty.tools.dotc.Compiler
 import dotty.tools.dotc.Driver
@@ -18,7 +18,7 @@ trait TastyInspector:
   self =>
 
   /** Process a TASTy file using TASTy reflect */
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit
+  protected def processCompilationUnit(using QuoteContext)(root: qctx.tasty.Tree): Unit
 
   /** Load and process TASTy files using TASTy reflect
    *
@@ -58,7 +58,7 @@ trait TastyInspector:
 
       override def run(implicit ctx: Context): Unit =
         val qctx = QuoteContextImpl()
-        self.processCompilationUnit(qctx.tasty)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.tasty.Tree])
+        self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.tasty.Tree])
 
     end TastyInspectorPhase
 

@@ -1,4 +1,4 @@
-import scala.tasty.Reflection
+import scala.quoted._
 import scala.tasty.inspector._
 
 object Test {
@@ -9,8 +9,8 @@ object Test {
 
 class DBInspector extends TastyInspector {
 
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = {
-    import reflect.{_, given _}
+  protected def processCompilationUnit(using QuoteContext)(root: qctx.tasty.Tree): Unit = {
+    import qctx.tasty._
     object Traverser extends TreeTraverser {
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
@@ -22,7 +22,7 @@ class DBInspector extends TastyInspector {
       }
 
     }
-    Traverser.traverseTree(root)(reflect.rootContext)
+    Traverser.traverseTree(root)
   }
 
 }

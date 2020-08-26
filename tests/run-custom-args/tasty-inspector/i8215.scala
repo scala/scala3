@@ -1,4 +1,4 @@
-import scala.tasty.Reflection
+import scala.quoted._
 import scala.tasty.inspector._
 
 case class I8215(id: String)
@@ -35,7 +35,7 @@ class TestInspector_NonTasty() extends TastyInspector:
   var isScala2: Boolean = false
   var className: String = ""
 
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit =
-    isJava = reflect.Source.isJavaCompilationUnit
-    isScala2 = reflect.Source.isScala2CompilationUnit
-    className = reflect.Source.compilationUnitClassname
+  protected def processCompilationUnit(using QuoteContext)(root: qctx.tasty.Tree): Unit =
+    isJava = qctx.tasty.Source.isJavaCompilationUnit
+    isScala2 = qctx.tasty.Source.isScala2CompilationUnit
+    className = qctx.tasty.Source.compilationUnitClassname
