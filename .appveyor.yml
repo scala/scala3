@@ -1,11 +1,16 @@
 version: '{build}'
 os: Windows Server 2012
+environment:
+  global:
+    NODEJS_VERSION: "12"
 matrix:
   fast_finish: true
 
 init:
+  - ps: Install-Product node $env:NODEJS_VERSION
   - cmd: choco install sbt
   - cmd: refreshenv
+  - cmd: SET "SBT_OPTS=-Xmx4g -Xms4m"
 build_script:
   - cmd: sbt dotty-bootstrapped/compile
 test_script:
