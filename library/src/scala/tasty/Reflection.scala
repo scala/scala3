@@ -1992,7 +1992,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       /** The position of this symbol */
       def pos: Position = reflectSelf.Symbol_pos(sym)
 
-      def localContext(using ctx: Context): Context = reflectSelf.Symbol_localContext(sym)
+      def localContext(using ctx: Context): Context = ctx // reflectSelf.Symbol_localContext(sym)
 
       /** The comment for this symbol, if any */
       def comment: Option[Comment] = reflectSelf.Symbol_comment(sym)
