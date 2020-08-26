@@ -23,7 +23,7 @@ trait TreeAccumulator[X] {
   def foldTrees(x: X, trees: Iterable[Tree])(using ctx: Context): X = trees.foldLeft(x)(foldTree)
 
   def foldOverTree(x: X, tree: Tree)(using ctx: Context): X = {
-    def localCtx(definition: Definition): Context = definition.symbol.localContext
+    def localCtx(definition: Definition): Context = ctx // definition.symbol.localContext // FIXME
     tree match {
       case Ident(_) =>
         x
@@ -84,7 +84,7 @@ trait TreeAccumulator[X] {
       case Import(expr, _) =>
         foldTree(x, expr)
       case clause @ PackageClause(pid, stats) =>
-        foldTrees(foldTree(x, pid), stats)(using clause.symbol.localContext)
+        foldTrees(foldTree(x, pid), stats) // (using clause.symbol.localContext)
       case Inferred() => x
       case TypeIdent(_) => x
       case TypeSelect(qualifier, _) => foldTree(x, qualifier)

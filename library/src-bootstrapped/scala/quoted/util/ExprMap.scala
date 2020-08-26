@@ -13,7 +13,7 @@ trait ExprMap {
     final class MapChildren() {
 
       def transformStatement(tree: Statement)(using ctx: Context): Statement = {
-        def localCtx(definition: Definition): Context = definition.symbol.localContext
+        def localCtx(definition: Definition): Context = ctx // definition.symbol.localContext
         tree match {
           case tree: Term =>
             transformTerm(tree, defn.AnyType)
@@ -25,7 +25,7 @@ trait ExprMap {
       }
 
       def transformDefinition(tree: Definition)(using ctx: Context): Definition = {
-        def localCtx(definition: Definition): Context = definition.symbol.localContext
+        def localCtx(definition: Definition): Context = ctx // definition.symbol.localContext
         tree match {
           case tree: ValDef =>
             given Context = localCtx(tree)

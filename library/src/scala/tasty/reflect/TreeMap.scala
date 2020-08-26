@@ -20,7 +20,7 @@ trait TreeMap {
   def transformTree(tree: Tree)(using ctx: Context): Tree = {
     tree match {
       case tree: PackageClause =>
-        PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(using tree.symbol.localContext))
+        PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)/*(using tree.symbol.localContext)*/)
       case tree: Import =>
         Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
       case tree: Statement =>
@@ -42,7 +42,7 @@ trait TreeMap {
   }
 
   def transformStatement(tree: Statement)(using ctx: Context): Statement = {
-    def localCtx(definition: Definition): Context = definition.symbol.localContext
+    def localCtx(definition: Definition): Context = ctx // definition.symbol.localContext
     tree match {
       case tree: Term =>
         transformTerm(tree)
