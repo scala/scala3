@@ -1,0 +1,13 @@
+version: '{build}'
+os: Windows Server 2012
+matrix:
+  fast_finish: true
+
+init:
+  - cmd: choco install sbt
+  - cmd: refreshenv
+build_script:
+  - cmd: sbt dotty-bootstrapped/compile
+test_script:
+  - cmd: bin/dotc tests/pos/HelloWorld.scala
+
