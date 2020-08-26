@@ -63,15 +63,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def symbol: Symbol = reflectSelf.Tree_symbol(tree)
 
       /** Shows the tree as extractors */
-      def showExtractors(using ctx: Context): String =
+      def showExtractors: String =
         new ExtractorsPrinter[reflectSelf.type](reflectSelf).showTree(tree)
 
       /** Shows the tree as fully typed source code */
-      def show(using ctx: Context): String =
+      def show: String =
         tree.showWith(SyntaxHighlight.plain)
 
       /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight)(using ctx: Context): String =
+      def showWith(syntaxHighlight: SyntaxHighlight): String =
         new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showTree(tree)
 
       /** Does this tree represent a valid expression? */
@@ -1337,22 +1337,22 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   ///////////////
 
   /** Returns the type (Type) of T */
-  def typeOf[T](using qtype: scala.quoted.Type[T], ctx: Context): Type =
+  def typeOf[T](using qtype: scala.quoted.Type[T]): Type =
     qtype.asInstanceOf[scala.internal.quoted.Type[T]].typeTree.asInstanceOf[TypeTree].tpe
 
   given TypeOrBoundsOps as AnyRef:
     /** Members of `TypeOrBounds` */
     extension (tpe: TypeOrBounds):
       /** Shows the tree as extractors */
-      def showExtractors(using ctx: Context): String =
+      def showExtractors: String =
         new ExtractorsPrinter[reflectSelf.type](reflectSelf).showTypeOrBounds(tpe)
 
       /** Shows the tree as fully typed source code */
-      def show(using ctx: Context): String =
+      def show: String =
         tpe.showWith(SyntaxHighlight.plain)
 
       /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight)(using ctx: Context): String =
+      def showWith(syntaxHighlight: SyntaxHighlight): String =
         new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showTypeOrBounds(tpe)
     end extension
 
@@ -1822,15 +1822,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def value: Any = reflectSelf.Constant_value(const)
 
       /** Shows the tree as extractors */
-      def showExtractors(using ctx: Context): String =
+      def showExtractors: String =
         new ExtractorsPrinter[reflectSelf.type](reflectSelf).showConstant(const)
 
       /** Shows the tree as fully typed source code */
-      def show(using ctx: Context): String =
+      def show: String =
         const.showWith(SyntaxHighlight.plain)
 
       /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight)(using ctx: Context): String =
+      def showWith(syntaxHighlight: SyntaxHighlight): String =
         new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showConstant(const)
     end extension
   end Constant
@@ -2541,15 +2541,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def &(that: Flags): Flags = reflectSelf.Flags_and(flags)(that)
 
       /** Shows the tree as extractors */
-      def showExtractors(using ctx: Context): String =
+      def showExtractors: String =
         new ExtractorsPrinter[reflectSelf.type](reflectSelf).showFlags(flags)
 
       /** Shows the tree as fully typed source code */
-      def show(using ctx: Context): String =
+      def show: String =
         flags.showWith(SyntaxHighlight.plain)
 
       /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight)(using ctx: Context): String =
+      def showWith(syntaxHighlight: SyntaxHighlight): String =
         new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showFlags(flags)
 
     end extension
