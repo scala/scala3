@@ -1855,61 +1855,53 @@ object SymDenotations {
      *  The elements of the returned pre-denotation all
      *  have existing symbols.
      */
-    final def membersNamed(name: Name)(using Context): PreDenotation = {
-      val privates = info.decls.denotsNamed(name, selectPrivate)
-      privates union nonPrivateMembersNamed(name).filterDisjoint(privates)
-    }
+    final def membersNamed(name: Name)(using Context): PreDenotation =
+      Stats.record("membersNamed")
+      if Config.cacheMembersNamed then
+        var denots: PreDenotation = memberCache.lookup(name)
+        if denots == null then
+          denots = computeMembersNamed(name)
+          memberCache.enter(name, denots)
+        else if Config.checkCacheMembersNamed then
+          val denots1 = computeMembersNamed(name)
+          assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
+        denots
+      else computeMembersNamed(name)
+
 
     /** All non-private members of this class that have the given name.
-     *  The elements of the returned pre-denotation all
-     *  have existing symbols.
-     *  @param inherited  The method is called on a parent class from computeNPMembersNamed
+     *  The elements of the returned pre-denotation all have existing symbols.
      */
-    final def nonPrivateMembersNamed(name: Name)(using Context): PreDenotation = {
-      Stats.record("nonPrivateMembersNamed")
-      if (Config.cacheMembersNamed) {
-        var denots: PreDenotation = memberCache.lookup(name)
-        if (denots == null) {
-          denots = computeNPMembersNamed(name)
-          memberCache.enter(name, denots)
-        }
-        else if (Config.checkCacheMembersNamed) {
-          val denots1 = computeNPMembersNamed(name)
-          assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
-        }
-        denots
-      }
-      else computeNPMembersNamed(name)
-    }
+    final def nonPrivateMembersNamed(name: Name)(using Context): PreDenotation =
+      val mbr = membersNamed(name)
+      val nonPrivate = mbr.filterWithFlags(EmptyFlags, Private)
+      if nonPrivate eq mbr then mbr
+      else addInherited(name, nonPrivate)
 
-    private[core] def computeNPMembersNamed(name: Name)(using Context): PreDenotation = {
-      Stats.record("computeNPMembersNamed after fingerprint")
-      ensureCompleted()
-      val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
-      if (debugTrace) // DEBUG
+    private[core] def computeMembersNamed(name: Name)(using Context): PreDenotation =
+      Stats.record("computeMembersNamed")
+      val ownDenots = info.decls.denotsNamed(name)
+      if debugTrace then
         println(s"$this.member($name), ownDenots = $ownDenots")
-      def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match {
+      if name.isConstructorName then ownDenots
+      else addInherited(name, ownDenots)
+
+    private def addInherited(name: Name, ownDenots: PreDenotation)(using Context): PreDenotation =
+      def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match
         case p :: ps =>
           val denots1 = collect(denots, ps)
-          p.classSymbol.denot match {
+          p.classSymbol.denot match
             case parentd: ClassDenotation =>
-              denots1.union(
-                parentd.nonPrivateMembersNamed(name)
-                  .mapInherited(ownDenots, denots1, thisType))
+              val inherited = parentd.nonPrivateMembersNamed(name)
+              denots1.union(inherited.mapInherited(ownDenots, denots1, thisType))
             case _ =>
               denots1
-          }
-        case nil =>
-          denots
-      }
-      if (name.isConstructorName) ownDenots
-      else collect(ownDenots, classParents)
-    }
+        case nil => denots
+      collect(ownDenots, classParents)
 
-    override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation = {
-      val raw = if (excluded.is(Private)) nonPrivateMembersNamed(name) else membersNamed(name)
+    override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
+      val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
       raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
-    }
 
     /** Compute tp.baseType(this) */
     final def baseTypeOf(tp: Type)(using Context): Type = {
@@ -2213,8 +2205,9 @@ object SymDenotations {
      *  object that hides a class or object in the scala package of the same name, because
      *  the behavior would then be unintuitive for such members.
      */
-    override def computeNPMembersNamed(name: Name)(using Context): PreDenotation = {
-      def recur(pobjs: List[ClassDenotation], acc: PreDenotation): PreDenotation = pobjs match {
+    override def computeMembersNamed(name: Name)(using Context): PreDenotation =
+
+      def recur(pobjs: List[ClassDenotation], acc: PreDenotation): PreDenotation = pobjs match
         case pcls :: pobjs1 =>
           if (pcls.isCompleting) recur(pobjs1, acc)
           else
@@ -2225,12 +2218,11 @@ object SymDenotations {
             }
             recur(pobjs1, acc.union(pobjMembers))
         case nil =>
-          val directMembers = super.computeNPMembersNamed(name)
+          val directMembers = super.computeMembersNamed(name)
           if !acc.exists then directMembers
           else acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent())) match
             case d: DenotUnion => dropStale(d)
             case d => d
-      }
 
       def dropStale(multi: DenotUnion): PreDenotation =
         val compiledNow = multi.filterWithPredicate(d =>
@@ -2272,13 +2264,12 @@ object SymDenotations {
             multi.filterWithPredicate(_.symbol.associatedFile == chosen)
       end dropStale
 
-      if (symbol `eq` defn.ScalaPackageClass) {
-        val denots = super.computeNPMembersNamed(name)
-        if (denots.exists || name == nme.CONSTRUCTOR) denots
+      if symbol eq defn.ScalaPackageClass then
+        val denots = super.computeMembersNamed(name)
+        if denots.exists || name == nme.CONSTRUCTOR then denots
         else recur(packageObjs, NoDenotation)
-      }
       else recur(packageObjs, NoDenotation)
-    }
+    end computeMembersNamed
 
     /** The union of the member names of the package and the package object */
     override def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {

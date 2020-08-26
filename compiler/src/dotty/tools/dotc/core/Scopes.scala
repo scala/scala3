@@ -148,12 +148,11 @@ object Scopes {
      *  Symbols occur in the result in reverse order relative to their occurrence
      *  in `this.toList`.
      */
-    final def denotsNamed(name: Name, select: SymDenotation => Boolean = selectAll)(using Context): PreDenotation = {
+    final def denotsNamed(name: Name)(using Context): PreDenotation = {
       var syms: PreDenotation = NoDenotation
       var e = lookupEntry(name)
       while (e != null) {
-        val d = e.sym.denot
-        if (select(d)) syms = syms union d
+        syms = syms union e.sym.denot
         e = lookupNextEntry(e)
       }
       syms
@@ -457,10 +456,6 @@ object Scopes {
    *  This is overridden by the reflective compiler to avoid creating new scopes for packages
    */
   def scopeTransform(owner: Symbol)(op: => MutableScope): MutableScope = op
-
-  val selectAll: SymDenotation => Boolean = alwaysTrue
-  val selectPrivate: SymDenotation => Boolean    = d => (d.flagsUNSAFE is Flags.Private)
-  val selectNonPrivate: SymDenotation => Boolean = d => !(d.flagsUNSAFE is Flags.Private)
 
   /** The empty scope (immutable).
    */

@@ -31,7 +31,8 @@ class Instrumentation extends MiniPhase { thisPhase =>
   private val namesOfInterest = List(
     "::", "+=", "toString", "newArray", "box", "toCharArray",
     "map", "flatMap", "filter", "withFilter", "collect", "foldLeft", "foldRight", "take",
-    "reverse", "mapConserve", "mapconserve", "filterConserve", "zip")
+    "reverse", "mapConserve", "mapconserve", "filterConserve", "zip",
+    "denotsNamed", "lookup", "lookupEntry", "lookupAll", "toList")
   private var namesToRecord: Set[Name] = _
 
   private var consName: TermName = _
