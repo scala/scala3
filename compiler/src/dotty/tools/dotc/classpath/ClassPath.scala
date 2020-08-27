@@ -23,8 +23,15 @@ trait SourceFileEntry extends ClassRepresentation {
 }
 
 case class PackageName(dottedString: String) {
+  val dirPathTrailingSlashJar: String = FileUtils.dirPathInJar(dottedString) + "/"
+
+  val dirPathTrailingSlash: String =
+    if (java.io.File.separatorChar == '/')
+      dirPathTrailingSlashJar
+    else
+      FileUtils.dirPath(dottedString) + java.io.File.separator
+
   def isRoot: Boolean = dottedString.isEmpty
-  val dirPathTrailingSlash: String = FileUtils.dirPathInArchive(dottedString) + "/"
 
   def entryName(entry: String): String = {
     if (isRoot) entry else {

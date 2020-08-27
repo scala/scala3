@@ -44,7 +44,7 @@ object FileUtils {
 
   def dirPath(forPackage: String): String = forPackage.replace('.', JFile.separatorChar)
 
-  def dirPathInArchive(forPackage: String): String = forPackage.replace('.', '/')
+  def dirPathInJar(forPackage: String): String = forPackage.replace('.', '/')
 
   def endsClass(fileName: String): Boolean =
     fileName.length > 6 && fileName.substring(fileName.length - 6) == ".class"

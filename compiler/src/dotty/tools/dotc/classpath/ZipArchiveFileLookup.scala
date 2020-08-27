@@ -62,7 +62,7 @@ trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends Efficie
     }
 
   private def findDirEntry(pkg: PackageName): Option[archive.DirEntry] =
-    archive.allDirs.get(pkg.dirPathTrailingSlash)
+    archive.allDirs.get(pkg.dirPathTrailingSlashJar)
 
   protected def createFileEntry(file: FileZipArchive#Entry): FileEntryType
   protected def isRequiredFileType(file: AbstractFile): Boolean
