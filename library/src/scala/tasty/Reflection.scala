@@ -12,15 +12,6 @@ import scala.tasty.reflect._
  */
 trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
-  //////////////
-  // CONTEXTS //
-  //////////////
-
-  /** Context of the macro expansion */
-  protected def rootContext: Context // TODO: Should this be moved to QuoteContext?
-  given Context = rootContext // TODO: Should be an implicit converion from QuoteContext to Context
-
-
   ///////////////
   //   Source  //
   ///////////////
