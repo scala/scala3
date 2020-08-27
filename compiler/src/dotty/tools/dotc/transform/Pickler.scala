@@ -18,6 +18,12 @@ import scala.concurrent.duration.Duration
 
 object Pickler {
   val name: String = "pickler"
+
+  /** If set, perform jump target compacting, position and comment pickling,
+   *  as well as final assembly in parallel with downstream phases; force
+   *  only in backend.
+   */
+  inline val ParallelPickling = true
 }
 
 /** This phase pickles trees */
@@ -94,15 +100,7 @@ class Pickler extends Phase {
         positionWarnings.foreach(report.warning(_))
         result
 
-      // Turn off parallelism because it lead to non-deterministic CI failures:
-      // - https://github.com/lampepfl/dotty/runs/1029579877?check_suite_focus=true#step:10:967
-      // - https://github.com/lampepfl/dotty/runs/1027582846?check_suite_focus=true#step:10:564
-      //
-      // Turning off parallelism in -Ytest-pickler and Interactive mode seems to
-      // work around the problem but I would prefer to not enable this at all
-      // until the root cause of the issue is understood since it might manifest
-      // itself in other situations too.
-      if !ctx.settings.YparallelPickler.value then force()
+      if !Pickler.ParallelPickling || ctx.settings.YtestPickler.value then force()
 
       unit.pickled += (cls -> force)
     end for
