@@ -117,8 +117,9 @@ object DesugarEnums {
     val rawEnumClassRef = rawRef(enumClass.typeRef)
     extension (tpe: NamedType) def ofRawEnum = AppliedTypeTree(ref(tpe), rawEnumClassRef)
 
+    val lazyFlagOpt = if enumCompanion.owner.isStatic then EmptyFlags else Lazy
     val privateValuesDef = ValDef(nme.DOLLAR_VALUES, TypeTree(), ArrayLiteral(enumValues, rawEnumClassRef))
-      .withFlags(Private | Synthetic)
+      .withFlags(Private | Synthetic | lazyFlagOpt)
 
     val valuesDef =
       DefDef(nme.values, Nil, Nil, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
