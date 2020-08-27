@@ -1192,6 +1192,7 @@ object Build {
         publishLocal in `dotty-interfaces`,
         publishLocal in `dotty-compiler-bootstrapped`,
         publishLocal in `dotty-library-bootstrapped`,
+        publishLocal in `dotty-library-bootstrappedJS`,
         publishLocal in `tasty-core-bootstrapped`,
         publishLocal in `dotty-staging`,
         publishLocal in `dotty-tasty-inspector`,
