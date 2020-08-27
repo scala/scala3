@@ -53,7 +53,7 @@ At least two of our contributors use [Metals](https://scalameta.org/metals/) to
 work on the project.
 
 For every PR, we build documentation for Scala3doc and Dotty. For example, for
-PR 110 you can find them at:
+PR 123 you can find them at:
 
 + https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/self/main/index.html
 + https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/stdLib/main/index.html
