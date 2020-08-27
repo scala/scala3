@@ -1564,14 +1564,14 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
-    import util.LRUCache
+    import util.HashTable
 
     // ----- caches -------------------------------------------------------
 
     private var myTypeParams: List[TypeSymbol] = null
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
 
-    private var myMemberCache: LRUCache[Name, PreDenotation] = null
+    private var myMemberCache: HashTable[Name, PreDenotation] = null
     private var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
@@ -1582,9 +1582,9 @@ object SymDenotations {
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
 
-    private def memberCache(using Context): LRUCache[Name, PreDenotation] = {
+    private def memberCache(using Context): HashTable[Name, PreDenotation] = {
       if (myMemberCachePeriod != ctx.period) {
-        myMemberCache = new LRUCache
+        myMemberCache = HashTable()
         myMemberCachePeriod = ctx.period
       }
       myMemberCache
@@ -1868,7 +1868,7 @@ object SymDenotations {
     final def nonPrivateMembersNamed(name: Name)(using Context): PreDenotation = {
       Stats.record("nonPrivateMembersNamed")
       if (Config.cacheMembersNamed) {
-        var denots: PreDenotation = memberCache lookup name
+        var denots: PreDenotation = memberCache.lookup(name)
         if (denots == null) {
           denots = computeNPMembersNamed(name)
           memberCache.enter(name, denots)
