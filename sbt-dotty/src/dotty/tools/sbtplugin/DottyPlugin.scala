@@ -16,6 +16,7 @@ import scala.util.Properties.isJavaAtLeast
 object DottyPlugin extends AutoPlugin {
   object autoImport {
     val isDotty = settingKey[Boolean]("Is this project compiled with Dotty?")
+    val isDottyJS = settingKey[Boolean]("Is this project compiled with Dotty and Scala.js?")
 
     // NOTE:
     // - this is a def to support `scalaVersion := dottyLatestNightlyBuild`
@@ -93,7 +94,7 @@ object DottyPlugin extends AutoPlugin {
         val name = moduleID.name
         if (name != "dotty" && name != "dotty-library" && name != "dotty-compiler")
           moduleID.crossVersion match {
-            case _: librarymanagement.Binary =>
+            case binary: librarymanagement.Binary =>
               val compatVersion =
                 CrossVersion.partialVersion(scalaVersion) match {
                   case Some((3, _)) =>
@@ -107,7 +108,7 @@ object DottyPlugin extends AutoPlugin {
                     ""
                 }
               if (compatVersion.nonEmpty)
-                moduleID.cross(CrossVersion.constant(compatVersion))
+                moduleID.cross(CrossVersion.constant(binary.prefix + compatVersion + binary.suffix))
               else
                 moduleID
             case _ =>
@@ -169,6 +170,29 @@ object DottyPlugin extends AutoPlugin {
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
       isDotty := scalaVersion.value.startsWith("0.") || scalaVersion.value.startsWith("3."),
+
+      /* The way the integration with Scala.js works basically assumes that the settings of ScalaJSPlugin
+       * will be applied before those of DottyPlugin. It seems to be the case in the tests I did, perhaps
+       * because ScalaJSPlugin is explicitly enabled, while DottyPlugin is triggered. However, I could
+       * not find an authoritative source on the topic.
+       *
+       * There is an alternative implementation that would not have that assumption: it would be to have
+       * another DottyJSPlugin, that would be auto-triggered by the presence of *both* DottyPlugin and
+       * ScalaJSPlugin. That plugin would be guaranteed to have its settings be applied after both of them,
+       * by the documented rules. However, that would require sbt-dotty to depend on sbt-scalajs to be
+       * able to refer to ScalaJSPlugin.
+       *
+       * When the logic of sbt-dotty moves to sbt itself, the logic specific to the Dotty-Scala.js
+       * combination will have to move to sbt-scalajs. Doing so currently wouldn't work since we
+       * observe that the settings of DottyPlugin are applied after ScalaJSPlugin, so ScalaJSPlugin
+       * wouldn't be able to fix up things like the dependency on dotty-library.
+       */
+      isDottyJS := {
+        isDotty.value && (crossVersion.value match {
+          case binary: librarymanagement.Binary => binary.prefix.contains("sjs1_")
+          case _                                => false
+        })
+      },
 
       scalaOrganization := {
         if (isDotty.value)
@@ -317,10 +341,49 @@ object DottyPlugin extends AutoPlugin {
 
       // Because managedScalaInstance is false, sbt won't add the standard library to our dependencies for us
       libraryDependencies ++= {
-        if (isDotty.value && autoScalaLibrary.value)
-          Seq(scalaOrganization.value %% "dotty-library" % scalaVersion.value)
-        else
+        if (isDotty.value && autoScalaLibrary.value) {
+          val name =
+            if (isDottyJS.value) "dotty-library_sjs1"
+            else "dotty-library"
+          Seq(scalaOrganization.value %% name % scalaVersion.value)
+        } else
           Seq()
+      },
+
+      // Patch up some more options if this is Dotty with Scala.js
+      scalacOptions := {
+        val prev = scalacOptions.value
+        /* The `&& !prev.contains("-scalajs")` is future-proof, for when sbt-scalajs adds that
+         * option itself but sbt-dotty is still required for the other Dotty-related stuff.
+         */
+        if (isDottyJS.value && !prev.contains("-scalajs")) prev :+ "-scalajs"
+        else prev
+      },
+      libraryDependencies := {
+        val prev = libraryDependencies.value
+        if (!isDottyJS.value) {
+          prev
+        } else {
+          prev
+            /* Remove the dependencies we don't want:
+             * * We don't want scalajs-library, because we need the one that comes
+             *   as a dependency of dotty-library_sjs1
+             * * We don't want scalajs-compiler, because that's a compiler plugin,
+             *   which is replaced by the `-scalajs` flag in dotc.
+             */
+            .filterNot { moduleID =>
+              moduleID.organization == "org.scala-js" && (
+                moduleID.name == "scalajs-library" || moduleID.name == "scalajs-compiler"
+              )
+            }
+            // Apply withDottyCompat to the dependency on scalajs-test-bridge
+            .map { moduleID =>
+              if (moduleID.organization == "org.scala-js" && moduleID.name == "scalajs-test-bridge")
+                moduleID.withDottyCompat(scalaVersion.value)
+              else
+                moduleID
+            }
+        }
       },
 
       // Turns off the warning:

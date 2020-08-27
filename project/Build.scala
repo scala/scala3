@@ -36,15 +36,6 @@ object MyScalaJSPlugin extends AutoPlugin {
   override def projectSettings: Seq[Setting[_]] = Def.settings(
     commonBootstrappedSettings,
 
-    /* Remove the Scala.js compiler plugin for scalac, and enable the
-     * Scala.js back-end of dotty instead.
-     */
-    libraryDependencies := {
-      val deps = libraryDependencies.value
-      deps.filterNot(_.name.startsWith("scalajs-compiler")).map(_.withDottyCompat(scalaVersion.value))
-    },
-    scalacOptions += "-scalajs",
-
     // Replace the JVM JUnit dependency by the Scala.js one
     libraryDependencies ~= {
       _.filter(!_.name.startsWith("junit-interface"))
@@ -289,8 +280,11 @@ object Build {
       Some((packageBin in (`dotty-sbt-bridge`, Compile)).value)
     },
 
-    // Use the same name as the non-bootstrapped projects for the artifacts
-    moduleName ~= { _.stripSuffix("-bootstrapped") },
+    // Use the same name as the non-bootstrapped projects for the artifacts.
+    // Remove the `js` suffix because JS artifacts are published using their special crossVersion.
+    // The order of the two `stripSuffix`es is important, so that
+    // dotty-library-bootstrappedjs becomes dotty-library.
+    moduleName ~= { _.stripSuffix("js").stripSuffix("-bootstrapped") },
 
     // Enforce that the only Scala 2 classfiles we unpickle come from scala-library
     /*
@@ -778,8 +772,14 @@ object Build {
     asDottyLibrary(Bootstrapped).
     enablePlugins(MyScalaJSPlugin).
     settings(
+      libraryDependencies +=
+        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).withDottyCompat(scalaVersion.value),
       unmanagedSourceDirectories in Compile :=
         (unmanagedSourceDirectories in (`dotty-library-bootstrapped`, Compile)).value,
+
+      // Make sure `dotty-bootstrapped/test` doesn't fail on this project for no reason
+      test in Test := {},
+      testOnly in Test := {},
     )
 
   lazy val tastyCoreSettings = Seq(
@@ -1397,7 +1397,8 @@ object Build {
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`dotty-interfaces`, dottyLibrary, dottyCompiler, tastyCore, dottyDoc, `dotty-sbt-bridge`).
       bootstrappedAggregate(`scala-library`, `scala-compiler`, `scala-reflect`, scalap,
-        `dotty-language-server`, `dotty-staging`, `dotty-tasty-inspector`, `dotty-tastydoc`).
+        `dotty-language-server`, `dotty-staging`, `dotty-tasty-inspector`, `dotty-tastydoc`,
+        `dotty-library-bootstrappedJS`).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
