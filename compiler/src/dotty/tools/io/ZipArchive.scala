@@ -199,7 +199,7 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
 final class ManifestResources(val url: URL) extends ZipArchive(null) {
   def iterator(): Iterator[AbstractFile] = {
     val root     = new DirEntry("/", null)
-    val dirs     = new mutable.HashMap[String, DirEntry]; dirs.put("/", root)
+    val dirs     = mutable.HashMap[String, DirEntry]("/" -> root)
     val manifest = new Manifest(input)
     val iter     = manifest.getEntries().keySet().iterator().asScala.filter(_.endsWith(".class")).map(new ZipEntry(_))
 
