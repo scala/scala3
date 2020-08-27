@@ -96,7 +96,7 @@ jobs:
           ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;configureIDE"
           ./project/scripts/bootstrapCmdTests
 
-  community_build:
+  community_build_1:
     runs-on: self-hosted
     container: lampepfl/dotty:2020-04-24
 
@@ -135,7 +135,48 @@ jobs:
         run: |
           git submodule sync
           git submodule update --init --recursive --jobs 7
-          ./project/scripts/sbt community-build/test
+          ./project/scripts/sbt community-build/testOnly dotty.communitybuild.CommunityBuildTest1
+
+  community_build_2:
+    runs-on: self-hosted
+    container: lampepfl/dotty:2020-04-24
+
+    steps:
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache Ivy
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.ivy2/cache
+          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-ivy-
+
+      - name: Cache SBT
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.sbt
+          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
+          restore-keys: ${{ runner.os }}-sbt-
+
+      - name: Cache Coursier and Mill
+        uses: actions/cache@v1.1.2
+        with:
+          path: /root/.cache
+          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
+          restore-keys: ${{ runner.os }}-general-
+
+      - name: Test
+        run: |
+          git submodule sync
+          git submodule update --init --recursive --jobs 7
+          ./project/scripts/sbt community-build/testOnly dotty.communitybuild.CommunityBuildTest2
 
   test_sbt:
     runs-on: self-hosted
@@ -229,7 +270,7 @@ jobs:
   publish_nightly:
     runs-on: self-hosted
     container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
+    needs: [test, test_bootstrapped, community_build_1, community_build_2, test_sbt, test_java8]
     if: github.event_name == 'schedule'
     env:
       NIGHTLYBUILD: yes
@@ -330,7 +371,7 @@ jobs:
   publish_release:
     runs-on: self-hosted
     container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
+    needs: [test, test_bootstrapped, community_build_1, community_build_2, test_sbt, test_java8]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
         !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
@@ -482,7 +523,7 @@ jobs:
   publish_sbt_release:
     runs-on: self-hosted
     container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
+    needs: [test, test_bootstrapped, community_build_1, community_build_2, test_sbt, test_java8]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
 
