@@ -1883,8 +1883,7 @@ object SymDenotations {
       val ownDenots = info.decls.denotsNamed(name)
       if debugTrace then
         println(s"$this.member($name), ownDenots = $ownDenots")
-      if name.isConstructorName then ownDenots
-      else addInherited(name, ownDenots)
+      addInherited(name, ownDenots)
 
     private def addInherited(name: Name, ownDenots: PreDenotation)(using Context): PreDenotation =
       def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match
@@ -1897,7 +1896,8 @@ object SymDenotations {
             case _ =>
               denots1
         case nil => denots
-      collect(ownDenots, classParents)
+      if name.isConstructorName then ownDenots
+      else collect(ownDenots, classParents)
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
