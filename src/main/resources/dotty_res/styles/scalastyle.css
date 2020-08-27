@@ -12,10 +12,12 @@
   --inactive-fg: #777;
   --title-fg: #00485E;
 
-  --leftbar-bg: #003047;
-  --leftbar-fg: white;
-  --leftbar-selected-bg: #0090BB;
-  --leftbar-selected-fg: white;
+  --leftbar-bg: #003048;
+  --leftbar-fg: #fff;
+  --leftbar-current-bg: #0090BB;
+  --leftbar-current-fg: #fff;
+  --leftbar-hover-bg: #00485E;
+  --leftbar-hover-fg: #fff;
   --logo-fg: var(--leftbar-fg);
 
   --icon-color: #00485E;
@@ -28,7 +30,7 @@
   --text-font: "Lato", sans-serif;
   --title-font: "Roboto Slab", serif;
 
-  /* Layout Settings */
+  /* Layout Settings (changes on small screens) */
   --side-width: 255px;
   --content-padding: 24px 42px;
   --footer-height: 42px;
@@ -53,14 +55,15 @@ body {
   background: var(--leftbar-bg);
   display: flex;
   flex-direction: column;
+  z-index: 5;
+}
+main {
+  min-height: calc(100vh - var(--footer-height) - 24px);
 }
 #content {
+  margin-left: var(--side-width);
   padding: var(--content-padding);
-  margin-left: var(--side-width);
-  min-height: 100%;
-}
-.footer {
-  margin-left: var(--side-width);
+  padding-bottom: calc(24px + var(--footer-height));
 }
 
 /* Text */
@@ -70,10 +73,14 @@ pre, code, .monospace {
   font-variant-ligatures: none;
 }
 code {
-  font-size: .8rem;
-  padding: 0 .3rem;
+  font-size: .8em;
+  padding: 0 .3em;
 }
-pre, pre code, .symbol.monospace {
+pre code {
+  font-size: 1em;
+  padding: 0;
+}
+pre, .symbol.monospace {
   padding: 10px 8px 10px 12px;
   font-weight: 500;
   font-size: 12px;
@@ -100,12 +107,19 @@ th {
   border-bottom: 2px solid var(--border-medium);
 }
 
+/* Left bar toggler, only on small screens */
+#leftToggler {
+  display: none;
+  color: var(--icon-color);
+  cursor: pointer;
+}
+
 /* Left bar */
 #sideMenu {
-  padding-top: .5em;
   overflow-y: scroll;
   scrollbar-width: thin;
   height: 100%;
+  font-size: 15px;
 }
 #logo {
   background-size: contain;
@@ -123,7 +137,7 @@ th {
   line-height: 42px;
 }
 .sideMenuPart {
-  padding-left: 1rem;
+  padding-left: 1em;
 }
 .sideMenuPart a {
 	display: flex;
@@ -135,12 +149,13 @@ th {
   margin-right: .5rem;
 }
 .sideMenuPart > .overview {
-	height: 30px;
+	height: 36px;
 	display: flex;
 	align-items: center;
 	position: relative;
   user-select: none;
   padding-bottom: 1px;
+  padding-top: 1px;
 }
 .sideMenuPart > .overview::before {
   width: var(--side-width);
@@ -152,15 +167,18 @@ th {
 	position: absolute;
 	z-index: 1;
 }
-.sideMenuPart[data-active] > .overview {
-  height: 34px;
+.sideMenuPart > .overview:hover::before {
+  background: var(--leftbar-hover-bg);
+}
+.sideMenuPart > .overview:hover > a {
+  color: var(--leftbar-hover-fg);
 }
 .sideMenuPart[data-active] > .overview::before {
-  background: var(--leftbar-selected-bg);
+  background: var(--leftbar-current-bg);
 }
 .sideMenuPart[data-active] > .overview > a  {
   font-weight: bold;
-  color: var(--leftbar-selected-fg);
+  color: var(--leftbar-current-fg);
 }
 .sideMenuPart.hidden > .sideMenuPart {
 	height: 0;
@@ -217,6 +235,10 @@ th {
   box-shadow: 0 0 10px var(--border-light) !important;
   border: 2px solid var(--border-light) !important;
   font-family: var(--mono-font) !important;
+  /* TODO dokka already uses !important so I can't override that...
+  min-width: calc(100% - var(--side-width) - 36px) !important;
+  left: 24px;
+  */
 }
 .popup-wrapper .indented {
   text-indent: 1.5em !important;
@@ -238,9 +260,6 @@ th {
   margin-bottom: .25rem;
   color: var(--title-fg);
   font-family: var(--title-font);
-}
-.cover .content > .block {
-	padding: 1em 0;
 }
 
 /* Tabs */
@@ -296,7 +315,7 @@ th {
 	transition: 0.2s;
 }
 .brief-with-platform-tags ~ .main-subrow {
-	padding-top: .5em;
+	padding-top: 0;
 }
 .brief {
 	white-space: pre-wrap;
@@ -308,7 +327,9 @@ th {
   color: var(--symbol-fg);
 	display: block;
 	white-space: pre-wrap;
-	position: relative;
+  position: relative;
+  padding-right: 24px; /* avoid the copy button */
+  margin: 1em 0;
 }
 .symbol .top-right-position {
 	position: absolute;
@@ -331,7 +352,7 @@ th {
 }
 .copy-popup-wrapper.active-popup {
   display: flex;
-  align-items: center; 
+  align-items: center;
 }
 .copy-popup-wrapper.popup-to-left {
 	left: -14rem;
@@ -344,42 +365,34 @@ th {
 }
 
 /* Footer */
-.footer {
-  clear: both;
+footer {
   display: flex;
   align-items: center;
   position: relative;
+  margin-top: 1rem;
+  margin-left: var(--side-width);
+  width: calc(100% - var(--side-width));
   min-height: var(--footer-height);
   border-top: 1px solid var(--border-light);
-  font-size: 12px;
-  line-height: 16px;
-  letter-spacing: 0.2px;
-  margin-top: 8px;
-  padding: var(--content-padding);
-  padding-top: 0;
-  padding-bottom: 0;
 }
-.footer span.go-to-top-icon {
-  border-radius: 2em;
-  padding: 11px 10px !important;
+footer span.go-to-top-icon {
   background-color: white;
-  fill: red;
 }
-.footer > span:first-child {
-  margin-left: var(--horizontal-spacing-for-content);
+footer > span:first-child {
+  margin-left: 24px;
   padding-left: 0;
 }
-.footer > span:last-child {
-  margin-right: var(--horizontal-spacing-for-content);
+footer > span:last-child {
+  margin-right: 24px;
   padding-right: 0;
 }
-.footer > span {
+footer > span {
   padding: 0 16px;
 }
-.footer .padded-icon {
+footer .padded-icon {
   padding-left: 0.5em;
 }
-.footer .pull-right {
+footer .pull-right {
   margin-left: auto;
 }
 
@@ -407,15 +420,60 @@ th {
     /* The "copy content" button doesn't work well with overflow-x */
     display: none;
   }
+  footer > span:first-child {
+    margin-left: 12px;
+  }
+  footer > span:last-child {
+    margin-right: 12px;
+  }
 }
 /* Portrait phones */
 @media(max-width: 576px) {
   :root {
     --side-width: 0;
+    --content-padding: 48px 12px;
   }
+
+  /* Togglable left column */
   #leftColumn {
+    --side-width: 85vw;
+    margin-left: -85vw; /* closed by default */
+    transition: margin .25s ease-out;
+  }
+  #leftColumn.open {
+    margin-left: 0;
+  }
+  #leftColumn.open ~ #main #searchBar {
     display: none;
-    /*TODO: add a button to show the left column*/
+  }
+
+  #leftToggler {
+    display: unset;
+    position: absolute;
+    top: 5px;
+    left: 12px;
+    z-index: 5;
+    font-size: 30px;
+  }
+  #leftColumn.open ~ #main #leftToggler {
+    left: unset;
+    right: 5vw;
+  }
+  .icon-toggler::before {
+    content: "\e90a"; /* menu icon */
+  }
+  #leftColumn.open ~ #main .icon-toggler::before {
+    content: "\e900"; /* clear icon */
+  }
+  /* --- */
+
+  .search-content {
+    margin: 0 !important;
+    top: 9px !important;
+    right: 12px !important;
+  }
+  .cover h1 {
+    margin-top: 0;
   }
   .table-row {
     padding-right: 0;

@@ -25,10 +25,10 @@ class StaticSitePlugin: DokkaPlugin() {
         }
     }
 
-    val dokkaJavadocPlugin by extending {
-        (CoreExtensions.renderer
-                providing { ctx -> ExternalDocsToolRenderer(ctx) }
-                override dokkaBase.htmlRenderer)
+    val customRenderer by extending {
+        CoreExtensions.renderer providing { ctx ->
+            ExternalDocsToolRenderer(ctx)
+        } override dokkaBase.htmlRenderer
     }
 
     val locationProvider by extending {
