@@ -25,13 +25,11 @@ import scala.tasty.reflect.TypeTest
 // NOTE: `ReflectionCompilerInterface` should be a class to make sure that all functionality of
 //       `CompilerInterface` is implemented here.
 
-class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInterface {
+class ReflectionCompilerInterface(using val ctx: Context) extends CompilerInterface {
   import tpd._
 
-  private given core.Contexts.Context = rootContext
-
   def rootPosition: util.SourcePosition =
-    MacroExpansion.position.getOrElse(SourcePosition(rootContext.source, Spans.NoSpan))
+    MacroExpansion.position.getOrElse(SourcePosition(ctx.source, Spans.NoSpan))
 
 
   //////////////////////
@@ -45,26 +43,20 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     PickledQuotes.unpickleType(repr, args)
 
 
-  /////////////
-  // CONTEXT //
-  /////////////
-
-  type Context = core.Contexts.Context
-
   /////////////////
   // Constraints //
   /////////////////
 
 
   def Constraints_context[T]: scala.quoted.QuoteContext =
-    val ctx = rootContext.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
-    dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx)
+    val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
+    dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)
 
   def Constraints_add(syms: List[Symbol]): Boolean =
-    rootContext.gadt.addToConstraint(syms)
+    ctx.gadt.addToConstraint(syms)
 
   def Constraints_approximation(sym: Symbol, fromBelow: Boolean): Type =
-    rootContext.gadt.approximation(sym, fromBelow)
+    ctx.gadt.approximation(sym, fromBelow)
 
   ////////////
   // Source //
@@ -2114,5 +2106,5 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   private def withDefaultPos[T <: Tree](tree: T): T =
     tree.withSpan(rootPosition.span)
 
-  def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
+  def compilerId: Int = ctx.outersIterator.toList.last.hashCode()
 }

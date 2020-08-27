@@ -114,9 +114,6 @@ import scala.tasty.reflect._
  */
 trait Types {
 
-  /** Compilation context */
-  type Context <: AnyRef
-
   /** Tree representing code written in the source */
   type Tree <: AnyRef
 

@@ -12,17 +12,17 @@ object QuoteContextImpl {
   type ScopeId = Int
 
   def apply()(using Context): QuoteContext =
-    new QuoteContextImpl(ctx)
+    new QuoteContextImpl
 
   def showTree(tree: tpd.Tree)(using Context): String = {
     val qctx = QuoteContextImpl()(using MacroExpansion.context(tree))
     val syntaxHighlight =
       if (ctx.settings.color.value == "always") SyntaxHighlight.ANSI
       else SyntaxHighlight.plain
-    show(using qctx)(tree.asInstanceOf[qctx.tasty.Tree], syntaxHighlight)(using ctx.asInstanceOf[qctx.tasty.Context])
+    show(using qctx)(tree.asInstanceOf[qctx.tasty.Tree], syntaxHighlight)
   }
 
-  private def show(using qctx: QuoteContext)(tree: qctx.tasty.Tree, syntaxHighlight: SyntaxHighlight)(using qctx.tasty.Context) =
+  private def show(using qctx: QuoteContext)(tree: qctx.tasty.Tree, syntaxHighlight: SyntaxHighlight) =
     tree.showWith(syntaxHighlight)
 
   private[dotty] def checkScopeId(id: ScopeId)(using Context): Unit =
@@ -36,8 +36,8 @@ object QuoteContextImpl {
 
 }
 
-class QuoteContextImpl private (ctx: Context) extends QuoteContext {
+class QuoteContextImpl private (using ctx: Context) extends QuoteContext {
   // NOTE: The tasty class should only mixin the compiler interface and the reflection interface.
   //       We should not implement methods here, all should be implemented by `ReflectionCompilerInterface`
-  val tasty = new ReflectionCompilerInterface(ctx) with scala.tasty.Reflection
+  val tasty = new ReflectionCompilerInterface with scala.tasty.Reflection
 }
