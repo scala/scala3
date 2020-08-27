@@ -47,7 +47,7 @@ object DottyPredef {
    *           }}}
    *  @group utilities
    */
-  inline def locally[T](inline body: T): T = body
+  inline def locally[T](/*inline*/ body: T): T = body // FIXME add `inline` param when #9655 is fixed
 
   /**
    * Retrieve the single value of a type with a unique inhabitant.
