@@ -16,10 +16,14 @@ import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
 import util.Spans._
 
-class PositionPickler(pickler: TastyPickler, addrOfTree: PositionPickler.TreeToAddr) {
+class PositionPickler(
+    pickler: TastyPickler,
+    addrOfTree: PositionPickler.TreeToAddr,
+    treeAnnots: untpd.MemberDef => List[tpd.Tree]) {
+
+  import ast.tpd._
   val buf: TastyBuffer = new TastyBuffer(5000)
   pickler.newSection("Positions", buf)
-  import ast.tpd._
 
   private val pickledIndices = new mutable.BitSet
 
@@ -28,7 +32,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: PositionPickler.TreeToA
     (addrDelta << 3) | (toInt(hasStartDelta) << 2) | (toInt(hasEndDelta) << 1) | toInt(hasPoint)
   }
 
-  def picklePositions(roots: List[Tree])(using Context): Unit = {
+  def picklePositions(roots: List[Tree], warnings: mutable.ListBuffer[String]): Unit = {
     var lastIndex = 0
     var lastSpan = Span(0, 0)
     def pickleDeltas(index: Int, span: Span) = {
@@ -55,7 +59,7 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: PositionPickler.TreeToA
           val cwd = java.nio.file.Paths.get("").toAbsolutePath().normalize()
           try cwd.relativize(path)
           catch case _: IllegalArgumentException =>
-            report.warning("Could not relativize path for pickling: " + originalPath)
+            warnings += "Could not relativize path for pickling: " + originalPath
             originalPath
         else
           originalPath
@@ -100,10 +104,9 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: PositionPickler.TreeToA
               pickleDeltas(addr.index, x.span)
           }
         }
-        x match {
-          case x: untpd.MemberDef @unchecked => traverse(x.symbol.annotations, x.source)
+        x match
+          case x: untpd.MemberDef => traverse(treeAnnots(x), x.source)
           case _ =>
-        }
         val limit = x.productArity
         var n = 0
         while (n < limit) {
@@ -113,8 +116,6 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: PositionPickler.TreeToA
       case y :: ys =>
         traverse(y, current)
         traverse(ys, current)
-      case x: Annotation =>
-        traverse(x.tree, current)
       case _ =>
     }
     for (root <- roots)

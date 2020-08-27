@@ -15,6 +15,7 @@ import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter }
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
+import dotty.tools.dotc.report
 
 import dotty.tools.tasty.TastyString
 
@@ -22,6 +23,7 @@ import scala.reflect.ClassTag
 
 import scala.internal.quoted.Unpickler._
 import scala.quoted.QuoteContext
+import scala.collection.mutable
 
 object PickledQuotes {
   import tpd._
@@ -167,8 +169,11 @@ object PickledQuotes {
     val treePkl = pickler.treePkl
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
-    if (tree.span.exists)
-      new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
+    if tree.span.exists then
+      val positionWarnings = new mutable.ListBuffer[String]()
+      new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots)
+        .picklePositions(tree :: Nil, positionWarnings)
+      positionWarnings.foreach(report.warning(_))
 
     val pickled = pickler.assembleParts()
     quotePickling.println(s"**** pickled quote\n${new TastyPrinter(pickled).printContents()}")
