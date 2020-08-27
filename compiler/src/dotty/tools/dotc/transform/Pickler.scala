@@ -62,8 +62,7 @@ class Pickler extends Phase {
       val treePkl = pickler.treePkl
       treePkl.pickle(tree :: Nil)
       val positionWarnings = new mutable.ListBuffer[String]()
-      val parContext = ctx.fresh // TODO refine
-      val pickledF = inContext(parContext) {
+      val pickledF = inContext(ctx.fresh) {
         Future {
           treePkl.compactify()
           if tree.span.exists then
@@ -71,7 +70,8 @@ class Pickler extends Phase {
               .picklePositions(tree :: Nil, positionWarnings)
 
           if !ctx.settings.YdropComments.value then
-            new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
+            new CommentPickler(pickler, treePkl.buf.addrOfTree, treePkl.docString)
+              .pickleComment(tree)
 
           val pickled = pickler.assembleParts()
 

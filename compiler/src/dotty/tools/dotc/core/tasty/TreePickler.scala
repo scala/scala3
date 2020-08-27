@@ -10,6 +10,7 @@ import ast.Trees._
 import ast.{untpd, tpd}
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, Flags._
 import Denotations.MultiDenotation
+import Comments.{Comment, CommentsContext}
 import typer.Inliner
 import NameKinds._
 import StdNames.nme
@@ -50,9 +51,19 @@ class TreePickler(pickler: TastyPickler) {
    */
   private val annotTrees = util.HashTable[untpd.MemberDef, mutable.ListBuffer[Tree]]()
 
+  /** A map from member definitions to their doc comments, so that later
+   *  parallel comment pickling does not need to access symbols of trees (which
+   *  would involve accessing symbols of named types and possibly changing phases
+   *  in doing so).
+   */
+  private val docStrings = util.HashTable[untpd.MemberDef, Comment]()
+
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
     if ts == null then Nil else ts.toList
+
+  def docString(tree: untpd.MemberDef): Option[Comment] =
+    Option(docStrings.lookup(tree))
 
   private def withLength(op: => Unit) = {
     val lengthAddr = reserveRef(relative = true)
@@ -334,6 +345,11 @@ class TreePickler(pickler: TastyPickler) {
       pickleTreeUnlessEmpty(rhs)
       pickleModifiers(sym, mdef)
     }
+    for
+      docCtx <- ctx.docCtx
+      comment <- docCtx.docstring(sym)
+    do
+      docStrings.enter(mdef, comment)
   }
 
   def pickleParam(tree: Tree)(using Context): Unit = {
