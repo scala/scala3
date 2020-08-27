@@ -53,7 +53,7 @@ sealed trait CommunityProject:
    *  and avoid network overhead. See https://github.com/lampepfl/dotty-drone
    *  for more infrastructural details.
    */
-  final def run()(using suite: CommunityBuildTest) =
+  final def run()(using suite: CommunityBuildEngine) =
     dependencies.foreach(_.publish())
     suite.test(project, binaryName, runCommandsArgs :+ testCommand)
 
@@ -303,7 +303,7 @@ object projects:
 end projects
 
 trait CommunityBuildEngine:
-  given CommunityBuildTest = this
+  given CommunityBuildEngine = this
 
   /** Build the given project with the published local compiler and sbt plugin.
    *
@@ -359,7 +359,7 @@ trait CommunityBuildEngine:
           |""".stripMargin)
     }
   }
-end CommunityBuildTest
+end CommunityBuildEngine
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTest1 extends CommunityBuildEngine:
