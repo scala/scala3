@@ -302,8 +302,7 @@ object projects:
 
 end projects
 
-@Category(Array(classOf[TestCategory]))
-class CommunityBuildTest:
+trait CommunityBuildEngine:
   given CommunityBuildTest = this
 
   /** Build the given project with the published local compiler and sbt plugin.
@@ -360,40 +359,46 @@ class CommunityBuildTest:
           |""".stripMargin)
     }
   }
+end CommunityBuildTest
 
-  @Test def algebra = projects.algebra.run()
-  @Test def betterfiles = projects.betterfiles.run()
-  @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
-  @Test def effpi = projects.effpi.run()
-  @Test def endpoints = projects.endpoints.run()
-  @Test def fastparse = projects.fastparse.run()
+@Category(Array(classOf[TestCategory]))
+class CommunityBuildTest1 extends CommunityBuildEngine:
   @Test def geny = projects.geny.run()
-  @Test def intent = projects.intent.run()
-  @Test def minitest = projects.minitest.run()
-  @Test def munit = projects.munit.run()
   @Test def oslib = projects.oslib.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def scalacheck = projects.scalacheck.run()
-  @Test def scalap = projects.scalap.run()
-  @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
-  @Test def ScalaPB = projects.ScalaPB.run()
   @Test def scalatest = projects.scalatest.run()
   @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
-  @Test def scalaXml = projects.scalaXml.run()
-  @Test def scalaz = projects.scalaz.run()
-  @Test def scodec = projects.scodec.run()
-  @Test def scodecBits = projects.scodecBits.run()
-  @Test def sconfig = projects.sconfig.run()
-  @Test def scopt = projects.scopt.run()
-  @Test def shapeless = projects.shapeless.run()
+  @Test def fastparse = projects.fastparse.run()
   @Test def sourcecode = projects.sourcecode.run()
-  @Test def squants = projects.squants.run()
-  @Test def stdLib213 = projects.stdLib213.run()
   @Test def ujson = projects.ujson.run()
   // @Test def upickle = projects.upickle.run()
   @Test def utest = projects.utest.run()
-  @Test def xmlInterpolator = projects.xmlInterpolator.run()
   @Test def zio = projects.zio.run()
-end CommunityBuildTest
+  @Test def shapeless = projects.shapeless.run()
+  @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
+  @Test def betterfiles = projects.betterfiles.run()
+  @Test def scodec = projects.scodec.run()
+  @Test def scodecBits = projects.scodecBits.run()
+end CommunityBuildTest1
+
+@Category(Array(classOf[TestCategory]))
+class CommunityBuildTest2 extends CommunityBuildEngine:
+  @Test def algebra = projects.algebra.run()
+  @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
+  @Test def effpi = projects.effpi.run()
+  @Test def endpoints = projects.endpoints.run()
+  @Test def intent = projects.intent.run()
+  @Test def minitest = projects.minitest.run()
+  @Test def munit = projects.munit.run()
+  @Test def scalap = projects.scalap.run()
+  @Test def ScalaPB = projects.ScalaPB.run()
+  @Test def scalaXml = projects.scalaXml.run()
+  @Test def sconfig = projects.sconfig.run()
+  @Test def scopt = projects.scopt.run()
+  @Test def squants = projects.squants.run()
+  @Test def stdLib213 = projects.stdLib213.run()
+  @Test def xmlInterpolator = projects.xmlInterpolator.run()
+end CommunityBuildTest2
 
 class TestCategory
