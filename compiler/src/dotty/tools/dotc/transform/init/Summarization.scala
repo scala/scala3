@@ -309,7 +309,7 @@ object Summarization {
             if (cls == defn.AnyClass || cls == defn.AnyValClass) Effects.empty
             else {
               val ctor = cls.primaryConstructor
-              Summarization.analyze(tref.prefix, ref)._2 +
+              Summarization.analyze(New(ref.tpe))(env.withOwner(ctor.owner))._2 +
                 MethodCall(ThisRef()(ref), ctor)(ref)
             }
         })
