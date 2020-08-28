@@ -21,6 +21,7 @@ import NameKinds._
 import NamerOps._
 import ContextOps._
 import Variances.Invariant
+import TastyUnpickler.NameTable
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import util.Spans._
@@ -51,7 +52,7 @@ import scala.annotation.internal.sharable
  *  @param commentUnpicklerOpt the unpickler for comments, if it exists
  */
 class TreeUnpickler(reader: TastyReader,
-                    nameAtRef: NameRef => TermName,
+                    nameAtRef: NameTable,
                     posUnpicklerOpt: Option[PositionUnpickler],
                     commentUnpicklerOpt: Option[CommentUnpickler]) {
   import TreeUnpickler._
@@ -557,7 +558,7 @@ class TreeUnpickler(reader: TastyReader,
       val rhsStart = currentAddr
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
-      val (givenFlags, annotFns, privateWithin) = readModifiers(end, readTypedAnnot, readTypedWithin, NoSymbol)
+      val (givenFlags, annotFns, privateWithin) = readModifiers(end)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
       val flags = normalizeFlags(tag, givenFlags, name, isAbsType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) =
@@ -608,12 +609,10 @@ class TreeUnpickler(reader: TastyReader,
     /** Read modifier list into triplet of flags, annotations and a privateWithin
      *  boundary symbol.
      */
-    def readModifiers[WithinType, AnnotType]
-        (end: Addr, readAnnot: Context ?=> Symbol => AnnotType, readWithin: Context ?=> WithinType, defaultWithin: WithinType)
-        (using Context): (FlagSet, List[Symbol => AnnotType], WithinType) = {
+    def readModifiers(end: Addr)(using Context): (FlagSet, List[Symbol => Annotation], Symbol) = {
       var flags: FlagSet = EmptyFlags
-      var annotFns: List[Symbol => AnnotType] = Nil
-      var privateWithin = defaultWithin
+      var annotFns: List[Symbol => Annotation] = Nil
+      var privateWithin: Symbol = NoSymbol
       while (currentAddr.index != end.index) {
         def addFlag(flag: FlagSet) = {
           flags |= flag
@@ -676,9 +675,9 @@ class TreeUnpickler(reader: TastyReader,
       (flags, annotFns.reverse, privateWithin)
     }
 
-    private val readTypedWithin: Context ?=> Symbol = readType().typeSymbol
+    private def readWithin(using Context): Symbol = readType().typeSymbol
 
-    private val readTypedAnnot: Context ?=> Symbol => Annotation =
+    private def readAnnot(using Context): Symbol => Annotation =
       readByte()
       val end = readEnd()
       val tp = readType()

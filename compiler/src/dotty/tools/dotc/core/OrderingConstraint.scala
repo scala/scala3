@@ -229,23 +229,32 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  and to handle them separately is for efficiency, so that type expressions
    *  used as bounds become smaller.
    *
+   *  TODO: try to do without stripping? It would mean it is more efficient
+   *  to pull out full bounds from a constraint.
+   *
    *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
    */
-  private def stripParams(tp: Type, paramBuf: mutable.ListBuffer[TypeParamRef],
+  private def stripParams(
+      tp: Type,
+      todos: mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint],
       isUpper: Boolean)(using Context): Type = tp match {
     case param: TypeParamRef if contains(param) =>
-      if (!paramBuf.contains(param)) paramBuf += param
+      todos += (if isUpper then order(_, _, param) else order(_, param, _))
       NoType
+    case tp: TypeBounds =>
+      val lo1 = stripParams(tp.lo, todos, !isUpper).orElse(defn.NothingType)
+      val hi1 = stripParams(tp.hi, todos, isUpper).orElse(defn.AnyKindType)
+      tp.derivedTypeBounds(lo1, hi1)
     case tp: AndType if isUpper =>
-      val tp1 = stripParams(tp.tp1, paramBuf, isUpper)
-      val tp2 = stripParams(tp.tp2, paramBuf, isUpper)
+      val tp1 = stripParams(tp.tp1, todos, isUpper)
+      val tp2 = stripParams(tp.tp2, todos, isUpper)
       if (tp1.exists)
         if (tp2.exists) tp.derivedAndType(tp1, tp2)
         else tp1
       else tp2
     case tp: OrType if !isUpper =>
-      val tp1 = stripParams(tp.tp1, paramBuf, isUpper)
-      val tp2 = stripParams(tp.tp2, paramBuf, isUpper)
+      val tp1 = stripParams(tp.tp1, todos, isUpper)
+      val tp2 = stripParams(tp.tp2, todos, isUpper)
       if (tp1.exists)
         if (tp2.exists) tp.derivedOrType(tp1, tp2)
         else tp1
@@ -253,17 +262,6 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case _ =>
       tp
   }
-
-  /** The bound type `tp` without clearly dependent parameters.
-   *  A top or bottom type if type consists only of dependent parameters.
-   *  TODO: try to do without normalization? It would mean it is more efficient
-   *  to pull out full bounds from a constraint.
-   *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
-   */
-  private def normalizedType(tp: Type, paramBuf: mutable.ListBuffer[TypeParamRef],
-      isUpper: Boolean)(using Context): Type =
-    stripParams(tp, paramBuf, isUpper)
-      .orElse(if (isUpper) defn.AnyKindType else defn.NothingType)
 
   def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This = {
     assert(!contains(poly))
@@ -280,18 +278,15 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    */
   private def init(poly: TypeLambda)(using Context): This = {
     var current = this
-    val loBuf, hiBuf = new mutable.ListBuffer[TypeParamRef]
+    val todos = new mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint]
     var i = 0
     while (i < poly.paramNames.length) {
       val param = poly.paramRefs(i)
-      val bounds = nonParamBounds(param)
-      val lo = normalizedType(bounds.lo, loBuf, isUpper = false)
-      val hi = normalizedType(bounds.hi, hiBuf, isUpper = true)
-      current = updateEntry(current, param, bounds.derivedTypeBounds(lo, hi))
-      current = loBuf.foldLeft(current)(order(_, _, param))
-      current = hiBuf.foldLeft(current)(order(_, param, _))
-      loBuf.clear()
-      hiBuf.clear()
+      val stripped = stripParams(nonParamBounds(param), todos, isUpper = true)
+      current = updateEntry(current, param, stripped)
+      while todos.nonEmpty do
+        current = todos.head(current, param)
+        todos.dropInPlace(1)
       i += 1
     }
     current.checkNonCyclic()
