@@ -56,7 +56,7 @@ object Expr {
      *  Otherwise returns the `Some` of the value.
      */
     def unlift(using qctx: QuoteContext, unlift: Unliftable[T]): Option[T] =
-      unlift(expr)
+      unlift.fromExpr(expr)
 
     /** Return the unlifted value of this expression.
      *
@@ -67,7 +67,7 @@ object Expr {
       def reportError =
         val msg = s"Expected a known value. \n\nThe value of: ${expr.show}\ncould not be unlifted using $unlift"
         report.throwError(msg, expr)
-      unlift(expr).getOrElse(reportError)
+      unlift.fromExpr(expr).getOrElse(reportError)
   end extension
 
   /** `e.betaReduce` returns an expression that is functionally equivalent to `e`,

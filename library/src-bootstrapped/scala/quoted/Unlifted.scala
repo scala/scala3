@@ -13,7 +13,7 @@ object Unlifted {
    *  ```
    */
   def unapply[T](expr: Expr[T])(using unlift: Unliftable[T], qxtc: QuoteContext): Option[T] =
-    unlift(expr)
+    unlift.fromExpr(expr)
 
   /** Matches literal sequence of literal constant value expressions and return a sequence of values.
    *
