@@ -30,19 +30,30 @@ object Checking {
    *
    */
   case class State(
-    visited: mutable.Set[Effect],              // effects that have been checked
+    private var visited: Set[Effect],          // effects that have been checked
     path: Vector[Tree],                        // the path that leads to the current effect
     thisClass: ClassSymbol,                    // the concrete class of `this`
     fieldsInited: mutable.Set[Symbol],
     parentsInited: mutable.Set[ClassSymbol],
     env: Env
   ) {
+
     def withVisited(eff: Effect): State = {
-      visited += eff
+      visited = visited + eff
       copy(path = this.path :+ eff.source)
     }
 
+    def hasVisited(eff: Effect): Boolean =
+      visited.contains(eff)
+
     def withOwner(sym: Symbol): State = copy(env = env.withOwner(sym))
+
+    def test(op: State ?=> Errors): Errors = {
+      val saved = visited
+      val errors = op(using this)
+      visited = saved
+      errors
+    }
   }
 
   private implicit def theEnv(implicit state: State): Env = state.env
@@ -148,7 +159,7 @@ object Checking {
   }
 
   private def check(eff: Effect)(implicit state: State): Errors =
-    if (state.visited.contains(eff)) Errors.empty
+    if (state.hasVisited(eff)) Errors.empty
     else trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
       implicit val state2: State = state.withVisited(eff)
 
@@ -162,11 +173,13 @@ object Checking {
               PromoteCold(eff.source, state2.path).toErrors
 
             case pot @ Warm(cls, outer) =>
-              PromoteWarm(pot, eff.source, state2.path).toErrors
+              val errors = state.test { check(Promote(outer)(eff.source)) }
+              if (errors.isEmpty) Errors.empty
+              else PromoteWarm(pot, eff.source, state2.path).toErrors
 
             case Fun(pots, effs) =>
-              val errs1 = effs.flatMap { check(_) }
-              val errs2 = pots.flatMap { pot => check(Promote(pot)(eff.source))(state.copy(path = Vector.empty)) }
+              val errs1 = state.test { effs.flatMap { check(_) } }
+              val errs2 = state.test { pots.flatMap { pot => check(Promote(pot)(eff.source))(state.copy(path = Vector.empty)) } }
               if (errs1.nonEmpty || errs2.nonEmpty)
                 UnsafePromotion(pot, eff.source, state2.path, errs1 ++ errs2).toErrors
               else
