@@ -15,8 +15,30 @@ Alternatively, you can try this version of Scala online via [Scastie](https://sc
 Enjoy the ride🚀!
 
 <!--more-->
-# Welcome ScalaJS support
-PR [#9637](https://github.com/lampepfl/dotty/pull/9637) brings ScalaJS support to Dotty. Now, if you use the ScalaJSPlugin in your Dotty SBT project, the project will be correctly compiled to compile to JavaScript.
+# Welcome Scala.js support (with caveats)
+This release brings enough support for Scala.js that it should be actually usable in a number of projects.
+To use it, make sure of the following:
+
+* Use sbt-scalajs v1.1.1 or later
+* Use sbt-dotty v0.4.2 or later (v0.4.2)
+* Use `scalaVersion := "0.27.0-RC1"` or later for Dotty
+* Use `enablePlugins(ScalaJSPlugin)` or a `crossProject`
+
+When the above are combined, sbt-scalajs ans sbt-dotty will coordinate to transparently configure your project with Dotty with its Scala.js support.
+
+In this release, the following features are supported:
+
+* Dependencies with `%%%`, including with `withDottyCompat`,
+* The entire portable subset of the language, i.e., code that compiles both on the JVM and on JS,
+* Calling JavaScript APIs, including those defined in dependencies.
+
+The following features are *not supported yet*:
+
+* Define non-native JS classes (i.e., classes extending `js.Any` but without `@js.native`): they will report compile errors
+* Exports of all kinds (i.e., `@JSExportXYZ`): they will be silently ignored
+
+To the best of our knowledge, cross-compiling libraries should be able to use Scala.js with Dotty in plain capacity.
+If you experience a bug with anything except the unsupported features mentioned above, please file a bug report.
 
 # Stability
 As we're getting closer to the release of Scala 3, we are continuing to focus on the stability and performance of the language. In this release, we have fixed support of objects under JDK9 (PR [#9181](https://github.com/lampepfl/dotty/pull/9181)). The issue was, due to the changes in JDK9 compared to JDK8, our initialization scheme for objects did not work under JDK9. The aforementioned fixed that issue, thereby unblocking JDK9 support for Dotty.
