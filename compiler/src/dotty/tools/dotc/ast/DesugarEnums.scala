@@ -104,7 +104,7 @@ object DesugarEnums {
 
   /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *
-   *   private val $values = Array[E](e_0,...,e_n)(ClassTag[E](classOf[E]))
+   *   private val $values = Array[E](e_0,...,e_n)(ClassTag[E](classOf[E])): @unchecked
    *   def values = $values.clone
    *   def valueOf($name: String) = $name match {
    *     case "e_0" => e_0
@@ -117,9 +117,11 @@ object DesugarEnums {
     val rawEnumClassRef = rawRef(enumClass.typeRef)
     extension (tpe: NamedType) def ofRawEnum = AppliedTypeTree(ref(tpe), rawEnumClassRef)
 
-    val lazyFlagOpt = if enumCompanion.owner.isStatic then EmptyFlags else Lazy
-    val privateValuesDef = ValDef(nme.DOLLAR_VALUES, TypeTree(), ArrayLiteral(enumValues, rawEnumClassRef))
-      .withFlags(Private | Synthetic | lazyFlagOpt)
+    val privateValuesDef =
+      val uncheckedValues =
+        Annotated(ArrayLiteral(enumValues, rawEnumClassRef), New(ref(defn.UncheckedAnnot.typeRef)))
+      ValDef(nme.DOLLAR_VALUES, TypeTree(), uncheckedValues)
+        .withFlags(Private | Synthetic)
 
     val valuesDef =
       DefDef(nme.values, Nil, Nil, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
@@ -170,7 +172,6 @@ object DesugarEnums {
    *     def ordinal = _$ordinal   // if `E` does not derive from `java.lang.Enum`
    *     def enumLabel = $name     // if `E` does not derive from `java.lang.Enum`
    *     def enumLabel = this.name // if `E` derives from `java.lang.Enum`
-   *     $values.register(this)
    *   }
    */
   private def enumValueCreator(using Context) = {
@@ -307,8 +308,8 @@ object DesugarEnums {
       case name: TermName => (ordinal, name) :: seenCases
       case _              => seenCases
     if definesLookups then
-      val companionRef = ref(enumCompanion.termRef)
-      val cachedValues = cases.reverse.map((i, name) => (i, Select(companionRef, name)))
+      val thisRef = This(EmptyTypeIdent)
+      val cachedValues = cases.reverse.map((i, name) => (i, Select(thisRef, name)))
       (ordinal, enumLookupMethods(EnumConstraints(minKind, maxKind, cachedValues)))
     else
       ctx.tree.pushAttachment(EnumCaseCount, (ordinal + 1, minKind, maxKind, cases))
