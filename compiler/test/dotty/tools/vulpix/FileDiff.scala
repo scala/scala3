@@ -21,8 +21,11 @@ object FileDiff {
       else Using(Source.fromFile(checkFile, "UTF-8"))(_.getLines().toList).get
 
     // handle check file path mismatch on windows
-    def lineMatch(out: String, expect: String): Boolean =
-      out == expect || File.separatorChar == '\\' && out.replace('\\', '/') == expect
+    def lineMatch(actual: String, expect: String): Boolean = {
+      val actual1 = actual.stripLineEnd
+      val expect1  = expect.stripLineEnd
+      actual1 == expect1 || File.separatorChar == '\\' && actual1.replace('\\', '/') == expect1
+    }
 
     def linesMatch =
       outputLines.length == checkLines.length &&
