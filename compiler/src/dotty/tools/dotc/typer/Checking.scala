@@ -1088,12 +1088,14 @@ trait Checking {
       && cls.owner.isTerm
       && (cls.owner.flagsUNSAFE.isAllOf(EnumCase)
         || ((cls.owner.name eq nme.DOLLAR_NEW) && cls.owner.flagsUNSAFE.isAllOf(Private | Synthetic)))
-    if (!isEnumAnonCls)
-      if (cdef.mods.isEnumCase) {
-        if (cls.derivesFrom(defn.JavaEnumClass))
+    val isJavaEnum = cls.derivesFrom(defn.JavaEnumClass)
+    if isJavaEnum && cdef.mods.isEnumClass && !cls.isStatic then
+      report.error(em"An enum extending java.lang.Enum must be declared in a static scope", cdef.srcPos)
+    if !isEnumAnonCls then
+      if cdef.mods.isEnumCase then
+        if isJavaEnum then
           report.error(em"paramerized case is not allowed in an enum that extends java.lang.Enum", cdef.srcPos)
-      }
-      else if (cls.is(Case) || firstParent.is(Enum))
+      else if cls.is(Case) || firstParent.is(Enum) then
         // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class
         // parent.
         //
