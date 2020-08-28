@@ -359,7 +359,13 @@ object TypeOps:
               parent.derivesFrom(defn.SelectableClass)
           }
       if needsRefinement then
-        RefinedType(parent, decl.name, decl.info)
+        var refinfo = decl.info
+        val tpSym = refinfo.typeSymbol
+        if tpSym.exists && tpSym.isClass && tpSym.ownersIterator.exists(_ eq cls) then
+          val clsImpl = refinfo.classSymbol
+          if clsImpl.exists then
+            refinfo = classBound(clsImpl.asClass.classInfo) // if decl.info is a locally defined class then recur
+        RefinedType(parent, decl.name, refinfo)
           .reporting(i"add ref $parent $decl --> " + result, typr)
       else parent
     }
