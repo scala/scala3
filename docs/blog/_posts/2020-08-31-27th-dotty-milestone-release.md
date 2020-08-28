@@ -41,7 +41,7 @@ To the best of our knowledge, cross-compiling libraries should be able to use Sc
 If you experience a bug with anything except the unsupported features mentioned above, please file a bug report.
 
 # Stability
-As we're getting closer to the release of Scala 3, we are continuing to focus on the stability and performance of the language. In this release, we have fixed support of objects under JDK9 (PR [#9181](https://github.com/lampepfl/dotty/pull/9181)). The issue was, due to the changes in JDK9 compared to JDK8, our initialization scheme for objects did not work under JDK9. The aforementioned fixed that issue, thereby unblocking JDK9 support for Dotty.
+As we're getting closer to the release of Scala 3, we are continuing to focus on the stability and performance of the language. In this release, we have fixed support of objects under JDK9+ (PR [#9181](https://github.com/lampepfl/dotty/pull/9181)). The issue was, due to the changes in JDK9+ compared to JDK8, our initialization scheme for objects did not work under JDK9+. The aforementioned fixed that issue, thereby unblocking JDK9+ support for Dotty.
 
 We are also continuing to work on stabilising enums. PR [#9532](https://github.com/lampepfl/dotty/pull/9532) corrects the deserialization and serialization of singleton enum values with `ObjectInputStream` and `ObjectOutputStream`. PR [#9549](https://github.com/lampepfl/dotty/pull/9549) enables overriding the `toString` method on enums – previously this was not possible because of the way enums were desugared.
 
