@@ -95,7 +95,7 @@
 	path = community-build/community-projects/scalaz
 	url = https://github.com/dotty-staging/scalaz.git
 [submodule "community-build/community-projects/endpoints"]
-	path = community-build/community-projects/endpoints
+	path = community-build/community-projects/endpoints4s
 	url = https://github.com/dotty-staging/endpoints.git
 [submodule "community-build/community-projects/scas"]
 	path = community-build/community-projects/scas

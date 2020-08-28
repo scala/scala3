@@ -295,8 +295,8 @@ object projects:
     dependencies     = List(scalacheck)
   )
 
-  lazy val endpoints = SbtCommunityProject(
-    project        = "endpoints",
+  lazy val endpoints4s = SbtCommunityProject(
+    project        = "endpoints4s",
     sbtTestCommand = ";json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile"
   )
 
@@ -365,7 +365,7 @@ class CommunityBuildTest:
   @Test def betterfiles = projects.betterfiles.run()
   @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
   @Test def effpi = projects.effpi.run()
-  @Test def endpoints = projects.endpoints.run()
+  @Test def endpoints4s = projects.endpoints4s.run()
   @Test def fastparse = projects.fastparse.run()
   @Test def geny = projects.geny.run()
   @Test def intent = projects.intent.run()
