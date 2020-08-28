@@ -47,7 +47,7 @@ class Checker extends MiniPhase {
     // A concrete class may not be instantiated if the self type is not satisfied
     if (instantiable) {
       implicit val state: Checking.State = Checking.State(
-        visited = mutable.Set.empty,
+        visited = Set.empty,
         path = Vector.empty,
         thisClass = cls,
         fieldsInited = mutable.Set.empty,
