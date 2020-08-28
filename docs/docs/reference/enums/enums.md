@@ -136,7 +136,6 @@ val Venus: Planet =
     def enumLabel: String = "Venus"
     override def productPrefix: String = enumLabel
     override def toString: String = enumLabel
-    // internal code to register value
   }
 ```
 

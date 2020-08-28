@@ -25,7 +25,6 @@ case class Env(ctx: Context) {
 
   // Methods that should be ignored in the checking
   lazy val ignoredMethods: Set[Symbol] = Set(
-    requiredClass("scala.runtime.EnumValues").requiredMethod("register"),
     defn.Any_getClass,
     defn.Any_isInstanceOf,
     defn.Object_eq,

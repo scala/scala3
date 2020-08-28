@@ -749,8 +749,6 @@ class Definitions {
 
   @tu lazy val EnumClass: ClassSymbol = requiredClass("scala.Enum")
 
-  @tu lazy val EnumValuesClass: ClassSymbol = requiredClass("scala.runtime.EnumValues")
-
   @tu lazy val EnumValueSerializationProxyClass: ClassSymbol = requiredClass("scala.runtime.EnumValueSerializationProxy")
     @tu lazy val EnumValueSerializationProxyConstructor: TermSymbol =
       EnumValueSerializationProxyClass.requiredMethod(nme.CONSTRUCTOR, List(ClassType(TypeBounds.empty), IntType))
