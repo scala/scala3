@@ -20,9 +20,13 @@ object FileDiff {
       if (!(new File(checkFile)).exists) Nil
       else Using(Source.fromFile(checkFile, "UTF-8"))(_.getLines().toList).get
 
+    // handle check file path mismatch on windows
+    def lineMatch(out: String, expect: String): Boolean =
+      out == expect || File.separatorChar == '\\' && out.replace('\\', '/') == expect
+
     def linesMatch =
       outputLines.length == checkLines.length &&
-      outputLines.lazyZip(checkLines).forall(_ == _)
+      outputLines.lazyZip(checkLines).forall(lineMatch)
 
     if (!linesMatch) Some(
       s"""|Output from '$sourceTitle' did not match check file. Actual output:
