@@ -728,7 +728,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val pos1 = error.pos.nonInlined
       val key = if (pos1.exists) {
         def toRelative(path: String): String =  // For some reason, absolute paths leak from the compiler itself...
-          path.split("/").dropWhile(_ != "tests").mkString("/")
+          path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
         val fileName = toRelative(pos1.source.file.toString)
         s"$fileName:${pos1.line}"
 

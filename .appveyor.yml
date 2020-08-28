@@ -15,8 +15,6 @@ build_script:
   - cmd: sbt dotty-bootstrapped/compile
 test_script:
   - cmd: sbt "dotty-bootstrapped/dotc tests\pos\HelloWorld.scala"
-  - cmd: sbt "testCompilation run"
-  - cmd: sbt "testCompilation pos"
-  - cmd: sbt "dotty-bootstrapped/testCompilation pos"
-  - cmd: sbt "dotty-bootstrapped/testCompilation run"
+  - cmd: sbt test
+  - cmd: sbt dotty-bootstrapped/test
   - cmd: sbt sjsJUnitTests/test
