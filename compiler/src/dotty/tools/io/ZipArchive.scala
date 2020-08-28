@@ -96,7 +96,7 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
     // })
     dirs get path match {
       case Some(v) => v
-      case None =>
+      case None    =>
         val parent = ensureDir(dirs, dirName(path))
         val dir    = new DirEntry(path, parent)
         parent.entries(baseName(path)) = dir

@@ -45,7 +45,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
     Option(lookupPath(dir)(relativePath.split(java.io.File.separator).toIndexedSeq, directory = false))
   }
 
-  private[dotty] def classes(inPackage: String): Seq[ClassFileEntry] = files(inPackage)
+  private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] = files(inPackage)
 
   protected def createFileEntry(file: AbstractFile): ClassFileEntryImpl = ClassFileEntryImpl(file)
   protected def isMatchingFile(f: AbstractFile): Boolean = f.isClass

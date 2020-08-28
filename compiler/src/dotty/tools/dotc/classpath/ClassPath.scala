@@ -10,12 +10,38 @@ case class ClassPathEntries(packages: scala.collection.Seq[PackageEntry], classe
   def toTuple: (scala.collection.Seq[PackageEntry], scala.collection.Seq[ClassRepresentation]) = (packages, classesAndSources)
 }
 
+object ClassPathEntries {
+  val empty = ClassPathEntries(Seq.empty, Seq.empty)
+}
+
 trait ClassFileEntry extends ClassRepresentation {
   def file: AbstractFile
 }
 
 trait SourceFileEntry extends ClassRepresentation {
   def file: AbstractFile
+}
+
+case class PackageName(dottedString: String) {
+  val dirPathTrailingSlashJar: String = FileUtils.dirPathInJar(dottedString) + "/"
+
+  val dirPathTrailingSlash: String =
+    if (java.io.File.separatorChar == '/')
+      dirPathTrailingSlashJar
+    else
+      FileUtils.dirPath(dottedString) + java.io.File.separator
+
+  def isRoot: Boolean = dottedString.isEmpty
+
+  def entryName(entry: String): String = {
+    if (isRoot) entry else {
+      val builder = new java.lang.StringBuilder(dottedString.length + 1 + entry.length)
+      builder.append(dottedString)
+      builder.append('.')
+      builder.append(entry)
+      builder.toString
+    }
+  }
 }
 
 trait PackageEntry {
@@ -50,10 +76,10 @@ private[dotty] case class PackageEntryImpl(name: String) extends PackageEntry
 
 private[dotty] trait NoSourcePaths {
   def asSourcePathString: String = ""
-  private[dotty] def sources(inPackage: String): Seq[SourceFileEntry] = Seq.empty
+  private[dotty] def sources(inPackage: PackageName): Seq[SourceFileEntry] = Seq.empty
 }
 
 private[dotty] trait NoClassPaths {
   def findClassFile(className: String): Option[AbstractFile] = None
-  private[dotty] def classes(inPackage: String): Seq[ClassFileEntry] = Seq.empty
+  private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] = Seq.empty
 }
