@@ -134,10 +134,34 @@ object projects:
     dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, geny, utest)
   )
 
+  lazy val upickleCore = MillCommunityProject(
+    project = "upickle",
+    baseCommand = s"core.jvm[$compilerVersion]",
+    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, geny, utest)
+  )
+
   lazy val geny = MillCommunityProject(
     project = "geny",
     baseCommand = s"geny.jvm[$compilerVersion]",
     dependencies = List(utest)
+  )
+
+  lazy val fansi = MillCommunityProject(
+    project = "fansi",
+    baseCommand = s"fansi.jvm[$compilerVersion]",
+    dependencies = List(utest, sourcecode)
+  )
+
+  lazy val pprint = MillCommunityProject(
+    project = "PPrint",
+    baseCommand = s"pprint.jvm[$compilerVersion]",
+    dependencies = List(fansi)
+  )
+
+  lazy val requests = MillCommunityProject(
+    project = "requests-scala",
+    baseCommand = s"requests[$compilerVersion]",
+    dependencies = List(geny, utest, ujson, upickleCore)
   )
 
   lazy val scas = MillCommunityProject(
@@ -403,8 +427,11 @@ class CommunityBuildTest:
   @Test def squants = projects.squants.run()
   @Test def stdLib213 = projects.stdLib213.run()
   @Test def ujson = projects.ujson.run()
-  // @Test def upickle = projects.upickle.run()
+  @Test def upickle = projects.upickle.run()
   @Test def utest = projects.utest.run()
+  @Test def fansi = projects.fansi.run()
+  @Test def pprint = projects.pprint.run()
+  @Test def requests = projects.requests.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
   @Test def zio = projects.zio.run()
 end CommunityBuildTest

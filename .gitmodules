@@ -100,6 +100,15 @@
 [submodule "community-build/community-projects/scas"]
 	path = community-build/community-projects/scas
 	url = https://github.com/dotty-staging/scas.git
+[submodule "community-build/community-projects/fansi"]
+	path = community-build/community-projects/fansi
+	url = https://github.com/dotty-staging/fansi.git
+[submodule "community-build/community-projects/PPrint"]
+	path = community-build/community-projects/PPrint
+	url = https://github.com/dotty-staging/PPrint.git
+[submodule "community-build/community-projects/requests-scala"]
+	path = community-build/community-projects/requests-scala
+	url = https://github.com/dotty-staging/requests-scala.git
 [submodule "community-build/community-projects/cats-effect-2"]
 	path = community-build/community-projects/cats-effect-2
 	url = https://github.com/dotty-staging/cats-effect.git
