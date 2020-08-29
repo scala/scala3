@@ -5568,11 +5568,11 @@ object Types {
   }
 
   class TypeSizeAccumulator(using Context) extends TypeAccumulator[Int] {
-    val seen = new java.util.IdentityHashMap[Type, Type]
+    var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
-      if (seen.get(tp) != null) n
+      if seen.contains(tp) then n
       else {
-        seen.put(tp, tp)
+        seen += tp
         tp match {
           case tp: AppliedType =>
             foldOver(n + 1, tp)
@@ -5589,11 +5589,11 @@ object Types {
   }
 
   class CoveringSetAccumulator(using Context) extends TypeAccumulator[Set[Symbol]] {
-    val seen = new java.util.IdentityHashMap[Type, Type]
+    var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(cs: Set[Symbol], tp: Type): Set[Symbol] =
-      if (seen.get(tp) != null) cs
+      if seen.contains(tp) then cs
       else {
-        seen.put(tp, tp)
+        seen += tp
         tp match {
           case tp if tp.isTopType || tp.isBottomType =>
             cs
