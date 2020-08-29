@@ -651,11 +651,11 @@ object RefChecks {
         val seenClasses = new util.HashSet[Symbol](256)
         def addDecls(cls: Symbol): Unit =
           if (!seenClasses.contains(cls)) {
-            seenClasses.addEntry(cls)
+            seenClasses += cls
             for (mbr <- cls.info.decls)
               if (mbr.isTerm && !mbr.isOneOf(Synthetic | Bridge) && mbr.memberCanMatchInheritedSymbols &&
                   !membersToCheck.contains(mbr.name))
-                membersToCheck.addEntry(mbr.name)
+                membersToCheck += mbr.name
             cls.info.parents.map(_.classSymbol)
               .filter(_.isOneOf(AbstractOrTrait))
               .dropWhile(_.isOneOf(JavaDefined | Scala2x))

@@ -5534,7 +5534,7 @@ object Types {
     def apply(xs: List[NamedType], tp: Type): List[NamedType] =
       if seen contains tp then xs
       else
-        seen.addEntry(tp)
+        seen += tp
         tp match
           case tp: TypeRef =>
             foldOver(maybeAdd(xs, tp), tp)

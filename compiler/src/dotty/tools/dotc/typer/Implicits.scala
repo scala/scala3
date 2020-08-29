@@ -534,7 +534,7 @@ trait ImplicitRunInfo:
         if partSeen.contains(t) then ()
         else if implicitScopeCache.contains(t) then parts += t
         else
-          partSeen.addEntry(t)
+          partSeen += t
           t.dealias match
             case t: TypeRef =>
               if isAnchor(t.symbol) then
@@ -578,12 +578,12 @@ trait ImplicitRunInfo:
             is.companionRefs
           case None =>
             if seen.contains(t) then
-              incomplete.addEntry(tp) // all references for `t` will be accounted for in `seen` so we return `EmptySet`.
+              incomplete += tp // all references for `t` will be accounted for in `seen` so we return `EmptySet`.
               TermRefSet.empty        // on the other hand, the refs of `tp` are now inaccurate, so `tp` is marked incomplete.
             else
-              seen.addEntry(t)
+              seen += t
               val is = recur(t)
-              if !implicitScopeCache.contains(t) then incomplete.addEntry(tp)
+              if !implicitScopeCache.contains(t) then incomplete += tp
               is.companionRefs
       end iscopeRefs
 
@@ -693,7 +693,7 @@ trait ImplicitRunInfo:
             if seen.contains(t) then
               WildcardType
             else
-              seen.addEntry(t)
+              seen += t
               t.underlying match
                 case TypeBounds(lo, hi) =>
                   if defn.isBottomTypeAfterErasure(lo) then apply(hi)

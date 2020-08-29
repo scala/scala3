@@ -4,20 +4,21 @@ package dotty.tools.dotc.util
  */
 abstract class MutableSet[T >: Null] {
 
-  def findEntry(x: T): T
+  /** The entry in the set such that `isEqual(x, entry)`, or else `null`. */
+  def lookup(x: T): T /* | Null */
 
-  def addEntry(x: T): Unit
+  def +=(x: T): Unit
+
+  def clear(): Unit
+
+  def size: Int
 
   def iterator: Iterator[T]
 
+  def contains(x: T): Boolean = lookup(x) != null
+
   def foreach[U](f: T => U): Unit = iterator foreach f
-
-  def apply(x: T): Boolean = contains(x)
-
-  def contains(x: T): Boolean =
-    findEntry(x) != null
 
   def toList: List[T] = iterator.toList
 
-  def clear(): Unit
 }

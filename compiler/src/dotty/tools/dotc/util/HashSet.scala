@@ -1,13 +1,29 @@
 package dotty.tools.dotc.util
 
 /** A hash set that allows some privileged protected access to its internals
+ *  @param  initialCapacity  Indicates the initial number of slots in the hash table.
+ *                           The actual number of slots is always a power of 2, so the
+ *                           initial size of the table will be the smallest power of two
+ *                           that is equal or greater than the given `initialCapacity`.
+ *  @param  loadFactor       The maximum fraction of used elements relative to capacity.
+ *                           The hash table will be re-sized once the number of elements exceeds
+ *                           the current size of the hash table multiplied by loadFactor.
+ *  With the defaults given, the first resize of the table happens once the number of elements
+ *  grows beyond 16.
  */
-class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int = 16, loadFactor: Float = 0.25f) extends MutableSet[T] {
+class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 16, loadFactor: Float = 0.25f) extends MutableSet[T] {
   private var used: Int = _
   private var limit: Int = _
   private var table: Array[AnyRef] = _
 
-  assert(Integer.bitCount(powerOfTwoInitialCapacity) == 1)
+  private def roundToPower(n: Int) =
+    if Integer.bitCount(n) == 1 then n
+    else
+      def recur(n: Int): Int =
+        if n == 1 then 2
+        else recur(n >>> 1) << 1
+      recur(n)
+
   protected def isEqual(x: T, y: T): Boolean = x.equals(y)
 
   // Counters for Stats
@@ -27,7 +43,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int = 16, loadFact
   /** Remove all elements from this set and set back to initial configuration */
   def clear(): Unit = {
     used = 0
-    allocate(powerOfTwoInitialCapacity)
+    allocate(roundToPower(initialCapacity))
   }
 
   /** Turn hashcode `x` into a table index */
@@ -36,7 +52,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int = 16, loadFact
   /** Hashcode, can be overridden */
   def hash(x: T): Int = x.hashCode
 
-  private def entryAt(idx: Int) = table.apply(idx).asInstanceOf[T]
+  private def entryAt(idx: Int) = table(idx).asInstanceOf[T]
 
   /** Find entry such that `isEqual(x, entry)`. If it exists, return it.
    *  If not, enter `x` in set and return `x`.
@@ -63,7 +79,7 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int = 16, loadFact
   }
 
   /** The entry in the set such that `isEqual(x, entry)`, or else `null`. */
-  def findEntry(x: T): T = {
+  def lookup(x: T): T = {
     if (Stats.enabled) accesses += 1
     var h = index(hash(x))
     var entry = entryAt(h)
@@ -76,38 +92,6 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int = 16, loadFact
   }
 
   private var rover: Int = -1
-
-  /** Add entry `x` to set */
-  def addEntry(x: T): Unit = {
-    if (Stats.enabled) accesses += 1
-    var h = index(hash(x))
-    var entry = entryAt(h)
-    while (entry ne null) {
-      if (isEqual(x, entry)) return
-      if (Stats.enabled) misses += 1
-      h = index(h + 1)
-      entry = entryAt(h)
-    }
-    table(h) = x
-    used += 1
-    if (used > (table.length >> 2)) growTable()
-  }
-
-  /** Add all entries in `xs` to set */
-  def addEntries(xs: TraversableOnce[T]): Unit =
-    xs.iterator foreach addEntry
-
-  /** The iterator of all elements in the set */
-  def iterator: Iterator[T] = new Iterator[T] {
-    private var i = 0
-    def hasNext: Boolean = {
-      while (i < table.length && (table(i) eq null)) i += 1
-      i < table.length
-    }
-    def next(): T =
-      if (hasNext) { i += 1; table(i - 1).asInstanceOf[T] }
-      else null
-  }
 
   /** Privileged access: Find first entry with given hashcode */
   protected def findEntryByHash(hashCode: Int): T = {
@@ -156,6 +140,59 @@ class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int = 16, loadFact
       if (entry ne null) addOldEntry(entry.asInstanceOf[T])
       i += 1
     }
+  }
+
+  /** Add entry `x` to set */
+  def += (x: T): Unit = {
+    if (Stats.enabled) accesses += 1
+    var h = index(hash(x))
+    var entry = entryAt(h)
+    while (entry ne null) {
+      if (isEqual(x, entry)) return
+      if (Stats.enabled) misses += 1
+      h = index(h + 1)
+      entry = entryAt(h)
+    }
+    table(h) = x
+    used += 1
+    if (used > (table.length >> 2)) growTable()
+  }
+
+  def -= (x: T): Unit =
+    if (Stats.enabled) accesses += 1
+    var h = index(hash(x))
+    var entry = entryAt(h)
+    while entry != null do
+      if isEqual(x, entry) then
+        var hole = h
+        while
+          h = index(h + 1)
+          entry = entryAt(h)
+          entry != null && index(hash(entry)) != h
+        do
+          table(hole) = entry
+          hole = h
+        table(hole) = null
+        used -= 1
+        return
+      h = index(h + 1)
+      entry = entryAt(h)
+  end -=
+
+  /** Add all entries in `xs` to set */
+  def ++= (xs: IterableOnce[T]): Unit =
+    xs.iterator.foreach(this += _)
+
+  /** The iterator of all elements in the set */
+  def iterator: Iterator[T] = new Iterator[T] {
+    private var i = 0
+    def hasNext: Boolean = {
+      while (i < table.length && (table(i) eq null)) i += 1
+      i < table.length
+    }
+    def next(): T =
+      if (hasNext) { i += 1; table(i - 1).asInstanceOf[T] }
+      else null
   }
 
   override def toString(): String = "HashSet(%d / %d)".format(used, table.length)
