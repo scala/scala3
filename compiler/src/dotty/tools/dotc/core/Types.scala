@@ -5527,14 +5527,10 @@ object Types {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
   }
 
-  class TypeHashSet extends util.HashSet[Type](64):
-    override def hash(x: Type): Int = System.identityHashCode(x)
-    override def isEqual(x: Type, y: Type) = x.eq(y)
-
   class NamedPartsAccumulator(p: NamedType => Boolean)(using Context)
   extends TypeAccumulator[List[NamedType]]:
     def maybeAdd(xs: List[NamedType], tp: NamedType): List[NamedType] = if p(tp) then tp :: xs else xs
-    val seen = TypeHashSet()
+    val seen = util.HashSet[Type]()
     def apply(xs: List[NamedType], tp: Type): List[NamedType] =
       if seen contains tp then xs
       else
