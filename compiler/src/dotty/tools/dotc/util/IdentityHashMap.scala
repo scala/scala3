@@ -26,9 +26,6 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   private def keyAt(idx: Int): Key = table(idx).asInstanceOf[Key]
   private def valueAt(idx: Int): Value = table(idx + 1).asInstanceOf[Value]
 
-  /** Find entry such that `isEqual(x, entry)`. If it exists, return it.
-   *  If not, enter `x` in set and return `x`.
-   */
   override def lookup(key: Key): Value =
     var idx = firstIndex(key)
     var k = keyAt(idx)
