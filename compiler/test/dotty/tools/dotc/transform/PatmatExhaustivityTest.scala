@@ -20,23 +20,27 @@ class PatmatExhaustivityTest {
   // stop-after: patmatexhaust-huge.scala crash compiler
   val options = List("-color:never", "-Ystop-after:crossCast", "-Ycheck-all-patmat", "-classpath", TestConfiguration.basicClasspath)
 
-  private def compileFile(path: JPath): Boolean = {
+  private def compile(files: Seq[String]): Seq[String] = {
     val stringBuffer = new StringWriter()
     val reporter = TestReporter.simplifiedReporter(new PrintWriter(stringBuffer))
 
     try {
-      Main.process((path.toString::options).toArray, reporter, null)
+      Main.process((options ++ files).toArray, reporter, null)
     } catch {
       case e: Throwable =>
-        println(s"Compile $path exception:")
+        println(s"Compile $files exception:")
         e.printStackTrace()
     }
 
-    val actualLines: Seq[String] = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {
+    stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {
       case "" => Nil
-      case s  => s.split("\\r?\\n").toIndexedSeq
+      case s  => s.linesIterator.toSeq
     }
-    val baseFilePath = path.toString.stripSuffix(".scala")
+  }
+
+  private def compileFile(path: JPath): Boolean = {
+    val actualLines   = compile(path.toString :: Nil)
+    val baseFilePath  = path.toString.stripSuffix(".scala")
     val checkFilePath = baseFilePath + ".check"
 
     FileDiff.checkAndDump(path.toString, actualLines, checkFilePath)
@@ -44,26 +48,11 @@ class PatmatExhaustivityTest {
 
   /** A single test with multiple files grouped in a folder */
   private def compileDir(path: JPath): Boolean = {
-    val stringBuffer = new StringWriter()
-    val reporter = TestReporter.simplifiedReporter(new PrintWriter(stringBuffer))
-
     val files = Directory(path).list.toList
       .filter(f => f.extension == "scala" || f.extension == "java" )
       .map(_.jpath.toString)
 
-    try {
-      Main.process((options ++ files).toArray, reporter, null)
-    } catch {
-      case e: Throwable =>
-        println(s"Compile $path exception:")
-        e.printStackTrace()
-    }
-
-    val actualLines: Seq[String] = stringBuffer.toString.trim.replaceAll("\\s+\n", "\n") match {
-      case "" => Nil
-      case s  => s.split("\\r?\\n").toIndexedSeq
-    }
-
+    val actualLines   = compile(files)
     val checkFilePath = s"${path}${File.separator}expected.check"
 
     FileDiff.checkAndDump(path.toString, actualLines, checkFilePath)

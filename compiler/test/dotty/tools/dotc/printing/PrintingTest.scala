@@ -35,21 +35,8 @@ class PrintingTest {
         e.printStackTrace()
     }
 
-    val actualLines = byteStream.toString("UTF-8").split("\\r?\\n")
-    // 'options' includes option '-Xprint:typer' so the first output line
-    // looks similar to "result of tests/printing/i620.scala after typer:";
-    // check files use slashes as file separators (Unix) but running tests
-    // on Windows produces backslashes.
-    // NB. option '-Xprint:<..>' can specify several phases.
-    val filteredLines =
-      if (config.Properties.isWin)
-        actualLines.map(line =>
-          if (line.startsWith("result of")) line.replaceAll("\\\\", "/") else line
-        )
-      else
-        actualLines
-
-    FileDiff.checkAndDump(path.toString, filteredLines.toIndexedSeq, checkFilePath)
+    val actualLines = byteStream.toString("UTF-8").linesIterator
+    FileDiff.checkAndDump(path.toString, actualLines.toIndexedSeq, checkFilePath)
   }
 
   @Test
