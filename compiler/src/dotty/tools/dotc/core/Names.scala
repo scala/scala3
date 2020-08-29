@@ -10,7 +10,7 @@ import StdNames.str
 import scala.internal.Chars.isIdentifierStart
 import collection.immutable
 import config.Config
-import java.util.HashMap
+import util.LinearMap
 
 import scala.annotation.internal.sharable
 
@@ -182,38 +182,16 @@ object Names {
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `and`
-    private var derivedNames: immutable.Map[NameInfo, DerivedName] | HashMap[NameInfo, DerivedName] =
-      immutable.Map.empty[NameInfo, DerivedName]
-
-    private def getDerived(info: NameInfo): DerivedName /* | Null */ = (derivedNames: @unchecked) match {
-      case derivedNames: immutable.AbstractMap[NameInfo, DerivedName] @unchecked =>
-        if (derivedNames.contains(info)) derivedNames(info) else null
-      case derivedNames: HashMap[NameInfo, DerivedName] @unchecked =>
-        derivedNames.get(info)
-    }
-
-    private def putDerived(info: NameInfo, name: DerivedName): name.type = {
-      derivedNames match {
-        case derivedNames: immutable.Map[NameInfo, DerivedName] @unchecked =>
-          if (derivedNames.size < 4)
-            this.derivedNames = derivedNames.updated(info, name)
-          else {
-            val newMap = new HashMap[NameInfo, DerivedName]
-            derivedNames.foreach { case (k, v) => newMap.put(k, v) }
-            newMap.put(info, name)
-            this.derivedNames = newMap
-          }
-        case derivedNames: HashMap[NameInfo, DerivedName] @unchecked =>
-          derivedNames.put(info, name)
-      }
-      name
-    }
+    private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.Empty
 
     private def add(info: NameInfo): TermName = synchronized {
-      getDerived(info) match {
-        case null        => putDerived(info, new DerivedName(this, info))
-        case derivedName => derivedName
-      }
+      derivedNames(info) match
+        case null =>
+          val derivedName = new DerivedName(this, info)
+          derivedNames = derivedNames.updated(info, derivedName)
+          derivedName
+        case derivedName =>
+          derivedName
     }
 
     private def rewrap(underlying: TermName) =
