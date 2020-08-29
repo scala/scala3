@@ -1569,7 +1569,7 @@ object SymDenotations {
     // ----- caches -------------------------------------------------------
 
     private var myTypeParams: List[TypeSymbol] = null
-    private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
+    private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
 
     private var myMemberCache: IdentityHashMap[Name, PreDenotation] = null
     private var myMemberCachePeriod: Period = Nowhere
@@ -2609,7 +2609,7 @@ object SymDenotations {
   }
 
   private class MemberNamesImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with MemberNames {
-    private var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
+    private var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.empty
 
     final def isValid(using Context): Boolean =
       cache != null && isValidAt(ctx.phase)
@@ -2622,7 +2622,7 @@ object SymDenotations {
      */
     def invalidate(): Unit =
       if (cache != null)
-        if (locked) cache = SimpleIdentityMap.Empty
+        if (locked) cache = SimpleIdentityMap.empty
         else {
           cache = null
           invalidateDependents()

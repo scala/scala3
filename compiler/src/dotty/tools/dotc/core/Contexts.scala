@@ -289,7 +289,7 @@ object Contexts {
     private def lookup(key: Phase | SourceFile): Context =
       util.Stats.record("Context.related.lookup")
       if related == null then
-        related = SimpleIdentityMap.Empty
+        related = SimpleIdentityMap.empty
         null
       else
         related(key)

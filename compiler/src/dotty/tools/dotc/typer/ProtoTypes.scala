@@ -246,7 +246,7 @@ object ProtoTypes {
     var typedArgs: List[Tree] = Nil
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
-    var typedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.Empty
+    var typedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.empty
 
     /** The tupled or untupled version of this prototype, if it has been computed */
     var tupledDual: Type = NoType

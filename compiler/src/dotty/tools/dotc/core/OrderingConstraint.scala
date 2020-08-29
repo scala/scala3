@@ -105,7 +105,7 @@ object OrderingConstraint {
   }
 
   @sharable
-  val empty = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty)
+  val empty = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty)
 }
 
 import OrderingConstraint._

@@ -2594,7 +2594,7 @@ class Typer extends Namer
 
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
     val buf = new mutable.ListBuffer[Tree]
-    var enumContexts: SimpleIdentityMap[Symbol, Context] = SimpleIdentityMap.Empty
+    var enumContexts: SimpleIdentityMap[Symbol, Context] = SimpleIdentityMap.empty
     val initialNotNullInfos = ctx.notNullInfos
       // A map from `enum` symbols to the contexts enclosing their definitions
     @tailrec def traverse(stats: List[untpd.Tree])(using Context): (List[Tree], Context) = stats match {

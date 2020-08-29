@@ -1041,7 +1041,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             }
           }
 
-          extractBindVariance(SimpleIdentityMap.Empty, tpt.tpe)
+          extractBindVariance(SimpleIdentityMap.empty, tpt.tpe)
         }
 
         def addTypeBindings(typeBinds: TypeBindsMap)(using Context): Unit =

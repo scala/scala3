@@ -99,8 +99,8 @@ class ImportInfo(symf: Context ?=> Symbol,
   /** Compute info relating to the selector list */
   private def ensureInitialized(): Unit = if myExcluded == null then
     myExcluded = Set()
-    myForwardMapping = SimpleIdentityMap.Empty
-    myReverseMapping = SimpleIdentityMap.Empty
+    myForwardMapping = SimpleIdentityMap.empty
+    myReverseMapping = SimpleIdentityMap.empty
     for sel <- selectors do
       if sel.isWildcard then
         myWildcardImport = true
@@ -180,7 +180,7 @@ class ImportInfo(symf: Context ?=> Symbol,
   private var myUnimported: Symbol = _
 
   private var myOwner: Symbol = null
-  private var myResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.Empty
+  private var myResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.empty
 
   /** Does this import clause or a preceding import clause import `owner.feature`? */
   def featureImported(feature: TermName, owner: Symbol)(using Context): Boolean =
