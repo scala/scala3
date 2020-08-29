@@ -1564,14 +1564,14 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
-    import util.HashTable
+    import util.IdentityHashMap
 
     // ----- caches -------------------------------------------------------
 
     private var myTypeParams: List[TypeSymbol] = null
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
 
-    private var myMemberCache: HashTable[Name, PreDenotation] = null
+    private var myMemberCache: IdentityHashMap[Name, PreDenotation] = null
     private var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
@@ -1582,9 +1582,9 @@ object SymDenotations {
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
 
-    private def memberCache(using Context): HashTable[Name, PreDenotation] = {
+    private def memberCache(using Context): IdentityHashMap[Name, PreDenotation] = {
       if (myMemberCachePeriod != ctx.period) {
-        myMemberCache = HashTable()
+        myMemberCache = IdentityHashMap()
         myMemberCachePeriod = ctx.period
       }
       myMemberCache
@@ -1613,12 +1613,12 @@ object SymDenotations {
     }
 
     def invalidateMemberCaches(sym: Symbol)(using Context): Unit =
-      if myMemberCache != null then myMemberCache.invalidate(sym.name)
+      if myMemberCache != null then myMemberCache.remove(sym.name)
       if !sym.flagsUNSAFE.is(Private) then
         invalidateMemberNamesCache()
         if sym.isWrappedToplevelDef then
           val outerCache = sym.owner.owner.asClass.classDenot.myMemberCache
-          if outerCache != null then outerCache.invalidate(sym.name)
+          if outerCache != null then outerCache.remove(sym.name)
 
     override def copyCaches(from: SymDenotation, phase: Phase)(using Context): this.type = {
       from match {
@@ -1823,7 +1823,7 @@ object SymDenotations {
      */
     def replace(prev: Symbol, replacement: Symbol)(using Context): Unit = {
       unforcedDecls.openForMutations.replace(prev, replacement)
-      if (myMemberCache != null) myMemberCache.invalidate(replacement.name)
+      if (myMemberCache != null) myMemberCache.remove(replacement.name)
     }
 
     /** Delete symbol from current scope.
@@ -1832,7 +1832,7 @@ object SymDenotations {
      */
     def delete(sym: Symbol)(using Context): Unit = {
       info.decls.openForMutations.unlink(sym)
-      if (myMemberCache != null) myMemberCache.invalidate(sym.name)
+      if (myMemberCache != null) myMemberCache.remove(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
 
@@ -1861,7 +1861,7 @@ object SymDenotations {
         var denots: PreDenotation = memberCache.lookup(name)
         if denots == null then
           denots = computeMembersNamed(name)
-          memberCache.enter(name, denots)
+          memberCache(name) = denots
         else if Config.checkCacheMembersNamed then
           val denots1 = computeMembersNamed(name)
           assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")

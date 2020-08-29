@@ -1,6 +1,6 @@
 package dotty.tools.dotc.util
 
-object HashTable:
+object IdentityHashMap:
   /** The number of elements up to which dense packing is used.
    *  If the number of elements reaches `DenseLimit` a hash table is used instead
    */
@@ -19,9 +19,9 @@ object HashTable:
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-class HashTable[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
-    (initialCapacity: Int = 8, capacityMultiple: Int = 3):
-  import HashTable.DenseLimit
+class IdentityHashMap[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
+    (initialCapacity: Int = 8, capacityMultiple: Int = 3) extends Map[Key, Value]:
+  import IdentityHashMap.DenseLimit
 
   private var used: Int = _
   private var limit: Int = _
@@ -33,13 +33,14 @@ class HashTable[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
     limit = if capacity <= DenseLimit then capacity - 1 else capacity / capacityMultiple
 
   private def roundToPower(n: Int) =
-    if Integer.bitCount(n) == 1 then n
+    if n < 4 then 4
+    else if Integer.bitCount(n) == 1 then n
     else 1 << (32 - Integer.numberOfLeadingZeros(n))
 
   /** Remove all elements from this table and set back to initial configuration */
   def clear(): Unit =
     used = 0
-    allocate(roundToPower(initialCapacity max 4))
+    allocate(roundToPower(initialCapacity))
 
   /** The number of elements in the set */
   def size: Int = used
@@ -73,7 +74,7 @@ class HashTable[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
       k = keyAt(idx)
     null
 
-  def enter(key: Key, value: Value): Unit =
+  def update(key: Key, value: Value): Unit =
     var idx = firstIndex(key)
     var k = keyAt(idx)
     while k != null do
@@ -87,21 +88,20 @@ class HashTable[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
     used += 1
     if used > limit then growTable()
 
-  def invalidate(key: Key): Unit =
+  def remove(key: Key): Unit =
     var idx = firstIndex(key)
     var k = keyAt(idx)
     while k != null do
       if isEqual(k, key) then
         var hole = idx
-        if !isDense then
-          while
-            idx = nextIndex(idx)
-            k = keyAt(idx)
-            k != null && index(hash(k)) != idx
-          do
-            table(hole) = k
-            table(hole + 1) = valueAt(idx)
-            hole = idx
+        while
+          idx = nextIndex(idx)
+          k = keyAt(idx)
+          k != null && (isDense || index(hash(k)) != idx)
+        do
+          table(hole) = k
+          table(hole + 1) = valueAt(idx)
+          hole = idx
         table(hole) = null
         used -= 1
         return
@@ -139,4 +139,4 @@ class HashTable[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
 
   override def toString: String =
     iterator.map((k, v) => s"$k -> $v").mkString("HashTable(", ", ", ")")
-end HashTable
+end IdentityHashMap
