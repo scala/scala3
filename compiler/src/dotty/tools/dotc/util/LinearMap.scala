@@ -12,19 +12,19 @@ opaque type LinearMap[K <: AnyRef, V >: Null <: AnyRef] =
 
 object LinearMap:
 
-  def Empty[K <: AnyRef, V >: Null <: AnyRef]: LinearMap[K, V] =
+  def empty[K <: AnyRef, V >: Null <: AnyRef]: LinearMap[K, V] =
     immutable.Map.empty[K, V]
 
   extension [K <: AnyRef, V >: Null <: AnyRef](m: LinearMap[K, V]):
 
-    def lookup(key: K): V /*| Null*/ = m match
-      case m: immutable.Map[K, V] @unchecked =>
+    def lookup(key: K): V /*| Null*/ = (m: @unchecked) match
+      case m: immutable.AbstractMap[K, V] @unchecked =>
         if m.contains(key) then m(key) else null
       case m: HashMap[K, V] @unchecked =>
         m.lookup(key)
 
-    def updated(key: K, value: V): LinearMap[K, V] = m match
-      case m: immutable.Map[K, V] @unchecked =>
+    def updated(key: K, value: V): LinearMap[K, V] = (m: @unchecked) match
+      case m: immutable.AbstractMap[K, V] @unchecked =>
         if m.size < 4 then
           m.updated(key, value)
         else
@@ -36,8 +36,8 @@ object LinearMap:
         m(key) = value
         m
 
-    def size = m match
-      case m: immutable.Map[K, V] @unchecked => m.size
+    def size = (m: @unchecked) match
+      case m: immutable.AbstractMap[K, V] @unchecked => m.size
       case m: HashMap[K, V] @unchecked => m.size
 
 end LinearMap

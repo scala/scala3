@@ -182,7 +182,7 @@ object Names {
     def underlying: TermName = unsupported("underlying")
 
     @sharable // because of synchronized block in `and`
-    private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.Empty
+    private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.empty
 
     private def add(info: NameInfo): TermName = synchronized {
       derivedNames.lookup(info) match
