@@ -1,18 +1,18 @@
 package dotty.tools.dotc.util
 
-/** A specialized implementation of GenericHashMap with identity hash and `eq`
- *  as comparison.
+/** A specialized implementation of GenericHashMap with standard hashCode and equals
+ *  as comparison
  */
-class IdentityHashMap[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
+class HashMap[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
     (initialCapacity: Int = 8, capacityMultiple: Int = 3)
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   import GenericHashMap.DenseLimit
 
   /** Hashcode, by default `System.identityHashCode`, but can be overriden */
-  final def hash(x: Key): Int = System.identityHashCode(x)
+  final def hash(x: Key): Int = x.hashCode
 
   /** Equality, by default `eq`,  but can be overridden */
-  final def isEqual(x: Key, y: Key): Boolean = x eq y
+  final def isEqual(x: Key, y: Key): Boolean = x.equals(y)
 
   // The following methdods are duplicated from GenericHashMap
   // to avoid polymorphic dispatches
@@ -51,4 +51,4 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
     table(idx + 1) = value
     used += 1
     if used > limit then growTable()
-end IdentityHashMap
+end HashMap
