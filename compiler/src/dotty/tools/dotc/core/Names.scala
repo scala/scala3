@@ -185,7 +185,7 @@ object Names {
     private var derivedNames: LinearMap[NameInfo, DerivedName] = LinearMap.Empty
 
     private def add(info: NameInfo): TermName = synchronized {
-      derivedNames(info) match
+      derivedNames.lookup(info) match
         case null =>
           val derivedName = new DerivedName(this, info)
           derivedNames = derivedNames.updated(info, derivedName)

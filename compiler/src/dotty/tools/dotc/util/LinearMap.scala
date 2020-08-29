@@ -17,11 +17,11 @@ object LinearMap:
 
   extension [K <: AnyRef, V >: Null <: AnyRef](m: LinearMap[K, V]):
 
-    def apply(key: K): V /*| Null*/ = m match
+    def lookup(key: K): V /*| Null*/ = m match
       case m: immutable.Map[K, V] @unchecked =>
         if m.contains(key) then m(key) else null
       case m: HashMap[K, V] @unchecked =>
-        m.get(key)
+        m.lookup(key)
 
     def updated(key: K, value: V): LinearMap[K, V] = m match
       case m: immutable.Map[K, V] @unchecked =>
@@ -29,11 +29,11 @@ object LinearMap:
           m.updated(key, value)
         else
           val m1 = HashMap[K, V]()
-          m.foreach(m1.put(_, _))
-          m1.put(key, value)
+          m.foreach(m1(_) = _)
+          m1(key) = value
           m1
       case m: HashMap[K, V] @unchecked =>
-        m.put(key, value)
+        m(key) = value
         m
 
     def size = m match

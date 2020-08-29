@@ -1,8 +1,8 @@
 package dotty.tools.dotc.util
 
-/** A common class for lightweight sets.
+/** A common class for lightweight mutable sets.
  */
-abstract class Set[T >: Null] {
+abstract class MutableSet[T >: Null] {
 
   def findEntry(x: T): T
 

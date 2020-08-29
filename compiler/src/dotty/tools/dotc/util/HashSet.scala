@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 /** A hash set that allows some privileged protected access to its internals
  */
-class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int, loadFactor: Float = 0.25f) extends Set[T] {
+class HashSet[T >: Null <: AnyRef](powerOfTwoInitialCapacity: Int = 16, loadFactor: Float = 0.25f) extends MutableSet[T] {
   private var used: Int = _
   private var limit: Int = _
   private var table: Array[AnyRef] = _

@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 /** A common class for lightweight mutable maps.
  */
-abstract class Map[Key >: Null <: AnyRef, Value >: Null <: AnyRef]:
+abstract class MutableMap[Key <: AnyRef, Value >: Null <: AnyRef]:
 
   def lookup(x: Key): Value /* | Null */
 
@@ -17,3 +17,4 @@ abstract class Map[Key >: Null <: AnyRef, Value >: Null <: AnyRef]:
   def iterator: Iterator[(Key, Value)]
 
   def get(x: Key): Option[Value] = Option(lookup(x))
+

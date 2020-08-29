@@ -22,9 +22,9 @@ object GenericHashMap:
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-abstract class GenericHashMap[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
+abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
     (protected val initialCapacity: Int = 8,
-     protected val capacityMultiple: Int = 3) extends Map[Key, Value]:
+     protected val capacityMultiple: Int = 3) extends MutableMap[Key, Value]:
   import GenericHashMap.DenseLimit
 
   protected var used: Int = _

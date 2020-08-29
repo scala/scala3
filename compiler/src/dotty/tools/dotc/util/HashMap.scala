@@ -3,7 +3,7 @@ package dotty.tools.dotc.util
 /** A specialized implementation of GenericHashMap with standard hashCode and equals
  *  as comparison
  */
-class HashMap[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
+class HashMap[Key <: AnyRef, Value >: Null <: AnyRef]
     (initialCapacity: Int = 8, capacityMultiple: Int = 3)
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   import GenericHashMap.DenseLimit

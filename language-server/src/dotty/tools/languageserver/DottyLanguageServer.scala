@@ -23,7 +23,7 @@ import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols
 import classpath.ClassPathEntries
 import reporting._
 import typer.Typer
-import util.{Set => _, _}
+import util._
 import interactive._, interactive.InteractiveDriver._
 import decompiler.IDEDecompilerDriver
 import Interactive.Include

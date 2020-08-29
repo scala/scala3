@@ -3,7 +3,7 @@ package dotty.tools.dotc.util
 /** A specialized implementation of GenericHashMap with identity hash and `eq`
  *  as comparison.
  */
-class IdentityHashMap[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
+class IdentityHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
     (initialCapacity: Int = 8, capacityMultiple: Int = 3)
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   import GenericHashMap.DenseLimit

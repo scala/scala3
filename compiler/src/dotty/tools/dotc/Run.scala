@@ -14,7 +14,7 @@ import io.{AbstractFile, PlainFile}
 import Phases.unfusedPhases
 
 import scala.io.Codec
-import util.{Set => _, _}
+import util._
 import reporting.Reporter
 import rewrites.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
