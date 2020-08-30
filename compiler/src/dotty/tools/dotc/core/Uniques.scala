@@ -32,7 +32,7 @@ object Uniques:
     if tp.hash == NotCached then tp
     else ctx.uniques.put(tp).asInstanceOf[T]
 
-  final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity) with Hashable:
+  final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity * 4) with Hashable:
     override def hash(x: NamedType): Int = x.hash
 
     def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(using Context): NamedType =
@@ -53,7 +53,7 @@ object Uniques:
         addEntryAt(idx, newType)
   end NamedTypeUniques
 
-  final class AppliedUniques extends HashSet[AppliedType](Config.initialUniquesCapacity) with Hashable:
+  final class AppliedUniques extends HashSet[AppliedType](Config.initialUniquesCapacity * 2) with Hashable:
     override def hash(x: AppliedType): Int = x.hash
 
     def enterIfNew(tycon: Type, args: List[Type]): AppliedType =

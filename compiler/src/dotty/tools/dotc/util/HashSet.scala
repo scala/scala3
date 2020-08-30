@@ -19,7 +19,7 @@ object HashSet:
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: Int = 4) extends MutableSet[T] {
+class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends MutableSet[T] {
   import HashSet.DenseLimit
 
   private var used: Int = _
@@ -56,6 +56,8 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: I
 
   /** Turn hashcode `x` into a table index */
   protected def index(x: Int): Int = x & (table.length - 1)
+
+  protected def currentTable: Array[AnyRef] = table
 
   protected def firstIndex(x: T) = if isDense then 0 else index(hash(x))
   protected def nextIndex(idx: Int) =
@@ -136,7 +138,7 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: I
   protected def growTable(): Unit =
     val oldTable = table
     val newLength =
-      if oldTable.length == DenseLimit then DenseLimit * roundToPower(capacityMultiple)
+      if oldTable.length == DenseLimit then DenseLimit * 2 * roundToPower(capacityMultiple)
       else table.length * 2
     allocate(newLength)
     copyFrom(oldTable)
