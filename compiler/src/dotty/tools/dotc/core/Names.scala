@@ -10,7 +10,7 @@ import StdNames.str
 import scala.internal.Chars.isIdentifierStart
 import collection.immutable
 import config.Config
-import util.LinearMap
+import util.{LinearMap, HashSet}
 
 import scala.annotation.internal.sharable
 
@@ -262,10 +262,9 @@ object Names {
   }
 
   /** A simple name is essentially an interned string */
-  final class SimpleName(val start: Int, val length: Int, @sharable private[Names] var next: SimpleName) extends TermName {
-    // `next` is @sharable because it is only modified in the synchronized block of termName.
+  final class SimpleName(val start: Int, val length: Int) extends TermName {
 
-    /** The n'th character */
+  /** The n'th character */
     def apply(n: Int): Char = chrs(start + n)
 
     /** A character in this name satisfies predicate `p` */
@@ -506,27 +505,70 @@ object Names {
     override def debugString: String = s"${underlying.debugString}[$info]"
   }
 
+  /** The term name represented by the empty string */
+  val EmptyTermName: SimpleName = SimpleName(-1, 0)
+
   // Nametable
 
-  private final val InitialHashSize = 0x8000
-  private final val InitialNameSize = 0x20000
-  private final val fillFactor = 0.7
+  inline val InitialNameSize = 0x20000
 
   /** Memory to store all names sequentially. */
-  @sharable // because it's only mutated in synchronized block of termName
+  @sharable // because it's only mutated in synchronized block of enterIfNew
   private[dotty] var chrs: Array[Char] = new Array[Char](InitialNameSize)
 
   /** The number of characters filled. */
-  @sharable // because it's only mutated in synchronized block of termName
+  @sharable // because it's only mutated in synchronized block of enterIfNew
   private var nc = 0
 
-  /** Hashtable for finding term names quickly. */
-  @sharable // because it's only mutated in synchronized block of termName
-  private var table = new Array[SimpleName](InitialHashSize)
+  /** Make sure the capacity of the character array is at least `n` */
+  private def ensureCapacity(n: Int) =
+    if n > chrs.length then
+      val newchrs = new Array[Char](chrs.length * 2)
+      chrs.copyToArray(newchrs)
+      chrs = newchrs
 
-  /** The number of defined names. */
-  @sharable // because it's only mutated in synchronized block of termName
-  private var size = 1
+  private class NameTable extends HashSet[SimpleName](initialCapacity = 0x10000, capacityMultiple = 2):
+    import util.Stats
+
+    override def hash(x: SimpleName) = hashValue(chrs, x.start, x.length) // needed for resize
+    override def isEqual(x: SimpleName, y: SimpleName) = ???              // not needed
+
+    def enterIfNew(cs: Array[Char], offset: Int, len: Int): SimpleName =
+      Stats.record(statsItem("put"))
+      val table = currentTable
+      var idx = hashValue(cs, offset, len) & (table.length - 1)
+      var name = table(idx).asInstanceOf[SimpleName]
+      while name != null do
+        if name.length == len && Names.equals(name.start, cs, offset, len) then
+          return name
+        Stats.record(statsItem("miss"))
+        idx = (idx + 1) & (table.length - 1)
+        name = table(idx).asInstanceOf[SimpleName]
+      Stats.record(statsItem("addEntryAt"))
+      synchronized {
+        if (table eq currentTable) && table(idx) == null then
+          // Our previous unsynchronized computation of the next free index is still correct.
+          // This relies on the fact that table entries go from null to non-null, and then
+          // stay the same. Note that we do not need the table or the entry in it to be
+          // volatile since SimpleNames are immutable, and hence safely published.
+          // The same holds for the chrs array. We might miss before the synchronized
+          // on published characters but that would make name comparison false, which
+          // means we end up in the synchronized block here, where we get the correct state
+          name = SimpleName(nc, len)
+          ensureCapacity(nc + len)
+          Array.copy(cs, offset, chrs, nc, len)
+          nc += len
+          addEntryAt(idx, name)
+        else
+          enterIfNew(cs, offset, len)
+      }
+
+    addEntryAt(0, EmptyTermName)
+  end NameTable
+
+  /** Hashtable for finding term names quickly. */
+  @sharable // because it's only mutated in synchronized block of enterIfNew
+  private val nameTable = NameTable()
 
   /** The hash of a name made of from characters cs[offset..offset+len-1].  */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
@@ -552,62 +594,8 @@ object Names {
   /** Create a term name from the characters in cs[offset..offset+len-1].
    *  Assume they are already encoded.
    */
-  def termName(cs: Array[Char], offset: Int, len: Int): SimpleName = synchronized {
-    util.Stats.record("termName")
-    val h = hashValue(cs, offset, len) & (table.length - 1)
-
-    /** Make sure the capacity of the character array is at least `n` */
-    def ensureCapacity(n: Int) =
-      if (n > chrs.length) {
-        val newchrs = new Array[Char](chrs.length * 2)
-        chrs.copyToArray(newchrs)
-        chrs = newchrs
-      }
-
-    /** Enter characters into chrs array. */
-    def enterChars(): Unit = {
-      ensureCapacity(nc + len)
-      var i = 0
-      while (i < len) {
-        chrs(nc + i) = cs(offset + i)
-        i += 1
-      }
-      nc += len
-    }
-
-    /** Rehash chain of names */
-    def rehash(name: SimpleName): Unit =
-      if (name != null) {
-        val oldNext = name.next
-        val h = hashValue(chrs, name.start, name.length) & (table.size - 1)
-        name.next = table(h)
-        table(h) = name
-        rehash(oldNext)
-      }
-
-    /** Make sure the hash table is large enough for the given load factor */
-    def incTableSize() = {
-      size += 1
-      if (size.toDouble / table.size > fillFactor) {
-        val oldTable = table
-        table = new Array[SimpleName](table.size * 2)
-        for (i <- 0 until oldTable.size) rehash(oldTable(i))
-      }
-    }
-
-    val next = table(h)
-    var name = next
-    while (name ne null) {
-      if (name.length == len && equals(name.start, cs, offset, len))
-        return name
-      name = name.next
-    }
-    name = new SimpleName(nc, len, next)
-    enterChars()
-    table(h) = name
-    incTableSize()
-    name
-  }
+  def termName(cs: Array[Char], offset: Int, len: Int): SimpleName =
+    nameTable.enterIfNew(cs, offset, len)
 
   /** Create a type name from the characters in cs[offset..offset+len-1].
    *  Assume they are already encoded.
@@ -637,11 +625,6 @@ object Names {
 
   /** Create a type name from a string */
   def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
-
-  table(0) = new SimpleName(-1, 0, null)
-
-  /** The term name represented by the empty string */
-  val EmptyTermName: TermName = table(0)
 
   /** The type name represented by the empty string */
   val EmptyTypeName: TypeName = EmptyTermName.toTypeName
