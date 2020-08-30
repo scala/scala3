@@ -4,12 +4,14 @@ package dotty.tools.dotc.util
  *  as comparison.
  */
 class IdentityHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
-    (initialCapacity: Int = 8, capacityMultiple: Int = 3)
+    (initialCapacity: Int = 8, capacityMultiple: Int = 2)
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   import GenericHashMap.DenseLimit
 
-  /** Hashcode, by default `System.identityHashCode`, but can be overriden */
-  final def hash(x: Key): Int = System.identityHashCode(x)
+  /** Hashcode is identityHashCode left-shifted by 1, so lowest bit is not lost
+   *  when taking the index.
+   */
+  final def hash(x: Key): Int = System.identityHashCode(x) << 1
 
   /** Equality, by default `eq`,  but can be overridden */
   final def isEqual(x: Key, y: Key): Boolean = x eq y
@@ -19,11 +21,13 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   // Aside: It would be nice to have a @specialized annotation that does
   // this automatically
 
-  /** Turn hashcode `x` into a table index */
+  /** Turn successor index or hash code `x` into a table index */
   private def index(x: Int): Int = x & (table.length - 2)
 
   private def firstIndex(key: Key) = if isDense then 0 else index(hash(key))
-  private def nextIndex(idx: Int) = index(idx + 2)
+  private def nextIndex(idx: Int) =
+    Stats.record(statsItem("miss"))
+    index(idx + 2)
 
   private def keyAt(idx: Int): Key = table(idx).asInstanceOf[Key]
   private def valueAt(idx: Int): Value = table(idx + 1).asInstanceOf[Value]

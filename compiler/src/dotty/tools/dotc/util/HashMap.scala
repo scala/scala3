@@ -4,21 +4,27 @@ package dotty.tools.dotc.util
  *  as comparison
  */
 class HashMap[Key <: AnyRef, Value >: Null <: AnyRef]
-    (initialCapacity: Int = 8, capacityMultiple: Int = 3)
+    (initialCapacity: Int = 8, capacityMultiple: Int = 2)
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   import GenericHashMap.DenseLimit
 
-  final def hash(x: Key): Int = x.hashCode
+  /** Hashcode is left-shifted by 1, so lowest bit is not lost
+   *  when taking the index.
+   */
+  final def hash(x: Key): Int = x.hashCode << 1
+
   final def isEqual(x: Key, y: Key): Boolean = x.equals(y)
 
   // The following methods are duplicated from GenericHashMap
   // to avoid polymorphic dispatches
 
-  /** Turn hashcode `x` into a table index */
+  /** Turn successor index or hash code `x` into a table index */
   private def index(x: Int): Int = x & (table.length - 2)
 
   private def firstIndex(key: Key) = if isDense then 0 else index(hash(key))
-  private def nextIndex(idx: Int) = index(idx + 2)
+  private def nextIndex(idx: Int) =
+    Stats.record(statsItem("miss"))
+    index(idx + 2)
 
   private def keyAt(idx: Int): Key = table(idx).asInstanceOf[Key]
   private def valueAt(idx: Int): Value = table(idx + 1).asInstanceOf[Value]

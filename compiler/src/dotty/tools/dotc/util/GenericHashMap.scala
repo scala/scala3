@@ -56,7 +56,7 @@ abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
   /** Equality, to be implemented in subclass */
   protected def isEqual(x: Key, y: Key): Boolean
 
-  /** Turn hashcode `x` into a table index */
+  /** Turn successor index or hash code `x` into a table index */
   private def index(x: Int): Int = x & (table.length - 2)
 
   private def firstIndex(key: Key) = if isDense then 0 else index(hash(key))
