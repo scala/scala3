@@ -7,7 +7,13 @@ abstract class MutableSet[T >: Null] {
   /** The entry in the set such that `isEqual(x, entry)`, or else `null`. */
   def lookup(x: T): T /* | Null */
 
+  /** Add element `x` to the set */
   def +=(x: T): Unit
+
+  /** Like `+=` but return existing element equal to `x` of it exists,
+   *  `x` itself otherwose.
+   */
+  def put(x: T): T
 
   def clear(): Unit
 

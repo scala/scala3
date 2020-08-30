@@ -23,8 +23,7 @@ object GenericHashMap:
  *                           once the number of elements reaches the table's size.
  */
 abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
-    (protected val initialCapacity: Int = 8,
-     protected val capacityMultiple: Int = 3) extends MutableMap[Key, Value]:
+    (initialCapacity: Int = 8, capacityMultiple: Int = 3) extends MutableMap[Key, Value]:
   import GenericHashMap.DenseLimit
 
   protected var used: Int = _
@@ -61,12 +60,15 @@ abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
   private def index(x: Int): Int = x & (table.length - 2)
 
   private def firstIndex(key: Key) = if isDense then 0 else index(hash(key))
-  private def nextIndex(idx: Int) = index(idx + 2)
+  private def nextIndex(idx: Int) =
+    Stats.record(statsItem("miss"))
+    index(idx + 2)
 
   private def keyAt(idx: Int): Key = table(idx).asInstanceOf[Key]
   private def valueAt(idx: Int): Value = table(idx + 1).asInstanceOf[Value]
 
   def lookup(key: Key): Value =
+    Stats.record(statsItem("lookup"))
     var idx = firstIndex(key)
     var k = keyAt(idx)
     while k != null do
@@ -76,6 +78,7 @@ abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
     null
 
   def update(key: Key, value: Value): Unit =
+    Stats.record(statsItem("update"))
     var idx = firstIndex(key)
     var k = keyAt(idx)
     while k != null do
@@ -90,6 +93,7 @@ abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
     if used > limit then growTable()
 
   def remove(key: Key): Unit =
+    Stats.record(statsItem("remove"))
     var idx = firstIndex(key)
     var k = keyAt(idx)
     while k != null do
@@ -110,6 +114,7 @@ abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
       k = keyAt(idx)
 
   private def addOld(key: Key, value: AnyRef): Unit =
+    Stats.record(statsItem("re-enter"))
     var idx = firstIndex(key)
     var k = keyAt(idx)
     while k != null do
@@ -118,12 +123,7 @@ abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
     table(idx) = key
     table(idx + 1) = value
 
-  protected def growTable(): Unit =
-    val oldTable = table
-    val newLength =
-      if oldTable.length == DenseLimit then DenseLimit * 2 * roundToPower(capacityMultiple)
-      else table.length
-    allocate(newLength)
+  def copyFrom(oldTable: Array[AnyRef]): Unit =
     if isDense then
       Array.copy(oldTable, 0, table, 0, oldTable.length)
     else
@@ -133,11 +133,32 @@ abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
         if key != null then addOld(key, oldTable(idx + 1))
         idx += 2
 
-  def iterator: Iterator[(Key, Value)] =
-    for idx <- (0 until table.length by 2).iterator
-        if keyAt(idx) != null
-    yield (keyAt(idx), valueAt(idx))
+  protected def growTable(): Unit =
+    val oldTable = table
+    val newLength =
+      if oldTable.length == DenseLimit then DenseLimit * 2 * roundToPower(capacityMultiple)
+      else table.length
+    allocate(newLength)
+    copyFrom(oldTable)
+
+  private abstract class EntryIterator[T] extends Iterator[T]:
+    def entry(idx: Int): T
+    private var idx = 0
+    def hasNext =
+      while idx < table.length && table(idx) == null do idx += 2
+      idx < table.length
+    def next() =
+      require(hasNext)
+      try entry(idx) finally idx += 2
+
+  def iterator: Iterator[(Key, Value)] = new EntryIterator:
+    def entry(idx: Int) = (keyAt(idx), valueAt(idx))
 
   override def toString: String =
-    iterator.map((k, v) => s"$k -> $v").mkString("LinearTable(", ", ", ")")
+    iterator.map((k, v) => s"$k -> $v").mkString("HashMap(", ", ", ")")
+
+  protected def statsItem(op: String) =
+    val prefix = if isDense then "HashMap(dense)." else "HashMap."
+    val suffix = getClass.getSimpleName
+    s"$prefix$op $suffix"
 end GenericHashMap

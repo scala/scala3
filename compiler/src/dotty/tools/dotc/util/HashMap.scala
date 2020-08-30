@@ -8,13 +8,10 @@ class HashMap[Key <: AnyRef, Value >: Null <: AnyRef]
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   import GenericHashMap.DenseLimit
 
-  /** Hashcode, by default `System.identityHashCode`, but can be overriden */
   final def hash(x: Key): Int = x.hashCode
-
-  /** Equality, by default `eq`,  but can be overridden */
   final def isEqual(x: Key, y: Key): Boolean = x.equals(y)
 
-  // The following methdods are duplicated from GenericHashMap
+  // The following methods are duplicated from GenericHashMap
   // to avoid polymorphic dispatches
 
   /** Turn hashcode `x` into a table index */
@@ -27,6 +24,7 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   private def valueAt(idx: Int): Value = table(idx + 1).asInstanceOf[Value]
 
   override def lookup(key: Key): Value =
+    Stats.record(statsItem("lookup"))
     var idx = firstIndex(key)
     var k = keyAt(idx)
     while k != null do
@@ -36,6 +34,7 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
     null
 
   override def update(key: Key, value: Value): Unit =
+    Stats.record(statsItem("update"))
     var idx = firstIndex(key)
     var k = keyAt(idx)
     while k != null do
@@ -48,4 +47,24 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
     table(idx + 1) = value
     used += 1
     if used > limit then growTable()
+
+  private def addOld(key: Key, value: AnyRef): Unit =
+    Stats.record(statsItem("re-enter"))
+    var idx = firstIndex(key)
+    var k = keyAt(idx)
+    while k != null do
+      idx = nextIndex(idx)
+      k = keyAt(idx)
+    table(idx) = key
+    table(idx + 1) = value
+
+  override def copyFrom(oldTable: Array[AnyRef]): Unit =
+    if isDense then
+      Array.copy(oldTable, 0, table, 0, oldTable.length)
+    else
+      var idx = 0
+      while idx < oldTable.length do
+        val key = oldTable(idx).asInstanceOf[Key]
+        if key != null then addOld(key, oldTable(idx + 1))
+        idx += 2
 end HashMap

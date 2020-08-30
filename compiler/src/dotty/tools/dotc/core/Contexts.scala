@@ -843,25 +843,13 @@ object Contexts {
 
     // Types state
     /** A table for hash consing unique types */
-    private[core] val uniques: util.HashSet[Type] = new util.HashSet[Type](Config.initialUniquesCapacity) {
-      override def hash(x: Type): Int = x.hash
-      override def isEqual(x: Type, y: Type) = x.eql(y)
-    }
+    private[core] val uniques: Uniques = Uniques()
 
     /** A table for hash consing unique applied types */
-    private[dotc] val uniqueAppliedTypes: AppliedUniques = new AppliedUniques
+    private[dotc] val uniqueAppliedTypes: AppliedUniques = AppliedUniques()
 
     /** A table for hash consing unique named types */
-    private[core] val uniqueNamedTypes: NamedTypeUniques = new NamedTypeUniques
-
-    private def uniqueSets = Map(
-        "uniques" -> uniques,
-        "uniqueAppliedTypes" -> uniqueAppliedTypes,
-        "uniqueNamedTypes" -> uniqueNamedTypes)
-
-    /** A map that associates label and size of all uniques sets */
-    def uniquesSizes: Map[String, (Int, Int, Int)] =
-      uniqueSets.transform((_, s) => (s.size, s.accesses, s.misses))
+    private[core] val uniqueNamedTypes: NamedTypeUniques = NamedTypeUniques()
 
     var emptyTypeBounds: TypeBounds = null
     var emptyWildcardBounds: WildcardType = null
@@ -925,15 +913,16 @@ object Contexts {
         charArray = new Array[Char](charArray.length * 2)
       charArray
 
-    def reset(): Unit = {
-      for ((_, set) <- uniqueSets) set.clear()
+    def reset(): Unit =
+      uniques.clear()
+      uniqueAppliedTypes.clear()
+      uniqueNamedTypes.clear()
       emptyTypeBounds = null
       emptyWildcardBounds = null
       errorTypeMsg.clear()
       sources.clear()
       sourceNamed.clear()
       comparers.clear()  // forces re-evaluation of top and bottom classes in TypeComparer
-    }
 
     // Test that access is single threaded
 
