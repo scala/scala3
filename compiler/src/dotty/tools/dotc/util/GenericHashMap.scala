@@ -106,7 +106,7 @@ abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
         do
           if isDense
             || index(hole - index(hash(k))) < limit * 2
-               // hash(k) is then logically at or after hole; can be moved forward to fill hole
+               // hash(k) is then logically at or before hole; can be moved forward to fill hole
           then
             table(hole) = k
             table(hole + 1) = valueAt(idx)

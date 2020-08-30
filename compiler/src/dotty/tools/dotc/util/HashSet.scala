@@ -109,8 +109,8 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: I
           e != null && (isDense || index(hash(e)) != idx)
         do
           if isDense
-            || index(hole - index(hash(k))) < limit
-               // hash(k) is then logically at or after hole; can be moved forward to fill hole
+            || index(hole - index(hash(e))) < limit
+               // hash(k) is then logically at or before hole; can be moved forward to fill hole
           then
             table(hole) = e
             hole = idx
