@@ -134,6 +134,7 @@ trait A extends C with D
 trait B extends C with E
 
 def test(x: A | B) = x.hello // ok as `hello` is a member of the join of A | B which is C
+```
 
 ## Exhaustivity checking
 
