@@ -108,8 +108,12 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: I
           e = entryAt(idx)
           e != null && (isDense || index(hash(e)) != idx)
         do
-          table(hole) = e
-          hole = idx
+          if isDense
+            || index(hole - index(hash(k))) < limit
+               // hash(k) is then logically at or after hole; can be moved forward to fill hole
+          then
+            table(hole) = e
+            hole = idx
         table(hole) = null
         used -= 1
         return

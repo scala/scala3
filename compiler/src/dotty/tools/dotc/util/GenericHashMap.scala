@@ -23,7 +23,7 @@ object GenericHashMap:
  *                           once the number of elements reaches the table's size.
  */
 abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
-    (initialCapacity: Int = 8, capacityMultiple: Int = 3) extends MutableMap[Key, Value]:
+    (initialCapacity: Int, capacityMultiple: Int) extends MutableMap[Key, Value]:
   import GenericHashMap.DenseLimit
 
   protected var used: Int = _
@@ -102,11 +102,15 @@ abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
         while
           idx = nextIndex(idx)
           k = keyAt(idx)
-          k != null && (isDense || index(hash(k)) != idx)
+          k != null
         do
-          table(hole) = k
-          table(hole + 1) = valueAt(idx)
-          hole = idx
+          if isDense
+            || index(hole - index(hash(k))) < limit * 2
+               // hash(k) is then logically at or after hole; can be moved forward to fill hole
+          then
+            table(hole) = k
+            table(hole + 1) = valueAt(idx)
+            hole = idx
         table(hole) = null
         used -= 1
         return
