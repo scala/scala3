@@ -20,22 +20,24 @@ object FileDiff {
       if (!(new File(checkFile)).exists) Nil
       else Using(Source.fromFile(checkFile, "UTF-8"))(_.getLines().toList).get
 
-    // handle check file path mismatch on windows
-    def lineMatch(actual: String, expect: String): Boolean = {
-      val actual1 = actual.stripLineEnd
-      val expect1  = expect.stripLineEnd
-      actual1 == expect1 || File.separatorChar == '\\' && actual1.replace('\\', '/') == expect1
-    }
-
-    def linesMatch =
-      outputLines.length == checkLines.length &&
-      outputLines.lazyZip(checkLines).forall(lineMatch)
-
-    if (!linesMatch) Some(
+    if (!matches(outputLines, checkLines)) Some(
       s"""|Output from '$sourceTitle' did not match check file. Actual output:
           |${outputLines.mkString(EOL)}
           |""".stripMargin + "\n")
     else None
+  }
+
+  def matches(actual: String, expect: String): Boolean = {
+      val actual1 = actual.stripLineEnd
+      val expect1  = expect.stripLineEnd
+
+      // handle check file path mismatch on windows
+      actual1 == expect1 || File.separatorChar == '\\' && actual1.replace('\\', '/') == expect1
+  }
+
+  def matches(actual: Seq[String], expect: Seq[String]): Boolean = {
+    actual.length == expect.length
+    && actual.lazyZip(expect).forall(matches)
   }
 
   def dump(path: String, content: Seq[String]): Unit = {
