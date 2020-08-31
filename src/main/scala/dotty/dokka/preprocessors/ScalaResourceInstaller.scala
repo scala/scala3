@@ -9,5 +9,5 @@ class ScalaResourceInstaller extends PageTransformer:
         new RendererSpecificResourcePage(resourceName, java.util.ArrayList(), RenderingStrategy$Copy(s"/dotty_res/$resourceName"))
 
     override def invoke(input: RootPageNode): RootPageNode =
-        val newResources = input.getChildren.asScala ++ Seq("fonts", "images", "styles", "scripts").map(dottyRes)
+        val newResources = input.getChildren.asScala ++ Seq("fonts", "images", "styles", "scripts", "hljs").map(dottyRes)
         input.modified(input.getName, newResources.asJava)

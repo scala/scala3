@@ -5,7 +5,7 @@
   --border-light: #DADFE6;
   --border-medium: #abc;
 
-  --code-bg: #F5F5FA;
+  --code-bg: #F4F5FA;
   --symbol-fg: #333;
   --link-fg: #00607D;
   --link-hover-fg: #00A0D0;
@@ -40,7 +40,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: "Lato", sans-serif;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 /* Page layout */
@@ -67,7 +67,11 @@ main {
 }
 
 /* Text */
-pre, code, .monospace {
+h1, h2, h3 {
+  font-family: var(--title-font);
+  color: var(--title-fg);
+}
+pre, code, .monospace, .hljs {
   font-family: var(--mono-font);
   background: var(--code-bg);
   font-variant-ligatures: none;
@@ -76,7 +80,7 @@ code {
   font-size: .8em;
   padding: 0 .3em;
 }
-pre code {
+pre code, pre code.hljs {
   font-size: 1em;
   padding: 0;
 }
@@ -149,13 +153,11 @@ th {
   margin-right: .5rem;
 }
 .sideMenuPart > .overview {
-	height: 36px;
 	display: flex;
 	align-items: center;
 	position: relative;
   user-select: none;
-  padding-bottom: 1px;
-  padding-top: 1px;
+  padding: 7px 0;
 }
 .sideMenuPart > .overview::before {
   width: var(--side-width);
@@ -255,11 +257,9 @@ th {
 
 /* Cover */
 .cover h1 {
-  font-size: 42px;
+  font-size: 38px;
   margin-top: 1rem;
   margin-bottom: .25rem;
-  color: var(--title-fg);
-  font-family: var(--title-font);
 }
 
 /* Tabs */
