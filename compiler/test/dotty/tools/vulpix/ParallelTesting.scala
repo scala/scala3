@@ -606,7 +606,12 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       testSource.sourceFiles.foreach { file =>
         if checkFiles.contains(file) then
           val checkFile = checkFiles(file)
-          val actual = Source.fromFile(file, "UTF-8").getLines().toList
+          val actual = {
+            val source = Source.fromFile(file, "UTF-8")
+            val lines  = source.getLines().toList
+            source.close()
+            lines
+          }
           diffTest(testSource, checkFile, actual, reporters, logger)
       }
 
