@@ -20,7 +20,7 @@ This release brings enough support for Scala.js that it should be actually usabl
 To use it, make sure of the following:
 
 * Use sbt-scalajs v1.1.1 or later
-* Use sbt-dotty v0.4.2 or later (v0.4.2)
+* Use sbt-dotty v0.4.2 or later
 * Use `scalaVersion := "0.27.0-RC1"` or later for Dotty
 * Use `enablePlugins(ScalaJSPlugin)` or a `crossProject`
 
