@@ -1,4 +1,4 @@
-import scala.tasty.Reflection
+import scala.quoted._
 import scala.tasty.inspector._
 
 object Test {
@@ -17,6 +17,6 @@ class TestInspector_NonTasty() extends TastyInspector:
   var isAlreadyLoaded: Boolean = false
   var className: String = ""
 
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit =
-    isAlreadyLoaded = reflect.Source.isAlreadyLoadedCompilationUnit
-    className = reflect.Source.compilationUnitClassname
+  protected def processCompilationUnit(using QuoteContext)(root: qctx.tasty.Tree): Unit =
+    isAlreadyLoaded = qctx.tasty.Source.isAlreadyLoadedCompilationUnit
+    className = qctx.tasty.Source.compilationUnitClassname

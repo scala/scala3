@@ -1,6 +1,6 @@
 package dotty.tastydoc
 
-import scala.tasty.Reflection
+import scala.quoted._
 import scala.tasty.inspector.TastyInspector
 
 import dotty.tastydoc.representations._
@@ -11,9 +11,7 @@ import dotty.tastydoc.representations._
  */
 class TastydocInspector(mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends TastyInspector {
 
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = {
-    import reflect._
-
-    representations.convertToRepresentation(reflect)(root, None)(using mutablePackagesMap)
+  protected def processCompilationUnit(using QuoteContext)(root: qctx.tasty.Tree): Unit = {
+    representations.convertToRepresentation(root, None)(using mutablePackagesMap)
   }
 }

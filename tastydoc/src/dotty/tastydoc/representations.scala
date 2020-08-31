@@ -1,6 +1,6 @@
 package dotty.tastydoc
 
-import scala.tasty.Reflection
+import scala.quoted._
 import scala.annotation.tailrec
 import dotty.tastydoc.comment.Comment
 import dotty.tastydoc.references._
@@ -82,18 +82,18 @@ object representations extends TastyExtractor {
     }
   }
 
-  class PackageRepresentation(reflect: Reflection, internal: reflect.PackageClause, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
-    import reflect.{given _, _}
+  class PackageRepresentation(using QuoteContext)(internal: qctx.tasty.PackageClause, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
+    import qctx.tasty._
 
     override val (name, path) = extractPackageNameAndPath(internal.pid.show)
-    override val members = internal.stats.map(convertToRepresentation(reflect)(_, Some(this)))
-    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
+    override val members = internal.stats.map(convertToRepresentation(_, Some(this)))
+    override val annotations = extractAnnotations(internal.symbol.annots)
 
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  class ImportRepresentation(reflect: Reflection, internal: reflect.Import, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation {
-    import reflect.{given _, _}
+  class ImportRepresentation(using QuoteContext)(internal: qctx.tasty.Import, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation {
+    import qctx.tasty._
 
     override val name = if (internal.selectors.size > 1){
         internal.selectors.map(_.toString).mkString("{", ", ", "}")
@@ -101,101 +101,101 @@ object representations extends TastyExtractor {
         internal.selectors.head.toString
       }
     override val path = internal.expr.symbol.show.split("\\.").toList
-    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
+    override val annotations = extractAnnotations(internal.symbol.annots)
 
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  class ClassRepresentation(reflect: Reflection, internal: reflect.ClassDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
-    import reflect.{given _, _}
+  class ClassRepresentation(using QuoteContext)(internal: qctx.tasty.ClassDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
+    import qctx.tasty._
 
-    override val path = extractPath(reflect)(internal.symbol)
-    override val parents = extractParents(reflect)(internal.parents)
-    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
+    override val path = extractPath(internal.symbol)
+    override val parents = extractParents(internal.parents)
+    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val constructors =
-      (convertToRepresentation(reflect)(internal.constructor, Some(this)) ::
+      (convertToRepresentation(internal.constructor, Some(this)) ::
       (internal.body.flatMap{_ match {
-        case d: reflect.DefDef => if(d.name == "<init>") Some(d) else None
+        case d: DefDef => if(d.name == "<init>") Some(d) else None
         case _ => None
         }
-      }.map(convertToRepresentation(reflect)(_, Some(this)))
+      }.map(convertToRepresentation(_, Some(this)))
       )).flatMap{r => r match {
         case r: DefRepresentation => Some(r)
         case _ => None
         }
       }
     override val typeParams = internal.constructor.typeParams.map(x => x.show.stripPrefix("type "))
-    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
+    override val annotations = extractAnnotations(internal.symbol.annots)
     var knownSubclasses: List[Reference] = Nil
 
-    val (isCase, isTrait, isObject, kind) = extractKind(reflect)(internal.symbol.flags)
+    val (isCase, isTrait, isObject, kind) = extractKind(internal.symbol.flags)
 
     override val name = internal.name
 
-    override val companion = extractCompanion(reflect)(
+    override val companion = extractCompanion(
       Some(internal.symbol.companionModule).filter(_.exists), // TODO: refactor later, there is now a NoSymbol
       Some(internal.symbol.companionClass).filter(_.exists), // TODO: refactor later, there is now a NoSymbol
       !isObject
     )
-    override val members: List[Representation with Modifiers] = extractClassMembers(reflect)(internal.body, internal.symbol, Some(this))
+    override val members: List[Representation with Modifiers] = extractClassMembers(internal.body, internal.symbol, Some(this))
 
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  class DefRepresentation(reflect: Reflection, internal: reflect.DefDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
-    import reflect.{given _, _}
+  class DefRepresentation(using QuoteContext)(internal: qctx.tasty.DefDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
+    import qctx.tasty._
 
     override val name = internal.name
-    override val path = extractPath(reflect)(internal.symbol)
-    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
+    override val path = extractPath(internal.symbol)
+    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val typeParams = internal.typeParams.map(x => x.show.stripPrefix("type "))
 
     override val paramLists = internal.paramss.map{p =>
       new ParamList {
-        override val list = p.map(x => NamedReference(x.name, convertTypeToReference(reflect)(x.tpt.tpe)))
+        override val list = p.map(x => NamedReference(x.name, convertTypeToReference(x.tpt.tpe)))
         override val isImplicit = if(p.nonEmpty) p.head.symbol.flags.is(Flags.Implicit) else false
       }
     }
-    override val returnValue = convertTypeToReference(reflect)(internal.returnTpt.tpe)
-    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
+    override val returnValue = convertTypeToReference(internal.returnTpt.tpe)
+    override val annotations = extractAnnotations(internal.symbol.annots)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  class ValRepresentation(reflect: Reflection, internal: reflect.ValDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with ReturnValue {
-    import reflect.{given _, _}
+  class ValRepresentation(using QuoteContext)(internal: qctx.tasty.ValDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with ReturnValue {
+    import qctx.tasty._
 
     override val name = internal.name
-    override val path = extractPath(reflect)(internal.symbol)
-    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
-    override val returnValue = convertTypeToReference(reflect)(internal.tpt.tpe)
-    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
+    override val path = extractPath(internal.symbol)
+    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
+    override val returnValue = convertTypeToReference(internal.tpt.tpe)
+    override val annotations = extractAnnotations(internal.symbol.annots)
     val isVar: Boolean = internal.symbol.flags.is(Flags.Mutable)
 
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  class TypeRepresentation(reflect: Reflection, internal: reflect.TypeDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams {
-    import reflect.{given _, _}
+  class TypeRepresentation(using QuoteContext)(internal: qctx.tasty.TypeDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams {
+    import qctx.tasty._
 
     override val name = internal.name
-    override val path = extractPath(reflect)(internal.symbol)
-    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(reflect)(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
+    override val path = extractPath(internal.symbol)
+    override val (modifiers, privateWithin, protectedWithin) = extractModifiers(internal.symbol.flags, internal.symbol.privateWithin, internal.symbol.protectedWithin)
     override val typeParams = Nil
-    override val annotations = extractAnnotations(reflect)(internal.symbol.annots)
+    override val annotations = extractAnnotations(internal.symbol.annots)
     val alias: Option[Reference] = internal.rhs match{
-      case t: TypeBoundsTree => Some(convertTypeOrBoundsToReference(reflect)(t.tpe))
-      case t: TypeTree => Some(convertTypeOrBoundsToReference(reflect)(t.tpe.asInstanceOf[reflect.TypeOrBounds]))
+      case t: TypeBoundsTree => Some(convertTypeOrBoundsToReference(t.tpe))
+      case t: TypeTree => Some(convertTypeOrBoundsToReference(t.tpe.asInstanceOf[TypeOrBounds]))
       case _ => None
     }
     override def isAbstract: Boolean = !alias.isDefined
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(reflect)(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
   }
 
-  def convertToRepresentation(reflect: Reflection)(tree: reflect.Tree, parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]): Representation = {
-    import reflect.{given _, _}
+  def convertToRepresentation(using QuoteContext)(tree: qctx.tasty.Tree, parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]): Representation = {
+    import qctx.tasty._
 
     tree match {
-      case t: reflect.PackageClause =>
+      case t: PackageClause =>
         val noColorPid = t.pid.symbol.show
         val emulatedPackage = mutablePackagesMap.get(noColorPid) match {
           case Some(x) => x
@@ -205,19 +205,19 @@ object representations extends TastyExtractor {
             mutablePackagesMap += ((noColorPid, x))
             x
         }
-        val r = new PackageRepresentation(reflect, t, parentRepresentation)
+        val r = new PackageRepresentation()(t, parentRepresentation)
         emulatedPackage.packagesMembers = r :: emulatedPackage.packagesMembers
         r
 
-      case t: reflect.Import => new ImportRepresentation(reflect, t, parentRepresentation)
+      case t: Import => new ImportRepresentation()(t, parentRepresentation)
 
-      case t: reflect.ClassDef => new ClassRepresentation(reflect, t, parentRepresentation)
+      case t: ClassDef => new ClassRepresentation()(t, parentRepresentation)
 
-      case t: reflect.DefDef => new DefRepresentation(reflect, t, parentRepresentation)
+      case t: DefDef => new DefRepresentation()(t, parentRepresentation)
 
-      case t: reflect.ValDef => new ValRepresentation(reflect, t, parentRepresentation)
+      case t: ValDef => new ValRepresentation()(t, parentRepresentation)
 
-      case t: reflect.TypeDef => new TypeRepresentation(reflect, t, parentRepresentation)
+      case t: TypeDef => new TypeRepresentation()(t, parentRepresentation)
 
       case _ => throw new Exception("Tree match error in conversion to representation. Please open an issue. " + tree)
   }}

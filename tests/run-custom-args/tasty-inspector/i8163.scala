@@ -1,4 +1,4 @@
-import scala.tasty.Reflection
+import scala.quoted._
 import scala.tasty.inspector._
 
 opaque type PhoneNumber = String
@@ -16,16 +16,15 @@ object Test {
 
 class TestInspector() extends TastyInspector:
 
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit =
-    import reflect._
-    inspectClass(reflect)(root)
+  protected def processCompilationUnit(using QuoteContext)(root: qctx.tasty.Tree): Unit =
+    inspectClass(root)
 
-  private def inspectClass(reflect: Reflection)(tree: reflect.Tree): Unit =
-    import reflect.{given _, _}
+  private def inspectClass(using QuoteContext)(tree: qctx.tasty.Tree): Unit =
+    import qctx.tasty._
     tree match {
-      case t: reflect.PackageClause =>
-        t.stats.map( m => inspectClass(reflect)(m) )
-      case t: reflect.ClassDef if !t.name.endsWith("$") =>
+      case t: PackageClause =>
+        t.stats.map( m => inspectClass(m) )
+      case t: ClassDef if !t.name.endsWith("$") =>
         val interestingVals = t.body.collect {
           case v: ValDef => v
         }

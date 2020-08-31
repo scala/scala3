@@ -1,21 +1,21 @@
 package dotty.tastydoc
 
-import scala.tasty.Reflection
+import scala.quoted._
 import dotty.tastydoc.comment.{CommentParser, CommentCleaner, Comment, WikiComment, MarkdownComment}
 import dotty.tastydoc.references._
 import dotty.tastydoc.representations._
 
 /** A trait containing useful methods for extracting information from the reflect API */
 trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentCleaner{
-  def extractPath(reflect: Reflection)(symbol: reflect.Symbol) : List[String] = {
-    import reflect.{given _, _}
+  def extractPath(using QuoteContext)(symbol: qctx.tasty.Symbol) : List[String] = {
+    import qctx.tasty._
 
     val pathArray = symbol.show.split("\\.") // NOTE: this should print w/o colors, inspect afterwards
     pathArray.iterator.slice(0, pathArray.length - 1).toList
   }
 
-  def extractModifiers(reflect: Reflection)(flags: reflect.Flags, privateWithin: Option[reflect.Type], protectedWithin: Option[reflect.Type]) : (List[String], Option[Reference], Option[Reference]) = {
-    import reflect.{given _, _}
+  def extractModifiers(using QuoteContext)(flags: qctx.tasty.Flags, privateWithin: Option[qctx.tasty.Type], protectedWithin: Option[qctx.tasty.Type]) : (List[String], Option[Reference], Option[Reference]) = {
+    import qctx.tasty._
 
     (((if(flags.is(Flags.Override)) "override" else "") ::
     (if(flags.is(Flags.Private)) "private" else "")::
@@ -30,18 +30,16 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     Nil) filter (_ != ""),
 
     privateWithin match {
-      case Some(t) => Some(convertTypeToReference(reflect)(t))
+      case Some(t) => Some(convertTypeToReference(t))
       case None => None
     },
     protectedWithin match {
-      case Some(t) => Some(convertTypeToReference(reflect)(t))
+      case Some(t) => Some(convertTypeToReference(t))
       case None => None
     })
   }
 
-  def extractComments(reflect: Reflection)(comment: Option[reflect.Comment], rep: Representation) : (Map[String, EmulatedPackageRepresentation], String) => Option[Comment] = {
-    import reflect.{given _, _}
-
+  def extractComments(using QuoteContext)(comment: Option[qctx.tasty.Comment], rep: Representation) : (Map[String, EmulatedPackageRepresentation], String) => Option[Comment] = {
     comment match {
       case Some(com) =>
         (packages, userDocSyntax) => {
@@ -58,13 +56,13 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     }
   }
 
-  def extractClassMembers(reflect: Reflection)(body: List[reflect.Statement], symbol: reflect.Symbol, parentRepresentation: Some[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) : List[Representation with Modifiers] = {
-    import reflect.{given _, _}
+  def extractClassMembers(using QuoteContext)(body: List[qctx.tasty.Statement], symbol: qctx.tasty.Symbol, parentRepresentation: Some[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) : List[Representation with Modifiers] = {
+    import qctx.tasty._
 
     /** Filter fields which shouldn't be displayed in the doc
      */
-    def filterSymbol(symbol: reflect.Symbol): Boolean = {
-      val ownerPath = extractPath(reflect)(symbol.owner)
+    def filterSymbol(symbol: Symbol): Boolean = {
+      val ownerPath = extractPath(symbol.owner)
 
       !symbol.flags.is(Flags.Synthetic) &&
       !symbol.flags.is(Flags.Artifact) &&
@@ -79,16 +77,16 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
         case _: ValDef => None //No val/var, they are appended with symbol.fields below
         case _: Inlined => None //Inlined aren't desirable members
         case x => Some(x)
-      }.filter(x => filterSymbol(x.symbol)).map(convertToRepresentation(reflect)(_, parentRepresentation)) ++
-    symbol.methods.filter(x => filterSymbol(x)).map{x => convertToRepresentation(reflect)(x.tree, parentRepresentation)} ++
+      }.filter(x => filterSymbol(x.symbol)).map(convertToRepresentation(_, parentRepresentation)) ++
+    symbol.methods.filter(x => filterSymbol(x)).map{x => convertToRepresentation(x.tree, parentRepresentation)} ++
     symbol.fields.filter { x =>
       filterSymbol(x)
     }.flatMap {
       case x if x.isValDef => Some(x)
-      // case reflect.IsValDefSymbol(x) => Some(x)
+      // case qctx.tasty.IsValDefSymbol(x) => Some(x)
       case _ => None
     }.map { x =>
-      convertToRepresentation(reflect)(x.tree, parentRepresentation)
+      convertToRepresentation(x.tree, parentRepresentation)
     }
     )
     .flatMap{
@@ -98,12 +96,12 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     .sortBy(_.name)
   }
 
-  def extractParents(reflect: Reflection)(parents: List[reflect.Tree]): List[Reference] = {
-    import reflect.{given _, _}
+  def extractParents(using QuoteContext)(parents: List[qctx.tasty.Tree]): List[Reference] = {
+    import qctx.tasty._
 
     val parentsReferences = parents.map{
-      case c: TypeTree => convertTypeToReference(reflect)(c.tpe)
-      case c: Term => convertTypeToReference(reflect)(c.tpe)
+      case c: TypeTree => convertTypeToReference(c.tpe)
+      case c: Term => convertTypeToReference(c.tpe)
       case _ => throw Exception("Unhandeld case in parents. Please open an issue.")
     }
 
@@ -117,12 +115,12 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
   *
   * @return (is case, is a trait, is an object, the kind as a String)
   */
-  def extractKind(reflect: Reflection)(flags: reflect.Flags): (Boolean, Boolean, Boolean, String) = {
-    import reflect.{given _, _}
+  def extractKind(using QuoteContext)(flags: qctx.tasty.Flags): (Boolean, Boolean, Boolean, String) = {
+    import qctx.tasty._
 
-    val isCase = flags.is(reflect.Flags.Case)
-    val isTrait = flags.is(reflect.Flags.Trait)
-    val isObject = flags.is(reflect.Flags.Object)
+    val isCase = flags.is(Flags.Case)
+    val isTrait = flags.is(Flags.Trait)
+    val isObject = flags.is(Flags.Object)
     val kind = {
       if(isTrait){
         "trait"
@@ -142,30 +140,30 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     (isCase, isTrait, isObject, kind)
   }
 
-  def extractCompanion(reflect: Reflection)(companionModule: Option[reflect.Symbol], companionClass: Option[reflect.Symbol], companionIsObject: Boolean): Option[CompanionReference] = {
-    import reflect.{given _, _}
+  def extractCompanion(using QuoteContext)(companionModule: Option[qctx.tasty.Symbol], companionClass: Option[qctx.tasty.Symbol], companionIsObject: Boolean): Option[CompanionReference] = {
+    import qctx.tasty._
 
     if(companionIsObject){
       companionModule match {
         case Some(c) =>
-          val path = extractPath(reflect)(c)
-           val (_, _, _, kind) = extractKind(reflect)(c.flags)
+          val path = extractPath(c)
+           val (_, _, _, kind) = extractKind(c.flags)
           Some(CompanionReference(c.name + "$", path.mkString("/", "/", ""), kind))
         case None => None
       }
     }else{
       companionClass match {
         case Some(c) =>
-          val path = extractPath(reflect)(c)
-          val (_, _, _, kind) = extractKind(reflect)(c.flags)
+          val path = extractPath(c)
+          val (_, _, _, kind) = extractKind(c.flags)
           Some(CompanionReference(c.name, path.mkString("/", "/", ""), kind))
         case None => None
       }
     }
   }
 
-  def extractAnnotations(reflect: Reflection)(annots: List[reflect.Term]): List[TypeReference] = {
-    import reflect.{given _, _}
+  def extractAnnotations(using QuoteContext)(annots: List[qctx.tasty.Term]): List[TypeReference] = {
+    import qctx.tasty._
 
     def keepAnnot(label: String, link: String): Boolean = {
       !(label == "SourceFile" && link == "/internal") &&
@@ -173,7 +171,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     }
 
     annots.flatMap{a =>
-      convertTypeToReference(reflect)(a.tpe) match {
+      convertTypeToReference(a.tpe) match {
         case ref@TypeReference(label, link, _, _) if keepAnnot(label, link) => Some(ref)
         case _ => None
       }

@@ -1,4 +1,4 @@
-import scala.tasty.Reflection
+import scala.quoted._
 import scala.tasty.inspector._
 
 // Ambiguous member names
@@ -32,16 +32,16 @@ class TestInspector_Children() extends TastyInspector:
 
   var kids: List[String] = Nil
 
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit =
-    import reflect._
-    inspectClass(reflect)(root)
+  protected def processCompilationUnit(using QuoteContext)(root: qctx.tasty.Tree): Unit =
+    import qctx.tasty._
+    inspectClass(root)
 
-  private def inspectClass(reflect: Reflection)(tree: reflect.Tree): Unit =
-    import reflect.{given _, _}
+  private def inspectClass(using QuoteContext)(tree: qctx.tasty.Tree): Unit =
+    import qctx.tasty._
     tree match {
-      case t: reflect.PackageClause =>
-        t.stats.map( m => inspectClass(reflect)(m) )
-      case t: reflect.ClassDef =>
+      case t: PackageClause =>
+        t.stats.map( m => inspectClass(m) )
+      case t: ClassDef =>
         kids = t.symbol.children.map(_.fullName)
 
       case x =>
