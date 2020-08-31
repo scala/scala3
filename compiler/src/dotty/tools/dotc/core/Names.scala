@@ -165,16 +165,15 @@ object Names {
     override def asTermName: TermName = this
 
     @sharable // because it is only modified in the synchronized block of toTypeName.
-    @volatile private var _typeName: TypeName = null
+    private var myTypeName: TypeName = null
+      // Note: no @volatile needed since type names are immutable and therefore safely published
 
-    override def toTypeName: TypeName = {
-      if (_typeName == null)
+    override def toTypeName: TypeName =
+      if myTypeName == null then
         synchronized {
-          if (_typeName == null)
-            _typeName = new TypeName(this)
+          if myTypeName == null then myTypeName = new TypeName(this)
         }
-      _typeName
-    }
+      myTypeName
 
     override def likeSpaced(name: Name): TermName = name.toTermName
 
@@ -535,25 +534,25 @@ object Names {
 
     def enterIfNew(cs: Array[Char], offset: Int, len: Int): SimpleName =
       Stats.record(statsItem("put"))
-      val table = currentTable
-      var idx = hashValue(cs, offset, len) & (table.length - 1)
-      var name = table(idx).asInstanceOf[SimpleName]
+      val myTable = currentTable // could be outdated under parallel execution
+      var idx = hashValue(cs, offset, len) & (myTable.length - 1)
+      var name = myTable(idx).asInstanceOf[SimpleName]
       while name != null do
         if name.length == len && Names.equals(name.start, cs, offset, len) then
           return name
         Stats.record(statsItem("miss"))
-        idx = (idx + 1) & (table.length - 1)
-        name = table(idx).asInstanceOf[SimpleName]
+        idx = (idx + 1) & (myTable.length - 1)
+        name = myTable(idx).asInstanceOf[SimpleName]
       Stats.record(statsItem("addEntryAt"))
       synchronized {
-        if (table eq currentTable) && table(idx) == null then
+        if (myTable eq currentTable) && myTable(idx) == null then
           // Our previous unsynchronized computation of the next free index is still correct.
           // This relies on the fact that table entries go from null to non-null, and then
           // stay the same. Note that we do not need the table or the entry in it to be
           // volatile since SimpleNames are immutable, and hence safely published.
           // The same holds for the chrs array. We might miss before the synchronized
           // on published characters but that would make name comparison false, which
-          // means we end up in the synchronized block here, where we get the correct state
+          // means we end up in the synchronized block here, where we get the correct state.
           name = SimpleName(nc, len)
           ensureCapacity(nc + len)
           Array.copy(cs, offset, chrs, nc, len)
