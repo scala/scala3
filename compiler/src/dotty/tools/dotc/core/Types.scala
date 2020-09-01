@@ -394,20 +394,13 @@ object Types {
     final def foreachPart(p: Type => Unit, stopAtStatic: Boolean = false)(using Context): Unit =
       new ForeachAccumulator(p, stopAtStatic).apply((), this)
 
-    /** The parts of this type which are type or term refs */
-    final def namedParts(using Context): collection.Set[NamedType] =
-      namedPartsWith(alwaysTrue)
-
     /** The parts of this type which are type or term refs and which
      *  satisfy predicate `p`.
      *
      *  @param p                   The predicate to satisfy
-     *  @param excludeLowerBounds  If set to true, the lower bounds of abstract
-     *                             types will be ignored.
      */
-    def namedPartsWith(p: NamedType => Boolean, excludeLowerBounds: Boolean = false)
-      (using Context): collection.Set[NamedType] =
-      new NamedPartsAccumulator(p, excludeLowerBounds).apply(mutable.LinkedHashSet(), this)
+    def namedPartsWith(p: NamedType => Boolean)(using Context): List[NamedType] =
+      new NamedPartsAccumulator(p).apply(Nil, this)
 
     /** Map function `f` over elements of an AndType, rebuilding with function `g` */
     def mapReduceAnd[T](f: Type => T)(g: (T, T) => T)(using Context): T = stripTypeVar match {
@@ -5538,38 +5531,34 @@ object Types {
     override def hash(x: Type): Int = System.identityHashCode(x)
     override def isEqual(x: Type, y: Type) = x.eq(y)
 
-  class NamedPartsAccumulator(p: NamedType => Boolean, excludeLowerBounds: Boolean = false)
-    (using Context) extends TypeAccumulator[mutable.Set[NamedType]] {
-    override def stopAtStatic: Boolean = false
-    def maybeAdd(x: mutable.Set[NamedType], tp: NamedType): mutable.Set[NamedType] = if (p(tp)) x += tp else x
+  class NamedPartsAccumulator(p: NamedType => Boolean)(using Context)
+  extends TypeAccumulator[List[NamedType]]:
+    def maybeAdd(xs: List[NamedType], tp: NamedType): List[NamedType] = if p(tp) then tp :: xs else xs
     val seen = TypeHashSet()
-    def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] =
-      if (seen contains tp) x
-      else {
+    def apply(xs: List[NamedType], tp: Type): List[NamedType] =
+      if seen contains tp then xs
+      else
         seen.addEntry(tp)
-        tp match {
+        tp match
           case tp: TypeRef =>
-            foldOver(maybeAdd(x, tp), tp)
+            foldOver(maybeAdd(xs, tp), tp)
           case tp: ThisType =>
-            apply(x, tp.tref)
+            apply(xs, tp.tref)
           case NoPrefix =>
-            foldOver(x, tp)
+            foldOver(xs, tp)
           case tp: TermRef =>
-            apply(foldOver(maybeAdd(x, tp), tp), tp.underlying)
+            apply(foldOver(maybeAdd(xs, tp), tp), tp.underlying)
           case tp: AppliedType =>
-            foldOver(x, tp)
+            foldOver(xs, tp)
           case TypeBounds(lo, hi) =>
-            if (!excludeLowerBounds) apply(x, lo)
-            apply(x, hi)
+            apply(apply(xs, lo), hi)
           case tp: ParamRef =>
-            apply(x, tp.underlying)
+            apply(xs, tp.underlying)
           case tp: ConstantType =>
-            apply(x, tp.underlying)
+            apply(xs, tp.underlying)
           case _ =>
-            foldOver(x, tp)
-        }
-      }
-  }
+            foldOver(xs, tp)
+  end NamedPartsAccumulator
 
   class isGroundAccumulator(using Context) extends TypeAccumulator[Boolean] {
     def apply(x: Boolean, tp: Type): Boolean = x && {

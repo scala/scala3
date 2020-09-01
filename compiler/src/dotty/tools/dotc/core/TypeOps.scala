@@ -404,7 +404,7 @@ object TypeOps:
 
       def apply(tp: Type): Type = tp match {
         case tp: TermRef
-        if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
+        if toAvoid(tp.symbol) || partsToAvoid(Nil, tp.info).nonEmpty =>
           tp.info.widenExpr.dealias match {
             case info: SingletonType => apply(info)
             case info => range(defn.NothingType, apply(info))
@@ -422,7 +422,7 @@ object TypeOps:
           }
         case tp: ThisType if toAvoid(tp.cls) =>
           range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
-        case tp: SkolemType if partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
+        case tp: SkolemType if partsToAvoid(Nil, tp.info).nonEmpty =>
           range(defn.NothingType, apply(tp.info))
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
           val lo = TypeComparer.instanceType(
