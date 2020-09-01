@@ -1,13 +1,13 @@
 package hello
 
-import scala.tasty.Reflection
+import scala.quoted._
 import scala.tasty.inspector.TastyInspector
 
 object Main extends App {
 
   val inspector = new TastyInspector {
-    protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = {
-      import reflect.{given _, _}
+    protected def processCompilationUnit(using QuoteContext)(root: qctx.tasty.Tree): Unit = {
+      import qctx.tasty._
       val tastyStr = root.show
       println(tastyStr)
     }
