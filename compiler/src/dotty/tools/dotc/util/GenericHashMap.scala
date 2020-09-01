@@ -117,6 +117,11 @@ abstract class GenericHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
       idx = nextIndex(idx)
       k = keyAt(idx)
 
+  def getOrElseUpdate(key: Key, value: => Value): Value =
+    var v = lookup(key)
+    if v == null then v = value
+    v
+
   private def addOld(key: Key, value: AnyRef): Unit =
     Stats.record(statsItem("re-enter"))
     var idx = firstIndex(key)
