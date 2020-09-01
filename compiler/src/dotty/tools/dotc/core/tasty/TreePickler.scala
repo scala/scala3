@@ -44,19 +44,19 @@ class TreePickler(pickler: TastyPickler) {
 
   private val symRefs = Symbols.newMutableSymbolMap[Addr]
   private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
-  private val pickledTypes = new java.util.IdentityHashMap[Type, Any] // Value type is really Addr, but that's not compatible with null
+  private val pickledTypes = util.IdentityHashMap[Type, AnyRef]() // Value type is really Addr, but that's not compatible with null
 
   /** A list of annotation trees for every member definition, so that later
    *  parallel position pickling does not need to access and force symbols.
    */
-  private val annotTrees = util.HashTable[untpd.MemberDef, mutable.ListBuffer[Tree]]()
+  private val annotTrees = util.IdentityHashMap[untpd.MemberDef, mutable.ListBuffer[Tree]]()
 
   /** A map from member definitions to their doc comments, so that later
    *  parallel comment pickling does not need to access symbols of trees (which
    *  would involve accessing symbols of named types and possibly changing phases
    *  in doing so).
    */
-  private val docStrings = util.HashTable[untpd.MemberDef, Comment]()
+  private val docStrings = util.IdentityHashMap[untpd.MemberDef, Comment]()
 
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
@@ -169,9 +169,9 @@ class TreePickler(pickler: TastyPickler) {
   def pickleType(tpe0: Type, richTypes: Boolean = false)(using Context): Unit = {
     val tpe = tpe0.stripTypeVar
     try {
-      val prev = pickledTypes.get(tpe)
+      val prev = pickledTypes.lookup(tpe)
       if (prev == null) {
-        pickledTypes.put(tpe, currentAddr)
+        pickledTypes(tpe) = currentAddr.asInstanceOf[AnyRef]
         pickleNewType(tpe, richTypes)
       }
       else {
@@ -244,7 +244,7 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe) }
     case tpe: RecThis =>
       writeByte(RECthis)
-      val binderAddr = pickledTypes.get(tpe.binder)
+      val binderAddr = pickledTypes.lookup(tpe.binder)
       assert(binderAddr != null, tpe.binder)
       writeRef(binderAddr.asInstanceOf[Addr])
     case tpe: SkolemType =>
@@ -314,7 +314,7 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleParamRef(tpe: ParamRef)(using Context): Boolean = {
-    val binder = pickledTypes.get(tpe.binder)
+    val binder = pickledTypes.lookup(tpe.binder)
     val pickled = binder != null
     if (pickled) {
       writeByte(PARAMtype)
@@ -349,7 +349,7 @@ class TreePickler(pickler: TastyPickler) {
       docCtx <- ctx.docCtx
       comment <- docCtx.docstring(sym)
     do
-      docStrings.enter(mdef, comment)
+      docStrings(mdef) = comment
   }
 
   def pickleParam(tree: Tree)(using Context): Unit = {
@@ -605,7 +605,7 @@ class TreePickler(pickler: TastyPickler) {
           else {
             val refineCls = refinements.head.symbol.owner.asClass
             registerDef(refineCls)
-            pickledTypes.put(refineCls.typeRef, currentAddr)
+            pickledTypes(refineCls.typeRef) = currentAddr.asInstanceOf[AnyRef]
             writeByte(REFINEDtpt)
             refinements.foreach(preRegister)
             withLength { pickleTree(parent); refinements.foreach(pickleTree) }
@@ -757,7 +757,7 @@ class TreePickler(pickler: TastyPickler) {
       var treeBuf = annotTrees.lookup(mdef)
       if treeBuf == null then
         treeBuf = new mutable.ListBuffer[Tree]
-        annotTrees.enter(mdef, treeBuf)
+        annotTrees(mdef) = treeBuf
       treeBuf += ann.tree
 
 // ---- main entry points ---------------------------------------
