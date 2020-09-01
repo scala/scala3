@@ -22,9 +22,9 @@ trait BasicSupport:
             Map.empty
 
     def source(using ctx: Context) =
-      val path = Some(sym.pos.sourceFile.jpath).filter(_ != null).map(_.toString)
+      val path = Some(sym.pos.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath).map(_.toString)
       path match{
-        case Some(p) => Map(sourceSet.getSourceSet -> new DocumentableSource { override def getPath = p })
+        case Some(p) => Map(sourceSet.getSourceSet -> TastyDocumentableSource(p, sym.pos.startLine))
         case None => Map.empty
       }   
   

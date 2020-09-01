@@ -7,6 +7,7 @@ import java.util.ServiceLoader
 import java.io.File
 import java.util.jar._
 import collection.JavaConverters._
+import java.util.{List => JList}
 
 import scala.tasty.Reflection
 import scala.tasty.inspector.TastyInspector
@@ -14,6 +15,7 @@ import sbt.io.IO
 import java.nio.file.Files
 
 import org.kohsuke.args4j.{CmdLineParser, Option => COption}
+import org.kohsuke.args4j.spi.StringArrayOptionHandler
 
 class RawArgs:
     @COption(name="--tastyRoots", required = true, aliases = Array("-t"), usage="Roots where tools should look for tasty files")
@@ -30,6 +32,9 @@ class RawArgs:
 
     @COption(name="--docs", aliases = Array("-d"), usage="Root of project docs")
     private var docsRoot: String =  null
+
+    @COption(name="--sources", handler = classOf[StringArrayOptionHandler], aliases = Array("-s"), usage = "Links to source files provided in convention: local_directory=remote_directory#line_suffix")
+    private var sourceLinks: JList[String] = null
     
     @COption(name="--projectTitle")
     private var projectTitle: String = null
@@ -61,7 +66,8 @@ class RawArgs:
         projectVersion,
         Option(projectTitle),
         Option(projectLogo),
-        parsedSyntax
+        parsedSyntax,
+        Option(sourceLinks).map(_.asScala.toList).getOrElse(List.empty)
       )
 
 
@@ -74,7 +80,8 @@ case class Args(
   projectVersion: String,
   projectTitle: Option[String],
   projectLogo: Option[String],
-  defaultSyntax: Option[Args.CommentSyntax]
+  defaultSyntax: Option[Args.CommentSyntax],
+  sourceLinks: List[String]
 )    
 
 object Args:
