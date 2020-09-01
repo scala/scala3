@@ -212,7 +212,7 @@ object SourceFile {
   def fromId(id: Int): SourceFile = sourceOfChunk(id >> ChunkSizeLog)
 
   def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
-    val src = new SourceFile(new VirtualFile(name, content.getBytes), scala.io.Codec.UTF8)
+    val src = new SourceFile(new VirtualFile(name, content.getBytes("UTF-8")), scala.io.Codec.UTF8)
     src._maybeInComplete = maybeIncomplete
     src
 

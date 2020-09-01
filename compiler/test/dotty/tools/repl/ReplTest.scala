@@ -2,6 +2,7 @@ package dotty.tools
 package repl
 
 import vulpix.TestConfiguration
+import vulpix.FileDiff
 
 import java.lang.System.{lineSeparator => EOL}
 import java.io.{ByteArrayOutputStream, File => JFile, PrintStream}
@@ -25,11 +26,11 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
     "-color:never",
     "-Yerased-terms",
   ),
-  new PrintStream(out)
+  new PrintStream(out, true, "UTF-8")
 ) with MessageRendering {
   /** Get the stored output from `out`, resetting the buffer */
   def storedOutput(): String = {
-    val output = stripColor(out.toString)
+    val output = stripColor(out.toString("UTF-8"))
     out.reset()
     output
   }
@@ -76,7 +77,7 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
       }
 
     val expectedOutput =
-      Using(Source.fromFile(f, "UTF-8"))(_.getLines().flatMap(filterEmpties).mkString(EOL)).get
+      Using(Source.fromFile(f, "UTF-8"))(_.getLines().flatMap(filterEmpties).toList).get
     val actualOutput = {
       resetToInitial()
 
@@ -88,23 +89,23 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
       val buf = new ArrayBuffer[String]
       inputRes.foldLeft(initialState) { (state, input) =>
         val (out, nstate) = evaluate(state, input)
-        buf.append(out)
+        out.linesIterator.foreach(buf.append)
 
         assert(out.endsWith("\n"),
                s"Expected output of $input to end with newline")
 
         nstate
       }
-      buf.flatMap(filterEmpties).mkString(EOL)
+      buf.toList.flatMap(filterEmpties)
     }
 
-    if (expectedOutput != actualOutput) {
+    if !FileDiff.matches(actualOutput, expectedOutput) then
       println("expected =========>")
-      println(expectedOutput)
+      println(expectedOutput.mkString(EOL))
       println("actual ===========>")
-      println(actualOutput)
+      println(actualOutput.mkString(EOL))
 
       fail(s"Error in file $f, expected output did not match actual")
-    }
+    end if
   }
 }
