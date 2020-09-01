@@ -59,7 +59,14 @@ case class ClasslikeExtension(
   override def getKey = ClasslikeExtension
 
 object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]
-  
+
+case class InheritanceInfo(
+  val parents: List[Bound],
+  val knownChildren: List[DRI]
+) extends ExtraProperty[DClasslike]:
+  override def getKey = InheritanceInfo
+
+object InheritanceInfo extends BaseKey[DClasslike, InheritanceInfo]  
 
 case class PropertyExtension(kind: "val" | "var" | "type", isAbstract: Boolean) extends ExtraProperty[DProperty]:
   override def getKey = PropertyExtension

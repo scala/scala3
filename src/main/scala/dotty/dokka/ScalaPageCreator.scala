@@ -229,6 +229,88 @@ class ScalaPageCreator(
         modifyContentGroup(content, modifiedContent)
     }
 
+    def insertLinearSupertypes(clazz: DClass, defContent: ContentGroup): ContentGroup = {
+        val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
+        val supertypes = clazz.get(InheritanceInfo).parents
+
+        def contentForBound(
+            bdr: ScalaPageContentBuilder#ScalaDocumentableContentBuilder,
+            b: Bound
+        ): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = b match{
+                case t: org.jetbrains.dokka.model.TypeConstructor => t.getProjections.asScala.foldLeft(bdr){
+                    case (builder, p) => p match {
+                        case text: UnresolvedBound => builder.text(text.getName)
+                        case link: OtherParameter => builder.driLink(link.getName, link.getDeclarationDRI) 
+                        case other => builder.text(s"TODO: $other")
+                    }
+                }
+                case o => bdr.text(s"TODO: $o")
+            }
+            
+
+        def buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder = bdr => bdr
+            .header(2, "Linear supertypes")()
+            .group(
+                styles = Set(ContentStyle.WithExtraAttributes), 
+                extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Linear supertypes")
+            ){ gbdr => gbdr
+                .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
+                    .list(supertypes)(contentForBound)
+                }
+            }
+
+        def addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(
+            clazz, 
+            buildBlock = buildBlock
+        )
+
+        def modifiedContent = content(0).copy(
+            (content(0).getChildren.asScala ++ List(addedContent)).asJava,
+            content(0).getDci,
+            content(0).getSourceSets,
+            content(0).getStyle,
+            content(0).getExtra
+        )
+        if !supertypes.isEmpty then modifyContentGroup(content, modifiedContent) else defContent
+    }
+
+    def insertKnownSubclasses(clazz: DClass, defContent: ContentGroup): ContentGroup = {
+        val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
+        val subtypes = clazz.get(InheritanceInfo).knownChildren
+
+        def contentForType(
+            bdr: ScalaPageContentBuilder#ScalaDocumentableContentBuilder,
+            b: DRI
+        ): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = bdr
+            .driLink(b.getClassNames, b)
+            
+
+        def buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder = bdr => bdr
+            .header(2, "Known subtypes")()
+            .group(
+                styles = Set(ContentStyle.WithExtraAttributes), 
+                extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Known subtypes")
+            ){ gbdr => gbdr
+                .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
+                    .list(subtypes)(contentForType)
+                }
+            }
+
+        def addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(
+            clazz, 
+            buildBlock = buildBlock
+        )
+
+        def modifiedContent = content(0).copy(
+            (content(0).getChildren.asScala ++ List(addedContent)).asJava,
+            content(0).getDci,
+            content(0).getSourceSets,
+            content(0).getStyle,
+            content(0).getExtra
+        )
+        if !subtypes.isEmpty then modifyContentGroup(content, modifiedContent) else defContent
+    }
+
     override def contentForClasslike(c: DClasslike): ContentGroup = {
         val defaultContent = super.contentForClasslike(c)
       
@@ -239,7 +321,8 @@ class ScalaPageCreator(
                 // val pageWithCompanion = insertCompanion(clazz, defaultContent)
                 val pageWithExtensionsTab = insertCustomExtensionTab(clazz, pageWithCompanion)
                 val pageWithGivens = insertGivenTab(clazz, pageWithExtensionsTab)
-                if clazz.get(ClasslikeExtension).kind == dotty.dokka.Kind.Enum then insertEnumTab(clazz, pageWithGivens) else pageWithGivens
+                val pageWithInheritance = insertKnownSubclasses(clazz, insertLinearSupertypes(clazz, pageWithGivens))
+                if clazz.get(ClasslikeExtension).kind == dotty.dokka.Kind.Enum then insertEnumTab(clazz, pageWithInheritance) else pageWithInheritance
             case _ => defaultContent
         }
     }
