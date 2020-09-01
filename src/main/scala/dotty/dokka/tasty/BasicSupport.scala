@@ -77,8 +77,8 @@ class SymOps[R <: Reflection](val r: R) {
     def isGiven(): Boolean = sym.flags.is(Flags.Given)
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
-    def dri =
-      if sym == Symbol.noSymbol then emptyDRI else
+    def dri: DRI =
+      if sym == Symbol.noSymbol then emptyDRI else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri else
         val pointsTo =
           if (!sym.isTypeDef) PointingToDeclaration.INSTANCE
           else PointingToGenericParameters(sym.owner.typeMembers.indexOf(sym))

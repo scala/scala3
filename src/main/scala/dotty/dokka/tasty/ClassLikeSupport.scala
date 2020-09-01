@@ -213,30 +213,38 @@ trait ClassLikeSupport:
 
     def getGivenInstance: Option[Bound] = {
       def extractTypeSymbol(t: Tree): Option[Symbol] = t match {
-          case tpeTree: TypeTree =>  inner(tpeTree.tpe)   
+          case tpeTree: TypeTree =>  
+            inner(tpeTree.tpe) 
           case other => None
       }
 
-      def inner(tpe: TypeOrBounds): Option[Symbol] = tpe match {
+      def inner(tpe: TypeOrBounds): Option[Symbol] = { 
+        tpe match {
           case ThisType(tpe) => inner(tpe)
           case AnnotatedType(tpe, _) => inner(tpe)
           case AppliedType(tpe, typeOrBoundsList) => inner(tpe)
-          case TermRef(qual, typeName) => inner(qual)
+          case tp @ TermRef(qual, typeName) => 
+            qual match {
+              case _: Type | _: NoPrefix => Some(tp.termSymbol)
+              case other => None
+              } 
           case tp @ TypeRef(qual, typeName) =>
               qual match {
               case _: Type | _: NoPrefix => Some(tp.typeSymbol)
               case other => None
               } 
       }
+    }
 
       val typeSymbol = extractTypeSymbol(method.returnTpt)
 
       typeSymbol.map(_.tree).collect {
         case c: ClassDef => c.getParents.headOption
+        case _ => Some(method.returnTpt.dokkaType)
       }.flatten
     }
     val optionalExtras = Seq(Option.when(isGiven)(IsGiven(getGivenInstance))).flatten
-
+    
 
     new DFunction(
       methodSymbol.dri,
@@ -288,6 +296,17 @@ trait ClassLikeSupport:
     )  
     
   def parseTypeDef(typeDef: TypeDef): DProperty =
+
+    def isTreeAbstract(typ: Tree): Boolean = typ match {
+      case TypeBoundsTree(_, _) => true
+      case LambdaTypeTree(params, body) => isTreeAbstract(body)
+      case _ => false
+    }
+
+    val isAbstract = isTreeAbstract(typeDef.rhs)
+
+    val isTypeOpaque = isOpaque(typeDef.symbol)
+
     val (generics, tpeTree) =  typeDef.rhs match {
       case LambdaTypeTree(params, body) =>
         (params.map(parseTypeArgument), body)
@@ -295,12 +314,7 @@ trait ClassLikeSupport:
         (Nil, tpe)  
     }
 
-    val isAbstract = tpeTree match {
-      case TypeBoundsTree(_, _) => true
-      case _ => false
-    }
-
-    val extraModifiers = Set(Option.when(hackIsOpaque(self.reflect)(typeDef.symbol))(ScalaOnlyModifiers.Opaque)).flatten
+    val extraModifiers = Set(Option.when(isTypeOpaque)(ScalaOnlyModifiers.Opaque)).flatten
 
     new DProperty(
       typeDef.symbol.dri,

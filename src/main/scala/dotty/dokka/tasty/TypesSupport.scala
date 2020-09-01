@@ -30,7 +30,10 @@ trait TypesSupport:
     private def texts(str: String): List[JProjection] = List(text(str))
 
     
-    private def link(symbol: reflect.Symbol)(using cxt: reflect.Context): JProjection = new OtherParameter(symbol.dri, symbol.name)
+    private def link(symbol: reflect.Symbol)(using cxt: reflect.Context): List[JProjection] = {
+        val suffix = if symbol.isValDef then texts(".type") else Nil
+        (new OtherParameter(symbol.dri, symbol.name)) :: suffix
+    }
     
     private def commas(lists: List[List[JProjection]]) = lists match
         case List(single) => single
@@ -61,7 +64,14 @@ trait TypesSupport:
                 inner(tpe) :+ text("*")
             case AnnotatedType(tpe, _) => 
                 inner(tpe)
-            case tl @ TypeLambda(paramNames, paramTypes, resType) => noSupported(s"TypeLambda: ${paramNames} , ")  //TOFIX
+            case tl @ TypeLambda(params, paramBounds, resType) => 
+                // println(params)
+                // println(paramBounds)
+                texts("[") ++ commas(params.zip(paramBounds).map( (name, typ) => texts(s"${name}") ++ inner(typ) )) ++ texts("]")
+                ++ texts(" =>> ")
+                ++ inner(resType)
+            
+                
             case r: Refinement => { //(parent, name, info)
                 def parseRefinedType(r: Refinement): List[JProjection] = {
                     (r.parent match{
@@ -70,19 +80,30 @@ trait TypesSupport:
                         case r: Refinement => parseRefinedType(r) ++ texts("; ")
                     }) ++ parseRefinedElem(r.name, r.info)
                 }
-                def parseRefinedElem(name: String, info: TypeOrBounds): List[JProjection] = info match {
+                def parseRefinedElem(name: String, info: TypeOrBounds, polyTyped: List[JProjection] = Nil): List[JProjection] = info match {
                     case m: MethodType => {
                         def getParamList: List[JProjection] = 
                             texts("(")
                             ++ m.paramNames.zip(m.paramTypes).map{ case (name, tp) => texts(s"$name: ") ++ inner(tp)}
                                 .reduceLeftOption((acc: List[JProjection], elem: List[JProjection]) => acc ++ texts(", ") ++ elem).getOrElse(List())
                             ++ texts(")")
-                        texts(s"def $name") ++ getParamList ++ texts(": ") ++ inner(m.resType)
+                        texts(s"def $name") ++ polyTyped ++ getParamList++ texts(": ") ++ inner(m.resType)
+                    }
+                    case t: PolyType => {
+                        def getParamBounds: List[JProjection] = commas(
+                                t.paramNames.zip(t.paramBounds.map(inner(_)))
+                                    .map(b => texts(b(0)) ++ b(1))
+                            )
+                        val parsedMethod = parseRefinedElem(name,t.resType)
+                        if (!getParamBounds.isEmpty){
+                            parseRefinedElem(name, t.resType, texts("[") ++ getParamBounds ++ texts("]"))
+                        } else parseRefinedElem(name, t.resType)
                     }
                     case ByNameType(tp) => texts(s"def $name: ") ++ inner(tp)
                     case t: TypeBounds => texts(s"type $name") ++ inner(t)
                     case t: TypeRef => texts(s"val $name: ") ++ inner(t)
-                    case other => {println(info); noSupported("Not supported type in refinement"); List()}
+                    case t: TermRef => texts(s"val $name: ") ++ inner(t)
+                    case other => noSupported(s"Not supported type in refinement $info")
                 }
                 parseRefinedType(r) ++ texts(" }")
             }
@@ -103,8 +124,8 @@ trait TypesSupport:
             case tp @ TypeRef(qual, typeName) =>
                 qual match {
                     case r: RecursiveThis => texts(s"this.$typeName")
-                    case _: Type | _: NoPrefix => List(link(tp.typeSymbol))
-                    case other => noSupported(s"Type.qual: $other") 
+                    case _: Type | _: NoPrefix => link(tp.typeSymbol)
+                    case other => noSupported(s"Type: $tp") 
                 }    
                 // convertTypeOrBoundsToReference(reflect)(qual) match {
                 //     case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true)
@@ -133,13 +154,14 @@ trait TypesSupport:
                 //     case _ =>
                 //     throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
                 // }
-            case TermRef(qual, typeName) =>
+            case tr @ TermRef(qual, typeName) => qual match {
+                case _ => link(tr.termSymbol)
+            }
                 // convertTypeOrBoundsToReference(reflect)(qual) match {
                 //     case TypeReference(label, link, xs, _) => TypeReference(typeName + "$", link + "/" + label, xs)
                 //     case EmptyReference => TypeReference(typeName, "", Nil)
                 //     case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
                 // }
-                noSupported("TypeRef") 
 
             // NOTE: old SymRefs are now either TypeRefs or TermRefs - the logic here needs to be moved into above branches
             // NOTE: _.symbol on *Ref returns its symbol
@@ -167,6 +189,11 @@ trait TypesSupport:
 
     private def typeBound(t: Type, low: Boolean) = 
         val ignore = if(low) t.typeSymbol == defn.NothingClass  else t.typeSymbol == defn.AnyClass
-        if ignore then Nil 
-        else text(if low then " >: " else " <: ") :: inner(t)
+        val prefix = text(if low then " >: " else " <: ")
+        t match {
+            case l: TypeLambda => prefix :: texts("(") ++ inner(l) ++ texts(")")
+            case p: ParamRef => prefix :: inner(p)
+            case other if !ignore => prefix :: inner(other)
+            case _ => Nil
+        }
     
