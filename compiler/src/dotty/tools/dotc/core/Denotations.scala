@@ -982,7 +982,7 @@ object Denotations {
     final def first: SingleDenotation = this
     final def last: SingleDenotation = this
 
-    final def matches(other: SingleDenotation)(using Context): Boolean =
+    def matches(other: SingleDenotation)(using Context): Boolean =
       val d = signature.matchDegree(other.signature)
 
       d match
@@ -1013,16 +1013,21 @@ object Denotations {
     end matches
 
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(using Context): SingleDenotation =
-      if (hasUniqueSym && prevDenots.containsSym(symbol)) NoDenotation
-      else if (isType) filterDisjoint(ownDenots).asSeenFrom(pre)
+      if hasUniqueSym && prevDenots.containsSym(symbol) then NoDenotation
+      else if isType then filterDisjoint(ownDenots).asSeenFrom(pre)
       else asSeenFrom(pre).filterDisjoint(ownDenots)
 
-    final def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation =
+    def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation =
       if (p(this)) this else NoDenotation
-    final def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation =
+    def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation =
-      if (required.isEmpty && excluded.isEmpty || compatibleWith(required, excluded)) this else NoDenotation
+      def symd: SymDenotation = this match
+        case symd: SymDenotation => symd
+        case _ => symbol.denot
+      if !required.isEmpty && !symd.isAllOf(required)
+         || !excluded.isEmpty && symd.isOneOf(excluded) then NoDenotation
+      else this
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T = f(this)
 
     type AsSeenFromResult = SingleDenotation
@@ -1055,16 +1060,6 @@ object Denotations {
 
       if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
       else derived(symbol.info)
-    }
-
-    /** Does this denotation have all the `required` flags but none of the `excluded` flags?
-     */
-    private def compatibleWith(required: FlagSet, excluded: FlagSet)(using Context): Boolean = {
-      val symd: SymDenotation = this match {
-        case symd: SymDenotation => symd
-        case _ => symbol.denot
-      }
-      symd.isAllOf(required) && !symd.isOneOf(excluded)
     }
   }
 

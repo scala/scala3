@@ -1,5 +1,5 @@
 import Test.test
 
-object Test {
+class A:
   def test = "  " * 10 // error
-}
+object Test extends A
