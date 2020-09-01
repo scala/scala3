@@ -18,6 +18,12 @@ import scala.concurrent.duration.Duration
 
 object Pickler {
   val name: String = "pickler"
+
+  /** If set, perform jump target compacting, position and comment pickling,
+   *  as well as final assembly in parallel with downstream phases; force
+   *  only in backend.
+   */
+  inline val ParallelPickling = true
 }
 
 /** This phase pickles trees */
@@ -51,54 +57,53 @@ class Pickler extends Phase {
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
 
-    for {
+    for
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
       tree <- sliceTopLevel(unit.tpdTree, cls)
-    }
-    {
+    do
       val pickler = new TastyPickler(cls)
       if ctx.settings.YtestPickler.value then
         beforePickling(cls) = tree.show
         picklers(cls) = pickler
       val treePkl = pickler.treePkl
       treePkl.pickle(tree :: Nil)
-      val pickledF = Future {
-        treePkl.compactify()
-        if tree.span.exists then
-          new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
+      val positionWarnings = new mutable.ListBuffer[String]()
+      val pickledF = inContext(ctx.fresh) {
+        Future {
+          treePkl.compactify()
+          if tree.span.exists then
+            new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots)
+              .picklePositions(tree :: Nil, positionWarnings)
 
-        if !ctx.settings.YdropComments.value then
-          new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
+          if !ctx.settings.YdropComments.value then
+            new CommentPickler(pickler, treePkl.buf.addrOfTree, treePkl.docString)
+              .pickleComment(tree)
 
-        val pickled = pickler.assembleParts()
+          val pickled = pickler.assembleParts()
 
-        def rawBytes = // not needed right now, but useful to print raw format.
-          pickled.iterator.grouped(10).toList.zipWithIndex.map {
-            case (row, i) => s"${i}0: ${row.mkString(" ")}"
-          }
+          def rawBytes = // not needed right now, but useful to print raw format.
+            pickled.iterator.grouped(10).toList.zipWithIndex.map {
+              case (row, i) => s"${i}0: ${row.mkString(" ")}"
+            }
 
-        // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-        if pickling ne noPrinter then
-          pickling.synchronized {
-            println(i"**** pickled info of $cls")
-            println(new TastyPrinter(pickled).printContents())
-          }
-        pickled
-      }(using ExecutionContext.global)
-      def force(): Array[Byte] = Await.result(pickledF, Duration.Inf)
+          // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
+          if pickling ne noPrinter then
+            pickling.synchronized {
+              println(i"**** pickled info of $cls")
+              println(new TastyPrinter(pickled).printContents())
+            }
+          pickled
+        }(using ExecutionContext.global)
+      }
+      def force(): Array[Byte] =
+        val result = Await.result(pickledF, Duration.Inf)
+        positionWarnings.foreach(report.warning(_))
+        result
 
-      // Turn off parallelism because it lead to non-deterministic CI failures:
-      // - https://github.com/lampepfl/dotty/runs/1029579877?check_suite_focus=true#step:10:967
-      // - https://github.com/lampepfl/dotty/runs/1027582846?check_suite_focus=true#step:10:564
-      //
-      // Turning off parallelism in -Ytest-pickler and Interactive mode seems to
-      // work around the problem but I would prefer to not enable this at all
-      // until the root cause of the issue is understood since it might manifest
-      // itself in other situations too.
-      if !ctx.settings.YparallelPickler.value then force()
+      if !Pickler.ParallelPickling || ctx.settings.YtestPickler.value then force()
 
       unit.pickled += (cls -> force)
-    }
+    end for
   }
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {

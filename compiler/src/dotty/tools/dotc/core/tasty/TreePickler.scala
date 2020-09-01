@@ -10,6 +10,7 @@ import ast.Trees._
 import ast.{untpd, tpd}
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, Flags._
 import Denotations.MultiDenotation
+import Comments.{Comment, CommentsContext}
 import typer.Inliner
 import NameKinds._
 import StdNames.nme
@@ -18,6 +19,7 @@ import printing.Printer
 import printing.Texts._
 import util.SourceFile
 import annotation.constructorOnly
+import collection.mutable
 
 object TreePickler {
 
@@ -43,6 +45,25 @@ class TreePickler(pickler: TastyPickler) {
   private val symRefs = Symbols.newMutableSymbolMap[Addr]
   private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
   private val pickledTypes = new java.util.IdentityHashMap[Type, Any] // Value type is really Addr, but that's not compatible with null
+
+  /** A list of annotation trees for every member definition, so that later
+   *  parallel position pickling does not need to access and force symbols.
+   */
+  private val annotTrees = util.HashTable[untpd.MemberDef, mutable.ListBuffer[Tree]]()
+
+  /** A map from member definitions to their doc comments, so that later
+   *  parallel comment pickling does not need to access symbols of trees (which
+   *  would involve accessing symbols of named types and possibly changing phases
+   *  in doing so).
+   */
+  private val docStrings = util.HashTable[untpd.MemberDef, Comment]()
+
+  def treeAnnots(tree: untpd.MemberDef): List[Tree] =
+    val ts = annotTrees.lookup(tree)
+    if ts == null then Nil else ts.toList
+
+  def docString(tree: untpd.MemberDef): Option[Comment] =
+    Option(docStrings.lookup(tree))
 
   private def withLength(op: => Unit) = {
     val lengthAddr = reserveRef(relative = true)
@@ -309,7 +330,8 @@ class TreePickler(pickler: TastyPickler) {
     if (!tree.isEmpty) pickleTree(tree)
   }
 
-  def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(using Context): Unit = {
+  def pickleDef(tag: Int, mdef: MemberDef, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ())(using Context): Unit = {
+    val sym = mdef.symbol
     assert(symRefs(sym) == NoAddr, sym)
     registerDef(sym)
     writeByte(tag)
@@ -321,16 +343,21 @@ class TreePickler(pickler: TastyPickler) {
         case _ if tpt.isType => pickleTpt(tpt)
       }
       pickleTreeUnlessEmpty(rhs)
-      pickleModifiers(sym)
+      pickleModifiers(sym, mdef)
     }
+    for
+      docCtx <- ctx.docCtx
+      comment <- docCtx.docstring(sym)
+    do
+      docStrings.enter(mdef, comment)
   }
 
   def pickleParam(tree: Tree)(using Context): Unit = {
     registerTreeAddr(tree)
     tree match {
-      case tree: ValDef => pickleDef(PARAM, tree.symbol, tree.tpt)
-      case tree: DefDef => pickleDef(PARAM, tree.symbol, tree.tpt, tree.rhs)
-      case tree: TypeDef => pickleDef(TYPEPARAM, tree.symbol, tree.rhs)
+      case tree: ValDef => pickleDef(PARAM, tree, tree.tpt)
+      case tree: DefDef => pickleDef(PARAM, tree, tree.tpt, tree.rhs)
+      case tree: TypeDef => pickleDef(TYPEPARAM, tree, tree.rhs)
     }
   }
 
@@ -520,7 +547,7 @@ class TreePickler(pickler: TastyPickler) {
             patterns.foreach(pickleTree)
           }
         case tree: ValDef =>
-          pickleDef(VALDEF, tree.symbol, tree.tpt, tree.rhs)
+          pickleDef(VALDEF, tree, tree.tpt, tree.rhs)
         case tree: DefDef =>
           def pickleParamss(paramss: List[List[ValDef]]): Unit = paramss match
             case Nil =>
@@ -531,9 +558,9 @@ class TreePickler(pickler: TastyPickler) {
           def pickleAllParams =
             pickleParams(tree.tparams)
             pickleParamss(tree.vparamss)
-          pickleDef(DEFDEF, tree.symbol, tree.tpt, tree.rhs, pickleAllParams)
+          pickleDef(DEFDEF, tree, tree.tpt, tree.rhs, pickleAllParams)
         case tree: TypeDef =>
-          pickleDef(TYPEDEF, tree.symbol, tree.rhs)
+          pickleDef(TYPEDEF, tree, tree.rhs)
         case tree: Template =>
           registerDef(tree.symbol)
           writeByte(TEMPLATE)
@@ -648,7 +675,7 @@ class TreePickler(pickler: TastyPickler) {
     pickleName(id.name)
   }
 
-  def pickleModifiers(sym: Symbol)(using Context): Unit = {
+  def pickleModifiers(sym: Symbol, mdef: MemberDef)(using Context): Unit = {
     import Flags._
     var flags = sym.flags
     val privateWithin = sym.privateWithin
@@ -660,7 +687,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(ParamAccessor) && sym.isTerm && !sym.isSetter)
       flags = flags &~ ParamAccessor // we only generate a tag for parameter setters
     pickleFlags(flags, sym.isTerm)
-    sym.annotations.foreach(pickleAnnotation(sym, _))
+    val annots = sym.annotations.foreach(pickleAnnotation(sym, mdef, _))
   }
 
   def pickleFlags(flags: FlagSet, isTerm: Boolean)(using Context): Unit = {
@@ -723,12 +750,15 @@ class TreePickler(pickler: TastyPickler) {
       ann.symbol == defn.BodyAnnot // inline bodies are reconstituted automatically when unpickling
   }
 
-  def pickleAnnotation(owner: Symbol, ann: Annotation)(using Context): Unit = {
-    if (!isUnpicklable(owner, ann)) {
+  def pickleAnnotation(owner: Symbol, mdef: MemberDef, ann: Annotation)(using Context): Unit =
+    if !isUnpicklable(owner, ann) then
       writeByte(ANNOTATION)
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
-    }
-  }
+      var treeBuf = annotTrees.lookup(mdef)
+      if treeBuf == null then
+        treeBuf = new mutable.ListBuffer[Tree]
+        annotTrees.enter(mdef, treeBuf)
+      treeBuf += ann.tree
 
 // ---- main entry points ---------------------------------------
 
