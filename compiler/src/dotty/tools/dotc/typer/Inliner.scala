@@ -72,7 +72,8 @@ object Inliner {
   def inlineCall(tree: Tree)(using Context): Tree = {
     val startId = ctx.source.nextId
 
-    if tree.symbol.denot != SymDenotations.NoDenotation && tree.symbol.owner.companionModule == defn.CompiletimeTestingPackageObject
+    if tree.symbol.denot != SymDenotations.NoDenotation
+        && tree.symbol.owner.companionModule == defn.CompiletimeTestingPackageObject then
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
@@ -298,7 +299,7 @@ object Inliner {
 
           val parseErrors = ctx2.reporter.allErrors.toList
           res ++= parseErrors.map(e => ErrorKind.Parser -> e)
-          if !stopAfterParser || res.isEmpty
+          if !stopAfterParser || res.isEmpty then
             ctx2.typer.typed(tree2)(using ctx2)
             val typerErrors = ctx2.reporter.allErrors.filterNot(parseErrors.contains)
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)

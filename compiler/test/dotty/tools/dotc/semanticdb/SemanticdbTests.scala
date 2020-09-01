@@ -43,7 +43,7 @@ class SemanticdbTests:
     val errors = mutable.ArrayBuffer.empty[Path]
     val metacSb: StringBuilder = StringBuilder(5000)
     def collectErrorOrUpdate(expectPath: Path, obtained: String) =
-      if updateExpectFiles
+      if updateExpectFiles then
         Files.write(expectPath, obtained.getBytes(StandardCharsets.UTF_8))
         println("updated: " + expectPath)
       else
@@ -78,7 +78,7 @@ class SemanticdbTests:
       |Or else update all expect files with
       |  sbt 'dotty-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
     Files.walk(target).sorted(Comparator.reverseOrder).forEach(Files.delete)
-    if errors.nonEmpty
+    if errors.nonEmpty then
       fail(s"${errors.size} errors in expect test.")
 
   def trimTrailingWhitespace(s: String): String =
@@ -148,7 +148,7 @@ object SemanticdbTests:
       )
       val isPrimaryConstructor =
         symtab.get(occ.symbol).exists(_.isPrimary)
-      if !occ.symbol.isPackage && !isPrimaryConstructor
+      if !occ.symbol.isPackage && !isPrimaryConstructor then
         assert(end <= doc.text.length,
           s"doc is only ${doc.text.length} - offset=$offset, end=$end , symbol=${occ.symbol} in source ${sourceFile.name}")
         sb.append(doc.text.substring(offset, end))

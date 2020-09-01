@@ -59,12 +59,12 @@ sealed trait CommunityProject:
 
   /** Publish this project to the local Maven repository */
   final def publish(): Unit =
-    if !published
+    if !published then
       log(s"Publishing $project")
-      if publishCommand eq null
+      if publishCommand eq null then
         throw RuntimeException(s"Publish command is not specified for $project. Project details:\n$this")
       val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ publishCommand): _*)
-      if exitCode != 0
+      if exitCode != 0 then
         throw RuntimeException(s"Publish command exited with code $exitCode for project $project. Project details:\n$this")
       published = true
 end CommunityProject

@@ -79,7 +79,7 @@ trait ConstraintHandling {
 
   protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using Context): Boolean =
     if !constraint.contains(param) then true
-    else if !isUpper && param.occursIn(bound)
+    else if !isUpper && param.occursIn(bound) then
       // We don't allow recursive lower bounds when defining a type,
       // so we shouldn't allow them as constraints either.
       false

@@ -112,7 +112,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
   override def transformAssign(tree: Assign)(using Context): Tree =
     val lsym = tree.lhs.symbol.asTerm
-    if (lsym.is(Method))
+    if lsym.is(Method) then
       ensureSetter(lsym)
       tree.lhs.becomes(tree.rhs).withSpan(tree.span)
     else tree
