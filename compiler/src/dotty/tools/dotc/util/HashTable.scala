@@ -138,5 +138,5 @@ class HashTable[Key >: Null <: AnyRef, Value >: Null <: AnyRef]
     yield (keyAt(idx), valueAt(idx))
 
   override def toString: String =
-    iterator.map((k, v) => s"$k -> $v").mkString("LinearTable(", ", ", ")")
+    iterator.map((k, v) => s"$k -> $v").mkString("HashTable(", ", ", ")")
 end HashTable
