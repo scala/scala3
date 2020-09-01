@@ -701,6 +701,28 @@ object Contexts {
     val ectx = exploreCtx
     try op(using ectx) finally wrapUpExplore(ectx)
 
+  private def changeOwnerCtx(owner: Symbol)(using Context): Context =
+    val base = ctx.base
+    import base._
+    val nestedCtx =
+      if changeOwnersInUse < changeOwnerContexts.size then
+        changeOwnerContexts(changeOwnersInUse).reuseIn(ctx)
+      else
+        val c = FreshContext(ctx.base).init(ctx, ctx)
+        changeOwnerContexts += c
+        c
+    changeOwnersInUse += 1
+    nestedCtx.setOwner(owner).setTyperState(ctx.typerState)
+
+  /** Run `op` in current context, with a mode is temporarily set as specified.
+   */
+  inline def runWithOwner[T](owner: Symbol)(inline op: Context ?=> T)(using Context): T =
+    if Config.reuseOwnerContexts then
+      try op(using changeOwnerCtx(owner))
+      finally ctx.base.changeOwnersInUse -= 1
+    else
+      op(using ctx.fresh.setOwner(owner))
+
   /** The type comparer of the kind created by `maker` to be used.
    *  This is the currently active type comparer CMP if
    *   - CMP is associated with the current context, and
@@ -889,6 +911,9 @@ object Contexts {
 
     private[Contexts] val exploreContexts = new mutable.ArrayBuffer[FreshContext]
     private[Contexts] var exploresInUse: Int = 0
+
+    private[Contexts] val changeOwnerContexts = new mutable.ArrayBuffer[FreshContext]
+    private[Contexts] var changeOwnersInUse: Int = 0
 
     private[Contexts] val comparers = new mutable.ArrayBuffer[TypeComparer]
     private[Contexts] var comparersInUse: Int = 0

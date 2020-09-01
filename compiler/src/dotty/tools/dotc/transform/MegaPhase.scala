@@ -213,11 +213,10 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   /** Transform full tree using all phases in this group that have idxInGroup >= start */
   def transformTree(tree: Tree, start: Int)(using Context): Tree = {
-    def localContext(using Context) = {
+
+    inline def inLocalContext[T](inline op: Context ?=> T)(using Context): T =
       val sym = tree.symbol
-      val owner = if (sym.is(PackageVal)) sym.moduleClass else sym
-      ctx.fresh.setOwner(owner)
-    }
+      runWithOwner(if (sym.is(PackageVal)) sym.moduleClass else sym)(op)
 
     def transformNamed(tree: Tree, start: Int, outerCtx: Context): Tree = tree match {
       case tree: Ident =>
@@ -236,8 +235,10 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
             val rhs = transformTree(tree.rhs, start)
             cpy.ValDef(tree)(tree.name, tpt, rhs)
           }
-          if (tree.isEmpty) tree
-          else goValDef(mapValDef(using if (tree.symbol.exists) localContext else ctx), start)
+          if tree.isEmpty then tree
+          else goValDef(
+            if tree.symbol.exists then inLocalContext(mapValDef) else mapValDef,
+            start)
         }
       case tree: DefDef =>
         inContext(prepDefDef(tree, start)(using outerCtx)) {
@@ -248,11 +249,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
             val rhs = transformTree(tree.rhs, start)
             cpy.DefDef(tree)(tree.name, tparams, vparamss, tpt, rhs)
           }
-          goDefDef(mapDefDef(using localContext), start)
+          goDefDef(inLocalContext(mapDefDef), start)
         }
       case tree: TypeDef =>
         inContext(prepTypeDef(tree, start)(using outerCtx)) {
-          val rhs = transformTree(tree.rhs, start)(using localContext)
+          val rhs = inLocalContext(transformTree(tree.rhs, start))
           goTypeDef(cpy.TypeDef(tree)(tree.name, rhs), start)
         }
       case tree: Labeled =>
@@ -381,7 +382,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
             val stats = transformStats(tree.stats, tree.symbol, start)
             cpy.PackageDef(tree)(pid, stats)
           }
-          goPackageDef(mapPackage(using localContext), start)
+          goPackageDef(inLocalContext(mapPackage), start)
         }
       case tree: Try =>
         inContext(prepTry(tree, start)(using outerCtx)) {
