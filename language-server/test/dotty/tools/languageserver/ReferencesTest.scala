@@ -201,7 +201,7 @@ class ReferencesTest {
       .references(m3 to m4, List(m3 to m4), withDecl = false)
   }
 
-  @Test def findReferencesInUntouchedProject: Unit = {
+  @Test def findReferencesInUntouchedProject: Unit = if (!scala.util.Properties.isWin) {
     val p0 = Project.withSources(
       code"""package hello
             |object A { def ${m1}foo${m2} = 1 }"""

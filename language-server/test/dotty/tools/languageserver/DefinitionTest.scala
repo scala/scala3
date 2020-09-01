@@ -208,7 +208,7 @@ class DefinitionTest {
       .definition(m9 to m10, List(m3 to m4))
   }
 
-  @Test def definitionFromTasty: Unit = {
+  @Test def definitionFromTasty: Unit = if (!scala.util.Properties.isWin) {
     withSources(
       tasty"""package mypackage
               class ${m1}A${m2}""",
