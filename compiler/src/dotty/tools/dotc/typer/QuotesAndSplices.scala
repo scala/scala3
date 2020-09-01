@@ -240,7 +240,7 @@ trait QuotesAndSplices {
           args match // TODO support these patterns. Possibly using scala.quoted.util.Var
             case SeqLiteral(args, _) =>
               for arg <- args; if arg.symbol.is(Mutable) do
-                report.error("Implementation restriction: refercences to `var`s cannot be used in higher-horder pattern", arg.srcPos)
+                report.error("Implementation restriction: references to `var`s cannot be used in higher-order pattern", arg.srcPos)
           try ref(defn.InternalQuotedMatcher_higherOrderHole.termRef).appliedToTypeTrees(targs).appliedTo(args).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen
