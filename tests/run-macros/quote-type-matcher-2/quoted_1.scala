@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Macros {
 
-  inline def lift[A]: String = ${ matchesExpr('[A]) }
+  inline def lift[A]: String = ${ matchesExpr(Type[A]) }
 
   private def matchesExpr(tp: Type[_])(using QuoteContext): Expr[String] = {
     def lift(tp: Type[_]): String = tp match {

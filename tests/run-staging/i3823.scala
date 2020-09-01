@@ -4,8 +4,8 @@ object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuoteContext {
     def f[T: Type](x: Expr[T])(t: Type[T]) = '{
-      val z: $t = $x
+      val z: t.T = $x
     }
-    println(f('{2})('[Int]).show)
+    println(f('{2})(Type[Int]).show)
   }
 }

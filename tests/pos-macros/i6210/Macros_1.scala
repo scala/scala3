@@ -5,10 +5,10 @@ object Macro {
     ${ impl[A, B] }
 
   def impl[A : Type, B : Type](using QuoteContext): Expr[Any] = {
-    val t = '[Map[A, B]]
+    val t = Type[Map[A, B]]
     '{
-      new Object().asInstanceOf[$t]
-      ???.asInstanceOf[$t]
+      new Object().asInstanceOf[t.T]
+      ???.asInstanceOf[t.T]
     }
   }
 }

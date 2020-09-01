@@ -7,7 +7,7 @@ trait Show[T] {
 def showInterpolatorImpl(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] =
   argsExpr.unseal match
     case '{ $arg: $t } => // error
-    case '[ Int ] => // error
+    case Type[ Int ] => // error
   ???
 
 extension (inline sc: StringContext) inline def show (args: Any*): String = ${ showInterpolatorImpl('sc, 'args) }

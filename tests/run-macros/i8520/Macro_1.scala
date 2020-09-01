@@ -8,6 +8,6 @@ def testExpr[T[_]: Type](using QuoteContext): Expr[Unit] = {
      if f.is(Flags.Covariant) then "+"
      else if f.is(Flags.Contravariant) then "-"
      else " "
-  val t = '[T].unseal.tpe.typeSymbol.typeMembers.map(x => (x.name, variance(x.flags)))
+  val t = quoted.Type[T].unseal.tpe.typeSymbol.typeMembers.map(x => (x.name, variance(x.flags)))
   '{ println(${Expr(t.toString)}) }
 }

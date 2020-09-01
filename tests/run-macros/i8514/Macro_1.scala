@@ -10,9 +10,9 @@ def testExpr(using QuoteContext): Expr[Unit] = {
   import qctx.tasty._
 
   '{
-    println(${Expr('[Object].unseal.tpe.baseClasses.toString)})
-    println(${Expr('[A].unseal.tpe.baseClasses.toString)})
-    println(${Expr('[B].unseal.tpe.baseClasses.toString)})
-    println(${Expr('[C].unseal.tpe.baseClasses.toString)})
+    println(${Expr(quoted.Type[Object].unseal.tpe.baseClasses.toString)})
+    println(${Expr(quoted.Type[A].unseal.tpe.baseClasses.toString)})
+    println(${Expr(quoted.Type[B].unseal.tpe.baseClasses.toString)})
+    println(${Expr(quoted.Type[C].unseal.tpe.baseClasses.toString)})
   }
 }

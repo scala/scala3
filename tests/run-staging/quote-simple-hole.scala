@@ -15,8 +15,8 @@ object Test {
     assert(x eq a)
     assert(x eq b)
 
-    val i = '[Int]
-    val j = '[$i]
+    val i = Type[Int]
+    val j = Type[i.T]
     assert(i eq j)
   }
 }

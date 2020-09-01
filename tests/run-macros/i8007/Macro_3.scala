@@ -35,7 +35,7 @@ object Eq {
   given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
     import qctx.tasty._
 
-    val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get
+    val ev: Expr[Mirror.Of[T]] = Expr.summon(using quoted.Type[Mirror.Of[T]]).get
 
     ev match {
       case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes }} =>

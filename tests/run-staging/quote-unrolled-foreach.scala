@@ -57,7 +57,7 @@ object Test {
     val size = ($arrRef).length
     var i = 0
     while (i < size) {
-      val element: $t = ($arrRef)(i)
+      val element: t.T = ($arrRef)(i)
       ($f)(element)
       i += 1
     }

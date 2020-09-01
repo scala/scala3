@@ -3,10 +3,10 @@ import scala.quoted._
 object Macros {
 
   inline def isTypeEqual[T, U]: Boolean =
-    ${isTypeEqualImpl('[T], '[U])}
+    ${isTypeEqualImpl(Type[T], Type[U])}
 
   inline def isSubTypeOf[T, U]: Boolean =
-    ${isSubTypeOfImpl('[T], '[U])}
+    ${isSubTypeOfImpl(Type[T], Type[U])}
 
   def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(using QuoteContext) : Expr[Boolean] = {
     import qctx.tasty._

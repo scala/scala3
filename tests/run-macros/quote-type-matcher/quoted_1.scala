@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Macros {
 
-  inline def matches[A, B]: Unit = ${ matchesExpr('[A], '[B]) }
+  inline def matches[A, B]: Unit = ${ matchesExpr(Type[A], Type[B]) }
 
   private def matchesExpr[A, B](a: Type[A], b: Type[B])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._

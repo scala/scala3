@@ -128,11 +128,11 @@ package liftable {
 
   object Lets {
     def letVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T], qctx: QuoteContext): Expr[U] =
-      '{ val letVal: $t = $expr; ${ body('letVal) } }
+      '{ val letVal: t.T = $expr; ${ body('letVal) } }
     def letLazyVal[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T], qctx: QuoteContext): Expr[U] =
-      '{ lazy val letLazyVal: $t = $expr; ${ body('letLazyVal) } }
+      '{ lazy val letLazyVal: t.T = $expr; ${ body('letLazyVal) } }
     def letDef[T, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit t: Type[T], qctx: QuoteContext): Expr[U] =
-      '{ def letDef: $t = $expr; ${ body('letDef) } }
+      '{ def letDef: t.T = $expr; ${ body('letDef) } }
   }
 
   object Loops {
@@ -145,7 +145,7 @@ package liftable {
 
     implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: Type[T]) {
       def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: QuoteContext): Expr[U] =
-        '{ ($list).foldLeft[$u]($acc)($f) }
+        '{ ($list).foldLeft[u.T]($acc)($f) }
       def foreach(f: Expr[T => Unit])(using QuoteContext): Expr[Unit] =
         '{ ($list).foreach($f) }
     }

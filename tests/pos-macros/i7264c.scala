@@ -4,6 +4,6 @@ class Foo {
     case '{ $x: $t0 } =>
       t0 match
         case '[ *:[Int, $t] ] =>
-          '[ *:[Int, $t] ]
+          Type[ *:[Int, t.T] ]
   }
 }

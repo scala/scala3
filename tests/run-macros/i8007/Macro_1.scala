@@ -19,7 +19,7 @@ object Macro1 {
   def test1Impl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[List[String]] = {
     import qctx.tasty._
 
-    val mirrorTpe = '[Mirror.Of[T]]
+    val mirrorTpe = quoted.Type[Mirror.Of[T]]
 
     Expr.summon(using mirrorTpe).get match {
       case '{ $m: Mirror.ProductOf[T]{ type MirroredElemLabels = $t } } => {

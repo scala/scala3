@@ -2,21 +2,21 @@ import scala.quoted._
 def test(using QuoteContext) = {
   def f = {
     {
-      '[String]
-      '[String]
+      Type[String]
+      Type[String]
     }
 
-    '[String] match { case _ => }
-    try '[String] catch { case _ => }
+    Type[String] match { case _ => }
+    try Type[String] catch { case _ => }
 
-    '[String]
-    '[String]
+    Type[String]
+    Type[String]
   }
 
   def bar[T](t: quoted.Type[T]) = ???
-  bar('[String])
+  bar(Type[String])
 
   class Baz[T](t: quoted.Type[T])
-  new Baz('[String])
+  new Baz(Type[String])
 
 }

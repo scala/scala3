@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Macros {
 
-  implicit inline def printType[T]: Unit = ${ impl('[T]) }
+  implicit inline def printType[T]: Unit = ${ impl(Type[T]) }
 
   def impl[T](x: Type[T])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.tasty._

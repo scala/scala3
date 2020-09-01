@@ -58,6 +58,7 @@ trait QuotesAndSplices {
       if ctx.mode.is(Mode.Pattern) then
         typedQuotePattern(tree, pt, qctx)
       else if (tree.quoted.isType)
+        report.error(em"Use Type[${tree.quoted}] instead", tree.srcPos)
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_apply.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
       else
         typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(using pushQuoteContext(qctx)).select(nme.apply).appliedTo(qctx)
@@ -171,6 +172,7 @@ trait QuotesAndSplices {
           using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
       pat.select(tpnme.spliceType)
     else
+      report.error(em"Use ${tree.expr}.T instead", tree.srcPos)
       typedSelect(untpd.Select(tree.expr, tpnme.spliceType), pt)(using spliceContext).withSpan(tree.span)
   }
 

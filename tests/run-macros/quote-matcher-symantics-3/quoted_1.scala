@@ -40,10 +40,10 @@ object Macros {
         '{ $sym.leq(${lift(x)}, ${lift(y)}).asInstanceOf[R[T]] }
 
       case '{ ${f}($arg: $t): $u } =>
-        '{ $sym.app[$t, $u](${lift(f)}, ${lift(arg)}).asInstanceOf[R[T]] }
+        '{ $sym.app[t.T, u.T](${lift(f)}, ${lift(arg)}).asInstanceOf[R[T]] }
 
       case '{ (if ($cond) $thenp else $elsep): $t } =>
-        '{ $sym.ifThenElse[$t](${lift(cond)}, ${lift(thenp)}, ${lift(elsep)}) }.asInstanceOf[Expr[R[T]]]
+        '{ $sym.ifThenElse[t.T](${lift(cond)}, ${lift(thenp)}, ${lift(elsep)}) }.asInstanceOf[Expr[R[T]]]
 
       case '{ (x0: Int) => $bodyFn(x0): Any } =>
         val (i, nEnvVar) = freshEnvVar[Int]()
@@ -61,7 +61,7 @@ object Macros {
         '{ $sym.lam((x: R[Int => Int]) => ${given Env = envWith(i, 'x)(using env); lift(body2)}).asInstanceOf[R[T]] }
 
       case '{ Symantics.fix[$t, $u]($f) } =>
-        '{ $sym.fix[$t, $u]((x: R[$t => $u]) => $sym.app(${lift(f)}, x)).asInstanceOf[R[T]] }
+        '{ $sym.fix[t.T, u.T]((x: R[t.T => u.T]) => $sym.app(${lift(f)}, x)).asInstanceOf[R[T]] }
 
       case FromEnv(expr) => expr.asInstanceOf[Expr[R[T]]]
 
