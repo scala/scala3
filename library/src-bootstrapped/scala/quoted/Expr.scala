@@ -37,6 +37,7 @@ abstract class Expr[+T] private[scala] {
     else
       throw new scala.tasty.reflect.ExprCastError(
         s"""Expr: ${tree.show}
+           |of type: ${tree.tpe.show}
            |did not conform to type: ${expectedType.show}
            |""".stripMargin
       )
