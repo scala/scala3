@@ -27,7 +27,7 @@ object Macros {
         typeOf[RefineMe],
         "T",
         TypeBounds(typeOf[Int], typeOf[Int]))
-    val x6T = AppliedType(Type(classOf[List[_]]), List(typeOf[Int]))
+    val x6T = Type(classOf[List[_]]).appliedTo(List(typeOf[Int]))
     val x7T = AnnotatedType(ConstantType(Constant(7)), '{ new TestAnnotation }.unseal)
     val x8T =
       MatchType(
@@ -37,7 +37,7 @@ object Macros {
           TypeLambda(
             List("t"),
             _ => List(TypeBounds(typeOf[Nothing], typeOf[Any])),
-            tl => AppliedType(MatchCaseType, List(AppliedType(Type(classOf[List[_]]), List(tl.param(0))), tl.param(0)))))
+            tl => MatchCaseType.appliedTo(List(Type(classOf[List[_]]).appliedTo(tl.param(0)), tl.param(0)))))
       )
 
     assert(x1T =:= '[1].unseal.tpe)

@@ -604,6 +604,9 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   /** The type <this . sym>, reduced if possible */
   def Type_select(self: Type)(sym: Symbol)(using ctx: Context): Type
 
+  /** The current type applied to given type arguments: `this[targ0, ..., targN]` */
+  def Type_appliedTo(self: Type)(targs: List[TypeOrBounds]): Type
+
   def ConstantType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ConstantType]
 
   def ConstantType_apply(const : Constant)(using ctx : Context) : ConstantType
@@ -643,8 +646,6 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def AppliedType_tycon(self: AppliedType)(using ctx: Context): Type
   def AppliedType_args(self: AppliedType)(using ctx: Context): List[TypeOrBounds]
-
-  def AppliedType_apply(tycon: Type, args: List[TypeOrBounds])(using ctx: Context) : AppliedType
 
   def AnnotatedType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AnnotatedType]
 

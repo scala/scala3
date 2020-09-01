@@ -1462,6 +1462,13 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
       /** The type <this . sym>, reduced if possible */
       def select(sym: Symbol)(using ctx: Context): Type = reflectSelf.Type_select(self)(sym)
+
+      /** The current type applied to given type arguments: `this[targ]` */
+      def appliedTo(targ: TypeOrBounds): Type = reflectSelf.Type_appliedTo(self)(List(targ))
+
+      /** The current type applied to given type arguments: `this[targ0, ..., targN]` */
+      def appliedTo(targs: List[TypeOrBounds]): Type = reflectSelf.Type_appliedTo(self)(targs)
+
     end extension
   end Type
 
@@ -1549,14 +1556,12 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   given AppliedTypeOps as AppliedType.type = AppliedType
 
   object AppliedType:
-    def apply(tycon: Type, args: List[TypeOrBounds])(using ctx: Context): AppliedType =
-      reflectSelf.AppliedType_apply(tycon, args)
-    def unapply(x: AppliedType)(using ctx: Context): Option[(Type, List[TypeOrBounds /* Type | TypeBounds */])] =
+    def unapply(x: AppliedType)(using ctx: Context): Option[(Type, List[TypeOrBounds])] =
       Some((x.tycon, x.args))
 
     extension (self: AppliedType):
       def tycon(using ctx: Context): Type = reflectSelf.AppliedType_tycon(self)
-      def args(using ctx: Context): List[TypeOrBounds /* Type | TypeBounds */] = reflectSelf.AppliedType_args(self)
+      def args(using ctx: Context): List[TypeOrBounds] = reflectSelf.AppliedType_args(self)
     end extension
   end AppliedType
 
