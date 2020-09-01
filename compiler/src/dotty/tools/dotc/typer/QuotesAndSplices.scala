@@ -237,6 +237,10 @@ trait QuotesAndSplices {
           val newSplice = ref(defn.InternalQuoted_exprSplice).appliedToType(tpt1.tpe).appliedTo(Typed(pat, exprTpt))
           transform(newSplice)
         case Apply(TypeApply(fn, targs), Apply(sp, pat :: Nil) :: args :: Nil) if fn.symbol == defn.InternalQuotedMatcher_patternHigherOrderHole =>
+          args match // TODO support these patterns. Possibly using scala.quoted.util.Var
+            case SeqLiteral(args, _) =>
+              for arg <- args; if arg.symbol.is(Mutable) do
+                report.error("Implementation restriction: refercences to `var`s cannot be used in higher-horder pattern", arg.srcPos)
           try ref(defn.InternalQuotedMatcher_higherOrderHole.termRef).appliedToTypeTrees(targs).appliedTo(args).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen
