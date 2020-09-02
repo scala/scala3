@@ -46,3 +46,5 @@ class StructuralTypes extends SingleFileTest("structuralTypes", SingleFileTest.m
 class OpaqueTypes extends SingleFileTest("opaqueTypes", SingleFileTest.all)
 
 // class GivenSignatures extends SingleFileTest("givenSignatures", SingleFileTest.all)
+
+class Annotations extends SingleFileTest("annotations", SingleFileTest.all)

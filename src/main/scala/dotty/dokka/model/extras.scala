@@ -97,4 +97,9 @@ case class AnnotationsInfo(val annotations: List[AnnotationsInfo.Annotation]) ex
     override def getKey = AnnotationsInfo
 
 object AnnotationsInfo extends BaseKey[Documentable, AnnotationsInfo]:
-    case class Annotation(val inner: List[JProjection])
+    case class Annotation(val dri: DRI, val params: List[AnnotationParameter])
+
+    sealed trait AnnotationParameter
+    case class PrimitiveParameter(val name: Option[String] = None, val value: String) extends AnnotationParameter
+    case class LinkParameter(val name: Option[String] = None, val dri: DRI, val value: String) extends AnnotationParameter
+    case class UnresolvedParameter(val name: Option[String] = None, val unresolvedText: String) extends AnnotationParameter

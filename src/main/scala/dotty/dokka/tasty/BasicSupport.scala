@@ -14,6 +14,27 @@ trait BasicSupport:
   object SymOps extends SymOps[reflect.type](reflect)
   export SymOps._
 
+  def parseAnnotation(annotTerm: Term): AnnotationsInfo.Annotation = {
+    val dri = annotTerm.tpe.typeSymbol.dri
+    val params = annotTerm match {
+      case Apply(target, appliedWith) => {
+        appliedWith.map {
+          case Literal(Constant(value)) => AnnotationsInfo.PrimitiveParameter(None, value match {
+            case s: String => "\"" + s"$s" + "\""
+            case other => other.toString()
+          })
+          case Select(qual, name) => 
+            val dri = qual.tpe.termSymbol.companionClass.dri
+            AnnotationsInfo.LinkParameter(None, dri, s"${dri.getClassNames}.$name")
+          
+          case other => AnnotationsInfo.UnresolvedParameter(None, other.show)
+        }
+      }
+  }
+
+    AnnotationsInfo.Annotation(dri, params)
+  }
+
   extension (sym: reflect.Symbol):
     def documentation(using cxt: reflect.Context) = sym.comment match 
         case Some(comment) => 
@@ -26,7 +47,9 @@ trait BasicSupport:
       path match{
         case Some(p) => Map(sourceSet.getSourceSet -> TastyDocumentableSource(p, sym.pos.startLine))
         case None => Map.empty
-      }   
+      }
+
+    def getAnnotations(): List[AnnotationsInfo.Annotation] = sym.annots.map(parseAnnotation).reverse
   
   private val emptyDRI =  DRI.Companion.getTopLevel
 
@@ -95,6 +118,8 @@ class SymOps[R <: Reflection](val r: R) {
           pointsTo, // TODO different targets?
           s"${sym.show}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )
+
+  
 
   private val emptyDRI =  DRI.Companion.getTopLevel
 }

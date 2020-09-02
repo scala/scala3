@@ -14,12 +14,15 @@ import dokka.java.api._
 import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
 
-class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logger: DokkaLogger) extends SignatureProvider:
+class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logger: DokkaLogger) extends SignatureProvider with ScalaSignatureUtils:
     private val default = new KotlinSignatureProvider(contentConverter, logger)
+    private val styles = Set(TextStyle.Monospace).asInstanceOf[Set[Style]]
     private val contentBuilder = new ScalaPageContentBuilder(contentConverter, this, logger)
 
-    def (tokens: Seq[String]).toSignatureString(): String =
-        tokens.filter(_.trim.nonEmpty).mkString(""," "," ")
+    private def signatureContent(d: Documentable)(
+        func: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
+    ) = contentBuilder.contentForDocumentable(d, kind = ContentKind.Symbol, styles = styles, buildBlock = func)
+
 
     override def signature(documentable: Documentable) = documentable match {
         case extension: DFunction if extension.get(MethodExtension).extensionInfo.isDefined =>
@@ -41,9 +44,6 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
         case _ => default.signature(documentable)
     }
 
-    val styles = Set(TextStyle.Monospace).asInstanceOf[Set[Style]]
-
-    val utils: JvmSignatureUtils = KotlinSignatureUtils.INSTANCE
 
     private def enumEntrySignature(entry: DClass): ContentNode =
         val ext = entry.get(ClasslikeExtension)
@@ -93,7 +93,7 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
         val ext = clazz.get(ClasslikeExtension)
         signatureContent(clazz){ builder =>
             val temp = builder
-            //.annotationsBlock(clazz)
+                .annotationsBlock(clazz)
                 .modifiersAndVisibility(clazz, ext.kind.name)
                 .driLink(clazz.getName, clazz.getDri)
                 .generics(clazz)
@@ -120,15 +120,15 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
             } else {
                 extension.getParameters.asScala(0)
             }
-            //.annotationsBlock(builder, extension)
+            val bldr = builder.annotationsBlock(extension)
             val bdr = (
                 if(!grouped){
-                builder
+                bldr
                     .text("extension ")
                     .text(s" (${extendedSymbol.getName}: ")
                     .typeSignature(extendedSymbol.getType)
                     .text(") ")
-                } else builder
+                } else bldr
             )
                 .modifiersAndVisibility(extension, "def")
                 .driLink(extension.getName, extension.getDri)
@@ -158,7 +158,7 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
     private def methodSignature(method: DFunction): ContentNode = signatureContent(method){ 
         builder => 
             val bdr = builder
-            //utils.annotationsBlock(builder, method)
+            .annotationsBlock(method)
             .modifiersAndVisibility(method, "def")
             .driLink(method.getName, method.getDri)
             .generics(method)  
@@ -182,8 +182,7 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
         val isOpaque = modifiers != null && modifiers.getContent.defaultValue.asScala.contains(ScalaOnlyModifiers.Opaque)
         signatureContent(typeDef){ builder => 
             val bdr = builder
-            //utils.annotationsBlock(builder, typeDef)
-            // builder.addText("TODO modifiers")
+                .annotationsBlock(typeDef)
                 .modifiersAndVisibility(typeDef, "type")
                 .driLink(typeDef.getName, typeDef.getDri)
                 .generics(typeDef)
@@ -209,9 +208,8 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
 
     private def fieldSignature(property: DProperty, kind: String): ContentNode =
         signatureContent(property){ builder => builder
-            //utils.annotationsBlock(builder, property)
+            .annotationsBlock(property)
             .modifiersAndVisibility(property, kind)
-            // builder.addText("TODO modifiers")
             .driLink(property.getName, property.getDri)
             .text(":")
             .text(" ")
@@ -227,82 +225,3 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
             .typeSignature(parameter.getType)
             .text(")")
         }
-
-    extension on(f: DFunction):
-        def isRightAssociative(): Boolean = f.getName.endsWith(":")
-
-
-    extension on (builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder):
-
-        def modifiersAndVisibility[T <: Documentable](t: WithAbstraction with WithVisibility with WithExtraProperties[T], kind: String) =
-            import org.jetbrains.dokka.model.properties._
-            val extras = t.getExtra.getMap()
-            val additionalModifiers =
-              Option(extras.get(AdditionalModifiers.Companion).asInstanceOf[AdditionalModifiers])
-                .map(_.getContent)
-                .map(content => content.defaultValue.asScala.collect{case s: ScalaOnlyModifiers => s})
-                
-            val prefixes = additionalModifiers
-                .map(_.filter(_.prefix).map(_.getName))
-                .map(modifiers => modifiers.toSeq.toSignatureString())
-                .getOrElse("")
-            
-            val suffixes = additionalModifiers
-                .map(_.filter(!_.prefix).map(_.getName))
-                .map(modifiers => modifiers.toSeq.toSignatureString())
-                .getOrElse("")
-
-
-            builder
-                .text(
-                    Seq(
-                        prefixes.trim,
-                        t.getVisibility.defaultValue.getName, 
-                        t.getModifier.defaultValue.getName,
-                        suffixes.trim,
-                        kind
-                    ).toSignatureString()
-                )
-
-        def typeSignature(b: Projection): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = b match {
-            case tc: TypeConstructor =>
-                tc.getProjections.asScala.foldLeft(builder) { (bdr, elem) => elem match {
-                    case text: UnresolvedBound => bdr.text(text.getName)
-                    case link: OtherParameter => 
-                        bdr.driLink(link.getName, link.getDeclarationDRI)
-                    case other =>
-                        bdr.text(s"TODO($other)")
-                }
-            }
-            case other =>
-                builder.text(s"TODO: $other")
-        }
-
-        def generics(on: WithGenerics) = builder.list(on.getGenerics.asScala.toList, "[", "]"){ (bdr, e) => 
-            val bldr = bdr.text(e.getName)
-            e.getBounds.asScala.foldLeft(bldr)( (b, bound) => b.typeSignature(bound))
-        }
-        
-        def functionParameters(method: DFunction) = 
-            val methodExtension = method.get(MethodExtension)
-            val receiverPos = if method.isRightAssociative() then method.get(MethodExtension).parametersListSizes(0) else 0
-            val paramLists = methodExtension.parametersListSizes
-            val (bldr, index) = paramLists.foldLeft(builder, 0){
-                case ((builder, from), size) =>
-                    val toIndex = from + size
-                    if from == toIndex then (builder.text("()"), toIndex)
-                    else if !methodExtension.extensionInfo.isDefined || from != receiverPos then
-                        val b = builder.list(method.getParameters.subList(from, toIndex).asScala.toList, "(", ")"){ (bdr, param) => bdr
-                            //.annotationsInline(param)
-                            .text(param.getName)
-                            .text(": ")
-                            .typeSignature(param.getType)
-                        }
-                        (b, toIndex)
-                    else (builder, toIndex)
-            }
-            bldr
-
-    private def signatureContent(d: Documentable)(
-        func: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
-    ) = contentBuilder.contentForDocumentable(d, kind = ContentKind.Symbol, styles = styles, buildBlock = func)
