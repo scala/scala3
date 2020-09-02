@@ -104,12 +104,12 @@ object DesugarEnums {
 
   /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *
-   *   private val $values = Array[E](e_0,...,e_n)(ClassTag[E](classOf[E])): @unchecked
+   *   private val $values = Array[E](this.e_0,...,this.e_n)(ClassTag[E](classOf[E])): @unchecked
    *   def values = $values.clone
    *   def valueOf($name: String) = $name match {
-   *     case "e_0" => e_0
+   *     case "e_0" => this.e_0
    *     ...
-   *     case "e_n" => e_n
+   *     case "e_n" => this.e_n
    *     case _ => throw new IllegalArgumentException("case not found: " + $name)
    *   }
    */
@@ -119,6 +119,12 @@ object DesugarEnums {
 
     val privateValuesDef =
       val uncheckedValues =
+        // Here we use an unchecked annotation to silence warnings from the init checker. Without it, we get a warning
+        // that simple enum cases are promoting this from warm to initialised. This is because we are populating the
+        // array by selecting enum values from `this`, a value under construction.
+        // Singleton enum values always construct a new anonymous class, which will not be checked by the init-checker,
+        // so this warning will always persist even if the implementation of the anonymous class is safe.
+        // TODO: remove @unchecked after https://github.com/lampepfl/dotty-feature-requests/issues/135 is resolved.
         Annotated(ArrayLiteral(enumValues, rawEnumClassRef), New(ref(defn.UncheckedAnnot.typeRef)))
       ValDef(nme.DOLLAR_VALUES, TypeTree(), uncheckedValues)
         .withFlags(Private | Synthetic)
