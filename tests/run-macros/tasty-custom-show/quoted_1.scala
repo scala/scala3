@@ -42,7 +42,7 @@ object Macros {
       val tasty = qctx.tasty
       import qctx.tasty._
       def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
-      def showTypeOrBounds(tpe: TypeOrBounds)(implicit ctx: Context): String = "TypeOrBounds"
+      def showType(tpe: Type)(implicit ctx: Context): String = "Type"
       def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
       def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"
       def showFlags(flags: Flags)(implicit ctx: Context): String = "Flags"

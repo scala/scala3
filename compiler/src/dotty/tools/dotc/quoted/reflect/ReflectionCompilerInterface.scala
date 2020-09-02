@@ -1015,7 +1015,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def WildcardTypeTree_tpe(self: WildcardTypeTree)(using Context): TypeOrBounds = self.tpe.stripTypeVar
+  def WildcardTypeTree_tpe(self: WildcardTypeTree)(using Context): Type = self.tpe.stripTypeVar
 
   type CaseDef = tpd.CaseDef
 
@@ -1117,34 +1117,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   //  TYPES  //
   /////////////
 
-  type TypeOrBounds = Types.Type
-
-  type NoPrefix = Types.NoPrefix.type
-
-  def NoPrefix_TypeTest(using Context): TypeTest[TypeOrBounds, NoPrefix] = new {
-    def runtimeClass: Class[?] = classOf[Types.NoPrefix.type]
-    override def unapply(x: Any): Option[NoPrefix] =
-      if (x == Types.NoPrefix) Some(Types.NoPrefix) else None
-  }
-
-  type TypeBounds = Types.TypeBounds
-
-  def TypeBounds_TypeTest(using Context): TypeTest[TypeOrBounds, TypeBounds] = new {
-    def runtimeClass: Class[?] = classOf[TypeBounds]
-    override def unapply(x: Any): Option[TypeBounds] = x match
-      case x: Types.TypeBounds => Some(x)
-      case _ => None
-  }
-
-  def TypeBounds_apply(low: Type, hi: Type)(using Context): TypeBounds =
-    Types.TypeBounds(low, hi)
-
-  def TypeBounds_low(self: TypeBounds)(using Context): Type = self.lo
-  def TypeBounds_hi(self: TypeBounds)(using Context): Type = self.hi
-
   type Type = Types.Type
 
-  def Type_TypeTest(using Context): TypeTest[TypeOrBounds, Type] = new {
+  def Type_TypeTest(using Context): TypeTest[Type, Type] = new {
     def runtimeClass: Class[?] = classOf[Type]
     override def unapply(x: Any): Option[Type] = x match
       case x: TypeBounds => None
@@ -1224,12 +1199,12 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   def Type_select(self: Type)(sym: Symbol)(using Context): Type =
     self.select(sym)
 
-  def Type_appliedTo(self: Type)(targs: List[TypeOrBounds]): Type =
+  def Type_appliedTo(self: Type)(targs: List[Type]): Type =
     self.appliedTo(targs)
 
   type ConstantType = Types.ConstantType
 
-  def ConstantType_TypeTest(using Context): TypeTest[TypeOrBounds, ConstantType] = new {
+  def ConstantType_TypeTest(using Context): TypeTest[Type, ConstantType] = new {
     def runtimeClass: Class[?] = classOf[ConstantType]
     override def unapply(x: Any): Option[ConstantType] = x match
       case tpe: Types.ConstantType => Some(tpe)
@@ -1243,30 +1218,30 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TermRef = Types.NamedType
 
-  def TermRef_TypeTest(using Context): TypeTest[TypeOrBounds, TermRef] = new {
+  def TermRef_TypeTest(using Context): TypeTest[Type, TermRef] = new {
     def runtimeClass: Class[?] = classOf[TermRef]
     override def unapply(x: Any): Option[TermRef] = x match
       case tp: Types.TermRef => Some(tp)
       case _ => None
   }
 
-  def TermRef_apply(qual: TypeOrBounds, name: String)(using Context): TermRef =
+  def TermRef_apply(qual: Type, name: String)(using Context): TermRef =
     Types.TermRef(qual, name.toTermName)
 
-  def TermRef_qualifier(self: TermRef)(using Context): TypeOrBounds = self.prefix
+  def TermRef_qualifier(self: TermRef)(using Context): Type = self.prefix
 
   def TermRef_name(self: TermRef)(using Context): String = self.name.toString
 
   type TypeRef = Types.NamedType
 
-  def TypeRef_TypeTest(using Context): TypeTest[TypeOrBounds, TypeRef] = new {
+  def TypeRef_TypeTest(using Context): TypeTest[Type, TypeRef] = new {
     def runtimeClass: Class[?] = classOf[TypeRef]
     override def unapply(x: Any): Option[TypeRef] = x match
       case tp: Types.TypeRef => Some(tp)
       case _ => None
   }
 
-  def TypeRef_qualifier(self: TypeRef)(using Context): TypeOrBounds = self.prefix
+  def TypeRef_qualifier(self: TypeRef)(using Context): Type = self.prefix
 
   def TypeRef_name(self: TypeRef)(using Context): String = self.name.toString
 
@@ -1276,7 +1251,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type NamedTermRef = Types.NamedType
 
-  def NamedTermRef_TypeTest(using Context): TypeTest[TypeOrBounds, NamedTermRef] = new {
+  def NamedTermRef_TypeTest(using Context): TypeTest[Type, NamedTermRef] = new {
     def runtimeClass: Class[?] = classOf[NamedTermRef]
     override def unapply(x: Any): Option[NamedTermRef] = x match
       case tpe: Types.NamedType =>
@@ -1288,11 +1263,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   }
 
   def NamedTermRef_name(self: NamedTermRef)(using Context): String = self.name.toString
-  def NamedTermRef_qualifier(self: NamedTermRef)(using Context): TypeOrBounds = self.prefix
+  def NamedTermRef_qualifier(self: NamedTermRef)(using Context): Type = self.prefix
 
   type SuperType = Types.SuperType
 
-  def SuperType_TypeTest(using Context): TypeTest[TypeOrBounds, SuperType] = new {
+  def SuperType_TypeTest(using Context): TypeTest[Type, SuperType] = new {
     def runtimeClass: Class[?] = classOf[SuperType]
     override def unapply(x: Any): Option[SuperType] = x match
       case tpe: Types.SuperType => Some(tpe)
@@ -1307,14 +1282,14 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Refinement = Types.RefinedType
 
-  def Refinement_TypeTest(using Context): TypeTest[TypeOrBounds, Refinement] = new {
+  def Refinement_TypeTest(using Context): TypeTest[Type, Refinement] = new {
     def runtimeClass: Class[?] = classOf[Refinement]
     override def unapply(x: Any): Option[Refinement] = x match
       case tpe: Types.RefinedType => Some(tpe)
       case _ => None
   }
 
-  def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(using Context): Refinement = {
+  def Refinement_apply(parent: Type, name: String, info: Type)(using Context): Refinement = {
     val name1 =
       info match
         case _: TypeBounds => name.toTypeName
@@ -1324,11 +1299,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   def Refinement_parent(self: Refinement)(using Context): Type = self.parent
   def Refinement_name(self: Refinement)(using Context): String = self.refinedName.toString
-  def Refinement_info(self: Refinement)(using Context): TypeOrBounds = self.refinedInfo
+  def Refinement_info(self: Refinement)(using Context): Type = self.refinedInfo
 
   type AppliedType = Types.AppliedType
 
-  def AppliedType_TypeTest(using Context): TypeTest[TypeOrBounds, AppliedType] = new {
+  def AppliedType_TypeTest(using Context): TypeTest[Type, AppliedType] = new {
     def runtimeClass: Class[?] = classOf[AppliedType]
     override def unapply(x: Any): Option[AppliedType] = x match
       case tpe: Types.AppliedType => Some(tpe)
@@ -1336,11 +1311,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   }
 
   def AppliedType_tycon(self: AppliedType)(using Context): Type = self.tycon
-  def AppliedType_args(self: AppliedType)(using Context): List[TypeOrBounds] = self.args
+  def AppliedType_args(self: AppliedType)(using Context): List[Type] = self.args
 
   type AnnotatedType = Types.AnnotatedType
 
-  def AnnotatedType_TypeTest(using Context): TypeTest[TypeOrBounds, AnnotatedType] = new {
+  def AnnotatedType_TypeTest(using Context): TypeTest[Type, AnnotatedType] = new {
     def runtimeClass: Class[?] = classOf[AnnotatedType]
     override def unapply(x: Any): Option[AnnotatedType] = x match
       case tpe: Types.AnnotatedType => Some(tpe)
@@ -1355,7 +1330,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type AndType = Types.AndType
 
-  def AndType_TypeTest(using Context): TypeTest[TypeOrBounds, AndType] = new {
+  def AndType_TypeTest(using Context): TypeTest[Type, AndType] = new {
     def runtimeClass: Class[?] = classOf[AndType]
     override def unapply(x: Any): Option[AndType] = x match
       case tpe: Types.AndType => Some(tpe)
@@ -1370,7 +1345,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type OrType = Types.OrType
 
-  def OrType_TypeTest(using Context): TypeTest[TypeOrBounds, OrType] = new {
+  def OrType_TypeTest(using Context): TypeTest[Type, OrType] = new {
     def runtimeClass: Class[?] = classOf[OrType]
     override def unapply(x: Any): Option[OrType] = x match
       case tpe: Types.OrType => Some(tpe)
@@ -1385,7 +1360,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type MatchType = Types.MatchType
 
-  def MatchType_TypeTest(using Context): TypeTest[TypeOrBounds, MatchType] = new {
+  def MatchType_TypeTest(using Context): TypeTest[Type, MatchType] = new {
     def runtimeClass: Class[?] = classOf[MatchType]
     override def unapply(x: Any): Option[MatchType] = x match
       case tpe: Types.MatchType => Some(tpe)
@@ -1401,7 +1376,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ByNameType = Types.ExprType
 
-  def ByNameType_TypeTest(using Context): TypeTest[TypeOrBounds, ByNameType] = new {
+  def ByNameType_TypeTest(using Context): TypeTest[Type, ByNameType] = new {
     def runtimeClass: Class[?] = classOf[ByNameType]
     override def unapply(x: Any): Option[ByNameType] = x match
       case tpe: Types.ExprType => Some(tpe)
@@ -1414,7 +1389,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ParamRef = Types.ParamRef
 
-  def ParamRef_TypeTest(using Context): TypeTest[TypeOrBounds, ParamRef] = new {
+  def ParamRef_TypeTest(using Context): TypeTest[Type, ParamRef] = new {
     def runtimeClass: Class[?] = classOf[ParamRef]
     override def unapply(x: Any): Option[ParamRef] = x match
       case tpe: Types.TypeParamRef => Some(tpe)
@@ -1422,13 +1397,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def ParamRef_binder(self: ParamRef)(using Context): LambdaType[TypeOrBounds] =
-    self.binder.asInstanceOf[LambdaType[TypeOrBounds]] // Cast to tpd
+  def ParamRef_binder(self: ParamRef)(using Context): LambdaType =
+    self.binder.asInstanceOf[LambdaType] // Cast to tpd
   def ParamRef_paramNum(self: ParamRef)(using Context): Int = self.paramNum
 
   type ThisType = Types.ThisType
 
-  def ThisType_TypeTest(using Context): TypeTest[TypeOrBounds, ThisType] = new {
+  def ThisType_TypeTest(using Context): TypeTest[Type, ThisType] = new {
     def runtimeClass: Class[?] = classOf[ThisType]
     override def unapply(x: Any): Option[ThisType] = x match
       case tpe: Types.ThisType => Some(tpe)
@@ -1439,7 +1414,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type RecursiveThis = Types.RecThis
 
-  def RecursiveThis_TypeTest(using Context): TypeTest[TypeOrBounds, RecursiveThis] = new {
+  def RecursiveThis_TypeTest(using Context): TypeTest[Type, RecursiveThis] = new {
     def runtimeClass: Class[?] = classOf[RecursiveThis]
     override def unapply(x: Any): Option[RecursiveThis] = x match
       case tpe: Types.RecThis => Some(tpe)
@@ -1450,7 +1425,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type RecursiveType = Types.RecType
 
-  def RecursiveType_TypeTest(using Context): TypeTest[TypeOrBounds, RecursiveType] = new {
+  def RecursiveType_TypeTest(using Context): TypeTest[Type, RecursiveType] = new {
     def runtimeClass: Class[?] = classOf[RecursiveType]
     override def unapply(x: Any): Option[RecursiveType] = x match
       case tpe: Types.RecType => Some(tpe)
@@ -1464,11 +1439,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   def RecursiveThis_recThis(self: RecursiveType)(using Context): RecursiveThis = self.recThis
 
-  type LambdaType[ParamInfo] = Types.LambdaType { type PInfo = ParamInfo }
+  type LambdaType = Types.LambdaType
 
   type MethodType = Types.MethodType
 
-  def MethodType_TypeTest(using Context): TypeTest[TypeOrBounds, MethodType] = new {
+  def MethodType_TypeTest(using Context): TypeTest[Type, MethodType] = new {
     def runtimeClass: Class[?] = classOf[MethodType]
     override def unapply(x: Any): Option[MethodType] = x match
       case tpe: Types.MethodType => Some(tpe)
@@ -1487,7 +1462,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type PolyType = Types.PolyType
 
-  def PolyType_TypeTest(using Context): TypeTest[TypeOrBounds, PolyType] = new {
+  def PolyType_TypeTest(using Context): TypeTest[Type, PolyType] = new {
     def runtimeClass: Class[?] = classOf[PolyType]
     override def unapply(x: Any): Option[PolyType] = x match
       case tpe: Types.PolyType => Some(tpe)
@@ -1504,7 +1479,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeLambda = Types.TypeLambda
 
-  def TypeLambda_TypeTest(using Context): TypeTest[TypeOrBounds, TypeLambda] = new {
+  def TypeLambda_TypeTest(using Context): TypeTest[Type, TypeLambda] = new {
     def runtimeClass: Class[?] = classOf[TypeLambda]
     override def unapply(x: Any): Option[TypeLambda] = x match
       case tpe: Types.TypeLambda => Some(tpe)
@@ -1520,6 +1495,28 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     self.newParamRef(idx)
   def TypeLambda_resType(self: TypeLambda)(using Context): Type = self.resType
 
+  type NoPrefix = Types.NoPrefix.type
+
+  def NoPrefix_TypeTest(using Context): TypeTest[Type, NoPrefix] = new {
+    def runtimeClass: Class[?] = classOf[Types.NoPrefix.type]
+    override def unapply(x: Any): Option[NoPrefix] =
+      if (x == Types.NoPrefix) Some(Types.NoPrefix) else None
+  }
+
+  type TypeBounds = Types.TypeBounds
+
+  def TypeBounds_TypeTest(using Context): TypeTest[Type, TypeBounds] = new {
+    def runtimeClass: Class[?] = classOf[TypeBounds]
+    override def unapply(x: Any): Option[TypeBounds] = x match
+      case x: Types.TypeBounds => Some(x)
+      case _ => None
+  }
+
+  def TypeBounds_apply(low: Type, hi: Type)(using Context): TypeBounds =
+    Types.TypeBounds(low, hi)
+
+  def TypeBounds_low(self: TypeBounds)(using Context): Type = self.lo
+  def TypeBounds_hi(self: TypeBounds)(using Context): Type = self.hi
 
   //////////////////////
   // IMPORT SELECTORS //

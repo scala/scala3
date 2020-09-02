@@ -12,8 +12,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   def showTree(tree: Tree)(using ctx: Context): String =
     (new Buffer).printTree(tree).result()
 
-  def showTypeOrBounds(tpe: TypeOrBounds)(using ctx: Context): String =
-    (new Buffer).printTypeOrBound(tpe)(using None).result()
+  def showType(tpe: Type)(using ctx: Context): String =
+    (new Buffer).printType(tpe)(using None).result()
 
   def showConstant(const: Constant)(using ctx: Context): String =
     (new Buffer).printConstant(const).result()
@@ -519,7 +519,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         printTypeTree(hi)
 
       case tpt: WildcardTypeTree =>
-        printTypeOrBound(tpt.tpe)
+        printType(tpt.tpe)
 
       case tpt: TypeTree =>
         printTypeTree(tpt)
@@ -717,12 +717,12 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       this
     }
 
-    def printTypesOrBounds(types: List[TypeOrBounds], sep: String)(using elideThis: Option[Symbol]): Buffer = {
-      def printSeparated(list: List[TypeOrBounds]): Unit = list match {
+    def printTypesOrBounds(types: List[Type], sep: String)(using elideThis: Option[Symbol]): Buffer = {
+      def printSeparated(list: List[Type]): Unit = list match {
         case Nil =>
-        case x :: Nil => printTypeOrBound(x)
+        case x :: Nil => printType(x)
         case x :: xs =>
-          printTypeOrBound(x)
+          printType(x)
           this += sep
           printSeparated(xs)
       }
@@ -760,7 +760,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       argCons.rhs match {
         case rhs: TypeBoundsTree => printBoundsTree(rhs)
         case rhs: WildcardTypeTree =>
-          printTypeOrBound(rhs.tpe)
+          printType(rhs.tpe)
         case rhs @ LambdaTypeTree(tparams, body) =>
           def printParam(t: Tree /*TypeTree | TypeBoundsTree*/): Unit = t match {
             case t: TypeBoundsTree => printBoundsTree(t)
@@ -923,7 +923,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
       case Typed(Ident("_"), tpt) =>
         this += "_: "
-        printTypeOrBoundsTree(tpt)
+        printTypeTree(tpt)
 
       case v: Term =>
         printTree(v)
@@ -960,7 +960,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         this += " <: "
         printTypeTree(hi)
       case tpt: WildcardTypeTree =>
-        printTypeOrBound(tpt.tpe)
+        printType(tpt.tpe)
       case tpt: TypeTree =>
         printTypeTree(tpt)
     }
@@ -1059,15 +1059,6 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
     }
 
-    def printTypeOrBound(tpe: TypeOrBounds)(using elideThis: Option[Symbol]): Buffer = tpe match {
-      case tpe@TypeBounds(lo, hi) =>
-        this += "_ >: "
-        printType(lo)
-        this += " <: "
-        printType(hi)
-      case tpe: Type => printType(tpe)
-    }
-
     /** Print type
       *
       *  @param elideThis Shoud printing elide `C.this` for the given class `C`?
@@ -1112,7 +1103,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
           case ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
               this += highlightTypeDef(name)
           case _ =>
-            printTypeOrBound(prefix)
+            printType(prefix)
             if (name != "package")
               this += "." += highlightTypeDef(name)
             this
@@ -1170,7 +1161,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
               case NoPrefix() =>
               case ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
               case _ =>
-                printTypeOrBound(prefix)
+                printType(prefix)
                 this += "."
             }
             this += highlightTypeDef(name.stripSuffix("$"))
@@ -1185,7 +1176,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case TypeLambda(paramNames, tparams, body) =>
         inSquare(printMethodicTypeParams(paramNames, tparams))
         this += highlightTypeDef(" => ")
-        printTypeOrBound(body)
+        printType(body)
 
       case ParamRef(lambda, idx) =>
         lambda match {
@@ -1210,16 +1201,22 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case tpe: PolyType =>
         this += "["
         printList(tpe.paramNames.zip(tpe.paramBounds), ", ",
-          (x: (String, TypeBounds)) => (this += x._1 += " ").printTypeOrBound(x._2))
+          (x: (String, TypeBounds)) => (this += x._1 += " ").printType(x._2))
         this += "]"
         printType(tpe.resType)
 
       case tpe: TypeLambda =>
         this += "["
         printList(tpe.paramNames.zip(tpe.paramBounds), ", ",
-          (x: (String, TypeBounds)) => (this += x._1 += " ").printTypeOrBound(x._2))
+          (x: (String, TypeBounds)) => (this += x._1 += " ").printType(x._2))
         this += "] => "
         printType(tpe.resType)
+
+      case tpe@TypeBounds(lo, hi) =>
+        this += "_ >: "
+        printType(lo)
+        this += " <: "
+        printType(hi)
 
       case _ =>
         throw new MatchError(tpe.showExtractors)
@@ -1266,7 +1263,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     }
 
     def printRefinement(tpe: Type)(using elideThis: Option[Symbol]): Buffer = {
-      def printMethodicType(tp: TypeOrBounds): Unit = tp match {
+      def printMethodicType(tp: Type): Unit = tp match {
         case tp @ MethodType(paramNames, params, res) =>
           inParens(printMethodicTypeParams(paramNames, params))
           printMethodicType(res)
@@ -1305,14 +1302,14 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       this += lineBreak() += "}"
     }
 
-    def printMethodicTypeParams(paramNames: List[String], params: List[TypeOrBounds])(using elideThis: Option[Symbol]): Unit = {
-      def printInfo(info: TypeOrBounds) = info match {
+    def printMethodicTypeParams(paramNames: List[String], params: List[Type])(using elideThis: Option[Symbol]): Unit = {
+      def printInfo(info: Type) = info match {
         case info: TypeBounds => printBounds(info)
         case info: Type =>
           this += ": "
           printType(info)
       }
-      def printSeparated(list: List[(String, TypeOrBounds)]): Unit = list match {
+      def printSeparated(list: List[(String, Type)]): Unit = list match {
         case Nil =>
         case (name, info) :: Nil =>
           this += name
@@ -1376,8 +1373,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       prefixWasPrinted
     }
 
-    def printFullClassName(tp: TypeOrBounds): Unit = {
-      def printClassPrefix(prefix: TypeOrBounds): Unit = prefix match {
+    def printFullClassName(tp: Type): Unit = {
+      def printClassPrefix(prefix: Type): Unit = prefix match {
         case TypeRef(prefix2, name) =>
           printClassPrefix(prefix2)
           this += name += "."

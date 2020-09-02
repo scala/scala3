@@ -183,8 +183,8 @@ object representations extends TastyExtractor {
     override val typeParams = Nil
     override val annotations = extractAnnotations(internal.symbol.annots)
     val alias: Option[Reference] = internal.rhs match{
-      case t: TypeBoundsTree => Some(convertTypeOrBoundsToReference(t.tpe))
-      case t: TypeTree => Some(convertTypeOrBoundsToReference(t.tpe.asInstanceOf[TypeOrBounds]))
+      case t: TypeBoundsTree => Some(convertTypeToReference(t.tpe))
+      case t: TypeTree => Some(convertTypeToReference(t.tpe))
       case _ => None
     }
     override def isAbstract: Boolean = !alias.isDefined
