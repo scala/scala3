@@ -11,7 +11,7 @@ enum Expr[-T >: Null]:
   case AnyTree
 
 enum ListLike[+T]:
-  case Cons(head: T, tail: ListLike[T])
+  case Cons[T](head: T, tail: ListLike[T]) extends ListLike[T]
   case EmptyListLike
 
 enum TypeCtorsK[F[_]]:

@@ -8,7 +8,7 @@ enum Fun[-T, +U >: Null] {
 
   case Identity[T, U >: Null](g: T => U) extends Fun[T, U]
   case ConstNull
-  case ConstNullClass(x: T)
+  case ConstNullClass[T](x: T) extends Fun[T, Null]
   case ConstNullSimple
 }
 
@@ -28,4 +28,3 @@ object Test {
     case ConstNullSimple => null
   }
 }
-

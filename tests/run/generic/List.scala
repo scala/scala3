@@ -47,7 +47,7 @@ object List0 {
 }
 
 /** enum List[+T] {
- *    case Cons(x: T, xs: List[T])
+ *    case Cons[T](x: T, xs: List[T]) extends List[T]
  *    case Nil extends List[Nothing]
  *  }
  */
