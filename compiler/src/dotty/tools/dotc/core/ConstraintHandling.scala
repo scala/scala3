@@ -372,7 +372,7 @@ trait ConstraintHandling {
    */
   def instanceType(param: TypeParamRef, fromBelow: Boolean)(using Context): Type = {
     val approx = approximation(param, fromBelow).simplified
-    if (fromBelow)
+    if fromBelow then
       val widened = widenInferred(approx, param)
       // Widening can add extra constraints, in particular the widened type might
       // be a type variable which is now instantiated to `param`, and therefore

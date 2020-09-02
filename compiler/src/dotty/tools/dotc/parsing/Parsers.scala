@@ -2074,7 +2074,7 @@ object Parsers {
           if isIdent(nme.raw.STAR) then
             in.nextToken()
             if !(location.inArgs && in.token == RPAREN) then
-              if opStack.nonEmpty
+              if opStack.nonEmpty then
                 report.errorOrMigrationWarning(
                   em"""`_*` can be used only for last argument of method application.
                       |It is no longer allowed in operands of infix operations.""",
@@ -2151,7 +2151,7 @@ object Parsers {
         val name = bindingName()
         val t =
           if (in.token == COLON && location == Location.InBlock) {
-            if sourceVersion.isAtLeast(`3.1`)
+            if sourceVersion.isAtLeast(`3.1`) then
                 // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
                 // is not supported by Scala2.x
               report.errorOrMigrationWarning(
@@ -3331,21 +3331,19 @@ object Parsers {
         }
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
-          if (in.token == EQUALS)
+          if in.token == EQUALS then
             in.nextToken()
             subExpr()
-          else if (!tpt.isEmpty)
+          else if !tpt.isEmpty then
             EmptyTree
-          else if (scala2ProcedureSyntax(": Unit")) {
+          else if scala2ProcedureSyntax(": Unit") then
             tpt = scalaUnit
             if (in.token == LBRACE) expr()
             else EmptyTree
-          }
-          else {
+          else
             if (!isExprIntro) syntaxError(MissingReturnType(), in.lastOffset)
             accept(EQUALS)
             expr()
-          }
 
         val ddef = DefDef(name, tparams, vparamss, tpt, rhs)
         if (isBackquoted(ident)) ddef.pushAttachment(Backquoted, ())
@@ -3357,7 +3355,7 @@ object Parsers {
      *                    |  `{' SelfInvocation {semi BlockStat} `}'
      */
     val constrExpr: () => Tree = () =>
-      if (in.isNestedStart)
+      if in.isNestedStart then
         atSpan(in.offset) {
           inBracesOrIndented {
             val stats = selfInvocation() :: (
@@ -3779,9 +3777,9 @@ object Parsers {
           stats ++= importClause(EXPORT, Export.apply)
         else if isIdent(nme.extension) && followingIsExtension() then
           stats += extension()
-        else if isDefIntro(modifierTokens)
+        else if isDefIntro(modifierTokens) then
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
-        else if (!isStatSep)
+        else if !isStatSep then
           if (in.token == CASE)
             syntaxErrorOrIncomplete(OnlyCaseClassOrCaseObjectAllowed())
           else

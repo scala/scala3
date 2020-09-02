@@ -73,7 +73,8 @@ object Inliner {
     val startId = ctx.source.nextId
 
     if tree.symbol.denot != SymDenotations.NoDenotation
-        && tree.symbol.owner.companionModule == defn.CompiletimeTestingPackageObject then
+      && tree.symbol.owner.companionModule == defn.CompiletimeTestingPackageObject
+    then
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
