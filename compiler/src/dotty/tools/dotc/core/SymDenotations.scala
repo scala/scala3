@@ -1575,7 +1575,7 @@ object SymDenotations {
     private var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
-    type BaseTypeMap = java.util.IdentityHashMap[CachedType, Type]
+    type BaseTypeMap = EqHashMap[CachedType, Type]
     private var myBaseTypeCache: BaseTypeMap = null
     private var myBaseTypeCachePeriod: Period = Nowhere
 
@@ -1592,7 +1592,7 @@ object SymDenotations {
 
     private def baseTypeCache(using Context): BaseTypeMap = {
       if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
-        myBaseTypeCache = new BaseTypeMap
+        myBaseTypeCache = BaseTypeMap()
         myBaseTypeCachePeriod = ctx.period
       myBaseTypeCache
     }
@@ -1906,14 +1906,16 @@ object SymDenotations {
     /** Compute tp.baseType(this) */
     final def baseTypeOf(tp: Type)(using Context): Type = {
       val btrCache = baseTypeCache
-      def inCache(tp: Type) = btrCache.get(tp) != null
+      def inCache(tp: Type) = tp match
+        case tp: CachedType => btrCache.contains(tp)
+        case _ => false
       def record(tp: CachedType, baseTp: Type) = {
         if (Stats.monitored) {
           Stats.record("basetype cache entries")
           if (!baseTp.exists) Stats.record("basetype cache NoTypes")
         }
         if (!tp.isProvisional)
-          btrCache.put(tp, baseTp)
+          btrCache(tp) = baseTp
         else
           btrCache.remove(tp) // Remove any potential sentinel value
       }
@@ -1926,7 +1928,7 @@ object SymDenotations {
       def recur(tp: Type): Type = try {
         tp match {
           case tp: CachedType =>
-            val baseTp = btrCache.get(tp)
+            val baseTp = btrCache.lookup(tp)
             if (baseTp != null) return ensureAcyclic(baseTp)
           case _ =>
         }
@@ -1945,7 +1947,7 @@ object SymDenotations {
             }
 
             def computeTypeRef = {
-              btrCache.put(tp, NoPrefix)
+              btrCache(tp) = NoPrefix
               val tpSym = tp.symbol
               tpSym.denot match {
                 case clsd: ClassDenotation =>
@@ -1980,7 +1982,7 @@ object SymDenotations {
 
           case tp @ AppliedType(tycon, args) =>
             def computeApplied = {
-              btrCache.put(tp, NoPrefix)
+              btrCache(tp) = NoPrefix
               val baseTp =
                 if (tycon.typeSymbol eq symbol) tp
                 else (tycon.typeParams: @unchecked) match {
@@ -2041,7 +2043,9 @@ object SymDenotations {
       }
       catch {
         case ex: Throwable =>
-          btrCache.remove(tp)
+          tp match
+            case tp: CachedType => btrCache.remove(tp)
+            case _ =>
           throw ex
       }
 
