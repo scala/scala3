@@ -1,6 +1,7 @@
 package dotty.tools
 package dotc
 package transform
+package sjs
 
 import MegaPhase._
 import core.DenotTransformers._

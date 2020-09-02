@@ -7,7 +7,7 @@ import typer.{FrontEnd, RefChecks}
 import Phases.Phase
 import transform._
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
-import dotty.tools.backend.sjs
+import dotty.tools.backend
 import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -72,7 +72,7 @@ class Compiler {
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
-         new ExplicitJSClasses,      // Make all JS classes explicit (Scala.js only)
+         new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
          new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
@@ -122,14 +122,14 @@ class Compiler {
          new ExpandPrivate,          // Widen private definitions accessed from nested classes
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
-         new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
+         new backend.sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
          new CollectSuperCalls) ::   // Find classes that are called with super
     Nil
 
   /** Generate the output of the compilation */
   protected def backendPhases: List[List[Phase]] =
-    List(new sjs.GenSJSIR) ::        // Generate .sjsir files for Scala.js (not enabled by default)
-    List(new GenBCode) ::            // Generate JVM bytecode
+    List(new backend.sjs.GenSJSIR) :: // Generate .sjsir files for Scala.js (not enabled by default)
+    List(new GenBCode) ::             // Generate JVM bytecode
     Nil
 
   var runId: Int = 1
