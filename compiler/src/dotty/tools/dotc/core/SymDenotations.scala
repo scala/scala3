@@ -1564,14 +1564,14 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
-    import util.IdentityHashMap
+    import util.EqHashMap
 
     // ----- caches -------------------------------------------------------
 
     private var myTypeParams: List[TypeSymbol] = null
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
 
-    private var myMemberCache: IdentityHashMap[Name, PreDenotation] = null
+    private var myMemberCache: EqHashMap[Name, PreDenotation] = null
     private var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
@@ -1582,9 +1582,9 @@ object SymDenotations {
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
 
-    private def memberCache(using Context): IdentityHashMap[Name, PreDenotation] = {
+    private def memberCache(using Context): EqHashMap[Name, PreDenotation] = {
       if (myMemberCachePeriod != ctx.period) {
-        myMemberCache = IdentityHashMap()
+        myMemberCache = EqHashMap()
         myMemberCachePeriod = ctx.period
       }
       myMemberCache

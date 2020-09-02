@@ -44,19 +44,19 @@ class TreePickler(pickler: TastyPickler) {
 
   private val symRefs = Symbols.MutableSymbolMap[Addr](256)
   private val forwardSymRefs = Symbols.MutableSymbolMap[List[Addr]]()
-  private val pickledTypes = util.IdentityHashMap[Type, Addr]()
+  private val pickledTypes = util.EqHashMap[Type, Addr]()
 
   /** A list of annotation trees for every member definition, so that later
    *  parallel position pickling does not need to access and force symbols.
    */
-  private val annotTrees = util.IdentityHashMap[untpd.MemberDef, mutable.ListBuffer[Tree]]()
+  private val annotTrees = util.EqHashMap[untpd.MemberDef, mutable.ListBuffer[Tree]]()
 
   /** A map from member definitions to their doc comments, so that later
    *  parallel comment pickling does not need to access symbols of trees (which
    *  would involve accessing symbols of named types and possibly changing phases
    *  in doing so).
    */
-  private val docStrings = util.IdentityHashMap[untpd.MemberDef, Comment]()
+  private val docStrings = util.EqHashMap[untpd.MemberDef, Comment]()
 
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)

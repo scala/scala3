@@ -28,7 +28,7 @@ import Trees._
 import transform.SymUtils._
 import transform.TypeUtils._
 import Hashable._
-import util.{SourceFile, NoSource, IdentityHashMap}
+import util.{SourceFile, NoSource, EqHashMap}
 import config.{Config, Feature}
 import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}
@@ -289,7 +289,7 @@ object Implicits:
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
   class ContextualImplicits(val refs: List[ImplicitRef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
-    private val eligibleCache = IdentityHashMap[Type, List[Candidate]]()
+    private val eligibleCache = EqHashMap[Type, List[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
      *  the context of the next-outer ImplicitRefs. This is however disabled under

@@ -30,7 +30,7 @@ import reporting.Message
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, IdentityHashMap}
+import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -495,7 +495,7 @@ object Symbols {
   /** The current class */
   def currentClass(using Context): ClassSymbol = ctx.owner.enclosingClass.asClass
 
-  type MutableSymbolMap[T] = IdentityHashMap[Symbol, T]
+  type MutableSymbolMap[T] = EqHashMap[Symbol, T]
 
 // ---- Factory methods for symbol creation ----------------------
 //

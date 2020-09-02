@@ -3,7 +3,7 @@ package dotty.tools.dotc.util
 /** A specialized implementation of GenericHashMap with identity hash and `eq`
  *  as comparison.
  */
-class IdentityHashMap[Key, Value]
+class EqHashMap[Key, Value]
     (initialCapacity: Int = 8, capacityMultiple: Int = 2)
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   import GenericHashMap.DenseLimit
@@ -78,4 +78,4 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
         val key = oldTable(idx).asInstanceOf[Key]
         if key != null then addOld(key, oldTable(idx + 1).asInstanceOf[Value])
         idx += 2
-end IdentityHashMap
+end EqHashMap

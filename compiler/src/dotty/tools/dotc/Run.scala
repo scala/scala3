@@ -119,7 +119,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var lateFiles = mutable.Set[AbstractFile]()
 
   /** A cache for static references to packages and classes */
-  val staticRefs = util.IdentityHashMap[Name, Denotation](initialCapacity = 1024)
+  val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
 
   /** Actions that need to be performed at the end of the current compilation run */
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
