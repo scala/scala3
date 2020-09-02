@@ -1080,7 +1080,8 @@ trait Checking {
       report.error(em"$what can only be used in an inline method", pos)
 
   /** 1. Check that all case classes that extend `scala.Enum` are `enum` cases
-   *  2. Check that case class `enum` cases do not extend java.lang.Enum.
+   *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
+   *  3. Check that only a static `enum` base class can extend java.lang.Enum.
    */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = {
     def isEnumAnonCls =

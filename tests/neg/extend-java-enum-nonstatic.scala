@@ -16,5 +16,7 @@ object Wrap:
 trait Universe:
   enum E extends jl.Enum[E] { case A } // error: enum extending java.lang.Enum must be declared in a static scope
 
+enum E extends jl.Enum[E] { case A } // ok, a declaration at package level is static.
+
 object Static:
-  enum E extends jl.Enum[E] { case A } // ok
+  enum E extends jl.Enum[E] { case A } // ok, a declaration within a static object is static.
