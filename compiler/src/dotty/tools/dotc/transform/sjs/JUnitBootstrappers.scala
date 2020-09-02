@@ -1,8 +1,8 @@
-package dotty.tools.backend.sjs
+package dotty.tools.dotc
+package transform
+package sjs
 
 import scala.annotation.tailrec
-
-import dotty.tools.dotc._
 
 import dotty.tools.dotc.core._
 import Constants._
@@ -18,6 +18,8 @@ import StdNames._
 import Types._
 
 import dotty.tools.dotc.transform.MegaPhase._
+
+import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
 /** Generates JUnit bootstrapper objects for Scala.js.
  *
@@ -108,7 +110,6 @@ import dotty.tools.dotc.transform.MegaPhase._
 class JUnitBootstrappers extends MiniPhase {
   import JUnitBootstrappers._
   import ast.tpd._
-  import JSDefinitions.jsdefn
 
   def phaseName: String = "junitBootstrappers"
 
