@@ -98,12 +98,13 @@ abstract class GenericHashMap[Key, Value]
     used += 1
     if used > limit then growTable()
 
-  def remove(key: Key): Unit =
+  def remove(key: Key): Value | Null =
     Stats.record(statsItem("remove"))
     var idx = firstIndex(key)
     var k = keyAt(idx)
     while k != null do
       if isEqual(k, key) then
+        val result = valueAt(idx)
         var hole = idx
         while
           idx = nextIndex(idx)
@@ -119,13 +120,17 @@ abstract class GenericHashMap[Key, Value]
             hole = idx
         table(hole) = null
         used -= 1
-        return
+        return result
       idx = nextIndex(idx)
       k = keyAt(idx)
+    null
 
   def getOrElseUpdate(key: Key, value: => Value): Value =
     var v: Value | Null = lookup(key)
-    if v == null then v = value
+    if v == null then
+      val v1 = value
+      v = v1
+      update(key, v1)
     v.uncheckedNN
 
   private def addOld(key: Key, value: Value): Unit =
@@ -168,6 +173,9 @@ abstract class GenericHashMap[Key, Value]
 
   def iterator: Iterator[(Key, Value)] = new EntryIterator:
     def entry(idx: Int) = (keyAt(idx), valueAt(idx))
+
+  def keysIterator: Iterator[Key] = new EntryIterator:
+    def entry(idx: Int) = keyAt(idx)
 
   override def toString: String =
     iterator.map((k, v) => s"$k -> $v").mkString("HashMap(", ", ", ")")

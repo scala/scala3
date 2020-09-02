@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import dotty.tools.dotc.ast.{Trees, tpd}
@@ -59,7 +60,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     ctx.owner.enclosingClass != invalidEnclClass
 
   /** List buffers for new accessor definitions, indexed by class */
-  private val accDefs = newMutableSymbolMap[mutable.ListBuffer[Tree]]
+  private val accDefs = MutableSymbolMap[mutable.ListBuffer[Tree]]()
 
   /** A super accessor call corresponding to `sel` */
   private def superAccessorCall(sel: Select, mixName: Name = nme.EMPTY)(using Context) = {
@@ -205,7 +206,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
   def wrapTemplate(tree: Template)(op: Template => Template)(using Context): Template = {
     accDefs(currentClass) = new mutable.ListBuffer[Tree]
     val impl = op(tree)
-    val accessors = accDefs.remove(currentClass).get
+    val accessors = accDefs.remove(currentClass).nn
     if (accessors.isEmpty) impl
     else {
       val (params, rest) = impl.body span {

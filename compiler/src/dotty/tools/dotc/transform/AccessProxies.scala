@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -23,7 +24,7 @@ abstract class AccessProxies {
   import AccessProxies._
 
   /** accessor -> accessed */
-  private val accessedBy = newMutableSymbolMap[Symbol]
+  private val accessedBy = MutableSymbolMap[Symbol]()
 
   /** Given the name of an accessor, is the receiver of the call to accessed obtained
    *  as a parameterer?
@@ -35,7 +36,7 @@ abstract class AccessProxies {
    *  So a second call of the same method will yield the empty list.
    */
   private def accessorDefs(cls: Symbol)(using Context): Iterator[DefDef] =
-    for (accessor <- cls.info.decls.iterator; accessed <- accessedBy.remove(accessor)) yield
+    for (accessor <- cls.info.decls.iterator; accessed <- accessedBy.remove(accessor).toOption) yield
       polyDefDef(accessor.asTerm, tps => argss => {
         def numTypeParams = accessed.info match {
           case info: PolyType => info.paramNames.length

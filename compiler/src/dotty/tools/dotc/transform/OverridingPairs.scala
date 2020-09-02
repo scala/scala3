@@ -64,12 +64,11 @@ object OverridingPairs {
       decls
     }
 
-    private val subParents = {
-      val subParents = newMutableSymbolMap[BitSet]
+    private val subParents =
+      val subParents = MutableSymbolMap[BitSet]()
       for (bc <- base.info.baseClasses)
         subParents(bc) = BitSet(parents.indices.filter(parents(_).derivesFrom(bc)): _*)
       subParents
-    }
 
     private def hasCommonParentAsSubclass(cls1: Symbol, cls2: Symbol): Boolean =
       (subParents(cls1) intersect subParents(cls2)).nonEmpty

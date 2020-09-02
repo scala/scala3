@@ -42,8 +42,8 @@ class TreePickler(pickler: TastyPickler) {
   import pickler.nameBuffer.nameIndex
   import tpd._
 
-  private val symRefs = Symbols.newMutableSymbolMap[Addr]
-  private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
+  private val symRefs = Symbols.MutableSymbolMap[Addr](256)
+  private val forwardSymRefs = Symbols.MutableSymbolMap[List[Addr]]()
   private val pickledTypes = util.IdentityHashMap[Type, Addr]()
 
   /** A list of annotation trees for every member definition, so that later

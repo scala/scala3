@@ -35,7 +35,7 @@ class NonLocalReturns extends MiniPhase {
     nonLocalReturnControl.appliedTo(argtype)
 
   /** A hashmap from method symbols to non-local return keys */
-  private val nonLocalReturnKeys = newMutableSymbolMap[TermSymbol]
+  private val nonLocalReturnKeys = MutableSymbolMap[TermSymbol]()
 
   /** Return non-local return key for given method */
   private def nonLocalReturnKey(meth: Symbol)(using Context) =
@@ -83,10 +83,9 @@ class NonLocalReturns extends MiniPhase {
   }
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
-    nonLocalReturnKeys.remove(tree.symbol) match {
-      case Some(key) => cpy.DefDef(tree)(rhs = nonLocalReturnTry(tree.rhs, key, tree.symbol))
-      case _ => tree
-    }
+    nonLocalReturnKeys.remove(tree.symbol) match
+      case key: TermSymbol => cpy.DefDef(tree)(rhs = nonLocalReturnTry(tree.rhs, key, tree.symbol))
+      case null => tree
 
   override def transformReturn(tree: Return)(using Context): Tree =
     if isNonLocalReturn(tree) then

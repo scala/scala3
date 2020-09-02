@@ -3,20 +3,16 @@ package dotc.util
 
 /** A common class for lightweight mutable maps.
  */
-abstract class MutableMap[Key, Value]:
-
-  def lookup(x: Key): Value | Null
+abstract class MutableMap[Key, Value] extends ReadOnlyMap[Key, Value]:
 
   def update(k: Key, v: Value): Unit
 
-  def remove(k: Key): Unit
+  def remove(k: Key): Value | Null
 
-  def size: Int
+  def -=(k: Key): this.type =
+    remove(k)
+    this
 
   def clear(): Unit
 
-  def iterator: Iterator[(Key, Value)]
-
-  def get(x: Key): Option[Value] = lookup(x) match
-    case null => None
-    case v => Some(v.uncheckedNN)
+  def getOrElseUpdate(key: Key, value: => Value): Value

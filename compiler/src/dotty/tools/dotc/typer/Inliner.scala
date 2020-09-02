@@ -21,7 +21,7 @@ import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, SourceFile, SourcePosition, SrcPos}
+import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, IdentityHashMap, SourceFile, SourcePosition, SrcPos}
 import dotty.tools.dotc.parsing.Parsers.Parser
 import Nullables.{given _}
 
@@ -1320,8 +1320,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       dropUnusedDefs(termBindings1.asInstanceOf[List[ValOrDefDef]], tree1)
     }
     else {
-      val refCount = newMutableSymbolMap[Int]
-      val bindingOfSym = newMutableSymbolMap[MemberDef]
+      val refCount = MutableSymbolMap[Int]()
+      val bindingOfSym = MutableSymbolMap[MemberDef]()
 
       def isInlineable(binding: MemberDef) = binding match {
         case ddef @ DefDef(_, Nil, Nil, _, _) => isElideableExpr(ddef.rhs)

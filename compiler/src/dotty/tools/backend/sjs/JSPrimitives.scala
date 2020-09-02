@@ -10,6 +10,7 @@ import Symbols._
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.report
+import dotty.tools.dotc.util.ReadOnlyMap
 
 import scala.collection.mutable
 
@@ -55,7 +56,7 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
   import JSPrimitives._
   import dotty.tools.backend.ScalaPrimitivesOps._
 
-  private lazy val jsPrimitives: Map[Symbol, Int] = initJSPrimitives(using ictx)
+  private lazy val jsPrimitives: ReadOnlyMap[Symbol, Int] = initJSPrimitives(using ictx)
 
   override def getPrimitive(sym: Symbol): Int =
     jsPrimitives.getOrElse(sym, super.getPrimitive(sym))
@@ -70,9 +71,9 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     jsPrimitives.contains(fun.symbol(using ictx)) || super.isPrimitive(fun)
 
   /** Initialize the primitive map */
-  private def initJSPrimitives(using Context): Map[Symbol, Int] = {
+  private def initJSPrimitives(using Context): ReadOnlyMap[Symbol, Int] = {
 
-    val primitives = newMutableSymbolMap[Int]
+    val primitives = MutableSymbolMap[Int]()
 
     // !!! Code duplicate with DottyPrimitives
     /** Add a primitive operation to the map */
@@ -120,7 +121,7 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.ReflectSelectable_selectDynamic, REFLECT_SELECTABLE_SELECTDYN)
     addPrimitive(jsdefn.ReflectSelectable_applyDynamic, REFLECT_SELECTABLE_APPLYDYN)
 
-    primitives.toMap
+    primitives
   }
 
 }

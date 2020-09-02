@@ -36,7 +36,7 @@ import dotty.tools.io._
 class GenBCode extends Phase {
   def phaseName: String = GenBCode.name
 
-  private val superCallsMap = newMutableSymbolMap[Set[ClassSymbol]]
+  private val superCallsMap = new MutableSymbolMap[Set[ClassSymbol]]
   def registerSuperCall(sym: Symbol, calls: ClassSymbol): Unit = {
     val old = superCallsMap.getOrElse(sym, Set.empty)
     superCallsMap.update(sym, old + calls)
@@ -51,10 +51,8 @@ class GenBCode extends Phase {
   }
 
   def run(using Context): Unit =
-    new GenBCodePipeline(
-      new DottyBackendInterface(
-        outputDir, superCallsMap.toMap
-      )
+    GenBCodePipeline(
+      DottyBackendInterface(outputDir, superCallsMap)
     ).run(ctx.compilationUnit.tpdTree)
 
 
