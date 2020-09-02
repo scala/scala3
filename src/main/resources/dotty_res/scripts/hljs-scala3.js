@@ -27,6 +27,7 @@ function highlightDotty(hljs) {
     literal: 'true false null this super',
     built_in: '??? asInstanceOf isInstanceOf assert assertFail implicitly locally summon .nn'
   }
+  const modifiers = 'abstract|final|implicit|override|private|protected|sealed'
 
   // End of class, enum, etc. header
   const templateDeclEnd = /(\/[/*]|{|: *\n|\n(?! *(extends|with|derives)))/
@@ -36,6 +37,16 @@ function highlightDotty(hljs) {
     return {
       className: 'title',
       begin: `(?<=${name} )${id.source}`
+    }
+  }
+
+  // all the keywords + soft keywords, separated by spaces
+  function withSoftKeywords(kwd) {
+    return {
+      $pattern: alwaysKeywords.$pattern,
+      keyword: kwd + ' ' + alwaysKeywords.keyword,
+      literal: alwaysKeywords.literal,
+      built_in: alwaysKeywords.built_in
     }
   }
 
@@ -73,12 +84,7 @@ function highlightDotty(hljs) {
     begin: /\(/, end: /\)/,
     excludeBegin: true,
     excludeEnd: true,
-    keywords: {
-      $pattern: alwaysKeywords.$pattern,
-      keyword: 'inline using private protected val var ?=> =>> => _ ? <: >:',
-      literal: alwaysKeywords.literal,
-      built_in: alwaysKeywords.built_in
-    },
+    keywords: withSoftKeywords('inline using'),
     contains: [
       hljs.C_BLOCK_COMMENT_MODE,
       hljs.QUOTE_STRING_MODE,
@@ -89,17 +95,12 @@ function highlightDotty(hljs) {
 
   // (using T1, T2, T3)
   const CTX_PARAMS = {
-    className: 'cparams',
+    className: 'params',
     begin: /\(using (?!\w+:)/, end: /\)/,
     excludeBegin: false,
     excludeEnd: true,
     relevance: 5,
-    keywords: {
-      $pattern: alwaysKeywords.$pattern,
-      keyword: 'using ?=> =>> => _ ? <: >:',
-      literal: alwaysKeywords.literal,
-      built_in: alwaysKeywords.built_in
-    },
+    keywords: withSoftKeywords('using'),
     contains: [
       PROBABLY_TYPE
     ]
@@ -214,14 +215,10 @@ function highlightDotty(hljs) {
   // Methods
   const METHOD = {
     className: 'function',
-    begin: /(transparent +)?(inline +)?def/, end: / =|\n/,
+    begin: `((${modifiers}|transparent|inline) +)*def`, end: / =|\n/,
     excludeEnd: true,
     relevance: 5,
-    keywords: {
-      $pattern: /\w+|\?=>|=>>|=>|[?_]/,
-      keyword: 'def inline transparent ?=> => =>> ? _',
-      built_in: alwaysKeywords.built_in
-    },
+    keywords: withSoftKeywords('inline transparent'),
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,
@@ -247,13 +244,9 @@ function highlightDotty(hljs) {
   // Type declarations
   const TYPEDEF = {
     className: 'typedef',
-    begin: /(opaque +)?type/, end: /[=;\n]/,
+    begin: `((${modifiers}|opaque) +)*type`, end: /[=;\n]/,
     excludeEnd: true,
-    keywords: {
-      $pattern: /\w+|\?=>|=>>|=>|<:|>:|[+-_?]/,
-      keyword: 'opaque type ?=> =>> => ? <: >: + - _',
-      literal: alwaysKeywords.literal
-    },
+    keywords: withSoftKeywords('opaque'),
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,
@@ -323,8 +316,8 @@ function highlightDotty(hljs) {
 
   const CLASS = {
     className: 'class',
-    begin: /class|open class|case class|trait|enum|object|package object/, end: templateDeclEnd,
-    keywords: 'open case class trait object enum package extends with derives private protected',
+    begin: `((${modifiers}|open|case) +)*class|trait|enum|object|package object`, end: templateDeclEnd,
+    keywords: withSoftKeywords('open'),
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,
