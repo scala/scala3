@@ -65,8 +65,8 @@ class VulpixUnitTests extends ParallelTesting {
     compileFile("tests/vulpix-tests/unit/runDiffOutput1.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runStackOverflow: Unit =
-    if (!scala.util.isWin)
-    compileFile("tests/vulpix-tests/unit/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
+    if (!scala.util.Properties.isWin)
+      compileFile("tests/vulpix-tests/unit/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runOutRedirects: Unit =
     compileFile("tests/vulpix-tests/unit/i2147.scala", defaultOptions).expectFailure.checkRuns()
@@ -91,7 +91,7 @@ class VulpixUnitTests extends ParallelTesting {
       case ae: AssertionError => assertTrue(ae.getMessage.contains("java compilation failed"))
     }
 
-  @Test def runTimeout: Unit = if (!scala.util.isWin) {
+  @Test def runTimeout: Unit = if (!scala.util.Properties.isWin) {
     val fileName = s"tests/vulpix-tests/unit/timeout.scala"
     try {
       compileFile(fileName, defaultOptions).checkRuns()
