@@ -1172,8 +1172,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   // convert a numeric with a toXXX method
   def primitiveConversion(tree: Tree, numericCls: Symbol)(using Context): Tree = {
-    val mname      = ("to" + numericCls.name).toTermName
-    val conversion = tree.tpe member mname
+    val mname      = "to".concat(numericCls.name)
+    val conversion = tree.tpe member(mname)
     if (conversion.symbol.exists)
       tree.select(conversion.symbol.termRef).ensureApplied
     else if (tree.tpe.widen isRef numericCls)

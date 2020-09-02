@@ -337,6 +337,13 @@ object Names {
     def head: Char = apply(0)
     def last: Char = apply(length - 1)
 
+    /** Copy character slice (from until end) to character array starting at `dstStart`.
+     *  @pre Destination must have enough space to hold all characters of this name.
+     */
+    def getChars(from: Int, end: Int, dst: Array[Char], dstStart: Int): Unit =
+      assert(0 <= from && from <= end && end <= length)
+      Array.copy(chrs, start + from, dst, dstStart, end - from)
+
     override def asSimpleName: SimpleName = this
     override def toSimpleName: SimpleName = this
     override final def mangle: SimpleName = encode

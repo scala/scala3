@@ -7,6 +7,7 @@ import NameOps._
 import StdNames._
 import NameTags._
 import Contexts._
+import Decorators._
 import collection.mutable
 
 import scala.annotation.internal.sharable
@@ -208,6 +209,8 @@ object NameKinds {
   extends NumberedNameKind(UNIQUE, s"Unique $separator") {
     override def definesNewName: Boolean = true
 
+    val separatorName = separator.toTermName
+
     def mkString(underlying: TermName, info: ThisInfo): String = {
       val safePrefix = str.sanitize(underlying.toString) + separator
       safePrefix + info.num
@@ -226,10 +229,10 @@ object NameKinds {
 
   /** An extractor for unique names of arbitrary kind */
   object AnyUniqueName {
-    def unapply(name: DerivedName): Option[(TermName, String, Int)] = name match {
+    def unapply(name: DerivedName): Option[(TermName, TermName, Int)] = name match {
       case DerivedName(qual, info: NumberedInfo) =>
         info.kind match {
-          case unique: UniqueNameKind => Some((qual, unique.separator, info.num))
+          case unique: UniqueNameKind => Some((qual, unique.separatorName, info.num))
           case _ => None
         }
       case _ => None

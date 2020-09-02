@@ -8,6 +8,7 @@ import scala.internal.Chars
 import Chars.isOperatorPart
 import Definitions._
 import nme._
+import Decorators.concat
 
 object NameOps {
 
@@ -138,7 +139,7 @@ object NameOps {
       case _ => false
 
     /** Add an `extension_` in front of this name */
-    def toExtensionName = termName("extension_" ++ name.toString)
+    def toExtensionName(using Context): SimpleName = "extension_".concat(name)
 
     /** Drop `extension_` in front of this name, if it has this prefix */
     def dropExtension = name match

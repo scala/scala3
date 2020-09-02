@@ -918,7 +918,12 @@ object Contexts {
     private[Contexts] val comparers = new mutable.ArrayBuffer[TypeComparer]
     private[Contexts] var comparersInUse: Int = 0
 
-    private[dotc] var nameCharBuffer = new Array[Char](256)
+    private var charArray = new Array[Char](256)
+
+    def sharedCharArray(len: Int): Array[Char] =
+      while len > charArray.length do
+        charArray = new Array[Char](charArray.length * 2)
+      charArray
 
     def reset(): Unit = {
       for ((_, set) <- uniqueSets) set.clear()
