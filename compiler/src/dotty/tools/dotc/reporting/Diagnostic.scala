@@ -72,9 +72,7 @@ object Diagnostic:
   class MigrationWarning(
     msg: Message,
     pos: SourcePosition
-  ) extends Warning(msg, pos) {
-    def enablingOption(using Context): Setting[Boolean] = ctx.settings.migration
-  }
+  ) extends Warning(msg, pos)
 
 class Diagnostic(
   val msg: Message,

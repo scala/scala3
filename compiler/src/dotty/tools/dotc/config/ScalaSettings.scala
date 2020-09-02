@@ -27,7 +27,6 @@ class ScalaSettings extends Settings.SettingGroup {
 
   /** Other settings */
   val deprecation: Setting[Boolean] = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.") withAbbreviation "--deprecation"
-  val migration: Setting[Boolean] = BooleanSetting("-migration", "Emit warning and location for migration issues from Scala 2.") withAbbreviation "--migration"
   val encoding: Setting[String] = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding) withAbbreviation "--encoding"
   val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail.") withAbbreviation "--explain-types"
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.") withAbbreviation "--explain"
