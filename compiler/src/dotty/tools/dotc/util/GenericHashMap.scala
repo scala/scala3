@@ -23,7 +23,7 @@ object GenericHashMap:
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-abstract class GenericHashMap[Key <: AnyRef, Value]
+abstract class GenericHashMap[Key, Value]
     (initialCapacity: Int, capacityMultiple: Int) extends MutableMap[Key, Value]:
   import GenericHashMap.DenseLimit
 
@@ -58,18 +58,20 @@ abstract class GenericHashMap[Key <: AnyRef, Value]
   protected def isEqual(x: Key, y: Key): Boolean
 
   /** Turn successor index or hash code `x` into a table index */
-  inline protected def index(x: Int): Int = x & (table.length - 2)
+  private def index(x: Int): Int = x & (table.length - 2)
 
-  inline protected def firstIndex(key: Key) = if isDense then 0 else index(hash(key))
-  inline protected def nextIndex(idx: Int) =
+  private def firstIndex(key: Key) = if isDense then 0 else index(hash(key))
+  private def nextIndex(idx: Int) =
     Stats.record(statsItem("miss"))
     index(idx + 2)
 
-  inline protected def keyAt(idx: Int): Key = table(idx).asInstanceOf[Key]
-  inline protected def valueAt(idx: Int): Value = table(idx + 1).asInstanceOf[Value]
+  private def keyAt(idx: Int): Key = table(idx).asInstanceOf[Key]
+  private def valueAt(idx: Int): Value = table(idx + 1).asInstanceOf[Value]
 
-  inline protected def setTable(idx: Int, value: Value) =
-    table(idx) = value.asInstanceOf[AnyRef]
+  private def setKey(idx: Int, key: Key) =
+    table(idx) = key.asInstanceOf[AnyRef]
+  private def setValue(idx: Int, value: Value) =
+    table(idx + 1) = value.asInstanceOf[AnyRef]
 
   def lookup(key: Key): Value | Null =
     Stats.record(statsItem("lookup"))
@@ -87,12 +89,12 @@ abstract class GenericHashMap[Key <: AnyRef, Value]
     var k = keyAt(idx)
     while k != null do
       if isEqual(k, key) then
-        setTable(idx + 1, value)
+        setValue(idx, value)
         return
       idx = nextIndex(idx)
       k = keyAt(idx)
-    table(idx) = key
-    setTable(idx + 1, value)
+    setKey(idx, key)
+    setValue(idx, value)
     used += 1
     if used > limit then growTable()
 
@@ -112,8 +114,8 @@ abstract class GenericHashMap[Key <: AnyRef, Value]
             || index(hole - index(hash(k))) < limit * 2
                // hash(k) is then logically at or before hole; can be moved forward to fill hole
           then
-            table(hole) = k
-            setTable(hole + 1, valueAt(idx))
+            setKey(hole, k)
+            setValue(hole, valueAt(idx))
             hole = idx
         table(hole) = null
         used -= 1
@@ -126,15 +128,15 @@ abstract class GenericHashMap[Key <: AnyRef, Value]
     if v == null then v = value
     v.uncheckedNN
 
-  private def addOld(key: Key, value: AnyRef): Unit =
+  private def addOld(key: Key, value: Value): Unit =
     Stats.record(statsItem("re-enter"))
     var idx = firstIndex(key)
     var k = keyAt(idx)
     while k != null do
       idx = nextIndex(idx)
       k = keyAt(idx)
-    table(idx) = key
-    table(idx + 1) = value
+    setKey(idx, key)
+    setValue(idx, value)
 
   def copyFrom(oldTable: Array[AnyRef]): Unit =
     if isDense then
@@ -143,7 +145,7 @@ abstract class GenericHashMap[Key <: AnyRef, Value]
       var idx = 0
       while idx < oldTable.length do
         val key = oldTable(idx).asInstanceOf[Key]
-        if key != null then addOld(key, oldTable(idx + 1))
+        if key != null then addOld(key, oldTable(idx + 1).asInstanceOf[Value])
         idx += 2
 
   protected def growTable(): Unit =

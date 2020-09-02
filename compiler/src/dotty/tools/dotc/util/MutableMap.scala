@@ -3,7 +3,7 @@ package dotc.util
 
 /** A common class for lightweight mutable maps.
  */
-abstract class MutableMap[Key <: AnyRef, Value]:
+abstract class MutableMap[Key, Value]:
 
   def lookup(x: Key): Value | Null
 
