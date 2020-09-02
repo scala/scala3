@@ -166,7 +166,13 @@ class VarianceChecker(using Context) {
   private object Traverser extends TreeTraverser {
     def checkVariance(sym: Symbol, pos: SrcPos) = Validator.validateDefinition(sym) match {
       case Some(VarianceError(tvar, required)) =>
-        def msg = i"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym"
+        def msg =
+          val enumAddendum =
+            if sym.owner.isAllOf(EnumCase) && sym.owner.isClass then
+              i"\nenum case ${sym.owner} may require explicit type parameters to resolve this issue"
+            else
+              ""
+          i"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym$enumAddendum"
         if (migrateTo3 &&
             (sym.owner.isConstructor || sym.ownersIterator.exists(_.isAllOf(ProtectedLocal))))
           report.migrationWarning(

@@ -136,8 +136,9 @@ object desugar {
     )
 
   /** A derived type definition watching `sym` */
-  def derivedTypeParam(sym: TypeSymbol)(using Context): TypeDef =
-    TypeDef(sym.name, DerivedFromParamTree().watching(sym)).withFlags(TypeParam)
+  def derivedTypeParamWithVariance(sym: TypeSymbol)(using Context): TypeDef =
+    val variance = (Covariant | Contravariant) & sym.flags
+    TypeDef(sym.name, DerivedFromParamTree().watching(sym)).withFlags(TypeParam | variance)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef)(using Context): ValDef =
@@ -406,7 +407,7 @@ object desugar {
 
     val originalTparams = constr1.tparams
     val originalVparamss = constr1.vparamss
-    lazy val derivedEnumParams = enumClass.typeParams.map(derivedTypeParam)
+    lazy val derivedEnumParams = enumClass.typeParams.map(derivedTypeParamWithVariance)
     val impliedTparams =
       if (isEnumCase) {
         val tparamReferenced = typeParamIsReferenced(
