@@ -2122,6 +2122,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def companionModule(using ctx: Context): Symbol =
         reflectSelf.Symbol_companionModule(sym)
 
+      /** Type referene to the symbol */
+      def typeRef(using Context): TypeRef =
+        reflectSelf.Symbol_typeRef(sym)
+
+      /** Term referene to the symbol */
+      def termRef(using Context): TermRef =
+        reflectSelf.Symbol_termRef(sym)
+
       /** Shows the tree as extractors */
       def showExtractors(using ctx: Context): String =
         new ExtractorsPrinter[reflectSelf.type](reflectSelf).showSymbol(sym)

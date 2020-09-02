@@ -1843,6 +1843,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   def Symbol_noSymbol(using Context): Symbol = core.Symbols.NoSymbol
 
+  def Symbol_typeRef(self: Symbol)(using Context): TypeRef = self.typeRef
+
+  def Symbol_termRef(self: Symbol)(using Context): TermRef = self.termRef
 
   ///////////
   // FLAGS //

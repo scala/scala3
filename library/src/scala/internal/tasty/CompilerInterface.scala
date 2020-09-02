@@ -997,6 +997,11 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   /** Case class or case object children of a sealed trait */
   def Symbol_children(self: Symbol)(using ctx: Context): List[Symbol]
 
+  /** Type referene to the symbol */
+  def Symbol_typeRef(self: Symbol)(using Context): TypeRef
+
+  /** Term referene to the symbol */
+  def Symbol_termRef(self: Symbol)(using Context): TermRef
 
   ///////////
   // FLAGS //
