@@ -9,19 +9,19 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   import tasty._
   import syntaxHighlight._
 
-  def showTree(tree: Tree)(using ctx: Context): String =
+  def showTree(tree: Tree): String =
     (new Buffer).printTree(tree).result()
 
-  def showType(tpe: Type)(using ctx: Context): String =
+  def showType(tpe: Type): String =
     (new Buffer).printType(tpe)(using None).result()
 
-  def showConstant(const: Constant)(using ctx: Context): String =
+  def showConstant(const: Constant): String =
     (new Buffer).printConstant(const).result()
 
-  def showSymbol(symbol: Symbol)(using ctx: Context): String =
+  def showSymbol(symbol: Symbol): String =
     symbol.fullName
 
-  def showFlags(flags: Flags)(using ctx: Context): String = {
+  def showFlags(flags: Flags): String = {
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "abstract"
     if (flags.is(Flags.Artifact)) flagList += "artifact"
@@ -60,7 +60,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     flagList.result().mkString("/*", " ", "*/")
   }
 
-  private class Buffer(using ctx: Context) {
+  private class Buffer {
 
     private[this] val sb: StringBuilder = new StringBuilder
 
@@ -1413,7 +1413,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   private[this] val names = collection.mutable.Map.empty[Symbol, String]
   private[this] val namesIndex = collection.mutable.Map.empty[String, Int]
 
-  private def splicedName(sym: Symbol)(using ctx: Context): Option[String] = {
+  private def splicedName(sym: Symbol): Option[String] = {
     sym.annots.find(_.symbol.owner == Symbol.requiredClass("scala.internal.quoted.showName")).flatMap {
       case Apply(_, Literal(Constant(c: String)) :: Nil) => Some(c)
       case Apply(_, Inlined(_, _, Literal(Constant(c: String))) :: Nil) => Some(c)
@@ -1434,7 +1434,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   }
 
   private object SpecialOp {
-    def unapply(arg: Tree)(using ctx: Context): Option[(String, List[Term])] = arg match {
+    def unapply(arg: Tree): Option[(String, List[Term])] = arg match {
       case arg @ Apply(fn, args) =>
         fn.tpe match {
           case tpe @ TermRef(ThisType(TypeRef(_, name)), name2) if name == "<special-ops>" =>
@@ -1446,7 +1446,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   }
 
   private object Annotation {
-    def unapply(arg: Tree)(using ctx: Context): Option[(TypeTree, List[Term])] = arg match {
+    def unapply(arg: Tree): Option[(TypeTree, List[Term])] = arg match {
       case New(annot) => Some((annot, Nil))
       case Apply(Select(New(annot), "<init>"), args) => Some((annot, args))
       case Apply(TypeApply(Select(New(annot), "<init>"), targs), args) => Some((annot, args))
@@ -1458,7 +1458,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   private object Types {
 
     object Sequence {
-      def unapply(tpe: Type)(using ctx: Context): Option[Type] = tpe match {
+      def unapply(tpe: Type): Option[Type] = tpe match {
         case AppliedType(seq, (tp: Type) :: Nil)
             if seq.typeSymbol == Symbol.requiredClass("scala.collection.Seq") || seq.typeSymbol == Symbol.requiredClass("scala.collection.immutable.Seq") =>
           Some(tp)
@@ -1467,7 +1467,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     }
 
     object Repeated {
-      def unapply(tpe: Type)(using ctx: Context): Option[Type] = tpe match {
+      def unapply(tpe: Type): Option[Type] = tpe match {
         case AppliedType(rep, (tp: Type) :: Nil) if rep.typeSymbol == Symbol.requiredClass("scala.<repeated>") => Some(tp)
         case _ => None
       }
@@ -1476,7 +1476,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
   }
 
   object PackageObject {
-    def unapply(tree: Tree)(using ctx: Context): Option[Tree] = tree match {
+    def unapply(tree: Tree): Option[Tree] = tree match {
       case PackageClause(_, ValDef("package", _, _) :: body :: Nil) => Some(body)
       case _ => None
     }

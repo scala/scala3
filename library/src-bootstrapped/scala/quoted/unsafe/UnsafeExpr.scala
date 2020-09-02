@@ -61,7 +61,7 @@ object UnsafeExpr {
     import qctx.tasty._
     val map = params.map(_.symbol).zip(args).toMap
     new TreeMap {
-      override def transformTerm(tree: Term)(using ctx: Context): Term =
+      override def transformTerm(tree: Term)(using Owner): Term =
         super.transformTerm(tree) match
           case tree: Ident => map.getOrElse(tree.symbol, tree)
           case tree => tree

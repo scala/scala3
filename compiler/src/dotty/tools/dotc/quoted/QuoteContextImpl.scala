@@ -19,10 +19,10 @@ object QuoteContextImpl {
     val syntaxHighlight =
       if (ctx.settings.color.value == "always") SyntaxHighlight.ANSI
       else SyntaxHighlight.plain
-    show(using qctx)(tree.asInstanceOf[qctx.tasty.Tree], syntaxHighlight)(using ctx.asInstanceOf[qctx.tasty.Context])
+    show(using qctx)(tree.asInstanceOf[qctx.tasty.Tree], syntaxHighlight)
   }
 
-  private def show(using qctx: QuoteContext)(tree: qctx.tasty.Tree, syntaxHighlight: SyntaxHighlight)(using qctx.tasty.Context) =
+  private def show(using qctx: QuoteContext)(tree: qctx.tasty.Tree, syntaxHighlight: SyntaxHighlight) =
     tree.showWith(syntaxHighlight)
 
   private[dotty] def checkScopeId(id: ScopeId)(using Context): Unit =

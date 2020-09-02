@@ -9,7 +9,7 @@ class TastyInterpreter extends TastyInspector {
     import qctx.tasty._
     object Traverser extends TreeTraverser {
 
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
+      override def traverseTree(tree: Tree)(using Owner): Unit = tree match {
         // TODO: check the correct sig and object enclosement for main
         case DefDef("main", _, _, _, Some(rhs)) =>
           val interpreter = new jvm.Interpreter(this.reflect)

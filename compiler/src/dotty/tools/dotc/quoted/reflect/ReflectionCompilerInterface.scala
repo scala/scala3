@@ -49,7 +49,13 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   // CONTEXT //
   /////////////
 
-  type Context = core.Contexts.Context
+  type Owner = core.Symbols.Symbol
+
+  def rootOwner: Owner = rootContext.owner
+
+  def Owner_fromSymbol(sym: Symbol): Owner = sym
+
+  def Owner_symbol(self: Owner): Symbol = self
 
   /////////////////
   // Constraints //
@@ -69,11 +75,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   // Source //
   ////////////
 
-  def Source_path(using Context): java.nio.file.Path = ctx.compilationUnit.source.file.jpath
-  def Source_isJavaCompilationUnit(using Context): Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
-  def Source_isScala2CompilationUnit(using Context): Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
-  def Source_isAlreadyLoadedCompilationUnit(using Context): Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.AlreadyLoadedCompilationUnit]
-  def Source_compilationUnitClassname(using Context): String =
+  def Source_path: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
+  def Source_isJavaCompilationUnit: Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.JavaCompilationUnit]
+  def Source_isScala2CompilationUnit: Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.Scala2CompilationUnit]
+  def Source_isAlreadyLoadedCompilationUnit: Boolean = ctx.compilationUnit.isInstanceOf[fromtasty.AlreadyLoadedCompilationUnit]
+  def Source_compilationUnitClassname: String =
     ctx.compilationUnit match {
       case cu: fromtasty.JavaCompilationUnit => cu.className
       case cu: fromtasty.Scala2CompilationUnit => cu.className
@@ -86,16 +92,16 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   // REPORTING //
   ///////////////
 
-  def error(msg: => String, pos: Position)(using Context): Unit =
+  def error(msg: => String, pos: Position): Unit =
     report.error(msg, pos)
 
-  def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(using Context): Unit =
+  def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
     report.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
-  def warning(msg: => String, pos: Position)(using Context): Unit =
+  def warning(msg: => String, pos: Position): Unit =
     report.warning(msg, pos)
 
-  def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int)(using Context): Unit =
+  def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
     report.error(msg, util.SourcePosition(sourceFile, util.Spans.Span(start, end)))
 
 
@@ -105,30 +111,30 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Tree = tpd.Tree
 
-  def Tree_pos(self: Tree)(using Context): Position = self.sourcePos
-  def Tree_symbol(self: Tree)(using Context): Symbol = self.symbol
+  def Tree_pos(self: Tree): Position = self.sourcePos
+  def Tree_symbol(self: Tree): Symbol = self.symbol
 
   type PackageClause = tpd.PackageDef
 
-  def PackageClause_TypeTest(using Context): TypeTest[Tree, PackageClause] = new {
+  def PackageClause_TypeTest: TypeTest[Tree, PackageClause] = new {
     def runtimeClass: Class[?] = classOf[PackageClause]
     override def unapply(x: Any): Option[PackageClause] = x match
       case x: tpd.PackageDef @unchecked => Some(x)
       case _ => None
   }
 
-  def PackageClause_pid(self: PackageClause)(using Context): Ref = self.pid
-  def PackageClause_stats(self: PackageClause)(using Context): List[Tree] = self.stats
+  def PackageClause_pid(self: PackageClause): Ref = self.pid
+  def PackageClause_stats(self: PackageClause): List[Tree] = self.stats
 
-  def PackageClause_apply(pid: Ref, stats: List[Tree])(using Context): PackageClause =
+  def PackageClause_apply(pid: Ref, stats: List[Tree]): PackageClause =
     withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats))
 
-  def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree])(using Context): PackageClause =
+  def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause =
     tpd.cpy.PackageDef(original)(pid, stats)
 
   type Statement = tpd.Tree
 
-  def Statement_TypeTest(using Context): TypeTest[Tree, Statement] = new {
+  def Statement_TypeTest: TypeTest[Tree, Statement] = new {
     def runtimeClass: Class[?] = classOf[Statement]
     override def unapply(x: Any): Option[Statement] = x match
       case _: PatternTree @unchecked => None
@@ -139,7 +145,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Import = tpd.Import
 
-  def Import_TypeTest(using Context): TypeTest[Tree, Import] = new {
+  def Import_TypeTest: TypeTest[Tree, Import] = new {
     def runtimeClass: Class[?] = classOf[Import]
     override def unapply(x: Any): Option[Import] = x match
       case tree: tpd.Import @unchecked => Some(tree)
@@ -147,18 +153,18 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   }
 
   def Import_implied(self: Import): Boolean = false // TODO: adapt to new import scheme
-  def Import_expr(self: Import)(using Context): Tree = self.expr
-  def Import_selectors(self: Import)(using Context): List[ImportSelector] = self.selectors
+  def Import_expr(self: Import): Tree = self.expr
+  def Import_selectors(self: Import): List[ImportSelector] = self.selectors
 
-  def Import_apply(expr: Term, selectors: List[ImportSelector])(using Context): Import =
+  def Import_apply(expr: Term, selectors: List[ImportSelector]): Import =
     withDefaultPos(tpd.Import(expr, selectors))
 
-  def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(using Context): Import =
+  def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import =
     tpd.cpy.Import(original)(expr, selectors)
 
   type Definition = tpd.Tree
 
-  def Definition_TypeTest(using Context): TypeTest[Tree, Definition] = new {
+  def Definition_TypeTest: TypeTest[Tree, Definition] = new {
     def runtimeClass: Class[?] = classOf[Definition]
     override def unapply(x: Any): Option[Definition] = x match
       case x: tpd.MemberDef @unchecked => Some(x)
@@ -166,103 +172,103 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Definition_name(self: Definition)(using Context): String = self match {
+  def Definition_name(self: Definition): String = self match {
     case self: tpd.MemberDef => self.name.toString
     case self: PackageDefinition => self.symbol.name.toString // TODO make PackageDefinition a MemberDef or NameTree
   }
 
   type PackageDef = PackageDefinition
 
-  def PackageDef_TypeTest(using Context): TypeTest[Tree, PackageDef] = new {
+  def PackageDef_TypeTest: TypeTest[Tree, PackageDef] = new {
     def runtimeClass: Class[?] = classOf[PackageDef]
     override def unapply(x: Any): Option[PackageDef] = x match
       case x: PackageDefinition @unchecked => Some(x)
       case _ => None
   }
 
-  def PackageDef_owner(self: PackageDef)(using Context): PackageDef = packageDefFromSym(self.symbol.owner)
+  def PackageDef_owner(self: PackageDef): PackageDef = packageDefFromSym(self.symbol.owner)
 
-  def PackageDef_members(self: PackageDef)(using Context): List[Statement] =
+  def PackageDef_members(self: PackageDef): List[Statement] =
     if (self.symbol.is(core.Flags.JavaDefined)) Nil // FIXME should also support java packages
     else self.symbol.info.decls.iterator.map(definitionFromSym).toList
 
   type ClassDef = tpd.TypeDef
 
-  def ClassDef_TypeTest(using Context): TypeTest[Tree, ClassDef] = new {
+  def ClassDef_TypeTest: TypeTest[Tree, ClassDef] = new {
     def runtimeClass: Class[?] = classOf[ClassDef]
     override def unapply(x: Any): Option[ClassDef] = x match
       case x: tpd.TypeDef @unchecked if x.isClassDef => Some(x)
       case _ => None
   }
 
-  def ClassDef_constructor(self: ClassDef)(using Context): DefDef = ClassDef_rhs(self).constr
-  def ClassDef_parents(self: ClassDef)(using Context): List[Term | TypeTree] = ClassDef_rhs(self).parents
-  def ClassDef_derived(self: ClassDef)(using Context): List[TypeTree] = ClassDef_rhs(self).derived.asInstanceOf[List[TypeTree]]
-  def ClassDef_self(self: ClassDef)(using Context): Option[ValDef] = optional(ClassDef_rhs(self).self)
-  def ClassDef_body(self: ClassDef)(using Context): List[Statement] = ClassDef_rhs(self).body
+  def ClassDef_constructor(self: ClassDef): DefDef = ClassDef_rhs(self).constr
+  def ClassDef_parents(self: ClassDef): List[Term | TypeTree] = ClassDef_rhs(self).parents
+  def ClassDef_derived(self: ClassDef): List[TypeTree] = ClassDef_rhs(self).derived.asInstanceOf[List[TypeTree]]
+  def ClassDef_self(self: ClassDef): Option[ValDef] = optional(ClassDef_rhs(self).self)
+  def ClassDef_body(self: ClassDef): List[Statement] = ClassDef_rhs(self).body
   private def ClassDef_rhs(self: ClassDef) = self.rhs.asInstanceOf[tpd.Template]
 
-  def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Term | TypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(using Context): ClassDef = {
+  def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Term | TypeTree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
     val Trees.TypeDef(_, originalImpl: tpd.Template) = original
     tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
   }
 
   type TypeDef = tpd.TypeDef
 
-  def TypeDef_TypeTest(using Context): TypeTest[Tree, TypeDef] = new {
+  def TypeDef_TypeTest: TypeTest[Tree, TypeDef] = new {
     def runtimeClass: Class[?] = classOf[TypeDef]
     override def unapply(x: Any): Option[TypeDef] = x match
       case x: tpd.TypeDef @unchecked if !x.isClassDef => Some(x)
       case _ => None
   }
 
-  def TypeDef_rhs(self: TypeDef)(using Context): TypeTree | TypeBoundsTree = self.rhs
+  def TypeDef_rhs(self: TypeDef): TypeTree | TypeBoundsTree = self.rhs
 
-  def TypeDef_apply(symbol: Symbol)(using Context): TypeDef = withDefaultPos(tpd.TypeDef(symbol.asType))
-  def TypeDef_copy(original: Tree)(name: String, rhs: TypeTree | TypeBoundsTree)(using Context): TypeDef =
+  def TypeDef_apply(symbol: Symbol): TypeDef = withDefaultPos(tpd.TypeDef(symbol.asType))
+  def TypeDef_copy(original: Tree)(name: String, rhs: TypeTree | TypeBoundsTree): TypeDef =
     tpd.cpy.TypeDef(original)(name.toTypeName, rhs)
 
   type DefDef = tpd.DefDef
 
-  def DefDef_TypeTest(using Context): TypeTest[Tree, DefDef] = new {
+  def DefDef_TypeTest: TypeTest[Tree, DefDef] = new {
     def runtimeClass: Class[?] = classOf[DefDef]
     override def unapply(x: Any): Option[DefDef] = x match
       case x: tpd.DefDef @unchecked => Some(x)
       case _ => None
   }
 
-  def DefDef_typeParams(self: DefDef)(using Context): List[TypeDef] = self.tparams
-  def DefDef_paramss(self: DefDef)(using Context): List[List[ValDef]] = self.vparamss
-  def DefDef_returnTpt(self: DefDef)(using Context): TypeTree = self.tpt
-  def DefDef_rhs(self: DefDef)(using Context): Option[Tree] = optional(self.rhs)
+  def DefDef_typeParams(self: DefDef): List[TypeDef] = self.tparams
+  def DefDef_paramss(self: DefDef): List[List[ValDef]] = self.vparamss
+  def DefDef_returnTpt(self: DefDef): TypeTree = self.tpt
+  def DefDef_rhs(self: DefDef): Option[Tree] = optional(self.rhs)
 
-  def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(using Context): DefDef =
+  def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]): DefDef =
     withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => rhsFn(tparams)(vparamss).getOrElse(tpd.EmptyTree)))
 
-  def DefDef_copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(using Context): DefDef =
+  def DefDef_copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
     tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, rhs.getOrElse(tpd.EmptyTree))
 
   type ValDef = tpd.ValDef
 
-  def ValDef_TypeTest(using Context): TypeTest[Tree, ValDef] = new {
+  def ValDef_TypeTest: TypeTest[Tree, ValDef] = new {
     def runtimeClass: Class[?] = classOf[ValDef]
     override def unapply(x: Any): Option[ValDef] = x match
       case x: tpd.ValDef @unchecked => Some(x)
       case _ => None
   }
 
-  def ValDef_tpt(self: ValDef)(using Context): TypeTree = self.tpt
-  def ValDef_rhs(self: ValDef)(using Context): Option[Tree] = optional(self.rhs)
+  def ValDef_tpt(self: ValDef): TypeTree = self.tpt
+  def ValDef_rhs(self: ValDef): Option[Tree] = optional(self.rhs)
 
-  def ValDef_apply(symbol: Symbol, rhs: Option[Term])(using Context): ValDef =
+  def ValDef_apply(symbol: Symbol, rhs: Option[Term]): ValDef =
     tpd.ValDef(symbol.asTerm, rhs.getOrElse(tpd.EmptyTree))
 
-  def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(using Context): ValDef =
+  def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef =
     tpd.cpy.ValDef(original)(name.toTermName, tpt, rhs.getOrElse(tpd.EmptyTree))
 
   type Term = tpd.Tree
 
-  def Term_TypeTest(using Context): TypeTest[Tree, Term] = new {
+  def Term_TypeTest: TypeTest[Tree, Term] = new {
     def runtimeClass: Class[?] = classOf[Term]
     override def unapply(x: Any): Option[Term] = x match
       case _ if Unapply_TypeTest.unapply(x).isDefined => None
@@ -274,11 +280,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Term_tpe(self: Term)(using Context): Type = self.tpe
-  def Term_underlyingArgument(self: Term)(using Context): Term = self.underlyingArgument
-  def Term_underlying(self: Term)(using Context): Term = self.underlying
+  def Term_tpe(self: Term): Type = self.tpe
+  def Term_underlyingArgument(self: Term): Term = self.underlyingArgument
+  def Term_underlying(self: Term): Term = self.underlying
 
-  def Term_etaExpand(term: Term)(using Context): Term = term.tpe.widen match {
+  def Term_etaExpand(term: Term): Term = term.tpe.widen match {
     case mtpe: Types.MethodType if !mtpe.isParamDependent =>
       val closureResType = mtpe.resType match {
         case t: Types.MethodType @unchecked => t.toFunctionType()
@@ -290,238 +296,238 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     case _ => term
   }
 
-  def TypeRef_apply(sym: Symbol)(using Context): TypeTree = {
+  def TypeRef_apply(sym: Symbol): TypeTree = {
     assert(sym.isType)
     withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.TypeTree])
   }
 
   type Ref = tpd.RefTree
 
-  def Ref_TypeTest(using Context): TypeTest[Tree, Ref] = new {
+  def Ref_TypeTest: TypeTest[Tree, Ref] = new {
     def runtimeClass: Class[?] = classOf[Ref]
     override def unapply(x: Any): Option[Ref] = x match
       case x: tpd.RefTree @unchecked if x.isTerm => Some(x)
       case _ => None
   }
 
-  def Ref_term(tp: TermRef)(using Context): Ref =
+  def Ref_term(tp: TermRef): Ref =
     withDefaultPos(tpd.ref(tp).asInstanceOf[tpd.RefTree])
 
-  def Ref_apply(sym: Symbol)(using Context): Ref = {
+  def Ref_apply(sym: Symbol): Ref = {
     assert(sym.isTerm)
     withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.RefTree])
   }
 
   type Ident = tpd.Ident
 
-  def Ident_TypeTest(using Context): TypeTest[Tree, Ident] = new {
+  def Ident_TypeTest: TypeTest[Tree, Ident] = new {
     def runtimeClass: Class[?] = classOf[Ident]
     override def unapply(x: Any): Option[Ident] = x match
       case x: tpd.Ident @unchecked if x.isTerm => Some(x)
       case _ => None
   }
 
-  def Ident_name(self: Ident)(using Context): String = self.name.show
+  def Ident_name(self: Ident): String = self.name.show
 
-  def Ident_apply(tmref: TermRef)(using Context): Term =
+  def Ident_apply(tmref: TermRef): Term =
     withDefaultPos(tpd.ref(tmref).asInstanceOf[Term])
 
-  def Ident_copy(original: Tree)(name: String)(using Context): Ident =
+  def Ident_copy(original: Tree)(name: String): Ident =
     tpd.cpy.Ident(original)(name.toTermName)
 
   type Select = tpd.Select
 
-  def Select_TypeTest(using Context): TypeTest[Tree, Select] = new {
+  def Select_TypeTest: TypeTest[Tree, Select] = new {
     def runtimeClass: Class[?] = classOf[Select]
     override def unapply(x: Any): Option[Select] = x match
       case x: tpd.Select @unchecked if x.isTerm => Some(x)
       case _ => None
   }
 
-  def Select_qualifier(self: Select)(using Context): Term = self.qualifier
-  def Select_name(self: Select)(using Context): String = self.name.toString
-  def Select_signature(self: Select)(using Context): Option[Signature] =
+  def Select_qualifier(self: Select): Term = self.qualifier
+  def Select_name(self: Select): String = self.name.toString
+  def Select_signature(self: Select): Option[Signature] =
     if (self.symbol.signature == core.Signature.NotAMethod) None
     else Some(self.symbol.signature)
 
-  def Select_apply(qualifier: Term, symbol: Symbol)(using Context): Select =
+  def Select_apply(qualifier: Term, symbol: Symbol): Select =
     withDefaultPos(tpd.Select(qualifier, Types.TermRef(qualifier.tpe, symbol)))
 
-  def Select_unique(qualifier: Term, name: String)(using Context): Select = {
+  def Select_unique(qualifier: Term, name: String): Select = {
     val denot = qualifier.tpe.member(name.toTermName)
     assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
     withDefaultPos(tpd.Select(qualifier, name.toTermName))
   }
 
   // TODO rename, this returns an Apply and not a Select
-  def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(using Context): Apply =
+  def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply =
     withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
 
-  def Select_copy(original: Tree)(qualifier: Term, name: String)(using Context): Select =
+  def Select_copy(original: Tree)(qualifier: Term, name: String): Select =
     tpd.cpy.Select(original)(qualifier, name.toTermName)
 
   type Literal = tpd.Literal
 
-  def Literal_TypeTest(using Context): TypeTest[Tree, Literal] = new {
+  def Literal_TypeTest: TypeTest[Tree, Literal] = new {
     def runtimeClass: Class[?] = classOf[Literal]
     override def unapply(x: Any): Option[Literal] = x match
       case x: tpd.Literal @unchecked => Some(x)
       case _ => None
   }
 
-  def Literal_constant(self: Literal)(using Context): Constant = self.const
+  def Literal_constant(self: Literal): Constant = self.const
 
-  def Literal_apply(constant: Constant)(using Context): Literal =
+  def Literal_apply(constant: Constant): Literal =
     withDefaultPos(tpd.Literal(constant))
 
-  def Literal_copy(original: Tree)(constant: Constant)(using Context): Literal =
+  def Literal_copy(original: Tree)(constant: Constant): Literal =
     tpd.cpy.Literal(original)(constant)
 
   type This = tpd.This
 
-  def This_TypeTest(using Context): TypeTest[Tree, This] = new {
+  def This_TypeTest: TypeTest[Tree, This] = new {
     def runtimeClass: Class[?] = classOf[This]
     override def unapply(x: Any): Option[This] = x match
       case x: tpd.This @unchecked => Some(x)
       case _ => None
   }
 
-  def This_id(self: This)(using Context): Option[Id] = optional(self.qual)
+  def This_id(self: This): Option[Id] = optional(self.qual)
 
-  def This_apply(cls: Symbol)(using Context): This =
+  def This_apply(cls: Symbol): This =
     withDefaultPos(tpd.This(cls.asClass))
 
-  def This_copy(original: Tree)(qual: Option[Id])(using Context): This =
+  def This_copy(original: Tree)(qual: Option[Id]): This =
     tpd.cpy.This(original)(qual.getOrElse(untpd.EmptyTypeIdent))
 
   type New = tpd.New
 
-  def New_TypeTest(using Context): TypeTest[Tree, New] = new {
+  def New_TypeTest: TypeTest[Tree, New] = new {
     def runtimeClass: Class[?] = classOf[New]
     override def unapply(x: Any): Option[New] = x match
       case x: tpd.New @unchecked => Some(x)
       case _ => None
   }
 
-  def New_tpt(self: New)(using Context): TypeTree = self.tpt
+  def New_tpt(self: New): TypeTree = self.tpt
 
-  def New_apply(tpt: TypeTree)(using Context): New = withDefaultPos(tpd.New(tpt))
+  def New_apply(tpt: TypeTree): New = withDefaultPos(tpd.New(tpt))
 
-  def New_copy(original: Tree)(tpt: TypeTree)(using Context): New =
+  def New_copy(original: Tree)(tpt: TypeTree): New =
     tpd.cpy.New(original)(tpt)
 
   type NamedArg = tpd.NamedArg
 
-  def NamedArg_TypeTest(using Context): TypeTest[Tree, NamedArg] = new {
+  def NamedArg_TypeTest: TypeTest[Tree, NamedArg] = new {
     def runtimeClass: Class[?] = classOf[NamedArg]
     override def unapply(x: Any): Option[NamedArg] = x match
       case x: tpd.NamedArg @unchecked if x.name.isInstanceOf[core.Names.TermName] => Some(x) // TODO: Now, the name should alwas be a term name
       case _ => None
   }
 
-  def NamedArg_name(self: NamedArg)(using Context): String = self.name.toString
-  def NamedArg_value(self: NamedArg)(using Context): Term = self.arg
+  def NamedArg_name(self: NamedArg): String = self.name.toString
+  def NamedArg_value(self: NamedArg): Term = self.arg
 
-  def NamedArg_apply(name: String, arg: Term)(using Context): NamedArg =
+  def NamedArg_apply(name: String, arg: Term): NamedArg =
     withDefaultPos(tpd.NamedArg(name.toTermName, arg))
 
-  def NamedArg_copy(original: Tree)(name: String, arg: Term)(using Context): NamedArg =
+  def NamedArg_copy(original: Tree)(name: String, arg: Term): NamedArg =
     tpd.cpy.NamedArg(original)(name.toTermName, arg)
 
   type Apply = tpd.Apply
 
-  def Apply_TypeTest(using Context): TypeTest[Tree, Apply] = new {
+  def Apply_TypeTest: TypeTest[Tree, Apply] = new {
     def runtimeClass: Class[?] = classOf[Apply]
     override def unapply(x: Any): Option[Apply] = x match
       case x: tpd.Apply @unchecked => Some(x)
       case _ => None
   }
 
-  def Apply_fun(self: Apply)(using Context): Term = self.fun
-  def Apply_args(self: Apply)(using Context): List[Term] = self.args
+  def Apply_fun(self: Apply): Term = self.fun
+  def Apply_args(self: Apply): List[Term] = self.args
 
 
-  def Apply_apply(fn: Term, args: List[Term])(using Context): Apply =
+  def Apply_apply(fn: Term, args: List[Term]): Apply =
     withDefaultPos(tpd.Apply(fn, args))
 
-  def Apply_copy(original: Tree)(fun: Term, args: List[Term])(using Context): Apply =
+  def Apply_copy(original: Tree)(fun: Term, args: List[Term]): Apply =
     tpd.cpy.Apply(original)(fun, args)
 
   type TypeApply = tpd.TypeApply
 
-  def TypeApply_TypeTest(using Context): TypeTest[Tree, TypeApply] = new {
+  def TypeApply_TypeTest: TypeTest[Tree, TypeApply] = new {
     def runtimeClass: Class[?] = classOf[TypeApply]
     override def unapply(x: Any): Option[TypeApply] = x match
       case x: tpd.TypeApply @unchecked => Some(x)
       case _ => None
   }
 
-  def TypeApply_fun(self: TypeApply)(using Context): Term = self.fun
-  def TypeApply_args(self: TypeApply)(using Context): List[TypeTree] = self.args
+  def TypeApply_fun(self: TypeApply): Term = self.fun
+  def TypeApply_args(self: TypeApply): List[TypeTree] = self.args
 
-  def TypeApply_apply(fn: Term, args: List[TypeTree])(using Context): TypeApply =
+  def TypeApply_apply(fn: Term, args: List[TypeTree]): TypeApply =
     withDefaultPos(tpd.TypeApply(fn, args))
 
-  def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(using Context): TypeApply =
+  def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
     tpd.cpy.TypeApply(original)(fun, args)
 
   type Super = tpd.Super
 
-  def Super_TypeTest(using Context): TypeTest[Tree, Super] = new {
+  def Super_TypeTest: TypeTest[Tree, Super] = new {
     def runtimeClass: Class[?] = classOf[Super]
     override def unapply(x: Any): Option[Super] = x match
       case x: tpd.Super @unchecked => Some(x)
       case _ => None
   }
 
-  def Super_qualifier(self: Super)(using Context): Term = self.qual
-  def Super_id(self: Super)(using Context): Option[Id] = optional(self.mix)
+  def Super_qualifier(self: Super): Term = self.qual
+  def Super_id(self: Super): Option[Id] = optional(self.mix)
 
-  def Super_apply(qual: Term, mix: Option[Id])(using Context): Super =
+  def Super_apply(qual: Term, mix: Option[Id]): Super =
     withDefaultPos(tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), NoSymbol))
 
-  def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(using Context): Super =
+  def Super_copy(original: Tree)(qual: Term, mix: Option[Id]): Super =
     tpd.cpy.Super(original)(qual, mix.getOrElse(untpd.EmptyTypeIdent))
 
   type Typed = tpd.Typed
 
-  def Typed_TypeTest(using Context): TypeTest[Tree, Typed] = new {
+  def Typed_TypeTest: TypeTest[Tree, Typed] = new {
     def runtimeClass: Class[?] = classOf[Typed]
     override def unapply(x: Any): Option[Typed] = x match
       case x: tpd.Typed @unchecked => Some(x)
       case _ => None
   }
 
-  def Typed_expr(self: Typed)(using Context): Term = self.expr
-  def Typed_tpt(self: Typed)(using Context): TypeTree = self.tpt
+  def Typed_expr(self: Typed): Term = self.expr
+  def Typed_tpt(self: Typed): TypeTree = self.tpt
 
-  def Typed_apply(expr: Term, tpt: TypeTree)(using Context): Typed =
+  def Typed_apply(expr: Term, tpt: TypeTree): Typed =
     withDefaultPos(tpd.Typed(expr, tpt))
 
-  def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(using Context): Typed =
+  def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree): Typed =
     tpd.cpy.Typed(original)(expr, tpt)
 
   type Assign = tpd.Assign
 
-  def Assign_TypeTest(using Context): TypeTest[Tree, Assign] = new {
+  def Assign_TypeTest: TypeTest[Tree, Assign] = new {
     def runtimeClass: Class[?] = classOf[Assign]
     override def unapply(x: Any): Option[Assign] = x match
       case x: tpd.Assign @unchecked => Some(x)
       case _ => None
   }
 
-  def Assign_lhs(self: Assign)(using Context): Term = self.lhs
-  def Assign_rhs(self: Assign)(using Context): Term = self.rhs
+  def Assign_lhs(self: Assign): Term = self.lhs
+  def Assign_rhs(self: Assign): Term = self.rhs
 
-  def Assign_apply(lhs: Term, rhs: Term)(using Context): Assign =
+  def Assign_apply(lhs: Term, rhs: Term): Assign =
     withDefaultPos(tpd.Assign(lhs, rhs))
 
-  def Assign_copy(original: Tree)(lhs: Term, rhs: Term)(using Context): Assign =
+  def Assign_copy(original: Tree)(lhs: Term, rhs: Term): Assign =
     tpd.cpy.Assign(original)(lhs, rhs)
 
   type Block = tpd.Block
 
-  def Block_TypeTest(using Context): TypeTest[Tree, Block] = new {
+  def Block_TypeTest: TypeTest[Tree, Block] = new {
     def runtimeClass: Class[?] = classOf[Block]
     override def unapply(x: Any): Option[Block] =
       x match
@@ -536,7 +542,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
    *  i) Put `while` loops in their own blocks: `{ def while$() = ...; while$() }`
    *  ii) Put closures in their own blocks: `{ def anon$() = ...; closure(anon$, ...) }`
    */
-  private def normalizedLoops(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
+  private def normalizedLoops(tree: tpd.Tree): tpd.Tree = tree match {
     case block: tpd.Block if block.stats.size > 1 =>
       def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
         case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
@@ -557,171 +563,171 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   }
 
   /** If it is the second statement of a closure. See: `normalizedLoops` */
-  private def needsNormalization(tree: tpd.Tree)(using Context): Boolean = tree match {
+  private def needsNormalization(tree: tpd.Tree): Boolean = tree match {
     case _: tpd.Closure => true
     case _ => false
   }
 
-  def Block_statements(self: Block)(using Context): List[Statement] = self.stats
-  def Block_expr(self: Block)(using Context): Term = self.expr
+  def Block_statements(self: Block): List[Statement] = self.stats
+  def Block_expr(self: Block): Term = self.expr
 
-  def Block_apply(stats: List[Statement], expr: Term)(using Context): Block =
+  def Block_apply(stats: List[Statement], expr: Term): Block =
     withDefaultPos(tpd.Block(stats, expr))
 
-  def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(using Context): Block =
+  def Block_copy(original: Tree)(stats: List[Statement], expr: Term): Block =
     tpd.cpy.Block(original)(stats, expr)
 
   type Inlined = tpd.Inlined
 
-  def Inlined_TypeTest(using Context): TypeTest[Tree, Inlined] = new {
+  def Inlined_TypeTest: TypeTest[Tree, Inlined] = new {
     def runtimeClass: Class[?] = classOf[Inlined]
     override def unapply(x: Any): Option[Inlined] = x match
       case x: tpd.Inlined @unchecked => Some(x)
       case _ => None
   }
 
-  def Inlined_call(self: Inlined)(using Context): Option[Term | TypeTree] = optional(self.call)
-  def Inlined_bindings(self: Inlined)(using Context): List[Definition] = self.bindings
-  def Inlined_body(self: Inlined)(using Context): Term = self.expansion
+  def Inlined_call(self: Inlined): Option[Term | TypeTree] = optional(self.call)
+  def Inlined_bindings(self: Inlined): List[Definition] = self.bindings
+  def Inlined_body(self: Inlined): Term = self.expansion
 
-  def Inlined_apply(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term)(using Context): Inlined =
+  def Inlined_apply(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term): Inlined =
     withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion))
 
-  def Inlined_copy(original: Tree)(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term)(using Context): Inlined =
+  def Inlined_copy(original: Tree)(call: Option[Term | TypeTree], bindings: List[Definition], expansion: Term): Inlined =
     tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
 
   type Closure = tpd.Closure
 
-  def Closure_TypeTest(using Context): TypeTest[Tree, Closure] = new {
+  def Closure_TypeTest: TypeTest[Tree, Closure] = new {
     def runtimeClass: Class[?] = classOf[Closure]
     override def unapply(x: Any): Option[Closure] = x match
       case x: tpd.Closure @unchecked => Some(x)
       case _ => None
   }
 
-  def Closure_meth(self: Closure)(using Context): Term = self.meth
-  def Closure_tpeOpt(self: Closure)(using Context): Option[Type] = optional(self.tpt).map(_.tpe)
+  def Closure_meth(self: Closure): Term = self.meth
+  def Closure_tpeOpt(self: Closure): Option[Type] = optional(self.tpt).map(_.tpe)
 
-  def Closure_apply(meth: Term, tpe: Option[Type])(using Context): Closure =
+  def Closure_apply(meth: Term, tpe: Option[Type]): Closure =
     withDefaultPos(tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
 
-  def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type])(using Context): Closure =
+  def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type]): Closure =
     tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
 
-  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(using Context): Block =
+  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block =
     tpd.Lambda(tpe, rhsFn)
 
   type If = tpd.If
 
-  def If_TypeTest(using Context): TypeTest[Tree, If] = new {
+  def If_TypeTest: TypeTest[Tree, If] = new {
     def runtimeClass: Class[?] = classOf[If]
     override def unapply(x: Any): Option[If] = x match
       case x: tpd.If @unchecked => Some(x)
       case _ => None
   }
 
-  def If_cond(self: If)(using Context): Term = self.cond
-  def If_thenp(self: If)(using Context): Term = self.thenp
-  def If_elsep(self: If)(using Context): Term = self.elsep
+  def If_cond(self: If): Term = self.cond
+  def If_thenp(self: If): Term = self.thenp
+  def If_elsep(self: If): Term = self.elsep
 
-  def If_apply(cond: Term, thenp: Term, elsep: Term)(using Context): If =
+  def If_apply(cond: Term, thenp: Term, elsep: Term): If =
     withDefaultPos(tpd.If(cond, thenp, elsep))
 
-  def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(using Context): If =
+  def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If =
     tpd.cpy.If(original)(cond, thenp, elsep)
 
   type Match = tpd.Match
 
-  def Match_TypeTest(using Context): TypeTest[Tree, Match] = new {
+  def Match_TypeTest: TypeTest[Tree, Match] = new {
     def runtimeClass: Class[?] = classOf[Match]
     override def unapply(x: Any): Option[Match] = x match
       case x: tpd.Match @unchecked if !x.selector.isEmpty => Some(x)
       case _ => None
   }
 
-  def Match_scrutinee(self: Match)(using Context): Term = self.selector
-  def Match_cases(self: Match)(using Context): List[CaseDef] = self.cases
+  def Match_scrutinee(self: Match): Term = self.selector
+  def Match_cases(self: Match): List[CaseDef] = self.cases
 
-  def Match_apply(selector: Term, cases: List[CaseDef])(using Context): Match =
+  def Match_apply(selector: Term, cases: List[CaseDef]): Match =
     withDefaultPos(tpd.Match(selector, cases))
 
-  def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(using Context): Match =
+  def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match =
     tpd.cpy.Match(original)(selector, cases)
 
   type GivenMatch = tpd.Match
 
-  def GivenMatch_TypeTest(using Context): TypeTest[Tree, GivenMatch] = new {
+  def GivenMatch_TypeTest: TypeTest[Tree, GivenMatch] = new {
     def runtimeClass: Class[?] = classOf[GivenMatch]
     override def unapply(x: Any): Option[GivenMatch] = x match
       case x: tpd.Match @unchecked if x.selector.isEmpty => Some(x)
       case _ => None
   }
 
-  def GivenMatch_cases(self: Match)(using Context): List[CaseDef] = self.cases
+  def GivenMatch_cases(self: Match): List[CaseDef] = self.cases
 
-  def GivenMatch_apply(cases: List[CaseDef])(using Context): GivenMatch =
+  def GivenMatch_apply(cases: List[CaseDef]): GivenMatch =
     withDefaultPos(tpd.Match(tpd.EmptyTree, cases))
 
-  def GivenMatch_copy(original: Tree)(cases: List[CaseDef])(using Context): GivenMatch =
+  def GivenMatch_copy(original: Tree)(cases: List[CaseDef]): GivenMatch =
     tpd.cpy.Match(original)(tpd.EmptyTree, cases)
 
   type Try = tpd.Try
 
-  def Try_TypeTest(using Context): TypeTest[Tree, Try] = new {
+  def Try_TypeTest: TypeTest[Tree, Try] = new {
     def runtimeClass: Class[?] = classOf[Try]
     override def unapply(x: Any): Option[Try] = x match
       case x: tpd.Try @unchecked => Some(x)
       case _ => None
   }
 
-  def Try_body(self: Try)(using Context): Term = self.expr
-  def Try_cases(self: Try)(using Context): List[CaseDef] = self.cases
-  def Try_finalizer(self: Try)(using Context): Option[Term] = optional(self.finalizer)
+  def Try_body(self: Try): Term = self.expr
+  def Try_cases(self: Try): List[CaseDef] = self.cases
+  def Try_finalizer(self: Try): Option[Term] = optional(self.finalizer)
 
-  def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using Context): Try =
+  def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
     withDefaultPos(tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree)))
 
-  def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using Context): Try =
+  def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
     tpd.cpy.Try(original)(expr, cases, finalizer.getOrElse(tpd.EmptyTree))
 
   type Return = tpd.Return
 
-  def Return_TypeTest(using Context): TypeTest[Tree, Return] = new {
+  def Return_TypeTest: TypeTest[Tree, Return] = new {
     def runtimeClass: Class[?] = classOf[Return]
     override def unapply(x: Any): Option[Return] = x match
       case x: tpd.Return @unchecked => Some(x)
       case _ => None
   }
 
-  def Return_expr(self: Return)(using Context): Term = self.expr
+  def Return_expr(self: Return): Term = self.expr
 
-  def Return_apply(expr: Term)(using Context): Return =
+  def Return_apply(expr: Term): Return =
     withDefaultPos(tpd.Return(expr, ctx.owner))
 
-  def Return_copy(original: Tree)(expr: Term)(using Context): Return =
+  def Return_copy(original: Tree)(expr: Term): Return =
     tpd.cpy.Return(original)(expr, tpd.ref(ctx.owner))
 
   type Repeated = tpd.SeqLiteral
 
-  def Repeated_TypeTest(using Context): TypeTest[Tree, Repeated] = new {
+  def Repeated_TypeTest: TypeTest[Tree, Repeated] = new {
     def runtimeClass: Class[?] = classOf[Repeated]
     override def unapply(x: Any): Option[Repeated] = x match
       case x: tpd.SeqLiteral @unchecked => Some(x)
       case _ => None
   }
 
-  def Repeated_elems(self: Repeated)(using Context): List[Term] = self.elems
-  def Repeated_elemtpt(self: Repeated)(using Context): TypeTree = self.elemtpt
+  def Repeated_elems(self: Repeated): List[Term] = self.elems
+  def Repeated_elemtpt(self: Repeated): TypeTree = self.elemtpt
 
-  def Repeated_apply(elems: List[Term], elemtpt: TypeTree)(using Context): Repeated =
+  def Repeated_apply(elems: List[Term], elemtpt: TypeTree): Repeated =
     withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
 
-  def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(using Context): Repeated =
+  def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated =
     tpd.cpy.SeqLiteral(original)(elems, elemtpt)
 
   type SelectOuter = tpd.Select
 
-  def SelectOuter_TypeTest(using Context): TypeTest[Tree, SelectOuter] = new {
+  def SelectOuter_TypeTest: TypeTest[Tree, SelectOuter] = new {
     def runtimeClass: Class[?] = classOf[SelectOuter]
     override def unapply(x: Any): Option[SelectOuter] = x match
     case x: tpd.Select @unchecked =>
@@ -731,39 +737,39 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     case _ => None
   }
 
-  def SelectOuter_qualifier(self: SelectOuter)(using Context): Term = self.qualifier
-  def SelectOuter_level(self: SelectOuter)(using Context): Int = {
+  def SelectOuter_qualifier(self: SelectOuter): Term = self.qualifier
+  def SelectOuter_level(self: SelectOuter): Int = {
     val NameKinds.OuterSelectName(_, levels) = self.name
     levels
   }
 
-  def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(using Context): SelectOuter =
+  def SelectOuter_apply(qualifier: Term, name: String, levels: Int): SelectOuter =
     withDefaultPos(tpd.Select(qualifier, NameKinds.OuterSelectName(name.toTermName, levels)))
 
-  def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(using Context): SelectOuter =
+  def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter =
     tpd.cpy.Select(original)(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))
 
   type While = tpd.WhileDo
 
-  def While_TypeTest(using Context): TypeTest[Tree, While] = new {
+  def While_TypeTest: TypeTest[Tree, While] = new {
     def runtimeClass: Class[?] = classOf[While]
     override def unapply(x: Any): Option[While] = x match
       case x: tpd.WhileDo @unchecked => Some(x)
       case _ => None
   }
 
-  def While_cond(self: While)(using Context): Term = self.cond
-  def While_body(self: While)(using Context): Term = self.body
+  def While_cond(self: While): Term = self.cond
+  def While_body(self: While): Term = self.body
 
-  def While_apply(cond: Term, body: Term)(using Context): While =
+  def While_apply(cond: Term, body: Term): While =
     withDefaultPos(tpd.WhileDo(cond, body))
 
-  def While_copy(original: Tree)(cond: Term, body: Term)(using Context): While =
+  def While_copy(original: Tree)(cond: Term, body: Term): While =
     tpd.cpy.WhileDo(original)(cond, body)
 
   type TypeTree = tpd.Tree
 
-  def TypeTree_TypeTest(using Context): TypeTest[Tree, TypeTree] = new {
+  def TypeTree_TypeTest: TypeTest[Tree, TypeTree] = new {
     def runtimeClass: Class[?] = classOf[TypeTree]
     override def unapply(x: Any): Option[TypeTree] = x match
       case x: tpd.TypeBoundsTree @unchecked => None
@@ -771,225 +777,225 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeTree_tpe(self: TypeTree)(using Context): Type = self.tpe.stripTypeVar
+  def TypeTree_tpe(self: TypeTree): Type = self.tpe.stripTypeVar
 
   type Inferred = tpd.TypeTree
 
-  def Inferred_TypeTest(using Context): TypeTest[Tree, Inferred] = new {
+  def Inferred_TypeTest: TypeTest[Tree, Inferred] = new {
     def runtimeClass: Class[?] = classOf[Inferred]
     override def unapply(x: Any): Option[Inferred] = x match
       case tpt: tpd.TypeTree @unchecked if !tpt.tpe.isInstanceOf[Types.TypeBounds] => Some(tpt)
       case _ => None
   }
 
-  def Inferred_apply(tpe: Type)(using Context): Inferred = withDefaultPos(tpd.TypeTree(tpe))
+  def Inferred_apply(tpe: Type): Inferred = withDefaultPos(tpd.TypeTree(tpe))
 
   type TypeIdent = tpd.Ident
 
-  def TypeIdent_TypeTest(using Context): TypeTest[Tree, TypeIdent] = new {
+  def TypeIdent_TypeTest: TypeTest[Tree, TypeIdent] = new {
     def runtimeClass: Class[?] = classOf[TypeIdent]
     override def unapply(x: Any): Option[TypeIdent] = x match
       case tpt: tpd.Ident @unchecked if tpt.isType => Some(tpt)
       case _ => None
   }
 
-  def TypeIdent_name(self: TypeIdent)(using Context): String = self.name.toString
+  def TypeIdent_name(self: TypeIdent): String = self.name.toString
 
-  def TypeIdent_copy(original: Tree)(name: String)(using Context): TypeIdent =
+  def TypeIdent_copy(original: Tree)(name: String): TypeIdent =
     tpd.cpy.Ident(original)(name.toTypeName)
 
   type TypeSelect = tpd.Select
 
-  def TypeSelect_TypeTest(using Context): TypeTest[Tree, TypeSelect] = new {
+  def TypeSelect_TypeTest: TypeTest[Tree, TypeSelect] = new {
     def runtimeClass: Class[?] = classOf[TypeSelect]
     override def unapply(x: Any): Option[TypeSelect] = x match
       case tpt: tpd.Select @unchecked if tpt.isType && tpt.qualifier.isTerm  => Some(tpt)
       case _ => None
   }
 
-  def TypeSelect_qualifier(self: TypeSelect)(using Context): Term = self.qualifier
-  def TypeSelect_name(self: TypeSelect)(using Context): String = self.name.toString
+  def TypeSelect_qualifier(self: TypeSelect): Term = self.qualifier
+  def TypeSelect_name(self: TypeSelect): String = self.name.toString
 
-  def TypeSelect_apply(qualifier: Term, name: String)(using Context): TypeSelect =
+  def TypeSelect_apply(qualifier: Term, name: String): TypeSelect =
     withDefaultPos(tpd.Select(qualifier, name.toTypeName))
 
-  def TypeSelect_copy(original: Tree)(qualifier: Term, name: String)(using Context): TypeSelect =
+  def TypeSelect_copy(original: Tree)(qualifier: Term, name: String): TypeSelect =
     tpd.cpy.Select(original)(qualifier, name.toTypeName)
 
 
   type Projection = tpd.Select
 
-  def Projection_TypeTest(using Context): TypeTest[Tree, Projection] = new {
+  def Projection_TypeTest: TypeTest[Tree, Projection] = new {
     def runtimeClass: Class[?] = classOf[Projection]
     override def unapply(x: Any): Option[Projection] = x match
       case tpt: tpd.Select @unchecked if tpt.isType && tpt.qualifier.isType => Some(tpt)
       case _ => None
   }
 
-  def Projection_qualifier(self: Projection)(using Context): TypeTree = self.qualifier
-  def Projection_name(self: Projection)(using Context): String = self.name.toString
+  def Projection_qualifier(self: Projection): TypeTree = self.qualifier
+  def Projection_name(self: Projection): String = self.name.toString
 
-  def Projection_copy(original: Tree)(qualifier: TypeTree, name: String)(using Context): Projection =
+  def Projection_copy(original: Tree)(qualifier: TypeTree, name: String): Projection =
     tpd.cpy.Select(original)(qualifier, name.toTypeName)
 
   type Singleton = tpd.SingletonTypeTree
 
-  def Singleton_TypeTest(using Context): TypeTest[Tree, Singleton] = new {
+  def Singleton_TypeTest: TypeTest[Tree, Singleton] = new {
     def runtimeClass: Class[?] = classOf[Singleton]
     override def unapply(x: Any): Option[Singleton] = x match
       case tpt: tpd.SingletonTypeTree @unchecked => Some(tpt)
       case _ => None
   }
 
-  def Singleton_ref(self: Singleton)(using Context): Term = self.ref
+  def Singleton_ref(self: Singleton): Term = self.ref
 
-  def Singleton_apply(ref: Term)(using Context): Singleton =
+  def Singleton_apply(ref: Term): Singleton =
     withDefaultPos(tpd.SingletonTypeTree(ref))
 
-  def Singleton_copy(original: Tree)(ref: Term)(using Context): Singleton =
+  def Singleton_copy(original: Tree)(ref: Term): Singleton =
     tpd.cpy.SingletonTypeTree(original)(ref)
 
   type Refined = tpd.RefinedTypeTree
 
-  def Refined_TypeTest(using Context): TypeTest[Tree, Refined] = new {
+  def Refined_TypeTest: TypeTest[Tree, Refined] = new {
     def runtimeClass: Class[?] = classOf[Refined]
     override def unapply(x: Any): Option[Refined] = x match
       case tpt: tpd.RefinedTypeTree @unchecked => Some(tpt)
       case _ => None
   }
 
-  def Refined_tpt(self: Refined)(using Context): TypeTree = self.tpt
-  def Refined_refinements(self: Refined)(using Context): List[Definition] = self.refinements
+  def Refined_tpt(self: Refined): TypeTree = self.tpt
+  def Refined_refinements(self: Refined): List[Definition] = self.refinements
 
-  def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(using Context): Refined =
+  def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
     tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
 
   type Applied = tpd.AppliedTypeTree
 
-  def Applied_TypeTest(using Context): TypeTest[Tree, Applied] = new {
+  def Applied_TypeTest: TypeTest[Tree, Applied] = new {
     def runtimeClass: Class[?] = classOf[Applied]
     override def unapply(x: Any): Option[Applied] = x match
       case tpt: tpd.AppliedTypeTree @unchecked => Some(tpt)
       case _ => None
   }
 
-  def Applied_tpt(self: Applied)(using Context): TypeTree = self.tpt
-  def Applied_args(self: Applied)(using Context): List[TypeTree | TypeBoundsTree] = self.args
+  def Applied_tpt(self: Applied): TypeTree = self.tpt
+  def Applied_args(self: Applied): List[TypeTree | TypeBoundsTree] = self.args
 
-  def Applied_apply(tpt: TypeTree, args: List[TypeTree | TypeBoundsTree])(using Context): Applied =
+  def Applied_apply(tpt: TypeTree, args: List[TypeTree | TypeBoundsTree]): Applied =
     withDefaultPos(tpd.AppliedTypeTree(tpt, args))
 
-  def Applied_copy(original: Tree)(tpt: TypeTree, args: List[TypeTree | TypeBoundsTree])(using Context): Applied =
+  def Applied_copy(original: Tree)(tpt: TypeTree, args: List[TypeTree | TypeBoundsTree]): Applied =
     tpd.cpy.AppliedTypeTree(original)(tpt, args)
 
   type Annotated = tpd.Annotated
 
-  def Annotated_TypeTest(using Context): TypeTest[Tree, Annotated] = new {
+  def Annotated_TypeTest: TypeTest[Tree, Annotated] = new {
     def runtimeClass: Class[?] = classOf[Annotated]
     override def unapply(x: Any): Option[Annotated] = x match
       case tpt: tpd.Annotated @unchecked => Some(tpt)
       case _ => None
   }
 
-  def Annotated_arg(self: Annotated)(using Context): TypeTree = self.arg
-  def Annotated_annotation(self: Annotated)(using Context): Term = self.annot
+  def Annotated_arg(self: Annotated): TypeTree = self.arg
+  def Annotated_annotation(self: Annotated): Term = self.annot
 
-  def Annotated_apply(arg: TypeTree, annotation: Term)(using Context): Annotated =
+  def Annotated_apply(arg: TypeTree, annotation: Term): Annotated =
     withDefaultPos(tpd.Annotated(arg, annotation))
 
-  def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term)(using Context): Annotated =
+  def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated =
     tpd.cpy.Annotated(original)(arg, annotation)
 
   type MatchTypeTree = tpd.MatchTypeTree
 
-  def MatchTypeTree_TypeTest(using Context): TypeTest[Tree, MatchTypeTree] = new {
+  def MatchTypeTree_TypeTest: TypeTest[Tree, MatchTypeTree] = new {
     def runtimeClass: Class[?] = classOf[MatchTypeTree]
     override def unapply(x: Any): Option[MatchTypeTree] = x match
       case tpt: tpd.MatchTypeTree @unchecked => Some(tpt)
       case _ => None
   }
 
-  def MatchTypeTree_bound(self: MatchTypeTree)(using Context): Option[TypeTree] = if (self.bound == tpd.EmptyTree) None else Some(self.bound)
-  def MatchTypeTree_selector(self: MatchTypeTree)(using Context): TypeTree = self.selector
-  def MatchTypeTree_cases(self: MatchTypeTree)(using Context): List[CaseDef] = self.cases
+  def MatchTypeTree_bound(self: MatchTypeTree): Option[TypeTree] = if (self.bound == tpd.EmptyTree) None else Some(self.bound)
+  def MatchTypeTree_selector(self: MatchTypeTree): TypeTree = self.selector
+  def MatchTypeTree_cases(self: MatchTypeTree): List[CaseDef] = self.cases
 
-  def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using Context): MatchTypeTree =
+  def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
     withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases))
 
-  def MatchTypeTree_copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using Context): MatchTypeTree =
+  def MatchTypeTree_copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
     tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
 
   type ByName = tpd.ByNameTypeTree
 
-  def ByName_TypeTest(using Context): TypeTest[Tree, ByName] = new {
+  def ByName_TypeTest: TypeTest[Tree, ByName] = new {
     def runtimeClass: Class[?] = classOf[ByName]
     override def unapply(x: Any): Option[ByName] = x match
       case tpt: tpd.ByNameTypeTree @unchecked => Some(tpt)
       case _ => None
   }
 
-  def ByName_result(self: ByName)(using Context): TypeTree = self.result
+  def ByName_result(self: ByName): TypeTree = self.result
 
-  def ByName_apply(result: TypeTree)(using Context): ByName =
+  def ByName_apply(result: TypeTree): ByName =
     withDefaultPos(tpd.ByNameTypeTree(result))
 
-  def ByName_copy(original: Tree)(result: TypeTree)(using Context): ByName =
+  def ByName_copy(original: Tree)(result: TypeTree): ByName =
     tpd.cpy.ByNameTypeTree(original)(result)
 
   type LambdaTypeTree = tpd.LambdaTypeTree
 
-  def LambdaTypeTree_TypeTest(using Context): TypeTest[Tree, LambdaTypeTree] = new {
+  def LambdaTypeTree_TypeTest: TypeTest[Tree, LambdaTypeTree] = new {
     def runtimeClass: Class[?] = classOf[LambdaTypeTree]
     override def unapply(x: Any): Option[LambdaTypeTree] = x match
       case tpt: tpd.LambdaTypeTree @unchecked => Some(tpt)
       case _ => None
   }
 
-  def Lambdatparams(self: LambdaTypeTree)(using Context): List[TypeDef] = self.tparams
-  def Lambdabody(self: LambdaTypeTree)(using Context): TypeTree | TypeBoundsTree = self.body
+  def Lambdatparams(self: LambdaTypeTree): List[TypeDef] = self.tparams
+  def Lambdabody(self: LambdaTypeTree): TypeTree | TypeBoundsTree = self.body
 
-  def Lambdaapply(tparams: List[TypeDef], body: TypeTree | TypeBoundsTree)(using Context): LambdaTypeTree =
+  def Lambdaapply(tparams: List[TypeDef], body: TypeTree | TypeBoundsTree): LambdaTypeTree =
     withDefaultPos(tpd.LambdaTypeTree(tparams, body))
 
-  def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: TypeTree | TypeBoundsTree)(using Context): LambdaTypeTree =
+  def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: TypeTree | TypeBoundsTree): LambdaTypeTree =
     tpd.cpy.LambdaTypeTree(original)(tparams, body)
 
   type TypeBind = tpd.Bind
 
-  def TypeBind_TypeTest(using Context): TypeTest[Tree, TypeBind] = new {
+  def TypeBind_TypeTest: TypeTest[Tree, TypeBind] = new {
     def runtimeClass: Class[?] = classOf[TypeBind]
     override def unapply(x: Any): Option[TypeBind] = x match
       case tpt: tpd.Bind @unchecked if tpt.name.isTypeName => Some(tpt)
       case _ => None
   }
 
-  def TypeBind_name(self: TypeBind)(using Context): String = self.name.toString
-  def TypeBind_body(self: TypeBind)(using Context): TypeTree | TypeBoundsTree = self.body
+  def TypeBind_name(self: TypeBind): String = self.name.toString
+  def TypeBind_body(self: TypeBind): TypeTree | TypeBoundsTree = self.body
 
-  def TypeBind_copy(original: Tree)(name: String, tpt: TypeTree | TypeBoundsTree)(using Context): TypeBind =
+  def TypeBind_copy(original: Tree)(name: String, tpt: TypeTree | TypeBoundsTree): TypeBind =
     tpd.cpy.Bind(original)(name.toTypeName, tpt)
 
   type TypeBlock = tpd.Block
 
-  def TypeBlock_TypeTest(using Context): TypeTest[Tree, TypeBlock] = new {
+  def TypeBlock_TypeTest: TypeTest[Tree, TypeBlock] = new {
     def runtimeClass: Class[?] = classOf[TypeBlock]
     override def unapply(x: Any): Option[TypeBlock] = x match
       case tpt: tpd.Block @unchecked => Some(tpt)
       case _ => None
   }
 
-  def TypeBlock_aliases(self: TypeBlock)(using Context): List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
-  def TypeBlock_tpt(self: TypeBlock)(using Context): TypeTree = self.expr
+  def TypeBlock_aliases(self: TypeBlock): List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
+  def TypeBlock_tpt(self: TypeBlock): TypeTree = self.expr
 
-  def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(using Context): TypeBlock =
+  def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
     withDefaultPos(tpd.Block(aliases, tpt))
 
-  def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(using Context): TypeBlock =
+  def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
     tpd.cpy.Block(original)(aliases, tpt)
 
   type TypeBoundsTree = tpd.TypeBoundsTree
 
-  def TypeBoundsTree_TypeTest(using Context): TypeTest[Tree, TypeBoundsTree] = new {
+  def TypeBoundsTree_TypeTest: TypeTest[Tree, TypeBoundsTree] = new {
     def runtimeClass: Class[?] = classOf[TypeBoundsTree]
     override def unapply(x: Any): Option[TypeBoundsTree] = x match
       case x: tpd.TypeBoundsTree @unchecked => Some(x)
@@ -1003,80 +1009,80 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def TypeBoundsTree_tpe(self: TypeBoundsTree)(using Context): TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
-  def TypeBoundsTree_low(self: TypeBoundsTree)(using Context): TypeTree = self.lo
-  def TypeBoundsTree_hi(self: TypeBoundsTree)(using Context): TypeTree = self.hi
+  def TypeBoundsTree_tpe(self: TypeBoundsTree): TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
+  def TypeBoundsTree_low(self: TypeBoundsTree): TypeTree = self.lo
+  def TypeBoundsTree_hi(self: TypeBoundsTree): TypeTree = self.hi
 
   type WildcardTypeTree = tpd.Ident
 
-  def WildcardTypeTree_TypeTest(using Context): TypeTest[Tree, WildcardTypeTree] = new {
+  def WildcardTypeTree_TypeTest: TypeTest[Tree, WildcardTypeTree] = new {
     def runtimeClass: Class[?] = classOf[WildcardTypeTree]
     override def unapply(x: Any): Option[WildcardTypeTree] = x match
       case x: tpd.Ident @unchecked if x.name == nme.WILDCARD => Some(x)
       case _ => None
   }
 
-  def WildcardTypeTree_tpe(self: WildcardTypeTree)(using Context): Type = self.tpe.stripTypeVar
+  def WildcardTypeTree_tpe(self: WildcardTypeTree): Type = self.tpe.stripTypeVar
 
   type CaseDef = tpd.CaseDef
 
-  def CaseDef_TypeTest(using Context): TypeTest[Tree, CaseDef] = new {
+  def CaseDef_TypeTest: TypeTest[Tree, CaseDef] = new {
     def runtimeClass: Class[?] = classOf[CaseDef]
     override def unapply(x: Any): Option[CaseDef] = x match
       case tree: tpd.CaseDef @unchecked if tree.body.isTerm => Some(tree)
       case _ => None
   }
 
-  def CaseDef_pattern(self: CaseDef)(using Context): Tree = self.pat
-  def CaseDef_guard(self: CaseDef)(using Context): Option[Term] = optional(self.guard)
-  def CaseDef_rhs(self: CaseDef)(using Context): Term = self.body
+  def CaseDef_pattern(self: CaseDef): Tree = self.pat
+  def CaseDef_guard(self: CaseDef): Option[Term] = optional(self.guard)
+  def CaseDef_rhs(self: CaseDef): Term = self.body
 
-  def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term)(using Context): CaseDef =
+  def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term): CaseDef =
     tpd.CaseDef(pattern, guard.getOrElse(tpd.EmptyTree), body)
 
-  def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term)(using Context): CaseDef =
+  def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term): CaseDef =
     tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), body)
 
   type TypeCaseDef = tpd.CaseDef
 
-  def TypeCaseDef_TypeTest(using Context): TypeTest[Tree, TypeCaseDef] = new {
+  def TypeCaseDef_TypeTest: TypeTest[Tree, TypeCaseDef] = new {
     def runtimeClass: Class[?] = classOf[TypeCaseDef]
     override def unapply(x: Any): Option[TypeCaseDef] = x match
       case tree: tpd.CaseDef @unchecked if tree.body.isType => Some(tree)
       case _ => None
   }
 
-  def TypeCaseDef_pattern(self: TypeCaseDef)(using Context): TypeTree = self.pat
-  def TypeCaseDef_rhs(self: TypeCaseDef)(using Context): TypeTree = self.body
+  def TypeCaseDef_pattern(self: TypeCaseDef): TypeTree = self.pat
+  def TypeCaseDef_rhs(self: TypeCaseDef): TypeTree = self.body
 
-  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree)(using Context): TypeCaseDef =
+  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree): TypeCaseDef =
     tpd.CaseDef(pattern, tpd.EmptyTree, body)
 
-  def TypeCaseDef_module_copy(original: Tree)(pattern: TypeTree, body: TypeTree)(using Context): TypeCaseDef =
+  def TypeCaseDef_module_copy(original: Tree)(pattern: TypeTree, body: TypeTree): TypeCaseDef =
     tpd.cpy.CaseDef(original)(pattern, tpd.EmptyTree, body)
 
   type Bind = tpd.Bind
 
-  def Bind_TypeTest(using Context): TypeTest[Tree, Bind] = new {
+  def Bind_TypeTest: TypeTest[Tree, Bind] = new {
     def runtimeClass: Class[?] = classOf[Bind]
     override def unapply(x: Any): Option[Bind] = x match
       case x: tpd.Bind @unchecked if x.name.isTermName => Some(x)
       case _ => None
   }
 
-  def Tree_Bind_name(self: Bind)(using Context): String = self.name.toString
+  def Tree_Bind_name(self: Bind): String = self.name.toString
 
-  def Tree_Bind_pattern(self: Bind)(using Context): Tree = self.body
+  def Tree_Bind_pattern(self: Bind): Tree = self.body
 
-  def Tree_Bind_module_apply(sym: Symbol, body: Tree)(using Context): Bind =
+  def Tree_Bind_module_apply(sym: Symbol, body: Tree): Bind =
     tpd.Bind(sym, body)
 
-  def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree)(using Context): Bind =
+  def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree): Bind =
     withDefaultPos(tpd.cpy.Bind(original)(name.toTermName, pattern))
 
   type Unapply = tpd.UnApply
 
-  def Unapply_TypeTest(using Context): TypeTest[Tree, Unapply] = new {
+  def Unapply_TypeTest: TypeTest[Tree, Unapply] = new {
     def runtimeClass: Class[?] = classOf[Unapply]
     override def unapply(x: Any): Option[Unapply] = x match
       case pattern: tpd.UnApply @unchecked => Some(pattern)
@@ -1084,11 +1090,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Tree_Unapply_fun(self: Unapply)(using Context): Term = self.fun
-  def Tree_Unapply_implicits(self: Unapply)(using Context): List[Term] = self.implicits
-  def Tree_Unapply_patterns(self: Unapply)(using Context): List[Tree] = effectivePatterns(self.patterns)
+  def Tree_Unapply_fun(self: Unapply): Term = self.fun
+  def Tree_Unapply_implicits(self: Unapply): List[Term] = self.implicits
+  def Tree_Unapply_patterns(self: Unapply): List[Tree] = effectivePatterns(self.patterns)
 
-  def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(using Context): Unapply =
+  def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
     withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
 
   private def effectivePatterns(patterns: List[Tree]): List[Tree] = patterns match {
@@ -1098,19 +1104,19 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Alternatives = tpd.Alternative
 
-  def Alternatives_TypeTest(using Context): TypeTest[Tree, Alternatives] = new {
+  def Alternatives_TypeTest: TypeTest[Tree, Alternatives] = new {
     def runtimeClass: Class[?] = classOf[Alternatives]
     override def unapply(x: Any): Option[Alternatives] = x match
       case x: tpd.Alternative @unchecked => Some(x)
       case _ => None
   }
 
-  def Tree_Alternatives_patterns(self: Alternatives)(using Context): List[Tree] = self.trees
+  def Tree_Alternatives_patterns(self: Alternatives): List[Tree] = self.trees
 
-  def Tree_Alternatives_module_apply(patterns: List[Tree])(using Context): Alternatives =
+  def Tree_Alternatives_module_apply(patterns: List[Tree]): Alternatives =
     withDefaultPos(tpd.Alternative(patterns))
 
-  def Tree_Alternatives_module_copy(original: Tree)(patterns: List[Tree])(using Context): Alternatives =
+  def Tree_Alternatives_module_copy(original: Tree)(patterns: List[Tree]): Alternatives =
     tpd.cpy.Alternative(original)(patterns)
 
 
@@ -1120,7 +1126,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Type = Types.Type
 
-  def Type_TypeTest(using Context): TypeTest[Type, Type] = new {
+  def Type_TypeTest: TypeTest[Type, Type] = new {
     def runtimeClass: Class[?] = classOf[Type]
     override def unapply(x: Any): Option[Type] = x match
       case x: TypeBounds => None
@@ -1128,7 +1134,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Type_apply(clazz: Class[?])(using Context): Type =
+  def Type_apply(clazz: Class[?]): Type =
     if (clazz.isPrimitive)
       if (clazz == classOf[Boolean]) defn.BooleanType
       else if (clazz == classOf[Byte]) defn.ByteType
@@ -1150,54 +1156,54 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     }
     else getClassIfDefined(clazz.getCanonicalName).typeRef
 
-  def Type_isTypeEq(self: Type)(that: Type)(using Context): Boolean = self =:= that
+  def Type_isTypeEq(self: Type)(that: Type): Boolean = self =:= that
 
-  def Type_isSubType(self: Type)(that: Type)(using Context): Boolean = self <:< that
+  def Type_isSubType(self: Type)(that: Type): Boolean = self <:< that
 
-  def Type_widen(self: Type)(using Context): Type = self.widen
+  def Type_widen(self: Type): Type = self.widen
 
-  def Type_widenTermRefExpr(self: Type)(using Context): Type = self.widenTermRefExpr
+  def Type_widenTermRefExpr(self: Type): Type = self.widenTermRefExpr
 
-  def Type_dealias(self: Type)(using Context): Type = self.dealias
+  def Type_dealias(self: Type): Type = self.dealias
 
-  def Type_simplified(self: Type)(using Context): Type = self.simplified
+  def Type_simplified(self: Type): Type = self.simplified
 
-  def Type_classSymbol(self: Type)(using Context): Option[Symbol] =
+  def Type_classSymbol(self: Type): Option[Symbol] =
     if (self.classSymbol.exists) Some(self.classSymbol.asClass) else None
 
-  def Type_typeSymbol(self: Type)(using Context): Symbol = self.typeSymbol
+  def Type_typeSymbol(self: Type): Symbol = self.typeSymbol
 
-  def Type_termSymbol(self: Type)(using Context): Symbol = self.termSymbol
+  def Type_termSymbol(self: Type): Symbol = self.termSymbol
 
-  def Type_isSingleton(self: Type)(using Context): Boolean = self.isSingleton
+  def Type_isSingleton(self: Type): Boolean = self.isSingleton
 
-  def Type_memberType(self: Type)(member: Symbol)(using Context): Type =
+  def Type_memberType(self: Type)(member: Symbol): Type =
     member.info.asSeenFrom(self, member.owner)
 
-  def Type_baseClasses(self: Type)(using Context): List[Symbol] =
+  def Type_baseClasses(self: Type): List[Symbol] =
     self.baseClasses
 
-  def Type_baseType(self: Type)(cls: Symbol)(using Context): Type =
+  def Type_baseType(self: Type)(cls: Symbol): Type =
     self.baseType(cls)
 
-  def Type_derivesFrom(self: Type)(cls: Symbol)(using Context): Boolean =
+  def Type_derivesFrom(self: Type)(cls: Symbol): Boolean =
     self.derivesFrom(cls)
 
-  def Type_isFunctionType(self: Type)(using Context): Boolean =
+  def Type_isFunctionType(self: Type): Boolean =
     defn.isFunctionType(self)
 
-  def Type_isContextFunctionType(self: Type)(using Context): Boolean =
+  def Type_isContextFunctionType(self: Type): Boolean =
     defn.isContextFunctionType(self)
 
-  def Type_isErasedFunctionType(self: Type)(using Context): Boolean =
+  def Type_isErasedFunctionType(self: Type): Boolean =
     defn.isErasedFunctionType(self)
 
-  def Type_isDependentFunctionType(self: Type)(using Context): Boolean = {
+  def Type_isDependentFunctionType(self: Type): Boolean = {
     val tpNoRefinement = self.dropDependentRefinement
     tpNoRefinement != self && defn.isNonRefinedFunction(tpNoRefinement)
   }
 
-  def Type_select(self: Type)(sym: Symbol)(using Context): Type =
+  def Type_select(self: Type)(sym: Symbol): Type =
     self.select(sym)
 
   def Type_appliedTo(self: Type)(targs: List[Type]): Type =
@@ -1205,54 +1211,54 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ConstantType = Types.ConstantType
 
-  def ConstantType_TypeTest(using Context): TypeTest[Type, ConstantType] = new {
+  def ConstantType_TypeTest: TypeTest[Type, ConstantType] = new {
     def runtimeClass: Class[?] = classOf[ConstantType]
     override def unapply(x: Any): Option[ConstantType] = x match
       case tpe: Types.ConstantType => Some(tpe)
       case _ => None
   }
 
-  def ConstantType_apply(const: Constant)(using Context): ConstantType =
+  def ConstantType_apply(const: Constant): ConstantType =
     Types.ConstantType(const)
 
-  def ConstantType_constant(self: ConstantType)(using Context): Constant = self.value
+  def ConstantType_constant(self: ConstantType): Constant = self.value
 
   type TermRef = Types.NamedType
 
-  def TermRef_TypeTest(using Context): TypeTest[Type, TermRef] = new {
+  def TermRef_TypeTest: TypeTest[Type, TermRef] = new {
     def runtimeClass: Class[?] = classOf[TermRef]
     override def unapply(x: Any): Option[TermRef] = x match
       case tp: Types.TermRef => Some(tp)
       case _ => None
   }
 
-  def TermRef_apply(qual: Type, name: String)(using Context): TermRef =
+  def TermRef_apply(qual: Type, name: String): TermRef =
     Types.TermRef(qual, name.toTermName)
 
-  def TermRef_qualifier(self: TermRef)(using Context): Type = self.prefix
+  def TermRef_qualifier(self: TermRef): Type = self.prefix
 
-  def TermRef_name(self: TermRef)(using Context): String = self.name.toString
+  def TermRef_name(self: TermRef): String = self.name.toString
 
   type TypeRef = Types.NamedType
 
-  def TypeRef_TypeTest(using Context): TypeTest[Type, TypeRef] = new {
+  def TypeRef_TypeTest: TypeTest[Type, TypeRef] = new {
     def runtimeClass: Class[?] = classOf[TypeRef]
     override def unapply(x: Any): Option[TypeRef] = x match
       case tp: Types.TypeRef => Some(tp)
       case _ => None
   }
 
-  def TypeRef_qualifier(self: TypeRef)(using Context): Type = self.prefix
+  def TypeRef_qualifier(self: TypeRef): Type = self.prefix
 
-  def TypeRef_name(self: TypeRef)(using Context): String = self.name.toString
+  def TypeRef_name(self: TypeRef): String = self.name.toString
 
-  def TypeRef_isOpaqueAlias(self: TypeRef)(using Context): Boolean = self.symbol.isOpaqueAlias
+  def TypeRef_isOpaqueAlias(self: TypeRef): Boolean = self.symbol.isOpaqueAlias
 
-  def TypeRef_translucentSuperType(self: TypeRef)(using Context): Type = self.translucentSuperType
+  def TypeRef_translucentSuperType(self: TypeRef): Type = self.translucentSuperType
 
   type NamedTermRef = Types.NamedType
 
-  def NamedTermRef_TypeTest(using Context): TypeTest[Type, NamedTermRef] = new {
+  def NamedTermRef_TypeTest: TypeTest[Type, NamedTermRef] = new {
     def runtimeClass: Class[?] = classOf[NamedTermRef]
     override def unapply(x: Any): Option[NamedTermRef] = x match
       case tpe: Types.NamedType =>
@@ -1263,34 +1269,34 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def NamedTermRef_name(self: NamedTermRef)(using Context): String = self.name.toString
-  def NamedTermRef_qualifier(self: NamedTermRef)(using Context): Type = self.prefix
+  def NamedTermRef_name(self: NamedTermRef): String = self.name.toString
+  def NamedTermRef_qualifier(self: NamedTermRef): Type = self.prefix
 
   type SuperType = Types.SuperType
 
-  def SuperType_TypeTest(using Context): TypeTest[Type, SuperType] = new {
+  def SuperType_TypeTest: TypeTest[Type, SuperType] = new {
     def runtimeClass: Class[?] = classOf[SuperType]
     override def unapply(x: Any): Option[SuperType] = x match
       case tpe: Types.SuperType => Some(tpe)
       case _ => None
   }
 
-  def SuperType_apply(thistpe: Type, supertpe: Type)(using Context): SuperType =
+  def SuperType_apply(thistpe: Type, supertpe: Type): SuperType =
     Types.SuperType(thistpe, supertpe)
 
-  def SuperType_thistpe(self: SuperType)(using Context): Type = self.thistpe
-  def SuperType_supertpe(self: SuperType)(using Context): Type = self.supertpe
+  def SuperType_thistpe(self: SuperType): Type = self.thistpe
+  def SuperType_supertpe(self: SuperType): Type = self.supertpe
 
   type Refinement = Types.RefinedType
 
-  def Refinement_TypeTest(using Context): TypeTest[Type, Refinement] = new {
+  def Refinement_TypeTest: TypeTest[Type, Refinement] = new {
     def runtimeClass: Class[?] = classOf[Refinement]
     override def unapply(x: Any): Option[Refinement] = x match
       case tpe: Types.RefinedType => Some(tpe)
       case _ => None
   }
 
-  def Refinement_apply(parent: Type, name: String, info: Type)(using Context): Refinement = {
+  def Refinement_apply(parent: Type, name: String, info: Type): Refinement = {
     val name1 =
       info match
         case _: TypeBounds => name.toTypeName
@@ -1298,99 +1304,99 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     Types.RefinedType(parent, name1, info)
   }
 
-  def Refinement_parent(self: Refinement)(using Context): Type = self.parent
-  def Refinement_name(self: Refinement)(using Context): String = self.refinedName.toString
-  def Refinement_info(self: Refinement)(using Context): Type = self.refinedInfo
+  def Refinement_parent(self: Refinement): Type = self.parent
+  def Refinement_name(self: Refinement): String = self.refinedName.toString
+  def Refinement_info(self: Refinement): Type = self.refinedInfo
 
   type AppliedType = Types.AppliedType
 
-  def AppliedType_TypeTest(using Context): TypeTest[Type, AppliedType] = new {
+  def AppliedType_TypeTest: TypeTest[Type, AppliedType] = new {
     def runtimeClass: Class[?] = classOf[AppliedType]
     override def unapply(x: Any): Option[AppliedType] = x match
       case tpe: Types.AppliedType => Some(tpe)
       case _ => None
   }
 
-  def AppliedType_tycon(self: AppliedType)(using Context): Type = self.tycon
-  def AppliedType_args(self: AppliedType)(using Context): List[Type] = self.args
+  def AppliedType_tycon(self: AppliedType): Type = self.tycon
+  def AppliedType_args(self: AppliedType): List[Type] = self.args
 
   type AnnotatedType = Types.AnnotatedType
 
-  def AnnotatedType_TypeTest(using Context): TypeTest[Type, AnnotatedType] = new {
+  def AnnotatedType_TypeTest: TypeTest[Type, AnnotatedType] = new {
     def runtimeClass: Class[?] = classOf[AnnotatedType]
     override def unapply(x: Any): Option[AnnotatedType] = x match
       case tpe: Types.AnnotatedType => Some(tpe)
       case _ => None
   }
 
-  def AnnotatedType_apply(underlying: Type, annot: Term)(using Context): AnnotatedType =
+  def AnnotatedType_apply(underlying: Type, annot: Term): AnnotatedType =
     Types.AnnotatedType(underlying, Annotations.Annotation(annot))
 
-  def AnnotatedType_underlying(self: AnnotatedType)(using Context): Type = self.underlying.stripTypeVar
-  def AnnotatedType_annot(self: AnnotatedType)(using Context): Term = self.annot.tree
+  def AnnotatedType_underlying(self: AnnotatedType): Type = self.underlying.stripTypeVar
+  def AnnotatedType_annot(self: AnnotatedType): Term = self.annot.tree
 
   type AndType = Types.AndType
 
-  def AndType_TypeTest(using Context): TypeTest[Type, AndType] = new {
+  def AndType_TypeTest: TypeTest[Type, AndType] = new {
     def runtimeClass: Class[?] = classOf[AndType]
     override def unapply(x: Any): Option[AndType] = x match
       case tpe: Types.AndType => Some(tpe)
       case _ => None
   }
 
-  def AndType_apply(lhs: Type, rhs: Type)(using Context): AndType =
+  def AndType_apply(lhs: Type, rhs: Type): AndType =
     Types.AndType(lhs, rhs)
 
-  def AndType_left(self: AndType)(using Context): Type = self.tp1.stripTypeVar
-  def AndType_right(self: AndType)(using Context): Type = self.tp2.stripTypeVar
+  def AndType_left(self: AndType): Type = self.tp1.stripTypeVar
+  def AndType_right(self: AndType): Type = self.tp2.stripTypeVar
 
   type OrType = Types.OrType
 
-  def OrType_TypeTest(using Context): TypeTest[Type, OrType] = new {
+  def OrType_TypeTest: TypeTest[Type, OrType] = new {
     def runtimeClass: Class[?] = classOf[OrType]
     override def unapply(x: Any): Option[OrType] = x match
       case tpe: Types.OrType => Some(tpe)
       case _ => None
   }
 
-  def OrType_apply(lhs: Type, rhs: Type)(using Context): OrType =
+  def OrType_apply(lhs: Type, rhs: Type): OrType =
     Types.OrType(lhs, rhs)
 
-  def OrType_left(self: OrType)(using Context): Type = self.tp1.stripTypeVar
-  def OrType_right(self: OrType)(using Context): Type = self.tp2.stripTypeVar
+  def OrType_left(self: OrType): Type = self.tp1.stripTypeVar
+  def OrType_right(self: OrType): Type = self.tp2.stripTypeVar
 
   type MatchType = Types.MatchType
 
-  def MatchType_TypeTest(using Context): TypeTest[Type, MatchType] = new {
+  def MatchType_TypeTest: TypeTest[Type, MatchType] = new {
     def runtimeClass: Class[?] = classOf[MatchType]
     override def unapply(x: Any): Option[MatchType] = x match
       case tpe: Types.MatchType => Some(tpe)
       case _ => None
   }
 
-  def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type])(using Context): MatchType =
+  def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type]): MatchType =
     Types.MatchType(bound, scrutinee, cases)
 
-  def MatchType_bound(self: MatchType)(using Context): Type = self.bound
-  def MatchType_scrutinee(self: MatchType)(using Context): Type = self.scrutinee
-  def MatchType_cases(self: MatchType)(using Context): List[Type] = self.cases
+  def MatchType_bound(self: MatchType): Type = self.bound
+  def MatchType_scrutinee(self: MatchType): Type = self.scrutinee
+  def MatchType_cases(self: MatchType): List[Type] = self.cases
 
   type ByNameType = Types.ExprType
 
-  def ByNameType_TypeTest(using Context): TypeTest[Type, ByNameType] = new {
+  def ByNameType_TypeTest: TypeTest[Type, ByNameType] = new {
     def runtimeClass: Class[?] = classOf[ByNameType]
     override def unapply(x: Any): Option[ByNameType] = x match
       case tpe: Types.ExprType => Some(tpe)
       case _ => None
   }
 
-  def ByNameType_apply(underlying: Type)(using Context): Type = Types.ExprType(underlying)
+  def ByNameType_apply(underlying: Type): Type = Types.ExprType(underlying)
 
-  def ByNameType_underlying(self: ByNameType)(using Context): Type = self.resType.stripTypeVar
+  def ByNameType_underlying(self: ByNameType): Type = self.resType.stripTypeVar
 
   type ParamRef = Types.ParamRef
 
-  def ParamRef_TypeTest(using Context): TypeTest[Type, ParamRef] = new {
+  def ParamRef_TypeTest: TypeTest[Type, ParamRef] = new {
     def runtimeClass: Class[?] = classOf[ParamRef]
     override def unapply(x: Any): Option[ParamRef] = x match
       case tpe: Types.TypeParamRef => Some(tpe)
@@ -1398,53 +1404,53 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def ParamRef_binder(self: ParamRef)(using Context): LambdaType =
+  def ParamRef_binder(self: ParamRef): LambdaType =
     self.binder.asInstanceOf[LambdaType] // Cast to tpd
-  def ParamRef_paramNum(self: ParamRef)(using Context): Int = self.paramNum
+  def ParamRef_paramNum(self: ParamRef): Int = self.paramNum
 
   type ThisType = Types.ThisType
 
-  def ThisType_TypeTest(using Context): TypeTest[Type, ThisType] = new {
+  def ThisType_TypeTest: TypeTest[Type, ThisType] = new {
     def runtimeClass: Class[?] = classOf[ThisType]
     override def unapply(x: Any): Option[ThisType] = x match
       case tpe: Types.ThisType => Some(tpe)
       case _ => None
   }
 
-  def ThisType_tref(self: ThisType)(using Context): Type = self.tref
+  def ThisType_tref(self: ThisType): Type = self.tref
 
   type RecursiveThis = Types.RecThis
 
-  def RecursiveThis_TypeTest(using Context): TypeTest[Type, RecursiveThis] = new {
+  def RecursiveThis_TypeTest: TypeTest[Type, RecursiveThis] = new {
     def runtimeClass: Class[?] = classOf[RecursiveThis]
     override def unapply(x: Any): Option[RecursiveThis] = x match
       case tpe: Types.RecThis => Some(tpe)
       case _ => None
   }
 
-  def RecursiveThis_binder(self: RecursiveThis)(using Context): RecursiveType = self.binder
+  def RecursiveThis_binder(self: RecursiveThis): RecursiveType = self.binder
 
   type RecursiveType = Types.RecType
 
-  def RecursiveType_TypeTest(using Context): TypeTest[Type, RecursiveType] = new {
+  def RecursiveType_TypeTest: TypeTest[Type, RecursiveType] = new {
     def runtimeClass: Class[?] = classOf[RecursiveType]
     override def unapply(x: Any): Option[RecursiveType] = x match
       case tpe: Types.RecType => Some(tpe)
       case _ => None
   }
 
-  def RecursiveType_apply(parentExp: RecursiveType => Type)(using Context): RecursiveType =
+  def RecursiveType_apply(parentExp: RecursiveType => Type): RecursiveType =
     Types.RecType(parentExp)
 
-  def RecursiveType_underlying(self: RecursiveType)(using Context): Type = self.underlying.stripTypeVar
+  def RecursiveType_underlying(self: RecursiveType): Type = self.underlying.stripTypeVar
 
-  def RecursiveThis_recThis(self: RecursiveType)(using Context): RecursiveThis = self.recThis
+  def RecursiveThis_recThis(self: RecursiveType): RecursiveThis = self.recThis
 
   type LambdaType = Types.LambdaType
 
   type MethodType = Types.MethodType
 
-  def MethodType_TypeTest(using Context): TypeTest[Type, MethodType] = new {
+  def MethodType_TypeTest: TypeTest[Type, MethodType] = new {
     def runtimeClass: Class[?] = classOf[MethodType]
     override def unapply(x: Any): Option[MethodType] = x match
       case tpe: Types.MethodType => Some(tpe)
@@ -1456,31 +1462,31 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   def MethodType_isErased(self: MethodType): Boolean = self.isErasedMethod
   def MethodType_isImplicit(self: MethodType): Boolean = self.isImplicitMethod
-  def MethodType_param(self: MethodType, idx: Int)(using Context): Type = self.newParamRef(idx)
-  def MethodType_paramNames(self: MethodType)(using Context): List[String] = self.paramNames.map(_.toString)
-  def MethodType_paramTypes(self: MethodType)(using Context): List[Type] = self.paramInfos
-  def MethodType_resType(self: MethodType)(using Context): Type = self.resType
+  def MethodType_param(self: MethodType, idx: Int): Type = self.newParamRef(idx)
+  def MethodType_paramNames(self: MethodType): List[String] = self.paramNames.map(_.toString)
+  def MethodType_paramTypes(self: MethodType): List[Type] = self.paramInfos
+  def MethodType_resType(self: MethodType): Type = self.resType
 
   type PolyType = Types.PolyType
 
-  def PolyType_TypeTest(using Context): TypeTest[Type, PolyType] = new {
+  def PolyType_TypeTest: TypeTest[Type, PolyType] = new {
     def runtimeClass: Class[?] = classOf[PolyType]
     override def unapply(x: Any): Option[PolyType] = x match
       case tpe: Types.PolyType => Some(tpe)
       case _ => None
   }
 
-  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using Context): PolyType =
+  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type): PolyType =
     Types.PolyType(paramNames.map(_.toTypeName))(paramBoundsExp, resultTypeExp)
 
-  def PolyType_param(self: PolyType, idx: Int)(using Context): Type = self.newParamRef(idx)
-  def PolyType_paramNames(self: PolyType)(using Context): List[String] = self.paramNames.map(_.toString)
-  def PolyType_paramBounds(self: PolyType)(using Context): List[TypeBounds] = self.paramInfos
-  def PolyType_resType(self: PolyType)(using Context): Type = self.resType
+  def PolyType_param(self: PolyType, idx: Int): Type = self.newParamRef(idx)
+  def PolyType_paramNames(self: PolyType): List[String] = self.paramNames.map(_.toString)
+  def PolyType_paramBounds(self: PolyType): List[TypeBounds] = self.paramInfos
+  def PolyType_resType(self: PolyType): Type = self.resType
 
   type TypeLambda = Types.TypeLambda
 
-  def TypeLambda_TypeTest(using Context): TypeTest[Type, TypeLambda] = new {
+  def TypeLambda_TypeTest: TypeTest[Type, TypeLambda] = new {
     def runtimeClass: Class[?] = classOf[TypeLambda]
     override def unapply(x: Any): Option[TypeLambda] = x match
       case tpe: Types.TypeLambda => Some(tpe)
@@ -1490,15 +1496,15 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   def TypeLambda_apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda =
     Types.HKTypeLambda(paramNames.map(_.toTypeName))(boundsFn, bodyFn)
 
-  def TypeLambda_paramNames(self: TypeLambda)(using Context): List[String] = self.paramNames.map(_.toString)
-  def TypeLambda_paramBounds(self: TypeLambda)(using Context): List[TypeBounds] = self.paramInfos
-  def TypeLambda_param(self: TypeLambda, idx: Int)(using Context): Type =
+  def TypeLambda_paramNames(self: TypeLambda): List[String] = self.paramNames.map(_.toString)
+  def TypeLambda_paramBounds(self: TypeLambda): List[TypeBounds] = self.paramInfos
+  def TypeLambda_param(self: TypeLambda, idx: Int): Type =
     self.newParamRef(idx)
-  def TypeLambda_resType(self: TypeLambda)(using Context): Type = self.resType
+  def TypeLambda_resType(self: TypeLambda): Type = self.resType
 
   type NoPrefix = Types.NoPrefix.type
 
-  def NoPrefix_TypeTest(using Context): TypeTest[Type, NoPrefix] = new {
+  def NoPrefix_TypeTest: TypeTest[Type, NoPrefix] = new {
     def runtimeClass: Class[?] = classOf[Types.NoPrefix.type]
     override def unapply(x: Any): Option[NoPrefix] =
       if (x == Types.NoPrefix) Some(Types.NoPrefix) else None
@@ -1506,18 +1512,18 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type TypeBounds = Types.TypeBounds
 
-  def TypeBounds_TypeTest(using Context): TypeTest[Type, TypeBounds] = new {
+  def TypeBounds_TypeTest: TypeTest[Type, TypeBounds] = new {
     def runtimeClass: Class[?] = classOf[TypeBounds]
     override def unapply(x: Any): Option[TypeBounds] = x match
       case x: Types.TypeBounds => Some(x)
       case _ => None
   }
 
-  def TypeBounds_apply(low: Type, hi: Type)(using Context): TypeBounds =
+  def TypeBounds_apply(low: Type, hi: Type): TypeBounds =
     Types.TypeBounds(low, hi)
 
-  def TypeBounds_low(self: TypeBounds)(using Context): Type = self.lo
-  def TypeBounds_hi(self: TypeBounds)(using Context): Type = self.hi
+  def TypeBounds_low(self: TypeBounds): Type = self.lo
+  def TypeBounds_hi(self: TypeBounds): Type = self.hi
 
   //////////////////////
   // IMPORT SELECTORS //
@@ -1527,32 +1533,32 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type SimpleSelector = untpd.ImportSelector
 
-  def SimpleSelector_TypeTest(using Context): TypeTest[ImportSelector, SimpleSelector] = new {
+  def SimpleSelector_TypeTest: TypeTest[ImportSelector, SimpleSelector] = new {
     def runtimeClass: Class[?] = classOf[SimpleSelector]
     override def unapply(x: Any): Option[SimpleSelector] = x match
       case x: untpd.ImportSelector if x.renamed.isEmpty => Some(x)
       case _ => None // TODO: handle import bounds
   }
 
-  def SimpleSelector_selection(self: SimpleSelector)(using Context): Id = self.imported
+  def SimpleSelector_selection(self: SimpleSelector): Id = self.imported
 
   type RenameSelector = untpd.ImportSelector
 
-  def RenameSelector_TypeTest(using Context): TypeTest[ImportSelector, RenameSelector] = new {
+  def RenameSelector_TypeTest: TypeTest[ImportSelector, RenameSelector] = new {
     def runtimeClass: Class[?] = classOf[RenameSelector]
     override def unapply(x: Any): Option[RenameSelector] = x match
       case x: untpd.ImportSelector if !x.renamed.isEmpty => Some(x)
       case _ => None
   }
 
-  def RenameSelector_from(self: RenameSelector)(using Context): Id =
+  def RenameSelector_from(self: RenameSelector): Id =
     self.imported
-  def RenameSelector_to(self: RenameSelector)(using Context): Id =
+  def RenameSelector_to(self: RenameSelector): Id =
     self.renamed.asInstanceOf[untpd.Ident]
 
   type OmitSelector = untpd.ImportSelector
 
-  def OmitSelector_TypeTest(using Context): TypeTest[ImportSelector, OmitSelector] = new {
+  def OmitSelector_TypeTest: TypeTest[ImportSelector, OmitSelector] = new {
     def runtimeClass: Class[?] = classOf[OmitSelector]
     override def unapply(x: Any): Option[OmitSelector] = x match {
       case self: untpd.ImportSelector =>
@@ -1564,7 +1570,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   }
 
-  def SimpleSelector_omitted(self: OmitSelector)(using Context): Id =
+  def SimpleSelector_omitted(self: OmitSelector): Id =
     self.imported
 
 
@@ -1574,9 +1580,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Id = untpd.Ident
 
-  def Id_pos(self: Id)(using Context): Position = self.sourcePos
+  def Id_pos(self: Id): Position = self.sourcePos
 
-  def Id_name(self: Id)(using Context): String = self.name.toString
+  def Id_name(self: Id): String = self.name.toString
 
 
   ////////////////
@@ -1671,39 +1677,37 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type Symbol = core.Symbols.Symbol
 
-  def Symbol_currentOwner(using ctx: Context): Symbol = ctx.owner
+  def Symbol_owner(self: Symbol): Symbol = self.owner
+  def Symbol_maybeOwner(self: Symbol): Symbol = self.maybeOwner
 
-  def Symbol_owner(self: Symbol)(using Context): Symbol = self.owner
-  def Symbol_maybeOwner(self: Symbol)(using Context): Symbol = self.maybeOwner
+  def Symbol_flags(self: Symbol): Flags = self.flags
 
-  def Symbol_flags(self: Symbol)(using Context): Flags = self.flags
-
-  def Symbol_tree(self: Symbol)(using Context): Tree =
+  def Symbol_tree(self: Symbol): Tree =
     FromSymbol.definitionFromSym(self)
 
-  def Symbol_privateWithin(self: Symbol)(using Context): Option[Type] = {
+  def Symbol_privateWithin(self: Symbol): Option[Type] = {
     val within = self.privateWithin
     if (within.exists && !self.is(core.Flags.Protected)) Some(within.typeRef)
     else None
   }
 
-  def Symbol_protectedWithin(self: Symbol)(using Context): Option[Type] = {
+  def Symbol_protectedWithin(self: Symbol): Option[Type] = {
     val within = self.privateWithin
     if (within.exists && self.is(core.Flags.Protected)) Some(within.typeRef)
     else None
   }
 
-  def Symbol_name(self: Symbol)(using Context): String = self.name.toString
+  def Symbol_name(self: Symbol): String = self.name.toString
 
-  def Symbol_fullName(self: Symbol)(using Context): String = self.fullName.toString
+  def Symbol_fullName(self: Symbol): String = self.fullName.toString
 
-  def Symbol_pos(self: Symbol)(using Context): Position = self.sourcePos
+  def Symbol_pos(self: Symbol): Position = self.sourcePos
 
-  def Symbol_localContext(self: Symbol)(using Context): Context =
+  def Symbol_localContext(self: Symbol): Context =
     if (self.exists) ctx.withOwner(self)
     else ctx
 
-  def Symbol_comment(self: Symbol)(using Context): Option[Comment] = {
+  def Symbol_comment(self: Symbol): Option[Comment] = {
     import dotty.tools.dotc.core.Comments.CommentsContext
     val docCtx = ctx.docCtx.getOrElse {
       throw new RuntimeException(
@@ -1712,134 +1716,134 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     }
     docCtx.docstring(self)
   }
-  def Symbol_annots(self: Symbol)(using Context): List[Term] =
+  def Symbol_annots(self: Symbol): List[Term] =
     self.annotations.flatMap {
       case _: core.Annotations.BodyAnnotation => Nil
       case annot => annot.tree :: Nil
     }
 
-  def Symbol_isDefinedInCurrentRun(self: Symbol)(using Context): Boolean =
+  def Symbol_isDefinedInCurrentRun(self: Symbol): Boolean =
     self.topLevelClass.asClass.isDefinedInCurrentRun
 
-  def Symbol_isLocalDummy(self: Symbol)(using Context): Boolean = self.isLocalDummy
-  def Symbol_isRefinementClass(self: Symbol)(using Context): Boolean = self.isRefinementClass
-  def Symbol_isAliasType(self: Symbol)(using Context): Boolean = self.isAliasType
-  def Symbol_isAnonymousClass(self: Symbol)(using Context): Boolean = self.isAnonymousClass
-  def Symbol_isAnonymousFunction(self: Symbol)(using Context): Boolean = self.isAnonymousFunction
-  def Symbol_isAbstractType(self: Symbol)(using Context): Boolean = self.isAbstractType
-  def Symbol_isClassConstructor(self: Symbol)(using Context): Boolean = self.isClassConstructor
+  def Symbol_isLocalDummy(self: Symbol): Boolean = self.isLocalDummy
+  def Symbol_isRefinementClass(self: Symbol): Boolean = self.isRefinementClass
+  def Symbol_isAliasType(self: Symbol): Boolean = self.isAliasType
+  def Symbol_isAnonymousClass(self: Symbol): Boolean = self.isAnonymousClass
+  def Symbol_isAnonymousFunction(self: Symbol): Boolean = self.isAnonymousFunction
+  def Symbol_isAbstractType(self: Symbol): Boolean = self.isAbstractType
+  def Symbol_isClassConstructor(self: Symbol): Boolean = self.isClassConstructor
 
-  def Symbol_fields(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_fields(self: Symbol): List[Symbol] =
     self.unforcedDecls.filter(isField)
 
-  def Symbol_field(self: Symbol)(name: String)(using Context): Symbol = {
+  def Symbol_field(self: Symbol)(name: String): Symbol = {
     val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
     if (isField(sym)) sym else core.Symbols.NoSymbol
   }
 
-  def Symbol_classMethod(self: Symbol)(name: String)(using Context): List[Symbol] =
+  def Symbol_classMethod(self: Symbol)(name: String): List[Symbol] =
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
 
-  def Symbol_typeMembers(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_typeMembers(self: Symbol): List[Symbol] =
     self.unforcedDecls.filter(_.isType)
 
-  def Symbol_typeMember(self: Symbol)(name: String)(using Context): Symbol =
+  def Symbol_typeMember(self: Symbol)(name: String): Symbol =
     self.unforcedDecls.find(sym => sym.name == name.toTypeName)
 
-  def Symbol_classMethods(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_classMethods(self: Symbol): List[Symbol] =
     self.typeRef.decls.iterator.collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
 
   private def appliedTypeRef(sym: Symbol): Type = sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef))
 
-  def Symbol_method(self: Symbol)(name: String)(using Context): List[Symbol] =
+  def Symbol_method(self: Symbol)(name: String): List[Symbol] =
     appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
     }.toList
 
-  def Symbol_methods(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_methods(self: Symbol): List[Symbol] =
     appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
       case sym if isMethod(sym) => sym.asTerm
     }.toList
 
-  private def isMethod(sym: Symbol)(using Context): Boolean =
+  private def isMethod(sym: Symbol): Boolean =
     sym.isTerm && sym.is(Flags.Method) && !sym.isConstructor
 
-  def Symbol_paramSymss(self: Symbol)(using Context): List[List[Symbol]] =
+  def Symbol_paramSymss(self: Symbol): List[List[Symbol]] =
     self.paramSymss
 
-  def Symbol_primaryConstructor(self: Symbol)(using Context): Symbol =
+  def Symbol_primaryConstructor(self: Symbol): Symbol =
     self.primaryConstructor
 
-  def Symbol_caseFields(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_caseFields(self: Symbol): List[Symbol] =
     if (!self.isClass) Nil
     else self.asClass.paramAccessors.collect {
       case sym if sym.is(Flags.CaseAccessor) => sym.asTerm
     }
 
-  def Symbol_children(self: Symbol)(using Context): List[Symbol] =
+  def Symbol_children(self: Symbol): List[Symbol] =
     self.children
 
-  private def isField(sym: Symbol)(using Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
+  private def isField(sym: Symbol): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
-  def Symbol_requiredPackage(path: String)(using Context): Symbol = requiredPackage(path)
-  def Symbol_requiredClass(path: String)(using Context): Symbol = requiredClass(path)
-  def Symbol_requiredModule(path: String)(using Context): Symbol = requiredModule(path)
-  def Symbol_requiredMethod(path: String)(using Context): Symbol = requiredMethod(path)
+  def Symbol_requiredPackage(path: String): Symbol = requiredPackage(path)
+  def Symbol_requiredClass(path: String): Symbol = requiredClass(path)
+  def Symbol_requiredModule(path: String): Symbol = requiredModule(path)
+  def Symbol_requiredMethod(path: String): Symbol = requiredMethod(path)
 
-  def Symbol_of(fullName: String)(using Context): Symbol =
+  def Symbol_of(fullName: String): Symbol =
     requiredClass(fullName)
 
-  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using Context): Symbol =
+  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol): Symbol =
     newSymbol(parent, name.toTermName, flags | Flags.Method, tpe, privateWithin)
 
-  def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using Context): Symbol =
+  def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol): Symbol =
     newSymbol(parent, name.toTermName, flags, tpe, privateWithin)
 
-  def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type)(using Context): Symbol =
+  def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type): Symbol =
     newSymbol(parent, name.toTermName, flags | Case, tpe)
 
-  def Symbol_isTypeParam(self: Symbol)(using Context): Boolean =
+  def Symbol_isTypeParam(self: Symbol): Boolean =
     self.isTypeParam
 
-  def Symbol_isType(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isType(symbol: Symbol): Boolean =
     symbol.isType
 
-  def Symbol_isTerm(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isTerm(symbol: Symbol): Boolean =
     symbol.isTerm
 
-  def Symbol_isPackageDef(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isPackageDef(symbol: Symbol): Boolean =
     symbol.is(Flags.Package)
 
-  def Symbol_isClassDef(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isClassDef(symbol: Symbol): Boolean =
     symbol.isClass
 
-  def Symbol_isTypeDef(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isTypeDef(symbol: Symbol): Boolean =
     symbol.isType && !symbol.isClass && !symbol.is(Flags.Case)
 
-  def Symbol_isValDef(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isValDef(symbol: Symbol): Boolean =
     symbol.isTerm && !symbol.is(core.Flags.Method) && !symbol.is(core.Flags.Case/*, FIXME add this check and fix sourcecode butNot = Enum | Module*/)
 
-  def Symbol_isDefDef(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isDefDef(symbol: Symbol): Boolean =
     symbol.is(core.Flags.Method)
 
-  def Symbol_isBind(symbol: Symbol)(using Context): Boolean =
+  def Symbol_isBind(symbol: Symbol): Boolean =
     symbol.is(core.Flags.Case, butNot = Enum | Module) && !symbol.isClass
 
-  def Symbol_signature(self: Symbol)(using Context): Signature =
+  def Symbol_signature(self: Symbol): Signature =
     self.signature
 
 
-  def Symbol_moduleClass(self: Symbol)(using Context): Symbol = self.moduleClass
+  def Symbol_moduleClass(self: Symbol): Symbol = self.moduleClass
 
-  def Symbol_companionClass(self: Symbol)(using Context): Symbol = self.companionClass
+  def Symbol_companionClass(self: Symbol): Symbol = self.companionClass
 
-  def Symbol_companionModule(self: Symbol)(using Context): Symbol = self.companionModule
+  def Symbol_companionModule(self: Symbol): Symbol = self.companionModule
 
-  def Symbol_noSymbol(using Context): Symbol = core.Symbols.NoSymbol
+  def Symbol_noSymbol: Symbol = core.Symbols.NoSymbol
 
 
   ///////////
@@ -1987,11 +1991,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   type ImplicitSearchResult = Tree
 
-  def searchImplicit(tpe: Type)(using Context): ImplicitSearchResult =
+  def searchImplicit(tpe: Type): ImplicitSearchResult =
     ctx.typer.inferImplicitArg(tpe, rootPosition.span)
 
   type ImplicitSearchSuccess = Tree
-  def ImplicitSearchSuccess_TypeTest(using Context): TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = new {
+  def ImplicitSearchSuccess_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = new {
     def runtimeClass: Class[?] = classOf[ImplicitSearchSuccess]
     override def unapply(x: Any): Option[ImplicitSearchSuccess] = x match
       case x: Tree @unchecked =>
@@ -2000,10 +2004,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
           case _ => Some(x)
       case _ => None
   }
-  def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess)(using Context): Term = self
+  def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess): Term = self
 
   type ImplicitSearchFailure = Tree
-  def ImplicitSearchFailure_TypeTest(using Context): TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = new {
+  def ImplicitSearchFailure_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = new {
     def runtimeClass: Class[?] = classOf[ImplicitSearchFailure]
     override def unapply(x: Any): Option[ImplicitSearchFailure] = x match
       case x: Tree @unchecked =>
@@ -2012,11 +2016,11 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
           case _ => None
       case _ => None
   }
-  def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure)(using Context): String =
+  def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure): String =
     self.tpe.asInstanceOf[SearchFailureType].explanation
 
   type DivergingImplicit = Tree
-  def DivergingImplicit_TypeTest(using Context): TypeTest[ImplicitSearchResult, DivergingImplicit] = new {
+  def DivergingImplicit_TypeTest: TypeTest[ImplicitSearchResult, DivergingImplicit] = new {
     def runtimeClass: Class[?] = classOf[DivergingImplicit]
     override def unapply(x: Any): Option[DivergingImplicit] = x match
       case x: Tree @unchecked =>
@@ -2027,7 +2031,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   }
 
   type NoMatchingImplicits = Tree
-  def NoMatchingImplicits_TypeTest(using Context): TypeTest[ImplicitSearchResult, NoMatchingImplicits] = new {
+  def NoMatchingImplicits_TypeTest: TypeTest[ImplicitSearchResult, NoMatchingImplicits] = new {
     def runtimeClass: Class[?] = classOf[NoMatchingImplicits]
     override def unapply(x: Any): Option[NoMatchingImplicits] = x match
       case x: Tree @unchecked =>
@@ -2038,7 +2042,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   }
 
   type AmbiguousImplicits = Tree
-  def AmbiguousImplicits_TypeTest(using Context): TypeTest[ImplicitSearchResult, AmbiguousImplicits] = new {
+  def AmbiguousImplicits_TypeTest: TypeTest[ImplicitSearchResult, AmbiguousImplicits] = new {
     def runtimeClass: Class[?] = classOf[AmbiguousImplicits]
     override def unapply(x: Any): Option[AmbiguousImplicits] = x match
       case x: Tree @unchecked =>
@@ -2048,7 +2052,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def betaReduce(tree: Term)(using Context): Option[Term] =
+  def betaReduce(tree: Term): Option[Term] =
     tree match
       case app @ Apply(Select(fn, nme.apply), args) if defn.isFunctionType(fn.tpe) =>
         val app1 = transform.BetaReduce(app, fn, args)
@@ -2061,7 +2065,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ =>
         None
 
-  def lambdaExtractor(fn: Term, paramTypes: List[Type])(using Context): Option[List[Term] => Term] = {
+  def lambdaExtractor(fn: Term, paramTypes: List[Type]): Option[List[Term] => Term] = {
     def rec(fn: Term, transformBody: Term => Term): Option[List[Term] => Term] = {
       fn match {
         case Inlined(call, bindings, expansion) =>
@@ -2108,7 +2112,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   private def optional[T <: Trees.Tree[?]](tree: T): Option[tree.type] =
     if (tree.isEmpty) None else Some(tree)
 
-  private def withDefaultPos[T <: Tree](fn: Context ?=> T)(using Context): T =
+  private def withDefaultPos[T <: Tree](fn: Context ?=> T): T =
     fn(using ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
 
   def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()

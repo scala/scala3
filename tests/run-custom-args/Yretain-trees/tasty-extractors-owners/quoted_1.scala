@@ -19,7 +19,7 @@ object Macros {
 
   class MyTraverser[R <: scala.tasty.Reflection & Singleton](val reflect: R)(buff: StringBuilder) extends scala.tasty.reflect.TreeTraverser {
     import reflect.{given _, _}
-    override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
+    override def traverseTree(tree: Tree)(using Owner): Unit = {
       tree match {
         case tree @ DefDef(name, _, _, _, _) =>
           buff.append(name)

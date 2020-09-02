@@ -8,7 +8,7 @@ package reflect
  *  class MyTreeAccumulator[R <: scala.tasty.Reflection & Singleton](val reflect: R)
  *      extends scala.tasty.reflect.TreeAccumulator[X] {
  *    import reflect.{given _, _}
- *    def foldTree(x: X, tree: Tree)(using ctx: Context): X = ...
+ *    def foldTree(x: X, tree: Tree)(using Owner): X = ...
  *  }
  *  ```
  */
@@ -18,12 +18,11 @@ trait TreeAccumulator[X] {
   import reflect.{given _, _}
 
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
-  def foldTree(x: X, tree: Tree)(using ctx: Context): X
+  def foldTree(x: X, tree: Tree)(using Owner): X
 
-  def foldTrees(x: X, trees: Iterable[Tree])(using ctx: Context): X = trees.foldLeft(x)(foldTree)
+  def foldTrees(x: X, trees: Iterable[Tree])(using Owner): X = trees.foldLeft(x)(foldTree)
 
-  def foldOverTree(x: X, tree: Tree)(using ctx: Context): X = {
-    def localCtx(definition: Definition): Context = definition.symbol.localContext
+  def foldOverTree(x: X, tree: Tree)(using Owner): X = {
     tree match {
       case Ident(_) =>
         x
@@ -66,25 +65,22 @@ trait TreeAccumulator[X] {
       case Inlined(call, bindings, expansion) =>
         foldTree(foldTrees(x, bindings), expansion)
       case vdef @ ValDef(_, tpt, rhs) =>
-        val ctx = localCtx(vdef)
-        given Context = ctx
+        given Owner = Owner.fromSymbol(vdef.symbol)
         foldTrees(foldTree(x, tpt), rhs)
       case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
-        val ctx = localCtx(ddef)
-        given Context = ctx
+        given Owner = Owner.fromSymbol(ddef.symbol)
         foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams))(foldTrees), tpt), rhs)
       case tdef @ TypeDef(_, rhs) =>
-        val ctx = localCtx(tdef)
-        given Context = ctx
+        given Owner = Owner.fromSymbol(tdef.symbol)
         foldTree(x, rhs)
       case cdef @ ClassDef(_, constr, parents, derived, self, body) =>
-        val ctx = localCtx(cdef)
-        given Context = ctx
+        given Owner = Owner.fromSymbol(cdef.symbol)
         foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr), parents), derived), self), body)
       case Import(expr, _) =>
         foldTree(x, expr)
       case clause @ PackageClause(pid, stats) =>
-        foldTrees(foldTree(x, pid), stats)(using clause.symbol.localContext)
+        given Owner = Owner.fromSymbol(clause.symbol)
+        foldTrees(foldTree(x, pid), stats)
       case Inferred() => x
       case TypeIdent(_) => x
       case TypeSelect(qualifier, _) => foldTree(x, qualifier)

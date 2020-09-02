@@ -97,6 +97,8 @@ import scala.tasty.reflect._
  *
  *  +- Id
  *
+ *  +- Owner
+ *
  *  +- Signature
  *
  *  +- Position
@@ -113,8 +115,8 @@ import scala.tasty.reflect._
  */
 trait Types {
 
-  /** Compilation context */
-  type Context <: AnyRef
+  /** Current enclosing definition */
+  type Owner <: AnyRef
 
   /** Tree representing code written in the source */
   type Tree <: AnyRef

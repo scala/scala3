@@ -9,7 +9,7 @@ object Macros {
 
     // simple smoke test
     val sym1 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Owner.current.symbol,
       "sym1",
       MethodType(List("a","b"))(
         _ => List(typeOf[Int], typeOf[Int]),
@@ -27,7 +27,7 @@ object Macros {
 
     // test for no argument list (no Apply node)
     val sym2 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Owner.current.symbol,
       "sym2",
       ByNameType(typeOf[Int]))
     assert(sym2.isDefDef)
@@ -43,7 +43,7 @@ object Macros {
 
    // test for multiple argument lists
    val sym3 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Owner.current.symbol,
       "sym3",
       MethodType(List("a"))(
         _ => List(typeOf[Int]),
@@ -63,7 +63,7 @@ object Macros {
 
     // test for recursive references
     val sym4 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Owner.current.symbol,
       "sym4",
       MethodType(List("x"))(
         _ => List(typeOf[Int]),
@@ -85,7 +85,7 @@ object Macros {
 
     // test for nested functions (one symbol is the other's parent, and we use a Closure)
     val sym5 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Owner.current.symbol,
       "sym5",
       MethodType(List("x"))(
         _ => List(typeOf[Int]),
@@ -119,13 +119,13 @@ object Macros {
 
     // test mutually recursive definitions
     val sym6_1 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Owner.current.symbol,
       "sym6_1",
       MethodType(List("x"))(
         _ => List(typeOf[Int]),
         _ => typeOf[Int]))
     val sym6_2 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Owner.current.symbol,
       "sym6_2",
       MethodType(List("x"))(
         _ => List(typeOf[Int]),
@@ -166,7 +166,7 @@ object Macros {
 
     // test polymorphic methods by synthesizing an identity method
     val sym7 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Owner.current.symbol,
       "sym7",
       PolyType(List("T"))(
         tp => List(TypeBounds(typeOf[Nothing], typeOf[Any])),
