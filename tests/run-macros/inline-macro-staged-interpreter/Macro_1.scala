@@ -10,7 +10,7 @@ object E {
     expr.unliftOrError.lift
 
   implicit def ev1[T: Type]: Unliftable[E[T]] = new Unliftable { // TODO use type class derivation
-    def apply(x: Expr[E[T]]) (using QuoteContext): Option[E[T]] = (x match {
+    def fromExpr(x: Expr[E[T]]) = (x match {
       case '{ I(${Const(n)}) } => Some(I(n))
       case '{ D(${Const(n)}) } => Some(D(n))
       case '{ Plus[Int](${Value(x)}, ${Value(y)})(using $op) } => Some(Plus(x, y)(using Plus2.IPlus))
