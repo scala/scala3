@@ -55,7 +55,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
               sym.sourcePos)
           else
             addVarArgsForwarder(sym, isJavaVarargsOverride, hasAnnotation)
-      else if hasAnnotation
+      else if hasAnnotation then
         report.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
     end
 

@@ -211,7 +211,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
               if stat.symbol.isGetter && stat.symbol.owner.is(Trait) && !stat.symbol.is(Lazy) =>
             val sym = stat.symbol
             assert(isRetained(sym), sym)
-            if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
+            if !stat.rhs.isEmpty && !isWildcardArg(stat.rhs) then
               /* !!! Work around #9390
                * This should really just be `sym.setter`. However, if we do that, we'll miss
                * setters for mixed in `private var`s. Even though the scope clearly contains the

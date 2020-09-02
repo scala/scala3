@@ -152,7 +152,7 @@ trait QuotesAndSplices {
       case _ =>
     }
 
-    if (ctx.mode.is(Mode.QuotedPattern) && level == 1)
+    if ctx.mode.is(Mode.QuotedPattern) && level == 1 then
       def spliceOwner(ctx: Context): Symbol =
       if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
       val name = tree.expr match {

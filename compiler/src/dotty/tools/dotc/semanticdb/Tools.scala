@@ -34,7 +34,7 @@ object Tools:
       val text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8)
       // Assert the SemanticDB payload is in-sync with the contents of the Scala file on disk.
       val md5FingerprintOnDisk = internal.MD5.compute(text)
-      if document.md5 != md5FingerprintOnDisk
+      if document.md5 != md5FingerprintOnDisk then
         throw new IllegalArgumentException(s"stale semanticdb: $scalaRelativePath")
       else
         // Update text document to include full text contents of the file.
@@ -132,7 +132,7 @@ object Tools:
         .append("):")
       if range.endLine == range.startLine
       && range.startCharacter != range.endCharacter
-      && !(occ.symbol.isConstructor && occ.role.isDefinition)
+      && !(occ.symbol.isConstructor && occ.role.isDefinition) then
         val line = sourceFile.lineContent(sourceFile.lineToOffset(range.startLine))
         assert(range.startCharacter <= line.length && range.endCharacter <= line.length,
           s"Line is only ${line.length} - start line was ${range.startLine} in source ${sourceFile.name}"

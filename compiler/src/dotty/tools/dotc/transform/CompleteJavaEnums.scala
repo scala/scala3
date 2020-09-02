@@ -86,7 +86,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   /** If this is a constructor of a enum class that extends, add $name and $ordinal parameters to it. */
   override def transformDefDef(tree: DefDef)(using Context): DefDef = {
     val sym = tree.symbol
-    if (sym.isConstructor && sym.owner.derivesFromJavaEnum)
+    if sym.isConstructor && sym.owner.derivesFromJavaEnum then
       val tree1 = cpy.DefDef(tree)(
         vparamss = tree.vparamss.init :+ (tree.vparamss.last ++ addedParams(sym, isLocal=false, Param)))
       sym.setParamssFromDefs(tree1.tparams, tree1.vparamss)

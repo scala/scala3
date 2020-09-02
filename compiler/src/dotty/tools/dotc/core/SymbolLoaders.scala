@@ -121,7 +121,7 @@ object SymbolLoaders {
   def enterToplevelsFromSource(
       owner: Symbol, name: PreName, src: AbstractFile,
       scope: Scope = EmptyScope)(using Context): Unit =
-    if src.exists && !src.isDirectory
+    if src.exists && !src.isDirectory then
       val completer = new SourcefileLoader(src)
       val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
 

@@ -252,7 +252,7 @@ object Splicer {
           val staticMethodCall = interpretedStaticMethodCall(fn.symbol.owner, fn.symbol)
           staticMethodCall(args.flatten.map(interpretTree))
         }
-        else if (fn.symbol.isStatic)
+        else if fn.symbol.isStatic then
           assert(args.isEmpty)
           interpretedStaticFieldAccess(fn.symbol)
         else if (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic)
