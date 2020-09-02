@@ -23,6 +23,17 @@ extension  on[T, V] (a: WithExtraProperties[T]):
 extension on[V] (map: JMap[DokkaConfiguration$DokkaSourceSet, V]):
     def defaultValue: V = map.values.asScala.toSeq(0)
 
+class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
+  override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] = 
+    MergeStrategy.Remove.INSTANCE.asInstanceOf[MergeStrategy[T]]
+
+extension (f: DFunction):
+  def isRightAssociative(): Boolean = f.getName.endsWith(":")
+  def getExtendedSymbol(): Option[DParameter] = Option.when(f.get(MethodExtension).extensionInfo.isDefined)(
+    f.getParameters.asScala(if f.isRightAssociative() then f.get(MethodExtension).parametersListSizes(0) else 0)
+  )
+
+
 extension on(builder: PageContentBuilder$DocumentableContentBuilder):
 
     def addText(str: String) = builder.text(str, ContentKind.Main, builder.getMainSourcesetData, builder.getMainStyles, builder.getMainExtra) 
