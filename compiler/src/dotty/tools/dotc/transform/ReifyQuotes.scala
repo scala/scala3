@@ -150,15 +150,15 @@ class ReifyQuotes extends MacroTransform {
         lit.const.tag match {
           case Constants.NullTag => ref(defn.InternalQuotedExpr_null)
           case Constants.UnitTag => ref(defn.InternalQuotedExpr_unit)
-          case Constants.BooleanTag => liftedValue(defn.LiftableModule_BooleanIsLiftable)
-          case Constants.ByteTag => liftedValue(defn.LiftableModule_ByteIsLiftable)
-          case Constants.ShortTag => liftedValue(defn.LiftableModule_ShortIsLiftable)
-          case Constants.IntTag => liftedValue(defn.LiftableModule_IntIsLiftable)
-          case Constants.LongTag => liftedValue(defn.LiftableModule_LongIsLiftable)
-          case Constants.FloatTag => liftedValue(defn.LiftableModule_FloatIsLiftable)
-          case Constants.DoubleTag => liftedValue(defn.LiftableModule_DoubleIsLiftable)
-          case Constants.CharTag => liftedValue(defn.LiftableModule_CharIsLiftable)
-          case Constants.StringTag => liftedValue(defn.LiftableModule_StringIsLiftable)
+          case Constants.BooleanTag => liftedValue(defn.LiftableModule_BooleanLiftable)
+          case Constants.ByteTag => liftedValue(defn.LiftableModule_ByteLiftable)
+          case Constants.ShortTag => liftedValue(defn.LiftableModule_ShortLiftable)
+          case Constants.IntTag => liftedValue(defn.LiftableModule_IntLiftable)
+          case Constants.LongTag => liftedValue(defn.LiftableModule_LongLiftable)
+          case Constants.FloatTag => liftedValue(defn.LiftableModule_FloatLiftable)
+          case Constants.DoubleTag => liftedValue(defn.LiftableModule_DoubleLiftable)
+          case Constants.CharTag => liftedValue(defn.LiftableModule_CharLiftable)
+          case Constants.StringTag => liftedValue(defn.LiftableModule_StringLiftable)
         }
       }
 
