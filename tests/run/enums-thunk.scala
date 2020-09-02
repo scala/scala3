@@ -20,8 +20,22 @@ object Outer2 {
   }
 }
 
+object Outer3 {
+  def thunk() = {
+    enum E { case C1 }
+    E.C1
+  }
+  def thunk2() = {
+    enum E { case C2 }
+    E.values
+  }
+}
+
+
 @main def Test =
   assert(Outer().thunk().toString == "A1")
   assert(Outer().thunk2()(0).toString == "A2")
   assert(Outer2.thunk().toString == "B1")
   assert(Outer2.thunk2()(0).toString == "B2")
+  assert(Outer3.thunk().toString == "C1")
+  assert(Outer3.thunk2()(0).toString == "C2")

@@ -104,12 +104,12 @@ object DesugarEnums {
 
   /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *
-   *   private val $values = Array[E](e_0,...,e_n)(ClassTag[E](classOf[E]))
+   *   private val $values = Array[E](this.e_0,...,this.e_n)(ClassTag[E](classOf[E])): @unchecked
    *   def values = $values.clone
    *   def valueOf($name: String) = $name match {
-   *     case "e_0" => e_0
+   *     case "e_0" => this.e_0
    *     ...
-   *     case "e_n" => e_n
+   *     case "e_n" => this.e_n
    *     case _ => throw new IllegalArgumentException("case not found: " + $name)
    *   }
    */
@@ -117,9 +117,17 @@ object DesugarEnums {
     val rawEnumClassRef = rawRef(enumClass.typeRef)
     extension (tpe: NamedType) def ofRawEnum = AppliedTypeTree(ref(tpe), rawEnumClassRef)
 
-    val lazyFlagOpt = if enumCompanion.owner.isStatic then EmptyFlags else Lazy
-    val privateValuesDef = ValDef(nme.DOLLAR_VALUES, TypeTree(), ArrayLiteral(enumValues, rawEnumClassRef))
-      .withFlags(Private | Synthetic | lazyFlagOpt)
+    val privateValuesDef =
+      val uncheckedValues =
+        // Here we use an unchecked annotation to silence warnings from the init checker. Without it, we get a warning
+        // that simple enum cases are promoting this from warm to initialised. This is because we are populating the
+        // array by selecting enum values from `this`, a value under construction.
+        // Singleton enum values always construct a new anonymous class, which will not be checked by the init-checker,
+        // so this warning will always persist even if the implementation of the anonymous class is safe.
+        // TODO: remove @unchecked after https://github.com/lampepfl/dotty-feature-requests/issues/135 is resolved.
+        Annotated(ArrayLiteral(enumValues, rawEnumClassRef), New(ref(defn.UncheckedAnnot.typeRef)))
+      ValDef(nme.DOLLAR_VALUES, TypeTree(), uncheckedValues)
+        .withFlags(Private | Synthetic)
 
     val valuesDef =
       DefDef(nme.values, Nil, Nil, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
@@ -170,7 +178,6 @@ object DesugarEnums {
    *     def ordinal = _$ordinal   // if `E` does not derive from `java.lang.Enum`
    *     def enumLabel = $name     // if `E` does not derive from `java.lang.Enum`
    *     def enumLabel = this.name // if `E` derives from `java.lang.Enum`
-   *     $values.register(this)
    *   }
    */
   private def enumValueCreator(using Context) = {
@@ -307,8 +314,8 @@ object DesugarEnums {
       case name: TermName => (ordinal, name) :: seenCases
       case _              => seenCases
     if definesLookups then
-      val companionRef = ref(enumCompanion.termRef)
-      val cachedValues = cases.reverse.map((i, name) => (i, Select(companionRef, name)))
+      val thisRef = This(EmptyTypeIdent)
+      val cachedValues = cases.reverse.map((i, name) => (i, Select(thisRef, name)))
       (ordinal, enumLookupMethods(EnumConstraints(minKind, maxKind, cachedValues)))
     else
       ctx.tree.pushAttachment(EnumCaseCount, (ordinal + 1, minKind, maxKind, cases))
