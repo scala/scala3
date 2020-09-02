@@ -24,6 +24,14 @@ package object tools {
   def unsupported(methodName: String): Nothing =
     throw new UnsupportedOperationException(methodName)
 
+  /** Forward-ported from the explicit-nulls branch.
+   *  Should be used when we know from the context that `x` is not null.
+   *  Flow-typing under explicit nulls will automatically insert many necessary
+   *  occurrences of uncheckedNN.
+   */
+  extension [T](x: T | Null)
+    inline def uncheckedNN: T = x.asInstanceOf[T]
+
   object resultWrapper {
     opaque type WrappedResult[T] = T
     private[tools] def unwrap[T](x: WrappedResult[T]): T = x

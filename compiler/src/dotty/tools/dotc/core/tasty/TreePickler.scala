@@ -44,7 +44,7 @@ class TreePickler(pickler: TastyPickler) {
 
   private val symRefs = Symbols.newMutableSymbolMap[Addr]
   private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
-  private val pickledTypes = util.IdentityHashMap[Type, AnyRef]() // Value type is really Addr, but that's not compatible with null
+  private val pickledTypes = util.IdentityHashMap[Type, Addr]()
 
   /** A list of annotation trees for every member definition, so that later
    *  parallel position pickling does not need to access and force symbols.
@@ -169,14 +169,14 @@ class TreePickler(pickler: TastyPickler) {
   def pickleType(tpe0: Type, richTypes: Boolean = false)(using Context): Unit = {
     val tpe = tpe0.stripTypeVar
     try {
-      val prev = pickledTypes.lookup(tpe)
+      val prev: Addr | Null = pickledTypes.lookup(tpe)
       if (prev == null) {
-        pickledTypes(tpe) = currentAddr.asInstanceOf[AnyRef]
+        pickledTypes(tpe) = currentAddr
         pickleNewType(tpe, richTypes)
       }
       else {
         writeByte(SHAREDtype)
-        writeRef(prev.asInstanceOf[Addr])
+        writeRef(prev.uncheckedNN)
       }
     }
     catch {
@@ -244,9 +244,9 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe) }
     case tpe: RecThis =>
       writeByte(RECthis)
-      val binderAddr = pickledTypes.lookup(tpe.binder)
+      val binderAddr: Addr | Null = pickledTypes.lookup(tpe.binder)
       assert(binderAddr != null, tpe.binder)
-      writeRef(binderAddr.asInstanceOf[Addr])
+      writeRef(binderAddr.uncheckedNN)
     case tpe: SkolemType =>
       pickleType(tpe.info)
     case tpe: RefinedType =>
@@ -314,11 +314,11 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleParamRef(tpe: ParamRef)(using Context): Boolean = {
-    val binder = pickledTypes.lookup(tpe.binder)
+    val binder: Addr | Null = pickledTypes.lookup(tpe.binder)
     val pickled = binder != null
     if (pickled) {
       writeByte(PARAMtype)
-      withLength { writeRef(binder.asInstanceOf[Addr]); writeNat(tpe.paramNum) }
+      withLength { writeRef(binder.uncheckedNN); writeNat(tpe.paramNum) }
     }
     pickled
   }
@@ -605,7 +605,7 @@ class TreePickler(pickler: TastyPickler) {
           else {
             val refineCls = refinements.head.symbol.owner.asClass
             registerDef(refineCls)
-            pickledTypes(refineCls.typeRef) = currentAddr.asInstanceOf[AnyRef]
+            pickledTypes(refineCls.typeRef) = currentAddr
             writeByte(REFINEDtpt)
             refinements.foreach(preRegister)
             withLength { pickleTree(parent); refinements.foreach(pickleTree) }

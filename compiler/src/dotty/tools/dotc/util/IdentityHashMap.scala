@@ -3,7 +3,7 @@ package dotty.tools.dotc.util
 /** A specialized implementation of GenericHashMap with identity hash and `eq`
  *  as comparison.
  */
-class IdentityHashMap[Key <: AnyRef, Value >: Null <: AnyRef]
+class IdentityHashMap[Key <: AnyRef, Value]
     (initialCapacity: Int = 8, capacityMultiple: Int = 2)
 extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   import GenericHashMap.DenseLimit
@@ -21,18 +21,7 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   // Aside: It would be nice to have a @specialized annotation that does
   // this automatically
 
-  /** Turn successor index or hash code `x` into a table index */
-  private def index(x: Int): Int = x & (table.length - 2)
-
-  private def firstIndex(key: Key) = if isDense then 0 else index(hash(key))
-  private def nextIndex(idx: Int) =
-    Stats.record(statsItem("miss"))
-    index(idx + 2)
-
-  private def keyAt(idx: Int): Key = table(idx).asInstanceOf[Key]
-  private def valueAt(idx: Int): Value = table(idx + 1).asInstanceOf[Value]
-
-  override def lookup(key: Key): Value =
+  override def lookup(key: Key): Value | Null =
     Stats.record(statsItem("lookup"))
     var idx = firstIndex(key)
     var k = keyAt(idx)
@@ -48,12 +37,12 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
     var k = keyAt(idx)
     while k != null do
       if isEqual(k, key) then
-        table(idx + 1) = value
+        setTable(idx + 1, value)
         return
       idx = nextIndex(idx)
       k = keyAt(idx)
     table(idx) = key
-    table(idx + 1) = value
+    setTable(idx + 1, value)
     used += 1
     if used > limit then growTable()
 
