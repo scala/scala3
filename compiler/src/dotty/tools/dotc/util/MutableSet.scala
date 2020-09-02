@@ -2,10 +2,10 @@ package dotty.tools.dotc.util
 
 /** A common class for lightweight mutable sets.
  */
-abstract class MutableSet[T >: Null] {
+abstract class MutableSet[T] {
 
   /** The entry in the set such that `isEqual(x, entry)`, or else `null`. */
-  def lookup(x: T): T /* | Null */
+  def lookup(x: T): T | Null
 
   /** Add element `x` to the set */
   def +=(x: T): Unit

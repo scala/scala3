@@ -19,7 +19,7 @@ object HashSet:
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends MutableSet[T] {
+class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends MutableSet[T] {
   import HashSet.DenseLimit
 
   private var used: Int = _
@@ -65,8 +65,9 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: I
     index(idx + 1)
 
   protected def entryAt(idx: Int) = table(idx).asInstanceOf[T]
+  protected def setEntry(idx: Int, x: T) = table(idx) = x.asInstanceOf[AnyRef]
 
-  def lookup(x: T): T =
+  def lookup(x: T): T | Null =
     Stats.record(statsItem("lookup"))
     var idx = firstIndex(x)
     var e = entryAt(idx)
@@ -79,7 +80,7 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: I
 /** Add entry at `x` at index `idx` */
   protected def addEntryAt(idx: Int, x: T): T =
     Stats.record(statsItem("addEntryAt"))
-    table(idx) = x
+    setEntry(idx, x)
     used += 1
     if used > limit then growTable()
     x
@@ -112,7 +113,7 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: I
             || index(hole - index(hash(e))) < limit
                // hash(k) is then logically at or before hole; can be moved forward to fill hole
           then
-            table(hole) = e
+            setEntry(hole, e)
             hole = idx
         table(hole) = null
         used -= 1
@@ -127,7 +128,7 @@ class HashSet[T >: Null <: AnyRef](initialCapacity: Int = 8, capacityMultiple: I
     while e != null do
       idx = nextIndex(idx)
       e = entryAt(idx)
-    table(idx) = x
+    setEntry(idx, x)
 
   def copyFrom(oldTable: Array[AnyRef]): Unit =
     if isDense then
