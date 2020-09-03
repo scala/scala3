@@ -14,8 +14,21 @@ import dotc.config._
 
 import java.io.File
 
+/** Main object for SBT.
+  *
+  * See [[this.process]].
+  */
 object Main extends Driver {
 
+  /** Actual entrypoint from SBT.
+    *
+    * Internal SBT code for `sbt doc` locates this precise method with
+    * reflection, and passes to us both `args` and `rootCtx`. "Internal" here
+    * means that it's painful to modify this code with a plugin.
+    *
+    * `args` contains arguments both for us and for the compiler (see code on
+    * how they're split).
+    */
   override def process(args: Array[String], rootCtx: Context): Reporter = {
     // split args into ours and Dotty's
     val (dokkaStrArgs, compilerArgs) = {
