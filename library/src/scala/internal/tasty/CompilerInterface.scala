@@ -514,6 +514,21 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def Type_apply(clazz: Class[_])(using ctx: Context): Type
 
+  /** Get package type if package is either defined in current compilation run or present on classpath.
+   *  An error is reported if the package is not found on the classpath.
+   */
+  def Type_requiredPackageRef(path: String): Type
+
+  /** Get class type if class is either defined in current compilation run or present on classpath.
+   *  An error is reported if the class is not found on the classpath.
+   */
+  def Type_requiredClassRef(path: String): Type
+
+  /** Get module type if module is either defined in current compilation run or present on classpath.
+   *  An error is reported if the module is not found on the classpath.
+   */
+  def Type_requiredModuleRef(path: String): Type
+
   /** Is `self` type the same as `that` type?
    *  This is the case iff `Type_isSubType(self, that)` and `Type_isSubType(that, self)`.
    */

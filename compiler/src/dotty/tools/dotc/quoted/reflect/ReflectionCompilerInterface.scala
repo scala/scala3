@@ -1150,6 +1150,18 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
     }
     else getClassIfDefined(clazz.getCanonicalName).typeRef
 
+  def Type_requiredPackageRef(path: String): Type = forced(requiredPackage(path)).typeRef
+
+  def Type_requiredClassRef(path: String): Type = forced(requiredClass(path)).typeRef
+
+  def Type_requiredModuleRef(path: String): Type = forced(requiredModule(path)).termRef
+
+  def Type_requiredMethodRef(path: String): Type = forced(requiredMethod(path)).termRef
+
+  private def forced(sym: Symbol): Symbol =
+    sym.flags // Force to load the symbol
+    sym
+
   def Type_isTypeEq(self: Type)(that: Type)(using Context): Boolean = self =:= that
 
   def Type_isSubType(self: Type)(that: Type)(using Context): Boolean = self <:< that
@@ -1785,10 +1797,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   private def isField(sym: Symbol)(using Context): Boolean = sym.isTerm && !sym.is(Flags.Method)
 
-  def Symbol_requiredPackage(path: String)(using Context): Symbol = requiredPackage(path)
-  def Symbol_requiredClass(path: String)(using Context): Symbol = requiredClass(path)
-  def Symbol_requiredModule(path: String)(using Context): Symbol = requiredModule(path)
-  def Symbol_requiredMethod(path: String)(using Context): Symbol = requiredMethod(path)
+  def Symbol_requiredPackage(path: String)(using Context): Symbol = forced(requiredPackage(path))
+  def Symbol_requiredClass(path: String)(using Context): Symbol = forced(requiredClass(path))
+  def Symbol_requiredModule(path: String)(using Context): Symbol = forced(requiredModule(path))
+  def Symbol_requiredMethod(path: String)(using Context): Symbol = forced(requiredMethod(path))
 
   def Symbol_of(fullName: String)(using Context): Symbol =
     requiredClass(fullName)

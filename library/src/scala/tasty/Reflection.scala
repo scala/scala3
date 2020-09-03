@@ -1348,8 +1348,24 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   object Type:
 
+    /** Get the Type representing the given class */
     def apply(clazz: Class[_])(using ctx: Context): Type =
       reflectSelf.Type_apply(clazz)
+
+    /** Get package type if package is either defined in current compilation run or present on classpath.
+     *  An error is reported if the package is not found on the classpath.
+     */
+    def requiredPackageRef(path: String)(using ctx: Context): Type = reflectSelf.Type_requiredPackageRef(path)
+
+    /** Get class type if class is either defined in current compilation run or present on classpath.
+     *  An error is reported if the class is not found on the classpath.
+     */
+    def requiredClassRef(path: String)(using ctx: Context): Type = reflectSelf.Type_requiredClassRef(path)
+
+    /** Get module type if module is either defined in current compilation run or present on classpath.
+     *  An error is reported if the module is not found on the classpath.
+     */
+    def requiredModuleRef(path: String)(using ctx: Context): Type = reflectSelf.Type_requiredModuleRef(path)
 
     extension (self: Type):
 
