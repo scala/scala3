@@ -3,11 +3,15 @@ package dottydoc
 package staticsite
 
 import dotc.util.SourceFile
-import java.io.{ BufferedWriter, OutputStreamWriter }
 import io.VirtualFile
-import scala.io.Codec
 
 import model.Package
+
+import java.io.{ BufferedWriter, OutputStreamWriter }
+import java.nio.charset.StandardCharsets
+
+import scala.io.Codec
+
 
 trait SourceFileOps {
   import scala.collection.JavaConverters._
@@ -19,7 +23,7 @@ trait SourceFileOps {
 
   def stringToSource(path: String, sourceCode: String): SourceFile = {
     val virtualFile = new VirtualFile(path, path)
-    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.name))
     writer.write(sourceCode)
     writer.close()
 

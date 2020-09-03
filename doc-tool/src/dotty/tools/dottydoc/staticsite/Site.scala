@@ -124,7 +124,7 @@ case class Site(
   /** Create virtual file from string `sourceCode` */
   private def stringToSourceFile(name: String, path: String, sourceCode: String): SourceFile = {
     val virtualFile = new VirtualFile(name, path)
-    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.name))
     writer.write(sourceCode)
     writer.close()
 
@@ -413,7 +413,7 @@ case class Site(
   }
 
   private def toSourceFile(f: JFile): SourceFile =
-    new SourceFile(AbstractFile.getFile(new File(f.toPath)), Using(Source.fromFile(f, "UTF-8"))(_.toArray).get)
+    new SourceFile(AbstractFile.getFile(new File(f.toPath)), Using(Source.fromFile(f, StandardCharsets.UTF_8.name))(_.toArray).get)
 
   private def collectFiles(dir: JFile, includes: String => Boolean): Array[JFile] =
     dir

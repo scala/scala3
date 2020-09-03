@@ -2,17 +2,20 @@ package dotty.tools
 package dottydoc
 package staticsite
 
+import model.Package
 
 import dotc.util.SourceFile
+import dotc.core.Contexts.{Context, ctx}
+import io.VirtualFile
+
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import com.vladsch.flexmark.ext.yaml.front.matter.AbstractYamlFrontMatterVisitor
+
 import java.util.{ Map => JMap, List => JList }
 import java.io.{ OutputStreamWriter, BufferedWriter }
+import java.nio.charset.StandardCharsets
 
-import io.VirtualFile
-import dotc.core.Contexts.{Context, ctx}
-import model.Package
 import scala.io.Codec
 
 /** When the YAML front matter cannot be parsed, this exception is thrown */
@@ -82,7 +85,7 @@ trait Page {
 
   protected def virtualFile(subSource: String): SourceFile = {
     val virtualFile = new VirtualFile(path, path)
-    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.name))
     writer.write(subSource)
     writer.close()
 

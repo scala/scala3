@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr}
 
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 
 class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr, docString: untpd.MemberDef => Option[Comment]):
   private val buf = new TastyBuffer(5000)
@@ -17,7 +17,7 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr, docStr
 
   private def pickleComment(addr: Addr, comment: Comment): Unit =
     if addr != NoAddr then
-      val bytes = comment.raw.getBytes(Charset.forName("UTF-8"))
+      val bytes = comment.raw.getBytes(StandardCharsets.UTF_8)
       val length = bytes.length
       buf.writeAddr(addr)
       buf.writeNat(length)

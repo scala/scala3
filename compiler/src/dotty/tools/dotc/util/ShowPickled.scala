@@ -2,9 +2,11 @@ package dotty.tools.dotc
 package util
 
 import java.io.PrintStream
+import java.nio.charset.StandardCharsets
 import java.lang.Long.toHexString
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
+
 import core.unpickleScala2.PickleBuffer
 import core.Names._
 
@@ -18,7 +20,7 @@ object ShowPickled {
       case _                                                                            => false
     }
     def readName: String =
-      if (isName) new String(bytes, "UTF-8")
+      if (isName) new String(bytes, StandardCharsets.UTF_8)
       else sys.error("%s is no name" format tagName)
     def nameIndex: Int =
       if (hasName) readNat(bytes, 0)

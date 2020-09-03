@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package decompiler
 
 import java.io.{OutputStream, PrintStream}
+import java.nio.charset.StandardCharsets
 
 import scala.io.Codec
 
@@ -27,7 +28,7 @@ class DecompilationPrinter extends Phase {
       var ps: PrintStream = null
       try {
         os = File(outputDir.fileNamed("decompiled.scala").path)(Codec.UTF8).outputStream(append = true)
-        ps = new PrintStream(os, /* autoFlush = */ false, "UTF-8")
+        ps = new PrintStream(os, /* autoFlush = */ false, StandardCharsets.UTF_8.name)
         printToOutput(ps)
       }
       finally {

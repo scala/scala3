@@ -4,6 +4,7 @@ import java.io.PrintWriter
 import java.io.File.{pathSeparator, separator}
 import java.net.URI
 import java.nio.file.{Files, Path}
+import java.nio.charset.StandardCharsets
 import java.util
 
 import dotty.tools.dotc.Main
@@ -138,7 +139,7 @@ class TestServer(testFolder: Path, projects: List[Project]) {
     val sourcesDir = sourceDirectory(project, wipe = true)
     val sources = project.sources.zipWithIndex.map { case (src, id) =>
       val path = sourcesDir.resolve(src.sourceName(id)).toAbsolutePath
-      Files.write(path, src.text.getBytes("UTF-8"))
+      Files.write(path, src.text.getBytes(StandardCharsets.UTF_8.name))
       path.toString
     }
 
