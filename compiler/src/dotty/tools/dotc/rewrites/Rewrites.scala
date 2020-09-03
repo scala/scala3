@@ -10,7 +10,7 @@ import dotty.tools.dotc.reporting.Reporter
 
 /** Handles rewriting of Scala2 files to Dotty */
 object Rewrites {
-  private class PatchedFiles extends mutable.HashMap[SourceFile, Patches]
+  private class PatchedFiles extends util.HashMap[SourceFile, Patches]
 
   private case class Patch(span: Span, replacement: String) {
     def delta = replacement.length - (span.end - span.start)
@@ -83,7 +83,7 @@ object Rewrites {
   /** If -rewrite is set, apply all patches and overwrite patched source files.
    */
   def writeBack()(using Context): Unit =
-    for (rewrites <- ctx.settings.rewrite.value; source <- rewrites.patched.keys) {
+    for (rewrites <- ctx.settings.rewrite.value; source <- rewrites.patched.keysIterator) {
       report.echo(s"[patched file ${source.file.path}]")
       rewrites.patched(source).writeBack()
     }

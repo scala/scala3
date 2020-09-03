@@ -59,19 +59,19 @@ class TreeUnpickler(reader: TastyReader,
   import tpd._
 
   /** A map from addresses of definition entries to the symbols they define */
-  private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
+  private val symAtAddr  = util.HashMap[Addr, Symbol]()
 
   /** A temporary map from addresses of definition entries to the trees they define.
    *  Used to remember trees of symbols that are created by a completion. Emptied
    *  once the tree is inlined into a larger tree.
    */
-  private val treeAtAddr = new mutable.HashMap[Addr, Tree]
+  private val treeAtAddr = util.HashMap[Addr, Tree]()
 
   /** A map from addresses of type entries to the types they define.
    *  Currently only populated for types that might be recursively referenced
    *  from within themselves (i.e. RecTypes, LambdaTypes).
    */
-  private val typeAtAddr = new mutable.HashMap[Addr, Type]
+  private val typeAtAddr = util.HashMap[Addr, Type]()
 
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
@@ -751,11 +751,11 @@ class TreeUnpickler(reader: TastyReader,
      *  or else read definition.
      */
     def readIndexedDef()(using Context): Tree = treeAtAddr.remove(currentAddr) match {
-      case Some(tree) =>
+      case tree: Tree =>
         assert(tree != PoisonTree, s"Cyclic reference while unpickling definition at address ${currentAddr.index} in unit ${ctx.compilationUnit}")
         skipTree()
         tree
-      case none =>
+      case null =>
         val start = currentAddr
         treeAtAddr(start) = PoisonTree
         val tree = readNewDef()

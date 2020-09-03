@@ -107,7 +107,7 @@ object Formatting {
   private type Recorded = Symbol | ParamRef | SkolemType
 
   private case class SeenKey(str: String, isType: Boolean)
-  private class Seen extends mutable.HashMap[SeenKey, List[Recorded]] {
+  private class Seen extends util.HashMap[SeenKey, List[Recorded]] {
 
     override def default(key: SeenKey) = Nil
 

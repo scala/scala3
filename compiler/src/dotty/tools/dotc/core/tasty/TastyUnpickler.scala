@@ -31,7 +31,7 @@ class TastyUnpickler(reader: TastyReader) {
 
   def this(bytes: Array[Byte]) = this(new TastyReader(bytes))
 
-  private val sectionReader = new mutable.HashMap[String, TastyReader]
+  private val sectionReader = util.HashMap[String, TastyReader]()
   val nameAtRef: NameTable = new NameTable
 
   private def readName(): TermName = nameAtRef(readNameRef())

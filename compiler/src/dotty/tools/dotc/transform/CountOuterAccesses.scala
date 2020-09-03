@@ -42,7 +42,7 @@ class CountOuterAccesses extends MiniPhase:
     // LambdaLift can create outer paths. These need to be known in this phase.
 
   /** The number of times an outer accessor that might be dropped is accessed */
-  val outerAccessCount = new mutable.HashMap[Symbol, Int] {
+  val outerAccessCount = new util.HashMap[Symbol, Int] {
     override def default(s: Symbol): Int = 0
   }
 

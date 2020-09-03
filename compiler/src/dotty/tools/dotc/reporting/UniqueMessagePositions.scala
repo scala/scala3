@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.collection.mutable
 import util.SourceFile
 import core.Contexts._
 
@@ -10,7 +9,7 @@ import core.Contexts._
   * are suppressed, unless they are of increasing severity. */
 trait UniqueMessagePositions extends Reporter {
 
-  private val positions = new mutable.HashMap[(SourceFile, Int), Int]
+  private val positions = util.HashMap[(SourceFile, Int), Int]()
 
   /** Logs a position and returns true if it was already logged.
    *  @note  Two positions are considered identical for logging if they have the same point.

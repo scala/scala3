@@ -1,5 +1,6 @@
 package dotty.tools
 package dotc.util
+import collection.mutable.ListBuffer
 
 /** A class for the reading part of mutable or immutable maps.
  */
@@ -26,8 +27,11 @@ abstract class ReadOnlyMap[Key, Value]:
   def contains(key: Key): Boolean = lookup(key) != null
 
   def apply(key: Key): Value = lookup(key) match
-    case null => throw new NoSuchElementException(s"$key")
+    case null => default(key)
     case v => v.uncheckedNN
+
+  protected def default(key: Key): Value =
+    throw new NoSuchElementException(s"$key")
 
   def toArray: Array[(Key, Value)] =
     val result = new Array[(Key, Value)](size)
@@ -36,6 +40,9 @@ abstract class ReadOnlyMap[Key, Value]:
       result(idx) = pair
       idx += 1
     result
+
+  def toList: List[(Key, Value)] =
+    (new ListBuffer[(Key, Value)]() ++= iterator).toList
 
   def toSeq: Seq[(Key, Value)] = toArray.toSeq
 
