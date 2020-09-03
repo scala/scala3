@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package sbt
 
-import ast.{Trees, tpd}
+import ast.{Positioned, Trees, tpd, untpd}
 import core._
 import core.Decorators._
 import Annotations._
@@ -11,6 +11,7 @@ import Phases._
 import Trees._
 import Types._
 import Symbols._
+import Names._
 import NameOps._
 import NameKinds.DefaultGetterName
 import typer.Inliner
@@ -582,13 +583,18 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     val annots = new mutable.ListBuffer[api.Annotation]
     val inlineBody = Inliner.bodyToInline(s)
     if (!inlineBody.isEmpty) {
-      // FIXME: If the body of an inlineable method changes, all the reverse
-      // dependencies of this method need to be recompiled. sbt has no way
-      // of tracking method bodies, so as a hack we include the printed
-      // tree of the method as part of the signature we send to sbt.
-      // To do this properly we would need a way to hash trees and types in
-      // dotty itself.
-      annots += marker(inlineBody.toString)
+      // If the body of an inline def changes, all the reverse dependencies of
+      // this method need to be recompiled. sbt has no way of tracking method
+      // bodies, so we include the hash of the body of the method as part of the
+      // signature we send to sbt.
+      //
+      // FIXME: The API of a class we send to Zinc includes the signatures of
+      // inherited methods, which means that we repeatedly compute the hash of
+      // an inline def in every class that extends its owner. To avoid this we
+      // could store the hash as an annotation when pickling an inline def
+      // and retrieve it here instead of computing it on the fly.
+      val inlineBodyHash = treeHash(inlineBody)
+      annots += marker(inlineBodyHash.toString)
     }
 
     // In the Scala2 ExtractAPI phase we only extract annotations that extend
@@ -602,16 +608,66 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     annots.toList
   }
 
+  /** Produce a hash for a tree that is as stable as possible:
+   *  it should stay the same across compiler runs, compiler instances,
+   *  JVMs, etc.
+   */
+  def treeHash(tree: Tree): Int =
+    import scala.util.hashing.MurmurHash3
+
+    def positionedHash(p: ast.Positioned, initHash: Int): Int =
+      p match
+        case p: WithLazyField[?] =>
+          p.forceIfLazy
+        case _ =>
+      // FIXME: If `p` is a tree we should probably take its type into account
+      // when hashing it, but producing a stable hash for a type is not trivial
+      // since the same type might have multiple representations, for method
+      // signatures this is already handled by `computeType` and the machinery
+      // in Zinc that generates hashes from that, if we can reliably produce
+      // stable hashes for types ourselves then we could bypass all that and
+      // send Zinc hashes directly.
+      val h = MurmurHash3.mix(initHash, p.productPrefix.hashCode)
+      iteratorHash(p.productIterator, h)
+    end positionedHash
+
+    def iteratorHash(it: Iterator[Any], initHash: Int): Int =
+      var h = initHash
+      while it.hasNext do
+        it.next() match
+          case p: Positioned =>
+            h = positionedHash(p, h)
+          case xs: List[?] =>
+            h = iteratorHash(xs.iterator, h)
+          case c: core.Constants.Constant =>
+            h = MurmurHash3.mix(h, c.tag)
+            h = MurmurHash3.mix(h, c.value.##) // We can't use `value.hashCode` since value might be null
+          case n: Name =>
+            // The hashCode of the name itself is not stable across compiler instances
+            h = MurmurHash3.mix(h, n.toString.hashCode)
+          case elem =>
+            report.warning(
+              i"""Internal error: Don't know how to produce a stable hash for `$elem` of unknown class ${elem.getClass}
+                 |Incremental compilation might not work correctly.""", tree.sourcePos)
+            h = MurmurHash3.mix(h, elem.toString.hashCode)
+      h
+    end iteratorHash
+
+    val seed = 4 // https://xkcd.com/221
+    val h = positionedHash(tree, seed)
+    MurmurHash3.finalizeHash(h, 0)
+  end treeHash
+
   def apiAnnotation(annot: Annotation): api.Annotation = {
-    // FIXME: To faithfully extract an API we should extract the annotation tree,
-    // sbt instead wants us to extract the annotation type and its arguments,
-    // to do this properly we would need a way to hash trees and types in dotty itself,
-    // instead we use the raw string representation of the annotation tree.
-    // However, we still need to extract the annotation type in the way sbt expect
-    // because sbt uses this information to find tests to run (for example
-    // junit tests are annotated @org.junit.Test).
+    // Like with inline defs, the whole body of the annotation and not just its
+    // type is part of its API so we need to store its hash, but Zinc wants us
+    // to extract the annotation type and its arguments, so we use a dummy
+    // annotation argument to store the hash of the tree. We still need to
+    // extract the annotation type in the way Zinc expects because sbt uses this
+    // information to find tests to run (for example junit tests are
+    // annotated @org.junit.Test).
     api.Annotation.of(
       apiType(annot.tree.tpe), // Used by sbt to find tests to run
-      Array(api.AnnotationArgument.of("FULLTREE", annot.tree.toString)))
+      Array(api.AnnotationArgument.of("TREE_HASH", treeHash(annot.tree).toString)))
   }
 }
