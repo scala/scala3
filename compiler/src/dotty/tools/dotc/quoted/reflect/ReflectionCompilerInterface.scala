@@ -1224,6 +1224,9 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
   def Type_select(self: Type)(sym: Symbol)(using Context): Type =
     self.select(sym)
 
+  def Type_appliedTo(self: Type)(targs: List[TypeOrBounds]): Type =
+    self.appliedTo(targs)
+
   type ConstantType = Types.ConstantType
 
   def ConstantType_TypeTest(using Context): TypeTest[TypeOrBounds, ConstantType] = new {
@@ -1334,8 +1337,6 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
 
   def AppliedType_tycon(self: AppliedType)(using Context): Type = self.tycon
   def AppliedType_args(self: AppliedType)(using Context): List[TypeOrBounds] = self.args
-
-  def AppliedType_apply(tycon: Type, args: List[TypeOrBounds])(using Context): AppliedType = Types.AppliedType(tycon, args)
 
   type AnnotatedType = Types.AnnotatedType
 

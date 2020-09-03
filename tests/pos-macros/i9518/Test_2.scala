@@ -1,0 +1,1 @@
+def test: Unit = shift
