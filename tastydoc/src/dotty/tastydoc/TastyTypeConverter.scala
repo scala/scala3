@@ -6,29 +6,6 @@ import dotty.tastydoc.references._
 /** Trait containing methods for converting from Reflect types to References */
 trait TastyTypeConverter {
 
-  def convertTypeOrBoundsToReference(using QuoteContext)(typeOrBounds: qctx.tasty.TypeOrBounds): Reference = {
-    import qctx.tasty._
-
-    def anyOrNothing(reference: Reference): Boolean = reference match {
-      case TypeReference("Any", "/scala", _, _) => true
-      case TypeReference("Nothing", "/scala", _, _) => true
-      case _ => false
-    }
-
-    typeOrBounds match {
-      case tpe: Type => convertTypeToReference(tpe)
-      case TypeBounds(low, hi) =>
-        val lowRef = convertTypeToReference(low)
-        val hiRef = convertTypeToReference(hi)
-        if(hiRef == lowRef){
-          hiRef
-        }else{
-          BoundsReference(lowRef, hiRef)
-        }
-      case NoPrefix() => EmptyReference
-    }
-  }
-
   def convertTypeToReference(using QuoteContext)(tp: qctx.tasty.Type): Reference = {
     import qctx.tasty._
 
@@ -42,7 +19,7 @@ trait TastyTypeConverter {
       case AnnotatedType(tpe, _) => inner(tpe)
       case TypeLambda(paramNames, paramTypes, resType) => ConstantReference(tp.show) //TOFIX
       case Refinement(parent, name, info) =>
-        val tuple = convertTypeOrBoundsToReference(info) match {
+        val tuple = convertTypeToReference(info) match {
           case r if (info match {case info: TypeBounds => true case _ => false}) => ("type", name, r)
           case r@TypeReference(_, _, _, _) => ("val", name, r)
           case ByNameReference(rChild) => ("def", name, rChild)
@@ -58,52 +35,61 @@ trait TastyTypeConverter {
           case TypeReference(label, link, _, hasOwnFile) =>
             if(link == "/scala"){
               if(label.matches("Function[1-9]") || label.matches("Function[1-9][0-9]")){
-                val argsAndReturn = typeOrBoundsList.map(convertTypeOrBoundsToReference(_))
+                val argsAndReturn = typeOrBoundsList.map(convertTypeToReference(_))
                 FunctionReference(argsAndReturn.take(argsAndReturn.size - 1), argsAndReturn.last, false)
               }else if(label.matches("Tuple[1-9]") || label.matches("Tuple[1-9][0-9]")){
-                TupleReference(typeOrBoundsList.map(convertTypeOrBoundsToReference(_)))
+                TupleReference(typeOrBoundsList.map(convertTypeToReference(_)))
               }else{
-                TypeReference(label, link, typeOrBoundsList.map(convertTypeOrBoundsToReference(_)), hasOwnFile)
+                TypeReference(label, link, typeOrBoundsList.map(convertTypeToReference(_)), hasOwnFile)
               }
             }else{
-              TypeReference(label, link, typeOrBoundsList.map(convertTypeOrBoundsToReference(_)), hasOwnFile)
+              TypeReference(label, link, typeOrBoundsList.map(convertTypeToReference(_)), hasOwnFile)
             }
           case _ => throw Exception("Match error in AppliedType. This should not happen, please open an issue. " + tp)
         }
       case tp @ TypeRef(qual, typeName) =>
-        convertTypeOrBoundsToReference(qual) match {
+        convertTypeToReference(qual) match {
           case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true)
           case EmptyReference => TypeReference(typeName, "", Nil, true)
           case _ if tp.typeSymbol.exists =>
             tp.typeSymbol match {
               // NOTE: Only TypeRefs can reference ClassDefSymbols
               case sym if sym.isClassDef => //Need to be split because these types have their own file
-                convertTypeOrBoundsToReference(qual) match {
+                convertTypeToReference(qual) match {
                   case TypeReference(label, link, xs, _) => TypeReference(sym.name, link + "/" + label, xs, true)
                   case EmptyReference if sym.name == "<root>" | sym.name == "_root_" => EmptyReference
                   case EmptyReference => TypeReference(sym.name, "", Nil, true)
-                  case _ => throw Exception("Match error in SymRef/TypeOrBounds/ClassDef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(qual))
+                  case _ => throw Exception("Match error in SymRef/Types/ClassDef. This should not happen, please open an issue. " + convertTypeToReference(qual))
                 }
 
               // NOTE: This branch handles packages, which are now TypeRefs
               case sym if sym.isTerm || sym.isTypeDef =>
-                convertTypeOrBoundsToReference(qual) match {
+                convertTypeToReference(qual) match {
                   case TypeReference(label, link, xs, _) => TypeReference(sym.name, link + "/" + label, xs)
                   case EmptyReference if sym.name == "<root>" | sym.name == "_root_" => EmptyReference
                   case EmptyReference => TypeReference(sym.name, "", Nil)
-                  case _ => throw Exception("Match error in SymRef/TypeOrBounds/Other. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(qual))
+                  case _ => throw Exception("Match error in SymRef/Types/Other. This should not happen, please open an issue. " + convertTypeToReference(qual))
                 }
               case sym => throw Exception("Match error in SymRef. This should not happen, please open an issue. " + sym)
             }
           case _ =>
-            throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(qual))
+            throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeToReference(qual))
         }
       case TermRef(qual, typeName) =>
-        convertTypeOrBoundsToReference(qual) match {
+        convertTypeToReference(qual) match {
           case TypeReference(label, link, xs, _) => TypeReference(typeName + "$", link + "/" + label, xs)
           case EmptyReference => TypeReference(typeName, "", Nil)
-          case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(qual))
+          case _ => throw Exception("Match error in TermRef. This should not happen, please open an issue. " + convertTypeToReference(qual))
         }
+      case TypeBounds(low, hi) =>
+        val lowRef = convertTypeToReference(low)
+        val hiRef = convertTypeToReference(hi)
+        if(hiRef == lowRef){
+          hiRef
+        }else{
+          BoundsReference(lowRef, hiRef)
+        }
+      case NoPrefix() => EmptyReference
 
       // NOTE: old SymRefs are now either TypeRefs or TermRefs - the logic here needs to be moved into above branches
       // NOTE: _.symbol on *Ref returns its symbol

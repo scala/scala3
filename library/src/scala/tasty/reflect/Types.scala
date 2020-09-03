@@ -70,27 +70,26 @@ import scala.tasty.reflect._
  *           +- Alternatives
  *
  *
- *                   +- NoPrefix
- *  +- TypeOrBounds -+- TypeBounds
- *                   |
- *                   +- Type -------+- ConstantType
- *                                  +- TermRef
- *                                  +- TypeRef
- *                                  +- SuperType
- *                                  +- Refinement
- *                                  +- AppliedType
- *                                  +- AnnotatedType
- *                                  +- AndType
- *                                  +- OrType
- *                                  +- MatchType
- *                                  +- ByNameType
- *                                  +- ParamRef
- *                                  +- ThisType
- *                                  +- RecursiveThis
- *                                  +- RecursiveType
- *                                  +- LambdaType[ParamInfo <: TypeOrBounds] -+- MethodType
- *                                                                            +- PolyType
- *                                                                            +- TypeLambda
+ *  +- Type -+- ConstantType
+ *           +- TermRef
+ *           +- TypeRef
+ *           +- SuperType
+ *           +- Refinement
+ *           +- AppliedType
+ *           +- AnnotatedType
+ *           +- AndType
+ *           +- OrType
+ *           +- MatchType
+ *           +- ByNameType
+ *           +- ParamRef
+ *           +- ThisType
+ *           +- RecursiveThis
+ *           +- RecursiveType
+ *           +- LambdaType -+- MethodType
+ *           |              +- PolyType
+ *           |              +- TypeLambda
+ *           +- TypeBounds
+ *           +- NoPrefix
  *
  *  +- ImportSelector -+- SimpleSelector
  *                     +- RenameSelector
@@ -293,17 +292,8 @@ trait Types {
   /** Pattern representing `X | Y | ...` alternatives. */
   type Alternatives <: Tree
 
-  /** Type or bounds */
-  type TypeOrBounds <: AnyRef
-
-  /** NoPrefix for a type selection */
-  type NoPrefix <: TypeOrBounds
-
-  /** Type bounds */
-  type TypeBounds <: TypeOrBounds
-
   /** A type */
-  type Type <: TypeOrBounds
+  type Type
 
   /** A singleton type representing a known constant value */
   type ConstantType <: Type
@@ -350,20 +340,23 @@ trait Types {
   /** A type that is recursively defined */
   type RecursiveType <: Type
 
-  // TODO can we add the bound back without an cake?
-  // TODO is LambdaType really needed? ParamRefExtractor could be split into more precise extractors
   /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
-  type LambdaType[ParamInfo /*<: TypeOrBounds*/] <: Type
+  type LambdaType <: Type
 
   /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
-  type MethodType <: LambdaType[Type]
+  type MethodType <: LambdaType
 
   /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
-  type PolyType <: LambdaType[TypeBounds]
+  type PolyType <: LambdaType
 
   /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
-  type TypeLambda <: LambdaType[TypeBounds]
+  type TypeLambda <: LambdaType
 
+  /** NoPrefix for a type selection */
+  type NoPrefix <: Type
+
+  /** Type bounds */
+  type TypeBounds <: Type
 
   /** Import selectors:
    *   * SimpleSelector: `.bar` in `import foo.bar`

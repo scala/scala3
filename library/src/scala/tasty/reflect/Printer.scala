@@ -9,8 +9,8 @@ trait Printer[R <: Reflection & Singleton] {
   /** Show a String representation of a tasty.Tree */
   def showTree(tree: tasty.Tree)(using ctx: tasty.Context): String
 
-  /** Show a String representation of a tasty.TypeOrBounds */
-  def showTypeOrBounds(tpe: tasty.TypeOrBounds)(using ctx: tasty.Context): String
+  /** Show a String representation of a tasty.Type */
+  def showType(tpe: tasty.Type)(using ctx: tasty.Context): String
 
   /** Show a String representation of a tasty.Constant */
   def showConstant(const: tasty.Constant)(using ctx: tasty.Context): String

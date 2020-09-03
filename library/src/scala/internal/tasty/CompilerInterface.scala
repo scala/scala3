@@ -446,7 +446,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def WildcardTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, WildcardTypeTree]
 
-  def WildcardTypeTree_tpe(self: WildcardTypeTree)(using ctx: Context): TypeOrBounds
+  def WildcardTypeTree_tpe(self: WildcardTypeTree)(using ctx: Context): Type
 
   def CaseDef_TypeTest(using ctx: Context): TypeTest[Tree, CaseDef]
 
@@ -503,14 +503,14 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def NoPrefix_TypeTest(using ctx: Context): TypeTest[Tree, NoPrefix]
 
-  def TypeBounds_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeBounds]
+  def TypeBounds_TypeTest(using ctx: Context): TypeTest[Type, TypeBounds]
 
   def TypeBounds_apply(low: Type, hi: Type)(using ctx: Context): TypeBounds
 
   def TypeBounds_low(self: TypeBounds)(using ctx: Context): Type
   def TypeBounds_hi(self: TypeBounds)(using ctx: Context): Type
 
-  def Type_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, Type]
+  def Type_TypeTest(using ctx: Context): TypeTest[Type, Type]
 
   def Type_apply(clazz: Class[_])(using ctx: Context): Type
 
@@ -605,70 +605,70 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Type_select(self: Type)(sym: Symbol)(using ctx: Context): Type
 
   /** The current type applied to given type arguments: `this[targ0, ..., targN]` */
-  def Type_appliedTo(self: Type)(targs: List[TypeOrBounds]): Type
+  def Type_appliedTo(self: Type)(targs: List[Type]): Type
 
-  def ConstantType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ConstantType]
+  def ConstantType_TypeTest(using ctx: Context): TypeTest[Type, ConstantType]
 
   def ConstantType_apply(const : Constant)(using ctx : Context) : ConstantType
 
   def ConstantType_constant(self: ConstantType)(using ctx: Context): Constant
 
-  def TermRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TermRef]
+  def TermRef_TypeTest(using ctx: Context): TypeTest[Type, TermRef]
 
-  def TermRef_apply(qual: TypeOrBounds, name: String)(using ctx: Context): TermRef
+  def TermRef_apply(qual: Type, name: String)(using ctx: Context): TermRef
 
-  def TermRef_qualifier(self: TermRef)(using ctx: Context): TypeOrBounds
+  def TermRef_qualifier(self: TermRef)(using ctx: Context): Type
   def TermRef_name(self: TermRef)(using ctx: Context): String
 
-  def TypeRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeRef]
+  def TypeRef_TypeTest(using ctx: Context): TypeTest[Type, TypeRef]
 
-  def TypeRef_qualifier(self: TypeRef)(using ctx: Context): TypeOrBounds
+  def TypeRef_qualifier(self: TypeRef)(using ctx: Context): Type
   def TypeRef_name(self: TypeRef)(using ctx: Context): String
   def TypeRef_isOpaqueAlias(self: TypeRef)(using ctx: Context): Boolean
   def TypeRef_translucentSuperType(self: TypeRef)(using ctx: Context): Type
 
-  def SuperType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, SuperType]
+  def SuperType_TypeTest(using ctx: Context): TypeTest[Type, SuperType]
 
   def SuperType_apply(thistpe: Type, supertpe: Type)(using ctx: Context): SuperType
 
   def SuperType_thistpe(self: SuperType)(using ctx: Context): Type
   def SuperType_supertpe(self: SuperType)(using ctx: Context): Type
 
-  def Refinement_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, Refinement]
+  def Refinement_TypeTest(using ctx: Context): TypeTest[Type, Refinement]
 
-  def Refinement_apply(parent: Type, name: String, info: TypeOrBounds /* Type | TypeBounds */)(using ctx: Context): Refinement
+  def Refinement_apply(parent: Type, name: String, info: Type)(using ctx: Context): Refinement
 
   def Refinement_parent(self: Refinement)(using ctx: Context): Type
   def Refinement_name(self: Refinement)(using ctx: Context): String
-  def Refinement_info(self: Refinement)(using ctx: Context): TypeOrBounds
+  def Refinement_info(self: Refinement)(using ctx: Context): Type
 
-  def AppliedType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AppliedType]
+  def AppliedType_TypeTest(using ctx: Context): TypeTest[Type, AppliedType]
 
   def AppliedType_tycon(self: AppliedType)(using ctx: Context): Type
-  def AppliedType_args(self: AppliedType)(using ctx: Context): List[TypeOrBounds]
+  def AppliedType_args(self: AppliedType)(using ctx: Context): List[Type]
 
-  def AnnotatedType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AnnotatedType]
+  def AnnotatedType_TypeTest(using ctx: Context): TypeTest[Type, AnnotatedType]
 
   def AnnotatedType_apply(underlying: Type, annot: Term)(using ctx: Context): AnnotatedType
 
   def AnnotatedType_underlying(self: AnnotatedType)(using ctx: Context): Type
   def AnnotatedType_annot(self: AnnotatedType)(using ctx: Context): Term
 
-  def AndType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, AndType]
+  def AndType_TypeTest(using ctx: Context): TypeTest[Type, AndType]
 
   def AndType_apply(lhs: Type, rhs: Type)(using ctx: Context): AndType
 
   def AndType_left(self: AndType)(using ctx: Context): Type
   def AndType_right(self: AndType)(using ctx: Context): Type
 
-  def OrType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, OrType]
+  def OrType_TypeTest(using ctx: Context): TypeTest[Type, OrType]
 
   def OrType_apply(lhs : Type, rhs : Type)(using ctx : Context): OrType
 
   def OrType_left(self: OrType)(using ctx: Context): Type
   def OrType_right(self: OrType)(using ctx: Context): Type
 
-  def MatchType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, MatchType]
+  def MatchType_TypeTest(using ctx: Context): TypeTest[Type, MatchType]
 
   def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type])(using ctx: Context): MatchType
 
@@ -676,26 +676,26 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def MatchType_scrutinee(self: MatchType)(using ctx: Context): Type
   def MatchType_cases(self: MatchType)(using ctx: Context): List[Type]
 
-  def ByNameType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ByNameType]
+  def ByNameType_TypeTest(using ctx: Context): TypeTest[Type, ByNameType]
 
   def ByNameType_apply(underlying: Type)(using ctx: Context): Type
 
   def ByNameType_underlying(self: ByNameType)(using ctx: Context): Type
 
-  def ParamRef_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ParamRef]
+  def ParamRef_TypeTest(using ctx: Context): TypeTest[Type, ParamRef]
 
-  def ParamRef_binder(self: ParamRef)(using ctx: Context): LambdaType[TypeOrBounds]
+  def ParamRef_binder(self: ParamRef)(using ctx: Context): LambdaType
   def ParamRef_paramNum(self: ParamRef)(using ctx: Context): Int
 
-  def ThisType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, ThisType]
+  def ThisType_TypeTest(using ctx: Context): TypeTest[Type, ThisType]
 
   def ThisType_tref(self: ThisType)(using ctx: Context): Type
 
-  def RecursiveThis_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, RecursiveThis]
+  def RecursiveThis_TypeTest(using ctx: Context): TypeTest[Type, RecursiveThis]
 
   def RecursiveThis_binder(self: RecursiveThis)(using ctx: Context): RecursiveType
 
-  def RecursiveType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, RecursiveType]
+  def RecursiveType_TypeTest(using ctx: Context): TypeTest[Type, RecursiveType]
 
   /** Create a RecType, normalizing its contents. This means:
    *
@@ -711,7 +711,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def RecursiveThis_recThis(self: RecursiveType)(using ctx: Context): RecursiveThis
 
-  def MethodType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, MethodType]
+  def MethodType_TypeTest(using ctx: Context): TypeTest[Type, MethodType]
 
   def MethodType_apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType
 
@@ -722,7 +722,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def MethodType_paramTypes(self: MethodType)(using ctx: Context): List[Type]
   def MethodType_resType(self: MethodType)(using ctx: Context): Type
 
-  def PolyType_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, PolyType]
+  def PolyType_TypeTest(using ctx: Context): TypeTest[Type, PolyType]
 
   def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using ctx: Context): PolyType
 
@@ -731,7 +731,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def PolyType_paramBounds(self: PolyType)(using ctx: Context): List[TypeBounds]
   def PolyType_resType(self: PolyType)(using ctx: Context): Type
 
-  def TypeLambda_TypeTest(using ctx: Context): TypeTest[TypeOrBounds, TypeLambda]
+  def TypeLambda_TypeTest(using ctx: Context): TypeTest[Type, TypeLambda]
 
   def TypeLambda_apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda
 

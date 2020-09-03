@@ -7,7 +7,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
   def showTree(tree: Tree)(using ctx: Context): String =
     new Buffer().visitTree(tree).result()
 
-  def showTypeOrBounds(tpe: TypeOrBounds)(using ctx: Context): String =
+  def showType(tpe: Type)(using ctx: Context): String =
     new Buffer().visitType(tpe).result()
 
   def showConstant(const: Constant)(using ctx: Context): String =
@@ -183,7 +183,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
         visitType(value) += ")"
     }
 
-    def visitType(x: TypeOrBounds): Buffer = x match {
+    def visitType(x: Type): Buffer = x match {
       case ConstantType(value) =>
         this += "ConstantType(" += value += ")"
       case TermRef(qual, name) =>
@@ -275,9 +275,9 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
     }
 
     private implicit class TypeOps(buff: Buffer) {
-      def +=(x: TypeOrBounds): Buffer = { visitType(x); buff }
-      def +=(x: Option[TypeOrBounds]): Buffer = { visitOption(x, visitType); buff }
-      def ++=(x: List[TypeOrBounds]): Buffer = { visitList(x, visitType); buff }
+      def +=(x: Type): Buffer = { visitType(x); buff }
+      def +=(x: Option[Type]): Buffer = { visitOption(x, visitType); buff }
+      def ++=(x: List[Type]): Buffer = { visitList(x, visitType); buff }
     }
 
     private implicit class IdOps(buff: Buffer) {

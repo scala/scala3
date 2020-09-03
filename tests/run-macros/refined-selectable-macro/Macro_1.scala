@@ -55,7 +55,7 @@ object Macro {
 
     def isTupleCons(sym: Symbol): Boolean = sym.owner == defn.ScalaPackageClass && sym.name == "*:"
 
-    def extractTuple(tpe: TypeOrBounds, seen: Set[String]): (Set[String], (String, Type)) = {
+    def extractTuple(tpe: Type, seen: Set[String]): (Set[String], (String, Type)) = {
       tpe match {
         // Tuple2(S, T) where S must be a constant string type
         case AppliedType(parent, ConstantType(Constant(name: String)) :: (info: Type) :: Nil) if (parent.typeSymbol == defn.TupleClass(2)) =>
