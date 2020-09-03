@@ -2,9 +2,12 @@ package dotty.tools.vulpix
 
 import scala.io.Source
 import scala.util.Using
+
 import java.io.File
 import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.{Files, Paths}
+import java.nio.charset.StandardCharsets
+
 
 object FileDiff {
   def diffMessage(expectFile: String, actualFile: String): String =
@@ -18,7 +21,7 @@ object FileDiff {
   def check(sourceTitle: String, outputLines: Seq[String], checkFile: String): Option[String] = {
     val checkLines =
       if (!(new File(checkFile)).exists) Nil
-      else Using(Source.fromFile(checkFile, "UTF-8"))(_.getLines().toList).get
+      else Using(Source.fromFile(checkFile, StandardCharsets.UTF_8.name))(_.getLines().toList).get
 
     if (!matches(outputLines, checkLines)) Some(
       s"""|Output from '$sourceTitle' did not match check file. Actual output:

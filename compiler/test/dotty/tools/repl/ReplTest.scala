@@ -6,9 +6,10 @@ import vulpix.FileDiff
 
 import java.lang.System.{lineSeparator => EOL}
 import java.io.{ByteArrayOutputStream, File => JFile, PrintStream}
+import java.nio.charset.StandardCharsets
+
 import scala.io.Source
 import scala.util.Using
-
 import scala.collection.mutable.ArrayBuffer
 
 import dotty.tools.dotc.reporting.MessageRendering
@@ -26,11 +27,11 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
     "-color:never",
     "-Yerased-terms",
   ),
-  new PrintStream(out, true, "UTF-8")
+  new PrintStream(out, true, StandardCharsets.UTF_8.name)
 ) with MessageRendering {
   /** Get the stored output from `out`, resetting the buffer */
   def storedOutput(): String = {
-    val output = stripColor(out.toString("UTF-8"))
+    val output = stripColor(out.toString(StandardCharsets.UTF_8.name))
     out.reset()
     output
   }
@@ -77,11 +78,11 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
       }
 
     val expectedOutput =
-      Using(Source.fromFile(f, "UTF-8"))(_.getLines().flatMap(filterEmpties).toList).get
+      Using(Source.fromFile(f, StandardCharsets.UTF_8.name))(_.getLines().flatMap(filterEmpties).toList).get
     val actualOutput = {
       resetToInitial()
 
-      val lines = Using(Source.fromFile(f, "UTF-8"))(_.getLines.toList).get
+      val lines = Using(Source.fromFile(f, StandardCharsets.UTF_8.name))(_.getLines.toList).get
       assert(lines.head.startsWith(prompt),
         s"""Each file has to start with the prompt: "$prompt"""")
       val inputRes = lines.filter(_.startsWith(prompt))

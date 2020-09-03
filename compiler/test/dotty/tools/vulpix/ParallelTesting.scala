@@ -2,10 +2,11 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{File => JFile}
+import java.io.{File => JFile, IOException}
 import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
+import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
@@ -451,7 +452,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
           "javac",
-          "-encoding", "UTF-8",
+          "-encoding", StandardCharsets.UTF_8.name,
         ) ++ flags.javacFlags ++ fs
 
         val process = Runtime.getRuntime.exec(fullArgs)
@@ -607,9 +608,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         if checkFiles.contains(file) then
           val checkFile = checkFiles(file)
           val actual = {
-            val source = Source.fromFile(file, "UTF-8")
+            val source = Source.fromFile(file, StandardCharsets.UTF_8.name)
             val lines  = source.getLines().toList
-            source.close()
+            try source.close()
+            catch
+              case _: IOException => // ignore file close errors
             lines
           }
           diffTest(testSource, checkFile, actual, reporters, logger)
@@ -695,7 +698,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val errorMap = new HashMap[String, Integer]()
       var expectedErrors = 0
       files.filter(isSourceFile).foreach { file =>
-        Using(Source.fromFile(file, "UTF-8")) { source =>
+        Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
           source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
             val errors = line.toSeq.sliding("// error".length).count(_.unwrap == "// error")
             if (errors > 0)

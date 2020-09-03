@@ -10,6 +10,7 @@ import reporting.TestReporter
 import java.io._
 import java.nio.file.{Path => JPath}
 import java.lang.System.{lineSeparator => EOL}
+import java.nio.charset.StandardCharsets
 
 import interfaces.Diagnostic.INFO
 import dotty.tools.io.Directory
@@ -35,7 +36,7 @@ class PrintingTest {
         e.printStackTrace()
     }
 
-    val actualLines = byteStream.toString("UTF-8").linesIterator
+    val actualLines = byteStream.toString(StandardCharsets.UTF_8.name).linesIterator
     FileDiff.checkAndDump(path.toString, actualLines.toIndexedSeq, checkFilePath)
   }
 
