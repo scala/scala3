@@ -1452,48 +1452,54 @@ trait Applications extends Compatibility {
     /** Is alternative `alt1` with type `tp1` as specific as alternative
      *  `alt2` with type `tp2` ?
      *
-     *    1. A method `alt1` of type (p1: T1, ..., pn: Tn)U is as specific as `alt2`
+     *    1. A non-varargs method is always as specific as a varargs method.
+     *    2. A varargs method is never as specific as a non-varargs method.
+     *    3. A method `alt1` of type (p1: T1, ..., pn: Tn)U is as specific as `alt2`
      *       if `alt2` is applicable to arguments (p1, ..., pn) of types T1,...,Tn
      *       or if `alt1` is nullary.
-     *    2. A polymorphic member of type [a1 >: L1 <: U1, ..., an >: Ln <: Un]T is as
+     *    4. A polymorphic member of type [a1 >: L1 <: U1, ..., an >: Ln <: Un]T is as
      *       specific as `alt2` of type `tp2` if T is as specific as `tp2` under the
      *       assumption that for i = 1,...,n each ai is an abstract type name bounded
      *       from below by Li and from above by Ui.
-     *    3. A member of any other type `tp1` is:
+     *    5. A member of any other type `tp1` is:
      *       a. always as specific as a method or a polymorphic method.
      *       b. as specific as a member of any other type `tp2` if `tp1` is compatible
      *          with `tp2`.
      */
-    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsSpecific $tp1 $tp2", overload) { tp1 match {
-      case tp1: MethodType => // (1)
-        val formals1 =
-          if (tp1.isVarArgsMethod && tp2.isVarArgsMethod) tp1.paramInfos.map(_.repeatedToSingle)
-          else tp1.paramInfos
-        isApplicableMethodRef(alt2, formals1, WildcardType) ||
-        tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
-      case tp1: PolyType => // (2)
-        inContext(ctx.fresh.setExploreTyperState()) {
-          // Fully define the PolyType parameters so that the infos of the
-          // tparams created below never contain TypeRefs whose underling types
-          // contain uninstantiated TypeVars, this could lead to cycles in
-          // `isSubType` as a TypeVar might get constrained by a TypeRef it's
-          // part of.
-          val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramInfos, defn.AnyType)
-          fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.span)
+    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = trace(i"isAsSpecific $tp1 $tp2", overload) {
+      val tp1IsVarArgs = tp1.isVarArgsMethod
+      val tp2IsVarArgs = tp2.isVarArgsMethod
+      if !tp1IsVarArgs && tp2IsVarArgs then true // (1)
+      else if tp1IsVarArgs && !tp2IsVarArgs then false // (2)
+      else tp1 match
+        case tp1: MethodType => // (3)
+          val formals1 =
+            if tp1IsVarArgs && tp2IsVarArgs then tp1.paramInfos.map(_.repeatedToSingle)
+            else tp1.paramInfos
+          isApplicableMethodRef(alt2, formals1, WildcardType) ||
+          tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
+        case tp1: PolyType => // (4)
+          inContext(ctx.fresh.setExploreTyperState()) {
+            // Fully define the PolyType parameters so that the infos of the
+            // tparams created below never contain TypeRefs whose underling types
+            // contain uninstantiated TypeVars, this could lead to cycles in
+            // `isSubType` as a TypeVar might get constrained by a TypeRef it's
+            // part of.
+            val tp1Params = tp1.newLikeThis(tp1.paramNames, tp1.paramInfos, defn.AnyType)
+            fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.span)
 
-          val tparams = newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
-          isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
-        }
-      case _ => // (3)
-        tp2 match {
-          case tp2: MethodType => true // (3a)
-          case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (3a)
-          case tp2: PolyType => // (3b)
-            explore(isAsSpecificValueType(tp1, constrained(tp2).resultType))
-          case _ => // (3b)
-            isAsSpecificValueType(tp1, tp2)
-        }
-    }}
+            val tparams = newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
+            isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
+          }
+        case _ => // (5)
+          tp2 match
+            case tp2: MethodType => true // (5a)
+            case tp2: PolyType if tp2.resultType.isInstanceOf[MethodType] => true // (5a)
+            case tp2: PolyType => // (5b)
+              explore(isAsSpecificValueType(tp1, constrained(tp2).resultType))
+            case _ => // (5b)
+              isAsSpecificValueType(tp1, tp2)
+    }
 
     /** Test whether value type `tp1` is as specific as value type `tp2`.
      *  Let's abbreviate this to `tp1 <:s tp2`.

@@ -10,7 +10,7 @@ class Foo(val x: A = null) {
 
 object Test extends App {
   // both constructors of `Foo` are applicable. Overloading resolution
-  // will eliminate the alternative that uses a default argument, therefore
-  // the vararg constructor is chosen.
-  assert((new Foo).x != null)
+  // used to select the varargs alternative, but we now always
+  // prefer non-varargs to varargs overloads.
+  assert((new Foo).x == null)
 }
