@@ -32,11 +32,22 @@ jobs:
       - name: Compile and test
         run: sbt compile test
 
+      - name: Locally publish Dokka Java API
+        run: |
+          cd dokkaJavaApi
+          ./gradlew publishToMavenLocal
+
+      - name: Locally publish self
+        run: sbt publishLocal
+
       - name: Generate test documentation
         run: sbt generateSelfDocumentation
         
       - name: Generate documentation for dotty library
         run: sbt generateDottyLibDocumentation      
+
+      - name: Generate documentation with SBT plugin
+        run: sbt example-project/doc
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
