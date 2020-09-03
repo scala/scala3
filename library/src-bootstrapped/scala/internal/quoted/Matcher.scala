@@ -128,7 +128,7 @@ object Matcher {
 
     // TODO improve performance
 
-    // TODO use flag from qctx.tasty.rootContext. Maybe -debug or add -debug-macros
+    // TODO use flag from qctx.tasty. Maybe -debug or add -debug-macros
     private final val debug = false
 
     import qctx.tasty._
@@ -149,42 +149,34 @@ object Matcher {
 
     def termMatch(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] = {
       given Env = Map.empty
-      if (hasTypeSplices) {
-        val ctx: Context = qctx.tasty.Constraints_init(rootContext)
-        given Context = ctx
-        val matchings = scrutineeTerm =?= patternTerm
+      val matchings = scrutineeTerm =?= patternTerm
+      if !hasTypeSplices then matchings
+      else {
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performance
-            case x: SymBinding => qctx.tasty.Constraints_approximation(summon[Context])(x.sym, !x.fromAbove).seal
+            case x: SymBinding => qctx.tasty.Constraints_approximation(x.sym, !x.fromAbove).seal
             case x => x
           })
         }
-      }
-      else {
-        scrutineeTerm =?= patternTerm
       }
     }
 
     // TODO factor out common logic with `termMatch`
     def typeTreeMatch(scrutineeTypeTree: TypeTree, patternTypeTree: TypeTree, hasTypeSplices: Boolean): Option[Tuple] = {
       given Env = Map.empty
-      if (hasTypeSplices) {
-        val ctx: Context = qctx.tasty.Constraints_init(rootContext)
-        given Context = ctx
-        val matchings = scrutineeTypeTree =?= patternTypeTree
+      val matchings = scrutineeTypeTree =?= patternTypeTree
+      if !hasTypeSplices then matchings
+      else {
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found and seal them in a quoted.Type
         matchings.asOptionOfTuple.map { tup =>
           Tuple.fromArray(tup.toArray.map { // TODO improve performance
-            case x: SymBinding => qctx.tasty.Constraints_approximation(summon[Context])(x.sym, !x.fromAbove).seal
+            case x: SymBinding => qctx.tasty.Constraints_approximation(x.sym, !x.fromAbove).seal
             case x => x
           })
         }
-      }
-      else {
-        scrutineeTypeTree =?= patternTypeTree
       }
     }
 
@@ -326,7 +318,7 @@ object Matcher {
             fn1 =?= fn2 &&& args1 =?= args2
 
           case (Block(stats1, expr1), Block(binding :: stats2, expr2)) if isTypeBinding(binding) =>
-            qctx.tasty.Constraints_add(summon[Context])(binding.symbol :: Nil)
+            qctx.tasty.Constraints_add(binding.symbol :: Nil)
             matched(new SymBinding(binding.symbol, hasFromAboveAnnotation(binding.symbol))) &&& Block(stats1, expr1) =?= Block(stats2, expr2)
 
           /* Match block */
@@ -343,7 +335,7 @@ object Matcher {
 
           case (scrutinee, Block(typeBindings, expr2)) if typeBindings.forall(isTypeBinding) =>
             val bindingSymbols = typeBindings.map(_.symbol)
-            qctx.tasty.Constraints_add(summon[Context])(bindingSymbols)
+            qctx.tasty.Constraints_add(bindingSymbols)
             bindingSymbols.foldRight(scrutinee =?= expr2)((x, acc) => matched(new SymBinding(x, hasFromAboveAnnotation(x))) &&& acc)
 
           /* Match if */
