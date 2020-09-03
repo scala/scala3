@@ -59,7 +59,7 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
 
         val tastyFiles = tastyDir.split(File.pathSeparatorChar).toList.flatMap(p => listTastyFiles(new File(p))).map(_.toString)
             
-        val config = new DottyDokkaConfig(DocConfiguration(tastyFiles, args))
+        val config = new DottyDokkaConfig(DocConfiguration.Standalone(args, tastyFiles))
         DokkaTestGenerator(
             config,
             new TestLogger(DokkaConsoleLogger.INSTANCE),
