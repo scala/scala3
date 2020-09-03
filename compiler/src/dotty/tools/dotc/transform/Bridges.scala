@@ -36,7 +36,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   private var toBeRemoved = immutable.Set[Symbol]()
   private val bridges = mutable.ListBuffer[Tree]()
   private val bridgesScope = newScope
-  private val bridgeTarget = newMutableSymbolMap[Symbol]
+  private val bridgeTarget = MutableSymbolMap[Symbol]()
 
   def bridgePosFor(member: Symbol): SrcPos =
     (if (member.owner == root && member.span.exists) member else root).srcPos

@@ -3405,7 +3405,7 @@ object Types {
   abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] {
     def syntheticParamName(n: Int): N
 
-    @sharable private val memoizedNames = new mutable.HashMap[Int, List[N]]
+    @sharable private val memoizedNames = util.HashMap[Int, List[N]]()
     def syntheticParamNames(n: Int): List[N] = synchronized {
       memoizedNames.getOrElseUpdate(n, (0 until n).map(syntheticParamName).toList)
     }
@@ -4321,7 +4321,7 @@ object Types {
     def underlying(using Context): Type = bound
 
     private var myReduced: Type = null
-    private var reductionContext: mutable.Map[Type, Type] = null
+    private var reductionContext: util.MutableMap[Type, Type] = null
 
     override def tryNormalize(using Context): Type = reduced.normalized
 
@@ -4340,7 +4340,7 @@ object Types {
       }
 
       def updateReductionContext(footprint: collection.Set[Type]): Unit =
-        reductionContext = new mutable.HashMap
+        reductionContext = util.HashMap()
         for (tp <- footprint)
           reductionContext(tp) = contextInfo(tp)
         typr.println(i"footprint for $this $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
@@ -5527,18 +5527,14 @@ object Types {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
   }
 
-  class TypeHashSet extends util.HashSet[Type](64):
-    override def hash(x: Type): Int = System.identityHashCode(x)
-    override def isEqual(x: Type, y: Type) = x.eq(y)
-
   class NamedPartsAccumulator(p: NamedType => Boolean)(using Context)
   extends TypeAccumulator[List[NamedType]]:
     def maybeAdd(xs: List[NamedType], tp: NamedType): List[NamedType] = if p(tp) then tp :: xs else xs
-    val seen = TypeHashSet()
+    val seen = util.HashSet[Type]()
     def apply(xs: List[NamedType], tp: Type): List[NamedType] =
       if seen contains tp then xs
       else
-        seen.addEntry(tp)
+        seen += tp
         tp match
           case tp: TypeRef =>
             foldOver(maybeAdd(xs, tp), tp)
@@ -5572,11 +5568,11 @@ object Types {
   }
 
   class TypeSizeAccumulator(using Context) extends TypeAccumulator[Int] {
-    val seen = new java.util.IdentityHashMap[Type, Type]
+    var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(n: Int, tp: Type): Int =
-      if (seen.get(tp) != null) n
+      if seen.contains(tp) then n
       else {
-        seen.put(tp, tp)
+        seen += tp
         tp match {
           case tp: AppliedType =>
             foldOver(n + 1, tp)
@@ -5593,11 +5589,11 @@ object Types {
   }
 
   class CoveringSetAccumulator(using Context) extends TypeAccumulator[Set[Symbol]] {
-    val seen = new java.util.IdentityHashMap[Type, Type]
+    var seen = util.HashSet[Type](initialCapacity = 8)
     def apply(cs: Set[Symbol], tp: Type): Set[Symbol] =
-      if (seen.get(tp) != null) cs
+      if seen.contains(tp) then cs
       else {
-        seen.put(tp, tp)
+        seen += tp
         tp match {
           case tp if tp.isTopType || tp.isBottomType =>
             cs

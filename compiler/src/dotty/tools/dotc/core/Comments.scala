@@ -4,7 +4,7 @@ package core
 
 import ast.{ untpd, tpd }
 import Decorators._, Symbols._, Contexts._
-import util.SourceFile
+import util.{SourceFile, ReadOnlyMap}
 import util.Spans._
 import util.CommentParsing._
 import util.Property.Key
@@ -23,11 +23,11 @@ object Comments {
     */
   class ContextDocstrings {
 
-    private val _docstrings: MutableSymbolMap[Comment] = newMutableSymbolMap
+    private val _docstrings: MutableSymbolMap[Comment] = MutableSymbolMap[Comment](512) // FIXME: 2nd [Comment] needed or "not a class type"
 
     val templateExpander: CommentExpander = new CommentExpander
 
-    def docstrings: Map[Symbol, Comment] = _docstrings.toMap
+    def docstrings: ReadOnlyMap[Symbol, Comment] = _docstrings
 
     def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
 
@@ -180,7 +180,7 @@ object Comments {
     protected def superComment(sym: Symbol)(using Context): Option[String] =
       allInheritedOverriddenSymbols(sym).iterator map (x => cookedDocComment(x)) find (_ != "")
 
-    private val cookedDocComments = newMutableSymbolMap[String]
+    private val cookedDocComments = MutableSymbolMap[String]()
 
     /** The raw doc comment of symbol `sym`, minus usecase and define sections, augmented by
      *  missing sections of an inherited doc comment.

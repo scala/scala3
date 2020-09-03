@@ -13,6 +13,7 @@ import core.StdNames.nme
 import core.Symbols._
 import reporting._
 import transform.MegaPhase.MiniPhase
+import util.LinearSet
 
 import scala.collection.mutable
 
@@ -258,7 +259,7 @@ class TailRec extends MiniPhase {
       }
 
     /** Symbols of Labeled blocks that are in tail position. */
-    private val tailPositionLabeledSyms = new mutable.HashSet[Symbol]()
+    private var tailPositionLabeledSyms = LinearSet.empty[Symbol]
 
     private var inTailPosition = true
 
@@ -283,7 +284,7 @@ class TailRec extends MiniPhase {
      *  a recursive call of a @tailrec annotated method (i.e. `isMandatory`).
      */
     private def isTraversalNeeded =
-      isMandatory || tailPositionLabeledSyms.nonEmpty
+      isMandatory || tailPositionLabeledSyms.size > 0
 
     def noTailTransform(tree: Tree)(using Context): Tree =
       if (isTraversalNeeded) transform(tree, tailPosition = false)

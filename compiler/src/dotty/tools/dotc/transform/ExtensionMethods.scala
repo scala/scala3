@@ -140,24 +140,21 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
     extensionMeth
   }
 
-  private val extensionDefs = newMutableSymbolMap[mutable.ListBuffer[Tree]]
-  // TODO: this is state and should be per-run
+  private val extensionDefs = MutableSymbolMap[mutable.ListBuffer[Tree]]()
   // todo: check that when transformation finished map is empty
 
   override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
-    if (isDerivedValueClass(ctx.owner))
+    if isDerivedValueClass(ctx.owner) then
       /* This is currently redundant since value classes may not
          wrap over other value classes anyway.
         checkNonCyclic(ctx.owner.pos, Set(), ctx.owner) */
       tree
-    else if (ctx.owner.isStaticOwner)
-      extensionDefs remove tree.symbol.owner match {
-        case Some(defns) if defns.nonEmpty =>
-          cpy.Template(tree)(body = tree.body ++
-            defns.map(transformFollowing(_)))
+    else if ctx.owner.isStaticOwner then
+      extensionDefs.remove(tree.symbol.owner) match
+        case defns: mutable.ListBuffer[Tree] if defns.nonEmpty =>
+          cpy.Template(tree)(body = tree.body ++ defns.map(transformFollowing(_)))
         case _ =>
           tree
-      }
     else tree
 
   override def transformDefDef(tree: tpd.DefDef)(using Context): tpd.Tree =

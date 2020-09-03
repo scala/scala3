@@ -732,15 +732,13 @@ class ClassfileParser(
           classTranslation.flags(jflags),
           getScope(jflags))
 
-    for (entry <- innerClasses.values) {
+    for entry <- innerClasses.valuesIterator do
       // create a new class member for immediate inner classes
-      if (entry.outerName == currentClassName) {
+      if entry.outerName == currentClassName then
         val file = ctx.platform.classPath.findClassFile(entry.externalName.toString) getOrElse {
           throw new AssertionError(entry.externalName)
         }
         enterClassAndModule(entry, file, entry.jflags)
-      }
-    }
   }
 
   // Nothing$ and Null$ were incorrectly emitted with a Scala attribute
@@ -937,14 +935,14 @@ class ClassfileParser(
       s"$originalName in $outerName($externalName)"
   }
 
-  object innerClasses extends scala.collection.mutable.HashMap[Name, InnerClassEntry] {
+  object innerClasses extends util.HashMap[Name, InnerClassEntry] {
     /** Return the Symbol of the top level class enclosing `name`,
      *  or 'name's symbol if no entry found for `name`.
      */
     def topLevelClass(name: Name)(using Context): Symbol = {
-      val tlName = if (isDefinedAt(name)) {
+      val tlName = if (contains(name)) {
         var entry = this(name)
-        while (isDefinedAt(entry.outerName))
+        while (contains(entry.outerName))
           entry = this(entry.outerName)
         entry.outerName
       }

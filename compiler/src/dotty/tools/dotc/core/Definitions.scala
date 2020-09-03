@@ -1603,7 +1603,7 @@ class Definitions {
     valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
 
   @tu lazy val specialErasure: SimpleIdentityMap[Symbol, ClassSymbol] =
-    SimpleIdentityMap.Empty[Symbol]
+    SimpleIdentityMap.empty[Symbol]
       .updated(AnyClass, ObjectClass)
       .updated(AnyValClass, ObjectClass)
       .updated(SingletonClass, ObjectClass)

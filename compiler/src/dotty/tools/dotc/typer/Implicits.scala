@@ -28,7 +28,7 @@ import Trees._
 import transform.SymUtils._
 import transform.TypeUtils._
 import Hashable._
-import util.{SourceFile, NoSource}
+import util.{SourceFile, NoSource, EqHashMap}
 import config.{Config, Feature}
 import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}
@@ -289,7 +289,7 @@ object Implicits:
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
   class ContextualImplicits(val refs: List[ImplicitRef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
-    private val eligibleCache = new java.util.IdentityHashMap[Type, List[Candidate]]
+    private val eligibleCache = EqHashMap[Type, List[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
      *  the context of the next-outer ImplicitRefs. This is however disabled under
@@ -316,7 +316,7 @@ object Implicits:
     def eligible(tp: Type): List[Candidate] =
       if (tp.hash == NotCached) computeEligible(tp)
       else {
-        val eligibles = eligibleCache.get(tp)
+        val eligibles = eligibleCache.lookup(tp)
         if (eligibles != null) {
           def elided(ci: ContextualImplicits): Int = {
             val n = ci.refs.length
@@ -329,7 +329,7 @@ object Implicits:
         else if (irefCtx eq NoContext) Nil
         else {
           val result = computeEligible(tp)
-          eligibleCache.put(tp, result)
+          eligibleCache(tp) = result
           result
         }
       }
@@ -528,13 +528,13 @@ trait ImplicitRunInfo:
 
       private var provisional: Boolean = _
       private var parts: mutable.LinkedHashSet[Type] = _
-      private val partSeen = TypeHashSet()
+      private val partSeen = util.HashSet[Type]()
 
       def traverse(t: Type) =
         if partSeen.contains(t) then ()
         else if implicitScopeCache.contains(t) then parts += t
         else
-          partSeen.addEntry(t)
+          partSeen += t
           t.dealias match
             case t: TypeRef =>
               if isAnchor(t.symbol) then
@@ -566,8 +566,8 @@ trait ImplicitRunInfo:
         (parts, provisional)
     end collectParts
 
-    val seen = TypeHashSet()
-    val incomplete = TypeHashSet()
+    val seen = util.HashSet[Type]()
+    val incomplete = util.HashSet[Type]()
 
     def collectCompanions(tp: Type, parts: collection.Set[Type]): TermRefSet =
       val companions = new TermRefSet
@@ -578,12 +578,12 @@ trait ImplicitRunInfo:
             is.companionRefs
           case None =>
             if seen.contains(t) then
-              incomplete.addEntry(tp) // all references for `t` will be accounted for in `seen` so we return `EmptySet`.
+              incomplete += tp // all references for `t` will be accounted for in `seen` so we return `EmptySet`.
               TermRefSet.empty        // on the other hand, the refs of `tp` are now inaccurate, so `tp` is marked incomplete.
             else
-              seen.addEntry(t)
+              seen += t
               val is = recur(t)
-              if !implicitScopeCache.contains(t) then incomplete.addEntry(tp)
+              if !implicitScopeCache.contains(t) then incomplete += tp
               is.companionRefs
       end iscopeRefs
 
@@ -687,13 +687,13 @@ trait ImplicitRunInfo:
         record(i"implicitScope")
         val liftToAnchors = new TypeMap:
           override def stopAtStatic = true
-          private val seen = TypeHashSet()
+          private val seen = util.HashSet[Type]()
 
           def applyToUnderlying(t: TypeProxy) =
             if seen.contains(t) then
               WildcardType
             else
-              seen.addEntry(t)
+              seen += t
               t.underlying match
                 case TypeBounds(lo, hi) =>
                   if defn.isBottomTypeAfterErasure(lo) then apply(hi)

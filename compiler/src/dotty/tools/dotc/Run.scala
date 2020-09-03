@@ -7,6 +7,8 @@ import Periods._
 import Symbols._
 import Types._
 import Scopes._
+import Names.Name
+import Denotations.Denotation
 import typer.Typer
 import typer.ImportInfo._
 import Decorators._
@@ -14,7 +16,7 @@ import io.{AbstractFile, PlainFile}
 import Phases.unfusedPhases
 
 import scala.io.Codec
-import util.{Set => _, _}
+import util._
 import reporting.Reporter
 import rewrites.Rewrites
 import java.io.{BufferedWriter, OutputStreamWriter}
@@ -115,6 +117,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
 
   /** The source files of all late entered symbols, as a set */
   private var lateFiles = mutable.Set[AbstractFile]()
+
+  /** A cache for static references to packages and classes */
+  val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
 
   /** Actions that need to be performed at the end of the current compilation run */
   private var finalizeActions = mutable.ListBuffer[() => Unit]()

@@ -92,7 +92,7 @@ object PatternMatcher {
     /** A map from variable symbols to their defining trees
      *  and from labels to their defining plans
      */
-    private val initializer = newMutableSymbolMap[Tree]
+    private val initializer = MutableSymbolMap[Tree]()
 
     private def newVar(rhs: Tree, flags: FlagSet): TermSymbol =
       newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,

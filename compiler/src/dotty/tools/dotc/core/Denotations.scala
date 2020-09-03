@@ -1259,7 +1259,8 @@ object Denotations {
         }
         recurSimple(path.length, wrap)
     }
-    recur(path)
+    if ctx.run == null then recur(path)
+    else ctx.run.staticRefs.getOrElseUpdate(path, recur(path))
   }
 
 

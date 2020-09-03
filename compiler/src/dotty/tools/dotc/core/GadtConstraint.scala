@@ -65,9 +65,9 @@ final class ProperGadtConstraint private(
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
   def this() = this(
-    myConstraint = new OrderingConstraint(SimpleIdentityMap.Empty, SimpleIdentityMap.Empty, SimpleIdentityMap.Empty),
-    mapping = SimpleIdentityMap.Empty,
-    reverseMapping = SimpleIdentityMap.Empty
+    myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty),
+    mapping = SimpleIdentityMap.empty,
+    reverseMapping = SimpleIdentityMap.empty
   )
 
   /** Exposes ConstraintHandling.subsumes */

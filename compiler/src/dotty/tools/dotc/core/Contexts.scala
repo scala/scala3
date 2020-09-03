@@ -14,7 +14,7 @@ import Uniques._
 import ast.Trees._
 import ast.untpd
 import Flags.GivenOrImplicit
-import util.{NoSource, SimpleIdentityMap, SourceFile}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet}
 import typer.{Implicits, ImportInfo, Inliner, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import Nullables.{NotNullInfo, given _}
 import Implicits.ContextualImplicits
@@ -289,7 +289,7 @@ object Contexts {
     private def lookup(key: Phase | SourceFile): Context =
       util.Stats.record("Context.related.lookup")
       if related == null then
-        related = SimpleIdentityMap.Empty
+        related = SimpleIdentityMap.empty
         null
       else
         related(key)
@@ -534,7 +534,7 @@ object Contexts {
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions
     def platform: Platform                 = base.platform
-    def pendingUnderlying: mutable.HashSet[Type]   = base.pendingUnderlying
+    def pendingUnderlying: util.HashSet[Type]      = base.pendingUnderlying
     def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
     def uniques: util.HashSet[Type]                = base.uniques
 
@@ -838,30 +838,18 @@ object Contexts {
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
     /** Sources that were loaded */
-    val sources: mutable.HashMap[AbstractFile, SourceFile] = new mutable.HashMap[AbstractFile, SourceFile]
-    val sourceNamed: mutable.HashMap[TermName, SourceFile] = new mutable.HashMap[TermName, SourceFile]
+    val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
+    val sourceNamed: util.HashMap[TermName, SourceFile] = util.HashMap[TermName, SourceFile]()
 
     // Types state
     /** A table for hash consing unique types */
-    private[core] val uniques: util.HashSet[Type] = new util.HashSet[Type](Config.initialUniquesCapacity) {
-      override def hash(x: Type): Int = x.hash
-      override def isEqual(x: Type, y: Type) = x.eql(y)
-    }
+    private[core] val uniques: Uniques = Uniques()
 
     /** A table for hash consing unique applied types */
-    private[dotc] val uniqueAppliedTypes: AppliedUniques = new AppliedUniques
+    private[dotc] val uniqueAppliedTypes: AppliedUniques = AppliedUniques()
 
     /** A table for hash consing unique named types */
-    private[core] val uniqueNamedTypes: NamedTypeUniques = new NamedTypeUniques
-
-    private def uniqueSets = Map(
-        "uniques" -> uniques,
-        "uniqueAppliedTypes" -> uniqueAppliedTypes,
-        "uniqueNamedTypes" -> uniqueNamedTypes)
-
-    /** A map that associates label and size of all uniques sets */
-    def uniquesSizes: Map[String, (Int, Int, Int)] =
-      uniqueSets.transform((_, s) => (s.size, s.accesses, s.misses))
+    private[core] val uniqueNamedTypes: NamedTypeUniques = NamedTypeUniques()
 
     var emptyTypeBounds: TypeBounds = null
     var emptyWildcardBounds: WildcardType = null
@@ -881,7 +869,7 @@ object Contexts {
 
     /** The set of named types on which a currently active invocation
      *  of underlying during a controlled operation exists. */
-    private[core] val pendingUnderlying: mutable.HashSet[Type] = new mutable.HashSet[Type]
+    private[core] val pendingUnderlying: util.HashSet[Type] = util.HashSet[Type]()
 
     /** A map from ErrorType to associated message. We use this map
      *  instead of storing messages directly in ErrorTypes in order
@@ -925,15 +913,16 @@ object Contexts {
         charArray = new Array[Char](charArray.length * 2)
       charArray
 
-    def reset(): Unit = {
-      for ((_, set) <- uniqueSets) set.clear()
+    def reset(): Unit =
+      uniques.clear()
+      uniqueAppliedTypes.clear()
+      uniqueNamedTypes.clear()
       emptyTypeBounds = null
       emptyWildcardBounds = null
       errorTypeMsg.clear()
       sources.clear()
       sourceNamed.clear()
       comparers.clear()  // forces re-evaluation of top and bottom classes in TypeComparer
-    }
 
     // Test that access is single threaded
 

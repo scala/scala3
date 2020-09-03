@@ -22,7 +22,7 @@ import Symbols._
 import Phases._
 
 import dotty.tools.dotc.util
-import dotty.tools.dotc.util.Spans
+import dotty.tools.dotc.util.{Spans, ReadOnlyMap}
 import dotty.tools.dotc.report
 
 import Decorators._
@@ -36,7 +36,7 @@ import Names.TermName
 import Annotations.Annotation
 import Names.Name
 
-class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: Map[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
+class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap: ReadOnlyMap[Symbol, Set[ClassSymbol]])(using val ctx: Context) {
 
   private val desugared = new java.util.IdentityHashMap[Type, tpd.Select]
 

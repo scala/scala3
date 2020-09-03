@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -115,13 +116,13 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     && (((cls.owner.name eq nme.DOLLAR_NEW) && cls.owner.isAllOf(Private|Synthetic)) || cls.owner.isAllOf(EnumCase))
     && cls.owner.owner.linkedClass.derivesFromJavaEnum
 
-  private val enumCaseOrdinals: MutableSymbolMap[Int] = newMutableSymbolMap
+  private val enumCaseOrdinals = MutableSymbolMap[Int]()
 
   private def registerEnumClass(cls: Symbol)(using Context): Unit =
-    cls.children.zipWithIndex.foreach(enumCaseOrdinals.put)
+    cls.children.zipWithIndex.foreach(enumCaseOrdinals.update)
 
   private def ordinalFor(enumCase: Symbol): Int =
-    enumCaseOrdinals.remove(enumCase).get
+    enumCaseOrdinals.remove(enumCase).nn
 
   /** 1. If this is an enum class, add $name and $ordinal parameters to its
    *     parameter accessors and pass them on to the java.lang.Enum constructor.

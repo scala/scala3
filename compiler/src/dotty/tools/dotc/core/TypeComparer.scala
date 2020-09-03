@@ -49,7 +49,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     needsGc = false
     if Config.checkTypeComparerReset then checkReset()
 
-  private var pendingSubTypes: mutable.Set[(Type, Type)] = null
+  private var pendingSubTypes: util.MutableSet[(Type, Type)] = null
   private var recCount = 0
   private var monitored = false
 
@@ -202,7 +202,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
-        pendingSubTypes = new mutable.HashSet[(Type, Type)]
+        pendingSubTypes = util.HashSet[(Type, Type)]()
         report.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
         report.log(s"!!! constraint = ${constraint.show}")
         //if (ctx.settings.YnoDeepSubtypes.value) {
@@ -231,7 +231,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
       }
       val p = (normalize(tp1), normalize(tp2))
-      !pendingSubTypes(p) && {
+      !pendingSubTypes.contains(p) && {
         try {
           pendingSubTypes += p
           firstTry

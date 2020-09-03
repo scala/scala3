@@ -42,21 +42,21 @@ class TreePickler(pickler: TastyPickler) {
   import pickler.nameBuffer.nameIndex
   import tpd._
 
-  private val symRefs = Symbols.newMutableSymbolMap[Addr]
-  private val forwardSymRefs = Symbols.newMutableSymbolMap[List[Addr]]
-  private val pickledTypes = new java.util.IdentityHashMap[Type, Any] // Value type is really Addr, but that's not compatible with null
+  private val symRefs = Symbols.MutableSymbolMap[Addr](256)
+  private val forwardSymRefs = Symbols.MutableSymbolMap[List[Addr]]()
+  private val pickledTypes = util.EqHashMap[Type, Addr]()
 
   /** A list of annotation trees for every member definition, so that later
    *  parallel position pickling does not need to access and force symbols.
    */
-  private val annotTrees = util.HashTable[untpd.MemberDef, mutable.ListBuffer[Tree]]()
+  private val annotTrees = util.EqHashMap[untpd.MemberDef, mutable.ListBuffer[Tree]]()
 
   /** A map from member definitions to their doc comments, so that later
    *  parallel comment pickling does not need to access symbols of trees (which
    *  would involve accessing symbols of named types and possibly changing phases
    *  in doing so).
    */
-  private val docStrings = util.HashTable[untpd.MemberDef, Comment]()
+  private val docStrings = util.EqHashMap[untpd.MemberDef, Comment]()
 
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
@@ -169,14 +169,14 @@ class TreePickler(pickler: TastyPickler) {
   def pickleType(tpe0: Type, richTypes: Boolean = false)(using Context): Unit = {
     val tpe = tpe0.stripTypeVar
     try {
-      val prev = pickledTypes.get(tpe)
+      val prev: Addr | Null = pickledTypes.lookup(tpe)
       if (prev == null) {
-        pickledTypes.put(tpe, currentAddr)
+        pickledTypes(tpe) = currentAddr
         pickleNewType(tpe, richTypes)
       }
       else {
         writeByte(SHAREDtype)
-        writeRef(prev.asInstanceOf[Addr])
+        writeRef(prev.uncheckedNN)
       }
     }
     catch {
@@ -244,9 +244,9 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe) }
     case tpe: RecThis =>
       writeByte(RECthis)
-      val binderAddr = pickledTypes.get(tpe.binder)
+      val binderAddr: Addr | Null = pickledTypes.lookup(tpe.binder)
       assert(binderAddr != null, tpe.binder)
-      writeRef(binderAddr.asInstanceOf[Addr])
+      writeRef(binderAddr.uncheckedNN)
     case tpe: SkolemType =>
       pickleType(tpe.info)
     case tpe: RefinedType =>
@@ -314,11 +314,11 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleParamRef(tpe: ParamRef)(using Context): Boolean = {
-    val binder = pickledTypes.get(tpe.binder)
+    val binder: Addr | Null = pickledTypes.lookup(tpe.binder)
     val pickled = binder != null
     if (pickled) {
       writeByte(PARAMtype)
-      withLength { writeRef(binder.asInstanceOf[Addr]); writeNat(tpe.paramNum) }
+      withLength { writeRef(binder.uncheckedNN); writeNat(tpe.paramNum) }
     }
     pickled
   }
@@ -349,7 +349,7 @@ class TreePickler(pickler: TastyPickler) {
       docCtx <- ctx.docCtx
       comment <- docCtx.docstring(sym)
     do
-      docStrings.enter(mdef, comment)
+      docStrings(mdef) = comment
   }
 
   def pickleParam(tree: Tree)(using Context): Unit = {
@@ -605,7 +605,7 @@ class TreePickler(pickler: TastyPickler) {
           else {
             val refineCls = refinements.head.symbol.owner.asClass
             registerDef(refineCls)
-            pickledTypes.put(refineCls.typeRef, currentAddr)
+            pickledTypes(refineCls.typeRef) = currentAddr
             writeByte(REFINEDtpt)
             refinements.foreach(preRegister)
             withLength { pickleTree(parent); refinements.foreach(pickleTree) }
@@ -757,7 +757,7 @@ class TreePickler(pickler: TastyPickler) {
       var treeBuf = annotTrees.lookup(mdef)
       if treeBuf == null then
         treeBuf = new mutable.ListBuffer[Tree]
-        annotTrees.enter(mdef, treeBuf)
+        annotTrees(mdef) = treeBuf
       treeBuf += ann.tree
 
 // ---- main entry points ---------------------------------------

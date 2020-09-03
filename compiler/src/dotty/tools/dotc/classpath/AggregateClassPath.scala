@@ -7,6 +7,7 @@ package dotc.classpath
 import java.net.URL
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.immutable.ArraySeq
+import dotc.util
 
 import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation, EfficientClassPath }
 
@@ -107,7 +108,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   private def mergeClassesAndSources(entries: scala.collection.Seq[ClassRepresentation]): Seq[ClassRepresentation] = {
     // based on the implementation from MergedClassPath
     var count = 0
-    val indices = new collection.mutable.HashMap[String, Int]()
+    val indices = util.HashMap[String, Int]()
     val mergedEntries = new ArrayBuffer[ClassRepresentation](entries.size)
     for {
       entry <- entries
@@ -132,7 +133,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   }
 
   private def getDistinctEntries[EntryType <: ClassRepresentation](getEntries: ClassPath => Seq[EntryType]): Seq[EntryType] = {
-    val seenNames = collection.mutable.HashSet[String]()
+    val seenNames = util.HashSet[String]()
     val entriesBuffer = new ArrayBuffer[EntryType](1024)
     for {
       cp <- aggregates

@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2014 Contributor. All rights reserved.
  */
-package dotty.tools.dotc.classpath
+package dotty.tools.dotc
+package classpath
 
 import java.io.File
 import java.net.URL
@@ -12,6 +13,7 @@ import scala.annotation.tailrec
 import dotty.tools.io.{AbstractFile, ClassPath, ClassRepresentation, FileZipArchive, ManifestResources}
 import dotty.tools.dotc.core.Contexts._
 import FileUtils._
+import util._
 
 /**
  * A trait providing an optional cache for classpath entries obtained from zip and jar files.
@@ -89,8 +91,8 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
      * when we need subpackages of a given package or its classes, we traverse once and cache only packages.
      * Classes for given package can be then easily loaded when they are needed.
      */
-    private lazy val cachedPackages: collection.mutable.HashMap[String, PackageFileInfo] = {
-      val packages = collection.mutable.HashMap[String, PackageFileInfo]()
+    private lazy val cachedPackages: util.HashMap[String, PackageFileInfo] = {
+      val packages = util.HashMap[String, PackageFileInfo]()
 
       def getSubpackages(dir: AbstractFile): List[AbstractFile] =
         (for (file <- dir if file.isPackage) yield file).toList
@@ -102,7 +104,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
         case pkgFile :: remainingFiles =>
           val subpackages = getSubpackages(pkgFile)
           val fullPkgName = packagePrefix + pkgFile.name
-          packages.put(fullPkgName, PackageFileInfo(pkgFile, subpackages))
+          packages(fullPkgName) = PackageFileInfo(pkgFile, subpackages)
           val newPackagePrefix = fullPkgName + "."
           subpackagesQueue.enqueue(PackageInfo(newPackagePrefix, subpackages))
           traverse(packagePrefix, remainingFiles, subpackagesQueue)
@@ -113,7 +115,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
       }
 
       val subpackages = getSubpackages(file)
-      packages.put(ClassPath.RootPackage, PackageFileInfo(file, subpackages))
+      packages(ClassPath.RootPackage) = PackageFileInfo(file, subpackages)
       traverse(ClassPath.RootPackage, subpackages, collection.mutable.Queue())
       packages
     }

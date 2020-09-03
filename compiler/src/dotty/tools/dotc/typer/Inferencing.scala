@@ -438,7 +438,7 @@ object Inferencing {
       if (vmap1 eq vmap) vmap else propagate(vmap1)
     }
 
-    propagate(accu(SimpleIdentityMap.Empty, tp))
+    propagate(accu(SimpleIdentityMap.empty, tp))
   }
 }
 

@@ -1564,27 +1564,27 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
-    import util.HashTable
+    import util.EqHashMap
 
     // ----- caches -------------------------------------------------------
 
     private var myTypeParams: List[TypeSymbol] = null
-    private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.Empty
+    private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
 
-    private var myMemberCache: HashTable[Name, PreDenotation] = null
+    private var myMemberCache: EqHashMap[Name, PreDenotation] = null
     private var myMemberCachePeriod: Period = Nowhere
 
     /** A cache from types T to baseType(T, C) */
-    type BaseTypeMap = java.util.IdentityHashMap[CachedType, Type]
+    type BaseTypeMap = EqHashMap[CachedType, Type]
     private var myBaseTypeCache: BaseTypeMap = null
     private var myBaseTypeCachePeriod: Period = Nowhere
 
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
 
-    private def memberCache(using Context): HashTable[Name, PreDenotation] = {
+    private def memberCache(using Context): EqHashMap[Name, PreDenotation] = {
       if (myMemberCachePeriod != ctx.period) {
-        myMemberCache = HashTable()
+        myMemberCache = EqHashMap()
         myMemberCachePeriod = ctx.period
       }
       myMemberCache
@@ -1592,7 +1592,7 @@ object SymDenotations {
 
     private def baseTypeCache(using Context): BaseTypeMap = {
       if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
-        myBaseTypeCache = new BaseTypeMap
+        myBaseTypeCache = BaseTypeMap()
         myBaseTypeCachePeriod = ctx.period
       myBaseTypeCache
     }
@@ -1613,12 +1613,12 @@ object SymDenotations {
     }
 
     def invalidateMemberCaches(sym: Symbol)(using Context): Unit =
-      if myMemberCache != null then myMemberCache.invalidate(sym.name)
+      if myMemberCache != null then myMemberCache.remove(sym.name)
       if !sym.flagsUNSAFE.is(Private) then
         invalidateMemberNamesCache()
         if sym.isWrappedToplevelDef then
           val outerCache = sym.owner.owner.asClass.classDenot.myMemberCache
-          if outerCache != null then outerCache.invalidate(sym.name)
+          if outerCache != null then outerCache.remove(sym.name)
 
     override def copyCaches(from: SymDenotation, phase: Phase)(using Context): this.type = {
       from match {
@@ -1823,7 +1823,7 @@ object SymDenotations {
      */
     def replace(prev: Symbol, replacement: Symbol)(using Context): Unit = {
       unforcedDecls.openForMutations.replace(prev, replacement)
-      if (myMemberCache != null) myMemberCache.invalidate(replacement.name)
+      if (myMemberCache != null) myMemberCache.remove(replacement.name)
     }
 
     /** Delete symbol from current scope.
@@ -1832,7 +1832,7 @@ object SymDenotations {
      */
     def delete(sym: Symbol)(using Context): Unit = {
       info.decls.openForMutations.unlink(sym)
-      if (myMemberCache != null) myMemberCache.invalidate(sym.name)
+      if (myMemberCache != null) myMemberCache.remove(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
 
@@ -1861,7 +1861,7 @@ object SymDenotations {
         var denots: PreDenotation = memberCache.lookup(name)
         if denots == null then
           denots = computeMembersNamed(name)
-          memberCache.enter(name, denots)
+          memberCache(name) = denots
         else if Config.checkCacheMembersNamed then
           val denots1 = computeMembersNamed(name)
           assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
@@ -1906,14 +1906,16 @@ object SymDenotations {
     /** Compute tp.baseType(this) */
     final def baseTypeOf(tp: Type)(using Context): Type = {
       val btrCache = baseTypeCache
-      def inCache(tp: Type) = btrCache.get(tp) != null
+      def inCache(tp: Type) = tp match
+        case tp: CachedType => btrCache.contains(tp)
+        case _ => false
       def record(tp: CachedType, baseTp: Type) = {
         if (Stats.monitored) {
           Stats.record("basetype cache entries")
           if (!baseTp.exists) Stats.record("basetype cache NoTypes")
         }
         if (!tp.isProvisional)
-          btrCache.put(tp, baseTp)
+          btrCache(tp) = baseTp
         else
           btrCache.remove(tp) // Remove any potential sentinel value
       }
@@ -1926,7 +1928,7 @@ object SymDenotations {
       def recur(tp: Type): Type = try {
         tp match {
           case tp: CachedType =>
-            val baseTp = btrCache.get(tp)
+            val baseTp = btrCache.lookup(tp)
             if (baseTp != null) return ensureAcyclic(baseTp)
           case _ =>
         }
@@ -1945,7 +1947,7 @@ object SymDenotations {
             }
 
             def computeTypeRef = {
-              btrCache.put(tp, NoPrefix)
+              btrCache(tp) = NoPrefix
               val tpSym = tp.symbol
               tpSym.denot match {
                 case clsd: ClassDenotation =>
@@ -1980,7 +1982,7 @@ object SymDenotations {
 
           case tp @ AppliedType(tycon, args) =>
             def computeApplied = {
-              btrCache.put(tp, NoPrefix)
+              btrCache(tp) = NoPrefix
               val baseTp =
                 if (tycon.typeSymbol eq symbol) tp
                 else (tycon.typeParams: @unchecked) match {
@@ -2041,7 +2043,9 @@ object SymDenotations {
       }
       catch {
         case ex: Throwable =>
-          btrCache.remove(tp)
+          tp match
+            case tp: CachedType => btrCache.remove(tp)
+            case _ =>
           throw ex
       }
 
@@ -2609,7 +2613,7 @@ object SymDenotations {
   }
 
   private class MemberNamesImpl(createdAt: Period) extends InheritedCacheImpl(createdAt) with MemberNames {
-    private var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.Empty
+    private var cache: SimpleIdentityMap[NameFilter, Set[Name]] = SimpleIdentityMap.empty
 
     final def isValid(using Context): Boolean =
       cache != null && isValidAt(ctx.phase)
@@ -2622,7 +2626,7 @@ object SymDenotations {
      */
     def invalidate(): Unit =
       if (cache != null)
-        if (locked) cache = SimpleIdentityMap.Empty
+        if (locked) cache = SimpleIdentityMap.empty
         else {
           cache = null
           invalidateDependents()

@@ -187,7 +187,7 @@ object TypeOps:
     /** a faster version of cs1 intersect cs2 */
     def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] = {
       val cs2AsSet = new util.HashSet[ClassSymbol](128)
-      cs2.foreach(cs2AsSet.addEntry)
+      cs2.foreach(cs2AsSet += _)
       cs1.filter(cs2AsSet.contains)
     }
 

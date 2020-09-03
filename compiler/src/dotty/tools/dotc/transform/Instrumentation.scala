@@ -15,7 +15,7 @@ import Names._
 import Constants.Constant
 
 
-/** The phase is enabled if a -Yinstrument-... option is set.
+/** The phase is enabled if the -Yinstrument option is set.
  *  If enabled, it counts the number of closures or allocations for each source position.
  *  It does this by generating a call to dotty.tools.dotc.util.Stats.doRecord.
  */
@@ -25,8 +25,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
   override def phaseName: String = "instrumentation"
 
   override def isEnabled(using Context) =
-    ctx.settings.YinstrumentClosures.value ||
-    ctx.settings.YinstrumentAllocations.value
+    ctx.settings.Yinstrument.value
 
   private val namesOfInterest = List(
     "::", "+=", "toString", "newArray", "box", "toCharArray",
