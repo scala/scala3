@@ -4321,7 +4321,7 @@ object Types {
     def underlying(using Context): Type = bound
 
     private var myReduced: Type = null
-    private var reductionContext: mutable.Map[Type, Type] = null
+    private var reductionContext: util.MutableMap[Type, Type] = null
 
     override def tryNormalize(using Context): Type = reduced.normalized
 
@@ -4340,7 +4340,7 @@ object Types {
       }
 
       def updateReductionContext(footprint: collection.Set[Type]): Unit =
-        reductionContext = new mutable.HashMap
+        reductionContext = util.HashMap()
         for (tp <- footprint)
           reductionContext(tp) = contextInfo(tp)
         typr.println(i"footprint for $this $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")

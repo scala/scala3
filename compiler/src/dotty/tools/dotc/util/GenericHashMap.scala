@@ -177,6 +177,9 @@ abstract class GenericHashMap[Key, Value]
   def keysIterator: Iterator[Key] = new EntryIterator:
     def entry(idx: Int) = keyAt(idx)
 
+  def valuesIterator: Iterator[Value] = new EntryIterator:
+    def entry(idx: Int) = valueAt(idx)
+
   override def toString: String =
     iterator.map((k, v) => s"$k -> $v").mkString("HashMap(", ", ", ")")
 

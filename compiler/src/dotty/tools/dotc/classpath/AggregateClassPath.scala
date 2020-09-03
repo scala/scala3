@@ -108,7 +108,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   private def mergeClassesAndSources(entries: scala.collection.Seq[ClassRepresentation]): Seq[ClassRepresentation] = {
     // based on the implementation from MergedClassPath
     var count = 0
-    val indices = new collection.mutable.HashMap[String, Int]()
+    val indices = util.HashMap[String, Int]()
     val mergedEntries = new ArrayBuffer[ClassRepresentation](entries.size)
     for {
       entry <- entries
