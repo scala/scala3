@@ -1,19 +1,19 @@
-package dotty.tools.dotc.core.tasty
+package dotty.tools.dotc
+package core.tasty
 
-import dotty.tools.dotc.core.Comments.Comment
-import dotty.tools.dotc.util.Spans.Span
+import core.Comments.Comment
+import util.Spans.Span
+import util.HashMap
 
 import dotty.tools.tasty.{TastyReader, TastyBuffer}
 import TastyBuffer.Addr
-
-import scala.collection.mutable.HashMap
 
 import java.nio.charset.Charset
 
 class CommentUnpickler(reader: TastyReader) {
   import reader._
 
-  private[tasty] lazy val comments: Map[Addr, Comment] = {
+  private[tasty] lazy val comments: HashMap[Addr, Comment] = {
     val comments = new HashMap[Addr, Comment]
     while (!isAtEnd) {
       val addr = readAddr()
@@ -25,7 +25,7 @@ class CommentUnpickler(reader: TastyReader) {
         comments(addr) = Comment(position, rawComment)
       }
     }
-    comments.toMap
+    comments
   }
 
   def commentAt(addr: Addr): Option[Comment] =

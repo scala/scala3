@@ -11,6 +11,7 @@ abstract class ReadOnlyMap[Key, Value]:
 
   def iterator: Iterator[(Key, Value)]
   def keysIterator: Iterator[Key]
+  def valuesIterator: Iterator[Value]
 
   def isEmpty: Boolean = size == 0
 
@@ -27,3 +28,14 @@ abstract class ReadOnlyMap[Key, Value]:
   def apply(key: Key): Value = lookup(key) match
     case null => throw new NoSuchElementException(s"$key")
     case v => v.uncheckedNN
+
+  def toArray: Array[(Key, Value)] =
+    val result = new Array[(Key, Value)](size)
+    var idx = 0
+    for pair <- iterator do
+      result(idx) = pair
+      idx += 1
+    result
+
+  def toSeq: Seq[(Key, Value)] = toArray.toSeq
+
