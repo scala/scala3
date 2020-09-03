@@ -609,11 +609,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           val checkFile = checkFiles(file)
           val actual = {
             val source = Source.fromFile(file, StandardCharsets.UTF_8.name)
-            val lines  = source.getLines().toList
-            try source.close()
-            catch
-              case _: IOException => // ignore file close errors
-            lines
+            try source.getLines().toList
+            finally source.close()
           }
           diffTest(testSource, checkFile, actual, reporters, logger)
       }
