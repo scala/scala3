@@ -107,7 +107,7 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
         while
           idx = nextIndex(idx)
           e = entryAt(idx)
-          e != null && (isDense || index(hash(e)) != idx)
+          e != null
         do
           if isDense
             || index(hole - index(hash(e))) < limit
