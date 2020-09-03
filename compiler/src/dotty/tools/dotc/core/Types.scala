@@ -1180,6 +1180,8 @@ object Types {
     def widenSingletons(using Context): Type = dealias match {
       case tp: SingletonType =>
         tp.widen
+      case tp: (TypeRef | AppliedType) if tp.typeSymbol.isAllOf(EnumCase) =>
+        tp.parents.head
       case tp: OrType =>
         val tp1w = tp.widenSingletons
         if (tp1w eq tp) this else tp1w

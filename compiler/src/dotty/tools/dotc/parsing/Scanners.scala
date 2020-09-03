@@ -1399,8 +1399,8 @@ object Scanners {
 
   object IndentWidth {
     private inline val MaxCached = 40
-    private val spaces = Array.tabulate(MaxCached + 1)(new Run(' ', _))
-    private val tabs = Array.tabulate(MaxCached + 1)(new Run('\t', _))
+    private val spaces = Array.tabulate[Run](MaxCached + 1)(new Run(' ', _)) // TODO: remove new after bootstrap
+    private val tabs = Array.tabulate[Run](MaxCached + 1)(new Run('\t', _)) // TODO: remove new after bootstrap
 
     def Run(ch: Char, n: Int): Run =
       if (n <= MaxCached && ch == ' ') spaces(n)

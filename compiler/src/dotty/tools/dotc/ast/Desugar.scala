@@ -527,6 +527,12 @@ object desugar {
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
     val classTypeRef = appliedRef(classTycon)
 
+    def applyResultTpt =
+      if isEnumCase then
+        classTypeRef
+      else
+        TypeTree()
+
     // a reference to `enumClass`, with type parameters coming from the case constructor
     lazy val enumClassTypeRef =
       if (enumClass.typeParams.isEmpty)
@@ -605,7 +611,7 @@ object desugar {
             cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
-          DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
+          DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, applyResultTpt, creatorExpr)
             .withMods(Modifiers(Synthetic | constr1.mods.flags & copiedAccessFlags, constr1.mods.privateWithin)) :: Nil
         }
       }
@@ -656,15 +662,6 @@ object desugar {
     // For all other classes, the parent is AnyRef.
     val companions =
       if (isCaseClass) {
-        // The return type of the `apply` method, and an (empty or singleton) list
-        // of widening coercions
-        val (applyResultTpt, widenDefs) =
-          if (!isEnumCase)
-            (TypeTree(), Nil)
-          else if (parents.isEmpty || enumClass.typeParams.isEmpty)
-            (enumClassTypeRef, Nil)
-          else
-            enumApplyResult(cdef, parents, derivedEnumParams, appliedRef(enumClassRef, derivedEnumParams))
 
         // true if access to the apply method has to be restricted
         // i.e. if the case class constructor is either private or qualified private
@@ -695,8 +692,6 @@ object desugar {
           then anyRef
           else
             constrVparamss.foldRight(classTypeRef)((vparams, restpe) => Function(vparams map (_.tpt), restpe))
-        def widenedCreatorExpr =
-          widenDefs.foldLeft(creatorExpr)((rhs, meth) => Apply(Ident(meth.name), rhs :: Nil))
         val applyMeths =
           if (mods.is(Abstract)) Nil
           else {
@@ -709,9 +704,8 @@ object desugar {
             val appParamss =
               derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
                 ap.withMods(ap.mods | (cp.mods.flags & HasDefault)))
-            val app = DefDef(nme.apply, derivedTparams, appParamss, applyResultTpt, widenedCreatorExpr)
-              .withMods(appMods)
-            app :: widenDefs
+            DefDef(nme.apply, derivedTparams, appParamss, applyResultTpt, creatorExpr)
+              .withMods(appMods) :: Nil
           }
         val unapplyMeth = {
           val hasRepeatedParam = constrVparamss.head.exists {
@@ -720,7 +714,7 @@ object desugar {
           val methName = if (hasRepeatedParam) nme.unapplySeq else nme.unapply
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
-          val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
+          val unapplyResTp = if (arity == 0) Literal(Constant(true)) else applyResultTpt
           DefDef(methName, derivedTparams, (unapplyParam :: Nil) :: Nil, unapplyResTp, unapplyRHS)
             .withMods(synthetic)
         }

@@ -64,7 +64,6 @@ object Eq {
               $ordx == $ordy && $elements($ordx).asInstanceOf[Eq[Any]].eqv($x, $y)
           }
         }
-
         '{
           eqSum((x: T, y: T) => ${eqSumBody('x, 'y)})
         }
