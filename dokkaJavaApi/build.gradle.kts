@@ -24,12 +24,13 @@ repositories {
     jcenter()
     mavenCentral()
     mavenLocal()
+    maven("http://dl.bintray.com/virtuslab/dokka/")
 }
 
 dependencies {
     implementation("org.jetbrains.dokka:dokka-core:1.4.0")
     implementation("org.jetbrains.dokka:dokka-base:1.4.0")
-    implementation("com.virtuslab.dokka:dokka-site:0.1.6-1-ge7e6120-SNAPSHOT")
+    implementation("com.virtuslab.dokka:dokka-site:0.1.7")
 }
 
 apply {

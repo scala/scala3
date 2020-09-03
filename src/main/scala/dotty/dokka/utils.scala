@@ -25,6 +25,9 @@ extension [T, V] (a: WithExtraProperties[T]):
 extension [V] (map: JMap[DokkaConfiguration$DokkaSourceSet, V]):
     def defaultValue: V = map.values.asScala.toSeq(0)
 
+extension (sourceSets: Set[DokkaConfiguration$DokkaSourceSet]):
+    def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava
+
 class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
   override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] = 
     MergeStrategy.Remove.INSTANCE.asInstanceOf[MergeStrategy[T]]

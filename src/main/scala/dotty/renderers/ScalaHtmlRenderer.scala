@@ -30,6 +30,13 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         if node.getDci.getKind == ContentKind.Symbol && node.getStyle.asScala.toSet.contains(TextStyle.Monospace) then withHtml(f, buildSymbol) else super.wrapGroup(f, node, pageContext, childrenCallback)
     }
 
+    override def buildContentNode(f: FlowContent, node: ContentNode, pageContext: ContentPage, sourceSetRestriciton: java.util.Set[DisplaySourceSet]) = {
+        node match {
+            case n: HtmlContentNode => withHtml(f, raw(n.body).toString)
+            case other => super.buildContentNode(f, node, pageContext, sourceSetRestriciton)
+        }
+    }
+
     def buildDescriptionList(node: ContentTable, pageContext: ContentPage, sourceSetRestriciton: java.util.Set[DisplaySourceSet]) = {
         val children = node.getChildren.asScala.toList.zipWithIndex
         dl(cls := "attributes")(

@@ -17,10 +17,6 @@ import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.doc._
 
 
-extension (sourceSets: Set[DokkaConfiguration$DokkaSourceSet]):
-    def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava
-
-
 class ScalaPageContentBuilder(
     val commentsConverter: CommentsToContentConverter,
     val signatureProvider: SignatureProvider,

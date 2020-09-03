@@ -32,8 +32,6 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
     private val dokkaBase by lazy { plugin<DokkaBase>() }
     private val dokkaSite by lazy { plugin<StaticSitePlugin>() }
 
-    val outputWriter by extensionPoint<OutputWriter>()
-
     val provideDottyDocs by extending {
         CoreExtensions.sourceToDocumentableTranslator providing { _ ->
             object : SourceToDocumentableTranslator {
@@ -118,6 +116,12 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         } override dokkaBase.sourceLinksTransformer
     }
 
+    val commentsToContentConverter by extending {
+        dokkaBase.commentsToContentConverter providing { _ ->
+            createCommentToContentConverter()
+        } override dokkaBase.docTagToContentConverter
+    }
+
 
     abstract fun createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule
     abstract fun createSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger): SignatureProvider
@@ -136,8 +140,8 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
             signatureProvider: SignatureProvider,
             logger: DokkaLogger
     ): DocumentableTransformer
-
     abstract fun createHtmlRenderer(ctx: DokkaContext): Renderer
+    abstract fun createCommentToContentConverter(): CommentsToContentConverter
 }
 
 // TODO we probably does not need that
