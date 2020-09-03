@@ -3405,7 +3405,7 @@ object Types {
   abstract class LambdaTypeCompanion[N <: Name, PInfo <: Type, LT <: LambdaType] {
     def syntheticParamName(n: Int): N
 
-    @sharable private val memoizedNames = new mutable.HashMap[Int, List[N]]
+    @sharable private val memoizedNames = util.HashMap[Int, List[N]]()
     def syntheticParamNames(n: Int): List[N] = synchronized {
       memoizedNames.getOrElseUpdate(n, (0 until n).map(syntheticParamName).toList)
     }

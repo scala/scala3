@@ -12,5 +12,14 @@ abstract class MutableSet[T] extends ReadOnlySet[T]:
    */
   def put(x: T): T
 
+  /** Remove element `x` from the set */
+  def -=(x: T): Unit
+
   def clear(): Unit
+
+  def ++= (xs: IterableOnce[T]): Unit =
+    xs.iterator.foreach(this += _)
+
+  def --= (xs: IterableOnce[T]): Unit =
+    xs.iterator.foreach(this -= _)
 

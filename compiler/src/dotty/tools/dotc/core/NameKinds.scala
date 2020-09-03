@@ -8,7 +8,6 @@ import StdNames._
 import NameTags._
 import Contexts._
 import Decorators._
-import collection.mutable
 
 import scala.annotation.internal.sharable
 
@@ -18,10 +17,10 @@ object NameKinds {
   // These are sharable since all NameKinds are created eagerly at the start of the program
   // before any concurrent threads are forked. for this to work, NameKinds should never
   // be created lazily or in modules that start running after compilers are forked.
-  @sharable private val simpleNameKinds = new mutable.HashMap[Int, ClassifiedNameKind]
-  @sharable private val qualifiedNameKinds = new mutable.HashMap[Int, QualifiedNameKind]
-  @sharable private val numberedNameKinds = new mutable.HashMap[Int, NumberedNameKind]
-  @sharable private val uniqueNameKinds = new mutable.HashMap[String, UniqueNameKind]
+  @sharable private val simpleNameKinds = util.HashMap[Int, ClassifiedNameKind]()
+  @sharable private val qualifiedNameKinds = util.HashMap[Int, QualifiedNameKind]()
+  @sharable private val numberedNameKinds = util.HashMap[Int, NumberedNameKind]()
+  @sharable private val uniqueNameKinds = util.HashMap[String, UniqueNameKind]()
 
   /** A class for the info stored in a derived name */
   abstract class NameInfo {
@@ -393,8 +392,8 @@ object NameKinds {
   val Scala2MethodNameKinds: List[NameKind] =
     List(DefaultGetterName, ExtMethName, UniqueExtMethName)
 
-  def simpleNameKindOfTag      : collection.Map[Int, ClassifiedNameKind] = simpleNameKinds
-  def qualifiedNameKindOfTag   : collection.Map[Int, QualifiedNameKind]  = qualifiedNameKinds
-  def numberedNameKindOfTag    : collection.Map[Int, NumberedNameKind]   = numberedNameKinds
-  def uniqueNameKindOfSeparator: collection.Map[String, UniqueNameKind]  = uniqueNameKinds
+  def simpleNameKindOfTag      : util.ReadOnlyMap[Int, ClassifiedNameKind] = simpleNameKinds
+  def qualifiedNameKindOfTag   : util.ReadOnlyMap[Int, QualifiedNameKind]  = qualifiedNameKinds
+  def numberedNameKindOfTag    : util.ReadOnlyMap[Int, NumberedNameKind]   = numberedNameKinds
+  def uniqueNameKindOfSeparator: util.ReadOnlyMap[String, UniqueNameKind]  = uniqueNameKinds
 }

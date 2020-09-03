@@ -14,7 +14,7 @@ import Uniques._
 import ast.Trees._
 import ast.untpd
 import Flags.GivenOrImplicit
-import util.{NoSource, SimpleIdentityMap, SourceFile}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet}
 import typer.{Implicits, ImportInfo, Inliner, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import Nullables.{NotNullInfo, given _}
 import Implicits.ContextualImplicits
@@ -534,7 +534,7 @@ object Contexts {
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions
     def platform: Platform                 = base.platform
-    def pendingUnderlying: mutable.HashSet[Type]   = base.pendingUnderlying
+    def pendingUnderlying: util.HashSet[Type]      = base.pendingUnderlying
     def uniqueNamedTypes: Uniques.NamedTypeUniques = base.uniqueNamedTypes
     def uniques: util.HashSet[Type]                = base.uniques
 
@@ -838,8 +838,8 @@ object Contexts {
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
     /** Sources that were loaded */
-    val sources: mutable.HashMap[AbstractFile, SourceFile] = new mutable.HashMap[AbstractFile, SourceFile]
-    val sourceNamed: mutable.HashMap[TermName, SourceFile] = new mutable.HashMap[TermName, SourceFile]
+    val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
+    val sourceNamed: util.HashMap[TermName, SourceFile] = util.HashMap[TermName, SourceFile]()
 
     // Types state
     /** A table for hash consing unique types */
@@ -869,7 +869,7 @@ object Contexts {
 
     /** The set of named types on which a currently active invocation
      *  of underlying during a controlled operation exists. */
-    private[core] val pendingUnderlying: mutable.HashSet[Type] = new mutable.HashSet[Type]
+    private[core] val pendingUnderlying: util.HashSet[Type] = util.HashSet[Type]()
 
     /** A map from ErrorType to associated message. We use this map
      *  instead of storing messages directly in ErrorTypes in order

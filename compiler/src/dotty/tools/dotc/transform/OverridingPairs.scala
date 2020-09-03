@@ -77,7 +77,7 @@ object OverridingPairs {
      *  (maybe excluded because of hasCommonParentAsSubclass).
      *  These will not appear as overriding
      */
-    private val visited = new mutable.HashSet[Symbol]
+    private val visited = util.HashSet[Symbol]()
 
     /** The current entry candidate for overriding
      */

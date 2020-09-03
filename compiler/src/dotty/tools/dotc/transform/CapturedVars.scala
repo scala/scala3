@@ -26,11 +26,11 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def runsAfterGroupsOf: Set[String] = Set(LiftTry.name)
     // lifting tries changes what variables are considered to be captured
 
-  private[this] var Captured: Store.Location[collection.Set[Symbol]] = _
+  private[this] var Captured: Store.Location[util.ReadOnlySet[Symbol]] = _
   private def captured(using Context) = ctx.store(Captured)
 
   override def initContext(ctx: FreshContext): Unit =
-    Captured = ctx.addLocation(Set.empty)
+    Captured = ctx.addLocation(util.ReadOnlySet.empty)
 
   private class RefInfo(using Context) {
     /** The classes for which a Ref type exists. */
@@ -54,7 +54,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   }
 
   private class CollectCaptured extends TreeTraverser {
-    private val captured = mutable.HashSet[Symbol]()
+    private val captured = util.HashSet[Symbol]()
     def traverse(tree: Tree)(using Context) = tree match {
       case id: Ident =>
         val sym = id.symbol
@@ -68,7 +68,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
       case _ =>
         traverseChildren(tree)
     }
-    def runOver(tree: Tree)(using Context): collection.Set[Symbol] = {
+    def runOver(tree: Tree)(using Context): util.ReadOnlySet[Symbol] = {
       traverse(tree)
       captured
     }

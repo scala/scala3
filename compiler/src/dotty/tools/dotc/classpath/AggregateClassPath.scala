@@ -7,6 +7,7 @@ package dotc.classpath
 import java.net.URL
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.immutable.ArraySeq
+import dotc.util
 
 import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation, EfficientClassPath }
 
@@ -132,7 +133,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
   }
 
   private def getDistinctEntries[EntryType <: ClassRepresentation](getEntries: ClassPath => Seq[EntryType]): Seq[EntryType] = {
-    val seenNames = collection.mutable.HashSet[String]()
+    val seenNames = util.HashSet[String]()
     val entriesBuffer = new ArrayBuffer[EntryType](1024)
     for {
       cp <- aggregates
