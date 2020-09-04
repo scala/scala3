@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
 import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive}
 import xsbti.UseScope
@@ -139,7 +140,7 @@ class ExtractDependencies extends Phase {
             binaryDependency(pf.file, binaryClassName(classSegments))
 
         case _ =>
-          report.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}}")
+          internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.from.srcPos)
       }
     }
 
@@ -163,6 +164,10 @@ class ExtractDependencies extends Phase {
 object ExtractDependencies {
   def classNameAsString(sym: Symbol)(using Context): String =
     sym.fullName.stripModuleClassSuffix.toString
+
+  /** Report an internal error in incremental compilation. */
+  def internalError(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+    report.error(s"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
 }
 
 private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)

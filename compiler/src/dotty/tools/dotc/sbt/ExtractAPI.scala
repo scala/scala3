@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package sbt
 
+import ExtractDependencies.internalError
 import ast.{Positioned, Trees, tpd, untpd}
 import core._
 import core.Decorators._
@@ -30,7 +31,7 @@ import scala.collection.mutable
  *
  *  See the documentation of `ExtractAPICollector`, `ExtractDependencies`,
  *  `ExtractDependenciesCollector` and
- *  http://www.scala-sbt.org/0.13/docs/Understanding-Recompilation.html for more
+ *  http://www.scala-sbt.org/1.x/docs/Understanding-Recompilation.html for more
  *  information on incremental recompilation.
  *
  *  The following flags affect this phase:
@@ -515,7 +516,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       case tp: TypeVar =>
         apiType(tp.underlying)
       case _ => {
-        report.warning(i"sbt-api: Unhandled type ${tp.getClass} : $tp")
+        internalError(i"Unhandled type $tp of class ${tp.getClass}")
         Constants.emptyType
       }
     }
@@ -660,9 +661,10 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
             // The hashCode of the name itself is not stable across compiler instances
             h = MurmurHash3.mix(h, n.toString.hashCode)
           case elem =>
-            report.warning(
-              i"""Internal error: Don't know how to produce a stable hash for `$elem` of unknown class ${elem.getClass}
-                 |Incremental compilation might not work correctly.""", tree.sourcePos)
+            internalError(
+              i"Don't know how to produce a stable hash for `$elem` of unknown class ${elem.getClass}",
+              tree.sourcePos)
+
             h = MurmurHash3.mix(h, elem.toString.hashCode)
       h
     end iteratorHash
