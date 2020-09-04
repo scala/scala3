@@ -354,8 +354,11 @@ trait ConstraintHandling {
       case WildcardType(optBounds) => optBounds.exists && isSingleton(optBounds.bounds.hi)
       case _ => isSubTypeWhenFrozen(tp, defn.SingletonType)
 
+    def isEnumBound(tp: Type): Boolean =
+      bound.isValueType && bound.typeSymbol.is(Enum, butNot=JavaDefined) && tp <:< bound
+
     val wideInst =
-      if isSingleton(bound) then inst
+      if isSingleton(bound) || isEnumBound(bound) then inst
       else dropSuperTraits(widenOr(widenSingle(inst)))
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
