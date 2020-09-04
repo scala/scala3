@@ -243,7 +243,6 @@ main differences here are:
 
  - Conditional types only reduce if both the scrutinee and pattern are ground,
    whereas match types also work for type parameters and abstract types.
- - Match types can bind variables in type patterns.
  - Match types support direct recursion.
  - Conditional types distribute through union types.
 
