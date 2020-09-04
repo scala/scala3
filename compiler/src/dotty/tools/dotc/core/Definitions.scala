@@ -1104,8 +1104,6 @@ class Definitions {
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
-  @tu private lazy val ImplementedFunctionType = mkArityArray("scala.Function", MaxImplementedFunctionArity, 0)
-  def FunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(ImplementedFunctionType.map(_.symbol.asClass))
 
   val LazyHolder: PerRun[Map[Symbol, Symbol]] = new PerRun({
     def holderImpl(holderType: String) = requiredClass("scala.runtime." + holderType)
@@ -1124,23 +1122,33 @@ class Definitions {
 
   @tu lazy val TupleType: Array[TypeRef] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
-  def FunctionClass(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): Symbol =
-    if (isContextual && isErased)
-      requiredClass("scala.ErasedContextFunction" + n.toString)
-    else if (isContextual)
-      requiredClass("scala.ContextFunction" + n.toString)
-    else if (isErased)
-      requiredClass("scala.ErasedFunction" + n.toString)
-    else if (n <= MaxImplementedFunctionArity)
-      FunctionClassPerRun()(n)
-    else
-      requiredClass("scala.Function" + n.toString)
+  private class FunType(prefix: String):
+    private var classRefs: Array[TypeRef] = new Array(22)
+    def apply(n: Int): TypeRef =
+      while n >= classRefs.length do
+        val classRefs1 = new Array[TypeRef](classRefs.length * 2)
+        Array.copy(classRefs, 0, classRefs1, 0, classRefs.length)
+        classRefs = classRefs1
+      if classRefs(n) == null then
+        classRefs(n) = requiredClassRef(prefix + n.toString)
+      classRefs(n)
 
-  @tu lazy val Function0_apply: Symbol = ImplementedFunctionType(0).symbol.requiredMethod(nme.apply)
+  private val erasedContextFunType = FunType("scala.ErasedContextFunction")
+  private val contextFunType = FunType("scala.ContextFunction")
+  private val erasedFunType = FunType("scala.ErasedFunction")
+  private val funType = FunType("scala.Function")
+
+  def FunctionClass(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): Symbol =
+    ( if isContextual && isErased then erasedContextFunType(n)
+      else if isContextual then contextFunType(n)
+      else if isErased then erasedFunType(n)
+      else funType(n)
+    ).symbol.asClass
+
+  @tu lazy val Function0_apply: Symbol = FunctionClass(0).requiredMethod(nme.apply)
 
   def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): TypeRef =
-    if (n <= MaxImplementedFunctionArity && (!isContextual || ctx.erasedTypes) && !isErased) ImplementedFunctionType(n)
-    else FunctionClass(n, isContextual, isErased).typeRef
+    FunctionClass(n, isContextual && !ctx.erasedTypes, isErased).typeRef
 
   lazy val PolyFunctionClass = requiredClass("scala.PolyFunction")
   def PolyFunctionType = PolyFunctionClass.typeRef
