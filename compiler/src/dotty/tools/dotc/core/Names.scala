@@ -258,6 +258,15 @@ object Names {
       val (first, last, sep) = split
       if (first.isEmpty) f2(last) else str.sanitize(f1(first) + sep + f2(last))
     }
+
+    protected def computeToString: String
+
+    @sharable private var myToString: String = null
+
+    override def toString =
+      if myToString == null then myToString = computeToString
+      myToString
+
   }
 
   /** A simple name is essentially an interned string */
@@ -371,7 +380,7 @@ object Names {
 
     override def hashCode: Int = start
 
-    override def toString: String =
+    protected def computeToString: String =
       if (length == 0) ""
       else {
         if (Config.checkBackendNames)
@@ -500,7 +509,7 @@ object Names {
       case qual: QualifiedInfo => qual.name
       case _ => underlying.lastPart
     }
-    override def toString: String = info.mkString(underlying)
+    protected def computeToString: String = info.mkString(underlying)
     override def debugString: String = s"${underlying.debugString}[$info]"
   }
 
