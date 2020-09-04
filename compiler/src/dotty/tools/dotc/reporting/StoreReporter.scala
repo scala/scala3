@@ -17,7 +17,7 @@ import Diagnostic._
   * - The reporter is not flushed and the message containers capture a
   *   `Context` (about 4MB)
   */
-class StoreReporter(outer: Reporter) extends Reporter {
+class StoreReporter(outer: Reporter = null) extends Reporter {
 
   protected var infos: mutable.ListBuffer[Diagnostic] = null
 
