@@ -1,18 +1,15 @@
 package dotty.tools.dotc
 package config
 
-import collection.mutable.ArrayBuffer
-import scala.util.{ Success, Failure }
-import reflect.ClassTag
 import core.Contexts._
-import scala.annotation.tailrec
-import dotty.tools.io.{ AbstractFile, Directory, JarArchive, PlainDirectory }
 
-// import annotation.unchecked
-  // Dotty deviation: Imports take precedence over definitions in enclosing package
-  // (Note that @unchecked is in scala, not annotation, so annotation.unchecked gives
-  // us a package, which is not what was intended anyway).
+import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
+
+import annotation.tailrec
+import collection.mutable.ArrayBuffer
 import language.existentials
+import reflect.ClassTag
+import scala.util.{Success, Failure}
 
 object Settings {
 
