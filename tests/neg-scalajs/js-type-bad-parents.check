@@ -1,0 +1,90 @@
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:9:6 --------------------------------------------------------------
+9 |class A2 extends js.Any // error
+  |^^^^^^^^^^^^^^^^^^^^^^^
+  |Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:10:7 -------------------------------------------------------------
+10 |object A3 extends js.Any // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^
+   |Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:13:6 -------------------------------------------------------------
+13 |class A5 extends AnyRef with js.Any // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:14:7 -------------------------------------------------------------
+14 |object A6 extends AnyRef with js.Any // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:17:6 -------------------------------------------------------------
+17 |class A8 extends Object with js.Any // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:18:7 -------------------------------------------------------------
+18 |object A9 extends Object with js.Any // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:25:6 -------------------------------------------------------------
+25 |trait B1 extends js.Object with NativeJSTrait // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Non-native JS types cannot directly extend native JS traits.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:26:6 -------------------------------------------------------------
+26 |class B2 extends js.Object with NativeJSTrait // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Non-native JS types cannot directly extend native JS traits.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:27:7 -------------------------------------------------------------
+27 |object B3 extends js.Object with NativeJSTrait // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Non-native JS types cannot directly extend native JS traits.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:34:6 -------------------------------------------------------------
+34 |trait C1 extends ScalaClass with js.Any // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |C1 extends ScalaClass which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:35:6 -------------------------------------------------------------
+35 |class C2 extends ScalaClass with js.Any // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |C2 extends ScalaClass which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:36:7 -------------------------------------------------------------
+36 |object C3 extends ScalaClass with js.Any // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |C3$ extends ScalaClass which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:39:6 -------------------------------------------------------------
+38 |@js.native
+39 |trait C4 extends ScalaClass with js.Any // error
+   |^
+   |C4 extends ScalaClass which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:41:6 -------------------------------------------------------------
+40 |@js.native @JSGlobal
+41 |class C5 extends ScalaClass with js.Any // error
+   |^
+   |C5 extends ScalaClass which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:43:7 -------------------------------------------------------------
+42 |@js.native @JSGlobal
+43 |object C6 extends ScalaClass with js.Any // error
+   |^
+   |C6$ extends ScalaClass which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:45:6 -------------------------------------------------------------
+45 |trait C7 extends js.Object with ScalaTrait // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |C7 extends ScalaTrait which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:46:6 -------------------------------------------------------------
+46 |class C8 extends js.Object with ScalaTrait // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |C8 extends ScalaTrait which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:47:7 -------------------------------------------------------------
+47 |object C9 extends js.Object with ScalaTrait // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |C9$ extends ScalaTrait which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:50:6 -------------------------------------------------------------
+49 |@js.native
+50 |trait C10 extends js.Object with ScalaTrait // error
+   |^
+   |C10 extends ScalaTrait which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:52:6 -------------------------------------------------------------
+51 |@js.native @JSGlobal
+52 |class C11 extends js.Object with ScalaTrait // error
+   |^
+   |C11 extends ScalaTrait which does not extend js.Any.
+-- Error: tests/neg-scalajs/js-type-bad-parents.scala:54:7 -------------------------------------------------------------
+53 |@js.native @JSGlobal
+54 |object C12 extends js.Object with ScalaTrait // error
+   |^
+   |C12$ extends ScalaTrait which does not extend js.Any.

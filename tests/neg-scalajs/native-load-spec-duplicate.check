@@ -1,0 +1,28 @@
+-- Error: tests/neg-scalajs/native-load-spec-duplicate.scala:6:0 -------------------------------------------------------
+6 |@JSGlobalScope // error
+  |^^^^^^^^^^^^^^
+  |Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+-- Error: tests/neg-scalajs/native-load-spec-duplicate.scala:11:0 ------------------------------------------------------
+11 |@JSGlobalScope // error
+   |^^^^^^^^^^^^^^
+   |Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+-- Error: tests/neg-scalajs/native-load-spec-duplicate.scala:16:1 ------------------------------------------------------
+16 |@JSImport("foo.js", "A3") // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
+-- Error: tests/neg-scalajs/native-load-spec-duplicate.scala:21:1 ------------------------------------------------------
+21 |@JSImport("bar.js", "A4") // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
+-- Error: tests/neg-scalajs/native-load-spec-duplicate.scala:27:3 ------------------------------------------------------
+27 |  @JSGlobal("b") // error
+   |  ^^^^^^^^^^^^^^
+   |  Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
+-- Error: tests/neg-scalajs/native-load-spec-duplicate.scala:33:1 ------------------------------------------------------
+33 |@JSGlobal("X2") // error
+   |^^^^^^^^^^^^^^^
+   |Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
+-- Error: tests/neg-scalajs/native-load-spec-duplicate.scala:34:1 ------------------------------------------------------
+34 |@JSGlobal("X3") // error
+   |^^^^^^^^^^^^^^^
+   |Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.

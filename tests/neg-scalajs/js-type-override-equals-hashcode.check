@@ -1,0 +1,48 @@
+-- Error: tests/neg-scalajs/js-type-override-equals-hashcode.scala:5:15 ------------------------------------------------
+5 |  override def hashCode(): Int = 1 // error
+  |               ^
+  |error overriding method hashCode(): Int in a JS class;
+  |  method hashCode(): Int is considered final in trait js.Any;
+  |  if you want to define a method named "hashCode" in JavaScript, use a different name and add @JSName("hashCode").
+-- Error: tests/neg-scalajs/js-type-override-equals-hashcode.scala:6:15 ------------------------------------------------
+6 |  override def equals(obj: Any): Boolean = false // error
+  |               ^
+  |    error overriding method equals(that: Any): Boolean in a JS class;
+  |      method equals(that: Any): Boolean is considered final in trait js.Any;
+  |      if you want to define a method named "equals" in JavaScript, use a different name and add @JSName("equals").
+-- Error: tests/neg-scalajs/js-type-override-equals-hashcode.scala:24:15 -----------------------------------------------
+24 |  override def hashCode(): Int = js.native // error
+   |               ^
+   |error overriding method hashCode(): Int in a JS class;
+   |  method hashCode(): Int is considered final in trait js.Any;
+   |  if you want to define a method named "hashCode" in JavaScript, use a different name and add @JSName("hashCode").
+-- Error: tests/neg-scalajs/js-type-override-equals-hashcode.scala:25:15 -----------------------------------------------
+25 |  override def equals(obj: Any): Boolean = js.native // error
+   |               ^
+   |  error overriding method equals(that: Any): Boolean in a JS class;
+   |    method equals(that: Any): Boolean is considered final in trait js.Any;
+   |    if you want to define a method named "equals" in JavaScript, use a different name and add @JSName("equals").
+-- Error: tests/neg-scalajs/js-type-override-equals-hashcode.scala:30:15 -----------------------------------------------
+30 |  override def hashCode(): Int = js.native // error
+   |               ^
+   |error overriding method hashCode(): Int in a JS class;
+   |  method hashCode(): Int is considered final in trait js.Any;
+   |  if you want to define a method named "hashCode" in JavaScript, use a different name and add @JSName("hashCode").
+-- Error: tests/neg-scalajs/js-type-override-equals-hashcode.scala:31:15 -----------------------------------------------
+31 |  override def equals(obj: Any): Boolean = js.native // error
+   |               ^
+   |  error overriding method equals(that: Any): Boolean in a JS class;
+   |    method equals(that: Any): Boolean is considered final in trait js.Any;
+   |    if you want to define a method named "equals" in JavaScript, use a different name and add @JSName("equals").
+-- Error: tests/neg-scalajs/js-type-override-equals-hashcode.scala:35:15 -----------------------------------------------
+35 |  override def hashCode(): Int // error
+   |               ^
+   |error overriding method hashCode(): Int in a JS class;
+   |  method hashCode(): Int is considered final in trait js.Any;
+   |  if you want to define a method named "hashCode" in JavaScript, use a different name and add @JSName("hashCode").
+-- Error: tests/neg-scalajs/js-type-override-equals-hashcode.scala:36:15 -----------------------------------------------
+36 |  override def equals(obj: Any): Boolean // error
+   |               ^
+   |  error overriding method equals(that: Any): Boolean in a JS class;
+   |    method equals(that: Any): Boolean is considered final in trait js.Any;
+   |    if you want to define a method named "equals" in JavaScript, use a different name and add @JSName("equals").

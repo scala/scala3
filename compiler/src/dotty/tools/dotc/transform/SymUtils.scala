@@ -188,11 +188,15 @@ object SymUtils {
   def hasAnonymousChild(using Context): Boolean =
     self.children.exists(_ `eq` self)
 
+  /** Is this symbol directly owner by a term symbol, i.e., is it local to a block? */
+  def isLocalToBlock(using Context): Boolean =
+    self.owner.isTerm
+
   /** Is symbol directly or indirectly owned by a term symbol? */
   @tailrec final def isLocal(using Context): Boolean = {
     val owner = self.maybeOwner
     if (!owner.exists) false
-    else if (owner.isTerm) true
+    else if (isLocalToBlock) true
     else if (owner.is(Package)) false
     else owner.isLocal
   }

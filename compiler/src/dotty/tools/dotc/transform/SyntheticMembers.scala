@@ -397,7 +397,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *  we do that even for objects that are not serializable at this phase.
    */
   def serializableObjectMethod(clazz: ClassSymbol)(using Context): List[Tree] =
-    if clazz.is(Module) && clazz.isStatic && !hasWriteReplace(clazz) then
+    if clazz.is(Module)
+      && clazz.isStatic
+      && !hasWriteReplace(clazz)
+      && ctx.platform.shouldReceiveJavaSerializationMethods(clazz)
+    then
       List(
         DefDef(writeReplaceDef(clazz),
           _ => New(defn.ModuleSerializationProxyClass.typeRef,
@@ -424,6 +428,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       && !clazz.derivesFrom(defn.JavaEnumClass)
       && clazz.isSerializable
       && !hasReadResolve(clazz)
+      && ctx.platform.shouldReceiveJavaSerializationMethods(clazz)
     then
       List(
         DefDef(readResolveDef(clazz),

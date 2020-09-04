@@ -259,6 +259,10 @@ object SymDenotations {
     final def addAnnotation(annot: Annotation): Unit =
       annotations = annot :: myAnnotations
 
+    /** Add the given annotation without parameters to the annotations of this denotation */
+    final def addAnnotation(cls: ClassSymbol)(using Context): Unit =
+      addAnnotation(Annotation(cls))
+
     /** Remove annotation with given class from this denotation */
     final def removeAnnotation(cls: Symbol)(using Context): Unit =
       annotations = myAnnotations.filterNot(_ matches cls)

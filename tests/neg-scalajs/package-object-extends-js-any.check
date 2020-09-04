@@ -1,0 +1,4 @@
+-- Error: tests/neg-scalajs/package-object-extends-js-any.scala:4:15 ---------------------------------------------------
+4 |package object jspackage extends js.Object // error
+  |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |Package objects may not extend js.Any.

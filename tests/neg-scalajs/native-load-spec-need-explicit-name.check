@@ -1,0 +1,8 @@
+-- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:6:2 ----------------------------------------------
+6 |  @JSGlobal // error
+  |  ^^^^^^^^^
+  |  Native JS members inside non-native objects must have an explicit name in @JSGlobal
+-- Error: tests/neg-scalajs/native-load-spec-need-explicit-name.scala:10:2 ---------------------------------------------
+10 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  Native JS members inside non-native objects must have an explicit name in @JSGlobal

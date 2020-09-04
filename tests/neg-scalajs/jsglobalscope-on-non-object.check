@@ -1,0 +1,28 @@
+-- Error: tests/neg-scalajs/jsglobalscope-on-non-object.scala:5:0 ------------------------------------------------------
+5 |@JSGlobalScope // error
+  |^^^^^^^^^^^^^^
+  |@JSGlobalScope can only be used on native JS objects (with @js.native).
+-- Error: tests/neg-scalajs/jsglobalscope-on-non-object.scala:9:0 ------------------------------------------------------
+9 |@JSGlobalScope // error
+  |^^^^^^^^^^^^^^
+  |Traits may not have an @JSGlobalScope annotation.
+-- Error: tests/neg-scalajs/jsglobalscope-on-non-object.scala:14:2 -----------------------------------------------------
+14 |  @JSGlobalScope // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSGlobalScope can only be used on native JS objects (with @js.native).
+-- Error: tests/neg-scalajs/jsglobalscope-on-non-object.scala:18:2 -----------------------------------------------------
+18 |  @JSGlobalScope // error
+   |  ^^^^^^^^^^^^^^
+   |  Traits may not have an @JSGlobalScope annotation.
+-- Error: tests/neg-scalajs/jsglobalscope-on-non-object.scala:22:2 -----------------------------------------------------
+22 |  @JSGlobalScope // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSGlobalScope can only be used on native JS objects (with @js.native).
+-- Error: tests/neg-scalajs/jsglobalscope-on-non-object.scala:26:2 -----------------------------------------------------
+26 |  @JSGlobalScope // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSGlobalScope can only be used on native JS objects (with @js.native).
+-- Error: tests/neg-scalajs/jsglobalscope-on-non-object.scala:30:2 -----------------------------------------------------
+30 |  @JSGlobalScope // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSGlobalScope can only be used on native JS objects (with @js.native).

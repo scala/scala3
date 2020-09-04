@@ -1,0 +1,98 @@
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:10:16 ------------------------------------------------------
+10 |@JSGlobal(Names.a) // error
+   |          ^^^^^^^
+   |          The argument to @JSGlobal must be a literal string.
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:14:16 ------------------------------------------------------
+14 |@JSGlobal(Names.a) // error
+   |          ^^^^^^^
+   |          The argument to @JSGlobal must be a literal string.
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:20:7 -------------------------------------------------------
+18 |@js.native
+19 |@JSGlobal
+20 |class `not-a-valid-JS-identifier` extends js.Object // error
+   |^
+   |The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:24:7 -------------------------------------------------------
+22 |@js.native
+23 |@JSGlobal("not-a-valid-JS-identifier")
+24 |object B1 extends js.Object // error
+   |^
+   |The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:28:7 -------------------------------------------------------
+26 |@js.native
+27 |@JSGlobal("not-a-valid-JS-identifier.further")
+28 |object B2 extends js.Object // error
+   |^
+   |The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:36:7 -------------------------------------------------------
+34 |@js.native
+35 |@JSGlobal("")
+36 |object B4 extends js.Object // error
+   |^
+   |The name of a JS global variable must be a valid JS identifier (got '')
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:40:7 -------------------------------------------------------
+38 |@js.native
+39 |@JSGlobal(".tricky")
+40 |object B5 extends js.Object // error
+   |^
+   |The name of a JS global variable must be a valid JS identifier (got '')
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:45:42 ------------------------------------------------------
+45 |@JSImport("foo.js", "foo", globalFallback = Names.a) // error
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           The third argument to @JSImport, when present, must be a literal string.
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:50:7 -------------------------------------------------------
+48 |@js.native
+49 |@JSImport("foo.js", "foo", globalFallback = "not-a-valid-JS-identifier")
+50 |object C2 extends js.Object // error
+   |^
+   |The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:54:7 -------------------------------------------------------
+52 |@js.native
+53 |@JSImport("foo.js", "foo", globalFallback = "not-a-valid-JS-identifier.further")
+54 |object C3 extends js.Object // error
+   |^
+   |The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:62:7 -------------------------------------------------------
+60 |@js.native
+61 |@JSImport("foo.js", "foo", globalFallback = "")
+62 |object C5 extends js.Object // error
+   |^
+   |The name of a JS global variable must be a valid JS identifier (got '')
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:66:7 -------------------------------------------------------
+64 |@js.native
+65 |@JSImport("foo.js", "foo", globalFallback = ".tricky")
+66 |object C6 extends js.Object // error
+   |^
+   |The name of a JS global variable must be a valid JS identifier (got '')
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:70:16 ------------------------------------------------------
+70 |@JSImport(Names.a, JSImport.Namespace) // error
+   |          ^^^^^^^
+   |          The first argument to @JSImport must be a literal string.
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:74:16 ------------------------------------------------------
+74 |@JSImport(Names.a, "B2") // error
+   |          ^^^^^^^
+   |          The first argument to @JSImport must be a literal string.
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:78:22 ------------------------------------------------------
+78 |@JSImport("B3", Names.a) // error
+   |                ^^^^^^^
+   |                The second argument to @JSImport must be literal string or the JSImport.Namespace object.
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:82:16 ------------------------------------------------------
+82 |@JSImport(Names.a, JSImport.Namespace) // error
+   |          ^^^^^^^
+   |          The first argument to @JSImport must be a literal string.
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:86:16 ------------------------------------------------------
+86 |@JSImport(Names.a, "C2") // error
+   |          ^^^^^^^
+   |          The first argument to @JSImport must be a literal string.
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:90:22 ------------------------------------------------------
+90 |@JSImport("C3", Names.a) // error
+   |                ^^^^^^^
+   |                The second argument to @JSImport must be literal string or the JSImport.Namespace object.
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:94:16 ------------------------------------------------------
+94 |@JSImport(Names.a, Names.a) // error // error
+   |          ^^^^^^^
+   |          The first argument to @JSImport must be a literal string.
+-- Error: tests/neg-scalajs/native-load-spec-argument.scala:94:25 ------------------------------------------------------
+94 |@JSImport(Names.a, Names.a) // error // error
+   |                   ^^^^^^^
+   |                   The second argument to @JSImport must be literal string or the JSImport.Namespace object.

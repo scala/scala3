@@ -1,0 +1,4 @@
+-- Error: tests/neg-scalajs/abstract-local-js-class.scala:6:19 ---------------------------------------------------------
+6 |    abstract class AbstractLocalJSClass extends js.Object // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    Implementation restriction: local JS classes cannot be abstract

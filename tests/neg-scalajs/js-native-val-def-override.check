@@ -1,0 +1,30 @@
+-- Error: tests/neg-scalajs/js-native-val-def-override.scala:12:6 ------------------------------------------------------
+11 |  @js.native @JSGlobal("a")
+12 |  val a: Int = js.native // error
+   |  ^
+   |  An @js.native member cannot implement the inherited member AbstractParent.a
+-- Error: tests/neg-scalajs/js-native-val-def-override.scala:15:6 ------------------------------------------------------
+14 |  @js.native @JSGlobal("b")
+15 |  def b: Int = js.native // error
+   |  ^
+   |  An @js.native member cannot implement the inherited member AbstractParent.b
+-- Error: tests/neg-scalajs/js-native-val-def-override.scala:18:6 ------------------------------------------------------
+17 |  @js.native @JSGlobal("c")
+18 |  def c(x: Int): Int = js.native // error
+   |  ^
+   |  An @js.native member cannot implement the inherited member AbstractParent.c
+-- Error: tests/neg-scalajs/js-native-val-def-override.scala:29:15 -----------------------------------------------------
+28 |  @js.native @JSGlobal("a")
+29 |  override val a: Int = js.native // error
+   |  ^
+   |  An @js.native member cannot override the inherited member ConcreteParent.a
+-- Error: tests/neg-scalajs/js-native-val-def-override.scala:32:15 -----------------------------------------------------
+31 |  @js.native @JSGlobal("b")
+32 |  override def b: Int = js.native // error
+   |  ^
+   |  An @js.native member cannot override the inherited member ConcreteParent.b
+-- Error: tests/neg-scalajs/js-native-val-def-override.scala:35:15 -----------------------------------------------------
+34 |  @js.native @JSGlobal("c")
+35 |  override def c(x: Int): Int = js.native // error
+   |  ^
+   |  An @js.native member cannot override the inherited member ConcreteParent.c
