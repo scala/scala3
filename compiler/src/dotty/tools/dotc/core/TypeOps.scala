@@ -673,8 +673,8 @@ object TypeOps:
           tp // break cycles
 
         case tp: TypeRef if isBounds(tp.underlying) =>
-          val lo = this(tp.info.loBound)
-          val hi = this(tp.info.hiBound)
+          val lo = this(tp.info.loBound.subst(tp.symbol :: Nil, WildcardType :: Nil))
+          val hi = this(tp.info.hiBound.subst(tp.symbol :: Nil, WildcardType :: Nil))
           // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
           val exposed = expose(lo, hi)
           typr.println(s"$tp exposed to =====> $exposed")
