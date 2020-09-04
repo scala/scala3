@@ -33,7 +33,7 @@ object OverridingPairs {
      *  pair has already been treated in a parent class.
      *  This may be refined in subclasses. @see Bridges for a use case.
      */
-    protected def parents: Array[Symbol] = base.info.parents.toArray map (_.typeSymbol)
+    protected def parents: Array[Symbol] = base.info.parents.toArray.map(_.typeSymbol)
 
     /** Does `sym1` match `sym2` so that it qualifies as overriding.
      *  Types always match. Term symbols match if their membertypes
@@ -64,11 +64,12 @@ object OverridingPairs {
       decls
     }
 
-    private val subParents =
-      val subParents = MutableSymbolMap[BitSet]()
-      for (bc <- base.info.baseClasses)
-        subParents(bc) = BitSet(parents.indices.filter(parents(_).derivesFrom(bc)): _*)
-      subParents
+    private val subParents = MutableSymbolMap[BitSet]()
+    for bc <- base.info.baseClasses do
+      var bits = BitSet.empty
+      for i <- 0 until parents.length do
+        if parents(i).derivesFrom(bc) then bits += i
+      subParents(bc) = bits
 
     private def hasCommonParentAsSubclass(cls1: Symbol, cls2: Symbol): Boolean =
       (subParents(cls1) intersect subParents(cls2)).nonEmpty

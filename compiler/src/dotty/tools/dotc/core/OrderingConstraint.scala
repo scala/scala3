@@ -409,7 +409,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         if isRemovable(param.binder) then remove(param.binder)
         else updateEntry(this, param, replacement)
 
-      def removeParam(ps: List[TypeParamRef]) = ps.filter(param ne _)
+      def removeParam(ps: List[TypeParamRef]) = ps.filterConserve(param ne _)
 
       def replaceParam(tp: Type, atPoly: TypeLambda, atIdx: Int): Type =
         current.ensureNonCyclic(atPoly.paramRefs(atIdx), tp.substParam(param, replacement))

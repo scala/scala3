@@ -829,8 +829,8 @@ object Types {
      */
     final def possibleSamMethods(using Context): Seq[SingleDenotation] = {
       record("possibleSamMethods")
-      abstractTermMembers
-        .filterNot(m => m.symbol.matchingMember(defn.ObjectType).exists || m.symbol.isSuperAccessor)
+      abstractTermMembers.filterConserve(m =>
+        !m.symbol.matchingMember(defn.ObjectType).exists && !m.symbol.isSuperAccessor)
     }
 
     /** The set of abstract type members of this type. */

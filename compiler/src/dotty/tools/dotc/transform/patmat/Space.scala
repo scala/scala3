@@ -126,7 +126,7 @@ trait SpaceLogic {
       val set = spaces.map(simplify(_)).flatMap {
         case Or(ss) => ss
         case s => Seq(s)
-      } filter (_ != Empty)
+      }.filterConserve(_ != Empty)
 
       if (set.isEmpty) Empty
       else if (set.size == 1) set.toList(0)

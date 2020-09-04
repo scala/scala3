@@ -977,7 +977,7 @@ object Erasure {
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats0)
         else stats0
       val (stats2, finalCtx) = super.typedStats(stats1, exprOwner)
-      (stats2.filter(!_.isEmpty), finalCtx)
+      (stats2.filterConserve(!_.isEmpty), finalCtx)
     }
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =
