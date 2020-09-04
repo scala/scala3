@@ -18,3 +18,4 @@ test_script:
   # - cmd: sbt test
   # - cmd: sbt dotty-bootstrapped/test
   - cmd: sbt sjsJUnitTests/test
+  - cmd: sbt sjsCompilerTests/test

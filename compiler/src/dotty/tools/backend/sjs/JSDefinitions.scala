@@ -36,6 +36,8 @@ final class JSDefinitions()(using Context) {
     def JSPackage_constructorOf(using Context) = JSPackage_constructorOfR.symbol
     @threadUnsafe lazy val JSPackage_nativeR = ScalaJSJSPackageClass.requiredMethodRef("native")
     def JSPackage_native(using Context) = JSPackage_nativeR.symbol
+    @threadUnsafe lazy val JSPackage_undefinedR = ScalaJSJSPackageClass.requiredMethodRef("undefined")
+    def JSPackage_undefined(using Context) = JSPackage_undefinedR.symbol
 
   @threadUnsafe lazy val JSNativeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.native")
   def JSNativeAnnot(using Context) = JSNativeAnnotType.symbol.asClass
@@ -63,6 +65,10 @@ final class JSDefinitions()(using Context) {
   @threadUnsafe lazy val JavaScriptExceptionType: TypeRef = requiredClassRef("scala.scalajs.js.JavaScriptException")
   def JavaScriptExceptionClass(using Context) = JavaScriptExceptionType.symbol.asClass
 
+  @threadUnsafe lazy val JSGlobalAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSGlobal")
+  def JSGlobalAnnot(using Context) = JSGlobalAnnotType.symbol.asClass
+  @threadUnsafe lazy val JSImportAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSImport")
+  def JSImportAnnot(using Context) = JSImportAnnotType.symbol.asClass
   @threadUnsafe lazy val JSGlobalScopeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSGlobalScope")
   def JSGlobalScopeAnnot(using Context) = JSGlobalScopeAnnotType.symbol.asClass
   @threadUnsafe lazy val JSNameAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSName")
@@ -73,20 +79,23 @@ final class JSDefinitions()(using Context) {
   def JSBracketAccessAnnot(using Context) = JSBracketAccessAnnotType.symbol.asClass
   @threadUnsafe lazy val JSBracketCallAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSBracketCall")
   def JSBracketCallAnnot(using Context) = JSBracketCallAnnotType.symbol.asClass
+  @threadUnsafe lazy val JSExportTopLevelAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportTopLevel")
+  def JSExportTopLevelAnnot(using Context) = JSExportTopLevelAnnotType.symbol.asClass
   @threadUnsafe lazy val JSExportAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExport")
   def JSExportAnnot(using Context) = JSExportAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSExportDescendentObjectsAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportDescendentObjects")
-  def JSExportDescendentObjectsAnnot(using Context) = JSExportDescendentObjectsAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSExportDescendentClassesAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportDescendentClasses")
-  def JSExportDescendentClassesAnnot(using Context) = JSExportDescendentClassesAnnotType.symbol.asClass
+  @threadUnsafe lazy val JSExportStaticAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportStatic")
+  def JSExportStaticAnnot(using Context) = JSExportStaticAnnotType.symbol.asClass
   @threadUnsafe lazy val JSExportAllAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportAll")
   def JSExportAllAnnot(using Context) = JSExportAllAnnotType.symbol.asClass
-  @threadUnsafe lazy val JSExportNamedAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportNamed")
-  def JSExportNamedAnnot(using Context) = JSExportNamedAnnotType.symbol.asClass
-  @threadUnsafe lazy val RawJSTypeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.RawJSType")
-  def RawJSTypeAnnot(using Context) = RawJSTypeAnnotType.symbol.asClass
-  @threadUnsafe lazy val ExposedJSMemberAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.ExposedJSMember")
+  @threadUnsafe lazy val JSTypeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.internal.JSType")
+  def JSTypeAnnot(using Context) = JSTypeAnnotType.symbol.asClass
+  @threadUnsafe lazy val JSOptionalAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.internal.JSOptional")
+  def JSOptionalAnnot(using Context) = JSOptionalAnnotType.symbol.asClass
+  @threadUnsafe lazy val ExposedJSMemberAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.internal.ExposedJSMember")
   def ExposedJSMemberAnnot(using Context) = ExposedJSMemberAnnotType.symbol.asClass
+
+  @threadUnsafe lazy val JSImportNamespaceModuleRef = requiredModuleRef("scala.scalajs.js.annotation.JSImport.Namespace")
+  def JSImportNamespaceModule(using Context) = JSImportNamespaceModuleRef.symbol
 
   @threadUnsafe lazy val JSAnyModuleRef = requiredModuleRef("scala.scalajs.js.Any")
   def JSAnyModule(using Context) = JSAnyModuleRef.symbol

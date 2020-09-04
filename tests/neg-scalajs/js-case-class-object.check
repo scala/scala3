@@ -1,0 +1,18 @@
+-- Error: tests/neg-scalajs/js-case-class-object.scala:5:11 ------------------------------------------------------------
+4 |@js.native @JSGlobal
+5 |case class A1(x: Int) extends js.Object // error
+  |^
+  |Classes and objects extending js.Any may not have a case modifier
+-- Error: tests/neg-scalajs/js-case-class-object.scala:8:12 ------------------------------------------------------------
+7 |@js.native @JSGlobal
+8 |case object A2 extends js.Object // error
+  |^
+  |Classes and objects extending js.Any may not have a case modifier
+-- Error: tests/neg-scalajs/js-case-class-object.scala:10:11 -----------------------------------------------------------
+10 |case class B1(x: Int) extends js.Object // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Classes and objects extending js.Any may not have a case modifier
+-- Error: tests/neg-scalajs/js-case-class-object.scala:12:12 -----------------------------------------------------------
+12 |case object B2 extends js.Object // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Classes and objects extending js.Any may not have a case modifier

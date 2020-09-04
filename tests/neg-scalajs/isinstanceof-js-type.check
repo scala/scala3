@@ -1,0 +1,8 @@
+-- Error: tests/neg-scalajs/isinstanceof-js-type.scala:11:18 -----------------------------------------------------------
+11 |    x.isInstanceOf[NativeJSTrait] // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    isInstanceOf[NativeJSTrait] not supported because it is a JS trait
+-- Error: tests/neg-scalajs/isinstanceof-js-type.scala:12:18 -----------------------------------------------------------
+12 |    x.isInstanceOf[NonNativeJSTrait] // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    isInstanceOf[NonNativeJSTrait] not supported because it is a JS trait

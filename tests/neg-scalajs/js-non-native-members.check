@@ -1,0 +1,26 @@
+-- Error: tests/neg-scalajs/js-non-native-members.scala:5:6 ------------------------------------------------------------
+5 |  def apply(arg: Int): Int = arg // error
+  |      ^
+  |      A non-native JS class cannot declare a method named `apply` without `@JSName`
+-- Error: tests/neg-scalajs/js-non-native-members.scala:8:6 ------------------------------------------------------------
+7 |  @JSBracketAccess
+8 |  def foo(index: Int, arg: Int): Int = arg // error
+  |  ^
+  |  @JSBracketAccess is not allowed in non-native JS classes
+-- Error: tests/neg-scalajs/js-non-native-members.scala:11:6 -----------------------------------------------------------
+10 |  @JSBracketCall
+11 |  def foo(m: String, arg: Int): Int = arg // error
+   |  ^
+   |  @JSBracketCall is not allowed in non-native JS classes
+-- Error: tests/neg-scalajs/js-non-native-members.scala:15:6 -----------------------------------------------------------
+15 |  def apply: Int = 42 // error
+   |      ^
+   |A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
+-- Error: tests/neg-scalajs/js-non-native-members.scala:24:6 -----------------------------------------------------------
+24 |  val apply: Int = 42 // error
+   |      ^
+   |A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
+-- Error: tests/neg-scalajs/js-non-native-members.scala:33:6 -----------------------------------------------------------
+33 |  var apply: Int = 42 // error
+   |      ^
+   |A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")

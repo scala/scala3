@@ -1,0 +1,20 @@
+-- Error: tests/neg-scalajs/native-load-spec-on-trait.scala:5:0 --------------------------------------------------------
+5 |@JSGlobal // error
+  |^^^^^^^^^
+  |Traits may not have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-on-trait.scala:9:1 --------------------------------------------------------
+9 |@JSGlobal("A2") // error
+  |^^^^^^^^^^^^^^^
+  |Traits may not have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-on-trait.scala:13:1 -------------------------------------------------------
+13 |@JSImport("foo.js", "A3") // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Traits may not have an @JSImport annotation.
+-- Error: tests/neg-scalajs/native-load-spec-on-trait.scala:17:1 -------------------------------------------------------
+17 |@JSImport("foo.js", "A4", globalFallback = "A4") // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Traits may not have an @JSImport annotation.
+-- Error: tests/neg-scalajs/native-load-spec-on-trait.scala:21:0 -------------------------------------------------------
+21 |@JSGlobalScope // error
+   |^^^^^^^^^^^^^^
+   |Traits may not have an @JSGlobalScope annotation.

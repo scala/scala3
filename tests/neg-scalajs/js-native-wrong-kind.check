@@ -1,0 +1,24 @@
+-- Error: tests/neg-scalajs/js-native-wrong-kind.scala:7:2 -------------------------------------------------------------
+7 |  @js.native @JSGlobal("foo") // error
+  |  ^^^^^^^^^^
+  |  @js.native is not allowed on vars, lazy vals and setter defs
+-- Error: tests/neg-scalajs/js-native-wrong-kind.scala:9:2 -------------------------------------------------------------
+9 |  @js.native @JSGlobal("bar") // error
+  |  ^^^^^^^^^^
+  |  @js.native is not allowed on vars, lazy vals and setter defs
+-- Error: tests/neg-scalajs/js-native-wrong-kind.scala:11:2 ------------------------------------------------------------
+11 |  @js.native @JSGlobal("goo") // error
+   |  ^^^^^^^^^^
+   |  @js.native is not allowed on vars, lazy vals and setter defs
+-- Error: tests/neg-scalajs/js-native-wrong-kind.scala:13:2 ------------------------------------------------------------
+13 |  @js.native @JSGlobal("hoo") // error
+   |  ^^^^^^^^^^
+   |  @js.native is not allowed on vars, lazy vals and setter defs
+-- Error: tests/neg-scalajs/js-native-wrong-kind.scala:18:2 ------------------------------------------------------------
+18 |  @js.native @JSGlobal("foo") // error
+   |  ^^^^^^^^^^
+   |  @js.native is not allowed on vars, lazy vals and setter defs
+-- Error: tests/neg-scalajs/js-native-wrong-kind.scala:23:2 ------------------------------------------------------------
+23 |  @js.native @JSGlobal("foo") // error
+   |  ^^^^^^^^^^
+   |  @js.native is not allowed on vars, lazy vals and setter defs

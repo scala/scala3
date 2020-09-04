@@ -31,6 +31,9 @@ abstract class Platform {
   /** The various ways a boxed primitive might materialize at runtime. */
   def isMaybeBoxed(sym: ClassSymbol)(using Context): Boolean
 
+  /** Is the given class symbol eligible for Java serialization-specific methods? */
+  def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean
+
   /** Create a new class loader to load class file `bin` */
   def newClassLoader(bin: AbstractFile)(using Context): SymbolLoader
 
@@ -44,4 +47,3 @@ abstract class Platform {
       case _ => false
     }
 }
-

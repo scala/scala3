@@ -1,0 +1,32 @@
+-- Error: tests/neg-scalajs/js-trait-members.scala:5:6 -----------------------------------------------------------------
+5 |  val a1: js.UndefOr[Int] = 5 // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Members of non-native JS traits must either be abstract, or their right-hand-side must be `js.undefined`.
+-- Error: tests/neg-scalajs/js-trait-members.scala:6:6 -----------------------------------------------------------------
+6 |  val a2: Int = 5 // error
+  |  ^^^^^^^^^^^^^^^
+  |  Members of non-native JS traits must either be abstract, or their right-hand-side must be `js.undefined`.
+-- Error: tests/neg-scalajs/js-trait-members.scala:8:6 -----------------------------------------------------------------
+8 |  def b1: js.UndefOr[Int] = 5 // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Members of non-native JS traits must either be abstract, or their right-hand-side must be `js.undefined`.
+-- Error: tests/neg-scalajs/js-trait-members.scala:9:6 -----------------------------------------------------------------
+9 |  def b2: Int = 5 // error
+  |  ^^^^^^^^^^^^^^^
+  |  Members of non-native JS traits must either be abstract, or their right-hand-side must be `js.undefined`.
+-- Error: tests/neg-scalajs/js-trait-members.scala:11:6 ----------------------------------------------------------------
+11 |  var c1: js.UndefOr[Int] = 5 // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Members of non-native JS traits must either be abstract, or their right-hand-side must be `js.undefined`.
+-- Error: tests/neg-scalajs/js-trait-members.scala:12:6 ----------------------------------------------------------------
+12 |  var c2: Int = 5 // error
+   |  ^^^^^^^^^^^^^^^
+   |  Members of non-native JS traits must either be abstract, or their right-hand-side must be `js.undefined`.
+-- Error: tests/neg-scalajs/js-trait-members.scala:14:24 ---------------------------------------------------------------
+14 |  def d1(x: Int): Int = x + 1 // error
+   |                        ^^^^^
+   |                        In non-native JS traits, defs with parentheses must be abstract.
+-- Error: tests/neg-scalajs/js-trait-members.scala:15:23 ---------------------------------------------------------------
+15 |  def d2[A](x: A): A = x // error
+   |                       ^
+   |                       In non-native JS traits, defs with parentheses must be abstract.
