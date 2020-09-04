@@ -22,7 +22,7 @@ object Settings {
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
 
   class SettingsState(initialValues: Seq[Any]) {
-    private var values = ArrayBuffer(initialValues: _*)
+    private val values = ArrayBuffer(initialValues: _*)
     private var _wasRead: Boolean = false
 
     override def toString: String = s"SettingsState(values: ${values.toList})"
@@ -89,26 +89,26 @@ object Settings {
     def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
 
     def legalChoices: String =
-      if (choices.isEmpty) ""
-      else choices match {
-        case r: Range => s"${r.head}..${r.last}"
-        case xs: List[?] => xs.mkString(", ")
+      choices match {
+        case xs if xs.isEmpty => ""
+        case r: Range         => s"${r.head}..${r.last}"
+        case xs: List[?]      => xs.toString
       }
 
     def isLegal(arg: Any): Boolean =
-      if (choices.isEmpty)
-        arg match {
-          case _: T => true
-          case _ => false
-        }
-      else choices match {
+      choices match {
+        case xs if xs.isEmpty =>
+          arg match {
+            case _: T => true
+            case _ => false
+          }
         case r: Range =>
           arg match {
             case x: Int => r.head <= x && x <= r.last
             case _ => false
           }
         case xs: List[?] =>
-          xs contains arg
+          xs.contains(arg)
       }
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
