@@ -84,7 +84,9 @@ object Test {
     val out = java.nio.file.Paths.get("out/interpreted")
     if (!java.nio.file.Files.exists(out))
       java.nio.file.Files.createDirectory(out)
-    dotty.tools.dotc.Main.process(Array("-classpath", System.getProperty("java.class.path"), "-d", out.toString, "tests/run/" + testFileName), reproter)
+
+    val filePath = "tests" + File.separator + "run" + File.separator + testFileName
+    dotty.tools.dotc.Main.process(Array("-classpath", System.getProperty("java.class.path"), "-d", out.toString, filePath), reproter)
 
     val actualOutput = interpret(out.toString)("Test")
 
