@@ -113,9 +113,12 @@ class TyperState() {
    * isApplicableSafe but also for (e.g. erased-lubs.scala) as well as
    * many parts of dotty itself.
    */
-  def commit()(using Context): Unit = {
-    Stats.record("typerState.commit")
+  def commit()(using Context): Unit =
     assert(isCommittable)
+    uncheckedCommit()
+
+  def uncheckedCommit()(using Context): Unit = {
+    Stats.record("typerState.commit")
     val targetState = ctx.typerState
     if constraint ne targetState.constraint then
       Stats.record("typerState.commit.new constraint")

@@ -31,12 +31,13 @@ object Inferencing {
    *  but only if the overall result of `isFullyDefined` is `true`.
    *  Variables that are successfully minimized do not count as uninstantiated.
    */
-  def isFullyDefined(tp: Type, force: ForceDegree.Value)(using Context): Boolean = {
-    val nestedCtx = ctx.fresh.setNewTyperState()
-    val result = new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
-    if (result) nestedCtx.typerState.commit()
-    result
-  }
+  def isFullyDefined(tp: Type, force: ForceDegree.Value)(using Context): Boolean =
+    val current = ctx
+    explore {
+      val result = IsFullyDefinedAccumulator(force).process(tp)
+      if result then ctx.typerState.uncheckedCommit()(using current)
+      result
+    }
 
   /** The fully defined type, where all type variables are forced.
    *  Throws an error if type contains wildcards.
