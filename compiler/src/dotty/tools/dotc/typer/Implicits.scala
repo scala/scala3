@@ -1205,7 +1205,7 @@ trait Implicits:
                   case retained: SearchSuccess =>
                     val newPending =
                       if (retained eq found) || remaining.isEmpty then remaining
-                      else remaining.filter(cand =>
+                      else remaining.filterConserve(cand =>
                         compareCandidate(retained, cand.ref, cand.level) <= 0)
                     rank(newPending, retained, rfailures)
                   case fail: SearchFailure =>

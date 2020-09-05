@@ -1832,7 +1832,7 @@ trait Applications extends Compatibility {
         }
 
         def narrowBySize(alts: List[TermRef]): List[TermRef] =
-          alts.filter(sizeFits(_))
+          alts.filterConserve(sizeFits(_))
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] =
           val normArgs = args.mapWithIndexConserve(normArg(alts, _, _))
@@ -1843,11 +1843,11 @@ trait Applications extends Compatibility {
             alts
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] = {
-          val alts2 = alts.filter(alt =>
+          val alts2 = alts.filterConserve(alt =>
             isDirectlyApplicableMethodRef(alt, args, resultType)
           )
           if (alts2.isEmpty && !ctx.isAfterTyper)
-            alts.filter(alt =>
+            alts.filterConserve(alt =>
               isApplicableMethodRef(alt, args, resultType, keepConstraint = false)
             )
           else

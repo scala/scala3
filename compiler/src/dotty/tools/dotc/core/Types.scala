@@ -829,8 +829,8 @@ object Types {
      */
     final def possibleSamMethods(using Context): Seq[SingleDenotation] = {
       record("possibleSamMethods")
-      abstractTermMembers
-        .filterNot(m => m.symbol.matchingMember(defn.ObjectType).exists || m.symbol.isSuperAccessor)
+      abstractTermMembers.toList.filterConserve(m =>
+        !m.symbol.matchingMember(defn.ObjectType).exists && !m.symbol.isSuperAccessor)
     }
 
     /** The set of abstract type members of this type. */
@@ -3180,7 +3180,12 @@ object Types {
     private var myParamRefs: List[ParamRefType] = null
 
     def paramRefs: List[ParamRefType] = {
-      if (myParamRefs == null) myParamRefs = paramNames.indices.toList.map(newParamRef)
+      if myParamRefs == null then
+        def recur(paramNames: List[ThisName], i: Int): List[ParamRefType] =
+          paramNames match
+            case _ :: rest => newParamRef(i) :: recur(rest, i + 1)
+            case _ => Nil
+        myParamRefs = recur(paramNames, 0)
       myParamRefs
     }
 

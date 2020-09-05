@@ -399,14 +399,20 @@ object Nullables:
         tree match
           case Block(stats, expr) =>
             var shadowed: Set[(Name, List[Span])] = Set.empty
-            for case (stat: ValDef) <- stats if stat.mods.is(Mutable) do
-              for prevSpans <- candidates.put(stat.name, Nil) do
-                shadowed += (stat.name -> prevSpans)
-              reachable += stat.name
+            for stat <- stats do
+              stat match
+                case stat: ValDef if stat.mods.is(Mutable) =>
+                  for prevSpans <- candidates.put(stat.name, Nil) do
+                    shadowed += (stat.name -> prevSpans)
+                  reachable += stat.name
+                case _ =>
             traverseChildren(tree)
-            for case (stat: ValDef) <- stats if stat.mods.is(Mutable) do
-              for spans <- candidates.remove(stat.name) do
-                tracked += (stat.nameSpan.start -> spans) // candidates that survive until here are tracked
+            for stat <- stats do
+              stat match
+                case stat: ValDef if stat.mods.is(Mutable) =>
+                  for spans <- candidates.remove(stat.name) do
+                    tracked += (stat.nameSpan.start -> spans) // candidates that survive until here are tracked
+                case _ =>
             candidates ++= shadowed
           case Assign(Ident(name), rhs) =>
             candidates.get(name) match

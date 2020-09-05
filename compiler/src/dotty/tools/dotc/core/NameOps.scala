@@ -3,9 +3,9 @@ package core
 
 import java.security.MessageDigest
 import scala.io.Codec
+import Int.MaxValue
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
-import scala.internal.Chars
-import Chars.isOperatorPart
+import scala.internal.Chars.{isOperatorPart, digit2int}
 import Definitions._
 import nme._
 import Decorators.concat
@@ -207,14 +207,18 @@ object NameOps {
 
     /** Parsed function arity for function with some specific prefix */
     private def functionArityFor(prefix: String): Int =
-      if (name.startsWith(prefix)) {
-        val suffix = name.toString.substring(prefix.length)
-        if (suffix.matches("\\d+"))
-          suffix.toInt
+      inline val MaxSafeInt = MaxValue / 10
+      val first = name.firstPart
+      def collectDigits(acc: Int, idx: Int): Int =
+        if idx == first.length then acc
         else
-          -1
-      }
-      else -1
+          val d = digit2int(first(idx), 10)
+          if d < 0 || acc > MaxSafeInt then -1
+          else collectDigits(acc * 10 + d, idx + 1)
+      if first.startsWith(prefix) && prefix.length < first.length then
+        collectDigits(0, prefix.length)
+      else
+        -1
 
     /** The name of the generic runtime operation corresponding to an array operation */
     def genericArrayOp: TermName = name match {

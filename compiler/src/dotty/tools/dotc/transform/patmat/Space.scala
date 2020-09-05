@@ -22,6 +22,7 @@ import reporting._
 import config.Printers.{exhaustivity => debug}
 import util.SrcPos
 import NullOpsDecorator._
+import collection.mutable
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
  *
@@ -123,10 +124,13 @@ trait SpaceLogic {
       else if (canDecompose(tp) && decompose(tp).isEmpty) Empty
       else sp
     case Or(spaces) =>
-      val set = spaces.map(simplify(_)).flatMap {
-        case Or(ss) => ss
-        case s => Seq(s)
-      } filter (_ != Empty)
+      val buf = new mutable.ListBuffer[Space]
+      def include(s: Space) = if s != Empty then buf += s
+      for space <- spaces do
+        simplify(space) match
+          case Or(ss) => ss.foreach(include)
+          case s => include(s)
+      val set = buf.toList
 
       if (set.isEmpty) Empty
       else if (set.size == 1) set.toList(0)

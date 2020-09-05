@@ -2501,7 +2501,6 @@ object TypeComparer {
     case _ => String.valueOf(res)
   }
 
-
   /** The approximation state indicates how the pair of types currently compared
    *  relates to the types compared originally.
    *   - `None`    : They are still the same types

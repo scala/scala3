@@ -70,7 +70,7 @@ object Decorators {
       NoSymbol
     }
 
-  final val MaxFilterRecursions = 1000
+  final val MaxFilterRecursions = 10
 
   /** Implements filterConserve, zipWithConserve methods
    *  on lists that avoid duplication of list nodes where feasible.
@@ -105,24 +105,38 @@ object Decorators {
     }
 
     /** Like `xs filter p` but returns list `xs` itself  - instead of a copy -
-     *  if `p` is true for all elements and `xs` is not longer
-     *  than `MaxFilterRecursions`.
+     *  if `p` is true for all elements.
      */
-    def filterConserve(p: T => Boolean): List[T] = {
-      def loop(xs: List[T], nrec: Int): List[T] = xs match {
-        case Nil => xs
+    def filterConserve(p: T => Boolean): List[T] =
+
+      def addAll(buf: ListBuffer[T], from: List[T], until: List[T]): ListBuffer[T] =
+        if from eq until then buf else addAll(buf += from.head, from.tail, until)
+
+      def loopWithBuffer(buf: ListBuffer[T], xs: List[T]): List[T] = xs match
         case x :: xs1 =>
-          if (nrec < MaxFilterRecursions) {
-            val ys1 = loop(xs1, nrec + 1)
-            if (p(x))
-              if (ys1 eq xs1) xs else x :: ys1
+          if p(x) then buf += x
+          loopWithBuffer(buf, xs1)
+        case nil => buf.toList
+
+      def loop(keep: List[T], explore: List[T], keepCount: Int, recCount: Int): List[T] =
+        explore match
+          case x :: rest =>
+            if p(x) then
+              loop(keep, rest, keepCount + 1, recCount)
+            else if keepCount <= 3 && recCount <= MaxFilterRecursions then
+              val rest1 = loop(rest, rest, 0, recCount + 1)
+              keepCount match
+                case 0 => rest1
+                case 1 => keep.head :: rest1
+                case 2 => keep.head :: keep.tail.head :: rest1
+                case 3 => val tl = keep.tail; keep.head :: tl.head :: tl.tail.head :: rest1
             else
-              ys1
-          }
-          else xs filter p
-      }
-      loop(xs, 0)
-    }
+              loopWithBuffer(addAll(new ListBuffer[T], keep, explore), rest)
+          case nil =>
+            keep
+
+      loop(xs, xs, 0, 0)
+    end filterConserve
 
     /** Like `xs.lazyZip(ys).map(f)`, but returns list `xs` itself
      *  - instead of a copy - if function `f` maps all elements of

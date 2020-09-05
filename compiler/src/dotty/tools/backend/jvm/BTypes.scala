@@ -58,7 +58,7 @@ abstract class BTypes {
       case DOUBLE => "D"
       case ClassBType(internalName) => "L" + internalName + ";"
       case ArrayBType(component)    => "[" + component
-      case MethodBType(args, res)   => "(" + args.mkString + ")" + res
+      case MethodBType(args, res)   => args.mkString("(", "", ")" + res)
     }
 
     /**
