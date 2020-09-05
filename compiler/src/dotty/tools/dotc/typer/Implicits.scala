@@ -239,10 +239,12 @@ object Implicits:
       if refs.isEmpty && (!considerExtension || companionRefs.isEmpty) then
         Nil
       else
-        val nestedCtx = ctx.fresh.addMode(Mode.TypevarsMissContext)
         val candidates = new mutable.ListBuffer[Candidate]
         def tryCandidate(extensionOnly: Boolean)(ref: ImplicitRef) =
-          var ckind = explore(candidateKind(ref.underlyingRef))(using nestedCtx)
+          var ckind = exploreInFreshCtx { (using ctx: FreshContext) =>
+            ctx.setMode(ctx.mode | Mode.TypevarsMissContext)
+            candidateKind(ref.underlyingRef)
+          }
           if extensionOnly then ckind &= Candidate.Extension
           if ckind != Candidate.None then
             candidates += Candidate(ref, ckind, level)

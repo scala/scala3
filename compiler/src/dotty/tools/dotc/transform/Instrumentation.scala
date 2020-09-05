@@ -29,17 +29,17 @@ class Instrumentation extends MiniPhase { thisPhase =>
     ctx.settings.Yinstrument.value
 
   private val collectionNamesOfInterest = List(
-    "map", "flatMap", "filter", "filterNot", "withFilter", "collect", "flatten", "foldLeft", "foldRight", "take",
-    "reverse", "zip", "++", ":::", ":+", "distinct", "dropRight", "takeRight", "groupBy", "groupMap", "init", "inits",
-    "interect", "mkString", "partition", "reverse_:::", "scanLeft", "scanRight",
-    "sortBy", "sortWith", "sorted", "span", "splitAt", "takeWhile", "transpose", "unzip", "unzip3",
+    "map", "flatMap", "filter", "filterNot", "withFilter", "flatten", "take",
+    "reverse", "zip", "++", ":::", ":+", "distinct", "dropRight", "takeRight", "groupBy", "groupMap",
+    "interect", "mkString", "partition", "reverse_:::",
+    "sortBy", "sortWith", "sorted", "splitAt", "takeWhile", "transpose", "unzip", "unzip3",
     "updated", "zipAll", "zipWithIndex",
     "mapConserve", "mapconserve", "filterConserve", "zipWithConserve", "mapWithIndexConserve"
   )
 
   private val namesOfInterest = collectionNamesOfInterest ++ List(
     "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",
-    "slice", "staticRef", "requiredClass")
+    "toList", "fresh")
 
   private var namesToRecord: Set[Name] = _
   private var collectionNamesToRecord: Set[Name] = _
