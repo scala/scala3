@@ -88,6 +88,8 @@ object Settings {
 
     def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
 
+    def isMultivalue: Boolean = implicitly[ClassTag[T]] == ListTag
+
     def legalChoices: String =
       choices match {
         case xs if xs.isEmpty => ""
@@ -114,12 +116,17 @@ object Settings {
     def tryToSet(state: ArgsSummary): ArgsSummary = {
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state
       def update(value: Any, args: List[String]) =
-        if (changed)
-          ArgsSummary(updateIn(sstate, value), args, errors, warnings :+ s"Flag $name set repeatedly")
-        else {
-          changed = true
-          ArgsSummary(updateIn(sstate, value), args, errors, warnings)
-        }
+        val (value1, twicely) =
+          if changed && isMultivalue then
+            val value0  = value.asInstanceOf[List[String]]
+            val current = valueIn(sstate).asInstanceOf[List[String]]
+            val newly   = current ++ value0.filterNot(current.contains)
+            (newly, value0.exists(current.contains))
+          else
+            (value, changed)
+        val dangers = if twicely then warnings :+ s"Flag $name set repeatedly" else warnings
+        changed = true
+        ArgsSummary(updateIn(sstate, value1), args, errors, dangers)
       def fail(msg: String, args: List[String]) =
         ArgsSummary(sstate, args, errors :+ msg, warnings)
       def missingArg =
@@ -226,7 +233,7 @@ object Settings {
      *
      *  to get their arguments.
      */
-    protected def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary = {
+    protected[config] def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary = {
       def stateWithArgs(args: List[String]) = ArgsSummary(state.sstate, args, state.errors, state.warnings)
       state.arguments match {
         case Nil =>
