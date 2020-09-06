@@ -22,9 +22,12 @@ object Bench extends Driver:
   override def doCompile(compiler: Compiler, fileNames: List[String])(using Context): Reporter =
     times = new Array[Int](numRuns)
     var reporter: Reporter = emptyReporter
+    val stats = ctx.settings.YdetailedStats.value
     for i <- 0 until numRuns do
       val start = System.nanoTime()
-      reporter = super.doCompile(compiler, fileNames)
+      reporter = inContext(ctx.fresh.setSetting(ctx.settings.YdetailedStats, stats && i == numRuns - 1)) {
+        super.doCompile(compiler, fileNames)
+      }
       times(i) = ((System.nanoTime - start) / 1000000).toInt
       println(s"time elapsed: ${times(i)}ms")
       if ctx.settings.Xprompt.value then
@@ -33,11 +36,10 @@ object Bench extends Driver:
         println()
     reporter
 
-  def extractNumArg(args: Array[String], name: String, default: Int = 1): (Int, Array[String]) = {
-    val pos = args indexOf name
-    if (pos < 0) (default, args)
-    else (args(pos + 1).toInt, (args take pos) ++ (args drop (pos + 2)))
-  }
+  def extractNumArg(args: Array[String], name: String, default: Int = 1): (Int, Array[String]) =
+    val pos = args.indexOf(name)
+    if pos < 0 then (default, args)
+    else (args(pos + 1).toInt, args.take(pos) ++ args.drop(pos + 2))
 
   def reportTimes() =
     val best = times.sorted
