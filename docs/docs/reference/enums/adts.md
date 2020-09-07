@@ -78,6 +78,43 @@ object Option {
 }
 ```
 
+### Parameter Variance of Enums
+
+By default, parameterized cases of enums with type parameters will copy the type parameters of their parent, along
+with any variance notations. As usual, it is important to use type parameters carefully when they are variant, as shown
+below:
+
+The following `View` enum has a contravariant type parameter `T` and a single case `Refl`, representing a function
+mapping a type `T` to itself:
+```scala
+enum View[-T]:
+  case Refl(f: T => T)
+```
+The definition of `Refl` is incorrect, as it uses contravariant type `T` in the covariant result position of a
+function type, leading to the following error:
+```scala
+-- Error: View.scala:2:12 --------
+2 |  case Refl(f: T => T)
+  |            ^^^^^^^^^
+  |contravariant type T occurs in covariant position in type T => T of value f
+  |enum case class Refl requires explicit declaration of type T to resolve this issue.
+```
+Because `Refl` does not declare explicit parameters, it looks to the compiler like the following:
+```scala
+enum View[-T]:
+  case Refl[/*synthetic*/-T1](f: T1 => T1) extends View[T1]
+```
+
+The compiler has inferred for `Refl` the contravariant type parameter `T1`, following `T` in `View`.
+We can now clearly see that `Refl` needs to declare its own type parameters to satisfy the variance condition,
+and can remedy the error by the following change to `Refl`:
+
+```diff
+enum View[-T]:
+-  case Refl(f: T => T)
++  case Refl[T](f: T => T) extends View[T]
+```
+
 Enumerations and ADTs have been presented as two different
 concepts. But since they share the same syntactic construct, they can
 be seen simply as two ends of a spectrum and it is perfectly possible

@@ -168,8 +168,14 @@ class VarianceChecker(using Context) {
       case Some(VarianceError(tvar, required)) =>
         def msg =
           val enumAddendum =
-            if sym.owner.isAllOf(EnumCase) && sym.owner.isClass then
-              i"\nenum case ${sym.owner} may require explicit type parameters to resolve this issue"
+            val towner = tvar.owner
+            if towner.isAllOf(EnumCase) && towner.isClass
+              && tvar.span.exists && towner.span.exists
+              && tvar.span.start < towner.span.start // implies that `tvar` was not user declared
+            then
+              val example =
+                "See an example at http://dotty.epfl.ch/docs/reference/enums/adts.html#parameter-variance-of-enums"
+              i"\nenum case ${towner} requires explicit declaration of $tvar to resolve this issue.\n$example"
             else
               ""
           i"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym$enumAddendum"
