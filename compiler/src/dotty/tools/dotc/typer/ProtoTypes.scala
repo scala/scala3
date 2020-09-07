@@ -130,6 +130,9 @@ object ProtoTypes {
       case that: IgnoredProto => ignored eq that.ignored
       case _ => false
 
+    // equals comes from case class; no need to redefine
+  end IgnoredProto
+  
   final class CachedIgnoredProto(ignored: Type) extends IgnoredProto(ignored)
 
   object IgnoredProto:
@@ -197,11 +200,16 @@ object ProtoTypes {
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = ta(x, memberProto)
 
     override def deepenProto(using Context): SelectionProto = derivedSelectionProto(name, memberProto.deepenProto, compat)
-
     override def computeHash(bs: Hashable.Binders): Int = {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
       addDelta(doHash(bs, name, memberProto), delta)
     }
+
+    override def equals(that: Any): Boolean = that match
+      case that: SelectionProto =>
+        (name eq that.name) && memberProto.equals(that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
+      case _ =>
+        false
 
     override def eql(that: Type): Boolean = that match {
       case that: SelectionProto =>
@@ -461,6 +469,7 @@ object ProtoTypes {
     override def eql(that: Type): Boolean = that match
       case that: ViewProto => (argType eq that.argType) && (resType eq that.resType)
       case _ => false
+    // equals comes from case class; no need to redefine
   }
 
   object ViewProto {
