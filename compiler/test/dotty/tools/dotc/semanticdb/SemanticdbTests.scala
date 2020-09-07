@@ -36,7 +36,7 @@ class SemanticdbTests:
   val metacExpectFile = rootSrc.resolve("metac.expect")
 
   @Category(Array(classOf[dotty.SlowTests]))
-  @Test def expectTests: Unit = runExpectTest(updateExpectFiles = false)
+  @Test def expectTests: Unit = if (!scala.util.Properties.isWin) runExpectTest(updateExpectFiles = false)
 
   def runExpectTest(updateExpectFiles: Boolean): Unit =
     val target = generateSemanticdb()

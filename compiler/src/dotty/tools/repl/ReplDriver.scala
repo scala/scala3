@@ -1,6 +1,7 @@
 package dotty.tools.repl
 
 import java.io.{File => JFile, PrintStream}
+import java.nio.charset.StandardCharsets
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -367,7 +368,7 @@ class ReplDriver(settings: Array[String],
     case Load(path) =>
       val file = new JFile(path)
       if (file.exists) {
-        val contents = Using(scala.io.Source.fromFile(file, "UTF-8"))(_.mkString).get
+        val contents = Using(scala.io.Source.fromFile(file, StandardCharsets.UTF_8.name))(_.mkString).get
         run(contents)
       }
       else {

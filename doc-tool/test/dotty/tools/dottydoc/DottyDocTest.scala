@@ -20,6 +20,7 @@ import io.Directory
 import org.junit.Assert.fail
 
 import java.io.{ BufferedWriter, OutputStreamWriter }
+import java.nio.charset.StandardCharsets
 
 trait DottyDocTest extends MessageRendering {
   dotty.tools.dotc.parsing.Scanners // initialize keywords
@@ -80,7 +81,7 @@ trait DottyDocTest extends MessageRendering {
 
   private def sourceFileFromString(name: String, contents: String): SourceFile = {
     val virtualFile = new dotty.tools.io.VirtualFile(name)
-    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8))
     writer.write(contents)
     writer.close()
     new SourceFile(virtualFile, scala.io.Codec.UTF8)

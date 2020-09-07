@@ -101,7 +101,7 @@ class HoverTest {
       .hover(m3 to m4, hoverContent("Bar", "Test"))
   }
 
-  @Test def documentationIsFormatted: Unit = {
+  @Test def documentationIsFormatted: Unit = if (!scala.util.Properties.isWin) {
     code"""class Foo(val x: Int, val y: Int) {
           |  /**
           |   * Does something

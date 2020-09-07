@@ -8,7 +8,7 @@ import util.HashMap
 import dotty.tools.tasty.{TastyReader, TastyBuffer}
 import TastyBuffer.Addr
 
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 
 class CommentUnpickler(reader: TastyReader) {
   import reader._
@@ -21,7 +21,7 @@ class CommentUnpickler(reader: TastyReader) {
       if (length > 0) {
         val bytes = readBytes(length)
         val position = new Span(readLongInt())
-        val rawComment = new String(bytes, Charset.forName("UTF-8"))
+        val rawComment = new String(bytes, StandardCharsets.UTF_8)
         comments(addr) = Comment(position, rawComment)
       }
     }

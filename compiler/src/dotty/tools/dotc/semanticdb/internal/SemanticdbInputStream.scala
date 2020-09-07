@@ -3,6 +3,8 @@ package dotty.tools.dotc.semanticdb.internal
 import java.io.IOException
 import java.io.InputStream
 import java.util.Arrays
+import java.nio.charset.StandardCharsets
+
 import SemanticdbInputStream._
 
 import scala.collection.mutable
@@ -434,7 +436,7 @@ class SemanticdbInputStream private (buffer: Array[Byte], input: InputStream) {
   def readString(): String = {
     val size: Int = readRawVarint32()
     if (size <= (bufferSize - bufferPos) && size > 0) {
-      val result: String = new String(buffer, bufferPos, size, Internal.UTF_8)
+      val result: String = new String(buffer, bufferPos, size, StandardCharsets.UTF_8)
       bufferPos += size
       return result
     }
@@ -442,7 +444,7 @@ class SemanticdbInputStream private (buffer: Array[Byte], input: InputStream) {
       return ""
     }
     else {
-      return new String(readRawBytesSlowPath(size), Internal.UTF_8)
+      return new String(readRawBytesSlowPath(size), StandardCharsets.UTF_8)
     }
   }
 

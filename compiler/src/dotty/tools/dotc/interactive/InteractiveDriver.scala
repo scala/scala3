@@ -6,6 +6,7 @@ import java.net.URI
 import java.io._
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.charset.StandardCharsets
 import java.util.zip._
 
 import scala.collection._
@@ -298,7 +299,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   private def toSource(uri: URI, sourceCode: String): SourceFile = {
     val path = Paths.get(uri)
     val virtualFile = new VirtualFile(path.getFileName.toString, path.toString)
-    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.name))
     writer.write(sourceCode)
     writer.close()
     new SourceFile(virtualFile, Codec.UTF8)

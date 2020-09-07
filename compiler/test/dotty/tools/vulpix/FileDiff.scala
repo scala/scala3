@@ -2,9 +2,12 @@ package dotty.tools.vulpix
 
 import scala.io.Source
 import scala.util.Using
+
 import java.io.File
 import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.{Files, Paths}
+import java.nio.charset.StandardCharsets
+
 
 object FileDiff {
   def diffMessage(expectFile: String, actualFile: String): String =
@@ -18,17 +21,26 @@ object FileDiff {
   def check(sourceTitle: String, outputLines: Seq[String], checkFile: String): Option[String] = {
     val checkLines =
       if (!(new File(checkFile)).exists) Nil
-      else Using(Source.fromFile(checkFile, "UTF-8"))(_.getLines().toList).get
+      else Using(Source.fromFile(checkFile, StandardCharsets.UTF_8.name))(_.getLines().toList).get
 
-    def linesMatch =
-      outputLines.length == checkLines.length &&
-      outputLines.lazyZip(checkLines).forall(_ == _)
-
-    if (!linesMatch) Some(
+    if (!matches(outputLines, checkLines)) Some(
       s"""|Output from '$sourceTitle' did not match check file. Actual output:
           |${outputLines.mkString(EOL)}
           |""".stripMargin + "\n")
     else None
+  }
+
+  def matches(actual: String, expect: String): Boolean = {
+      val actual1 = actual.stripLineEnd
+      val expect1  = expect.stripLineEnd
+
+      // handle check file path mismatch on windows
+      actual1 == expect1 || File.separatorChar == '\\' && actual1.replace('\\', '/') == expect1
+  }
+
+  def matches(actual: Seq[String], expect: Seq[String]): Boolean = {
+    actual.length == expect.length
+    && actual.lazyZip(expect).forall(matches)
   }
 
   def dump(path: String, content: Seq[String]): Unit = {

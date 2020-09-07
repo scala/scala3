@@ -129,7 +129,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     )
   }.checkRuns()
 
-  @Test def runWithCompiler: Unit = {
+  @Test def runWithCompiler: Unit = if (!scala.util.Properties.isWin) {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),

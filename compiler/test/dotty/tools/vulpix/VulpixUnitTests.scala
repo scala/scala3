@@ -65,7 +65,8 @@ class VulpixUnitTests extends ParallelTesting {
     compileFile("tests/vulpix-tests/unit/runDiffOutput1.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runStackOverflow: Unit =
-    compileFile("tests/vulpix-tests/unit/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
+    if (!scala.util.Properties.isWin)
+      compileFile("tests/vulpix-tests/unit/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runOutRedirects: Unit =
     compileFile("tests/vulpix-tests/unit/i2147.scala", defaultOptions).expectFailure.checkRuns()
@@ -90,15 +91,16 @@ class VulpixUnitTests extends ParallelTesting {
       case ae: AssertionError => assertTrue(ae.getMessage.contains("java compilation failed"))
     }
 
-  @Test def runTimeout: Unit = {
-    val fileName = s"tests${JFile.separatorChar}vulpix-tests${JFile.separatorChar}unit${JFile.separatorChar}timeout.scala"
+  @Test def runTimeout: Unit = if (!scala.util.Properties.isWin) {
+    val fileName = s"tests/vulpix-tests/unit/timeout.scala"
     try {
       compileFile(fileName, defaultOptions).checkRuns()
       fail()
     } catch {
       case ae: AssertionError =>
-        assertEquals(s"Run test failed, but should not, reasons:\n\n  - encountered 1 test failures(s)  - test '${fileName}' timed out",
-          ae.getMessage)
+        val expect = """(?m).*test '.+' timed out.*"""
+        val actual = ae.getMessage.linesIterator.toList.last
+        assert(actual.matches(expect), "actual = " + actual)
     }
   }
 }

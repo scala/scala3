@@ -4,6 +4,7 @@ package vulpix
 
 import java.io.{ File => JFile, InputStreamReader, BufferedReader, PrintStream }
 import java.nio.file.Paths
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.TimeoutException
 
@@ -117,7 +118,7 @@ trait RunnerOrchestration {
           val sb = new StringBuilder
 
           if (childStdout eq null)
-            childStdout = new BufferedReader(new InputStreamReader(process.getInputStream, "UTF-8"))
+            childStdout = new BufferedReader(new InputStreamReader(process.getInputStream, StandardCharsets.UTF_8))
 
           var childOutput: String = childStdout.readLine()
 

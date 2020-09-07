@@ -2,19 +2,21 @@ package dotty.tools
 package dotc
 package util
 
-import scala.collection.mutable.ArrayBuffer
 import dotty.tools.io._
-import java.util.regex.Pattern
-import java.io.IOException
-import scala.internal.Chars._
 import Spans._
-import scala.io.Codec
 import core.Contexts._
-import scala.annotation.internal.sharable
-import java.util.concurrent.atomic.AtomicInteger
-import scala.collection.mutable
 
+import scala.io.Codec
+import scala.internal.Chars._
+import scala.annotation.internal.sharable
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
+import java.io.IOException
+import java.nio.charset.StandardCharsets
 import java.util.Optional
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.regex.Pattern
 
 object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
@@ -212,7 +214,7 @@ object SourceFile {
   def fromId(id: Int): SourceFile = sourceOfChunk(id >> ChunkSizeLog)
 
   def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
-    val src = new SourceFile(new VirtualFile(name, content.getBytes), scala.io.Codec.UTF8)
+    val src = new SourceFile(new VirtualFile(name, content.getBytes(StandardCharsets.UTF_8)), scala.io.Codec.UTF8)
     src._maybeInComplete = maybeIncomplete
     src
 

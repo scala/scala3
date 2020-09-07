@@ -12,25 +12,25 @@ import Denotations.Denotation
 import typer.Typer
 import typer.ImportInfo._
 import Decorators._
-import io.{AbstractFile, PlainFile}
+import io.{AbstractFile, PlainFile, VirtualFile}
 import Phases.unfusedPhases
 
-import scala.io.Codec
 import util._
 import reporting.Reporter
 import rewrites.Rewrites
-import java.io.{BufferedWriter, OutputStreamWriter}
 
 import profile.Profiler
 import printing.XprintMode
 import parsing.Parsers.Parser
 import parsing.JavaParsers.JavaParser
 import typer.ImplicitRunInfo
-import collection.mutable
 
-import dotty.tools.io.VirtualFile
+import java.io.{BufferedWriter, OutputStreamWriter}
+import java.nio.charset.StandardCharsets
 
+import scala.collection.mutable
 import scala.util.control.NonFatal
+import scala.io.Codec
 
 /** A compiler run. Exports various methods to compile source files */
 class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
@@ -274,7 +274,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       val uuid = java.util.UUID.randomUUID().toString
       val ext = if (isJava) ".java" else ".scala"
       val virtualFile = new VirtualFile(s"compileFromString-$uuid.$ext")
-      val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8")) // buffering is still advised by javadoc
+      val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.name)) // buffering is still advised by javadoc
       writer.write(source)
       writer.close()
       new SourceFile(virtualFile, Codec.UTF8)
