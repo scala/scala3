@@ -4698,8 +4698,10 @@ object Types {
 
     // equals comes from case class; no matching override is needed
 
-    override def computeHash(bs: Binders): Int = doHash(bs, annot, parent)
-    override def hashIsStable: Boolean = parent.hashIsStable
+    override def computeHash(bs: Binders): Int =
+      doHash(bs, System.identityHashCode(annot), parent)
+    override def hashIsStable: Boolean =
+      parent.hashIsStable
 
     override def eql(that: Type): Boolean = that match
       case that: AnnotatedType => (parent eq that.parent) && (annot eq that.annot)
