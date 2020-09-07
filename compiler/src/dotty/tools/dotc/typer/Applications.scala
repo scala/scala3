@@ -1647,7 +1647,7 @@ trait Applications extends Compatibility {
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
    *  if the first finds no eligible candidates, with implicits and SAM conversions enabled.
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
+  def resolveOverloaded(alts: List[TermRef], pt: Type)(using Context): List[TermRef] = util.Stats.trackTime("resolveOver ms") {
     record("resolveOverloaded")
 
     /** Is `alt` a method or polytype whose result type after the first value parameter
@@ -1745,6 +1745,7 @@ trait Applications extends Compatibility {
       resolve(expanded).map(retract)
     }
     else resolve(alts)
+  }
   end resolveOverloaded
 
   /** This private version of `resolveOverloaded` does the bulk of the work of

@@ -29,13 +29,12 @@ import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
 import util.Spans._
 import util.common._
-import util.{Property, SimpleIdentityMap, SrcPos}
+import util.{Property, SimpleIdentityMap, SrcPos, Stats}
 import Applications.{ExtMethodApply, IntegratedTypeArgs, productSelectorTypes, wrapDefs}
 
 import collection.mutable
 import annotation.tailrec
 import Implicits._
-import util.Stats.record
 import config.Printers.{gadts, typr, debug}
 import config.Feature._
 import config.SourceVersion._
@@ -434,7 +433,7 @@ class Typer extends Namer
    *                   (3) Change pattern Idents id (but not wildcards) to id @ _
    */
   def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
-    record("typedIdent")
+    Stats.record("typedIdent")
     val name = tree.name
     def kind = if (name.isTermName) "" else "type "
     typr.println(s"typed ident $kind$name in ${ctx.owner}")
@@ -551,7 +550,7 @@ class Typer extends Namer
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
-    record("typedSelect")
+    Stats.record("typedSelect")
 
     def typeSelectOnTerm(using Context): Tree =
       typedSelect(tree, pt, typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)))
@@ -582,7 +581,7 @@ class Typer extends Namer
   }
 
   def typedThis(tree: untpd.This)(using Context): Tree = {
-    record("typedThis")
+    Stats.record("typedThis")
     assignType(tree)
   }
 
@@ -602,7 +601,7 @@ class Typer extends Namer
   def typedNumber(tree: untpd.Number, pt: Type)(using Context): Tree = {
     import scala.util.FromDigits._
     import untpd.NumberKind._
-    record("typedNumber")
+    Stats.record("typedNumber")
     val digits = tree.digits
     val target = pt.dealias
     def lit(value: Any) = Literal(Constant(value)).withSpan(tree.span)
@@ -2416,7 +2415,7 @@ class Typer extends Namer
    *                     at the present time
    */
   def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
-    record("typedUnadapted")
+    Stats.record("typedUnadapted")
     val xtree = expanded(initTree)
     xtree.removeAttachment(TypedAhead) match {
       case Some(ttree) => ttree
@@ -2578,8 +2577,8 @@ class Typer extends Namer
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
   def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
     trace(i"typing $tree, pt = $pt", typr, show = true) {
-      record(s"typed $getClass")
-      record("typed total")
+      Stats.record(s"typed $getClass")
+      Stats.record("typed total")
       if ctx.phase.isTyper then
         assertPositioned(tree)
       if tree.source != ctx.source && tree.source.exists then
@@ -2715,11 +2714,11 @@ class Typer extends Namer
     val nestedCtx = ctx.fresh.setNewTyperState()
     val result = op(using nestedCtx)
     if (nestedCtx.reporter.hasErrors && !nestedCtx.reporter.hasStickyErrors) {
-      record("tryEither.fallBack")
+      Stats.record("tryEither.fallBack")
       fallBack(result, nestedCtx.typerState)
     }
     else {
-      record("tryEither.commit")
+      Stats.record("tryEither.commit")
       nestedCtx.typerState.commit()
       result
     }
@@ -2916,7 +2915,7 @@ class Typer extends Namer
   def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean = true)(using Context): Tree =
     try
       trace(i"adapting $tree to $pt ${if (tryGadtHealing) "" else "(tryGadtHealing=false)" }\n", typr, show = true) {
-        record("adapt")
+        Stats.record("adapt")
         adapt1(tree, pt, locked, tryGadtHealing)
       }
     catch case ex: TypeError => errorTree(tree, ex, tree.srcPos.focus)
