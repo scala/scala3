@@ -527,6 +527,17 @@ import ast.tpd
            |but an uninitialized var definition.
            |Only fields can be left uninitialized in this manner; local variables
            |must be initialized.
+           |
+           |Another occurrence for this error is defining a val with self type.
+           |The ${hl("_")} can be replaced with ${hl("this")}.
+           |
+           |Example before:
+           |
+           |${hl("trait A { _: B => ... ")}
+           |
+           |Example after:
+           |
+           |${hl("trait A { this: B => ... ")}
            |"""
   }
 
