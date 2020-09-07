@@ -97,7 +97,7 @@ function type, leading to the following error:
 2 |  case Refl(f: T => T)
   |            ^^^^^^^^^
   |contravariant type T occurs in covariant position in type T => T of value f
-  |enum case class Refl requires explicit declaration of type T to resolve this issue.
+  |enum case Refl requires explicit declaration of type T to resolve this issue.
 ```
 Because `Refl` does not declare explicit parameters, it looks to the compiler like the following:
 ```scala
@@ -106,14 +106,16 @@ enum View[-T]:
 ```
 
 The compiler has inferred for `Refl` the contravariant type parameter `T1`, following `T` in `View`.
-We can now clearly see that `Refl` needs to declare its own type parameters to satisfy the variance condition,
+We can now clearly see that `Refl` needs to declare its own non-variant type parameter to correctly type `f`,
 and can remedy the error by the following change to `Refl`:
 
 ```diff
 enum View[-T]:
 -  case Refl(f: T => T)
-+  case Refl[T](f: T => T) extends View[T]
++  case Refl[U](f: U => U) extends View[U]
 ```
+Above, type `U` is chosen as the parameter for `Refl` to highlight that it has a different meaning to
+type `T` in `View`, but any name will do.
 
 Enumerations and ADTs have been presented as two different
 concepts. But since they share the same syntactic construct, they can

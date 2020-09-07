@@ -12,6 +12,7 @@ import util.SrcPos
 import config.Printers.variances
 import config.Feature.migrateTo3
 import reporting.trace
+import printing.Formatting.hl
 
 /** Provides `check` method to check that all top-level definitions
  *  in tree are variance correct. Does not recurse inside methods.
@@ -169,13 +170,10 @@ class VarianceChecker(using Context) {
         def msg =
           val enumAddendum =
             val towner = tvar.owner
-            if towner.isAllOf(EnumCase) && towner.isClass
-              && tvar.span.exists && towner.span.exists
-              && tvar.span.start < towner.span.start // implies that `tvar` was not user declared
-            then
+            if towner.isAllOf(EnumCase) && towner.isClass && tvar.is(Synthetic) then
               val example =
                 "See an example at http://dotty.epfl.ch/docs/reference/enums/adts.html#parameter-variance-of-enums"
-              i"\nenum case ${towner} requires explicit declaration of $tvar to resolve this issue.\n$example"
+              i"\n${hl("enum case")} ${towner.name} requires explicit declaration of $tvar to resolve this issue.\n$example"
             else
               ""
           i"${varianceLabel(tvar.flags)} $tvar occurs in ${varianceLabel(required)} position in type ${sym.info} of $sym$enumAddendum"

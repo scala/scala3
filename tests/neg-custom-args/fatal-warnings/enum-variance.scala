@@ -1,5 +1,5 @@
 enum View[-T]:
-  case Refl(f: T => T) // error: enum case class Refl requires explicit declaration of type T
+  case Refl(f: T => T) // error: enum case Refl requires explicit declaration of type T
 
 enum ExplicitView[-T]: // desugared version of View
   case Refl[-T](f: T => T) extends ExplicitView[T] // error: contravariant type T occurs in covariant position
