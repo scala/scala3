@@ -512,7 +512,7 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def Type_TypeTest(using ctx: Context): TypeTest[Type, Type]
 
-  def Type_apply(clazz: Class[_])(using ctx: Context): Type
+  def Type_ofClass(clazz: Class[_])(using ctx: Context): Type
 
   /** Is `self` type the same as `that` type?
    *  This is the case iff `Type_isSubType(self, that)` and `Type_isSubType(that, self)`.

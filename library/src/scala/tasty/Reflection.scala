@@ -1336,11 +1336,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   //   TYPES   //
   ///////////////
 
-  /** Returns the type (Type) of T */
-  def typeOf[T](using qtype: scala.quoted.Type[T], ctx: Context): Type =
-    qtype.asInstanceOf[scala.internal.quoted.Type[T]].typeTree.asInstanceOf[TypeTree].tpe
-
-
   // ----- Types ----------------------------------------------------
 
   given (using ctx: Context) as TypeTest[Type, Type] = reflectSelf.Type_TypeTest
@@ -1348,8 +1343,13 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   object Type:
 
-    def apply(clazz: Class[_])(using ctx: Context): Type =
-      reflectSelf.Type_apply(clazz)
+    /** Returns the type or kind (Type) of T */
+    def of[T <: AnyKind](using qtype: scala.quoted.Type[T], ctx: Context): Type =
+      qtype.asInstanceOf[scala.internal.quoted.Type[TypeTree]].typeTree.tpe
+
+    /** Returns the type or kind of the class of the type T */
+    def ofClass[T](using ct: scala.reflect.ClassTag[T]): Type =
+      reflectSelf.Type_ofClass(ct.runtimeClass)
 
     extension (self: Type):
 
@@ -1626,13 +1626,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   end MatchType
 
 
-  /**
-   * An accessor for `scala.internal.MatchCase[_,_]`, the representation of a `MatchType` case.
-   */
-  def MatchCaseType(using ctx: Context): Type = {
-    import scala.internal.MatchCase
-    Type(classOf[MatchCase[_,_]])
-  }
+  /** An accessor for `scala.internal.MatchCase[_,_]`, the representation of a `MatchType` case. */
+  def MatchCaseType(using ctx: Context): Type =
+    Type.ofClass[scala.internal.MatchCase[_,_]]
 
   given (using ctx: Context) as TypeTest[Type, ByNameType] = reflectSelf.ByNameType_TypeTest
   given ByNameTypeOps as ByNameType.type = ByNameType

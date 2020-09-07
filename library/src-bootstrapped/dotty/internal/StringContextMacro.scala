@@ -586,9 +586,9 @@ object StringContextMacro {
      */
     def checkTypeWithArgs(argument : (Type, Int), conversionChar : Char, partIndex : Int, flags : List[(Char, Int)]) = {
       val booleans = List(defn.BooleanType, defn.NullType)
-      val dates = List(defn.LongType, typeOf[java.util.Calendar], typeOf[java.util.Date])
-      val floatingPoints = List(defn.DoubleType, defn.FloatType, typeOf[java.math.BigDecimal])
-      val integral = List(defn.IntType, defn.LongType, defn.ShortType, defn.ByteType, typeOf[java.math.BigInteger])
+      val dates = List(defn.LongType, Type.ofClass[java.util.Calendar], Type.ofClass[java.util.Date])
+      val floatingPoints = List(defn.DoubleType, defn.FloatType, Type.ofClass[java.math.BigDecimal])
+      val integral = List(defn.IntType, defn.LongType, defn.ShortType, defn.ByteType, Type.ofClass[java.math.BigInteger])
       val character = List(defn.CharType, defn.ByteType, defn.ShortType, defn.IntType)
 
       val (argType, argIndex) = argument
@@ -597,9 +597,9 @@ object StringContextMacro {
         case 'd' | 'o' | 'x' | 'X' => {
           checkSubtype(argType, "Int", argIndex, integral : _*)
           if (conversionChar != 'd') {
-            val notAllowedFlagOnCondition = List(('+', !(argType <:< typeOf[java.math.BigInteger]), "only use '+' for BigInt conversions to o, x, X"),
-            (' ', !(argType <:< typeOf[java.math.BigInteger]), "only use ' ' for BigInt conversions to o, x, X"),
-            ('(', !(argType <:< typeOf[java.math.BigInteger]), "only use '(' for BigInt conversions to o, x, X"),
+            val notAllowedFlagOnCondition = List(('+', !(argType <:< Type.ofClass[java.math.BigInteger]), "only use '+' for BigInt conversions to o, x, X"),
+            (' ', !(argType <:< Type.ofClass[java.math.BigInteger]), "only use ' ' for BigInt conversions to o, x, X"),
+            ('(', !(argType <:< Type.ofClass[java.math.BigInteger]), "only use '(' for BigInt conversions to o, x, X"),
             (',', true, "',' only allowed for d conversion of integral types"))
             checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
           }
@@ -608,7 +608,7 @@ object StringContextMacro {
         case 't' | 'T' => checkSubtype(argType, "Date", argIndex, dates : _*)
         case 'b' | 'B' => checkSubtype(argType, "Boolean", argIndex, booleans : _*)
         case 'h' | 'H' | 'S' | 's' =>
-          if (!(argType <:< typeOf[java.util.Formattable]))
+          if (!(argType <:< Type.ofClass[java.util.Formattable]))
             for {flag <- flags ; if (flag._1 == '#')}
               reporter.argError("type mismatch;\n found   : " + argType.widen.show.stripPrefix("scala.Predef.").stripPrefix("java.lang.").stripPrefix("scala.") + "\n required: java.util.Formattable", argIndex)
         case 'n' | '%' =>

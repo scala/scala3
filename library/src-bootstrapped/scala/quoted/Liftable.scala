@@ -60,7 +60,7 @@ object Liftable {
   given ClassLiftable[T] as Liftable[Class[T]] = new Liftable[Class[T]] {
     def toExpr(x: Class[T]) = qctx ?=> {
       import qctx.tasty._
-      Ref(defn.Predef_classOf).appliedToType(Type(x)).seal.asInstanceOf[Expr[Class[T]]]
+      Ref(defn.Predef_classOf).appliedToType(Type.ofClass(using ClassTag(x))).seal.asInstanceOf[Expr[Class[T]]]
     }
   }
 

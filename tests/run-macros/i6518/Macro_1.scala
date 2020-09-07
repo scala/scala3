@@ -6,7 +6,7 @@ object Macros {
 
   private def testImpl(using qctx: QuoteContext) : Expr[String] = {
     import qctx.tasty._
-    val classSym = typeOf[Function1[_, _]].classSymbol.get
+    val classSym = Type.ofClass[Function1[_, _]].classSymbol.get
     classSym.classMethod("apply")
     classSym.classMethods
     classSym.method("apply")

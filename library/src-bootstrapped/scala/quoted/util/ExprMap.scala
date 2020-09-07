@@ -63,7 +63,7 @@ trait ExprMap {
         case Typed(expr, tpt) =>
           val tp = tpt.tpe match
             case AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "<repeated>"), List(tp0: Type)) =>
-              Type(classOf[Seq[_]]).appliedTo(tp0)
+              Type.ofClass[Seq[_]].appliedTo(tp0)
             case tp => tp
           Typed.copy(tree)(transformTerm(expr, tp), transformTypeTree(tpt))
         case tree: NamedArg =>

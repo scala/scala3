@@ -18,7 +18,7 @@ object Macros {
       loop(tp, Nil).reverse
     }
 
-    val tps = unpackTuple(typeOf[T])
+    val tps = unpackTuple(Type.of[T])
     Varargs(tps.map(x => Expr(x.show)))
   }
 }
