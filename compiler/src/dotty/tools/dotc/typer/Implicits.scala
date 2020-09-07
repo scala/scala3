@@ -976,6 +976,7 @@ trait Implicits:
    */
   def inferImplicit(pt: Type, argument: Tree, span: Span)(using Context): SearchResult =
     trace(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
+    Stats.trackTime("inferImplicit ms") {
       record("inferImplicit")
       assert(ctx.phase.allowsImplicitSearch,
         if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
@@ -1015,12 +1016,12 @@ trait Implicits:
         }
       // If we are at the outermost implicit search then emit the implicit dictionary, if any.
       ctx.searchHistory.emitDictionary(span, result)
-    }
+    }}
 
   /** Try to typecheck an implicit reference */
   def typedImplicit(cand: Candidate, pt: Type, argument: Tree, span: Span)(using Context): SearchResult =  trace(i"typed implicit ${cand.ref}, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
     if ctx.run.isCancelled then NoMatchingImplicitsFailure
-    else
+    else Stats.trackTime("typed implicit ms") {
       record("typedImplicit")
       val ref = cand.ref
       val generated: Tree = tpd.ref(ref).withSpan(span.startPos)
@@ -1083,7 +1084,7 @@ trait Implicits:
           if (cand.isExtension) Applications.ExtMethodApply(adapted)
           else adapted
         SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
-    }
+    }}
 
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(using Context):
@@ -1299,8 +1300,14 @@ trait Implicits:
 
     private def searchImplicit(contextual: Boolean): SearchResult =
       val eligible =
-        if contextual then ctx.implicits.eligible(wildProto)
-        else implicitScope(wildProto).eligible
+        if contextual then
+          Stats.trackTime("contextual eligible ms") {
+            ctx.implicits.eligible(wildProto)
+          }
+        else
+          Stats.trackTime("implicit scope eligible ms") {
+            implicitScope(wildProto).eligible
+          }
       searchImplicit(eligible, contextual) match
         case result: SearchSuccess =>
           result
