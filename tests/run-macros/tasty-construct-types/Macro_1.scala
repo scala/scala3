@@ -16,28 +16,28 @@ object Macros {
 
     val x1T = ConstantType(Constant(1))
     val x2T = OrType(ConstantType(Constant(1)), ConstantType(Constant(2)))
-    val x3T = AndType(ConstantType(Constant(3)), typeOf[Any])
+    val x3T = AndType(ConstantType(Constant(3)), Type.of[Any])
     val x4T =
       TypeLambda(
         List("A","B"),
-        _ => List(TypeBounds(typeOf[Nothing], typeOf[Any]), TypeBounds(typeOf[Nothing], typeOf[Any])),
+        _ => List(TypeBounds(Type.of[Nothing], Type.of[Any]), TypeBounds(Type.of[Nothing], Type.of[Any])),
         (tl : TypeLambda) => tl.param(1))
     val x5T =
       Refinement(
-        typeOf[RefineMe],
+        Type.of[RefineMe],
         "T",
-        TypeBounds(typeOf[Int], typeOf[Int]))
-    val x6T = Type(classOf[List[_]]).appliedTo(List(typeOf[Int]))
+        TypeBounds(Type.of[Int], Type.of[Int]))
+    val x6T = Type.of[List].appliedTo(List(Type.of[Int]))
     val x7T = AnnotatedType(ConstantType(Constant(7)), '{ new TestAnnotation }.unseal)
     val x8T =
       MatchType(
-        typeOf[Int],
-        typeOf[List[8]],
+        Type.of[Int],
+        Type.of[List[8]],
         List(
           TypeLambda(
             List("t"),
-            _ => List(TypeBounds(typeOf[Nothing], typeOf[Any])),
-            tl => MatchCaseType.appliedTo(List(Type(classOf[List[_]]).appliedTo(tl.param(0)), tl.param(0)))))
+            _ => List(TypeBounds(Type.of[Nothing], Type.of[Any])),
+            tl => MatchCaseType.appliedTo(List(Type.of[List].appliedTo(tl.param(0)), tl.param(0)))))
       )
 
     assert(x1T =:= '[1].unseal.tpe)
