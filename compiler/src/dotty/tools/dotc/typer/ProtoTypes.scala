@@ -133,9 +133,9 @@ object ProtoTypes {
   final class CachedIgnoredProto(ignored: Type) extends IgnoredProto(ignored)
 
   object IgnoredProto:
-    def apply(ignored: Type): IgnoredProto = ignored match
+    def apply(ignored: Type)(using Context): IgnoredProto = ignored match
       case ignored: IgnoredProto => ignored
-      case _ => CachedIgnoredProto(ignored)
+      case _ => unique(CachedIgnoredProto(ignored))
 
   /** A prototype for expressions [] that are part of a selection operation:
    *
