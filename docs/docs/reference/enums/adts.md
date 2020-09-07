@@ -78,6 +78,22 @@ object Option {
 }
 ```
 
+Enumerations and ADTs have been presented as two different
+concepts. But since they share the same syntactic construct, they can
+be seen simply as two ends of a spectrum and it is perfectly possible
+to construct hybrids. For instance, the code below gives an
+implementation of `Color` either with three enum values or with a
+parameterized case that takes an RGB value.
+
+```scala
+enum Color(val rgb: Int) {
+  case Red   extends Color(0xFF0000)
+  case Green extends Color(0x00FF00)
+  case Blue  extends Color(0x0000FF)
+  case Mix(mix: Int) extends Color(mix)
+}
+```
+
 ### Parameter Variance of Enums
 
 By default, parameterized cases of enums with type parameters will copy the type parameters of their parent, along
@@ -112,25 +128,20 @@ and can remedy the error by the following change to `Refl`:
 ```diff
 enum View[-T]:
 -  case Refl(f: T => T)
-+  case Refl[U](f: U => U) extends View[U]
++  case Refl[R](f: R => R) extends View[R]
 ```
-Above, type `U` is chosen as the parameter for `Refl` to highlight that it has a different meaning to
+Above, type `R` is chosen as the parameter for `Refl` to highlight that it has a different meaning to
 type `T` in `View`, but any name will do.
 
-Enumerations and ADTs have been presented as two different
-concepts. But since they share the same syntactic construct, they can
-be seen simply as two ends of a spectrum and it is perfectly possible
-to construct hybrids. For instance, the code below gives an
-implementation of `Color` either with three enum values or with a
-parameterized case that takes an RGB value.
+After some further changes, a more complete implementation of `View` can be given as follows and be used
+as the function type `T => U`:
 
 ```scala
-enum Color(val rgb: Int) {
-  case Red   extends Color(0xFF0000)
-  case Green extends Color(0x00FF00)
-  case Blue  extends Color(0x0000FF)
-  case Mix(mix: Int) extends Color(mix)
-}
+enum View[-T, +U] extends (T => U):
+  case Refl[R](f: R => R) extends View[R, R]
+
+  final def apply(t: T): U = this match
+    case refl: Refl[r] => refl.f(t)
 ```
 
 ### Syntax of Enums
