@@ -12,5 +12,5 @@ import dotty.tools.dotc.core.Contexts._
 object Foo {
   val definitions: Definitions = null
   def defn = definitions
-  def go = defn.FunctionClassPerRun
+  def go = defn.ScalaBoxedClasses
 }

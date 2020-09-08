@@ -219,10 +219,7 @@ object SymbolLoaders {
     Stats.record("package scopes")
 
     /** The scope of a package. This is different from a normal scope
-  	 *  in two aspects:
-	   *
-	   *   1. Names of scope entries are kept in mangled form.
-	   *   2. Some function types in the `scala` package are synthesized.
+  	 *  in that names of scope entries are kept in mangled form.
   	 */
     final class PackageScope extends MutableScope {
       override def newScopeEntry(name: Name, sym: Symbol)(using Context): ScopeEntry =
