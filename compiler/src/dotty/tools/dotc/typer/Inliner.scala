@@ -521,7 +521,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
          | Literal(_) =>
         true
       case Ident(_) =>
-        isPureRef(tree)
+        isPureRef(tree) || tree.symbol.isAllOf(Inline | Param)
       case Select(qual, _) =>
         if (tree.symbol.is(Erased)) true
         else isPureRef(tree) && apply(qual)

@@ -454,12 +454,14 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def refPurity(tree: Tree)(using Context): PurityLevel = {
     val sym = tree.symbol
     if (!tree.hasType) Impure
-    else if (!tree.tpe.widen.isParameterless || sym.isEffectivelyErased) PurePath
+    else if !tree.tpe.widen.isParameterless then PurePath
+    else if sym.is(Erased) then PurePath
     else if tree.tpe.isInstanceOf[ConstantType] then PurePath
     else if (!sym.isStableMember) Impure
     else if (sym.is(Module))
       if (sym.moduleClass.isNoInitsClass) PurePath else IdempotentPath
     else if (sym.is(Lazy)) IdempotentPath
+    else if sym.isAllOf(Inline | Param) then Impure
     else PurePath
   }
 
