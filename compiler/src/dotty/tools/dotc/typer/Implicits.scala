@@ -28,7 +28,7 @@ import Trees._
 import transform.SymUtils._
 import transform.TypeUtils._
 import Hashable._
-import util.{SourceFile, NoSource, EqHashMap}
+import util.{SourceFile, NoSource, EqHashMap, Stats}
 import config.{Config, Feature}
 import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}
@@ -228,6 +228,7 @@ object Implicits:
             if (pt.isInstanceOf[ViewProto]) adjustSingletonArg(ref)
             else ref
           val refNorm = normalize(refAdjusted, pt)
+          Stats.record("eligible check matches")
           if (!NoViewsAllowed.isCompatible(refNorm, ptNorm))
             ckind = Candidate.None
         }
@@ -314,20 +315,19 @@ object Implicits:
 
     /** The implicit references that are eligible for type `tp`. */
     def eligible(tp: Type): List[Candidate] =
-      if (tp.hash == NotCached) computeEligible(tp)
+      if (tp.hash == NotCached)
+        Stats.record(i"compute eligible not cached ${tp.getClass}")
+        Stats.record(i"compute eligible not cached")
+        computeEligible(tp)
       else {
         val eligibles = eligibleCache.lookup(tp)
         if (eligibles != null) {
-          def elided(ci: ContextualImplicits): Int = {
-            val n = ci.refs.length
-            if (ci.isOuterMost) n
-            else n + elided(ci.outerImplicits)
-          }
-          if (monitored) record(s"elided eligible refs", elided(this))
+          Stats.record("cached eligible")
           eligibles
         }
         else if (irefCtx eq NoContext) Nil
         else {
+          Stats.record(i"compute eligible cached")
           val result = computeEligible(tp)
           eligibleCache(tp) = result
           result
@@ -507,7 +507,7 @@ import Implicits._
 trait ImplicitRunInfo:
   self: Run =>
 
-  private val implicitScopeCache = mutable.AnyRefMap[Type, OfTypeImplicits]()
+  private val implicitScopeCache = util.EqHashMap[Type, OfTypeImplicits]()
 
   private def isExcluded(sym: Symbol) =
     if migrateTo3 then false else sym.is(Package) || sym.isPackageObject
@@ -573,10 +573,10 @@ trait ImplicitRunInfo:
       val companions = new TermRefSet
 
       def iscopeRefs(t: Type): TermRefSet =
-        implicitScopeCache.get(t) match
-          case Some(is) =>
+        implicitScopeCache.lookup(t) match
+          case is: OfTypeImplicits =>
             is.companionRefs
-          case None =>
+          case null =>
             if seen.contains(t) then
               incomplete += tp // all references for `t` will be accounted for in `seen` so we return `EmptySet`.
               TermRefSet.empty        // on the other hand, the refs of `tp` are now inaccurate, so `tp` is marked incomplete.
@@ -591,10 +591,10 @@ trait ImplicitRunInfo:
         if companion.exists && !companion.isAbsent() then
           companions += TermRef(pre, companion)
 
-      def addCompanions(t: Type) = implicitScopeCache.get(t) match
-        case Some(iscope) =>
+      def addCompanions(t: Type) = implicitScopeCache.lookup(t) match
+        case iscope: OfTypeImplicits =>
           companions ++= iscope.companionRefs
-        case None => t match
+        case null => t match
           case t: TypeRef =>
             val sym = t.symbol
             val pre = t.prefix
@@ -634,7 +634,7 @@ trait ImplicitRunInfo:
       val companions = collectCompanions(tp, parts)
       val result = OfTypeImplicits(tp, companions)(runContext)
       if Config.cacheImplicitScopes
-         && tp.hash != NotCached
+        && tp.hash != NotCached
         && !provisional
         && (tp eq rootTp)              // first type traversed is always cached
            || !incomplete.contains(tp) // other types are cached if they are not incomplete
@@ -681,9 +681,11 @@ trait ImplicitRunInfo:
    *   - If `T` is some other type, S includes the implicit scopes of all anchors of `T`.
    */
   def implicitScope(tp: Type)(using Context): OfTypeImplicits =
-    implicitScopeCache.get(tp) match
-      case Some(is) => is
-      case None =>
+    implicitScopeCache.lookup(tp) match
+      case is: OfTypeImplicits =>
+        record("implicitScope cache hit")
+        is
+      case null =>
         record(i"implicitScope")
         val liftToAnchors = new TypeMap:
           override def stopAtStatic = true
@@ -713,9 +715,11 @@ trait ImplicitRunInfo:
           record(i"implicitScope unlifted")
           computeIScope(tp)
         else
-          record(i"implicitScope lifted")
+          record("implicitScope lifted")
           val liftedIScope = implicitScopeCache.getOrElse(liftedTp, computeIScope(liftedTp))
-          OfTypeImplicits(tp, liftedIScope.companionRefs)(runContext)
+          val result = OfTypeImplicits(tp, liftedIScope.companionRefs)(runContext)
+          implicitScopeCache(tp) = result
+          result
   end implicitScope
 
   protected def reset(): Unit =
@@ -1358,7 +1362,7 @@ trait Implicits:
     def checkDivergence(cand: Candidate): Boolean =
       // For full details of the algorithm see the SIP:
       //   https://docs.scala-lang.org/sips/byname-implicits.html
-      util.Stats.record("checkDivergence")
+      Stats.record("checkDivergence")
 
       // Unless we are able to tie a recursive knot, we report divergence if there is an
       // open implicit using the same candidate implicit definition which has a type which
