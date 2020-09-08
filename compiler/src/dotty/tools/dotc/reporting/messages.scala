@@ -528,7 +528,7 @@ import ast.tpd
            |Only fields can be left uninitialized in this manner; local variables
            |must be initialized.
            |
-           |Another occurrence for this error is defining a val with self type.
+           |Another occurrence for this error is self type definition.
            |The ${hl("_")} can be replaced with ${hl("this")}.
            |
            |Example before:
