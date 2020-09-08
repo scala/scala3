@@ -109,9 +109,11 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
           e = entryAt(idx)
           e != null
         do
+          val eidx = index(hash(e))
           if isDense
-            || index(hole - index(hash(e))) < limit
-               // hash(k) is then logically at or before hole; can be moved forward to fill hole
+            || index(eidx - (hole + 1)) > index(idx - (hole + 1))
+               // entry `e` at `idx` can move unless `index(hash(e))` is in
+               // the (ring-)interval [hole + 1 .. idx]
           then
             setEntry(hole, e)
             hole = idx
