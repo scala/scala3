@@ -56,8 +56,10 @@ class DocDriver extends Driver {
 
     if (projectName.isEmpty)
       report.error(s"Site project name not set. Use `-project <title>` to set the project name")
-    else if (!siteRoot.exists || !siteRoot.isDirectory)
-      report.error(s"Site root does not exist: $siteRoot")
+    else if (!siteRoot.exists)
+      report.echo(s"Site root (`-siteroot`) does not exist: $siteRoot, no documentation will be generated.")
+    else if (!siteRoot.isDirectory)
+      report.error(s"Site root (`-siteroot`) is not a directory: $siteRoot")
     else {
       def generateSite(outDir: File, baseUrl: String) =
         Site(siteRoot, outDir, projectName, projectVersion, projectUrl, projectLogo, ctx.docbase.packages, baseUrl)
