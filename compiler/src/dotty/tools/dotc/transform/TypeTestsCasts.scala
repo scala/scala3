@@ -185,7 +185,7 @@ object TypeTestsCasts {
           else if tp.isRef(defn.AnyValClass) then defn.AnyClass
           else tp.classSymbol
 
-        def foundClasses(tp: Type, acc: List[Symbol]): List[Symbol] = tp match
+        def foundClasses(tp: Type, acc: List[Symbol]): List[Symbol] = tp.dealias match
           case OrType(tp1, tp2) => foundClasses(tp2, foundClasses(tp1, acc))
           case _ => effectiveClass(tp) :: acc
 
