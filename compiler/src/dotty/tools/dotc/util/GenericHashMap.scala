@@ -156,7 +156,7 @@ abstract class GenericHashMap[Key, Value]
   protected def growTable(): Unit =
     val oldTable = table
     val newLength =
-      if oldTable.length == DenseLimit then DenseLimit * 2 * roundToPower(capacityMultiple)
+      if table.length == DenseLimit * 2 then table.length * roundToPower(capacityMultiple)
       else table.length
     allocate(newLength)
     copyFrom(oldTable)
