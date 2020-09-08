@@ -147,7 +147,7 @@ object Types {
     final def exists: Boolean = this.ne(NoType)
 
     /** This type, if it exists, otherwise `that` type */
-    inline def orElse(inline that: => Type): Type = if (exists) this else that
+    inline def orElse(inline that: Type): Type = if (exists) this else that
 
     /** Is this type a value type? */
     final def isValueType: Boolean = this.isInstanceOf[ValueType]
@@ -4672,12 +4672,11 @@ object Types {
   // ----- Annotated and Import types -----------------------------------------------
 
   /** An annotated type tpe @ annot */
-  case class AnnotatedType(parent: Type, annot: Annotation) extends UncachedProxyType with ValueType {
-    // todo: cache them? but this makes only sense if annotations and trees are also cached.
+  abstract case class AnnotatedType(parent: Type, annot: Annotation) extends CachedProxyType with ValueType {
 
     override def underlying(using Context): Type = parent
 
-    def derivedAnnotatedType(parent: Type, annot: Annotation): AnnotatedType =
+    def derivedAnnotatedType(parent: Type, annot: Annotation)(using Context): AnnotatedType =
       if ((parent eq this.parent) && (annot eq this.annot)) this
       else AnnotatedType(parent, annot)
 
@@ -4699,16 +4698,27 @@ object Types {
 
     // equals comes from case class; no matching override is needed
 
-    override def iso(that: Any, bs: BinderPairs): Boolean = that match {
-      case that: AnnotatedType => parent.equals(that.parent, bs) && (annot `eq` that.annot)
+    override def computeHash(bs: Binders): Int =
+      doHash(bs, System.identityHashCode(annot), parent)
+    override def hashIsStable: Boolean =
+      parent.hashIsStable
+
+    override def eql(that: Type): Boolean = that match
+      case that: AnnotatedType => (parent eq that.parent) && (annot eq that.annot)
       case _ => false
-    }
+
+    override def iso(that: Any, bs: BinderPairs): Boolean = that match
+      case that: AnnotatedType => parent.equals(that.parent, bs) && (annot eq that.annot)
+      case _ => false
   }
 
-  object AnnotatedType {
-    def make(underlying: Type, annots: List[Annotation]): Type =
-      annots.foldLeft(underlying)(AnnotatedType(_, _))
-  }
+  class CachedAnnotatedType(parent: Type, annot: Annotation) extends AnnotatedType(parent, annot)
+
+  object AnnotatedType:
+    def make(underlying: Type, annots: List[Annotation])(using Context): Type =
+      annots.foldLeft(underlying)(apply(_, _))
+    def apply(parent: Type, annot: Annotation)(using Context): AnnotatedType =
+      unique(CachedAnnotatedType(parent, annot))
 
   // Special type objects and classes -----------------------------------------------------
 
