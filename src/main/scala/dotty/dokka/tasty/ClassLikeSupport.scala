@@ -29,7 +29,9 @@ trait ClassLikeSupport:
       documentation: Map[DokkaConfiguration$DokkaSourceSet, DocumentationNode] = classDef.symbol.documentation,
       modifier: Map[DokkaConfiguration$DokkaSourceSet, Modifier] = Map(sourceSet.getSourceSet -> classDef.symbol.getModifier()),
       additionalExtras: Seq[ExtraProperty[DClass]] = Seq.empty
-    ): DClass = new DClass(
+    ): DClass = { 
+      val annotations = AnnotationsInfo(classDef.symbol.getAnnotations())
+      new DClass(
           dri,
           name,
           constructors.asJava,
@@ -57,8 +59,10 @@ trait ClassLikeSupport:
             ))
             .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
             .plus(InheritanceInfo(classDef.getSupertypes, List.empty))
+            .plus(annotations)
             .addAll(additionalExtras.asJava) 
       )
+    }
 
   extension (c: ClassDef):
       def getExtensionGroups: List[ExtensionGroup] = {
@@ -137,8 +141,6 @@ trait ClassLikeSupport:
           parseMethod(d, constructorWithoutParamLists(c), s => c.getParameterModifier(s))
       )
 
-
-
   def parseClasslike(classDef: reflect.ClassDef)(using ctx: Context): DClass = classDef match {
     case c: ClassDef if classDef.symbol.flags.is(Flags.Object) => parseObject(c)
     case c: ClassDef if classDef.symbol.flags.is(Flags.Trait) => parseTrait(c)
@@ -202,6 +204,7 @@ trait ClassLikeSupport:
       extInfo: Option[ExtensionInformation] = None,
       isGiven: Boolean = false
     ): DFunction =
+    val annotations = AnnotationsInfo(methodSymbol.getAnnotations())
     val method = methodSymbol.tree.asInstanceOf[DefDef]
     val paramLists = if emptyParamsList then Nil else method.paramss
     val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.typeParams
@@ -263,10 +266,12 @@ trait ClassLikeSupport:
       PropertyContainer.Companion.empty() 
         plus MethodExtension(paramLists.map(_.size), extInfo)
         plus AdditionalModifiers(sourceSet.asMap(methodSymbol.getExtraModifiers().asJava))
+        plus(annotations)
         addAll optionalExtras.asJava
     )
 
   def parseArgument(argument: ValDef, prefix: Symbol => String, isExtendedSymbol: Boolean = false, isGrouped: Boolean = false): DParameter = 
+    val annotations = AnnotationsInfo(argument.symbol.getAnnotations())
     new DParameter(
       argument.symbol.dri,
       prefix(argument.symbol) + argument.symbol.name,
@@ -276,6 +281,7 @@ trait ClassLikeSupport:
       sourceSet.toSet(),
       PropertyContainer.Companion.empty()
         .plus(ParameterExtension(isExtendedSymbol, isGrouped))
+        .plus(annotations)
     )
     
   def parseTypeArgument(argument: TypeDef): DTypeParameter = 
@@ -296,6 +302,7 @@ trait ClassLikeSupport:
     )  
     
   def parseTypeDef(typeDef: TypeDef): DProperty =
+    val annotations = AnnotationsInfo(typeDef.symbol.getAnnotations())
 
     def isTreeAbstract(typ: Tree): Boolean = typ match {
       case TypeBoundsTree(_, _) => true
@@ -333,9 +340,11 @@ trait ClassLikeSupport:
       PropertyContainer.Companion.empty() 
         plus PropertyExtension("type", isAbstract)
         plus AdditionalModifiers(sourceSet.asMap(extraModifiers.asJava))
+        plus annotations
     )
   
   def parseValDef(valDef: ValDef, isGiven: Boolean = false): DProperty = {
+    val annotations = AnnotationsInfo(valDef.symbol.getAnnotations())
       def givenInstance = Some(valDef.symbol.moduleClass)
           .filter(_.exists)
           .map(_.tree.asInstanceOf[ClassDef])
@@ -363,6 +372,7 @@ trait ClassLikeSupport:
             if valDef.symbol.flags.is(Flags.Mutable) then "var" else "val", 
             valDef.symbol.flags.is(Flags.Abstract))
           plus AdditionalModifiers(sourceSet.asMap(valDef.symbol.getExtraModifiers().asJava))
+          plus annotations
           addAll optionalExtras.asJava
       )
   }

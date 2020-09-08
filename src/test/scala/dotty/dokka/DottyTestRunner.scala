@@ -73,8 +73,7 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
         def flattenToText(node: ContentNode) : Seq[ContentText] = node match
             case t: ContentText => Seq(t)
             case c: ContentComposite => 
-                if node.getDci.getKind == ContentKind.Annotations then Seq()
-                else c.getChildren.asScala.flatMap(flattenToText).toSeq
+                c.getChildren.asScala.flatMap(flattenToText).toSeq
             case _ => Seq()
     
         def all(p: ContentNode => Boolean)(n: ContentNode): Seq[ContentNode] =

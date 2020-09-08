@@ -23,31 +23,15 @@ extension  on[T, V] (a: WithExtraProperties[T]):
 extension on[V] (map: JMap[DokkaConfiguration$DokkaSourceSet, V]):
     def defaultValue: V = map.values.asScala.toSeq(0)
 
-extension on(builder: PageContentBuilder$DocumentableContentBuilder):
+class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
+  override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] = 
+    MergeStrategy.Remove.INSTANCE.asInstanceOf[MergeStrategy[T]]
 
-    def addText(str: String) = builder.text(str, ContentKind.Main, builder.getMainSourcesetData, builder.getMainStyles, builder.getMainExtra) 
-    
-    def addList[T](
-        elements: JList[T],
-        prefix: String = "",
-        suffix: String = "",
-        separator: String = ", "
-    )(op: T => Unit): Unit = 
-        val lambda: Function2[Any, Any, kotlin.Unit] = new Function2[Any,Any, kotlin.Unit]:
-            def invoke(a: Any, b: Any) = 
-                op(b.asInstanceOf[T])
-                kotlin.Unit.INSTANCE
-
-        builder.list(elements, prefix, suffix, separator, builder.getMainSourcesetData, lambda)
-
-    def addLink(
-            text: String,
-            address: DRI,
-            kind: Kind = ContentKind.Main,
-            sourceSets: JSet[DokkaConfiguration$DokkaSourceSet] = builder.getMainSourcesetData,
-            styles: JSet[Style] = builder.getMainStyles,
-            extra: PropertyContainer[ContentNode]= builder.getMainExtra) =
-            builder.link(text, address, kind, sourceSets, styles, extra)
+extension (f: DFunction):
+  def isRightAssociative(): Boolean = f.getName.endsWith(":")
+  def getExtendedSymbol(): Option[DParameter] = Option.when(f.get(MethodExtension).extensionInfo.isDefined)(
+    f.getParameters.asScala(if f.isRightAssociative() then f.get(MethodExtension).parametersListSizes(0) else 0)
+  )
 
 object JList:
     def apply[T](elem: T): JList[T] = List(elem).asJava
