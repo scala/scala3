@@ -23,8 +23,9 @@ import Symbols._
 import Denotations._
 import Phases._
 import StdNames._
+import TypeErasure.ErasedValueType
 
-import dotty.tools.dotc.transform.Erasure
+import dotty.tools.dotc.transform.{Erasure, ValueClasses}
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.report
@@ -2599,10 +2600,10 @@ class JSCodeGen()(using genCtx: Context) {
       case tpe if isPrimitiveValueType(tpe) =>
         makePrimitiveBox(expr, tpe)
 
-      /*case tpe: ErasedValueType =>
-        val boxedClass = tpe.valueClazz
+      case tpe: ErasedValueType =>
+        val boxedClass = tpe.tycon.typeSymbol
         val ctor = boxedClass.primaryConstructor
-        genNew(boxedClass, ctor, List(expr))*/
+        js.New(encodeClassName(boxedClass), encodeMethodSym(ctor), List(expr))
 
       case _ =>
         expr
@@ -2626,15 +2627,15 @@ class JSCodeGen()(using genCtx: Context) {
       case tpe if isPrimitiveValueType(tpe) =>
         makePrimitiveUnbox(expr, tpe)
 
-      /*case tpe: ErasedValueType =>
-        val boxedClass = tpe.valueClazz
-        val unboxMethod = boxedClass.derivedValueClassUnbox
+      case tpe: ErasedValueType =>
+        val boxedClass = tpe.tycon.typeSymbol.asClass
+        val unboxMethod = ValueClasses.valueClassUnbox(boxedClass)
         val content = genApplyMethod(
-            genAsInstanceOf(expr, tpe), unboxMethod, Nil)
-        if (unboxMethod.tpe.resultType <:< tpe.erasedUnderlying)
+            js.AsInstanceOf(expr, encodeClassType(boxedClass)), unboxMethod, Nil)
+        if (unboxMethod.info.resultType <:< tpe.erasedUnderlying)
           content
         else
-          fromAny(content, tpe.erasedUnderlying)*/
+          unbox(content, tpe.erasedUnderlying)
 
       case tpe =>
         genAsInstanceOf(expr, tpe)
@@ -3587,8 +3588,9 @@ class JSCodeGen()(using genCtx: Context) {
 
   private def isPrimitiveValueType(tpe: Type): Boolean = {
     tpe.widenDealias match {
-      case JavaArrayType(_) => false
-      case t                => t.typeSymbol.asClass.isPrimitiveValueClass
+      case JavaArrayType(_)   => false
+      case _: ErasedValueType => false
+      case t                  => t.typeSymbol.asClass.isPrimitiveValueClass
     }
   }
 
