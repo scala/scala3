@@ -121,6 +121,6 @@ object JSInteropUtils {
 
     def defaultJSName(using Context): String =
       if (sym.isTerm) sym.asTerm.name.unexpandedName.getterName.toString()
-      else sym.name.unexpandedName.toString()
+      else sym.name.unexpandedName.stripModuleClassSuffix.toString()
   }
 }
