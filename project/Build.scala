@@ -1025,20 +1025,6 @@ object Build {
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
             -- "EnumerationTest.scala" // scala.Enumeration support for Scala.js is not implemented in dotc (yet)
-            -- "SymbolTest.scala" // uses the old literal symbol syntax, pending update upstream
-
-            // all the following depend on HashSetTest and LinkedHashSetTest ...
-            -- "CollectionsOnCheckedCollectionTest.scala"
-            -- "CollectionsOnCheckedListTest.scala"
-            -- "CollectionsOnCheckedSetTest.scala"
-            -- "CollectionsOnSetsTest.scala"
-            -- "CollectionsOnSynchronizedCollectionTest.scala"
-            -- "CollectionsOnSynchronizedListTest.scala"
-            -- "CollectionsOnSynchronizedSetTest.scala"
-
-            // ... which do not compile because of an abstract method shadowing a concrete method, pending update upstream
-            -- "HashSetTest.scala"
-            -- "LinkedHashSetTest.scala"
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
@@ -1046,8 +1032,8 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
-            -- "InteroperabilityTest.scala" // various compile errors, pending update upstream
-            -- "OptimizerTest.scala" // compile errors: false + string and () + string, pending update upstream
+            -- "InteroperabilityTest.scala" // compiler crash, related to value classes in JS interop
+            -- "OptimizerTest.scala" // non-native JS classes
             -- "ReflectionTest.scala" // tests fail (wrong load spec for JS globals)
             -- "RegressionJSTest.scala" // non-native JS classes
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
@@ -1083,7 +1069,7 @@ object Build {
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/library" ** (("*.scala": FileFilter)
-            -- "BigIntTest.scala" // Ambiguous reference because of new non-shadowing rule in Scala 3, pending update upstream
+            -- "BigIntTest.scala" // non-native JS classes
             -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires a Scala 2 macro
