@@ -1,6 +1,6 @@
 package dotty.dokka
 import org.jetbrains.dokka.utilities.{DokkaConsoleLogger, DokkaLogger}
-import testApi.logger.TestLogger
+import org.jetbrains.dokka.testApi.logger.TestLogger
 import org.jetbrains.dokka.testApi.testRunner._
 import org.jetbrains.dokka.plugability.DokkaPlugin
 import java.io.File

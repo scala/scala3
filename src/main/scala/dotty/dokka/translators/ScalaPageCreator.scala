@@ -240,7 +240,7 @@ class ScalaPageCreator(
                 case t: org.jetbrains.dokka.model.TypeConstructor => t.getProjections.asScala.foldLeft(bdr){
                     case (builder, p) => p match {
                         case text: UnresolvedBound => builder.text(text.getName)
-                        case link: OtherParameter => builder.driLink(link.getName, link.getDeclarationDRI) 
+                        case link: TypeParameter => builder.driLink(link.getName, link.getDri) 
                         case other => builder.text(s"TODO: $other")
                     }
                 }

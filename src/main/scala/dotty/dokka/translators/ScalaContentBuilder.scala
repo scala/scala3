@@ -16,11 +16,17 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.doc._
 
+
+extension on (sourceSets: Set[DokkaConfiguration$DokkaSourceSet]):
+    def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava
+
+
 class ScalaPageContentBuilder(
     val commentsConverter: CommentsToContentConverter,
     val signatureProvider: SignatureProvider,
     val logger: DokkaLogger
-) { self =>
+) {
+
     def contentForDRI(
         dri: DRI,
         sourceSets: Set[DokkaConfiguration$DokkaSourceSet],
@@ -72,7 +78,7 @@ class ScalaPageContentBuilder(
             styles: Set[Style] = mainStyles,
             extra: PropertyContainer[ContentNode] = mainExtra)(
             buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
-        ): ScalaTableBuilder = addChild(self.contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock))
+        ): ScalaTableBuilder = addChild(contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock))
 
         def build() = cells
     }
@@ -125,7 +131,7 @@ class ScalaPageContentBuilder(
             if divergent != null then divergent else throw IllegalStateException("Divergent part is mandatory"),
             after.getOrElse(null),
             DCI(mainDRI.asJava, mainKind),
-            mainSourcesetData.asJava,
+            mainSourcesetData.toDisplay,
             mainStyles.asJava,
             mainExtra
         )
@@ -139,9 +145,7 @@ class ScalaPageContentBuilder(
         )(
             buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
         ): ScalaDivergentInstanceBuilder = copy(
-            before = Some(
-                self.contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock)
-            )
+            before = Some(contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock))
         )
 
         def divergent(
@@ -153,7 +157,7 @@ class ScalaPageContentBuilder(
         )(
             buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
         ): ScalaDivergentInstanceBuilder = copy(
-            divergent = self.contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock)
+            divergent = contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock)
         )
 
         def after(
@@ -166,7 +170,7 @@ class ScalaPageContentBuilder(
             buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
         ): ScalaDivergentInstanceBuilder = copy(
             after = Some(
-                self.contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock)
+                contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock)
             )
         )
     }
@@ -188,7 +192,7 @@ class ScalaPageContentBuilder(
         def buildContent() = ContentGroup(
             children.asJava,
             DCI(mainDRI.asJava, mainKind),
-            mainSourcesetData.asJava,
+            mainSourcesetData.toDisplay,
             mainStyles.asJava,
             mainExtra
         )
@@ -202,7 +206,7 @@ class ScalaPageContentBuilder(
         )(
             buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
         ): ScalaDocumentableContentBuilder = addChild(
-            self.contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock)
+            contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock)
         )
 
         def header(
@@ -216,7 +220,7 @@ class ScalaPageContentBuilder(
         ): ScalaDocumentableContentBuilder = addChild(
                 ContentHeader(
                     level, 
-                    self.contentForDRIs(
+                    contentForDRIs(
                         mainDRI, 
                         sourceSets, 
                         kind, 
@@ -239,12 +243,12 @@ class ScalaPageContentBuilder(
         def signature(d: Documentable) = addChildren(signatureProvider.signature(d).asScala.toList)
 
         def defaultHeaders = List(
-            self.contentForDRIs(
+            contentForDRIs(
                 dris = mainDRI, 
                 sourceSets = mainSourcesetData,
                 buildBlock = bdr => {bdr.text("Name")}
             ),
-            self.contentForDRIs(
+            contentForDRIs(
                 dris = mainDRI, 
                 sourceSets = mainSourcesetData,
                 buildBlock = bdr => {bdr.text("Summary")}
@@ -264,7 +268,7 @@ class ScalaPageContentBuilder(
                 headers.asJava,
                 buildBlock(ScalaTableBuilder(mainDRI, sourceSets, kind, styles, extra)).build().asJava,
                 DCI(mainDRI.asJava, kind),
-                sourceSets.asJava,
+                sourceSets.toDisplay,
                 styles.asJava,
                 extra
             )
@@ -286,7 +290,7 @@ class ScalaPageContentBuilder(
             sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = mainSourcesetData,
             styles: Set[Style] = mainStyles,
             extra: PropertyContainer[ContentNode] = mainExtra
-        ) = ContentText(text, DCI(mainDRI.asJava, kind), sourceSets.asJava, styles.asJava, extra)
+        ) = ContentText(text, DCI(mainDRI.asJava, kind), sourceSets.toDisplay, styles.asJava, extra)
 
         def groupingBlock[A, T <: Documentable, G <: List[(A, List[T])]](
             name: String,
@@ -350,7 +354,7 @@ class ScalaPageContentBuilder(
                 List(buildText(text, kind, sourceSets, styles, extra)).asJava,
                 address,
                 DCI(mainDRI.asJava, kind),
-                sourceSets.asJava,
+                sourceSets.toDisplay,
                 Set().asJava,
                 PropertyContainer.Companion.empty()
             )
@@ -368,7 +372,7 @@ class ScalaPageContentBuilder(
                 List(buildText(text, kind, sourceSets, styles, extra)).asJava,
                 address,
                 DCI(mainDRI.asJava, kind),
-                sourceSets.asJava,
+                sourceSets.toDisplay,
                 Set().asJava,
                 PropertyContainer.Companion.empty()
             )
@@ -384,10 +388,10 @@ class ScalaPageContentBuilder(
             buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
         ) = addChild(
             ContentDRILink(
-                self.contentForDRIs(mainDRI, sourceSets, kind, styles, extra, buildBlock).getChildren,
+                contentForDRIs(mainDRI, sourceSets, kind, styles, extra, buildBlock).getChildren,
                 address,
                 DCI(mainDRI.asJava, kind),
-                sourceSets.asJava,
+                sourceSets.toDisplay,
                 Set().asJava,
                 PropertyContainer.Companion.empty()
             )
@@ -400,7 +404,7 @@ class ScalaPageContentBuilder(
             styles: Set[Style] = mainStyles,
             extra: PropertyContainer[ContentNode] = mainExtra
         ) = addChild(
-            self.contentForDRIs(mainDRI, sourceSets, kind, styles, extra, bdr => bdr.addChildren(
+            contentForDRIs(mainDRI, sourceSets, kind, styles, extra, bdr => bdr.addChildren(
                 commentsConverter.buildContent(
                     docTag,
                     DCI(mainDRI.asJava, kind),
@@ -435,8 +439,8 @@ class ScalaPageContentBuilder(
             buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
         ) = addChild(
             PlatformHintedContent(
-                self.contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock),
-                sourceSets.asJava
+                contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock),
+                sourceSets.toDisplay
             )
         )
 

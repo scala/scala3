@@ -25,7 +25,7 @@ trait ClassLikeSupport:
       sources: Map[DokkaConfiguration$DokkaSourceSet, DocumentableSource] = classDef.symbol.source,
       visibility: Map[DokkaConfiguration$DokkaSourceSet, Visibility] = Map(sourceSet.getSourceSet -> (classDef.symbol.getVisibility())),
       generics: List[DTypeParameter] = classDef.getTypeParams.map(parseTypeArgument),
-      supertypes: Map[DokkaConfiguration$DokkaSourceSet, List[DriWithKind]] = Map.empty,
+      supertypes: Map[DokkaConfiguration$DokkaSourceSet, List[TypeConstructorWithKind]] = Map.empty,
       documentation: Map[DokkaConfiguration$DokkaSourceSet, DocumentationNode] = classDef.symbol.documentation,
       modifier: Map[DokkaConfiguration$DokkaSourceSet, Modifier] = Map(sourceSet.getSourceSet -> classDef.symbol.getModifier()),
       additionalExtras: Seq[ExtraProperty[DClass]] = Seq.empty
