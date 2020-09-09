@@ -1173,6 +1173,13 @@ object Types {
         tp
     }
 
+    def widenEnumClass(using Context): Type = dealias match {
+      case tp: (TypeRef | AppliedType) if tp.typeSymbol.isAllOf(EnumCase) =>
+        tp.parents.head
+      case _ =>
+        this
+    }
+
     /** Widen all top-level singletons reachable by dealiasing
      *  and going to the operands of & and |.
      *  Overridden and cached in OrType.

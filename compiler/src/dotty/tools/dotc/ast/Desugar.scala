@@ -527,12 +527,6 @@ object desugar {
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
     val classTypeRef = appliedRef(classTycon)
 
-    def applyResultTpt =
-      if isEnumCase then
-        classTypeRef
-      else
-        TypeTree()
-
     // a reference to `enumClass`, with type parameters coming from the case constructor
     lazy val enumClassTypeRef =
       if (enumClass.typeParams.isEmpty)
@@ -611,7 +605,7 @@ object desugar {
             cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
-          DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, applyResultTpt, creatorExpr)
+          DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, classTypeRef, creatorExpr)
             .withMods(Modifiers(Synthetic | constr1.mods.flags & copiedAccessFlags, constr1.mods.privateWithin)) :: Nil
         }
       }
@@ -704,7 +698,7 @@ object desugar {
             val appParamss =
               derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
                 ap.withMods(ap.mods | (cp.mods.flags & HasDefault)))
-            DefDef(nme.apply, derivedTparams, appParamss, applyResultTpt, creatorExpr)
+            DefDef(nme.apply, derivedTparams, appParamss, classTypeRef, creatorExpr)
               .withMods(appMods) :: Nil
           }
         val unapplyMeth = {
@@ -714,7 +708,7 @@ object desugar {
           val methName = if (hasRepeatedParam) nme.unapplySeq else nme.unapply
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
-          val unapplyResTp = if (arity == 0) Literal(Constant(true)) else applyResultTpt
+          val unapplyResTp = if arity == 0 then Literal(Constant(true)) else classTypeRef
           DefDef(methName, derivedTparams, (unapplyParam :: Nil) :: Nil, unapplyResTp, unapplyRHS)
             .withMods(synthetic)
         }
