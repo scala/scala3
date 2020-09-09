@@ -1101,8 +1101,10 @@ object Types {
 
     /** Widen from TermRef to its underlying non-termref
      *  base type, while also skipping Expr types.
+     *  Preserves references to modules or singleton enum values
      */
     final def widenTermRefExpr(using Context): Type = stripTypeVar match {
+      case tp: TermRef if tp.termSymbol.isAllOf(EnumCase) || tp.termSymbol.is(Module) => tp
       case tp: TermRef if !tp.isOverloaded => tp.underlying.widenExpr.widenTermRefExpr
       case _ => this
     }
@@ -1187,8 +1189,6 @@ object Types {
     def widenSingletons(using Context): Type = dealias match {
       case tp: SingletonType =>
         tp.widen
-      case tp: (TypeRef | AppliedType) if tp.typeSymbol.isAllOf(EnumCase) =>
-        tp.parents.head
       case tp: OrType =>
         val tp1w = tp.widenSingletons
         if (tp1w eq tp) this else tp1w

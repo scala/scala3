@@ -141,7 +141,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextRHS(tp)
       case tp: TermRef
       if !tp.denotationIsCurrent && !homogenizedView || // always print underlying when testing picklers
-         tp.symbol.is(Module) || tp.symbol.name == nme.IMPORT =>
+         tp.symbol.is(Module) || tp.symbol.isAllOf(EnumCase) || tp.symbol.name == nme.IMPORT =>
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
@@ -598,4 +598,3 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def coloredText(text: Text, color: String): Text =
     if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
 }
-
