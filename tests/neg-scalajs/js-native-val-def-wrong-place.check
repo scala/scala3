@@ -1,0 +1,108 @@
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:11:2 ---------------------------------------------------
+11 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:15:2 ---------------------------------------------------
+15 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:19:2 ---------------------------------------------------
+19 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:23:2 ---------------------------------------------------
+23 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:27:2 ---------------------------------------------------
+27 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:31:2 ---------------------------------------------------
+31 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:35:2 ---------------------------------------------------
+35 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:44:2 ---------------------------------------------------
+44 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:48:2 ---------------------------------------------------
+48 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:52:2 ---------------------------------------------------
+52 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:56:2 ---------------------------------------------------
+56 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:60:2 ---------------------------------------------------
+60 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:64:2 ---------------------------------------------------
+64 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:68:2 ---------------------------------------------------
+68 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:77:2 ---------------------------------------------------
+77 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:80:2 ---------------------------------------------------
+80 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:83:2 ---------------------------------------------------
+83 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:86:2 ---------------------------------------------------
+86 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:89:2 ---------------------------------------------------
+89 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:92:2 ---------------------------------------------------
+92 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:96:2 ---------------------------------------------------
+96 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  @js.native vals and defs can only appear in static Scala objects
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:105:4 --------------------------------------------------
+105 |    @js.native @JSGlobal // error
+    |    ^^^^^^^^^^
+    |    @js.native is not allowed on local definitions
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:108:4 --------------------------------------------------
+108 |    @js.native @JSGlobal // error
+    |    ^^^^^^^^^^
+    |    @js.native is not allowed on local definitions
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:111:4 --------------------------------------------------
+111 |    @js.native @JSGlobal // error
+    |    ^^^^^^^^^^
+    |    @js.native is not allowed on local definitions
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:114:4 --------------------------------------------------
+114 |    @js.native @JSGlobal // error
+    |    ^^^^^^^^^^
+    |    @js.native is not allowed on local definitions
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:117:4 --------------------------------------------------
+117 |    @js.native @JSGlobal // error
+    |    ^^^^^^^^^^
+    |    @js.native is not allowed on local definitions
+-- Error: tests/neg-scalajs/js-native-val-def-wrong-place.scala:120:4 --------------------------------------------------
+120 |    @js.native @JSGlobal // error
+    |    ^^^^^^^^^^
+    |    @js.native is not allowed on local definitions

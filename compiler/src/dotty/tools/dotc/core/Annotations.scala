@@ -33,7 +33,10 @@ object Annotations {
       if (i < args.length) Some(args(i)) else None
     }
     def argumentConstant(i: Int)(using Context): Option[Constant] =
-      for (ConstantType(c) <- argument(i) map (_.tpe)) yield c
+      for (ConstantType(c) <- argument(i) map (_.tpe.widenTermRefExpr.normalized)) yield c
+
+    def argumentConstantString(i: Int)(using Context): Option[String] =
+      for (Constant(s: String) <- argumentConstant(i)) yield s
 
     /** The tree evaluaton is in progress. */
     def isEvaluating: Boolean = false

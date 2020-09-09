@@ -1,0 +1,32 @@
+-- Error: tests/neg-scalajs/jsname-argument.scala:17:16 ----------------------------------------------------------------
+17 |  @JSName(Names.a) // error
+   |          ^^^^^^^
+   |          A String argument to JSName must be a literal string
+-- Error: tests/neg-scalajs/jsname-argument.scala:24:16 ----------------------------------------------------------------
+24 |  @JSName(Names.a) // error
+   |          ^^^^^^^
+   |          A String argument to JSName must be a literal string
+-- Error: tests/neg-scalajs/jsname-argument.scala:33:19 ----------------------------------------------------------------
+33 |  @JSName(js.Symbol()) // error
+   |          ^^^^^^^^^^^
+   |          A js.Symbol argument to JSName must be a static, stable identifier
+-- Error: tests/neg-scalajs/jsname-argument.scala:35:27 ----------------------------------------------------------------
+35 |  @JSName(new NamesClass().a) // error
+   |          ^^^^^^^^^^^^^^^^^^
+   |          A js.Symbol argument to JSName must be a static, stable identifier
+-- Error: tests/neg-scalajs/jsname-argument.scala:40:19 ----------------------------------------------------------------
+40 |  @JSName(js.Symbol()) // error
+   |          ^^^^^^^^^^^
+   |          A js.Symbol argument to JSName must be a static, stable identifier
+-- Error: tests/neg-scalajs/jsname-argument.scala:42:27 ----------------------------------------------------------------
+42 |  @JSName(new NamesClass().a) // error
+   |          ^^^^^^^^^^^^^^^^^^
+   |          A js.Symbol argument to JSName must be a static, stable identifier
+-- Error: tests/neg-scalajs/jsname-argument.scala:57:3 -----------------------------------------------------------------
+57 |  @JSName(Names.sym) // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  Implementation restriction: @JSName with a js.Symbol is not supported on nested native classes and objects
+-- Error: tests/neg-scalajs/jsname-argument.scala:61:3 -----------------------------------------------------------------
+61 |  @JSName(Names.sym) // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  Implementation restriction: @JSName with a js.Symbol is not supported on nested native classes and objects

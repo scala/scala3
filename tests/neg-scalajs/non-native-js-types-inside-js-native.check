@@ -1,0 +1,32 @@
+-- Error: tests/neg-scalajs/non-native-js-types-inside-js-native.scala:7:8 ---------------------------------------------
+7 |  class A1 extends js.Object // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Native JS classes and traits cannot contain non-native JS classes, traits or objects
+-- Error: tests/neg-scalajs/non-native-js-types-inside-js-native.scala:8:8 ---------------------------------------------
+8 |  trait A2 extends js.Object // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Native JS classes and traits cannot contain non-native JS classes, traits or objects
+-- Error: tests/neg-scalajs/non-native-js-types-inside-js-native.scala:9:9 ---------------------------------------------
+9 |  object A3 extends js.Object // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Native JS classes and traits cannot contain non-native JS classes, traits or objects
+-- Error: tests/neg-scalajs/non-native-js-types-inside-js-native.scala:14:8 --------------------------------------------
+14 |  class B1 extends js.Object // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes and traits cannot contain non-native JS classes, traits or objects
+-- Error: tests/neg-scalajs/non-native-js-types-inside-js-native.scala:15:8 --------------------------------------------
+15 |  trait B2 extends js.Object // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes and traits cannot contain non-native JS classes, traits or objects
+-- Error: tests/neg-scalajs/non-native-js-types-inside-js-native.scala:16:9 --------------------------------------------
+16 |  object B3 extends js.Object // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes and traits cannot contain non-native JS classes, traits or objects
+-- Error: tests/neg-scalajs/non-native-js-types-inside-js-native.scala:22:8 --------------------------------------------
+22 |  class C1 extends js.Object // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS objects cannot contain inner non-native JS classes or objects
+-- Error: tests/neg-scalajs/non-native-js-types-inside-js-native.scala:24:9 --------------------------------------------
+24 |  object C3 extends js.Object // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS objects cannot contain inner non-native JS classes or objects

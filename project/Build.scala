@@ -1034,7 +1034,6 @@ object Build {
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
             -- "InteroperabilityTest.scala" // compiler crash, related to value classes in JS interop
             -- "OptimizerTest.scala" // non-native JS classes
-            -- "ReflectionTest.scala" // tests fail (wrong load spec for JS globals)
             -- "RegressionJSTest.scala" // non-native JS classes
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
             )).get

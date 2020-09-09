@@ -1,0 +1,12 @@
+-- Error: tests/neg-scalajs/jsname-duplicate.scala:12:3 ----------------------------------------------------------------
+12 |  @JSName("foo") // error
+   |  ^^^^^^^^^^^^^^
+   |  Duplicate @JSName annotation.
+-- Error: tests/neg-scalajs/jsname-duplicate.scala:16:3 ----------------------------------------------------------------
+16 |  @JSName("foo") // error
+   |  ^^^^^^^^^^^^^^
+   |  Duplicate @JSName annotation.
+-- Error: tests/neg-scalajs/jsname-duplicate.scala:20:3 ----------------------------------------------------------------
+20 |  @JSName("foo") // error
+   |  ^^^^^^^^^^^^^^
+   |  Duplicate @JSName annotation.

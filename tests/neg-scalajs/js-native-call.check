@@ -1,0 +1,4 @@
+-- Error: tests/neg-scalajs/js-native-call.scala:5:17 ------------------------------------------------------------------
+5 |  def foo: Int = js.native // error
+  |                 ^^^^^^^^^
+  |                 js.native may only be used as stub implementation in facade types

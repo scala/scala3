@@ -1,0 +1,84 @@
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:6:0 ------------------------------------------------
+6 |@JSGlobal // error
+  |^^^^^^^^^
+  |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:9:0 ------------------------------------------------
+9 |@JSGlobal // error
+  |^^^^^^^^^
+  |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:12:0 -----------------------------------------------
+12 |@JSGlobal // error
+   |^^^^^^^^^
+   |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:15:1 -----------------------------------------------
+15 |@JSGlobal("Foo") // error
+   |^^^^^^^^^^^^^^^^
+   |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:18:1 -----------------------------------------------
+18 |@JSGlobal("Foo") // error
+   |^^^^^^^^^^^^^^^^
+   |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:21:1 -----------------------------------------------
+21 |@JSGlobal("Foo") // error
+   |^^^^^^^^^^^^^^^^
+   |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:26:0 -----------------------------------------------
+26 |@JSGlobal // error
+   |^^^^^^^^^
+   |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:29:0 -----------------------------------------------
+29 |@JSGlobal // error
+   |^^^^^^^^^
+   |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:32:0 -----------------------------------------------
+32 |@JSGlobal // error
+   |^^^^^^^^^
+   |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:35:1 -----------------------------------------------
+35 |@JSGlobal("Foo") // error
+   |^^^^^^^^^^^^^^^^
+   |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:38:1 -----------------------------------------------
+38 |@JSGlobal("Foo") // error
+   |^^^^^^^^^^^^^^^^
+   |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:41:1 -----------------------------------------------
+41 |@JSGlobal("Foo") // error
+   |^^^^^^^^^^^^^^^^
+   |@JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:47:2 -----------------------------------------------
+47 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:50:2 -----------------------------------------------
+50 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:53:2 -----------------------------------------------
+53 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:56:2 -----------------------------------------------
+56 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:59:2 -----------------------------------------------
+59 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:65:1 -----------------------------------------------
+65 |@JSImport("foo.js", "E1") // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^
+   |@JSImport can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:68:1 -----------------------------------------------
+68 |@JSImport("foo.js", "E2", globalFallback = "E") // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |@JSImport can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:73:0 -----------------------------------------------
+73 |@JSGlobalScope // error
+   |^^^^^^^^^^^^^^
+   |@JSGlobalScope can only be used on native JS objects (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-on-non-js-native.scala:76:0 -----------------------------------------------
+76 |@JSGlobalScope // error
+   |^^^^^^^^^^^^^^
+   |@JSGlobalScope can only be used on native JS objects (with @js.native).
