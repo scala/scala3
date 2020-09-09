@@ -47,7 +47,7 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
             ref(defn.cbnArg).appliedToType(argType).appliedTo(arg).withSpan(arg.span)
           arg match {
             case Apply(Select(qual, nme.apply), Nil)
-            if qual.tpe.derivesFrom(defn.FunctionClass(0)) && (isPureExpr(qual) || qual.symbol.isAllOf(Inline | Param)) =>
+            if qual.tpe.derivesFrom(defn.Function0) && (isPureExpr(qual) || qual.symbol.isAllOf(Inline | Param)) =>
               wrap(qual)
             case _ =>
               if (isByNameRef(arg) || arg.symbol == defn.cbnArg) arg

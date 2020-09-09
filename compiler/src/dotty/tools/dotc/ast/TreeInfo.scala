@@ -784,8 +784,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def tupleArgs(tree: Tree)(using Context): List[Tree] = tree match {
     case Block(Nil, expr) => tupleArgs(expr)
     case Inlined(_, Nil, expr) => tupleArgs(expr)
-    case Apply(fn, args)
-    if fn.symbol.name == nme.apply &&
+    case Apply(fn: NameTree, args)
+    if fn.name == nme.apply &&
         fn.symbol.owner.is(Module) &&
         defn.isTupleClass(fn.symbol.owner.companionClass) => args
     case _ => Nil

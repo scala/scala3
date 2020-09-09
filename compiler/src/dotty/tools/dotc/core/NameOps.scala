@@ -229,6 +229,11 @@ object NameOps {
     def isFunction: Boolean =
       (name eq tpnme.FunctionXXL) || checkedFunArity(functionSuffixStart) >= 0
 
+    /** Is a function name
+     *    - FunctionN for N >= 0
+     */
+    def isPlainFunction: Boolean = functionArity >= 0
+
     /** Is an context function name, i.e one of ContextFunctionN or ErasedContextFunctionN for N >= 0
      */
     def isContextFunction: Boolean =
@@ -277,7 +282,7 @@ object NameOps {
     /** This method is to be used on **type parameters** from a class, since
      *  this method does sorting based on their names
      */
-    def specializedFor(classTargs: List[Types.Type], classTargsNames: List[Name], methodTargs: List[Types.Type], methodTarsNames: List[Name])(implicit ctx: Context): Name = {
+    def specializedFor(classTargs: List[Type], classTargsNames: List[Name], methodTargs: List[Type], methodTarsNames: List[Name])(using Context): N = {
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
 
@@ -292,7 +297,7 @@ object NameOps {
      *
      *  `<return type><first type><second type><...>`
      */
-    def specializedFunction(ret: Types.Type, args: List[Types.Type])(implicit ctx: Context): Name =
+    def specializedFunction(ret: Type, args: List[Type])(using Context): Name =
       name ++ nme.specializedTypeNames.prefix ++
       nme.specializedTypeNames.separator ++ defn.typeTag(ret) ++
       args.map(defn.typeTag).fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix

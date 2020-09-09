@@ -1143,7 +1143,13 @@ class Definitions {
       else funType(n)
     ).symbol.asClass
 
-  @tu lazy val Function0_apply: Symbol = FunctionClass(0).requiredMethod(nme.apply)
+  @tu lazy val Function0_apply: Symbol = Function0.requiredMethod(nme.apply)
+
+  @tu lazy val Function0: Symbol = FunctionClass(0)
+  @tu lazy val Function1: Symbol = FunctionClass(1)
+  @tu lazy val Function2: Symbol = FunctionClass(2)
+
+  @tu lazy val SpecializableFunctions: IArray[Symbol] = IArray(Function0, Function1, Function2)
 
   def FunctionType(n: Int, isContextual: Boolean = false, isErased: Boolean = false)(using Context): TypeRef =
     FunctionClass(n, isContextual && !ctx.erasedTypes, isErased).typeRef
@@ -1178,7 +1184,14 @@ class Definitions {
 
   def isBottomClassAfterErasure(cls: Symbol): Boolean = cls == NothingClass || cls == NullClass
 
-  /** Is a function class.
+  def isBottomType(tp: Type): Boolean =
+    if (ctx.explicitNulls && !ctx.phase.erasedTypes) tp.derivesFrom(NothingClass)
+    else isBottomTypeAfterErasure(tp)
+
+  def isBottomTypeAfterErasure(tp: Type): Boolean =
+    tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
+
+  /** Is any function class where
    *   - FunctionXXL
    *   - FunctionN for N >= 0
    *   - ContextFunctionN for N >= 0
@@ -1186,6 +1199,11 @@ class Definitions {
    *   - ErasedContextFunctionN for N > 0
    */
   def isFunctionClass(cls: Symbol): Boolean = scalaClassName(cls).isFunction
+
+  /** Is a function class where
+   *    - FunctionN for N >= 0 and N != XXL
+   */
+  def isPlainFunctionClass(cls: Symbol) = isVarArityClass(cls, str.Function)
 
   /** Is an context function class.
    *   - ContextFunctionN for N >= 0
@@ -1421,6 +1439,25 @@ class Definitions {
       case _ =>
         false
     })
+
+  @tu lazy val Function0SpecializedApplyNames: collection.Set[TermName] =
+    for r <- Function0SpecializedReturnTypes
+    yield nme.apply.specializedFunction(r, Nil).asTermName
+
+  @tu lazy val Function1SpecializedApplyNames: collection.Set[TermName] =
+    for
+      r  <- Function1SpecializedReturnTypes
+      t1 <- Function1SpecializedParamTypes
+    yield
+      nme.apply.specializedFunction(r, List(t1)).asTermName
+
+  @tu lazy val Function2SpecializedApplyNames: collection.Set[TermName] =
+    for
+      r  <- Function2SpecializedReturnTypes
+      t1 <- Function2SpecializedParamTypes
+      t2 <- Function2SpecializedReturnTypes
+    yield
+      nme.apply.specializedFunction(r, List(t1, t2)).asTermName
 
   def functionArity(tp: Type)(using Context): Int = tp.dropDependentRefinement.dealias.argInfos.length - 1
 

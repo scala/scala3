@@ -162,7 +162,7 @@ class ExpandSAMs extends MiniPhase {
         cpy.Block(tree)(pfDef :: Nil, New(pfSym.typeRef, Nil))
 
       case _ =>
-        val found = tpe.baseType(defn.FunctionClass(1))
+        val found = tpe.baseType(defn.Function1)
         report.error(TypeMismatch(found, tpe), tree.srcPos)
         tree
     }
