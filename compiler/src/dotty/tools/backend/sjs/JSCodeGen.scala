@@ -69,6 +69,7 @@ class JSCodeGen()(using genCtx: Context) {
   // Some state --------------------------------------------------------------
 
   private val generatedClasses = mutable.ListBuffer.empty[js.ClassDef]
+  private val generatedStaticForwarderClasses = mutable.ListBuffer.empty[(Symbol, js.ClassDef)]
 
   private val currentClassSym = new ScopedVar[Symbol]
   private val currentMethodSym = new ScopedVar[Symbol]
@@ -111,6 +112,7 @@ class JSCodeGen()(using genCtx: Context) {
       genCompilationUnit(ctx.compilationUnit)
     } finally {
       generatedClasses.clear()
+      generatedStaticForwarderClasses.clear()
     }
   }
 
@@ -179,6 +181,39 @@ class JSCodeGen()(using genCtx: Context) {
 
     for (tree <- generatedClasses)
       genIRFile(cunit, tree)
+
+    if (generatedStaticForwarderClasses.nonEmpty) {
+      /* #4148 Add generated static forwarder classes, except those that
+       * would collide with regular classes on case insensitive file systems.
+       */
+
+      /* I could not find any reference anywhere about what locale is used
+       * by case insensitive file systems to compare case-insensitively.
+       * In doubt, force the English locale, which is probably going to do
+       * the right thing in virtually all cases (especially if users stick
+       * to ASCII class names), and it has the merit of being deterministic,
+       * as opposed to using the OS' default locale.
+       * The JVM backend performs a similar test to emit a warning for
+       * conflicting top-level classes. However, it uses `toLowerCase()`
+       * without argument, which is not deterministic.
+       */
+      def caseInsensitiveNameOf(classDef: js.ClassDef): String =
+        classDef.name.name.nameString.toLowerCase(java.util.Locale.ENGLISH)
+
+      val generatedCaseInsensitiveNames =
+        generatedClasses.map(caseInsensitiveNameOf).toSet
+
+      for ((site, classDef) <- generatedStaticForwarderClasses) {
+        if (!generatedCaseInsensitiveNames.contains(caseInsensitiveNameOf(classDef))) {
+          genIRFile(cunit, classDef)
+        } else {
+          report.warning(
+              s"Not generating the static forwarders of ${classDef.name.name.nameString} " +
+              "because its name differs only in case from the name of another class or trait in this compilation unit.",
+              site.srcPos)
+        }
+      }
+    }
   }
 
   private def genIRFile(cunit: CompilationUnit, tree: ir.Trees.ClassDef): Unit = {
@@ -346,7 +381,7 @@ class JSCodeGen()(using genCtx: Context) {
                 forwarders,
                 Nil
             )(js.OptimizerHints.empty)
-            generatedClasses += forwardersClassDef
+            generatedStaticForwarderClasses += sym -> forwardersClassDef
           }
         }
         allMemberDefsExceptStaticForwarders
