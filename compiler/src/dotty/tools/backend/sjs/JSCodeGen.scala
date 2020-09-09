@@ -523,14 +523,33 @@ class JSCodeGen()(using genCtx: Context) {
    * `def hashCode(): Int` and a `static def hashCode(Int): Int`. The JVM
    * back-end considers them as colliding because they have the same name,
    * but we must not.
+   *
+   * By default, we only emit forwarders for top-level objects, like the JVM
+   * back-end. However, if requested via a compiler option, we enable them
+   * for all static objects. This is important so we can implement static
+   * methods of nested static classes of JDK APIs (see scala-js/#3950).
    */
 
   /** Is the given Scala class, interface or module class a candidate for
    *  static forwarders?
+   *
+   *  - the flag `-XnoForwarders` is not set to true, and
+   *  - the symbol is static, and
+   *  - either of both of the following is true:
+   *    - the flag `-scalajsGenStaticForwardersForNonTopLevelObjects` is set to true, or
+   *    - the symbol was originally at the package level
+   *
+   *  Other than the Scala.js-specific flag, and the fact that we also consider
+   *  interfaces, this performs the same tests as the JVM back-end.
    */
   def isCandidateForForwarders(sym: Symbol): Boolean = {
-    // it must be a top level class
-    sym.isStatic
+    !ctx.settings.XnoForwarders.value && sym.isStatic && {
+      ctx.settings.scalajsGenStaticForwardersForNonTopLevelObjects.value || {
+        atPhase(flattenPhase) {
+          toDenot(sym).owner.is(PackageClass)
+        }
+      }
+    }
   }
 
   /** Gen the static forwarders to the members of a class or interface for

@@ -1004,6 +1004,8 @@ object Build {
         )
       }.taskValue,
 
+      scalacOptions in Test += "-scalajs-genStaticForwardersForNonTopLevelObjects",
+
       scalaJSLinkerConfig ~= { _.withSemantics(build.TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= build.TestSuiteLinkerOptions.moduleInitializers,
 
