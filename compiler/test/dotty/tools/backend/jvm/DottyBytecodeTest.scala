@@ -21,6 +21,8 @@ import scala.tools.asm.{ClassWriter, ClassReader}
 import scala.tools.asm.tree._
 import java.io.{File => JFile, InputStream}
 
+import org.junit.Assert._
+
 trait DottyBytecodeTest {
   import AsmNode._
   import ASMConverters._
@@ -75,7 +77,7 @@ trait DottyBytecodeTest {
   }
 
   /** Finds a class with `cls` as name in `dir`, throws if it can't find it */
-  def findClass(cls: String, dir: Directory) = {
+  def findClass(cls: String, dir: AbstractFile) = {
     val clsIn = dir.lookupName(s"$cls.class", directory = false).input
     val clsNode = loadClassNode(clsIn)
     assert(clsNode.name == cls, s"inspecting wrong class: ${clsNode.name}")
@@ -229,7 +231,7 @@ trait DottyBytecodeTest {
     }
     .getOrElse(fail("Could not find constructor for object `Test`"))
 
- private def boxingError(ins: List[_], source: String) =
+  private def boxingError(ins: List[_], source: String) =
     s"""|----------------------------------
         |${ins.mkString("\n")}
         |----------------------------------
@@ -255,6 +257,15 @@ trait DottyBytecodeTest {
     }
 
     (ins, boxed)
+  }
+
+  protected def hasInvokeStatic(method: MethodNode): Boolean = {
+    val ins = instructionsFromMethod(method)
+    ins.exists {
+      case Invoke(op, owner, name, desc, itf) =>
+        op == 184
+      case _ => false
+    }
   }
 
 }

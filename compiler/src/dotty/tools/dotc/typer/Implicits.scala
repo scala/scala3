@@ -174,7 +174,7 @@ object Implicits:
               // We keep the old behavior under -source 3.0-migration.
               val isFunctionInS2 =
                 migrateTo3
-                && tpw.derivesFrom(defn.FunctionClass(1))
+                && tpw.derivesFrom(defn.Function1)
                 && ref.symbol != defn.Predef_conforms
               val isImplicitConversion = tpw.derivesFrom(defn.ConversionClass)
               // An implementation of <:< counts as a view
