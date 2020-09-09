@@ -61,6 +61,10 @@ class JavaPlatform extends Platform {
     (sym derivesFrom BoxedBooleanClass)
   }
 
+  /** Is the given class assured by the platform not to have any initialization code? */
+  def isAssuredNoInits(sym: ClassSymbol)(using Context): Boolean =
+    defn.isAssuredNoInits(sym)
+
   def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =
     true
 

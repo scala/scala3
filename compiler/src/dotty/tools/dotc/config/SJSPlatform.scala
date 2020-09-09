@@ -26,6 +26,10 @@ class SJSPlatform()(using Context) extends JavaPlatform {
       || jsDefinitions.isJSFunctionClass(cls)
       || jsDefinitions.isJSThisFunctionClass(cls)
 
+  /** Is the given class assured by the platform not to have any initialization code? */
+  override def isAssuredNoInits(sym: ClassSymbol)(using Context): Boolean =
+    super.isAssuredNoInits(sym) || sym.hasAnnotation(jsDefinitions.JSGlobalScopeAnnot)
+
   override def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =
     !sym.isSubClass(jsDefinitions.JSAnyClass)
 
