@@ -65,9 +65,14 @@ trait ClassLikeSupport:
     }
 
   extension (c: ClassDef):
+      def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
+
       def getExtensionGroups: List[ExtensionGroup] = {
           case class ExtensionRepr(arg: ValDef, method: Symbol)
-          val extensions = c.symbol.classMethods.filterNot(isSyntheticFunc).filter(isExtensionMethod(_))
+          val extensions = c.symbol.classMethods
+            .filterNot(_.isHiddenByVisibility)
+            .filterNot(isSyntheticFunc)
+            .filter(isExtensionMethod(_))
             .map(m => ExtensionRepr(getExtendedSymbol(m).get, m))
           val groupped = extensions.groupBy( e => e.arg.pos)
           groupped.map {
@@ -80,18 +85,21 @@ trait ClassLikeSupport:
       }
 
       def getGivenMethods: List[DFunction] = {
-        c.symbol.classMethods.filter(_.isGiven()).map(m => parseMethod(m, paramPrefix = _ => "using ", isGiven = true))
+        c.symbol.classMethods
+        .filterNot(_.isHiddenByVisibility)
+        .filter(_.isGiven())
+        .map(m => parseMethod(m, paramPrefix = _ => "using ", isGiven = true))
       }
 
       def getGivenFields: List[DProperty] = {
-        val valDefs = c.body.collect { 
-          case td: ValDef if td.symbol.isGiven() => td
+        val valDefs = membersToDocument.collect { 
+          case vd: ValDef if vd.symbol.isGiven() => vd
         }
         
         valDefs.map(parseValDef(_, isGiven = true))
       }
 
-      def getMethods: List[Symbol] = c.symbol.classMethods.filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_)).filterNot(_.isGiven())
+      def getMethods: List[Symbol] = c.symbol.classMethods.filterNot(_.isHiddenByVisibility).filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_)).filterNot(_.isGiven())
 
       def getInheritedMethods: List[Symbol] = c.symbol.methods.filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_))
           .filter(s => s.maybeOwner != c.symbol)
@@ -106,11 +114,11 @@ trait ClassLikeSupport:
 
       def getSupertypes: List[Bound] = getSupertypes(c).map(_.dokkaType)
 
-      def getConstructors: List[Symbol] = c.body.collect {
+      def getConstructors: List[Symbol] = membersToDocument.collect {
           case d: DefDef if d.name == "<init>" && c.constructor.symbol != d.symbol => d.symbol
       }.toList
 
-      def getNestedClasslikes: List[DClasslike] = c.body.collect {
+      def getNestedClasslikes: List[DClasslike] = membersToDocument.collect {
           case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven() => processTree(c)(parseClasslike(c))
         }.flatten.toList
 
@@ -123,23 +131,25 @@ trait ClassLikeSupport:
 
       def getTypeParams: List[TypeDef] = c.body.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam)
 
-      def getTypeDefs: List[TypeDef] = c.body.collect { 
-        case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && !td.symbol.flags.is(Flags.Private) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum))
+      def getTypeDefs: List[TypeDef] = membersToDocument.collect { 
+        case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum))
           => td 
       }
 
-      def getValDefs: List[ValDef] = c.body.collect { 
-        case td: ValDef if !isSyntheticField(td.symbol, c) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum))
-          => td
+      def getValDefs: List[ValDef] = membersToDocument.collect { 
+        case vd: ValDef if !isSyntheticField(vd.symbol, c) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
+          => vd
       }
 
       def getCompanion: Option[DRI] = c.symbol.getCompanionSymbol
           .filter(!_.flags.is(Flags.Synthetic))
+          .filterNot(_.isHiddenByVisibility)
           .map(_.dri)
 
-      def getConstructorMethod: Option[DFunction] = Some(c.constructor.symbol).filter(_.exists).map( d =>
+      def getConstructorMethod: Option[DFunction] = 
+        Some(c.constructor.symbol).filter(_.exists).filterNot(_.isHiddenByVisibility).map( d =>
           parseMethod(d, constructorWithoutParamLists(c), s => c.getParameterModifier(s))
-      )
+        )
 
   def parseClasslike(classDef: reflect.ClassDef)(using ctx: Context): DClass = classDef match {
     case c: ClassDef if classDef.symbol.flags.is(Flags.Object) => parseObject(c)
@@ -168,15 +178,15 @@ trait ClassLikeSupport:
     }
     val companion = classDef.symbol.getCompanionSymbol.map(_.tree.asInstanceOf[ClassDef]).get
 
-    val enumVals = companion.body.collect {
-      case td: ValDef if !isSyntheticField(td.symbol, classDef) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
+    val enumVals = companion.membersToDocument.collect {
+      case vd: ValDef if !isSyntheticField(vd.symbol, classDef) && vd.symbol.flags.is(Flags.Enum) && vd.symbol.flags.is(Flags.Case) => vd
     }.toList.map(v => parseValDef(v)).map(p => p.withNewExtras(p.getExtra plus IsEnumEntry.Val))
 
-    val enumTypes = companion.body.collect {
-      case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && !td.symbol.flags.is(Flags.Private) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
+    val enumTypes = companion.membersToDocument.collect {
+      case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
     }.toList.map(parseTypeDef).map(p => p.withNewExtras(p.getExtra plus IsEnumEntry.Type))
 
-    val enumNested = companion.body.collect {
+    val enumNested = companion.membersToDocument.collect {
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
     }.flatten.toList.map(p => p.withNewExtras(p.getExtra plus IsEnumEntry.Class))
 

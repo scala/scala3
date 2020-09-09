@@ -84,9 +84,11 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
         val nodes = pages.flatMap(p => all(_.getDci.getKind == ContentKind.Symbol)(p.getContent))
         nodes.map(flattenToText(_).map(_.getText).mkString)
 
-    def signaturesFromSource(s: Source): Seq[String] =
-        val ExpectRegex = ".+//expect: (.+)".r
-            // e.g. to removes '(0)' from object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/ 
+    def signaturesFromSource(s: Source): SignaturesFromSource =
+        val ExpectedRegex = ".+//expected: (.+)".r
+        val UnexpectedRegex = "(.+)//unexpected".r
+
+        // e.g. to remove '(0)' from object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/ 
         val CommentRegexp = """\/\*<-\*\/[^\/]+\/\*->\*\/"""
 
         def (s: String).doesntStartWithAnyOfThese(c: Char*) = c.forall(char => !s.startsWith(char.toString))
@@ -95,14 +97,23 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
             .filterNot(_.trim.isEmpty)
             .filterNot(_.startsWith("//"))
         
-        lines.map {
-            case ExpectRegex(signature) => signature
+        val expectedSignatures = lines.flatMap {
+            case UnexpectedRegex(_) => None
+            case ExpectedRegex(signature) => Some(signature)
             case other =>
-                other.replaceAll(CommentRegexp, "").replaceAll("  +", " ")
+                Some(other.replaceAll(CommentRegexp, "").replaceAll("  +", " "))
+        }
 
-        } 
+        val unexpectedSignatures = lines.collect {
+            case UnexpectedRegex(signature) => signature.trim
+        }
+
+        SignaturesFromSource(expectedSignatures, unexpectedSignatures)
         
     val _collector = new ErrorCollector();
     @Rule
     def collector = _collector
     def reportError(msg: String) = collector.addError(new AssertionError(msg))
+
+
+case class SignaturesFromSource(expected: Seq[String], unexpected: Seq[String])

@@ -83,6 +83,10 @@ trait ScalaSignatureUtils:
                 .map(_.filter(_.prefix).map(_.getName))
                 .map(modifiers => modifiers.toSeq.toSignatureString())
                 .getOrElse("")
+
+            val visibilityModifier =
+                val visibility = t.getVisibility.defaultValue.asInstanceOf[ScalaVisibility]
+                visibilityToString(visibility)
             
             val suffixes = additionalModifiers
                 .map(_.filter(!_.prefix).map(_.getName))
@@ -94,7 +98,7 @@ trait ScalaSignatureUtils:
                 .text(
                     Seq(
                         prefixes.trim,
-                        t.getVisibility.defaultValue.getName, 
+                        visibilityModifier, 
                         t.getModifier.defaultValue.getName,
                         suffixes.trim,
                         kind
@@ -139,6 +143,22 @@ trait ScalaSignatureUtils:
                     else (builder, toIndex)
             }
             bldr
+
+            
+    private def visibilityToString(visibility: ScalaVisibility) = visibility match {
+        case ScalaVisibility.Unrestricted => ""
+        case ScalaVisibility.Protected(scope) => s"protected${visibilityScopeToString(scope)}"
+        case ScalaVisibility.Private(scope) => s"private${visibilityScopeToString(scope)}"
+    }
+
+    private def visibilityScopeToString(scope: VisibilityScope) = 
+        import VisibilityScope._
+
+        scope match
+            case ImplicitTypeScope | ImplicitModuleScope => ""
+            case ExplicitTypeScope(name) => s"[$name]"
+            case ExplicitModuleScope(name) => s"[$name]"
+            case ThisScope => "[this]"
 
 
     

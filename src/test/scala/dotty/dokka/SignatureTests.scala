@@ -14,7 +14,9 @@ class ClassSignatureTestSourceTest extends SingleFileTest("classSignatureTestSou
 // TODO we still cannot filter out all constructor-based fields
 class SignatureTestSourceTest extends SingleFileTest("signatureTestSource", SingleFileTest.all)
 
-class ModifiersSignatureTest extends SingleFileTest("modifiersSignatureTestSource", SingleFileTest.all.filter(_ != "object"))
+class ModifiersSignatureTest extends SingleFileTest("modifiersSignatureTestSource", SingleFileTest.all)
+
+class Visibility extends SingleFileTest("visibility", SingleFileTest.all)
 
 
 class GenericMethodsTest extends SingleFileTest("genericMethods", Seq("def"))

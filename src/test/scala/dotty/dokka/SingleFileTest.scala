@@ -17,10 +17,14 @@ object SingleFileTest {
   val all = classlikeKinds ++ members
 }
 
-abstract class SingleFileTest(val fileName: String, signatureKinds: Seq[String], ignoreUndocumented: Boolean = false) extends MultipleFileTest(
-    List(fileName),
-    List(fileName),
-    signatureKinds,
-    ignoreUndocumented
+abstract class SingleFileTest(
+  val fileName: String,
+  signatureKinds: Seq[String],
+  ignoreUndocumentedSignatures: Boolean = false
+) extends MultipleFileTest(
+  List(fileName),
+  List(fileName),
+  signatureKinds,
+  ignoreUndocumentedSignatures
 )
 

@@ -23,7 +23,7 @@ trait SyntheticsSupport:
     c.flags.is(Flags.Synthetic) || c.flags.is(Flags.FieldAccessor)  
 
   def isSyntheticField(c: Symbol, classDef: ClassDef) = 
-    c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Private) || c.flags.is(Flags.Object)
+    c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Object)
 
   def isExtensionMethod(d: Symbol): Boolean = hackIsExtension(self.reflect)(d)
 

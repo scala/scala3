@@ -13,17 +13,6 @@ We're aiming to support all the features Scaladoc did, plus new and exciting one
 - displaying project and API documentation together on one site!
 - and more!
 
-## Contributing
-
-We're happy that you'd like to help us!
-
-We have two issue labels you should take a look at: `good first issue` and
-`self-contained`. First is easy pickings: you'll be able to contribute without
-needing to dive too deep into the project. Second is reverse: it's an issue
-that's you may find interesting, complex and self-contained enough that you can
-continue chipping away at it without needing to worry too much about merge
-conflicts.
-
 ## Running the project
 
 Use the following commands to generate documentation for this project and for Dotty, respectively:
@@ -66,6 +55,66 @@ You can also find the result of building the same sites for latest `master` at:
 + https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/self/main/index.html
 + https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/stdLib/main/index.html
 
+### Testing
+
+Most tests rely on comparing signatures (of classes, methods, objects etc.) extracted from the generated documentation
+to signatures found in source files. Such tests are defined using [MultipleFileTest](src/test/scala/dotty/dokka/MultipleFileTest.scala) class
+and its subtypes (such as [SingleFileTest](src/test/scala/dotty/dokka/SingleFileTest.scala))
+
+WARNING: As the classes mentioned above are likely to evolve, the description below might easily get out of date.
+In case of any discrepancies rely on the source files instead.
+
+`MultipleFileTest` requires that you specify the names of the files used to extract signatures,
+the names of directories containing corresponding TASTY files
+and the kinds of signatures from source files (corresponding to keywords used to declare them like `def`, `class`, `object` etc.)
+whose presence in the generated documentation will be checked (other signatures, when missing, will be ignored).
+The mentioned source files should be located directly inside `src/main/scala/tests` directory
+but the file names passed as parameters should contain neither this path prefix nor `.scala` suffix.
+The TASTY folders are expected to be located in `target/${dottyVersion}/classes/tests` (after successful compilation of the project)
+and similarly only their names relative to this path should be provided as tests' parameters.
+For `SingleFileTest` the name of the source file and the TASTY folder are expected to be the same.
+
+By default it's expected that all signatures from the source files will be present in the documentation
+but not vice versa (because the documentation can contain also inherited signatures).
+To validate that a signature present in the source does not exist in the documentation
+(because they should be hidden from users) add `//unexpected` comment after the signature in the same line.
+This will cause an error if a signature with the same name appears in the documentation
+(even if some elements of the signature are slightly different - to avoid accidentally passing tests).
+If the signature in the documentation is expected to slightly differ from how it's defined in the source code
+you can add a `//expected: ` comment (also in the same line and followed by a space) followed by the expected signature.
+Alternatively you can use `/*<-*/` and `/*->*/` as opening and closing parentheses for parts of a signature present in the source but undesired in the documentation (at least at the current stage of development), e.g.
+
+```
+def foo/*<-*/()/*->*/: Int
+```
+
+will make the expected signature be
+
+```
+def foo: Int
+```
+
+instead of
+
+```
+def foo(): Int
+```
+
+
+Because of the way how signatures in source are parsed, they're expected to span until the end of a line (including comments except those special ones mentioned above, which change the behaviour of tests) so if a definition contains an implementation, it should be placed in a separate line, e.g.
+
+```
+def foo: Int
+   = 1
+
+class Bar
+{
+   //...
+}
+```
+
+Otherwise the implementation would be treated as a part of the signature.
+
 ## Roadmap
 
 1. Publish an initial version of the tool together with an SBT plugin
@@ -78,6 +127,22 @@ You can also find the result of building the same sites for latest `master` at:
 1. Support all kinds of Dotty definition and generate documentation for the
    standard library
 1. Reach feature parity with Scaladoc
+
+## Contributing
+
+We're happy that you'd like to help us!
+
+We have two issue labels you should take a look at: `good first issue` and
+`self-contained`. First is easy pickings: you'll be able to contribute without
+needing to dive too deep into the project. Second is reverse: it's an issue
+that's you may find interesting, complex and self-contained enough that you can
+continue chipping away at it without needing to worry too much about merge
+conflicts.
+
+To contribute to the project with your code, fork this repo and create a pull request from a fresh branch from there.
+To keep the history of commits clean, make sure your commits are squashed into one
+and all your changes are applied on top of the latest master branch (if not - rebase on it instead of merging it).
+Make sure all the tests pass (simply run `sbt test` to verify that).
 
 ## FAQ
 
