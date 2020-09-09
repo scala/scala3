@@ -170,33 +170,30 @@ object printMips {
         }
       }
 
-    def oneAddr[O]
+    def oneAddr[O <: OneAddr]
       ( a: O, indent: String)
       ( r: O => Dest,
-      ): String = {
-        val name = a.getClass.getSimpleName.toLowerCase
-        s"${indent}$name ${rsrc(r(a))}$endl"
-      }
+      ): String = (
+        s"${indent}${a.enumLabel} ${rsrc(r(a))}$endl"
+      )
 
-    def twoAddr[O]
+    def twoAddr[O <: TwoAddr]
       ( a: O, indent: String)
       ( d: O => Register,
         r: O => Dest | Constant
-      ): String = {
-        val name = a.getClass.getSimpleName.toLowerCase
-        s"${indent}$name ${registers(d(a))}, ${rsrc(r(a))}$endl"
-      }
+      ): String = (
+        s"${indent}${a.enumLabel} ${registers(d(a))}, ${rsrc(r(a))}$endl"
+      )
 
-    def threeAddr[O]
+    def threeAddr[O <: ThreeAddr]
       ( a: O,
         indent: String )
       ( d: O => Register,
         l: O => Register,
         r: O => Src
-      ): String = {
-        val name = a.getClass.getSimpleName.toLowerCase
-        s"${indent}$name ${registers(d(a))}, ${registers(l(a))}, ${rsrc(r(a))}$endl"
-      }
+      ): String = (
+        s"${indent}${a.enumLabel} ${registers(d(a))}, ${registers(l(a))}, ${rsrc(r(a))}$endl"
+      )
 
     def rsrc(v: Constant | Dest): String = v match {
       case Constant(c) => c.toString
