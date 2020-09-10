@@ -143,7 +143,7 @@ class ExtractSemanticDB extends Phase:
             return
           if !excludeDef(tree.symbol)
           && tree.span.hasLength then
-            registerDefinition(tree.symbol, tree.adjustedNameSpan, symbolKinds(tree), tree.source)
+            registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree), tree.source)
             val privateWithin = tree.symbol.privateWithin
             if privateWithin.exists then
               registerUseGuarded(None, privateWithin, spanOfSymbol(privateWithin, tree.span, tree.source), tree.source)
@@ -184,7 +184,7 @@ class ExtractSemanticDB extends Phase:
           val ctorSym = tree.constr.symbol
           if !excludeDef(ctorSym) then
             traverseAnnotsOfDefinition(ctorSym)
-            registerDefinition(ctorSym, tree.constr.span, Set.empty, tree.source)
+            registerDefinition(ctorSym, Span(tree.constr.nameSpan.point), Set.empty, tree.source)
             ctorParams(tree.constr.vparamss, tree.body)
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
             traverse(parent)
@@ -282,13 +282,6 @@ class ExtractSemanticDB extends Phase:
         impl(Nil, pat::Nil)
 
     end PatternValDef
-
-    extension (tree: NamedDefTree):
-      private def adjustedNameSpan(using Context): Span =
-        if tree.span.exists && tree.name.isAnonymousFunctionName || tree.name.isAnonymousClassName then
-          Span(tree.span.point)
-        else
-          tree.nameSpan
 
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
