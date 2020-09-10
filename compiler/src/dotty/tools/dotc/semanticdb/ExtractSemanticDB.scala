@@ -184,7 +184,7 @@ class ExtractSemanticDB extends Phase:
           val ctorSym = tree.constr.symbol
           if !excludeDef(ctorSym) then
             traverseAnnotsOfDefinition(ctorSym)
-            registerDefinition(ctorSym, Span(tree.constr.nameSpan.point), Set.empty, tree.source)
+            registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
             ctorParams(tree.constr.vparamss, tree.body)
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
             traverse(parent)
@@ -285,11 +285,11 @@ class ExtractSemanticDB extends Phase:
 
     extension (tree: NamedDefTree):
       private def adjustedNameSpan(using Context): Span =
-        val span = tree.nameSpan
+        val nameSpan = tree.nameSpan
         if tree.symbol.is(ExtensionMethod) && tree.name.isExtensionName then
-          span.withEnd(span.end - ExtractSemanticDB.extensionPrefixLength)
+          nameSpan.withEnd(nameSpan.end - ExtractSemanticDB.extensionPrefixLength)
         else
-          span
+          nameSpan
 
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
@@ -531,8 +531,7 @@ class ExtractSemanticDB extends Phase:
       Span(start max limit, end)
 
     extension (span: Span):
-      private def hasLength: Boolean = span.start != span.end
-      private def zeroLength: Boolean = span.start == span.end
+      private def hasLength: Boolean = span.exists && !span.isZeroExtent
 
     /**Consume head while not an import statement.
      * Returns the rest of the list after the first import, or else the empty list

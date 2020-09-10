@@ -3070,7 +3070,7 @@ Occurrences:
 [2:10..2:10): <- i9727/Test#`<init>`().
 [2:11..2:12): a <- i9727/Test#a.
 [2:14..2:17): Int -> scala/Int#
-[3:0..3:13): val a = new T <- i9727/i9727$package.
+[3:0..3:0): <- i9727/i9727$package.
 [3:4..3:5): a <- i9727/i9727$package.a.
 [3:12..3:16): Test -> i9727/Test#
 [3:16..3:16): -> i9727/Test#`<init>`().
@@ -3922,11 +3922,17 @@ Schema => SemanticDB v4
 Uri => toplevel.scala
 Text => empty
 Language => Scala
-Symbols => 11 entries
-Occurrences => 24 entries
+Symbols => 18 entries
+Occurrences => 42 entries
 
 Symbols:
+_empty_/MyProgram# => final class MyProgram
+_empty_/MyProgram#`<init>`(). => primary ctor <init>
+_empty_/MyProgram#main(). => static method main
+_empty_/MyProgram#main().(args) => param args
 _empty_/toplevel$package. => final package object _empty_
+_empty_/toplevel$package.MyProgram(). => method MyProgram
+_empty_/toplevel$package.MyProgram().(times) => param times
 _empty_/toplevel$package.a. => val method a
 _empty_/toplevel$package.combine(). => method combine
 _empty_/toplevel$package.combine().(x) => param x
@@ -3937,9 +3943,10 @@ _empty_/toplevel$package.extension_combine(). => method extension_combine
 _empty_/toplevel$package.extension_combine().(x) => param x
 _empty_/toplevel$package.extension_combine().(y) => param y
 _empty_/toplevel$package.foo(). => method foo
+local0 => val local error
 
 Occurrences:
-[0:0..0:16): inline val a = " <- _empty_/toplevel$package.
+[0:0..0:0): <- _empty_/toplevel$package.
 [0:11..0:12): a <- _empty_/toplevel$package.a.
 [1:11..1:12): x <- _empty_/toplevel$package.extension_combine().(x)
 [1:14..1:17): Int -> scala/Int#
@@ -3963,4 +3970,22 @@ Occurrences:
 [2:46..2:47): z -> _empty_/toplevel$package.combine().(z)
 [3:4..3:11): combine <- _empty_/toplevel$package.combine(+1).
 [4:4..4:7): foo <- _empty_/toplevel$package.foo().
+[5:0..5:0): <- _empty_/MyProgram#
+[5:0..5:0): <- _empty_/MyProgram#`<init>`().
+[5:0..5:0): -> _empty_/toplevel$package.MyProgram().
+[5:0..5:0): -> scala/util/CommandLineParser.parseArgument().
+[5:0..5:0): -> _empty_/MyProgram#main().(args)
+[5:0..5:0): -> scala/util/FromString.given_FromString_Int.
+[5:0..5:0): -> scala/util/CommandLineParser.showError().
+[5:0..5:0): -> local0
+[5:1..5:5): main -> scala/main#
+[5:10..5:19): MyProgram <- _empty_/toplevel$package.MyProgram().
+[5:20..5:25): times <- _empty_/toplevel$package.MyProgram().(times)
+[5:27..5:30): Int -> scala/Int#
+[5:33..5:37): Unit -> scala/Unit#
+[5:41..5:41): -> scala/LowPriorityImplicits#intWrapper().
+[5:43..5:45): to -> scala/runtime/RichInt#to().
+[5:46..5:51): times -> _empty_/toplevel$package.MyProgram().(times)
+[5:53..5:60): foreach -> scala/collection/immutable/Range#foreach().
+[5:67..5:74): println -> scala/Predef.println(+1).
 
