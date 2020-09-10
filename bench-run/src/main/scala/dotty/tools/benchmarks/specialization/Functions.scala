@@ -5,7 +5,7 @@ import scala.util.Random
 
 class Functions {
   extension (x: Int)
-    inline def times(op: => Unit): Unit = {
+    inline def times(inline op: Unit): Unit = {
       var count = 0
       while count < x do
         op
