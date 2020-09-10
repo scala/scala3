@@ -29,6 +29,7 @@ repo
 
 .metals
 .bloop
+.dotty-ide*
 
 # custom things
 output

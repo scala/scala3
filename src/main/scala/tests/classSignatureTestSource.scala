@@ -53,7 +53,7 @@ trait TraitTest
 
 }
 
-trait TraitWithCompanion{} //expect: trait TraitWithCompanion
+trait TraitWithCompanion{} //expected: trait TraitWithCompanion
 
 object TraitWithCompanion
 {}

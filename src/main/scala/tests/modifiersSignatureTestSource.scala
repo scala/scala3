@@ -10,9 +10,14 @@ class Empty()
 
 sealed class Sealed()
 
+open class Open
+
+opaque type Opaque
+    = Open
+
 abstract class Methods()
 {
-    def method1(): Unit 
+    def method1(): Unit
 
     inline def inlineMethod(): Unit
         = Unit
@@ -33,5 +38,3 @@ case class ReimplementedMethods() extends ImplementedMethods/*<-*/()/*->*/
     override def method1(): Unit
         = ???
 }
-
-

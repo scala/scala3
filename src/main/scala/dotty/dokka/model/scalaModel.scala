@@ -21,11 +21,19 @@ enum ScalaOnlyModifiers(val name: String, val prefix: Boolean) extends ExtraModi
   case Override extends ScalaOnlyModifiers("override", true)
   case Erased extends ScalaOnlyModifiers("erased", true)
   case Opaque extends ScalaOnlyModifiers("opaque", true)
+  case Open extends ScalaOnlyModifiers("open", true)
     
+enum VisibilityScope:
+  case ImplicitTypeScope // private/protected inside a class or a trait
+  case ImplicitModuleScope // private/protected inside a package or an object
+  case ExplicitTypeScope(typeName: String) // private[X]/protected[X] inside a class or a trait
+  case ExplicitModuleScope(moduleName: String) // private[X]/protected[X] inside a package or an object
+  case ThisScope // private[this]/protected[this]
+
 enum ScalaVisibility(val name: String) extends org.jetbrains.dokka.model.Visibility(name, null):
-  case NoModifier extends ScalaVisibility("")
-  case Protected extends ScalaVisibility("protected")
-  case Private extends ScalaVisibility("private")
+  case Unrestricted extends ScalaVisibility("")
+  case Protected(scope: VisibilityScope) extends ScalaVisibility("protected")
+  case Private(scope: VisibilityScope) extends ScalaVisibility("private")
 
 enum ScalaModifier(val name: String) extends org.jetbrains.dokka.model.Modifier(name, null):
   case Abstract extends ScalaModifier("abstract")

@@ -17,17 +17,17 @@ object MultipleFileTest{
     val all = classlikeKinds ++ members
 }
 
-abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders: List[String] ,signatureKinds: Seq[String], ignoreUndocumented: Boolean = false) extends DottyAbstractCoreTest:
+abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders: List[String], signatureKinds: Seq[String], ignoreUndocumentedSignatures: Boolean = false
+) extends DottyAbstractCoreTest:
     private val _collector = new ErrorCollector();
 
-  /* There's assumption that symbols are named using letters and digits only (no Scala operators :/) to make it easier to find symbol name */
+    // This should work correctly except for names in backticks and operator names containing a colon
     def extractSymbolName(signature: String) = 
-        val helper = signatureKinds.find(k => signature.contains(s"$k "))
-        
-        helper.fold("NULL"){ h =>
-            val helperIndex = signature.indexOf(h)
-            signature.substring(helperIndex + helper.size + 1).takeWhile(_.isLetterOrDigit)
-        }  
+        val Pattern = s"""(?s).*(?:${signatureKinds.mkString("|")}) ([^\\[(: \\n\\t]+).*""".r
+        signature match {
+            case Pattern(name) => name
+            case x => "NULL"
+        }
         
     def matchSignature(s: String, signatureList: List[String]): Seq[String] = 
         val symbolName = extractSymbolName(s)
@@ -49,16 +49,36 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
     @Test
     def testSignatures(): Unit = 
         def cleanup(s: String) = s.replace("\n", " ").replaceAll(" +", " ")
-        val allFromSource = sourceFiles.flatMap(file => signaturesFromSource(Source.fromFile(s"src/main/scala/tests/$file.scala")).toList)
-        val fromSource = allFromSource.filter(extractSymbolName(_) != "NULL").map(cleanup)
+        
+        val allFromSource = sourceFiles.map{ file => 
+            val all = signaturesFromSource(Source.fromFile(s"src/main/scala/tests/$file.scala"))
+            (all.expected, all.unexpected)
+        }
+
+        val expectedFromSource = allFromSource.map(_._1).flatten.filter(extractSymbolName(_) != "NULL").map(cleanup)
+        val unexpectedFromSource = allFromSource.map(_._2).flatten.filter(extractSymbolName(_) != "NULL").map(cleanup)
+        val unexpectedSignatureSymbolNames = unexpectedFromSource.map(extractSymbolName)
 
         val allFromDocumentation = tastyFolders.flatMap(folder => signaturesFromDocumentation(s"target/scala-0.26/classes/tests/$folder"))
         val fromDocumentation = allFromDocumentation.filter(extractSymbolName(_) != "NULL").map(cleanup)
         
-        val documentedSignature = fromDocumentation.flatMap(matchSignature(_, fromSource)).toSet
-        val missingSignatures = fromSource.filterNot(documentedSignature.contains)
-        
-        if !ignoreUndocumented && missingSignatures.nonEmpty then reportError(
-            s"""Not documented signatures:\n ${missingSignatures.mkString("\n")} \n All signatures: ${fromDocumentation.mkString("\n")}"""
-        )
+        val documentedSignatures = fromDocumentation.flatMap(matchSignature(_, expectedFromSource)).toSet
+        val missingSignatures = expectedFromSource.filterNot(documentedSignatures.contains)
 
+        val unexpectedSignatures =
+            fromDocumentation.filter(s => unexpectedSignatureSymbolNames.contains(extractSymbolName(s))).toSet
+
+        val reportMissingSignatures = !ignoreUndocumentedSignatures && missingSignatures.nonEmpty
+        val reportUnexpectedSignatures = unexpectedSignatures.nonEmpty
+        
+        if reportMissingSignatures || reportUnexpectedSignatures then
+            val missingSignaturesMessage = Option.when(reportMissingSignatures)
+                (s"Not documented signatures:\n${missingSignatures.mkString("\n")}")
+
+            val unexpectedSignaturesMessage = Option.when(reportUnexpectedSignatures)
+                (s"Unexpectedly documented signatures:\n${unexpectedSignatures.mkString("\n")}")
+
+            val allSignaturesMessage = s"All documented signatures:\n${documentedSignatures.mkString("\n")}\n\nAll expected signatures from source:\n${expectedFromSource.mkString("\n")}"
+            val errorMessages = missingSignaturesMessage ++ unexpectedSignaturesMessage ++ Some(allSignaturesMessage)
+            
+            reportError(errorMessages.mkString("\n\n"))

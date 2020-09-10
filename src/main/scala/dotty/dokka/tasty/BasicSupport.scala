@@ -67,14 +67,42 @@ class SymOps[R <: Reflection](val r: R) {
       if (sym.owner.isPackageDef) Some(sym.name) else sym.owner.topLevelEntryName
 
     def getVisibility(): ScalaVisibility =
-      if (sym.flags.is(Flags.Private)) ScalaVisibility.Private
-      else if (sym.flags.is(Flags.Protected)) ScalaVisibility.Protected
-      else ScalaVisibility.NoModifier
+      import VisibilityScope._
+
+      def explicitScope(ownerType: Type): VisibilityScope = 
+        val moduleSym = ownerType.typeSymbol.companionModule
+        if moduleSym.isNoSymbol
+          then ExplicitTypeScope(ownerType.typeSymbol.name)
+          else ExplicitModuleScope(moduleSym.name)
+
+      def implicitScope(ownerSym: Symbol): VisibilityScope =
+        val moduleSym = ownerSym.companionModule
+        if moduleSym.isNoSymbol
+          then ImplicitTypeScope
+          else ImplicitModuleScope
+
+      val visibilityFlags = (sym.flags.is(Flags.Private), sym.flags.is(Flags.Protected), sym.flags.is(Flags.Local))
+      (sym.privateWithin, sym.protectedWithin, visibilityFlags) match
+        case (Some(owner), None, _) => ScalaVisibility.Private(explicitScope(owner))
+        case (None, Some(owner), _) => ScalaVisibility.Protected(explicitScope(owner))
+        case (None, None, (true, false, _)) => ScalaVisibility.Private(implicitScope(sym.owner))
+        case (None, None, (false, true, true)) => ScalaVisibility.Protected(ThisScope)
+        case (None, None, (false, true, false)) => ScalaVisibility.Protected(implicitScope(sym.owner))
+        case (None, None, (false, false, false)) => ScalaVisibility.Unrestricted
+        case _ => throw new Exception(s"Visibility for symbol $sym cannot be determined")
 
     def getModifier(): ScalaModifier =
       if (sym.flags.is(Flags.Abstract)) ScalaModifier.Abstract
       else if (sym.flags.is(Flags.Final)) ScalaModifier.Final
       else ScalaModifier.Empty
+
+    // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
+    def hackIsOpen: Boolean = {
+      import dotty.tools.dotc
+      given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+      val symbol = sym.asInstanceOf[dotc.core.Symbols.Symbol]
+      symbol.is(dotc.core.Flags.Open)
+    }
 
     def getExtraModifiers(): Set[ScalaOnlyModifiers] =
       Set(
@@ -84,10 +112,19 @@ class SymOps[R <: Reflection](val r: R) {
         Option.when(sym.flags.is(Flags.Inline))(ScalaOnlyModifiers.Inline),
         Option.when(sym.flags.is(Flags.Lazy))(ScalaOnlyModifiers.Lazy),
         Option.when(sym.flags.is(Flags.Override))(ScalaOnlyModifiers.Override),
-        Option.when(sym.flags.is(Flags.Case))(ScalaOnlyModifiers.Case)
+        Option.when(sym.flags.is(Flags.Case))(ScalaOnlyModifiers.Case),
+        Option.when(sym.hackIsOpen)(ScalaOnlyModifiers.Open)
       ).flatten
 
-    def shouldDocumentClasslike: Boolean = !sym.flags.is(Flags.Private) 
+    def isHiddenByVisibility: Boolean = 
+      import VisibilityScope._
+
+      getVisibility() match
+        case ScalaVisibility.Private(_) => true
+        case ScalaVisibility.Protected(ThisScope | ImplicitModuleScope | _: ExplicitModuleScope) => true
+        case _ => false
+
+    def shouldDocumentClasslike: Boolean = !isHiddenByVisibility
         && !sym.flags.is(Flags.Synthetic) 
         && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
         && !(sym.companionModule.flags.is(Flags.Given))
