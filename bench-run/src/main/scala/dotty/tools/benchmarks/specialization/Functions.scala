@@ -5,11 +5,13 @@ import scala.util.Random
 
 class Functions {
   extension (x: Int)
-    inline def times(inline op: Unit): Unit = {
+    inline def times(inline work: Int): Int = {
+      var res = 0
       var count = 0
       while count < x do
-        op
+        res += work
         count += 1
+      res
     }
 
   class ByName {
@@ -17,17 +19,17 @@ class Functions {
   }
 
   @Benchmark
-  def byNameBench() = 10000.times {
+  def byNameBench(): Int = {
     val a = new ByName
     var list = List(a)
-    list.head.foo(6) + 10
+    10000.times { list.head.foo(6) }
   }
 
   @Benchmark
-  def lambdaBench() = 10000.times {
+  def lambdaBench(): Int = {
     val fn = (x: Int) => x + 1
     var list = List(fn)
-    list.head(2)
+    10000.times { list.head(2) }
   }
 
   class Func1[T](fn: T => Int) extends Function1[T, Int] {
@@ -36,10 +38,10 @@ class Functions {
   class Fn extends Func1(identity[Int])
 
   @Benchmark
-  def extendFun1Bench() = 10000.times {
+  def extendFun1Bench(): Int = {
     val a: Function1[Int, Int] = new Fn
     var list = List(a)
-    list.head(123) + 10
+    10000.times { list.head(123) }
   }
 
   class Func2 extends Function2[Int, Int, Int] {
@@ -47,9 +49,9 @@ class Functions {
   }
 
   @Benchmark
-  def extendFun2Bench() = 10000.times {
+  def extendFun2Bench(): Int = {
     val a: Function2[Int, Int, Int] = new Func2
     var list = List(a)
-    list.head(1300, 37) + 100
+    10000.times { list.head(1300, 37) }
   }
 }
