@@ -65,6 +65,9 @@ class ScalaSettings extends Settings.SettingGroup {
   val pluginsDir: Setting[String]         = StringSetting       ("-Xpluginsdir", "path", "Path to search for plugin archives.", Defaults.scalaPluginPath)
   val pluginOptions: Setting[List[String]]      = MultiStringSetting  ("-P", "plugin:opt", "Pass an option to a plugin, e.g. -P:<plugin>:<opt>")
 
+  /** Scala.js-related settings */
+  val scalajsGenStaticForwardersForNonTopLevelObjects: Setting[Boolean] = BooleanSetting("-scalajs-genStaticForwardersForNonTopLevelObjects", "Generate static forwarders even for non-top-level objects (Scala.js only)")
+
   /** -X "Advanced" settings
    */
   val Xhelp: Setting[Boolean] = BooleanSetting("-X", "Print a synopsis of advanced options.")
