@@ -3629,8 +3629,12 @@ class Typer extends Namer
     }
 
   private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(using Context): Unit =
-    if (!tree.tpe.isErroneous && !ctx.isAfterTyper && isPureExpr(tree) &&
-        !tree.tpe.isRef(defn.UnitClass) && !isSelfOrSuperConstrCall(tree))
+    if !tree.tpe.isErroneous
+      && !ctx.isAfterTyper
+      && !tree.isInstanceOf[Inlined]
+      && isPureExpr(tree)
+      && !isSelfOrSuperConstrCall(tree)
+    then
       report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
 
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
