@@ -9,7 +9,7 @@ class Functions {
       var count = 0
       while count < x do
         op
-        count += x
+        count += 1
     }
 
   class ByName {
