@@ -1032,7 +1032,7 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
-            -- "InteroperabilityTest.scala" // compiler crash, related to value classes in JS interop
+            -- "InteroperabilityTest.scala" // nested native JS classes + JS exports
             -- "OptimizerTest.scala" // non-native JS classes
             -- "RegressionJSTest.scala" // non-native JS classes
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
