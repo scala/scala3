@@ -1303,7 +1303,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
       tree match {
 
-        case tree @ Apply(fun, args) if isPrimitive(fun) =>
+        case tree @ Apply(fun, args) if primitives.isPrimitive(fun.symbol) =>
           import ScalaPrimitivesOps.{ ZNOT, ZAND, ZOR, EQ }
 
           // lhs and rhs of test
@@ -1321,7 +1321,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genCond(rhs, success, failure, targetIfNoJump)
           }
 
-          primitives.getPrimitive(tree, lhs.tpe) match {
+          primitives.getPrimitive(fun.symbol) match {
             case ZNOT   => genCond(lhs, failure, success, targetIfNoJump)
             case ZAND   => genZandOrZor(and = true)
             case ZOR    => genZandOrZor(and = false)
