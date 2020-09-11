@@ -17,3 +17,42 @@ enum MySuperLongScalaEnum {
     A4, B4, C4, D4, E4, F4, G4, H4, I4, J4, K4, L4, M4, N4, O4, P4, Q4, R4, S4, T4, U4, V4, W4, X4, Y4, Z4,
     A5, B5, C5, D5, E5, F5, G5, H5, I5, J5, K5, L5, M5, N5, O5, P5, Q5, R5, S5, T5, U5, V5, W5, X5, Y5, Z5
 }
+
+trait FooBar
+
+enum MySuperLongAdt {
+  case A0 extends MySuperLongAdt with FooBar
+  case B0 extends MySuperLongAdt with FooBar
+  case C0 extends MySuperLongAdt with FooBar
+  case D0 extends MySuperLongAdt with FooBar
+  case E0 extends MySuperLongAdt with FooBar
+  case F0 extends MySuperLongAdt with FooBar
+  case G0 extends MySuperLongAdt with FooBar
+  case H0 extends MySuperLongAdt with FooBar
+  case I0 extends MySuperLongAdt with FooBar
+  case J0 extends MySuperLongAdt with FooBar
+  case K0 extends MySuperLongAdt with FooBar
+  case L0 extends MySuperLongAdt with FooBar
+  case M0 extends MySuperLongAdt with FooBar
+  case N0 extends MySuperLongAdt with FooBar
+  case O0 extends MySuperLongAdt with FooBar
+  case P0 extends MySuperLongAdt with FooBar
+  case Q0 extends MySuperLongAdt with FooBar
+  case R0 extends MySuperLongAdt with FooBar
+  case S0 extends MySuperLongAdt with FooBar
+  case T0 extends MySuperLongAdt with FooBar
+  case U0 extends MySuperLongAdt with FooBar
+  case V0 extends MySuperLongAdt with FooBar
+  case Acc[T <: MySuperLongAdt](t: T)
+}
+
+object Test {
+
+  import MySuperLongAdt._
+  val sum: (
+    A0.type | B0.type | C0.type | D0.type | E0.type | F0.type | G0.type | H0.type | I0.type | J0.type | K0.type |
+    L0.type | M0.type | N0.type | O0.type | P0.type | Q0.type | R0.type | S0.type | T0.type | U0.type | V0.type
+  ) = R0
+
+  def test = Acc(sum)
+}

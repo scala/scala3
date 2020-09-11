@@ -369,12 +369,8 @@ trait ConstraintHandling {
         val asAdt = if isEnum(bound) then lub else widenEnum(lub)
         dropSuperTraits(asAdt)
     wideInst match
-      case wideInst: TypeRef if wideInst.symbol.is(Module) =>
-        TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
-      case wideInst @ EnumValueRef() =>
-        wideInst
-      case _ =>
-        wideInst.dropRepeatedAnnot
+      case wideInst @ ModuleOrEnumValueRef() => wideInst
+      case wideInst => wideInst.dropRepeatedAnnot
   end widenInferred
 
   /** The instance type of `param` in the current constraint (which contains `param`).
