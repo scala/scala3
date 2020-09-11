@@ -51,10 +51,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ----- Tree -----------------------------------------------------
 
-  given TreeOps as Tree.type = Tree
+  object Tree
 
-  object Tree:
-    /** Members of Tree */
+  given TreeOps as AnyRef:
     extension (tree: Tree):
       /** Position in the source code */
       def pos(using ctx: Context): Position = reflectSelf.Tree_pos(tree)
@@ -85,7 +84,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     end extension
 
-
     /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
     extension [T](tree: Tree)
       def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T] =
@@ -95,11 +93,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
           case tree: Term => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
           case _ => throw new Exception("Expected a Term but was: " + tree)
 
-  end Tree
+  end TreeOps
 
   given (using ctx: Context) as TypeTest[Tree, PackageClause] = reflectSelf.PackageClause_TypeTest
-
-  given PackageClauseOps as PackageClause.type = PackageClause
 
   object PackageClause:
     def apply(pid: Ref, stats: List[Tree])(using ctx: Context): PackageClause =
@@ -108,17 +104,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.PackageClause_copy(original)(pid, stats)
     def unapply(tree: PackageClause)(using ctx: Context): Some[(Ref, List[Tree])] =
       Some((tree.pid, tree.stats))
+  end PackageClause
 
+  given PackageClauseOps as AnyRef:
     extension (self: PackageClause):
       def pid(using ctx: Context): Ref = reflectSelf.PackageClause_pid(self)
       def stats(using ctx: Context): List[Tree] = reflectSelf.PackageClause_stats(self)
     end extension
-  end PackageClause
-
+  end PackageClauseOps
 
   given (using ctx: Context) as TypeTest[Tree, Import] = reflectSelf.Import_TypeTest
-
-  given ImportOps as Import.type = Import
 
   object Import:
     def apply(expr: Term, selectors: List[ImportSelector])(using ctx: Context): Import =
@@ -127,13 +122,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Import_copy(original)(expr, selectors)
     def unapply(tree: Import)(using ctx: Context): Option[(Term, List[ImportSelector])] =
       Some((tree.expr, tree.selectors))
+  end Import
 
+  given ImportOps as AnyRef:
     extension (self: Import):
       def expr(using ctx: Context): Term = reflectSelf.Import_expr(self)
       def selectors(using ctx: Context): List[ImportSelector] =
         reflectSelf.Import_selectors(self)
     end extension
-  end Import
+  end ImportOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Statement] = reflectSelf.Statement_TypeTest
@@ -142,19 +139,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   given (using ctx: Context) as TypeTest[Tree, Definition] = reflectSelf.Definition_TypeTest
 
-  given DefinitionOps as Definition.type = Definition
+  object Definition
 
-  object Definition:
+  given DefinitionOps as AnyRef:
     extension (self: Definition):
       def name(using ctx: Context): String = reflectSelf.Definition_name(self)
     end extension
-  end Definition
+  end DefinitionOps
 
   // ClassDef
 
   given (using ctx: Context) as TypeTest[Tree, ClassDef] = reflectSelf.ClassDef_TypeTest
-
-  given ClassDefOps as ClassDef.type = ClassDef
 
   object ClassDef:
     // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement])(using ctx: Context): ClassDef
@@ -162,7 +157,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
     def unapply(cdef: ClassDef)(using ctx: Context): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
       Some((cdef.name, cdef.constructor, cdef.parents, cdef.derived, cdef.self, cdef.body))
+  end ClassDef
 
+  given ClassDefOps as AnyRef:
     extension (self: ClassDef):
       def constructor(using ctx: Context): DefDef = reflectSelf.ClassDef_constructor(self)
       def parents(using ctx: Context): List[Tree /* Term | TypeTree */] = reflectSelf.ClassDef_parents(self)
@@ -170,14 +167,12 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def self(using ctx: Context): Option[ValDef] = reflectSelf.ClassDef_self(self)
       def body(using ctx: Context): List[Statement] = reflectSelf.ClassDef_body(self)
     end extension
-  end ClassDef
+  end ClassDefOps
 
 
   // DefDef
 
   given (using ctx: Context) as TypeTest[Tree, DefDef] = reflectSelf.DefDef_TypeTest
-
-  given DefDefOps as DefDef.type = DefDef
 
   object DefDef:
     def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(using ctx: Context): DefDef =
@@ -186,21 +181,21 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
     def unapply(ddef: DefDef)(using ctx: Context): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
       Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs))
+  end DefDef
 
+  given DefDefOps as AnyRef:
     extension (self: DefDef):
       def typeParams(using ctx: Context): List[TypeDef] = reflectSelf.DefDef_typeParams(self)
       def paramss(using ctx: Context): List[List[ValDef]] = reflectSelf.DefDef_paramss(self)
       def returnTpt(using ctx: Context): TypeTree = reflectSelf.DefDef_returnTpt(self) // TODO rename to tpt
       def rhs(using ctx: Context): Option[Term] = reflectSelf.DefDef_rhs(self)
     end extension
-  end DefDef
+  end DefDefOps
 
 
   // ValDef
 
   given (using ctx: Context) as TypeTest[Tree, ValDef] = reflectSelf.ValDef_TypeTest
-
-  given ValDefOps as ValDef.type = ValDef
 
   object ValDef:
     def apply(symbol: Symbol, rhs: Option[Term])(using ctx: Context): ValDef =
@@ -209,19 +204,19 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.ValDef_copy(original)(name, tpt, rhs)
     def unapply(vdef: ValDef)(using ctx: Context): Option[(String, TypeTree, Option[Term])] =
       Some((vdef.name, vdef.tpt, vdef.rhs))
+  end ValDef
 
+  given ValDefOps as AnyRef:
     extension (self: ValDef):
       def tpt(using ctx: Context): TypeTree = reflectSelf.ValDef_tpt(self)
       def rhs(using ctx: Context): Option[Term] = reflectSelf.ValDef_rhs(self)
     end extension
-  end ValDef
+  end ValDefOps
 
 
   // TypeDef
 
   given (using ctx: Context) as TypeTest[Tree, TypeDef] = reflectSelf.TypeDef_TypeTest
-
-  given TypeDefOps as TypeDef.type = TypeDef
 
   object TypeDef:
     def apply(symbol: Symbol)(using ctx: Context): TypeDef =
@@ -230,33 +225,35 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.TypeDef_copy(original)(name, rhs)
     def unapply(tdef: TypeDef)(using ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
       Some((tdef.name, tdef.rhs))
+  end TypeDef
 
+  given TypeDefOps as AnyRef:
     extension (self: TypeDef):
       def rhs(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = reflectSelf.TypeDef_rhs(self)
     end extension
-  end TypeDef
+  end TypeDefOps
 
   // PackageDef
 
   given (using ctx: Context) as TypeTest[Tree, PackageDef] = reflectSelf.PackageDef_TypeTest
 
-  given PackageDefOps as PackageDef.type = PackageDef
-
   object PackageDef:
     def unapply(tree: PackageDef)(using ctx: Context): Option[(String, PackageDef)] =
       Some((tree.name, tree.owner))
+  end PackageDef
 
+  given PackageDefOps as AnyRef:
     extension (self: PackageDef):
       def owner(using ctx: Context): PackageDef = reflectSelf.PackageDef_owner(self)
       def members(using ctx: Context): List[Statement] = reflectSelf.PackageDef_members(self)
     end extension
-  end PackageDef
+  end PackageDefOps
 
   // ----- Terms ----------------------------------------------------
 
-  given TermOps as Term.type = Term
+  object Term
 
-  object Term:
+  given TermOps as AnyRef:
     extension (self: Term):
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
@@ -321,7 +318,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     end extension
 
-  end Term
+  end TermOps
 
   given (using ctx: Context) as TypeTest[Tree, Term] = reflectSelf.Term_TypeTest
 
@@ -353,8 +350,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   given (using ctx: Context) as TypeTest[Tree, Ident] = reflectSelf.Ident_TypeTest
 
-  given IdentOps as Ident.type = Ident
-
   /** Scala term identifier */
   object Ident:
     def apply(tmref: TermRef)(using ctx: Context): Term =
@@ -366,14 +361,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches a term identifier and returns its name */
     def unapply(tree: Ident)(using ctx: Context): Option[String] =
       Some(tree.name)
+  end Ident
 
+  given IdentOps as AnyRef:
     extension (self: Ident):
       def name(using ctx: Context): String = reflectSelf.Ident_name(self)
     end extension
-  end Ident
+  end IdentOps
 
   given (using ctx: Context) as TypeTest[Tree, Select] = reflectSelf.Select_TypeTest
-  given SelectOps as Select.type = Select
 
   /** Scala term selection */
   object Select:
@@ -401,18 +397,18 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches `<qualifier: Term>.<name: String>` */
     def unapply(x: Select)(using ctx: Context): Option[(Term, String)] =
       Some((x.qualifier, x.name))
+  end Select
 
+  given SelectOps as AnyRef:
     extension (self: Select):
       def qualifier(using ctx: Context): Term = reflectSelf.Select_qualifier(self)
       def name(using ctx: Context): String = reflectSelf.Select_name(self)
       def signature(using ctx: Context): Option[Signature] = reflectSelf.Select_signature(self)
     end extension
-  end Select
+  end SelectOps
 
   given (using ctx: Context) as TypeTest[Tree, Literal] =
     reflectSelf.Literal_TypeTest
-
-  given LiteralOps as Literal.type = Literal
 
   /** Scala literal constant */
   object Literal:
@@ -427,15 +423,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches a literal constant */
     def unapply(x: Literal)(using ctx: Context): Option[Constant] =
       Some(x.constant)
+  end Literal
 
+  given LiteralOps as AnyRef:
     extension (self: Literal):
       def constant(using ctx: Context): Constant = reflectSelf.Literal_constant(self)
     end extension
-  end Literal
+  end LiteralOps
 
   given (using ctx: Context) as TypeTest[Tree, This] = reflectSelf.This_TypeTest
-
-  given ThisOps as This.type = This
 
   /** Scala `this` or `this[id]` */
   object This:
@@ -449,15 +445,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     /** Matches `this[<id: Option[Id]>` */
     def unapply(x: This)(using ctx: Context): Option[Option[Id]] = Some(x.id)
+  end This
 
+  given ThisOps as AnyRef:
     extension (self: This):
       def id(using ctx: Context): Option[Id] = reflectSelf.This_id(self)
     end extension
-  end This
+  end ThisOps
 
   given (using ctx: Context) as TypeTest[Tree, New] = reflectSelf.New_TypeTest
-
-  given NewOps as New.type = New
 
   /** Scala `new` */
   object New:
@@ -471,15 +467,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     /** Matches a `new <tpt: TypeTree>` */
     def unapply(x: New)(using ctx: Context): Option[TypeTree] = Some(x.tpt)
+  end New
 
+  given NewOps as AnyRef:
     extension (self: New):
       def tpt(using ctx: Context): TypeTree = reflectSelf.New_tpt(self)
     end extension
-  end New
+  end NewOps
 
   given (using ctx: Context) as TypeTest[Tree, NamedArg] = reflectSelf.NamedArg_TypeTest
-
-  given NamedArgOps as NamedArg.type = NamedArg
 
   /** Scala named argument `x = y` in argument position */
   object NamedArg:
@@ -494,16 +490,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches a named argument `<name: String> = <value: Term>` */
     def unapply(x: NamedArg)(using ctx: Context): Option[(String, Term)] =
       Some((x.name, x.value))
+  end NamedArg
 
+  given NamedArgOps as AnyRef:
     extension (self: NamedArg):
       def name(using ctx: Context): String = reflectSelf.NamedArg_name(self)
       def value(using ctx: Context): Term = reflectSelf.NamedArg_value(self)
     end extension
-  end NamedArg
+  end NamedArgOps
 
   given (using ctx: Context) as TypeTest[Tree, Apply] = reflectSelf.Apply_TypeTest
-
-  given ApplyOps as Apply.type = Apply
 
   /** Scala parameter application */
   object Apply:
@@ -518,16 +514,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
     def unapply(x: Apply)(using ctx: Context): Option[(Term, List[Term])] =
       Some((x.fun, x.args))
+  end Apply
 
+  given ApplyOps as AnyRef:
     extension (self: Apply):
       def fun(using ctx: Context): Term = reflectSelf.Apply_fun(self)
       def args(using ctx: Context): List[Term] = reflectSelf.Apply_args(self)
     end extension
-  end Apply
+  end ApplyOps
 
   given (using ctx: Context) as TypeTest[Tree, TypeApply] = reflectSelf.TypeApply_TypeTest
-
-  given TypeApplyOps as TypeApply.type = TypeApply
 
   /** Scala type parameter application */
   object TypeApply:
@@ -542,16 +538,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
     def unapply(x: TypeApply)(using ctx: Context): Option[(Term, List[TypeTree])] =
       Some((x.fun, x.args))
+  end TypeApply
 
+  given TypeApplyOps as AnyRef:
     extension (self: TypeApply):
       def fun(using ctx: Context): Term = reflectSelf.TypeApply_fun(self)
       def args(using ctx: Context): List[TypeTree] = reflectSelf.TypeApply_args(self)
     end extension
-  end TypeApply
+  end TypeApplyOps
 
   given (using ctx: Context) as TypeTest[Tree, Super] = reflectSelf.Super_TypeTest
-
-  given SuperOps as Super.type = Super
 
   /** Scala `x.super` or `x.super[id]` */
   object Super:
@@ -566,17 +562,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
     def unapply(x: Super)(using ctx: Context): Option[(Term, Option[Id])] =
       Some((x.qualifier, x.id))
+  end Super
 
+  given SuperOps as AnyRef:
     extension (self: Super):
       def qualifier(using ctx: Context): Term = reflectSelf.Super_qualifier(self)
       def id(using ctx: Context): Option[Id] = reflectSelf.Super_id(self)
     end extension
-  end Super
+  end SuperOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Typed] = reflectSelf.Typed_TypeTest
-
-  given TypedOps as Typed.type = Typed
 
   /** Scala ascription `x: T` */
   object Typed:
@@ -591,17 +587,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches `<expr: Term>: <tpt: TypeTree>` */
     def unapply(x: Typed)(using ctx: Context): Option[(Term, TypeTree)] =
       Some((x.expr, x.tpt))
+  end Typed
 
+  given TypedOps as AnyRef:
     extension (self: Typed):
       def expr(using ctx: Context): Term = reflectSelf.Typed_expr(self)
       def tpt(using ctx: Context): TypeTree = reflectSelf.Typed_tpt(self)
     end extension
-  end Typed
+  end TypedOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Assign] = reflectSelf.Assign_TypeTest
-
-  given AssignOps as Assign.type = Assign
 
   /** Scala assign `x = y` */
   object Assign:
@@ -616,17 +612,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
     def unapply(x: Assign)(using ctx: Context): Option[(Term, Term)] =
       Some((x.lhs, x.rhs))
+  end Assign
 
+  given AssignOps as AnyRef:
     extension (self: Assign):
       def lhs(using ctx: Context): Term = reflectSelf.Assign_lhs(self)
       def rhs(using ctx: Context): Term = reflectSelf.Assign_rhs(self)
     end extension
-  end Assign
+  end AssignOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Block] = reflectSelf.Block_TypeTest
-
-  given BlockOps as Block.type = Block
 
   /** Scala code block `{ stat0; ...; statN; expr }` term */
   object Block:
@@ -641,17 +637,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
     def unapply(x: Block)(using ctx: Context): Option[(List[Statement], Term)] =
       Some((x.statements, x.expr))
+  end Block
 
+  given BlockOps as AnyRef:
     extension (self: Block):
       def statements(using ctx: Context): List[Statement] = reflectSelf.Block_statements(self)
       def expr(using ctx: Context): Term = reflectSelf.Block_expr(self)
     end extension
-  end Block
+  end BlockOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Closure] = reflectSelf.Closure_TypeTest
-
-  given ClosureOps as Closure.type = Closure
 
   object Closure:
 
@@ -663,12 +659,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     def unapply(x: Closure)(using ctx: Context): Option[(Term, Option[Type])] =
       Some((x.meth, x.tpeOpt))
+  end Closure
 
+  given ClosureOps as AnyRef:
     extension (self: Closure):
       def meth(using ctx: Context): Term = reflectSelf.Closure_meth(self)
       def tpeOpt(using ctx: Context): Option[Type] = reflectSelf.Closure_tpeOpt(self)
     end extension
-  end Closure
+  end ClosureOps
 
 
   /** A lambda `(...) => ...` in the source code is represented as
@@ -699,8 +697,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   given (using ctx: Context) as TypeTest[Tree, If] = reflectSelf.If_TypeTest
 
-  given IfOps as If.type = If
-
   /** Scala `if`/`else` term */
   object If:
 
@@ -714,17 +710,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
     def unapply(tree: If)(using ctx: Context): Option[(Term, Term, Term)] =
       Some((tree.cond, tree.thenp, tree.elsep))
+  end If
 
+  given IfOps as AnyRef:
     extension (self: If):
       def cond(using ctx: Context): Term = reflectSelf.If_cond(self)
       def thenp(using ctx: Context): Term = reflectSelf.If_thenp(self)
       def elsep(using ctx: Context): Term = reflectSelf.If_elsep(self)
     end extension
-  end If
+  end IfOps
 
   given (using ctx: Context) as TypeTest[Tree, Match] = reflectSelf.Match_TypeTest
-
-  given MatchOps as Match.type = Match
 
   /** Scala `match` term */
   object Match:
@@ -739,17 +735,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
     def unapply(x: Match)(using ctx: Context): Option[(Term, List[CaseDef])] =
       Some((x.scrutinee, x.cases))
+  end Match
 
+  given MatchOps as AnyRef:
     extension (self: Match):
       def scrutinee(using ctx: Context): Term = reflectSelf.Match_scrutinee(self)
       def cases(using ctx: Context): List[CaseDef] = reflectSelf.Match_cases(self)
     end extension
-  end Match
+  end MatchOps
 
 
   given (using ctx: Context) as TypeTest[Tree, GivenMatch] = reflectSelf.GivenMatch_TypeTest
-
-  given GivenMatchOps as GivenMatch.type = GivenMatch
 
   /** Scala implicit `match` term */
   object GivenMatch:
@@ -763,17 +759,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     /** Matches a pattern match `given match { <cases: List[CaseDef]> }` */
     def unapply(x: GivenMatch)(using ctx: Context): Option[List[CaseDef]] = Some(x.cases)
+  end GivenMatch
 
-
+  given GivenMatchOps as AnyRef:
     extension (self: GivenMatch):
       def cases(using ctx: Context): List[CaseDef] = reflectSelf.GivenMatch_cases(self)
     end extension
-  end GivenMatch
+  end GivenMatchOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Try] = reflectSelf.Try_TypeTest
-
-  given TryOps as Try.type = Try
 
   /** Scala `try`/`catch`/`finally` term */
   object Try:
@@ -788,18 +783,18 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
     def unapply(x: Try)(using ctx: Context): Option[(Term, List[CaseDef], Option[Term])] =
       Some((x.body, x.cases, x.finalizer))
+  end Try
 
+  given TryOps as AnyRef:
     extension (self: Try):
       def body(using ctx: Context): Term = reflectSelf.Try_body(self)
       def cases(using ctx: Context): List[CaseDef] = reflectSelf.Try_cases(self)
       def finalizer(using ctx: Context): Option[Term] = reflectSelf.Try_finalizer(self)
     end extension
-  end Try
+  end TryOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Return] = reflectSelf.Return_TypeTest
-
-  given ReturnOps as Return.type = Return
 
   /** Scala local `return` */
   object Return:
@@ -813,16 +808,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     /** Matches `return <expr: Term>` */
     def unapply(x: Return)(using ctx: Context): Option[Term] = Some(x.expr)
+  end Return
 
+  given ReturnOps as AnyRef:
     extension (self: Return):
       def expr(using ctx: Context): Term = reflectSelf.Return_expr(self)
     end extension
-  end Return
+  end ReturnOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Repeated] = reflectSelf.Repeated_TypeTest
-
-  given RepeatedOps as Repeated.type = Repeated
 
   object Repeated:
 
@@ -834,17 +829,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     def unapply(x: Repeated)(using ctx: Context): Option[(List[Term], TypeTree)] =
       Some((x.elems, x.elemtpt))
+  end Repeated
 
+  given RepeatedOps as AnyRef:
     extension (self: Repeated):
       def elems(using ctx: Context): List[Term] = reflectSelf.Repeated_elems(self)
       def elemtpt(using ctx: Context): TypeTree = reflectSelf.Repeated_elemtpt(self)
     end extension
-  end Repeated
+  end RepeatedOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Inlined] = reflectSelf.Inlined_TypeTest
-
-  given InlinedOps as Inlined.type = Inlined
 
   object Inlined:
 
@@ -856,18 +851,18 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     def unapply(x: Inlined)(using ctx: Context): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
       Some((x.call, x.bindings, x.body))
+  end Inlined
 
+  given InlinedOps as AnyRef:
     extension (self: Inlined):
       def call(using ctx: Context): Option[Tree /* Term | TypeTree */] = reflectSelf.Inlined_call(self)
       def bindings(using ctx: Context): List[Definition] = reflectSelf.Inlined_bindings(self)
       def body(using ctx: Context): Term = reflectSelf.Inlined_body(self)
     end extension
-  end Inlined
+  end InlinedOps
 
 
   given (using ctx: Context) as TypeTest[Tree, SelectOuter] = reflectSelf.SelectOuter_TypeTest
-
-  given SelectOuterOps as SelectOuter.type = SelectOuter
 
   object SelectOuter:
 
@@ -879,17 +874,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     def unapply(x: SelectOuter)(using ctx: Context): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
       Some((x.qualifier, x.level, x.tpe))
+  end SelectOuter
 
+  given SelectOuterOps as AnyRef:
     extension (self: SelectOuter):
       def qualifier(using ctx: Context): Term = reflectSelf.SelectOuter_qualifier(self)
       def level(using ctx: Context): Int = reflectSelf.SelectOuter_level(self)
     end extension
-  end SelectOuter
+  end SelectOuterOps
 
 
   given (using ctx: Context) as TypeTest[Tree, While] = reflectSelf.While_TypeTest
-
-  given WhileOps as While.type = While
 
   object While:
 
@@ -903,26 +898,28 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
     def unapply(x: While)(using ctx: Context): Option[(Term, Term)] =
       Some((x.cond, x.body))
+  end While
 
+  given WhileOps as AnyRef:
     extension (self: While):
       def cond(using ctx: Context): Term = reflectSelf.While_cond(self)
       def body(using ctx: Context): Term = reflectSelf.While_body(self)
     end extension
-  end While
+  end WhileOps
 
 
   // ----- TypeTrees ------------------------------------------------
 
   given (using ctx: Context) as TypeTest[Tree, TypeTree] = reflectSelf.TypeTree_TypeTest
 
-  given TypeTreeOps as TypeTree.type = TypeTree
+  object TypeTree
 
-  object TypeTree:
+  given TypeTreeOps as AnyRef:
     extension (self: TypeTree):
       /** Type of this type tree */
       def tpe(using ctx: Context): Type = reflectSelf.TypeTree_tpe(self)
     end extension
-  end TypeTree
+  end TypeTreeOps
 
   given (using ctx: Context) as TypeTest[Tree, Inferred] = reflectSelf.Inferred_TypeTest
 
@@ -936,23 +933,21 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   given (using ctx: Context) as TypeTest[Tree, TypeIdent] = reflectSelf.TypeIdent_TypeTest
 
-  given TypeIdentOps as TypeIdent.type = TypeIdent
-
   object TypeIdent:
     def apply(sym: Symbol)(using ctx: Context): TypeTree =
       reflectSelf.TypeRef_apply(sym)
     def copy(original: Tree)(name: String)(using ctx: Context): TypeIdent =
       reflectSelf.TypeIdent_copy(original)(name)
     def unapply(x: TypeIdent)(using ctx: Context): Option[String] = Some(x.name)
+  end TypeIdent
 
+  given TypeIdentOps as AnyRef:
     extension (self: TypeIdent):
       def name(using ctx: Context): String = reflectSelf.TypeIdent_name(self)
     end extension
-  end TypeIdent
+  end TypeIdentOps
 
   given (using ctx: Context) as TypeTest[Tree, TypeSelect] = reflectSelf.TypeSelect_TypeTest
-
-  given TypeSelectOps as TypeSelect.type = TypeSelect
 
   object TypeSelect:
     def apply(qualifier: Term, name: String)(using ctx: Context): TypeSelect =
@@ -961,17 +956,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.TypeSelect_copy(original)(qualifier, name)
     def unapply(x: TypeSelect)(using ctx: Context): Option[(Term, String)] =
       Some((x.qualifier, x.name))
+  end TypeSelect
 
+  given TypeSelectOps as AnyRef:
     extension (self: TypeSelect):
       def qualifier(using ctx: Context): Term = reflectSelf.TypeSelect_qualifier(self)
       def name(using ctx: Context): String = reflectSelf.TypeSelect_name(self)
     end extension
-  end TypeSelect
+  end TypeSelectOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Projection] = reflectSelf.Projection_TypeTest
-
-  given ProjectionOps as Projection.type = Projection
 
   object Projection:
     // TODO def apply(qualifier: TypeTree, name: String)(using ctx: Context): Project
@@ -979,17 +974,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Projection_copy(original)(qualifier, name)
     def unapply(x: Projection)(using ctx: Context): Option[(TypeTree, String)] =
       Some((x.qualifier, x.name))
+  end Projection
 
+  given ProjectionOps as AnyRef:
     extension (self: Projection):
       def qualifier(using ctx: Context): TypeTree = reflectSelf.Projection_qualifier(self)
       def name(using ctx: Context): String = reflectSelf.Projection_name(self)
     end extension
-  end Projection
+  end ProjectionOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Singleton] = reflectSelf.Singleton_TypeTest
-
-  given SingletonOps as Singleton.type = Singleton
 
   object Singleton:
     def apply(ref: Term)(using ctx: Context): Singleton =
@@ -998,16 +993,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Singleton_copy(original)(ref)
     def unapply(x: Singleton)(using ctx: Context): Option[Term] =
       Some(x.ref)
+  end Singleton
 
+  given SingletonOps as AnyRef:
     extension (self: Singleton):
       def ref(using ctx: Context): Term = reflectSelf.Singleton_ref(self)
     end extension
-  end Singleton
+  end SingletonOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Refined] = reflectSelf.Refined_TypeTest
-
-  given RefinedOps as Refined.type = Refined
 
   object Refined:
     // TODO def apply(tpt: TypeTree, refinements: List[Definition])(using ctx: Context): Refined
@@ -1015,17 +1010,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Refined_copy(original)(tpt, refinements)
     def unapply(x: Refined)(using ctx: Context): Option[(TypeTree, List[Definition])] =
       Some((x.tpt, x.refinements))
+  end Refined
 
+  given RefinedOps as AnyRef:
     extension (self: Refined):
       def tpt(using ctx: Context): TypeTree = reflectSelf.Refined_tpt(self)
       def refinements(using ctx: Context): List[Definition] = reflectSelf.Refined_refinements(self)
     end extension
-  end Refined
+  end RefinedOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Applied] = reflectSelf.Applied_TypeTest
-
-  given AppliedOps as Applied.type = Applied
 
   object Applied:
     def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(using ctx: Context): Applied =
@@ -1034,18 +1029,18 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Applied_copy(original)(tpt, args)
     def unapply(x: Applied)(using ctx: Context): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
       Some((x.tpt, x.args))
+  end Applied
 
+  given AppliedOps as AnyRef:
     extension (self: Applied):
       def tpt(using ctx: Context): TypeTree = reflectSelf.Applied_tpt(self)
       def args(using ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/] = reflectSelf.Applied_args(self)
     end extension
-  end Applied
+  end AppliedOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Annotated] =
     reflectSelf.Annotated_TypeTest
-
-  given AnnotatedOps as Annotated.type = Annotated
 
   object Annotated:
     def apply(arg: TypeTree, annotation: Term)(using ctx: Context): Annotated =
@@ -1054,18 +1049,18 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Annotated_copy(original)(arg, annotation)
     def unapply(x: Annotated)(using ctx: Context): Option[(TypeTree, Term)] =
       Some((x.arg, x.annotation))
+  end Annotated
 
+  given AnnotatedOps as AnyRef:
     extension (self: Annotated):
       def arg(using ctx: Context): TypeTree = reflectSelf.Annotated_arg(self)
       def annotation(using ctx: Context): Term = reflectSelf.Annotated_annotation(self)
     end extension
-  end Annotated
+  end AnnotatedOps
 
 
   given (using ctx: Context) as TypeTest[Tree, MatchTypeTree] =
     reflectSelf.MatchTypeTree_TypeTest
-
-  given MatchTypeTreeOps as MatchTypeTree.type = MatchTypeTree
 
   object MatchTypeTree:
     def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using ctx: Context): MatchTypeTree =
@@ -1074,19 +1069,19 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.MatchTypeTree_copy(original)(bound, selector, cases)
     def unapply(x: MatchTypeTree)(using ctx: Context): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
       Some((x.bound, x.selector, x.cases))
+  end MatchTypeTree
 
+  given MatchTypeTreeOps as AnyRef:
     extension (self: MatchTypeTree):
       def bound(using ctx: Context): Option[TypeTree] = reflectSelf.MatchTypeTree_bound(self)
       def selector(using ctx: Context): TypeTree = reflectSelf.MatchTypeTree_selector(self)
       def cases(using ctx: Context): List[TypeCaseDef] = reflectSelf.MatchTypeTree_cases(self)
     end extension
-  end MatchTypeTree
+  end MatchTypeTreeOps
 
 
   given (using ctx: Context) as TypeTest[Tree, ByName] =
     reflectSelf.ByName_TypeTest
-
-  given ByNameOps as ByName.type = ByName
 
   object ByName:
     def apply(result: TypeTree)(using ctx: Context): ByName =
@@ -1095,16 +1090,16 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.ByName_copy(original)(result)
     def unapply(x: ByName)(using ctx: Context): Option[TypeTree] =
       Some(x.result)
+  end ByName
 
+  given ByNameOps as AnyRef:
     extension (self: ByName):
       def result(using ctx: Context): TypeTree = reflectSelf.ByName_result(self)
     end extension
-  end ByName
+  end ByNameOps
 
 
   given (using ctx: Context) as TypeTest[Tree, LambdaTypeTree] = reflectSelf.LambdaTypeTree_TypeTest
-
-  given LambdaTypeTreeOps as LambdaTypeTree.type = LambdaTypeTree
 
   object LambdaTypeTree:
     def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): LambdaTypeTree =
@@ -1113,17 +1108,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Lambdacopy(original)(tparams, body)
     def unapply(tree: LambdaTypeTree)(using ctx: Context): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
       Some((tree.tparams, tree.body))
+  end LambdaTypeTree
 
+  given LambdaTypeTreeOps as AnyRef:
     extension (self: LambdaTypeTree):
       def tparams(using ctx: Context): List[TypeDef] = reflectSelf.Lambdatparams(self)
       def body(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = reflectSelf.Lambdabody(self)
     end extension
-  end LambdaTypeTree
+  end LambdaTypeTreeOps
 
 
   given (using ctx: Context) as TypeTest[Tree, TypeBind] = reflectSelf.TypeBind_TypeTest
-
-  given TypeBindOps as TypeBind.type = TypeBind
 
   object TypeBind:
     // TODO def apply(name: String, tree: Tree)(using ctx: Context): TypeBind
@@ -1131,17 +1126,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.TypeBind_copy(original)(name, tpt)
     def unapply(x: TypeBind)(using ctx: Context): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
       Some((x.name, x.body))
+  end TypeBind
 
+  given TypeBindOps as AnyRef:
     extension (self: TypeBind):
       def name(using ctx: Context): String = reflectSelf.TypeBind_name(self)
       def body(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/ = reflectSelf.TypeBind_body(self)
     end extension
-  end TypeBind
+  end TypeBindOps
 
 
   given (using ctx: Context) as TypeTest[Tree, TypeBlock] = reflectSelf.TypeBlock_TypeTest
-
-  given TypeBlockOps as TypeBlock.type = TypeBlock
 
   object TypeBlock:
     def apply(aliases: List[TypeDef], tpt: TypeTree)(using ctx: Context): TypeBlock =
@@ -1150,49 +1145,50 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.TypeBlock_copy(original)(aliases, tpt)
     def unapply(x: TypeBlock)(using ctx: Context): Option[(List[TypeDef], TypeTree)] =
       Some((x.aliases, x.tpt))
+  end TypeBlock
 
+  given TypeBlockOps as AnyRef:
     extension (self: TypeBlock):
       def aliases(using ctx: Context): List[TypeDef] = reflectSelf.TypeBlock_aliases(self)
       def tpt(using ctx: Context): TypeTree = reflectSelf.TypeBlock_tpt(self)
     end extension
-  end TypeBlock
+  end TypeBlockOps
 
 
   // ----- TypeBoundsTrees ------------------------------------------------
 
   given (using ctx: Context) as TypeTest[Tree, TypeBoundsTree] = reflectSelf.TypeBoundsTree_TypeTest
 
-  given TypeBoundsTreeOps as TypeBoundsTree.type = TypeBoundsTree
-
   object TypeBoundsTree:
     def unapply(x: TypeBoundsTree)(using ctx: Context): Option[(TypeTree, TypeTree)] =
       Some((x.low, x.hi))
+  end TypeBoundsTree
 
+  given TypeBoundsTreeOps as AnyRef:
     extension (self: TypeBoundsTree):
       def tpe(using ctx: Context): TypeBounds = reflectSelf.TypeBoundsTree_tpe(self)
       def low(using ctx: Context): TypeTree = reflectSelf.TypeBoundsTree_low(self)
       def hi(using ctx: Context): TypeTree = reflectSelf.TypeBoundsTree_hi(self)
     end extension
-  end TypeBoundsTree
+  end TypeBoundsTreeOps
 
 
   given (using ctx: Context) as TypeTest[Tree, WildcardTypeTree] = reflectSelf.WildcardTypeTree_TypeTest
 
-  given WildcardTypeTreeOps as WildcardTypeTree.type = WildcardTypeTree
-
   object WildcardTypeTree:
     /** Matches a TypeBoundsTree containing wildcard type bounds */
     def unapply(x: WildcardTypeTree)(using ctx: Context): Boolean = true
+  end WildcardTypeTree
 
+  given WildcardTypeTreeOps as AnyRef:
     extension (self: WildcardTypeTree):
       def tpe(using ctx: Context): Type = reflectSelf.WildcardTypeTree_tpe(self)
     end extension
-  end WildcardTypeTree
+  end WildcardTypeTreeOps
 
   // ----- CaseDefs ------------------------------------------------
 
   given (using ctx: Context) as TypeTest[Tree, CaseDef] = reflectSelf.CaseDef_TypeTest
-  given CaseDefOps as CaseDef.type = CaseDef
 
   object CaseDef:
     def apply(pattern: Tree, guard: Option[Term], rhs: Term)(using ctx: Context): CaseDef =
@@ -1203,19 +1199,20 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     def unapply(x: CaseDef)(using ctx: Context): Option[(Tree, Option[Term], Term)] =
       Some((x.pattern, x.guard, x.rhs))
+  end CaseDef
 
+  given CaseDefOps as AnyRef:
     extension (caseDef: CaseDef):
       def pattern(using ctx: Context): Tree = reflectSelf.CaseDef_pattern(caseDef)
       def guard(using ctx: Context): Option[Term] = reflectSelf.CaseDef_guard(caseDef)
       def rhs(using ctx: Context): Term = reflectSelf.CaseDef_rhs(caseDef)
     end extension
-  end CaseDef
+  end CaseDefOps
 
 
   given (using ctx: Context) as TypeTest[Tree, TypeCaseDef] =
     reflectSelf.TypeCaseDef_TypeTest
 
-  given TypeCaseDefOps as TypeCaseDef.type = TypeCaseDef
 
   object TypeCaseDef:
     def apply(pattern: TypeTree, rhs: TypeTree)(using ctx: Context): TypeCaseDef =
@@ -1226,17 +1223,18 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     def unapply(tree: TypeCaseDef)(using ctx: Context): Option[(TypeTree, TypeTree)] =
       Some((tree.pattern, tree.rhs))
+  end TypeCaseDef
 
+  given TypeCaseDefOps as AnyRef:
     extension (caseDef: TypeCaseDef):
       def pattern(using ctx: Context): TypeTree = reflectSelf.TypeCaseDef_pattern(caseDef)
       def rhs(using ctx: Context): TypeTree = reflectSelf.TypeCaseDef_rhs(caseDef)
     end extension
-  end TypeCaseDef
+  end TypeCaseDefOps
 
   // ----- Patterns ------------------------------------------------
 
   given (using ctx: Context) as TypeTest[Tree, Bind] = reflectSelf.Bind_TypeTest
-  given BindOps as Bind.type = Bind
 
   object Bind:
     def apply(sym: Symbol, pattern: Tree)(using ctx: Context): Bind =
@@ -1245,16 +1243,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Tree_Bind_module_copy(original)(name, pattern)
     def unapply(pattern: Bind)(using ctx: Context): Option[(String, Tree)] =
       Some((pattern.name, pattern.pattern))
+  end Bind
 
+  given BindOps as AnyRef:
     extension (bind: Bind):
       def name(using ctx: Context): String = reflectSelf.Tree_Bind_name(bind)
       def pattern(using ctx: Context): Tree = reflectSelf.Tree_Bind_pattern(bind)
     end extension
-  end Bind
+  end BindOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Unapply] = reflectSelf.Unapply_TypeTest
-  given UnapplyOps as Unapply.type = Unapply
 
   object Unapply:
     // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree])(using ctx: Context): Unapply
@@ -1262,17 +1261,18 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Tree_Unapply_module_copy(original)(fun, implicits, patterns)
     def unapply(x: Unapply)(using ctx: Context): Option[(Term, List[Term], List[Tree])] =
       Some((x.fun, x.implicits, x.patterns))
+  end Unapply
 
+  given UnapplyOps as AnyRef:
     extension (unapply: Unapply):
       def fun(using ctx: Context): Term = reflectSelf.Tree_Unapply_fun(unapply)
       def implicits(using ctx: Context): List[Term] = reflectSelf.Tree_Unapply_implicits(unapply)
       def patterns(using ctx: Context): List[Tree] = reflectSelf.Tree_Unapply_patterns(unapply)
     end extension
-  end Unapply
+  end UnapplyOps
 
 
   given (using ctx: Context) as TypeTest[Tree, Alternatives] = reflectSelf.Alternatives_TypeTest
-  given AlternativesOps as Alternatives.type = Alternatives
 
   object Alternatives:
     def apply(patterns: List[Tree])(using ctx: Context): Alternatives =
@@ -1281,11 +1281,13 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.Tree_Alternatives_module_copy(original)(patterns)
     def unapply(x: Alternatives)(using ctx: Context): Option[List[Tree]] =
       Some(x.patterns)
+  end Alternatives
 
+  given AlternativesOps as AnyRef:
     extension (alternatives: Alternatives):
       def patterns(using ctx: Context): List[Tree] = reflectSelf.Tree_Alternatives_patterns(alternatives)
     end extension
-  end Alternatives
+  end AlternativesOps
 
 
 
@@ -1294,42 +1296,47 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   /////////////////////
 
   given (using ctx: Context) as TypeTest[ImportSelector, SimpleSelector] = reflectSelf.SimpleSelector_TypeTest
-  given SimpleSelectorOps as SimpleSelector.type = SimpleSelector
 
   object SimpleSelector:
     def unapply(x: SimpleSelector)(using ctx: Context): Option[Id] = Some(x.selection)
+  end SimpleSelector
 
+  given SimpleSelectorOps as AnyRef:
     extension (self: SimpleSelector):
       def selection(using ctx: Context): Id =
         reflectSelf.SimpleSelector_selection(self)
     end extension
-  end SimpleSelector
+  end SimpleSelectorOps
 
 
   given (using ctx: Context) as TypeTest[ImportSelector, RenameSelector] = reflectSelf.RenameSelector_TypeTest
-  given RenameSelectorOps as RenameSelector.type = RenameSelector
 
   object RenameSelector:
     def unapply(x: RenameSelector)(using ctx: Context): Option[(Id, Id)] = Some((x.from, x.to))
+  end RenameSelector
+
+  given RenameSelectorOps as AnyRef:
     extension (self: RenameSelector):
       def from(using ctx: Context): Id =
         reflectSelf.RenameSelector_from(self)
 
       def to(using ctx: Context): Id =
         reflectSelf.RenameSelector_to(self)
-  end RenameSelector
+    end extension
+  end RenameSelectorOps
 
 
   given (using ctx: Context) as TypeTest[ImportSelector, OmitSelector] = reflectSelf.OmitSelector_TypeTest
-  given OmitSelectorOmitSelectorOps as OmitSelector.type = OmitSelector
 
   object OmitSelector:
     def unapply(x: OmitSelector)(using ctx: Context): Option[Id] = Some(x.omitted)
+  end OmitSelector
 
+  given OmitSelectorOps as AnyRef:
     extension (self: OmitSelector):
       def omitted(using ctx: Context): Id =
         reflectSelf.SimpleSelector_omitted(self)
-  end OmitSelector
+  end OmitSelectorOps
 
 
   ///////////////
@@ -1344,13 +1351,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   // ----- Types ----------------------------------------------------
 
   given (using ctx: Context) as TypeTest[Type, Type] = reflectSelf.Type_TypeTest
-  given TypeOps as Type.type = Type
 
   object Type:
 
     def apply(clazz: Class[_])(using ctx: Context): Type =
       reflectSelf.Type_apply(clazz)
+  end Type
 
+  given TypeOps as AnyRef:
     extension (self: Type):
 
       /** Shows the tree as extractors */
@@ -1466,55 +1474,57 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def appliedTo(targs: List[Type]): Type = reflectSelf.Type_appliedTo(self)(targs)
 
     end extension
-  end Type
+  end TypeOps
 
   given (using ctx: Context) as TypeTest[Type, ConstantType] = reflectSelf.ConstantType_TypeTest
-  given ConstantTypeOps as ConstantType.type = ConstantType
 
   object ConstantType:
     def apply(x : Constant)(using ctx: Context): ConstantType = reflectSelf.ConstantType_apply(x)
     def unapply(x: ConstantType)(using ctx: Context): Option[Constant] = Some(x.constant)
+  end ConstantType
 
+  given ConstantTypeOps as AnyRef:
     extension (self: ConstantType):
       def constant(using ctx: Context): Constant = reflectSelf.ConstantType_constant(self)
     end extension
-  end ConstantType
+  end ConstantTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, TermRef] = reflectSelf.TermRef_TypeTest
-  given TermRefOps as TermRef.type = TermRef
 
   object TermRef:
     def apply(qual: Type, name: String)(using ctx: Context): TermRef =
       reflectSelf.TermRef_apply(qual, name)
     def unapply(x: TermRef)(using ctx: Context): Option[(Type, String)] =
       Some((x.qualifier, x.name))
+  end TermRef
 
+  given TermRefOps as AnyRef:
     extension (self: TermRef):
       def qualifier(using ctx: Context): Type = reflectSelf.TermRef_qualifier(self)
       def name(using ctx: Context): String = reflectSelf.TermRef_name(self)
     end extension
-  end TermRef
+  end TermRefOps
 
 
   given (using ctx: Context) as TypeTest[Type, TypeRef] = reflectSelf.TypeRef_TypeTest
-  given TypeRefOps as TypeRef.type = TypeRef
 
   object TypeRef:
     def unapply(x: TypeRef)(using ctx: Context): Option[(Type, String)] =
       Some((x.qualifier, x.name))
+  end TypeRef
 
+  given TypeRefOps as AnyRef:
     extension (self: TypeRef):
       def qualifier(using ctx: Context): Type = reflectSelf.TypeRef_qualifier(self)
       def name(using ctx: Context): String = reflectSelf.TypeRef_name(self)
       def isOpaqueAlias(using ctx: Context): Boolean = reflectSelf.TypeRef_isOpaqueAlias(self)
       def translucentSuperType(using ctx: Context): Type = reflectSelf.TypeRef_translucentSuperType(self)
     end extension
-  end TypeRef
+  end TypeRefOps
 
 
   given (using ctx: Context) as TypeTest[Type, SuperType] = reflectSelf.SuperType_TypeTest
-  given SuperTypeOps as SuperType.type = SuperType
 
   object SuperType:
     def apply(thistpe: Type, supertpe: Type)(using ctx: Context): SuperType =
@@ -1522,16 +1532,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     def unapply(x: SuperType)(using ctx: Context): Option[(Type, Type)] =
       Some((x.thistpe, x.supertpe))
+  end SuperType
 
+  given SuperTypeOps as AnyRef:
     extension (self: SuperType):
       def thistpe(using ctx: Context): Type = reflectSelf.SuperType_thistpe(self)
       def supertpe(using ctx: Context): Type = reflectSelf.SuperType_supertpe(self)
     end extension
-  end SuperType
+  end SuperTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, Refinement] = reflectSelf.Refinement_TypeTest
-  given RefinementOps as Refinement.type = Refinement
 
   object Refinement:
     def apply(parent: Type, name: String, info: Type)(using ctx: Context): Refinement =
@@ -1539,91 +1550,98 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     def unapply(x: Refinement)(using ctx: Context): Option[(Type, String, Type)] =
       Some((x.parent, x.name, x.info))
+  end Refinement
 
+  given RefinementOps as AnyRef:
     extension (self: Refinement):
       def parent(using ctx: Context): Type = reflectSelf.Refinement_parent(self)
       def name(using ctx: Context): String = reflectSelf.Refinement_name(self)
       def info(using ctx: Context): Type = reflectSelf.Refinement_info(self)
     end extension
-  end Refinement
+  end RefinementOps
 
 
   given (using ctx: Context) as TypeTest[Type, AppliedType] = reflectSelf.AppliedType_TypeTest
-  given AppliedTypeOps as AppliedType.type = AppliedType
 
   object AppliedType:
     def unapply(x: AppliedType)(using ctx: Context): Option[(Type, List[Type])] =
       Some((x.tycon, x.args))
+  end AppliedType
 
+  given AppliedTypeOps as AnyRef:
     extension (self: AppliedType):
       def tycon(using ctx: Context): Type = reflectSelf.AppliedType_tycon(self)
       def args(using ctx: Context): List[Type] = reflectSelf.AppliedType_args(self)
     end extension
-  end AppliedType
+  end AppliedTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, AnnotatedType] = reflectSelf.AnnotatedType_TypeTest
-  given AnnotatedTypeOps as AnnotatedType.type = AnnotatedType
 
   object AnnotatedType:
     def apply(underlying: Type, annot: Term)(using ctx: Context): AnnotatedType =
       reflectSelf.AnnotatedType_apply(underlying, annot)
     def unapply(x: AnnotatedType)(using ctx: Context): Option[(Type, Term)] =
       Some((x.underlying, x.annot))
+  end AnnotatedType
 
+  given AnnotatedTypeOps as AnyRef:
     extension (self: AnnotatedType):
       def underlying(using ctx: Context): Type = reflectSelf.AnnotatedType_underlying(self)
       def annot(using ctx: Context): Term = reflectSelf.AnnotatedType_annot(self)
     end extension
-  end AnnotatedType
+  end AnnotatedTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, AndType] = reflectSelf.AndType_TypeTest
-  given AndTypeOps as AndType.type = AndType
 
   object AndType:
     def apply(lhs: Type, rhs: Type)(using ctx: Context): AndType =
       reflectSelf.AndType_apply(lhs, rhs)
     def unapply(x: AndType)(using ctx: Context): Option[(Type, Type)] =
       Some((x.left, x.right))
+  end AndType
 
+  given AndTypeOps as AnyRef:
     extension (self: AndType):
       def left(using ctx: Context): Type = reflectSelf.AndType_left(self)
       def right(using ctx: Context): Type = reflectSelf.AndType_right(self)
     end extension
-  end AndType
+  end AndTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, OrType] = reflectSelf.OrType_TypeTest
-  given OrTypeOps as OrType.type = OrType
 
   object OrType:
     def apply(lhs: Type, rhs: Type)(using ctx: Context): OrType = reflectSelf.OrType_apply(lhs, rhs)
     def unapply(x: OrType)(using ctx: Context): Option[(Type, Type)] =
       Some((x.left, x.right))
+  end OrType
 
+  given OrTypeOps as AnyRef:
     extension (self: OrType):
       def left(using ctx: Context): Type = reflectSelf.OrType_left(self)
       def right(using ctx: Context): Type = reflectSelf.OrType_right(self)
     end extension
-  end OrType
+  end OrTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, MatchType] = reflectSelf.MatchType_TypeTest
-  given MatchTypeOps as MatchType.type = MatchType
 
   object MatchType:
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(using ctx: Context): MatchType =
       reflectSelf.MatchType_apply(bound, scrutinee, cases)
     def unapply(x: MatchType)(using ctx: Context): Option[(Type, Type, List[Type])] =
       Some((x.bound, x.scrutinee, x.cases))
+  end MatchType
 
+  given MatchTypeOps as AnyRef:
     extension (self: MatchType):
       def bound(using ctx: Context): Type = reflectSelf.MatchType_bound(self)
       def scrutinee(using ctx: Context): Type = reflectSelf.MatchType_scrutinee(self)
       def cases(using ctx: Context): List[Type] = reflectSelf.MatchType_cases(self)
     end extension
-  end MatchType
+  end MatchTypeOps
 
 
   /**
@@ -1635,58 +1653,61 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   }
 
   given (using ctx: Context) as TypeTest[Type, ByNameType] = reflectSelf.ByNameType_TypeTest
-  given ByNameTypeOps as ByNameType.type = ByNameType
 
   object ByNameType:
     def apply(underlying: Type)(using ctx: Context): Type = reflectSelf.ByNameType_apply(underlying)
     def unapply(x: ByNameType)(using ctx: Context): Option[Type] = Some(x.underlying)
+  end ByNameType
 
+  given ByNameTypeOps as AnyRef:
     extension (self: ByNameType):
       def underlying(using ctx: Context): Type = reflectSelf.ByNameType_underlying(self)
     end extension
-  end ByNameType
+  end ByNameTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, ParamRef] = reflectSelf.ParamRef_TypeTest
-  given ParamRefOps as ParamRef.type = ParamRef
 
   object ParamRef:
     def unapply(x: ParamRef)(using ctx: Context): Option[(LambdaType, Int)] =
       Some((x.binder, x.paramNum))
+  end ParamRef
 
+  given ParamRefOps as AnyRef:
     extension (self: ParamRef):
       def binder(using ctx: Context): LambdaType = reflectSelf.ParamRef_binder(self)
       def paramNum(using ctx: Context): Int = reflectSelf.ParamRef_paramNum(self)
     end extension
-  end ParamRef
+  end ParamRefOps
 
 
   given (using ctx: Context) as TypeTest[Type, ThisType] = reflectSelf.ThisType_TypeTest
-  given ThisTypeOps as ThisType.type = ThisType
 
   object ThisType:
     def unapply(x: ThisType)(using ctx: Context): Option[Type] = Some(x.tref)
+  end ThisType
 
+  given ThisTypeOps as AnyRef:
     extension (self: ThisType):
       def tref(using ctx: Context): Type = reflectSelf.ThisType_tref(self)
     end extension
-  end ThisType
+  end ThisTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, RecursiveThis] = reflectSelf.RecursiveThis_TypeTest
-  given RecursiveThisOps as RecursiveThis.type = RecursiveThis
 
   object RecursiveThis:
     def unapply(x: RecursiveThis)(using ctx: Context): Option[RecursiveType] = Some(x.binder)
+  end RecursiveThis
 
+  given RecursiveThisOps as AnyRef:
     extension (self: RecursiveThis):
       def binder(using ctx: Context): RecursiveType = reflectSelf.RecursiveThis_binder(self)
     end extension
-  end RecursiveThis
+  end RecursiveThisOps
 
 
   given (using ctx: Context) as TypeTest[Type, RecursiveType] = reflectSelf.RecursiveType_TypeTest
-  given RecursiveTypeOps as RecursiveType.type = RecursiveType
 
   object RecursiveType:
 
@@ -1702,16 +1723,17 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       reflectSelf.RecursiveType_apply(parentExp)
 
     def unapply(x: RecursiveType)(using ctx: Context): Option[Type] = Some(x.underlying)
+  end RecursiveType
 
+  given RecursiveTypeOps as AnyRef:
     extension (self: RecursiveType):
       def underlying(using ctx: Context): Type = reflectSelf.RecursiveType_underlying(self)
       def recThis(using ctx: Context): RecursiveThis = reflectSelf.RecursiveThis_recThis(self)
     end extension
-  end RecursiveType
+  end RecursiveTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, MethodType] = reflectSelf.MethodType_TypeTest
-  given MethodTypeOps as MethodType.type = MethodType
 
   object MethodType:
     def apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType =
@@ -1719,7 +1741,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     def unapply(x: MethodType)(using ctx: Context): Option[(List[String], List[Type], Type)] =
       Some((x.paramNames, x.paramTypes, x.resType))
+  end MethodType
 
+  given MethodTypeOps as AnyRef:
     extension (self: MethodType):
       def isImplicit: Boolean = reflectSelf.MethodType_isImplicit(self)
       def isErased: Boolean = reflectSelf.MethodType_isErased(self)
@@ -1728,60 +1752,63 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def paramTypes(using ctx: Context): List[Type] = reflectSelf.MethodType_paramTypes(self)
       def resType(using ctx: Context): Type = reflectSelf.MethodType_resType(self)
     end extension
-  end MethodType
+  end MethodTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, PolyType] = reflectSelf.PolyType_TypeTest
-  given PolyTypeOps as PolyType.type = PolyType
 
   object PolyType:
     def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using ctx: Context): PolyType =
       reflectSelf.PolyType_apply(paramNames)(paramBoundsExp, resultTypeExp)
     def unapply(x: PolyType)(using ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
       Some((x.paramNames, x.paramBounds, x.resType))
+  end PolyType
 
+  given PolyTypeOps as AnyRef:
     extension (self: PolyType):
       def param(idx: Int)(using ctx: Context): Type = reflectSelf.PolyType_param(self, idx)
       def paramNames(using ctx: Context): List[String] = reflectSelf.PolyType_paramNames(self)
       def paramBounds(using ctx: Context): List[TypeBounds] = reflectSelf.PolyType_paramBounds(self)
       def resType(using ctx: Context): Type = reflectSelf.PolyType_resType(self)
     end extension
-  end PolyType
+  end PolyTypeOps
 
 
   given (using ctx: Context) as TypeTest[Type, TypeLambda] = reflectSelf.TypeLambda_TypeTest
-  given TypeLambdaOps as TypeLambda.type = TypeLambda
 
   object TypeLambda:
     def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda =
       reflectSelf.TypeLambda_apply(paramNames, boundsFn, bodyFn)
     def unapply(x: TypeLambda)(using ctx: Context): Option[(List[String], List[TypeBounds], Type)] =
       Some((x.paramNames, x.paramBounds, x.resType))
+  end TypeLambda
 
+  given TypeLambdaOps as AnyRef:
     extension (self: TypeLambda):
       def paramNames(using ctx: Context): List[String] = reflectSelf.TypeLambda_paramNames(self)
       def paramBounds(using ctx: Context): List[TypeBounds] = reflectSelf.TypeLambda_paramBounds(self)
       def param(idx: Int)(using ctx: Context) : Type = reflectSelf.TypeLambda_param(self, idx)
       def resType(using ctx: Context): Type = reflectSelf.TypeLambda_resType(self)
     end extension
-  end TypeLambda
+  end TypeLambdaOps
 
 
   // ----- TypeBounds -----------------------------------------------
 
   given (using ctx: Context) as TypeTest[Type, TypeBounds] = reflectSelf.TypeBounds_TypeTest
-  given TypeBoundsOps as TypeBounds.type = TypeBounds
 
   object TypeBounds:
     def apply(low: Type, hi: Type)(using ctx: Context): TypeBounds =
       reflectSelf.TypeBounds_apply(low, hi)
     def unapply(x: TypeBounds)(using ctx: Context): Option[(Type, Type)] = Some((x.low, x.hi))
+  end TypeBounds
 
+  given TypeBoundsOps as AnyRef:
     extension (self: TypeBounds):
       def low(using ctx: Context): Type = reflectSelf.TypeBounds_low(self)
       def hi(using ctx: Context): Type = reflectSelf.TypeBounds_hi(self)
     end extension
-  end TypeBounds
+  end TypeBoundsOps
 
 
   // ----- NoPrefix -------------------------------------------------
@@ -1796,7 +1823,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   // CONSTANTS //
   ///////////////
 
-  given ConstantOps as Constant.type = Constant
 
   /** Module of Constant literals */
   object Constant:
@@ -1817,7 +1843,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def unapply(constant: Constant): Option[Type] =
         reflectSelf.matchConstant_ClassTag(constant)
     end ClassTag
+  end Constant
 
+  given ConstantOps as AnyRef:
     extension (const: Constant):
       /** Returns the value of the constant */
       def value: Any = reflectSelf.Constant_value(const)
@@ -1834,18 +1862,19 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def showWith(syntaxHighlight: SyntaxHighlight)(using ctx: Context): String =
         new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showConstant(const)
     end extension
-  end Constant
+  end ConstantOps
 
 
   /////////
   // IDs //
   /////////
 
-  given IdOps as Id.type = Id
 
   object Id:
     def unapply(id: Id)(using ctx: Context): Option[String] = Some(id.name)
+  end Id
 
+  given IdOps as AnyRef:
     extension (id: Id):
       /** Position in the source code */
       def pos(using ctx: Context): Position = reflectSelf.Id_pos(id)
@@ -1853,7 +1882,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       /** Name of the identifier */
       def name(using ctx: Context): String = reflectSelf.Id_name(id)
     end extension
-  end Id
+  end IdOps
 
 
   /////////////////////
@@ -1863,22 +1892,20 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   def searchImplicit(tpe: Type)(using ctx: Context): ImplicitSearchResult
 
   given (using ctx: Context) as TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = reflectSelf.ImplicitSearchSuccess_TypeTest
-  given ImplicitSearchSuccessOps as ImplicitSearchSuccess.type = ImplicitSearchSuccess
 
-  object ImplicitSearchSuccess:
+  given ImplicitSearchSuccessOps as AnyRef:
     extension (self: ImplicitSearchSuccess):
       def tree(using ctx: Context): Term = reflectSelf.ImplicitSearchSuccess_tree(self)
     end extension
-  end ImplicitSearchSuccess
+  end ImplicitSearchSuccessOps
 
   given (using ctx: Context) as TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = reflectSelf.ImplicitSearchFailure_TypeTest
-  given ImplicitSearchFailureOps as ImplicitSearchFailure.type = ImplicitSearchFailure
 
-  object ImplicitSearchFailure:
+  given ImplicitSearchFailureOps as AnyRef:
     extension (self: ImplicitSearchFailure):
       def explanation(using ctx: Context): String = reflectSelf.ImplicitSearchFailure_explanation(self)
     end extension
-  end ImplicitSearchFailure
+  end ImplicitSearchFailureOps
 
   given (using ctx: Context) as TypeTest[ImplicitSearchResult, DivergingImplicit] = reflectSelf.DivergingImplicit_TypeTest
 
@@ -1891,7 +1918,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   // SYMBOLS //
   /////////////
 
-  given SymbolOps as Symbol.type = Symbol
 
   object Symbol:
 
@@ -1966,7 +1992,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     /** Definition not available */
     def noSymbol(using ctx: Context): Symbol =
       reflectSelf.Symbol_noSymbol
+  end Symbol
 
+  given SymbolOps as AnyRef:
     extension (sym: Symbol):
 
       /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
@@ -2134,7 +2162,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def children(using ctx: Context): List[Symbol] =
         reflectSelf.Symbol_children(sym)
     end extension
-  end Symbol
+  end SymbolOps
 
 
 
@@ -2143,14 +2171,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   // SIGNATURES //
   ////////////////
 
-  given SignatureOps as Signature.type = Signature
 
   /** The signature of a method */
   object Signature:
     /** Matches the method signature and returns its parameters and result type. */
     def unapply(sig: Signature)(using ctx: Context): Option[(List[String | Int], String)] =
       Some((sig.paramSigs, sig.resultSig))
+  end Signature
 
+  given SignatureOps as AnyRef:
     extension (sig: Signature):
 
       /** The signatures of the method parameters.
@@ -2166,7 +2195,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def resultSig: String = reflectSelf.Signature_resultSig(sig)
 
     end extension
-  end Signature
+  end SignatureOps
 
 
   //////////////////////////
@@ -2419,7 +2448,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   //   FLAGS   //
   ///////////////
 
-  given FlagsOps as Flags.type = Flags
 
   object Flags:
 
@@ -2530,7 +2558,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
     /** Is this symbol a trait */
     def Trait: Flags = reflectSelf.Flags_Trait
+  end Flags
 
+  given FlagsOps as AnyRef:
     extension (flags: Flags):
       /** Is the given flag set a subset of this flag sets */
       def is(that: Flags): Boolean = reflectSelf.Flags_is(flags)(that)
@@ -2554,7 +2584,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
         new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showFlags(flags)
 
     end extension
-  end Flags
+  end FlagsOps
 
 
   ///////////////
@@ -2566,8 +2596,10 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   /** Root position of this tasty context. For macros it corresponds to the expansion site. */
   def rootPosition: Position
 
-  given PositionOps as Position.type = Position
-  object Position:
+
+  object Position
+
+  given PositionOps as AnyRef:
     extension (pos: Position):
 
       /** The start offset in the source file */
@@ -2598,10 +2630,11 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def sourceCode: String = reflectSelf.Position_sourceCode(pos)
 
     end extension
-  end Position
+  end PositionOps
 
-  given SourceFileOps as SourceFile.type = SourceFile
-  object SourceFile:
+  object SourceFile
+
+  given SourceFileOps as AnyRef:
     extension (sourceFile: SourceFile):
 
       /** Path to this source file */
@@ -2611,7 +2644,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def content: String = reflectSelf.SourceFile_content(sourceFile)
 
     end extension
-  end SourceFile
+  end SourceFileOps
 
   ///////////////
   // REPORTING //
@@ -2634,9 +2667,9 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   // COMMENTS //
   //////////////
 
-  given CommentOps as Comment.type = Comment
+  object Comment
 
-  object Comment:
+  given CommentOps as AnyRef:
     extension (self: Comment):
 
       /** Raw comment string */
@@ -2649,7 +2682,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
       def usecases: List[(String, Option[DefDef])] = reflectSelf.Comment_usecases(self)
 
     end extension
-  end Comment
+  end CommentOps
 
 
   ///////////////
