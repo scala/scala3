@@ -103,9 +103,12 @@ class MarkdownConverter(val repr: Repr) {
           dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
       })
 
-    case n: mda.Code => emit(dkkd.CodeInline(convertChildren(n).asJava, kt.emptyMap))
+    case n: mda.Code =>
+      emit(dkkd.CodeInline(convertChildren(n).asJava, kt.emptyMap))
     case n: mda.IndentedCodeBlock =>
-      emit(dkkd.CodeBlock(List(dkk.text(n.getChars.toString)).asJava, kt.emptyMap))
+      val bld = new StringBuilder
+      n.getContentLines.asScala.foreach(bld append _)
+      emit(dkkd.CodeBlock(List(dkk.text(bld.toString)).asJava, kt.emptyMap))
     case n: mda.FencedCodeBlock =>
       // n.getInfo - where to stick this?
       emit(dkkd.CodeBlock(convertChildren(n).asJava, kt.emptyMap))

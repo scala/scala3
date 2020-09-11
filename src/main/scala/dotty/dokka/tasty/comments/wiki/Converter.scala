@@ -58,21 +58,42 @@ class Converter(val repr: Repr) {
 
       case UnorderedList(items) =>
         emit(dkkd.Ul(
-          items.map { i =>
-            dkkd.Li(convertBlock(i).asJava, kt.emptyMap)
-          }.asJava,
+          convertListItems(items).asJava,
           kt.emptyMap,
         ))
 
       case OrderedList(items, style) =>
         // TODO use style
         emit(dkkd.Ol(
-          items.map { i =>
-            dkkd.Li(convertBlock(i).asJava, kt.emptyMap)
-          }.asJava,
+          convertListItems(items).asJava,
           kt.emptyMap,
         ))
     }
+
+  def convertListItems(items: Seq[Block]): Seq[dkkd.DocTag] = {
+    import scala.collection.mutable.ListBuffer
+    val listBld = ListBuffer.empty[dkkd.DocTag]
+    var elemBld = ListBuffer.empty[dkkd.DocTag]
+
+    items.foreach { i =>
+      val c = convertBlock(i)
+      c match {
+        case Seq(list: (dkkd.Ul | dkkd.Ol)) =>
+          elemBld.append(list)
+        case c =>
+          if !elemBld.isEmpty then {
+            listBld.append(dkkd.Li(elemBld.result.asJava, kt.emptyMap))
+            elemBld = ListBuffer.empty
+          }
+          elemBld.appendAll(c)
+      }
+    }
+
+    if elemBld.nonEmpty then
+      listBld.append(dkkd.Li(elemBld.result.asJava, kt.emptyMap))
+
+    listBld.result
+  }
 
   def convertBlock(block: Block, isTopLevel: Boolean = false): Seq[dkkd.DocTag] =
     collect { emitBlock(block, isTopLevel) }

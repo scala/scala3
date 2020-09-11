@@ -12,8 +12,37 @@ object kt:
   def emptyMap[A, B] = new KtMapBuilder[A, B]().build()
 
 object dkk:
-  def text(str: String) =
-    dkkd.Text(str, kt.emptyList, kt.emptyMap)
+  def p(children: dkkd.DocTag*) =
+    dkkd.P(children.asJava, Map.empty.asJava)
+  def p(params: (String, String)*)(children: dkkd.DocTag*) =
+    dkkd.P(children.asJava, params.toMap.asJava)
+
+  def text(str: String) = dkkd.Text(str, Nil.asJava, Map.empty.asJava)
+
+  def pre(params: (String, String)*)(children: dkkd.DocTag*) =
+    dkkd.Pre(children.asJava, params.toMap.asJava)
+
+  def codeInline(children: dkkd.DocTag*) =
+    dkkd.CodeInline(children.asJava, Map.empty.asJava)
+  def codeInline(params: (String, String)*)(children: dkkd.DocTag*) =
+    dkkd.CodeInline(children.asJava, params.toMap.asJava)
+  def codeBlock(children: dkkd.DocTag*) =
+    dkkd.CodeBlock(children.asJava, Map.empty.asJava)
+  def codeBlock(params: (String, String)*)(children: dkkd.DocTag*) =
+    dkkd.CodeBlock(children.asJava, params.toMap.asJava)
+
+  def ul(children: dkkd.DocTag*) =
+    dkkd.Ul(children.asJava, Map.empty.asJava)
+  def ul(params: (String, String)*)(children: dkkd.DocTag*) =
+    dkkd.Ul(children.asJava, params.toMap.asJava)
+  def ol(children: dkkd.DocTag*) =
+    dkkd.Ol(children.asJava, Map.empty.asJava)
+  def ol(params: (String, String)*)(children: dkkd.DocTag*) =
+    dkkd.Ol(children.asJava, params.toMap.asJava)
+  def li(children: dkkd.DocTag*) =
+    dkkd.Li(children.asJava, Map.empty.asJava)
+  def li(params: (String, String)*)(children: dkkd.DocTag*) =
+    dkkd.Li(children.asJava, params.toMap.asJava)
 
 object dbg:
   case class See(n: mdu.Node, c: Seq[See]) {
