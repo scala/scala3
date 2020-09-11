@@ -17,11 +17,13 @@ package tests
   * And this
   * ```scala
   * is.an("actual code block")
+  * with.multiple("lines")
   * ```
   *
   * And this
   *
   *      is.an("indented code block")
+  *      with.multiple("lines")
   *
   * And this
   * > is
