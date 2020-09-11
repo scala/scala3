@@ -347,7 +347,7 @@ trait ConstraintHandling {
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
 
     def widenEnum(tp: Type) =
-      val tpw = tp.widenEnumClass
+      val tpw = tp.widenEnumCase
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
 
     def widenSingle(tp: Type) =
@@ -363,11 +363,16 @@ trait ConstraintHandling {
       case _ => tp.typeSymbol.is(Enum, butNot=JavaDefined)
 
     val wideInst =
-      if isSingleton(bound) || isEnum(bound) then inst
-      else dropSuperTraits(widenOr(widenEnum(widenSingle(inst))))
+      if isSingleton(bound) then inst
+      else
+        val lub   = widenOr(widenSingle(inst))
+        val asAdt = if isEnum(bound) then lub else widenEnum(lub)
+        dropSuperTraits(asAdt)
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
+      case wideInst @ EnumValueRef() =>
+        wideInst
       case _ =>
         wideInst.dropRepeatedAnnot
   end widenInferred

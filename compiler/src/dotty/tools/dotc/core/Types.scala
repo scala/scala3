@@ -1099,12 +1099,22 @@ object Types {
       case _ => this
     }
 
+    /** same as widen, but preserves modules and singleton enum values */
+    final def widenToEnum(using Context): Type =
+      def widenSingletonToEnum(self: Type)(using Context): Type = self.stripTypeVar.stripAnnots match
+        case tp @ EnumValueRef() => tp
+        case tp: SingletonType if !tp.isOverloaded => widenSingletonToEnum(tp.underlying)
+        case _ => self
+      widenSingletonToEnum(this) match
+        case tp: ExprType => tp.resultType.widenToEnum
+        case tp           => tp
+
     /** Widen from TermRef to its underlying non-termref
      *  base type, while also skipping Expr types.
      *  Preserves references to modules or singleton enum values
      */
     final def widenTermRefExpr(using Context): Type = stripTypeVar match {
-      case tp: TermRef if tp.termSymbol.isAllOf(EnumCase) || tp.termSymbol.is(Module) => tp
+      case tp @ EnumValueRef() => tp
       case tp: TermRef if !tp.isOverloaded => tp.underlying.widenExpr.widenTermRefExpr
       case _ => this
     }
@@ -1147,7 +1157,7 @@ object Types {
      *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
-    def widenUnion(using Context): Type = widen match {
+    def widenUnion(using Context): Type = widenToEnum match {
       case tp @ OrNull(tp1): OrType =>
         // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
         val tp1Widen = tp1.widenUnionWithoutNull
@@ -1157,12 +1167,13 @@ object Types {
         tp.widenUnionWithoutNull
     }
 
-    def widenUnionWithoutNull(using Context): Type = widen match {
-      case tp @ OrType(lhs, rhs) =>
-        TypeComparer.lub(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull, canConstrain = true) match {
-          case union: OrType => union.join
-          case res => res
-        }
+    def widenUnionWithoutNull(using Context): Type = widenToEnum match {
+      case tp: OrType =>
+        decomposeUnionOfEnum(tp)((lhs, rhs) =>
+          TypeComparer.lub(lhs, rhs, canConstrain = true) match
+            case union: OrType => union.join
+            case res           => res
+        )
       case tp @ AndType(tp1, tp2) =>
         tp derived_& (tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull)
       case tp: RefinedType =>
@@ -1175,9 +1186,24 @@ object Types {
         tp
     }
 
-    def widenEnumClass(using Context): Type = dealias match {
+    private inline def decomposeUnionOfEnum(tp: OrType)(inline f: Context ?=> (Type, Type) => Type)(using Context) =
+      def stripEnum(tp: Type)(using Context) = tp match
+        case ref @ EnumValueRef() => ref.widen.widenUnionWithoutNull
+        case tp                   => tp
+
+      (tp.tp1.widenUnionWithoutNull, tp.tp2.widenUnionWithoutNull) match
+        case (ref1 @ EnumValueRef(), ref2 @ EnumValueRef()) if ref1.termSymbol eq ref2.termSymbol =>
+          ref1
+        case (lhs1, rhs1) =>
+          f(stripEnum(lhs1), stripEnum(rhs1))
+
+    end decomposeUnionOfEnum
+
+    def widenEnumCase(using Context): Type = dealias match {
       case tp: (TypeRef | AppliedType) if tp.typeSymbol.isAllOf(EnumCase) =>
         tp.parents.head
+      case tp: TermRef if tp.termSymbol.isAllOf(EnumCase) =>
+        tp.underlying.widenExpr
       case _ =>
         this
     }
@@ -1188,7 +1214,7 @@ object Types {
      */
     def widenSingletons(using Context): Type = dealias match {
       case tp: SingletonType =>
-        tp.widen
+        tp.widenToEnum
       case tp: OrType =>
         val tp1w = tp.widenSingletons
         if (tp1w eq tp) this else tp1w
@@ -2556,6 +2582,9 @@ object Types {
     def apply(prefix: Type, name: TermName, denot: Denotation)(using Context): TermRef =
       apply(prefix, designatorFor(prefix, name, denot)).withDenot(denot)
   }
+
+  object EnumValueRef:
+    def unapply(tp: TermRef)(using Context): Boolean = tp.termSymbol.isAllOf(EnumCase)
 
   object TypeRef {
 

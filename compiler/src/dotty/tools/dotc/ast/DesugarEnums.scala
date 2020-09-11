@@ -139,7 +139,7 @@ object DesugarEnums {
         CaseDef(Ident(nme.WILDCARD), EmptyTree,
           Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(msg :: Nil))))
       val stringCases = enumValues.map(enumValue =>
-        CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, enumValue)
+        CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, Typed(enumValue, rawEnumClassRef))
       ) ::: defaultCase :: Nil
       Match(Ident(nme.nameDollar), stringCases)
     val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.nameDollar, defn.StringType) :: Nil),
@@ -157,12 +157,13 @@ object DesugarEnums {
     def byOrdinal: List[Tree] =
       if isJavaEnum || !constraints.cached then Nil
       else
+        val rawEnumClassRef = rawRef(enumClass.typeRef)
         val defaultCase =
           val ord = Ident(nme.ordinal)
           val err = Throw(New(TypeTree(defn.IndexOutOfBoundsException.typeRef), List(Select(ord, nme.toString_) :: Nil)))
           CaseDef(ord, EmptyTree, err)
         val valueCases = constraints.enumCases.map((i, enumValue) =>
-          CaseDef(Literal(Constant(i)), EmptyTree, enumValue)
+          CaseDef(Literal(Constant(i)), EmptyTree, Typed(enumValue, rawEnumClassRef))
         ) ::: defaultCase :: Nil
         val fromOrdinalDef = DefDef(nme.fromOrdinalDollar, Nil, List(param(nme.ordinalDollar_, defn.IntType) :: Nil),
           rawRef(enumClass.typeRef), Match(Ident(nme.ordinalDollar_), valueCases))
