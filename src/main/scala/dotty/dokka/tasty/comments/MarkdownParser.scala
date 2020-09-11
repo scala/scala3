@@ -17,7 +17,7 @@ import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
 import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
-object HtmlParsers {
+object MarkdownParser {
 
   val markdownOptions: DataHolder =
     new MutableDataSet()
@@ -38,51 +38,10 @@ object HtmlParsers {
 
   val RENDERER = Formatter.builder(markdownOptions).build()
 
-  def parseToMarkdown(
-    text: String,
-    origin: Repr,
-    packages: Packages
-  ): mdu.Document = {
-    import com.vladsch.flexmark.ast.Link
-    import com.vladsch.flexmark.util.ast.{Visitor, VisitHandler, NodeVisitor}
-
-    // val inlineToMarkdown = InlineToMarkdown(origin)
-
-    val node = Parser.builder(markdownOptions)
+  def parseToMarkdown(text: String): mdu.Document =
+    Parser.builder(markdownOptions)
       .build.parse(text).asInstanceOf[mdu.Document]
 
-    def isOuter(url: String) =
-      url.startsWith("http://") ||
-      url.startsWith("https://") ||
-      url.startsWith("ftp://") ||
-      url.startsWith("ftps://")
-
-    def isRelative(url: String) =
-      url.startsWith("../") ||
-      url.startsWith("./")
-
-    // val linkVisitor = new NodeVisitor(
-    //   new VisitHandler(classOf[Link], new Visitor[Link] with MemberLookup {
-    //     def queryToUrl(title: String, link: String) = makeRepresentationLink(origin, packages, Text(title), link).link match {
-    //       case Tooltip(_) => "#"
-    //       case LinkToExternal(_, url) => url
-    //       case LinkToRepresentation(t: Representation) => t match {
-    //         case e: Representation with Members => inlineToMarkdown.relativePath(t)
-    //         case x => x.parentRepresentation.fold("#") { xpar => inlineToMarkdown.relativePath(xpar) }
-    //       }
-    //     }
-
-    //     override def visit(link: Link) = {
-    //       val linkUrl = link.getUrl.toString
-    //       if (!isOuter(linkUrl) && !isRelative(linkUrl))
-    //         link.setUrl(CharSubSequence.of(queryToUrl(link.getTitle.toString, linkUrl)))
-    //     }
-    //   })
-    // )
-
-    // linkVisitor.visit(node)
-    node
-  }
 
   def renderToText(node: mdu.Node): String =
     RENDERER.render(node)

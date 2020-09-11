@@ -8,8 +8,13 @@ import org.jetbrains.dokka.model.{doc => dkkd}
 
 import dotty.dokka.tasty.SymOps
 
-class Converter(val r: Reflection)(owner: r.Symbol) {
+class Converter(val repr: Repr) {
   import Emitter._
+
+  // makeshift support for not passing an owner
+  // see same in MarkdownConverter
+  val r: repr.r.type = if repr == null then null else repr.r
+  val owner: r.Symbol = if repr == null then null.asInstanceOf[r.Symbol] else repr.sym
 
   object SymOps extends SymOps[r.type](r)
   import SymOps._

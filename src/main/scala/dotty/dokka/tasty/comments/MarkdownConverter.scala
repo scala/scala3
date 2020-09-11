@@ -11,8 +11,13 @@ import com.vladsch.flexmark.ext.{wikilink => mdw}
 
 import dotty.dokka.tasty.SymOps
 
-class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
+class MarkdownConverter(val repr: Repr) {
   import Emitter._
+
+  // makeshift support for not passing an owner
+  // see same in wiki.Converter
+  val r: repr.r.type = if repr == null then null else repr.r
+  val owner: r.Symbol = if repr == null then null.asInstanceOf[r.Symbol] else repr.sym
 
   object SymOps extends SymOps[r.type](r)
   import SymOps._
@@ -162,9 +167,9 @@ class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
         List(
           dkkd.Span(
             List(dkk.text(s"!!! DEFAULTING @ ${n.getNodeName}")).asJava,
-            Map("class" -> "lmao").asJava
+            kt.emptyMap,
           ),
-          dkk.text(HtmlParsers.renderToText(n))
+          dkk.text(MarkdownParser.renderToText(n))
         ).asJava,
         kt.emptyMap
       ))
@@ -174,30 +179,4 @@ class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
     doc.getChildIterator.asScala.collectFirst { case p: mda.Paragraph =>
       dkkd.P(convertChildren(p).asJava, kt.emptyMap)
     }
-}
-
-object dbg {
-  case class See(n: mdu.Node, c: Seq[See]) {
-    def show(sb: StringBuilder, indent: Int): Unit = {
-      sb ++= " " * indent
-      sb ++= n.toString
-      sb ++= "\n"
-      c.foreach { s => s.show(sb, indent + 2) }
-    }
-
-    override def toString = {
-      val sb = new StringBuilder
-      show(sb, 0)
-      sb.toString
-    }
-  }
-
-  def see(n: mdu.Node): See =
-    See(n, n.getChildIterator.asScala.map(see).toList)
-
-  def parseRaw(str: String) =
-    MarkdownCommentParser(null, ()).stringToMarkup(str)
-
-  def parse(str: String) =
-    parseRaw( Preparser.preparse( Cleaner.clean(str) ).body )
 }

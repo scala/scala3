@@ -31,9 +31,9 @@ trait ScaladocSupport { self: TastyParser =>
 
     val parser = commentSyntax match {
       case CommentSyntax.Wiki =>
-        comments.WikiCommentParser(comments.Repr(reflect)(tree.symbol), ())
+        comments.WikiCommentParser(comments.Repr(reflect)(tree.symbol))
       case CommentSyntax.Markdown =>
-        comments.MarkdownCommentParser(comments.Repr(reflect)(tree.symbol), ())
+        comments.MarkdownCommentParser(comments.Repr(reflect)(tree.symbol))
     }
     val parsed = parser.parse(preparsed)
 
