@@ -2932,7 +2932,11 @@ class JSCodeGen()(using genCtx: Context) {
       case TYPEOF =>
         // js.typeOf(arg)
         val arg = genArgs1
-        genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg), defn.StringType)
+        val typeofExpr = arg match {
+          case arg: js.JSGlobalRef => js.JSTypeOfGlobalRef(arg)
+          case _                   => js.JSUnaryOp(js.JSUnaryOp.typeof, arg)
+        }
+        js.AsInstanceOf(typeofExpr, jstpe.ClassType(jsNames.BoxedStringClass))
 
       case STRICT_EQ =>
         // js.special.strictEquals(arg1, arg2)
