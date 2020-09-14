@@ -1,0 +1,48 @@
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:6:32 -----------------------------------------
+6 |        private[Enclosing1] def foo(i: Int): Int = i // error
+  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:7:32 -----------------------------------------
+7 |        private[Enclosing1] val x: Int = 3 // error
+  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:8:32 -----------------------------------------
+8 |        private[Enclosing1] var y: Int = 5 // error
+  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:20:32 ----------------------------------------
+20 |        private[Enclosing2] def foo(i: Int): Int = i // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:21:32 ----------------------------------------
+21 |        private[Enclosing2] val x: Int = 3 // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:22:32 ----------------------------------------
+22 |        private[Enclosing2] var y: Int = 5 // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:30:32 ----------------------------------------
+30 |        private[Enclosing3] def foo(i: Int): Int // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:31:32 ----------------------------------------
+31 |        private[Enclosing3] val x: Int // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:32:32 ----------------------------------------
+32 |        private[Enclosing3] var y: Int // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:44:32 ----------------------------------------
+44 |        private[Enclosing4] def foo(i: Int): Int // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:45:32 ----------------------------------------
+45 |        private[Enclosing4] val x: Int // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Qualified private members in non-native JS classes must be final
+-- Error: tests/neg-scalajs/js-non-native-members-qualified-private.scala:46:32 ----------------------------------------
+46 |        private[Enclosing4] var y: Int // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Qualified private members in non-native JS classes must be final

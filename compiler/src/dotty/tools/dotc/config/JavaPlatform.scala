@@ -61,6 +61,9 @@ class JavaPlatform extends Platform {
     (sym derivesFrom BoxedBooleanClass)
   }
 
+  def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =
+    true
+
   def newClassLoader(bin: AbstractFile)(using Context): SymbolLoader =
     new ClassfileLoader(bin)
 }

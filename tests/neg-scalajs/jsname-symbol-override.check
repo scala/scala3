@@ -1,0 +1,90 @@
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:15:15 ---------------------------------------------------------
+15 |  override def bar() = 1 // error
+   |               ^
+   |               error overriding method bar in class A1 of type (): Int with JS name 'Syms$.sym1';
+   |                 method bar of type (): Int with JS name 'Syms$.sym2' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:24:15 ---------------------------------------------------------
+24 |  override def bar() = 1 // error
+   |               ^
+   |               error overriding method bar in class B1 of type (): Int with JS name 'Syms$.sym1';
+   |                 method bar of type (): Int with JS name 'baz' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:33:15 ---------------------------------------------------------
+33 |  override def bar() = 1 // error
+   |               ^
+   |               error overriding method bar in class C1 of type (): Int with JS name 'foo';
+   |                 method bar of type (): Int with JS name 'Syms$.sym1' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:41:15 ---------------------------------------------------------
+41 |  override def bar() = 1 // error
+   |               ^
+   |               error overriding method bar in class D1 of type (): Int with JS name 'Syms$.sym1';
+   |                 method bar of type (): Int with JS name 'bar' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:49:15 ---------------------------------------------------------
+49 |  override def bar(): String // error
+   |               ^
+   |               error overriding method bar in class E1 of type (): Object with JS name 'Syms$.sym1';
+   |                 method bar of type (): String with JS name 'bar' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:52:15 ---------------------------------------------------------
+52 |  override def bar() = "1" // error
+   |               ^
+   |               error overriding method bar in class E1 of type (): Object with JS name 'Syms$.sym1';
+   |                 method bar of type (): String with JS name 'bar' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:60:15 ---------------------------------------------------------
+60 |  override def bar(): String // error
+   |               ^
+   |               error overriding method bar in class F1 of type (): Object with JS name 'bar';
+   |                 method bar of type (): String with JS name 'Syms$.sym1' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:63:15 ---------------------------------------------------------
+63 |  override def bar() = "1" // error
+   |               ^
+   |               error overriding method bar in class F2 of type (): String with JS name 'Syms$.sym1';
+   |                 method bar of type (): String with JS name 'bar' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:71:6 ----------------------------------------------------------
+71 |  def foo: Int // error
+   |      ^
+   |      error overriding method foo in trait G2 of type => Int with JS name 'Syms$.sym1';
+   |        method foo in class G1 of type => Int with JS name 'foo' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:80:6 ----------------------------------------------------------
+80 |  def foo: Int // error
+   |      ^
+   |      error overriding method foo in trait H2 of type => Int with JS name 'foo';
+   |        method foo in class H1 of type => Int with JS name 'Syms$.sym1' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:89:15 ---------------------------------------------------------
+89 |  override def foo(x: Int): Int = x // error
+   |               ^
+   |               error overriding method foo in class I1 of type (x: Int): Int with JS name 'Syms$.sym1';
+   |                 method foo of type (x: Int): Int with JS name 'foo' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:97:15 ---------------------------------------------------------
+97 |  override def foo(x: Int): Int = x // error
+   |               ^
+   |               error overriding method foo in trait J1 of type (x: Int): Int with JS name 'Syms$.sym1';
+   |                 method foo of type (x: Int): Int with JS name 'foo' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:105:6 ---------------------------------------------------------
+105 |  def foo(x: Int): Int // error
+    |      ^
+    |      error overriding method foo in trait K2 of type (x: Int): Int with JS name 'foo';
+    |        method foo in class K1 of type (x: Int): Int with JS name 'Syms$.sym1' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:108:15 --------------------------------------------------------
+108 |  override def foo(x: Int): Int = x // error
+    |               ^
+    |               error overriding method foo in class K1 of type (x: Int): Int with JS name 'Syms$.sym1';
+    |                 method foo of type (x: Int): Int with JS name 'foo' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:116:6 ---------------------------------------------------------
+116 |  def foo(x: Int): Int // error
+    |      ^
+    |      error overriding method foo in trait L2 of type (x: Int): Int with JS name 'Syms$.sym1';
+    |        method foo in class L1 of type (x: Int): Int with JS name 'foo' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:119:15 --------------------------------------------------------
+119 |  override def foo(x: Int): Int = x // error
+    |               ^
+    |               error overriding method foo in trait L2 of type (x: Int): Int with JS name 'Syms$.sym1';
+    |                 method foo of type (x: Int): Int with JS name 'foo' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:129:6 ---------------------------------------------------------
+129 |trait M3 extends M1 with M2 // error
+    |      ^
+    |      error overriding method foo in trait M1 of type => Int with JS name 'foo';
+    |        method foo in trait M2 of type => Int with JS name 'Syms$.sym1' has a different JS name
+-- Error: tests/neg-scalajs/jsname-symbol-override.scala:138:15 --------------------------------------------------------
+138 |abstract class N3 extends N1 with N2 // error
+    |               ^
+    |               error overriding method foo in trait N1 of type => Int with JS name 'foo';
+    |                 method foo in trait N2 of type => Int with JS name 'Syms$.sym1' has a different JS name

@@ -1,0 +1,44 @@
+-- Error: tests/neg-scalajs/internal-annotations.scala:5:0 -------------------------------------------------------------
+5 |@JSType trait A // error
+  |^^^^^^^
+  |@scala.scalajs.js.annotation.internal.JSType is for compiler internal use only. Do not use it yourself.
+-- Error: tests/neg-scalajs/internal-annotations.scala:6:0 -------------------------------------------------------------
+6 |@JSType class B { // error
+  |^^^^^^^
+  |@scala.scalajs.js.annotation.internal.JSType is for compiler internal use only. Do not use it yourself.
+-- Error: tests/neg-scalajs/internal-annotations.scala:7:2 -------------------------------------------------------------
+7 |  @JSType val a = ??? // error
+  |  ^^^^^^^
+  |  @scala.scalajs.js.annotation.internal.JSType is for compiler internal use only. Do not use it yourself.
+-- Error: tests/neg-scalajs/internal-annotations.scala:8:2 -------------------------------------------------------------
+8 |  @JSType var b = ??? // error
+  |  ^^^^^^^
+  |  @scala.scalajs.js.annotation.internal.JSType is for compiler internal use only. Do not use it yourself.
+-- Error: tests/neg-scalajs/internal-annotations.scala:9:2 -------------------------------------------------------------
+9 |  @JSType def c = ??? // error
+  |  ^^^^^^^
+  |  @scala.scalajs.js.annotation.internal.JSType is for compiler internal use only. Do not use it yourself.
+-- Error: tests/neg-scalajs/internal-annotations.scala:10:8 ------------------------------------------------------------
+10 |  def d(@JSType i: Int) = ??? // error
+   |        ^^^^^^^
+   |        @scala.scalajs.js.annotation.internal.JSType is for compiler internal use only. Do not use it yourself.
+-- Error: tests/neg-scalajs/internal-annotations.scala:11:2 ------------------------------------------------------------
+11 |  @JSType class X // error
+   |  ^^^^^^^
+   |  @scala.scalajs.js.annotation.internal.JSType is for compiler internal use only. Do not use it yourself.
+-- Error: tests/neg-scalajs/internal-annotations.scala:12:2 ------------------------------------------------------------
+12 |  @JSType trait Y // error
+   |  ^^^^^^^
+   |  @scala.scalajs.js.annotation.internal.JSType is for compiler internal use only. Do not use it yourself.
+-- Error: tests/neg-scalajs/internal-annotations.scala:14:0 ------------------------------------------------------------
+14 |@JSType object C // error
+   |^^^^^^^
+   |@scala.scalajs.js.annotation.internal.JSType is for compiler internal use only. Do not use it yourself.
+-- Error: tests/neg-scalajs/internal-annotations.scala:16:0 ------------------------------------------------------------
+16 |@ExposedJSMember class D // error
+   |^^^^^^^^^^^^^^^^
+   |@scala.scalajs.js.annotation.internal.ExposedJSMember is for compiler internal use only. Do not use it yourself.
+-- Error: tests/neg-scalajs/internal-annotations.scala:17:0 ------------------------------------------------------------
+17 |@JSOptional class E // error
+   |^^^^^^^^^^^
+   |@scala.scalajs.js.annotation.internal.JSOptional is for compiler internal use only. Do not use it yourself.

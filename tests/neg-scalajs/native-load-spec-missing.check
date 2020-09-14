@@ -1,0 +1,40 @@
+-- Error: tests/neg-scalajs/native-load-spec-missing.scala:5:7 ---------------------------------------------------------
+4 |@js.native
+5 |object A1 extends js.Object // error
+  |^
+  |Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+-- Error: tests/neg-scalajs/native-load-spec-missing.scala:8:7 ---------------------------------------------------------
+7 |@js.native
+8 |object A2 extends js.Object // error
+  |^
+  |Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+-- Error: tests/neg-scalajs/native-load-spec-missing.scala:11:6 --------------------------------------------------------
+10 |@js.native
+11 |class A3 extends js.Object // error
+   |^
+   |Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
+-- Error: tests/neg-scalajs/native-load-spec-missing.scala:14:6 --------------------------------------------------------
+13 |@js.native
+14 |class A4 extends js.Object // error
+   |^
+   |Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
+-- Error: tests/neg-scalajs/native-load-spec-missing.scala:18:6 --------------------------------------------------------
+17 |  @js.native
+18 |  val a: Int = js.native // error
+   |  ^
+   |  Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
+-- Error: tests/neg-scalajs/native-load-spec-missing.scala:22:6 --------------------------------------------------------
+21 |@js.native
+22 |class X extends js.Object // error
+   |^
+   |Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
+-- Error: tests/neg-scalajs/native-load-spec-missing.scala:26:9 --------------------------------------------------------
+25 |  @js.native
+26 |  object B extends js.Object // error
+   |  ^
+   |  Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+-- Error: tests/neg-scalajs/native-load-spec-missing.scala:29:8 --------------------------------------------------------
+28 |  @js.native
+29 |  class B extends js.Object // error
+   |  ^
+   |  Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.

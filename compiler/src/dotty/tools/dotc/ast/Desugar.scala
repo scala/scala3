@@ -365,6 +365,7 @@ object desugar {
     val companionMods = mods
         .withFlags((mods.flags & (AccessFlags | Final)).toCommonFlags)
         .withMods(Nil)
+        .withAnnotations(Nil)
 
     var defaultGetters: List[Tree] = Nil
 

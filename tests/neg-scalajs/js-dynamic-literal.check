@@ -1,0 +1,16 @@
+-- Error: tests/neg-scalajs/js-dynamic-literal.scala:7:4 ---------------------------------------------------------------
+7 |    literal.helloWorld(a = "a") // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    js.Dynamic.literal does not have a method named helloWorld
+-- Error: tests/neg-scalajs/js-dynamic-literal.scala:8:4 ---------------------------------------------------------------
+8 |    literal.helloWorld("a" -> "a") // error
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |    js.Dynamic.literal does not have a method named helloWorld
+-- Error: tests/neg-scalajs/js-dynamic-literal.scala:11:32 -------------------------------------------------------------
+11 |    literal.applyDynamicNamed(x)() // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    js.Dynamic.literal.applyDynamicNamed may not be called directly
+-- Error: tests/neg-scalajs/js-dynamic-literal.scala:12:27 -------------------------------------------------------------
+12 |    literal.applyDynamic(x)() // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    js.Dynamic.literal.applyDynamic may not be called directly

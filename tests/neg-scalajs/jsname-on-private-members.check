@@ -1,0 +1,32 @@
+-- Error: tests/neg-scalajs/jsname-on-private-members.scala:5:3 --------------------------------------------------------
+5 |  @JSName("toto1") // error
+  |  ^^^^^^^^^^^^^^^^
+  |  @JSName cannot be used on private members.
+-- Error: tests/neg-scalajs/jsname-on-private-members.scala:8:3 --------------------------------------------------------
+8 |  @JSName("tata1") // error
+  |  ^^^^^^^^^^^^^^^^
+  |  @JSName cannot be used on private members.
+-- Error: tests/neg-scalajs/jsname-on-private-members.scala:11:3 -------------------------------------------------------
+11 |  @JSName("Babar1") // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  @JSName cannot be used on private members.
+-- Error: tests/neg-scalajs/jsname-on-private-members.scala:14:3 -------------------------------------------------------
+14 |  @JSName("a1") // error
+   |  ^^^^^^^^^^^^^
+   |  @JSName cannot be used on private members.
+-- Error: tests/neg-scalajs/jsname-on-private-members.scala:17:3 -------------------------------------------------------
+17 |  @JSName("b1") // error
+   |  ^^^^^^^^^^^^^
+   |  @JSName cannot be used on private members.
+-- Error: tests/neg-scalajs/jsname-on-private-members.scala:20:3 -------------------------------------------------------
+20 |  @JSName("c1") // error
+   |  ^^^^^^^^^^^^^
+   |  @JSName cannot be used on private members.
+-- Error: tests/neg-scalajs/jsname-on-private-members.scala:23:3 -------------------------------------------------------
+23 |  @JSName("d1") // error
+   |  ^^^^^^^^^^^^^
+   |  @JSName cannot be used on private members.
+-- Error: tests/neg-scalajs/jsname-on-private-members.scala:26:3 -------------------------------------------------------
+26 |  @JSName("e1") // error
+   |  ^^^^^^^^^^^^^
+   |  @JSName cannot be used on private members.

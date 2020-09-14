@@ -259,6 +259,10 @@ object SymDenotations {
     final def addAnnotation(annot: Annotation): Unit =
       annotations = annot :: myAnnotations
 
+    /** Add the given annotation without parameters to the annotations of this denotation */
+    final def addAnnotation(cls: ClassSymbol)(using Context): Unit =
+      addAnnotation(Annotation(cls))
+
     /** Remove annotation with given class from this denotation */
     final def removeAnnotation(cls: Symbol)(using Context): Unit =
       annotations = myAnnotations.filterNot(_ matches cls)
@@ -491,7 +495,10 @@ object SymDenotations {
 
     /** The name given in an `@alpha` annotation if one is present, `name` otherwise */
     final def erasedName(using Context): Name =
-      getAnnotation(defn.AlphaAnnot) match {
+      val alphaAnnot =
+        if isAllOf(ModuleClass | Synthetic) then companionClass.getAnnotation(defn.AlphaAnnot)
+        else getAnnotation(defn.AlphaAnnot)
+      alphaAnnot match {
         case Some(ann) =>
           ann.arguments match {
             case Literal(Constant(str: String)) :: Nil =>

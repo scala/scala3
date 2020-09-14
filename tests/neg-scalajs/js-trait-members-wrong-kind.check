@@ -1,0 +1,16 @@
+-- Error: tests/neg-scalajs/js-trait-members-wrong-kind.scala:5:11 -----------------------------------------------------
+5 |  lazy val a1: js.UndefOr[Int] = js.undefined // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  A non-native JS trait cannot contain lazy vals
+-- Error: tests/neg-scalajs/js-trait-members-wrong-kind.scala:7:29 -----------------------------------------------------
+7 |  def a(): js.UndefOr[Int] = js.undefined // error
+  |                             ^^^^^^^^^^^^
+  |                             In non-native JS traits, defs with parentheses must be abstract.
+-- Error: tests/neg-scalajs/js-trait-members-wrong-kind.scala:8:35 -----------------------------------------------------
+8 |  def b(x: Int): js.UndefOr[Int] = js.undefined // error
+  |                                   ^^^^^^^^^^^^
+  |                                   In non-native JS traits, defs with parentheses must be abstract.
+-- Error: tests/neg-scalajs/js-trait-members-wrong-kind.scala:9:26 -----------------------------------------------------
+9 |  def c_=(v: Int): Unit = js.undefined // error
+  |                          ^^^^^^^^^^^^
+  |                          In non-native JS traits, defs with parentheses must be abstract.

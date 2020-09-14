@@ -36,6 +36,8 @@ import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
 
+import dotty.tools.dotc.transform.sjs.JSSymUtils._
+
 import JSEncoding._
 import JSInterop._
 import ScopedVar.withScopedVars
@@ -60,6 +62,7 @@ class JSCodeGen()(using genCtx: Context) {
   import JSCodeGen._
   import tpd._
 
+  private val sjsPlatform = dotty.tools.dotc.config.SJSPlatform.sjsPlatform
   private val jsdefn = JSDefinitions.jsdefn
   private val primitives = new JSPrimitives(genCtx)
 
@@ -461,14 +464,7 @@ class JSCodeGen()(using genCtx: Context) {
     val superClass =
       if (sym.is(Trait)) None
       else Some(encodeClassNameIdent(sym.superClass))
-    val jsNativeLoadSpec = {
-      if (sym.is(Trait)) None
-      else if (sym.hasAnnotation(jsdefn.JSGlobalScopeAnnot)) None
-      else {
-        val path = fullJSNameOf(sym).split('.').toList
-        Some(js.JSNativeLoadSpec.Global(path.head, path.tail))
-      }
-    }
+    val jsNativeLoadSpec = computeJSNativeLoadSpecOfClass(sym)
 
     js.ClassDef(
         classIdent,
@@ -1006,6 +1002,30 @@ class JSCodeGen()(using genCtx: Context) {
     assert(result.tpe != jstpe.NoType,
         s"genExpr($tree) returned a tree with type NoType at pos ${tree.span}")
     result
+  }
+
+  private def genExpr(name: JSName)(implicit pos: SourcePosition): js.Tree = name match {
+    case JSName.Literal(name) => js.StringLiteral(name)
+    case JSName.Computed(sym) => genComputedJSName(sym)
+  }
+
+  private def genComputedJSName(sym: Symbol)(implicit pos: SourcePosition): js.Tree = {
+    /* By construction (i.e. restriction in PrepJSInterop), we know that sym
+     * must be a static method.
+     * Therefore, at this point, we can invoke it by loading its owner and
+     * calling it.
+     */
+    def moduleOrGlobalScope = genLoadModuleOrGlobalScope(sym.owner)
+    def module = genLoadModule(sym.owner)
+
+    if (sym.owner.isJSType) {
+      if (!sym.owner.isNonNativeJSClass || sym.isJSExposed)
+        genApplyJSMethodGeneric(sym, moduleOrGlobalScope, args = Nil, isStat = false)
+      else
+        genApplyJSClassMethod(module, sym, arguments = Nil)
+    } else {
+      genApplyMethod(module, sym, arguments = Nil)
+    }
   }
 
   /** Gen JS code for a tree in expression position (in the IR) or the
@@ -2096,7 +2116,7 @@ class JSCodeGen()(using genCtx: Context) {
       genApplyStatic(sym, genActualArgs(sym, args))
     } else if (isJSType(sym.owner)) {
       //if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
-        genApplyJSMethodGeneric(tree, sym, genExprOrGlobalScope(receiver), genActualJSArgs(sym, args), isStat)
+        genApplyJSMethodGeneric(sym, genExprOrGlobalScope(receiver), genActualJSArgs(sym, args), isStat)(tree.sourcePos)
       /*else
         genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))*/
     } else {
@@ -2115,19 +2135,17 @@ class JSCodeGen()(using genCtx: Context) {
    *  - Getters and parameterless methods are translated as `JSBracketSelect`
    *  - Setters are translated to `Assign` to `JSBracketSelect`
    */
-  private def genApplyJSMethodGeneric(tree: Tree, sym: Symbol,
+  private def genApplyJSMethodGeneric(sym: Symbol,
       receiver: MaybeGlobalScope, args: List[js.TreeOrJSSpread], isStat: Boolean,
       jsSuperClassValue: Option[js.Tree] = None)(
-      implicit pos: Position): js.Tree = {
-
-    implicit val pos: SourcePosition = tree.sourcePos
+      implicit pos: SourcePosition): js.Tree = {
 
     def noSpread = !args.exists(_.isInstanceOf[js.JSSpread])
     val argc = args.size // meaningful only for methods that don't have varargs
 
     def requireNotSuper(): Unit = {
       if (jsSuperClassValue.isDefined)
-        report.error("Illegal super call in Scala.js-defined JS class", tree.sourcePos)
+        report.error("Illegal super call in Scala.js-defined JS class", pos)
     }
 
     def requireNotSpread(arg: js.TreeOrJSSpread): js.Tree =
@@ -2156,7 +2174,7 @@ class JSCodeGen()(using genCtx: Context) {
           js.JSFunctionApply(ruleOutGlobalScope(receiver), args)
 
       case _ =>
-        def jsFunName = js.StringLiteral(jsNameOf(sym))
+        def jsFunName = genExpr(jsNameOf(sym))
 
         def genSuperReference(propName: js.Tree): js.Tree = {
           jsSuperClassValue.fold[js.Tree] {
@@ -3476,6 +3494,84 @@ class JSCodeGen()(using genCtx: Context) {
                 pos)
             js.Undefined()
         }
+    }
+  }
+
+  private def computeJSNativeLoadSpecOfClass(sym: Symbol): Option[js.JSNativeLoadSpec] = {
+    if (sym.is(Trait) || sym.hasAnnotation(jsdefn.JSGlobalScopeAnnot)) {
+      None
+    } else {
+      atPhase(picklerPhase.next) {
+        if (sym.owner.isStaticOwner)
+          Some(computeJSNativeLoadSpecOfInPhase(sym))
+        else
+          None
+      }
+    }
+  }
+
+  private def computeJSNativeLoadSpecOfInPhase(sym: Symbol)(using Context): js.JSNativeLoadSpec = {
+    import js.JSNativeLoadSpec._
+
+    val symOwner = sym.owner
+
+    // Marks a code path as unexpected because it should have been reported as an error in `PrepJSInterop`.
+    def unexpected(msg: String): Nothing =
+      throw new FatalError(i"$msg for ${sym.fullName} at ${sym.srcPos}")
+
+    if (symOwner.hasAnnotation(jsdefn.JSNativeAnnot)) {
+      val jsName = sym.jsName match {
+        case JSName.Literal(jsName) => jsName
+        case JSName.Computed(_)     => unexpected("could not read the simple JS name as a string literal")
+      }
+
+      if (symOwner.hasAnnotation(jsdefn.JSGlobalScopeAnnot)) {
+        Global(jsName, Nil)
+      } else {
+        val ownerLoadSpec = computeJSNativeLoadSpecOfInPhase(symOwner)
+        ownerLoadSpec match {
+          case Global(globalRef, path) =>
+            Global(globalRef, path :+ jsName)
+          case Import(module, path) =>
+            Import(module, path :+ jsName)
+          case ImportWithGlobalFallback(Import(module, modulePath), Global(globalRef, globalPath)) =>
+            ImportWithGlobalFallback(
+                Import(module, modulePath :+ jsName),
+                Global(globalRef, globalPath :+ jsName))
+        }
+      }
+    } else {
+      def parsePath(pathName: String): List[String] =
+        pathName.split('.').toList
+
+      def parseGlobalPath(pathName: String): Global = {
+        val globalRef :: path = parsePath(pathName)
+        Global(globalRef, path)
+      }
+
+      val annot = sym.annotations.find { annot =>
+        annot.symbol == jsdefn.JSGlobalAnnot || annot.symbol == jsdefn.JSImportAnnot
+      }.getOrElse {
+        unexpected("could not find the JS native load spec annotation")
+      }
+
+      if (annot.symbol == jsdefn.JSGlobalAnnot) {
+        val pathName = annot.argumentConstantString(0).getOrElse {
+          sym.defaultJSName
+        }
+        parseGlobalPath(pathName)
+      } else { // annot.symbol == jsdefn.JSImportAnnot
+        val module = annot.argumentConstantString(0).getOrElse {
+          unexpected("could not read the module argument as a string literal")
+        }
+        val path = annot.argumentConstantString(1).fold[List[String]](Nil)(parsePath)
+        val importSpec = Import(module, path)
+        annot.argumentConstantString(2).fold[js.JSNativeLoadSpec] {
+          importSpec
+        } { globalPathName =>
+          ImportWithGlobalFallback(importSpec, parseGlobalPath(globalPathName))
+        }
+      }
     }
   }
 

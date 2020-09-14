@@ -1034,7 +1034,6 @@ object Build {
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
             -- "InteroperabilityTest.scala" // compiler crash, related to value classes in JS interop
             -- "OptimizerTest.scala" // non-native JS classes
-            -- "ReflectionTest.scala" // tests fail (wrong load spec for JS globals)
             -- "RegressionJSTest.scala" // non-native JS classes
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
             )).get
@@ -1050,7 +1049,7 @@ object Build {
             -- "ExportsTest.scala" // JS exports
             -- "IterableTest.scala" // non-native JS classes
             -- "JSExportStaticTest.scala" // JS exports
-            -- "JSNativeInPackage.scala" // tests fail (wrong load spec for JS globals)
+            -- "JSNativeInPackage.scala" // #9785 tests fail due to js.typeOf(globalVar) being incorrect
             -- "JSOptionalTest.scala" // non-native JS classes
             -- "JSSymbolTest.scala" // non-native JS classes
             -- "MiscInteropTest.scala" // non-native JS classes
