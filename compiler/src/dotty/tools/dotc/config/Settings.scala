@@ -116,15 +116,16 @@ object Settings {
     def tryToSet(state: ArgsSummary): ArgsSummary = {
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state
       def update(value: Any, args: List[String]) =
-        val (value1, twicely) =
+        var dangers = warnings
+        val value1 =
           if changed && isMultivalue then
             val value0  = value.asInstanceOf[List[String]]
             val current = valueIn(sstate).asInstanceOf[List[String]]
-            val newly   = current ++ value0.filterNot(current.contains)
-            (newly, value0.exists(current.contains))
+            value0.filter(current.contains).foreach(s => dangers :+= s"Setting $name set to $s redundantly")
+            current ++ value0
           else
-            (value, changed)
-        val dangers = if twicely then warnings :+ s"Flag $name set repeatedly" else warnings
+            if changed then dangers :+= s"Flag $name set repeatedly"
+            value
         changed = true
         ArgsSummary(updateIn(sstate, value1), args, errors, dangers)
       def fail(msg: String, args: List[String]) =
