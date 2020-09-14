@@ -11,7 +11,7 @@ import com.vladsch.flexmark.ext.{wikilink => mdw}
 
 import dotty.dokka.tasty.SymOps
 
-class MarkdownConverter(val repr: Repr) {
+class MarkdownConverter(val repr: Repr) extends BaseConverter {
   import Emitter._
 
   // makeshift support for not passing an owner
@@ -66,7 +66,6 @@ class MarkdownConverter(val repr: Repr) {
       })
 
     case n: mda.Link =>
-      val SchemeUri = """[a-z]+:.*""".r
       val userText: String = n.getText.toString
       val target: String = n.getUrl.toString
       def resolveText(default: String) =
@@ -76,31 +75,36 @@ class MarkdownConverter(val repr: Repr) {
       emit(target match {
         case SchemeUri() =>
           dkkd.A(resolveText(default = target), Map("href" -> target).asJava)
-        case _ => MemberLookup.lookup(using r)(target, owner) match {
-          case Some((sym, targetText)) =>
-            dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
-          case None =>
-            dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
-        }
+        case _ =>
+          withParsedQuery(target) { query =>
+            MemberLookup.lookup(using r)(query, owner) match {
+              case Some((sym, targetText)) =>
+                dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
+              case None =>
+                dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
+            }
+          }
       })
 
     case n: mdw.WikiLink =>
       val (target, userText) =
-        val chars: String = n.getChars.toString
-        chars.substring(2, chars.length - 2).split(" ", /*max*/ 2) match {
-          case Array(s) => (s, "")
-          case Array(s1, s2) => (s1, s2)
+        val chars = n.getChars.toString.substring(2, n.getChars.length - 2)
+        chars.split(" ", /*max*/ 2) match {
+          case Array(target) => (target, "")
+          case Array(target, userText) => (target, userText)
         }
 
       def resolveText(default: String) =
         val resolved = if !userText.isEmpty then userText else default
         List(dkk.text(resolved)).asJava
 
-      emit(MemberLookup.lookup(using r)(target, owner) match {
-        case Some((sym, targetText)) =>
-          dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
-        case None =>
-          dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
+      emit(withParsedQuery(target) { query =>
+        MemberLookup.lookup(using r)(query, owner) match {
+          case Some((sym, targetText)) =>
+            dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
+          case None =>
+            dkkd.A(resolveText(default = query.join), Map("href" -> "#").asJava)
+        }
       })
 
     case n: mda.Code =>

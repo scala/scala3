@@ -32,6 +32,8 @@ package tests
   *
   * And this is a link: [](method).
   *
+  * This is another way to spell the same link: [[#method]].
+  *
   * And this is another link: [](AA).
   *
   * And this is another link: [](AA$).
@@ -52,7 +54,15 @@ package tests
   * @constructor A class has a constructor, and this one is important.
   */
 class A {
-  /** This is a method. */
+
+  /** This is a method.
+    *
+    * This is a link: [[AA]].
+    *
+    * This is another link: [[AA$]].
+    *
+    * And yet another: [[B]].
+    */
   def method(s: String): String = s
 
   class AA
@@ -113,7 +123,10 @@ object B {
   val Z: Int = 0
 }
 
-class C 
+class C {
+  object CC
+  class CC
+}
 class D[T]
 class E[T] extends D[T]
 

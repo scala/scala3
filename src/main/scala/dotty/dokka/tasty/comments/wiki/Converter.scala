@@ -8,7 +8,7 @@ import org.jetbrains.dokka.model.{doc => dkkd}
 
 import dotty.dokka.tasty.SymOps
 
-class Converter(val repr: Repr) {
+class Converter(val repr: Repr) extends BaseConverter {
   import Emitter._
 
   // makeshift support for not passing an owner
@@ -116,12 +116,15 @@ class Converter(val repr: Repr) {
       emit(target match {
         case SchemeUri() =>
           dkkd.A(resolveText(default = target), Map("href" -> target).asJava)
-        case _ => MemberLookup.lookup(using r)(target, owner) match {
-          case Some((sym, targetText)) =>
-            dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
-          case None =>
-            dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
-        }
+        case _ =>
+          withParsedQuery(target) { query =>
+            MemberLookup.lookup(using r)(query, owner) match {
+              case Some((sym, targetText)) =>
+                dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
+              case None =>
+                dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
+            }
+          }
       })
 
     case _: (Superscript | Subscript | RepresentationLink | HtmlTag) =>
