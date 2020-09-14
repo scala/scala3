@@ -81,8 +81,9 @@ object TypeTestsCasts {
         case _: MatchType =>
           tp // break cycles
         case tp: TypeRef if isBounds(tp.underlying) =>
-          val lo = apply(tp.info.loBound)
-          val hi = apply(tp.info.hiBound)
+          def lo = apply(tp.info.loBound.subst(tp.symbol :: Nil, WildcardType :: Nil))
+          def hi = apply(tp.info.hiBound.subst(tp.symbol :: Nil, WildcardType :: Nil))
+
           range(lo, hi)
         case _ =>
           mapOver(tp)
