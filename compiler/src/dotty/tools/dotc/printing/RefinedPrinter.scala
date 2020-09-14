@@ -463,7 +463,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree @ Inlined(call, bindings, body) =>
         (("/* inlined from " ~ (if (call.isEmpty) "outside" else toText(call)) ~ " */ ") `provided`
           !homogenizedView && ctx.settings.XprintInline.value) ~
-        blockText(bindings :+ body)
+          (if bindings.isEmpty then toText(body) else blockText(bindings :+ body))
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ tpt.watched.showSummary() ~ ">"
       case TypeTree() =>
