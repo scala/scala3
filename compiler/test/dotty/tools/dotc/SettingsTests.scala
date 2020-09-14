@@ -29,11 +29,11 @@ class SettingsTests {
     assertTrue(Files.exists(out))
   }
 
-  @Test def t8124: Unit =
+  @Test def `t8124 Don't crash on missing argument`: Unit =
     val source    = Paths.get("tests/pos/Foo.scala").normalize
     val outputDir = Paths.get("out/testSettings").normalize
-    if Files.notExists(outputDir)
-      Files.createDirectory(outputDir)
+    if Files.notExists(outputDir) then Files.createDirectory(outputDir)
+    // -encoding takes an arg!
     val options  = Array("-encoding", "-d", outputDir.toString, source.toString)
     val reporter = Main.process(options, reporter = StoreReporter())
     assertEquals(1, reporter.errorCount)
