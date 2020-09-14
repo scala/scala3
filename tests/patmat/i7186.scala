@@ -125,74 +125,77 @@ object printMips {
           case Syscall =>
             s"${indent}syscall$endl"
           case jal: Jal =>
-            oneAddr(jal,indent)(_.dest)
+            oneAddr(jal,indent)(_.enumLabel,_.dest)
           case jr: Jr =>
-            oneAddr(jr,indent)(_.dest)
+            oneAddr(jr,indent)(_.enumLabel,_.dest)
           case j: J =>
-            oneAddr(j,indent)(_.dest)
+            oneAddr(j,indent)(_.enumLabel,_.dest)
           case li: Li =>
-            twoAddr(li,indent)(_.dest,_.source)
+            twoAddr(li,indent)(_.enumLabel,_.dest,_.source)
           case lw: Lw =>
-            twoAddr(lw,indent)(_.dest,_.source)
+            twoAddr(lw,indent)(_.enumLabel,_.dest,_.source)
           case neg: Neg =>
-            twoAddr(neg,indent)(_.dest,_.r)
+            twoAddr(neg,indent)(_.enumLabel,_.dest,_.r)
           case not: Not =>
-            twoAddr(not,indent)(_.dest,_.r)
+            twoAddr(not,indent)(_.enumLabel,_.dest,_.r)
           case move: Move =>
-            twoAddr(move,indent)(_.dest,_.source)
+            twoAddr(move,indent)(_.enumLabel,_.dest,_.source)
           case beqz: Beqz =>
-            twoAddr(beqz,indent)(_.source,_.breakTo)
+            twoAddr(beqz,indent)(_.enumLabel,_.source,_.breakTo)
           case sw: Sw =>
-            twoAddr(sw,indent)(_.source,_.dest)
+            twoAddr(sw,indent)(_.enumLabel,_.source,_.dest)
           case add: Add =>
-            threeAddr(add,indent)(_.dest,_.l,_.r)
+            threeAddr(add,indent)(_.enumLabel,_.dest,_.l,_.r)
           case sub: Sub =>
-            threeAddr(sub,indent)(_.dest,_.l,_.r)
+            threeAddr(sub,indent)(_.enumLabel,_.dest,_.l,_.r)
           case mul: Mul =>
-            threeAddr(mul,indent)(_.dest,_.l,_.r)
+            threeAddr(mul,indent)(_.enumLabel,_.dest,_.l,_.r)
           case div: Div =>
-            threeAddr(div,indent)(_.dest,_.l,_.r)
+            threeAddr(div,indent)(_.enumLabel,_.dest,_.l,_.r)
           case rem: Rem =>
-            threeAddr(rem,indent)(_.dest,_.l,_.r)
+            threeAddr(rem,indent)(_.enumLabel,_.dest,_.l,_.r)
           case seq: Seq =>
-            threeAddr(seq,indent)(_.dest,_.l,_.r)
+            threeAddr(seq,indent)(_.enumLabel,_.dest,_.l,_.r)
           case sne: Sne =>
-            threeAddr(sne,indent)(_.dest,_.l,_.r)
+            threeAddr(sne,indent)(_.enumLabel,_.dest,_.l,_.r)
           case slt: Slt =>
-            threeAddr(slt,indent)(_.dest,_.l,_.r)
+            threeAddr(slt,indent)(_.enumLabel,_.dest,_.l,_.r)
           case sgt: Sgt =>
-            threeAddr(sgt,indent)(_.dest,_.l,_.r)
+            threeAddr(sgt,indent)(_.enumLabel,_.dest,_.l,_.r)
           case sle: Sle =>
-            threeAddr(sle,indent)(_.dest,_.l,_.r)
+            threeAddr(sle,indent)(_.enumLabel,_.dest,_.l,_.r)
           case sge: Sge =>
-            threeAddr(sge,indent)(_.dest,_.l,_.r)
+            threeAddr(sge,indent)(_.enumLabel,_.dest,_.l,_.r)
           case _ => s"${indent}???$endl"
         }
       }
 
-    def oneAddr[O <: OneAddr]
-      ( a: O, indent: String)
-      ( r: O => Dest,
+    def oneAddr[T]
+      ( a: T, indent: String )
+      ( c: a.type => String,
+        r: a.type => Dest,
       ): String = (
-        s"${indent}${a.enumLabel} ${rsrc(r(a))}$endl"
+        s"${indent}${c(a)} ${rsrc(r(a))}$endl"
       )
 
-    def twoAddr[O <: TwoAddr]
-      ( a: O, indent: String)
-      ( d: O => Register,
-        r: O => Dest | Constant
+    def twoAddr[T]
+      ( a: T, indent: String )
+      ( c: a.type => String,
+        d: a.type => Register,
+        r: a.type => Dest | Constant
       ): String = (
-        s"${indent}${a.enumLabel} ${registers(d(a))}, ${rsrc(r(a))}$endl"
+        s"${indent}${c(a)} ${registers(d(a))}, ${rsrc(r(a))}$endl"
       )
 
-    def threeAddr[O <: ThreeAddr]
-      ( a: O,
+    def threeAddr[T]
+      ( a: T,
         indent: String )
-      ( d: O => Register,
-        l: O => Register,
-        r: O => Src
+      ( c: a.type => String,
+        d: a.type => Register,
+        l: a.type => Register,
+        r: a.type => Src
       ): String = (
-        s"${indent}${a.enumLabel} ${registers(d(a))}, ${registers(l(a))}, ${rsrc(r(a))}$endl"
+        s"${indent}${c(a)} ${registers(d(a))}, ${registers(l(a))}, ${rsrc(r(a))}$endl"
       )
 
     def rsrc(v: Constant | Dest): String = v match {
