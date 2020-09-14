@@ -1,18 +1,15 @@
 package dotty.tools.dotc
 package config
 
-import collection.mutable.ArrayBuffer
-import scala.util.{ Success, Failure }
-import reflect.ClassTag
 import core.Contexts._
-import scala.annotation.tailrec
-import dotty.tools.io.{ AbstractFile, Directory, JarArchive, PlainDirectory }
 
-// import annotation.unchecked
-  // Dotty deviation: Imports take precedence over definitions in enclosing package
-  // (Note that @unchecked is in scala, not annotation, so annotation.unchecked gives
-  // us a package, which is not what was intended anyway).
+import dotty.tools.io.{AbstractFile, Directory, JarArchive, PlainDirectory}
+
+import annotation.tailrec
+import collection.mutable.ArrayBuffer
 import language.existentials
+import reflect.ClassTag
+import scala.util.{Success, Failure}
 
 object Settings {
 
@@ -25,7 +22,7 @@ object Settings {
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
 
   class SettingsState(initialValues: Seq[Any]) {
-    private var values = ArrayBuffer(initialValues: _*)
+    private val values = ArrayBuffer(initialValues: _*)
     private var _wasRead: Boolean = false
 
     override def toString: String = s"SettingsState(values: ${values.toList})"
@@ -91,38 +88,46 @@ object Settings {
 
     def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
 
+    def isMultivalue: Boolean = implicitly[ClassTag[T]] == ListTag
+
     def legalChoices: String =
-      if (choices.isEmpty) ""
-      else choices match {
-        case r: Range => s"${r.head}..${r.last}"
-        case xs: List[?] => xs.mkString(", ")
+      choices match {
+        case xs if xs.isEmpty => ""
+        case r: Range         => s"${r.head}..${r.last}"
+        case xs: List[?]      => xs.toString
       }
 
     def isLegal(arg: Any): Boolean =
-      if (choices.isEmpty)
-        arg match {
-          case _: T => true
-          case _ => false
-        }
-      else choices match {
+      choices match {
+        case xs if xs.isEmpty =>
+          arg match {
+            case _: T => true
+            case _ => false
+          }
         case r: Range =>
           arg match {
             case x: Int => r.head <= x && x <= r.last
             case _ => false
           }
         case xs: List[?] =>
-          xs contains arg
+          xs.contains(arg)
       }
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state
       def update(value: Any, args: List[String]) =
-        if (changed)
-          ArgsSummary(updateIn(sstate, value), args, errors, warnings :+ s"Flag $name set repeatedly")
-        else {
-          changed = true
-          ArgsSummary(updateIn(sstate, value), args, errors, warnings)
-        }
+        var dangers = warnings
+        val value1 =
+          if changed && isMultivalue then
+            val value0  = value.asInstanceOf[List[String]]
+            val current = valueIn(sstate).asInstanceOf[List[String]]
+            value0.filter(current.contains).foreach(s => dangers :+= s"Setting $name set to $s redundantly")
+            current ++ value0
+          else
+            if changed then dangers :+= s"Flag $name set repeatedly"
+            value
+        changed = true
+        ArgsSummary(updateIn(sstate, value1), args, errors, dangers)
       def fail(msg: String, args: List[String]) =
         ArgsSummary(sstate, args, errors :+ msg, warnings)
       def missingArg =
@@ -229,7 +234,7 @@ object Settings {
      *
      *  to get their arguments.
      */
-    protected def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary = {
+    protected[config] def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary = {
       def stateWithArgs(args: List[String]) = ArgsSummary(state.sstate, args, state.errors, state.warnings)
       state.arguments match {
         case Nil =>
