@@ -300,6 +300,16 @@ object projects:
     sbtTestCommand = ";json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile"
   )
 
+  lazy val catsEffect2 = SbtCommunityProject(
+    project        = "cats-effect-2",
+    sbtTestCommand = "test"
+  )
+
+  lazy val catsEffect3 = SbtCommunityProject(
+    project        = "cats-effect-3",
+    sbtTestCommand = "testIfRelevant"
+  )
+
 end projects
 
 @Category(Array(classOf[TestCategory]))
@@ -363,6 +373,8 @@ class CommunityBuildTest:
 
   @Test def algebra = projects.algebra.run()
   @Test def betterfiles = projects.betterfiles.run()
+  @Test def catsEffect2 = projects.catsEffect2.run()
+  @Test def catsEffect3 = projects.catsEffect3.run()
   @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
   @Test def effpi = projects.effpi.run()
   @Test def endpoints4s = projects.endpoints4s.run()

@@ -1260,6 +1260,7 @@ object Build {
         (publishLocal in `dotty-compiler-bootstrapped`).value
         (publishLocal in `sbt-dotty`).value
         (publishLocal in `dotty-bootstrapped`).value
+        (publishLocal in `dotty-library-bootstrappedJS`).value
         // (publishLocal in `dotty-staging`).value
         val pluginText =
           s"""updateOptions in Global ~= (_.withLatestSnapshots(false))
