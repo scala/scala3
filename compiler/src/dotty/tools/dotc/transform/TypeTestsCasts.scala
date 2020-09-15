@@ -26,8 +26,9 @@ import config.Printers.{ transforms => debug }
  */
 object TypeTestsCasts {
   import ast.tpd._
-  import typer.Inferencing.maximizeType
-  import typer.ProtoTypes.constrained
+  import typer._
+  import typer.Inferencing._
+  import typer.ProtoTypes._
 
   /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
    *
@@ -77,14 +78,12 @@ object TypeTestsCasts {
 
     /** Approximate type parameters depending on variance */
     def stripTypeParam(tp: Type)(using Context) = new ApproximatingTypeMap {
+      val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
       def apply(tp: Type): Type = tp match {
         case _: MatchType =>
           tp // break cycles
         case tp: TypeRef if isBounds(tp.underlying) =>
-          def lo = apply(tp.info.loBound.subst(tp.symbol :: Nil, WildcardType :: Nil))
-          def hi = apply(tp.info.hiBound.subst(tp.symbol :: Nil, WildcardType :: Nil))
-
-          range(lo, hi)
+          boundTypeParams.getOrElseUpdate(tp, newTypeVar(tp.underlying.toBounds))
         case _ =>
           mapOver(tp)
       }
@@ -127,6 +126,7 @@ object TypeTestsCasts {
       debug.println("P1 <:< P = " + res)
 
       res
+
     }
 
     def recur(X: Type, P: Type): Boolean = (X <:< P) || (P.dealias match {
