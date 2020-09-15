@@ -292,7 +292,7 @@ trait Types {
   /** Pattern representing `X | Y | ...` alternatives. */
   type Alternatives <: Tree
 
-  /** A type, kind, type bounds or NoPrefix */
+  /** A type, type constructors, type bounds or NoPrefix */
   type Type
 
   /** A singleton type representing a known constant value */
