@@ -37,7 +37,7 @@ object Macros {
           TypeLambda(
             List("t"),
             _ => List(TypeBounds(Type.of[Nothing], Type.of[Any])),
-            tl => MatchCaseType.appliedTo(List(Type.of[List].appliedTo(tl.param(0)), tl.param(0)))))
+            tl => Type.of[scala.internal.MatchCase].appliedTo(List(Type.of[List].appliedTo(tl.param(0)), tl.param(0)))))
       )
 
     assert(x1T =:= '[1].unseal.tpe)
