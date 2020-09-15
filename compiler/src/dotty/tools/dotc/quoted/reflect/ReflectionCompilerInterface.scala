@@ -1128,7 +1128,7 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       case _ => None
   }
 
-  def Type_apply(clazz: Class[?])(using Context): Type =
+  def Type_ofErasedClass(clazz: Class[?])(using Context): Type =
     if (clazz.isPrimitive)
       if (clazz == classOf[Boolean]) defn.BooleanType
       else if (clazz == classOf[Byte]) defn.ByteType
@@ -1140,10 +1140,10 @@ class ReflectionCompilerInterface(val rootContext: Context) extends CompilerInte
       else if (clazz == classOf[Double]) defn.DoubleType
       else defn.UnitType
     else if (clazz.isArray)
-      defn.ArrayType.appliedTo(Type_apply(clazz.getComponentType))
+      defn.ArrayType.appliedTo(Type_ofErasedClass(clazz.getComponentType))
     else if (clazz.isMemberClass) {
       val name = clazz.getSimpleName.toTypeName
-      val enclosing = Type_apply(clazz.getEnclosingClass)
+      val enclosing = Type_ofErasedClass(clazz.getEnclosingClass)
       if (enclosing.member(name).exists) enclosing.select(name)
       else
         enclosing.classSymbol.companionModule.termRef.select(name)

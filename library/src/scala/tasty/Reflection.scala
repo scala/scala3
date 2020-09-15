@@ -1353,8 +1353,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     def of[T <: AnyKind](using qtype: scala.quoted.Type[T], ctx: Context): Type =
       qtype.asInstanceOf[scala.internal.quoted.Type[TypeTree]].typeTree.tpe
 
-    def apply(clazz: Class[_])(using ctx: Context): Type =
-      reflectSelf.Type_apply(clazz)
   end Type
 
   given TypeOps as AnyRef:

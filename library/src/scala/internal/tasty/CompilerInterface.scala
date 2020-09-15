@@ -512,7 +512,11 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
 
   def Type_TypeTest(using ctx: Context): TypeTest[Type, Type]
 
-  def Type_apply(clazz: Class[_])(using ctx: Context): Type
+   /** Returns the type of the runtime class. This type is the erased representation
+    *  that of the type that is used by arrays.
+    *
+    */
+  def Type_ofErasedClass(clazz: Class[_])(using ctx: Context): Type
 
   /** Is `self` type the same as `that` type?
    *  This is the case iff `Type_isSubType(self, that)` and `Type_isSubType(that, self)`.
