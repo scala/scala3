@@ -467,6 +467,8 @@ object Checking {
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))
+      else if(sym.owner.is(Trait))
+        fail(TraitMayNotDefineNativeMethod(sym))
     }
     else if (sym.is(Deferred, butNot = Param) && !sym.isType && !sym.isSelfSym) {
       if (!sym.owner.isClass || sym.owner.is(Module) || sym.owner.isAnonymousClass)

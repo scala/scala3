@@ -1480,6 +1480,13 @@ import ast.tpd
     def explain = ""
   }
 
+  class TraitMayNotDefineNativeMethod(sym: Symbol)(
+    implicit ctx: Context)
+    extends SyntaxMsg(TraitMayNotDefineNativeMethodID) {
+    def msg = em"""A trait cannot define a ${hl("@native")} method."""
+    def explain = ""
+  }
+
   class OnlyClassesCanHaveDeclaredButUndefinedMembers(sym: Symbol)(
     implicit ctx: Context)
     extends SyntaxMsg(OnlyClassesCanHaveDeclaredButUndefinedMembersID) {
