@@ -82,7 +82,7 @@ object TypeTestsCasts {
       def apply(tp: Type): Type = tp match {
         case _: MatchType =>
           tp // break cycles
-        case tp: TypeRef if isBounds(tp.underlying) =>
+        case tp: TypeRef if !tp.symbol.isClass =>
           boundTypeParams.getOrElseUpdate(tp, newTypeVar(tp.underlying.toBounds))
         case _ =>
           mapOver(tp)
