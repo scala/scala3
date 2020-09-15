@@ -51,12 +51,12 @@ package object compiletime {
   end extension
 
   /** Checks at compiletime that the provided values is a constant after
-   *  inlining and constant folding and returns the value.
+   *  inlining and constant folding.
    *
    *  Usage:
    *  ```scala
    *  inline def twice(inline n: Int): Int =
-   *    requireConst(n) // static assertion that the parameter `n` is a constant
+   *    requireConst(n) // compile-time assertion that the parameter `n` is a constant
    *    n + n
    *
    *  twice(1)
