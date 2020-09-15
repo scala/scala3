@@ -1642,15 +1642,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end MatchTypeOps
 
-  // TODO remove this definition from here
-  /**
-   * An accessor for `scala.internal.MatchCase[_,_]`, the representation of a `MatchType` case.
-   */
-  def MatchCaseType(using ctx: Context): Type = {
-    import scala.internal.MatchCase
-    Type(classOf[MatchCase[_,_]])
-  }
-
   given (using ctx: Context) as TypeTest[Type, ByNameType] = reflectSelf.ByNameType_TypeTest
 
   object ByNameType:
