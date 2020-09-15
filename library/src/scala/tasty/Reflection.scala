@@ -1343,16 +1343,15 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   //   TYPES   //
   ///////////////
 
-  /** Returns the type (Type) of T */
-  def typeOf[T](using qtype: scala.quoted.Type[T], ctx: Context): Type =
-    qtype.asInstanceOf[scala.internal.quoted.Type[T]].typeTree.asInstanceOf[TypeTree].tpe
-
-
   // ----- Types ----------------------------------------------------
 
   given (using ctx: Context) as TypeTest[Type, Type] = reflectSelf.Type_TypeTest
 
   object Type:
+
+    /** Returns the type or kind (Type) of T */
+    def of[T <: AnyKind](using qtype: scala.quoted.Type[T], ctx: Context): Type =
+      qtype.asInstanceOf[scala.internal.quoted.Type[TypeTree]].typeTree.tpe
 
     def apply(clazz: Class[_])(using ctx: Context): Type =
       reflectSelf.Type_apply(clazz)
@@ -1643,7 +1642,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     end extension
   end MatchTypeOps
 
-
+  // TODO remove this definition from here
   /**
    * An accessor for `scala.internal.MatchCase[_,_]`, the representation of a `MatchType` case.
    */

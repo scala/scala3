@@ -88,8 +88,8 @@ object Iso {
     import qctx.tasty._
     import util._
 
-    val tpS = typeOf[S]
-    val tpA = typeOf[A]
+    val tpS = Type.of[S]
+    val tpA = Type.of[A]
 
     // 1. S must be a case class
     // 2. A must be a tuple
@@ -127,7 +127,7 @@ object Iso {
     import qctx.tasty._
     import util._
 
-    val tpS = typeOf[S]
+    val tpS = Type.of[S]
 
     if (tpS.isSingleton) {
       val ident = Ident(tpS.asInstanceOf[TermRef]).seal.cast[S]

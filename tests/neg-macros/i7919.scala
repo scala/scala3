@@ -5,7 +5,7 @@ object Test {
     import qctx.tasty._
     given typeT as quoted.Type[T] // error
     val tTypeTree = typeT.unseal
-    val tt = typeOf[T]
+    val tt = Type.of[T]
     '{ "in staged" }
   }
 
