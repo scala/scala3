@@ -226,6 +226,7 @@ class Definitions {
   @tu lazy val CompiletimePackageObject: Symbol = requiredModule("scala.compiletime.package")
     @tu lazy val Compiletime_erasedValue  : Symbol = CompiletimePackageObject.requiredMethod("erasedValue")
     @tu lazy val Compiletime_error        : Symbol = CompiletimePackageObject.requiredMethod(nme.error)
+    @tu lazy val Compiletime_requireConst: Symbol = CompiletimePackageObject.requiredMethod("requireConst")
     @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageObject.requiredMethod("constValue")
     @tu lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageObject.requiredMethod("constValueOpt")
     @tu lazy val Compiletime_code         : Symbol = CompiletimePackageObject.requiredMethod("extension_code")

@@ -620,6 +620,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   /** The Inlined node representing the inlined call */
   def inlined(sourcePos: SrcPos): Tree = {
 
+    // Special handling of `requireConst`
+    callValueArgss match
+      case (arg :: Nil) :: Nil if inlinedMethod == defn.Compiletime_requireConst =>
+        arg match
+          case ConstantValue(_) | Inlined(_, Nil, Typed(ConstantValue(_), _)) => // ok
+          case _ => report.error(em"expected a constant value but found: $arg", arg.srcPos)
+      case _ =>
+
   	// Special handling of `constValue[T]` and `constValueOpt[T]`
     if (callTypeArgs.length == 1)
       if (inlinedMethod == defn.Compiletime_constValue) {
@@ -887,13 +895,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             case _ => None
           }
         else None
-      }
-    }
-
-    object ConstantValue {
-      def unapply(tree: Tree)(using Context): Option[Any] = tree.tpe.widenTermRefExpr.normalized match {
-        case ConstantType(Constant(x)) => Some(x)
-        case _ => None
       }
     }
 
@@ -1453,4 +1454,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             foldOver(syms, tree)
         }
     }.apply(Nil, tree)
+
+  object ConstantValue {
+    def unapply(tree: Tree)(using Context): Option[Any] = tree.tpe.widenTermRefExpr.normalized match {
+      case ConstantType(Constant(x)) => Some(x)
+      case _ => None
+    }
+  }
+
 }

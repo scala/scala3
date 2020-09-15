@@ -50,6 +50,22 @@ package object compiletime {
       ${ dotty.internal.CompileTimeMacros.codeExpr('self, 'args) }
   end extension
 
+  /** Checks at compiletime that the provided values is a constant after
+   *  inlining and constant folding.
+   *
+   *  Usage:
+   *  ```scala
+   *  inline def twice(inline n: Int): Int =
+   *    requireConst(n) // compile-time assertion that the parameter `n` is a constant
+   *    n + n
+   *
+   *  twice(1)
+   *  val m: Int = ...
+   *  twice(m) // error: expected a constant value but found: m
+   *  ```
+   */
+  inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | Double | Char | String): Unit = ()
+
   /** Same as `constValue` but returns a `None` if a constant value
    *  cannot be constructed from the provided type. Otherwise returns
    *  that value wrapped in `Some`.
