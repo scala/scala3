@@ -673,7 +673,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           def apply(t: Type) = t match {
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
             case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
-            case t: SingletonType => paramProxy.getOrElse(t, mapOver(t))
+            case t: SingletonType =>
+              if t.termSymbol.isAllOf(Inline | Param) then mapOver(t.widenTermRefExpr)
+              else paramProxy.getOrElse(t, mapOver(t))
             case t => mapOver(t)
           }
           override def mapClassInfo(tp: ClassInfo) = mapFullClassInfo(tp)
