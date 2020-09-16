@@ -21,191 +21,267 @@ class ScalaPageCreator(
     signatureProvider: SignatureProvider,
     val logger: DokkaLogger
 ) extends DefaultPageCreator(commentsToContentConverter, signatureProvider, logger) {
-    override def pageForClasslike(c: DClasslike): ClasslikePageNode = {
-        val res = super.pageForClasslike(c)
 
-        def renameCompanionObjectPage(objectPage: ClasslikePageNode): ClasslikePageNode = objectPage
-        .modified(
-            objectPage.getName + "$",
-            objectPage.getContent,
-            objectPage.getDri,
-            objectPage.getEmbeddedResources,
-            objectPage.getChildren
+    private val contentBuilder = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger)
+
+    override def pageForModule(m: DModule): ModulePageNode = super.pageForModule(m)
+
+    override def pageForPackage(p: DPackage): PackagePageNode = super.pageForPackage(p)
+
+    override def pageForClasslike(c: DClasslike): ClasslikePageNode = c match {
+            case clazz: DClass => pageForDClass(clazz)
+            case other => throw UnsupportedOperationException("Only DClass classlike is supported.")
+        }
+
+    def pageForDClass(c: DClass): ClasslikePageNode = {
+        val constructors = c.getConstructors
+
+        val ext = c.get(ClasslikeExtension)
+
+        val name = if ext.kind == dotty.dokka.Kind.Object && ext.companion.isDefined then c.getName + "$" else c.getName
+
+        val extensionPages = ext.extensions.flatMap(_.extensions)
+            .map(pageForFunction(_))
+            .map(page =>
+                page.modified(
+                    "extension_" + page.getName,
+                    page.getChildren
+                )
+            )
+        val enumEntryPages = Option(c.get(EnumExtension)).map(_.enumEntries).collect{
+            case c: DClasslike => pageForClasslike(c)
+        }
+
+        ClasslikePageNode(
+            name,
+            contentForClasslike(c),
+            JSet(c.getDri),
+            c,
+            (constructors.asScala.map(pageForFunction) ++
+            c.getClasslikes.asScala.map(pageForClasslike) ++
+            c.getFunctions.asScala.map(pageForFunction) ++
+            enumEntryPages ++ extensionPages).asJava,
+            List.empty.asJava
         )
 
-        def addExtensionMethodPages(clazz: DClass, defContent: ClasslikePageNode): ClasslikePageNode = {
-            val extensionPages = clazz.get(ClasslikeExtension).extensions.flatMap(_.extensions)
-                .map(pageForFunction(_))
-                .map(page =>
-                    page.modified(
-                        "extension_" + page.getName,
-                        page.getContent,
-                        page.getDri,
-                        page.getEmbeddedResources,
-                        page.getChildren
-                    )
-                )
-
-            defContent.modified(
-                defContent.getName,
-                defContent.getContent,
-                defContent.getDri,
-                defContent.getEmbeddedResources,
-                (defContent.getChildren.asScala ++ extensionPages).asJava
-            )
-        }
-        
-        c match {
-            case clazz: DClass => 
-                val pagesWithExtensions = addExtensionMethodPages(clazz, res)
-                val ext = clazz.get(ClasslikeExtension)
-                if(ext.kind == dotty.dokka.Kind.Object && ext.companion.isDefined) renameCompanionObjectPage(pagesWithExtensions)
-                else pagesWithExtensions
-            case _ => res
-        }
     }
 
-    def insertCompanion(clazz: DClass, defContent: ContentGroup): ContentGroup = {
-        def companionContent(co: DRI): ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder = 
-            bdr => bdr
-                .group(kind = ContentKind.Cover){ grpbdr => grpbdr
-                    .sourceSetDependentHint(){ srcsetbdr => srcsetbdr
+    override def pageForFunction(f: DFunction) = super.pageForFunction(f)
+
+    override def contentForModule(m: DModule) = {
+        def buildBlock = (builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) => builder
+            .group(kind = ContentKind.Cover) { gbuilder => gbuilder
+                .cover(m.getName)()
+                .descriptionIfNotEmpty(m)
+            }
+            .addChildren(contentForComments(m).asScala.toSeq)
+            .groupingBlock(
+                "Packages",
+                List("" -> m.getPackages.asScala.toList),
+                kind = ContentKind.Packages,
+                sourceSets = m.getSourceSets.asScala.toSet
+            )(
+                (bdr, elem) => bdr
+            ) { (bdr, elem) => bdr
+                .driLink(elem.getName, elem.getDri)
+            }
+            
+        contentBuilder.contentForDocumentable(m, buildBlock = buildBlock)
+    }
+
+    override def contentForPackage(p: DPackage) = {
+        def buildBlock = (builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) => builder
+            .group(kind = ContentKind.Cover) { gbuilder => gbuilder
+                .cover(p.getName)()
+                .descriptionIfNotEmpty(p)
+            }
+            .group(styles = Set(ContentStyle.TabbedContent)) { b => b
+                .contentForScope(p)
+            }
+        
+        contentBuilder.contentForDocumentable(p, buildBlock = buildBlock)
+    }
+
+    override def contentForClasslike(c: DClasslike) = c match {
+        case d: DClass => contentForClass(d)
+        case other => throw UnsupportedOperationException("Only DClass classlike is supported.")
+    }
+
+    def contentForClass(c: DClass) = {
+        val ext = c.get(ClasslikeExtension)
+        val co = ext.companion
+
+        def buildBlock = (builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) => builder
+            .group(kind = ContentKind.Cover, sourceSets = c.getSourceSets.asScala.toSet) { gbdr => gbdr
+                .cover(c.getName)()
+                .sourceSetDependentHint(Set(c.getDri), c.getSourceSets.asScala.toSet) { sbdr => 
+                    val s1 = sbdr
+                        .signature(c)
+                    co.fold(s1){ co => s1
                         .group(kind = ContentKind.Symbol){ gbdr => gbdr
                             .text("Companion ")
                             .driLink(
-                                clazz.get(ClasslikeExtension).kind match {
+                                ext.kind match {
                                     case dotty.dokka.Kind.Object => "class"
                                     case _ => "object"
                                 },
                                 co
                             )
-
                         }
+                    }.contentForDescription(c)
 
+                }
+            }
+            .group(styles = Set(ContentStyle.TabbedContent)) { b => b
+                .contentForScope(c)
+                .contentForEnum(c)
+                .contentForGivens(c)
+                .contentForConstructors(c)
+                .contentForExtensions(c)
+                .contentForTypesInfo(c)
+            }
+        contentBuilder.contentForDocumentable(c, buildBlock = buildBlock)
+    }
+
+    override def contentForMember(d: Documentable) = {
+        def buildBlock = (builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) => builder
+            .group(kind = ContentKind.Cover){ bd => bd.cover(d.getName)() }
+            .divergentGroup(
+                ContentDivergentGroup.GroupID("member")
+            ) { divbdr => divbdr
+                .instance(Set(d.getDri), sourceSets = d.getSourceSets.asScala.toSet) { insbdr => insbdr
+                    .before(){ bbdr => bbdr
+                        .contentForDescription(d)
+                        .contentForComments(d)
                     }
-
-                }
-        clazz.get(ClasslikeExtension).companion.fold(defContent)(co => {
-                    val addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(
-                        clazz, 
-                        buildBlock = companionContent(co)
-                    )
-                    val newChildren = List(defContent.getChildren.asScala.head) ++ List(addedContent) ++ defContent.getChildren.asScala.tail
-                    ContentGroup(
-                        newChildren.asJava,
-                        defContent.getDci,
-                        defContent.getSourceSets,
-                        defContent.getStyle,
-                        defContent.getExtra
-                    )
-        })
-    }
-
-    def insertCustomExtensionTab(clazz: DClass, defContent: ContentGroup): ContentGroup = {
-        val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
-        val addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(clazz, buildBlock = bdr =>
-            bdr.groupingBlock(
-                "Extensions",
-                clazz.get(ClasslikeExtension).extensions.map(e => e.extendedSymbol -> e.extensions).sortBy(_._2.size),
-            )( (bdr, receiver) => bdr 
-                .group(){ grpbdr => grpbdr
-                    .signature(receiver)
-                }
-            ){ (bdr, elem) => bdr
-                .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
-                .sourceSetDependentHint(
-                    dri = Set(elem.getDri), 
-                    sourceSets = elem.getSourceSets.asScala.toSet, 
-                    kind = ContentKind.SourceSetDependentHint
-                ){ srcsetbdr => srcsetbdr
-                    .contentForBrief(elem)
-                    .signature(elem)
+                    .divergent(kind = ContentKind.Symbol) { dbdr => dbdr
+                        .signature(d)
+                    }
                 }
             }
-        )
-
-        val modifiedContent = content(0).copy(
-            (content(0).getChildren.asScala ++ List(addedContent)).asJava,
-            content(0).getDci,
-            content(0).getSourceSets,
-            content(0).getStyle,
-            content(0).getExtra
-        )
-        modifyContentGroup(content, modifiedContent)
+        contentBuilder.contentForDocumentable(d, buildBlock = buildBlock)
     }
 
-    def insertEnumTab(clazz: DClass, defContent: ContentGroup): ContentGroup = {
-        val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
-        val addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(clazz, buildBlock = bdr =>
-            bdr.groupingBlock(
-                "Entries",
-                List(() -> clazz.get(EnumExtension).enumEntries.sortBy(_.getName).toList),
-            )( (bdr, splitter) => bdr ){ (bdr, elem) => bdr
-                .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
+    override def contentForFunction(f: DFunction) = contentForMember(f)
+
+    extension (b: ScalaPageContentBuilder#ScalaDocumentableContentBuilder):
+        def descriptionIfNotEmpty(d: Documentable): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = {
+            val desc = contentForDescription(d).asScala.toSeq
+            val res = if desc.isEmpty then b else b
                 .sourceSetDependentHint(
-                    dri = Set(elem.getDri), 
-                    sourceSets = elem.getSourceSets.asScala.toSet, 
-                    kind = ContentKind.SourceSetDependentHint
-                ){ srcsetbdr => srcsetbdr
-                    .contentForBrief(elem)
-                    .signature(elem)
+                    Set(d.getDri), 
+                    d.getSourceSets.asScala.toSet, 
+                    kind = ContentKind.SourceSetDependentHint, 
+                    styles = Set(TextStyle.UnderCoverText)
+                ) { sourceSetBuilder => sourceSetBuilder
+                        .addChildren(desc)
                 }
-            }
-        )
-
-        val modifiedContent = content(0).copy(
-            (content(0).getChildren.asScala ++ List(addedContent)).asJava,
-            content(0).getDci,
-            content(0).getSourceSets,
-            content(0).getStyle,
-            content(0).getExtra
-        )
-        modifyContentGroup(content, modifiedContent)
-    }
-
-    def insertInheritedMethods(clazz: DClass, defContent: ContentGroup): ContentGroup = {
-        val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
-        val addedContent = ScalaPageContentBuilder(
-            commentsToContentConverter, 
-            signatureProvider, 
-            logger
-        ).contentForDocumentable(clazz, buildBlock = builder => builder
-            .divergentBlock(
-                "Methods",
-                List("Class methods" -> clazz.getFunctions.asScala.toList, "Inherited" -> clazz.get(ClasslikeExtension).inheritedMethods)
-            )(
-                (builder, txt) => builder.header(3, txt)()
-            )
-        )
-
-        val filteredChildren = content(0).getChildren.asScala.map{ 
-            case c: ContentGroup => c.copy(
-                c.getChildren.asScala.filter(c => c.getDci.getKind != ContentKind.Functions).asJava,
-                c.getDci,
-                c.getSourceSets,
-                c.getStyle,
-                c.getExtra
-            )
-            case o => o
+            res
         }
-        val modifiedContent = content(0).copy(
-            (filteredChildren ++ List(addedContent)).asJava,            
-            content(0).getDci,
-            content(0).getSourceSets,
-            content(0).getStyle,
-            content(0).getExtra
-        )
-        modifyContentGroup(content, modifiedContent)
-    }
 
-    def insertGivenTab(clazz: DClass, defContent: ContentGroup): ContentGroup = {
-        val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
-        val givens = clazz.get(ClasslikeExtension).givens
+        def contentForComments(d: Documentable) = b
 
-        val addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(clazz, buildBlock = bdr =>
-            bdr.groupingBlock(
+        def contentForDescription(d: Documentable) = {
+            val specialTags = Set[Class[_]](classOf[Description])
+            val tags = d.getDocumentation.asScala.toList.flatMap( (pd, doc) => doc.getChildren.asScala.map(pd -> _).toList )
+
+            val platforms = d.getSourceSets.asScala.toSet
+
+            val description = tags.collect{ case (pd, d: Description) => (pd, d) }.drop(1).groupBy(_(0)).map( (key, value) => key -> value.map(_(1)))
+
+            val unnamedTags = tags.filterNot( t => t(1).isInstanceOf[NamedTagWrapper] || specialTags.contains(t(1).getClass))
+                .groupBy(t => (t(0), t(1).getClass))
+                .map( (key, value) => key -> value.map(_(1)) )
+
+            b.group(Set(d.getDri), styles = Set(TextStyle.Block)) { bdr => 
+                val b1 = description.foldLeft(bdr){ 
+                    case (bdr, (key, value)) => bdr
+                        .group(sourceSets = Set(key)){ gbdr => 
+                            value.foldLeft(gbdr) { (gbdr, tag) => gbdr
+                                .comment(tag.getRoot)
+                            }
+                        }
+                }
+                b1.table(kind = ContentKind.Comment){ tbdr =>
+                    unnamedTags.foldLeft(tbdr){ case (bdr, (key, value) ) => bdr
+                            .cell(sourceSets = Set(key(0))){ b => b
+                                .header(4, key(1).getSimpleName )()
+                                .list(value){ (bdr, elem) => bdr
+                                    .comment(elem.getRoot)
+                                }
+                            }
+                    }
+                }
+            }
+        }
+
+        def contentForScope(
+            s: Documentable & WithScope
+        ) = {
+            val (typeDefs, valDefs) = s.getProperties.asScala.toList.partition(_.get(PropertyExtension).kind == "type")
+            val classes = s.getClasslikes.asScala.toList
+            val inherited = s match {
+                case c: DClass => List("Inherited" -> c.get(ClasslikeExtension).inheritedMethods)
+                case other => List.empty
+            }
+             
+            b
+                .contentForComments(s)
+                .divergentBlock(
+                    "Type members",
+                    List("Types" -> typeDefs, "Classlikes" -> classes),
+                    kind = ContentKind.Classlikes
+                )(
+                    (bdr, elem) => bdr.header(3, elem)()
+                )
+                .divergentBlock(
+                    "Methods",
+                    List(
+                        "Class methods" -> s.getFunctions.asScala.toList, 
+                    ) ++ inherited
+                )(
+                    (builder, txt) => builder.header(3, txt)()
+                )
+                .groupingBlock(
+                    "Value members",
+                    List("" -> valDefs),
+                    kind = ContentKind.Properties,
+                    sourceSets = s.getSourceSets.asScala.toSet
+                )(
+                    (bdr, group) => bdr
+                ){ (bdr, elem) => bdr
+                    .driLink(elem.getName, elem.getDri)
+                    .sourceSetDependentHint(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind = ContentKind.SourceSetDependentHint) { sbdr => sbdr
+                        .contentForBrief(elem)
+                        .signature(elem)
+                    }
+                }
+        }
+    
+        def contentForEnum(
+            c: DClass
+        ) = b.groupingBlock(
+            "Enum entries",
+            List(() -> Option(c.get(EnumExtension)).fold(List.empty)(_.enumEntries.sortBy(_.getName).toList)),
+            kind = ContentKind.Properties
+        )( (bdr, splitter) => bdr ){ (bdr, elem) => bdr
+            .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
+            .sourceSetDependentHint(
+                dri = Set(elem.getDri), 
+                sourceSets = elem.getSourceSets.asScala.toSet, 
+                kind = ContentKind.SourceSetDependentHint
+            ){ srcsetbdr => srcsetbdr
+                .contentForBrief(elem)
+                .signature(elem)
+            }
+        }
+
+        def contentForGivens(c: DClass) = {
+            val givens = c.get(ClasslikeExtension).givens
+            b.groupingBlock(
                 "Given",
                 if(!givens.isEmpty) List(() -> givens.sortBy(_.getName).toList) else List.empty,
+                kind = ContentKind.Functions
             )( (bdr, splitter) => bdr ){ (bdr, elem) => bdr
                 .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
                 .sourceSetDependentHint(
@@ -217,77 +293,89 @@ class ScalaPageCreator(
                     .signature(elem)
                 }
             }
-        )
+        }
 
-        val modifiedContent = content(0).copy(
-            (content(0).getChildren.asScala ++ List(addedContent)).asJava,
-            content(0).getDci,
-            content(0).getSourceSets,
-            content(0).getStyle,
-            content(0).getExtra
-        )
-        modifyContentGroup(content, modifiedContent)
-    }
-
-    def insertLinearSupertypes(clazz: DClass, defContent: ContentGroup): ContentGroup = {
-        val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
-        val supertypes = clazz.get(InheritanceInfo).parents
-
-        def contentForBound(
-            bdr: ScalaPageContentBuilder#ScalaDocumentableContentBuilder,
-            b: Bound
-        ): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = b match{
-                case t: org.jetbrains.dokka.model.TypeConstructor => t.getProjections.asScala.foldLeft(bdr){
-                    case (builder, p) => p match {
-                        case text: UnresolvedBound => builder.text(text.getName)
-                        case link: TypeParameter => builder.driLink(link.getName, link.getDri) 
-                        case other => builder.text(s"TODO: $other")
-                    }
-                }
-                case o => bdr.text(s"TODO: $o")
+        def contentForExtensions(
+            c: DClass
+        ) = b.groupingBlock(
+            "Extensions",
+            c.get(ClasslikeExtension).extensions.map(e => e.extendedSymbol -> e.extensions).sortBy(_._2.size),
+            kind = ContentKind.Extensions
+        )( (bdr, receiver) => bdr 
+            .group(){ grpbdr => grpbdr
+                .signature(receiver)
             }
-            
+        ){ (bdr, elem) => bdr
+            .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
+            .sourceSetDependentHint(
+                dri = Set(elem.getDri), 
+                sourceSets = elem.getSourceSets.asScala.toSet, 
+                kind = ContentKind.SourceSetDependentHint
+            ){ srcsetbdr => srcsetbdr
+                .contentForBrief(elem)
+                .signature(elem)
+            }
+        }
 
-        def buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder = bdr => bdr
-            .header(2, "Linear supertypes")()
+        def contentForConstructors(
+            c: DClass
+        ) = b.groupingBlock(
+            "Constructors",
+            List("" -> c.getConstructors.asScala.toList),
+            kind = ContentKind.Constructors
+        )(
+            (bdr, group) => bdr
+        ){ (bdr, elem) => bdr
+            .driLink(elem.getName, elem.getDri)
+            .sourceSetDependentHint(
+                Set(elem.getDri),
+                elem.getSourceSets.asScala.toSet,
+                kind = ContentKind.SourceSetDependentHint
+            ) { sbdr => sbdr
+                .contentForBrief(elem)
+                .signature(elem)
+            }
+        }
+
+        def contentForTypesInfo(c: DClass) = {
+            val inheritanceInfo = c.get(InheritanceInfo)
+            val supertypes = inheritanceInfo.parents
+            val subtypes = inheritanceInfo.knownChildren
+            def contentForType(
+                bdr: ScalaPageContentBuilder#ScalaDocumentableContentBuilder,
+                b: DRI
+            ): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = bdr
+                .driLink(b.getClassNames, b)
+
+            def contentForBound(
+                bdr: ScalaPageContentBuilder#ScalaDocumentableContentBuilder,
+                b: Bound
+            ): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = b match {
+                    case t: org.jetbrains.dokka.model.TypeConstructor => t.getProjections.asScala.foldLeft(bdr){
+                        case (builder, p) => p match {
+                            case text: UnresolvedBound => builder.text(text.getName)
+                            case link: TypeParameter => builder.driLink(link.getName, link.getDri) 
+                            case other => builder.text(s"TODO: $other")
+                        }
+                    }
+                    case o => bdr.text(s"TODO: $o")
+            }
+
+            b.header(2, "Linear supertypes")()
             .group(
+                kind = ContentKind.Comment,
                 styles = Set(ContentStyle.WithExtraAttributes), 
                 extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Linear supertypes")
             ){ gbdr => gbdr
                 .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
-                    .list(supertypes)(contentForBound)
+                    .list(supertypes, separator = ""){ (bdr, elem) => bdr
+                        .group(styles = Set(TextStyle.Paragraph))(contentForBound(_, elem))
+                    }
                 }
             }
-
-        def addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(
-            clazz, 
-            buildBlock = buildBlock
-        )
-
-        def modifiedContent = content(0).copy(
-            (content(0).getChildren.asScala ++ List(addedContent)).asJava,
-            content(0).getDci,
-            content(0).getSourceSets,
-            content(0).getStyle,
-            content(0).getExtra
-        )
-        if !supertypes.isEmpty then modifyContentGroup(content, modifiedContent) else defContent
-    }
-
-    def insertKnownSubclasses(clazz: DClass, defContent: ContentGroup): ContentGroup = {
-        val content = getContentGroupWithParents(defContent, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
-        val subtypes = clazz.get(InheritanceInfo).knownChildren
-
-        def contentForType(
-            bdr: ScalaPageContentBuilder#ScalaDocumentableContentBuilder,
-            b: DRI
-        ): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = bdr
-            .driLink(b.getClassNames, b)
-            
-
-        def buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder = bdr => bdr
             .header(2, "Known subtypes")()
             .group(
+                kind = ContentKind.Comment,
                 styles = Set(ContentStyle.WithExtraAttributes), 
                 extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Known subtypes")
             ){ gbdr => gbdr
@@ -295,37 +383,6 @@ class ScalaPageCreator(
                     .list(subtypes)(contentForType)
                 }
             }
-
-        def addedContent = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger).contentForDocumentable(
-            clazz, 
-            buildBlock = buildBlock
-        )
-
-        def modifiedContent = content(0).copy(
-            (content(0).getChildren.asScala ++ List(addedContent)).asJava,
-            content(0).getDci,
-            content(0).getSourceSets,
-            content(0).getStyle,
-            content(0).getExtra
-        )
-        if !subtypes.isEmpty then modifyContentGroup(content, modifiedContent) else defContent
-    }
-
-    override def contentForClasslike(c: DClasslike): ContentGroup = {
-        val defaultContent = super.contentForClasslike(c)
-      
-        c match{
-            case clazz: DClass =>
-                val pageWithInheritedMethods = insertInheritedMethods(clazz, defaultContent)
-                val pageWithCompanion = insertCompanion(clazz, pageWithInheritedMethods)
-                // val pageWithCompanion = insertCompanion(clazz, defaultContent)
-                val pageWithExtensionsTab = insertCustomExtensionTab(clazz, pageWithCompanion)
-                val pageWithGivens = insertGivenTab(clazz, pageWithExtensionsTab)
-                val pageWithInheritance = insertKnownSubclasses(clazz, insertLinearSupertypes(clazz, pageWithGivens))
-                if clazz.get(ClasslikeExtension).kind == dotty.dokka.Kind.Enum then insertEnumTab(clazz, pageWithInheritance) else pageWithInheritance
-            case _ => defaultContent
         }
-    }
-
 
 }
