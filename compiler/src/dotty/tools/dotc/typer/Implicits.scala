@@ -315,7 +315,7 @@ object Implicits:
 
     /** The implicit references that are eligible for type `tp`. */
     def eligible(tp: Type): List[Candidate] =
-      if (tp.hash == NotCached)
+      if tp.hash == NotCached then
         Stats.record(i"compute eligible not cached ${tp.getClass}")
         Stats.record(i"compute eligible not cached")
         computeEligible(tp)

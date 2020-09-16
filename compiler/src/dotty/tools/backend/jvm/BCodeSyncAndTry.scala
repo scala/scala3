@@ -29,80 +29,80 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
 
     def genSynchronized(tree: Apply, expectedType: BType): BType = tree match {
       case Apply(TypeApply(fun, _), args) =>
-      val monitor = locals.makeLocal(ObjectReference, "monitor", defn.ObjectType, tree.span)
-      val monCleanup = new asm.Label
+        val monitor = locals.makeLocal(ObjectReference, "monitor", defn.ObjectType, tree.span)
+        val monCleanup = new asm.Label
 
-      // if the synchronized block returns a result, store it in a local variable.
-      // Just leaving it on the stack is not valid in MSIL (stack is cleaned when leaving try-blocks).
-      val hasResult = (expectedType != UNIT)
-      val monitorResult: Symbol = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, tree.span) else null
+        // if the synchronized block returns a result, store it in a local variable.
+        // Just leaving it on the stack is not valid in MSIL (stack is cleaned when leaving try-blocks).
+        val hasResult = (expectedType != UNIT)
+        val monitorResult: Symbol = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, tree.span) else null
 
-      /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
-      genLoadQualifier(fun)
-      bc dup ObjectReference
-      locals.store(monitor)
-      emit(asm.Opcodes.MONITORENTER)
+        /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
+        genLoadQualifier(fun)
+        bc dup ObjectReference
+        locals.store(monitor)
+        emit(asm.Opcodes.MONITORENTER)
 
-      /* ------ (2) Synchronized block.
-       *            Reached by fall-through from (1).
-       *            Protected by:
-       *            (2.a) the EH-version of the monitor-exit, and
-       *            (2.b) whatever protects the whole synchronized expression.
-       * ------
-       */
-      val startProtected = currProgramPoint()
-      registerCleanup(monCleanup)
-      genLoad(args.head, expectedType /* toTypeKind(tree.tpe.resultType) */)
-      unregisterCleanup(monCleanup)
-      if (hasResult) { locals.store(monitorResult) }
-      nopIfNeeded(startProtected)
-      val endProtected = currProgramPoint()
+        /* ------ (2) Synchronized block.
+        *            Reached by fall-through from (1).
+        *            Protected by:
+        *            (2.a) the EH-version of the monitor-exit, and
+        *            (2.b) whatever protects the whole synchronized expression.
+        * ------
+        */
+        val startProtected = currProgramPoint()
+        registerCleanup(monCleanup)
+        genLoad(args.head, expectedType /* toTypeKind(tree.tpe.resultType) */)
+        unregisterCleanup(monCleanup)
+        if (hasResult) { locals.store(monitorResult) }
+        nopIfNeeded(startProtected)
+        val endProtected = currProgramPoint()
 
-      /* ------ (3) monitor-exit after normal, non-early-return, termination of (2).
-       *            Reached by fall-through from (2).
-       *            Protected by whatever protects the whole synchronized expression.
-       * ------
-       */
-      locals.load(monitor)
-      emit(asm.Opcodes.MONITOREXIT)
-      if (hasResult) { locals.load(monitorResult) }
-      val postHandler = new asm.Label
-      bc goTo postHandler
-
-      /* ------ (4) exception-handler version of monitor-exit code.
-       *            Reached upon abrupt termination of (2).
-       *            Protected by whatever protects the whole synchronized expression.
-       *            null => "any" exception in bytecode, like we emit for finally.
-       *            Important not to use j/l/Throwable which dooms the method to a life of interpretation! (SD-233)
-       * ------
-       */
-      protect(startProtected, endProtected, currProgramPoint(), null)
-      locals.load(monitor)
-      emit(asm.Opcodes.MONITOREXIT)
-      emit(asm.Opcodes.ATHROW)
-
-      /* ------ (5) cleanup version of monitor-exit code.
-       *            Reached upon early-return from (2).
-       *            Protected by whatever protects the whole synchronized expression.
-       * ------
-       */
-      if (shouldEmitCleanup) {
-        markProgramPoint(monCleanup)
+        /* ------ (3) monitor-exit after normal, non-early-return, termination of (2).
+        *            Reached by fall-through from (2).
+        *            Protected by whatever protects the whole synchronized expression.
+        * ------
+        */
         locals.load(monitor)
         emit(asm.Opcodes.MONITOREXIT)
-        pendingCleanups()
-      }
+        if (hasResult) { locals.load(monitorResult) }
+        val postHandler = new asm.Label
+        bc goTo postHandler
 
-      /* ------ (6) normal exit of the synchronized expression.
-       *            Reached after normal, non-early-return, termination of (3).
-       *            Protected by whatever protects the whole synchronized expression.
-       * ------
-       */
-      mnode visitLabel postHandler
+        /* ------ (4) exception-handler version of monitor-exit code.
+        *            Reached upon abrupt termination of (2).
+        *            Protected by whatever protects the whole synchronized expression.
+        *            null => "any" exception in bytecode, like we emit for finally.
+        *            Important not to use j/l/Throwable which dooms the method to a life of interpretation! (SD-233)
+        * ------
+        */
+        protect(startProtected, endProtected, currProgramPoint(), null)
+        locals.load(monitor)
+        emit(asm.Opcodes.MONITOREXIT)
+        emit(asm.Opcodes.ATHROW)
 
-      lineNumber(tree)
+        /* ------ (5) cleanup version of monitor-exit code.
+        *            Reached upon early-return from (2).
+        *            Protected by whatever protects the whole synchronized expression.
+        * ------
+        */
+        if (shouldEmitCleanup) {
+          markProgramPoint(monCleanup)
+          locals.load(monitor)
+          emit(asm.Opcodes.MONITOREXIT)
+          pendingCleanups()
+        }
 
-      expectedType
+        /* ------ (6) normal exit of the synchronized expression.
+        *            Reached after normal, non-early-return, termination of (3).
+        *            Protected by whatever protects the whole synchronized expression.
+        * ------
+        */
+        mnode visitLabel postHandler
+
+        lineNumber(tree)
+
+        expectedType
     }
 
     /*
@@ -176,8 +176,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
      *    - "exception-handler-version-of-finally-block" respectively.
      *
      */
-    def genLoadTry(tree: Try): BType = tree match {
-      case Try(block, catches, finalizer) =>
+    def genLoadTry(tree: Try): BType = tree match { case Try(block, catches, finalizer) =>
       val kind = tpeTK(tree)
 
       val caseHandlers: List[EHClause] =

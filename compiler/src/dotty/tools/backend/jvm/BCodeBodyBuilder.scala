@@ -110,160 +110,158 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     /* Generate code for primitive arithmetic operations. */
-    def genArithmeticOp(tree: Tree, code: Int): BType = tree match{
+    def genArithmeticOp(tree: Tree, code: Int): BType = tree match {
       case Apply(fun @ DesugaredSelect(larg, _), args) =>
-      var resKind = tpeTK(larg)
+        var resKind = tpeTK(larg)
 
-      assert(resKind.isNumericType || (resKind == BOOL),
-             s"$resKind is not a numeric or boolean type [operation: ${fun.symbol}]")
+        assert(resKind.isNumericType || (resKind == BOOL),
+              s"$resKind is not a numeric or boolean type [operation: ${fun.symbol}]")
 
-      import ScalaPrimitivesOps._
+        import ScalaPrimitivesOps._
 
-      args match {
-        // unary operation
-        case Nil =>
-          genLoad(larg, resKind)
-          code match {
-            case POS => () // nothing
-            case NEG => bc.neg(resKind)
-            case NOT => bc.genPrimitiveArithmetic(Primitives.NOT, resKind)
-            case _ => abort(s"Unknown unary operation: ${fun.symbol.showFullName} code: $code")
-          }
+        args match {
+          // unary operation
+          case Nil =>
+            genLoad(larg, resKind)
+            code match {
+              case POS => () // nothing
+              case NEG => bc.neg(resKind)
+              case NOT => bc.genPrimitiveArithmetic(Primitives.NOT, resKind)
+              case _ => abort(s"Unknown unary operation: ${fun.symbol.showFullName} code: $code")
+            }
 
-        // binary operation
-        case rarg :: Nil =>
-          val isShift = isShiftOp(code)
-          resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg))
+          // binary operation
+          case rarg :: Nil =>
+            val isShift = isShiftOp(code)
+            resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg))
 
-          if (isShift || isBitwiseOp(code)) {
-            assert(resKind.isIntegralType || (resKind == BOOL),
-                   s"$resKind incompatible with arithmetic modulo operation.")
-          }
+            if (isShift || isBitwiseOp(code)) {
+              assert(resKind.isIntegralType || (resKind == BOOL),
+                    s"$resKind incompatible with arithmetic modulo operation.")
+            }
 
-          genLoad(larg, resKind)
-          genLoad(rarg, if (isShift) INT else resKind)
+            genLoad(larg, resKind)
+            genLoad(rarg, if (isShift) INT else resKind)
 
-          (code: @switch) match {
-            case ADD => bc add resKind
-            case SUB => bc sub resKind
-            case MUL => bc mul resKind
-            case DIV => bc div resKind
-            case MOD => bc rem resKind
+            (code: @switch) match {
+              case ADD => bc add resKind
+              case SUB => bc sub resKind
+              case MUL => bc mul resKind
+              case DIV => bc div resKind
+              case MOD => bc rem resKind
 
-            case OR  | XOR | AND => bc.genPrimitiveLogical(code, resKind)
+              case OR  | XOR | AND => bc.genPrimitiveLogical(code, resKind)
 
-            case LSL | LSR | ASR => bc.genPrimitiveShift(code, resKind)
+              case LSL | LSR | ASR => bc.genPrimitiveShift(code, resKind)
 
-            case _                   => abort(s"Unknown primitive: ${fun.symbol}[$code]")
-          }
+              case _                   => abort(s"Unknown primitive: ${fun.symbol}[$code]")
+            }
 
-        case _ =>
-          abort(s"Too many arguments for primitive function: $tree")
-      }
-      lineNumber(tree)
-      resKind
+          case _ =>
+            abort(s"Too many arguments for primitive function: $tree")
+        }
+        lineNumber(tree)
+        resKind
     }
 
     /* Generate primitive array operations. */
-    def genArrayOp(tree: Tree, code: Int, expectedType: BType): BType = tree match{
-
+    def genArrayOp(tree: Tree, code: Int, expectedType: BType): BType = tree match {
       case Apply(DesugaredSelect(arrayObj, _), args) =>
-      import ScalaPrimitivesOps._
-      val k = tpeTK(arrayObj)
-      genLoad(arrayObj, k)
-      val elementType = typeOfArrayOp.getOrElse[bTypes.BType](code, abort(s"Unknown operation on arrays: $tree code: $code"))
+        import ScalaPrimitivesOps._
+        val k = tpeTK(arrayObj)
+        genLoad(arrayObj, k)
+        val elementType = typeOfArrayOp.getOrElse[bTypes.BType](code, abort(s"Unknown operation on arrays: $tree code: $code"))
 
-      var generatedType = expectedType
+        var generatedType = expectedType
 
-      if (isArrayGet(code)) {
-        // load argument on stack
-        assert(args.length == 1, s"Too many arguments for array get operation: $tree");
-        genLoad(args.head, INT)
-        generatedType = k.asArrayBType.componentType
-        bc.aload(elementType)
-      }
-      else if (isArraySet(code)) {
-        val List(a1, a2) = args
-        genLoad(a1, INT)
-        genLoad(a2)
-        generatedType = UNIT
-        bc.astore(elementType)
-      } else {
-        generatedType = INT
-        emit(asm.Opcodes.ARRAYLENGTH)
-      }
-      lineNumber(tree)
+        if (isArrayGet(code)) {
+          // load argument on stack
+          assert(args.length == 1, s"Too many arguments for array get operation: $tree");
+          genLoad(args.head, INT)
+          generatedType = k.asArrayBType.componentType
+          bc.aload(elementType)
+        }
+        else if (isArraySet(code)) {
+          val List(a1, a2) = args
+          genLoad(a1, INT)
+          genLoad(a2)
+          generatedType = UNIT
+          bc.astore(elementType)
+        } else {
+          generatedType = INT
+          emit(asm.Opcodes.ARRAYLENGTH)
+        }
+        lineNumber(tree)
 
-      generatedType
+        generatedType
     }
 
-    def genLoadIf(tree: If, expectedType: BType): BType = tree match{
+    def genLoadIf(tree: If, expectedType: BType): BType = tree match {
       case If(condp, thenp, elsep) =>
+        val success = new asm.Label
+        val failure = new asm.Label
 
-      val success = new asm.Label
-      val failure = new asm.Label
+        val hasElse = !elsep.isEmpty && (elsep match {
+          case Literal(value) if value.tag == UnitTag => false
+          case _ => true
+        })
+        val postIf  = if (hasElse) new asm.Label else failure
 
-      val hasElse = !elsep.isEmpty && (elsep match {
-        case Literal(value) if value.tag == UnitTag => false
-        case _ => true
-      })
-      val postIf  = if (hasElse) new asm.Label else failure
+        genCond(condp, success, failure, targetIfNoJump = success)
+        markProgramPoint(success)
 
-      genCond(condp, success, failure, targetIfNoJump = success)
-      markProgramPoint(success)
+        val thenKind      = tpeTK(thenp)
+        val elseKind      = if (!hasElse) UNIT else tpeTK(elsep)
+        def hasUnitBranch = (thenKind == UNIT || elseKind == UNIT) && expectedType == UNIT
+        val resKind       = if (hasUnitBranch) UNIT else tpeTK(tree)
 
-      val thenKind      = tpeTK(thenp)
-      val elseKind      = if (!hasElse) UNIT else tpeTK(elsep)
-      def hasUnitBranch = (thenKind == UNIT || elseKind == UNIT) && expectedType == UNIT
-      val resKind       = if (hasUnitBranch) UNIT else tpeTK(tree)
+        genLoad(thenp, resKind)
+        if (hasElse) { bc goTo postIf }
+        markProgramPoint(failure)
+        if (hasElse) {
+          genLoad(elsep, resKind)
+          markProgramPoint(postIf)
+        }
 
-      genLoad(thenp, resKind)
-      if (hasElse) { bc goTo postIf }
-      markProgramPoint(failure)
-      if (hasElse) {
-        genLoad(elsep, resKind)
-        markProgramPoint(postIf)
-      }
-
-      resKind
+        resKind
     }
 
     def genPrimitiveOp(tree: Apply, expectedType: BType): BType = tree match {
       case Apply(fun @ DesugaredSelect(receiver, _), _) =>
-      val sym = tree.symbol
+        val sym = tree.symbol
 
-      val code = primitives.getPrimitive(tree, receiver.tpe)
+        val code = primitives.getPrimitive(tree, receiver.tpe)
 
-      import ScalaPrimitivesOps._
+        import ScalaPrimitivesOps._
 
-      if (isArithmeticOp(code))                genArithmeticOp(tree, code)
-      else if (code == CONCAT) genStringConcat(tree)
-      else if (code == HASH)   genScalaHash(receiver)
-      else if (isArrayOp(code))                genArrayOp(tree, code, expectedType)
-      else if (isLogicalOp(code) || isComparisonOp(code)) {
-        val success, failure, after = new asm.Label
-        genCond(tree, success, failure, targetIfNoJump = success)
-        // success block
-        markProgramPoint(success)
-        bc boolconst true
-        bc goTo after
-        // failure block
-        markProgramPoint(failure)
-        bc boolconst false
-        // after
-        markProgramPoint(after)
+        if (isArithmeticOp(code))                genArithmeticOp(tree, code)
+        else if (code == CONCAT) genStringConcat(tree)
+        else if (code == HASH)   genScalaHash(receiver)
+        else if (isArrayOp(code))                genArrayOp(tree, code, expectedType)
+        else if (isLogicalOp(code) || isComparisonOp(code)) {
+          val success, failure, after = new asm.Label
+          genCond(tree, success, failure, targetIfNoJump = success)
+          // success block
+          markProgramPoint(success)
+          bc boolconst true
+          bc goTo after
+          // failure block
+          markProgramPoint(failure)
+          bc boolconst false
+          // after
+          markProgramPoint(after)
 
-        BOOL
-      }
-      else if (isCoercion(code)) {
-        genLoad(receiver)
-        lineNumber(tree)
-        genCoercion(code)
-        coercionTo(code)
-      }
-      else abort(
-        s"Primitive operation not handled yet: ${sym.showFullName}(${fun.symbol.name}) at: ${tree.span}"
-      )
+          BOOL
+        }
+        else if (isCoercion(code)) {
+          genLoad(receiver)
+          lineNumber(tree)
+          genCoercion(code)
+          coercionTo(code)
+        }
+        else abort(
+          s"Primitive operation not handled yet: ${sym.showFullName}(${fun.symbol.name}) at: ${tree.span}"
+        )
     }
 
     def genLoad(tree: Tree): Unit = {
@@ -549,11 +547,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     private def genLabeled(tree: Labeled): BType = tree match {
       case Labeled(bind, expr) =>
-
-      val resKind = tpeTK(tree)
-      genLoad(expr, resKind)
-      markProgramPoint(programPoint(bind.symbol))
-      resKind
+        val resKind = tpeTK(tree)
+        genLoad(expr, resKind)
+        markProgramPoint(programPoint(bind.symbol))
+        resKind
     }
 
     private def genReturn(r: Return): Unit = {
@@ -599,8 +596,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     } // end of genReturn()
 
-    def genWhileDo(tree: WhileDo): BType = tree match{
-      case WhileDo(cond, body) =>
+    def genWhileDo(tree: WhileDo): BType = tree match { case WhileDo(cond, body) =>
 
       val isInfinite = cond == tpd.EmptyTree
 
@@ -862,8 +858,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
      *
      * On a second pass, we emit the switch blocks, one for each different target.
      */
-    private def genMatch(tree: Match): BType = tree match {
-      case Match(selector, cases) =>
+    private def genMatch(tree: Match): BType = tree match { case Match(selector, cases) =>
       lineNumber(tree)
       genLoad(selector, INT)
       val generatedType = tpeTK(tree)
@@ -915,19 +910,18 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
     def genBlock(tree: Block, expectedType: BType) = tree match {
       case Block(stats, expr) =>
-
-      val savedScope = varsInScope
-      varsInScope = Nil
-      stats foreach genStat
-      genLoad(expr, expectedType)
-      val end = currProgramPoint()
-      if (emitVars) {
-        // add entries to LocalVariableTable JVM attribute
-        for ((sym, start) <- varsInScope.reverse) {
-          emitLocalVarScope(sym, start, end)
+        val savedScope = varsInScope
+        varsInScope = Nil
+        stats foreach genStat
+        genLoad(expr, expectedType)
+        val end = currProgramPoint()
+        if (emitVars) {
+          // add entries to LocalVariableTable JVM attribute
+          for ((sym, start) <- varsInScope.reverse) {
+            emitLocalVarScope(sym, start, end)
+          }
         }
-      }
-      varsInScope = savedScope
+        varsInScope = savedScope
     }
 
     def adapt(from: BType, to: BType): Unit = {

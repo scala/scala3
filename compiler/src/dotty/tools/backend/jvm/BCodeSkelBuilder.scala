@@ -83,8 +83,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
       case Apply(fun, _) =>
-      val funSym = fun.symbol
-      (funSym.info.firstParamTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
+        val funSym = fun.symbol
+        (funSym.info.firstParamTypes map toTypeKind) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
     def symInfoTK(sym: Symbol): BType = {
@@ -99,135 +99,135 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def genPlainClass(cd0: TypeDef) = cd0 match {
       case TypeDef(_, impl: Template) =>
-      assert(cnode == null, "GenBCode detected nested methods.")
-      innerClassBufferASM.clear()
+        assert(cnode == null, "GenBCode detected nested methods.")
+        innerClassBufferASM.clear()
 
-      claszSymbol       = cd0.symbol
-      isCZParcelable    = isAndroidParcelableClass(claszSymbol)
-      isCZStaticModule  = claszSymbol.isStaticModuleClass
-      thisName          = internalName(claszSymbol)
+        claszSymbol       = cd0.symbol
+        isCZParcelable    = isAndroidParcelableClass(claszSymbol)
+        isCZStaticModule  = claszSymbol.isStaticModuleClass
+        thisName          = internalName(claszSymbol)
 
-      cnode = new ClassNode1()
+        cnode = new ClassNode1()
 
-      initJClass(cnode)
+        initJClass(cnode)
 
-      val cd = if (isCZStaticModule) {
-        // Move statements from the primary constructor following the superclass constructor call to
-        // a newly synthesised tree representing the "<clinit>", which also assigns the MODULE$ field.
-        // Because the assigments to both the module instance fields, and the fields of the module itself
-        // are in the <clinit>, these fields can be static + final.
+        val cd = if (isCZStaticModule) {
+          // Move statements from the primary constructor following the superclass constructor call to
+          // a newly synthesised tree representing the "<clinit>", which also assigns the MODULE$ field.
+          // Because the assigments to both the module instance fields, and the fields of the module itself
+          // are in the <clinit>, these fields can be static + final.
 
-        // Should we do this transformation earlier, say in Constructors? Or would that just cause
-        // pain for scala-{js, native}?
-        //
-        // @sjrd (https://github.com/lampepfl/dotty/pull/9181#discussion_r457458205):
-        // moving that before the back-end would make things significantly more complicated for
-        // Scala.js and Native. Both have a first-class concept of ModuleClass, and encode the
-        // singleton pattern of MODULE$ in a completely different way. In the Scala.js IR, there
-        // even isn't anything that corresponds to MODULE$ per se.
-        //
-        // So if you move this before the back-end, then Scala.js and Scala Native will have to
-        // reverse all the effects of this transformation, which would be counter-productive.
+          // Should we do this transformation earlier, say in Constructors? Or would that just cause
+          // pain for scala-{js, native}?
+          //
+          // @sjrd (https://github.com/lampepfl/dotty/pull/9181#discussion_r457458205):
+          // moving that before the back-end would make things significantly more complicated for
+          // Scala.js and Native. Both have a first-class concept of ModuleClass, and encode the
+          // singleton pattern of MODULE$ in a completely different way. In the Scala.js IR, there
+          // even isn't anything that corresponds to MODULE$ per se.
+          //
+          // So if you move this before the back-end, then Scala.js and Scala Native will have to
+          // reverse all the effects of this transformation, which would be counter-productive.
 
 
-        // TODO: remove `!f.name.is(LazyBitMapName)` once we change lazy val encoding
-        //       https://github.com/lampepfl/dotty/issues/7140
-        //
-        // Lazy val encoding assumes bitmap fields are non-static
-        //
-        // See `tests/run/given-var.scala`
-        //
+          // TODO: remove `!f.name.is(LazyBitMapName)` once we change lazy val encoding
+          //       https://github.com/lampepfl/dotty/issues/7140
+          //
+          // Lazy val encoding assumes bitmap fields are non-static
+          //
+          // See `tests/run/given-var.scala`
+          //
 
-        claszSymbol.info.decls.foreach { f =>
-          if f.isField && !f.name.is(LazyBitMapName) then
-            f.setFlag(JavaStatic)
-        }
+          claszSymbol.info.decls.foreach { f =>
+            if f.isField && !f.name.is(LazyBitMapName) then
+              f.setFlag(JavaStatic)
+          }
 
-        val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.isStaticConstructor)
+          val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.isStaticConstructor)
 
-        val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats)
-        val clInitSymbol: TermSymbol =
-          if (clinits.nonEmpty) clinits.head.symbol.asTerm
-          else newSymbol(
-            claszSymbol,
-            nme.STATIC_CONSTRUCTOR,
-            JavaStatic | Method,
-            MethodType(Nil)(_ => Nil, _ => defn.UnitType),
-            privateWithin = NoSymbol,
-            coord = claszSymbol.coord
-          )
+          val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats)
+          val clInitSymbol: TermSymbol =
+            if (clinits.nonEmpty) clinits.head.symbol.asTerm
+            else newSymbol(
+              claszSymbol,
+              nme.STATIC_CONSTRUCTOR,
+              JavaStatic | Method,
+              MethodType(Nil)(_ => Nil, _ => defn.UnitType),
+              privateWithin = NoSymbol,
+              coord = claszSymbol.coord
+            )
 
-        val moduleField = newSymbol(
-            claszSymbol,
-            str.MODULE_INSTANCE_FIELD.toTermName,
-            JavaStatic | Final,
-            claszSymbol.typeRef,
-            privateWithin = NoSymbol,
-            coord = claszSymbol.coord
-          ).entered
+          val moduleField = newSymbol(
+              claszSymbol,
+              str.MODULE_INSTANCE_FIELD.toTermName,
+              JavaStatic | Final,
+              claszSymbol.typeRef,
+              privateWithin = NoSymbol,
+              coord = claszSymbol.coord
+            ).entered
 
-        val thisMap = new TreeMap {
-          override def transform(tree: Tree)(using Context) = {
-            val tp = tree.tpe.substThis(claszSymbol.asClass, claszSymbol.sourceModule.termRef)
-            tree.withType(tp) match {
-              case tree: This if tree.symbol == claszSymbol =>
-                ref(claszSymbol.sourceModule)
-              case tree =>
-                super.transform(tree)
+          val thisMap = new TreeMap {
+            override def transform(tree: Tree)(using Context) = {
+              val tp = tree.tpe.substThis(claszSymbol.asClass, claszSymbol.sourceModule.termRef)
+              tree.withType(tp) match {
+                case tree: This if tree.symbol == claszSymbol =>
+                  ref(claszSymbol.sourceModule)
+                case tree =>
+                  super.transform(tree)
+              }
             }
           }
-        }
 
-        def rewire(stat: Tree) = thisMap.transform(stat).changeOwner(claszSymbol.primaryConstructor, clInitSymbol)
+          def rewire(stat: Tree) = thisMap.transform(stat).changeOwner(claszSymbol.primaryConstructor, clInitSymbol)
 
-        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToArgs(Nil)
-        val assignModuleField = Assign(ref(moduleField), callConstructor)
-        val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
-        val clinit = clinits match {
-          case (ddef: DefDef) :: _ =>
-            cpy.DefDef(ddef)(rhs = Block(ddef.rhs :: assignModuleField :: remainingConstrStatsSubst, unitLiteral))
-          case _ =>
-            DefDef(clInitSymbol, Block(assignModuleField :: remainingConstrStatsSubst, unitLiteral))
-        }
-
-        val constr2 = {
-          val rhs = Block(uptoSuperStats, impl.constr.rhs.asInstanceOf[Block].expr)
-          cpy.DefDef(impl.constr)(rhs = rhs)
-        }
-
-        val impl2 = cpy.Template(impl)(constr = constr2, body = clinit :: body)
-        cpy.TypeDef(cd0)(rhs = impl2)
-      } else cd0
-
-      val hasStaticCtor = isCZStaticModule || cd.symbol.info.decls.exists(_.isStaticConstructor)
-      if (!hasStaticCtor && isCZParcelable) fabricateStaticInitAndroid()
-
-      val optSerial: Option[Long] =
-        claszSymbol.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
-          if (claszSymbol.is(Trait)) {
-            report.error("@SerialVersionUID does nothing on a trait", annot.tree.sourcePos)
-            None
-          } else {
-            val vuid = annot.argumentConstant(0).map(_.longValue)
-            if (vuid.isEmpty)
-              report.error("The argument passed to @SerialVersionUID must be a constant",
-                annot.argument(0).getOrElse(annot.tree).sourcePos)
-            vuid
+          val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToArgs(Nil)
+          val assignModuleField = Assign(ref(moduleField), callConstructor)
+          val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
+          val clinit = clinits match {
+            case (ddef: DefDef) :: _ =>
+              cpy.DefDef(ddef)(rhs = Block(ddef.rhs :: assignModuleField :: remainingConstrStatsSubst, unitLiteral))
+            case _ =>
+              DefDef(clInitSymbol, Block(assignModuleField :: remainingConstrStatsSubst, unitLiteral))
           }
-        }
-      if (optSerial.isDefined) { addSerialVUID(optSerial.get, cnode)}
 
-      addClassFields()
+          val constr2 = {
+            val rhs = Block(uptoSuperStats, impl.constr.rhs.asInstanceOf[Block].expr)
+            cpy.DefDef(impl.constr)(rhs = rhs)
+          }
 
-      innerClassBufferASM ++= classBTypeFromSymbol(claszSymbol).info.memberClasses
-      gen(cd.rhs)
-      addInnerClassesASM(cnode, innerClassBufferASM.toList)
+          val impl2 = cpy.Template(impl)(constr = constr2, body = clinit :: body)
+          cpy.TypeDef(cd0)(rhs = impl2)
+        } else cd0
 
-      if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
-        AsmUtils.traceClass(cnode)
+        val hasStaticCtor = isCZStaticModule || cd.symbol.info.decls.exists(_.isStaticConstructor)
+        if (!hasStaticCtor && isCZParcelable) fabricateStaticInitAndroid()
 
-      cnode.innerClasses
-      assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
+        val optSerial: Option[Long] =
+          claszSymbol.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
+            if (claszSymbol.is(Trait)) {
+              report.error("@SerialVersionUID does nothing on a trait", annot.tree.sourcePos)
+              None
+            } else {
+              val vuid = annot.argumentConstant(0).map(_.longValue)
+              if (vuid.isEmpty)
+                report.error("The argument passed to @SerialVersionUID must be a constant",
+                  annot.argument(0).getOrElse(annot.tree).sourcePos)
+              vuid
+            }
+          }
+        if (optSerial.isDefined) { addSerialVUID(optSerial.get, cnode)}
+
+        addClassFields()
+
+        innerClassBufferASM ++= classBTypeFromSymbol(claszSymbol).info.memberClasses
+        gen(cd.rhs)
+        addInnerClassesASM(cnode, innerClassBufferASM.toList)
+
+        if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
+          AsmUtils.traceClass(cnode)
+
+        cnode.innerClasses
+        assert(cd.symbol == claszSymbol, "Someone messed up BCodePhase.claszSymbol during genPlainClass().")
 
     } // end of method genPlainClass()
 
