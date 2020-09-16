@@ -26,9 +26,8 @@ import config.Printers.{ transforms => debug }
  */
 object TypeTestsCasts {
   import ast.tpd._
-  import typer._
-  import typer.Inferencing._
-  import typer.ProtoTypes._
+  import typer.Inferencing.maximizeType
+  import typer.ProtoTypes.{ constrained, newTypeVar }
 
   /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
    *
