@@ -659,7 +659,7 @@ object TypeOps:
    */
   private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
     /** expose abstract type references to their bounds or tvars according to variance */
-    class ApproximateTypeParams(using Context) extends TypeMap {
+    val approximateTypeParams = new TypeMap {
       val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
 
       def apply(tp: Type): Type = tp.dealias match {
@@ -667,9 +667,20 @@ object TypeOps:
           tp // break cycles
 
         case tp: TypeRef if !tp.symbol.isClass =>
-          def lo = apply(tp.underlying.loBound)
-          def hi = apply(tp.underlying.hiBound)
-          boundTypeParams.getOrElseUpdate(tp, newTypeVar(TypeBounds(lo, hi)))
+          def lo = LazyRef(apply(tp.underlying.loBound))
+          def hi = LazyRef(apply(tp.underlying.hiBound))
+          val lookup = boundTypeParams.lookup(tp)
+          if lookup != null then lookup
+          else
+            val tv = newTypeVar(TypeBounds(lo, hi))
+            boundTypeParams(tp) = tv
+            // Force lazy ref eagerly using current context
+            // Otherwise, the lazy ref will be forced with a unknown context,
+            // which causes a problem in tests/patmat/i3645e.scala
+            lo.ref
+            hi.ref
+            tv
+          end if
 
         case AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass =>
           // Type inference cannot handle X[Y] <:< Int
@@ -689,8 +700,6 @@ object TypeOps:
           mapOver(tp)
       }
     }
-
-    def approximateTypeParams(tp: Type)(using Context) = new ApproximateTypeParams().apply(tp)
 
     // Prefix inference, replace `p.C.this.Child` with `X.Child` where `X <: p.C`
     // Note: we need to strip ThisType in `p` recursively.
