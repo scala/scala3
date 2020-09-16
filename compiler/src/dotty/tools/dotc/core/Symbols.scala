@@ -199,7 +199,7 @@ object Symbols {
     }
 
     /** Enter this symbol in its class owner after given `phase`. Create a fresh
-     *  denotation for its owner class if the class has not yet already one
+     *  denotation for its owner class if the class does not already have one
      *  that starts being valid after `phase`.
      *  @pre  Symbol is a class member
      */
@@ -225,7 +225,7 @@ object Symbols {
     }
 
     /** Remove symbol from scope of owning class after given `phase`. Create a fresh
-     *  denotation for its owner class if the class has not yet already one that starts being valid after `phase`.
+     *  denotation for its owner class if the class does not already have one that starts being valid after `phase`.
      *  @pre  Symbol is a class member
      */
     def dropAfter(phase: DenotTransformer)(using Context): Unit =

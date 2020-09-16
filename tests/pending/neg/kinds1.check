@@ -1,2 +1,2 @@
 [68..69] in kinds1.scala
-Type argument Test.C has not the same kind as its bound
+Type argument Test.C does not have the same kind as its bound
