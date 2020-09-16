@@ -41,11 +41,11 @@ object Macros {
     new scala.tasty.reflect.Printer {
       val tasty = qctx.tasty
       import qctx.tasty._
-      def showTree(tree: Tree)(implicit ctx: Context): String = "Tree"
-      def showType(tpe: Type)(implicit ctx: Context): String = "Type"
-      def showConstant(const: Constant)(implicit ctx: Context): String = "Constant"
-      def showSymbol(symbol: Symbol)(implicit ctx: Context): String = "Symbol"
-      def showFlags(flags: Flags)(implicit ctx: Context): String = "Flags"
+      def showTree(tree: Tree): String = "Tree"
+      def showType(tpe: Type): String = "Type"
+      def showConstant(const: Constant): String = "Constant"
+      def showSymbol(symbol: Symbol): String = "Symbol"
+      def showFlags(flags: Flags): String = "Flags"
     }
   }
 

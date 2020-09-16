@@ -42,489 +42,489 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   ////////////
 
   /** Returns the source file being compiled. The path is relative to the current working directory. */
-  def Source_path(using ctx: Context): java.nio.file.Path
+  def Source_path: java.nio.file.Path
 
   /** Returns true if we've tried to reflect on a Java class. */
-  def Source_isJavaCompilationUnit(using ctx: Context): Boolean
+  def Source_isJavaCompilationUnit: Boolean
 
   /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
-  def Source_isScala2CompilationUnit(using ctx: Context): Boolean
+  def Source_isScala2CompilationUnit: Boolean
 
   /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
-  def Source_isAlreadyLoadedCompilationUnit(using ctx: Context): Boolean
+  def Source_isAlreadyLoadedCompilationUnit: Boolean
 
   /** Class name of the current CompilationUnit */
-  def Source_compilationUnitClassname(using ctx: Context): String
+  def Source_compilationUnitClassname: String
 
   ///////////////
   // REPORTING //
   ///////////////
 
   /** Report a compilation error with the given message at the given position */
-  def error(msg: => String, pos: Position)(using ctx: Context): Unit
+  def error(msg: => String, pos: Position): Unit
 
   /** Report a compilation error with the given message at the given position range */
-  def error(msg: => String, source: SourceFile, start: Int, end: Int)(using ctx: Context): Unit
+  def error(msg: => String, source: SourceFile, start: Int, end: Int): Unit
 
   /** Report a compilation warning with the given message at the given position */
-  def warning(msg: => String, pos: Position)(using ctx: Context): Unit
+  def warning(msg: => String, pos: Position): Unit
 
   /** Report a compilation warning with the given message at the given position range */
-  def warning(msg: => String, source: SourceFile, start: Int, end: Int)(using ctx: Context): Unit
+  def warning(msg: => String, source: SourceFile, start: Int, end: Int): Unit
 
 
   /////////////
   //  TREES  //
   /////////////
 
-  def Tree_pos(self: Tree)(using ctx: Context): Position
-  def Tree_symbol(self: Tree)(using ctx: Context): Symbol
+  def Tree_pos(self: Tree): Position
+  def Tree_symbol(self: Tree): Symbol
 
-  def PackageClause_TypeTest(using ctx: Context): TypeTest[Tree, PackageClause]
+  def PackageClause_TypeTest: TypeTest[Tree, PackageClause]
 
-  def PackageClause_pid(self: PackageClause)(using ctx: Context): Ref
-  def PackageClause_stats(self: PackageClause)(using ctx: Context): List[Tree]
+  def PackageClause_pid(self: PackageClause): Ref
+  def PackageClause_stats(self: PackageClause): List[Tree]
 
-  def PackageClause_apply(pid: Ref, stats: List[Tree])(using ctx: Context): PackageClause
+  def PackageClause_apply(pid: Ref, stats: List[Tree]): PackageClause
 
-  def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree])(using ctx: Context): PackageClause
+  def PackageClause_copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause
 
-  def Statement_TypeTest(using ctx: Context): TypeTest[Tree, Statement]
+  def Statement_TypeTest: TypeTest[Tree, Statement]
 
-  def Import_TypeTest(using ctx: Context): TypeTest[Tree, Import]
+  def Import_TypeTest: TypeTest[Tree, Import]
 
   def Import_implied(self: Import): Boolean
-  def Import_expr(self: Import)(using ctx: Context): Term
-  def Import_selectors(self: Import)(using ctx: Context): List[ImportSelector]
+  def Import_expr(self: Import): Term
+  def Import_selectors(self: Import): List[ImportSelector]
 
-  def Import_apply(iexpr: Term, selectors: List[ImportSelector])(using ctx: Context): Import
+  def Import_apply(iexpr: Term, selectors: List[ImportSelector]): Import
 
-  def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector])(using ctx: Context): Import
+  def Import_copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import
 
-  def Definition_TypeTest(using ctx: Context): TypeTest[Tree, Definition]
+  def Definition_TypeTest: TypeTest[Tree, Definition]
 
-  def Definition_name(self: Definition)(using ctx: Context): String
+  def Definition_name(self: Definition): String
 
-  def PackageDef_TypeTest(using ctx: Context): TypeTest[Tree, PackageDef]
+  def PackageDef_TypeTest: TypeTest[Tree, PackageDef]
 
-  def PackageDef_owner(self: PackageDef)(using ctx: Context): PackageDef
-  def PackageDef_members(self: PackageDef)(using ctx: Context): List[Statement]
+  def PackageDef_owner(self: PackageDef): PackageDef
+  def PackageDef_members(self: PackageDef): List[Statement]
 
-  def ClassDef_TypeTest(using ctx: Context): TypeTest[Tree, ClassDef]
+  def ClassDef_TypeTest: TypeTest[Tree, ClassDef]
 
-  def ClassDef_constructor(self: ClassDef)(using ctx: Context): DefDef
-  def ClassDef_parents(self: ClassDef)(using ctx: Context): List[Tree/* Term | TypeTree */]
-  def ClassDef_derived(self: ClassDef)(using ctx: Context): List[TypeTree]
-  def ClassDef_self(self: ClassDef)(using ctx: Context): Option[ValDef]
-  def ClassDef_body(self: ClassDef)(using ctx: Context): List[Statement]
+  def ClassDef_constructor(self: ClassDef): DefDef
+  def ClassDef_parents(self: ClassDef): List[Tree/* Term | TypeTree */]
+  def ClassDef_derived(self: ClassDef): List[TypeTree]
+  def ClassDef_self(self: ClassDef): Option[ValDef]
+  def ClassDef_body(self: ClassDef): List[Statement]
 
-  def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement])(using ctx: Context): ClassDef
+  def ClassDef_copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree/* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
 
-  def TypeDef_TypeTest(using ctx: Context): TypeTest[Tree, TypeDef]
+  def TypeDef_TypeTest: TypeTest[Tree, TypeDef]
 
-  def TypeDef_rhs(self: TypeDef)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
+  def TypeDef_rhs(self: TypeDef): Tree /*TypeTree | TypeBoundsTree*/
 
-  def TypeDef_apply(symbol: Symbol)(using ctx: Context): TypeDef
-  def TypeDef_copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): TypeDef
+  def TypeDef_apply(symbol: Symbol): TypeDef
+  def TypeDef_copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/): TypeDef
 
-  def DefDef_TypeTest(using ctx: Context): TypeTest[Tree, DefDef]
+  def DefDef_TypeTest: TypeTest[Tree, DefDef]
 
-  def DefDef_typeParams(self: DefDef)(using ctx: Context): List[TypeDef]
-  def DefDef_paramss(self: DefDef)(using ctx: Context): List[List[ValDef]]
-  def DefDef_returnTpt(self: DefDef)(using ctx: Context): TypeTree
-  def DefDef_rhs(self: DefDef)(using ctx: Context): Option[Term]
+  def DefDef_typeParams(self: DefDef): List[TypeDef]
+  def DefDef_paramss(self: DefDef): List[List[ValDef]]
+  def DefDef_returnTpt(self: DefDef): TypeTree
+  def DefDef_rhs(self: DefDef): Option[Term]
 
-  def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term])(using ctx: Context): DefDef
-  def DefDef_copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term])(using ctx: Context): DefDef
+  def DefDef_apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]): DefDef
+  def DefDef_copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef
 
-  def ValDef_TypeTest(using ctx: Context): TypeTest[Tree, ValDef]
+  def ValDef_TypeTest: TypeTest[Tree, ValDef]
 
-  def ValDef_tpt(self: ValDef)(using ctx: Context): TypeTree
-  def ValDef_rhs(self: ValDef)(using ctx: Context): Option[Term]
+  def ValDef_tpt(self: ValDef): TypeTree
+  def ValDef_rhs(self: ValDef): Option[Term]
 
-  def ValDef_apply(symbol: Symbol, rhs: Option[Term])(using ctx: Context): ValDef
-  def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term])(using ctx: Context): ValDef
+  def ValDef_apply(symbol: Symbol, rhs: Option[Term]): ValDef
+  def ValDef_copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
 
-  def Term_TypeTest(using ctx: Context): TypeTest[Tree, Term]
+  def Term_TypeTest: TypeTest[Tree, Term]
 
-  def Term_tpe(self: Term)(using ctx: Context): Type
-  def Term_underlyingArgument(self: Term)(using ctx: Context): Term
-  def Term_underlying(self: Term)(using ctx: Context): Term
-  def Term_etaExpand(term: Term)(using ctx: Context): Term
+  def Term_tpe(self: Term): Type
+  def Term_underlyingArgument(self: Term): Term
+  def Term_underlying(self: Term): Term
+  def Term_etaExpand(term: Term): Term
 
-  def Ref_TypeTest(using ctx: Context): TypeTest[Tree, Ref]
+  def Ref_TypeTest: TypeTest[Tree, Ref]
 
   /** A tree representing the same reference as the given type */
-  def Ref_term(tp: TermRef)(using ctx: Context): Ref
+  def Ref_term(tp: TermRef): Ref
 
-  def Ref_apply(sym: Symbol)(using ctx: Context): Ref
+  def Ref_apply(sym: Symbol): Ref
 
-  def Ident_TypeTest(using ctx: Context): TypeTest[Tree, Ident]
+  def Ident_TypeTest: TypeTest[Tree, Ident]
 
-  def Ident_name(self: Ident)(using ctx: Context): String
+  def Ident_name(self: Ident): String
 
-  def Ident_apply(tmref: TermRef)(using ctx: Context): Term
-  def Ident_copy(original: Tree)(name: String)(using ctx: Context): Ident
+  def Ident_apply(tmref: TermRef): Term
+  def Ident_copy(original: Tree)(name: String): Ident
 
-  def Select_TypeTest(using ctx: Context): TypeTest[Tree, Select]
+  def Select_TypeTest: TypeTest[Tree, Select]
 
-  def Select_qualifier(self: Select)(using ctx: Context): Term
-  def Select_name(self: Select)(using ctx: Context): String
-  def Select_signature(self: Select)(using ctx: Context): Option[Signature]
+  def Select_qualifier(self: Select): Term
+  def Select_name(self: Select): String
+  def Select_signature(self: Select): Option[Signature]
 
-  def Select_apply(qualifier: Term, symbol: Symbol)(using ctx: Context): Select
-  def Select_unique(qualifier: Term, name: String)(using ctx: Context): Select
+  def Select_apply(qualifier: Term, symbol: Symbol): Select
+  def Select_unique(qualifier: Term, name: String): Select
   // TODO rename, this returns an Apply and not a Select
-  def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term])(using ctx: Context): Apply
-  def Select_copy(original: Tree)(qualifier: Term, name: String)(using ctx: Context): Select
+  def Select_overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply
+  def Select_copy(original: Tree)(qualifier: Term, name: String): Select
 
-  def Literal_TypeTest(using ctx: Context): TypeTest[Tree, Literal]
+  def Literal_TypeTest: TypeTest[Tree, Literal]
 
-  def Literal_constant(self: Literal)(using ctx: Context): Constant
+  def Literal_constant(self: Literal): Constant
 
-  def Literal_apply(constant: Constant)(using ctx: Context): Literal
-  def Literal_copy(original: Tree)(constant: Constant)(using ctx: Context): Literal
+  def Literal_apply(constant: Constant): Literal
+  def Literal_copy(original: Tree)(constant: Constant): Literal
 
-  def This_TypeTest(using ctx: Context): TypeTest[Tree, This]
+  def This_TypeTest: TypeTest[Tree, This]
 
-  def This_id(self: This)(using ctx: Context): Option[Id]
+  def This_id(self: This): Option[Id]
 
-  def This_apply(cls: Symbol)(using ctx: Context): This
-  def This_copy(original: Tree)(qual: Option[Id])(using ctx: Context): This
+  def This_apply(cls: Symbol): This
+  def This_copy(original: Tree)(qual: Option[Id]): This
 
-  def New_TypeTest(using ctx: Context): TypeTest[Tree, New]
+  def New_TypeTest: TypeTest[Tree, New]
 
-  def New_tpt(self: New)(using ctx: Context): TypeTree
+  def New_tpt(self: New): TypeTree
 
-  def New_apply(tpt: TypeTree)(using ctx: Context): New
-  def New_copy(original: Tree)(tpt: TypeTree)(using ctx: Context): New
+  def New_apply(tpt: TypeTree): New
+  def New_copy(original: Tree)(tpt: TypeTree): New
 
-  def NamedArg_TypeTest(using ctx: Context): TypeTest[Tree, NamedArg]
+  def NamedArg_TypeTest: TypeTest[Tree, NamedArg]
 
-  def NamedArg_name(self: NamedArg)(using ctx: Context): String
-  def NamedArg_value(self: NamedArg)(using ctx: Context): Term
+  def NamedArg_name(self: NamedArg): String
+  def NamedArg_value(self: NamedArg): Term
 
-  def NamedArg_apply(name: String, arg: Term)(using ctx: Context): NamedArg
-  def NamedArg_copy(original: Tree)(name: String, arg: Term)(using ctx: Context): NamedArg
+  def NamedArg_apply(name: String, arg: Term): NamedArg
+  def NamedArg_copy(original: Tree)(name: String, arg: Term): NamedArg
 
-  def Apply_TypeTest(using ctx: Context): TypeTest[Tree, Apply]
+  def Apply_TypeTest: TypeTest[Tree, Apply]
 
-  def Apply_fun(self: Apply)(using ctx: Context): Term
-  def Apply_args(self: Apply)(using ctx: Context): List[Term]
+  def Apply_fun(self: Apply): Term
+  def Apply_args(self: Apply): List[Term]
 
-  def Apply_apply(fn: Term, args: List[Term])(using ctx: Context): Apply
-  def Apply_copy(original: Tree)(fun: Term, args: List[Term])(using ctx: Context): Apply
+  def Apply_apply(fn: Term, args: List[Term]): Apply
+  def Apply_copy(original: Tree)(fun: Term, args: List[Term]): Apply
 
-  def TypeApply_TypeTest(using ctx: Context): TypeTest[Tree, TypeApply]
+  def TypeApply_TypeTest: TypeTest[Tree, TypeApply]
 
-  def TypeApply_fun(self: TypeApply)(using ctx: Context): Term
-  def TypeApply_args(self: TypeApply)(using ctx: Context): List[TypeTree]
+  def TypeApply_fun(self: TypeApply): Term
+  def TypeApply_args(self: TypeApply): List[TypeTree]
 
-  def TypeApply_apply(fn: Term, args: List[TypeTree])(using ctx: Context): TypeApply
-  def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree])(using ctx: Context): TypeApply
+  def TypeApply_apply(fn: Term, args: List[TypeTree]): TypeApply
+  def TypeApply_copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply
 
-  def Super_TypeTest(using ctx: Context): TypeTest[Tree, Super]
+  def Super_TypeTest: TypeTest[Tree, Super]
 
-  def Super_qualifier(self: Super)(using ctx: Context): Term
-  def Super_id(self: Super)(using ctx: Context): Option[Id]
+  def Super_qualifier(self: Super): Term
+  def Super_id(self: Super): Option[Id]
 
-  def Super_apply(qual: Term, mix: Option[Id])(using ctx: Context): Super
-  def Super_copy(original: Tree)(qual: Term, mix: Option[Id])(using ctx: Context): Super
+  def Super_apply(qual: Term, mix: Option[Id]): Super
+  def Super_copy(original: Tree)(qual: Term, mix: Option[Id]): Super
 
-  def Typed_TypeTest(using ctx: Context): TypeTest[Tree, Typed]
+  def Typed_TypeTest: TypeTest[Tree, Typed]
 
-  def Typed_expr(self: Typed)(using ctx: Context): Term
-  def Typed_tpt(self: Typed)(using ctx: Context): TypeTree
+  def Typed_expr(self: Typed): Term
+  def Typed_tpt(self: Typed): TypeTree
 
-  def Typed_apply(expr: Term, tpt: TypeTree)(using ctx: Context): Typed
-  def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree)(using ctx: Context): Typed
+  def Typed_apply(expr: Term, tpt: TypeTree): Typed
+  def Typed_copy(original: Tree)(expr: Term, tpt: TypeTree): Typed
 
-  def Assign_TypeTest(using ctx: Context): TypeTest[Tree, Assign]
+  def Assign_TypeTest: TypeTest[Tree, Assign]
 
-  def Assign_lhs(self: Assign)(using ctx: Context): Term
-  def Assign_rhs(self: Assign)(using ctx: Context): Term
+  def Assign_lhs(self: Assign): Term
+  def Assign_rhs(self: Assign): Term
 
-  def Assign_apply(lhs: Term, rhs: Term)(using ctx: Context): Assign
-  def Assign_copy(original: Tree)(lhs: Term, rhs: Term)(using ctx: Context): Assign
+  def Assign_apply(lhs: Term, rhs: Term): Assign
+  def Assign_copy(original: Tree)(lhs: Term, rhs: Term): Assign
 
-  def Block_TypeTest(using ctx: Context): TypeTest[Tree, Block]
+  def Block_TypeTest: TypeTest[Tree, Block]
 
-  def Block_statements(self: Block)(using ctx: Context): List[Statement]
-  def Block_expr(self: Block)(using ctx: Context): Term
+  def Block_statements(self: Block): List[Statement]
+  def Block_expr(self: Block): Term
 
-  def Block_apply(stats: List[Statement], expr: Term)(using ctx: Context): Block
-  def Block_copy(original: Tree)(stats: List[Statement], expr: Term)(using ctx: Context): Block
+  def Block_apply(stats: List[Statement], expr: Term): Block
+  def Block_copy(original: Tree)(stats: List[Statement], expr: Term): Block
 
-  def Closure_TypeTest(using ctx: Context): TypeTest[Tree, Closure]
+  def Closure_TypeTest: TypeTest[Tree, Closure]
 
-  def Closure_meth(self: Closure)(using ctx: Context): Term
-  def Closure_tpeOpt(self: Closure)(using ctx: Context): Option[Type]
+  def Closure_meth(self: Closure): Term
+  def Closure_tpeOpt(self: Closure): Option[Type]
 
-  def Closure_apply(meth: Term, tpe: Option[Type])(using ctx: Context): Closure
-  def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type])(using ctx: Context): Closure
+  def Closure_apply(meth: Term, tpe: Option[Type]): Closure
+  def Closure_copy(original: Tree)(meth: Tree, tpe: Option[Type]): Closure
 
-  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree)(using ctx: Context): Block
+  def Lambda_apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block
 
-  def If_TypeTest(using ctx: Context): TypeTest[Tree, If]
+  def If_TypeTest: TypeTest[Tree, If]
 
-  def If_cond(self: If)(using ctx: Context): Term
-  def If_thenp(self: If)(using ctx: Context): Term
-  def If_elsep(self: If)(using ctx: Context): Term
+  def If_cond(self: If): Term
+  def If_thenp(self: If): Term
+  def If_elsep(self: If): Term
 
-  def If_apply(cond: Term, thenp: Term, elsep: Term)(using ctx: Context): If
-  def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term)(using ctx: Context): If
+  def If_apply(cond: Term, thenp: Term, elsep: Term): If
+  def If_copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If
 
-  def Match_TypeTest(using ctx: Context): TypeTest[Tree, Match]
+  def Match_TypeTest: TypeTest[Tree, Match]
 
-  def Match_scrutinee(self: Match)(using ctx: Context): Term
-  def Match_cases(self: Match)(using ctx: Context): List[CaseDef]
+  def Match_scrutinee(self: Match): Term
+  def Match_cases(self: Match): List[CaseDef]
 
-  def Match_apply(selector: Term, cases: List[CaseDef])(using ctx: Context): Match
-  def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef])(using ctx: Context): Match
+  def Match_apply(selector: Term, cases: List[CaseDef]): Match
+  def Match_copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match
 
-  def GivenMatch_TypeTest(using ctx: Context): TypeTest[Tree, GivenMatch]
+  def GivenMatch_TypeTest: TypeTest[Tree, GivenMatch]
 
-  def GivenMatch_cases(self: GivenMatch)(using ctx: Context): List[CaseDef]
+  def GivenMatch_cases(self: GivenMatch): List[CaseDef]
 
-  def GivenMatch_apply(cases: List[CaseDef])(using ctx: Context): GivenMatch
-  def GivenMatch_copy(original: Tree)(cases: List[CaseDef])(using ctx: Context): GivenMatch
+  def GivenMatch_apply(cases: List[CaseDef]): GivenMatch
+  def GivenMatch_copy(original: Tree)(cases: List[CaseDef]): GivenMatch
 
-  def Try_TypeTest(using ctx: Context): TypeTest[Tree, Try]
+  def Try_TypeTest: TypeTest[Tree, Try]
 
-  def Try_body(self: Try)(using ctx: Context): Term
-  def Try_cases(self: Try)(using ctx: Context): List[CaseDef]
-  def Try_finalizer(self: Try)(using ctx: Context): Option[Term]
+  def Try_body(self: Try): Term
+  def Try_cases(self: Try): List[CaseDef]
+  def Try_finalizer(self: Try): Option[Term]
 
-  def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using ctx: Context): Try
-  def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term])(using ctx: Context): Try
+  def Try_apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
+  def Try_copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
 
-  def Return_TypeTest(using ctx: Context): TypeTest[Tree, Return]
+  def Return_TypeTest: TypeTest[Tree, Return]
 
-  def Return_expr(self: Return)(using ctx: Context): Term
+  def Return_expr(self: Return): Term
 
-  def Return_apply(expr: Term)(using ctx: Context): Return
-  def Return_copy(original: Tree)(expr: Term)(using ctx: Context): Return
+  def Return_apply(expr: Term): Return
+  def Return_copy(original: Tree)(expr: Term): Return
 
-  def Repeated_TypeTest(using ctx: Context): TypeTest[Tree, Repeated]
+  def Repeated_TypeTest: TypeTest[Tree, Repeated]
 
-  def Repeated_elems(self: Repeated)(using ctx: Context): List[Term]
-  def Repeated_elemtpt(self: Repeated)(using ctx: Context): TypeTree
+  def Repeated_elems(self: Repeated): List[Term]
+  def Repeated_elemtpt(self: Repeated): TypeTree
 
-  def Repeated_apply(elems: List[Term], elemtpt: TypeTree)(using ctx: Context): Repeated
-  def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree)(using ctx: Context): Repeated
+  def Repeated_apply(elems: List[Term], elemtpt: TypeTree): Repeated
+  def Repeated_copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated
 
-  def Inlined_TypeTest(using ctx: Context): TypeTest[Tree, Inlined]
+  def Inlined_TypeTest: TypeTest[Tree, Inlined]
 
-  def Inlined_call(self: Inlined)(using ctx: Context): Option[Tree/* Term | TypeTree */]
-  def Inlined_bindings(self: Inlined)(using ctx: Context): List[Definition]
-  def Inlined_body(self: Inlined)(using ctx: Context): Term
+  def Inlined_call(self: Inlined): Option[Tree/* Term | TypeTree */]
+  def Inlined_bindings(self: Inlined): List[Definition]
+  def Inlined_body(self: Inlined): Term
 
-  def Inlined_apply(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(using ctx: Context): Inlined
-  def Inlined_copy(original: Tree)(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term)(using ctx: Context): Inlined
+  def Inlined_apply(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
+  def Inlined_copy(original: Tree)(call: Option[Tree/* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
 
-  def SelectOuter_TypeTest(using ctx: Context): TypeTest[Tree, SelectOuter]
+  def SelectOuter_TypeTest: TypeTest[Tree, SelectOuter]
 
-  def SelectOuter_qualifier(self: SelectOuter)(using ctx: Context): Term
-  def SelectOuter_level(self: SelectOuter)(using ctx: Context): Int
+  def SelectOuter_qualifier(self: SelectOuter): Term
+  def SelectOuter_level(self: SelectOuter): Int
 
-  def SelectOuter_apply(qualifier: Term, name: String, levels: Int)(using ctx: Context): SelectOuter
-  def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int)(using ctx: Context): SelectOuter
+  def SelectOuter_apply(qualifier: Term, name: String, levels: Int): SelectOuter
+  def SelectOuter_copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter
 
-  def While_TypeTest(using ctx: Context): TypeTest[Tree, While]
+  def While_TypeTest: TypeTest[Tree, While]
 
-  def While_cond(self: While)(using ctx: Context): Term
-  def While_body(self: While)(using ctx: Context): Term
+  def While_cond(self: While): Term
+  def While_body(self: While): Term
 
-  def While_apply(cond: Term, body: Term)(using ctx: Context): While
-  def While_copy(original: Tree)(cond: Term, body: Term)(using ctx: Context): While
+  def While_apply(cond: Term, body: Term): While
+  def While_copy(original: Tree)(cond: Term, body: Term): While
 
-  def TypeTree_TypeTest(using ctx: Context): TypeTest[Tree, TypeTree]
+  def TypeTree_TypeTest: TypeTest[Tree, TypeTree]
 
-  def TypeTree_tpe(self: TypeTree)(using ctx: Context): Type
+  def TypeTree_tpe(self: TypeTree): Type
 
-  def Inferred_TypeTest(using ctx: Context): TypeTest[Tree, Inferred]
+  def Inferred_TypeTest: TypeTest[Tree, Inferred]
 
-  def Inferred_apply(tpe: Type)(using ctx: Context): Inferred
+  def Inferred_apply(tpe: Type): Inferred
 
-  def TypeRef_apply(sym: Symbol)(using ctx: Context): TypeTree
+  def TypeRef_apply(sym: Symbol): TypeTree
 
-  def TypeIdent_TypeTest(using ctx: Context): TypeTest[Tree, TypeIdent]
+  def TypeIdent_TypeTest: TypeTest[Tree, TypeIdent]
 
-  def TypeIdent_name(self: TypeIdent)(using ctx: Context): String
+  def TypeIdent_name(self: TypeIdent): String
 
-  def TypeIdent_copy(original: Tree)(name: String)(using ctx: Context): TypeIdent
+  def TypeIdent_copy(original: Tree)(name: String): TypeIdent
 
-  def TypeSelect_TypeTest(using ctx: Context): TypeTest[Tree, TypeSelect]
+  def TypeSelect_TypeTest: TypeTest[Tree, TypeSelect]
 
-  def TypeSelect_qualifier(self: TypeSelect)(using ctx: Context): Term
-  def TypeSelect_name(self: TypeSelect)(using ctx: Context): String
+  def TypeSelect_qualifier(self: TypeSelect): Term
+  def TypeSelect_name(self: TypeSelect): String
 
-  def TypeSelect_apply(qualifier: Term, name: String)(using ctx: Context): TypeSelect
-  def TypeSelect_copy(original: Tree)(qualifier: Term, name: String)(using ctx: Context): TypeSelect
+  def TypeSelect_apply(qualifier: Term, name: String): TypeSelect
+  def TypeSelect_copy(original: Tree)(qualifier: Term, name: String): TypeSelect
 
-  def Projection_TypeTest(using ctx: Context): TypeTest[Tree, Projection]
+  def Projection_TypeTest: TypeTest[Tree, Projection]
 
-  def Projection_qualifier(self: Projection)(using ctx: Context): TypeTree
-  def Projection_name(self: Projection)(using ctx: Context): String
+  def Projection_qualifier(self: Projection): TypeTree
+  def Projection_name(self: Projection): String
 
-  def Projection_copy(original: Tree)(qualifier: TypeTree, name: String)(using ctx: Context): Projection
+  def Projection_copy(original: Tree)(qualifier: TypeTree, name: String): Projection
 
-  def Singleton_TypeTest(using ctx: Context): TypeTest[Tree, Singleton]
+  def Singleton_TypeTest: TypeTest[Tree, Singleton]
 
-  def Singleton_ref(self: Singleton)(using ctx: Context): Term
+  def Singleton_ref(self: Singleton): Term
 
-  def Singleton_apply(ref: Term)(using ctx: Context): Singleton
-  def Singleton_copy(original: Tree)(ref: Term)(using ctx: Context): Singleton
+  def Singleton_apply(ref: Term): Singleton
+  def Singleton_copy(original: Tree)(ref: Term): Singleton
 
-  def Refined_TypeTest(using ctx: Context): TypeTest[Tree, Refined]
+  def Refined_TypeTest: TypeTest[Tree, Refined]
 
-  def Refined_tpt(self: Refined)(using ctx: Context): TypeTree
-  def Refined_refinements(self: Refined)(using ctx: Context): List[Definition]
+  def Refined_tpt(self: Refined): TypeTree
+  def Refined_refinements(self: Refined): List[Definition]
 
-  def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition])(using ctx: Context): Refined
+  def Refined_copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined
 
-  def Applied_TypeTest(using ctx: Context): TypeTest[Tree, Applied]
+  def Applied_TypeTest: TypeTest[Tree, Applied]
 
-  def Applied_tpt(self: Applied)(using ctx: Context): TypeTree
-  def Applied_args(self: Applied)(using ctx: Context): List[Tree /*TypeTree | TypeBoundsTree*/]
+  def Applied_tpt(self: Applied): TypeTree
+  def Applied_args(self: Applied): List[Tree /*TypeTree | TypeBoundsTree*/]
 
-  def Applied_apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(using ctx: Context): Applied
-  def Applied_copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/])(using ctx: Context): Applied
+  def Applied_apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
+  def Applied_copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
 
-  def Annotated_TypeTest(using ctx: Context): TypeTest[Tree, Annotated]
+  def Annotated_TypeTest: TypeTest[Tree, Annotated]
 
-  def Annotated_arg(self: Annotated)(using ctx: Context): TypeTree
-  def Annotated_annotation(self: Annotated)(using ctx: Context): Term
+  def Annotated_arg(self: Annotated): TypeTree
+  def Annotated_annotation(self: Annotated): Term
 
-  def Annotated_apply(arg: TypeTree, annotation: Term)(using ctx: Context): Annotated
-  def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term)(using ctx: Context): Annotated
+  def Annotated_apply(arg: TypeTree, annotation: Term): Annotated
+  def Annotated_copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated
 
-  def MatchTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, MatchTypeTree]
+  def MatchTypeTree_TypeTest: TypeTest[Tree, MatchTypeTree]
 
-  def MatchTypeTree_bound(self: MatchTypeTree)(using ctx: Context): Option[TypeTree]
-  def MatchTypeTree_selector(self: MatchTypeTree)(using ctx: Context): TypeTree
-  def MatchTypeTree_cases(self: MatchTypeTree)(using ctx: Context): List[TypeCaseDef]
+  def MatchTypeTree_bound(self: MatchTypeTree): Option[TypeTree]
+  def MatchTypeTree_selector(self: MatchTypeTree): TypeTree
+  def MatchTypeTree_cases(self: MatchTypeTree): List[TypeCaseDef]
 
-  def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using ctx: Context): MatchTypeTree
-  def MatchTypeTree_copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef])(using ctx: Context): MatchTypeTree
+  def MatchTypeTree_apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
+  def MatchTypeTree_copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
 
-  def ByName_result(self: ByName)(using ctx: Context): TypeTree
+  def ByName_result(self: ByName): TypeTree
 
-  def ByName_TypeTest(using ctx: Context): TypeTest[Tree, ByName]
+  def ByName_TypeTest: TypeTest[Tree, ByName]
 
-  def ByName_apply(result: TypeTree)(using ctx: Context): ByName
-  def ByName_copy(original: Tree)(result: TypeTree)(using ctx: Context): ByName
+  def ByName_apply(result: TypeTree): ByName
+  def ByName_copy(original: Tree)(result: TypeTree): ByName
 
-  def LambdaTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, LambdaTypeTree]
+  def LambdaTypeTree_TypeTest: TypeTest[Tree, LambdaTypeTree]
 
-  def Lambdatparams(self: LambdaTypeTree)(using ctx: Context): List[TypeDef]
-  def Lambdabody(self: LambdaTypeTree)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
+  def Lambdatparams(self: LambdaTypeTree): List[TypeDef]
+  def Lambdabody(self: LambdaTypeTree): Tree /*TypeTree | TypeBoundsTree*/
 
-  def Lambdaapply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): LambdaTypeTree
-  def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): LambdaTypeTree
+  def Lambdaapply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
+  def Lambdacopy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
 
-  def TypeBind_TypeTest(using ctx: Context): TypeTest[Tree, TypeBind]
+  def TypeBind_TypeTest: TypeTest[Tree, TypeBind]
 
-  def TypeBind_name(self: TypeBind)(using ctx: Context): String
-  def TypeBind_body(self: TypeBind)(using ctx: Context): Tree /*TypeTree | TypeBoundsTree*/
+  def TypeBind_name(self: TypeBind): String
+  def TypeBind_body(self: TypeBind): Tree /*TypeTree | TypeBoundsTree*/
 
-  def TypeBind_copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/)(using ctx: Context): TypeBind
+  def TypeBind_copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/): TypeBind
 
-  def TypeBlock_TypeTest(using ctx: Context): TypeTest[Tree, TypeBlock]
+  def TypeBlock_TypeTest: TypeTest[Tree, TypeBlock]
 
-  def TypeBlock_aliases(self: TypeBlock)(using ctx: Context): List[TypeDef]
-  def TypeBlock_tpt(self: TypeBlock)(using ctx: Context): TypeTree
+  def TypeBlock_aliases(self: TypeBlock): List[TypeDef]
+  def TypeBlock_tpt(self: TypeBlock): TypeTree
 
-  def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree)(using ctx: Context): TypeBlock
-  def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree)(using ctx: Context): TypeBlock
+  def TypeBlock_apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
+  def TypeBlock_copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
 
-  def TypeBoundsTree_TypeTest(using ctx: Context): TypeTest[Tree, TypeBoundsTree]
+  def TypeBoundsTree_TypeTest: TypeTest[Tree, TypeBoundsTree]
 
-  def TypeBoundsTree_tpe(self: TypeBoundsTree)(using ctx: Context): TypeBounds
-  def TypeBoundsTree_low(self: TypeBoundsTree)(using ctx: Context): TypeTree
-  def TypeBoundsTree_hi(self: TypeBoundsTree)(using ctx: Context): TypeTree
+  def TypeBoundsTree_tpe(self: TypeBoundsTree): TypeBounds
+  def TypeBoundsTree_low(self: TypeBoundsTree): TypeTree
+  def TypeBoundsTree_hi(self: TypeBoundsTree): TypeTree
 
-  def WildcardTypeTree_TypeTest(using ctx: Context): TypeTest[Tree, WildcardTypeTree]
+  def WildcardTypeTree_TypeTest: TypeTest[Tree, WildcardTypeTree]
 
-  def WildcardTypeTree_tpe(self: WildcardTypeTree)(using ctx: Context): Type
+  def WildcardTypeTree_tpe(self: WildcardTypeTree): Type
 
-  def CaseDef_TypeTest(using ctx: Context): TypeTest[Tree, CaseDef]
+  def CaseDef_TypeTest: TypeTest[Tree, CaseDef]
 
-  def CaseDef_pattern(self: CaseDef)(using ctx: Context): Tree
-  def CaseDef_guard(self: CaseDef)(using ctx: Context): Option[Term]
-  def CaseDef_rhs(self: CaseDef)(using ctx: Context): Term
+  def CaseDef_pattern(self: CaseDef): Tree
+  def CaseDef_guard(self: CaseDef): Option[Term]
+  def CaseDef_rhs(self: CaseDef): Term
 
-  def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term)(using ctx: Context): CaseDef
-  def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term)(using ctx: Context): CaseDef
+  def CaseDef_module_apply(pattern: Tree, guard: Option[Term], body: Term): CaseDef
+  def CaseDef_module_copy(original: Tree)(pattern: Tree, guard: Option[Term], body: Term): CaseDef
 
-  def TypeCaseDef_TypeTest(using ctx: Context): TypeTest[Tree, TypeCaseDef]
+  def TypeCaseDef_TypeTest: TypeTest[Tree, TypeCaseDef]
 
-  def TypeCaseDef_pattern(self: TypeCaseDef)(using ctx: Context): TypeTree
-  def TypeCaseDef_rhs(self: TypeCaseDef)(using ctx: Context): TypeTree
+  def TypeCaseDef_pattern(self: TypeCaseDef): TypeTree
+  def TypeCaseDef_rhs(self: TypeCaseDef): TypeTree
 
-  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree)(using ctx: Context): TypeCaseDef
-  def TypeCaseDef_module_copy(original: Tree)(pattern: TypeTree, body: TypeTree)(using ctx: Context): TypeCaseDef
+  def TypeCaseDef_module_apply(pattern: TypeTree, body: TypeTree): TypeCaseDef
+  def TypeCaseDef_module_copy(original: Tree)(pattern: TypeTree, body: TypeTree): TypeCaseDef
 
   //
   // PATTERNS
   //
 
-  def Bind_TypeTest(using ctx: Context): TypeTest[Tree, Bind]
+  def Bind_TypeTest: TypeTest[Tree, Bind]
 
-  def Tree_Bind_name(self: Bind)(using ctx: Context): String
+  def Tree_Bind_name(self: Bind): String
 
-  def Tree_Bind_pattern(self: Bind)(using ctx: Context): Tree
+  def Tree_Bind_pattern(self: Bind): Tree
 
-  def Tree_Bind_module_apply(sym: Symbol, body: Tree)(using ctx: Context): Bind
+  def Tree_Bind_module_apply(sym: Symbol, body: Tree): Bind
 
-  def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree)(using ctx: Context): Bind
+  def Tree_Bind_module_copy(original: Tree)(name: String, pattern: Tree): Bind
 
-  def Unapply_TypeTest(using ctx: Context): TypeTest[Tree, Unapply]
+  def Unapply_TypeTest: TypeTest[Tree, Unapply]
 
-  def Tree_Unapply_fun(self: Unapply)(using ctx: Context): Term
+  def Tree_Unapply_fun(self: Unapply): Term
 
-  def Tree_Unapply_implicits(self: Unapply)(using ctx: Context): List[Term]
+  def Tree_Unapply_implicits(self: Unapply): List[Term]
 
-  def Tree_Unapply_patterns(self: Unapply)(using ctx: Context): List[Tree]
+  def Tree_Unapply_patterns(self: Unapply): List[Tree]
 
-  def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree])(using ctx: Context): Unapply
+  def Tree_Unapply_module_copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
 
-  def Alternatives_TypeTest(using ctx: Context): TypeTest[Tree, Alternatives]
+  def Alternatives_TypeTest: TypeTest[Tree, Alternatives]
 
-  def Tree_Alternatives_patterns(self: Alternatives)(using ctx: Context): List[Tree]
+  def Tree_Alternatives_patterns(self: Alternatives): List[Tree]
 
-  def Tree_Alternatives_module_apply(patterns: List[Tree])(using ctx: Context): Alternatives
-  def Tree_Alternatives_module_copy(original: Tree)(patterns: List[Tree])(using ctx: Context): Alternatives
+  def Tree_Alternatives_module_apply(patterns: List[Tree]): Alternatives
+  def Tree_Alternatives_module_copy(original: Tree)(patterns: List[Tree]): Alternatives
 
 
   //
   // TYPES
   //
 
-  def NoPrefix_TypeTest(using ctx: Context): TypeTest[Tree, NoPrefix]
+  def NoPrefix_TypeTest: TypeTest[Tree, NoPrefix]
 
-  def TypeBounds_TypeTest(using ctx: Context): TypeTest[Type, TypeBounds]
+  def TypeBounds_TypeTest: TypeTest[Type, TypeBounds]
 
-  def TypeBounds_apply(low: Type, hi: Type)(using ctx: Context): TypeBounds
+  def TypeBounds_apply(low: Type, hi: Type): TypeBounds
 
-  def TypeBounds_low(self: TypeBounds)(using ctx: Context): Type
-  def TypeBounds_hi(self: TypeBounds)(using ctx: Context): Type
+  def TypeBounds_low(self: TypeBounds): Type
+  def TypeBounds_hi(self: TypeBounds): Type
 
-  def Type_TypeTest(using ctx: Context): TypeTest[Type, Type]
+  def Type_TypeTest: TypeTest[Type, Type]
 
    /** Returns the type of the runtime class. This type is the erased representation
     *  that of the type that is used by arrays.
     *
     */
-  def Type_ofErasedClass(clazz: Class[_])(using ctx: Context): Type
+  def Type_ofErasedClass(clazz: Class[_]): Type
 
   /** Is `self` type the same as `that` type?
    *  This is the case iff `Type_isSubType(self, that)` and `Type_isSubType(that, self)`.
    */
-  def Type_isTypeEq(self: Type)(that: Type)(using ctx: Context): Boolean
+  def Type_isTypeEq(self: Type)(that: Type): Boolean
 
   /** Is this type a subtype of that type? */
-  def Type_isSubType(self: Type)(that: Type)(using ctx: Context): Boolean
+  def Type_isSubType(self: Type)(that: Type): Boolean
 
   /** Widen from singleton type to its underlying non-singleton
     *  base type by applying one or more `underlying` dereferences,
@@ -535,33 +535,33 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
     *  def o: Outer
     *  <o.x.type>.widen = o.C
     */
-  def Type_widen(self: Type)(using ctx: Context): Type
+  def Type_widen(self: Type): Type
 
   /** Widen from TermRef to its underlying non-termref
    *  base type, while also skipping Expr types.
    */
-  def Type_widenTermRefExpr(self: Type)(using ctx: Context): Type
+  def Type_widenTermRefExpr(self: Type): Type
 
   /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
    *  TypeVars until type is no longer alias type, annotated type, LazyRef,
    *  or instantiated type variable.
    */
-  def Type_dealias(self: Type)(using ctx: Context): Type
+  def Type_dealias(self: Type): Type
 
-  def Type_simplified(self: Type)(using ctx: Context): Type
+  def Type_simplified(self: Type): Type
 
-  def Type_classSymbol(self: Type)(using ctx: Context): Option[Symbol] // TODO remove Option and use NoSymbol
+  def Type_classSymbol(self: Type): Option[Symbol] // TODO remove Option and use NoSymbol
 
-  def Type_typeSymbol(self: Type)(using ctx: Context): Symbol
+  def Type_typeSymbol(self: Type): Symbol
 
-  def Type_termSymbol(self: Type)(using ctx: Context): Symbol
+  def Type_termSymbol(self: Type): Symbol
 
-  def Type_isSingleton(self: Type)(using ctx: Context): Boolean
+  def Type_isSingleton(self: Type): Boolean
 
-  def Type_memberType(self: Type)(member: Symbol)(using ctx: Context): Type
+  def Type_memberType(self: Type)(member: Symbol): Type
 
   /** The base classes of this type with the class itself as first element. */
-  def Type_baseClasses(self: Type)(using ctx: Context): List[Symbol]
+  def Type_baseClasses(self: Type): List[Symbol]
 
   /** The least type instance of given class which is a super-type
     *  of this type.  Example:
@@ -571,10 +571,10 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
     *    ThisType(C).baseType(D) = p.D[Int]
     * }}}
     */
-  def Type_baseType(self: Type)(cls: Symbol)(using ctx: Context): Type
+  def Type_baseType(self: Type)(cls: Symbol): Type
 
   /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-  def Type_derivesFrom(self: Type)(cls: Symbol)(using ctx: Context): Boolean
+  def Type_derivesFrom(self: Type)(cls: Symbol): Boolean
 
   /** Is this type a function type?
    *
@@ -585,121 +585,121 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
    *     - returns true for `given Int => Int` and `erased Int => Int`
    *     - returns false for `List[Int]`, despite that `List[Int] <:< Int => Int`.
    */
-  def Type_isFunctionType(self: Type)(using ctx: Context): Boolean
+  def Type_isFunctionType(self: Type): Boolean
 
   /** Is this type an context function type?
    *
    *  @see `Type_isFunctionType`
    */
-  def Type_isContextFunctionType(self: Type)(using ctx: Context): Boolean
+  def Type_isContextFunctionType(self: Type): Boolean
 
   /** Is this type an erased function type?
    *
    *  @see `Type_isFunctionType`
    */
-  def Type_isErasedFunctionType(self: Type)(using ctx: Context): Boolean
+  def Type_isErasedFunctionType(self: Type): Boolean
 
   /** Is this type a dependent function type?
    *
    *  @see `Type_isFunctionType`
    */
-  def Type_isDependentFunctionType(self: Type)(using ctx: Context): Boolean
+  def Type_isDependentFunctionType(self: Type): Boolean
 
   /** The type <this . sym>, reduced if possible */
-  def Type_select(self: Type)(sym: Symbol)(using ctx: Context): Type
+  def Type_select(self: Type)(sym: Symbol): Type
 
   /** The current type applied to given type arguments: `this[targ0, ..., targN]` */
   def Type_appliedTo(self: Type)(targs: List[Type]): Type
 
-  def ConstantType_TypeTest(using ctx: Context): TypeTest[Type, ConstantType]
+  def ConstantType_TypeTest: TypeTest[Type, ConstantType]
 
-  def ConstantType_apply(const : Constant)(using ctx : Context) : ConstantType
+  def ConstantType_apply(const : Constant): ConstantType
 
-  def ConstantType_constant(self: ConstantType)(using ctx: Context): Constant
+  def ConstantType_constant(self: ConstantType): Constant
 
-  def TermRef_TypeTest(using ctx: Context): TypeTest[Type, TermRef]
+  def TermRef_TypeTest: TypeTest[Type, TermRef]
 
-  def TermRef_apply(qual: Type, name: String)(using ctx: Context): TermRef
+  def TermRef_apply(qual: Type, name: String): TermRef
 
-  def TermRef_qualifier(self: TermRef)(using ctx: Context): Type
-  def TermRef_name(self: TermRef)(using ctx: Context): String
+  def TermRef_qualifier(self: TermRef): Type
+  def TermRef_name(self: TermRef): String
 
-  def TypeRef_TypeTest(using ctx: Context): TypeTest[Type, TypeRef]
+  def TypeRef_TypeTest: TypeTest[Type, TypeRef]
 
-  def TypeRef_qualifier(self: TypeRef)(using ctx: Context): Type
-  def TypeRef_name(self: TypeRef)(using ctx: Context): String
-  def TypeRef_isOpaqueAlias(self: TypeRef)(using ctx: Context): Boolean
-  def TypeRef_translucentSuperType(self: TypeRef)(using ctx: Context): Type
+  def TypeRef_qualifier(self: TypeRef): Type
+  def TypeRef_name(self: TypeRef): String
+  def TypeRef_isOpaqueAlias(self: TypeRef): Boolean
+  def TypeRef_translucentSuperType(self: TypeRef): Type
 
-  def SuperType_TypeTest(using ctx: Context): TypeTest[Type, SuperType]
+  def SuperType_TypeTest: TypeTest[Type, SuperType]
 
-  def SuperType_apply(thistpe: Type, supertpe: Type)(using ctx: Context): SuperType
+  def SuperType_apply(thistpe: Type, supertpe: Type): SuperType
 
-  def SuperType_thistpe(self: SuperType)(using ctx: Context): Type
-  def SuperType_supertpe(self: SuperType)(using ctx: Context): Type
+  def SuperType_thistpe(self: SuperType): Type
+  def SuperType_supertpe(self: SuperType): Type
 
-  def Refinement_TypeTest(using ctx: Context): TypeTest[Type, Refinement]
+  def Refinement_TypeTest: TypeTest[Type, Refinement]
 
-  def Refinement_apply(parent: Type, name: String, info: Type)(using ctx: Context): Refinement
+  def Refinement_apply(parent: Type, name: String, info: Type): Refinement
 
-  def Refinement_parent(self: Refinement)(using ctx: Context): Type
-  def Refinement_name(self: Refinement)(using ctx: Context): String
-  def Refinement_info(self: Refinement)(using ctx: Context): Type
+  def Refinement_parent(self: Refinement): Type
+  def Refinement_name(self: Refinement): String
+  def Refinement_info(self: Refinement): Type
 
-  def AppliedType_TypeTest(using ctx: Context): TypeTest[Type, AppliedType]
+  def AppliedType_TypeTest: TypeTest[Type, AppliedType]
 
-  def AppliedType_tycon(self: AppliedType)(using ctx: Context): Type
-  def AppliedType_args(self: AppliedType)(using ctx: Context): List[Type]
+  def AppliedType_tycon(self: AppliedType): Type
+  def AppliedType_args(self: AppliedType): List[Type]
 
-  def AnnotatedType_TypeTest(using ctx: Context): TypeTest[Type, AnnotatedType]
+  def AnnotatedType_TypeTest: TypeTest[Type, AnnotatedType]
 
-  def AnnotatedType_apply(underlying: Type, annot: Term)(using ctx: Context): AnnotatedType
+  def AnnotatedType_apply(underlying: Type, annot: Term): AnnotatedType
 
-  def AnnotatedType_underlying(self: AnnotatedType)(using ctx: Context): Type
-  def AnnotatedType_annot(self: AnnotatedType)(using ctx: Context): Term
+  def AnnotatedType_underlying(self: AnnotatedType): Type
+  def AnnotatedType_annot(self: AnnotatedType): Term
 
-  def AndType_TypeTest(using ctx: Context): TypeTest[Type, AndType]
+  def AndType_TypeTest: TypeTest[Type, AndType]
 
-  def AndType_apply(lhs: Type, rhs: Type)(using ctx: Context): AndType
+  def AndType_apply(lhs: Type, rhs: Type): AndType
 
-  def AndType_left(self: AndType)(using ctx: Context): Type
-  def AndType_right(self: AndType)(using ctx: Context): Type
+  def AndType_left(self: AndType): Type
+  def AndType_right(self: AndType): Type
 
-  def OrType_TypeTest(using ctx: Context): TypeTest[Type, OrType]
+  def OrType_TypeTest: TypeTest[Type, OrType]
 
-  def OrType_apply(lhs : Type, rhs : Type)(using ctx : Context): OrType
+  def OrType_apply(lhs : Type, rhs : Type): OrType
 
-  def OrType_left(self: OrType)(using ctx: Context): Type
-  def OrType_right(self: OrType)(using ctx: Context): Type
+  def OrType_left(self: OrType): Type
+  def OrType_right(self: OrType): Type
 
-  def MatchType_TypeTest(using ctx: Context): TypeTest[Type, MatchType]
+  def MatchType_TypeTest: TypeTest[Type, MatchType]
 
-  def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type])(using ctx: Context): MatchType
+  def MatchType_apply(bound: Type, scrutinee: Type, cases: List[Type]): MatchType
 
-  def MatchType_bound(self: MatchType)(using ctx: Context): Type
-  def MatchType_scrutinee(self: MatchType)(using ctx: Context): Type
-  def MatchType_cases(self: MatchType)(using ctx: Context): List[Type]
+  def MatchType_bound(self: MatchType): Type
+  def MatchType_scrutinee(self: MatchType): Type
+  def MatchType_cases(self: MatchType): List[Type]
 
-  def ByNameType_TypeTest(using ctx: Context): TypeTest[Type, ByNameType]
+  def ByNameType_TypeTest: TypeTest[Type, ByNameType]
 
-  def ByNameType_apply(underlying: Type)(using ctx: Context): Type
+  def ByNameType_apply(underlying: Type): Type
 
-  def ByNameType_underlying(self: ByNameType)(using ctx: Context): Type
+  def ByNameType_underlying(self: ByNameType): Type
 
-  def ParamRef_TypeTest(using ctx: Context): TypeTest[Type, ParamRef]
+  def ParamRef_TypeTest: TypeTest[Type, ParamRef]
 
-  def ParamRef_binder(self: ParamRef)(using ctx: Context): LambdaType
-  def ParamRef_paramNum(self: ParamRef)(using ctx: Context): Int
+  def ParamRef_binder(self: ParamRef): LambdaType
+  def ParamRef_paramNum(self: ParamRef): Int
 
-  def ThisType_TypeTest(using ctx: Context): TypeTest[Type, ThisType]
+  def ThisType_TypeTest: TypeTest[Type, ThisType]
 
-  def ThisType_tref(self: ThisType)(using ctx: Context): Type
+  def ThisType_tref(self: ThisType): Type
 
-  def RecursiveThis_TypeTest(using ctx: Context): TypeTest[Type, RecursiveThis]
+  def RecursiveThis_TypeTest: TypeTest[Type, RecursiveThis]
 
-  def RecursiveThis_binder(self: RecursiveThis)(using ctx: Context): RecursiveType
+  def RecursiveThis_binder(self: RecursiveThis): RecursiveType
 
-  def RecursiveType_TypeTest(using ctx: Context): TypeTest[Type, RecursiveType]
+  def RecursiveType_TypeTest: TypeTest[Type, RecursiveType]
 
   /** Create a RecType, normalizing its contents. This means:
    *
@@ -709,58 +709,58 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
    *      `type T`. This avoids infinite recursions later when we
    *      try to follow these references.
    */
-  def RecursiveType_apply(parentExp: RecursiveType => Type)(using ctx: Context): RecursiveType
+  def RecursiveType_apply(parentExp: RecursiveType => Type): RecursiveType
 
-  def RecursiveType_underlying(self: RecursiveType)(using ctx: Context): Type
+  def RecursiveType_underlying(self: RecursiveType): Type
 
-  def RecursiveThis_recThis(self: RecursiveType)(using ctx: Context): RecursiveThis
+  def RecursiveThis_recThis(self: RecursiveType): RecursiveThis
 
-  def MethodType_TypeTest(using ctx: Context): TypeTest[Type, MethodType]
+  def MethodType_TypeTest: TypeTest[Type, MethodType]
 
   def MethodType_apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType
 
   def MethodType_isErased(self: MethodType): Boolean
   def MethodType_isImplicit(self: MethodType): Boolean
-  def MethodType_param(self: MethodType, ids: Int)(using ctx: Context): Type
-  def MethodType_paramNames(self: MethodType)(using ctx: Context): List[String]
-  def MethodType_paramTypes(self: MethodType)(using ctx: Context): List[Type]
-  def MethodType_resType(self: MethodType)(using ctx: Context): Type
+  def MethodType_param(self: MethodType, ids: Int): Type
+  def MethodType_paramNames(self: MethodType): List[String]
+  def MethodType_paramTypes(self: MethodType): List[Type]
+  def MethodType_resType(self: MethodType): Type
 
-  def PolyType_TypeTest(using ctx: Context): TypeTest[Type, PolyType]
+  def PolyType_TypeTest: TypeTest[Type, PolyType]
 
-  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)(using ctx: Context): PolyType
+  def PolyType_apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type): PolyType
 
-  def PolyType_param(self: PolyType, idx: Int)(using ctx: Context): Type
-  def PolyType_paramNames(self: PolyType)(using ctx: Context): List[String]
-  def PolyType_paramBounds(self: PolyType)(using ctx: Context): List[TypeBounds]
-  def PolyType_resType(self: PolyType)(using ctx: Context): Type
+  def PolyType_param(self: PolyType, idx: Int): Type
+  def PolyType_paramNames(self: PolyType): List[String]
+  def PolyType_paramBounds(self: PolyType): List[TypeBounds]
+  def PolyType_resType(self: PolyType): Type
 
-  def TypeLambda_TypeTest(using ctx: Context): TypeTest[Type, TypeLambda]
+  def TypeLambda_TypeTest: TypeTest[Type, TypeLambda]
 
   def TypeLambda_apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda
 
-  def TypeLambda_paramNames(self: TypeLambda)(using ctx: Context): List[String]
-  def TypeLambda_paramBounds(self: TypeLambda)(using ctx: Context): List[TypeBounds]
-  def TypeLambda_param(self: TypeLambda, idx: Int)(using ctx: Context): Type
-  def TypeLambda_resType(self: TypeLambda)(using ctx: Context): Type
+  def TypeLambda_paramNames(self: TypeLambda): List[String]
+  def TypeLambda_paramBounds(self: TypeLambda): List[TypeBounds]
+  def TypeLambda_param(self: TypeLambda, idx: Int): Type
+  def TypeLambda_resType(self: TypeLambda): Type
 
 
   //////////////////////
   // IMPORT SELECTORS //
   //////////////////////
 
-  def SimpleSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, SimpleSelector]
+  def SimpleSelector_TypeTest: TypeTest[ImportSelector, SimpleSelector]
 
-  def SimpleSelector_selection(self: SimpleSelector)(using ctx: Context): Id
+  def SimpleSelector_selection(self: SimpleSelector): Id
 
-  def RenameSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, RenameSelector]
+  def RenameSelector_TypeTest: TypeTest[ImportSelector, RenameSelector]
 
-  def RenameSelector_from(self: RenameSelector)(using ctx: Context): Id
-  def RenameSelector_to(self: RenameSelector)(using ctx: Context): Id
+  def RenameSelector_from(self: RenameSelector): Id
+  def RenameSelector_to(self: RenameSelector): Id
 
-  def OmitSelector_TypeTest(using ctx: Context): TypeTest[ImportSelector, OmitSelector]
+  def OmitSelector_TypeTest: TypeTest[ImportSelector, OmitSelector]
 
-  def SimpleSelector_omitted(self: OmitSelector)(using ctx: Context): Id
+  def SimpleSelector_omitted(self: OmitSelector): Id
 
 
   /////////////////
@@ -768,10 +768,10 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   /////////////////
 
   /** Position in the source code */
-  def Id_pos(self: Id)(using ctx: Context): Position
+  def Id_pos(self: Id): Position
 
   /** Name of the identifier */
-  def Id_name(self: Id)(using ctx: Context): String
+  def Id_name(self: Id): String
 
 
   ////////////////
@@ -855,151 +855,151 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   def Symbol_currentOwner(using ctx: Context): Symbol
 
   /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
-  def Symbol_owner(self: Symbol)(using ctx: Context): Symbol
+  def Symbol_owner(self: Symbol): Symbol
 
   /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Returns `NoSymbol` if this symbol does not have an owner. */
-  def Symbol_maybeOwner(self: Symbol)(using ctx: Context): Symbol
+  def Symbol_maybeOwner(self: Symbol): Symbol
 
   /** Flags of this symbol */
-  def Symbol_flags(self: Symbol)(using ctx: Context): Flags
+  def Symbol_flags(self: Symbol): Flags
 
-  def Symbol_tree(self: Symbol)(using ctx: Context): Tree
+  def Symbol_tree(self: Symbol): Tree
 
-  def Symbol_isLocalDummy(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isLocalDummy(self: Symbol): Boolean
 
-  def Symbol_isRefinementClass(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isRefinementClass(self: Symbol): Boolean
 
-  def Symbol_isAliasType(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isAliasType(self: Symbol): Boolean
 
-  def Symbol_isAnonymousClass(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isAnonymousClass(self: Symbol): Boolean
 
-  def Symbol_isAnonymousFunction(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isAnonymousFunction(self: Symbol): Boolean
 
-  def Symbol_isAbstractType(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isAbstractType(self: Symbol): Boolean
 
-  def Symbol_isClassConstructor(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isClassConstructor(self: Symbol): Boolean
 
   /** This symbol is private within the resulting type. */
-  def Symbol_privateWithin(self: Symbol)(using ctx: Context): Option[Type]
+  def Symbol_privateWithin(self: Symbol): Option[Type]
 
   /** This symbol is protected within the resulting type. */
-  def Symbol_protectedWithin(self: Symbol)(using ctx: Context): Option[Type]
+  def Symbol_protectedWithin(self: Symbol): Option[Type]
 
   /** The name of this symbol. */
-  def Symbol_name(self: Symbol)(using ctx: Context): String
+  def Symbol_name(self: Symbol): String
 
   /** The full name of this symbol up to the root package. */
-  def Symbol_fullName(self: Symbol)(using ctx: Context): String
+  def Symbol_fullName(self: Symbol): String
 
   /** The position of this symbol */
-  def Symbol_pos(self: Symbol)(using ctx: Context): Position
+  def Symbol_pos(self: Symbol): Position
 
-  def Symbol_localContext(self: Symbol)(using ctx: Context): Context
+  def Symbol_localContext(self: Symbol): Context
 
   /** The comment of the symbol */
-  def Symbol_comment(self: Symbol)(using ctx: Context): Option[Comment]
+  def Symbol_comment(self: Symbol): Option[Comment]
 
   /** Annotations attached to this symbol */
-  def Symbol_annots(self: Symbol)(using ctx: Context): List[Term]
+  def Symbol_annots(self: Symbol): List[Term]
 
-  def Symbol_isDefinedInCurrentRun(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isDefinedInCurrentRun(self: Symbol): Boolean
 
   /** Fields directly declared in the class */
-  def Symbol_fields(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_fields(self: Symbol): List[Symbol]
 
   /** Field with the given name directly declared in the class */
-  def Symbol_field(self: Symbol)(name: String)(using ctx: Context): Symbol
+  def Symbol_field(self: Symbol)(name: String): Symbol
 
   /** Get non-private named methods defined directly inside the class */
-  def Symbol_classMethod(self: Symbol)(name: String)(using ctx: Context): List[Symbol]
+  def Symbol_classMethod(self: Symbol)(name: String): List[Symbol]
 
   /** Get all non-private methods defined directly inside the class, excluding constructors */
-  def Symbol_classMethods(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_classMethods(self: Symbol): List[Symbol]
 
   /** Get named non-private methods declared or inherited */
-  def Symbol_method(self: Symbol)(name: String)(using ctx: Context): List[Symbol]
+  def Symbol_method(self: Symbol)(name: String): List[Symbol]
 
   /** Get all non-private methods declared or inherited */
-  def Symbol_methods(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_methods(self: Symbol): List[Symbol]
 
   /** Type member directly declared in the class */
-  def Symbol_typeMembers(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_typeMembers(self: Symbol): List[Symbol]
 
   /** Type member with the given name directly declared in the class */
-  def Symbol_typeMember(self: Symbol)(name: String)(using ctx: Context): Symbol
+  def Symbol_typeMember(self: Symbol)(name: String): Symbol
 
   /** The symbols of each type parameter list and value parameter list of this
    *  method, or Nil if this isn't a method.
    */
-  def Symbol_paramSymss(self: Symbol)(using ctx: Context): List[List[Symbol]]
+  def Symbol_paramSymss(self: Symbol): List[List[Symbol]]
 
   /** The primary constructor of a class or trait, `noSymbol` if not applicable. */
-  def Symbol_primaryConstructor(self: Symbol)(using Context): Symbol
+  def Symbol_primaryConstructor(self: Symbol): Symbol
 
   /** Fields of a case class type -- only the ones declared in primary constructor */
-  def Symbol_caseFields(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_caseFields(self: Symbol): List[Symbol]
 
   /** Get package symbol if package is either defined in current compilation run or present on classpath. */
-  def Symbol_requiredPackage(path: String)(using ctx: Context): Symbol
+  def Symbol_requiredPackage(path: String): Symbol
 
   /** Get class symbol if class is either defined in current compilation run or present on classpath. */
-  def Symbol_requiredClass(path: String)(using ctx: Context): Symbol
+  def Symbol_requiredClass(path: String): Symbol
 
   /** Get module symbol if module is either defined in current compilation run or present on classpath. */
-  def Symbol_requiredModule(path: String)(using ctx: Context): Symbol
+  def Symbol_requiredModule(path: String): Symbol
 
   /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
-  def Symbol_requiredMethod(path: String)(using ctx: Context): Symbol
+  def Symbol_requiredMethod(path: String): Symbol
 
-  def Symbol_of(fullName: String)(using ctx: Context): Symbol
+  def Symbol_of(fullName: String): Symbol
 
-  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol
+  def Symbol_newMethod(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol): Symbol
 
-  def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol)(using ctx: Context): Symbol
+  def Symbol_newVal(parent: Symbol, name: String, flags: Flags, tpe: Type, privateWithin: Symbol): Symbol
 
-  def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type)(using ctx: Context): Symbol
+  def Symbol_newBind(parent: Symbol, name: String, flags: Flags, tpe: Type): Symbol
 
-  def Symbol_isTypeParam(self: Symbol)(using ctx: Context): Boolean
+  def Symbol_isTypeParam(self: Symbol): Boolean
 
-  def Symbol_isPackageDef(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isPackageDef(symbol: Symbol): Boolean
 
   /** Is this the definition of a type? */
-  def Symbol_isType(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isType(symbol: Symbol): Boolean
 
   /** Is this the definition of a term? */
-  def Symbol_isTerm(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isTerm(symbol: Symbol): Boolean
 
   /** Is this the definition of a ClassDef tree? */
-  def Symbol_isClassDef(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isClassDef(symbol: Symbol): Boolean
 
   /** Is this the definition of a TypeDef tree? */
-  def Symbol_isTypeDef(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isTypeDef(symbol: Symbol): Boolean
 
   /** Is this the definition of a DefDef tree? */
-  def Symbol_isDefDef(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isDefDef(symbol: Symbol): Boolean
 
   /** Is this the definition of a ValDef tree? */
-  def Symbol_isValDef(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isValDef(symbol: Symbol): Boolean
 
   /** Is this the definition of a Bind pattern? */
-  def Symbol_isBind(symbol: Symbol)(using ctx: Context): Boolean
+  def Symbol_isBind(symbol: Symbol): Boolean
 
   /** Signature of this definition */
-  def Symbol_signature(self: Symbol)(using ctx: Context): Signature
+  def Symbol_signature(self: Symbol): Signature
 
   /** The class symbol of the companion module class */
-  def Symbol_moduleClass(self: Symbol)(using ctx: Context): Symbol
+  def Symbol_moduleClass(self: Symbol): Symbol
 
   /** The symbol of the companion class */
-  def Symbol_companionClass(self: Symbol)(using ctx: Context): Symbol
+  def Symbol_companionClass(self: Symbol): Symbol
 
   /** The symbol of the companion module */
-  def Symbol_companionModule(self: Symbol)(using ctx: Context): Symbol
+  def Symbol_companionModule(self: Symbol): Symbol
 
-  def Symbol_noSymbol(using ctx: Context): Symbol
+  def Symbol_noSymbol: Symbol
 
   /** Case class or case object children of a sealed trait */
-  def Symbol_children(self: Symbol)(using ctx: Context): List[Symbol]
+  def Symbol_children(self: Symbol): List[Symbol]
 
 
   ///////////
@@ -1190,17 +1190,17 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
   // IMPLICITS //
   ///////////////
 
-  def ImplicitSearchSuccess_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
-  def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess)(using ctx: Context): Term
+  def ImplicitSearchSuccess_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
+  def ImplicitSearchSuccess_tree(self: ImplicitSearchSuccess): Term
 
-  def ImplicitSearchFailure_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
-  def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure)(using ctx: Context): String
+  def ImplicitSearchFailure_TypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
+  def ImplicitSearchFailure_explanation(self: ImplicitSearchFailure): String
 
-  def DivergingImplicit_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, DivergingImplicit]
+  def DivergingImplicit_TypeTest: TypeTest[ImplicitSearchResult, DivergingImplicit]
 
-  def NoMatchingImplicits_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, NoMatchingImplicits]
+  def NoMatchingImplicits_TypeTest: TypeTest[ImplicitSearchResult, NoMatchingImplicits]
 
-  def AmbiguousImplicits_TypeTest(using ctx: Context): TypeTest[ImplicitSearchResult, AmbiguousImplicits]
+  def AmbiguousImplicits_TypeTest: TypeTest[ImplicitSearchResult, AmbiguousImplicits]
 
   /** Find an implicit of type `T` in the current scope given by `ctx`.
    *  Return an `ImplicitSearchResult`.
@@ -1208,12 +1208,12 @@ trait CompilerInterface extends scala.tasty.reflect.Types {
    *  @param tpe type of the implicit parameter
    *  @param ctx current context
    */
-  def searchImplicit(tpe: Type)(using ctx: Context): ImplicitSearchResult
+  def searchImplicit(tpe: Type): ImplicitSearchResult
 
   /** Returns Some with a beta-reduced application or None */
-  def betaReduce(tree: Term)(using Context): Option[Term]
+  def betaReduce(tree: Term): Option[Term]
 
-  def lambdaExtractor(term: Term, paramTypes: List[Type])(using ctx: Context): Option[List[Term] => Term]
+  def lambdaExtractor(term: Term, paramTypes: List[Type]): Option[List[Term] => Term]
 
   def compilerId: Int
 
