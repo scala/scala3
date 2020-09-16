@@ -10,8 +10,42 @@ import dotty.tools.languageserver.util.actions.CodeCompletion
 class CompletionTest {
 
   @Test def completion0: Unit = {
-    code"class Foo { val xyz: Int = 0; def y: Int = xy$m1 }".withSource
+    code"class Foo { val xyz: Int = 0; def y: Int = xy${m1} }".withSource
       .completion(m1, Set(("xyz", Field, "Int")))
+  }
+
+  @Test def completionFromScalaPredef: Unit = {
+    code"class Foo { def foo: Unit = prin${m1} }".withSource
+      .completion(m1, Set(
+        ("print", Method, "(x: Any): Unit"),
+        ("printf", Method, "(text: String, xs: Any*): Unit"),
+        ("println", Method, "(x: Any): Unit")
+      ))
+  }
+
+  @Test def completionFromDottyPredef: Unit = {
+    code"class Foo { val foo = summ${m1} }".withSource
+      .completion(m1, Set(("summon", Method, "[T](using x: T): x.type")))
+  }
+
+  @Test def completionFromScalaPackage: Unit = {
+    code"class Foo { val foo: Conv${m1} }".withSource
+      .completion(m1, Set(("Conversion", Class, "scala.Conversion")))
+  }
+
+  @Test def completionFromScalaPackageObject: Unit = {
+    code"class Foo { val foo: BigD${m1} }".withSource
+      .completion(m1, Set(("BigDecimal", Field, "type and getter BigDecimal")))
+  }
+
+  @Test def completionFromSyntheticPackageObject: Unit = {
+    code"class Foo { val foo: IArr${m1} }".withSource
+      .completion(m1, Set(("IArray", Field, "type and object IArray")))
+  }
+
+  @Test def completionFromJavaDefaults: Unit = {
+    code"class Foo { val foo: Runn${m1} }".withSource
+      .completion(m1, Set(("Runnable", Class, "trait and object Runnable")))
   }
 
   @Test def completionWithImplicitConversion: Unit = {
@@ -29,7 +63,7 @@ class CompletionTest {
     ).completion(m1, Set(("MyClass", Class, "Foo.MyClass")))
   }
 
-  @Test def ImportCompleteClassNoPrefix: Unit = {
+  @Test def importCompleteClassNoPrefix: Unit = {
     withSources(
       code"""object Foo { class MyClass }""",
       code"""import Foo.${m1}"""
