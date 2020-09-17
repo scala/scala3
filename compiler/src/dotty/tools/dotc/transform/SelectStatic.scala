@@ -11,10 +11,37 @@ import dotty.tools.dotc.core._
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform.SymUtils._
 
-/** Removes selects that would be compiled into GetStatic
- * otherwise backend needs to be aware that some qualifiers need to be dropped.
- * Similar transformation seems to be performed by flatten in nsc
- * @author Dmytro Petrashko
+/** Removes `Select`s that would be compiled into `GetStatic`.
+ *
+ *  Otherwise, the backend needs to be aware that some qualifiers need to be
+ *  dropped.
+ *
+ *  A tranformation similar to what this phase does seems to be performed by
+ *  flatten in nsc.
+ *
+ *  The side effects of the qualifier of a dropped `Select` is normally
+ *  retained. As an exception, the qualifier is completely dropped if it is
+ *  a reference to a static owner (see `isStaticOwnerRef`). Concretely, this
+ *  means that in
+ *
+ *  {{{
+ *  object Foo {
+ *    println("side effects")
+ *
+ *    object Bar
+ *    class Baz
+ *  }
+ *
+ *  Foo.Bar
+ *  new Foo.Baz()
+ *  }}}
+ *
+ *  the `Foo` qualifiers will be dropped, since it is a static object. The
+ *  `println("side effects")` will therefore not be executed.
+ *
+ *  This intended behavior is equivalent to what scalac does.
+ *
+ *  @author Dmytro Petrashko
  */
 class SelectStatic extends MiniPhase with IdentityDenotTransformer {
   import ast.tpd._
@@ -29,11 +56,21 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
       sym.isScalaStatic
     val isStaticRef = !sym.is(Package) && !sym.maybeOwner.is(Package) && isStaticMember
     val tree1 =
-      if (isStaticRef && !tree.qualifier.symbol.isAllOf(JavaModule) && !tree.qualifier.isType)
-        Block(List(tree.qualifier), ref(sym))
+      if isStaticRef && !tree.qualifier.symbol.isAllOf(JavaModule) && !tree.qualifier.isType then
+        if isStaticOwnerRef(tree.qualifier) then ref(sym)
+        else Block(List(tree.qualifier), ref(sym))
       else tree
 
     normalize(tree1)
+  }
+
+  private def isStaticOwnerRef(tree: Tree)(using Context): Boolean = tree match {
+    case Ident(_) =>
+      tree.symbol.is(Module) && tree.symbol.moduleClass.isStaticOwner
+    case Select(qual, _) =>
+      isStaticOwnerRef(qual) && tree.symbol.is(Module) && tree.symbol.moduleClass.isStaticOwner
+    case _ =>
+      false
   }
 
   private def normalize(t: Tree)(using Context) = t match {

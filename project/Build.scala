@@ -1009,6 +1009,12 @@ object Build {
       scalaJSLinkerConfig ~= { _.withSemantics(build.TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= build.TestSuiteLinkerOptions.moduleInitializers,
 
+      jsEnvInput in Test := {
+        val resourceDir = fetchScalaJSSource.value / "test-suite/js/src/test/resources"
+        val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
+        org.scalajs.jsenv.Input.Script(f) +: (jsEnvInput in Test).value
+      },
+
       managedSources in Compile ++= {
         val dir = fetchScalaJSSource.value / "test-suite/js/src/main/scala"
         val filter = (
@@ -1032,7 +1038,7 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
-            -- "InteroperabilityTest.scala" // compiler crash, related to value classes in JS interop
+            -- "InteroperabilityTest.scala" // nested native JS classes + JS exports
             -- "OptimizerTest.scala" // non-native JS classes
             -- "RegressionJSTest.scala" // non-native JS classes
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
@@ -1049,7 +1055,6 @@ object Build {
             -- "ExportsTest.scala" // JS exports
             -- "IterableTest.scala" // non-native JS classes
             -- "JSExportStaticTest.scala" // JS exports
-            -- "JSNativeInPackage.scala" // #9785 tests fail due to js.typeOf(globalVar) being incorrect
             -- "JSOptionalTest.scala" // non-native JS classes
             -- "JSSymbolTest.scala" // non-native JS classes
             -- "MiscInteropTest.scala" // non-native JS classes

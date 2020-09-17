@@ -97,13 +97,10 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         case _ => ()
       }
 
-    def removeUnwantedAnnotations(denot: SymDenotation): Unit =
+    def removeUnwantedAnnotations(denot: SymDenotation, metaAnnotSym: ClassSymbol): Unit =
       if (sym.annotations.nonEmpty) {
         val cpy = sym.copySymDenotation()
-        // Keep @deprecated annotation so that accessors can
-        // be marked as deprecated in the bytecode.
-        // TODO check the meta-annotations to know what to keep
-        cpy.filterAnnotations(_.matches(defn.DeprecatedAnnot))
+        cpy.filterAnnotations(_.symbol.hasAnnotation(metaAnnotSym))
         cpy.installAfter(thisPhase)
       }
 
@@ -141,7 +138,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             else transformFollowingDeep(ref(field))(using ctx.withOwner(sym))
           val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
           addAnnotations(fieldDef.denot)
-          removeUnwantedAnnotations(sym)
+          removeUnwantedAnnotations(sym, defn.GetterMetaAnnot)
           Thicket(fieldDef, getterDef)
       else if sym.isSetter then
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // This is intended as an assertion
@@ -162,7 +159,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             if (isErasableBottomField(field, tree.vparamss.head.head.tpt.tpe.classSymbol)) Literal(Constant(()))
             else Assign(ref(field), adaptToField(field, ref(tree.vparamss.head.head.symbol)))
           val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(using ctx.withOwner(sym)))
-          removeUnwantedAnnotations(sym)
+          removeUnwantedAnnotations(sym, defn.SetterMetaAnnot)
           setterDef
       else
         // Curiously, some accessors from Scala2 have ' ' suffixes.
