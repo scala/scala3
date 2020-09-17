@@ -8,11 +8,13 @@ package object compiletime {
    *  pattern match on it. For example, given a type `Tup <: Tuple`, one can
    *  pattern-match on it as follows:
    *  ```
-   *  erasedValue[Tup] match {
+   *  inline erasedValue[Tup] match {
    *    case _: EmptyTuple => ...
    *    case _: h *: t => ...
    *  }
    *  ```
+   *  This value can only be used in an inline match and the value cannot be used in
+   *  the branches.
    */
   erased def erasedValue[T]: T = ???
 
