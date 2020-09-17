@@ -8,327 +8,457 @@ import scala.tasty.reflect._
 
 /** TASTy Reflect Interface.
  *
- *  Provides all functionality related with AST based metaprogramming.
+ *
  */
-trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
+
+/** TASTy Reflect Interface.
+ *
+ *  Provides all functionality related with AST based metaprogramming.
+ *
+ *  Type hierarchy
+ *  ```none
+ *
+ *  +- Tree -+- PackageClause
+ *           +- Import
+ *           +- Statement -+- Definition --+- PackageDef
+ *           |             |               +- ClassDef
+ *           |             |               +- TypeDef
+ *           |             |               +- DefDef
+ *           |             |               +- ValDef
+ *           |             |
+ *           |             +- Term --------+- Ref -+- Ident
+ *           |                             |       +- Select
+ *           |                             |
+ *           |                             +- Literal
+ *           |                             +- This
+ *           |                             +- New
+ *           |                             +- NamedArg
+ *           |                             +- Apply
+ *           |                             +- TypeApply
+ *           |                             +- Super
+ *           |                             +- Typed
+ *           |                             +- Assign
+ *           |                             +- Block
+ *           |                             +- Closure
+ *           |                             +- If
+ *           |                             +- Match
+ *           |                             +- GivenMatch
+ *           |                             +- Try
+ *           |                             +- Return
+ *           |                             +- Repeated
+ *           |                             +- Inlined
+ *           |                             +- SelectOuter
+ *           |                             +- While
+ *           |
+ *           |
+ *           +- TypeTree ----+- Inferred
+ *           |               +- TypeIdent
+ *           |               +- TypeSelect
+ *           |               +- Projection
+ *           |               +- Singleton
+ *           |               +- Refined
+ *           |               +- Applied
+ *           |               +- Annotated
+ *           |               +- MatchTypeTree
+ *           |               +- ByName
+ *           |               +- LambdaTypeTree
+ *           |               +- TypeBind
+ *           |               +- TypeBlock
+ *           |
+ *           +- TypeBoundsTree
+ *           +- WildcardTypeTree
+ *           |
+ *           +- CaseDef
+ *           |
+ *           +- TypeCaseDef
+ *           +- Bind
+ *           +- Unapply
+ *           +- Alternatives
+ *
+ *
+ *  +- Type -+- ConstantType
+ *           +- TermRef
+ *           +- TypeRef
+ *           +- SuperType
+ *           +- Refinement
+ *           +- AppliedType
+ *           +- AnnotatedType
+ *           +- AndType
+ *           +- OrType
+ *           +- MatchType
+ *           +- ByNameType
+ *           +- ParamRef
+ *           +- ThisType
+ *           +- RecursiveThis
+ *           +- RecursiveType
+ *           +- LambdaType -+- MethodType
+ *           |              +- PolyType
+ *           |              +- TypeLambda
+ *           +- TypeBounds
+ *           +- NoPrefix
+ *
+ *  +- ImportSelector -+- SimpleSelector
+ *                     +- RenameSelector
+ *                     +- OmitSelector
+ *
+ *  +- Id
+ *
+ *  +- Signature
+ *
+ *  +- Position
+ *
+ *  +- Comment
+ *
+ *  +- Constant
+ *
+ *  +- Symbol
+ *
+ *  +- Flags
+ *
+ *  ```
+ */
+trait Reflection { reflection =>
 
   //////////////
   // CONTEXTS //
   //////////////
 
+  /** Compilation context */
+  type Context <: AnyRef
+
   /** Context of the macro expansion */
   def rootContext: Context // TODO: Should this be moved to QuoteContext?
   given Context = rootContext // TODO: Should be an implicit converion from QuoteContext to Context
-
-
-  ///////////////
-  //   Source  //
-  ///////////////
-
-  object Source:
-
-    /** Returns the source file being compiled. The path is relative to the current working directory. */
-    def path: java.nio.file.Path = reflectSelf.Source_path
-
-    /** Returns true if we've tried to reflect on a Java class. */
-    def isJavaCompilationUnit: Boolean = reflectSelf.Source_isJavaCompilationUnit
-
-    /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
-    def isScala2CompilationUnit: Boolean = reflectSelf.Source_isScala2CompilationUnit
-
-    /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
-    def isAlreadyLoadedCompilationUnit: Boolean = reflectSelf.Source_isAlreadyLoadedCompilationUnit
-
-    /** Class name of the current CompilationUnit */
-    def compilationUnitClassname: String = reflectSelf.Source_compilationUnitClassname
-
-  end Source
-
 
   ///////////////
   //   TREES   //
   ///////////////
 
-  // ----- Tree -----------------------------------------------------
 
-  object Tree
+  /** Tree representing code written in the source */
+  type Tree <: AnyRef
 
-  given TreeOps as AnyRef:
-    extension (tree: Tree):
+  val Tree: TreeModule
+
+  trait TreeModule { this: Tree.type => }
+
+  given TreeMethods as TreeMethods = TreeMethodsImpl
+  protected val TreeMethodsImpl: TreeMethods
+
+  trait TreeMethods {
+    extension (self: Tree):
       /** Position in the source code */
-      def pos: Position = reflectSelf.Tree_pos(tree)
+      def pos: Position
 
       /** Symbol of defined or referred by this tree */
-      def symbol: Symbol = reflectSelf.Tree_symbol(tree)
+      def symbol: Symbol
 
       /** Shows the tree as extractors */
-      def showExtractors: String =
-        new ExtractorsPrinter[reflectSelf.type](reflectSelf).showTree(tree)
+      def showExtractors: String
 
       /** Shows the tree as fully typed source code */
-      def show: String =
-        tree.showWith(SyntaxHighlight.plain)
+      def show: String
 
       /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight): String =
-        new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showTree(tree)
+      def showWith(syntaxHighlight: SyntaxHighlight): String
 
       /** Does this tree represent a valid expression? */
-      def isExpr: Boolean =
-        tree match
-          case tree: Term =>
-            tree.tpe.widen match
-              case _: MethodType | _: PolyType => false
-              case _ => true
-          case _ => false
-
+      def isExpr: Boolean
     end extension
 
     /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
-    extension [T](tree: Tree)
-      def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T] =
-        if tree.isExpr then
-          new scala.internal.quoted.Expr(tree, reflectSelf.compilerId).asExprOf[T]
-        else tree match
-          case tree: Term => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
-          case _ => throw new Exception("Expected a Term but was: " + tree)
+    extension [T](self: Tree)
+      def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T]
+  }
 
-  end TreeOps
+  /** Tree representing a pacakage clause in the source code */
+  type PackageClause <: Tree
 
-  given TypeTest[Tree, PackageClause] = reflectSelf.PackageClause_TypeTest
+  given TypeTest[Tree, PackageClause] = PackageClauseTypeTest
+  protected val PackageClauseTypeTest: TypeTest[Tree, PackageClause]
 
-  object PackageClause:
-    def apply(pid: Ref, stats: List[Tree]): PackageClause =
-      reflectSelf.PackageClause_apply(pid, stats)
-    def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause =
-      reflectSelf.PackageClause_copy(original)(pid, stats)
-    def unapply(tree: PackageClause): Some[(Ref, List[Tree])] =
-      Some((tree.pid, tree.stats))
-  end PackageClause
+  val PackageClause: PackageClauseModule
 
-  given PackageClauseOps as AnyRef:
+  trait PackageClauseModule { this: PackageClause.type =>
+    def apply(pid: Ref, stats: List[Tree]): PackageClause
+    def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause
+    def unapply(tree: PackageClause): Some[(Ref, List[Tree])]
+  }
+
+  given PackageClauseMethods as PackageClauseMethods = PackageClauseMethodsImpl
+  protected val PackageClauseMethodsImpl: PackageClauseMethods
+
+  trait PackageClauseMethods:
     extension (self: PackageClause):
-      def pid: Ref = reflectSelf.PackageClause_pid(self)
-      def stats: List[Tree] = reflectSelf.PackageClause_stats(self)
+      def pid: Ref
+      def stats: List[Tree]
     end extension
-  end PackageClauseOps
+  end PackageClauseMethods
 
-  given TypeTest[Tree, Import] = reflectSelf.Import_TypeTest
+  /** Tree representing an import in the source code */
+  type Import <: Statement
 
-  object Import:
-    def apply(expr: Term, selectors: List[ImportSelector]): Import =
-      reflectSelf.Import_apply(expr, selectors)
-    def copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import =
-      reflectSelf.Import_copy(original)(expr, selectors)
-    def unapply(tree: Import): Option[(Term, List[ImportSelector])] =
-      Some((tree.expr, tree.selectors))
-  end Import
+  given TypeTest[Tree, Import] = ImportTypeTest
+  protected val ImportTypeTest: TypeTest[Tree, Import]
 
-  given ImportOps as AnyRef:
+  val Import: ImportModule
+
+  trait ImportModule { this: Import.type =>
+    def apply(expr: Term, selectors: List[ImportSelector]): Import
+    def copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import
+    def unapply(tree: Import): Option[(Term, List[ImportSelector])]
+  }
+
+  given ImportMethods as ImportMethods = ImportMethodsImpl
+  protected val ImportMethodsImpl: ImportMethods
+
+  trait ImportMethods:
     extension (self: Import):
-      def expr: Term = reflectSelf.Import_expr(self)
-      def selectors: List[ImportSelector] =
-        reflectSelf.Import_selectors(self)
+      def expr: Term
+      def selectors: List[ImportSelector]
     end extension
-  end ImportOps
+  end ImportMethods
 
+  /** Tree representing a statement in the source code */
+  type Statement <: Tree
 
-  given TypeTest[Tree, Statement] = reflectSelf.Statement_TypeTest
+  given TypeTest[Tree, Statement] = StatementTypeTest
+  protected val StatementTypeTest: TypeTest[Tree, Statement]
 
   // ----- Definitions ----------------------------------------------
 
-  given TypeTest[Tree, Definition] = reflectSelf.Definition_TypeTest
+  /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
+  type Definition <: Statement
 
-  object Definition
+  given TypeTest[Tree, Definition] = DefinitionTypeTest
+  protected val DefinitionTypeTest: TypeTest[Tree, Definition]
 
-  given DefinitionOps as AnyRef:
+  val Definition: DefinitionModule
+
+  trait DefinitionModule { this: Definition.type => }
+
+  given DefinitionMethods as DefinitionMethods = DefinitionMethodsImpl
+  protected val DefinitionMethodsImpl: DefinitionMethods
+
+  trait DefinitionMethods:
     extension (self: Definition):
-      def name: String = reflectSelf.Definition_name(self)
+      def name: String
     end extension
-  end DefinitionOps
+  end DefinitionMethods
 
   // ClassDef
 
-  given TypeTest[Tree, ClassDef] = reflectSelf.ClassDef_TypeTest
+  /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
+  type ClassDef <: Definition
 
-  object ClassDef:
+  given TypeTest[Tree, ClassDef] = ClassDefTypeTest
+  protected val ClassDefTypeTest: TypeTest[Tree, ClassDef]
+
+  val ClassDef: ClassDefModule
+
+  trait ClassDefModule { this: ClassDef.type =>
     // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
-    def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef =
-      reflectSelf.ClassDef_copy(original)(name, constr, parents, derived, selfOpt, body)
-    def unapply(cdef: ClassDef): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
-      Some((cdef.name, cdef.constructor, cdef.parents, cdef.derived, cdef.self, cdef.body))
-  end ClassDef
+    def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
+    def unapply(cdef: ClassDef): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])]
+  }
 
-  given ClassDefOps as AnyRef:
+  given ClassDefMethods as ClassDefMethods = ClassDefMethodsImpl
+  protected val ClassDefMethodsImpl: ClassDefMethods
+
+  trait ClassDefMethods:
     extension (self: ClassDef):
-      def constructor: DefDef = reflectSelf.ClassDef_constructor(self)
-      def parents: List[Tree /* Term | TypeTree */] = reflectSelf.ClassDef_parents(self)
-      def derived: List[TypeTree] = reflectSelf.ClassDef_derived(self)
-      def self: Option[ValDef] = reflectSelf.ClassDef_self(self)
-      def body: List[Statement] = reflectSelf.ClassDef_body(self)
+      def constructor: DefDef
+      def parents: List[Tree /* Term | TypeTree */]
+      def derived: List[TypeTree]
+      def self: Option[ValDef]
+      def body: List[Statement]
     end extension
-  end ClassDefOps
-
+  end ClassDefMethods
 
   // DefDef
 
-  given TypeTest[Tree, DefDef] = reflectSelf.DefDef_TypeTest
+  /** Tree representing a method definition in the source code */
+  type DefDef <: Definition
 
-  object DefDef:
-    def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]): DefDef =
-      reflectSelf.DefDef_apply(symbol, rhsFn)
-    def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-      reflectSelf.DefDef_copy(original)(name, typeParams, paramss, tpt, rhs)
-    def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
-      Some((ddef.name, ddef.typeParams, ddef.paramss, ddef.returnTpt, ddef.rhs))
-  end DefDef
+  given TypeTest[Tree, DefDef] = DefDefTypeTest
+  protected val DefDefTypeTest: TypeTest[Tree, DefDef]
 
-  given DefDefOps as AnyRef:
+  val DefDef: DefDefModule
+
+  trait DefDefModule { this: DefDef.type =>
+    def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]): DefDef
+    def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef
+    def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])]
+  }
+
+  given DefDefMethods as DefDefMethods = DefDefMethodsImpl
+  protected val DefDefMethodsImpl: DefDefMethods
+
+  trait DefDefMethods:
     extension (self: DefDef):
-      def typeParams: List[TypeDef] = reflectSelf.DefDef_typeParams(self)
-      def paramss: List[List[ValDef]] = reflectSelf.DefDef_paramss(self)
-      def returnTpt: TypeTree = reflectSelf.DefDef_returnTpt(self) // TODO rename to tpt
-      def rhs: Option[Term] = reflectSelf.DefDef_rhs(self)
+      def typeParams: List[TypeDef]
+      def paramss: List[List[ValDef]]
+      def returnTpt: TypeTree
+      def rhs: Option[Term]
     end extension
-  end DefDefOps
-
+  end DefDefMethods
 
   // ValDef
 
-  given TypeTest[Tree, ValDef] = reflectSelf.ValDef_TypeTest
+  /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
+  type ValDef <: Definition
 
-  object ValDef:
-    def apply(symbol: Symbol, rhs: Option[Term]): ValDef =
-      reflectSelf.ValDef_apply(symbol, rhs)
-    def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef =
-      reflectSelf.ValDef_copy(original)(name, tpt, rhs)
-    def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])] =
-      Some((vdef.name, vdef.tpt, vdef.rhs))
-  end ValDef
+  given TypeTest[Tree, ValDef] = ValDefTypeTest
+  protected val ValDefTypeTest: TypeTest[Tree, ValDef]
 
-  given ValDefOps as AnyRef:
+  val ValDef: ValDefModule
+
+  trait ValDefModule { this: ValDef.type =>
+    def apply(symbol: Symbol, rhs: Option[Term]): ValDef
+    def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
+    def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])]
+  }
+
+  given ValDefMethods as ValDefMethods = ValDefMethodsImpl
+  protected val ValDefMethodsImpl: ValDefMethods
+
+  trait ValDefMethods:
     extension (self: ValDef):
-      def tpt: TypeTree = reflectSelf.ValDef_tpt(self)
-      def rhs: Option[Term] = reflectSelf.ValDef_rhs(self)
+      def tpt: TypeTree
+      def rhs: Option[Term]
     end extension
-  end ValDefOps
-
+  end ValDefMethods
 
   // TypeDef
 
-  given TypeTest[Tree, TypeDef] = reflectSelf.TypeDef_TypeTest
+  /** Tree representing a type (parameter or member) definition in the source code */
+  type TypeDef <: Definition
 
-  object TypeDef:
-    def apply(symbol: Symbol): TypeDef =
-      reflectSelf.TypeDef_apply(symbol)
-    def copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/): TypeDef =
-      reflectSelf.TypeDef_copy(original)(name, rhs)
-    def unapply(tdef: TypeDef): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
-      Some((tdef.name, tdef.rhs))
-  end TypeDef
+  given TypeTest[Tree, TypeDef] = TypeDefTypeTest
+  protected val TypeDefTypeTest: TypeTest[Tree, TypeDef]
 
-  given TypeDefOps as AnyRef:
+  val TypeDef: TypeDefModule
+
+  trait TypeDefModule { this: TypeDef.type =>
+    def apply(symbol: Symbol): TypeDef
+    def copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/): TypeDef
+    def unapply(tdef: TypeDef): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)]
+  }
+
+  given TypeDefMethods as TypeDefMethods = TypeDefMethodsImpl
+  protected val TypeDefMethodsImpl: TypeDefMethods
+
+  trait TypeDefMethods:
     extension (self: TypeDef):
-      def rhs: Tree /*TypeTree | TypeBoundsTree*/ = reflectSelf.TypeDef_rhs(self)
+      def rhs: Tree /*TypeTree | TypeBoundsTree*/
     end extension
-  end TypeDefOps
+  end TypeDefMethods
 
   // PackageDef
 
-  given TypeTest[Tree, PackageDef] = reflectSelf.PackageDef_TypeTest
+  /** Tree representing a package definition. This includes definitions in all source files */
+  type PackageDef <: Definition
 
-  object PackageDef:
-    def unapply(tree: PackageDef): Option[(String, PackageDef)] =
-      Some((tree.name, tree.owner))
-  end PackageDef
+  given TypeTest[Tree, PackageDef] = PackageDefTypeTest
+  protected val PackageDefTypeTest: TypeTest[Tree, PackageDef]
 
-  given PackageDefOps as AnyRef:
+  val PackageDef: PackageDefModule
+
+  trait PackageDefModule { this: PackageDef.type =>
+    def unapply(tree: PackageDef): Option[(String, PackageDef)]
+  }
+
+  given PackageDefMethods as PackageDefMethods = PackageDefMethodsImpl
+  protected val PackageDefMethodsImpl: PackageDefMethods
+
+  trait PackageDefMethods:
     extension (self: PackageDef):
-      def owner: PackageDef = reflectSelf.PackageDef_owner(self)
-      def members: List[Statement] = reflectSelf.PackageDef_members(self)
+      def owner: PackageDef
+      def members: List[Statement]
     end extension
-  end PackageDefOps
+  end PackageDefMethods
 
   // ----- Terms ----------------------------------------------------
 
-  object Term
+  /** Tree representing an expression in the source code */
+  type Term <: Statement
 
-  given TermOps as AnyRef:
+  given TypeTest[Tree, Term] = TermTypeTest
+  protected val TermTypeTest: TypeTest[Tree, Term]
+
+  val Term: TermModule
+
+  trait TermModule { this: Term.type => }
+
+  given TermMethods as TermMethods = TermMethodsImpl
+  protected val TermMethodsImpl: TermMethods
+
+  trait TermMethods {
     extension (self: Term):
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
-      def seal: scala.quoted.Expr[Any] =
-        if self.isExpr then new scala.internal.quoted.Expr(self, reflectSelf.compilerId)
-        else throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
+      def seal: scala.quoted.Expr[Any]
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression */
-      def sealOpt: Option[scala.quoted.Expr[Any]] =
-        if self.isExpr then Some(new scala.internal.quoted.Expr(self, reflectSelf.compilerId))
-        else None
+      def sealOpt: Option[scala.quoted.Expr[Any]]
 
       /** Type of this term */
-      def tpe: Type = reflectSelf.Term_tpe(self)
+      def tpe: Type
 
       /** Replace Inlined nodes and InlineProxy references to underlying arguments */
-      def underlyingArgument: Term = reflectSelf.Term_underlyingArgument(self)
+      def underlyingArgument: Term
 
       /** Replace Ident nodes references to the underlying tree that defined them */
-      def underlying: Term = reflectSelf.Term_underlying(self)
+      def underlying: Term
 
       /** Converts a partally applied term into a lambda expression */
-      def etaExpand: Term = reflectSelf.Term_etaExpand(self)
+      def etaExpand: Term
 
       /** A unary apply node with given argument: `tree(arg)` */
-      def appliedTo(arg: Term): Term =
-        self.appliedToArgs(arg :: Nil)
+      def appliedTo(arg: Term): Term
 
       /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
-      def appliedTo(arg: Term, args: Term*): Term =
-        self.appliedToArgs(arg :: args.toList)
+      def appliedTo(arg: Term, args: Term*): Term
 
       /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
-      def appliedToArgs(args: List[Term]): Apply =
-        Apply(self, args)
+      def appliedToArgs(args: List[Term]): Apply
 
       /** The current tree applied to given argument lists:
       *  `tree (argss(0)) ... (argss(argss.length -1))`
       */
-      def appliedToArgss(argss: List[List[Term]]): Term =
-        argss.foldLeft(self: Term)(Apply(_, _))
+      def appliedToArgss(argss: List[List[Term]]): Term
 
       /** The current tree applied to (): `tree()` */
-      def appliedToNone: Apply =
-        self.appliedToArgs(Nil)
+      def appliedToNone: Apply
 
       /** The current tree applied to given type argument: `tree[targ]` */
-      def appliedToType(targ: Type): Term =
-        self.appliedToTypes(targ :: Nil)
+      def appliedToType(targ: Type): Term
 
       /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
-      def appliedToTypes(targs: List[Type]): Term =
-        self.appliedToTypeTrees(targs map (Inferred(_)))
+      def appliedToTypes(targs: List[Type]): Term
 
       /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
-      def appliedToTypeTrees(targs: List[TypeTree]): Term =
-        if (targs.isEmpty) self else TypeApply(self, targs)
+      def appliedToTypeTrees(targs: List[TypeTree]): Term
 
-      /** A select node that selects the given symbol.
-      */
-      def select(sym: Symbol): Select = Select(self, sym)
+      /** A select node that selects the given symbol. */
+      def select(sym: Symbol): Select
 
     end extension
 
-  end TermOps
+  }
 
-  given TypeTest[Tree, Term] = reflectSelf.Term_TypeTest
+  /** Tree representing a reference to definition */
+  type Ref <: Term
 
-  given TypeTest[Tree, Ref] = reflectSelf.Ref_TypeTest
+  given TypeTest[Tree, Ref] = RefTypeTest
+  protected val RefTypeTest: TypeTest[Tree, Ref]
 
-  object Ref:
+  val Ref: RefModule
+
+  trait RefModule { this: Ref.type =>
 
     /** A tree representing the same reference as the given type */
-    def term(tp: TermRef): Ref =
-      reflectSelf.Ref_term(tp)
+    def term(tp: TermRef): Ref
 
     /** Create a reference tree from a symbol
      *
@@ -344,38 +474,48 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *  the class body of `C`, or have `foo` outside the lexical
      *  scope for the definition of `foo`.
      */
-    def apply(sym: Symbol): Ref =
-      reflectSelf.Ref_apply(sym)
-  end Ref
+    def apply(sym: Symbol): Ref
+  }
 
-  given TypeTest[Tree, Ident] = reflectSelf.Ident_TypeTest
+  /** Tree representing a reference to definition with a given name */
+  type Ident <: Ref
+
+  given TypeTest[Tree, Ident] = IdentTypeTest
+  protected val IdentTypeTest: TypeTest[Tree, Ident]
 
   /** Scala term identifier */
-  object Ident:
-    def apply(tmref: TermRef): Term =
-      reflectSelf.Ident_apply(tmref)
+  val Ident: IdentModule
 
-    def copy(original: Tree)(name: String): Ident =
-      reflectSelf.Ident_copy(original)(name)
+  trait IdentModule { this: Ident.type =>
+    def apply(tmref: TermRef): Term
+
+    def copy(original: Tree)(name: String): Ident
 
     /** Matches a term identifier and returns its name */
-    def unapply(tree: Ident): Option[String] =
-      Some(tree.name)
-  end Ident
+    def unapply(tree: Ident): Option[String]
+  }
 
-  given IdentOps as AnyRef:
+  given IdentMethods as IdentMethods = IdentMethodsImpl
+  protected val IdentMethodsImpl: IdentMethods
+
+  trait IdentMethods:
     extension (self: Ident):
-      def name: String = reflectSelf.Ident_name(self)
+      def name: String
     end extension
-  end IdentOps
+  end IdentMethods
 
-  given TypeTest[Tree, Select] = reflectSelf.Select_TypeTest
+  /** Tree representing a selection of definition with a given name on a given prefix */
+  type Select <: Ref
+
+  given TypeTest[Tree, Select] = SelectTypeTest
+  protected val SelectTypeTest: TypeTest[Tree, Select]
 
   /** Scala term selection */
-  object Select:
+  val Select: SelectModule
+
+  trait SelectModule { this: Select.type =>
     /** Select a term member by symbol */
-    def apply(qualifier: Term, symbol: Symbol): Select =
-      reflectSelf.Select_apply(qualifier, symbol)
+    def apply(qualifier: Term, symbol: Symbol): Select
 
     /** Select a field or a non-overloaded method by name
      *
@@ -383,291 +523,360 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *        method is overloaded. The method `overloaded` should be used
      *        in that case.
      */
-    def unique(qualifier: Term, name: String): Select =
-      reflectSelf.Select_unique(qualifier, name)
+    def unique(qualifier: Term, name: String): Select
 
     // TODO rename, this returns an Apply and not a Select
     /** Call an overloaded method with the given type and term parameters */
-    def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply =
-      reflectSelf.Select_overloaded(qualifier, name, targs, args)
+    def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply
 
-    def copy(original: Tree)(qualifier: Term, name: String): Select =
-      reflectSelf.Select_copy(original)(qualifier, name)
+    def copy(original: Tree)(qualifier: Term, name: String): Select
 
     /** Matches `<qualifier: Term>.<name: String>` */
-    def unapply(x: Select): Option[(Term, String)] =
-      Some((x.qualifier, x.name))
-  end Select
+    def unapply(x: Select): Option[(Term, String)]
+  }
 
-  given SelectOps as AnyRef:
+  given SelectMethods as SelectMethods = SelectMethodsImpl
+  protected val SelectMethodsImpl: SelectMethods
+
+  trait SelectMethods:
     extension (self: Select):
-      def qualifier: Term = reflectSelf.Select_qualifier(self)
-      def name: String = reflectSelf.Select_name(self)
-      def signature: Option[Signature] = reflectSelf.Select_signature(self)
+      def qualifier: Term
+      def name: String
+      def signature: Option[Signature]
     end extension
-  end SelectOps
+  end SelectMethods
 
-  given TypeTest[Tree, Literal] =
-    reflectSelf.Literal_TypeTest
+  given TypeTest[Tree, Literal] = LiteralTypeTest
+  protected val LiteralTypeTest: TypeTest[Tree, Literal]
+
+  /** Tree representing a literal value in the source code */
+  type Literal <: Term
 
   /** Scala literal constant */
-  object Literal:
+  val Literal: LiteralModule
+
+  trait LiteralModule { this: Literal.type =>
 
     /** Create a literal constant */
-    def apply(constant: Constant): Literal =
-      reflectSelf.Literal_apply(constant)
+    def apply(constant: Constant): Literal
 
-    def copy(original: Tree)(constant: Constant): Literal =
-      reflectSelf.Literal_copy(original)(constant)
+    def copy(original: Tree)(constant: Constant): Literal
 
     /** Matches a literal constant */
-    def unapply(x: Literal): Option[Constant] =
-      Some(x.constant)
-  end Literal
+    def unapply(x: Literal): Option[Constant]
+  }
 
-  given LiteralOps as AnyRef:
+  given LiteralMethods as LiteralMethods = LiteralMethodsImpl
+  protected val LiteralMethodsImpl: LiteralMethods
+
+  trait LiteralMethods:
     extension (self: Literal):
-      def constant: Constant = reflectSelf.Literal_constant(self)
+      def constant: Constant
     end extension
-  end LiteralOps
+  end LiteralMethods
 
-  given TypeTest[Tree, This] = reflectSelf.This_TypeTest
+  /** Tree representing `this` in the source code */
+  type This <: Term
+
+  given TypeTest[Tree, This] = ThisTypeTest
+  protected val ThisTypeTest: TypeTest[Tree, This]
 
   /** Scala `this` or `this[id]` */
-  object This:
+  val This: ThisModule
+
+  trait ThisModule { this: This.type =>
 
     /** Create a `this[<id: Id]>` */
-    def apply(cls: Symbol): This =
-      reflectSelf.This_apply(cls)
+    def apply(cls: Symbol): This
 
-    def copy(original: Tree)(qual: Option[Id]): This =
-      reflectSelf.This_copy(original)(qual)
+    def copy(original: Tree)(qual: Option[Id]): This
 
     /** Matches `this[<id: Option[Id]>` */
-    def unapply(x: This): Option[Option[Id]] = Some(x.id)
-  end This
+    def unapply(x: This): Option[Option[Id]]
+  }
 
-  given ThisOps as AnyRef:
+  given ThisMethods as ThisMethods = ThisMethodsImpl
+  protected val ThisMethodsImpl: ThisMethods
+
+  trait ThisMethods:
     extension (self: This):
-      def id: Option[Id] = reflectSelf.This_id(self)
+      def id: Option[Id]
     end extension
-  end ThisOps
+  end ThisMethods
 
-  given TypeTest[Tree, New] = reflectSelf.New_TypeTest
+  /** Tree representing `new` in the source code */
+  type New <: Term
+
+  given TypeTest[Tree, New] = NewTypeTest
+  protected val NewTypeTest: TypeTest[Tree, New]
 
   /** Scala `new` */
-  object New:
+  val New: NewModule
+
+  trait NewModule { this: New.type =>
 
     /** Create a `new <tpt: TypeTree>` */
-    def apply(tpt: TypeTree): New =
-      reflectSelf.New_apply(tpt)
+    def apply(tpt: TypeTree): New
 
-    def copy(original: Tree)(tpt: TypeTree): New =
-      reflectSelf.New_copy(original)(tpt)
+    def copy(original: Tree)(tpt: TypeTree): New
 
     /** Matches a `new <tpt: TypeTree>` */
-    def unapply(x: New): Option[TypeTree] = Some(x.tpt)
-  end New
+    def unapply(x: New): Option[TypeTree]
+  }
 
-  given NewOps as AnyRef:
+  given NewMethods as NewMethods = NewMethodsImpl
+  protected val NewMethodsImpl: NewMethods
+
+  trait NewMethods:
     extension (self: New):
-      def tpt: TypeTree = reflectSelf.New_tpt(self)
+      def tpt: TypeTree
     end extension
-  end NewOps
+  end NewMethods
 
-  given  as TypeTest[Tree, NamedArg] = reflectSelf.NamedArg_TypeTest
+  /** Tree representing an argument passed with an explicit name. Such as `arg1 = x` in `foo(arg1 = x)` */
+  type NamedArg <: Term
+
+  given TypeTest[Tree, NamedArg] = NamedArgTypeTest
+  protected val NamedArgTypeTest: TypeTest[Tree, NamedArg]
 
   /** Scala named argument `x = y` in argument position */
-  object NamedArg:
+  val NamedArg: NamedArgModule
+
+  trait NamedArgModule { this: NamedArg.type =>
 
     /** Create a named argument `<name: String> = <value: Term>` */
-    def apply(name: String, arg: Term): NamedArg =
-      reflectSelf.NamedArg_apply(name, arg)
+    def apply(name: String, arg: Term): NamedArg
 
-    def copy(original: Tree)(name: String, arg: Term): NamedArg =
-      reflectSelf.NamedArg_copy(original)(name, arg)
+    def copy(original: Tree)(name: String, arg: Term): NamedArg
 
     /** Matches a named argument `<name: String> = <value: Term>` */
-    def unapply(x: NamedArg): Option[(String, Term)] =
-      Some((x.name, x.value))
-  end NamedArg
+    def unapply(x: NamedArg): Option[(String, Term)]
+  }
 
-  given NamedArgOps as AnyRef:
+  given NamedArgMethods as NamedArgMethods = NamedArgMethodsImpl
+  protected val NamedArgMethodsImpl: NamedArgMethods
+
+  trait NamedArgMethods:
     extension (self: NamedArg):
-      def name: String = reflectSelf.NamedArg_name(self)
-      def value: Term = reflectSelf.NamedArg_value(self)
+      def name: String
+      def value: Term
     end extension
-  end NamedArgOps
+  end NamedArgMethods
 
-  given TypeTest[Tree, Apply] = reflectSelf.Apply_TypeTest
+  /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s  */
+  type Apply <: Term
+
+  given TypeTest[Tree, Apply] = ApplyTypeTest
+  protected val ApplyTypeTest: TypeTest[Tree, Apply]
 
   /** Scala parameter application */
-  object Apply:
+  val Apply: ApplyModule
+
+  trait ApplyModule { this: Apply.type =>
 
     /** Create a function application `<fun: Term>(<args: List[Term]>)` */
-    def apply(fun: Term, args: List[Term]): Apply =
-      reflectSelf.Apply_apply(fun, args)
+    def apply(fun: Term, args: List[Term]): Apply
 
-    def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
-      reflectSelf.Apply_copy(original)(fun, args)
+    def copy(original: Tree)(fun: Term, args: List[Term]): Apply
 
     /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
-    def unapply(x: Apply): Option[(Term, List[Term])] =
-      Some((x.fun, x.args))
-  end Apply
+    def unapply(x: Apply): Option[(Term, List[Term])]
+  }
 
-  given ApplyOps as AnyRef:
+  given ApplyMethods as ApplyMethods = ApplyMethodsImpl
+  protected val ApplyMethodsImpl: ApplyMethods
+
+  trait ApplyMethods:
     extension (self: Apply):
-      def fun: Term = reflectSelf.Apply_fun(self)
-      def args: List[Term] = reflectSelf.Apply_args(self)
+      def fun: Term
+      def args: List[Term]
     end extension
-  end ApplyOps
+  end ApplyMethods
 
-  given TypeTest[Tree, TypeApply] = reflectSelf.TypeApply_TypeTest
+  /** Tree an application of type arguments */
+  type TypeApply <: Term
+
+  given TypeTest[Tree, TypeApply] = TypeApplyTypeTest
+  protected val TypeApplyTypeTest: TypeTest[Tree, TypeApply]
 
   /** Scala type parameter application */
-  object TypeApply:
+  val TypeApply: TypeApplyModule
+
+  trait TypeApplyModule { this: TypeApply.type =>
 
     /** Create a function type application `<fun: Term>[<args: List[TypeTree]>]` */
-    def apply(fun: Term, args: List[TypeTree]): TypeApply =
-      reflectSelf.TypeApply_apply(fun, args)
+    def apply(fun: Term, args: List[TypeTree]): TypeApply
 
-    def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
-      reflectSelf.TypeApply_copy(original)(fun, args)
+    def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply
 
     /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
-    def unapply(x: TypeApply): Option[(Term, List[TypeTree])] =
-      Some((x.fun, x.args))
-  end TypeApply
+    def unapply(x: TypeApply): Option[(Term, List[TypeTree])]
+  }
 
-  given TypeApplyOps as AnyRef:
+  given TypeApplyMethods as TypeApplyMethods = TypeApplyMethodsImpl
+  protected val TypeApplyMethodsImpl: TypeApplyMethods
+
+  trait TypeApplyMethods:
     extension (self: TypeApply):
-      def fun: Term = reflectSelf.TypeApply_fun(self)
-      def args: List[TypeTree] = reflectSelf.TypeApply_args(self)
+      def fun: Term
+      def args: List[TypeTree]
     end extension
-  end TypeApplyOps
+  end TypeApplyMethods
 
-  given TypeTest[Tree, Super] = reflectSelf.Super_TypeTest
+  given TypeTest[Tree, Super] = SuperTypeTest
+  protected val SuperTypeTest: TypeTest[Tree, Super]
+
+  /** Tree representing `super` in the source code */
+  type Super <: Term
 
   /** Scala `x.super` or `x.super[id]` */
-  object Super:
+  val Super: SuperModule
+
+  trait SuperModule { this: Super.type =>
 
     /** Creates a `<qualifier: Term>.super[<id: Option[Id]>` */
-    def apply(qual: Term, mix: Option[Id]): Super =
-      reflectSelf.Super_apply(qual, mix)
+    def apply(qual: Term, mix: Option[Id]): Super
 
-    def copy(original: Tree)(qual: Term, mix: Option[Id]): Super =
-      reflectSelf.Super_copy(original)(qual, mix)
+    def copy(original: Tree)(qual: Term, mix: Option[Id]): Super
 
     /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
-    def unapply(x: Super): Option[(Term, Option[Id])] =
-      Some((x.qualifier, x.id))
-  end Super
+    def unapply(x: Super): Option[(Term, Option[Id])]
+  }
 
-  given SuperOps as AnyRef:
+  given SuperMethods as SuperMethods = SuperMethodsImpl
+  protected val SuperMethodsImpl: SuperMethods
+
+  trait SuperMethods:
     extension (self: Super):
-      def qualifier: Term = reflectSelf.Super_qualifier(self)
-      def id: Option[Id] = reflectSelf.Super_id(self)
+      def qualifier: Term
+      def id: Option[Id]
     end extension
-  end SuperOps
+  end SuperMethods
 
+  given TypeTest[Tree, Typed] = TypedTypeTest
+  protected val TypedTypeTest: TypeTest[Tree, Typed]
 
-  given TypeTest[Tree, Typed] = reflectSelf.Typed_TypeTest
+  /** Tree representing a type ascription `x: T` in the source code */
+  type Typed <: Term
 
   /** Scala ascription `x: T` */
-  object Typed:
+  val Typed: TypedModule
+
+  trait TypedModule { this: Typed.type =>
 
     /** Create a type ascription `<x: Term>: <tpt: TypeTree>` */
-    def apply(expr: Term, tpt: TypeTree): Typed =
-      reflectSelf.Typed_apply(expr, tpt)
+    def apply(expr: Term, tpt: TypeTree): Typed
 
-    def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed =
-      reflectSelf.Typed_copy(original)(expr, tpt)
+    def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed
 
     /** Matches `<expr: Term>: <tpt: TypeTree>` */
-    def unapply(x: Typed): Option[(Term, TypeTree)] =
-      Some((x.expr, x.tpt))
-  end Typed
+    def unapply(x: Typed): Option[(Term, TypeTree)]
+  }
 
-  given TypedOps as AnyRef:
+  given TypedMethods as TypedMethods = TypedMethodsImpl
+  protected val TypedMethodsImpl: TypedMethods
+
+  trait TypedMethods:
     extension (self: Typed):
-      def expr: Term = reflectSelf.Typed_expr(self)
-      def tpt: TypeTree = reflectSelf.Typed_tpt(self)
+      def expr: Term
+      def tpt: TypeTree
     end extension
-  end TypedOps
+  end TypedMethods
 
+  /** Tree representing an assignment `x = y` in the source code */
+  type Assign <: Term
 
-  given TypeTest[Tree, Assign] = reflectSelf.Assign_TypeTest
+  given TypeTest[Tree, Assign] = AssignTypeTest
+  protected val AssignTypeTest: TypeTest[Tree, Assign]
 
   /** Scala assign `x = y` */
-  object Assign:
+  val Assign: AssignModule
+
+  trait AssignModule { this: Assign.type =>
 
     /** Create an assignment `<lhs: Term> = <rhs: Term>` */
-    def apply(lhs: Term, rhs: Term): Assign =
-      reflectSelf.Assign_apply(lhs, rhs)
+    def apply(lhs: Term, rhs: Term): Assign
 
-    def copy(original: Tree)(lhs: Term, rhs: Term): Assign =
-      reflectSelf.Assign_copy(original)(lhs, rhs)
+    def copy(original: Tree)(lhs: Term, rhs: Term): Assign
 
     /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
-    def unapply(x: Assign): Option[(Term, Term)] =
-      Some((x.lhs, x.rhs))
-  end Assign
+    def unapply(x: Assign): Option[(Term, Term)]
+  }
 
-  given AssignOps as AnyRef:
+  given AssignMethods as AssignMethods = AssignMethodsImpl
+  protected val AssignMethodsImpl: AssignMethods
+
+  trait AssignMethods:
     extension (self: Assign):
-      def lhs: Term = reflectSelf.Assign_lhs(self)
-      def rhs: Term = reflectSelf.Assign_rhs(self)
+      def lhs: Term
+      def rhs: Term
     end extension
-  end AssignOps
+  end AssignMethods
 
+  /** Tree representing a block `{ ... }` in the source code */
+  type Block <: Term
 
-  given TypeTest[Tree, Block] = reflectSelf.Block_TypeTest
+  given TypeTest[Tree, Block] = BlockTypeTest
+  protected val BlockTypeTest: TypeTest[Tree, Block]
 
   /** Scala code block `{ stat0; ...; statN; expr }` term */
-  object Block:
+  val Block: BlockModule
+
+  trait BlockModule { this: Block.type =>
 
     /** Creates a block `{ <statements: List[Statement]>; <expr: Term> }` */
-    def apply(stats: List[Statement], expr: Term): Block =
-      reflectSelf.Block_apply(stats, expr)
+    def apply(stats: List[Statement], expr: Term): Block
 
-    def copy(original: Tree)(stats: List[Statement], expr: Term): Block =
-      reflectSelf.Block_copy(original)(stats, expr)
+    def copy(original: Tree)(stats: List[Statement], expr: Term): Block
 
     /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
-    def unapply(x: Block): Option[(List[Statement], Term)] =
-      Some((x.statements, x.expr))
-  end Block
+    def unapply(x: Block): Option[(List[Statement], Term)]
+  }
 
-  given BlockOps as AnyRef:
+  given BlockMethods as BlockMethods = BlockMethodsImpl
+  protected val BlockMethodsImpl: BlockMethods
+
+  trait BlockMethods:
     extension (self: Block):
-      def statements: List[Statement] = reflectSelf.Block_statements(self)
-      def expr: Term = reflectSelf.Block_expr(self)
+      def statements: List[Statement]
+      def expr: Term
     end extension
-  end BlockOps
+  end BlockMethods
 
+  given TypeTest[Tree, Closure] = ClosureTypeTest
+  protected val ClosureTypeTest: TypeTest[Tree, Closure]
 
-  given TypeTest[Tree, Closure] = reflectSelf.Closure_TypeTest
+  /** A lambda `(...) => ...` in the source code is represented as
+   *  a local method and a closure:
+   *
+   *  {
+   *    def m(...) = ...
+   *    closure(m)
+   *  }
+   *
+   */
+  type Closure <: Term
 
-  object Closure:
+  val Closure: ClosureModule
 
-    def apply(meth: Term, tpt: Option[Type]): Closure =
-      reflectSelf.Closure_apply(meth, tpt)
+  trait ClosureModule { this: Closure.type =>
 
-    def copy(original: Tree)(meth: Tree, tpt: Option[Type]): Closure =
-      reflectSelf.Closure_copy(original)(meth, tpt)
+    def apply(meth: Term, tpe: Option[Type]): Closure
 
-    def unapply(x: Closure): Option[(Term, Option[Type])] =
-      Some((x.meth, x.tpeOpt))
-  end Closure
+    def copy(original: Tree)(meth: Tree, tpe: Option[Type]): Closure
 
-  given ClosureOps as AnyRef:
+    def unapply(x: Closure): Option[(Term, Option[Type])]
+  }
+
+  given ClosureMethods as ClosureMethods = ClosureMethodsImpl
+  protected val ClosureMethodsImpl: ClosureMethods
+
+  trait ClosureMethods:
     extension (self: Closure):
-      def meth: Term = reflectSelf.Closure_meth(self)
-      def tpeOpt: Option[Type] = reflectSelf.Closure_tpeOpt(self)
+      def meth: Term
+      def tpeOpt: Option[Type]
     end extension
-  end ClosureOps
-
+  end ClosureMethods
 
   /** A lambda `(...) => ...` in the source code is represented as
    *  a local method and a closure:
@@ -681,663 +890,840 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
    *        should come before the case for `Block` to avoid mishandling
    *        of `Lambda`.
    */
-  object Lambda:
-    def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
-      case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
-      if ddef.symbol == meth.symbol =>
-        Some(params, body)
+  val Lambda: LambdaModule
 
-      case _ => None
-    }
+  trait LambdaModule { this: Lambda.type =>
+    def unapply(tree: Block): Option[(List[ValDef], Term)]
+    def apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block
+  }
 
-    def apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block =
-      reflectSelf.Lambda_apply(tpe, rhsFn)
+  given TypeTest[Tree, If] = IfTypeTest
+  protected val IfTypeTest: TypeTest[Tree, If]
 
-  end Lambda
-
-  given  TypeTest[Tree, If] = reflectSelf.If_TypeTest
+  /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
+  type If <: Term
 
   /** Scala `if`/`else` term */
-  object If:
+  val If: IfModule
+
+  trait IfModule { this: If.type =>
 
     /** Create an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
-    def apply(cond: Term, thenp: Term, elsep: Term): If =
-      reflectSelf.If_apply(cond, thenp, elsep)
+    def apply(cond: Term, thenp: Term, elsep: Term): If
 
-    def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If =
-      reflectSelf.If_copy(original)(cond, thenp, elsep)
+    def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If
 
     /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
-    def unapply(tree: If): Option[(Term, Term, Term)] =
-      Some((tree.cond, tree.thenp, tree.elsep))
-  end If
+    def unapply(tree: If): Option[(Term, Term, Term)]
+  }
 
-  given IfOps as AnyRef:
+  given IfMethods as IfMethods = IfMethodsImpl
+  protected val IfMethodsImpl: IfMethods
+
+  trait IfMethods:
     extension (self: If):
-      def cond: Term = reflectSelf.If_cond(self)
-      def thenp: Term = reflectSelf.If_thenp(self)
-      def elsep: Term = reflectSelf.If_elsep(self)
+      def cond: Term
+      def thenp: Term
+      def elsep: Term
     end extension
-  end IfOps
+  end IfMethods
 
-  given TypeTest[Tree, Match] = reflectSelf.Match_TypeTest
+  /** Tree representing a pattern match `x match  { ... }` in the source code */
+  type Match <: Term
+
+  given TypeTest[Tree, Match] = MatchTypeTest
+  protected val MatchTypeTest: TypeTest[Tree, Match]
 
   /** Scala `match` term */
-  object Match:
+  val Match: MatchModule
+
+  trait MatchModule { this: Match.type =>
 
     /** Creates a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
-    def apply(selector: Term, cases: List[CaseDef]): Match =
-      reflectSelf.Match_apply(selector, cases)
+    def apply(selector: Term, cases: List[CaseDef]): Match
 
-    def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match =
-      reflectSelf.Match_copy(original)(selector, cases)
+    def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match
 
     /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
-    def unapply(x: Match): Option[(Term, List[CaseDef])] =
-      Some((x.scrutinee, x.cases))
-  end Match
+    def unapply(x: Match): Option[(Term, List[CaseDef])]
+  }
 
-  given MatchOps as AnyRef:
+  given MatchMethods as MatchMethods = MatchMethodsImpl
+  protected val MatchMethodsImpl: MatchMethods
+
+  trait MatchMethods:
     extension (self: Match):
-      def scrutinee: Term = reflectSelf.Match_scrutinee(self)
-      def cases: List[CaseDef] = reflectSelf.Match_cases(self)
+      def scrutinee: Term
+      def cases: List[CaseDef]
     end extension
-  end MatchOps
+  end MatchMethods
 
+  /** Tree representing a pattern match `given match { ... }` in the source code */  // TODO: drop
+  type GivenMatch <: Term
 
-  given TypeTest[Tree, GivenMatch] = reflectSelf.GivenMatch_TypeTest
+  given TypeTest[Tree, GivenMatch] = GivenMatchTypeTest
+  protected val GivenMatchTypeTest: TypeTest[Tree, GivenMatch]
 
   /** Scala implicit `match` term */
-  object GivenMatch:
+  val GivenMatch: GivenMatchModule
+
+  trait GivenMatchModule { this: GivenMatch.type =>
 
     /** Creates a pattern match `given match { <cases: List[CaseDef]> }` */
-    def apply(cases: List[CaseDef]): GivenMatch =
-      reflectSelf.GivenMatch_apply(cases)
+    def apply(cases: List[CaseDef]): GivenMatch
 
-    def copy(original: Tree)(cases: List[CaseDef]): GivenMatch =
-      reflectSelf.GivenMatch_copy(original)(cases)
+    def copy(original: Tree)(cases: List[CaseDef]): GivenMatch
 
     /** Matches a pattern match `given match { <cases: List[CaseDef]> }` */
-    def unapply(x: GivenMatch): Option[List[CaseDef]] = Some(x.cases)
-  end GivenMatch
+    def unapply(x: GivenMatch): Option[List[CaseDef]]
+  }
 
-  given GivenMatchOps as AnyRef:
+  given GivenMatchMethods as GivenMatchMethods = GivenMatchMethodsImpl
+  protected val GivenMatchMethodsImpl: GivenMatchMethods
+
+  trait GivenMatchMethods:
     extension (self: GivenMatch):
-      def cases: List[CaseDef] = reflectSelf.GivenMatch_cases(self)
+      def cases: List[CaseDef]
     end extension
-  end GivenMatchOps
+  end GivenMatchMethods
 
+  /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
+  type Try <: Term
 
-  given TypeTest[Tree, Try] = reflectSelf.Try_TypeTest
+  given TypeTest[Tree, Try] = TryTypeTest
+  protected val TryTypeTest: TypeTest[Tree, Try]
 
   /** Scala `try`/`catch`/`finally` term */
-  object Try:
+  val Try: TryModule
+
+  trait TryModule { this: Try.type =>
 
     /** Create a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
-    def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-      reflectSelf.Try_apply(expr, cases, finalizer)
+    def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
 
-    def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-      reflectSelf.Try_copy(original)(expr, cases, finalizer)
+    def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
 
     /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
-    def unapply(x: Try): Option[(Term, List[CaseDef], Option[Term])] =
-      Some((x.body, x.cases, x.finalizer))
-  end Try
+    def unapply(x: Try): Option[(Term, List[CaseDef], Option[Term])]
+  }
 
-  given TryOps as AnyRef:
+  given TryMethods as TryMethods = TryMethodsImpl
+  protected val TryMethodsImpl: TryMethods
+
+  trait TryMethods:
     extension (self: Try):
-      def body: Term = reflectSelf.Try_body(self)
-      def cases: List[CaseDef] = reflectSelf.Try_cases(self)
-      def finalizer: Option[Term] = reflectSelf.Try_finalizer(self)
+      def body: Term
+      def cases: List[CaseDef]
+      def finalizer: Option[Term]
     end extension
-  end TryOps
+  end TryMethods
 
+  given TypeTest[Tree, Return] = ReturnTypeTest
+  protected val ReturnTypeTest: TypeTest[Tree, Return]
 
-  given TypeTest[Tree, Return] = reflectSelf.Return_TypeTest
+  /** Tree representing a `return` in the source code */
+  type Return <: Term
 
   /** Scala local `return` */
-  object Return:
+  val Return: ReturnModule
+
+  trait ReturnModule { this: Return.type =>
 
     /** Creates `return <expr: Term>` */
-    def apply(expr: Term): Return =
-      reflectSelf.Return_apply(expr)
+    def apply(expr: Term): Return
 
-    def copy(original: Tree)(expr: Term): Return =
-      reflectSelf.Return_copy(original)(expr)
+    def copy(original: Tree)(expr: Term): Return
 
     /** Matches `return <expr: Term>` */
-    def unapply(x: Return): Option[Term] = Some(x.expr)
-  end Return
+    def unapply(x: Return): Option[Term]
+  }
 
-  given ReturnOps as AnyRef:
+  given ReturnMethods as ReturnMethods = ReturnMethodsImpl
+  protected val ReturnMethodsImpl: ReturnMethods
+
+  trait ReturnMethods:
     extension (self: Return):
-      def expr: Term = reflectSelf.Return_expr(self)
+      def expr: Term
     end extension
-  end ReturnOps
+  end ReturnMethods
 
+  /** Tree representing a variable argument list in the source code */
+  type Repeated <: Term
 
-  given TypeTest[Tree, Repeated] = reflectSelf.Repeated_TypeTest
+  given TypeTest[Tree, Repeated] = RepeatedTypeTest
+  protected val RepeatedTypeTest: TypeTest[Tree, Repeated]
 
-  object Repeated:
+  val Repeated: RepeatedModule
 
-    def apply(elems: List[Term], tpt: TypeTree): Repeated =
-      reflectSelf.Repeated_apply(elems, tpt)
+  trait RepeatedModule { this: Repeated.type =>
+    def apply(elems: List[Term], tpt: TypeTree): Repeated
+    def copy(original: Tree)(elems: List[Term], tpt: TypeTree): Repeated
+    def unapply(x: Repeated): Option[(List[Term], TypeTree)]
+  }
 
-    def copy(original: Tree)(elems: List[Term], tpt: TypeTree): Repeated =
-      reflectSelf.Repeated_copy(original)(elems, tpt)
+  given RepeatedMethods as RepeatedMethods = RepeatedMethodsImpl
+  protected val RepeatedMethodsImpl: RepeatedMethods
 
-    def unapply(x: Repeated): Option[(List[Term], TypeTree)] =
-      Some((x.elems, x.elemtpt))
-  end Repeated
-
-  given RepeatedOps as AnyRef:
+  trait RepeatedMethods:
     extension (self: Repeated):
-      def elems: List[Term] = reflectSelf.Repeated_elems(self)
-      def elemtpt: TypeTree = reflectSelf.Repeated_elemtpt(self)
+      def elems: List[Term]
+      def elemtpt: TypeTree
     end extension
-  end RepeatedOps
+  end RepeatedMethods
 
+  /** Tree representing the scope of an inlined tree */
+  type Inlined <: Term
 
-  given TypeTest[Tree, Inlined] = reflectSelf.Inlined_TypeTest
+  given TypeTest[Tree, Inlined] = InlinedTypeTest
+  protected val InlinedTypeTest: TypeTest[Tree, Inlined]
 
-  object Inlined:
+  val Inlined: InlinedModule
 
-    def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined =
-      reflectSelf.Inlined_apply(call, bindings, expansion)
+  trait InlinedModule { this: Inlined.type =>
+    def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
+    def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
+    def unapply(x: Inlined): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)]
+  }
 
-    def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined =
-      reflectSelf.Inlined_copy(original)(call, bindings, expansion)
+  given InlinedMethods as InlinedMethods = InlinedMethodsImpl
+  protected val InlinedMethodsImpl: InlinedMethods
 
-    def unapply(x: Inlined): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
-      Some((x.call, x.bindings, x.body))
-  end Inlined
-
-  given InlinedOps as AnyRef:
+  trait InlinedMethods:
     extension (self: Inlined):
-      def call: Option[Tree /* Term | TypeTree */] = reflectSelf.Inlined_call(self)
-      def bindings: List[Definition] = reflectSelf.Inlined_bindings(self)
-      def body: Term = reflectSelf.Inlined_body(self)
+      def call: Option[Tree /* Term | TypeTree */]
+      def bindings: List[Definition]
+      def body: Term
     end extension
-  end InlinedOps
+  end InlinedMethods
 
+  /** Tree representing a selection of definition with a given name on a given prefix and number of nested scopes of inlined trees */
+  type SelectOuter <: Term
 
-  given TypeTest[Tree, SelectOuter] = reflectSelf.SelectOuter_TypeTest
+  given TypeTest[Tree, SelectOuter] = SelectOuterTypeTest
+  protected val SelectOuterTypeTest: TypeTest[Tree, SelectOuter]
 
-  object SelectOuter:
+  val SelectOuter: SelectOuterModule
 
-    def apply(qualifier: Term, name: String, levels: Int): SelectOuter =
-      reflectSelf.SelectOuter_apply(qualifier, name, levels)
+  trait SelectOuterModule { this: SelectOuter.type =>
+    def apply(qualifier: Term, name: String, levels: Int): SelectOuter
+    def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter
+    def unapply(x: SelectOuter): Option[(Term, Int, Type)] // TODO homogenize order of parameters
+  }
 
-    def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter =
-      reflectSelf.SelectOuter_copy(original)(qualifier, name, levels)
+  given SelectOuterMethods as SelectOuterMethods = SelectOuterMethodsImpl
+  protected val SelectOuterMethodsImpl: SelectOuterMethods
 
-    def unapply(x: SelectOuter): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
-      Some((x.qualifier, x.level, x.tpe))
-  end SelectOuter
-
-  given SelectOuterOps as AnyRef:
+  trait SelectOuterMethods:
     extension (self: SelectOuter):
-      def qualifier: Term = reflectSelf.SelectOuter_qualifier(self)
-      def level: Int = reflectSelf.SelectOuter_level(self)
+      def qualifier: Term
+      def level: Int
     end extension
-  end SelectOuterOps
+  end SelectOuterMethods
 
+  /** Tree representing a while loop */
+  type While <: Term
 
-  given TypeTest[Tree, While] = reflectSelf.While_TypeTest
+  given TypeTest[Tree, While] = WhileTypeTest
+  protected val WhileTypeTest: TypeTest[Tree, While]
 
-  object While:
+  val While: WhileModule
+
+  trait WhileModule { this: While.type =>
 
     /** Creates a while loop `while (<cond>) <body>` and returns (<cond>, <body>) */
-    def apply(cond: Term, body: Term): While =
-      reflectSelf.While_apply(cond, body)
+    def apply(cond: Term, body: Term): While
 
-    def copy(original: Tree)(cond: Term, body: Term): While =
-      reflectSelf.While_copy(original)(cond, body)
+    def copy(original: Tree)(cond: Term, body: Term): While
 
     /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
-    def unapply(x: While): Option[(Term, Term)] =
-      Some((x.cond, x.body))
-  end While
+    def unapply(x: While): Option[(Term, Term)]
+  }
 
-  given WhileOps as AnyRef:
+  given WhileMethods as WhileMethods = WhileMethodsImpl
+  protected val WhileMethodsImpl: WhileMethods
+
+  trait WhileMethods:
     extension (self: While):
-      def cond: Term = reflectSelf.While_cond(self)
-      def body: Term = reflectSelf.While_body(self)
+      def cond: Term
+      def body: Term
     end extension
-  end WhileOps
-
+  end WhileMethods
 
   // ----- TypeTrees ------------------------------------------------
 
-  given TypeTest[Tree, TypeTree] = reflectSelf.TypeTree_TypeTest
+  /** Type tree representing a type written in the source */
+  type TypeTree <: Tree
 
-  object TypeTree
+  given TypeTest[Tree, TypeTree] = TypeTreeTypeTest
+  protected val TypeTreeTypeTest: TypeTest[Tree, TypeTree]
 
-  given TypeTreeOps as AnyRef:
+  val TypeTree: TypeTreeModule
+
+  trait TypeTreeModule { this: TypeTree.type => }
+
+  given TypeTreeMethods as TypeTreeMethods = TypeTreeMethodsImpl
+  protected val TypeTreeMethodsImpl: TypeTreeMethods
+
+  trait TypeTreeMethods:
     extension (self: TypeTree):
       /** Type of this type tree */
-      def tpe: Type = reflectSelf.TypeTree_tpe(self)
+      def tpe: Type
     end extension
-  end TypeTreeOps
+  end TypeTreeMethods
 
-  given TypeTest[Tree, Inferred] = reflectSelf.Inferred_TypeTest
+  /** Type tree representing an inferred type */
+  type Inferred <: TypeTree
+
+  given TypeTest[Tree, Inferred] = InferredTypeTest
+  protected val InferredTypeTest: TypeTest[Tree, Inferred]
 
   /** TypeTree containing an inferred type */
-  object Inferred:
-    def apply(tpe: Type): Inferred =
-      reflectSelf.Inferred_apply(tpe)
+  val Inferred: InferredModule
+
+  trait InferredModule { this: Inferred.type =>
+    def apply(tpe: Type): Inferred
     /** Matches a TypeTree containing an inferred type */
-    def unapply(x: Inferred): Boolean = true
-  end Inferred
+    def unapply(x: Inferred): Boolean
+  }
 
-  given TypeTest[Tree, TypeIdent] = reflectSelf.TypeIdent_TypeTest
+  /** Type tree representing a reference to definition with a given name */
+  type TypeIdent <: TypeTree
 
-  object TypeIdent:
-    def apply(sym: Symbol): TypeTree =
-      reflectSelf.TypeRef_apply(sym)
-    def copy(original: Tree)(name: String): TypeIdent =
-      reflectSelf.TypeIdent_copy(original)(name)
-    def unapply(x: TypeIdent): Option[String] = Some(x.name)
-  end TypeIdent
+  given TypeTest[Tree, TypeIdent] = TypeIdentTypeTest
+  protected val TypeIdentTypeTest: TypeTest[Tree, TypeIdent]
 
-  given TypeIdentOps as AnyRef:
+  val TypeIdent: TypeIdentModule
+
+  trait TypeIdentModule { this: TypeIdent.type =>
+    def apply(sym: Symbol): TypeTree
+    def copy(original: Tree)(name: String): TypeIdent
+    def unapply(x: TypeIdent): Option[String]
+  }
+
+  given TypeIdentMethods as TypeIdentMethods = TypeIdentMethodsImpl
+  protected val TypeIdentMethodsImpl: TypeIdentMethods
+
+  trait TypeIdentMethods:
     extension (self: TypeIdent):
-      def name: String = reflectSelf.TypeIdent_name(self)
+      def name: String
     end extension
-  end TypeIdentOps
+  end TypeIdentMethods
 
-  given TypeTest[Tree, TypeSelect] = reflectSelf.TypeSelect_TypeTest
+  /** Type tree representing a selection of definition with a given name on a given term prefix */
+  type TypeSelect <: TypeTree
 
-  object TypeSelect:
-    def apply(qualifier: Term, name: String): TypeSelect =
-      reflectSelf.TypeSelect_apply(qualifier, name)
-    def copy(original: Tree)(qualifier: Term, name: String): TypeSelect =
-      reflectSelf.TypeSelect_copy(original)(qualifier, name)
-    def unapply(x: TypeSelect): Option[(Term, String)] =
-      Some((x.qualifier, x.name))
-  end TypeSelect
+  given TypeTest[Tree, TypeSelect] = TypeSelectTypeTest
+  protected val TypeSelectTypeTest: TypeTest[Tree, TypeSelect]
 
-  given TypeSelectOps as AnyRef:
+  val TypeSelect: TypeSelectModule
+
+  trait TypeSelectModule { this: TypeSelect.type =>
+    def apply(qualifier: Term, name: String): TypeSelect
+    def copy(original: Tree)(qualifier: Term, name: String): TypeSelect
+    def unapply(x: TypeSelect): Option[(Term, String)]
+  }
+
+  given TypeSelectMethods as TypeSelectMethods = TypeSelectMethodsImpl
+  protected val TypeSelectMethodsImpl: TypeSelectMethods
+
+  trait TypeSelectMethods:
     extension (self: TypeSelect):
-      def qualifier: Term = reflectSelf.TypeSelect_qualifier(self)
-      def name: String = reflectSelf.TypeSelect_name(self)
+      def qualifier: Term
+      def name: String
     end extension
-  end TypeSelectOps
+  end TypeSelectMethods
 
+  /** Type tree representing a selection of definition with a given name on a given type prefix */
+  type Projection <: TypeTree
 
-  given TypeTest[Tree, Projection] = reflectSelf.Projection_TypeTest
+  given TypeTest[Tree, Projection] = ProjectionTypeTest
+  protected val ProjectionTypeTest: TypeTest[Tree, Projection]
 
-  object Projection:
+  val Projection: ProjectionModule
+
+  trait ProjectionModule { this: Projection.type =>
     // TODO def apply(qualifier: TypeTree, name: String): Project
-    def copy(original: Tree)(qualifier: TypeTree, name: String): Projection =
-      reflectSelf.Projection_copy(original)(qualifier, name)
-    def unapply(x: Projection): Option[(TypeTree, String)] =
-      Some((x.qualifier, x.name))
-  end Projection
+    def copy(original: Tree)(qualifier: TypeTree, name: String): Projection
+    def unapply(x: Projection): Option[(TypeTree, String)]
+  }
 
-  given ProjectionOps as AnyRef:
+  given ProjectionMethods as ProjectionMethods = ProjectionMethodsImpl
+  protected val ProjectionMethodsImpl: ProjectionMethods
+
+  trait ProjectionMethods:
     extension (self: Projection):
-      def qualifier: TypeTree = reflectSelf.Projection_qualifier(self)
-      def name: String = reflectSelf.Projection_name(self)
+      def qualifier: TypeTree
+      def name: String
     end extension
-  end ProjectionOps
+  end ProjectionMethods
 
+  /** Type tree representing a singleton type */
+  type Singleton <: TypeTree
 
-  given TypeTest[Tree, Singleton] = reflectSelf.Singleton_TypeTest
+  given TypeTest[Tree, Singleton] = SingletonTypeTest
+  protected val SingletonTypeTest: TypeTest[Tree, Singleton]
 
-  object Singleton:
-    def apply(ref: Term): Singleton =
-      reflectSelf.Singleton_apply(ref)
-    def copy(original: Tree)(ref: Term): Singleton =
-      reflectSelf.Singleton_copy(original)(ref)
-    def unapply(x: Singleton): Option[Term] =
-      Some(x.ref)
-  end Singleton
+  val Singleton: SingletonModule
 
-  given SingletonOps as AnyRef:
+  trait SingletonModule { this: Singleton.type =>
+    def apply(ref: Term): Singleton
+    def copy(original: Tree)(ref: Term): Singleton
+    def unapply(x: Singleton): Option[Term]
+  }
+
+  given SingletonMethods as SingletonMethods = SingletonMethodsImpl
+  protected val SingletonMethodsImpl: SingletonMethods
+
+  trait SingletonMethods:
     extension (self: Singleton):
-      def ref: Term = reflectSelf.Singleton_ref(self)
+      def ref: Term
     end extension
-  end SingletonOps
+  end SingletonMethods
 
+  /** Type tree representing a type refinement */
+  type Refined <: TypeTree
 
-  given TypeTest[Tree, Refined] = reflectSelf.Refined_TypeTest
+  given TypeTest[Tree, Refined] = RefinedTypeTest
+  protected val RefinedTypeTest: TypeTest[Tree, Refined]
 
-  object Refined:
+  val Refined: RefinedModule
+
+  trait RefinedModule { this: Refined.type =>
     // TODO def apply(tpt: TypeTree, refinements: List[Definition]): Refined
-    def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
-      reflectSelf.Refined_copy(original)(tpt, refinements)
-    def unapply(x: Refined): Option[(TypeTree, List[Definition])] =
-      Some((x.tpt, x.refinements))
-  end Refined
+    def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined
+    def unapply(x: Refined): Option[(TypeTree, List[Definition])]
+  }
 
-  given RefinedOps as AnyRef:
+  given RefinedMethods as RefinedMethods = RefinedMethodsImpl
+  protected val RefinedMethodsImpl: RefinedMethods
+
+  trait RefinedMethods:
     extension (self: Refined):
-      def tpt: TypeTree = reflectSelf.Refined_tpt(self)
-      def refinements: List[Definition] = reflectSelf.Refined_refinements(self)
+      def tpt: TypeTree
+      def refinements: List[Definition]
     end extension
-  end RefinedOps
+  end RefinedMethods
 
+  /** Type tree representing a type application */
+  type Applied <: TypeTree
 
-  given TypeTest[Tree, Applied] = reflectSelf.Applied_TypeTest
+  given TypeTest[Tree, Applied] = AppliedTypeTest
+  protected val AppliedTypeTest: TypeTest[Tree, Applied]
 
-  object Applied:
-    def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied =
-      reflectSelf.Applied_apply(tpt, args)
-    def copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied =
-      reflectSelf.Applied_copy(original)(tpt, args)
-    def unapply(x: Applied): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
-      Some((x.tpt, x.args))
-  end Applied
+  val Applied: AppliedModule
 
-  given AppliedOps as AnyRef:
+  trait AppliedModule { this: Applied.type =>
+    def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
+    def copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
+    def unapply(x: Applied): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])]
+  }
+
+  given AppliedMethods as AppliedMethods = AppliedMethodsImpl
+  protected val AppliedMethodsImpl: AppliedMethods
+
+  trait AppliedMethods:
     extension (self: Applied):
-      def tpt: TypeTree = reflectSelf.Applied_tpt(self)
-      def args: List[Tree /*TypeTree | TypeBoundsTree*/] = reflectSelf.Applied_args(self)
+      def tpt: TypeTree
+      def args: List[Tree /*TypeTree | TypeBoundsTree*/]
     end extension
-  end AppliedOps
+  end AppliedMethods
 
+  /** Type tree representing an annotated type */
+  type Annotated <: TypeTree
 
-  given TypeTest[Tree, Annotated] =
-    reflectSelf.Annotated_TypeTest
+  given TypeTest[Tree, Annotated] = AnnotatedTypeTest
+  protected val AnnotatedTypeTest: TypeTest[Tree, Annotated]
 
-  object Annotated:
-    def apply(arg: TypeTree, annotation: Term): Annotated =
-      reflectSelf.Annotated_apply(arg, annotation)
-    def copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated =
-      reflectSelf.Annotated_copy(original)(arg, annotation)
-    def unapply(x: Annotated): Option[(TypeTree, Term)] =
-      Some((x.arg, x.annotation))
-  end Annotated
+  val Annotated: AnnotatedModule
 
-  given AnnotatedOps as AnyRef:
+  trait AnnotatedModule { this: Annotated.type =>
+    def apply(arg: TypeTree, annotation: Term): Annotated
+    def copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated
+    def unapply(x: Annotated): Option[(TypeTree, Term)]
+  }
+
+  given AnnotatedMethods as AnnotatedMethods = AnnotatedMethodsImpl
+  protected val AnnotatedMethodsImpl: AnnotatedMethods
+
+  trait AnnotatedMethods:
     extension (self: Annotated):
-      def arg: TypeTree = reflectSelf.Annotated_arg(self)
-      def annotation: Term = reflectSelf.Annotated_annotation(self)
+      def arg: TypeTree
+      def annotation: Term
     end extension
-  end AnnotatedOps
+  end AnnotatedMethods
 
+  /** Type tree representing a type match */
+  type MatchTypeTree <: TypeTree
 
-  given  as TypeTest[Tree, MatchTypeTree] =
-    reflectSelf.MatchTypeTree_TypeTest
+  given TypeTest[Tree, MatchTypeTree] = MatchTypeTreeTypeTest
+  protected val MatchTypeTreeTypeTest: TypeTest[Tree, MatchTypeTree]
 
-  object MatchTypeTree:
-    def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
-      reflectSelf.MatchTypeTree_apply(bound, selector, cases)
-    def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
-      reflectSelf.MatchTypeTree_copy(original)(bound, selector, cases)
-    def unapply(x: MatchTypeTree): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-      Some((x.bound, x.selector, x.cases))
-  end MatchTypeTree
+  val MatchTypeTree: MatchTypeTreeModule
 
-  given MatchTypeTreeOps as AnyRef:
+  trait MatchTypeTreeModule { this: MatchTypeTree.type =>
+    def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
+    def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
+    def unapply(x: MatchTypeTree): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])]
+  }
+
+  given MatchTypeTreeMethods as MatchTypeTreeMethods = MatchTypeTreeMethodsImpl
+  protected val MatchTypeTreeMethodsImpl: MatchTypeTreeMethods
+
+  trait MatchTypeTreeMethods:
     extension (self: MatchTypeTree):
-      def bound: Option[TypeTree] = reflectSelf.MatchTypeTree_bound(self)
-      def selector: TypeTree = reflectSelf.MatchTypeTree_selector(self)
-      def cases: List[TypeCaseDef] = reflectSelf.MatchTypeTree_cases(self)
+      def bound: Option[TypeTree]
+      def selector: TypeTree
+      def cases: List[TypeCaseDef]
     end extension
-  end MatchTypeTreeOps
+  end MatchTypeTreeMethods
 
+  /** Type tree representing a by name parameter */
+  type ByName <: TypeTree
 
-  given TypeTest[Tree, ByName] =
-    reflectSelf.ByName_TypeTest
+  given TypeTest[Tree, ByName] = ByNameTypeTest
+  protected val ByNameTypeTest: TypeTest[Tree, ByName]
 
-  object ByName:
-    def apply(result: TypeTree): ByName =
-      reflectSelf.ByName_apply(result)
-    def copy(original: Tree)(result: TypeTree): ByName =
-      reflectSelf.ByName_copy(original)(result)
-    def unapply(x: ByName): Option[TypeTree] =
-      Some(x.result)
-  end ByName
+  val ByName: ByNameModule
 
-  given ByNameOps as AnyRef:
+  trait ByNameModule { this: ByName.type =>
+    def apply(result: TypeTree): ByName
+    def copy(original: Tree)(result: TypeTree): ByName
+    def unapply(x: ByName): Option[TypeTree]
+  }
+
+  given ByNameMethods as ByNameMethods = ByNameMethodsImpl
+  protected val ByNameMethodsImpl: ByNameMethods
+
+  trait ByNameMethods:
     extension (self: ByName):
-      def result: TypeTree = reflectSelf.ByName_result(self)
+      def result: TypeTree
     end extension
-  end ByNameOps
+  end ByNameMethods
 
+  /** Type tree representing a lambda abstraction type */
+  type LambdaTypeTree <: TypeTree
 
-  given TypeTest[Tree, LambdaTypeTree] = reflectSelf.LambdaTypeTree_TypeTest
+  given TypeTest[Tree, LambdaTypeTree] = LambdaTypeTreeTypeTest
+  protected val LambdaTypeTreeTypeTest: TypeTest[Tree, LambdaTypeTree]
 
-  object LambdaTypeTree:
-    def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree =
-      reflectSelf.Lambdaapply(tparams, body)
-    def copy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree =
-      reflectSelf.Lambdacopy(original)(tparams, body)
-    def unapply(tree: LambdaTypeTree): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
-      Some((tree.tparams, tree.body))
-  end LambdaTypeTree
+  val LambdaTypeTree: LambdaTypeTreeModule
 
-  given LambdaTypeTreeOps as AnyRef:
+  trait LambdaTypeTreeModule { this: LambdaTypeTree.type =>
+    def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
+    def copy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
+    def unapply(tree: LambdaTypeTree): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)]
+  }
+
+  given LambdaTypeTreeMethods as LambdaTypeTreeMethods = LambdaTypeTreeMethodsImpl
+  protected val LambdaTypeTreeMethodsImpl: LambdaTypeTreeMethods
+
+  trait LambdaTypeTreeMethods:
     extension (self: LambdaTypeTree):
-      def tparams: List[TypeDef] = reflectSelf.Lambdatparams(self)
-      def body: Tree /*TypeTree | TypeBoundsTree*/ = reflectSelf.Lambdabody(self)
+      def tparams: List[TypeDef]
+      def body: Tree /*TypeTree | TypeBoundsTree*/
     end extension
-  end LambdaTypeTreeOps
+  end LambdaTypeTreeMethods
 
+  /** Type tree representing a type binding */
+  type TypeBind <: TypeTree
 
-  given TypeTest[Tree, TypeBind] = reflectSelf.TypeBind_TypeTest
+  given TypeTest[Tree, TypeBind] = TypeBindTypeTest
+  protected val TypeBindTypeTest: TypeTest[Tree, TypeBind]
 
-  object TypeBind:
+  val TypeBind: TypeBindModule
+
+  trait TypeBindModule { this: TypeBind.type =>
     // TODO def apply(name: String, tree: Tree): TypeBind
-    def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/): TypeBind =
-      reflectSelf.TypeBind_copy(original)(name, tpt)
-    def unapply(x: TypeBind): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
-      Some((x.name, x.body))
-  end TypeBind
+    def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/): TypeBind
+    def unapply(x: TypeBind): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)]
+  }
 
-  given TypeBindOps as AnyRef:
+  given TypeBindMethods as TypeBindMethods = TypeBindMethodsImpl
+  protected val TypeBindMethodsImpl: TypeBindMethods
+
+  trait TypeBindMethods:
     extension (self: TypeBind):
-      def name: String = reflectSelf.TypeBind_name(self)
-      def body: Tree /*TypeTree | TypeBoundsTree*/ = reflectSelf.TypeBind_body(self)
+      def name: String
+      def body: Tree /*TypeTree | TypeBoundsTree*/
     end extension
-  end TypeBindOps
+  end TypeBindMethods
 
+  /** Type tree within a block with aliases `{ type U1 = ... ; T[U1, U2] }` */
+  type TypeBlock <: TypeTree
 
-  given TypeTest[Tree, TypeBlock] = reflectSelf.TypeBlock_TypeTest
+  given TypeTest[Tree, TypeBlock] = TypeBlockTypeTest
+  protected val TypeBlockTypeTest: TypeTest[Tree, TypeBlock]
 
-  object TypeBlock:
-    def apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
-      reflectSelf.TypeBlock_apply(aliases, tpt)
-    def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
-      reflectSelf.TypeBlock_copy(original)(aliases, tpt)
-    def unapply(x: TypeBlock): Option[(List[TypeDef], TypeTree)] =
-      Some((x.aliases, x.tpt))
-  end TypeBlock
+  val TypeBlock: TypeBlockModule
 
-  given TypeBlockOps as AnyRef:
+  trait TypeBlockModule { this: TypeBlock.type =>
+    def apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
+    def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
+    def unapply(x: TypeBlock): Option[(List[TypeDef], TypeTree)]
+  }
+
+  given TypeBlockMethods as TypeBlockMethods = TypeBlockMethodsImpl
+  protected val TypeBlockMethodsImpl: TypeBlockMethods
+
+  trait TypeBlockMethods:
     extension (self: TypeBlock):
-      def aliases: List[TypeDef] = reflectSelf.TypeBlock_aliases(self)
-      def tpt: TypeTree = reflectSelf.TypeBlock_tpt(self)
+      def aliases: List[TypeDef]
+      def tpt: TypeTree
     end extension
-  end TypeBlockOps
-
+  end TypeBlockMethods
 
   // ----- TypeBoundsTrees ------------------------------------------------
 
-  given TypeTest[Tree, TypeBoundsTree] = reflectSelf.TypeBoundsTree_TypeTest
+  /** Type tree representing a type bound written in the source */
+  type TypeBoundsTree <: Tree /*TypeTree | TypeBoundsTree*/
 
-  object TypeBoundsTree:
-    def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)] =
-      Some((x.low, x.hi))
-  end TypeBoundsTree
+  given TypeTest[Tree, TypeBoundsTree] = TypeBoundsTreeTypeTest
+  protected val TypeBoundsTreeTypeTest: TypeTest[Tree, TypeBoundsTree]
 
-  given TypeBoundsTreeOps as AnyRef:
+  val TypeBoundsTree: TypeBoundsTreeModule
+
+  trait TypeBoundsTreeModule { this: TypeBoundsTree.type =>
+    def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)]
+  }
+
+  given TypeBoundsTreeMethods as TypeBoundsTreeMethods = TypeBoundsTreeMethodsImpl
+  protected val TypeBoundsTreeMethodsImpl: TypeBoundsTreeMethods
+
+  trait TypeBoundsTreeMethods:
     extension (self: TypeBoundsTree):
-      def tpe: TypeBounds = reflectSelf.TypeBoundsTree_tpe(self)
-      def low: TypeTree = reflectSelf.TypeBoundsTree_low(self)
-      def hi: TypeTree = reflectSelf.TypeBoundsTree_hi(self)
+      def tpe: TypeBounds
+      def low: TypeTree
+      def hi: TypeTree
     end extension
-  end TypeBoundsTreeOps
+  end TypeBoundsTreeMethods
 
+  /** Type tree representing wildcard type bounds written in the source.
+   *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
+   *  represents a type but has `TypeBound`a inside.
+   */
+  type WildcardTypeTree  <: Tree
 
-  given TypeTest[Tree, WildcardTypeTree] = reflectSelf.WildcardTypeTree_TypeTest
+  given TypeTest[Tree, WildcardTypeTree] = WildcardTypeTreeTypeTest
+  protected val WildcardTypeTreeTypeTest: TypeTest[Tree, WildcardTypeTree]
 
-  object WildcardTypeTree:
+  val WildcardTypeTree: WildcardTypeTreeModule
+
+  trait WildcardTypeTreeModule { this: WildcardTypeTree.type =>
     /** Matches a TypeBoundsTree containing wildcard type bounds */
-    def unapply(x: WildcardTypeTree): Boolean = true
-  end WildcardTypeTree
+    def unapply(x: WildcardTypeTree): Boolean
+  }
 
-  given WildcardTypeTreeOps as AnyRef:
+  given WildcardTypeTreeMethods as WildcardTypeTreeMethods = WildcardTypeTreeMethodsImpl
+  protected val WildcardTypeTreeMethodsImpl: WildcardTypeTreeMethods
+
+  trait WildcardTypeTreeMethods:
     extension (self: WildcardTypeTree):
-      def tpe: Type = reflectSelf.WildcardTypeTree_tpe(self)
+      def tpe: Type
     end extension
-  end WildcardTypeTreeOps
+  end WildcardTypeTreeMethods
 
   // ----- CaseDefs ------------------------------------------------
 
-  given TypeTest[Tree, CaseDef] = reflectSelf.CaseDef_TypeTest
+  /** Branch of a pattern match or catch clause */
+  type CaseDef <: Tree
 
-  object CaseDef:
-    def apply(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef =
-      reflectSelf.CaseDef_module_apply(pattern, guard, rhs)
+  given TypeTest[Tree, CaseDef] = CaseDefTypeTest
+  protected val CaseDefTypeTest: TypeTest[Tree, CaseDef]
 
-    def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef =
-      reflectSelf.CaseDef_module_copy(original)(pattern, guard, rhs)
+  val CaseDef: CaseDefModule
 
-    def unapply(x: CaseDef): Option[(Tree, Option[Term], Term)] =
-      Some((x.pattern, x.guard, x.rhs))
-  end CaseDef
+  trait CaseDefModule { this: CaseDef.type =>
+    def apply(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
+    def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
+    def unapply(x: CaseDef): Option[(Tree, Option[Term], Term)]
+  }
 
-  given CaseDefOps as AnyRef:
-    extension (caseDef: CaseDef):
-      def pattern: Tree = reflectSelf.CaseDef_pattern(caseDef)
-      def guard: Option[Term] = reflectSelf.CaseDef_guard(caseDef)
-      def rhs: Term = reflectSelf.CaseDef_rhs(caseDef)
+  given CaseDefMethods as CaseDefMethods = CaseDefMethodsImpl
+  protected val CaseDefMethodsImpl: CaseDefMethods
+
+  trait CaseDefMethods:
+    extension (self: CaseDef):
+      def pattern: Tree
+      def guard: Option[Term]
+      def rhs: Term
     end extension
-  end CaseDefOps
+  end CaseDefMethods
 
+  /** Branch of a type pattern match */
+  type TypeCaseDef <: Tree
 
-  given TypeTest[Tree, TypeCaseDef] =
-    reflectSelf.TypeCaseDef_TypeTest
+  given TypeTest[Tree, TypeCaseDef] = TypeCaseDefTypeTest
+  protected val TypeCaseDefTypeTest: TypeTest[Tree, TypeCaseDef]
 
+  val TypeCaseDef: TypeCaseDefModule
 
-  object TypeCaseDef:
-    def apply(pattern: TypeTree, rhs: TypeTree): TypeCaseDef =
-      reflectSelf.TypeCaseDef_module_apply(pattern, rhs)
+  trait TypeCaseDefModule { this: TypeCaseDef.type =>
+    def apply(pattern: TypeTree, rhs: TypeTree): TypeCaseDef
+    def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree): TypeCaseDef
+    def unapply(tree: TypeCaseDef): Option[(TypeTree, TypeTree)]
+  }
 
-    def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree): TypeCaseDef =
-      reflectSelf.TypeCaseDef_module_copy(original)(pattern, rhs)
+  given TypeCaseDefMethods as TypeCaseDefMethods = TypeCaseDefMethodsImpl
+  protected val TypeCaseDefMethodsImpl: TypeCaseDefMethods
 
-    def unapply(tree: TypeCaseDef): Option[(TypeTree, TypeTree)] =
-      Some((tree.pattern, tree.rhs))
-  end TypeCaseDef
-
-  given TypeCaseDefOps as AnyRef:
-    extension (caseDef: TypeCaseDef):
-      def pattern: TypeTree = reflectSelf.TypeCaseDef_pattern(caseDef)
-      def rhs: TypeTree = reflectSelf.TypeCaseDef_rhs(caseDef)
+  trait TypeCaseDefMethods:
+    extension (self: TypeCaseDef):
+      def pattern: TypeTree
+      def rhs: TypeTree
     end extension
-  end TypeCaseDefOps
+  end TypeCaseDefMethods
 
   // ----- Patterns ------------------------------------------------
 
-  given TypeTest[Tree, Bind] = reflectSelf.Bind_TypeTest
+  /** Pattern representing a `_ @ _` binding. */
+  type Bind <: Tree
 
-  object Bind:
-    def apply(sym: Symbol, pattern: Tree): Bind =
-      reflectSelf.Tree_Bind_module_apply(sym, pattern)
-    def copy(original: Tree)(name: String, pattern: Tree): Bind =
-      reflectSelf.Tree_Bind_module_copy(original)(name, pattern)
-    def unapply(pattern: Bind): Option[(String, Tree)] =
-      Some((pattern.name, pattern.pattern))
-  end Bind
+  given TypeTest[Tree, Bind] = BindTypeTest
+  protected val BindTypeTest: TypeTest[Tree, Bind]
 
-  given BindOps as AnyRef:
-    extension (bind: Bind):
-      def name: String = reflectSelf.Tree_Bind_name(bind)
-      def pattern: Tree = reflectSelf.Tree_Bind_pattern(bind)
+  val Bind: BindModule
+
+  trait BindModule { this: Bind.type =>
+    def apply(sym: Symbol, pattern: Tree): Bind
+    def copy(original: Tree)(name: String, pattern: Tree): Bind
+    def unapply(pattern: Bind): Option[(String, Tree)]
+  }
+
+  given BindMethods as BindMethods = BindMethodsImpl
+  protected val BindMethodsImpl: BindMethods
+
+  trait BindMethods:
+    extension (self: Bind):
+      def name: String
+      def pattern: Tree
     end extension
-  end BindOps
+  end BindMethods
 
+  /** Pattern representing a `Xyz(...)` unapply. */
+  type Unapply <: Tree
 
-  given TypeTest[Tree, Unapply] = reflectSelf.Unapply_TypeTest
+  given TypeTest[Tree, Unapply] = UnapplyTypeTest
+  protected val UnapplyTypeTest: TypeTest[Tree, Unapply]
 
-  object Unapply:
+  val Unapply: UnapplyModule
+
+  trait UnapplyModule { this: Unapply.type =>
     // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
-    def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
-      reflectSelf.Tree_Unapply_module_copy(original)(fun, implicits, patterns)
-    def unapply(x: Unapply): Option[(Term, List[Term], List[Tree])] =
-      Some((x.fun, x.implicits, x.patterns))
-  end Unapply
+    def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
+    def unapply(x: Unapply): Option[(Term, List[Term], List[Tree])]
+  }
 
-  given UnapplyOps as AnyRef:
-    extension (unapply: Unapply):
-      def fun: Term = reflectSelf.Tree_Unapply_fun(unapply)
-      def implicits: List[Term] = reflectSelf.Tree_Unapply_implicits(unapply)
-      def patterns: List[Tree] = reflectSelf.Tree_Unapply_patterns(unapply)
+  given UnapplyMethods as UnapplyMethods = UnapplyMethodsImpl
+  protected val UnapplyMethodsImpl: UnapplyMethods
+
+  trait UnapplyMethods:
+    extension (self: Unapply):
+      def fun: Term
+      def implicits: List[Term]
+      def patterns: List[Tree]
     end extension
-  end UnapplyOps
+  end UnapplyMethods
 
+  /** Pattern representing `X | Y | ...` alternatives. */
+  type Alternatives <: Tree
 
-  given TypeTest[Tree, Alternatives] = reflectSelf.Alternatives_TypeTest
+  given TypeTest[Tree, Alternatives] = AlternativesTypeTest
+  protected val AlternativesTypeTest: TypeTest[Tree, Alternatives]
 
-  object Alternatives:
-    def apply(patterns: List[Tree]): Alternatives =
-      reflectSelf.Tree_Alternatives_module_apply(patterns)
-    def copy(original: Tree)(patterns: List[Tree]): Alternatives =
-      reflectSelf.Tree_Alternatives_module_copy(original)(patterns)
-    def unapply(x: Alternatives): Option[List[Tree]] =
-      Some(x.patterns)
-  end Alternatives
+  val Alternatives: AlternativesModule
 
-  given AlternativesOps as AnyRef:
-    extension (alternatives: Alternatives):
-      def patterns: List[Tree] = reflectSelf.Tree_Alternatives_patterns(alternatives)
+  trait AlternativesModule { this: Alternatives.type =>
+    def apply(patterns: List[Tree]): Alternatives
+    def copy(original: Tree)(patterns: List[Tree]): Alternatives
+    def unapply(x: Alternatives): Option[List[Tree]]
+  }
+
+  given AlternativesMethods as AlternativesMethods = AlternativesMethodsImpl
+  protected val AlternativesMethodsImpl: AlternativesMethods
+
+  trait AlternativesMethods:
+    extension (self: Alternatives):
+      def patterns: List[Tree]
     end extension
-  end AlternativesOps
-
-
+  end AlternativesMethods
 
   //////////////////////
   // IMPORT SELECTORS //
   /////////////////////
 
-  given TypeTest[ImportSelector, SimpleSelector] = reflectSelf.SimpleSelector_TypeTest
+  /** Import selectors:
+   *   * SimpleSelector: `.bar` in `import foo.bar`
+   *   * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
+   *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
+   */
+  type ImportSelector <: AnyRef
 
-  object SimpleSelector:
-    def unapply(x: SimpleSelector): Option[Id] = Some(x.selection)
-  end SimpleSelector
+  val ImportSelector: ImportSelectorModule
 
-  given SimpleSelectorOps as AnyRef:
+  trait ImportSelectorModule { this: ImportSelector.type => }
+
+  given TypeTest[ImportSelector, SimpleSelector] = SimpleSelectorTypeTest
+  protected val SimpleSelectorTypeTest: TypeTest[ImportSelector, SimpleSelector]
+
+  val SimpleSelector: SimpleSelectorModule
+
+  trait SimpleSelectorModule { this: SimpleSelector.type =>
+    def unapply(x: SimpleSelector): Option[Id]
+  }
+
+  /** Simple import selector: `.bar` in `import foo.bar` */
+  type SimpleSelector <: ImportSelector
+
+  given SimpleSelectorMethods as SimpleSelectorMethods = SimpleSelectorMethodsImpl
+  protected val SimpleSelectorMethodsImpl: SimpleSelectorMethods
+
+  trait SimpleSelectorMethods:
     extension (self: SimpleSelector):
-      def selection: Id =
-        reflectSelf.SimpleSelector_selection(self)
+      def selection: Id
     end extension
-  end SimpleSelectorOps
+  end SimpleSelectorMethods
 
+  /** Rename import selector: `.{bar => baz}` in `import foo.{bar => baz}` */
+  type RenameSelector <: ImportSelector
 
-  given TypeTest[ImportSelector, RenameSelector] = reflectSelf.RenameSelector_TypeTest
+  given TypeTest[ImportSelector, RenameSelector] = RenameSelectorTypeTest
+  protected val RenameSelectorTypeTest: TypeTest[ImportSelector, RenameSelector]
 
-  object RenameSelector:
-    def unapply(x: RenameSelector): Option[(Id, Id)] = Some((x.from, x.to))
-  end RenameSelector
+  val RenameSelector: RenameSelectorModule
 
-  given RenameSelectorOps as AnyRef:
+  trait RenameSelectorModule { this: RenameSelector.type =>
+    def unapply(x: RenameSelector): Option[(Id, Id)]
+  }
+
+  /** Omit import selector: `.{bar => _}` in `import foo.{bar => _}` */
+  type OmitSelector <: ImportSelector
+
+  given RenameSelectorMethods as RenameSelectorMethods = RenameSelectorMethodsImpl
+  protected val RenameSelectorMethodsImpl: RenameSelectorMethods
+
+  trait RenameSelectorMethods:
     extension (self: RenameSelector):
-      def from: Id =
-        reflectSelf.RenameSelector_from(self)
-
-      def to: Id =
-        reflectSelf.RenameSelector_to(self)
+      def from: Id
+      def to: Id
     end extension
-  end RenameSelectorOps
+  end RenameSelectorMethods
 
+  given TypeTest[ImportSelector, OmitSelector] = OmitSelectorTypeTest
+  protected val OmitSelectorTypeTest: TypeTest[ImportSelector, OmitSelector]
 
-  given TypeTest[ImportSelector, OmitSelector] = reflectSelf.OmitSelector_TypeTest
+  val OmitSelector: OmitSelectorModule
 
-  object OmitSelector:
-    def unapply(x: OmitSelector): Option[Id] = Some(x.omitted)
-  end OmitSelector
+  trait OmitSelectorModule { this: OmitSelector.type =>
+    def unapply(x: OmitSelector): Option[Id]
+  }
 
-  given OmitSelectorOps as AnyRef:
+  given OmitSelectorMethods as OmitSelectorMethods = OmitSelectorMethodsImpl
+  protected val OmitSelectorMethodsImpl: OmitSelectorMethods
+
+  trait OmitSelectorMethods:
     extension (self: OmitSelector):
-      def omitted: Id =
-        reflectSelf.SimpleSelector_omitted(self)
-  end OmitSelectorOps
-
+      def omitted: Id
+  end OmitSelectorMethods
 
   ///////////////
   //   TYPES   //
@@ -1345,44 +1731,44 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   // ----- Types ----------------------------------------------------
 
-  given TypeTest[Type, Type] = reflectSelf.Type_TypeTest
+  /** A type, type constructors, type bounds or NoPrefix */
+  type Type
 
-  object Type:
+  val Type: TypeModule
 
+  trait TypeModule { this: Type.type =>
     /** Returns the type or kind (Type) of T */
-    def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): Type =
-      qtype.asInstanceOf[scala.internal.quoted.Type[TypeTree]].typeTree.tpe
+    def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): Type
 
-    def typeConstructorOf(clazz: Class[_]): Type =
-      reflectSelf.Type_ofErasedClass(clazz)
-  end Type
+    /** Returns the type constructor of the runtime (erased) class */
+    def typeConstructorOf(clazz: Class[?]): Type
+  }
 
-  given TypeOps as AnyRef:
+  given TypeMethods as TypeMethods = TypeMethodsImpl
+  protected val TypeMethodsImpl: TypeMethods
+
+  trait TypeMethods {
     extension (self: Type):
 
       /** Shows the tree as extractors */
-      def showExtractors: String =
-        new ExtractorsPrinter[reflectSelf.type](reflectSelf).showType(self)
+      def showExtractors: String
 
       /** Shows the tree as fully typed source code */
-      def show: String =
-        self.showWith(SyntaxHighlight.plain)
+      def show: String
 
       /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight): String =
-        new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showType(self)
+      def showWith(syntaxHighlight: SyntaxHighlight): String
 
       /** Convert `Type` to an `quoted.Type[_]` */
-      def seal: scala.quoted.Type[_] =
-        new scala.internal.quoted.Type(Inferred(self), reflectSelf.compilerId)
+      def seal: scala.quoted.Type[_]
 
       /** Is `self` type the same as `that` type?
        *  This is the case iff `self <:< that` and `that <:< self`.
        */
-      def =:=(that: Type): Boolean = reflectSelf.Type_isTypeEq(self)(that)
+      def =:=(that: Type): Boolean
 
       /** Is this type a subtype of that type? */
-      def <:<(that: Type): Boolean = reflectSelf.Type_isSubType(self)(that)
+      def <:<(that: Type): Boolean
 
       /** Widen from singleton type to its underlying non-singleton
        *  base type by applying one or more `underlying` dereferences,
@@ -1393,32 +1779,32 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
        *  def o: Outer
        *  <o.x.type>.widen = o.C
        */
-      def widen: Type = reflectSelf.Type_widen(self)
+      def widen: Type
 
       /** Widen from TermRef to its underlying non-termref
         *  base type, while also skipping `=>T` types.
         */
-      def widenTermRefExpr: Type = reflectSelf.Type_widenTermRefExpr(self)
+      def widenTermRefExpr: Type
 
       /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
         *  TypeVars until type is no longer alias type, annotated type, LazyRef,
         *  or instantiated type variable.
         */
-      def dealias: Type = reflectSelf.Type_dealias(self)
+      def dealias: Type
 
       /** A simplified version of this type which is equivalent wrt =:= to this type.
        *  Reduces typerefs, applied match types, and and or types.
        */
-      def simplified: Type = reflectSelf.Type_simplified(self)
+      def simplified: Type
 
-      def classSymbol: Option[Symbol] = reflectSelf.Type_classSymbol(self)
-      def typeSymbol: Symbol = reflectSelf.Type_typeSymbol(self)
-      def termSymbol: Symbol = reflectSelf.Type_termSymbol(self)
-      def isSingleton: Boolean = reflectSelf.Type_isSingleton(self)
-      def memberType(member: Symbol): Type = reflectSelf.Type_memberType(self)(member)
+      def classSymbol: Option[Symbol]
+      def typeSymbol: Symbol
+      def termSymbol: Symbol
+      def isSingleton: Boolean
+      def memberType(member: Symbol): Type
 
       /** The base classes of this type with the class itself as first element. */
-      def baseClasses: List[Symbol] = reflectSelf.Type_baseClasses(self)
+      def baseClasses: List[Symbol]
 
       /** The least type instance of given class which is a super-type
        *  of this type.  Example:
@@ -1428,11 +1814,10 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
        *    ThisType(C).baseType(D) = p.D[Int]
        * }}}
        */
-      def baseType(cls: Symbol): Type = reflectSelf.Type_baseType(self)(cls)
+      def baseType(cls: Symbol): Type
 
       /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-      def derivesFrom(cls: Symbol): Boolean =
-        reflectSelf.Type_derivesFrom(self)(cls)
+      def derivesFrom(cls: Symbol): Boolean
 
       /** Is this type a function type?
        *
@@ -1443,263 +1828,364 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
        *     - returns true for `given Int => Int` and `erased Int => Int`
        *     - returns false for `List[Int]`, despite that `List[Int] <:< Int => Int`.
        */
-      def isFunctionType: Boolean = reflectSelf.Type_isFunctionType(self)
+      def isFunctionType: Boolean
 
       /** Is this type an context function type?
        *
        *  @see `isFunctionType`
        */
-      def isContextFunctionType: Boolean = reflectSelf.Type_isContextFunctionType(self)
+      def isContextFunctionType: Boolean
 
       /** Is this type an erased function type?
        *
        *  @see `isFunctionType`
        */
-      def isErasedFunctionType: Boolean = reflectSelf.Type_isErasedFunctionType(self)
+      def isErasedFunctionType: Boolean
 
       /** Is this type a dependent function type?
        *
        *  @see `isFunctionType`
        */
-      def isDependentFunctionType: Boolean = reflectSelf.Type_isDependentFunctionType(self)
+      def isDependentFunctionType: Boolean
 
       /** The type <this . sym>, reduced if possible */
-      def select(sym: Symbol): Type = reflectSelf.Type_select(self)(sym)
+      def select(sym: Symbol): Type
 
       /** The current type applied to given type arguments: `this[targ]` */
-      def appliedTo(targ: Type): Type = reflectSelf.Type_appliedTo(self)(List(targ))
+      def appliedTo(targ: Type): Type
 
       /** The current type applied to given type arguments: `this[targ0, ..., targN]` */
-      def appliedTo(targs: List[Type]): Type = reflectSelf.Type_appliedTo(self)(targs)
+      def appliedTo(targs: List[Type]): Type
 
     end extension
-  end TypeOps
+  }
 
-  given TypeTest[Type, ConstantType] = reflectSelf.ConstantType_TypeTest
+  /** A singleton type representing a known constant value */
+  type ConstantType <: Type
 
-  object ConstantType:
-    def apply(x : Constant): ConstantType = reflectSelf.ConstantType_apply(x)
-    def unapply(x: ConstantType): Option[Constant] = Some(x.constant)
-  end ConstantType
+  given TypeTest[Type, ConstantType] = ConstantTypeTypeTest
+  protected val ConstantTypeTypeTest: TypeTest[Type, ConstantType]
 
-  given ConstantTypeOps as AnyRef:
+  val ConstantType: ConstantTypeModule
+
+  trait ConstantTypeModule { this: ConstantType.type =>
+    def apply(x : Constant): ConstantType
+    def unapply(x: ConstantType): Option[Constant]
+  }
+
+  given ConstantTypeMethods as ConstantTypeMethods = ConstantTypeMethodsImpl
+  protected val ConstantTypeMethodsImpl: ConstantTypeMethods
+
+  trait ConstantTypeMethods:
     extension (self: ConstantType):
-      def constant: Constant = reflectSelf.ConstantType_constant(self)
+      def constant: Constant
     end extension
-  end ConstantTypeOps
+  end ConstantTypeMethods
 
+  /** Type of a reference to a term symbol */
+  type TermRef <: Type
 
-  given TypeTest[Type, TermRef] = reflectSelf.TermRef_TypeTest
+  given TypeTest[Type, TermRef] = TermRefTypeTest
+  protected val TermRefTypeTest: TypeTest[Type, TermRef]
 
-  object TermRef:
-    def apply(qual: Type, name: String): TermRef =
-      reflectSelf.TermRef_apply(qual, name)
-    def unapply(x: TermRef): Option[(Type, String)] =
-      Some((x.qualifier, x.name))
-  end TermRef
+  val TermRef: TermRefModule
 
-  given TermRefOps as AnyRef:
+  trait TermRefModule { this: TermRef.type =>
+    def apply(qual: Type, name: String): TermRef
+    def unapply(x: TermRef): Option[(Type, String)]
+  }
+
+  given TermRefMethods as TermRefMethods = TermRefMethodsImpl
+  protected val TermRefMethodsImpl: TermRefMethods
+
+  trait TermRefMethods:
     extension (self: TermRef):
-      def qualifier: Type = reflectSelf.TermRef_qualifier(self)
-      def name: String = reflectSelf.TermRef_name(self)
+      def qualifier: Type
+      def name: String
     end extension
-  end TermRefOps
+  end TermRefMethods
 
+  /** Type of a reference to a type symbol */
+  type TypeRef <: Type
 
-  given TypeTest[Type, TypeRef] = reflectSelf.TypeRef_TypeTest
+  given TypeTest[Type, TypeRef] = TypeRefTypeTest
+  protected val TypeRefTypeTest: TypeTest[Type, TypeRef]
 
-  object TypeRef:
-    def unapply(x: TypeRef): Option[(Type, String)] =
-      Some((x.qualifier, x.name))
-  end TypeRef
+  val TypeRef: TypeRefModule
 
-  given TypeRefOps as AnyRef:
+  trait TypeRefModule { this: TypeRef.type =>
+    def unapply(x: TypeRef): Option[(Type, String)]
+  }
+
+  given TypeRefMethods as TypeRefMethods = TypeRefMethodsImpl
+  protected val TypeRefMethodsImpl: TypeRefMethods
+
+  trait TypeRefMethods:
     extension (self: TypeRef):
-      def qualifier: Type = reflectSelf.TypeRef_qualifier(self)
-      def name: String = reflectSelf.TypeRef_name(self)
-      def isOpaqueAlias: Boolean = reflectSelf.TypeRef_isOpaqueAlias(self)
-      def translucentSuperType: Type = reflectSelf.TypeRef_translucentSuperType(self)
+      def qualifier: Type
+      def name: String
+      def isOpaqueAlias: Boolean
+      def translucentSuperType: Type
     end extension
-  end TypeRefOps
+  end TypeRefMethods
 
+  /** Type of a `super` reference */
+  type SuperType <: Type
 
-  given TypeTest[Type, SuperType] = reflectSelf.SuperType_TypeTest
+  given TypeTest[Type, SuperType] = SuperTypeTypeTest
+  protected val SuperTypeTypeTest: TypeTest[Type, SuperType]
 
-  object SuperType:
-    def apply(thistpe: Type, supertpe: Type): SuperType =
-      reflectSelf.SuperType_apply(thistpe, supertpe)
+  val SuperType: SuperTypeModule
 
-    def unapply(x: SuperType): Option[(Type, Type)] =
-      Some((x.thistpe, x.supertpe))
-  end SuperType
+  trait SuperTypeModule { this: SuperType.type =>
+    def apply(thistpe: Type, supertpe: Type): SuperType
+    def unapply(x: SuperType): Option[(Type, Type)]
+  }
 
-  given SuperTypeOps as AnyRef:
+  given SuperTypeMethods as SuperTypeMethods = SuperTypeMethodsImpl
+  protected val SuperTypeMethodsImpl: SuperTypeMethods
+
+  trait SuperTypeMethods { this: SuperTypeMethods =>
     extension (self: SuperType):
-      def thistpe: Type = reflectSelf.SuperType_thistpe(self)
-      def supertpe: Type = reflectSelf.SuperType_supertpe(self)
+      def thistpe: Type
+      def supertpe: Type
     end extension
-  end SuperTypeOps
+  }
 
+  /** A type with a type refinement `T { type U }` */
+  type Refinement <: Type
 
-  given TypeTest[Type, Refinement] = reflectSelf.Refinement_TypeTest
+  given TypeTest[Type, Refinement] = RefinementTypeTest
+  protected val RefinementTypeTest: TypeTest[Type, Refinement]
 
-  object Refinement:
-    def apply(parent: Type, name: String, info: Type): Refinement =
-      reflectSelf.Refinement_apply(parent, name, info)
+  val Refinement: RefinementModule
 
-    def unapply(x: Refinement): Option[(Type, String, Type)] =
-      Some((x.parent, x.name, x.info))
-  end Refinement
+  trait RefinementModule { this: Refinement.type =>
+    def apply(parent: Type, name: String, info: Type): Refinement
+    def unapply(x: Refinement): Option[(Type, String, Type)]
+  }
 
-  given RefinementOps as AnyRef:
+  given RefinementMethods as RefinementMethods = RefinementMethodsImpl
+  protected val RefinementMethodsImpl: RefinementMethods
+
+  trait RefinementMethods:
     extension (self: Refinement):
-      def parent: Type = reflectSelf.Refinement_parent(self)
-      def name: String = reflectSelf.Refinement_name(self)
-      def info: Type = reflectSelf.Refinement_info(self)
+      def parent: Type
+      def name: String
+      def info: Type
     end extension
-  end RefinementOps
+  end RefinementMethods
 
+  /** A higher kinded type applied to some types `T[U]` */
+  type AppliedType <: Type
 
-  given TypeTest[Type, AppliedType] = reflectSelf.AppliedType_TypeTest
+  given TypeTest[Type, AppliedType] = AppliedTypeTypeTest
+  protected val AppliedTypeTypeTest: TypeTest[Type, AppliedType]
 
-  object AppliedType:
-    def unapply(x: AppliedType): Option[(Type, List[Type])] =
-      Some((x.tycon, x.args))
-  end AppliedType
+  val AppliedType: AppliedTypeModule
 
-  given AppliedTypeOps as AnyRef:
+  trait AppliedTypeModule { this: AppliedType.type =>
+    def unapply(x: AppliedType): Option[(Type, List[Type])]
+  }
+
+  given AppliedTypeMethods as AppliedTypeMethods = AppliedTypeMethodsImpl
+  protected val AppliedTypeMethodsImpl: AppliedTypeMethods
+
+  trait AppliedTypeMethods:
     extension (self: AppliedType):
-      def tycon: Type = reflectSelf.AppliedType_tycon(self)
-      def args: List[Type] = reflectSelf.AppliedType_args(self)
+      def tycon: Type
+      def args: List[Type]
     end extension
-  end AppliedTypeOps
+  end AppliedTypeMethods
 
+  /** A type with an anottation `T @foo` */
+  type AnnotatedType <: Type
 
-  given TypeTest[Type, AnnotatedType] = reflectSelf.AnnotatedType_TypeTest
+  given TypeTest[Type, AnnotatedType] = AnnotatedTypeTypeTest
+  protected val AnnotatedTypeTypeTest: TypeTest[Type, AnnotatedType]
 
-  object AnnotatedType:
-    def apply(underlying: Type, annot: Term): AnnotatedType =
-      reflectSelf.AnnotatedType_apply(underlying, annot)
-    def unapply(x: AnnotatedType): Option[(Type, Term)] =
-      Some((x.underlying, x.annot))
-  end AnnotatedType
+  val AnnotatedType: AnnotatedTypeModule
 
-  given AnnotatedTypeOps as AnyRef:
+  trait AnnotatedTypeModule { this: AnnotatedType.type =>
+    def apply(underlying: Type, annot: Term): AnnotatedType
+    def unapply(x: AnnotatedType): Option[(Type, Term)]
+  }
+
+  given AnnotatedTypeMethods as AnnotatedTypeMethods = AnnotatedTypeMethodsImpl
+  protected val AnnotatedTypeMethodsImpl: AnnotatedTypeMethods
+
+  trait AnnotatedTypeMethods:
     extension (self: AnnotatedType):
-      def underlying: Type = reflectSelf.AnnotatedType_underlying(self)
-      def annot: Term = reflectSelf.AnnotatedType_annot(self)
+      def underlying: Type
+      def annot: Term
     end extension
-  end AnnotatedTypeOps
+  end AnnotatedTypeMethods
 
+  /** Intersection type `T & U` */
+  type AndType <: Type
 
-  given TypeTest[Type, AndType] = reflectSelf.AndType_TypeTest
+  given TypeTest[Type, AndType] = AndTypeTypeTest
+  protected val AndTypeTypeTest: TypeTest[Type, AndType]
 
-  object AndType:
-    def apply(lhs: Type, rhs: Type): AndType =
-      reflectSelf.AndType_apply(lhs, rhs)
-    def unapply(x: AndType): Option[(Type, Type)] =
-      Some((x.left, x.right))
-  end AndType
+  val AndType: AndTypeModule
 
-  given AndTypeOps as AnyRef:
+  trait AndTypeModule { this: AndType.type =>
+    def apply(lhs: Type, rhs: Type): AndType
+    def unapply(x: AndType): Option[(Type, Type)]
+  }
+
+  given AndTypeMethods as AndTypeMethods = AndTypeMethodsImpl
+  protected val AndTypeMethodsImpl: AndTypeMethods
+
+  trait AndTypeMethods:
     extension (self: AndType):
-      def left: Type = reflectSelf.AndType_left(self)
-      def right: Type = reflectSelf.AndType_right(self)
+      def left: Type
+      def right: Type
     end extension
-  end AndTypeOps
+  end AndTypeMethods
 
+  /** Union type `T | U` */
+  type OrType <: Type
 
-  given TypeTest[Type, OrType] = reflectSelf.OrType_TypeTest
+  given TypeTest[Type, OrType] = OrTypeTypeTest
+  protected val OrTypeTypeTest: TypeTest[Type, OrType]
 
-  object OrType:
-    def apply(lhs: Type, rhs: Type): OrType = reflectSelf.OrType_apply(lhs, rhs)
-    def unapply(x: OrType): Option[(Type, Type)] =
-      Some((x.left, x.right))
-  end OrType
+  val OrType: OrTypeModule
 
-  given OrTypeOps as AnyRef:
+  trait OrTypeModule { this: OrType.type =>
+    def apply(lhs: Type, rhs: Type): OrType
+    def unapply(x: OrType): Option[(Type, Type)]
+  }
+
+  given OrTypeMethods as OrTypeMethods = OrTypeMethodsImpl
+  protected val OrTypeMethodsImpl: OrTypeMethods
+
+  trait OrTypeMethods:
     extension (self: OrType):
-      def left: Type = reflectSelf.OrType_left(self)
-      def right: Type = reflectSelf.OrType_right(self)
+      def left: Type
+      def right: Type
     end extension
-  end OrTypeOps
+  end OrTypeMethods
 
+  /** Type match `T match { case U => ... }` */
+  type MatchType <: Type
 
-  given TypeTest[Type, MatchType] = reflectSelf.MatchType_TypeTest
+  given TypeTest[Type, MatchType] = MatchTypeTypeTest
+  protected val MatchTypeTypeTest: TypeTest[Type, MatchType]
 
-  object MatchType:
-    def apply(bound: Type, scrutinee: Type, cases: List[Type]): MatchType =
-      reflectSelf.MatchType_apply(bound, scrutinee, cases)
-    def unapply(x: MatchType): Option[(Type, Type, List[Type])] =
-      Some((x.bound, x.scrutinee, x.cases))
-  end MatchType
+  val MatchType: MatchTypeModule
 
-  given MatchTypeOps as AnyRef:
+  trait MatchTypeModule { this: MatchType.type =>
+    def apply(bound: Type, scrutinee: Type, cases: List[Type]): MatchType
+    def unapply(x: MatchType): Option[(Type, Type, List[Type])]
+  }
+
+  given MatchTypeMethods as MatchTypeMethods = MatchTypeMethodsImpl
+  protected val MatchTypeMethodsImpl: MatchTypeMethods
+
+  trait MatchTypeMethods:
     extension (self: MatchType):
-      def bound: Type = reflectSelf.MatchType_bound(self)
-      def scrutinee: Type = reflectSelf.MatchType_scrutinee(self)
-      def cases: List[Type] = reflectSelf.MatchType_cases(self)
+      def bound: Type
+      def scrutinee: Type
+      def cases: List[Type]
     end extension
-  end MatchTypeOps
+  end MatchTypeMethods
 
-  given TypeTest[Type, ByNameType] = reflectSelf.ByNameType_TypeTest
+  /** Type of a by by name parameter */
+  type ByNameType <: Type
 
-  object ByNameType:
-    def apply(underlying: Type): Type = reflectSelf.ByNameType_apply(underlying)
-    def unapply(x: ByNameType): Option[Type] = Some(x.underlying)
-  end ByNameType
+  given TypeTest[Type, ByNameType] = ByNameTypeTypeTest
+  protected val ByNameTypeTypeTest: TypeTest[Type, ByNameType]
 
-  given ByNameTypeOps as AnyRef:
+  val ByNameType: ByNameTypeModule
+
+  trait ByNameTypeModule { this: ByNameType.type =>
+    def apply(underlying: Type): Type
+    def unapply(x: ByNameType): Option[Type]
+  }
+
+  given ByNameTypeMethods as ByNameTypeMethods = ByNameTypeMethodsImpl
+  protected val ByNameTypeMethodsImpl: ByNameTypeMethods
+
+  trait ByNameTypeMethods:
     extension (self: ByNameType):
-      def underlying: Type = reflectSelf.ByNameType_underlying(self)
+      def underlying: Type
     end extension
-  end ByNameTypeOps
+  end ByNameTypeMethods
 
+  /** Type of a parameter reference */
+  type ParamRef <: Type
 
-  given TypeTest[Type, ParamRef] = reflectSelf.ParamRef_TypeTest
+  given TypeTest[Type, ParamRef] = ParamRefTypeTest
+  protected val ParamRefTypeTest: TypeTest[Type, ParamRef]
 
-  object ParamRef:
-    def unapply(x: ParamRef): Option[(LambdaType, Int)] =
-      Some((x.binder, x.paramNum))
-  end ParamRef
+  val ParamRef: ParamRefModule
 
-  given ParamRefOps as AnyRef:
+  trait ParamRefModule { this: ParamRef.type =>
+    def unapply(x: ParamRef): Option[(LambdaType, Int)]
+  }
+
+  given ParamRefMethods as ParamRefMethods = ParamRefMethodsImpl
+  protected val ParamRefMethodsImpl: ParamRefMethods
+
+  trait ParamRefMethods:
     extension (self: ParamRef):
-      def binder: LambdaType = reflectSelf.ParamRef_binder(self)
-      def paramNum: Int = reflectSelf.ParamRef_paramNum(self)
+      def binder: LambdaType
+      def paramNum: Int
     end extension
-  end ParamRefOps
+  end ParamRefMethods
 
+  /** Type of `this` */
+  type ThisType <: Type
 
-  given TypeTest[Type, ThisType] = reflectSelf.ThisType_TypeTest
+  given TypeTest[Type, ThisType] = ThisTypeTypeTest
+  protected val ThisTypeTypeTest: TypeTest[Type, ThisType]
 
-  object ThisType:
-    def unapply(x: ThisType): Option[Type] = Some(x.tref)
-  end ThisType
+  val ThisType: ThisTypeModule
 
-  given ThisTypeOps as AnyRef:
+  trait ThisTypeModule { this: ThisType.type =>
+    def unapply(x: ThisType): Option[Type]
+  }
+
+  given ThisTypeMethods as ThisTypeMethods = ThisTypeMethodsImpl
+  protected val ThisTypeMethodsImpl: ThisTypeMethods
+
+  trait ThisTypeMethods:
     extension (self: ThisType):
-      def tref: Type = reflectSelf.ThisType_tref(self)
+      def tref: Type
     end extension
-  end ThisTypeOps
+  end ThisTypeMethods
 
+  /** A type that is recursively defined `this` */
+  type RecursiveThis <: Type
 
-  given TypeTest[Type, RecursiveThis] = reflectSelf.RecursiveThis_TypeTest
+  given TypeTest[Type, RecursiveThis] = RecursiveThisTypeTest
+  protected val RecursiveThisTypeTest: TypeTest[Type, RecursiveThis]
 
-  object RecursiveThis:
-    def unapply(x: RecursiveThis): Option[RecursiveType] = Some(x.binder)
-  end RecursiveThis
+  val RecursiveThis: RecursiveThisModule
 
-  given RecursiveThisOps as AnyRef:
+  trait RecursiveThisModule { this: RecursiveThis.type =>
+    def unapply(x: RecursiveThis): Option[RecursiveType]
+  }
+
+  given RecursiveThisMethods as RecursiveThisMethods = RecursiveThisMethodsImpl
+  protected val RecursiveThisMethodsImpl: RecursiveThisMethods
+
+  trait RecursiveThisMethods:
     extension (self: RecursiveThis):
-      def binder: RecursiveType = reflectSelf.RecursiveThis_binder(self)
+      def binder: RecursiveType
     end extension
-  end RecursiveThisOps
+  end RecursiveThisMethods
 
+  /** A type that is recursively defined */
+  type RecursiveType <: Type
 
-  given TypeTest[Type, RecursiveType] = reflectSelf.RecursiveType_TypeTest
+  given TypeTest[Type, RecursiveType] = RecursiveTypeTypeTest
+  protected val RecursiveTypeTypeTest: TypeTest[Type, RecursiveType]
 
-  object RecursiveType:
+  val RecursiveType: RecursiveTypeModule
+
+  trait RecursiveTypeModule { this: RecursiveType.type =>
 
     /** Create a RecType, normalizing its contents. This means:
      *
@@ -1709,226 +2195,304 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *      `type T`. This avoids infinite recursions later when we
      *      try to follow these references.
      */
-    def apply(parentExp: RecursiveType => Type): RecursiveType =
-      reflectSelf.RecursiveType_apply(parentExp)
+    def apply(parentExp: RecursiveType => Type): RecursiveType
 
-    def unapply(x: RecursiveType): Option[Type] = Some(x.underlying)
-  end RecursiveType
+    def unapply(x: RecursiveType): Option[Type]
+  }
 
-  given RecursiveTypeOps as AnyRef:
+  given RecursiveTypeMethods as RecursiveTypeMethods = RecursiveTypeMethodsImpl
+  protected val RecursiveTypeMethodsImpl: RecursiveTypeMethods
+
+  trait RecursiveTypeMethods:
     extension (self: RecursiveType):
-      def underlying: Type = reflectSelf.RecursiveType_underlying(self)
-      def recThis: RecursiveThis = reflectSelf.RecursiveThis_recThis(self)
+      def underlying: Type
+      def recThis: RecursiveThis
     end extension
-  end RecursiveTypeOps
+  end RecursiveTypeMethods
 
+  // TODO: remove LambdaType and use union types (MethodType | PolyType | TypeLambda)
+  /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
+  type LambdaType <: Type
 
-  given TypeTest[Type, MethodType] = reflectSelf.MethodType_TypeTest
+  /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
+  type MethodType <: LambdaType
 
-  object MethodType:
-    def apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType =
-      reflectSelf.MethodType_apply(paramNames)(paramInfosExp, resultTypeExp)
+  given TypeTest[Type, MethodType] = MethodTypeTypeTest
+  protected val MethodTypeTypeTest: TypeTest[Type, MethodType]
 
-    def unapply(x: MethodType): Option[(List[String], List[Type], Type)] =
-      Some((x.paramNames, x.paramTypes, x.resType))
-  end MethodType
+  val MethodType: MethodTypeModule
 
-  given MethodTypeOps as AnyRef:
+  trait MethodTypeModule { this: MethodType.type =>
+    def apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType
+    def unapply(x: MethodType): Option[(List[String], List[Type], Type)]
+  }
+
+  given MethodTypeMethods as MethodTypeMethods = MethodTypeMethodsImpl
+  protected val MethodTypeMethodsImpl: MethodTypeMethods
+
+  trait MethodTypeMethods:
     extension (self: MethodType):
-      def isImplicit: Boolean = reflectSelf.MethodType_isImplicit(self)
-      def isErased: Boolean = reflectSelf.MethodType_isErased(self)
-      def param(idx: Int): Type = reflectSelf.MethodType_param(self, idx)
-      def paramNames: List[String] = reflectSelf.MethodType_paramNames(self)
-      def paramTypes: List[Type] = reflectSelf.MethodType_paramTypes(self)
-      def resType: Type = reflectSelf.MethodType_resType(self)
+      def isImplicit: Boolean
+      def isErased: Boolean
+      def param(idx: Int): Type
+      def paramNames: List[String]
+      def paramTypes: List[Type]
+      def resType: Type
     end extension
-  end MethodTypeOps
+  end MethodTypeMethods
 
+  /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
+  type PolyType <: LambdaType
 
-  given TypeTest[Type, PolyType] = reflectSelf.PolyType_TypeTest
+  given TypeTest[Type, PolyType] = PolyTypeTypeTest
+  protected val PolyTypeTypeTest: TypeTest[Type, PolyType]
 
-  object PolyType:
-    def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type): PolyType =
-      reflectSelf.PolyType_apply(paramNames)(paramBoundsExp, resultTypeExp)
-    def unapply(x: PolyType): Option[(List[String], List[TypeBounds], Type)] =
-      Some((x.paramNames, x.paramBounds, x.resType))
-  end PolyType
+  val PolyType: PolyTypeModule
 
-  given PolyTypeOps as AnyRef:
+  trait PolyTypeModule { this: PolyType.type =>
+    def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type): PolyType
+    def unapply(x: PolyType): Option[(List[String], List[TypeBounds], Type)]
+  }
+
+  given PolyTypeMethods as PolyTypeMethods = PolyTypeMethodsImpl
+  protected val PolyTypeMethodsImpl: PolyTypeMethods
+
+  trait PolyTypeMethods:
     extension (self: PolyType):
-      def param(idx: Int): Type = reflectSelf.PolyType_param(self, idx)
-      def paramNames: List[String] = reflectSelf.PolyType_paramNames(self)
-      def paramBounds: List[TypeBounds] = reflectSelf.PolyType_paramBounds(self)
-      def resType: Type = reflectSelf.PolyType_resType(self)
+      def param(idx: Int): Type
+      def paramNames: List[String]
+      def paramBounds: List[TypeBounds]
+      def resType: Type
     end extension
-  end PolyTypeOps
+  end PolyTypeMethods
 
+  /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
+  type TypeLambda <: LambdaType
 
-  given TypeTest[Type, TypeLambda] = reflectSelf.TypeLambda_TypeTest
+  given TypeTest[Type, TypeLambda] = TypeLambdaTypeTest
+  protected val TypeLambdaTypeTest: TypeTest[Type, TypeLambda]
 
-  object TypeLambda:
-    def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda =
-      reflectSelf.TypeLambda_apply(paramNames, boundsFn, bodyFn)
-    def unapply(x: TypeLambda): Option[(List[String], List[TypeBounds], Type)] =
-      Some((x.paramNames, x.paramBounds, x.resType))
-  end TypeLambda
+  val TypeLambda: TypeLambdaModule
 
-  given TypeLambdaOps as AnyRef:
+  trait TypeLambdaModule { this: TypeLambda.type =>
+    def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda
+    def unapply(x: TypeLambda): Option[(List[String], List[TypeBounds], Type)]
+  }
+
+  given TypeLambdaMethods as TypeLambdaMethods = TypeLambdaMethodsImpl
+  protected val TypeLambdaMethodsImpl: TypeLambdaMethods
+
+  trait TypeLambdaMethods:
     extension (self: TypeLambda):
-      def paramNames: List[String] = reflectSelf.TypeLambda_paramNames(self)
-      def paramBounds: List[TypeBounds] = reflectSelf.TypeLambda_paramBounds(self)
-      def param(idx: Int) : Type = reflectSelf.TypeLambda_param(self, idx)
-      def resType: Type = reflectSelf.TypeLambda_resType(self)
+      def paramNames: List[String]
+      def paramBounds: List[TypeBounds]
+      def param(idx: Int) : Type
+      def resType: Type
     end extension
-  end TypeLambdaOps
-
+  end TypeLambdaMethods
 
   // ----- TypeBounds -----------------------------------------------
 
-  given TypeTest[Type, TypeBounds] = reflectSelf.TypeBounds_TypeTest
+  /** Type bounds */
+  type TypeBounds <: Type
 
-  object TypeBounds:
-    def apply(low: Type, hi: Type): TypeBounds =
-      reflectSelf.TypeBounds_apply(low, hi)
-    def unapply(x: TypeBounds): Option[(Type, Type)] = Some((x.low, x.hi))
-  end TypeBounds
+  given TypeTest[Type, TypeBounds] = TypeBoundsTypeTest
+  protected val TypeBoundsTypeTest: TypeTest[Type, TypeBounds]
 
-  given TypeBoundsOps as AnyRef:
+  val TypeBounds: TypeBoundsModule
+
+  trait TypeBoundsModule { this: TypeBounds.type =>
+    def apply(low: Type, hi: Type): TypeBounds
+    def unapply(x: TypeBounds): Option[(Type, Type)]
+  }
+
+  given TypeBoundsMethods as TypeBoundsMethods = TypeBoundsMethodsImpl
+  protected val TypeBoundsMethodsImpl: TypeBoundsMethods
+
+  trait TypeBoundsMethods:
     extension (self: TypeBounds):
-      def low: Type = reflectSelf.TypeBounds_low(self)
-      def hi: Type = reflectSelf.TypeBounds_hi(self)
+      def low: Type
+      def hi: Type
     end extension
-  end TypeBoundsOps
-
+  end TypeBoundsMethods
 
   // ----- NoPrefix -------------------------------------------------
 
-  given TypeTest[Type, NoPrefix] = reflectSelf.NoPrefix_TypeTest
+  /** NoPrefix for a type selection */
+  type NoPrefix <: Type
 
-  object NoPrefix:
-    def unapply(x: NoPrefix): Boolean = true
+  given TypeTest[Type, NoPrefix] = NoPrefixTypeTest
+  protected val NoPrefixTypeTest: TypeTest[Type, NoPrefix]
 
+  val NoPrefix: NoPrefixModule
+
+  trait NoPrefixModule { this: NoPrefix.type =>
+    def unapply(x: NoPrefix): Boolean
+  }
 
   ///////////////
   // CONSTANTS //
   ///////////////
 
+  /** Constant value represented as the constant itself */
+  type Constant <: AnyRef
 
   /** Module of Constant literals */
-  object Constant:
+  val Constant: ConstantModule
 
-    def apply(x: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type): Constant =
-      reflectSelf.Constant_apply(x)
+  trait ConstantModule { this: Constant.type =>
 
-    def unapply(constant: Constant): Option[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type] =
-      reflectSelf.matchConstant(constant)
+    def apply(x: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type): Constant
+
+    def unapply(constant: Constant): Option[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type]
 
     /** Module of ClassTag literals */
-    object ClassTag:
+    val ClassTag: ClassTagModule
+
+    /** Module of ClassTag literals */
+    trait ClassTagModule { this: ClassTag.type =>
       /** scala.reflect.ClassTag literal */
-      def apply[T](using x: Type): Constant =
-        reflectSelf.Constant_ClassTag_apply(x)
-
+      def apply[T](using x: Type): Constant
       /** Extractor for ClassTag literals */
-      def unapply(constant: Constant): Option[Type] =
-        reflectSelf.matchConstant_ClassTag(constant)
-    end ClassTag
-  end Constant
+      def unapply(constant: Constant): Option[Type]
+    }
+  }
 
-  given ConstantOps as AnyRef:
-    extension (const: Constant):
+  given ConstantMethods as ConstantMethods = ConstantMethodsImpl
+  protected val ConstantMethodsImpl: ConstantMethods
+
+  trait ConstantMethods {
+    extension (self: Constant):
       /** Returns the value of the constant */
-      def value: Any = reflectSelf.Constant_value(const)
+      def value: Any
 
       /** Shows the tree as extractors */
-      def showExtractors: String =
-        new ExtractorsPrinter[reflectSelf.type](reflectSelf).showConstant(const)
+      def showExtractors: String
 
       /** Shows the tree as fully typed source code */
-      def show: String =
-        const.showWith(SyntaxHighlight.plain)
+      def show: String
 
       /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight): String =
-        new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showConstant(const)
+      def showWith(syntaxHighlight: SyntaxHighlight): String
     end extension
-  end ConstantOps
-
+  }
 
   /////////
   // IDs //
   /////////
 
+  // TODO: remove Id. Add use name and pos directly on APIs that use it.
 
-  object Id:
-    def unapply(id: Id): Option[String] = Some(id.name)
-  end Id
+  /** Untyped identifier */
+  type Id <: AnyRef
 
-  given IdOps as AnyRef:
-    extension (id: Id):
+  val Id: IdModule
+
+  trait IdModule { this: Id.type =>
+    def unapply(id: Id): Option[String]
+  }
+
+  given IdMethods as IdMethods = IdMethodsImpl
+  protected val IdMethodsImpl: IdMethods
+
+  trait IdMethods {
+    extension (self: Id):
       /** Position in the source code */
-      def pos: Position = reflectSelf.Id_pos(id)
+      def pos: Position
 
       /** Name of the identifier */
-      def name: String = reflectSelf.Id_name(id)
+      def name: String
     end extension
-  end IdOps
-
+  }
 
   /////////////////////
   // IMPLICIT SEARCH //
   /////////////////////
 
+  // TODO: this should not be top level
+  /** Find an implicit of type `T` in the current scope given by `ctx`.
+   *  Return an `ImplicitSearchResult`.
+   *
+   *  @param tpe type of the implicit parameter
+   *  @param ctx current context
+   */
   def searchImplicit(tpe: Type): ImplicitSearchResult
 
-  given TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = reflectSelf.ImplicitSearchSuccess_TypeTest
+  type ImplicitSearchResult <: AnyRef
 
-  given ImplicitSearchSuccessOps as AnyRef:
+  given TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = ImplicitSearchSuccessTypeTest
+  protected val ImplicitSearchSuccessTypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
+
+  type ImplicitSearchSuccess <: ImplicitSearchResult
+
+  given ImplicitSearchSuccessMethods as ImplicitSearchSuccessMethods = ImplicitSearchSuccessMethodsImpl
+  protected val ImplicitSearchSuccessMethodsImpl: ImplicitSearchSuccessMethods
+
+  trait ImplicitSearchSuccessMethods:
     extension (self: ImplicitSearchSuccess):
-      def tree: Term = reflectSelf.ImplicitSearchSuccess_tree(self)
+      def tree: Term
     end extension
-  end ImplicitSearchSuccessOps
+  end ImplicitSearchSuccessMethods
 
-  given TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = reflectSelf.ImplicitSearchFailure_TypeTest
+  type ImplicitSearchFailure <: ImplicitSearchResult
 
-  given ImplicitSearchFailureOps as AnyRef:
+  given TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = ImplicitSearchFailureTypeTest
+  protected val ImplicitSearchFailureTypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
+
+  given ImplicitSearchFailureMethods as ImplicitSearchFailureMethods = ImplicitSearchFailureMethodsImpl
+  protected val ImplicitSearchFailureMethodsImpl: ImplicitSearchFailureMethods
+
+  trait ImplicitSearchFailureMethods:
     extension (self: ImplicitSearchFailure):
-      def explanation: String = reflectSelf.ImplicitSearchFailure_explanation(self)
+      def explanation: String
     end extension
-  end ImplicitSearchFailureOps
+  end ImplicitSearchFailureMethods
 
-  given TypeTest[ImplicitSearchResult, DivergingImplicit] = reflectSelf.DivergingImplicit_TypeTest
+  type DivergingImplicit <: ImplicitSearchFailure
 
-  given TypeTest[ImplicitSearchResult, NoMatchingImplicits] = reflectSelf.NoMatchingImplicits_TypeTest
+  given TypeTest[ImplicitSearchResult, DivergingImplicit] = DivergingImplicitTypeTest
+  protected val DivergingImplicitTypeTest: TypeTest[ImplicitSearchResult, DivergingImplicit]
 
-  given TypeTest[ImplicitSearchResult, AmbiguousImplicits] = reflectSelf.AmbiguousImplicits_TypeTest
+  type NoMatchingImplicits <: ImplicitSearchFailure
 
+  given TypeTest[ImplicitSearchResult, NoMatchingImplicits] = NoMatchingImplicitsTypeTest
+  protected val NoMatchingImplicitsTypeTest: TypeTest[ImplicitSearchResult, NoMatchingImplicits]
+
+  type AmbiguousImplicits <: ImplicitSearchFailure
+
+  given TypeTest[ImplicitSearchResult, AmbiguousImplicits] = AmbiguousImplicitsTypeTest
+  protected val AmbiguousImplicitsTypeTest: TypeTest[ImplicitSearchResult, AmbiguousImplicits]
 
   /////////////
   // SYMBOLS //
   /////////////
 
+  /** Symbol of a definition.
+   *  Then can be compared with == to know if the definition is the same.
+   */
+  type Symbol <: AnyRef
 
-  object Symbol:
+  val Symbol: SymbolModule
+
+  trait SymbolModule { this: Symbol.type =>
 
     /** Returns the symbol of the current enclosing definition */
-    def currentOwner(using ctx: Context): Symbol = reflectSelf.Symbol_currentOwner
+    def currentOwner(using ctx: Context): Symbol
 
     /** Get package symbol if package is either defined in current compilation run or present on classpath. */
-    def requiredPackage(path: String): Symbol = reflectSelf.Symbol_requiredPackage(path)
+    def requiredPackage(path: String): Symbol
 
     /** Get class symbol if class is either defined in current compilation run or present on classpath. */
-    def requiredClass(path: String): Symbol = reflectSelf.Symbol_requiredClass(path)
+    def requiredClass(path: String): Symbol
 
     /** Get module symbol if module is either defined in current compilation run or present on classpath. */
-    def requiredModule(path: String): Symbol = reflectSelf.Symbol_requiredModule(path)
+    def requiredModule(path: String): Symbol
 
     /** Get method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload. */
-    def requiredMethod(path: String): Symbol = reflectSelf.Symbol_requiredMethod(path)
+    def requiredMethod(path: String): Symbol
 
     /** The class Symbol of a global class definition */
-    def classSymbol(fullName: String): Symbol =
-      reflectSelf.Symbol_of(fullName)
+    def classSymbol(fullName: String): Symbol
 
     /** Generates a new method symbol with the given parent, name and type.
      *
@@ -1939,16 +2503,14 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
      *        direct or indirect children of the reflection context's owner.
      */
-    def newMethod(parent: Symbol, name: String, tpe: Type): Symbol =
-      newMethod(parent, name, tpe, Flags.EmptyFlags, noSymbol)
+    def newMethod(parent: Symbol, name: String, tpe: Type): Symbol
 
     /** Works as the other newMethod, but with additional parameters.
      *
      *  @param flags extra flags to with which the symbol should be constructed
      *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
      */
-    def newMethod(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol): Symbol =
-      reflectSelf.Symbol_newMethod(parent, name, flags, tpe, privateWithin)
+    def newMethod(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol): Symbol
 
     /** Generates a new val/var/lazy val symbol with the given parent, name and type.
      *
@@ -1963,8 +2525,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
      *        direct or indirect children of the reflection context's owner.
      */
-    def newVal(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol): Symbol =
-      reflectSelf.Symbol_newVal(parent, name, flags, tpe, privateWithin)
+    def newVal(parent: Symbol, name: String, tpe: Type, flags: Flags, privateWithin: Symbol): Symbol
 
     /** Generates a pattern bind symbol with the given parent, name and type.
      *
@@ -1976,45 +2537,46 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
      *        direct or indirect children of the reflection context's owner.
      */
-    def newBind(parent: Symbol, name: String, flags: Flags, tpe: Type): Symbol =
-      reflectSelf.Symbol_newBind(parent, name, flags, tpe)
+    def newBind(parent: Symbol, name: String, flags: Flags, tpe: Type): Symbol
 
     /** Definition not available */
-    def noSymbol: Symbol =
-      reflectSelf.Symbol_noSymbol
-  end Symbol
+    def noSymbol: Symbol
+  }
 
-  given SymbolOps as AnyRef:
-    extension (sym: Symbol):
+  given SymbolMethods as SymbolMethods = SymbolMethodsImpl
+  protected val SymbolMethodsImpl: SymbolMethods
+
+  trait SymbolMethods {
+    extension (self: Symbol):
 
       /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
-      def owner: Symbol = reflectSelf.Symbol_owner(sym)
+      def owner: Symbol
 
       /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Returns `NoSymbol` if this symbol does not have an owner. */
-      def maybeOwner: Symbol = reflectSelf.Symbol_maybeOwner(sym)
+      def maybeOwner: Symbol
 
       /** Flags of this symbol */
-      def flags: Flags = reflectSelf.Symbol_flags(sym)
+      def flags: Flags
 
       /** This symbol is private within the resulting type */
-      def privateWithin: Option[Type] = reflectSelf.Symbol_privateWithin(sym)
+      def privateWithin: Option[Type]
 
       /** This symbol is protected within the resulting type */
-      def protectedWithin: Option[Type] = reflectSelf.Symbol_protectedWithin(sym)
+      def protectedWithin: Option[Type]
 
       /** The name of this symbol */
-      def name: String = reflectSelf.Symbol_name(sym)
+      def name: String
 
       /** The full name of this symbol up to the root package */
-      def fullName: String = reflectSelf.Symbol_fullName(sym)
+      def fullName: String
 
       /** The position of this symbol */
-      def pos: Position = reflectSelf.Symbol_pos(sym)
+      def pos: Position
 
-      def localContext: Context = reflectSelf.Symbol_localContext(sym)
+      def localContext: Context
 
       /** The comment for this symbol, if any */
-      def comment: Option[Comment] = reflectSelf.Symbol_comment(sym)
+      def comment: Option[Comment]
 
       /** Tree of this definition
         *
@@ -2025,152 +2587,134 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
         * if this symbol `isDefDef` it will return a `DefDef`
         * if this symbol `isBind` it will return a `Bind`
         */
-      def tree: Tree =
-        reflectSelf.Symbol_tree(sym)
+      def tree: Tree
 
       /** Annotations attached to this symbol */
-      def annots: List[Term] = reflectSelf.Symbol_annots(sym)
+      def annots: List[Term]
 
-      def isDefinedInCurrentRun: Boolean = reflectSelf.Symbol_isDefinedInCurrentRun(sym)
+      def isDefinedInCurrentRun: Boolean
 
-      def isLocalDummy: Boolean = reflectSelf.Symbol_isLocalDummy(sym)
-      def isRefinementClass: Boolean = reflectSelf.Symbol_isRefinementClass(sym)
-      def isAliasType: Boolean = reflectSelf.Symbol_isAliasType(sym)
-      def isAnonymousClass: Boolean = reflectSelf.Symbol_isAnonymousClass(sym)
-      def isAnonymousFunction: Boolean = reflectSelf.Symbol_isAnonymousFunction(sym)
-      def isAbstractType: Boolean = reflectSelf.Symbol_isAbstractType(sym)
-      def isClassConstructor: Boolean = reflectSelf.Symbol_isClassConstructor(sym)
+      def isLocalDummy: Boolean
+      def isRefinementClass: Boolean
+      def isAliasType: Boolean
+      def isAnonymousClass: Boolean
+      def isAnonymousFunction: Boolean
+      def isAbstractType: Boolean
+      def isClassConstructor: Boolean
 
       /** Is this the definition of a type? */
-      def isType: Boolean = reflectSelf.Symbol_isType(sym)
+      def isType: Boolean
 
       /** Is this the definition of a term? */
-      def isTerm: Boolean = reflectSelf.Symbol_isTerm(sym)
+      def isTerm: Boolean
 
       /** Is this the definition of a PackageDef tree? */
-      def isPackageDef: Boolean = reflectSelf.Symbol_isPackageDef(sym)
+      def isPackageDef: Boolean
 
       /** Is this the definition of a ClassDef tree? */
-      def isClassDef: Boolean = reflectSelf.Symbol_isClassDef(sym)
+      def isClassDef: Boolean
 
       /** Is this the definition of a TypeDef tree */
-      def isTypeDef: Boolean = reflectSelf.Symbol_isTypeDef(sym)
+      def isTypeDef: Boolean
 
       /** Is this the definition of a ValDef tree? */
-      def isValDef: Boolean = reflectSelf.Symbol_isValDef(sym)
+      def isValDef: Boolean
 
       /** Is this the definition of a DefDef tree? */
-      def isDefDef: Boolean = reflectSelf.Symbol_isDefDef(sym)
+      def isDefDef: Boolean
 
       /** Is this the definition of a Bind pattern? */
-      def isBind: Boolean = reflectSelf.Symbol_isBind(sym)
+      def isBind: Boolean
 
       /** Does this symbol represent a no definition? */
-      def isNoSymbol: Boolean = sym == Symbol.noSymbol
+      def isNoSymbol: Boolean
 
       /** Does this symbol represent a definition? */
-      def exists: Boolean = sym != Symbol.noSymbol
+      def exists: Boolean
 
       /** Fields directly declared in the class */
-      def fields: List[Symbol] =
-        reflectSelf.Symbol_fields(sym)
+      def fields: List[Symbol]
 
       /** Field with the given name directly declared in the class */
-      def field(name: String): Symbol =
-        reflectSelf.Symbol_field(sym)(name)
+      def field(name: String): Symbol
 
       /** Get non-private named methods defined directly inside the class */
-      def classMethod(name: String): List[Symbol] =
-        reflectSelf.Symbol_classMethod(sym)(name)
+      def classMethod(name: String): List[Symbol]
 
       /** Get all non-private methods defined directly inside the class, exluding constructors */
-      def classMethods: List[Symbol] =
-        reflectSelf.Symbol_classMethods(sym)
+      def classMethods: List[Symbol]
 
       /** Type member directly declared in the class */
-      def typeMembers: List[Symbol] =
-        reflectSelf.Symbol_typeMembers(sym)
+      def typeMembers: List[Symbol]
 
       /** Type member with the given name directly declared in the class */
-      def typeMember(name: String): Symbol =
-        reflectSelf.Symbol_typeMember(sym)(name)
+      def typeMember(name: String): Symbol
 
       /** Get named non-private methods declared or inherited */
-      def method(name: String): List[Symbol] =
-        reflectSelf.Symbol_method(sym)(name)
+      def method(name: String): List[Symbol]
 
       /** Get all non-private methods declared or inherited */
-      def methods: List[Symbol] =
-        reflectSelf.Symbol_methods(sym)
+      def methods: List[Symbol]
 
       /** The symbols of each type parameter list and value parameter list of this
         *  method, or Nil if this isn't a method.
         */
-      def paramSymss: List[List[Symbol]] =
-        reflectSelf.Symbol_paramSymss(sym)
+      def paramSymss: List[List[Symbol]]
 
       /** The primary constructor of a class or trait, `noSymbol` if not applicable. */
-      def primaryConstructor: Symbol =
-        reflectSelf.Symbol_primaryConstructor(sym)
+      def primaryConstructor: Symbol
 
       /** Fields of a case class type -- only the ones declared in primary constructor */
-      def caseFields: List[Symbol] =
-        reflectSelf.Symbol_caseFields(sym)
+      def caseFields: List[Symbol]
 
-      def isTypeParam: Boolean =
-        reflectSelf.Symbol_isTypeParam(sym)
+      def isTypeParam: Boolean
 
       /** Signature of this definition */
-      def signature: Signature =
-        reflectSelf.Symbol_signature(sym)
+      def signature: Signature
 
       /** The class symbol of the companion module class */
-      def moduleClass: Symbol =
-        reflectSelf.Symbol_moduleClass(sym)
+      def moduleClass: Symbol
 
       /** The symbol of the companion class */
-      def companionClass: Symbol =
-        reflectSelf.Symbol_companionClass(sym)
+      def companionClass: Symbol
 
       /** The symbol of the companion module */
-      def companionModule: Symbol =
-        reflectSelf.Symbol_companionModule(sym)
+      def companionModule: Symbol
 
       /** Shows the tree as extractors */
-      def showExtractors: String =
-        new ExtractorsPrinter[reflectSelf.type](reflectSelf).showSymbol(sym)
+      def showExtractors: String
 
       /** Shows the tree as fully typed source code */
-      def show: String =
-        sym.showWith(SyntaxHighlight.plain)
+      def show: String
 
       /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight): String =
-        new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showSymbol(sym)
+      def showWith(syntaxHighlight: SyntaxHighlight): String
 
       /** Case class or case object children of a sealed trait */
-      def children: List[Symbol] =
-        reflectSelf.Symbol_children(sym)
+      def children: List[Symbol]
     end extension
-  end SymbolOps
-
-
-
+  }
 
   ////////////////
   // SIGNATURES //
   ////////////////
 
+  /** The signature of a method */
+  type Signature <: AnyRef
 
   /** The signature of a method */
-  object Signature:
-    /** Matches the method signature and returns its parameters and result type. */
-    def unapply(sig: Signature): Option[(List[String | Int], String)] =
-      Some((sig.paramSigs, sig.resultSig))
-  end Signature
+  val Signature: SignatureModule
 
-  given SignatureOps as AnyRef:
-    extension (sig: Signature):
+  trait SignatureModule { this: Signature.type =>
+    /** Matches the method signature and returns its parameters and result type. */
+    def unapply(sig: Signature): Option[(List[String | Int], String)]
+  }
+
+  given SignatureMethods as SignatureMethods = SignatureMethodsImpl
+  protected val SignatureMethodsImpl: SignatureMethods
+
+  trait SignatureMethods {
+    extension (self: Signature):
 
       /** The signatures of the method parameters.
         *
@@ -2179,141 +2723,136 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
         *  Each *term parameter* is represented by a String corresponding to the fully qualified
         *  name of the parameter type.
         */
-      def paramSigs: List[String | Int] = reflectSelf.Signature_paramSigs(sig)
+      def paramSigs: List[String | Int]
 
       /** The signature of the result type */
-      def resultSig: String = reflectSelf.Signature_resultSig(sig)
+      def resultSig: String
 
     end extension
-  end SignatureOps
-
+  }
 
   //////////////////////////
   // STANDARD DEFINITIONS //
   //////////////////////////
 
-  /** A value containing all standard definitions in [[DefinitionsAPI]]
-   *  @group Definitions
-   */
-  object defn extends StandardSymbols
+  /** A value containing all standard definitions */
+  val defn: DefnModule
 
-  /** Defines standard symbols (and types via its base trait).
-   *  @group API
-   */
-  trait StandardSymbols {
+  /** Defines standard symbols (and types via its base trait). */
+  trait DefnModule { self: defn.type =>
 
     /** The module symbol of root package `_root_`. */
-    def RootPackage: Symbol = reflectSelf.Definitions_RootPackage
+    def RootPackage: Symbol
 
     /** The class symbol of root package `_root_`. */
-    def RootClass: Symbol = reflectSelf.Definitions_RootClass
+    def RootClass: Symbol
 
     /** The class symbol of empty package `_root_._empty_`. */
-    def EmptyPackageClass: Symbol = reflectSelf.Definitions_EmptyPackageClass
+    def EmptyPackageClass: Symbol
 
     /** The module symbol of package `scala`. */
-    def ScalaPackage: Symbol = reflectSelf.Definitions_ScalaPackage
+    def ScalaPackage: Symbol
 
     /** The class symbol of package `scala`. */
-    def ScalaPackageClass: Symbol = reflectSelf.Definitions_ScalaPackageClass
+    def ScalaPackageClass: Symbol
 
     /** The class symbol of core class `scala.Any`. */
-    def AnyClass: Symbol = reflectSelf.Definitions_AnyClass
+    def AnyClass: Symbol
 
     /** The class symbol of core class `scala.AnyVal`. */
-    def AnyValClass: Symbol = reflectSelf.Definitions_AnyValClass
+    def AnyValClass: Symbol
 
     /** The class symbol of core class `java.lang.Object`. */
-    def ObjectClass: Symbol = reflectSelf.Definitions_ObjectClass
+    def ObjectClass: Symbol
 
     /** The type symbol of core class `scala.AnyRef`. */
-    def AnyRefClass: Symbol = reflectSelf.Definitions_AnyRefClass
+    def AnyRefClass: Symbol
 
     /** The class symbol of core class `scala.Null`. */
-    def NullClass: Symbol = reflectSelf.Definitions_NullClass
+    def NullClass: Symbol
 
     /** The class symbol of core class `scala.Nothing`. */
-    def NothingClass: Symbol = reflectSelf.Definitions_NothingClass
+    def NothingClass: Symbol
 
     /** The class symbol of primitive class `scala.Unit`. */
-    def UnitClass: Symbol = reflectSelf.Definitions_UnitClass
+    def UnitClass: Symbol
 
     /** The class symbol of primitive class `scala.Byte`. */
-    def ByteClass: Symbol = reflectSelf.Definitions_ByteClass
+    def ByteClass: Symbol
 
     /** The class symbol of primitive class `scala.Short`. */
-    def ShortClass: Symbol = reflectSelf.Definitions_ShortClass
+    def ShortClass: Symbol
 
     /** The class symbol of primitive class `scala.Char`. */
-    def CharClass: Symbol = reflectSelf.Definitions_CharClass
+    def CharClass: Symbol
 
     /** The class symbol of primitive class `scala.Int`. */
-    def IntClass: Symbol = reflectSelf.Definitions_IntClass
+    def IntClass: Symbol
 
     /** The class symbol of primitive class `scala.Long`. */
-    def LongClass: Symbol = reflectSelf.Definitions_LongClass
+    def LongClass: Symbol
 
     /** The class symbol of primitive class `scala.Float`. */
-    def FloatClass: Symbol = reflectSelf.Definitions_FloatClass
+    def FloatClass: Symbol
 
     /** The class symbol of primitive class `scala.Double`. */
-    def DoubleClass: Symbol = reflectSelf.Definitions_DoubleClass
+    def DoubleClass: Symbol
 
     /** The class symbol of primitive class `scala.Boolean`. */
-    def BooleanClass: Symbol = reflectSelf.Definitions_BooleanClass
+    def BooleanClass: Symbol
 
     /** The class symbol of class `scala.String`. */
-    def StringClass: Symbol = reflectSelf.Definitions_StringClass
+    def StringClass: Symbol
 
     /** The class symbol of class `java.lang.Class`. */
-    def ClassClass: Symbol = reflectSelf.Definitions_ClassClass
+    def ClassClass: Symbol
 
     /** The class symbol of class `scala.Array`. */
-    def ArrayClass: Symbol = reflectSelf.Definitions_ArrayClass
+    def ArrayClass: Symbol
 
     /** The module symbol of module `scala.Predef`. */
-    def PredefModule: Symbol = reflectSelf.Definitions_PredefModule
+    def PredefModule: Symbol
 
     /** The method symbol of method `scala.Predef.classOf`. */
-    def Predef_classOf: Symbol = reflectSelf.Definitions_Predef_classOf
+    def Predef_classOf: Symbol
 
     /** The module symbol of package `java.lang`. */
-    def JavaLangPackage: Symbol = reflectSelf.Definitions_JavaLangPackage
+    def JavaLangPackage: Symbol
 
     /** The module symbol of module `scala.Array`. */
-    def ArrayModule: Symbol = reflectSelf.Definitions_ArrayModule
+    def ArrayModule: Symbol
 
     /** The method symbol of method `apply` in class `scala.Array`. */
-    def Array_apply: Symbol = reflectSelf.Definitions_Array_apply
+    def Array_apply: Symbol
 
     /** The method symbol of method `clone` in class `scala.Array`. */
-    def Array_clone: Symbol = reflectSelf.Definitions_Array_clone
+    def Array_clone: Symbol
 
     /** The method symbol of method `length` in class `scala.Array`. */
-    def Array_length: Symbol = reflectSelf.Definitions_Array_length
+    def Array_length: Symbol
 
     /** The method symbol of method `update` in class `scala.Array`. */
-    def Array_update: Symbol = reflectSelf.Definitions_Array_update
+    def Array_update: Symbol
 
     /** A dummy class symbol that is used to indicate repeated parameters
      *  compiled by the Scala compiler.
      */
-    def RepeatedParamClass: Symbol = reflectSelf.Definitions_RepeatedParamClass
+    def RepeatedParamClass: Symbol
 
-    /** The class symbol of class `scala.annotation.reflectSelf.Repeated` */
-    def RepeatedAnnot: Symbol = reflectSelf.Definitions_RepeatedAnnot
+    /** The class symbol of class `scala.annotation.reflection.Repeated` */
+    def RepeatedAnnot: Symbol
 
     /** The class symbol of class `scala.Option`. */
-    def OptionClass: Symbol = reflectSelf.Definitions_OptionClass
+    def OptionClass: Symbol
 
     /** The module symbol of module `scala.None`. */
-    def NoneModule: Symbol = reflectSelf.Definitions_NoneModule
+    def NoneModule: Symbol
 
     /** The module symbol of module `scala.Some`. */
-    def SomeModule: Symbol = reflectSelf.Definitions_SomeModule
+    def SomeModule: Symbol
 
     /** Function-like object that maps arity to symbols for classes `scala.Product` */
-    def ProductClass: Symbol = reflectSelf.Definitions_ProductClass
+    def ProductClass: Symbol
 
     /** Function-like object that maps arity to symbols for classes `scala.FunctionX`.
      *   -  0th element is `Function0`
@@ -2321,8 +2860,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *   -  ...
      *   -  Nth element is `FunctionN`
      */
-    def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol =
-      reflectSelf.Definitions_FunctionClass(arity, isImplicit, isErased)
+    def FunctionClass(arity: Int, isImplicit: Boolean = false, isErased: Boolean = false): Symbol
 
     /** Function-like object that maps arity to symbols for classes `scala.TupleX`.
      *   -  0th element is `NoSymbol`
@@ -2333,12 +2871,10 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *   - 23nd element is `NoSymbol`  // TODO update when we will have more tuples
      *   - ...
      */
-    def TupleClass(arity: Int): Symbol =
-      reflectSelf.Definitions_TupleClass(arity)
+    def TupleClass(arity: Int): Symbol
 
     /** Returns `true` if `sym` is a `Tuple1`, `Tuple2`, ... `Tuple22` */
-    def isTupleClass(sym: Symbol): Boolean =
-      reflectSelf.Definitions_isTupleClass(sym)
+    def isTupleClass(sym: Symbol): Boolean
 
     /** Contains Scala primitive value classes:
      *   - Byte
@@ -2351,8 +2887,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *   - Boolean
      *   - Unit
      */
-    def ScalaPrimitiveValueClasses: List[Symbol] =
-      UnitClass :: BooleanClass :: ScalaNumericValueClasses
+    def ScalaPrimitiveValueClasses: List[Symbol]
 
     /** Contains Scala numeric value classes:
      *   - Byte
@@ -2363,154 +2898,155 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
      *   - Double
      *   - Char
      */
-    def ScalaNumericValueClasses: List[Symbol] =
-      ByteClass :: ShortClass :: IntClass :: LongClass :: FloatClass :: DoubleClass :: CharClass :: Nil
+    def ScalaNumericValueClasses: List[Symbol]
 
   }
-
 
   ///////////////
   //   FLAGS   //
   ///////////////
 
+  /** FlagSet of a Symbol */
+  type Flags
 
-  object Flags:
+  val Flags: FlagsModule
+
+  trait FlagsModule { this: Flags.type =>
 
     /** Is this symbol `abstract` */
-    def Abstract: Flags = reflectSelf.Flags_Abstract
+    def Abstract: Flags
 
     /** Was this symbol generated by Scala compiler */
-    def Artifact: Flags = reflectSelf.Flags_Artifact
+    def Artifact: Flags
 
     /** Is this symbol `case` */
-    def Case: Flags = reflectSelf.Flags_Case
+    def Case: Flags
 
     /** Is this symbol a getter for case class parameter */
-    def CaseAcessor: Flags = reflectSelf.Flags_CaseAcessor
+    def CaseAccessor: Flags
 
     /** Is this symbol a type parameter marked as contravariant `-` */
-    def Contravariant: Flags = reflectSelf.Flags_Contravariant
+    def Contravariant: Flags
 
     /** Is this symbol a type parameter marked as covariant `+` */
-    def Covariant: Flags = reflectSelf.Flags_Covariant
+    def Covariant: Flags
 
     /** The empty set of flags */
-    def EmptyFlags = reflectSelf.Flags_EmptyFlags
+    def EmptyFlags: Flags
 
     /** Is this symbol an enum */
-    def Enum: Flags = reflectSelf.Flags_Enum
+    def Enum: Flags
 
     /** Is this symbol `erased` */
-    def Erased: Flags = reflectSelf.Flags_Erased
+    def Erased: Flags
 
     /** Is this symbol a `def` defined in an `extension` */
-    def ExtensionMethod: Flags = reflectSelf.Flags_ExtensionMethod
+    def ExtensionMethod: Flags
 
     /** Is this symbol a getter or a setter */
-    def FieldAccessor: Flags = reflectSelf.Flags_FieldAccessor
+    def FieldAccessor: Flags
 
     /** Is this symbol `final` */
-    def Final: Flags = reflectSelf.Flags_Final
+    def Final: Flags
 
     /** Is this symbol an inferable ("given") parameter */
-    def Given: Flags = reflectSelf.Flags_Given
+    def Given: Flags
 
     /** Is this symbol a parameter with a default value? */
-    def HasDefault: Flags = reflectSelf.Flags_HasDefault
+    def HasDefault: Flags
 
     /** Is this symbol `implicit` */
-    def Implicit: Flags = reflectSelf.Flags_Implicit
+    def Implicit: Flags
 
     /** Is this symbol `inline` */
-    def Inline: Flags = reflectSelf.Flags_Inline
+    def Inline: Flags
 
     /** Is this symbol defined in a Java class */
-    def JavaDefined: Flags = reflectSelf.Flags_JavaDefined
+    def JavaDefined: Flags
 
     /** Is this symbol `lazy` */
-    def Lazy: Flags = reflectSelf.Flags_Lazy
+    def Lazy: Flags
 
     /** Is this symbol local? Used in conjunction with private/private[Type] to mean private[this] extends Modifier proctected[this] */
-    def Local: Flags = reflectSelf.Flags_Local
+    def Local: Flags
 
     /** Is this symbol marked as a macro. An inline method containing toplevel splices */
-    def Macro: Flags = reflectSelf.Flags_Macro
+    def Macro: Flags
 
     /** Is this symbol a module class */
-    def ModuleClass: Flags = reflectSelf.Flags_ModuleClass
+    def ModuleClass: Flags
 
     /** Is this symbol a `var` (when used on a ValDef) */
-    def Mutable: Flags = reflectSelf.Flags_Mutable
+    def Mutable: Flags
 
     /** Is this symbol an object or its class (used for a ValDef or a ClassDef extends Modifier respectively) */
-    def Object: Flags = reflectSelf.Flags_Object
+    def Object: Flags
 
     /** Is this symbol `override` */
-    def Override: Flags = reflectSelf.Flags_Override
+    def Override: Flags
 
     /** Is this symbol a package */
-    def Package: Flags = reflectSelf.Flags_Package
+    def Package: Flags
 
     /** Is this symbol a parameter */
-    def Param: Flags = reflectSelf.Flags_Param
+    def Param: Flags
 
     /** Is this symbol a parameter accessor */
-    def ParamAccessor: Flags = reflectSelf.Flags_ParamAccessor
+    def ParamAccessor: Flags
 
     /** Is this symbol `private` */
-    def Private: Flags = reflectSelf.Flags_Private
+    def Private: Flags
 
     /** Is this symbol labeled private[this] */
-    def PrivateLocal: Flags = reflectSelf.Flags_PrivateLocal
+    def PrivateLocal: Flags
 
     /** Is this symbol `protected` */
-    def Protected: Flags = reflectSelf.Flags_Protected
+    def Protected: Flags
 
     /** Was this symbol imported from Scala2.x */
-    def Scala2X: Flags = reflectSelf.Flags_Scala2X
+    def Scala2x: Flags
 
     /** Is this symbol `sealed` */
-    def Sealed: Flags = reflectSelf.Flags_Sealed
+    def Sealed: Flags
 
     /** Is this symbol member that is assumed to be stable and realizable */
-    def StableRealizable: Flags = reflectSelf.Flags_StableRealizable
+    def StableRealizable: Flags
 
     /** Is this symbol marked as static. Mapped to static Java member */
-    def Static: Flags = reflectSelf.Flags_Static
+    def Static: Flags
 
     /** Is this symbol to be tagged Java Synthetic */
-    def Synthetic: Flags = reflectSelf.Flags_Synthetic
+    def Synthetic: Flags
 
     /** Is this symbol a trait */
-    def Trait: Flags = reflectSelf.Flags_Trait
-  end Flags
+    def Trait: Flags
+  }
 
-  given FlagsOps as AnyRef:
-    extension (flags: Flags):
+  given FlagsMethods as FlagsMethods = FlagsMethodsImpl
+  protected val FlagsMethodsImpl: FlagsMethods
+
+  trait FlagsMethods {
+    extension (self: Flags):
       /** Is the given flag set a subset of this flag sets */
-      def is(that: Flags): Boolean = reflectSelf.Flags_is(flags)(that)
+      def is(that: Flags): Boolean
 
       /** Union of the two flag sets */
-      def |(that: Flags): Flags = reflectSelf.Flags_or(flags)(that)
+      def |(that: Flags): Flags
 
       /** Intersection of the two flag sets */
-      def &(that: Flags): Flags = reflectSelf.Flags_and(flags)(that)
+      def &(that: Flags): Flags
 
       /** Shows the tree as extractors */
-      def showExtractors: String =
-        new ExtractorsPrinter[reflectSelf.type](reflectSelf).showFlags(flags)
+      def showExtractors: String
 
       /** Shows the tree as fully typed source code */
-      def show: String =
-        flags.showWith(SyntaxHighlight.plain)
+      def show: String
 
       /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight): String =
-        new SourceCodePrinter[reflectSelf.type](reflectSelf)(syntaxHighlight).showFlags(flags)
+      def showWith(syntaxHighlight: SyntaxHighlight): String
 
     end extension
-  end FlagsOps
-
+  }
 
   ///////////////
   // POSITIONS //
@@ -2521,59 +3057,98 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   /** Root position of this tasty context. For macros it corresponds to the expansion site. */
   def rootPosition: Position
 
+  /** Position in a source file */
+  type Position <: AnyRef
 
-  object Position
+  val Position: PositionModule
 
-  given PositionOps as AnyRef:
-    extension (pos: Position):
+  trait PositionModule { this: Position.type => }
+
+  given PositionMethods as PositionMethods = PositionMethodsImpl
+  protected val PositionMethodsImpl: PositionMethods
+
+  trait PositionMethods {
+    extension (self: Position):
 
       /** The start offset in the source file */
-      def start: Int = reflectSelf.Position_start(pos)
+      def start: Int
 
       /** The end offset in the source file */
-      def end: Int = reflectSelf.Position_end(pos)
+      def end: Int
 
       /** Does this position exist */
-      def exists: Boolean = reflectSelf.Position_exists(pos)
+      def exists: Boolean
 
       /** Source file in which this position is located */
-      def sourceFile: SourceFile = reflectSelf.Position_sourceFile(pos)
+      def sourceFile: SourceFile
 
       /** The start line in the source file */
-      def startLine: Int = reflectSelf.Position_startLine(pos)
+      def startLine: Int
 
       /** The end line in the source file */
-      def endLine: Int = reflectSelf.Position_endLine(pos)
+      def endLine: Int
 
       /** The start column in the source file */
-      def startColumn: Int = reflectSelf.Position_startColumn(pos)
+      def startColumn: Int
 
       /** The end column in the source file */
-      def endColumn: Int = reflectSelf.Position_endColumn(pos)
+      def endColumn: Int
 
       /** Source code within the position */
-      def sourceCode: String = reflectSelf.Position_sourceCode(pos)
+      def sourceCode: String
 
     end extension
-  end PositionOps
+  }
 
-  object SourceFile
+  /** Scala source file */
+  type SourceFile <: AnyRef
 
-  given SourceFileOps as AnyRef:
-    extension (sourceFile: SourceFile):
+  val SourceFile: SourceFileModule
 
+  trait SourceFileModule { this: SourceFile.type => }
+
+  given SourceFileMethods as SourceFileMethods = SourceFileMethodsImpl
+  protected val SourceFileMethodsImpl: SourceFileMethods
+
+  trait SourceFileMethods {
+    extension (self: SourceFile):
       /** Path to this source file */
-      def jpath: java.nio.file.Path = reflectSelf.SourceFile_jpath(sourceFile)
+      def jpath: java.nio.file.Path
 
       /** Content of this source file */
-      def content: String = reflectSelf.SourceFile_content(sourceFile)
-
+      def content: String
     end extension
-  end SourceFileOps
+  }
+
+  ///////////////
+  //   Source  //
+  ///////////////
+
+  val Source: SourceModule
+
+  trait SourceModule { this: Source.type =>
+
+    /** Returns the source file being compiled. The path is relative to the current working directory. */
+    def path: java.nio.file.Path
+
+    /** Returns true if we've tried to reflect on a Java class. */
+    def isJavaCompilationUnit: Boolean
+
+    /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
+    def isScala2CompilationUnit: Boolean
+
+    /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
+    def isAlreadyLoadedCompilationUnit: Boolean
+
+    /** Class name of the current CompilationUnit */
+    def compilationUnitClassname: String
+  }
 
   ///////////////
   // REPORTING //
   ///////////////
+
+  // TODO: these should not be top level
 
   /** Emits an error message */
   def error(msg: => String, pos: Position): Unit
@@ -2587,28 +3162,35 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   /** Emits a warning at a specific range of a file */
   def warning(msg: => String, source: SourceFile, start: Int, end: Int): Unit
 
-
   //////////////
   // COMMENTS //
   //////////////
 
-  object Comment
+  // TODO: misnomer. Rename to `Documentation`
 
-  given CommentOps as AnyRef:
+  /** Attachment representing the documentation of a definition */
+  type Comment <: AnyRef
+
+  val Comment: CommentModule
+
+  trait CommentModule { this: Comment.type => }
+
+  given CommentMethods as CommentMethods = CommentMethodsImpl
+  protected val CommentMethodsImpl: CommentMethods
+
+  trait CommentMethods {
     extension (self: Comment):
-
       /** Raw comment string */
-      def raw: String = reflectSelf.Comment_raw(self)
+      def raw: String
 
       /** Expanded comment string, if any */
-      def expanded: Option[String] = reflectSelf.Comment_expanded(self)
+      def expanded: Option[String]
 
       /** List of usecases and their corresponding trees, if any */
-      def usecases: List[(String, Option[DefDef])] = reflectSelf.Comment_usecases(self)
+      def usecases: List[(String, Option[DefDef])]
 
     end extension
-  end CommentOps
-
+  }
 
   ///////////////
   //   UTILS   //
@@ -2616,20 +3198,20 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
 
   /** TASTy Reflect tree accumulator */
   trait TreeAccumulator[X] extends reflect.TreeAccumulator[X] {
-    val reflect: reflectSelf.type = reflectSelf
+    val reflect: reflection.type = reflection
   }
 
   /** TASTy Reflect tree traverser */
   trait TreeTraverser extends reflect.TreeTraverser {
-    val reflect: reflectSelf.type = reflectSelf
+    val reflect: reflection.type = reflection
   }
 
   /** TASTy Reflect tree map */
   trait TreeMap extends reflect.TreeMap {
-    val reflect: reflectSelf.type = reflectSelf
+    val reflect: reflection.type = reflection
   }
 
-  // TODO extract from Reflection
+  // TODO: extract from Reflection
 
   /** Bind the `rhs` to a `val` and use it in `body` */
   def let(rhs: Term)(body: Ident => Term): Term = {
@@ -2645,5 +3227,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     }
     rec(terms, Nil)
   }
+
 
 }
