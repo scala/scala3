@@ -65,7 +65,7 @@ object Splicer {
           EmptyTree
         case ex: StopInterpretation =>
           report.error(ex.msg, ex.pos)
-          EmptyTree
+          ref(defn.Predef_undefined).withType(ErrorType(ex.msg))
         case NonFatal(ex) =>
           val msg =
             s"""Failed to evaluate macro.
@@ -73,7 +73,7 @@ object Splicer {
                |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
              """.stripMargin
           report.error(msg, pos)
-          EmptyTree
+          ref(defn.Predef_undefined).withType(ErrorType(msg))
       }
   }
 
