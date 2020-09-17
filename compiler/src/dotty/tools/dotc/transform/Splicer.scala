@@ -250,7 +250,7 @@ object Splicer {
           interpretModuleAccess(fn.symbol)
         else if (fn.symbol.is(Method) && fn.symbol.isStatic) {
           val staticMethodCall = interpretedStaticMethodCall(fn.symbol.owner, fn.symbol)
-          staticMethodCall(args.flatten.map(interpretTree))
+          staticMethodCall(interpretArgs(args, fn.symbol.info))
         }
         else if fn.symbol.isStatic then
           assert(args.isEmpty)
@@ -260,7 +260,7 @@ object Splicer {
             interpretModuleAccess(fn.qualifier.symbol)
           else {
             val staticMethodCall = interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol)
-            staticMethodCall(args.flatten.map(interpretTree))
+            staticMethodCall(interpretArgs(args, fn.symbol.info))
           }
         else if (env.contains(fn.symbol))
           env(fn.symbol)
@@ -287,6 +287,32 @@ object Splicer {
 
       case _ =>
         unexpectedTree(tree)
+    }
+
+    private def interpretArgs(argss: List[List[Tree]], fnType: Type)(using Env): List[Object] = {
+      def interpretArgsGroup(args: List[Tree], argTypes: List[Type]): List[Object] =
+        assert(args.size == argTypes.size)
+        val view =
+          for (arg, info) <- args.lazyZip(argTypes) yield
+            info match
+              case _: ExprType => () => interpretTree(arg) // by-name argument
+              case _ => interpretTree(arg) // by-value argument
+        view.toList
+
+      fnType.dealias match
+        case fnType: MethodType if fnType.isErasedMethod => interpretArgs(argss, fnType.resType)
+        case fnType: MethodType =>
+          val argTypes = fnType.paramInfos
+          assert(argss.head.size == argTypes.size)
+          interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, fnType.resType)
+        case fnType: AppliedType if defn.isContextFunctionType(fnType) =>
+          val argTypes :+ resType = fnType.args
+          interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, resType)
+        case fnType: PolyType => interpretArgs(argss, fnType.resType)
+        case fnType: ExprType => interpretArgs(argss, fnType.resType)
+        case _ =>
+          assert(argss.isEmpty)
+          Nil
     }
 
     private def interpretBlock(stats: List[Tree], expr: Tree)(implicit env: Env) = {
