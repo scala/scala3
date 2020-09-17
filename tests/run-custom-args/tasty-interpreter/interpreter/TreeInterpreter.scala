@@ -1,10 +1,11 @@
 package scala.tasty.interpreter
 
+import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
 
-abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
-  import reflect.{_, given _}
+abstract class TreeInterpreter[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) {
+  import qctx.tasty._
 
   final val LOG = false
 
@@ -196,15 +197,15 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     isIntegralPrimitive(tpe) || isFractionalPrimitive(tpe)
 
   private def isIntegralPrimitive(tpe: Type): Boolean = {
-    tpe <:< defn.ByteType ||
-    tpe <:< defn.CharType ||
-    tpe <:< defn.ShortType ||
-    tpe <:< defn.IntType ||
-    tpe <:< defn.LongType
+    tpe <:< Type.of[Byte] ||
+    tpe <:< Type.of[Char] ||
+    tpe <:< Type.of[Short] ||
+    tpe <:< Type.of[Int] ||
+    tpe <:< Type.of[Long]
   }
 
   private def isFractionalPrimitive(tpe: Type): Boolean =
-    tpe <:< defn.FloatType || tpe <:< defn.DoubleType
+    tpe <:< Type.of[Float] || tpe <:< Type.of[Double]
 
 
   private object Call {

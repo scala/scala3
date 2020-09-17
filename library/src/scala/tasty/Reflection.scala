@@ -2193,7 +2193,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
   /** A value containing all standard definitions in [[DefinitionsAPI]]
    *  @group Definitions
    */
-  object defn extends StandardSymbols with StandardTypes
+  object defn extends StandardSymbols
 
   /** Defines standard symbols (and types via its base trait).
    *  @group API
@@ -2364,71 +2364,6 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     def ScalaNumericValueClasses: List[Symbol] =
       ByteClass :: ShortClass :: IntClass :: LongClass :: FloatClass :: DoubleClass :: CharClass :: Nil
 
-  }
-
-  /** Defines standard types.
-   *  @group Definitions
-   */
-  trait StandardTypes {
-    /** The type of primitive type `Unit`. */
-    def UnitType: Type = reflectSelf.Definitions_UnitType
-
-    /** The type of primitive type `Byte`. */
-    def ByteType: Type = reflectSelf.Definitions_ByteType
-
-    /** The type of primitive type `Short`. */
-    def ShortType: Type = reflectSelf.Definitions_ShortType
-
-    /** The type of primitive type `Char`. */
-    def CharType: Type = reflectSelf.Definitions_CharType
-
-    /** The type of primitive type `Int`. */
-    def IntType: Type = reflectSelf.Definitions_IntType
-
-    /** The type of primitive type `Long`. */
-    def LongType: Type = reflectSelf.Definitions_LongType
-
-    /** The type of primitive type `Float`. */
-    def FloatType: Type = reflectSelf.Definitions_FloatType
-
-    /** The type of primitive type `Double`. */
-    def DoubleType: Type = reflectSelf.Definitions_DoubleType
-
-    /** The type of primitive type `Boolean`. */
-    def BooleanType: Type = reflectSelf.Definitions_BooleanType
-
-    /** The type of core type `Any`. */
-    def AnyType: Type = reflectSelf.Definitions_AnyType
-
-    /** The type of core type `AnyVal`. */
-    def AnyValType: Type = reflectSelf.Definitions_AnyValType
-
-    /** The type of core type `AnyRef`. */
-    def AnyRefType: Type = reflectSelf.Definitions_AnyRefType
-
-    /** The type of core type `Object`. */
-    def ObjectType: Type = reflectSelf.Definitions_ObjectType
-
-    /** The type of core type `Nothing`. */
-    def NothingType: Type = reflectSelf.Definitions_NothingType
-
-    /** The type of core type `Null`. */
-    def NullType: Type = reflectSelf.Definitions_NullType
-
-    /** The type for `scala.String`. */
-    def StringType: Type = reflectSelf.Definitions_StringType
-
-    /** The type for `scala.Tuple`. */
-    def TupleType: Type = reflectSelf.Definitions_TupleType
-
-    /** The type for `scala.EmptyTuple`. */
-    def EmptyTupleType: Type = reflectSelf.Definitions_EmptyTupleType
-
-    /** The type for `scala.NonEmptyTuple`. */
-    def NonEmptyTupleType: Type = reflectSelf.Definitions_NonEmptyTupleType
-
-    /** The type for `scala.*:`. */
-    def TupleConsType: Type = reflectSelf.Definitions_TupleConsType
   }
 
 

@@ -585,11 +585,11 @@ object StringContextMacro {
      *  nothing otherwise
      */
     def checkTypeWithArgs(argument : (Type, Int), conversionChar : Char, partIndex : Int, flags : List[(Char, Int)]) = {
-      val booleans = List(defn.BooleanType, defn.NullType)
-      val dates = List(defn.LongType, Type.of[java.util.Calendar], Type.of[java.util.Date])
-      val floatingPoints = List(defn.DoubleType, defn.FloatType, Type.of[java.math.BigDecimal])
-      val integral = List(defn.IntType, defn.LongType, defn.ShortType, defn.ByteType, Type.of[java.math.BigInteger])
-      val character = List(defn.CharType, defn.ByteType, defn.ShortType, defn.IntType)
+      val booleans = List(Type.of[Boolean], Type.of[Null])
+      val dates = List(Type.of[Long], Type.of[java.util.Calendar], Type.of[java.util.Date])
+      val floatingPoints = List(Type.of[Double], Type.of[Float], Type.of[java.math.BigDecimal])
+      val integral = List(Type.of[Int], Type.of[Long], Type.of[Short], Type.of[Byte], Type.of[java.math.BigInteger])
+      val character = List(Type.of[Char], Type.of[Byte], Type.of[Short], Type.of[Int])
 
       val (argType, argIndex) = argument
       conversionChar match {
