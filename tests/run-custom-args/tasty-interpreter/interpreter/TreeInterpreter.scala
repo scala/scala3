@@ -1,10 +1,11 @@
 package scala.tasty.interpreter
 
+import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
 
-abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
-  import reflect.{_, given _}
+abstract class TreeInterpreter[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) {
+  import qctx.tasty._
 
   final val LOG = false
 
