@@ -12,7 +12,7 @@ object Test {
     val foo = Type.of[Foo[String]]
     val symbol = foo.typeSymbol.field("a")
     val a = foo.select(symbol)
-    assert(a <:< defn.StringType)
+    assert(a <:< Type.of[String])
 
     '{???}
   }

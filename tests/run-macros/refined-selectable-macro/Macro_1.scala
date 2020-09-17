@@ -64,11 +64,11 @@ object Macro {
           (seen + name, (name, info))
         case _ =>
           report.error("Tuple type was not explicit expected `(S, T)` where S is a singleton string", s)
-          (seen, ("<error>", defn.AnyType))
+          (seen, ("<error>", Type.of[Any]))
       }
     }
     def rec(tpe: Type, seen: Set[String]): List[(String, Type)] = {
-      if tpe =:= defn.EmptyTupleType then Nil
+      if tpe =:= Type.of[EmptyTuple] then Nil
       else tpe match {
         // head *: tail
         case AppliedType(parent, List(head, tail: Type)) if isTupleCons(parent.typeSymbol) =>

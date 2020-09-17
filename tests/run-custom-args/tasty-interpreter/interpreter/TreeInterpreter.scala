@@ -197,15 +197,15 @@ abstract class TreeInterpreter[QCtx <: QuoteContext & Singleton](using val qctx:
     isIntegralPrimitive(tpe) || isFractionalPrimitive(tpe)
 
   private def isIntegralPrimitive(tpe: Type): Boolean = {
-    tpe <:< defn.ByteType ||
-    tpe <:< defn.CharType ||
-    tpe <:< defn.ShortType ||
-    tpe <:< defn.IntType ||
-    tpe <:< defn.LongType
+    tpe <:< Type.of[Byte] ||
+    tpe <:< Type.of[Char] ||
+    tpe <:< Type.of[Short] ||
+    tpe <:< Type.of[Int] ||
+    tpe <:< Type.of[Long]
   }
 
   private def isFractionalPrimitive(tpe: Type): Boolean =
-    tpe <:< defn.FloatType || tpe <:< defn.DoubleType
+    tpe <:< Type.of[Float] || tpe <:< Type.of[Double]
 
 
   private object Call {

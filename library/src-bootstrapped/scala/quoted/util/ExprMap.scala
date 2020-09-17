@@ -16,7 +16,7 @@ trait ExprMap {
         def localCtx(definition: Definition): Context = definition.symbol.localContext
         tree match {
           case tree: Term =>
-            transformTerm(tree, defn.AnyType)
+            transformTerm(tree, Type.of[Any])
           case tree: Definition =>
             transformDefinition(tree)
           case tree: Import =>
@@ -53,9 +53,9 @@ trait ExprMap {
           tree
         case tree @ Apply(fun, args) =>
           val MethodType(_, tpes, _) = fun.tpe.widen
-          Apply.copy(tree)(transformTerm(fun, defn.AnyType), transformTerms(args, tpes))
+          Apply.copy(tree)(transformTerm(fun, Type.of[Any]), transformTerms(args, tpes))
         case TypeApply(fun, args) =>
-          TypeApply.copy(tree)(transformTerm(fun, defn.AnyType), args)
+          TypeApply.copy(tree)(transformTerm(fun, Type.of[Any]), args)
         case _: Literal =>
           tree
         case New(tpt) =>
@@ -74,7 +74,7 @@ trait ExprMap {
           Block.copy(tree)(transformStats(stats), transformTerm(expr, tpe))
         case If(cond, thenp, elsep) =>
           If.copy(tree)(
-            transformTerm(cond, defn.BooleanType),
+            transformTerm(cond, Type.of[Boolean]),
             transformTerm(thenp, tpe),
             transformTerm(elsep, tpe))
         case _: Closure =>
@@ -87,9 +87,9 @@ trait ExprMap {
           // Return.copy(tree)(transformTerm(expr, expr.tpe))
           tree
         case While(cond, body) =>
-          While.copy(tree)(transformTerm(cond, defn.BooleanType), transformTerm(body, defn.AnyType))
+          While.copy(tree)(transformTerm(cond, Type.of[Boolean]), transformTerm(body, Type.of[Any]))
         case Try(block, cases, finalizer) =>
-          Try.copy(tree)(transformTerm(block, tpe), transformCaseDefs(cases, defn.AnyType), finalizer.map(x => transformTerm(x, defn.AnyType)))
+          Try.copy(tree)(transformTerm(block, tpe), transformCaseDefs(cases, Type.of[Any]), finalizer.map(x => transformTerm(x, Type.of[Any])))
         case Repeated(elems, elemtpt) =>
           Repeated.copy(tree)(transformTerms(elems, elemtpt.tpe), elemtpt)
         case Inlined(call, bindings, expansion) =>
@@ -113,7 +113,7 @@ trait ExprMap {
       def transformTypeTree(tree: TypeTree)(using ctx: Context): TypeTree = tree
 
       def transformCaseDef(tree: CaseDef, tpe: Type)(using ctx: Context): CaseDef =
-        CaseDef.copy(tree)(tree.pattern, tree.guard.map(x => transformTerm(x, defn.BooleanType)), transformTerm(tree.rhs, tpe))
+        CaseDef.copy(tree)(tree.pattern, tree.guard.map(x => transformTerm(x, Type.of[Boolean])), transformTerm(tree.rhs, tpe))
 
       def transformTypeCaseDef(tree: TypeCaseDef)(using ctx: Context): TypeCaseDef = {
         TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern), transformTypeTree(tree.rhs))
