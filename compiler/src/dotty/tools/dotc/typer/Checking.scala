@@ -156,7 +156,7 @@ object Checking {
     if (arg.tpe.widen.isRef(defn.NothingClass) ||
         !paramBounds.exists ||
         arg.tpe.hasSameKindAs(paramBounds.bounds.hi)) arg
-    else errorTree(arg, em"Type argument ${arg.tpe} has not the same kind as its bound $paramBounds")
+    else errorTree(arg, em"Type argument ${arg.tpe} does not have the same kind as its bound $paramBounds")
 
   def preCheckKinds(args: List[Tree], paramBoundss: List[Type])(using Context): List[Tree] = {
     val args1 = args.zipWithConserve(paramBoundss)(preCheckKind)
