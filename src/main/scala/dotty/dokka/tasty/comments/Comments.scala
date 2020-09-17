@@ -127,10 +127,11 @@ class MarkdownCommentParser(repr: Repr, packages: Packages)
     }
   }
 
-  def filterEmpty(xs: List[String]) =
+  def filterEmpty(xs: List[String]) = {
     xs.map(_.trim)
       .filterNot(_.isEmpty)
       .map(stringToMarkup)
+  }
 
   def filterEmpty(xs: Map[String, String]) =
     xs.view.mapValues(_.trim).toMap

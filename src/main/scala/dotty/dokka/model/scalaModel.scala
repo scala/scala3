@@ -39,3 +39,7 @@ enum ScalaModifier(val name: String) extends org.jetbrains.dokka.model.Modifier(
   case Abstract extends ScalaModifier("abstract")
   case Final extends ScalaModifier("final")
   case Empty extends ScalaModifier("")
+
+enum TableStyle extends org.jetbrains.dokka.pages.Style:
+  case Borderless
+  case DescriptionList

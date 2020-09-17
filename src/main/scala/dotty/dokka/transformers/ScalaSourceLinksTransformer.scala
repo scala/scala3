@@ -1,6 +1,6 @@
 package dotty.dokka
 
-import org.jetbrains.dokka.transformers.pages.{PageTransformer}
+import org.jetbrains.dokka.transformers.documentation.DocumentableTransformer
 import org.jetbrains.dokka.pages._
 import collection.JavaConverters
 import collection.JavaConverters._
@@ -11,31 +11,72 @@ import org.jetbrains.dokka.DokkaConfiguration
 import org.jetbrains.dokka.utilities.DokkaLogger
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
+import org.jetbrains.dokka.model.properties._
 
 class ScalaSourceLinksTransformer(
       val ctx: DokkaContext,        
       val commentsToContentConverter: CommentsToContentConverter,
       val signatureProvider: SignatureProvider,
       val logger: DokkaLogger
-) extends PageTransformer:
+) extends DocumentableTransformer:
 
     val sourceLinks = ctx.getConfiguration.getSourceSets.asScala.flatMap(s => s.getSourceLinks.asScala.map(l => SourceLink(l, s)))
     val pageBuilder = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger)
 
     case class SourceLink(val path: String, val url: String, val lineSuffix: Option[String], val sourceSetData: DokkaConfiguration.DokkaSourceSet)
 
-    object SourceLink{
+    object SourceLink {
         def apply(sourceLinkDef: DokkaConfiguration$SourceLinkDefinition, sourceSetData: DokkaConfiguration.DokkaSourceSet): SourceLink = 
             SourceLink(sourceLinkDef.getLocalDirectory, sourceLinkDef.getRemoteUrl.toString, Option(sourceLinkDef.getRemoteLineSuffix), sourceSetData)
     }
 
-    override def invoke(input: RootPageNode): RootPageNode = input.transformContentPagesTree(page => page.getDocumentable match{
-        case d: WithExpectActual => appendSourceLink(page, d)
-        case other => page
-    })
+    private def processDocumentable[T] (d: T): T = (d match {
+        case m: DModule => m.copy(
+            m.getName,
+            m.getPackages.asScala.map(processDocumentable).asJava,
+            m.getDocumentation,
+            m.getExpectPresentInSet,
+            m.getSourceSets,
+            m.getExtra
+        )
+        case p: DPackage => p.copy(
+            p.getDri,
+            p.getFunctions.asScala.map(processDocumentable).asJava,
+            p.getProperties.asScala.map(processDocumentable).asJava,
+            p.getClasslikes.asScala.map(processDocumentable).asJava,
+            p.getTypealiases.asScala.map(processDocumentable).asJava,
+            p.getDocumentation,
+            p.getExpectPresentInSet,
+            p.getSourceSets,
+            p.getExtra
+        )
+        case c: DClass => c.copy(
+            c.getDri,
+            c.getName,
+            c.getConstructors.asScala.map(processDocumentable).asJava,
+            c.getFunctions.asScala.map(processDocumentable).asJava,
+            c.getProperties.asScala.map(processDocumentable).asJava,
+            c.getClasslikes.asScala.map(processDocumentable).asJava,
+            c.getSources,
+            c.getVisibility,
+            c.getCompanion,
+            c.getGenerics,
+            c.getSupertypes,
+            c.getDocumentation,
+            c.getExpectPresentInSet,
+            c.getModifier,
+            c.getSourceSets,
+            c.getExtra
+        ).withNewExtras(c.getExtra plus getSourceLinks(c))
+        case f: DFunction => f.withNewExtras(f.getExtra plus getSourceLinks(f))
+        case p: DProperty => p.withNewExtras(p.getExtra plus getSourceLinks(p))
+        case other => other
+    }).asInstanceOf[T]
+
+    override def invoke(input: DModule, context: DokkaContext): DModule = processDocumentable(input)
 
 
-    private def appendSourceLink(page: ContentPage, doc: WithExpectActual): ContentPage = {
+    private def getSourceLinks(doc: WithExpectActual): SourceLinks = {
         val urls = doc.getSources.asScala.toMap.flatMap{
             case (key,value) => sourceLinks.find(s => value.getPath.contains(s.path) && key == s.sourceSetData).map(
                     link => (key, createLink(value, link))
@@ -44,7 +85,7 @@ class ScalaSourceLinksTransformer(
             case (key, Some(value)) => (key,value)
         }.toMap
 
-        if(!urls.isEmpty) appendContent(page, urls) else page
+        SourceLinks(urls)
     }
 
     private def createLink(source: DocumentableSource, link: SourceLink): Option[String] = source match {
@@ -52,47 +93,4 @@ class ScalaSourceLinksTransformer(
             link.url + s.path.split(link.path)(1) + link.lineSuffix.map(_ + (line + 1)).getOrElse("") //TASTY enumerates lines from 0
         )
         case other => None
-    }
-
-    private def appendContent(page: ContentPage, urls: Map[DokkaConfiguration$DokkaSourceSet, String]): ContentPage = {
-        def contentFunction: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder = bdr => bdr
-            .header(2, "Sources", kind = ContentKind.Source)()
-            .table(
-                kind = ContentKind.Source, 
-                styles = Set(), 
-                extra = bdr.mainExtra plus SimpleAttr.Companion.header("Sources")
-            ){ tbdr => urls.foldLeft[ScalaPageContentBuilder#ScalaTableBuilder](tbdr){ 
-                    case (tablebdr, (sourceSet, url)) => tablebdr
-                        .cell(sourceSets = Set(sourceSet)){ cbdr => cbdr
-                            .resolvedLink("(source)", url)
-                        }
-                }
-                
-            }
-        page.getContent match {
-            case g: ContentGroup => 
-                val content = getContentGroupWithParents(g, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
-                if(content.size > 0) {
-                    val sourceSets = page.getDocumentable.getSourceSets.asScala.toSet
-                    val addedContent = pageBuilder.contentForDRI(page.getDri.asScala.head, sourceSets, buildBlock = contentFunction)
-
-                    val modifiedContent = content(0).copy(
-                        (content(0).getChildren.asScala ++ List(addedContent)).asJava,
-                        content(0).getDci,
-                        content(0).getSourceSets,
-                        content(0).getStyle,
-                        content(0).getExtra
-                    )
-                    page.modified(
-                        page.getName,
-                        modifyContentGroup(content, modifiedContent),
-                        page.getDri,
-                        page.getEmbeddedResources,
-                        page.getChildren
-                    )
-                } else page
-                
-            case other => throw IllegalArgumentException("Content of page is not ContentGroup")
-        }
-
     }

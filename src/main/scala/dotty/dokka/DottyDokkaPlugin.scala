@@ -60,3 +60,5 @@ class DottyDokkaPlugin extends JavaDokkaPlugin:
       signatureProvider: SignatureProvider,
       logger: DokkaLogger
     ) = ScalaSourceLinksTransformer(ctx, commentsToContentConverter, signatureProvider, logger)
+
+  override def createHtmlRenderer(ctx: DokkaContext) = ScalaHtmlRenderer(ctx)

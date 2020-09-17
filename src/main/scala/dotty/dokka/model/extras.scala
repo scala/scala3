@@ -73,7 +73,12 @@ case class ClasslikeExtension(
 
 object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]
 
+case class SourceLinks(
+  links: Map[DokkaConfiguration$DokkaSourceSet, String]
+) extends ExtraProperty[Documentable]:
+  override def getKey = SourceLinks
 
+object SourceLinks extends BaseKey[Documentable, SourceLinks]
 
 case class InheritanceInfo(
   val parents: List[Bound],
@@ -93,7 +98,6 @@ object PropertyExtension extends BaseKey[DProperty, PropertyExtension]
 
 
 case class AnnotationsInfo(val annotations: List[AnnotationsInfo.Annotation]) extends ExtraProperty[Documentable]:
-
     override def getKey = AnnotationsInfo
 
 object AnnotationsInfo extends BaseKey[Documentable, AnnotationsInfo]:

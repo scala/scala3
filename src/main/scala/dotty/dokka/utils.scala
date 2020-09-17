@@ -16,6 +16,8 @@ import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
 import java.util.{List => JList, Set => JSet, Map => JMap}
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
+import org.jetbrains.dokka.plugability._
+import kotlin.jvm.JvmClassMappingKt.getKotlinClass
 
 extension [T, V] (a: WithExtraProperties[T]):
   def get(key: ExtraProperty.Key[_ >: T, V]): V = a.getExtra().getMap().get(key).asInstanceOf[V]
@@ -80,3 +82,12 @@ def getContentGroupWithParents(root: ContentGroup, condition: ContentGroup => Bo
         else Seq()
     }
 }
+
+object PluginUtils:
+    import scala.reflect.ClassTag
+    import scala.reflect._
+    def query[T <: DokkaPlugin, E](ctx: DokkaContext, queryFunction: (T) => ExtensionPoint[E])(implicit tag: ClassTag[T]): List[E] = 
+        ctx.get(queryFunction(ctx.plugin[T](getKotlinClass(tag.runtimeClass.asInstanceOf[Class[T]])))).asScala.toList
+
+    def querySingle[T <: DokkaPlugin, E](ctx: DokkaContext, queryFunction: (T) => ExtensionPoint[E])(implicit tag: ClassTag[T]): E = 
+        ctx.single(queryFunction(ctx.plugin[T](getKotlinClass(tag.runtimeClass.asInstanceOf[Class[T]]))))

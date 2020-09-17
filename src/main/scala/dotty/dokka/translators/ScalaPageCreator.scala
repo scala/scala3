@@ -193,7 +193,9 @@ class ScalaPageCreator(
                 .groupBy(t => (t(0), t(1).getClass))
                 .map( (key, value) => key -> value.map(_(1)) )
 
-            b.group(Set(d.getDri), styles = Set(TextStyle.Block)) { bdr => 
+            val namedTags = tags.collect{ case (sourcesets, n: NamedTagWrapper) => (sourcesets, n) }.groupBy(_._2.getName).map( (a,b) => (a,b.toMap))
+
+            b.group(Set(d.getDri), styles = Set(TextStyle.Block, TableStyle.Borderless)) { bdr => 
                 val b1 = description.foldLeft(bdr){ 
                     case (bdr, (key, value)) => bdr
                         .group(sourceSets = Set(key)){ gbdr => 
@@ -202,16 +204,41 @@ class ScalaPageCreator(
                             }
                         }
                 }
-                b1.table(kind = ContentKind.Comment){ tbdr =>
-                    unnamedTags.foldLeft(tbdr){ case (bdr, (key, value) ) => bdr
+                b1.table(kind = ContentKind.Comment, styles = Set(TableStyle.DescriptionList)){ tbdr =>
+                    val withUnnamedTags = unnamedTags.foldLeft(tbdr){ case (bdr, (key, value) ) => bdr
                             .cell(sourceSets = Set(key(0))){ b => b
-                                .header(4, key(1).getSimpleName )()
+                                .text(key(1).getSimpleName, styles = Set(TextStyle.Bold))
+                            }
+                            .cell(sourceSets = Set(key(0))) { b => b
                                 .list(value){ (bdr, elem) => bdr
                                     .comment(elem.getRoot)
                                 }
                             }
                     }
+                    val withNamedTags = namedTags.foldLeft(withUnnamedTags){ case (bdr, (key, value)) => value.foldLeft(bdr){ case (bdr, (sourceSets, v)) => bdr
+                            .cell(sourceSets = Set(sourceSets)){ b => b
+                                .text(key)
+                            }
+                            .cell(sourceSets = Set(sourceSets)){ b => b
+                                .comment(v.getRoot)
+                            }
+                        }
+                    }
+                    d match{
+                        case d: (WithExpectActual & WithExtraProperties[Documentable]) if d.get(SourceLinks) != null && !d.get(SourceLinks).links.isEmpty => d.get(SourceLinks).links.foldLeft(withNamedTags){
+                            case (bdr, (sourceSet, link)) => bdr
+                                .cell(sourceSets = Set(sourceSet)){ b => b
+                                    .text("Source")
+                                }
+                                .cell(sourceSets = Set(sourceSet)){ b => b
+                                    .resolvedLink("(source)", link)
+                                }
+                        }
+                        case other => withNamedTags       
+                    }
+
                 }
+
             }
         }
 
@@ -238,7 +265,8 @@ class ScalaPageCreator(
                     "Methods",
                     List(
                         "Class methods" -> s.getFunctions.asScala.toList, 
-                    ) ++ inherited
+                    ) ++ inherited,
+                    kind = ContentKind.Functions
                 )(
                     (builder, txt) => builder.header(3, txt)()
                 )
