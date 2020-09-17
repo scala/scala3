@@ -89,27 +89,6 @@ trait MemberLookup {
       def hackResolveModule(s: r.Symbol): r.Symbol =
         if s.flags.is(Flags.Object) then s.moduleClass else s
 
-      // var candidate: Option[r.Symbol] = None
-      // var continue: Boolean = true
-      // while syms.hasNext && continue do {
-      //   val s = syms.next()
-      //   if s.name == q then
-      //     if forceTerm then
-      //       if s.isTerm then
-      //         candidate = Some(s)
-      //         continue = false
-      //     else if forceType then
-      //       if s.isType then
-      //         candidate = Some(s)
-      //         continue = false
-      //     else
-      //       if s.isType then
-      //         candidate = Some(s)
-      //         continue = false
-      //       else if candidate.isEmpty then
-      //         candidate = Some(s)
-      // }
-
       val matched = syms.find(matches)
 
       // def showMatched() = matched.foreach { s =>
