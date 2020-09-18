@@ -460,6 +460,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def ref(tp: NamedType)(using Context): Tree =
     TypedSplice(tpd.ref(tp))
 
+  def ref(sym: Symbol)(using Context): Tree =
+    TypedSplice(tpd.ref(sym))
+
   def rawRef(tp: NamedType)(using Context): Tree =
     if tp.typeParams.isEmpty then ref(tp)
     else AppliedTypeTree(ref(tp), tp.typeParams.map(_ => WildcardTypeBoundsTree()))

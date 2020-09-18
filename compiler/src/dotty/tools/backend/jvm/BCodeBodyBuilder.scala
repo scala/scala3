@@ -488,7 +488,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     // ---------------- emitting constant values ----------------
 
     /*
-     * For const.tag in {ClazzTag, EnumTag}
+     * For ClazzTag:
      *   must-single-thread
      * Otherwise it's safe to call from multiple threads.
      */
@@ -526,22 +526,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             )
           else
             mnode.visitLdcInsn(tp.toASMType)
-
-        case EnumTag   =>
-          val sym       = const.symbolValue
-          val ownerName = internalName(sym.owner)
-          val fieldName = sym.javaSimpleName
-          val underlying = sym.info match { // TODO: Is this actually necessary? Could it be replaced by a call to widen?
-            case t: TypeProxy => t.underlying
-            case t => t
-          }
-          val fieldDesc = toTypeKind(underlying).descriptor
-          mnode.visitFieldInsn(
-            asm.Opcodes.GETSTATIC,
-            ownerName,
-            fieldName,
-            fieldDesc
-          )
 
         case _ => abort(s"Unknown constant value: $const")
       }

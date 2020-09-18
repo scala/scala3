@@ -286,8 +286,6 @@ class TreeUnpickler(reader: TastyReader,
         Constant(null)
       case CLASSconst =>
         Constant(readType())
-      case ENUMconst =>
-        Constant(readTermRef().termSymbol)
     }
 
     /** Read a type */

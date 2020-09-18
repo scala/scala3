@@ -735,7 +735,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val supertpe = readTypeRef()
         SuperType(thistpe, supertpe)
       case CONSTANTtpe =>
-        ConstantType(readConstantRef())
+        readConstantRef() match
+          case c: Constant => ConstantType(c)
+          case tp: TermRef => tp
       case TYPEREFtpe =>
         var pre = readPrefix()
         val sym = readSymbolRef()
@@ -822,7 +824,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     errorBadSignature("bad type tag: " + tag)
 
   /** Read a constant */
-  protected def readConstant()(using Context): Constant = {
+  protected def readConstant()(using Context): Constant | TermRef = {
     val tag = readByte().toInt
     val len = readNat()
     (tag: @switch) match {
@@ -838,7 +840,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case LITERALstring => Constant(readNameRef().toString)
       case LITERALnull => Constant(null)
       case LITERALclass => Constant(readTypeRef())
-      case LITERALenum => Constant(readSymbolRef())
+      case LITERALenum => readSymbolRef().termRef
       case _ => noSuchConstantTag(tag, len)
     }
   }
@@ -881,7 +883,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   protected def readNameRef()(using Context): Name = at(readNat(), () => readName())
   protected def readTypeRef()(using Context): Type = at(readNat(), () => readType()) // after the NMT_TRANSITION period, we can leave off the () => ... ()
-  protected def readConstantRef()(using Context): Constant = at(readNat(), () => readConstant())
+  protected def readConstantRef()(using Context): Constant | TermRef = at(readNat(), () => readConstant())
 
   protected def readTypeNameRef()(using Context): TypeName = readNameRef().toTypeName
   protected def readTermNameRef()(using Context): TermName = readNameRef().toTermName
@@ -896,7 +898,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    */
   protected def readAnnotArg(i: Int)(using Context): Tree = bytes(index(i)) match {
     case TREE => at(i, () => readTree())
-    case _ => Literal(at(i, () => readConstant()))
+    case _ => at(i, () =>
+      readConstant() match
+        case c: Constant => Literal(c)
+        case tp: TermRef => ref(tp)
+    )
   }
 
   /** Read a ClassfileAnnotArg (argument to a classfile annotation)
@@ -1208,7 +1214,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         Ident(symbol.namedType)
 
       case LITERALtree =>
-        Literal(readConstantRef())
+        readConstantRef() match
+          case c: Constant => Literal(c)
+          case tp: TermRef => ref(tp)
 
       case TYPEtree =>
         TypeTree(tpe)

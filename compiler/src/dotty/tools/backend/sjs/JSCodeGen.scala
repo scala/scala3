@@ -1223,8 +1223,6 @@ class JSCodeGen()(using genCtx: Context) {
             js.Null()
           case ClazzTag =>
             genClassConstant(value.typeValue)
-          case EnumTag =>
-            genLoadStaticField(value.symbolValue)
         }
 
       case Block(stats, expr) =>
