@@ -60,6 +60,7 @@ sealed trait CommunityProject:
   /** Publish this project to the local Maven repository */
   final def publish(): Unit =
     if !published then
+      dependencies.foreach(_.publish())
       log(s"Publishing $project")
       if publishCommand eq null then
         throw RuntimeException(s"Publish command is not specified for $project. Project details:\n$this")
