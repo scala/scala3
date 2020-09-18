@@ -143,7 +143,7 @@ class ExtractSemanticDB extends Phase:
             return
           if !excludeDef(tree.symbol)
           && tree.span.hasLength then
-            registerDefinition(tree.symbol, tree.adjustedNameSpan, symbolKinds(tree), tree.source)
+            registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree), tree.source)
             val privateWithin = tree.symbol.privateWithin
             if privateWithin.exists then
               registerUseGuarded(None, privateWithin, spanOfSymbol(privateWithin, tree.span, tree.source), tree.source)
@@ -282,14 +282,6 @@ class ExtractSemanticDB extends Phase:
         impl(Nil, pat::Nil)
 
     end PatternValDef
-
-    extension (tree: NamedDefTree):
-      private def adjustedNameSpan(using Context): Span =
-        val nameSpan = tree.nameSpan
-        if tree.symbol.is(ExtensionMethod) && tree.name.isExtensionName then
-          nameSpan.withEnd(nameSpan.end - ExtractSemanticDB.extensionPrefixLength)
-        else
-          nameSpan
 
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
@@ -598,8 +590,6 @@ object ExtractSemanticDB:
   import java.nio.file.Files
 
   val name: String = "extractSemanticDB"
-
-  final val extensionPrefixLength = "extension_".length
 
   def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
