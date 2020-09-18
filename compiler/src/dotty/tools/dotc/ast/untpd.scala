@@ -116,6 +116,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class Export(expr: Tree, selectors: List[ImportSelector])(implicit @constructorOnly src: SourceFile) extends Tree
   case class ExtMethods(tparams: List[TypeDef], vparamss: List[List[ValDef]], methods: List[DefDef])(implicit @constructorOnly src: SourceFile) extends Tree
   case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
+  case class EnumGetters()(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
     // TODO: Make bound a typed tree?
@@ -700,6 +701,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.Export(tree)(transform(expr), selectors)
       case ExtMethods(tparams, vparamss, methods) =>
         cpy.ExtMethods(tree)(transformSub(tparams), vparamss.mapConserve(transformSub(_)), transformSub(methods))
+      case enums: EnumGetters => enums
       case ImportSelector(imported, renamed, bound) =>
         cpy.ImportSelector(tree)(transformSub(imported), transform(renamed), transform(bound))
       case Number(_, _) | TypedSplice(_) =>
@@ -761,6 +763,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, expr)
       case ExtMethods(tparams, vparamss, methods) =>
         this(vparamss.foldLeft(this(x, tparams))(apply), methods)
+      case EnumGetters() =>
+        x
       case ImportSelector(imported, renamed, bound) =>
         this(this(this(x, imported), renamed), bound)
       case Number(_, _) =>

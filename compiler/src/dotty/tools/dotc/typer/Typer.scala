@@ -2122,7 +2122,7 @@ class Typer extends Namer
         .withType(dummy.termRef)
       if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
-      if cls.derivesFrom(defn.EnumClass) then
+      if cls.isScalaEnum || firstParent.isScalaEnum then
         checkEnum(cdef, cls, firstParent)
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
 
@@ -2633,6 +2633,9 @@ class Typer extends Namer
           // no attachment can happen in case of cyclic references
         traverse(rest)
       case (stat: untpd.ExtMethods) :: rest =>
+        val xtree = stat.removeAttachment(ExpandedTree).get
+        traverse(xtree :: rest)
+      case (stat: untpd.EnumGetters) :: rest =>
         val xtree = stat.removeAttachment(ExpandedTree).get
         traverse(xtree :: rest)
       case stat :: rest =>

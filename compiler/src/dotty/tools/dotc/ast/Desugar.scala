@@ -403,6 +403,7 @@ object desugar {
     val isCaseObject = mods.is(Case) && isObject
     val isEnum = mods.isEnumClass && !mods.is(Module)
     def isEnumCase = mods.isEnumCase
+    def isNonEnumCase = !isEnumCase && (isCaseClass || isCaseObject)
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
 
@@ -483,7 +484,8 @@ object desugar {
         val enumCompanionRef = TermRefTree()
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
-        (enumImport :: enumStats, enumCases, enumCompanionRef)
+        val enumSpecMethods = EnumGetters()
+        (enumImport :: enumSpecMethods :: enumStats, enumCases, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)
     }
@@ -621,10 +623,8 @@ object desugar {
     var parents1 = parents
     if (isEnumCase && parents.isEmpty)
       parents1 = enumClassTypeRef :: Nil
-    if (isCaseClass | isCaseObject)
+    if (isNonEnumCase || isEnum)
       parents1 = parents1 :+ scalaDot(str.Product.toTypeName) :+ scalaDot(nme.Serializable.toTypeName)
-    if (isEnum)
-      parents1 = parents1 :+ ref(defn.EnumClass.typeRef)
 
     // derived type classes of non-module classes go to their companions
     val (clsDerived, companionDerived) =
@@ -889,6 +889,9 @@ object desugar {
       Thicket(modul, classDef(cls).withSpan(mdef.span))
     }
   }
+
+  def enumGetters(getters: EnumGetters)(using Context): Tree =
+   flatTree(DesugarEnums.enumBaseMeths).withSpan(getters.span)
 
   /** Transform extension construct to list of extension methods */
   def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {
