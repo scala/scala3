@@ -94,6 +94,56 @@ enum Color(val rgb: Int) {
 }
 ```
 
+### Parameter Variance of Enums
+
+By default, parameterized cases of enums with type parameters will copy the type parameters of their parent, along
+with any variance notations. As usual, it is important to use type parameters carefully when they are variant, as shown
+below:
+
+The following `View` enum has a contravariant type parameter `T` and a single case `Refl`, representing a function
+mapping a type `T` to itself:
+```scala
+enum View[-T]:
+  case Refl(f: T => T)
+```
+The definition of `Refl` is incorrect, as it uses contravariant type `T` in the covariant result position of a
+function type, leading to the following error:
+```scala
+-- Error: View.scala:2:12 --------
+2 |  case Refl(f: T => T)
+  |            ^^^^^^^^^
+  |contravariant type T occurs in covariant position in type T => T of value f
+  |enum case Refl requires explicit declaration of type T to resolve this issue.
+```
+Because `Refl` does not declare explicit parameters, it looks to the compiler like the following:
+```scala
+enum View[-T]:
+  case Refl[/*synthetic*/-T1](f: T1 => T1) extends View[T1]
+```
+
+The compiler has inferred for `Refl` the contravariant type parameter `T1`, following `T` in `View`.
+We can now clearly see that `Refl` needs to declare its own non-variant type parameter to correctly type `f`,
+and can remedy the error by the following change to `Refl`:
+
+```diff
+enum View[-T]:
+-  case Refl(f: T => T)
++  case Refl[R](f: R => R) extends View[R]
+```
+Above, type `R` is chosen as the parameter for `Refl` to highlight that it has a different meaning to
+type `T` in `View`, but any name will do.
+
+After some further changes, a more complete implementation of `View` can be given as follows and be used
+as the function type `T => U`:
+
+```scala
+enum View[-T, +U] extends (T => U):
+  case Refl[R](f: R => R) extends View[R, R]
+
+  final def apply(t: T): U = this match
+    case refl: Refl[r] => refl.f(t)
+```
+
 ### Syntax of Enums
 
 Changes to the syntax fall in two categories: enum definitions and cases inside enums.

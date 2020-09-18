@@ -1,5 +1,5 @@
 enum Option[+T] extends Serializable {
-  case Some(x: T)
+  case Some[T](x: T) extends Option[T]
   case None
 
   def isDefined: Boolean = this match {

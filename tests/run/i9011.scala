@@ -1,5 +1,5 @@
 enum Opt[+T] derives Eq:
-  case Sm(t: T)
+  case Sm[T](t: T) extends Opt[T]
   case Nn
 
 import scala.deriving._

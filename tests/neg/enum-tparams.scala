@@ -1,10 +1,10 @@
 object Test {
 
   enum Opt[+T] {
-    case S(x: T) extends Opt[T]
+    case S[T](x: T) extends Opt[T]
     case I(x: Int) extends Opt[Int]
-    case V() extends Opt[`T`]
-    case P(x: List[T]) extends Opt[String]
+    case V[T]() extends Opt[`T`]
+    case P[T](x: List[T]) extends Opt[String]
     case N extends Opt[Nothing]
   }
 

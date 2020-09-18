@@ -115,7 +115,7 @@ object TypeLevel {
 
 // An algebraic datatype
 enum Lst[+T] { // derives Eq, Pickler, Show
-  case Cons(hd: T, tl: Lst[T])
+  case Cons[T](hd: T, tl: Lst[T]) extends Lst[T]
   case Nil
 }
 
