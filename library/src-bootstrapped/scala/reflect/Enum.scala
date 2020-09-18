@@ -1,7 +1,7 @@
-package scala
+package scala.reflect
 
 /** A base trait of all enum classes */
-trait Enum extends Product, Serializable:
+super trait Enum extends Any, Product, Serializable:
 
   /** A string uniquely identifying a case of an enum */
   def enumLabel: String

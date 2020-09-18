@@ -1,10 +1,5 @@
 package scala
 
 /** A base trait of all enum classes */
-trait Enum extends Product, Serializable:
-
-  /** A string uniquely identifying a case of an enum */
-  def enumLabel: String
-
-  /** A number uniquely identifying a case of an enum */
-  def ordinal: Int
+@deprecated("scala.Enum has moved to scala.reflect.Enum", "3.0.0-M1")
+type Enum = scala.reflect.Enum

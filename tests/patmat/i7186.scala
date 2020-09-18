@@ -1,5 +1,7 @@
 import MIPS._
 
+import deriving.Mirror.SumOf
+
 object MIPS {
   type Labels     = Label | ControlLabel
   type Src        = Register | Constant
@@ -233,8 +235,8 @@ object printMips {
     def getScopedLabel(s: Scoped): String =
       "L" + getScopedId(s)
 
-    def printEnum[E](e: String => Enum, t: E, code: String) = {
-      val num = e(t.toString).ordinal
+    def printEnum[E: SumOf](e: String => E, t: E, code: String) = {
+      val num = summon[SumOf[E]].ordinal(e(t.toString))
         s"$code$num"
     }
   }

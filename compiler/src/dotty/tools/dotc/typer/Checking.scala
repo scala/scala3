@@ -1094,7 +1094,7 @@ trait Checking {
         // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class
         // parent.
         //
-        // Unlike firstParent.derivesFrom(defn.EnumClass), this test allows inheriting from `Enum` by hand;
+        // this test allows inheriting from `Enum` by hand;
         // see enum-List-control.scala.
         report.error(ClassCannotExtendEnum(cls, firstParent), cdef.srcPos)
   }

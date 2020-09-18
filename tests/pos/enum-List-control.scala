@@ -1,4 +1,4 @@
-abstract sealed class List[T] extends Enum
+abstract sealed class List[T] extends reflect.Enum
 object List {
   final class Cons[T](x: T, xs: List[T]) extends List[T] {
     def ordinal = 0
