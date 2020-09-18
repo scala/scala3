@@ -784,7 +784,7 @@ trait Checking {
         conv.name == nme.reflectiveSelectable && conv.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
       if (!conversionOK)
         checkFeature(nme.implicitConversions,
-          i"Use of implicit conversion ${conv.showLocated}", NoSymbol, pos)
+          i"Use of implicit conversion ${conv.showLocated}", NoSymbol, posd)
     }
 
   private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {

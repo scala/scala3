@@ -1253,26 +1253,35 @@ class Typer extends Namer
       if (tree.tpt.isEmpty)
         meth1.tpe.widen match {
           case mt: MethodType =>
-            pt match {
+            val pt1 =
+              if ctx.explicitNulls then
+                pt.stripNull
+              else pt
+            val adaptWithUnsafeNullConver =
+              ctx.explicitNulls && (
+                config.Feature.enabled(nme.unsafeNulls) ||
+                ctx.mode.is(Mode.UnsafeNullConversion))
+            pt1 match {
               case SAMType(sam)
-              if !defn.isFunctionType(pt) && mt <:< sam =>
+              if !defn.isFunctionType(pt1) && mt <:< sam ||
+                adaptWithUnsafeNullConver && mt.isUnsafeConvertable(sam) =>
                 // SAMs of the form C[?] where C is a class cannot be conversion targets.
                 // The resulting class `class $anon extends C[?] {...}` would be illegal,
                 // since type arguments to `C`'s super constructor cannot be constructed.
                 def isWildcardClassSAM =
-                  !pt.classSymbol.is(Trait) && pt.argInfos.exists(_.isInstanceOf[TypeBounds])
+                  !pt1.classSymbol.is(Trait) && pt1.argInfos.exists(_.isInstanceOf[TypeBounds])
                 val targetTpe =
-                  if isFullyDefined(pt, ForceDegree.all) && !isWildcardClassSAM then
-                    pt
-                  else if pt.isRef(defn.PartialFunctionClass) then
+                  if isFullyDefined(pt1, ForceDegree.all) && !isWildcardClassSAM then
+                    pt1
+                  else if pt1.isRef(defn.PartialFunctionClass) then
                     // Replace the underspecified expected type by one based on the closure method type
                     defn.PartialFunctionOf(mt.firstParamTypes.head, mt.resultType)
                   else
-                    report.error(ex"result type of lambda is an underspecified SAM type $pt", tree.srcPos)
-                    pt
-                if (pt.classSymbol.isOneOf(FinalOrSealed)) {
-                  val offendingFlag = pt.classSymbol.flags & FinalOrSealed
-                  report.error(ex"lambda cannot implement $offendingFlag ${pt.classSymbol}", tree.srcPos)
+                    report.error(ex"result type of lambda is an underspecified SAM type $pt1", tree.srcPos)
+                    pt1
+                if (pt1.classSymbol.isOneOf(FinalOrSealed)) {
+                  val offendingFlag = pt1.classSymbol.flags & FinalOrSealed
+                  report.error(ex"lambda cannot implement $offendingFlag ${pt1.classSymbol}", tree.srcPos)
                 }
                 TypeTree(targetTpe)
               case _ =>
@@ -3434,13 +3443,23 @@ class Typer extends Namer
         return tpd.Block(tree1 :: Nil, Literal(Constant(())))
       }
 
+      val adaptWithUnsafeNullConver =
+        ctx.explicitNulls && (
+          config.Feature.enabled(nme.unsafeNulls) ||
+          ctx.mode.is(Mode.UnsafeNullConversion))
+
       // convert function literal to SAM closure
       tree match {
         case closure(Nil, id @ Ident(nme.ANON_FUN), _)
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
-          pt match {
+          val pt1 =
+            if ctx.explicitNulls then
+              pt.stripNull
+            else pt
+          pt1 match {
             case SAMType(sam)
-            if wtp <:< sam.toFunctionType() =>
+            if wtp <:< sam.toFunctionType() ||
+              (adaptWithUnsafeNullConver && wtp.isUnsafeConvertable(sam.toFunctionType())) =>
               // was ... && isFullyDefined(pt, ForceDegree.flipBottom)
               // but this prevents case blocks from implementing polymorphic partial functions,
               // since we do not know the result parameter a priori. Have to wait until the
@@ -3509,12 +3528,11 @@ class Typer extends Namer
         }
       }
 
-      def tryUnsafeNullConver(fail: => Tree): Tree =
+      def tryUnsafeNullConver(fail: => Tree)(using Context): Tree =
         // If explicitNulls and unsafeNulls are enabled, and
-        if ctx.explicitNulls && config.Feature.enabled(nme.unsafeNulls) &&
-          tree.tpe.isUnsafeConvertable(pt) then {
-            tree.cast(pt)
-          }
+        if ctx.mode.is(Mode.UnsafeNullConversion) && pt.isValueType &&
+          tree.tpe.isUnsafeConvertable(pt)
+        then tree.cast(pt)
         else fail
 
       def cannotFind(failure: SearchFailure) =
@@ -3527,21 +3545,25 @@ class Typer extends Namer
           tree
         else recover(failure.reason)
 
-      if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
-        if pt.isRef(defn.AnyValClass) || pt.isRef(defn.ObjectClass) then
-          ctx.error(em"the result of an implicit conversion must be more specific than $pt", tree.sourcePos)
-        val searchCtx = if config.Feature.enabled(nme.unsafeNulls)
-          then ctx.addMode(Mode.UnsafeNullConversion)
-          else ctx
-        tree.tpe match {
-          case OrNull(tpe1) if ctx.explicitNulls && config.Feature.enabled(nme.unsafeNulls) =>
-            searchTree(tree.cast(tpe1)) { _ =>
-              searchTree(tree)(failure => tryUnsafeNullConver(cannotFind(failure)))(using searchCtx)
-            }(using searchCtx)
-          case _ =>
-            searchTree(tree)(failure => tryUnsafeNullConver(cannotFind(failure)))(using searchCtx)
-        }
-      else tryUnsafeNullConver(recover(NoMatchingImplicits))
+      val searchCtx =
+        if ctx.explicitNulls && config.Feature.enabled(nme.unsafeNulls) then
+          ctx.addMode(Mode.UnsafeNullConversion)
+        else ctx
+
+      inContext(searchCtx) {
+        if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
+          if pt.isRef(defn.AnyValClass) || pt.isRef(defn.ObjectClass) then
+            report.error(em"the result of an implicit conversion must be more specific than $pt", tree.srcPos)
+          tree.tpe match {
+            case OrNull(tpe1) if ctx.explicitNulls && config.Feature.enabled(nme.unsafeNulls) =>
+              searchTree(tree.cast(tpe1)) { _ =>
+                searchTree(tree)(failure => tryUnsafeNullConver(cannotFind(failure)))
+              }
+            case _ =>
+              searchTree(tree)(failure => tryUnsafeNullConver(cannotFind(failure)))
+          }
+        else tryUnsafeNullConver(recover(NoMatchingImplicits))
+      }
     }
 
     def adaptType(tp: Type): Tree = {
