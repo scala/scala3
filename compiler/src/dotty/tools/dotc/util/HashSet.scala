@@ -128,6 +128,13 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
       idx = nextIndex(idx)
       e = entryAt(idx)
 
+  def remove(x: T): Boolean =
+    if contains(x) then
+      this -= x
+      true
+    else
+      false
+
   private def addOld(x: T) =
     Stats.record(statsItem("re-enter"))
     var idx = firstIndex(x)

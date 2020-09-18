@@ -43,6 +43,22 @@ import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
  */
 object JSEncoding {
 
+  /** Name of the capture param storing the JS super class.
+   *
+   *  This is used by the dispatchers of exposed JS methods and properties of
+   *  nested JS classes when they need to perform a super call. Other super
+   *  calls (in the actual bodies of the methods, not in the dispatchers) do
+   *  not use this value, since they are implemented as static methods that do
+   *  not have access to it. Instead, they get the JS super class value through
+   *  the magic method inserted by `ExplicitLocalJS`, leveraging `lambdalift`
+   *  to ensure that it is properly captured.
+   *
+   *  Using this identifier is only allowed if it was reserved in the current
+   *  local name scope using [[reserveLocalName]]. Otherwise, this name can
+   *  clash with another local identifier.
+   */
+  final val JSSuperClassParamName = LocalName("superClass$")
+
   private val ScalaRuntimeNothingClassName = ClassName("scala.runtime.Nothing$")
   private val ScalaRuntimeNullClassName = ClassName("scala.runtime.Null$")
 
@@ -56,6 +72,12 @@ object JSEncoding {
     private val usedLabelNames = mutable.Set.empty[LabelName]
     private val labelSymbolNames = mutable.Map.empty[Symbol, LabelName]
     private var returnLabelName: Option[LabelName] = None
+
+    def reserveLocalName(name: LocalName): Unit = {
+      require(usedLocalNames.isEmpty,
+          s"Trying to reserve the name '$name' but names have already been allocated")
+      usedLocalNames += name
+    }
 
     private def freshNameGeneric[N <: ir.Names.Name](base: N, usedNamesSet: mutable.Set[N])(
         withSuffix: (N, String) => N): N = {

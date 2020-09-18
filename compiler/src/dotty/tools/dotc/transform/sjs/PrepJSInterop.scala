@@ -106,7 +106,10 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         case tree: ValDef if tree.symbol.is(Module) =>
           /* Never apply this transformation on the term definition of modules.
            * Instead, all relevant checks are performed on the module class definition.
+           * We still need to mark exposed if required, since that needs to be done
+           * on the module symbol, not its module class.
            */
+          markExposedIfRequired(tree.symbol)
           super.transform(tree)
 
         case tree: MemberDef => transformMemberDef(tree)
@@ -842,14 +845,18 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
      */
     private def markExposedIfRequired(sym: Symbol)(using Context): Unit = {
       val shouldBeExposed: Boolean = {
+        // it is a term member
+        sym.isTerm &&
         // it is a member of a non-native JS class
         (enclosingOwner is OwnerKind.JSNonNative) && !sym.isLocalToBlock &&
-        // it is a term member, and it is not synthetic
-        sym.isOneOf(Module | Method, butNot = Synthetic) &&
+        // it is not synthetic
+        !sym.isOneOf(Synthetic) &&
         // it is not private
         !isPrivateMaybeWithin(sym) &&
         // it is not a constructor
-        !sym.isConstructor
+        !sym.isConstructor &&
+        // it is not a default getter
+        !sym.name.is(DefaultGetterName)
       }
 
       if (shouldBeExposed)

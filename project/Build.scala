@@ -1019,8 +1019,7 @@ object Build {
         val dir = fetchScalaJSSource.value / "test-suite/js/src/main/scala"
         val filter = (
           ("*.scala": FileFilter)
-            -- "Typechecking*.scala"
-            -- "NonNativeTypeTestSeparateRun.scala"
+            -- "Typechecking*.scala" // defines a Scala 2 macro
         )
         (dir ** filter).get
       },
@@ -1038,29 +1037,18 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
-            -- "InteroperabilityTest.scala" // nested native JS classes + JS exports
-            -- "OptimizerTest.scala" // non-native JS classes
-            -- "RegressionJSTest.scala" // non-native JS classes
+            -- "InteroperabilityTest.scala" // 3 tests require JS exports, all other tests pass
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
             )).get
 
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** (("*.scala": FileFilter)
-            -- "ObjectJSTest.scala" // non-native JS classes
-            )).get
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/jsinterop" ** (("*.scala": FileFilter)
-            -- "AsyncTest.scala" // needs PromiseMock.scala
+            -- "AsyncTest.scala" // needs JS exports in PromiseMock.scala
             -- "DynamicTest.scala" // one test requires JS exports, all other tests pass
             -- "ExportsTest.scala" // JS exports
-            -- "IterableTest.scala" // non-native JS classes
             -- "JSExportStaticTest.scala" // JS exports
-            -- "JSOptionalTest.scala" // non-native JS classes
-            -- "JSSymbolTest.scala" // non-native JS classes
-            -- "MiscInteropTest.scala" // non-native JS classes
-            -- "ModulesWithGlobalFallbackTest.scala" // non-native JS classes
-            -- "NestedJSClassTest.scala" // non-native JS classes
-            -- "NonNativeJSTypeTest.scala" // non-native JS classes
-            -- "PromiseMock.scala" // non-native JS classes
+            -- "NonNativeJSTypeTest.scala" // 3 tests fail (2 because of anonymous JS class no-own-prototype; 1 because of a progression for value class fields)
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter)
@@ -1072,10 +1060,9 @@ object Build {
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/library" ** (("*.scala": FileFilter)
-            -- "BigIntTest.scala" // non-native JS classes
             -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
-            -- "UnionTypeTest.scala" // requires a Scala 2 macro
+            -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
@@ -1083,14 +1070,8 @@ object Build {
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/typedarray" ** "*.scala").get
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
 
-          ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
-            -- "JSOptionalTest212.scala" // non-native JS classes
-            )).get
-
-          ++ (dir / "js/src/test/require-sam" ** (("*.scala": FileFilter)
-            -- "SAMJSTest.scala" // non-native JS classes
-            )).get
-
+          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
+          ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
         )
       }
