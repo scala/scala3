@@ -652,6 +652,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     val isLiftedJSConstructor =
       sym.isClassConstructor && sym.owner.isNestedJSClass
 
+    // params: List[ParamSpec] ; captureParams and captureParamsBack: List[js.ParamDef]
     val (params, captureParamsFront, captureParamsBack) = {
       val paramNamessNow = sym.info.paramNamess
       val paramInfosNow = sym.info.paramInfoss.flatten
@@ -684,9 +685,10 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
          * by explicitouter, while the other capture params are added by
          * lambdalift (between elimErasedValueType and now).
          *
-         * scalac: Note that lambdalift creates new symbols even for parameters that
-         * are not the result of lambda lifting, but it preserves their
-         * `name`s.
+         * Since we cannot reliably get Symbols for parameters created by
+         * intermediate phases, we have to perform some dance with the
+         * paramNamess and paramInfoss observed at some phases, combined with
+         * the paramSymss observed at elimRepeated.
          */
 
         val hasOuterParam = {
@@ -724,7 +726,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           // For an anonymous JS class constructor, we put the capture parameters back as formal parameters.
           val allFormalParams = captureParamsFront.toIndexedSeq ++ formalParams ++ captureParamsBack.toIndexedSeq
           (allFormalParams, Nil, Nil)
-        } else {*/          (formalParams, captureParamsFront, captureParamsBack)
+        } else {*/
+          (formalParams, captureParamsFront, captureParamsBack)
         //}
       }
     }

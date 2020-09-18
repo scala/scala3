@@ -53,8 +53,9 @@ object JSSymUtils {
     def isNonNativeJSClass(using Context): Boolean =
       sym.isJSType && !sym.hasAnnotation(jsdefn.JSNativeAnnot)
 
+    /** Is this symbol a nested JS class, i.e., an inner or local JS class? */
     def isNestedJSClass(using Context): Boolean =
-      !sym.isStatic /*&& !isStaticModule(sym.originalOwner)*/ && sym.isJSType
+      !sym.isStatic && sym.isJSType
 
     /** Tests whether the given member is exposed, i.e., whether it was
      *  originally a public or protected member of a non-native JS class.

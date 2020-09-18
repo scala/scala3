@@ -250,7 +250,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   override def changesMembers: Boolean = true // the phase adds fields for inner JS classes
 
-  /** Is the given symbol an owner for which this transformation applies?
+  /** Is the given symbol an owner that might receive `\$jsclass` and/or `\$jsobject` fields?
    *
    *  This applies if either or both of the following are true:
    *  - It is not a static owner, or
@@ -258,12 +258,9 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
    *
    *  The latter is necessary for scala-js/scala-js#4086.
    */
-  private def isApplicableOwner(sym: Symbol)(using Context): Boolean = {
-    !sym.isStaticOwner || (
-        sym.is(ModuleClass) &&
-        sym.hasAnnotation(jsdefn.JSTypeAnnot) &&
-        !sym.hasAnnotation(jsdefn.JSNativeAnnot)
-    )
+  private def mayNeedJSClassOrJSObjectFields(sym: Symbol)(using Context): Boolean = {
+    !sym.isStaticOwner
+      || (sym.is(ModuleClass) && sym.hasAnnotation(jsdefn.JSTypeAnnot) && !sym.hasAnnotation(jsdefn.JSNativeAnnot))
   }
 
   /** Is the given symbol a JS class (that is not a trait nor an object)? */
@@ -329,7 +326,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
-    case tp @ ClassInfo(_, cls, _, decls, _) if !cls.is(JavaDefined) && isApplicableOwner(cls) =>
+    case tp @ ClassInfo(_, cls, _, decls, _) if !cls.is(JavaDefined) && mayNeedJSClassOrJSObjectFields(cls) =>
       val innerJSClasses = decls.filter(isJSClass)
 
       val innerObjectsForAdHocExposed =
@@ -451,7 +448,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
       if (!cls.isJSType) tree.parents // fast path
       else tree.parents.mapConserve(unwrapWithContextualJSClassValue(_))
 
-    if (!isApplicableOwner(cls)) {
+    if (!mayNeedJSClassOrJSObjectFields(cls)) {
       if (fixedParents eq tree.parents) tree
       else cpy.Template(tree)(parents = fixedParents)
     } else {

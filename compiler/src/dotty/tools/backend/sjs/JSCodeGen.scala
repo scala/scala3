@@ -789,13 +789,11 @@ class JSCodeGen()(using genCtx: Context) {
          * initialized to an instance of the boxed representation, with
          * an underlying value set to the zero of its type. However we
          * cannot implement that, so we live with the discrepancy.
-         * Anyway, scalac also has problems with uninitialized value
-         * class values, if they come from a generic context.
          *
-         * TODO Evaluate how much of this needs to be adapted for dotc,
-         * which unboxes `null` to the zero of their underlying.
+         * In dotc this is usually not an issue, because it unboxes `null` to
+         * the zero of the underlying type, unlike scalac which throws an NPE.
          */
-        jstpe.ClassType(encodeClassName(tpe.valueClassSymbol))
+        jstpe.ClassType(encodeClassName(tpe.tycon.typeSymbol))
 
       case _ =>
         // Other types are not boxed, so we can initialized them to their true zero.
