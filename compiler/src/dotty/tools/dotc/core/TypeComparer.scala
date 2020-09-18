@@ -605,7 +605,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (tparams1.nonEmpty)
               return recur(tp1.EtaExpand(tparams1), tp2) || fourthTry
             tp2 match {
-              case EtaExpansion(tycon2) if tycon2.symbol.isClass && tycon2.symbol.is(JavaDefined) =>
+              case EtaExpansion(tycon2: TypeRef) if tycon2.symbol.isClass && tycon2.symbol.is(JavaDefined) =>
                 recur(tp1, tycon2) || fourthTry
               case _ =>
                 fourthTry
@@ -769,7 +769,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         isNewSubType(tp1.parent)
       case tp1: HKTypeLambda =>
         def compareHKLambda = tp1 match {
-          case EtaExpansion(tycon1) if tycon1.symbol.isClass && tycon1.symbol.is(JavaDefined) =>
+          case EtaExpansion(tycon1: TypeRef) if tycon1.symbol.isClass && tycon1.symbol.is(JavaDefined) =>
             // It's a raw type that was mistakenly eta-expanded to a hk-type.
             // This can happen because we do not cook types coming from Java sources
             recur(tycon1, tp2)

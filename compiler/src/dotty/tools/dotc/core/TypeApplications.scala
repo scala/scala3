@@ -39,8 +39,9 @@ object TypeApplications {
       tycon.EtaExpand(tycon.typeParamSymbols)
     }
 
-    def unapply(tp: Type)(using Context): Option[TypeRef] = tp match {
-      case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.paramRef)) => Some(fn)
+    def unapply(tp: Type)(using Context): Option[Type] = tp match {
+      case tp @ HKTypeLambda(tparams, AppliedType(fn: Type, args))
+          if args.lazyZip(tparams).forall((arg, tparam) => arg == tparam.paramRef) => Some(fn)
       case _ => None
     }
   }
