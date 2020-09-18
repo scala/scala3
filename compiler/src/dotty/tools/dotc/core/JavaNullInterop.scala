@@ -1,11 +1,13 @@
-package dotty.tools.dotc.core
+package dotty.tools.dotc
+package core
 
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Flags.JavaDefined
-import dotty.tools.dotc.core.StdNames.{jnme, nme}
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types._
+import config.Feature._
+import Contexts._
+import Flags.JavaDefined
 import NullOpsDecorator._
+import StdNames.nme
+import Symbols._
+import Types._
 
 /** This module defines methods to interpret types of Java symbols, which are implicitly nullable in Java,
  *  as Scala types, which are explicitly nullable.
@@ -34,6 +36,12 @@ import NullOpsDecorator._
  *   enum instances get special treatment.
  */
 object JavaNullInterop {
+
+  /** Should we try to convert values ignoring Null type at this moment? */
+  def convertUnsafeNulls(using Context): Boolean =
+    ctx.explicitNulls && (
+      config.Feature.enabled(nme.unsafeNulls) ||
+      ctx.mode.is(Mode.UnsafeNullConversion))
 
   /** Transforms the type `tp` of Java member `sym` to be explicitly nullable.
    *  `tp` is needed because the type inside `sym` might not be set when this method is called.

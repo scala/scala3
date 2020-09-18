@@ -59,21 +59,19 @@ object NullOpsDecorator {
 
     /** Can the type have null value after erasure?
      */
-    def hasNullAfterErasure(using Context): Boolean = {
-      self match {
-        case tp: ClassInfo => tp.cls.isNullableClassAfterErasure
-        case tp: TypeProxy => tp.underlying.hasNullAfterErasure
-        case OrType(lhs, rhs) =>
-          lhs.hasNullAfterErasure || rhs.hasNullAfterErasure
-        case _ =>
-          self <:< defn.ObjectType
-      }
+    def isNullableAfterErasure(using Context): Boolean =  self match {
+      case tp: ClassInfo => tp.cls.isNullableClassAfterErasure
+      case tp: TypeProxy => tp.underlying.isNullableAfterErasure
+      case OrType(lhs, rhs) =>
+        lhs.isNullableAfterErasure || rhs.isNullableAfterErasure
+      case _ =>
+        self.isNullType || self <:< defn.ObjectType
     }
 
     /** Can we convert a tree with type `self` to type `pt` unsafely.
      */
     def isUnsafeConvertable(pt: Type)(using Context): Boolean =
-      (self.isNullType && pt.hasNullAfterErasure) ||
+      (self.isNullType && pt.isNullableAfterErasure) ||
       (self.stripAllNulls <:< pt.stripAllNulls)
   }
 }

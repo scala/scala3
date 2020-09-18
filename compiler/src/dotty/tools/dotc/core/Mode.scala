@@ -113,5 +113,6 @@ object Mode {
   /** Are we in a quote in a pattern? */
   val QuotedPattern: Mode = newMode(25, "QuotedPattern")
 
+  /** Should we try to convert values ignoring Null type? */
   val UnsafeNullConversion: Mode = newMode(26, "UnsafeNullConversion")
 }

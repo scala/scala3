@@ -768,7 +768,7 @@ trait Checking {
    *    - it is defined in Predef
    *    - it is the scala.reflect.Selectable.reflectiveSelectable conversion
    */
-  def checkImplicitConversionUseOK(sym: Symbol, tpe: Type, posd: SrcPos)(using Context): Unit =
+  def checkImplicitConversionUseOK(sym: Symbol, tpe: Type, pos: SrcPos)(using Context): Unit =
     if (sym.exists) {
       val conv =
         if (sym.isOneOf(GivenOrImplicit) || sym.info.isErroneous) sym
@@ -784,7 +784,7 @@ trait Checking {
         conv.name == nme.reflectiveSelectable && conv.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
       if (!conversionOK)
         checkFeature(nme.implicitConversions,
-          i"Use of implicit conversion ${conv.showLocated}", NoSymbol, posd)
+          i"Use of implicit conversion ${conv.showLocated}", NoSymbol, pos)
     }
 
   private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
@@ -1246,7 +1246,7 @@ trait NoChecking extends ReChecking {
   override def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit = ()
   override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
-  override def checkImplicitConversionUseOK(sym: Symbol, tpe: Type, posd: SrcPos)(using Context): Unit = ()
+  override def checkImplicitConversionUseOK(sym: Symbol, tpe: Type, pos: SrcPos)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
   override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
   override def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = ()
