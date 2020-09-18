@@ -344,7 +344,7 @@ object Trees {
         else {
           val realName = name.stripModuleClassSuffix.lastPart
           var length = realName.length
-          if symbol.is(ExtensionMethod) && name.isExtensionName then
+          if (mods.is(ExtensionMethod) || symbol.is(ExtensionMethod)) && name.isExtensionName then
             length -= "extension_".length
           Span(point, point + length, point)
         }
