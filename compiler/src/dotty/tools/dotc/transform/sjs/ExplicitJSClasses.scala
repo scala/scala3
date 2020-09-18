@@ -646,12 +646,8 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
    *  In this phase, `transformApply`, `transformTypeApply` and `transformSelect`
    *  must only operate on fully applied selections and applications.
    */
-  private def isFullyApplied(tree: Tree)(using Context): Boolean = {
-    tree.tpe.widenTermRefExpr match {
-      case _:PolyType | _:MethodType => false
-      case _                         => true
-    }
-  }
+  private def isFullyApplied(tree: Tree)(using Context): Boolean =
+    !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly]
 
   /** Wraps `super` calls to inner and local JS classes with
    *  `withContextualJSClassValue`, to preserve a reified reference to the
