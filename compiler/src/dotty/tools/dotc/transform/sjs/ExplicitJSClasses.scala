@@ -455,41 +455,43 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
       if (fixedParents eq tree.parents) tree
       else cpy.Template(tree)(parents = fixedParents)
     } else {
-      val newDecls = List.newBuilder[Tree]
-      for (decl <- tree.body) {
-        val declSym = decl.symbol
-        if (declSym eq null) {
-          // not a member def, do nothing
-        } else if (isJSClass(declSym)) {
-          val jsclassAccessor = jsclassAccessorFor(declSym)
+      val newStats = List.newBuilder[Tree]
+      for (stat <- tree.body) {
+        stat match {
+          case stat: TypeDef if stat.isClassDef && isJSClass(stat.symbol) =>
+            val innerClassSym = stat.symbol.asClass
+            val jsclassAccessor = jsclassAccessorFor(innerClassSym)
 
-          val rhs = if (cls.hasAnnotation(jsdefn.JSNativeAnnot)) {
-            ref(jsdefn.JSPackage_native)
-          } else {
-            val clazzValue = clsOf(declSym.typeRef)
-            if (cls.isStaticOwner) {
-              // #4086
-              ref(jsdefn.Runtime_constructorOf).appliedTo(clazzValue)
+            val rhs = if (cls.hasAnnotation(jsdefn.JSNativeAnnot)) {
+              ref(jsdefn.JSPackage_native)
             } else {
-              val parentTpe = extractSuperTpeFromImpl(decl.asInstanceOf[TypeDef].rhs.asInstanceOf[Template])
-              val superClassCtor = genJSConstructorOf(tree, parentTpe)
-              ref(jsdefn.Runtime_createInnerJSClass).appliedTo(clazzValue, superClassCtor)
+              val clazzValue = clsOf(innerClassSym.typeRef)
+              if (cls.isStaticOwner) {
+                // scala-js/scala-js#4086
+                ref(jsdefn.Runtime_constructorOf).appliedTo(clazzValue)
+              } else {
+                val parentTpe = extractSuperTpeFromImpl(stat.rhs.asInstanceOf[Template])
+                val superClassCtor = genJSConstructorOf(tree, parentTpe)
+                ref(jsdefn.Runtime_createInnerJSClass).appliedTo(clazzValue, superClassCtor)
+              }
             }
-          }
 
-          newDecls += ValDef(jsclassAccessor, rhs)
-        } else if (cls.isStaticOwner) {
-          // #4086
-          if (isExposedModule(declSym)) {
-            val getter = cls.info.decls.lookup(jsobjectGetterNameFor(declSym)).asTerm
-            newDecls += DefDef(getter, ref(declSym))
-          }
+            newStats += ValDef(jsclassAccessor, rhs)
+
+          case stat: ValDef if cls.isStaticOwner && isExposedModule(stat.symbol) =>
+            // scala-js/scala-js#4086
+            val moduleSym = stat.symbol
+            val getter = cls.info.decls.lookup(jsobjectGetterNameFor(moduleSym)).asTerm
+            newStats += DefDef(getter, ref(moduleSym))
+
+          case _ =>
+            () // nothing to do
         }
 
-        newDecls += decl
+        newStats += stat
       }
 
-      cpy.Template(tree)(tree.constr, fixedParents, Nil, tree.self, newDecls.result())
+      cpy.Template(tree)(tree.constr, fixedParents, Nil, tree.self, newStats.result())
     }
   }
 
