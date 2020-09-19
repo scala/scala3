@@ -1024,6 +1024,7 @@ object Build {
         (dir ** filter).get
       },
 
+      // A first blacklist of tests for those that do not compile or do not link
       managedSources in Test ++= {
         val dir = fetchScalaJSSource.value / "test-suite"
         (
@@ -1037,27 +1038,16 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
-            -- "InteroperabilityTest.scala" // 3 tests require JS exports, all other tests pass
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/jsinterop" ** (("*.scala": FileFilter)
-            -- "AsyncTest.scala" // needs JS exports in PromiseMock.scala
-            -- "DynamicTest.scala" // one test requires JS exports, all other tests pass
-            -- "ExportsTest.scala" // JS exports
-            -- "JSExportStaticTest.scala" // JS exports
-            -- "NonNativeJSTypeTest.scala" // 1 test fails because of a progression for value class fields (needs an update upstream)
+            -- "ExportsTest.scala" // JS exports + do not compile because of a var in a structural type
             )).get
 
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter)
-            // Tests fail
-            -- "JUnitAbstractClassTest.scala"
-            -- "JUnitNamesTest.scala"
-            -- "JUnitSubClassTest.scala"
-            -- "MultiCompilationSecondUnitTest.scala"
-            )).get
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/library" ** (("*.scala": FileFilter)
             -- "ObjectTest.scala" // compile errors caused by #9588
@@ -1074,6 +1064,25 @@ object Build {
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
         )
+      },
+
+      // A second blacklist for tests that compile and link, but do not pass at run-time.
+      // Putting them here instead of above makes sure that we do not regress on compilation+linking.
+      Test / testOptions += Tests.Filter { name =>
+        !Set[String](
+          "org.scalajs.testsuite.compiler.InteroperabilityTest", // 3 tests require JS exports, all other tests pass
+
+          "org.scalajs.testsuite.jsinterop.AsyncTest", // needs JS exports in PromiseMock.scala
+          "org.scalajs.testsuite.jsinterop.DynamicTest", // one test requires JS exports, all other tests pass
+          "org.scalajs.testsuite.jsinterop.JSExportStaticTest", // JS exports
+          "org.scalajs.testsuite.jsinterop.NonNativeJSTypeTest", // 1 test fails because of a progression for value class fields (needs an update upstream)
+
+          // Not investigated so far
+          "org.scalajs.testsuite.junit.JUnitAbstractClassTestCheck",
+          "org.scalajs.testsuite.junit.JUnitNamesTestCheck",
+          "org.scalajs.testsuite.junit.JUnitSubClassTestCheck",
+          "org.scalajs.testsuite.junit.MultiCompilationSecondUnitTestCheck",
+        ).contains(name)
       }
     )
 
