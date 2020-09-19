@@ -1,7 +1,7 @@
 package dotty.tools.dotc.util
 import collection.immutable
 
-/** A linear set is a set here after a `+` the previous set value cannot be
+/** A linear set is a set where after a `+` the previous set value cannot be
  *  used anymore. The set is implemented as an immutable set for sizes <= 4
  *  and as a HashSet for larger sizes.
  */
