@@ -176,16 +176,19 @@ object JSEncoding {
     js.LabelIdent(localNames.labelSymbolName(sym))
   }
 
-  def encodeFieldSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position): js.FieldIdent = {
-    require(sym.owner.isClass && sym.isTerm && !sym.is(Flags.Method) && !sym.is(Flags.Module),
+  def encodeFieldSym(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.FieldIdent =
+    js.FieldIdent(FieldName(encodeFieldSymAsString(sym)))
+
+  def encodeFieldSymAsStringLiteral(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.StringLiteral =
+    js.StringLiteral(encodeFieldSymAsString(sym))
+
+  private def encodeFieldSymAsString(sym: Symbol)(using Context): String = {
+    require(sym.owner.isClass && sym.isTerm && !sym.isOneOf(Method | Module),
         "encodeFieldSym called with non-field symbol: " + sym)
 
     val name0 = sym.javaSimpleName
-    val name =
-      if (name0.charAt(name0.length()-1) != ' ') name0
-      else name0.substring(0, name0.length()-1)
-    js.FieldIdent(FieldName(name))
+    if (name0.charAt(name0.length() - 1) != ' ') name0
+    else name0.substring(0, name0.length() - 1)
   }
 
   def encodeMethodSym(sym: Symbol, reflProxy: Boolean = false)(

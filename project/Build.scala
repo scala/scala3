@@ -1048,7 +1048,7 @@ object Build {
             -- "DynamicTest.scala" // one test requires JS exports, all other tests pass
             -- "ExportsTest.scala" // JS exports
             -- "JSExportStaticTest.scala" // JS exports
-            -- "NonNativeJSTypeTest.scala" // 3 tests fail (2 because of anonymous JS class no-own-prototype; 1 because of a progression for value class fields)
+            -- "NonNativeJSTypeTest.scala" // 1 test fails because of a progression for value class fields (needs an update upstream)
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter)

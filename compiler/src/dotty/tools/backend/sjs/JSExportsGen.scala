@@ -88,10 +88,10 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
   def genJSConstructorDispatch(alts: List[Symbol]): (Option[List[js.ParamDef]], js.JSMethodDef) = {
     val exporteds = alts.map(Exported)
 
-    val isLiftedJSCtor = exporteds.head.isLiftedJSConstructor
-    assert(exporteds.tail.forall(_.isLiftedJSConstructor == isLiftedJSCtor),
-        s"Alternative constructors $alts do not agree on whether they are lifted JS constructors or not")
-    val captureParams = if (!isLiftedJSCtor) {
+    val isConstructorOfNestedJSClass = exporteds.head.isConstructorOfNestedJSClass
+    assert(exporteds.tail.forall(_.isConstructorOfNestedJSClass == isConstructorOfNestedJSClass),
+        s"Alternative constructors $alts do not agree on whether they are in a nested JS class or not")
+    val captureParams = if (!isConstructorOfNestedJSClass) {
       None
     } else {
       Some(for {
@@ -645,11 +645,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
   // This is a case class because we rely on its structural equality
   private final case class Exported(sym: Symbol) {
-    private val isAnonJSClassConstructor =
-      //sym.isClassConstructor && sym.owner.isAnonymousClass && isJSType(sym.owner)
-      false
-
-    val isLiftedJSConstructor =
+    val isConstructorOfNestedJSClass =
       sym.isClassConstructor && sym.owner.isNestedJSClass
 
     // params: List[ParamSpec] ; captureParams and captureParamsBack: List[js.ParamDef]
@@ -672,7 +668,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         }).toIndexedSeq
       }
 
-      if (!isLiftedJSConstructor && !isAnonJSClassConstructor) {
+      if (!isConstructorOfNestedJSClass) {
         // Easy case: all params are formal params.
         assert(paramInfosAtElimRepeated.size == paramInfosAtElimEVT.size,
             s"Found ${paramInfosAtElimRepeated.size} params entering elimRepeated but " +
@@ -722,13 +718,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         val captureParamsFront = captureParamsFrontNow.map(makeCaptureParamDef(_))
         val captureParamsBack = captureParamsBackNow.map(makeCaptureParamDef(_))
 
-        /*if (isAnonJSClassConstructor) {
-          // For an anonymous JS class constructor, we put the capture parameters back as formal parameters.
-          val allFormalParams = captureParamsFront.toIndexedSeq ++ formalParams ++ captureParamsBack.toIndexedSeq
-          (allFormalParams, Nil, Nil)
-        } else {*/
-          (formalParams, captureParamsFront, captureParamsBack)
-        //}
+        (formalParams, captureParamsFront, captureParamsBack)
       }
     }
 

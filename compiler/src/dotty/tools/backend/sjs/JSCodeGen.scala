@@ -75,6 +75,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   // Some state --------------------------------------------------------------
 
+  private val lazilyGeneratedAnonClasses = new MutableSymbolMap[TypeDef]
   private val generatedClasses = mutable.ListBuffer.empty[js.ClassDef]
   private val generatedStaticForwarderClasses = mutable.ListBuffer.empty[(Symbol, js.ClassDef)]
 
@@ -82,10 +83,25 @@ class JSCodeGen()(using genCtx: Context) {
   private val currentMethodSym = new ScopedVar[Symbol]
   private val localNames = new ScopedVar[LocalNameGenerator]
   private val thisLocalVarIdent = new ScopedVar[Option[js.LocalIdent]]
+  private val isModuleInitialized = new ScopedVar[ScopedVar.VarBox[Boolean]]
   private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
 
   /* Contextual JS class value for some operations of nested JS classes that need one. */
   private val contextualJSClassValue = new ScopedVar[Option[js.Tree]](None)
+
+  /** Resets all of the scoped state in the context of `body`. */
+  private def resetAllScopedVars[T](body: => T): T = {
+    withScopedVars(
+        currentClassSym := null,
+        currentMethodSym := null,
+        localNames := null,
+        thisLocalVarIdent := null,
+        isModuleInitialized := null,
+        undefinedDefaultParams := null
+    ) {
+      body
+    }
+  }
 
   private def acquireContextualJSClassValue[A](f: Option[js.Tree] => A): A = {
     val jsClassValue = contextualJSClassValue.get
@@ -105,11 +121,6 @@ class JSCodeGen()(using genCtx: Context) {
   /** Implicitly materializes the current local name generator. */
   implicit def implicitLocalNames: LocalNameGenerator = localNames.get
 
-  /* See genSuperCall()
-   * TODO Can we avoid this unscoped var?
-   */
-  private var isModuleInitialized: Boolean = false
-
   private def currentClassType = encodeClassType(currentClassSym)
 
   /** Returns a new fresh local identifier. */
@@ -123,6 +134,16 @@ class JSCodeGen()(using genCtx: Context) {
   /** Returns a new fresh local identifier. */
   private def freshLocalIdent(base: TermName)(implicit pos: Position): js.LocalIdent =
     localNames.get.freshLocalIdent(base)
+
+  private def consumeLazilyGeneratedAnonClass(sym: Symbol): TypeDef = {
+    val typeDef = lazilyGeneratedAnonClasses.remove(sym)
+    if (typeDef == null) {
+      throw new FatalError(
+          i"Could not find tree for lazily generated anonymous class ${sym.fullName} at ${sym.sourcePos}")
+    } else {
+      typeDef
+    }
+  }
 
   // Compilation unit --------------------------------------------------------
 
@@ -165,10 +186,15 @@ class JSCodeGen()(using genCtx: Context) {
     }
     val allTypeDefs = collectTypeDefs(cunit.tpdTree)
 
-    // TODO Record anonymous JS function classes
+    val (anonJSClassTypeDefs, otherTypeDefs) =
+      allTypeDefs.partition(td => td.symbol.isAnonymousClass && td.symbol.isJSType)
+
+    // Record the TypeDefs of anonymous JS classes to be lazily generated
+    for (td <- anonJSClassTypeDefs)
+      lazilyGeneratedAnonClasses(td.symbol) = td
 
     /* Finally, we emit true code for the remaining class defs. */
-    for (td <- allTypeDefs) {
+    for (td <- otherTypeDefs) {
       val sym = td.symbol
       implicit val pos: Position = sym.span
 
@@ -181,8 +207,6 @@ class JSCodeGen()(using genCtx: Context) {
             currentClassSym := sym
         ) {
           val tree = if (isJSType(sym)) {
-            /*assert(!isRawJSFunctionDef(sym),
-                s"Raw JS function def should have been recorded: $cd")*/
             if (!sym.is(Trait) && sym.isNonNativeJSClass)
               genNonNativeJSClass(td)
             else
@@ -915,8 +939,8 @@ class JSCodeGen()(using genCtx: Context) {
         val (captureParams, dispatch) =
           jsExportsGen.genJSConstructorDispatch(constructorTrees.map(_.symbol))
 
-        /* Ensure that the first JS class capture is a reference to the JS
-         * super class value. genNonNativeJSClass relies on this.
+        /* Ensure that the first JS class capture is a reference to the JS super class value.
+         * genNonNativeJSClass and genNewAnonJSClass rely on this.
          */
         val captureParamsWithJSSuperClass = captureParams.map { params =>
           val jsSuperClassParam = js.ParamDef(
@@ -974,12 +998,11 @@ class JSCodeGen()(using genCtx: Context) {
     val vparamss = dd.vparamss
     val rhs = dd.rhs
 
-    isModuleInitialized = false
-
     withScopedVars(
         currentMethodSym       := sym,
         undefinedDefaultParams := mutable.Set.empty,
-        thisLocalVarIdent      := None
+        thisLocalVarIdent      := None,
+        isModuleInitialized    := new ScopedVar.VarBox(false)
     ) {
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
@@ -1666,9 +1689,9 @@ class JSCodeGen()(using genCtx: Context) {
           genExpr(qual), sym, genActualArgs(sym, args))
 
       // Initialize the module instance just after the super constructor call.
-      if (isStaticModule(currentClassSym) && !isModuleInitialized &&
+      if (isStaticModule(currentClassSym) && !isModuleInitialized.get.value &&
           currentMethodSym.get.isClassConstructor) {
-        isModuleInitialized = true
+        isModuleInitialized.get.value = true
         val className = encodeClassName(currentClassSym)
         val thisType = jstpe.ClassType(className)
         val initModule = js.StoreModule(className, js.This()(thisType))
@@ -1755,8 +1778,8 @@ class JSCodeGen()(using genCtx: Context) {
         js.JSObjectConstr(Nil)
       else if (cls == jsdefn.JSArrayClass && args.isEmpty)
         js.JSArrayConstr(Nil)
-      //else if (cls.isAnonymousClass)
-      //  genAnonJSClassNew(cls, jsClassValue.get, genArgs)(fun.pos)
+      else if (cls.isAnonymousClass)
+        genNewAnonJSClass(cls, jsClassValue.get, args.map(genExpr))(fun.span)
       else if (!nestedJSClass)
         js.JSNew(genLoadJSConstructor(cls), genArgs)
       else if (!atPhase(erasurePhase)(cls.is(ModuleClass))) // LambdaLift removes the ModuleClass flag of lifted classes
@@ -1770,6 +1793,228 @@ class JSCodeGen()(using genCtx: Context) {
   private def genCreateInnerJSModule(sym: Symbol, jsSuperClassValue: js.Tree, args: List[js.Tree])(
       implicit pos: Position): js.Tree = {
     js.JSNew(js.CreateJSClass(encodeClassName(sym), jsSuperClassValue :: args), Nil)
+  }
+
+  /** Generate an instance of an anonymous (non-lambda) JS class inline
+   *
+   *  @param sym Class to generate the instance of
+   *  @param jsSuperClassValue JS class value of the super class
+   *  @param args Arguments to the Scala constructor, which map to JS class captures
+   *  @param pos Position of the original New tree
+   */
+  private def genNewAnonJSClass(sym: Symbol, jsSuperClassValue: js.Tree, args: List[js.Tree])(
+      implicit pos: Position): js.Tree = {
+    assert(sym.isAnonymousClass,
+        s"Generating AnonJSClassNew of non anonymous JS class ${sym.fullName}")
+
+    // Find the TypeDef for this anonymous class and generate it
+    val typeDef = consumeLazilyGeneratedAnonClass(sym)
+    val originalClassDef = resetAllScopedVars {
+      withScopedVars(
+          currentClassSym := sym
+      ) {
+        genNonNativeJSClass(typeDef)
+      }
+    }
+
+    // Partition class members.
+    val privateFieldDefs = mutable.ListBuffer.empty[js.FieldDef]
+    val classDefMembers = mutable.ListBuffer.empty[js.MemberDef]
+    val instanceMembers = mutable.ListBuffer.empty[js.MemberDef]
+    var constructor: Option[js.JSMethodDef] = None
+
+    originalClassDef.memberDefs.foreach {
+      case fdef: js.FieldDef =>
+        privateFieldDefs += fdef
+
+      case fdef: js.JSFieldDef =>
+        instanceMembers += fdef
+
+      case mdef: js.MethodDef =>
+        assert(mdef.flags.namespace.isStatic,
+            "Non-static, unexported method in non-native JS class")
+        classDefMembers += mdef
+
+      case mdef: js.JSMethodDef =>
+        mdef.name match {
+          case js.StringLiteral("constructor") =>
+            assert(!mdef.flags.namespace.isStatic, "Exported static method")
+            assert(constructor.isEmpty, "two ctors in class")
+            constructor = Some(mdef)
+
+          case _ =>
+            assert(!mdef.flags.namespace.isStatic, "Exported static method")
+            instanceMembers += mdef
+        }
+
+      case property: js.JSPropertyDef =>
+        instanceMembers += property
+
+      case nativeMemberDef: js.JSNativeMemberDef =>
+        throw new FatalError("illegal native JS member in JS class at " + nativeMemberDef.pos)
+    }
+
+    assert(originalClassDef.topLevelExportDefs.isEmpty,
+        "Found top-level exports in anonymous JS class at " + pos)
+
+    // Make new class def with static members
+    val newClassDef = {
+      implicit val pos = originalClassDef.pos
+      val parent = js.ClassIdent(jsNames.ObjectClass)
+      js.ClassDef(originalClassDef.name, originalClassDef.originalName,
+          ClassKind.AbstractJSType, None, Some(parent), interfaces = Nil,
+          jsSuperClass = None, jsNativeLoadSpec = None,
+          classDefMembers.toList, Nil)(
+          originalClassDef.optimizerHints)
+    }
+
+    generatedClasses += newClassDef
+
+    // Construct inline class definition
+
+    val jsClassCaptures = originalClassDef.jsClassCaptures.getOrElse {
+      throw new AssertionError(s"no class captures for anonymous JS class at $pos")
+    }
+    val js.JSMethodDef(_, _, ctorParams, ctorBody) = constructor.getOrElse {
+      throw new AssertionError("No ctor found")
+    }
+    assert(ctorParams.isEmpty, s"non-empty constructor params for anonymous JS class at $pos")
+
+    /* The first class capture is always a reference to the super class.
+     * This is enforced by genJSClassCapturesAndConstructor.
+     */
+    def jsSuperClassRef(implicit pos: ir.Position): js.VarRef =
+      jsClassCaptures.head.ref
+
+    /* The `this` reference.
+     * FIXME This could clash with a local variable of the constructor or a JS
+     * class capture. It seems Scala 2 has the same vulnerability. How do we
+     * avoid this?
+     */
+    val selfName = freshLocalIdent("this")(pos)
+    def selfRef(implicit pos: ir.Position) =
+      js.VarRef(selfName)(jstpe.AnyType)
+
+    def memberLambda(params: List[js.ParamDef], body: js.Tree)(implicit pos: ir.Position): js.Closure =
+      js.Closure(arrow = false, captureParams = Nil, params, body, captureValues = Nil)
+
+    val memberDefinitions0 = instanceMembers.toList.map {
+      case fdef: js.FieldDef =>
+        throw new AssertionError("unexpected FieldDef")
+
+      case fdef: js.JSFieldDef =>
+        implicit val pos = fdef.pos
+        js.Assign(js.JSSelect(selfRef, fdef.name), jstpe.zeroOf(fdef.ftpe))
+
+      case mdef: js.MethodDef =>
+        throw new AssertionError("unexpected MethodDef")
+
+      case mdef: js.JSMethodDef =>
+        implicit val pos = mdef.pos
+        val impl = memberLambda(mdef.args, mdef.body)
+        js.Assign(js.JSSelect(selfRef, mdef.name), impl)
+
+      case pdef: js.JSPropertyDef =>
+        implicit val pos = pdef.pos
+        val optGetter = pdef.getterBody.map { body =>
+          js.StringLiteral("get") -> memberLambda(params = Nil, body)
+        }
+        val optSetter = pdef.setterArgAndBody.map { case (arg, body) =>
+          js.StringLiteral("set") -> memberLambda(params = arg :: Nil, body)
+        }
+        val descriptor = js.JSObjectConstr(
+            optGetter.toList :::
+            optSetter.toList :::
+            List(js.StringLiteral("configurable") -> js.BooleanLiteral(true))
+        )
+        js.JSMethodApply(js.JSGlobalRef("Object"),
+            js.StringLiteral("defineProperty"),
+            List(selfRef, pdef.name, descriptor))
+
+      case nativeMemberDef: js.JSNativeMemberDef =>
+        throw new FatalError("illegal native JS member in JS class at " + nativeMemberDef.pos)
+    }
+
+    val memberDefinitions = if (privateFieldDefs.isEmpty) {
+      memberDefinitions0
+    } else {
+      /* Private fields, declared in FieldDefs, are stored in a separate
+       * object, itself stored as a non-enumerable field of the `selfRef`.
+       * The name of that field is retrieved at
+       * `scala.scalajs.runtime.privateFieldsSymbol()`, and is a Symbol if
+       * supported, or a randomly generated string that has the same enthropy
+       * as a UUID (i.e., 128 random bits).
+       *
+       * This encoding solves two issues:
+       *
+       * - Hide private fields in anonymous JS classes from `JSON.stringify`
+       *   and other cursory inspections in JS (#2748).
+       * - Get around the fact that abstract JS types cannot declare
+       *   FieldDefs (#3777).
+       */
+      val fieldsObjValue = {
+        js.JSObjectConstr(privateFieldDefs.toList.map { fdef =>
+          implicit val pos = fdef.pos
+          js.StringLiteral(fdef.name.name.nameString) -> jstpe.zeroOf(fdef.ftpe)
+        })
+      }
+      val definePrivateFieldsObj = {
+        /* Object.defineProperty(selfRef, privateFieldsSymbol, {
+         *   value: fieldsObjValue
+         * });
+         *
+         * `writable`, `configurable` and `enumerable` are false by default.
+         */
+        js.JSMethodApply(
+            js.JSGlobalRef("Object"),
+            js.StringLiteral("defineProperty"),
+            List(
+                selfRef,
+                genPrivateFieldsSymbol()(using sym.sourcePos),
+                js.JSObjectConstr(List(
+                    js.StringLiteral("value") -> fieldsObjValue
+                ))
+            )
+        )
+      }
+      definePrivateFieldsObj :: memberDefinitions0
+    }
+
+    // Transform the constructor body.
+    val inlinedCtorStats = new ir.Transformers.Transformer {
+      override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
+        // The super constructor call. Transform this into a simple new call.
+        case js.JSSuperConstructorCall(args) =>
+          implicit val pos = tree.pos
+
+          val newTree = {
+            val ident = originalClassDef.superClass.getOrElse(throw new FatalError("No superclass"))
+            if (args.isEmpty && ident.name == JSObjectClassName)
+              js.JSObjectConstr(Nil)
+            else
+              js.JSNew(jsSuperClassRef, args)
+          }
+
+          js.Block(
+              js.VarDef(selfName, thisOriginalName, jstpe.AnyType, mutable = false, newTree) ::
+              memberDefinitions)
+
+        case js.This() =>
+          selfRef(tree.pos)
+
+        // Don't traverse closure boundaries
+        case closure: js.Closure =>
+          val newCaptureValues = closure.captureValues.map(transformExpr)
+          closure.copy(captureValues = newCaptureValues)(closure.pos)
+
+        case tree =>
+          super.transform(tree, isStat)
+      }
+    }.transform(ctorBody, isStat = true)
+
+    val closure = js.Closure(arrow = true, jsClassCaptures, Nil,
+        js.Block(inlinedCtorStats, selfRef), jsSuperClassValue :: args)
+    js.JSFunctionApply(closure, Nil)
   }
 
   /** Gen JS code for a primitive method call. */
@@ -3436,9 +3681,6 @@ class JSCodeGen()(using genCtx: Context) {
     def paramNamesAndTypes(using Context): List[(Names.TermName, Type)] =
       sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
 
-    /*val isAnonJSClassConstructor =
-      sym.isClassConstructor && sym.owner.isAnonymousClass*/
-
     val wereRepeated = atPhase(elimRepeatedPhase) {
       val list =
         for ((name, tpe) <- paramNamesAndTypes)
@@ -3454,9 +3696,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     val argsParamNamesAndTypes = args.zip(paramNamesAndTypes)
     for ((arg, (paramName, paramType)) <- argsParamNamesAndTypes) {
-      val wasRepeated =
-        /*if (isAnonJSClassConstructor) Some(false)
-        else*/ wereRepeated.get(paramName)
+      val wasRepeated = wereRepeated.get(paramName)
 
       wasRepeated match {
         case Some(true) =>
@@ -3616,11 +3856,11 @@ class JSCodeGen()(using genCtx: Context) {
     if (sym.owner.isNonNativeJSClass) {
       val f = if (sym.isJSExposed) {
         js.JSSelect(qual, genExpr(sym.jsName))
-      } else /*if (sym.owner.isAnonymousClass) {
+      } else if (sym.owner.isAnonymousClass) {
         js.JSSelect(
             js.JSSelect(qual, genPrivateFieldsSymbol()),
             encodeFieldSymAsStringLiteral(sym))
-      } else*/ {
+      } else {
         js.JSPrivateSelect(qual, encodeClassName(sym.owner),
             encodeFieldSym(sym))
       }
@@ -3665,6 +3905,10 @@ class JSCodeGen()(using genCtx: Context) {
       js.ApplyStatic(js.ApplyFlags.empty, className, method, Nil)(toIRType(sym.info))
     }
   }
+
+  /** Generates a call to `runtime.privateFieldsSymbol()` */
+  private def genPrivateFieldsSymbol()(implicit pos: SourcePosition): js.Tree =
+    genModuleApplyMethod(jsdefn.Runtime_privateFieldsSymbol, Nil)
 
   /** Generate loading of a module value.
    *

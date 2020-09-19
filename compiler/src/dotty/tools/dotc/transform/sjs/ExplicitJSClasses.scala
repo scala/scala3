@@ -203,9 +203,9 @@ import JSSymUtils._
  *  so that the back-end receives a reified reference to the parent class of
  *  `O`.
  *
- *  TODO A similar treatment is applied on anonymous JS classes, which
- *  basically define something very similar to an `object`, although without
- *  its own JS class.
+ *  A similar treatment is applied on anonymous JS classes, which basically
+ *  define something very similar to an `object`, although without their own JS
+ *  class.
  *
  *  --------------------------------------
  *
@@ -280,11 +280,11 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Is the given clazz an inner JS class? */
   private def isInnerJSClass(clazz: Symbol)(using Context): Boolean =
-    isInnerJSClassOrObject(clazz) && !clazz.is(ModuleClass)
+    isInnerJSClassOrObject(clazz) && !isConsideredAnObject(clazz)
 
   /** Is the given clazz a local JS class? */
   private def isLocalJSClass(clazz: Symbol)(using Context): Boolean =
-    isLocalJSClassOrObject(clazz) && !clazz.is(ModuleClass) //&& !clazz.isAnonymousClass
+    isLocalJSClassOrObject(clazz) && !isConsideredAnObject(clazz)
 
   /** Is the gen clazz an inner or local JS class or object? */
   private def isInnerOrLocalJSClassOrObject(sym: Symbol)(using Context): Boolean =
@@ -301,6 +301,16 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
   /** Is the given clazz a local JS class or object? */
   private def isLocalJSClassOrObject(clazz: Symbol)(using Context): Boolean =
     clazz.isLocalToBlock && !clazz.is(Trait) && clazz.hasAnnotation(jsdefn.JSTypeAnnot)
+
+  /** Is the given clazz an inner or local JS object? */
+  private def isInnerOrLocalJSObject(clazz: Symbol)(using Context): Boolean =
+    isInnerOrLocalJSClassOrObject(clazz) && isConsideredAnObject(clazz)
+
+  /** Is the given clazz considered to be an object for the purposes of this phase?
+   *  This is true for module classes and for anonymous JS classes.
+   */
+  private def isConsideredAnObject(clazz: Symbol)(using Context): Boolean =
+    clazz.is(ModuleClass) || clazz.isAnonymousClass
 
   private def jsclassFieldName(clazzName: TypeName): TermName =
     clazzName.toTermName ++ "$jsname"
@@ -416,7 +426,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
   private def populateNestedObject2superClassTpe(stats: List[Tree])(using Context): Unit = {
     for (stat <- stats) {
       stat match {
-        case cd @ TypeDef(_, rhs) if cd.isClassDef && cd.symbol.is(ModuleClass) && isInnerOrLocalJSClassOrObject(cd.symbol) =>
+        case cd @ TypeDef(_, rhs) if cd.isClassDef && isInnerOrLocalJSObject(cd.symbol) =>
           myState.nestedObject2superClassTpe(cd.symbol) = extractSuperTpeFromImpl(rhs.asInstanceOf[Template])
         case _ =>
       }
@@ -575,11 +585,10 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
          * `withContextualJSClassValue`, to preserve a reified reference to
          * the necessary JS class value (the class itself for classes, or the
          * super class for objects).
-         * Anonymous classes are considered as "objects" for this purpose.
          */
         val cls = sym.owner
         if (isInnerOrLocalJSClassOrObject(cls)) {
-          if (!cls.is(ModuleClass) /*&& !cls.isAnonymousClass*/) {
+          if (!isConsideredAnObject(cls)) {
             methPart(tree) match {
               case Select(n @ New(tpt), _) =>
                 val jsclassValue = genJSConstructorOf(tpt, n.tpe)

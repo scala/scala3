@@ -153,6 +153,8 @@ final class JSDefinitions()(using Context) {
     def Runtime_toScalaVarArgs(using Context) = Runtime_toScalaVarArgsR.symbol
     @threadUnsafe lazy val Runtime_toJSVarArgsR = RuntimePackageClass.requiredMethodRef("toJSVarArgs")
     def Runtime_toJSVarArgs(using Context) = Runtime_toJSVarArgsR.symbol
+    @threadUnsafe lazy val Runtime_privateFieldsSymbolR = RuntimePackageClass.requiredMethodRef("privateFieldsSymbol")
+    def Runtime_privateFieldsSymbol(using Context) = Runtime_privateFieldsSymbolR.symbol
     @threadUnsafe lazy val Runtime_constructorOfR = RuntimePackageClass.requiredMethodRef("constructorOf")
     def Runtime_constructorOf(using Context) = Runtime_constructorOfR.symbol
     @threadUnsafe lazy val Runtime_newConstructorTagR = RuntimePackageClass.requiredMethodRef("newConstructorTag")
