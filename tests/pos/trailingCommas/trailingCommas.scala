@@ -114,7 +114,7 @@ trait SimplePattern {
 
   // test '@' syntax in patterns
   Some(1) match {
-    case Some(x @ 1,
+    case Some(x as 1,
     ) => x
   }
 

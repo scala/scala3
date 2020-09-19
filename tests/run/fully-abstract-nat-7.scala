@@ -32,7 +32,7 @@ object Test {
     }
 
     def divOpt(a: Nat, b: Nat): Option[(Nat, Nat)] = b match {
-      case s @ Succ(p) =>
+      case s as Succ(p) =>
         Some(safeDiv(a, s.asInstanceOf[Succ])) // this case will not be needed
       case _ => None
     }

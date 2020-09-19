@@ -38,7 +38,7 @@ object Test extends App {
       println(cdef)
   }
   x match {
-    case cdef @ CaseDef(s) =>
+    case cdef as CaseDef(s) =>
       val x: CaseDef = cdef
       println(s)
   }

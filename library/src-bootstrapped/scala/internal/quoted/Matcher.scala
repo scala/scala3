@@ -244,7 +244,7 @@ object Matcher {
 
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
-          case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
+          case (scrutinee as Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
               if patternHole.symbol == qctx.tasty.Definitions_InternalQuotedMatcher_patternHole &&
                  s.tpe <:< tpt.tpe &&
                  tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
@@ -259,7 +259,7 @@ object Matcher {
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
-          case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
+          case (scrutinee, pattern as Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
               if pattern.symbol == qctx.tasty.Definitions_InternalQuotedMatcher_higherOrderHole =>
 
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
