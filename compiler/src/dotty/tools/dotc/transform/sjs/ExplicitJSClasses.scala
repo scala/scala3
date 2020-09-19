@@ -419,7 +419,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
   override def prepareForUnit(tree: Tree)(using Context): Context =
     ctx.fresh.updateStore(MyState, new MyState())
 
-  /** Populate `nestedObject2superClassTpe` for inner objects at the start of
+  /** Populate `nestedObject2superTypeConstructor` for inner objects at the start of
    *  a `Block` or `Template`, so that they are visible even before their
    *  definition (in their enclosing scope).
    */
@@ -427,7 +427,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
     for (stat <- stats) {
       stat match {
         case cd @ TypeDef(_, rhs) if cd.isClassDef && isInnerOrLocalJSObject(cd.symbol) =>
-          myState.nestedObject2superClassTpe(cd.symbol) = extractSuperTpeFromImpl(rhs.asInstanceOf[Template])
+          myState.nestedObject2superTypeConstructor(cd.symbol) = extractSuperTypeConstructor(rhs)
         case _ =>
       }
     }
@@ -477,7 +477,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
                 // scala-js/scala-js#4086
                 ref(jsdefn.Runtime_constructorOf).appliedTo(clazzValue)
               } else {
-                val parentTpe = extractSuperTpeFromImpl(stat.rhs.asInstanceOf[Template])
+                val parentTpe = extractSuperTypeConstructor(stat.rhs)
                 val superClassCtor = genJSConstructorOf(tree, parentTpe)
                 ref(jsdefn.Runtime_createInnerJSClass).appliedTo(clazzValue, superClassCtor)
               }
@@ -525,7 +525,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
       val rhs = {
         val typeRef = tree.tpe
         val clazzValue = clsOf(typeRef)
-        val superClassCtor = genJSConstructorOf(tree, extractSuperTpeFromImpl(tree.rhs.asInstanceOf[Template]))
+        val superClassCtor = genJSConstructorOf(tree, extractSuperTypeConstructor(tree.rhs))
         val fakeNewInstances = {
           /* We need to use `reverse` because the Scope returns elements in reverse order compared to tree definitions.
            * The back-end needs the fake News to be in the same order as the corresponding tree definitions.
@@ -598,7 +598,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
                 tree
             }
           } else {
-            wrapWithContextualJSClassValue(myState.nestedObject2superClassTpe(cls))(tree)
+            wrapWithContextualJSClassValue(myState.nestedObject2superTypeConstructor(cls))(tree)
           }
         } else {
           tree
@@ -727,12 +727,20 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
   /** Extracts the super type constructor of a `Template`, without type
    *  parameters, so that the type is well-formed outside of the `Template`,
    *  i.e., at the same level where the corresponding `TypeDef` is defined.
-   *  It is not necessarily *-kinded, though, which limits its applicability.
+   *
+   *  For example, for the Template of a class definition like
+   *  {{{
+   *  class Foo[...Ts] extends pre.Parent[...Us](...args) with ... { ... }
+   *  }}}
+   *  we extract the type constructor `pre.Parent`, without its type
+   *  parameters.
+   *
+   *  Since the result is not necessarily *-kinded, its applicability is
+   *  limited. It seems to be sufficient to put in a `classOf`, though, which
+   *  is what we care about.
    */
-  private def extractSuperTpeFromImpl(impl: Template)(using Context): Type = {
-    // TODO Check whether stripPoly is the right thing. Do we need a sort of rawTypeRef?
-    impl.parents.head.tpe.stripPoly
-  }
+  private def extractSuperTypeConstructor(typeDefRhs: Tree)(using Context): Type =
+    typeDefRhs.asInstanceOf[Template].parents.head.tpe.dealias.typeConstructor
 }
 
 object ExplicitJSClasses {
@@ -741,7 +749,7 @@ object ExplicitJSClasses {
   val LocalJSClassValueName: UniqueNameKind = new UniqueNameKind("$jsclass")
 
   private final class MyState {
-    val nestedObject2superClassTpe = new MutableSymbolMap[Type]
+    val nestedObject2superTypeConstructor = new MutableSymbolMap[Type]
     val localClass2jsclassVal = new MutableSymbolMap[TermSymbol]
     val notYetSelfReferencingLocalClasses = new util.HashSet[Symbol]
   }
