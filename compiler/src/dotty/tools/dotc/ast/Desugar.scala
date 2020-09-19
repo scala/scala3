@@ -165,6 +165,7 @@ object desugar {
       && ctx.owner.isClass
       && (!mods.is(Private) || ctx.owner.is(Trait) || ctx.owner.isPackageObject)
     if (setterNeeded) {
+      val valName = normalizeName(vdef, tpt).asTermName
       // TODO: copy of vdef as getter needed?
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
       // right now vdef maps via expandedTree to a thicket which concerns itself.
@@ -173,7 +174,7 @@ object desugar {
       // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef)(
-        name     = name.setterName,
+        name     = valName.setterName,
         tparams  = Nil,
         vparamss = (setterParam :: Nil) :: Nil,
         tpt      = TypeTree(defn.UnitType),
@@ -934,8 +935,13 @@ object desugar {
       report.error(IllegalRedefinitionOfStandardKind(kind, name), errPos)
       name = name.errorName
     }
-    if name.isExtensionName && (!mdef.mods.is(ExtensionMethod) || name.dropExtension.isExtensionName) then
-      report.error(em"illegal method name: $name may not start with `extension_`", errPos)
+    mdef match {
+      case vdef: ValDef if name.isExtension && vdef.mods.is(Mutable) =>
+        report.error(em"illegal variable name: `extension`", errPos)
+      case memDef if name.isExtensionName && (!mdef.mods.is(ExtensionMethod) || name.dropExtension.isExtensionName) =>
+        report.error(em"illegal name: $name may not start with `extension_`", errPos)
+      case _ =>
+    }
     name
   }
 

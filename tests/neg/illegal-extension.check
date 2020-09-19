@@ -1,0 +1,8 @@
+-- Error: tests/neg/illegal-extension.scala:2:6 ------------------------------------------------------------------------
+2 |  def extension_n: String = "illegal method" // error: illegal method name: extension_n may not start with `extension_`
+  |      ^^^^^^^^^^^
+  |      illegal method name: extension_n may not start with `extension_`
+-- Error: tests/neg/illegal-extension.scala:4:6 ------------------------------------------------------------------------
+4 |  var extension_val = 23 // error: illegal value name: extension_val may not start with `extension_`
+  |      ^^^^^^^^^^^^^
+  |      illegal value name: extension_val may not start with `extension_`
