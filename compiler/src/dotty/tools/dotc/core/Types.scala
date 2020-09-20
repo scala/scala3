@@ -1499,10 +1499,15 @@ object Types {
       case _ => Nil
     }
 
-
     /** The parameter types in the first parameter section of a generic type or MethodType, Empty list for others */
     final def firstParamTypes(using Context): List[Type] = stripPoly match {
       case mt: MethodType => mt.paramInfos
+      case _ => Nil
+    }
+
+    /** The parameter names in the first parameter section of a generic type or MethodType, Empty list for others */
+    final def firstParamNames(using Context): List[TermName] = stripPoly match {
+      case mt: MethodType => mt.paramNames
       case _ => Nil
     }
 

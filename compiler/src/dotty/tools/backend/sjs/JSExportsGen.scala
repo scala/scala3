@@ -518,7 +518,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       // If argument is undefined and there is a default getter, call it
       val verifiedOrDefault = if (param.hasDefault) {
         js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()), {
-          genCallDefaultGetter(exported.sym, i, param.sym.sourcePos, static) {
+          genCallDefaultGetter(exported.sym, i, static) {
             prevArgsCount => result.take(prevArgsCount).toList.map(_.ref)
           }
         }, {
@@ -537,7 +537,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     result.toList
   }
 
-  private def genCallDefaultGetter(sym: Symbol, paramIndex: Int, paramPos: SourcePosition, static: Boolean)(
+  private def genCallDefaultGetter(sym: Symbol, paramIndex: Int, static: Boolean)(
       previousArgsValues: Int => List[js.Tree])(
       implicit pos: SourcePosition): js.Tree = {
 
@@ -562,7 +562,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         report.error(
             "When overriding a native method with default arguments, " +
             "the overriding method must explicitly repeat the default arguments.",
-            paramPos)
+            sym.srcPos)
         js.Undefined()
       }
     } else {
@@ -570,21 +570,9 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     }
   }
 
-  private def targetSymForDefaultGetter(sym: Symbol): Symbol = {
-    if (sym.isClassConstructor) {
-      /*/* Get the companion module class.
-       * For inner classes the sym.owner.companionModule can be broken,
-       * therefore companionModule is fetched at uncurryPhase.
-       */
-      val companionModule = enteringPhase(currentRun.namerPhase) {
-        sym.owner.companionModule
-      }
-      companionModule.moduleClass*/
-      sym.owner.companionModule.moduleClass
-    } else {
-      sym.owner
-    }
-  }
+  private def targetSymForDefaultGetter(sym: Symbol): Symbol =
+    if (sym.isClassConstructor) sym.owner.companionModule.moduleClass
+    else sym.owner
 
   private def defaultGetterDenot(targetSym: Symbol, sym: Symbol, paramIndex: Int): Denotation =
     targetSym.info.member(DefaultGetterName(sym.name.asTermName, paramIndex))
@@ -607,9 +595,8 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         js.This()(encodeClassType(sym.owner))
     }
 
-    def boxIfNeeded(call: js.Tree): js.Tree = {
+    def boxIfNeeded(call: js.Tree): js.Tree =
       box(call, atPhase(elimErasedValueTypePhase)(sym.info.resultType))
-    }
 
     if (currentClassSym.isNonNativeJSClass) {
       assert(sym.owner == currentClassSym.get, sym.fullName)
@@ -627,19 +614,18 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
   private def genThrowTypeError(msg: String = "No matching overload")(implicit pos: Position): js.Tree =
     js.Throw(js.JSNew(js.JSGlobalRef("TypeError"), js.StringLiteral(msg) :: Nil))
 
-  private final class ParamSpec(val sym: Symbol, val info: Type,
-      val isRepeated: Boolean, val hasDefault: Boolean) {
+  private final class ParamSpec(val info: Type, val isRepeated: Boolean, val hasDefault: Boolean) {
     override def toString(): String =
-      s"ParamSpec(${sym.name}, ${info.show}, isRepeated = $isRepeated, hasDefault = $hasDefault)"
+      i"ParamSpec($info, isRepeated = $isRepeated, hasDefault = $hasDefault)"
   }
 
   private object ParamSpec {
-    def apply(methodSym: Symbol, sym: Symbol, infoAtElimRepeated: Type, infoAtElimEVT: Type,
+    def apply(methodSym: Symbol, infoAtElimRepeated: Type, infoAtElimEVT: Type,
         methodHasDefaultParams: Boolean, paramIndex: Int): ParamSpec = {
       val isRepeated = infoAtElimRepeated.isRepeatedParam
       val info = if (isRepeated) infoAtElimRepeated.repeatedToSingle else infoAtElimEVT
       val hasDefault = methodHasDefaultParams && defaultGetterDenot(methodSym, paramIndex).exists
-      new ParamSpec(sym, info, isRepeated, hasDefault)
+      new ParamSpec(info, isRepeated, hasDefault)
     }
   }
 
@@ -650,73 +636,70 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     // params: List[ParamSpec] ; captureParams and captureParamsBack: List[js.ParamDef]
     val (params, captureParamsFront, captureParamsBack) = {
-      val paramNamessNow = sym.info.paramNamess
-      val paramInfosNow = sym.info.paramInfoss.flatten
-      val paramSymsAtElimRepeated = atPhase(elimRepeatedPhase)(sym.paramSymss.flatten.filter(_.isTerm))
-      val (paramNamessAtElimRepeated, paramInfosAtElimRepeated, methodHasDefaultParams) =
-        atPhase(elimRepeatedPhase)((sym.info.paramNamess, sym.info.paramInfoss.flatten, sym.hasDefaultParams))
-      val (paramNamessAtElimEVT, paramInfosAtElimEVT) =
-        atPhase(elimErasedValueTypePhase)((sym.info.paramNamess, sym.info.paramInfoss.flatten))
+      val (paramNamesAtElimRepeated, paramInfosAtElimRepeated, methodHasDefaultParams) =
+        atPhase(elimRepeatedPhase)((sym.info.paramNamess.flatten, sym.info.paramInfoss.flatten, sym.hasDefaultParams))
+      val (paramNamesAtElimEVT, paramInfosAtElimEVT) =
+        atPhase(elimErasedValueTypePhase)((sym.info.firstParamNames, sym.info.firstParamTypes))
+      val (paramNamesNow, paramInfosNow) =
+        (sym.info.firstParamNames, sym.info.firstParamTypes)
 
-      def buildFormalParams(paramSyms: List[Symbol], paramInfosAtElimRepeated: List[Type],
-          paramInfosAtElimEVT: List[Type]): IndexedSeq[ParamSpec] = {
+      val formalParamCount = paramInfosAtElimRepeated.size
+
+      def buildFormalParams(formalParamInfosAtElimEVT: List[Type]): IndexedSeq[ParamSpec] = {
         (for {
-          (paramSym, infoAtElimRepeated, infoAtElimEVT, paramIndex) <-
-            paramSyms.lazyZip(paramInfosAtElimRepeated).lazyZip(paramInfosAtElimEVT).lazyZip(0 until paramSyms.size)
+          (infoAtElimRepeated, infoAtElimEVT, paramIndex) <-
+            paramInfosAtElimRepeated.lazyZip(formalParamInfosAtElimEVT).lazyZip(0 until formalParamCount)
         } yield {
-          ParamSpec(sym, paramSym, infoAtElimRepeated, infoAtElimEVT, methodHasDefaultParams, paramIndex)
+          ParamSpec(sym, infoAtElimRepeated, infoAtElimEVT, methodHasDefaultParams, paramIndex)
         }).toIndexedSeq
       }
 
-      if (!isConstructorOfNestedJSClass) {
-        // Easy case: all params are formal params.
-        assert(paramInfosAtElimRepeated.size == paramInfosAtElimEVT.size,
-            s"Found ${paramInfosAtElimRepeated.size} params entering elimRepeated but " +
-            s"${paramInfosAtElimEVT.size} params entering elimErasedValueType for " +
-            s"non-lifted symbol ${sym.fullName}")
-        val formalParams = buildFormalParams(paramSymsAtElimRepeated, paramInfosAtElimRepeated, paramInfosAtElimEVT)
-        (formalParams, Nil, Nil)
-      } else {
-        /* The `arg$outer` param is added by erasure, following "instructions"
-         * by explicitouter, while the other capture params are added by
-         * lambdalift (between elimErasedValueType and now).
-         *
-         * Since we cannot reliably get Symbols for parameters created by
-         * intermediate phases, we have to perform some dance with the
-         * paramNamess and paramInfoss observed at some phases, combined with
-         * the paramSymss observed at elimRepeated.
-         */
-
-        val hasOuterParam = {
-          paramInfosAtElimEVT.size == paramInfosAtElimRepeated.size + 1 &&
-          paramNamessAtElimEVT.flatten.head == nme.OUTER
-        }
-        assert(
-            hasOuterParam || paramInfosAtElimEVT.size == paramInfosAtElimRepeated.size,
-            s"Found ${paramInfosAtElimRepeated.size} params entering elimRepeated but " +
-            s"${paramInfosAtElimEVT.size} params entering elimErasedValueType for " +
-            s"lifted constructor symbol ${sym.fullName}")
-
-        val startOfFormalParams = paramNamessNow.flatten.indexOfSlice(paramNamessAtElimRepeated.flatten)
-        val formalParamCount = paramInfosAtElimRepeated.size
-
-        val nonOuterParamInfosAtElimEVT =
-          if (hasOuterParam) paramInfosAtElimEVT.tail
-          else paramInfosAtElimEVT
-        val formalParams = buildFormalParams(paramSymsAtElimRepeated, paramInfosAtElimRepeated, nonOuterParamInfosAtElimEVT)
-
-        val paramNamesAndInfosNow = paramNamessNow.flatten.zip(paramInfosNow)
-        val (captureParamsFrontNow, restOfParamsNow) = paramNamesAndInfosNow.splitAt(startOfFormalParams)
-        val captureParamsBackNow = restOfParamsNow.drop(formalParamCount)
-
-        def makeCaptureParamDef(nameAndInfo: (TermName, Type)): js.ParamDef = {
-          implicit val pos: Position = sym.span
-          js.ParamDef(freshLocalIdent(nameAndInfo._1.mangledString), NoOriginalName, toIRType(nameAndInfo._2),
+      def buildCaptureParams(namesAndInfosNow: List[(TermName, Type)]): List[js.ParamDef] = {
+        implicit val pos: Position = sym.span
+        for ((name, info) <- namesAndInfosNow) yield {
+          js.ParamDef(freshLocalIdent(name.mangledString), NoOriginalName, toIRType(info),
               mutable = false, rest = false)
         }
+      }
 
-        val captureParamsFront = captureParamsFrontNow.map(makeCaptureParamDef(_))
-        val captureParamsBack = captureParamsBackNow.map(makeCaptureParamDef(_))
+      if (!isConstructorOfNestedJSClass) {
+        // Easy case: all params are formal params
+        assert(paramInfosAtElimEVT.size == formalParamCount && paramInfosNow.size == formalParamCount,
+            s"Found $formalParamCount params entering elimRepeated but ${paramInfosAtElimEVT.size} params entering " +
+            s"elimErasedValueType and ${paramInfosNow.size} params at the back-end for non-lifted symbol ${sym.fullName}")
+        val formalParams = buildFormalParams(paramInfosAtElimEVT)
+        (formalParams, Nil, Nil)
+      } else if (formalParamCount == 0) {
+        // Fast path: all params are capture params
+        val captureParams = buildCaptureParams(paramNamesNow.zip(paramInfosNow))
+        (IndexedSeq.empty, Nil, captureParams)
+      } else {
+        /* Slow path: we have to isolate formal params (which were already present at elimRepeated)
+         * from capture params (which are later, typically by erasure and/or lambdalift).
+         */
+
+        def findStartOfFormalParamsIn(paramNames: List[TermName]): Int = {
+          val start = paramNames.indexOfSlice(paramNamesAtElimRepeated)
+          assert(start >= 0, s"could not find formal param names $paramNamesAtElimRepeated in $paramNames")
+          start
+        }
+
+        // Find the infos of formal params at elimEVT
+        val startOfFormalParamsAtElimEVT = findStartOfFormalParamsIn(paramNamesAtElimEVT)
+        val formalParamInfosAtElimEVT = paramInfosAtElimEVT.drop(startOfFormalParamsAtElimEVT).take(formalParamCount)
+
+        // Build the formal param specs from their infos at elimRepeated and elimEVT
+        val formalParams = buildFormalParams(formalParamInfosAtElimEVT)
+
+        // Find the formal params now to isolate the capture params (before and after the formal params)
+        val startOfFormalParamsNow = findStartOfFormalParamsIn(paramNamesNow)
+        val paramNamesAndInfosNow = paramNamesNow.zip(paramInfosNow)
+        val (captureParamsFrontNow, restOfParamsNow) = paramNamesAndInfosNow.splitAt(startOfFormalParamsNow)
+        val captureParamsBackNow = restOfParamsNow.drop(formalParamCount)
+
+        // Build the capture param defs from the isolated capture params
+        val captureParamsFront = buildCaptureParams(captureParamsFrontNow)
+        val captureParamsBack = buildCaptureParams(captureParamsBackNow)
 
         (formalParams, captureParamsFront, captureParamsBack)
       }
