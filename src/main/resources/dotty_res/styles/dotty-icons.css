@@ -1,8 +1,8 @@
 @font-face {
   font-family: 'dotty-icons';
   src:
-    url('/fonts/dotty-icons.woff?kefi7x') format('woff'),
-    url('/fonts/dotty-icons.ttf?kefi7x') format('truetype');
+    url('../fonts/dotty-icons.woff?kefi7x') format('woff'),
+    url('../fonts/dotty-icons.ttf?kefi7x') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: block;
