@@ -1253,18 +1253,11 @@ class Typer extends Namer
       if (tree.tpt.isEmpty)
         meth1.tpe.widen match {
           case mt: MethodType =>
-            val pt1 =
-              if ctx.explicitNulls then
-                pt.stripNull
-              else pt
-            val adaptWithUnsafeNullConver =
-              ctx.explicitNulls && (
-                config.Feature.enabled(nme.unsafeNulls) ||
-                ctx.mode.is(Mode.UnsafeNullConversion))
+            val pt1 = if ctx.explicitNulls then pt.stripNull else pt
             pt1 match {
               case SAMType(sam)
               if !defn.isFunctionType(pt1) && mt <:< sam ||
-                adaptWithUnsafeNullConver && mt.isUnsafeConvertable(sam) =>
+                JavaNullInterop.convertUnsafeNulls && mt.isUnsafeConvertable(sam) =>
                 // SAMs of the form C[?] where C is a class cannot be conversion targets.
                 // The resulting class `class $anon extends C[?] {...}` would be illegal,
                 // since type arguments to `C`'s super constructor cannot be constructed.

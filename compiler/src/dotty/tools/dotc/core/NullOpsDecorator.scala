@@ -45,7 +45,14 @@ object NullOpsDecorator {
     def stripAllNulls(using Context): Type = {
       object RemoveNulls extends TypeMap {
         override def apply(tp: Type): Type =
-          mapOver(tp.widenTermRefExpr.stripNull)
+          val mapped = mapOver(tp.widenTermRefExpr.stripNull)
+          tp match {
+            case tr: TermRef =>
+              if tp eq mapped then tp
+              else AndType(tr, mapped)
+            case _ =>
+              mapped
+          }
       }
       val rem = RemoveNulls(self)
       if rem ne self then rem else self
