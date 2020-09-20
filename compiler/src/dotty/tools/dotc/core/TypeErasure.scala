@@ -331,8 +331,10 @@ object TypeErasure {
             val candidates = takeUntil(tp2superclasses)(!_.is(Trait))
 
             // Candidates st "no other common superclass or trait derives from S"
+            // Also, drop `PairClass` since it is not valid after erasue
             val minimums = candidates.filter { cand =>
-              candidates.forall(x => !x.derivesFrom(cand) || x.eq(cand))
+              cand != defn.PairClass
+              && candidates.forall(x => !x.derivesFrom(cand) || x.eq(cand))
             }
 
             // Pick the last minimum to prioritise classes over traits
