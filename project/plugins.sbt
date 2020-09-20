@@ -8,7 +8,7 @@ addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.6")
 
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "2.0.0")
 
-addSbtPlugin("org.xerial.sbt" % "sbt-pack" % "0.10.1")
+addSbtPlugin("org.xerial.sbt" % "sbt-pack" % "0.13")
 
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.2")
 
