@@ -71,9 +71,9 @@ trait ClassLikeSupport:
           case class ExtensionRepr(arg: ValDef, method: Symbol)
           val extensions = c.symbol.classMethods
             .filterNot(_.isHiddenByVisibility)
-            .filterNot(isSyntheticFunc)
-            .filter(isExtensionMethod(_))
-            .map(m => ExtensionRepr(getExtendedSymbol(m).get, m))
+            .filterNot(_.isSyntheticFunc)
+            .filter(_.isExtensionMethod)
+            .map(m => ExtensionRepr(m.extendedSymbol.get, m))
           val groupped = extensions.groupBy( e => e.arg.pos)
           groupped.map {
             case (pos, extensions) => {
@@ -87,39 +87,46 @@ trait ClassLikeSupport:
       def getGivenMethods: List[DFunction] = {
         c.symbol.classMethods
         .filterNot(_.isHiddenByVisibility)
-        .filter(_.isGiven())
+        .filter(_.isGiven)
         .map(m => parseMethod(m, paramPrefix = _ => "using ", isGiven = true))
       }
 
       def getGivenFields: List[DProperty] = {
         val valDefs = membersToDocument.collect { 
-          case vd: ValDef if vd.symbol.isGiven() => vd
+          case vd: ValDef if vd.symbol.isGiven => vd
         }
         
         valDefs.map(parseValDef(_, isGiven = true))
       }
 
-      def getMethods: List[Symbol] = c.symbol.classMethods.filterNot(_.isHiddenByVisibility).filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_)).filterNot(_.isGiven())
+      def getMethods: List[Symbol] = c.symbol.classMethods
+        .filterNot(s => s.isHiddenByVisibility || s.isGiven || s.isSyntheticFunc || s.isExtensionMethod)
 
-      def getInheritedMethods: List[Symbol] = c.symbol.methods.filterNot(isSyntheticFunc).filterNot(isExtensionMethod(_))
-          .filter(s => s.maybeOwner != c.symbol)
+      def getInheritedMethods: List[Symbol] = c.symbol.methods
+        .filter(s =>
+          !s.isSyntheticFunc &&
+          !s.isExtensionMethod &&
+          s.maybeOwner != c.symbol &&
+          s.maybeOwner != defn.AnyClass &&
+          s.maybeOwner != defn.ObjectClass
+        )
 
       def getParents: List[Bound] = {
           for
               parentTree <- c.parents if isValidPos(parentTree.pos)  // We assume here that order is correct
-              parentSymbol = if (parentTree.symbol.isClassConstructor) parentTree.symbol.owner else parentTree.symbol 
-                  if parentSymbol != defn.ObjectClass 
-          yield parentTree.dokkaType
+            parentSymbol = if parentTree.symbol.isClassConstructor then parentTree.symbol.owner else parentTree.symbol
+            if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass
+        yield parentTree.dokkaType
       }
 
-      def getSupertypes: List[Bound] = getSupertypes(c).map(_.dokkaType)
+      def getSupertypes: List[Bound] = getSupertypes(c).filterNot(s => s == defn.ObjectType || s == defn.AnyType).map(_.dokkaType)
 
       def getConstructors: List[Symbol] = membersToDocument.collect {
           case d: DefDef if d.name == "<init>" && c.constructor.symbol != d.symbol => d.symbol
       }.toList
 
       def getNestedClasslikes: List[DClasslike] = membersToDocument.collect {
-          case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven() => processTree(c)(parseClasslike(c))
+          case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => processTree(c)(parseClasslike(c))
         }.flatten.toList
 
       def getParameterModifier(parameter: Symbol): String = {
