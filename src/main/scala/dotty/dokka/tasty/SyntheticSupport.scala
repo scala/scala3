@@ -64,11 +64,11 @@ trait SyntheticsSupport:
   def getSupertypes(c: ClassDef) = hackGetSupertypes(self.reflect)(c).tail
 
   object MatchTypeCase:
-    def unapply(tpe: Type): Option[(TypeOrBounds, TypeOrBounds)] = 
+    def unapply(tpe: Type): Option[(TypeOrBounds, TypeOrBounds)] =
       tpe match
         case AppliedType(t, Seq(from, to)) if t == MatchCaseType =>
             Some((from, to))
         case TypeLambda(paramNames, paramTypes, AppliedType(t, Seq(from, to))) if t == MatchCaseType =>
             Some((from, to))
         case _ =>
-          None    
+          None
