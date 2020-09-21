@@ -109,8 +109,8 @@ trait ScalaSignatureUtils:
             case tc: TypeConstructor =>
                 tc.getProjections.asScala.foldLeft(builder) { (bdr, elem) => elem match {
                     case text: UnresolvedBound => bdr.text(text.getName)
-                    case link: OtherParameter => 
-                        bdr.driLink(link.getName, link.getDeclarationDRI)
+                    case link: TypeParameter => 
+                        bdr.driLink(link.getName, link.getDri)
                     case other =>
                         bdr.text(s"TODO($other)")
                 }

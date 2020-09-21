@@ -183,7 +183,9 @@ private def dynamicPower(n: Int, x: Double): Double =
   else if (n % 2 == 0) dynamicPower(n / 2, x * x)
   else x * dynamicPower(n - 1, x)
 ```
+
 ---
+
 This assumes a `Constant` extractor that maps tree nodes representing
 constants to their values.
 

@@ -1,6 +1,6 @@
 val dottyVersion = "0.26.0-RC1"
-val dokkaVersion = "1.4.0-rc"
-val kotlinxVersion = "0.7.1" // upgrade when upgrading dokka
+val dokkaVersion = "1.4.0"
+val kotlinxVersion = "0.7.2" // upgrade when upgrading dokka
 val flexmarkVersion = "0.42.12"
 val jacksonVersion = "2.9.8"
 
@@ -9,6 +9,7 @@ libraryDependencies ++= Seq(
   "org.jetbrains.dokka" % "dokka-core" % dokkaVersion,
   "org.jetbrains.dokka" % "dokka-test-api" % dokkaVersion,
   "org.jetbrains.kotlinx" % "kotlinx-html-jvm" % kotlinxVersion,
+  "com.virtuslab.dokka" % "dokka-site" % "0.1.6",
 
   "ch.epfl.lamp" %% "dotty-tasty-inspector" % dottyVersion,
   "ch.epfl.lamp" %% "dotty-compiler" % dottyVersion,
@@ -23,6 +24,8 @@ libraryDependencies ++= Seq(
 
 resolvers += Resolver.jcenterRepo
 resolvers += Resolver.bintrayRepo("kotlin", "kotlin-dev")
+resolvers += Resolver.bintrayRepo("virtuslab", "dokka")
+resolvers += Resolver.mavenLocal
 
 lazy val root = project
   .in(file("."))

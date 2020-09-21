@@ -21,8 +21,8 @@ trait TypesSupport:
         def dokkaType(using ctx: reflect.Context): Bound =
             val data = inner(tpe)
             val dri = data.collect{
-                case o: OtherParameter => o
-            }.headOption.map(_.getDeclarationDRI).getOrElse(defn.AnyClass.dri)
+                case o: TypeParameter => o
+            }.headOption.map(_.getDri).getOrElse(defn.AnyClass.dri)
             new TypeConstructor(dri, data.asJava, FunctionModifiers.NONE)
      
     private def text(str: String): JProjection = new UnresolvedBound(str)
@@ -32,7 +32,7 @@ trait TypesSupport:
     
     private def link(symbol: reflect.Symbol)(using cxt: reflect.Context): List[JProjection] = {
         val suffix = if symbol.isValDef then texts(".type") else Nil
-        (new OtherParameter(symbol.dri, symbol.name)) :: suffix
+        (new TypeParameter(symbol.dri, symbol.name)) :: suffix
     }
     
     private def commas(lists: List[List[JProjection]]) = lists match

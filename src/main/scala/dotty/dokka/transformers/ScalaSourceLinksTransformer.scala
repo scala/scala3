@@ -26,7 +26,7 @@ class ScalaSourceLinksTransformer(
 
     object SourceLink{
         def apply(sourceLinkDef: DokkaConfiguration$SourceLinkDefinition, sourceSetData: DokkaConfiguration.DokkaSourceSet): SourceLink = 
-            SourceLink(sourceLinkDef.getPath, sourceLinkDef.getUrl, Option(sourceLinkDef.getLineSuffix), sourceSetData)
+            SourceLink(sourceLinkDef.getLocalDirectory, sourceLinkDef.getRemoteUrl.toString, Option(sourceLinkDef.getRemoteLineSuffix), sourceSetData)
     }
 
     override def invoke(input: RootPageNode): RootPageNode = input.transformContentPagesTree(page => page.getDocumentable match{
@@ -73,7 +73,8 @@ class ScalaSourceLinksTransformer(
             case g: ContentGroup => 
                 val content = getContentGroupWithParents(g, p => p.getStyle.asScala.contains(ContentStyle.TabbedContent))
                 if(content.size > 0) {
-                    val addedContent = pageBuilder.contentForDRI(page.getDri.asScala.head, page.getDocumentable.getSourceSets.asScala.toSet, buildBlock = contentFunction)
+                    val sourceSets = page.getDocumentable.getSourceSets.asScala.toSet
+                    val addedContent = pageBuilder.contentForDRI(page.getDri.asScala.head, sourceSets, buildBlock = contentFunction)
 
                     val modifiedContent = content(0).copy(
                         (content(0).getChildren.asScala ++ List(addedContent)).asJava,
