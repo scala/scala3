@@ -62,8 +62,8 @@ object Test extends App {
   }
 
   class ListOrd[T: Ord] extends Ord[List[T]] {
-    def (xs: List[T])
-        compareTo (ys: List[T]): Int = (xs, ys) match {
+    extension (xs: List[T])
+      def compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -89,11 +89,9 @@ object Test extends App {
   }
 
   trait Monad[F[_]] extends Functor[F] {
-    def [A, B](x: F[A])
-        flatMap (f: A => F[B]): F[B]
-
-    def [A, B](x: F[A])
-        map (f: A => B) = x.flatMap(f `andThen` pure)
+    extension [A, B](x: F[A])
+      def flatMap (f: A => F[B]): F[B]
+      def map (f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
   }
