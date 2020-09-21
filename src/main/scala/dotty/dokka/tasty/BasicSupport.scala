@@ -23,10 +23,10 @@ trait BasicSupport:
             case s: String => "\"" + s"$s" + "\""
             case other => other.toString()
           })
-          case Select(qual, name) => 
+          case Select(qual, name) =>
             val dri = qual.tpe.termSymbol.companionClass.dri
             AnnotationsInfo.LinkParameter(None, dri, s"${dri.getClassNames}.$name")
-          
+
           case other => AnnotationsInfo.UnresolvedParameter(None, other.show)
         }
       }
@@ -36,11 +36,11 @@ trait BasicSupport:
   }
 
   extension (sym: reflect.Symbol):
-    def documentation(using cxt: reflect.Context) = sym.comment match 
-        case Some(comment) => 
-            Map(sourceSet.getSourceSet -> parseComment(comment, sym.tree))
-        case None =>  
-            Map.empty
+    def documentation(using cxt: reflect.Context) = sym.comment match
+      case Some(comment) =>
+          Map(sourceSet.getSourceSet -> parseComment(comment, sym.tree))
+      case None =>
+          Map.empty
 
     def source(using ctx: Context) =
       val path = Some(sym.pos.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath).map(_.toString)
@@ -50,10 +50,10 @@ trait BasicSupport:
       }
 
     def getAnnotations(): List[AnnotationsInfo.Annotation] = sym.annots.map(parseAnnotation).reverse
-  
-  private val emptyDRI =  DRI.Companion.getTopLevel
 
-class SymOps[R <: Reflection](val r: R) {
+  private val emptyDRI = DRI.Companion.getTopLevel
+
+class SymOps[R <: Reflection](val r: R):
   import r._
 
   given R = r
@@ -69,7 +69,7 @@ class SymOps[R <: Reflection](val r: R) {
     def getVisibility(): ScalaVisibility =
       import VisibilityScope._
 
-      def explicitScope(ownerType: Type): VisibilityScope = 
+      def explicitScope(ownerType: Type): VisibilityScope =
         val moduleSym = ownerType.typeSymbol.companionModule
         if moduleSym.isNoSymbol
           then ExplicitTypeScope(ownerType.typeSymbol.name)
@@ -116,7 +116,7 @@ class SymOps[R <: Reflection](val r: R) {
         Option.when(sym.hackIsOpen)(ScalaOnlyModifiers.Open)
       ).flatten
 
-    def isHiddenByVisibility: Boolean = 
+    def isHiddenByVisibility: Boolean =
       import VisibilityScope._
 
       getVisibility() match
@@ -125,16 +125,16 @@ class SymOps[R <: Reflection](val r: R) {
         case _ => false
 
     def shouldDocumentClasslike: Boolean = !isHiddenByVisibility
-        && !sym.flags.is(Flags.Synthetic) 
+        && !sym.flags.is(Flags.Synthetic)
         && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
         && !(sym.companionModule.flags.is(Flags.Given))
 
 
     def getCompanionSymbol: Option[Symbol] = Some(sym.companionClass).filter(_.exists)
 
-    def isCompanionObject(): Boolean = sym.flags.is(Flags.Object) && sym.companionClass.exists
+    def isCompanionObject: Boolean = sym.flags.is(Flags.Object) && sym.companionClass.exists
 
-    def isGiven(): Boolean = sym.flags.is(Flags.Given)
+    def isGiven: Boolean = sym.flags.is(Flags.Given)
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri: DRI =
@@ -156,7 +156,4 @@ class SymOps[R <: Reflection](val r: R) {
           s"${sym.show}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )
 
-  
-
   private val emptyDRI =  DRI.Companion.getTopLevel
-}
