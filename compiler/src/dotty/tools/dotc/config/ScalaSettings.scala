@@ -187,7 +187,7 @@ class ScalaSettings extends Settings.SettingGroup {
     "-siteroot",
     "site root",
     "A directory containing static files from which to generate documentation.",
-    sys.props("user.dir")
+    "./docs"
   )
 
 
