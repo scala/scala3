@@ -21,7 +21,7 @@ import scala.tasty.inspector.TastyInspector
 
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
   *
-  * Delegates most of the work to [](TastyParser) [](dotty.dokka.tasty.TastyParser).
+  * Delegates most of the work to [[TastyParser]] [[dotty.dokka.tasty.TastyParser]].
   */
 case class DokkaTastyInspector(sourceSet: SourceSetWrapper, parser: Parser, config: DottyDokkaConfig) extends DokkaBaseTastyInspector with TastyInspector
 

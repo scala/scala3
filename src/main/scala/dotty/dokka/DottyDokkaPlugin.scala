@@ -24,7 +24,7 @@ import org.jetbrains.dokka.pages._
   * Wires together classes responsible for consuming Tasty and generating
   * documentation.
   *
-  * Most of the work of parsing Tasty is done by [](DokkaTastyInspector).
+  * Most of the work of parsing Tasty is done by [[DokkaTastyInspector]].
   */
 class DottyDokkaPlugin extends JavaDokkaPlugin:
   override def createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule = cxt.getConfiguration match {

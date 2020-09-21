@@ -39,6 +39,14 @@ class QueryParserTests {
     testSuccess("#foo(ignoredOverloadDefinition*", StrictMemberId("foo"))
     testSuccess("#bar[ignoredOverloadDefinition*", StrictMemberId("bar"))
 
+    testSuccess("\\#abc", Id("#abc"))
+    testSuccess("a\\.b", Id("a.b"))
+    testSuccess("a\\#b", Id("a#b"))
+    testSuccess("ab\\ ", Id("ab "))
+
+    testSuccess("#foo\\(ignoredOverloadDefinition*", StrictMemberId("foo(ignoredOverloadDefinition*"))
+    testSuccess("#bar\\[ignoredOverloadDefinition*", StrictMemberId("bar[ignoredOverloadDefinition*"))
+
     testFailAt("#", 1)
     testFailAt("#`", 2)
     testFailAt("``", 2)
@@ -47,6 +55,9 @@ class QueryParserTests {
     testFailAt("ab..cd", 3)
     testFailAt("ab.#cd", 3)
     testFailAt("ab#.cd", 3)
+
+    testFailAt("\\`", 1)
+    testFailAt("ab\\`", 3)
   }
 
   private def parse(input: String) = QueryParser(input).tryReadQuery()

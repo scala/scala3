@@ -72,6 +72,17 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
         val resolved = if !userText.isEmpty then userText else default
         List(dkk.text(resolved)).asJava
 
+      emit(dkkd.A(resolveText(default = target), Map("href" -> target).asJava))
+
+    case n: mdw.WikiLink =>
+      val (target, userText) =
+        val chars = n.getChars.toString.substring(2, n.getChars.length - 2)
+        MarkdownConverter.splitWikiLink(chars)
+
+      def resolveText(default: String) =
+        val resolved = if !userText.isEmpty then userText else default
+        List(dkk.text(resolved)).asJava
+
       emit(target match {
         case SchemeUri() =>
           dkkd.A(resolveText(default = target), Map("href" -> target).asJava)
@@ -81,30 +92,9 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
               case Some((sym, targetText)) =>
                 dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
               case None =>
-                dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
+                dkkd.A(resolveText(default = query.join), Map("href" -> "#").asJava)
             }
           }
-      })
-
-    case n: mdw.WikiLink =>
-      val (target, userText) =
-        val chars = n.getChars.toString.substring(2, n.getChars.length - 2)
-        chars.split(" ", /*max*/ 2) match {
-          case Array(target) => (target, "")
-          case Array(target, userText) => (target, userText)
-        }
-
-      def resolveText(default: String) =
-        val resolved = if !userText.isEmpty then userText else default
-        List(dkk.text(resolved)).asJava
-
-      emit(withParsedQuery(target) { query =>
-        MemberLookup.lookup(using r)(query, owner) match {
-          case Some((sym, targetText)) =>
-            dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
-          case None =>
-            dkkd.A(resolveText(default = query.join), Map("href" -> "#").asJava)
-        }
       })
 
     case n: mda.Code =>
@@ -185,5 +175,14 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
   def extractAndConvertSummary(doc: mdu.Document): Option[dkkd.DocTag] =
     doc.getChildIterator.asScala.collectFirst { case p: mda.Paragraph =>
       dkkd.P(convertChildren(p).asJava, kt.emptyMap)
+    }
+}
+
+object MarkdownConverter {
+  def splitWikiLink(chars: String): (String, String) =
+    // split on a space which is not backslash escaped (regex uses "zero-width negative lookbehind")
+    chars.split("(?<!\\\\) ", /*max*/ 2) match {
+      case Array(target) => (target, "")
+      case Array(target, userText) => (target, userText)
     }
 }

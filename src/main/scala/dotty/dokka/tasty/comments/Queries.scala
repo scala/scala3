@@ -81,12 +81,27 @@ class QueryParser(val query: CharSequence) {
   }
 
   def readSimpleIdentifier(): Query.Qual = {
-    def atEndOfId(): Boolean =
+    def atEndOfId(): Boolean = {
+      var escaped = false
       atEnd() || {
+        lookingAt('\\') && {
+          popCh()
+          escaped = true
+          // NOTE: in principle we should never be at the end here, since
+          // backslashes are always followed by another char. Ideally we'd just
+          // throw an exception here, but that seems bad for someone who just
+          // wants some documentation generated.
+          atEnd()
+        }
+      } || {
+        // NOTE: backquotes intentionally cannot be backslash-escaped, as they
+        // cannot be used in Scala identifiers
         if lookingAt('`') then err("backquotes are not allowed in identifiers")
-        lookingAt('#') || lookingAt('.')
-          || lookingAt('(') || lookingAt('[')
+        if escaped then false else
+          lookingAt('#') || lookingAt('.')
+            || lookingAt('(') || lookingAt('[')
       }
+    }
 
     while !atEndOfId() do pull()
     val res = popRes()
