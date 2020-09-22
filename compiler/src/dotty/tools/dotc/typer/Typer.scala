@@ -188,7 +188,7 @@ class Typer extends Namer
        */
       def recurAndCheckNewOrShadowed(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type =
         val found = findRefRecur(previous, prevPrec, prevCtx)
-        if found eq previous then checkNewOrShadowed(found, prevPrec)
+        if found eq previous then checkNewOrShadowed(found, prevPrec)(using prevCtx)
         else found
 
       def selection(imp: ImportInfo, name: Name, checkBounds: Boolean): Type =
