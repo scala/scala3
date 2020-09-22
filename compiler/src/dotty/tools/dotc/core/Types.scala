@@ -702,9 +702,22 @@ object Types {
         go(tycon.resType).mapInfo(info =>
           tycon.derivedLambdaAbstraction(tycon.paramNames, tycon.paramInfos, info).appliedTo(tp.args))
 
-      def goThis(tp: ThisType) = {
-        val d = go(tp.underlying)
-        if (d.exists) d
+      def goThis(tp: ThisType) =
+        val underlying = tp.underlying
+        val d = go(underlying)
+        if d.exists then
+          if underlying.isInstanceOf[AndType] then
+            // The underlying type of `this` is specified in a self type clause.
+            // In this case we need to exclude all private members from `d` which are
+            // not defined in the class of the `this` type. We could do this test
+            // always, but the restriction to test only if `underlying` is an AndType
+            // is made to save execution time in the common case. See i9844.scala for test cases.
+            def qualifies(sd: SingleDenotation) =
+              !sd.symbol.is(Private) || sd.symbol.owner == tp.cls
+            d match
+              case d: SingleDenotation => if qualifies(d) then d else NoDenotation
+              case d => d.filterWithPredicate(qualifies)
+          else d
         else
           // There is a special case to handle:
           //   trait Super { this: Sub => private class Inner {} println(this.Inner) }
@@ -716,7 +729,6 @@ object Types {
           // As an example of this in the wild, see
           // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
           go(tp.cls.typeRef) orElse d
-      }
 
       def goParam(tp: TypeParamRef) = {
         val next = tp.underlying
