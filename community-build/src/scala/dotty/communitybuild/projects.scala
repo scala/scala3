@@ -223,8 +223,9 @@ object projects:
 
   lazy val stdLib213 = SbtCommunityProject(
     project       = "stdLib213",
+    extraSbtArgs  = List("-Dscala.build.compileWithDotty=true"),
     sbtTestCommand   = """;set scalacOptions in Global += "-Yerased-terms" ;library/compile""",
-    extraSbtArgs  = List("-Dscala.build.compileWithDotty=true")
+    sbtPublishCommand = """;set scalacOptions in Global += "-Yerased-terms" ;set publishArtifact in (library, Compile, packageDoc) := false ;library/publishLocal""",
   )
 
   lazy val shapeless = SbtCommunityProject(
