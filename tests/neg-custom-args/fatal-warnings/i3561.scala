@@ -13,10 +13,4 @@ class Test {
     case '5' | Constant => 3
     case '4' => 4
   }
-
-  def test3(x: Any) = (x: @annotation.switch) match { // error: could not emit switch - too few cases
-    case 1 => 1
-    case 2 => 2
-    case x: String => 4
-  }
 }

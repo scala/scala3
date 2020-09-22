@@ -2029,10 +2029,9 @@ import transform.SymUtils._
           |whose behavior may have changed since version change."""
   }
 
-  class UnableToEmitSwitch(tooFewCases: Boolean)(using Context)
+  class UnableToEmitSwitch()(using Context)
   extends SyntaxMsg(UnableToEmitSwitchID) {
-    def tooFewStr: String = if (tooFewCases) " since there are not enough cases" else ""
-    def msg = em"Could not emit switch for ${hl("@switch")} annotated match$tooFewStr"
+    def msg = em"Could not emit switch for ${hl("@switch")} annotated match"
     def explain = {
       val codeExample =
         """val ConstantB = 'B'

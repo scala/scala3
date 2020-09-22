@@ -976,30 +976,28 @@ object PatternMatcher {
     /** If match is switch annotated, check that it translates to a switch
      *  with at least as many cases as the original match.
      */
-    private def checkSwitch(original: Match, result: Tree) = original.selector match {
+    private def checkSwitch(original: Match, result: Tree) = original.selector match
       case Typed(_, tpt) if tpt.tpe.hasAnnotation(defn.SwitchAnnot) =>
-        val resultCases = result match {
+        val resultCases = result match
           case Match(_, cases) => cases
           case Block(_, Match(_, cases)) => cases
           case _ => Nil
-        }
-        def typesInPattern(pat: Tree): List[Type] = pat match {
+        def typesInPattern(pat: Tree): List[Type] = pat match
           case Alternative(pats) => pats.flatMap(typesInPattern)
           case _ => pat.tpe :: Nil
-        }
         def typesInCases(cdefs: List[CaseDef]): List[Type] =
           cdefs.flatMap(cdef => typesInPattern(cdef.pat))
         def numTypes(cdefs: List[CaseDef]): Int =
           typesInCases(cdefs).toSet.size: Int // without the type ascription, testPickling fails because of #2840.
-        if (numTypes(resultCases) < numTypes(original.cases)) {
+        val numTypesInOriginal = numTypes(original.cases)
+        if numTypesInOriginal >= MinSwitchCases && numTypes(resultCases) < numTypesInOriginal then
           patmatch.println(i"switch warning for ${ctx.compilationUnit}")
           patmatch.println(i"original types: ${typesInCases(original.cases)}%, %")
           patmatch.println(i"switch types  : ${typesInCases(resultCases)}%, %")
           patmatch.println(i"tree = $result")
-          report.warning(UnableToEmitSwitch(numTypes(original.cases) < MinSwitchCases), original.srcPos)
-        }
+          report.warning(UnableToEmitSwitch(), original.srcPos)
       case _ =>
-    }
+    end checkSwitch
 
     val optimizations: List[(String, Plan => Plan)] = List(
       "mergeTests" -> mergeTests,

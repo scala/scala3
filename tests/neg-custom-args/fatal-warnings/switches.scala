@@ -38,6 +38,7 @@ object Main {
   // thinks a val in an object is constant... so naive
   def fail1(c: Char) = (c: @switch @unchecked) match { // error: Could not emit switch for @switch annotated match
     case 'A'        => true
+    case 'B'        => true
     case Other.C1   => true
     case _          => false
   }
@@ -45,6 +46,7 @@ object Main {
   // more naivete
   def fail2(c: Char) = (c: @unchecked @switch) match { // error: Could not emit switch for @switch annotated match
     case 'A'        => true
+    case 'B'        => true
     case Other.C3   => true
     case _          => false
   }
