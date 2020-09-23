@@ -54,7 +54,7 @@ compile.in(Compile) := (compile.in(Compile).dependsOn(buildDokkaApi)).value
 
 val generateSelfDocumentation = inputKey[Unit]("Generate example documentation")
 generateSelfDocumentation := {
-  run.in(Compile).fullInput(" -o output/self -t target/scala-0.26/classes -d documentation -n scala3doc -s src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L").evaluated // TODO #35 proper sbt integration
+  run.in(Compile).fullInput(" -o output/self -t target/scala-0.27/classes -d documentation -n scala3doc -s src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L").evaluated // TODO #35 proper sbt integration
 }
 
 unmanagedJars in Compile += dokkaJavaApiJar
