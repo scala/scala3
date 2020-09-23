@@ -375,7 +375,8 @@ class CommunityBuildTest:
   @Test def betterfiles = projects.betterfiles.run()
   @Test def catsEffect2 = projects.catsEffect2.run()
   @Test def catsEffect3 = projects.catsEffect3.run()
-  @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
+  // Temporarily disabled until problem discovered in comments to #9449 is fixed
+  // @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
   @Test def effpi = projects.effpi.run()
   @Test def endpoints4s = projects.endpoints4s.run()
   @Test def fastparse = projects.fastparse.run()
