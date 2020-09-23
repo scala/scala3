@@ -89,7 +89,7 @@ object representations extends TastyExtractor {
     override val members = internal.stats.map(convertToRepresentation(_, Some(this)))
     override val annotations = extractAnnotations(internal.symbol.annots)
 
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
   class ImportRepresentation(using QuoteContext)(internal: qctx.tasty.Import, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation {
@@ -103,7 +103,7 @@ object representations extends TastyExtractor {
     override val path = internal.expr.symbol.show.split("\\.").toList
     override val annotations = extractAnnotations(internal.symbol.annots)
 
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
   class ClassRepresentation(using QuoteContext)(internal: qctx.tasty.ClassDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
@@ -139,7 +139,7 @@ object representations extends TastyExtractor {
     )
     override val members: List[Representation with Modifiers] = extractClassMembers(internal.body, internal.symbol, Some(this))
 
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
   class DefRepresentation(using QuoteContext)(internal: qctx.tasty.DefDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
@@ -158,7 +158,7 @@ object representations extends TastyExtractor {
     }
     override val returnValue = convertTypeToReference(internal.returnTpt.tpe)
     override val annotations = extractAnnotations(internal.symbol.annots)
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
   class ValRepresentation(using QuoteContext)(internal: qctx.tasty.ValDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with ReturnValue {
@@ -171,7 +171,7 @@ object representations extends TastyExtractor {
     override val annotations = extractAnnotations(internal.symbol.annots)
     val isVar: Boolean = internal.symbol.flags.is(Flags.Mutable)
 
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
   class TypeRepresentation(using QuoteContext)(internal: qctx.tasty.TypeDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams {
@@ -188,7 +188,7 @@ object representations extends TastyExtractor {
       case _ => None
     }
     override def isAbstract: Boolean = !alias.isDefined
-    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.comment, this)(packages, userDocSyntax)
+    override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
   def convertToRepresentation(using QuoteContext)(tree: qctx.tasty.Tree, parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]): Representation = {

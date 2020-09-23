@@ -39,7 +39,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     })
   }
 
-  def extractComments(using QuoteContext)(comment: Option[qctx.tasty.Comment], rep: Representation) : (Map[String, EmulatedPackageRepresentation], String) => Option[Comment] = {
+  def extractComments(using QuoteContext)(comment: Option[qctx.tasty.Documentation], rep: Representation) : (Map[String, EmulatedPackageRepresentation], String) => Option[Comment] = {
     comment match {
       case Some(com) =>
         (packages, userDocSyntax) => {
