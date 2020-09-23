@@ -112,6 +112,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     true
   }
 
+  private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
+
   protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
   protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
   protected def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = true)
@@ -371,7 +373,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         thirdTry
       case tp1: TypeParamRef =>
         def flagNothingBound = {
-          if (!frozenConstraint && tp2.isRef(NothingClass) && state.isGlobalCommittable) {
+          if (!frozenConstraint && isBottom(tp2) && state.isGlobalCommittable) {
             def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
             if (Config.failOnInstantiationToNothing) assert(false, msg)
             else report.log(msg)
@@ -479,7 +481,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ => false
               }) ||
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
-            { tp1.isRef(NothingClass) || GADTusage(tp2.symbol) }
+            { isBottom(tp1) || GADTusage(tp2.symbol) }
         }
         isSubApproxHi(tp1, info2.lo) || compareGADT || tryLiftedToThis2 || fourthTry
 
@@ -488,7 +490,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         if (cls2.isClass)
           if (cls2.typeParams.isEmpty) {
             if (cls2 eq AnyKindClass) return true
-            if (tp1.isRef(NothingClass)) return true
+            if (isBottom(tp1)) return true
             if (tp1.isLambdaSub) return false
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
@@ -1872,8 +1874,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
-    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || tp2.isRef(NothingClass) then tp2
-    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || tp1.isRef(NothingClass) then tp1
+    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp2
+    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp1
     else tp2 match {  // normalize to disjunctive normal form if possible.
       case tp2: LazyRef =>
         glb(tp1, tp2.ref)
@@ -1925,8 +1927,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
-    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || tp2.isRef(NothingClass) then tp1
-    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || tp1.isRef(NothingClass) then tp2
+    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp1
+    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp2
     else
       def mergedLub(tp1: Type, tp2: Type): Type = {
         tp1.atoms match
