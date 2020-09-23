@@ -129,7 +129,7 @@ object Protoplugin {
     resolvers += Resolver.bintrayRepo("virtuslab", "dokka"),
     scala3docOptions := Seq.empty,
     Compile / doc / scalacOptions := {
-      scala3docOptions.value ++ ("--" +: (Compile / doc / scalacOptions).value)
+      scala3docOptions.value.map("--+DOC+" + _) ++ (Compile / doc / scalacOptions).value
     },
     scalaInstance in doc := {
       dottyScalaInstanceTask(

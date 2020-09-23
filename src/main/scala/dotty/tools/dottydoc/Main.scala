@@ -32,10 +32,14 @@ object Main extends Driver {
   override def process(args: Array[String], rootCtx: Context): Reporter = {
     // split args into ours and Dotty's
     val (dokkaStrArgs, compilerArgs) = {
-      // first "--" arg marks the end of Scala3doc-specific options
-      // it is inserted by SBT plugin
-      val split = args.splitAt(args.indexOf("--"))
-      (split._1, split._2.tail)
+      args.partitionMap { arg =>
+        // our options start with this magic prefix, inserted by the SBT plugin
+        val magicPrefix = "--+DOC+"
+        if arg startsWith magicPrefix then
+          Left(arg stripPrefix magicPrefix)
+        else
+          Right(arg)
+      }
     }
 
     val (filesToCompile, ctx) = setup(compilerArgs, rootCtx)
