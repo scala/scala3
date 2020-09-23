@@ -510,9 +510,8 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
     if (sym.isClass && isLocalJSClass(sym)) {
       val jsclassValName = LocalJSClassValueName.fresh(sym.name.toTermName)
       val jsclassVal = newSymbol(ctx.owner, jsclassValName, EmptyFlags, defn.AnyRefType, coord = tree.span)
-      val state = myState
-      state.localClass2jsclassVal(sym) = jsclassVal
-      state.notYetSelfReferencingLocalClasses += sym
+      myState.localClass2jsclassVal(sym) = jsclassVal
+      myState.notYetReferencedLocalClasses += sym
     }
     ctx
   }
@@ -521,7 +520,6 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
   override def transformTypeDef(tree: TypeDef)(using Context): Tree = {
     val sym = tree.symbol
     if (sym.isClass && isLocalJSClass(sym)) {
-      val state = myState
       val cls = sym.asClass
 
       val rhs = {
@@ -531,8 +529,8 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
         ref(jsdefn.Runtime_createLocalJSClass).appliedTo(clazzValue, superClassCtor, ref(defn.Predef_undefined))
       }
 
-      val jsclassVal = state.localClass2jsclassVal(sym)
-      if (state.notYetSelfReferencingLocalClasses.remove(cls)) {
+      val jsclassVal = myState.localClass2jsclassVal(sym)
+      if (myState.notYetReferencedLocalClasses.remove(cls)) {
         Thicket(List(tree, ValDef(jsclassVal, rhs)))
       } else {
         /* We are using `jsclassVal` inside the definition of the class.
@@ -679,7 +677,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
       // Use the local `val` that stores the JS class value
       val state = myState
       val jsclassVal = state.localClass2jsclassVal(cls)
-      state.notYetSelfReferencingLocalClasses -= cls
+      state.notYetReferencedLocalClasses -= cls
       ref(jsclassVal)
     } else {
       // Defer translation to `LoadJSConstructor` to the back-end
@@ -728,6 +726,6 @@ object ExplicitJSClasses {
   private final class MyState {
     val nestedObject2superTypeConstructor = new MutableSymbolMap[Type]
     val localClass2jsclassVal = new MutableSymbolMap[TermSymbol]
-    val notYetSelfReferencingLocalClasses = new util.HashSet[Symbol]
+    val notYetReferencedLocalClasses = new util.HashSet[Symbol]
   }
 }

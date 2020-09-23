@@ -1132,10 +1132,32 @@ class JSCodeGen()(using genCtx: Context) {
    *  This is used for the primary constructor of a non-native JS class,
    *  because those cannot access `this` before the super constructor call.
    *
-   *  dotc inserts statements before the super constructor call for param
-   *  accessor initializers (including val's and var's declared in the params).
-   *  We move those after the super constructor call, and are therefore
-   *  executed later than for a Scala class.
+   *  Normally, in Scala, param accessors (i.e., fields declared directly in
+   *  constructor parameters) are initialized *before* the super constructor
+   *  call. This is important for cases like
+   *
+   *    abstract class A {
+   *      def a: Int
+   *      println(a)
+   *    }
+   *    class B(val a: Int) extends A
+   *
+   *  where `a` is supposed to be correctly initialized by the time `println`
+   *  is executed.
+   *
+   *  However, in a JavaScript class, this is forbidden: it is not allowed to
+   *  read the `this` value in a constructor before the super constructor call.
+   *
+   *  Therefore, for JavaScript classes, we specifically move all those early
+   *  assignments after the super constructor call, to comply with JavaScript
+   *  limitations. This clearly introduces a semantic difference in
+   *  initialization order between Scala classes and JavaScript classes, but
+   *  there is nothing we can do about it. That difference in behavior is
+   *  basically spec'ed in Scala.js the language, since specifying it any other
+   *  way would prevent JavaScript classes from ever having constructor
+   *  parameters.
+   *
+   *  We do the same thing in Scala 2, obviously.
    */
   private def moveAllStatementsAfterSuperConstructorCall(body: js.Tree): js.Tree = {
     val bodyStats = body match {
@@ -1447,7 +1469,7 @@ class JSCodeGen()(using genCtx: Context) {
                 val genBoxedRhs = box(genRhs, atPhase(elimErasedValueTypePhase)(sym.info))
                 js.Assign(field, genBoxedRhs)
               } else {
-                js.Assign(field,genRhs)
+                js.Assign(field, genRhs)
               }
             }
 
@@ -1773,26 +1795,26 @@ class JSCodeGen()(using genCtx: Context) {
           s"but isInnerNonNativeJSClass = $nestedJSClass")
 
       def genArgs: List[js.TreeOrJSSpread] = genActualJSArgs(ctor, args)
+      def genArgsAsClassCaptures: List[js.Tree] = args.map(genExpr)
 
-      if (cls == jsdefn.JSObjectClass && args.isEmpty)
-        js.JSObjectConstr(Nil)
-      else if (cls == jsdefn.JSArrayClass && args.isEmpty)
-        js.JSArrayConstr(Nil)
-      else if (cls.isAnonymousClass)
-        genNewAnonJSClass(cls, jsClassValue.get, args.map(genExpr))(fun.span)
-      else if (!nestedJSClass)
-        js.JSNew(genLoadJSConstructor(cls), genArgs)
-      else if (!atPhase(erasurePhase)(cls.is(ModuleClass))) // LambdaLift removes the ModuleClass flag of lifted classes
-        js.JSNew(jsClassValue.get, genArgs)
-      else
-        genCreateInnerJSModule(cls, jsClassValue.get, args.map(genExpr))
+      jsClassValue.fold {
+        // Static JS class (by construction, it cannot be a module class, as their News do not reach the back-end)
+        if (cls == jsdefn.JSObjectClass && args.isEmpty)
+          js.JSObjectConstr(Nil)
+        else if (cls == jsdefn.JSArrayClass && args.isEmpty)
+          js.JSArrayConstr(Nil)
+        else
+          js.JSNew(genLoadJSConstructor(cls), genArgs)
+      } { jsClassVal =>
+        // Nested JS class
+        if (cls.isAnonymousClass)
+          genNewAnonJSClass(cls, jsClassVal, genArgsAsClassCaptures)(fun.span)
+        else if (atPhase(erasurePhase)(cls.is(ModuleClass))) // LambdaLift removes the ModuleClass flag of lifted classes
+          js.JSNew(js.CreateJSClass(encodeClassName(cls), jsClassVal :: genArgsAsClassCaptures), Nil)
+        else
+          js.JSNew(jsClassVal, genArgs)
+      }
     }
-  }
-
-  /** Gen JS code to create the JS class of an inner JS module class. */
-  private def genCreateInnerJSModule(sym: Symbol, jsSuperClassValue: js.Tree, args: List[js.Tree])(
-      implicit pos: Position): js.Tree = {
-    js.JSNew(js.CreateJSClass(encodeClassName(sym), jsSuperClassValue :: args), Nil)
   }
 
   /** Generate an instance of an anonymous (non-lambda) JS class inline
