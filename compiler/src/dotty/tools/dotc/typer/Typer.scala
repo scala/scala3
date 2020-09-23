@@ -3581,6 +3581,9 @@ class Typer extends Namer
                 case _: IntegratedTypeArgs => tree
                 case _ =>  tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
               }
+            case pt: SelectionProto if tree.isInstanceOf[ExtMethodApply] =>
+              assert(pt.extensionName == tree.symbol.name)
+              tree
             case _ =>
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)
