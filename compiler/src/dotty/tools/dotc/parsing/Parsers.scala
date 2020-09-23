@@ -3286,6 +3286,7 @@ object Parsers {
         makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       }
       else {
+        val mods1 = addFlag(mods, Method)
         val ident = termIdent()
         var name = ident.name.asTermName
         val tparams = typeParamClauseOpt(ParamOwner.Def)
@@ -3317,7 +3318,7 @@ object Parsers {
 
         val ddef = DefDef(name, tparams, vparamss, tpt, rhs)
         if (isBackquoted(ident)) ddef.pushAttachment(Backquoted, ())
-        finalizeDef(ddef, addFlag(mods, Method), start)
+        finalizeDef(ddef, mods1, start)
       }
     }
 
