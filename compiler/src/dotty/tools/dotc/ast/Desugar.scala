@@ -945,7 +945,7 @@ object desugar {
       report.error(IllegalRedefinitionOfStandardKind(kind, name), errPos)
       name = name.errorName
     }
-    if name.isExtensionName && !mdef.mods.is(ExtensionMethod) then
+    if name.isExtensionName && (!mdef.mods.is(ExtensionMethod) || name.dropExtension.isExtensionName) then
       report.error(em"illegal method name: $name may not start with `extension_`", errPos)
     name
   }
