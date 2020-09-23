@@ -340,8 +340,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
       case This(id) =>
         id match {
-          case Some(x) =>
-            this += x.name.stripSuffix("$") += "."
+          case Some(name) =>
+            this += name.stripSuffix("$") += "."
           case None =>
         }
         this += "this"
@@ -417,12 +417,12 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
       case Super(qual, idOpt) =>
         qual match {
-          case This(Some(Id(name))) => this += name += "."
+          case This(Some(name)) => this += name += "."
           case This(None) =>
         }
         this += "super"
         for (id <- idOpt)
-          inSquare(this += id.name)
+          inSquare(this += id)
         this
 
       case Typed(term, tpt) =>
@@ -1223,9 +1223,9 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     }
 
     def printImportSelector(sel: ImportSelector): Buffer = sel match {
-      case SimpleSelector(Id(name)) => this += name
-      case OmitSelector(Id(name)) => this += name += " => _"
-      case RenameSelector(Id(name), Id(newName)) => this += name += " => " += newName
+      case SimpleSelector(name) => this += name
+      case OmitSelector(name) => this += name += " => _"
+      case RenameSelector(name, newName) => this += name += " => " += newName
     }
 
     def printDefinitionName(sym: Definition): Buffer = sym match {

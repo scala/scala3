@@ -101,8 +101,6 @@ import scala.tasty.reflect._
  *                     +- RenameSelector
  *                     +- OmitSelector
  *
- *  +- Id
- *
  *  +- Signature
  *
  *  +- Position
@@ -586,13 +584,13 @@ trait Reflection { reflection =>
 
   trait ThisModule { this: This.type =>
 
-    /** Create a `this[<id: Id]>` */
+    /** Create a `this[<id: String]>` */
     def apply(cls: Symbol): This
 
-    def copy(original: Tree)(qual: Option[Id]): This
+    def copy(original: Tree)(qual: Option[String]): This
 
-    /** Matches `this[<id: Option[Id]>` */
-    def unapply(x: This): Option[Option[Id]]
+    /** Matches `this[<id: Option[String]>` */
+    def unapply(x: This): Option[Option[String]]
   }
 
   given ThisMethods as ThisMethods = ThisMethodsImpl
@@ -600,7 +598,7 @@ trait Reflection { reflection =>
 
   trait ThisMethods:
     extension (self: This):
-      def id: Option[Id]
+      def id: Option[String]
     end extension
   end ThisMethods
 
@@ -735,12 +733,12 @@ trait Reflection { reflection =>
   trait SuperModule { this: Super.type =>
 
     /** Creates a `<qualifier: Term>.super[<id: Option[Id]>` */
-    def apply(qual: Term, mix: Option[Id]): Super
+    def apply(qual: Term, mix: Option[String]): Super
 
-    def copy(original: Tree)(qual: Term, mix: Option[Id]): Super
+    def copy(original: Tree)(qual: Term, mix: Option[String]): Super
 
     /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
-    def unapply(x: Super): Option[(Term, Option[Id])]
+    def unapply(x: Super): Option[(Term, Option[String])]
   }
 
   given SuperMethods as SuperMethods = SuperMethodsImpl
@@ -749,7 +747,8 @@ trait Reflection { reflection =>
   trait SuperMethods:
     extension (self: Super):
       def qualifier: Term
-      def id: Option[Id]
+      def id: Option[String]
+      def idPos: Position
     end extension
   end SuperMethods
 
@@ -1668,7 +1667,7 @@ trait Reflection { reflection =>
   val SimpleSelector: SimpleSelectorModule
 
   trait SimpleSelectorModule { this: SimpleSelector.type =>
-    def unapply(x: SimpleSelector): Option[Id]
+    def unapply(x: SimpleSelector): Option[String]
   }
 
   /** Simple import selector: `.bar` in `import foo.bar` */
@@ -1679,7 +1678,8 @@ trait Reflection { reflection =>
 
   trait SimpleSelectorMethods:
     extension (self: SimpleSelector):
-      def selection: Id
+      def name: String
+      def namePos: Position
     end extension
   end SimpleSelectorMethods
 
@@ -1692,7 +1692,7 @@ trait Reflection { reflection =>
   val RenameSelector: RenameSelectorModule
 
   trait RenameSelectorModule { this: RenameSelector.type =>
-    def unapply(x: RenameSelector): Option[(Id, Id)]
+    def unapply(x: RenameSelector): Option[(String, String)]
   }
 
   /** Omit import selector: `.{bar => _}` in `import foo.{bar => _}` */
@@ -1703,8 +1703,10 @@ trait Reflection { reflection =>
 
   trait RenameSelectorMethods:
     extension (self: RenameSelector):
-      def from: Id
-      def to: Id
+      def fromName: String
+      def fromPos: Position
+      def toName: String
+      def toPos: Position
     end extension
   end RenameSelectorMethods
 
@@ -1714,7 +1716,7 @@ trait Reflection { reflection =>
   val OmitSelector: OmitSelectorModule
 
   trait OmitSelectorModule { this: OmitSelector.type =>
-    def unapply(x: OmitSelector): Option[Id]
+    def unapply(x: OmitSelector): Option[String]
   }
 
   given OmitSelectorMethods as OmitSelectorMethods = OmitSelectorMethodsImpl
@@ -1722,7 +1724,8 @@ trait Reflection { reflection =>
 
   trait OmitSelectorMethods:
     extension (self: OmitSelector):
-      def omitted: Id
+      def name: String
+      def namePos: Position
   end OmitSelectorMethods
 
   ///////////////
@@ -2374,34 +2377,6 @@ trait Reflection { reflection =>
 
       /** Shows the tree as fully typed source code */
       def showWith(syntaxHighlight: SyntaxHighlight): String
-    end extension
-  }
-
-  /////////
-  // IDs //
-  /////////
-
-  // TODO: remove Id. Add use name and pos directly on APIs that use it.
-
-  /** Untyped identifier */
-  type Id <: AnyRef
-
-  val Id: IdModule
-
-  trait IdModule { this: Id.type =>
-    def unapply(id: Id): Option[String]
-  }
-
-  given IdMethods as IdMethods = IdMethodsImpl
-  protected val IdMethodsImpl: IdMethods
-
-  trait IdMethods {
-    extension (self: Id):
-      /** Position in the source code */
-      def pos: Position
-
-      /** Name of the identifier */
-      def name: String
     end extension
   }
 

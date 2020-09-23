@@ -70,7 +70,7 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 Inlined(None, Nil, Block(List(ClassDef("Foo6", DefDef("<init>", Nil, List(List(ValDef("a", TypeIdent("Int"), None)), List(ValDef("b", Singleton(Ident("a")), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), None), ValDef("b", Inferred(), None)))), Literal(Constant(()))))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(ClassDef("Foo7", DefDef("<init>", Nil, List(List(ValDef("a", TypeIdent("Int"), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), None), DefDef("<init>", Nil, List(Nil), Inferred(), Some(Block(List(Apply(Select(This(Some(Id("Foo7"))), "<init>"), List(Literal(Constant(6))))), Literal(Constant(())))))))), Literal(Constant(()))))
+Inlined(None, Nil, Block(List(ClassDef("Foo7", DefDef("<init>", Nil, List(List(ValDef("a", TypeIdent("Int"), None))), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(ValDef("a", Inferred(), None), DefDef("<init>", Nil, List(Nil), Inferred(), Some(Block(List(Apply(Select(This(Some("Foo7")), "<init>"), List(Literal(Constant(6))))), Literal(Constant(())))))))), Literal(Constant(()))))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(ClassDef("Foo8", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Nil, None, List(Apply(Ident("println"), List(Literal(Constant(0))))))), Literal(Constant(()))))
