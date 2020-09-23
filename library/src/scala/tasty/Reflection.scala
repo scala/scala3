@@ -1353,7 +1353,7 @@ trait Reflection extends reflect.Types { reflectSelf: CompilerInterface =>
     def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): Type =
       qtype.asInstanceOf[scala.internal.quoted.Type[TypeTree]].typeTree.tpe
 
-    def ofErasedClass(clazz: Class[_]): Type =
+    def typeConstructorOf(clazz: Class[_]): Type =
       reflectSelf.Type_ofErasedClass(clazz)
   end Type
 
