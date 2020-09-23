@@ -58,9 +58,9 @@ object Scala3:
         displaySymbol(symbol.owner)
       else if symbol.is(ModuleClass) then
         displaySymbol(symbol.sourceModule)
-      else if symbol == defn.RootPackage
+      else if symbol == defn.RootPackage then
         RootPackageName
-      else if symbol.isEmptyPackage
+      else if symbol.isEmptyPackage then
         EmptyPackageName
       else
         symbol.name.show
@@ -131,7 +131,7 @@ object Scala3:
     def unapply(symbolInfo: SymbolInformation): Option[Int] = symbolInfo.symbol match
       case locals(ints) =>
         val bi = BigInt(ints)
-        if bi.isValidInt
+        if bi.isValidInt then
           Some(bi.toInt)
         else
           None
@@ -242,14 +242,14 @@ object Scala3:
       while i < len do
         val a = o1.charAt(i)
         val b = o2.charAt(i)
-        if a.isDigit && b.isDigit
+        if a.isDigit && b.isDigit then
           val byDigit = Integer.compare(toDigit(o1, i), toDigit(o2, i))
           if (byDigit != 0) return byDigit
           else
             i = seekNonDigit(o1, i)
         else
           val result = Character.compare(a, b)
-          if result != 0
+          if result != 0 then
             return result
           i += 1
       end while
