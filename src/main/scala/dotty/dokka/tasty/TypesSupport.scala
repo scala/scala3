@@ -8,23 +8,25 @@ trait TypesSupport:
     self: TastyParser =>
     import reflect._
 
-    extension on (tpeTree: Tree):
-        def dokkaType(using cxt: reflect.Context): Bound =
-            val data = tpeTree match
-                case TypeBoundsTree(low, high) => typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
-                case tpeTree: TypeTree =>  inner(tpeTree.tpe)
-                case term:  Term => inner(term.tpe)
+    given TreeSyntax as AnyRef:
+        extension (tpeTree: Tree):
+            def dokkaType(using cxt: reflect.Context): Bound =
+                val data = tpeTree match
+                    case TypeBoundsTree(low, high) => typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
+                    case tpeTree: TypeTree =>  inner(tpeTree.tpe)
+                    case term:  Term => inner(term.tpe)
 
-            new TypeConstructor(tpeTree.symbol.dri, data.asJava, FunctionModifiers.NONE)
+                new TypeConstructor(tpeTree.symbol.dri, data.asJava, FunctionModifiers.NONE)
 
-    extension on (tpe: TypeOrBounds):
-        def dokkaType(using ctx: reflect.Context): Bound =
-            val data = inner(tpe)
-            val dri = data.collect{
-                case o: TypeParameter => o
-            }.headOption.map(_.getDri).getOrElse(defn.AnyClass.dri)
-            new TypeConstructor(dri, data.asJava, FunctionModifiers.NONE)
-     
+    given TypeOrBoundsSyntax as AnyRef:
+        extension (tpe: TypeOrBounds):
+            def dokkaType(using ctx: reflect.Context): Bound =
+                val data = inner(tpe)
+                val dri = data.collect{
+                    case o: TypeParameter => o
+                }.headOption.map(_.getDri).getOrElse(defn.AnyClass.dri)
+                new TypeConstructor(dri, data.asJava, FunctionModifiers.NONE)
+
     private def text(str: String): JProjection = new UnresolvedBound(str)
     
     private def texts(str: String): List[JProjection] = List(text(str))
