@@ -1009,6 +1009,9 @@ object Build {
       scalaJSLinkerConfig ~= { _.withSemantics(build.TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= build.TestSuiteLinkerOptions.moduleInitializers,
 
+      // Perform Ycheck after the Scala.js-specific transformation phases
+      scalacOptions += "-Ycheck:explicitJSClasses,addLocalJSFakeNews",
+
       jsEnvInput in Test := {
         val resourceDir = fetchScalaJSSource.value / "test-suite/js/src/test/resources"
         val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath

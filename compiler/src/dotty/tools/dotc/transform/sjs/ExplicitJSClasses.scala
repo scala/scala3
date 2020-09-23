@@ -163,13 +163,15 @@ import JSSymUtils._
  *    val Local\$jsclass: AnyRef = createLocalJSClass(
  *        classOf[Local],
  *        js.constructorOf[ParentJSClass],
- *        Array[AnyRef](new Local(), ...))
+ *        ???)
  *  }
  *  }}}
  *
- *  Since we need to insert fake `new Inner()`s, this scheme does not work for
- *  abstract local classes. We therefore reject them as implementation
- *  restriction in `PrepJSInterop`.
+ *  The third argument `???` is a placeholder, which will be filled in by
+ *  `AddLocalJSFakeNews` with fake new invocations for the all the constructors
+ *  of `Local`. We cannot do it at this phase because that would require
+ *  inventing sound type arguments for the type parameters of `Local` out of
+ *  thin air.
  *
  *  If the body of `Local` references itself, then the `val Local\$jsclass` is
  *  instead declared as a `var` to work around the cyclic dependency:
@@ -526,15 +528,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
         val typeRef = tree.tpe
         val clazzValue = clsOf(typeRef)
         val superClassCtor = genJSConstructorOf(tree, extractSuperTypeConstructor(tree.rhs))
-        val fakeNewInstances = {
-          /* We need to use `reverse` because the Scope returns elements in reverse order compared to tree definitions.
-           * The back-end needs the fake News to be in the same order as the corresponding tree definitions.
-           */
-          val ctors = cls.info.decls.lookupAll(nme.CONSTRUCTOR).toList.reverse
-          val elems = ctors.map(ctor => fakeNew(cls, ctor.asTerm))
-          JavaSeqLiteral(elems, TypeTree(defn.AnyRefType))
-        }
-        ref(jsdefn.Runtime_createLocalJSClass).appliedTo(clazzValue, superClassCtor, fakeNewInstances)
+        ref(jsdefn.Runtime_createLocalJSClass).appliedTo(clazzValue, superClassCtor, ref(defn.Predef_undefined))
       }
 
       val jsclassVal = state.localClass2jsclassVal(sym)
@@ -554,23 +548,6 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
     } else {
       tree
     }
-  }
-
-  /** Creates a fake invocation of the the given class with the given constructor. */
-  def fakeNew(cls: ClassSymbol, ctor: TermSymbol)(using Context): Tree = {
-    /* TODO This is not entirely good enough, as it break -Ycheck for generic
-     * classes. Erasure restores the consistency of the fake invocations.
-     * Improving this is left for later.
-     */
-
-    val tycon = cls.typeRef
-    val targs = cls.typeParams.map(_ => TypeBounds.emptyPolyKind)
-    val argss = ctor.info.paramInfoss.map(_.map(_ => ref(defn.Predef_undefined)))
-
-    New(tycon)
-      .select(TermRef(tycon, ctor))
-      .appliedToTypes(targs)
-      .appliedToArgss(argss)
   }
 
   // This method, together with transformTypeApply and transformSelect, implements step (E)

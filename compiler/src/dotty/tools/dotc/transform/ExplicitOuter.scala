@@ -384,6 +384,13 @@ object ExplicitOuter {
       }
       else Nil
 
+    /** If the constructors of the given `cls` need to be passed an outer
+     *  argument, the singleton list with the argument, otherwise Nil.
+     */
+    def argsForNew(cls: ClassSymbol, tpe: Type): List[Tree] =
+      if (hasOuterParam(cls)) singleton(fixThis(outerPrefix(tpe))) :: Nil
+      else Nil
+
     /** A path of outer accessors starting from node `start`. `start` defaults to the
      *  context owner's this node. There are two alternative conditions that determine
      *  where the path ends:
