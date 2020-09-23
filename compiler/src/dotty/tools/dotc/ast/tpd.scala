@@ -584,7 +584,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           tree1.withTypeUnchecked(tree.tpe)
         case _ =>
           val tree2 = tree.tpe match {
-            case tpe: NamedType => tree1.withType(tpe.derivedSelect(qualifier.tpe.widenIfUnstable))
+            case tpe: NamedType =>
+              val qualType = qualifier.tpe.widenIfUnstable
+              if qualType.isBottomType then tree1.withTypeUnchecked(tree.tpe)
+              else tree1.withType(tpe.derivedSelect(qualType))
             case _ => tree1.withTypeUnchecked(tree.tpe)
           }
           ConstFold(tree2)
