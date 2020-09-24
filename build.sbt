@@ -1,4 +1,4 @@
-val dottyVersion = "0.26.0-RC1"
+val dottyVersion = "0.27.0-RC1"
 val dokkaVersion = "1.4.0"
 val kotlinxVersion = "0.7.2" // upgrade when upgrading dokka
 val flexmarkVersion = "0.42.12"
@@ -54,7 +54,7 @@ compile.in(Compile) := (compile.in(Compile).dependsOn(buildDokkaApi)).value
 
 val generateSelfDocumentation = inputKey[Unit]("Generate example documentation")
 generateSelfDocumentation := {
-  run.in(Compile).fullInput(" -o output/self -t target/scala-0.26/classes -d documentation -n scala3doc -s src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L").evaluated // TODO #35 proper sbt integration
+  run.in(Compile).fullInput(" -o output/self -t target/scala-0.27/classes -d documentation -n scala3doc -s src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L").evaluated // TODO #35 proper sbt integration
 }
 
 unmanagedJars in Compile += dokkaJavaApiJar

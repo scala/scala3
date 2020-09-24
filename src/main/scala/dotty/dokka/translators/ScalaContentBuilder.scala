@@ -17,7 +17,7 @@ import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.doc._
 
 
-extension on (sourceSets: Set[DokkaConfiguration$DokkaSourceSet]):
+extension (sourceSets: Set[DokkaConfiguration$DokkaSourceSet]):
     def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava
 
 

@@ -17,10 +17,10 @@ import kotlin.jvm.functions.Function2
 import java.util.{List => JList, Set => JSet, Map => JMap}
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 
-extension  on[T, V] (a: WithExtraProperties[T]):
+extension [T, V] (a: WithExtraProperties[T]):
   def get(key: ExtraProperty.Key[_ >: T, V]): V = a.getExtra().getMap().get(key).asInstanceOf[V]
 
-extension on[V] (map: JMap[DokkaConfiguration$DokkaSourceSet, V]):
+extension [V] (map: JMap[DokkaConfiguration$DokkaSourceSet, V]):
     def defaultValue: V = map.values.asScala.toSeq(0)
 
 class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
