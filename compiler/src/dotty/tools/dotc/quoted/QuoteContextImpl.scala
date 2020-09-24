@@ -50,8 +50,7 @@ object QuoteContextImpl {
 }
 
 class QuoteContextImpl private (ctx: Context) extends QuoteContext:
-  // NOTE: The tasty class should only mixin the compiler interface and the reflection interface.
-  //       We should not implement methods here, all should be implemented by `ReflectionCompilerInterface`
+
   object tasty extends scala.tasty.Reflection, scala.internal.tasty.CompilerInterface:
 
     def rootContext: Context = ctx

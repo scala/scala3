@@ -248,7 +248,7 @@ trait Reflection { reflection =>
 
   // ClassDef
 
-  /** Tree representing a class definition. This includes annonymus class definitions and the class of a module object */
+  /** Tree representing a class definition. This includes anonymous class definitions and the class of a module object */
   type ClassDef <: Definition
 
   given TypeTest[Tree, ClassDef] = ClassDefTypeTest
