@@ -503,15 +503,16 @@ class Typer extends Namer
       // Convert a reference `f` to an extension method select `p.f`, where
       // `p` is the closest enclosing extension parameter, or else convert to `this.f`.
       val xmethod = ctx.owner.enclosingExtensionMethod
-      val qualifier =
-        if xmethod.exists then untpd.ref(xmethod.extensionParam.termRef)
-        else untpd.This(untpd.EmptyTypeIdent)
-      val selection = untpd.cpy.Select(tree)(qualifier, name)
-      val result = tryEither(typed(selection, pt))((_, _) => fail)
-      def canAccessUnqualified(sym: Symbol) =
-        sym.is(ExtensionMethod) && (sym.extensionParam.span == xmethod.extensionParam.span)
-      if !xmethod.exists || result.tpe.isError || canAccessUnqualified(result.symbol) then
-        result
+      if xmethod.exists then
+        val qualifier = untpd.ref(xmethod.extensionParam.termRef)
+        val selection = untpd.cpy.Select(tree)(qualifier, name)
+        val result = tryEither(typed(selection, pt))((_, _) => fail)
+        def canAccessUnqualified(sym: Symbol) =
+          sym.is(ExtensionMethod) && (sym.extensionParam.span == xmethod.extensionParam.span)
+        if result.tpe.isError || canAccessUnqualified(result.symbol) then
+          result
+        else
+          fail
       else
         fail
     else
