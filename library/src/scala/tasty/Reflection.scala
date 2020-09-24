@@ -117,7 +117,7 @@ import scala.tasty.reflect._
  *
  *  ```
  */
-trait Reflection { reflection =>
+trait Reflection extends scala.quoted.Trees { reflection =>
 
   //////////////
   // CONTEXTS //

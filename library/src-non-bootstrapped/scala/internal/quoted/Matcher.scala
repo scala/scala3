@@ -32,8 +32,8 @@ object Matcher {
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.fromAbove`")
   class fromAbove extends Annotation
 
-  class QuoteMatcher[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) {
-    import qctx.tasty._
+  class QuoteMatcher[S <: Scope & Singleton](using val s: S) {
+    import s.tasty._
 
     def termMatch(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] =
       throw new Exception("Non bootstrapped lib")

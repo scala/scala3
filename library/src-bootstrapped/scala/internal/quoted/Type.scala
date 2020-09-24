@@ -18,18 +18,9 @@ object Type {
    *  @param s the current Scope
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Type[Ti]``
    */
-  def unapply[TypeBindings <: Tuple, Tup <: Tuple, T, U](using s: Scope)(scrutineeType: s.Type[T])(using patternType: s.Type[U],
-        hasTypeSplices: Boolean): Option[Tup] = {
-    // TODO facrtor out
-    val s1 = quoteContextWithCompilerInterface(s)
-    def withWithMatcherState[T](hasTypeSplices: Boolean)(body: (s2: s.Nested) ?=> T) = {
-      val s2 = if hasTypeSplices then s1.tasty.Constraints_context else s1
-      body(using s2.asInstanceOf[s.Nested])
-    }
-    withWithMatcherState(hasTypeSplices) {
-      new Matcher.QuoteMatcher[scope.type].typeTreeMatch(scrutineeType, patternType, hasTypeSplices).asInstanceOf[Option[Tup]]
-    }
-  }
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple, T, U](using s: Quotes)(scrutineeType: s.Type[T])(using patternType: s.Type[U],
+        hasTypeSplices: Boolean): Option[Tup] =
+    s.tasty.typeMatch(scrutineeType, patternType, hasTypeSplices).asInstanceOf[Option[Tup]]
 
   def Unit(using s: Scope): s.Type[Unit] =
     val s1 = quoteContextWithCompilerInterface(s)

@@ -6,7 +6,6 @@ trait Exprs { self: Scope =>
 
   private given self.type = self // FIXME remove
 
-  /** Quoted expression of type `T` */
   type Expr[+T] <: tasty.Term
 
   object Expr:
@@ -27,7 +26,7 @@ trait Exprs { self: Scope =>
    */
   extension (expr: Expr[Any])
     def matches(that: Expr[Any]): Boolean =
-      !scala.internal.quoted.Expr.unapply[EmptyTuple, EmptyTuple](using self)(expr)(using that, false).isEmpty
+      !self.tasty.termMatch(expr, that, false).isEmpty
 
   /** Checked cast to a `quoted.Expr[X]` */
   extension [X](expr: Expr[Any])

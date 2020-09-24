@@ -18,6 +18,8 @@ import scala.quoted.Scope
 import scala.quoted.show.SyntaxHighlight
 
 import scala.internal.quoted.Unpickler
+import scala.internal.quoted.Matcher
+
 import scala.tasty.reflect._
 
 object ScopeImpl {
@@ -38,7 +40,7 @@ object ScopeImpl {
 
 }
 
-class ScopeImpl private (ctx: Context) extends Scope {
+class ScopeImpl private (ctx: Context) extends Scope { self =>
 
   object tasty extends scala.tasty.Reflection, scala.internal.tasty.CompilerInterface:
 
@@ -48,6 +50,27 @@ class ScopeImpl private (ctx: Context) extends Scope {
       MacroExpansion.position.getOrElse(dotc.util.SourcePosition(rootContext.source, dotc.util.Spans.NoSpan))
 
     type Context = dotc.core.Contexts.Context
+
+
+    def termMatch(scrutinee: Term, pattern: Term, hasTypeSplices: Boolean): Matching = {
+      def withWithMatcherState[T](hasTypeSplices: Boolean)(body: (s2: self.Nested) ?=> T) = {
+        val s2 = if hasTypeSplices then self.tasty.Constraints_context else self
+        body(using s2.asInstanceOf[self.Nested])
+      }
+      withWithMatcherState(hasTypeSplices) {
+        new Matcher.QuoteMatcher[self.type](using self).termMatch(scrutinee, pattern, hasTypeSplices)
+      }
+    }
+
+    def typeMatch(scrutinee: TypeTree, pattern: Term, hasTypeSplices: Boolean): Matching = {
+      def withWithMatcherState[T](hasTypeSplices: Boolean)(body: (s2: self.Nested) ?=> T) = {
+        val s2 = if hasTypeSplices then self.tasty.Constraints_context else self
+        body(using s2.asInstanceOf[self.Nested])
+      }
+      withWithMatcherState(hasTypeSplices) {
+        new Matcher.QuoteMatcher[self.type](using self).typeTreeMatch(scrutinee, pattern, hasTypeSplices)
+      }
+    }
 
     type Tree = tpd.Tree
 

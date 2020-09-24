@@ -26,18 +26,9 @@ object Expr {
    *  @param s the current Scope
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
-  def unapply[TypeBindings <: Tuple, Tup <: Tuple](using s: Scope)(scrutineeExpr: s.Expr[Any])(using patternExpr: s.Expr[Any],
-        hasTypeSplices: Boolean): Option[Tup] = {
-    // TODO facrtor out
-    val s1 = quoteContextWithCompilerInterface(s)
-    def withWithMatcherState[T](hasTypeSplices: Boolean)(body: (s2: s.Nested) ?=> T) = {
-      val s2 = if hasTypeSplices then s1.tasty.Constraints_context else s1
-      body(using s2.asInstanceOf[s.Nested])
-    }
-    withWithMatcherState(hasTypeSplices) {
-      new Matcher.QuoteMatcher[scope.type].termMatch(scrutineeExpr, patternExpr, hasTypeSplices).asInstanceOf[Option[Tup]]
-    }
-  }
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](using s: Quotes)(scrutineeExpr: s.Expr[Any])(using patternExpr: s.Expr[Any],
+        hasTypeSplices: Boolean): Option[Tup] =
+    s.tasty.termMatch(scrutineeExpr, patternExpr, hasTypeSplices).asInstanceOf[Option[Tup]]
 
   /** Returns a null expresssion equivalent to `'{null}` */
   def `null`: (s: Scope) ?=> s.Expr[Null] = s ?=> {

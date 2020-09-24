@@ -8,7 +8,7 @@ object CompileTime {
 
   /** A term quote is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprQuote`")
-  def exprQuote[T](x: T): (s: Scope) ?=> s.Expr[T] = ???
+  def exprQuote[T](x: T): (s: Quotes) ?=> s.Expr[T] = ???
 
   /** A term splice is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprSplice`")
