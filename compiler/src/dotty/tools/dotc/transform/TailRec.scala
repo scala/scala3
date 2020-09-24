@@ -186,6 +186,7 @@ class TailRec extends MiniPhase {
           def tailArgOrPureExpr(stat: Tree): Boolean = stat match {
             case stat: ValDef if stat.name.is(TailTempName) || !stat.symbol.is(Mutable) => tailArgOrPureExpr(stat.rhs)
             case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) => tailArgOrPureExpr(rhs)
+            case Assign(lhs: Ident, rhs: Ident) => lhs.symbol == rhs.symbol
             case stat: Ident if stat.symbol.name.is(TailLocalName) => true
             case _ => tpd.isPureExpr(stat)
           }

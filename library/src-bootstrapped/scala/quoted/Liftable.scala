@@ -59,10 +59,8 @@ object Liftable {
   /** Default liftable for Class[T] */
   given ClassLiftable[T] as Liftable[Class[T]] = new Liftable[Class[T]] {
     def toExpr(x: Class[T]) = {
-      val qctx1 = scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface(qctx)
-      import qctx1.tasty._
-      val tpe = qctx1.tasty.Type_ofErasedClass(x)
-      Ref(defn.Predef_classOf).appliedToType(tpe).seal.asInstanceOf[Expr[Class[T]]]
+      import qctx.tasty._
+      Ref(defn.Predef_classOf).appliedToType(Type.typeConstructorOf(x)).seal.asInstanceOf[Expr[Class[T]]]
     }
   }
 

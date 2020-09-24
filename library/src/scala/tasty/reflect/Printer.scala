@@ -1,6 +1,7 @@
 package scala.tasty
 package reflect
 
+// TODO use QuoteContext instead of Reflection
 trait Printer[R <: Reflection & Singleton] {
 
   /** Instance of reflection interface */

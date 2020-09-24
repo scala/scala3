@@ -26,7 +26,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     if (flags.is(Flags.Abstract)) flagList += "abstract"
     if (flags.is(Flags.Artifact)) flagList += "artifact"
     if (flags.is(Flags.Case)) flagList += "case"
-    if (flags.is(Flags.CaseAcessor)) flagList += "caseAccessor"
+    if (flags.is(Flags.CaseAccessor)) flagList += "caseAccessor"
     if (flags.is(Flags.Contravariant)) flagList += "contravariant"
     if (flags.is(Flags.Covariant)) flagList += "covariant"
     if (flags.is(Flags.Enum)) flagList += "enum"
@@ -51,7 +51,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     if (flags.is(Flags.Private)) flagList += "private"
     if (flags.is(Flags.PrivateLocal)) flagList += "private[this]"
     if (flags.is(Flags.Protected)) flagList += "protected"
-    if (flags.is(Flags.Scala2X)) flagList += "scala2x"
+    if (flags.is(Flags.Scala2x)) flagList += "scala2x"
     if (flags.is(Flags.Sealed)) flagList += "sealed"
     if (flags.is(Flags.StableRealizable)) flagList += "stableRealizable"
     if (flags.is(Flags.Static)) flagList += "javaStatic"
@@ -849,7 +849,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
               }
               printedPrefix  |= printProtectedOrPrivate(vdef)
               if (vdef.symbol.flags.is(Flags.Mutable)) this += highlightValDef("var ")
-              else if (printedPrefix || !vdef.symbol.flags.is(Flags.CaseAcessor)) this += highlightValDef("val ")
+              else if (printedPrefix || !vdef.symbol.flags.is(Flags.CaseAccessor)) this += highlightValDef("val ")
             }
         }
       end if
