@@ -492,7 +492,7 @@ object RefChecks {
       def missingTermSymbols: List[Symbol] =
         val buf = new mutable.ListBuffer[Symbol]
         for bc <- clazz.baseClasses; sym <- bc.info.decls.toList do
-          if sym.is(DeferredTerm) && !isImplemented(sym) && !ignoreDeferred(sym)
+          if sym.is(DeferredTerm) && !isImplemented(sym) && !ignoreDeferred(sym) then
             buf += sym
         buf.toList
 
