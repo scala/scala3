@@ -623,6 +623,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
           val sym1 = if (sym.is(ModuleClass)) sym.sourceModule else sym
           val refined = TypeOps.refineUsingParent(tp, sym1)
 
+          debug.println(sym1.show + " refined to " + refined.show)
+
           def inhabited(tp: Type): Boolean =
             tp.dealias match {
               case AndType(tp1, tp2) => !TypeComparer.provablyDisjoint(tp1, tp2)

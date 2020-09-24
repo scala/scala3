@@ -658,43 +658,69 @@ object TypeOps:
    *  Otherwise, return NoType.
    */
   private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
-    /** expose abstract type references to their bounds or tvars according to variance */
-    class AbstractTypeMap(maximize: Boolean)(using Context) extends TypeMap {
-      def expose(lo: Type, hi: Type): Type =
-        if (variance == 0)
-          newTypeVar(TypeBounds(lo, hi))
-        else if (variance == 1)
-          if (maximize) hi else lo
-        else
-          if (maximize) lo else hi
+    // In order for a child type S to qualify as a valid subtype of the parent
+    // T, we need to test whether it is possible S <: T. Therefore, we replace
+    // type parameters in T with tvars, and see if the subtyping is true.
+    val approximateTypeParams = new TypeMap {
+      val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
 
-      def apply(tp: Type): Type = tp match {
+      def apply(tp: Type): Type = tp.dealias match {
         case _: MatchType =>
           tp // break cycles
 
-        case tp: TypeRef if isBounds(tp.underlying) =>
-          val lo = this(tp.info.loBound)
-          val hi = this(tp.info.hiBound)
-          // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
-          val exposed = expose(lo, hi)
-          typr.println(s"$tp exposed to =====> $exposed")
-          exposed
+        case tp: TypeRef if !tp.symbol.isClass =>
+          def lo = LazyRef(apply(tp.underlying.loBound))
+          def hi = LazyRef(apply(tp.underlying.hiBound))
+          val lookup = boundTypeParams.lookup(tp)
+          if lookup != null then lookup
+          else
+            val tv = newTypeVar(TypeBounds(lo, hi))
+            boundTypeParams(tp) = tv
+            // Force lazy ref eagerly using current context
+            // Otherwise, the lazy ref will be forced with a unknown context,
+            // which causes a problem in tests/patmat/i3645e.scala
+            lo.ref
+            hi.ref
+            tv
+          end if
 
-        case AppliedType(tycon: TypeRef, args) if isBounds(tycon.underlying) =>
-          val args2 = args.map(this)
-          val lo = this(tycon.info.loBound).applyIfParameterized(args2)
-          val hi = this(tycon.info.hiBound).applyIfParameterized(args2)
-          val exposed = expose(lo, hi)
-          typr.println(s"$tp exposed to =====> $exposed")
-          exposed
+        case AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass =>
 
-        case _ =>
+          // In tests/patmat/i3645g.scala, we need to tell whether it's possible
+          // that K1 <: K[Foo]. If yes, we issue a warning; otherwise, no
+          // warnings.
+          //
+          // - K1 <: K[Foo] is possible <==>
+          // - K[Int] <: K[Foo] is possible <==>
+          // - Int <: Foo is possible <==>
+          // - Int <: Module.Foo.Type is possible
+          //
+          // If we remove this special case, we will encounter the case Int <:
+          // X[Y], where X and Y are tvars. The subtype checking will simply
+          // return false. But depending on the bounds of X and Y, the subtyping
+          // can be true.
+          //
+          // As a workaround, we approximate higher-kinded type parameters with
+          // the value types that can be instantiated from its bounds.
+          //
+          // Note that `HKTypeLambda.resType` may contain TypeParamRef that are
+          // bound in the HKTypeLambda. This is fine, as the TypeComparer will
+          // recurse on the bounds of `TypeParamRef`.
+          val bounds: TypeBounds = tycon.underlying match {
+            case TypeBounds(tl1: HKTypeLambda, tl2: HKTypeLambda) =>
+              TypeBounds(tl1.resType, tl2.resType)
+            case TypeBounds(tl1: HKTypeLambda, tp2) =>
+              TypeBounds(tl1.resType, tp2)
+            case TypeBounds(tp1, tl2: HKTypeLambda) =>
+              TypeBounds(tp1, tl2.resType)
+          }
+
+          newTypeVar(bounds)
+
+        case tp =>
           mapOver(tp)
       }
     }
-
-    def minTypeMap(using Context) = new AbstractTypeMap(maximize = false)
-    def maxTypeMap(using Context) = new AbstractTypeMap(maximize = true)
 
     // Prefix inference, replace `p.C.this.Child` with `X.Child` where `X <: p.C`
     // Note: we need to strip ThisType in `p` recursively.
@@ -721,37 +747,25 @@ object TypeOps:
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
 
-    val force = new ForceDegree.Value(
-      tvar =>
-        !(ctx.typerState.constraint.entry(tvar.origin) `eq` tvar.origin.underlying) ||
-        (tvar `eq` inferThisMap.prefixTVar), // always instantiate prefix
-      IfBottom.flip
-    )
-
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to
     // variance. As this logic is only needed in exhaustivity check,
     // we manually patch subtyping check instead of changing TypeComparer.
     // See tests/patmat/i3645b.scala
-    def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
-      inContext(ctx.fresh.setNewTyperState()) {
-        parent.argInfos.nonEmpty && minTypeMap.apply(parent) <:< maxTypeMap.apply(tp2)
-      }
+    def parentQualify(tp1: Type, tp2: Type) = tp1.widen.classSymbol.info.parents.exists { parent =>
+      parent.argInfos.nonEmpty && approximateTypeParams(parent) <:< tp2
     }
 
-    if (protoTp1 <:< tp2) {
+    def instantiate(): Type = {
       maximizeType(protoTp1, NoSpan, fromScala2x = false)
       wildApprox(protoTp1)
     }
+
+    if (protoTp1 <:< tp2) instantiate()
     else {
-      val protoTp2 = maxTypeMap.apply(tp2)
-      if (protoTp1 <:< protoTp2 || parentQualify)
-        if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
-        else wildApprox(protoTp1)
-      else {
-        typr.println(s"$protoTp1 <:< $protoTp2 = false")
-        NoType
-      }
+      val protoTp2 = approximateTypeParams(tp2)
+      if (protoTp1 <:< protoTp2 || parentQualify(protoTp1, protoTp2)) instantiate()
+      else NoType
     }
   }
 
