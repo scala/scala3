@@ -1006,7 +1006,10 @@ object SymDenotations {
               case tp: Symbol => sourceOfSelf(tp.info)
               case tp: RefinedType => sourceOfSelf(tp.parent)
             }
-            sourceOfSelf(selfType)
+            try sourceOfSelf(selfType)
+            catch case ex: MatchError =>
+              println(i"error while computing source module of $this in $owner at ${ctx.phase}, self = $selfType")
+              throw ex
           case info: LazyType =>
             info.sourceModule
           case _ =>
