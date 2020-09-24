@@ -3,13 +3,15 @@ val dokkaVersion = "1.4.0"
 val kotlinxVersion = "0.7.2" // upgrade when upgrading dokka
 val flexmarkVersion = "0.42.12"
 val jacksonVersion = "2.9.8"
+val scalaTagsVersion = "0.9.1"
+val dokkaSiteVersion = "0.1.7"
 
 libraryDependencies ++= Seq(
   "org.jetbrains.dokka" % "dokka-base" % dokkaVersion,
   "org.jetbrains.dokka" % "dokka-core" % dokkaVersion,
   "org.jetbrains.dokka" % "dokka-test-api" % dokkaVersion,
   "org.jetbrains.kotlinx" % "kotlinx-html-jvm" % kotlinxVersion,
-  "com.virtuslab.dokka" % "dokka-site" % "0.1.6",
+  "com.virtuslab.dokka" % "dokka-site" % dokkaSiteVersion,
 
   "ch.epfl.lamp" %% "dotty-tasty-inspector" % dottyVersion,
   "ch.epfl.lamp" %% "dotty-compiler" % dottyVersion,
@@ -17,6 +19,7 @@ libraryDependencies ++= Seq(
   "org.scala-sbt" % "io_2.13" % "1.3.4",
 
   "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
+  "com.lihaoyi" % "scalatags_2.13" % scalaTagsVersion,
   "nl.big-o" % "liqp" % "0.6.7",
   "args4j" % "args4j" % "2.33",
   "com.novocode" % "junit-interface" % "0.11" % "test"

@@ -326,7 +326,7 @@ th {
 .symbol.monospace {
   color: var(--symbol-fg);
 	display: block;
-	white-space: pre-wrap;
+	white-space: normal;
   position: relative;
   padding-right: 24px; /* avoid the copy button */
   margin: 1em 0;
@@ -363,6 +363,36 @@ th {
 .copy-popup-wrapper:last-child {
   padding-right: 14px;
 }
+
+dl.attributes > dt {
+  display: block;
+  float: left;
+  font-style: italic;
+  font-weight: bold;
+}
+
+dl.attributes > dt.implicit {
+  font-weight: bold;
+  color: darkgreen;
+}
+
+dl.attributes > dd {
+  display: block;
+  padding-left: 10em;
+  margin-bottom: 5px;
+  min-height: 15px;
+}
+
+dl {
+  background: transparent;
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+
+dl > div > ol {
+  list-style-type: none;
+}
+
 
 /* Footer */
 footer {

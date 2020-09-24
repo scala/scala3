@@ -17,10 +17,6 @@ import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.doc._
 
 
-extension (sourceSets: Set[DokkaConfiguration$DokkaSourceSet]):
-    def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava
-
-
 class ScalaPageContentBuilder(
     val commentsConverter: CommentsToContentConverter,
     val signatureProvider: SignatureProvider,
@@ -185,9 +181,9 @@ class ScalaPageContentBuilder(
         val children: List[ContentNode] = List()
     ) {
 
-        private def addChild(c: ContentNode) = copy(children = children :+ c)
+        def addChild(c: ContentNode) = copy(children = children :+ c)
 
-        private def addChildren(c: Seq[ContentNode]) = copy(children = children ++ c)
+        def addChildren(c: Seq[ContentNode]) = copy(children = children ++ c)
 
         def buildContent() = ContentGroup(
             children.asJava,
@@ -215,7 +211,8 @@ class ScalaPageContentBuilder(
             kind: Kind = ContentKind.Main,
             sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = mainSourcesetData,
             styles: Set[Style] = mainStyles,
-            extra: PropertyContainer[ContentNode] = mainExtra)(
+            extra: PropertyContainer[ContentNode] = mainExtra
+        )(
             buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder = p => p
         ): ScalaDocumentableContentBuilder = addChild(
                 ContentHeader(
@@ -236,8 +233,9 @@ class ScalaPageContentBuilder(
             kind: Kind = ContentKind.Main,
             sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = mainSourcesetData,
             styles: Set[Style] = mainStyles,
-            extra: PropertyContainer[ContentNode] = mainExtra)(
-            buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
+            extra: PropertyContainer[ContentNode] = mainExtra
+        )(
+            buildBlock: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder = p => p
         ): ScalaDocumentableContentBuilder = header(1, text, kind, sourceSets, styles, extra){buildBlock}
 
         def signature(d: Documentable) = addChildren(signatureProvider.signature(d).asScala.toList)
@@ -260,7 +258,7 @@ class ScalaPageContentBuilder(
             sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = mainSourcesetData,
             styles: Set[Style] = mainStyles,
             extra: PropertyContainer[ContentNode] = mainExtra,
-            headers: List[ContentGroup] = defaultHeaders
+            headers: List[ContentGroup] = List.empty
             )(
             buildBlock: ScalaPageContentBuilder#ScalaTableBuilder => ScalaPageContentBuilder#ScalaTableBuilder
             ) = addChild(
@@ -308,12 +306,12 @@ class ScalaPageContentBuilder(
             groupSplitterFunc: (ScalaPageContentBuilder#ScalaDocumentableContentBuilder, A) => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
         )(
             elementFunc: (ScalaPageContentBuilder#ScalaDocumentableContentBuilder, T) => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
-        ) = if (renderWhenEmpty || !elements.isEmpty) {
+        ) = if (renderWhenEmpty || !elements.flatMap(_._2).isEmpty) {
             header(3, name, kind, styles = styles, extra = extra plus SimpleAttr.Companion.header(name))()
             .group(styles = Set(ContentStyle.WithExtraAttributes), extra = extra plus SimpleAttr.Companion.header(name)){ bdr =>
                 elements.foldLeft(bdr){ (b, groupped) =>
                     val (key, values) = groupped
-                    (if(values.size > 1) groupSplitterFunc(b, key) else b)
+                    (if(values.size > 1 || omitSplitterOnSingletons) b.group()(bd => groupSplitterFunc(bd, key)) else b)
                     .table(kind = kind, headers = headers, styles = styles, extra = extra plus SimpleAttr.Companion.header(name)){ tablebdr => 
                         values.foldLeft(tablebdr){ (tablebdr, elem) =>
                             tablebdr.cell(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind, styles, extra){ cellbdr =>
@@ -458,12 +456,12 @@ class ScalaPageContentBuilder(
             omitSplitterOnSingletons: Boolean = true
         )(
             groupSplitterFunc: (ScalaPageContentBuilder#ScalaDocumentableContentBuilder, A) => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
-        ) = if (renderWhenEmpty || !elements.isEmpty) {
+        ) = if (renderWhenEmpty || !elements.flatMap(_._2).isEmpty) {
             header(3, name, kind, styles = styles, extra = extra plus SimpleAttr.Companion.header(name))()
             .group(styles = Set(ContentStyle.WithExtraAttributes), extra = extra plus SimpleAttr.Companion.header(name)){ bdr =>
                 elements.foldLeft(bdr){ (b, groupped) =>
                     val (key, values) = groupped
-                    (if(values.size > 1) groupSplitterFunc(b, key) else b)
+                    (if(values.size > 1 || omitSplitterOnSingletons) b.group()(bd => groupSplitterFunc(bd, key)) else b)
                     .table(kind = kind, headers = headers, styles = styles, extra = extra plus SimpleAttr.Companion.header(name)){ tablebdr =>
                         values.groupBy(_.getName).foldLeft(tablebdr){ case (tablebdr,(elemName, divergentElems)) => tablebdr
                             .cell(

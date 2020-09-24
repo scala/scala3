@@ -32,10 +32,6 @@ class MarkdownConverter(val r: Reflection)(owner: r.Symbol) {
 
   def emitConvertedNode(n: mdu.Node)(using Emitter[dkkd.DocTag]): Unit = n match {
     case n: mda.Paragraph =>
-      if n.getParent.isInstanceOf[mdu.Document]
-      && !Option(n.getPrevious).exists(_.isInstanceOf[mda.Heading])
-      then
-        emit(dkkd.Br.INSTANCE)
       emit(dkkd.P(convertChildren(n).asJava, kt.emptyMap))
 
     case n: mda.Heading => emit(n.getLevel match {

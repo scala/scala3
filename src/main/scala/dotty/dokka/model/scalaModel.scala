@@ -7,6 +7,8 @@ import collection.JavaConverters._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._  
+import org.jetbrains.dokka.pages._
+import java.util.{List => JList, Set => JSet}
 
 case class TastyDocumentableSource(val path: String, val lineNumber: Int) extends DocumentableSource {
     override def getPath = path
@@ -39,3 +41,23 @@ enum ScalaModifier(val name: String) extends org.jetbrains.dokka.model.Modifier(
   case Abstract extends ScalaModifier("abstract")
   case Final extends ScalaModifier("final")
   case Empty extends ScalaModifier("")
+
+enum TableStyle extends org.jetbrains.dokka.pages.Style:
+  case Borderless
+  case DescriptionList
+
+case class HtmlContentNode(
+  val body: String, 
+  val dci: DCI, 
+  val sourceSets: Set[DisplaySourceSet], 
+  val style: Set[Style],
+  val extra: PropertyContainer[ContentNode] = PropertyContainer.Companion.empty
+) extends ContentNode:
+  override def getDci = dci
+  override def getSourceSets = sourceSets.asJava
+  override def getStyle = style.asJava
+  override def hasAnyContent = !body.isEmpty
+  def withSourceSets(sourceSets: JSet[DisplaySourceSet]) = copy(sourceSets = sourceSets.asScala.toSet)
+  override def getChildren: JList[ContentNode] = Nil.asJava
+  override def getExtra = extra
+  override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)

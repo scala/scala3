@@ -4,10 +4,12 @@ import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.{Projection => JProjection}
 import org.jetbrains.dokka.model._
+import org.jetbrains.dokka.pages._
 import collection.JavaConverters._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._  
+import java.util.{List => JList, Set => JSet}
 
 
 
@@ -73,7 +75,12 @@ case class ClasslikeExtension(
 
 object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]
 
+case class SourceLinks(
+  links: Map[DokkaConfiguration$DokkaSourceSet, String]
+) extends ExtraProperty[Documentable]:
+  override def getKey = SourceLinks
 
+object SourceLinks extends BaseKey[Documentable, SourceLinks]
 
 case class InheritanceInfo(
   val parents: List[Bound],
@@ -83,17 +90,12 @@ case class InheritanceInfo(
 
 object InheritanceInfo extends BaseKey[DClasslike, InheritanceInfo]  
 
-
-
 case class PropertyExtension(kind: "val" | "var" | "type", isAbstract: Boolean) extends ExtraProperty[DProperty]:
   override def getKey = PropertyExtension
 
 object PropertyExtension extends BaseKey[DProperty, PropertyExtension]
 
-
-
 case class AnnotationsInfo(val annotations: List[AnnotationsInfo.Annotation]) extends ExtraProperty[Documentable]:
-
     override def getKey = AnnotationsInfo
 
 object AnnotationsInfo extends BaseKey[Documentable, AnnotationsInfo]:

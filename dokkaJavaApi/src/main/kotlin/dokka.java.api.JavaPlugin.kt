@@ -14,12 +14,14 @@ import org.jetbrains.dokka.pages.Kind
 import org.jetbrains.dokka.pages.Style
 import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.plugability.DokkaPlugin
+import org.jetbrains.dokka.renderers.Renderer
 import org.jetbrains.dokka.transformers.documentation.DocumentableToPageTranslator
 import org.jetbrains.dokka.transformers.documentation.DocumentableTransformer
 import org.jetbrains.dokka.transformers.pages.PageTransformer
 import org.jetbrains.dokka.transformers.sources.SourceToDocumentableTranslator
 import org.jetbrains.dokka.utilities.DokkaLogger
 import java.util.function.Consumer
+import com.virtuslab.dokka.site.StaticSitePlugin
 
 data class SourceSetWrapper(val sourceSet: DokkaConfiguration.DokkaSourceSet) {
     fun toSet(): Set<DokkaConfiguration.DokkaSourceSet> = setOf(sourceSet)
@@ -28,6 +30,7 @@ data class SourceSetWrapper(val sourceSet: DokkaConfiguration.DokkaSourceSet) {
 
 abstract class JavaDokkaPlugin : DokkaPlugin() {
     private val dokkaBase by lazy { plugin<DokkaBase>() }
+    private val dokkaSite by lazy { plugin<StaticSitePlugin>() }
 
     val provideDottyDocs by extending {
         CoreExtensions.sourceToDocumentableTranslator providing { _ ->
@@ -89,14 +92,34 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
     }
 
     val sourceLinksTransformer by extending {
-        CoreExtensions.pageTransformer providing { ctx ->
+        CoreExtensions.documentableTransformer providing { ctx ->
             createSourceLinksTransformer(
                 ctx,
                 ctx.single(dokkaBase.commentsToContentConverter),
                 ctx.single(dokkaBase.signatureProvider),
                 ctx.logger
             )
+        }
+    }
+
+    val htmlRenderer by extending {
+        CoreExtensions.renderer providing { ctx ->
+            createHtmlRenderer(ctx)
+        } override dokkaSite.customRenderer
+    }
+
+    val muteDefaultSourceLinksTransformer by extending {
+        CoreExtensions.pageTransformer providing { ctx ->
+            object : PageTransformer {
+                override fun invoke(input: org.jetbrains.dokka.pages.RootPageNode) = input
+            }
         } override dokkaBase.sourceLinksTransformer
+    }
+
+    val commentsToContentConverter by extending {
+        dokkaBase.commentsToContentConverter providing { _ ->
+            createCommentToContentConverter()
+        } override dokkaBase.docTagToContentConverter
     }
 
 
@@ -116,7 +139,9 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
             commentsToContentConverter: CommentsToContentConverter,
             signatureProvider: SignatureProvider,
             logger: DokkaLogger
-    ): PageTransformer
+    ): DocumentableTransformer
+    abstract fun createHtmlRenderer(ctx: DokkaContext): Renderer
+    abstract fun createCommentToContentConverter(): CommentsToContentConverter
 }
 
 // TODO we probably does not need that
