@@ -268,7 +268,7 @@ object Types {
       case _ => false
     }
 
-      /** Is this type exactly Any (no vars, aliases, refinements etc allowed)? */
+    /** Is this type exactly Any (no vars, aliases, refinements etc allowed)? */
     def isTopType(using Context): Boolean = this match {
       case tp: TypeRef =>
         tp.name == tpnme.Any && (tp.symbol eq defn.AnyClass)
