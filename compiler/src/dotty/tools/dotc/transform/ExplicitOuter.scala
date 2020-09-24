@@ -101,9 +101,11 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
       val parents1 =
         for (parent <- impl.parents) yield
           val parentCls = parent.tpe.classSymbol.asClass
-          parent match // ensure class parent is a constructor
+          parent match
+            // if we are in a regular class and first parent is also a regular class,
+            // make sure we have a contructor
             case parent: TypeTree
-            if !parentCls.is(Trait) && !defn.NotRuntimeClasses.contains(parentCls) =>
+            if !cls.is(Trait) && !parentCls.is(Trait) && !defn.NotRuntimeClasses.contains(parentCls) =>
               New(parent.tpe, Nil).withSpan(impl.span)
             case _ => parent
       cpy.Template(impl)(parents = parents1, body = impl.body ++ newDefs)
