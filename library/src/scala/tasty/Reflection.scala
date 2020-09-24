@@ -1107,7 +1107,7 @@ trait Reflection { reflection =>
   trait SelectOuterModule { this: SelectOuter.type =>
     def apply(qualifier: Term, name: String, levels: Int): SelectOuter
     def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter
-    def unapply(x: SelectOuter): Option[(Term, Int, Type)] // TODO homogenize order of parameters
+    def unapply(x: SelectOuter): Option[(Term, String, Int)]
   }
 
   given SelectOuterMethods as SelectOuterMethods = SelectOuterMethodsImpl
@@ -1116,6 +1116,7 @@ trait Reflection { reflection =>
   trait SelectOuterMethods:
     extension (self: SelectOuter):
       def qualifier: Term
+      def name: String
       def level: Int
     end extension
   end SelectOuterMethods

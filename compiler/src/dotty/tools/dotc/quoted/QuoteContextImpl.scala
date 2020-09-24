@@ -954,13 +954,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         withDefaultPos(tpd.Select(qualifier, NameKinds.OuterSelectName(name.toTermName, levels)))
       def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter =
         tpd.cpy.Select(original)(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))
-      def unapply(x: SelectOuter): Option[(Term, Int, Type)] = // TODO homogenize order of parameters
-        Some((x.qualifier, x.level, x.tpe))
+      def unapply(x: SelectOuter): Option[(Term, String, Int)] =
+        Some((x.qualifier, x.name.toString, x.level))
     end SelectOuter
 
     object SelectOuterMethodsImpl extends SelectOuterMethods:
       extension (self: SelectOuter):
         def qualifier: Term = self.qualifier
+        def name: String = self.name.toString
         def level: Int =
           val NameKinds.OuterSelectName(_, levels) = self.name
           levels
