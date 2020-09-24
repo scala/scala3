@@ -658,7 +658,9 @@ object TypeOps:
    *  Otherwise, return NoType.
    */
   private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
-    /** expose abstract type references to their bounds or tvars according to variance */
+    // In order for a child type S to qualify as a valid subtype of the parent
+    // T, we need to test whether it is possible S <: T. Therefore, we replace
+    // type parameters in T with tvars, and see if the subtyping is true.
     val approximateTypeParams = new TypeMap {
       val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
 
@@ -683,8 +685,27 @@ object TypeOps:
           end if
 
         case AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass =>
-          // Type inference cannot handle X[Y] <:< Int
-          // See tests/patmat/i3645g.scala
+
+          // In tests/patmat/i3645g.scala, we need to tell whether it's possible
+          // that K1 <: K[Foo]. If yes, we issue a warning; otherwise, no
+          // warnings.
+          //
+          // - K1 <: K[Foo] is possible <==>
+          // - K[Int] <: K[Foo] is possible <==>
+          // - Int <: Foo is possible <==>
+          // - Int <: Module.Foo.Type is possible
+          //
+          // If we remove this special case, we will encounter the case Int <:
+          // X[Y], where X and Y are tvars. The subtype checking will simply
+          // return false. But depending on the bounds of X and Y, the subtyping
+          // can be true.
+          //
+          // As a workaround, we approximate higher-kinded type parameters with
+          // the value types that can be instantiated from its bounds.
+          //
+          // Note that `HKTypeLambda.resType` may contain TypeParamRef that are
+          // bound in the HKTypeLambda. This is fine, as the TypeComparer will
+          // recurse on the bounds of `TypeParamRef`.
           val bounds: TypeBounds = tycon.underlying match {
             case TypeBounds(tl1: HKTypeLambda, tl2: HKTypeLambda) =>
               TypeBounds(tl1.resType, tl2.resType)
@@ -730,7 +751,7 @@ object TypeOps:
     // refine subtype checking to eliminate abstract types according to
     // variance. As this logic is only needed in exhaustivity check,
     // we manually patch subtyping check instead of changing TypeComparer.
-    // See tests/patmat/3645b.scala
+    // See tests/patmat/i3645b.scala
     def parentQualify(tp1: Type, tp2: Type) = tp1.widen.classSymbol.info.parents.exists { parent =>
       parent.argInfos.nonEmpty && approximateTypeParams(parent) <:< tp2
     }
