@@ -62,7 +62,7 @@ object StringContextMacro {
     val sourceFile = strCtxExpr.unseal.pos.sourceFile
 
     val (partsExpr, parts) = strCtxExpr match {
-      case Expr.StringContext(p1 @ Consts(p2)) => (p1.toList, p2.toList)
+      case Expr.StringContext(p1 as Consts(p2)) => (p1.toList, p2.toList)
       case _ => report.throwError("Expected statically known String Context", strCtxExpr)
     }
 

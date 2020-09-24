@@ -9,7 +9,7 @@ object Test {
   }
 
   def test2(x: X) = x match {
-    case y @ (yy: Y.type) =>
+    case y as (yy: Y.type) =>
       yIs1(y)
       yIs1(yy)
   }
