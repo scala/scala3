@@ -48,8 +48,13 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
 
   protected def isDense = limit < DenseLimit
 
-  /** Hashcode, by defualt `x.hashCode`, can be overridden */
-  protected def hash(x: T): Int = x.hashCode
+  /** Hashcode, by default a processed `x.hashCode`, can be overridden */
+  protected def hash(key: T): Int =
+    val h = key.hashCode
+    // Part of the MurmurHash3 32 bit finalizer
+    val i = (h ^ (h >>> 16)) * 0x85EBCA6B
+    val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
+    if j==0 then 0x41081989 else j
 
   /** Hashcode, by default `equals`, can be overridden */
   protected def isEqual(x: T, y: T): Boolean = x.equals(y)
