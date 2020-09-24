@@ -2493,15 +2493,18 @@ trait Reflection { reflection =>
   // IMPLICIT SEARCH //
   /////////////////////
 
-  // TODO: this should not be top level
-  /** Find an implicit of type `T` in the current scope given by `ctx`.
-   *  Return an `ImplicitSearchResult`.
-   *
-   *  @param tpe type of the implicit parameter
-   *  @param ctx current context
-   */
-  def searchImplicit(tpe: Type): ImplicitSearchResult
+  val Implicits: ImplicitsModule
 
+  trait ImplicitsModule { self: Implicits.type =>
+    /** Find a given instance of type `T` in the current scope provided by the current enclosing splice.
+     *  Return an `ImplicitSearchResult`.
+     *
+     *  @param tpe type of the implicit parameter
+     */
+    def search(tpe: Type): ImplicitSearchResult
+  }
+
+  /** Result of a given instance search */
   type ImplicitSearchResult <: AnyRef
 
   given TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = ImplicitSearchSuccessTypeTest
