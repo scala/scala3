@@ -24,7 +24,7 @@ object Macro {
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
             import qctx.tasty._
-            error(msg, parts(partIdx).unseal.pos)
+            Reporting.error(msg, parts(partIdx).unseal.pos)
           }
         }
         fooCore(parts, args, reporter)

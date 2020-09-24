@@ -9,13 +9,13 @@ private def fImpl (using qctx: QuoteContext) : Expr[Unit] = {
     case x: ImplicitSearchSuccess =>
       '{}
     case x: DivergingImplicit => '{}
-      error("DivergingImplicit\n" + x.explanation, rootPosition)
+      Reporting.error("DivergingImplicit\n" + x.explanation, rootPosition)
       '{}
     case x: NoMatchingImplicits =>
-      error("NoMatchingImplicits\n" + x.explanation, rootPosition)
+      Reporting.error("NoMatchingImplicits\n" + x.explanation, rootPosition)
       '{}
     case x: AmbiguousImplicits =>
-      error("AmbiguousImplicits\n" + x.explanation, rootPosition)
+      Reporting.error("AmbiguousImplicits\n" + x.explanation, rootPosition)
       '{}
   }
 }

@@ -4,11 +4,11 @@ object report:
 
   /** Report an error at the position of the macro expansion */
   def error(msg: => String)(using qctx: QuoteContext): Unit =
-    qctx.tasty.error(msg, qctx.tasty.rootPosition)
+    qctx.tasty.Reporting.error(msg, qctx.tasty.rootPosition)
 
   /** Report an error at the on the position of `expr` */
   def error(msg: => String, expr: Expr[Any])(using qctx: QuoteContext): Unit =
-    qctx.tasty.error(msg, expr.unseal.pos)
+    qctx.tasty.Reporting.error(msg, expr.unseal.pos)
 
   /** Report an error at the position of the macro expansion and throws a StopQuotedContext */
   def throwError(msg: => String)(using qctx: QuoteContext): Nothing = {
@@ -23,11 +23,11 @@ object report:
 
   /** Report a warning */
   def warning(msg: => String)(using qctx: QuoteContext): Unit =
-    qctx.tasty.warning(msg, qctx.tasty.rootPosition)
+    qctx.tasty.Reporting.warning(msg, qctx.tasty.rootPosition)
 
   /** Report a warning at the on the position of `expr` */
   def warning(msg: => String, expr: Expr[_])(using qctx: QuoteContext): Unit =
-    qctx.tasty.warning(msg, expr.unseal.pos)
+    qctx.tasty.Reporting.warning(msg, expr.unseal.pos)
 
   /** Throwable used to stop the expansion of a macro after an error was reported */
   class StopQuotedContext extends Throwable

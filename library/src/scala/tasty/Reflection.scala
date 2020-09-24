@@ -3238,19 +3238,26 @@ trait Reflection { reflection =>
   // REPORTING //
   ///////////////
 
-  // TODO: these should not be top level
+  val Reporting: ReportingModule
 
-  /** Emits an error message */
-  def error(msg: => String, pos: Position): Unit
+  /** Module containg error and waring reporiting.
+   *
+   *  Also see scala.quoted.report
+   */
+  trait ReportingModule { self: Reporting.type =>
+    /** Emits an error message */
+    def error(msg: => String, pos: Position): Unit
 
-  /** Emits an error at a specific range of a file */
-  def error(msg: => String, source: SourceFile, start: Int, end: Int): Unit
+    /** Emits an error at a specific range of a file */
+    def error(msg: => String, source: SourceFile, start: Int, end: Int): Unit
 
-  /** Emits an error message */
-  def warning(msg: => String, pos: Position): Unit
+    /** Emits an error message */
+    def warning(msg: => String, pos: Position): Unit
 
-  /** Emits a warning at a specific range of a file */
-  def warning(msg: => String, source: SourceFile, start: Int, end: Int): Unit
+    /** Emits a warning at a specific range of a file */
+    def warning(msg: => String, source: SourceFile, start: Int, end: Int): Unit
+  }
+
 
   ///////////////////
   // DOCUMENTATION //
