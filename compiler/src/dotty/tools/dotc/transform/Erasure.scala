@@ -647,7 +647,7 @@ object Erasure {
           if defn.specialErasure.contains(owner) then
             assert(sym.isConstructor, s"${sym.showLocated}")
             defn.specialErasure(owner)
-          else if defn.isSyntheticFunctionClass(owner)
+          else if defn.isSyntheticFunctionClass(owner) then
             defn.erasedFunctionClass(owner)
           else
             owner

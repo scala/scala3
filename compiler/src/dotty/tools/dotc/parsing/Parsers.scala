@@ -357,9 +357,6 @@ object Parsers {
       offset
     }
 
-    def reportMissing(expected: Token): Unit =
-      syntaxError(ExpectedTokenButFound(expected, in.token))
-
     /** semi = nl {nl} | `;'
      *  nl  = `\n' // where allowed
      */
@@ -1825,7 +1822,7 @@ object Parsers {
      *  the initially parsed (...) region?
      */
     def toBeContinued(altToken: Token): Boolean =
-      if in.token == altToken || in.isNewLine || migrateTo3 then
+      if in.isNewLine || migrateTo3 then
         false // a newline token means the expression is finished
       else if !in.canStartStatTokens.contains(in.token)
               || in.isLeadingInfixOperator(inConditional = true)
@@ -1835,37 +1832,27 @@ object Parsers {
         followedByToken(altToken) // scan ahead to see whether we find a `then` or `do`
 
     def condExpr(altToken: Token): Tree =
-      if in.token == LPAREN then
-        var t: Tree = atSpan(in.offset) { Parens(inParens(exprInParens())) }
-        val enclosedInParens = !toBeContinued(altToken)
-        if !enclosedInParens then
-          t = inSepRegion(InCond) {
-            expr1Rest(postfixExprRest(simpleExprRest(t)), Location.ElseWhere)
-          }
-        if in.token == altToken then
-          if rewriteToOldSyntax() then revertToParens(t)
-          in.nextToken()
+      val t: Tree =
+        if in.token == LPAREN then
+          var t: Tree = atSpan(in.offset) { Parens(inParens(exprInParens())) }
+          if in.token != altToken then
+            if toBeContinued(altToken) then
+              t = inSepRegion(InCond) {
+                expr1Rest(postfixExprRest(simpleExprRest(t)), Location.ElseWhere)
+              }
+            else
+              if rewriteToNewSyntax(t.span) then
+                dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
+              in.observeIndented()
+              return t
+          t
+        else if in.isNestedStart then
+          try expr() finally newLinesOpt()
         else
-          if (altToken == THEN || enclosedInParens) && in.isNewLine then
-            in.observeIndented()
-          if !enclosedInParens && in.token != INDENT then reportMissing(altToken)
-          if (rewriteToNewSyntax(t.span))
-            dropParensOrBraces(t.span.start, s"${tokenString(altToken)}")
-        t
-      else
-        val t =
-          if in.isNestedStart then
-            try expr() finally newLinesOpt()
-          else
-            inSepRegion(InCond)(expr())
-        if rewriteToOldSyntax(t.span.startPos) then
-          revertToParens(t)
-        if altToken == THEN && in.isNewLine then
-          // don't require a `then` at the end of a line
-          in.observeIndented()
-        if in.token != INDENT then accept(altToken)
-        t
-    end condExpr
+          inSepRegion(InCond)(expr())
+      if rewriteToOldSyntax(t.span.startPos) then revertToParens(t)
+      accept(altToken)
+      t
 
     /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
      *                      |  Expr1

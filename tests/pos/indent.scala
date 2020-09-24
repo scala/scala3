@@ -19,12 +19,12 @@ object Test:
         println("world")
         33
     val y1 =
-      if x > 0
+      if x > 0 then
         1
       else
         2
     val y2 =
-      if (y > 0) && y < 0
+      if (y > 0) && y < 0 then
         1
       else
         2

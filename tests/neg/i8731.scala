@@ -6,7 +6,7 @@ object test:
   case _ => () // error: missing parameter type
   end match
 
-  if 3 == 3
+  if 3 == 3 then
     ()
   end if
   else     // error: illegal start of definition

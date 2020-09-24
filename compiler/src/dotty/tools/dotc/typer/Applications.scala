@@ -1471,7 +1471,7 @@ trait Applications extends Compatibility {
         case tp1: MethodType => // (1)
           tp1.paramInfos.isEmpty && tp2.isInstanceOf[LambdaType]
           || {
-            if tp1.isVarArgsMethod
+            if tp1.isVarArgsMethod then
               tp2.isVarArgsMethod
               && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType)
             else

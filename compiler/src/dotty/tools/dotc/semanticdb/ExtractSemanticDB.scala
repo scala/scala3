@@ -546,7 +546,7 @@ class ExtractSemanticDB extends Phase:
 
     extension (sym: Symbol):
       private def adjustIfCtorTyparam(using Context) =
-        if sym.isType && sym.owner.exists && sym.owner.isConstructor
+        if sym.isType && sym.owner.exists && sym.owner.isConstructor then
           matchingMemberType(sym, sym.owner.owner)
         else
           sym
@@ -557,20 +557,20 @@ class ExtractSemanticDB extends Phase:
     /**Necessary because not all of the eventual flags are propagated from the Tree to the symbol yet.
      */
     private def symbolKinds(tree: NamedDefTree)(using Context): Set[SymbolKind] =
-      if tree.symbol.isSelfSym
+      if tree.symbol.isSelfSym then
         Set.empty
       else
         val symkinds = mutable.HashSet.empty[SymbolKind]
         tree match
         case tree: ValDef =>
-          if !tree.symbol.is(Param)
+          if !tree.symbol.is(Param) then
             symkinds += (if tree.mods is Mutable then SymbolKind.Var else SymbolKind.Val)
-          if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor)
+          if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor) then
             symkinds += SymbolKind.Abstract
         case tree: DefDef =>
-          if tree.isSetterDef
+          if tree.isSetterDef then
             symkinds += SymbolKind.Setter
-          else if tree.rhs.isEmpty
+          else if tree.rhs.isEmpty then
             symkinds += SymbolKind.Abstract
         case tree: Bind =>
           symkinds += SymbolKind.Val
@@ -584,7 +584,7 @@ class ExtractSemanticDB extends Phase:
         vparams <- vparamss
         vparam  <- vparams
       do
-        if !excludeSymbol(vparam.symbol)
+        if !excludeSymbol(vparam.symbol) then
           traverseAnnotsOfDefinition(vparam.symbol)
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
