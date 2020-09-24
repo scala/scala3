@@ -91,9 +91,9 @@ import scala.tasty.reflect._
  *           +- ThisType
  *           +- RecursiveThis
  *           +- RecursiveType
- *           +- LambdaType -+- MethodType
- *           |              +- PolyType
- *           |              +- TypeLambda
+ *           +- MethodType
+ *           +- PolyType
+ *           +- TypeLambda
  *           +- TypeBounds
  *           +- NoPrefix
  *
@@ -2122,7 +2122,7 @@ trait Reflection { reflection =>
   val ParamRef: ParamRefModule
 
   trait ParamRefModule { this: ParamRef.type =>
-    def unapply(x: ParamRef): Option[(LambdaType, Int)]
+    def unapply(x: ParamRef): Option[(MethodType | PolyType | TypeLambda, Int)]
   }
 
   given ParamRefMethods as ParamRefMethods = ParamRefMethodsImpl
@@ -2130,7 +2130,7 @@ trait Reflection { reflection =>
 
   trait ParamRefMethods:
     extension (self: ParamRef):
-      def binder: LambdaType
+      def binder: MethodType | PolyType | TypeLambda
       def paramNum: Int
     end extension
   end ParamRefMethods
@@ -2210,12 +2210,8 @@ trait Reflection { reflection =>
     end extension
   end RecursiveTypeMethods
 
-  // TODO: remove LambdaType and use union types (MethodType | PolyType | TypeLambda)
-  /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
-  type LambdaType <: Type
-
   /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
-  type MethodType <: LambdaType
+  type MethodType <: Type
 
   given TypeTest[Type, MethodType] = MethodTypeTypeTest
   protected val MethodTypeTypeTest: TypeTest[Type, MethodType]
@@ -2242,7 +2238,7 @@ trait Reflection { reflection =>
   end MethodTypeMethods
 
   /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
-  type PolyType <: LambdaType
+  type PolyType <: Type
 
   given TypeTest[Type, PolyType] = PolyTypeTypeTest
   protected val PolyTypeTypeTest: TypeTest[Type, PolyType]
@@ -2267,7 +2263,7 @@ trait Reflection { reflection =>
   end PolyTypeMethods
 
   /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
-  type TypeLambda <: LambdaType
+  type TypeLambda <: Type
 
   given TypeTest[Type, TypeLambda] = TypeLambdaTypeTest
   protected val TypeLambdaTypeTest: TypeTest[Type, TypeLambda]

@@ -1179,7 +1179,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
         printType(body)
 
       case ParamRef(lambda, idx) =>
-        lambda match {
+        (lambda: @unchecked) match {
           case MethodType(params, _, _) => this += params(idx)
           case PolyType(params, _, _) => this += params(idx)
           case TypeLambda(params, _, _) => this += params(idx)

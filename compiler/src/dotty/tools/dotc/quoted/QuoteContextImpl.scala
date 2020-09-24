@@ -1894,13 +1894,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     end ParamRefTypeTest
 
     object ParamRef extends ParamRefModule:
-      def unapply(x: ParamRef): Option[(LambdaType, Int)] =
-        Some((x.binder, x.paramNum))
+      def unapply(x: ParamRef): Option[(MethodType | PolyType | TypeLambda, Int)] =
+        Some((x.binder.asInstanceOf[MethodType | PolyType | TypeLambda], x.paramNum))
     end ParamRef
 
     object ParamRefMethodsImpl extends ParamRefMethods:
       extension (self: ParamRef):
-        def binder: LambdaType = self.binder.asInstanceOf[LambdaType] // Cast to tpd
+        def binder: MethodType | PolyType | TypeLambda =
+          self.binder.asInstanceOf[MethodType | PolyType | TypeLambda]
         def paramNum: Int = self.paramNum
       end extension
     end ParamRefMethodsImpl
@@ -1965,8 +1966,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def recThis: RecursiveThis = self.recThis
       end extension
     end RecursiveTypeMethodsImpl
-
-    type LambdaType = dotc.core.Types.LambdaType
 
     type MethodType = dotc.core.Types.MethodType
 
