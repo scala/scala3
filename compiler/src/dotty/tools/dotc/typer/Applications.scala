@@ -1447,7 +1447,7 @@ trait Applications extends Compatibility {
    *  that takes fewer.
    */
   def compare(alt1: TermRef, alt2: TermRef)(using Context): Int = trace(i"compare($alt1, $alt2)", overload) {
-    record("compare")
+    record("resolveOverloaded.compare")
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
      *  `alt2` with type `tp2` ?
@@ -1754,7 +1754,7 @@ trait Applications extends Compatibility {
    */
   private def resolveOverloaded1(alts: List[TermRef], pt: Type)(using Context): List[TermRef] =
     trace(i"resolve over $alts%, %, pt = $pt", typr, show = true) {
-    record("resolveOverloaded1")
+    record(s"resolveOverloaded1", alts.length)
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
@@ -1840,8 +1840,8 @@ trait Applications extends Compatibility {
           alts.filterConserve(sizeFits(_))
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] =
-          val normArgs = args.mapWithIndexConserve(normArg(alts, _, _))
-          if normArgs.exists(untpd.isFunctionWithUnknownParamType) then
+          if args.exists(untpd.isFunctionWithUnknownParamType) then
+            val normArgs = args.mapWithIndexConserve(normArg(alts, _, _))
             if hasNamedArg(args) then narrowByTrees(alts, normArgs.map(treeShape), resultType)
             else narrowByTypes(alts, normArgs.map(typeShape), resultType)
           else
@@ -1859,14 +1859,17 @@ trait Applications extends Compatibility {
             alts2
         }
 
+        record("resolveOverloaded.FunProto", alts.length)
         val alts1 = narrowBySize(alts)
         //report.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
         if isDetermined(alts1) then alts1
         else
+          record("resolveOverloaded.narrowedBySize", alts1.length)
           val alts2 = narrowByShapes(alts1)
           //report.log(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
           if isDetermined(alts2) then alts2
           else
+            record("resolveOverloaded.narrowedByShape", alts2.length)
             pretypeArgs(alts2, pt)
             narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
 
@@ -1915,6 +1918,7 @@ trait Applications extends Compatibility {
       case tp: MethodType => stripImplicit(tp.resultType).isInstanceOf[MethodType]
       case _ => false
 
+    record("resolveOverloaded.narrowedApplicable", candidates.length)
     val found = narrowMostSpecific(candidates)
     if (found.length <= 1) found
     else
