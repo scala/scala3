@@ -48,10 +48,10 @@ trait QuotesAndSplices {
         report.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.srcPos)
       case _ =>
     }
-    val scope = inferImplicitArg(defn.ScopeClass.typeRef, tree.span)
+    val scope = inferImplicitArg(defn.QuotesClass.typeRef, tree.span)
 
     if scope.tpe.isInstanceOf[SearchFailureType] then
-      report.error(missingArgMsg(scope, defn.ScopeClass.typeRef, ""), ctx.source.atSpan(tree.span))
+      report.error(missingArgMsg(scope, defn.QuotesClass.typeRef, ""), ctx.source.atSpan(tree.span))
     else if !scope.tpe.isStable then
       report.error(em"Quotes require stable Scope, but found non stable $scope", scope.sourcePos)
 

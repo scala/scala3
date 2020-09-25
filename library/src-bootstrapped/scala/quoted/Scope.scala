@@ -51,7 +51,7 @@ trait Quotes { self =>
    *  def makeExpr(using s: Scope)(tree: s.tasty.Tree): s.Expr[Int] = ???
    *  ```
    */
-  type Nested <: Scope {
+  type Nested <: Quotes {
     type Expr[+T] >: self.Expr[T]
     type Type[T <: AnyKind] >: self.Type[T]
     val tasty: self.tasty.type
@@ -75,6 +75,12 @@ trait Scope extends Quotes with Exprs, Types, Liftables, Unliftables { self =>
    * TODO: Rename
    */
   val tasty: scala.tasty.Reflection
+
+  type Nested <: Scope {
+    type Expr[+T] >: self.Expr[T]
+    type Type[T <: AnyKind] >: self.Type[T]
+    val tasty: self.tasty.type
+  }
 }
 
 

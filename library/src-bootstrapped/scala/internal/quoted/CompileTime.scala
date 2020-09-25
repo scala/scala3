@@ -18,7 +18,7 @@ object CompileTime {
    *  `ctx` is the `Scope` that the quote of this splice uses.
    */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprNestedSplice`")
-  def exprNestedSplice[T](s0: Scope)(x: (s: s0.Nested) ?=> s.Expr[T]): T = ???
+  def exprNestedSplice[T](s0: Quotes)(x: (s: s0.Nested) ?=> s.Expr[T]): T = ???
 
   /** Artifact of pickled type splices
    *

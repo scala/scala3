@@ -263,7 +263,7 @@ class ReifyQuotes extends MacroTransform {
                 assert(tpw.isInstanceOf[ValueType])
                 val argTpe =
                   if (tree.isType) defn.ScopeTypeClass.typeRef.appliedTo(tpw)
-                  else defn.FunctionType(1, isContextual = true).appliedTo(defn.ScopeClass.typeRef, defn.ScopeExprClass.typeRef.appliedTo(tpw))
+                  else defn.FunctionType(1, isContextual = true).appliedTo(defn.QuotesClass.typeRef, defn.QuotesExprClass.typeRef.appliedTo(tpw))
                 val selectArg = arg.select(nme.apply).appliedTo(Literal(Constant(i))).cast(argTpe)
                 val capturedArg = SyntheticValDef(UniqueName.fresh(tree.symbol.name.toTermName).toTermName, selectArg)
                 i += 1

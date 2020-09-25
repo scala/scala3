@@ -789,6 +789,9 @@ class Definitions {
 
   @tu lazy val TastyReflectionClass: ClassSymbol = requiredClass("scala.tasty.Reflection")
 
+  @tu lazy val QuotesClass: ClassSymbol = requiredClass("scala.quoted.Quotes")
+  @tu lazy val QuotesExprClass: Symbol = QuotesClass.typeRef.select(tpnme.Expr).typeSymbol
+
   @tu lazy val ScopeClass: ClassSymbol = requiredClass("scala.quoted.Scope")
   @tu lazy val ScopeTypeModule: Symbol = ScopeClass.requiredMethod("Type")
   @tu lazy val ScopeTypeModule_apply: Symbol = ScopeTypeModule.requiredMethod(nme.apply)
