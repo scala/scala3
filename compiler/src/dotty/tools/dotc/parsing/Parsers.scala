@@ -3277,40 +3277,11 @@ object Parsers {
         makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       }
       else {
-        var mods1 = addFlag(mods, Method)
-        var isInfix = false
-        def extParamss() =
-          try paramClause(0, prefix = true) :: Nil
-          finally
-            mods1 = addFlag(mods, ExtensionMethod)
-            if in.token == DOT then in.nextToken()
-            else
-              isInfix = true
-              newLineOpt()
-        val (leadingTparams, leadingVparamss) =
-          if in.token == LBRACKET then
-            (typeParamClause(ParamOwner.Def), extParamss())
-          else if in.token == LPAREN then
-            (Nil, extParamss())
-          else
-            (Nil, Nil)
+        val mods1 = addFlag(mods, Method)
         val ident = termIdent()
         var name = ident.name.asTermName
-        if mods1.is(ExtensionMethod) then name = name.toExtensionName
-        if isInfix && !name.isOperatorName then
-          val infixAnnot = Apply(wrapNew(scalaAnnotationDot(tpnme.infix)), Nil)
-              .withSpan(Span(start, start))
-          mods1 = mods1.withAddedAnnotation(infixAnnot)
-        val tparams =
-          if in.token == LBRACKET then
-            if mods1.is(ExtensionMethod) then syntaxError("no type parameters allowed here")
-            typeParamClause(ParamOwner.Def)
-          else leadingTparams
-        val vparamss = paramClauses() match
-          case rparams :: rparamss if leadingVparamss.nonEmpty && ident.name.isRightAssocOperatorName =>
-            rparams :: leadingVparamss ::: rparamss
-          case rparamss =>
-            leadingVparamss ::: rparamss
+        val tparams = typeParamClauseOpt(ParamOwner.Def)
+        val vparamss = paramClauses()
         var tpt = fromWithinReturnType {
           if in.token == COLONEOL then in.token = COLON
      	      // a hack to allow
