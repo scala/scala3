@@ -480,15 +480,15 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object This extends ThisModule:
       def apply(cls: Symbol): This =
         withDefaultPos(tpd.This(cls.asClass))
-      def copy(original: Tree)(qual: Option[Id]): This =
-        tpd.cpy.This(original)(qual.getOrElse(untpd.EmptyTypeIdent))
-      def unapply(x: This): Option[Option[Id]] =
-        Some(x.id)
+      def copy(original: Tree)(qual: Option[String]): This =
+        tpd.cpy.This(original)(qual.map(x => untpd.Ident(x.toTypeName)).getOrElse(untpd.EmptyTypeIdent))
+      def unapply(x: This): Option[Option[String]] =
+        Some(optional(x.qual).map(_.name.toString))
     end This
 
     object ThisMethodsImpl extends ThisMethods:
       extension (self: This):
-        def id: Option[Id] = optional(self.qual)
+        def id: Option[String] = optional(self.qual).map(_.name.toString)
       end extension
     end ThisMethodsImpl
 
@@ -600,18 +600,19 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     end SuperTypeTest
 
     object Super extends SuperModule:
-      def apply(qual: Term, mix: Option[Id]): Super =
-        withDefaultPos(tpd.Super(qual, mix.getOrElse(untpd.EmptyTypeIdent), dotc.core.Symbols.NoSymbol))
-      def copy(original: Tree)(qual: Term, mix: Option[Id]): Super =
-        tpd.cpy.Super(original)(qual, mix.getOrElse(untpd.EmptyTypeIdent))
-      def unapply(x: Super): Option[(Term, Option[Id])] =
+      def apply(qual: Term, mix: Option[String]): Super =
+        withDefaultPos(tpd.Super(qual, mix.map(x => untpd.Ident(x.toTypeName)).getOrElse(untpd.EmptyTypeIdent), dotc.core.Symbols.NoSymbol))
+      def copy(original: Tree)(qual: Term, mix: Option[String]): Super =
+        tpd.cpy.Super(original)(qual, mix.map(x => untpd.Ident(x.toTypeName)).getOrElse(untpd.EmptyTypeIdent))
+      def unapply(x: Super): Option[(Term, Option[String])] =
         Some((x.qualifier, x.id))
     end Super
 
     object SuperMethodsImpl extends SuperMethods:
       extension (self: Super):
         def qualifier: Term = self.qual
-        def id: Option[Id] = optional(self.mix)
+        def id: Option[String] = optional(self.mix).map(_.name.toString)
+        def idPos: Position = self.mix.sourcePos
       end extension
     end SuperMethodsImpl
 
@@ -1510,13 +1511,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     end SimpleSelectorTypeTest
 
     object SimpleSelector extends SimpleSelectorModule:
-      def unapply(x: SimpleSelector): Option[Id] = Some(x.selection)
+      def unapply(x: SimpleSelector): Option[String] = Some(x.name.toString)
     end SimpleSelector
 
 
     object SimpleSelectorMethodsImpl extends SimpleSelectorMethods:
       extension (self: SimpleSelector):
-        def selection: Id = self.imported
+        def name: String = self.imported.name.toString
+        def namePos: Position = self.imported.sourcePos
       end extension
     end SimpleSelectorMethodsImpl
 
@@ -1530,13 +1532,15 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     end RenameSelectorTypeTest
 
     object RenameSelector extends RenameSelectorModule:
-      def unapply(x: RenameSelector): Option[(Id, Id)] = Some((x.from, x.to))
+      def unapply(x: RenameSelector): Option[(String, String)] = Some((x.fromName, x.toName))
     end RenameSelector
 
     object RenameSelectorMethodsImpl extends RenameSelectorMethods:
       extension (self: RenameSelector):
-        def from: Id = self.imported
-        def to: Id = self.renamed.asInstanceOf[untpd.Ident]
+        def fromName: String = self.imported.name.toString
+        def fromPos: Position = self.imported.sourcePos
+        def toName: String = self.renamed.asInstanceOf[untpd.Ident].name.toString
+        def toPos: Position = self.renamed.asInstanceOf[untpd.Ident].sourcePos
       end extension
     end RenameSelectorMethodsImpl
 
@@ -1554,12 +1558,13 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     end OmitSelectorTypeTest
 
     object OmitSelector extends OmitSelectorModule:
-      def unapply(x: OmitSelector): Option[Id] = Some(x.omitted)
+      def unapply(x: OmitSelector): Option[String] = Some(x.imported.name.toString)
     end OmitSelector
 
     object OmitSelectorMethodsImpl extends OmitSelectorMethods:
       extension (self: OmitSelector):
-        def omitted: Id = self.imported
+        def name: String = self.imported.toString
+        def namePos: Position = self.imported.sourcePos
       end extension
     end OmitSelectorMethodsImpl
 
@@ -2105,19 +2110,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           new SourceCodePrinter[tasty.type](tasty)(syntaxHighlight).showConstant(self)
       end extension
     end ConstantMethodsImpl
-
-    type Id = untpd.Ident
-
-    object Id extends IdModule:
-      def unapply(id: Id): Option[String] = Some(id.name.toString)
-    end Id
-
-    object IdMethodsImpl extends IdMethods:
-      extension (self: Id):
-        def pos: Position = self.sourcePos
-        def name: String = self.name.toString
-      end extension
-    end IdMethodsImpl
 
     type ImplicitSearchResult = Tree
 

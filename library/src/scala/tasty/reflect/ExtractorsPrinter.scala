@@ -227,11 +227,6 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
         this += "NoPrefix()"
     }
 
-    def visitId(x: Id): Buffer = {
-      val Id(name) = x
-      this += "Id(\"" += name += "\")"
-    }
-
     def visitSignature(sig: Signature): Buffer = {
       val Signature(params, res) = sig
       this += "Signature(" ++= params.map(_.toString) += ", " += res += ")"
@@ -263,6 +258,10 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
 
     def ++=(xs: List[String]): Buffer = visitList[String](xs, +=)
 
+    private implicit class StringOps(buff: Buffer) {
+      def +=(x: Option[String]): Buffer = { visitOption(x, y => buff += "\"" += y += "\""); buff }
+    }
+
     private implicit class TreeOps(buff: Buffer) {
       def +=(x: Tree): Buffer = { visitTree(x); buff }
       def +=(x: Option[Tree]): Buffer = { visitOption(x, visitTree); buff }
@@ -278,11 +277,6 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
       def +=(x: Type): Buffer = { visitType(x); buff }
       def +=(x: Option[Type]): Buffer = { visitOption(x, visitType); buff }
       def ++=(x: List[Type]): Buffer = { visitList(x, visitType); buff }
-    }
-
-    private implicit class IdOps(buff: Buffer) {
-      def +=(x: Id): Buffer = { visitId(x); buff }
-      def +=(x: Option[Id]): Buffer = { visitOption(x, visitId); buff }
     }
 
     private implicit class SignatureOps(buff: Buffer) {
