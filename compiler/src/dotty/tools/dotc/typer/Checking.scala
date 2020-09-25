@@ -889,7 +889,12 @@ trait Checking {
         if (decl.matches(other) && !javaFieldMethodPair) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
-              report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
+              if decl.owner.is(Enum, butNot=JavaDefined|Case) && decl.span.isSynthetic && (
+                decl.name == nme.ordinal || decl.name == nme.enumLabel)
+              then
+                report.error(EnumGettersRedefinition(decl), other.srcPos)
+              else
+                report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
