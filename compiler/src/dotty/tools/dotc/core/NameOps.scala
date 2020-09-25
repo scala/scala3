@@ -169,44 +169,31 @@ object NameOps {
       }
     }
 
-    def functionArity: Int =
-      functionArityFor(str.Function) max
-      functionArityFor(str.ContextFunction) max {
-        val n =
-          functionArityFor(str.ErasedFunction) max
-          functionArityFor(str.ErasedContextFunction)
-        if (n == 0) -1 else n
-      }
+    private def functionSuffixStart: Int =
+      val first = name.firstPart
+      var idx = first.length - 1
+      if idx >= 8 && first(idx).isDigit then
+        while
+          idx = idx - 1
+          idx >= 8 && first(idx).isDigit
+        do ()
+        if    first(idx - 7) == 'F'
+           && first(idx - 6) == 'u'
+           && first(idx - 5) == 'n'
+           && first(idx - 4) == 'c'
+           && first(idx - 3) == 't'
+           && first(idx - 2) == 'i'
+           && first(idx - 1) == 'o'
+           && first(idx)     == 'n'
+        then idx - 7
+        else -1
+      else -1
 
-    /** Is a function name, i.e one of FunctionXXL, FunctionN, ContextFunctionN for N >= 0 or ErasedFunctionN, ErasedContextFunctionN for N > 0
+    /** The arity of a name ending in the suffix `Function{\d}`, but -1
+     *  if the number is larger than Int.MaxValue / 10.
+     *  @param suffixStart  The index of the suffix
      */
-    def isFunction: Boolean = (name eq tpnme.FunctionXXL) || functionArity >= 0
-
-    /** Is an context function name, i.e one of ContextFunctionN for N >= 0 or ErasedContextFunctionN for N > 0
-     */
-    def isContextFunction: Boolean =
-      functionArityFor(str.ContextFunction) >= 0 ||
-      functionArityFor(str.ErasedContextFunction) > 0
-
-    /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedContextFunctionN for N > 0
-      */
-    def isErasedFunction: Boolean =
-      functionArityFor(str.ErasedFunction) > 0 ||
-      functionArityFor(str.ErasedContextFunction) > 0
-
-    /** Is a synthetic function name, i.e. one of
-     *    - FunctionN for N > 22
-     *    - ContextFunctionN for N >= 0
-     *    - ErasedFunctionN for N > 0
-     *    - ErasedContextFunctionN for N > 0
-     */
-    def isSyntheticFunction: Boolean =
-      functionArityFor(str.Function) > MaxImplementedFunctionArity ||
-      functionArityFor(str.ContextFunction) >= 0 ||
-      isErasedFunction
-
-    /** Parsed function arity for function with some specific prefix */
-    private def functionArityFor(prefix: String): Int =
+    private def funArity(suffixStart: Int): Int =
       inline val MaxSafeInt = MaxValue / 10
       val first = name.firstPart
       def collectDigits(acc: Int, idx: Int): Int =
@@ -215,10 +202,56 @@ object NameOps {
           val d = digit2int(first(idx), 10)
           if d < 0 || acc > MaxSafeInt then -1
           else collectDigits(acc * 10 + d, idx + 1)
-      if first.startsWith(prefix) && prefix.length < first.length then
-        collectDigits(0, prefix.length)
-      else
-        -1
+      collectDigits(0, suffixStart + 8)
+
+    /** name[0..suffixStart) == `str` */
+    private def isPreceded(str: String, suffixStart: Int) =
+      str.length == suffixStart && name.firstPart.startsWith(str)
+
+    /** Same as `funArity`, except that it returns -1 if the prefix
+     *  is not one of "", "Context", "Erased", "ErasedContext"
+     */
+    private def checkedFunArity(suffixStart: Int) =
+      if suffixStart == 0
+         || isPreceded("Context", suffixStart)
+         || isPreceded("Erased", suffixStart)
+         || isPreceded("ErasedContext", suffixStart)
+      then funArity(suffixStart)
+      else -1
+
+    /** Is a function name, i.e one of FunctionXXL, FunctionN, ContextFunctionN, ErasedFunctionN, ErasedContextFunctionN for N >= 0
+     */
+    def isFunction: Boolean =
+      (name eq tpnme.FunctionXXL) || checkedFunArity(functionSuffixStart) >= 0
+
+    /** Is an context function name, i.e one of ContextFunctionN or ErasedContextFunctionN for N >= 0
+     */
+    def isContextFunction: Boolean =
+      val suffixStart = functionSuffixStart
+      (isPreceded("Context", suffixStart) || isPreceded("ErasedContext", suffixStart))
+      && funArity(suffixStart) >= 0
+
+    /** Is an erased function name, i.e. one of ErasedFunctionN, ErasedContextFunctionN for N >= 0
+      */
+    def isErasedFunction: Boolean =
+      val suffixStart = functionSuffixStart
+      (isPreceded("Erased", suffixStart) || isPreceded("ErasedContext", suffixStart))
+      && funArity(suffixStart) >= 0
+
+    /** Is a synthetic function name, i.e. one of
+     *    - FunctionN for N > 22
+     *    - ContextFunctionN for N >= 0
+     *    - ErasedFunctionN for N >= 0
+     *    - ErasedContextFunctionN for N >= 0
+     */
+    def isSyntheticFunction: Boolean =
+      val suffixStart = functionSuffixStart
+      if suffixStart == 0 then funArity(suffixStart) > MaxImplementedFunctionArity
+      else checkedFunArity(suffixStart) >= 0
+
+    def functionArity: Int =
+      val suffixStart = functionSuffixStart
+      if suffixStart >= 0 then checkedFunArity(suffixStart) else -1
 
     /** The name of the generic runtime operation corresponding to an array operation */
     def genericArrayOp: TermName = name match {
