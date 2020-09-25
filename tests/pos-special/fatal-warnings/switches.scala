@@ -33,7 +33,17 @@ class Test {
     case 1 | 2 | 3 => true
     case _ => false
   }
+
+  def test6(x: IntAnyVal) = (x: @switch) match {
+    case IntAnyVal(1) => 0
+    case IntAnyVal(10) => 1
+    case IntAnyVal(100) => 2
+    case IntAnyVal(1000) => 3
+    case IntAnyVal(10000) => 4
+  }
 }
+
+case class IntAnyVal(x: Int) extends AnyVal
 
 object Test {
   final val LF = '\u000A'

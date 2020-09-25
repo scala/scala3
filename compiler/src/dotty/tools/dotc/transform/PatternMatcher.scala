@@ -981,7 +981,11 @@ object PatternMatcher {
         val resultCases = result match
           case Match(_, cases) => cases
           case Block(_, Match(_, cases)) => cases
+          case Block((_: ValDef) :: Block(_, Match(_, cases)) :: Nil, _) => cases
           case _ => Nil
+        val caseThreshold =
+          if ValueClasses.isDerivedValueClass(tpt.tpe.typeSymbol) then 1
+          else MinSwitchCases
         def typesInPattern(pat: Tree): List[Type] = pat match
           case Alternative(pats) => pats.flatMap(typesInPattern)
           case _ => pat.tpe :: Nil
@@ -990,7 +994,7 @@ object PatternMatcher {
         def numTypes(cdefs: List[CaseDef]): Int =
           typesInCases(cdefs).toSet.size: Int // without the type ascription, testPickling fails because of #2840.
         val numTypesInOriginal = numTypes(original.cases)
-        if numTypesInOriginal >= MinSwitchCases && numTypes(resultCases) < numTypesInOriginal then
+        if numTypesInOriginal >= caseThreshold && numTypes(resultCases) < numTypesInOriginal then
           patmatch.println(i"switch warning for ${ctx.compilationUnit}")
           patmatch.println(i"original types: ${typesInCases(original.cases)}%, %")
           patmatch.println(i"switch types  : ${typesInCases(resultCases)}%, %")
