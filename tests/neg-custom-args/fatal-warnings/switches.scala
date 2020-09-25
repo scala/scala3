@@ -76,4 +76,25 @@ object Main {
     case 1 | 2 | 3 => true
     case _ => false
   }
+
+  case class IntAnyVal(x: Int) extends AnyVal
+
+  val Ten = IntAnyVal(10)
+  def fail5(x: IntAnyVal) = (x: @switch) match { // error: Could not emit switch for @switch annotated match
+    case IntAnyVal(1) => 0
+    case Ten           => 1
+    case IntAnyVal(100) => 2
+    case IntAnyVal(1000) => 3
+    case IntAnyVal(10000) => 4
+  }
+
+  // the generated lookupswitch covers only a subset of the cases
+  final val One = IntAnyVal(1)
+  def fail6(x: IntAnyVal) = (x: @switch) match { // error: Could not emit switch for @switch annotated match
+    case One          => 0
+    case IntAnyVal(10) => 1
+    case IntAnyVal(100) => 2
+    case IntAnyVal(1000) => 3
+    case IntAnyVal(10000) => 4
+  }
 }
