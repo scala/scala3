@@ -3847,7 +3847,7 @@ object Parsers {
         val problem = tree match
           case tree: MemberDef if !(tree.mods.flags & ModifierFlags).isEmpty =>
             i"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}"
-          case tree: DefDef if tree.vparamss.exists(_.exists(!_.rhs.isEmpty)) =>
+          case tree: DefDef if tree.vparamss.nestedExists(!_.rhs.isEmpty) =>
             i"refinement cannot have default arguments"
           case tree: ValOrDefDef =>
             if tree.rhs.isEmpty then ""

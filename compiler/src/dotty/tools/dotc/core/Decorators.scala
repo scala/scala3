@@ -195,12 +195,16 @@ object Decorators {
   }
 
   extension [T, U](xss: List[List[T]])
-    def nestedMap(f: T => U): List[List[U]] =
-      xss.map(_.map(f))
+    def nestedMap(f: T => U): List[List[U]] = xss match
+      case xs :: xss1 => xs.map(f) :: xss1.nestedMap(f)
+      case nil => Nil
     def nestedMapConserve(f: T => U): List[List[U]] =
       xss.mapconserve(_.mapconserve(f))
     def nestedZipWithConserve(yss: List[List[U]])(f: (T, U) => T): List[List[T]] =
       xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
+    def nestedExists(p: T => Boolean): Boolean = xss match
+      case xs :: xss1 => xs.exists(p) || xss1.nestedExists(p)
+      case nil => false
   end extension
 
   extension (text: Text)

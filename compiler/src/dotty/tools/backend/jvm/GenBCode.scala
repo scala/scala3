@@ -50,9 +50,13 @@ class GenBCode extends Phase {
     myOutput
   }
 
+  private var myPrimitives: DottyPrimitives = null
+
   def run(using Context): Unit =
-    GenBCodePipeline(
-      DottyBackendInterface(outputDir, superCallsMap)
+    if myPrimitives == null then myPrimitives = new DottyPrimitives(ctx)
+    new GenBCodePipeline(
+      DottyBackendInterface(outputDir, superCallsMap),
+      myPrimitives
     ).run(ctx.compilationUnit.tpdTree)
 
 
@@ -74,7 +78,7 @@ object GenBCode {
   val name: String = "genBCode"
 }
 
-class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BCodeSyncAndTry {
+class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrimitives)(using Context) extends BCodeSyncAndTry {
   import DottyBackendInterface.symExtensions
 
   private var tree: Tree = _

@@ -39,7 +39,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   import coreBTypes._
   import BCodeBodyBuilder._
 
-  private val primitives = new DottyPrimitives(ctx)
+  protected val primitives: DottyPrimitives
 
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
@@ -1021,9 +1021,15 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
-    def genLoadArguments(args: List[Tree], btpes: List[BType]): Unit = {
-      (args zip btpes) foreach { case (arg, btpe) => genLoad(arg, btpe) }
-    }
+    def genLoadArguments(args: List[Tree], btpes: List[BType]): Unit =
+      args match
+        case arg :: args1 =>
+          btpes match
+            case btpe :: btpes1 =>
+              genLoad(arg, btpe)
+              genLoadArguments(args1, btpes1)
+            case _ =>
+        case _ =>
 
     def genLoadModule(tree: Tree): BType = {
       val module = (

@@ -535,7 +535,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
     def lineNumber(tree: Tree): Unit = {
       if (!emitLines || !tree.span.exists) return;
-      val nr = ctx.source.atSpan(tree.span).line + 1
+      val nr = ctx.source.offsetToLine(tree.span.point) + 1
       if (nr != lastEmittedLineNr) {
         lastEmittedLineNr = nr
         lastInsn match {
@@ -690,12 +690,12 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val isNative         = methSymbol.hasAnnotation(NativeAttr)
       val isAbstractMethod = (methSymbol.is(Deferred) || (methSymbol.owner.isInterface && ((methSymbol.is(Deferred))  || methSymbol.isClassConstructor)))
-      val flags = GenBCodeOps.mkFlags(
-        javaFlags(methSymbol),
-        if (isAbstractMethod)        asm.Opcodes.ACC_ABSTRACT   else 0,
-        if (false /*methSymbol.isStrictFP*/)   asm.Opcodes.ACC_STRICT     else 0,
-        if (isNative)                asm.Opcodes.ACC_NATIVE     else 0  // native methods of objects are generated in mirror classes
-      )
+      val flags =
+        import GenBCodeOps.addFlagIf
+        javaFlags(methSymbol)
+          .addFlagIf(isAbstractMethod, asm.Opcodes.ACC_ABSTRACT)
+          .addFlagIf(false /*methSymbol.isStrictFP*/, asm.Opcodes.ACC_STRICT)
+          .addFlagIf(isNative, asm.Opcodes.ACC_NATIVE) // native methods of objects are generated in mirror classes
 
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
       initJMethod(flags, params.map(p => p.symbol.annotations))

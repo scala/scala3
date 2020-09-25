@@ -899,7 +899,7 @@ object SymDenotations {
       else if is(NoDefaultParams) then false
       else
         val result =
-          rawParamss.exists(_.exists(_.is(HasDefault)))
+          rawParamss.nestedExists(_.is(HasDefault))
           || allOverriddenSymbols.exists(_.hasDefaultParams)
         setFlag(if result then HasDefaultParams else NoDefaultParams)
         result

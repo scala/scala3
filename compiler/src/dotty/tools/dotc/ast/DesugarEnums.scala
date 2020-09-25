@@ -297,7 +297,7 @@ object DesugarEnums {
       case parent => parent.isType && typeHasRef(parent)
     }
 
-    vparamss.exists(_.exists(valDefHasRef)) || parents.exists(parentHasRef)
+    vparamss.nestedExists(valDefHasRef) || parents.exists(parentHasRef)
   }
 
   /** A pair consisting of

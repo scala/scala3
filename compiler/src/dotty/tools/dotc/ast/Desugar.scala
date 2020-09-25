@@ -596,9 +596,9 @@ object desugar {
           (ordinalMethLit(ordinal) :: enumLabelLit(className.toString) :: Nil, scaffolding)
         else (Nil, Nil)
       def copyMeths = {
-        val hasRepeatedParam = constrVparamss.exists(_.exists {
+        val hasRepeatedParam = constrVparamss.nestedExists {
           case ValDef(_, tpt, _) => isRepeated(tpt)
-        })
+        }
         if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
         else {
           def copyDefault(vparam: ValDef) =

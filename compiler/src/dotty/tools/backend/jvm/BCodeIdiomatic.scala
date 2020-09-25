@@ -35,10 +35,10 @@ trait BCodeIdiomatic {
   lazy val majorVersion: Int = (classfileVersion & 0xFF)
   lazy val emitStackMapFrame = (majorVersion >= 50)
 
-  val extraProc: Int = GenBCodeOps.mkFlags(
-    asm.ClassWriter.COMPUTE_MAXS,
-    if (emitStackMapFrame) asm.ClassWriter.COMPUTE_FRAMES else 0
-  )
+  val extraProc: Int =
+    import GenBCodeOps.addFlagIf
+    asm.ClassWriter.COMPUTE_MAXS
+      .addFlagIf(emitStackMapFrame, asm.ClassWriter.COMPUTE_FRAMES)
 
   lazy val JavaStringBuilderClassName = jlStringBuilderRef.internalName
 
