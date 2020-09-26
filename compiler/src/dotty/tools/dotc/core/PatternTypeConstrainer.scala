@@ -77,8 +77,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     def classesMayBeCompatible: Boolean = {
       import Flags._
-      val patClassSym = pat.widenSingleton.classSymbol
-      val scrutClassSym = scrut.widenSingleton.classSymbol
+      val patClassSym = pat.classSymbol
+      val scrutClassSym = scrut.classSymbol
       !patClassSym.exists || !scrutClassSym.exists || {
         if (patClassSym.is(Final)) patClassSym.derivesFrom(scrutClassSym)
         else if (scrutClassSym.is(Final)) scrutClassSym.derivesFrom(patClassSym)

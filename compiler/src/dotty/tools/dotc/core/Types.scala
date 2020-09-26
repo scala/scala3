@@ -437,8 +437,6 @@ object Types {
         if (sym.isClass) sym else tp.superType.classSymbol
       case tp: ClassInfo =>
         tp.cls
-      case tp: SingletonType =>
-        NoSymbol
       case tp: TypeProxy =>
         tp.underlying.classSymbol
       case AndType(l, r) =>

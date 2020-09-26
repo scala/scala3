@@ -28,7 +28,7 @@ class FunctionalInterfaces extends MiniPhase {
   private val functionPackage = "dotty.runtime.function.".toTermName
 
   override def transformClosure(tree: Closure)(using Context): Tree = {
-    val cls = tree.tpe.widen.classSymbol.asClass
+    val cls = tree.tpe.classSymbol.asClass
 
     val implType = tree.meth.tpe.widen
     val List(implParamTypes) = implType.paramInfoss

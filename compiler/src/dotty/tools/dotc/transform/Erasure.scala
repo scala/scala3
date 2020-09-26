@@ -287,7 +287,7 @@ object Erasure {
 
           cast(tree1, pt)
         case _ =>
-          val cls = pt.widen.classSymbol
+          val cls = pt.classSymbol
           if (cls eq defn.UnitClass) constant(tree, Literal(Constant(())))
           else {
             assert(cls ne defn.ArrayClass)
@@ -430,7 +430,7 @@ object Erasure {
           val implResultType = implType.resultType
           val samResultType = sam.resultType
 
-          if (!defn.isSpecializableFunction(implClosure.tpe.widen.classSymbol.asClass, implParamTypes, implResultType)) {
+          if (!defn.isSpecializableFunction(implClosure.tpe.classSymbol.asClass, implParamTypes, implResultType)) {
             def autoAdaptedParam(tp: Type) = !tp.isErasedValueType && !tp.isPrimitiveValueType
             val explicitSAMType = implClosure.tpt.tpe.exists
             def autoAdaptedResult(tp: Type) = !tp.isErasedValueType &&

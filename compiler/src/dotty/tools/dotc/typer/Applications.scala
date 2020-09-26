@@ -2039,7 +2039,7 @@ trait Applications extends Compatibility {
           case ConstantType(c: Constant) if c.tag == IntTag =>
             targetClass(ts1, cls, true)
           case t =>
-            val sym = t.widen.classSymbol
+            val sym = t.classSymbol
             if (!sym.isNumericValueClass || cls.exists && cls != sym) NoSymbol
             else targetClass(ts1, sym, intLitSeen)
         }

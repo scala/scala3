@@ -41,8 +41,8 @@ object TypeUtils {
       case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         val arity = tl.tupleArity
         if (arity < 0) arity else arity + 1
-      case self: TermRef if self.symbol == defn.EmptyTupleModule =>
-        0
+      case self: SingletonType =>
+        if self.termSymbol == defn.EmptyTupleModule then 0 else -1
       case self if defn.isTupleClass(self.classSymbol) =>
         self.dealias.argInfos.length
       case _ =>
@@ -53,7 +53,8 @@ object TypeUtils {
     def tupleElementTypes(using Context): List[Type] = self match {
       case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         hd :: tl.tupleElementTypes
-      case self: TermRef if self.symbol == defn.EmptyTupleModule =>
+      case self: SingletonType =>
+        assert(self.termSymbol == defn.EmptyTupleModule, "not a tuple")
         Nil
       case self if defn.isTupleClass(self.classSymbol) =>
         self.dealias.argInfos

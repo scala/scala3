@@ -99,7 +99,7 @@ object RefChecks {
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
         if otherSelf.exists && !(cinfo.selfType <:< otherSelf) then
-          report.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other.classSymbol),
+          report.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other),
             cls.srcPos)
       }
       val parents = cinfo.classParents

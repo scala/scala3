@@ -466,7 +466,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     val sortedProxies = thisProxy.toList.map {
       case (cls, proxy) =>
         // The class that the this-proxy `selfSym` represents
-        def classOf(selfSym: Symbol) = selfSym.info.widen.classSymbol
+        def classOf(selfSym: Symbol) = selfSym.info.classSymbol
         // The total nesting depth of the class represented by `selfSym`.
         def outerLevel(selfSym: Symbol): Int = classOf(selfSym).ownersIterator.length
         (outerLevel(cls), proxy.symbol)
@@ -1082,7 +1082,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             scrut.widenTermRefExpr =:= pat.tpe
           case pat: RefTree =>
             scrut =:= pat.tpe ||
-            scrut.widen.classSymbol.is(Module) && scrut.widen =:= pat.tpe.widen && {
+            scrut.classSymbol.is(Module) && scrut.widen =:= pat.tpe.widen && {
               scrut.prefix match {
                 case _: SingletonType | NoPrefix => true
                 case _ => false

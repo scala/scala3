@@ -7,6 +7,6 @@ object O2 {
 }
 
 object O3 { // error
-  opaque type R[X] = T[X]
+  opaque type R[X] = T[X] // error
   opaque type T[X] = R[X] // error
 }

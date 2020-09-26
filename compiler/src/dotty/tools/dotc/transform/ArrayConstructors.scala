@@ -34,7 +34,7 @@ class ArrayConstructors extends MiniPhase {
     }
     else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModule.moduleClass) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
       val Apply(Apply(TypeApply(_, List(tp)), _), _) = tree
-      val cs = tp.tpe.widen.classSymbol
+      val cs = tp.tpe.classSymbol
       tree.fun match {
         case Apply(TypeApply(t: Ident, targ), dims)
           if !TypeErasure.isGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>

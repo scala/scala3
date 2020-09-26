@@ -920,7 +920,7 @@ trait Checking {
       if (caller.is(Module)) {
         val traverser = new TreeTraverser {
           def traverse(tree: Tree)(using Context) = tree match {
-            case tree: RefTree if tree.isTerm && (tree.tpe.widen.classSymbol eq caller) =>
+            case tree: RefTree if tree.isTerm && (tree.tpe.classSymbol eq caller) =>
               report.error("super constructor cannot be passed a self reference", tree.srcPos)
             case _ =>
               traverseChildren(tree)
