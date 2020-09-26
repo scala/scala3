@@ -3828,18 +3828,14 @@ object Types {
 
     private var validSuper: Period = Nowhere
     private var cachedSuper: Type = _
+
+    // Boolean caches: 0 = uninitialized, -1 = false, 1 = true
     private var myStableHash: Byte = 0
+    private var myGround: Byte = 0
 
-    private var isGroundKnown: Boolean = false
-    private var isGroundCache: Boolean = _
-
-    def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean = {
-      if (!isGroundKnown) {
-        isGroundCache = acc.foldOver(true, this)
-        isGroundKnown = true
-      }
-      isGroundCache
-    }
+    def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
+      if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
+      myGround > 0
 
     override def underlying(using Context): Type = tycon
 
@@ -5640,7 +5636,7 @@ object Types {
             foldOver(cs + tp.typeSymbol, tp)
           case tp: TypeRef if tp.info.isTypeAlias =>
             apply(cs, tp.superType)
-          case tp: TypeRef if tp.typeSymbol.isClass =>
+          case tp: TypeRef if tp.symbol.isClass =>
             foldOver(cs + tp.typeSymbol, tp)
           case tp: TermRef =>
             val tsym = if (tp.termSymbol.is(Param)) tp.underlying.typeSymbol else tp.termSymbol
