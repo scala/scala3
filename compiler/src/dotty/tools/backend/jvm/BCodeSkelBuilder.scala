@@ -237,7 +237,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJClass(jclass: asm.ClassVisitor): Unit = {
 
       val ps = claszSymbol.info.parents
-      val superClass: String = if (ps.isEmpty) ObjectReference.internalName else internalName(ps.head.widenDealias.typeSymbol)
+      val superClass: String = if (ps.isEmpty) ObjectReference.internalName else internalName(ps.head.typeSymbol)
       val interfaceNames0 = classBTypeFromSymbol(claszSymbol).info.interfaces map {
         case classBType =>
           if (classBType.isNestedClass) { innerClassBufferASM += classBType }

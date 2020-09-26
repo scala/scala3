@@ -82,7 +82,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           genLoad(rhs, symInfoTK(lhs.symbol))
           lineNumber(tree)
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
-          val receiverClass = qual.tpe.widenDealias.typeSymbol
+          val receiverClass = qual.tpe.typeSymbol
           fieldStore(lhs.symbol, receiverClass)
 
         case Assign(lhs, rhs) =>
@@ -385,7 +385,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           def genLoadQualUnlessElidable(): Unit = { if (!qualSafeToElide) { genLoadQualifier(tree) } }
 
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
-          def receiverClass = qualifier.tpe.widenDealias.typeSymbol
+          def receiverClass = qualifier.tpe.typeSymbol
           if (sym.is(Module)) {
             genLoadQualUnlessElidable()
             genLoadModule(tree)
@@ -806,7 +806,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               val receiverClass = if (!invokeStyle.isVirtual) null else {
                 // receiverClass is used in the bytecode to as the method receiver. using sym.owner
                 // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
-                val qualSym = qual.tpe.widenDealias.typeSymbol
+                val qualSym = qual.tpe.typeSymbol
                 if (qualSym == defn.ArrayClass) {
                   // For invocations like `Array(1).hashCode` or `.wait()`, use Object as receiver
                   // in the bytecode. Using the array descriptor (like we do for clone above) seems
@@ -1373,7 +1373,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             (sym derivesFrom defn.BoxedCharClass) ||
             (sym derivesFrom defn.BoxedBooleanClass)
         }
-        !areSameFinals && isMaybeBoxed(l.tpe.widenDealias.typeSymbol) && isMaybeBoxed(r.tpe.widenDealias.typeSymbol)
+        !areSameFinals && isMaybeBoxed(l.tpe.typeSymbol) && isMaybeBoxed(r.tpe.typeSymbol)
       }
       def isNull(t: Tree): Boolean = t match {
         case Literal(Constant(null)) => true
@@ -1467,7 +1467,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info :: capturedParamsTypes
 
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
-      val returnUnit = lambdaTarget.info.resultType.widenDealias.typeSymbol == defn.UnitClass
+      val returnUnit = lambdaTarget.info.resultType.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
       // TODO specialization
