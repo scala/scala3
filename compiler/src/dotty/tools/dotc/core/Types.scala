@@ -181,7 +181,7 @@ object Types {
      *        It makes no sense for it to be an alias type because isRef would always
      *        return false in that case.
      */
-    def isRef(sym: Symbol, skipRefined: Boolean = true)(using Context): Boolean = stripAnnots.stripTypeVar match {
+    def isRef(sym: Symbol, skipRefined: Boolean = true)(using Context): Boolean = stripped match {
       case this1: TypeRef =>
         this1.info match { // see comment in Namer#typeDefSig
           case TypeAlias(tp) => tp.isRef(sym, skipRefined)
@@ -196,7 +196,7 @@ object Types {
       case _ => false
     }
 
-    /** Is this type a (neither aliased nor applied) reference to class `sym`? */
+    /** Is this type a (neither aliased nor applied nor annotated) reference to class `sym`? */
     def isDirectRef(sym: Symbol)(using Context): Boolean = stripTypeVar match {
       case this1: TypeRef =>
         this1.name == sym.name && // avoid forcing info if names differ
@@ -369,7 +369,7 @@ object Types {
 
     /** Is this a match type or a higher-kinded abstraction of one?
      */
-    def isMatch(using Context): Boolean = stripTypeVar.stripAnnots match {
+    def isMatch(using Context): Boolean = stripped match {
       case _: MatchType => true
       case tp: HKTypeLambda => tp.resType.isMatch
       case _ => false
@@ -1070,8 +1070,11 @@ object Types {
     def stripTypeVar(using Context): Type = this
 
     /** Remove all AnnotatedTypes wrapping this type.
-      */
+     */
     def stripAnnots(using Context): Type = this
+
+    /** Strip TypeVars and Annotation wrappers */
+    def stripped(using Context): Type = this
 
     def rewrapAnnots(tp: Type)(using Context): Type = tp.stripTypeVar match {
       case AnnotatedType(tp1, annot) => AnnotatedType(rewrapAnnots(tp1), annot)
@@ -1098,15 +1101,23 @@ object Types {
      *  def o: Outer
      *  <o.x.type>.widen = o.C
      */
-    final def widen(using Context): Type = widenSingleton match {
+    final def widen(using Context): Type = this match
+      case _: TypeRef | _: MethodOrPoly => this // fast path for most frequent cases
+      case tp: TermRef => // fast path for next most frequent case
+        if tp.isOverloaded then tp else tp.underlying.widen
+      case tp: SingletonType => tp.underlying.widen
       case tp: ExprType => tp.resultType.widen
-      case tp => tp
-    }
+      case tp =>
+        val tp1 = tp.stripped
+        if tp1 eq tp then tp
+        else
+          val tp2 = tp1.widen
+          if tp2 ne tp1 then tp2 else tp
 
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences.
      */
-    final def widenSingleton(using Context): Type = stripTypeVar.stripAnnots match {
+    final def widenSingleton(using Context): Type = stripped match {
       case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
       case _ => this
     }
@@ -4294,6 +4305,8 @@ object Types {
       if (inst.exists) inst.stripTypeVar else origin
     }
 
+    override def stripped(using Context): Type = stripTypeVar.stripped
+
     /** If the variable is instantiated, its instance, otherwise its origin */
     override def underlying(using Context): Type = {
       val inst = instanceOpt
@@ -4696,6 +4709,8 @@ object Types {
       derivedAnnotatedType(parent.stripTypeVar, annot)
 
     override def stripAnnots(using Context): Type = parent.stripAnnots
+
+    override def stripped(using Context): Type = parent.stripped
 
     private var isRefiningKnown = false
     private var isRefiningCache: Boolean = _

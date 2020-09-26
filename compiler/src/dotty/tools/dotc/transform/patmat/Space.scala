@@ -693,7 +693,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       case _ => tp.show
     }
 
-    def refine(tp: Type): String = tp.stripAnnots.stripTypeVar match {
+    def refine(tp: Type): String = tp.stripped match {
       case tp: RefinedType => refine(tp.parent)
       case tp: AppliedType =>
         refine(tp.typeConstructor) + (

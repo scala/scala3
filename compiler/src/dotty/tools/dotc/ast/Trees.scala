@@ -1027,9 +1027,11 @@ object Trees {
       protected def sourceFile(tree: Tree): SourceFile = tree.source
 
       protected def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
+        Stats.record(s"TreeCopier.finalize/${tree.getClass == copied.getClass}")
         postProcess(tree, copied.withSpan(tree.span).withAttachmentsFrom(tree))
 
       protected def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
+        Stats.record(s"TreeCopier.finalize/${tree.getClass == copied.getClass}")
         postProcess(tree, copied.withSpan(tree.span).withAttachmentsFrom(tree))
 
       def Ident(tree: Tree)(name: Name)(using Context): Ident = tree match {

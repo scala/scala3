@@ -1389,7 +1389,7 @@ class Definitions {
       !tp.isInstanceOf[RefinedType]
   }
 
-  /** Is `tp` a representation of a (possibly depenent) function type or an alias of such? */
+  /** Is `tp` a representation of a (possibly dependent) function type or an alias of such? */
   def isFunctionType(tp: Type)(using Context): Boolean =
     isNonRefinedFunction(tp.dropDependentRefinement)
 
@@ -1440,13 +1440,12 @@ class Definitions {
    *   - the upper bound of a TypeParamRef in the current constraint
    */
   def asContextFunctionType(tp: Type)(using Context): Type =
-    tp.stripTypeVar.dealias match {
+    tp.stripTypeVar.dealias match
       case tp1: TypeParamRef if ctx.typerState.constraint.contains(tp1) =>
         asContextFunctionType(TypeComparer.bounds(tp1).hiBound)
       case tp1 =>
-        if (isFunctionType(tp1) && tp1.typeSymbol.name.isContextFunction) tp1
+        if tp1.typeSymbol.name.isContextFunction && isFunctionType(tp1) then tp1
         else NoType
-    }
 
   /** Is `tp` an context function type? */
   def isContextFunctionType(tp: Type)(using Context): Boolean =
@@ -1468,7 +1467,7 @@ class Definitions {
         else None
 
   def isErasedFunctionType(tp: Type)(using Context): Boolean =
-    isFunctionType(tp) && tp.dealias.typeSymbol.name.isErasedFunction
+    tp.dealias.typeSymbol.name.isErasedFunction && isFunctionType(tp)
 
   /** A whitelist of Scala-2 classes that are known to be pure */
   def isAssuredNoInits(sym: Symbol): Boolean =
