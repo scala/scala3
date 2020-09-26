@@ -2376,7 +2376,7 @@ object Types {
     /** A reference like this one, but with the given prefix. */
     final def withPrefix(prefix: Type)(using Context): NamedType = {
       def reload(): NamedType = {
-        val allowPrivate = !lastSymbol.exists || lastSymbol.is(Private) && prefix.classSymbol == this.prefix.classSymbol
+        val allowPrivate = !lastSymbol.exists || lastSymbol.is(Private)
         var d = memberDenot(prefix, name, allowPrivate)
         if (d.isOverloaded && lastSymbol.exists)
           d = disambiguate(d,
