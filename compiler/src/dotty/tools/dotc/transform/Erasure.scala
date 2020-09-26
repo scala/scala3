@@ -161,7 +161,7 @@ class Erasure extends Phase with DenotTransformer {
 
   def assertErased(tp: Type, tree: tpd.Tree = tpd.EmptyTree)(using Context): Unit = {
     def isAllowed(cls: Symbol, sourceName: String) =
-      tp.widen.typeSymbol == cls && ctx.compilationUnit.source.file.name == sourceName
+      tp.typeSymbol == cls && ctx.compilationUnit.source.file.name == sourceName
     assert(isErasedType(tp) ||
            isAllowed(defn.ArrayClass, "Array.scala") ||
            isAllowed(defn.TupleClass, "Tuple.scala") ||
@@ -229,7 +229,7 @@ object Erasure {
      */
     private def safelyRemovableUnboxArg(tree: Tree)(using Context): Tree = tree match {
       case Apply(fn, arg :: Nil)
-      if isUnbox(fn.symbol) && defn.ScalaBoxedClasses().contains(arg.tpe.widen.typeSymbol) =>
+      if isUnbox(fn.symbol) && defn.ScalaBoxedClasses().contains(arg.tpe.typeSymbol) =>
         arg
       case _ =>
         EmptyTree
@@ -640,7 +640,7 @@ object Erasure {
         if !sym.exists && tree.name == nme.apply then
           // PolyFunction apply Selects will not have a symbol, so deduce the owner
           // from the typed qual.
-          val owner = qual1.tpe.widen.typeSymbol
+          val owner = qual1.tpe.typeSymbol
           if defn.isFunctionClass(owner) then owner else NoSymbol
         else
           val owner = sym.maybeOwner

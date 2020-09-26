@@ -116,7 +116,7 @@ object Applications {
       if (sel.exists) sel :: tupleSelectors(n + 1, tp) else Nil
     }
     def genTupleSelectors(n: Int, tp: Type): List[Type] = tp match {
-      case tp: AppliedType if !defn.isTupleClass(tp.typeSymbol) && tp.derivesFrom(defn.PairClass) =>
+      case tp: AppliedType if !defn.isTupleClass(tp.tycon.typeSymbol) && tp.derivesFrom(defn.PairClass) =>
         val List(head, tail) = tp.args
         head :: genTupleSelectors(n, tail)
       case _ => tupleSelectors(n, tp)

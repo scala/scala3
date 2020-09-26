@@ -486,7 +486,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       case tp @ RefinedType(parent, _, _) =>
         erase(parent)
 
-      case tref: TypeRef if tref.typeSymbol.isPatternBound =>
+      case tref: TypeRef if tref.symbol.isPatternBound =>
         if (inArray) tref.underlying else WildcardType
 
       case _ => tp

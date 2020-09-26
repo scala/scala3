@@ -1166,7 +1166,7 @@ class RefChecks extends MiniPhase { thisPhase =>
         case _ => false
       }
       def underlyingClass(tp: Type): Symbol = {
-        val sym = tp.widen.typeSymbol
+        val sym = tp.typeSymbol
         if (sym.isAbstractOrParamType) underlyingClass(sym.info.bounds.hi)
         else sym
       }

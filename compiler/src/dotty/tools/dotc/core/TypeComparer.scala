@@ -310,7 +310,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareThis = {
           val cls2 = tp2.cls
           tp1 match {
-            case tp1: NamedType if cls2.is(Module) && cls2.eq(tp1.widen.typeSymbol) =>
+            case tp1: NamedType if cls2.is(Module) && cls2.eq(tp1.typeSymbol) =>
               cls2.isStaticOwner ||
               recur(tp1.prefix, cls2.owner.thisType) ||
               secondTry
@@ -391,7 +391,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: ThisType =>
         val cls1 = tp1.cls
         tp2 match {
-          case tp2: TermRef if cls1.is(Module) && cls1.eq(tp2.widen.typeSymbol) =>
+          case tp2: TermRef if cls1.is(Module) && cls1.eq(tp2.typeSymbol) =>
             cls1.isStaticOwner ||
             recur(cls1.owner.thisType, tp2.prefix) ||
             thirdTry

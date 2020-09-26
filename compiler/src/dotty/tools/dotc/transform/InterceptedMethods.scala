@@ -48,7 +48,7 @@ class InterceptedMethods extends MiniPhase {
 
   // TODO: add missing cases from scalac
   private def poundPoundValue(tree: Tree)(using Context) = {
-    val s = tree.tpe.widen.typeSymbol
+    val s = tree.tpe.typeSymbol
 
     def staticsCall(methodName: TermName): Tree =
       ref(defn.staticsMethodRef(methodName)).appliedTo(tree)

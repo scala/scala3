@@ -420,7 +420,6 @@ object Types {
     @tailrec final def typeSymbol(using Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
       case tp: ClassInfo => tp.cls
-      case tp: SingletonType => NoSymbol
       case tp: TypeProxy => tp.underlying.typeSymbol
       case  _: JavaArrayType => defn.ArrayClass
       case _ => NoSymbol
@@ -775,8 +774,8 @@ object Types {
           core.println(s"findMember exception for $this member $name, pre = $pre, recCount = $recCount")
 
           def showPrefixSafely(pre: Type)(using Context): String = pre.stripTypeVar match {
-            case pre: TermRef => i"${pre.termSymbol.name}."
-            case pre: TypeRef => i"${pre.typeSymbol.name}#"
+            case pre: TermRef => i"${pre.symbol.name}."
+            case pre: TypeRef => i"${pre.symbol.name}#"
             case pre: TypeProxy => showPrefixSafely(pre.underlying)
             case _ => if (pre.typeSymbol.exists) i"${pre.typeSymbol.name}#" else "."
           }
