@@ -419,8 +419,8 @@ object Types {
     /** The type symbol associated with the type */
     @tailrec final def typeSymbol(using Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
-      case tp: ClassInfo => tp.cls
       case tp: TypeProxy => tp.underlying.typeSymbol
+      case tp: ClassInfo => tp.cls
       case  _: JavaArrayType => defn.ArrayClass
       case _ => NoSymbol
     }
@@ -430,15 +430,13 @@ object Types {
      *  value type, or because superclasses are ambiguous).
      */
     final def classSymbol(using Context): Symbol = this match {
-      case ConstantType(constant) =>
-        constant.tpe.classSymbol
       case tp: TypeRef =>
         val sym = tp.symbol
         if (sym.isClass) sym else tp.superType.classSymbol
-      case tp: ClassInfo =>
-        tp.cls
       case tp: TypeProxy =>
         tp.underlying.classSymbol
+      case tp: ClassInfo =>
+        tp.cls
       case AndType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
@@ -456,13 +454,13 @@ object Types {
     /** The least (wrt <:<) set of symbols satisfying the `include` predicate of which this type is a subtype
      */
     final def parentSymbols(include: Symbol => Boolean)(using Context): List[Symbol] = this match {
-      case tp: ClassInfo =>
-        tp.cls :: Nil
       case tp: TypeRef =>
         val sym = tp.symbol
         if (include(sym)) sym :: Nil else tp.superType.parentSymbols(include)
       case tp: TypeProxy =>
         tp.underlying.parentSymbols(include)
+      case tp: ClassInfo =>
+        tp.cls :: Nil
       case AndType(l, r) =>
         l.parentSymbols(include) | r.parentSymbols(include)
       case OrType(l, r) =>
