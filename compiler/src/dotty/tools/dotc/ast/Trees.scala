@@ -1248,8 +1248,10 @@ object Trees {
      */
     protected def inlineContext(call: Tree)(using Context): Context = ctx
 
-    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
-      def transform(tree: Tree)(using Context): Tree = {
+    abstract class TreeMap(val cpy: TreeCopier = inst.cpy):
+      self =>
+
+      def transform(tree: Tree)(using Context): Tree =
         inContext(
           if tree.source != ctx.source && tree.source.exists
           then ctx.withSource(tree.source)
@@ -1259,32 +1261,47 @@ object Trees {
           def localCtx =
             if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
 
-          if (skipTransform(tree)) tree
-          else tree match {
+          def transformNamed(tree: Tree): Tree = tree match
             case Ident(name) =>
               tree
             case Select(qualifier, name) =>
               cpy.Select(tree)(transform(qualifier), name)
-            case This(qual) =>
-              tree
-            case Super(qual, mix) =>
-              cpy.Super(tree)(transform(qual), mix)
+            case tree @ ValDef(name, tpt, _) =>
+              if tree eq EmptyValDef then tree
+              else inContext(localCtx) {
+                val tpt1 = transform(tpt)
+                val rhs1 = transform(tree.rhs)
+                cpy.ValDef(tree)(name, tpt1, rhs1)
+              }
+            case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
+              inContext(localCtx) {
+                cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(tree.rhs))
+              }
+            case tree @ TypeDef(name, rhs) =>
+              inContext(localCtx) {
+                cpy.TypeDef(tree)(name, transform(rhs))
+              }
+            case Bind(name, body) =>
+              cpy.Bind(tree)(name, transform(body))
+            case Labeled(bind, expr) =>
+              cpy.Labeled(tree)(transformSub(bind), transform(expr))
+            case _ =>
+              transformMoreCases(tree)
+          end transformNamed
+
+          def transformUnnamed(tree: Tree): Tree = tree match
             case Apply(fun, args) =>
               cpy.Apply(tree)(transform(fun), transform(args))
+            case Block(stats, expr) =>
+              cpy.Block(tree)(transformStats(stats), transform(expr))
             case TypeApply(fun, args) =>
               cpy.TypeApply(tree)(transform(fun), transform(args))
             case Literal(const) =>
               tree
-            case New(tpt) =>
-              cpy.New(tree)(transform(tpt))
-            case Typed(expr, tpt) =>
-              cpy.Typed(tree)(transform(expr), transform(tpt))
-            case NamedArg(name, arg) =>
-              cpy.NamedArg(tree)(name, transform(arg))
-            case Assign(lhs, rhs) =>
-              cpy.Assign(tree)(transform(lhs), transform(rhs))
-            case Block(stats, expr) =>
-              cpy.Block(tree)(transformStats(stats), transform(expr))
+            case This(qual) =>
+              tree
+            case TypeTree() =>
+              tree
             case If(cond, thenp, elsep) =>
               cpy.If(tree)(transform(cond), transform(thenp), transform(elsep))
             case Closure(env, meth, tpt) =>
@@ -1293,8 +1310,14 @@ object Trees {
               cpy.Match(tree)(transform(selector), transformSub(cases))
             case CaseDef(pat, guard, body) =>
               cpy.CaseDef(tree)(transform(pat), transform(guard), transform(body))
-            case Labeled(bind, expr) =>
-              cpy.Labeled(tree)(transformSub(bind), transform(expr))
+            case New(tpt) =>
+              cpy.New(tree)(transform(tpt))
+            case Typed(expr, tpt) =>
+              cpy.Typed(tree)(transform(expr), transform(tpt))
+            case NamedArg(name, arg) =>
+              cpy.NamedArg(tree)(name, transform(arg))
+            case Assign(lhs, rhs) =>
+              cpy.Assign(tree)(transform(lhs), transform(rhs))
             case Return(expr, from) =>
               cpy.Return(tree)(transform(expr), transformSub(from))
             case WhileDo(cond, body) =>
@@ -1305,8 +1328,18 @@ object Trees {
               cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
             case Inlined(call, bindings, expansion) =>
               cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion)(using inlineContext(call)))
-            case TypeTree() =>
-              tree
+            case UnApply(fun, implicits, patterns) =>
+              cpy.UnApply(tree)(transform(fun), transform(implicits), transform(patterns))
+            case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
+              cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body))
+            case Import(expr, selectors) =>
+              cpy.Import(tree)(transform(expr), selectors)
+            case PackageDef(pid, stats) =>
+              cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(using localCtx))
+            case Annotated(arg, annot) =>
+              cpy.Annotated(tree)(transform(arg), transform(annot))
+            case Super(qual, mix) =>
+              cpy.Super(tree)(transform(qual), mix)
             case SingletonTypeTree(ref) =>
               cpy.SingletonTypeTree(tree)(transform(ref))
             case RefinedTypeTree(tpt, refinements) =>
@@ -1327,44 +1360,21 @@ object Trees {
               cpy.ByNameTypeTree(tree)(transform(result))
             case TypeBoundsTree(lo, hi, alias) =>
               cpy.TypeBoundsTree(tree)(transform(lo), transform(hi), transform(alias))
-            case Bind(name, body) =>
-              cpy.Bind(tree)(name, transform(body))
             case Alternative(trees) =>
               cpy.Alternative(tree)(transform(trees))
-            case UnApply(fun, implicits, patterns) =>
-              cpy.UnApply(tree)(transform(fun), transform(implicits), transform(patterns))
-            case EmptyValDef =>
-              tree
-            case tree @ ValDef(name, tpt, _) =>
-              inContext(localCtx) {
-                val tpt1 = transform(tpt)
-                val rhs1 = transform(tree.rhs)
-                cpy.ValDef(tree)(name, tpt1, rhs1)
-              }
-            case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
-              inContext(localCtx) {
-                cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(tree.rhs))
-              }
-            case tree @ TypeDef(name, rhs) =>
-              inContext(localCtx) {
-                cpy.TypeDef(tree)(name, transform(rhs))
-              }
-            case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
-              cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body))
-            case Import(expr, selectors) =>
-              cpy.Import(tree)(transform(expr), selectors)
-            case PackageDef(pid, stats) =>
-              cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(using localCtx))
-            case Annotated(arg, annot) =>
-              cpy.Annotated(tree)(transform(arg), transform(annot))
             case Thicket(trees) =>
               val trees1 = transform(trees)
               if (trees1 eq trees) tree else Thicket(trees1)
             case _ =>
               transformMoreCases(tree)
-          }
+          end transformUnnamed
+
+          if skipTransform(tree) then tree
+          else tree match
+            case tree: NameTree => transformNamed(tree)
+            case _ => transformUnnamed(tree)
         }
-      }
+      end transform
 
       def transformStats(trees: List[Tree])(using Context): List[Tree] =
         transform(trees)
@@ -1379,7 +1389,7 @@ object Trees {
         assert(ctx.reporter.errorsReported)
         tree
       }
-    }
+    end TreeMap
 
     abstract class TreeAccumulator[X] { self =>
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
@@ -1392,113 +1402,124 @@ object Trees {
         fold(x, trees)
 
       def foldOver(x: X, tree: Tree)(using Context): X =
-        if (tree.source != ctx.source && tree.source.exists)
+
+        def localCtx =
+          if tree.hasType && tree.symbol.exists then ctx.withOwner(tree.symbol) else ctx
+
+        def foldNamed(x: X, tree: Tree): X = tree match
+          case Ident(name) =>
+            x
+          case Select(qualifier, name) =>
+            this(x, qualifier)
+          case tree @ ValDef(_, tpt, _) =>
+            inContext(localCtx) {
+              this(this(x, tpt), tree.rhs)
+            }
+          case tree @ DefDef(_, tparams, vparamss, tpt, _) =>
+            inContext(localCtx) {
+              this(this(vparamss.foldLeft(this(x, tparams))(apply), tpt), tree.rhs)
+            }
+          case TypeDef(_, rhs) =>
+            inContext(localCtx) {
+              this(x, rhs)
+            }
+          case Bind(name, body) =>
+            this(x, body)
+          case Labeled(bind, expr) =>
+            this(this(x, bind), expr)
+          case _ =>
+            foldMoreCases(x, tree)
+        end foldNamed
+
+        def foldUnnamed(x: X, tree: Tree): X = tree match
+          case Apply(fun, args) =>
+            this(this(x, fun), args)
+          case Block(stats, expr) =>
+            this(this(x, stats), expr)
+          case TypeApply(fun, args) =>
+            this(this(x, fun), args)
+          case Literal(const) =>
+            x
+          case This(qual) =>
+            x
+          case TypeTree() =>
+            x
+          case If(cond, thenp, elsep) =>
+            this(this(this(x, cond), thenp), elsep)
+          case Closure(env, meth, tpt) =>
+            this(this(this(x, env), meth), tpt)
+          case Match(selector, cases) =>
+            this(this(x, selector), cases)
+          case CaseDef(pat, guard, body) =>
+            this(this(this(x, pat), guard), body)
+          case New(tpt) =>
+            this(x, tpt)
+          case Typed(expr, tpt) =>
+            this(this(x, expr), tpt)
+          case NamedArg(name, arg) =>
+            this(x, arg)
+          case Assign(lhs, rhs) =>
+            this(this(x, lhs), rhs)
+          case Return(expr, from) =>
+            this(this(x, expr), from)
+          case WhileDo(cond, body) =>
+            this(this(x, cond), body)
+          case Try(block, handler, finalizer) =>
+            this(this(this(x, block), handler), finalizer)
+          case SeqLiteral(elems, elemtpt) =>
+            this(this(x, elems), elemtpt)
+          case Inlined(call, bindings, expansion) =>
+            this(this(x, bindings), expansion)(using inlineContext(call))
+          case UnApply(fun, implicits, patterns) =>
+            this(this(this(x, fun), implicits), patterns)
+          case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
+            this(this(this(this(x, constr), parents), self), tree.body)
+          case Import(expr, _) =>
+            this(x, expr)
+          case PackageDef(pid, stats) =>
+            this(this(x, pid), stats)(using localCtx)
+          case Annotated(arg, annot) =>
+            this(this(x, arg), annot)
+          case Super(qual, mix) =>
+            this(x, qual)
+          case SingletonTypeTree(ref) =>
+            this(x, ref)
+          case RefinedTypeTree(tpt, refinements) =>
+            this(this(x, tpt), refinements)
+          case AppliedTypeTree(tpt, args) =>
+            this(this(x, tpt), args)
+          case LambdaTypeTree(tparams, body) =>
+            inContext(localCtx) {
+              this(this(x, tparams), body)
+            }
+          case TermLambdaTypeTree(params, body) =>
+            inContext(localCtx) {
+              this(this(x, params), body)
+            }
+          case MatchTypeTree(bound, selector, cases) =>
+            this(this(this(x, bound), selector), cases)
+          case ByNameTypeTree(result) =>
+            this(x, result)
+          case TypeBoundsTree(lo, hi, alias) =>
+            this(this(this(x, lo), hi), alias)
+          case Alternative(trees) =>
+            this(x, trees)
+          case Thicket(ts) =>
+            this(x, ts)
+          case Hole(_, _, args) =>
+            this(x, args)
+          case _ =>
+            foldMoreCases(x, tree)
+        end foldUnnamed
+
+        if tree.source != ctx.source && tree.source.exists then
           foldOver(x, tree)(using ctx.withSource(tree.source))
-        else {
+        else
           Stats.record(s"TreeAccumulator.foldOver/$getClass")
-          def localCtx =
-            if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
-          tree match {
-            case Ident(name) =>
-              x
-            case Select(qualifier, name) =>
-              this(x, qualifier)
-            case This(qual) =>
-              x
-            case Super(qual, mix) =>
-              this(x, qual)
-            case Apply(fun, args) =>
-              this(this(x, fun), args)
-            case TypeApply(fun, args) =>
-              this(this(x, fun), args)
-            case Literal(const) =>
-              x
-            case New(tpt) =>
-              this(x, tpt)
-            case Typed(expr, tpt) =>
-              this(this(x, expr), tpt)
-            case NamedArg(name, arg) =>
-              this(x, arg)
-            case Assign(lhs, rhs) =>
-              this(this(x, lhs), rhs)
-            case Block(stats, expr) =>
-              this(this(x, stats), expr)
-            case If(cond, thenp, elsep) =>
-              this(this(this(x, cond), thenp), elsep)
-            case Closure(env, meth, tpt) =>
-              this(this(this(x, env), meth), tpt)
-            case Match(selector, cases) =>
-              this(this(x, selector), cases)
-            case CaseDef(pat, guard, body) =>
-              this(this(this(x, pat), guard), body)
-            case Labeled(bind, expr) =>
-              this(this(x, bind), expr)
-            case Return(expr, from) =>
-              this(this(x, expr), from)
-            case WhileDo(cond, body) =>
-              this(this(x, cond), body)
-            case Try(block, handler, finalizer) =>
-              this(this(this(x, block), handler), finalizer)
-            case SeqLiteral(elems, elemtpt) =>
-              this(this(x, elems), elemtpt)
-            case Inlined(call, bindings, expansion) =>
-              this(this(x, bindings), expansion)(using inlineContext(call))
-            case TypeTree() =>
-              x
-            case SingletonTypeTree(ref) =>
-              this(x, ref)
-            case RefinedTypeTree(tpt, refinements) =>
-              this(this(x, tpt), refinements)
-            case AppliedTypeTree(tpt, args) =>
-              this(this(x, tpt), args)
-            case LambdaTypeTree(tparams, body) =>
-              inContext(localCtx) {
-                this(this(x, tparams), body)
-              }
-            case TermLambdaTypeTree(params, body) =>
-              inContext(localCtx) {
-                this(this(x, params), body)
-              }
-            case MatchTypeTree(bound, selector, cases) =>
-              this(this(this(x, bound), selector), cases)
-            case ByNameTypeTree(result) =>
-              this(x, result)
-            case TypeBoundsTree(lo, hi, alias) =>
-              this(this(this(x, lo), hi), alias)
-            case Bind(name, body) =>
-              this(x, body)
-            case Alternative(trees) =>
-              this(x, trees)
-            case UnApply(fun, implicits, patterns) =>
-              this(this(this(x, fun), implicits), patterns)
-            case tree @ ValDef(_, tpt, _) =>
-              inContext(localCtx) {
-                this(this(x, tpt), tree.rhs)
-              }
-            case tree @ DefDef(_, tparams, vparamss, tpt, _) =>
-              inContext(localCtx) {
-                this(this(vparamss.foldLeft(this(x, tparams))(apply), tpt), tree.rhs)
-              }
-            case TypeDef(_, rhs) =>
-              inContext(localCtx) {
-                this(x, rhs)
-              }
-            case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
-              this(this(this(this(x, constr), parents), self), tree.body)
-            case Import(expr, _) =>
-              this(x, expr)
-            case PackageDef(pid, stats) =>
-              this(this(x, pid), stats)(using localCtx)
-            case Annotated(arg, annot) =>
-              this(this(x, arg), annot)
-            case Thicket(ts) =>
-              this(x, ts)
-            case Hole(_, _, args) =>
-              this(x, args)
-            case _ =>
-              foldMoreCases(x, tree)
-          }
-        }
+          tree match
+            case tree: NameTree => foldNamed(x, tree)
+            case _ => foldUnnamed(x, tree)
+      end foldOver
 
       def foldMoreCases(x: X, tree: Tree)(using Context): X = {
         assert(ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), tree)
