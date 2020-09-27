@@ -565,7 +565,7 @@ object Scanners {
         lastOffset = prev.lastOffset
         lineOffset = prev.lineOffset
       }
-      token match {
+      (token: @switch) match {
         case CASE =>
           lookAhead()
           if (token == CLASS) fuse(CASECLASS)
@@ -601,8 +601,8 @@ object Scanners {
           if colonSyntax then observeColonEOL()
         case RBRACE | RPAREN | RBRACKET =>
           closeIndented()
-        case EOF if !source.maybeIncomplete =>
-          closeIndented()
+        case EOF =>
+          if !source.maybeIncomplete then closeIndented()
         case _ =>
       }
     }
