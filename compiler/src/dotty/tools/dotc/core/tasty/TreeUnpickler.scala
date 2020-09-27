@@ -1050,7 +1050,7 @@ class TreeUnpickler(reader: TastyReader,
           case name: TypeName => TypeRef(qualType, name, denot)
           case name: TermName => TermRef(qualType, name, denot)
         }
-        ConstFold(untpd.Select(qual, name).withType(tpe))
+        ConstFold.Select(untpd.Select(qual, name).withType(tpe))
 
       def completeSelect(name: Name, sig: Signature): Select =
         val qual = readTerm()
