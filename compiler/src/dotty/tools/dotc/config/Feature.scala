@@ -23,8 +23,8 @@ object Feature:
     def toPrefix(sym: Symbol): String =
       if !sym.exists || sym == defn.LanguageModule.moduleClass then ""
       else toPrefix(sym.owner) + sym.name.stripModuleClassSuffix + "."
-    val prefix = if owner ne NoSymbol then toPrefix(owner) else ""
-    ctx.base.settings.language.value.contains(prefix + feature)
+    val fullName = if owner ne NoSymbol then toPrefix(owner) + feature else feature.toString
+    ctx.base.settings.language.value.contains(fullName)
 
   /** Is `feature` enabled by by an import? This is the case if the feature
    *  is imported by a named import

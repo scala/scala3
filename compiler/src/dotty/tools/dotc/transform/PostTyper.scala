@@ -231,7 +231,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     }
 
     override def transform(tree: Tree)(using Context): Tree =
-      try tree match {
+
+      def transformNamed(tree: Tree): Tree = tree match
         case tree: Ident if !tree.isType =>
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
@@ -244,61 +245,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           }
           else
             transformSelect(tree, Nil)
-        case tree: Apply =>
-          val methType = tree.fun.tpe.widen
-          val app =
-            if (methType.isErasedMethod)
-              tpd.cpy.Apply(tree)(
-                tree.fun,
-                tree.args.mapConserve(arg =>
-                  if (methType.isImplicitMethod && arg.span.isSynthetic) ref(defn.Predef_undefined)
-                  else dropInlines.transform(arg)))
-            else
-              tree
-          def app1 =
-   		    	// reverse order of transforming args and fun. This way, we get a chance to see other
-   			    // well-formedness errors before reporting errors in possible inferred type args of fun.
-            val args1 = transform(app.args)
-            cpy.Apply(app)(transform(app.fun), args1)
-          methPart(app) match
-            case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
-              // need to check instantiability here, because the type of the New itself
-              // might be a type constructor.
-              Checking.checkInstantiable(tree.tpe, nu.srcPos)
-              withNoCheckNews(nu :: Nil)(app1)
-            case _ =>
-              app1
-        case UnApply(fun, implicits, patterns) =>
-          // Reverse transform order for the same reason as in `app1` above.
-          val patterns1 = transform(patterns)
-          cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
-        case tree: TypeApply =>
-          if tree.symbol.isQuote then
-            ctx.compilationUnit.needsStaging = true
-          val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
-          args.foreach(checkInferredWellFormed)
-          if (fn.symbol != defn.ChildAnnot.primaryConstructor)
-            // Make an exception for ChildAnnot, which should really have AnyKind bounds
-            Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-          fn match {
-            case sel: Select =>
-              val args1 = transform(args)
-              val sel1 = transformSelect(sel, args1)
-              cpy.TypeApply(tree1)(sel1, args1)
-            case _ =>
-              super.transform(tree1)
-          }
-        case Inlined(call, bindings, expansion) if !call.isEmpty =>
-          val pos = call.sourcePos
-          val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
-        case templ: Template =>
-          withNoCheckNews(templ.parents.flatMap(newPart)) {
-            forwardParamAccessors(templ)
-            synthMbr.addSyntheticMembers(
-                superAcc.wrapTemplate(templ)(
-                  super.transform(_).asInstanceOf[Template]))
-          }
         case tree: ValDef =>
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(super.transform(tree1))
@@ -307,20 +253,88 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
-          val sym = tree.symbol
-          if (sym.isClass)
-            VarianceChecker.check(tree)
-            // Add SourceFile annotation to top-level classes
-            if sym.owner.is(Package)
-               && ctx.compilationUnit.source.exists
-               && sym != defn.SourceFileAnnot
-            then
-              sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
-          else (tree.rhs, sym.info) match
-            case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
-              VarianceChecker.checkLambda(rhs, bounds)
-            case _ =>
+          def checkTypeDef() =
+            val sym = tree.symbol
+            if sym.isClass then
+              VarianceChecker.check(tree)
+              // Add SourceFile annotation to top-level classes
+              if sym.owner.is(Package)
+                 && ctx.compilationUnit.source.exists
+                 && sym != defn.SourceFileAnnot
+              then
+                sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
+            else (tree.rhs, sym.info) match
+              case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
+                VarianceChecker.checkLambda(rhs, bounds)
+              case _ =>
+          checkTypeDef()
           processMemberDef(super.transform(tree))
+        case _ =>
+          super.transform(tree)
+      end transformNamed
+
+      def transformUnnamed(tree: Tree): Tree = tree match
+        case tree: Apply =>
+          def transformApply() =
+            val methType = tree.fun.tpe.widen
+            val app =
+              if (methType.isErasedMethod)
+                tpd.cpy.Apply(tree)(
+                  tree.fun,
+                  tree.args.mapConserve(arg =>
+                    if (methType.isImplicitMethod && arg.span.isSynthetic) ref(defn.Predef_undefined)
+                    else dropInlines.transform(arg)))
+              else tree
+            def app1 =
+     		    	// reverse order of transforming args and fun. This way, we get a chance to see other
+   	  		    // well-formedness errors before reporting errors in possible inferred type args of fun.
+              val args1 = transform(app.args)
+              cpy.Apply(app)(transform(app.fun), args1)
+            methPart(app) match
+              case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
+                // need to check instantiability here, because the type of the New itself
+                // might be a type constructor.
+                Checking.checkInstantiable(tree.tpe, nu.srcPos)
+                withNoCheckNews(nu :: Nil)(app1)
+              case _ =>
+                app1
+          transformApply()
+        case UnApply(fun, implicits, patterns) =>
+          // Reverse transform order for the same reason as in `app1` above.
+          val patterns1 = transform(patterns)
+          cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
+        case tree: TypeApply =>
+          def transformTypeApply() =
+            if tree.symbol.isQuote then
+              ctx.compilationUnit.needsStaging = true
+            val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
+            args.foreach(checkInferredWellFormed)
+            if fn.symbol != defn.ChildAnnot.primaryConstructor then
+              // Make an exception for ChildAnnot, which should really have AnyKind bounds
+              Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
+            fn match
+              case sel: Select =>
+                val args1 = transform(args)
+                val sel1 = transformSelect(sel, args1)
+                cpy.TypeApply(tree1)(sel1, args1)
+              case _ =>
+                super.transform(tree1)
+          transformTypeApply()
+        case Inlined(call, bindings, expansion) if !call.isEmpty =>
+          def transformInlined() =
+            val pos = call.sourcePos
+            val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
+            cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
+          transformInlined()
+        case templ: Template =>
+          def transformTemplate() =
+            withNoCheckNews(templ.parents.flatMap(newPart)) {
+              forwardParamAccessors(templ)
+              synthMbr.addSyntheticMembers(
+                  superAcc.wrapTemplate(templ)(
+                    super.transform(_).asInstanceOf[Template]))
+            }
+          transformTemplate()
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.srcPos)
           super.transform(tree)
@@ -330,14 +344,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnot(annot))
         case tree: AppliedTypeTree =>
-          if (tree.tpt.symbol == defn.andType)
-            Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.srcPos)
-              // Ideally, this should be done by Typer, but we run into cyclic references
-              // when trying to typecheck self types which are intersections.
-          else if (tree.tpt.symbol == defn.orType)
-            () // nothing to do
-          else
-            Checking.checkAppliedType(tree)
+          def checkAppliedTypeTree() =
+            if (tree.tpt.symbol == defn.andType)
+              Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.srcPos)
+                // Ideally, this should be done by Typer, but we run into cyclic references
+                // when trying to typecheck self types which are intersections.
+            else if (tree.tpt.symbol == defn.orType)
+              () // nothing to do
+            else
+              Checking.checkAppliedType(tree)
+          checkAppliedTypeTree()
           super.transform(tree)
         case SingletonTypeTree(ref) =>
           Checking.checkRealizable(ref.tpe, ref.srcPos)
@@ -350,20 +366,24 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             }
           )
         case Import(expr, selectors) =>
-          val exprTpe = expr.tpe
-          val seen = mutable.Set.empty[Name]
+          def checkImport() =
+            val exprTpe = expr.tpe
+            val seen = mutable.Set.empty[Name]
 
-          def checkIdent(sel: untpd.ImportSelector): Unit =
-            if !exprTpe.member(sel.name).exists
-               && !exprTpe.member(sel.name.toTypeName).exists
-               && !exprTpe.member(sel.name.toExtensionName).exists then
-              report.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.srcPos)
-            if seen.contains(sel.name) then
-              report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
-            seen += sel.name
+            def checkIdent(sel: untpd.ImportSelector): Unit =
+              if !exprTpe.member(sel.name).exists
+                 && !exprTpe.member(sel.name.toTypeName).exists
+                 && !exprTpe.member(sel.name.toExtensionName).exists
+              then
+                report.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.srcPos)
+              if seen.contains(sel.name) then
+                report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
+              seen += sel.name
 
-          for sel <- selectors do
-            if !sel.isWildcard then checkIdent(sel)
+            for sel <- selectors do
+              if !sel.isWildcard then checkIdent(sel)
+          end checkImport
+          checkImport()
           super.transform(tree)
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
@@ -375,22 +395,27 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             // (which translates to)
             //     case x: (_: Tree[?])
         case m @ MatchTypeTree(bounds, selector, cases) =>
-          // Analog to the case above for match types
-          def tranformIgnoringBoundsCheck(x: CaseDef): CaseDef =
-            withMode(Mode.Pattern)(super.transform(x)).asInstanceOf[CaseDef]
-          cpy.MatchTypeTree(tree)(
-            super.transform(bounds),
-            super.transform(selector),
-            cases.mapConserve(tranformIgnoringBoundsCheck)
-          )
+          def transformMatchTypeTree() =
+            // Analog to the case above for match types
+            def tranformIgnoringBoundsCheck(x: CaseDef): CaseDef =
+              withMode(Mode.Pattern)(super.transform(x)).asInstanceOf[CaseDef]
+            cpy.MatchTypeTree(tree)(
+              super.transform(bounds),
+              super.transform(selector),
+              cases.mapConserve(tranformIgnoringBoundsCheck)
+            )
+          transformMatchTypeTree()
         case tree =>
           super.transform(tree)
-      }
-      catch {
-        case ex : AssertionError =>
-          println(i"error while transforming $tree")
-          throw ex
-      }
+      end transformUnnamed
+
+      try tree match
+        case tree: NameTree => transformNamed(tree)
+        case _ => transformUnnamed(tree)
+      catch case ex : AssertionError =>
+        println(i"error while transforming $tree")
+        throw ex
+    end transform
 
     /** Transforms the rhs tree into a its default tree if it is in an `erased` val/def.
      *  Performed to shrink the tree that is known to be erased later.

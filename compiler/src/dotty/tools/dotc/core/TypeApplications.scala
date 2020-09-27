@@ -211,7 +211,9 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def hkResult(using Context): Type = self.dealias match {
     case self: TypeRef =>
-      if (self.symbol == defn.AnyKindClass) self else self.info.hkResult
+      if self.symbol.isClass then
+        if self.symbol == defn.AnyKindClass then self else NoType
+      else self.info.hkResult
     case self: AppliedType =>
       if (self.tycon.typeSymbol.isClass) NoType else self.superType.hkResult
     case self: HKTypeLambda => self.resultType
