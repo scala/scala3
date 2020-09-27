@@ -2533,7 +2533,7 @@ class Typer extends Namer
         !tree.isInstanceOf[Applications.IntegratedTypeArgs])
           // don't interpolate in the middle of an extension method application
       if (!tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
-          || tree.isDef) {                             // ... unless tree is a definition
+          || tree.isDef) {                           // ... unless tree is a definition
         interpolateTypeVars(tree, pt, locked)
         tree.overwriteType(tree.tpe.simplified)
       }
