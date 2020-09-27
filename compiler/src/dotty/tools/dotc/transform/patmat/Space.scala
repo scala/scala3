@@ -486,7 +486,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       case tp @ RefinedType(parent, _, _) =>
         erase(parent)
 
-      case tref: TypeRef if tref.typeSymbol.isPatternBound =>
+      case tref: TypeRef if tref.symbol.isPatternBound =>
         if (inArray) tref.underlying else WildcardType
 
       case _ => tp
@@ -645,26 +645,22 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
 
   /** Abstract sealed types, or-types, Boolean and Java enums can be decomposed */
-  def canDecompose(tp: Type): Boolean = {
-    val dealiasedTp = tp.dealias
-    val res =
-      (tp.classSymbol.is(Sealed) &&
-        tp.classSymbol.isOneOf(AbstractOrTrait) &&
-        !tp.classSymbol.hasAnonymousChild &&
-        tp.classSymbol.children.nonEmpty ) ||
-      dealiasedTp.isInstanceOf[OrType] ||
-      (dealiasedTp.isInstanceOf[AndType] && {
-        val and = dealiasedTp.asInstanceOf[AndType]
-        canDecompose(and.tp1) || canDecompose(and.tp2)
-      }) ||
-      tp.isRef(defn.BooleanClass) ||
-      tp.isRef(defn.UnitClass) ||
-      tp.classSymbol.isAllOf(JavaEnumTrait)
-
+  def canDecompose(tp: Type): Boolean =
+    val res = tp.dealias match
+      case _: SingletonType => false
+      case _: OrType => true
+      case and: AndType => canDecompose(and.tp1) || canDecompose(and.tp2)
+      case _ =>
+        val cls = tp.classSymbol
+        cls.is(Sealed)
+        && cls.isOneOf(AbstractOrTrait)
+        && !cls.hasAnonymousChild
+        && cls.children.nonEmpty
+        || cls.isAllOf(JavaEnumTrait)
+        || tp.isRef(defn.BooleanClass)
+        || tp.isRef(defn.UnitClass)
     debug.println(s"decomposable: ${tp.show} = $res")
-
     res
-  }
 
   /** Show friendly type name with current scope in mind
    *
@@ -765,7 +761,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
         if (flattenList && tp <:< scalaNilType) ""
         else tp.symbol.showName
       case Typ(tp, decomposed) =>
-        val sym = tp.widen.classSymbol
+
+        val sym = tp.classSymbol
 
         if (ctx.definitions.isTupleType(tp))
           params(tp).map(_ => "_").mkString("(", ", ", ")")

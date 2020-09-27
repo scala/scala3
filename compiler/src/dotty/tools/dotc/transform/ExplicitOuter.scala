@@ -398,7 +398,7 @@ object ExplicitOuter {
              count: Int = -1): Tree =
       try
         @tailrec def loop(tree: Tree, count: Int): Tree =
-          val treeCls = tree.tpe.widen.classSymbol
+          val treeCls = tree.tpe.classSymbol
           report.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${atPhaseNoLater(lambdaLiftPhase)(outerAccName(treeCls.asClass))} in $treeCls")
           if (count == 0 || count < 0 && treeCls == toCls) tree
           else

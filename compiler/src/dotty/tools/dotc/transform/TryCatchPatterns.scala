@@ -72,7 +72,7 @@ class TryCatchPatterns extends MiniPhase {
 
   private def isSimpleThrowable(tp: Type)(using Context): Boolean = tp.stripAnnots match {
     case tp @ TypeRef(pre, _) =>
-      (pre == NoPrefix || pre.widen.typeSymbol.isStatic) && // Does not require outer class check
+      (pre == NoPrefix || pre.typeSymbol.isStatic) && // Does not require outer class check
       !tp.symbol.is(Flags.Trait) && // Traits not supported by JVM
       tp.derivesFrom(defn.ThrowableClass)
     case tp: AppliedType =>

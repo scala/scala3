@@ -327,7 +327,7 @@ trait QuotesAndSplices {
         val isFreshTypeBindings = freshTypeBindings.map(_.symbol).toSet
         val typeMap = new TypeMap() {
           def apply(tp: Type): Type = tp match {
-            case tp: TypeRef if tp.typeSymbol.isTypeSplice =>
+            case tp: TypeRef if tp.symbol.isTypeSplice =>
               val tp1 = tp.dealias
               if (isFreshTypeBindings(tp1.typeSymbol)) tp1
               else tp
@@ -408,7 +408,7 @@ trait QuotesAndSplices {
     class ReplaceBindings extends TypeMap() {
       override def apply(tp: Type): Type = tp match {
         case tp: TypeRef =>
-          val tp1 = if (tp.typeSymbol.isTypeSplice) tp.dealias else tp
+          val tp1 = if (tp.symbol.isTypeSplice) tp.dealias else tp
           mapOver(typeBindings.get(tp1.typeSymbol).fold(tp)(_.symbol.typeRef))
         case tp => mapOver(tp)
       }

@@ -283,7 +283,7 @@ import ast.tpd
 
   class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)
   extends NotFoundMsg(NotAMemberID) {
-    //println(i"site = $site, decls = ${site.decls}, source = ${site.widen.typeSymbol.sourceFile}") //DEBUG
+    //println(i"site = $site, decls = ${site.decls}, source = ${site.typeSymbol.sourceFile}") //DEBUG
 
     def msg = {
       import core.Flags._

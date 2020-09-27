@@ -571,7 +571,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   /** The erasure of a function result type. */
   private def eraseResult(tp: Type)(using Context): Type = tp match {
     case tp: TypeRef =>
-      val sym = tp.typeSymbol
+      val sym = tp.symbol
       if (sym eq defn.UnitClass) sym.typeRef
       // For a value class V, "new V(x)" should have type V for type adaptation to work
       // correctly (see SIP-15 and [[Erasure.Boxing.adaptToType]]), so the return type of a

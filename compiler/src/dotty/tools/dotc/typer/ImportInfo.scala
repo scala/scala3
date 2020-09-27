@@ -186,7 +186,7 @@ class ImportInfo(symf: Context ?=> Symbol,
   def featureImported(feature: TermName, owner: Symbol)(using Context): Boolean =
 
     def compute =
-      val isImportOwner = site.widen.typeSymbol.eq(owner)
+      val isImportOwner = site.typeSymbol.eq(owner)
       if isImportOwner && forwardMapping.contains(feature) then true
       else if isImportOwner && excluded.contains(feature) then false
       else

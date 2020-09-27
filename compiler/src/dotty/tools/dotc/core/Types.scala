@@ -419,9 +419,8 @@ object Types {
     /** The type symbol associated with the type */
     @tailrec final def typeSymbol(using Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
-      case tp: ClassInfo => tp.cls
-      case tp: SingletonType => NoSymbol
       case tp: TypeProxy => tp.underlying.typeSymbol
+      case tp: ClassInfo => tp.cls
       case  _: JavaArrayType => defn.ArrayClass
       case _ => NoSymbol
     }
@@ -431,17 +430,13 @@ object Types {
      *  value type, or because superclasses are ambiguous).
      */
     final def classSymbol(using Context): Symbol = this match {
-      case ConstantType(constant) =>
-        constant.tpe.classSymbol
       case tp: TypeRef =>
         val sym = tp.symbol
         if (sym.isClass) sym else tp.superType.classSymbol
-      case tp: ClassInfo =>
-        tp.cls
-      case tp: SingletonType =>
-        NoSymbol
       case tp: TypeProxy =>
         tp.underlying.classSymbol
+      case tp: ClassInfo =>
+        tp.cls
       case AndType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
@@ -459,13 +454,13 @@ object Types {
     /** The least (wrt <:<) set of symbols satisfying the `include` predicate of which this type is a subtype
      */
     final def parentSymbols(include: Symbol => Boolean)(using Context): List[Symbol] = this match {
-      case tp: ClassInfo =>
-        tp.cls :: Nil
       case tp: TypeRef =>
         val sym = tp.symbol
         if (include(sym)) sym :: Nil else tp.superType.parentSymbols(include)
       case tp: TypeProxy =>
         tp.underlying.parentSymbols(include)
+      case tp: ClassInfo =>
+        tp.cls :: Nil
       case AndType(l, r) =>
         l.parentSymbols(include) | r.parentSymbols(include)
       case OrType(l, r) =>
@@ -775,8 +770,8 @@ object Types {
           core.println(s"findMember exception for $this member $name, pre = $pre, recCount = $recCount")
 
           def showPrefixSafely(pre: Type)(using Context): String = pre.stripTypeVar match {
-            case pre: TermRef => i"${pre.termSymbol.name}."
-            case pre: TypeRef => i"${pre.typeSymbol.name}#"
+            case pre: TermRef => i"${pre.symbol.name}."
+            case pre: TypeRef => i"${pre.symbol.name}#"
             case pre: TypeProxy => showPrefixSafely(pre.underlying)
             case _ => if (pre.typeSymbol.exists) i"${pre.typeSymbol.name}#" else "."
           }
@@ -2377,7 +2372,7 @@ object Types {
     /** A reference like this one, but with the given prefix. */
     final def withPrefix(prefix: Type)(using Context): NamedType = {
       def reload(): NamedType = {
-        val allowPrivate = !lastSymbol.exists || lastSymbol.is(Private) && prefix.classSymbol == this.prefix.classSymbol
+        val allowPrivate = !lastSymbol.exists || lastSymbol.is(Private)
         var d = memberDenot(prefix, name, allowPrivate)
         if (d.isOverloaded && lastSymbol.exists)
           d = disambiguate(d,
@@ -3833,18 +3828,14 @@ object Types {
 
     private var validSuper: Period = Nowhere
     private var cachedSuper: Type = _
+
+    // Boolean caches: 0 = uninitialized, -1 = false, 1 = true
     private var myStableHash: Byte = 0
+    private var myGround: Byte = 0
 
-    private var isGroundKnown: Boolean = false
-    private var isGroundCache: Boolean = _
-
-    def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean = {
-      if (!isGroundKnown) {
-        isGroundCache = acc.foldOver(true, this)
-        isGroundKnown = true
-      }
-      isGroundCache
-    }
+    def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
+      if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
+      myGround > 0
 
     override def underlying(using Context): Type = tycon
 
@@ -5645,7 +5636,7 @@ object Types {
             foldOver(cs + tp.typeSymbol, tp)
           case tp: TypeRef if tp.info.isTypeAlias =>
             apply(cs, tp.superType)
-          case tp: TypeRef if tp.typeSymbol.isClass =>
+          case tp: TypeRef if tp.symbol.isClass =>
             foldOver(cs + tp.typeSymbol, tp)
           case tp: TermRef =>
             val tsym = if (tp.termSymbol.is(Param)) tp.underlying.typeSymbol else tp.termSymbol

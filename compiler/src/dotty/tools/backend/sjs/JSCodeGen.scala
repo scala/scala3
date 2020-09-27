@@ -1553,7 +1553,7 @@ class JSCodeGen()(using genCtx: Context) {
     assert(ctor.isClassConstructor,
         "'new' call to non-constructor: " + ctor.name)
 
-    val clsSym = tpe.widenDealias.typeSymbol
+    val clsSym = tpe.typeSymbol
 
     if (isHijackedClass(clsSym)) {
       genNewHijackedClass(clsSym, ctor, args.map(genExpr))
@@ -1922,8 +1922,8 @@ class JSCodeGen()(using genCtx: Context) {
   private def genEqEqPrimitive(ltpe: Type, rtpe: Type, lsrc: js.Tree, rsrc: js.Tree)(
       implicit pos: SourcePosition): js.Tree = {
     report.debuglog(s"$ltpe == $rtpe")
-    val lsym = ltpe.widenDealias.typeSymbol.asClass
-    val rsym = rtpe.widenDealias.typeSymbol.asClass
+    val lsym = ltpe.typeSymbol.asClass
+    val rsym = rtpe.typeSymbol.asClass
 
     /* True if the equality comparison is between values that require the
      * use of the rich equality comparator
@@ -2098,7 +2098,7 @@ class JSCodeGen()(using genCtx: Context) {
     val exception = args.head
     val genException = genExpr(exception)
     js.Throw {
-      if (exception.tpe.widenDealias.typeSymbol.derivesFrom(jsdefn.JavaScriptExceptionClass)) {
+      if (exception.tpe.typeSymbol.derivesFrom(jsdefn.JavaScriptExceptionClass)) {
         genModuleApplyMethod(
             jsdefn.Runtime_unwrapJavaScriptException,
             List(genException))
@@ -2594,7 +2594,7 @@ class JSCodeGen()(using genCtx: Context) {
       box(call, sym.info.finalResultType)
     }
 
-    val funInterfaceSym = functionalInterface.tpe.widenDealias.typeSymbol
+    val funInterfaceSym = functionalInterface.tpe.typeSymbol
 
     if (jsdefn.isJSThisFunctionClass(funInterfaceSym)) {
       val thisParam :: otherParams = formalParams
@@ -2688,7 +2688,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genAsInstanceOf(value: js.Tree, to: Type)(
       implicit pos: Position): js.Tree = {
 
-    val sym = to.widenDealias.typeSymbol
+    val sym = to.typeSymbol
 
     if (sym == defn.ObjectClass || isJSType(sym)) {
       /* asInstanceOf[Object] always succeeds, and
@@ -2716,7 +2716,7 @@ class JSCodeGen()(using genCtx: Context) {
   /** Gen JS code for an isInstanceOf test (for reference types only) */
   private def genIsInstanceOf(value: js.Tree, to: Type)(
       implicit pos: SourcePosition): js.Tree = {
-    val sym = to.widenDealias.typeSymbol
+    val sym = to.typeSymbol
 
     if (sym == defn.ObjectClass) {
       js.BinaryOp(js.BinaryOp.!==, value, js.Null())

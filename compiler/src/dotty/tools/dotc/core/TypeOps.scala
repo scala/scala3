@@ -752,7 +752,7 @@ object TypeOps:
     // variance. As this logic is only needed in exhaustivity check,
     // we manually patch subtyping check instead of changing TypeComparer.
     // See tests/patmat/i3645b.scala
-    def parentQualify(tp1: Type, tp2: Type) = tp1.widen.classSymbol.info.parents.exists { parent =>
+    def parentQualify(tp1: Type, tp2: Type) = tp1.classSymbol.info.parents.exists { parent =>
       parent.argInfos.nonEmpty && approximateTypeParams(parent) <:< tp2
     }
 

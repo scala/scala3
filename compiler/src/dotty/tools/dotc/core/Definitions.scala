@@ -998,11 +998,10 @@ class Definitions {
       FunctionType(args.length, isContextual, isErased).appliedTo(args ::: resultType :: Nil)
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean, Boolean)] = {
       val tsym = ft.typeSymbol
-      if (isFunctionClass(tsym)) {
+      if isFunctionClass(tsym) && ft.isRef(tsym) then
         val targs = ft.dealias.argInfos
         if (targs.isEmpty) None
         else Some(targs.init, targs.last, tsym.name.isContextFunction, tsym.name.isErasedFunction)
-      }
       else None
     }
   }
@@ -1379,15 +1378,16 @@ class Definitions {
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
    *  instance?
    */
-  def isNonRefinedFunction(tp: Type)(using Context): Boolean = {
+  def isNonRefinedFunction(tp: Type)(using Context): Boolean =
     val arity = functionArity(tp)
     val sym = tp.dealias.typeSymbol
 
-    arity >= 0 &&
-      isFunctionClass(sym) &&
-      tp.isRef(FunctionType(arity, sym.name.isContextFunction, sym.name.isErasedFunction).typeSymbol) &&
-      !tp.isInstanceOf[RefinedType]
-  }
+    arity >= 0
+    && isFunctionClass(sym)
+    && tp.isRef(
+        FunctionType(arity, sym.name.isContextFunction, sym.name.isErasedFunction).typeSymbol,
+        skipRefined = false)
+  end isNonRefinedFunction
 
   /** Is `tp` a representation of a (possibly dependent) function type or an alias of such? */
   def isFunctionType(tp: Type)(using Context): Boolean =
@@ -1460,9 +1460,9 @@ class Definitions {
       if ctx.erasedTypes then
         atPhase(erasurePhase)(unapply(tp))
       else
-        val tp1 = tp.dealias
-        if isContextFunctionClass(tp1.typeSymbol) then
-          val args = asContextFunctionType(tp).dropDependentRefinement.argInfos
+        val tp1 = asContextFunctionType(tp)
+        if tp1.exists then
+          val args = tp1.dropDependentRefinement.argInfos
           Some((args.init, args.last, tp1.typeSymbol.name.isErasedFunction))
         else None
 

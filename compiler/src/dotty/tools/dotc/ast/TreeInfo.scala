@@ -690,7 +690,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   private def isSimpleThrowable(tp: Type)(using Context): Boolean = tp match {
     case tp @ TypeRef(pre, _) =>
-      (pre == NoPrefix || pre.widen.typeSymbol.isStatic) &&
+      (pre == NoPrefix || pre.typeSymbol.isStatic) &&
       (tp.symbol derivesFrom defn.ThrowableClass) && !tp.symbol.is(Trait)
     case _ =>
       false
