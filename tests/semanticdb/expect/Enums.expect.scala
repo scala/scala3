@@ -12,10 +12,10 @@ object Enums/*<-_empty_::Enums.*/:
     case Hearts/*<-_empty_::Enums.Suits.Hearts.*/, Spades/*<-_empty_::Enums.Suits.Spades.*/, Clubs/*<-_empty_::Enums.Suits.Clubs.*/, Diamonds/*<-_empty_::Enums.Suits.Diamonds.*/
 
   object Suits/*<-_empty_::Enums.Suits.*/:
-    extension (suit/*<-_empty_::Enums.Suits.extension_isRed().(suit)*/: Suits/*->_empty_::Enums.Suits#*/) def isRed: Boolean /*<-_empty_::Enums.Suits.extension_isRed().*//*->scala::Boolean#*/=
+    extension (suit/*<-_empty_::Enums.Suits.extension_isRed().(suit)*/: Suits/*->_empty_::Enums.Suits#*/) def isRed/*<-_empty_::Enums.Suits.extension_isRed().*/: Boolean/*->scala::Boolean#*/ =
       suit/*->_empty_::Enums.Suits.extension_isRed().(suit)*/ ==/*->scala::Any#`==`().*/ Hearts/*->_empty_::Enums.Suits.Hearts.*/ ||/*->scala::Boolean#`||`().*/ suit/*->_empty_::Enums.Suits.extension_isRed().(suit)*/ ==/*->scala::Any#`==`().*/ Diamonds/*->_empty_::Enums.Suits.Diamonds.*/
 
-    extension (suit/*<-_empty_::Enums.Suits.extension_isBlack().(suit)*/: Suits/*->_empty_::Enums.Suits#*/) def isBlack: Boolean /*<-_empty_::Enums.Suits.extension_isBlack().*//*->scala::Boolean#*/= suit/*->_empty_::Enums.Suits.extension_isBlack().(suit)*/ match
+    extension (suit/*<-_empty_::Enums.Suits.extension_isBlack().(suit)*/: Suits/*->_empty_::Enums.Suits#*/) def isBlack/*<-_empty_::Enums.Suits.extension_isBlack().*/: Boolean/*->scala::Boolean#*/ = suit/*->_empty_::Enums.Suits.extension_isBlack().(suit)*/ match
       case Spades/*->_empty_::Enums.Suits.Spades.*/ | Clubs/*->_empty_::Enums.Suits.Clubs.*/ => true
       case _              => false
 
@@ -49,7 +49,7 @@ object Enums/*<-_empty_::Enums.*/:
   object <:</*<-_empty_::Enums.`<:<`.*/ :
     given [T] as /*<-_empty_::Enums.`<:<`.given_T().*//*<-_empty_::Enums.`<:<`.given_T().[T]*/(T/*->_empty_::Enums.`<:<`.given_T().[T]*/ <:</*->_empty_::Enums.`<:<`#*/ T/*->_empty_::Enums.`<:<`.given_T().[T]*/) = Refl/*->_empty_::Enums.`<:<`.Refl.*//*->_empty_::Enums.`<:<`.Refl.apply().*/()
 
-  extension [A/*<-_empty_::Enums.extension_unwrap().[A]*/, B/*<-_empty_::Enums.extension_unwrap().[B]*/](opt/*<-_empty_::Enums.extension_unwrap().(opt)*/: Option/*->scala::Option#*/[A/*->_empty_::Enums.extension_unwrap().[A]*/]) def unwrap(using ev:/*<-_empty_::Enums.extension_unwrap().*//*<-_empty_::Enums.extension_unwrap().(ev)*/ A/*->_empty_::Enums.extension_unwrap().[A]*/ <:</*->_empty_::Enums.`<:<`#*/ Option/*->scala::Option#*/[B/*->_empty_::Enums.extension_unwrap().[B]*/]): Option/*->scala::Option#*/[B/*->_empty_::Enums.extension_unwrap().[B]*/] = ev/*->_empty_::Enums.extension_unwrap().(ev)*/ match
+  extension [A/*<-_empty_::Enums.extension_unwrap().[A]*/, B/*<-_empty_::Enums.extension_unwrap().[B]*/](opt/*<-_empty_::Enums.extension_unwrap().(opt)*/: Option/*->scala::Option#*/[A/*->_empty_::Enums.extension_unwrap().[A]*/]) def unwrap/*<-_empty_::Enums.extension_unwrap().*/(using ev/*<-_empty_::Enums.extension_unwrap().(ev)*/: A/*->_empty_::Enums.extension_unwrap().[A]*/ <:</*->_empty_::Enums.`<:<`#*/ Option/*->scala::Option#*/[B/*->_empty_::Enums.extension_unwrap().[B]*/]): Option/*->scala::Option#*/[B/*->_empty_::Enums.extension_unwrap().[B]*/] = ev/*->_empty_::Enums.extension_unwrap().(ev)*/ match
     case Refl/*->_empty_::Enums.`<:<`.Refl.*//*->_empty_::Enums.`<:<`.Refl.unapply().*/() => opt/*->_empty_::Enums.extension_unwrap().(opt)*/.flatMap/*->scala::Option#flatMap().*/(identity/*->scala::Predef.identity().*//*->local0*/[Option/*->scala::Option#*/[B/*->_empty_::Enums.extension_unwrap().[B]*/]])
 
   val some1/*<-_empty_::Enums.some1.*/ = /*->_empty_::Enums.extension_unwrap().*/Some/*->scala::Some.*//*->scala::Some.apply().*/(Some/*->scala::Some.*//*->scala::Some.apply().*/(1))/*->_empty_::Enums.`<:<`.given_T().*/.unwrap
