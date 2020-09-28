@@ -337,16 +337,13 @@ object Trees {
      *  a calling chain from `viewExists`), in that case the return position is NoSpan.
      *  Overridden in Bind
      */
-    def nameSpan(using Context): Span =
+    def nameSpan: Span =
       if (span.exists) {
         val point = span.point
-        if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR) Span(point)
+        if (rawMods.is(Synthetic) || name.toTermName == nme.ERROR) Span(point)
         else {
           val realName = name.stripModuleClassSuffix.lastPart
-          var length = realName.length
-          if (mods.is(ExtensionMethod) || symbol.is(ExtensionMethod)) && name.isExtensionName then
-            length -= "extension_".length
-          Span(point, point + length, point)
+          Span(point, point + realName.length, point)
         }
       }
       else span
@@ -355,7 +352,7 @@ object Trees {
      *  This is a point position if the definition is synthetic, or a range position
      *  if the definition comes from source.
      */
-    def namePos(using Context): SourcePosition = source.atSpan(nameSpan)
+    def namePos: SourcePosition = source.atSpan(nameSpan)
   }
 
   /** Tree defines a new symbol and carries modifiers.
@@ -714,7 +711,7 @@ object Trees {
     override def isType: Boolean = name.isTypeName
     override def isTerm: Boolean = name.isTermName
 
-    override def nameSpan(using Context): Span =
+    override def nameSpan: Span =
       if span.exists then Span(span.start, span.start + name.toString.length) else span
   }
 
