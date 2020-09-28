@@ -6,8 +6,6 @@ import com.vladsch.flexmark.util.{ast => mdu}
 import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.util.options.MutableDataSet
 
-type Packages = Any /* Map[String, EmulatedPackageRepresentation] */
-
 import scala.tasty.Reflection
 class Repr(val r: Reflection)(val sym: r.Symbol)
 
@@ -102,17 +100,17 @@ trait MarkupConversion[T] {
     )
 }
 
-class MarkdownCommentParser(repr: Repr, packages: Packages)
+class MarkdownCommentParser(repr: Repr)
     extends MarkupConversion[mdu.Document] {
 
   def stringToMarkup(str: String) =
-    HtmlParsers.parseToMarkdown(str, repr, packages)
+    MarkdownParser.parseToMarkdown(str)
 
   def markupToDokka(md: mdu.Document) =
-    MarkdownConverter(repr.r)(repr.sym).convertDocument(md)
+    MarkdownConverter(repr).convertDocument(md)
 
   def markupToDokkaCommentBody(md: mdu.Document) =
-    val converter = MarkdownConverter(repr.r)(repr.sym)
+    val converter = MarkdownConverter(repr)
     DokkaCommentBody(
       summary = converter.extractAndConvertSummary(md),
       body = converter.convertDocument(md),
@@ -139,18 +137,17 @@ class MarkdownCommentParser(repr: Repr, packages: Packages)
       .view.mapValues(stringToMarkup).toMap
 }
 
-case class WikiCommentParser(repr: Repr, packages: Packages)
+case class WikiCommentParser(repr: Repr)
     extends MarkupConversion[wiki.Body] {
 
   def stringToMarkup(str: String) =
     wiki.Parser(str).document()
 
   def markupToDokka(body: wiki.Body) =
-    wiki.Converter(repr.r)(repr.sym).convertBody(body)
+    wiki.Converter(repr).convertBody(body)
 
   def markupToDokkaCommentBody(body: wiki.Body) =
-    val converter =
-      wiki.Converter(repr.r)(repr.sym)
+    val converter = wiki.Converter(repr)
     DokkaCommentBody(
       summary = body.summary.map(converter.convertBody),
       body = converter.convertBody(body),
@@ -168,7 +165,7 @@ case class WikiCommentParser(repr: Repr, packages: Packages)
       //   case _ => body
       // }
       // (targetStr, newBody.show(ent))
-      (targetStr, wiki.Converter(repr.r)(repr.sym).convertBody(body))
+      (targetStr, wiki.Converter(repr).convertBody(body))
     }
   }
 

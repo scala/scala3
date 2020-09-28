@@ -57,6 +57,30 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         ).toString
     }
 
+    override def buildCodeBlock(
+        f: FlowContent,
+        code: ContentCodeBlock,
+        pageContext: ContentPage,
+    ): Unit = {
+        // we cannot use Scalatags, because we need to call buildContentNode
+        import kotlinx.html.{Gen_consumer_tagsKt => dsl}
+        val c = f.getConsumer
+        val U = kotlin.Unit.INSTANCE
+
+        dsl.div(c, "sample-container", { e =>
+            dsl.pre(c, null, { e =>
+                val codeClass = code.getStyle.asScala.iterator.map(_.toString.toLowerCase).mkString("", " ", " language-scala")
+                dsl.code(c, codeClass, { e =>
+                    e.getAttributes.put("theme", "idea")
+                    code.getChildren.asScala.foreach(buildContentNode(f, _, pageContext, /*sourceSetRestriction*/ null))
+                    U
+                })
+                U
+            })
+            U
+        })
+    }
+
     private def buildWithKotlinx(node: ContentNode, pageContext: ContentPage, sourceSetRestriciton: java.util.Set[DisplaySourceSet]): String = {
         val res = Gen_consumer_tagsKt.div(
             StreamKt.createHTML(true, false),

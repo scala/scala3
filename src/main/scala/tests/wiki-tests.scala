@@ -25,8 +25,8 @@ package tests
   *     - a.c
   *   - b
   *     1. b.1
-  *     2. b.2
-  *     3. b.3
+  *     1. b.2
+  *     1. b.3
   *        a. b.3.a
   *        a. b.3.b
   *         a. b.3.c
