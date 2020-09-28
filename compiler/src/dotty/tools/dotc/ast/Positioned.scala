@@ -46,7 +46,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
   uniqueId = src.nextId
   span = envelope(src)
 
-  def source: SourceFile = SourceFile.fromId(uniqueId)
+  val source: SourceFile = src
   def sourcePos(using Context): SourcePosition = source.atSpan(span)
 
   /** This positioned item, widened to `SrcPos`. Used to make clear we only need the
