@@ -323,11 +323,10 @@ object DesugarEnums {
   }
 
   def enumBaseMeths(using Context): List[Tree] =
-    val ordinalDef = DefDef(nme.ordinal, Nil, Nil, ref(defn.IntType), EmptyTree)
-    val enumLabelDef = DefDef(nme.enumLabel, Nil, Nil, ref(defn.StringClass.typeRef), EmptyTree)
-    val base = enumLabelDef :: Nil
-    if isJavaEnum then base
-    else ordinalDef :: base
+    if isJavaEnum then
+      enumLabelMeth(EmptyTree) :: Nil
+    else
+      ordinalMeth(EmptyTree) :: enumLabelMeth(EmptyTree) :: Nil
 
   def param(name: TermName, typ: Type)(using Context): ValDef = param(name, TypeTree(typ))
   def param(name: TermName, tpt: Tree)(using Context): ValDef = ValDef(name, tpt, EmptyTree).withFlags(Param)
