@@ -32,13 +32,15 @@ object Matcher {
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.fromAbove`")
   class fromAbove extends Annotation
 
-  class QuoteMatcher[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) {
+  class QuoteMatcher[QCtx <: QuoteContext & Singleton](val qctx: QCtx) {
     import qctx.tasty._
 
-    def termMatch(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] =
+    class SymBinding(val sym: Symbol, val fromAbove: Boolean)
+
+    def termMatch(scrutineeTerm: Term, patternTerm: Term): Option[Tuple] =
       throw new Exception("Non bootstrapped lib")
 
-    def typeTreeMatch(scrutineeTypeTree: TypeTree, patternTypeTree: TypeTree, hasTypeSplices: Boolean): Option[Tuple] =
+    def typeTreeMatch(scrutineeTypeTree: TypeTree, patternTypeTree: TypeTree): Option[Tuple] =
       throw new Exception("Non bootstrapped lib")
   }
 

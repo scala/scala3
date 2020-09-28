@@ -450,7 +450,7 @@ trait QuotesAndSplices {
       else ref(defn.QuotedTypeModule_apply.termRef).appliedToTypeTree(shape).select(nme.apply).appliedTo(qctx)
     UnApply(
       fun = ref(unapplySym.termRef).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
-      implicits = quotedPattern :: Literal(Constant(typeBindings.nonEmpty)) :: qctx :: Nil,
+      implicits = quotedPattern :: qctx :: Nil,
       patterns = splicePat :: Nil,
       proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
   }

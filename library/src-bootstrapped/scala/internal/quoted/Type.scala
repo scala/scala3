@@ -28,22 +28,16 @@ object Type {
   /** Pattern matches an the scrutineeType against the patternType and returns a tuple
    *  with the matched holes if successful.
    *
-   *  Holes:
-   *    - scala.internal.Quoted.patternHole[T]: hole that matches an expression `x` of type `Type[U]`
-   *                                            if `U <:< T` and returns `x` as part of the match.
-   *
    *  @param scrutineeType `Type[_]` on which we are pattern matching
    *  @param patternType `Type[_]` containing the pattern tree
-   *  @param hasTypeSplices `Boolean` notify if the pattern has type splices (if so we use a GADT context)
+   *  @param hasTypeSplices `Boolean` notify if the pattern has type splices
    *  @param qctx the current QuoteContext
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Type[Ti]``
    */
-  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: scala.quoted.Type[_])(using patternType: scala.quoted.Type[_],
-        hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: scala.quoted.Type[_])
+      (using patternType: scala.quoted.Type[_], qctx: QuoteContext): Option[Tup] = {
     val qctx1 = quoteContextWithCompilerInterface(qctx)
-    val qctx2 = if hasTypeSplices then qctx1.tasty.Constraints_context else qctx1
-    given qctx2.type = qctx2
-    new Matcher.QuoteMatcher[qctx2.type](qctx2).typeTreeMatch(scrutineeType.unseal, patternType.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
+    qctx1.tasty.typeTreeMatch(scrutineeType.unseal, patternType.unseal).asInstanceOf[Option[Tup]]
   }
 
 
