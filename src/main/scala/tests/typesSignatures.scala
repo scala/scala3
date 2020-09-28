@@ -28,5 +28,11 @@ class Base
   // Tests do not support multiline signatures
   type Elem[X] = X match { case String => Char case Array[t] => t case Iterable[t] => t }
 
-  type F = PolyFunction { def apply[X](x: X): List[X] }
+  type F = [X] => (x: X) => List[X]
+
+  type G = Int => Int
+
+  type H = () => String
+
+  type I = (Int, String, Int) => (String, Int)
 }

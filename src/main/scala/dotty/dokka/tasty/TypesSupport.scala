@@ -75,30 +75,32 @@ trait TypesSupport:
             
                 
             case r: Refinement => { //(parent, name, info)
-                def parseRefinedType(r: Refinement): List[JProjection] = {
-                    (r.parent match{
-                        case t: TypeRef if t.typeSymbol == defn.ObjectClass => texts("{ ")
-                        case t: TypeRef => inner(t) ++ texts(" { ")
-                        case r: Refinement => parseRefinedType(r) ++ texts("; ")
-                    }) ++ parseRefinedElem(r.name, r.info)
+                def getRefinementInformation(t: Type): List[Type] = t match {
+                    case r: Refinement => getRefinementInformation(r.parent) :+ r
+                    case tr: TypeRef => List(tr)
                 }
-                def parseRefinedElem(name: String, info: TypeOrBounds, polyTyped: List[JProjection] = Nil): List[JProjection] = info match {
+
+                def getParamBounds(t: PolyType): List[JProjection] = commas(
+                    t.paramNames.zip(t.paramBounds.map(inner(_)))
+                        .map(b => texts(b(0)) ++ b(1))
+                )
+
+                def getParamList(m: MethodType): List[JProjection] = 
+                    texts("(")
+                    ++ m.paramNames.zip(m.paramTypes).map{ case (name, tp) => texts(s"$name: ") ++ inner(tp)}
+                        .reduceLeftOption((acc: List[JProjection], elem: List[JProjection]) => acc ++ texts(", ") ++ elem).getOrElse(List())
+                    ++ texts(")")
+
+                def parseRefinedElem(name: String, info: TypeOrBounds, polyTyped: List[JProjection] = Nil): List[JProjection] = ( info match {
                     case m: MethodType => {
-                        def getParamList: List[JProjection] = 
-                            texts("(")
-                            ++ m.paramNames.zip(m.paramTypes).map{ case (name, tp) => texts(s"$name: ") ++ inner(tp)}
-                                .reduceLeftOption((acc: List[JProjection], elem: List[JProjection]) => acc ++ texts(", ") ++ elem).getOrElse(List())
-                            ++ texts(")")
-                        texts(s"def $name") ++ polyTyped ++ getParamList++ texts(": ") ++ inner(m.resType)
+                        val paramList = getParamList(m)
+                        texts(s"def $name") ++ polyTyped ++ paramList ++ texts(": ") ++ inner(m.resType)
                     }
                     case t: PolyType => {
-                        def getParamBounds: List[JProjection] = commas(
-                                t.paramNames.zip(t.paramBounds.map(inner(_)))
-                                    .map(b => texts(b(0)) ++ b(1))
-                            )
-                        val parsedMethod = parseRefinedElem(name,t.resType)
-                        if (!getParamBounds.isEmpty){
-                            parseRefinedElem(name, t.resType, texts("[") ++ getParamBounds ++ texts("]"))
+                        val paramBounds = getParamBounds(t)
+                        val parsedMethod = parseRefinedElem(name, t.resType)
+                        if (!paramBounds.isEmpty){
+                            parseRefinedElem(name, t.resType, texts("[") ++ paramBounds ++ texts("]"))
                         } else parseRefinedElem(name, t.resType)
                     }
                     case ByNameType(tp) => texts(s"def $name: ") ++ inner(tp)
@@ -106,11 +108,29 @@ trait TypesSupport:
                     case t: TypeRef => texts(s"val $name: ") ++ inner(t)
                     case t: TermRef => texts(s"val $name: ") ++ inner(t)
                     case other => noSupported(s"Not supported type in refinement $info")
+                } ) ++ texts("; ")
+
+                def parsePolyFunction(info: TypeOrBounds): List[JProjection] = info match {
+                    case t: PolyType =>
+                        val paramBounds = getParamBounds(t)
+                        val method = t.resType.asInstanceOf[MethodType]
+                        val paramList = getParamList(method)
+                        val resType = inner(method.resType)
+                        texts("[") ++ paramBounds ++ texts("] => ") ++ paramList ++ texts(" => ") ++ resType
+                    case other => noSupported(s"Not supported type in refinement $info")
                 }
-                parseRefinedType(r) ++ texts(" }")
+                val refinementInfo = getRefinementInformation(r)
+                val refinedType = refinementInfo.head
+                val refinedElems = refinementInfo.tail.collect{ case r: Refinement => r }.toList 
+                val prefix = if refinedType.typeSymbol != defn.ObjectClass then inner(refinedType) ++ texts(" ") else List.empty[JProjection]
+                if (refinedType.typeSymbol.fullName == "scala.PolyFunction" && refinedElems.size == 1) {
+                    parsePolyFunction(refinedElems.head.info)
+                } else {
+                    prefix ++ texts("{ ") ++ refinedElems.flatMap(e => parseRefinedElem(e.name, e.info)) ++ texts(" }")
+                }
             }
-            case AppliedType(tpe, typeOrBoundsList) =>
-                if tpe.isFunctionType then
+            case t @ AppliedType(tpe, typeOrBoundsList) =>
+                if t.isFunctionType then
                     typeOrBoundsList match
                         case Nil => 
                             Nil
@@ -119,8 +139,14 @@ trait TypesSupport:
                         case Seq(arg, rtpe) => 
                             inner(arg) ++ texts(" => ") ++ inner(rtpe)
                         case args => 
-                            texts("(") ++ commas(args.drop(1).map(inner)) ++ texts(") =>") ++ inner(args.last)
+                            texts("(") ++ commas(args.init.map(inner)) ++ texts(") => ") ++ inner(args.last)
                 // else if (tpe.) // TODO support tuples here
+                else if t.isTupleType then 
+                    typeOrBoundsList match
+                        case Nil => 
+                            Nil
+                        case args => 
+                            texts("(") ++ commas(args.map(inner)) ++ texts(")")
                 else inner(tpe) ++ texts("[") ++ commas(typeOrBoundsList.map(inner)) ++ texts("]")
 
             case tp @ TypeRef(qual, typeName) =>

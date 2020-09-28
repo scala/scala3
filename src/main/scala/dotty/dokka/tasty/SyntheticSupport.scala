@@ -7,6 +7,15 @@ trait SyntheticsSupport:
 
   import reflect._
 
+  extension (t: Type):
+    def isTupleType: Boolean = hackIsTupleType(self.reflect)(t)
+
+    def hackIsTupleType(r: Reflection)(rtpe: r.Type): Boolean = 
+      import dotty.tools.dotc
+      given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+      val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
+      ctx.definitions.isTupleType(tpe)
+
   extension (s: Symbol):
     def isSyntheticFunc: Boolean = s.flags.is(Flags.Synthetic) || s.flags.is(Flags.FieldAccessor)
 
