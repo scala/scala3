@@ -2033,7 +2033,7 @@ import ast.tpd
 
   class EnumGettersRedefinition(decl: Symbol)(using Context) extends NamingMsg(EnumGettersRedefinitionID):
     def msg = em"redefinition of $decl: ${decl.info} in an ${hl("enum")}"
-    def explain = em"users may not may not supply their own definition for $decl when inside an ${hl("enum")}"
+    def explain = em"users may not supply their own definition for $decl when inside an ${hl("enum")}"
 
   class DoubleDefinition(decl: Symbol, previousDecl: Symbol, base: Symbol)(using Context) extends NamingMsg(DoubleDefinitionID) {
     def msg = {
