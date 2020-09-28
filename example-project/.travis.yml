@@ -1,0 +1,8 @@
+language: scala
+
+jdk:
+  - openjdk8
+
+script:
+  - sbt run
+  - sbt 'set scalaVersion := dottyLatestNightlyBuild.get' run

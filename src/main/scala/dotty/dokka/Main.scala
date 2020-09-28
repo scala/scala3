@@ -19,16 +19,16 @@ import org.kohsuke.args4j.spi.StringArrayOptionHandler
 
 class RawArgs:
     @COption(name="--tastyRoots", required = true, aliases = Array("-t"), usage="Roots where tools should look for tasty files")
-    private var tastyRoots: String = null
+    protected var tastyRoots: String = null
 
     @COption(name="--output",required = true, aliases = Array("-o"), usage="Output to generate documentation to")
-    private var output: String = "output"
+    protected var output: String = "output"
 
     @COption(name="--classpath", aliases = Array("--cp", "-c"), usage="Classpath to load dependencies from")
-    private var classpath: String = System.getProperty("java.class.path")
+    protected var classpath: String = System.getProperty("java.class.path")
 
     @COption(name="--name", required = true, aliases = Array("-n"), usage="Name of module in generated documentation")
-    private var name: String = "main"
+    protected var name: String = "main"
 
     @COption(name="--docs", aliases = Array("-d"), usage="Root of project docs")
     private var docsRoot: String =  null
@@ -37,16 +37,16 @@ class RawArgs:
     private var sourceLinks: JList[String] = null
     
     @COption(name="--projectTitle")
-    private var projectTitle: String = null
+    protected var projectTitle: String = null
 
     @COption(name="--projectVersion")
-    private var projectVersion: String = null
+    protected var projectVersion: String = null
 
     @COption(name="--projectLogo")
-    private var projectLogo: String = null
+    protected var projectLogo: String = null
 
     @COption(name="--syntax")
-    private var syntax: String = null
+    protected var syntax: String = null
 
     def toArgs =
       val parsedSyntax = syntax match
@@ -97,7 +97,14 @@ object Args:
         case _ => None
 end Args
 
-case class DocConfiguration(tastyFiles: List[String], args: Args)
+import dotty.tools.dotc.core.Contexts.{Context => DottyContext}
+trait BaseDocConfiguration:
+  val args: Args
+  val tastyFiles: List[String]
+
+enum DocConfiguration extends BaseDocConfiguration:
+  case Standalone(args: Args, tastyFiles: List[String])
+  case Sbt(args: Args, tastyFiles: List[String], rootCtx: DottyContext)
 
 /** Main class for the doctool.
   *
@@ -131,7 +138,7 @@ object Main:
         
         val tastyFiles = (dirs ++ extracted).flatMap(listTastyFiles).toList
 
-        val config = DocConfiguration(tastyFiles, parsedArgs)
+        val config = DocConfiguration.Standalone(parsedArgs, tastyFiles)
 
         if (parsedArgs.output.exists()) IO.delete(parsedArgs.output)
 

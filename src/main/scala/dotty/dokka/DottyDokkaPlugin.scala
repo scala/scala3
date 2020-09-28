@@ -12,7 +12,7 @@ import org.jetbrains.dokka.plugability.DokkaContext
 import dokka.java.api._
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties.PropertyContainer
-import dotty.dokka.tasty.DokkaTastyInspector
+import dotty.dokka.tasty.{DokkaTastyInspector, SbtDokkaTastyInspector}
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.utilities.DokkaLogger
 import org.jetbrains.dokka.base.signatures.SignatureProvider
@@ -29,12 +29,26 @@ import org.jetbrains.dokka.pages._
 class DottyDokkaPlugin extends JavaDokkaPlugin:
   override def createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule = cxt.getConfiguration match {
     case dottyConfig: DottyDokkaConfig =>
-      val inspector = DokkaTastyInspector(sourceSet, new MarkdownParser(null, null, cxt.getLogger), dottyConfig)
-      inspector.inspect(dottyConfig.docConfiguration.args.classpath, dottyConfig.docConfiguration.tastyFiles)
+      val result = dottyConfig.docConfiguration match {
+        case DocConfiguration.Standalone(args, tastyFiles) =>
+          val inspector = DokkaTastyInspector(sourceSet, new MarkdownParser(null, null, cxt.getLogger), dottyConfig)
+          inspector.inspect(args.classpath, tastyFiles)
+          inspector.result()
+        case DocConfiguration.Sbt(args, tastyFiles, rootCtx) =>
+          val inspector =
+            SbtDokkaTastyInspector(
+              sourceSet,
+              //   new MarkdownParser(null, null, cxt.getLogger),
+              dottyConfig,
+              tastyFiles,
+              rootCtx,
+            )
+          inspector.run()
+      }
     
       new DModule(
         sourceSet.getSourceSet.getModuleDisplayName,
-        inspector.result().asJava,
+        result.asJava,
         Map().asJava,
         null,
         sourceSet.toSet,
