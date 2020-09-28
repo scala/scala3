@@ -19,6 +19,11 @@ object dkk:
 
   def text(str: String) = dkkd.Text(str, Nil.asJava, Map.empty.asJava)
 
+  def a(children: dkkd.DocTag*) =
+    dkkd.A(children.asJava, Map.empty.asJava)
+  def a(params: (String, String)*)(children: dkkd.DocTag*) =
+    dkkd.A(children.asJava, params.toMap.asJava)
+
   def pre(params: (String, String)*)(children: dkkd.DocTag*) =
     dkkd.Pre(children.asJava, params.toMap.asJava)
 

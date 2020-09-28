@@ -49,6 +49,11 @@ class MarkdownConverter(val repr: Repr) {
     })
 
     case n: mda.Text => emit(dkk.text(n.getChars.toString))
+    case n: mda.TextBase =>
+      // TextBase is a wrapper for other nodes that for unclear reasons
+      // sometimes gets emitted (`AutoLink`s seem to be involved)
+      n.getChildren.asScala.foreach(n => emitConvertedNode(n))
+
     // case n: mda.HtmlInline => dkkd.Br.INSTANCE
     case n: mda.Emphasis =>
       // TODO doesn't actually show up in output, why?
@@ -64,6 +69,10 @@ class MarkdownConverter(val repr: Repr) {
         case "**" => dkkd.B(convertChildren(n).asJava, kt.emptyMap)
         case "__" => dkkd.I(convertChildren(n).asJava, kt.emptyMap)
       })
+
+    case n: mda.AutoLink =>
+      val url = n.getUrl.toString
+      emit(dkkd.A(List(dkk.text(url)).asJava, Map("href" -> url).asJava))
 
     case n: mda.Link =>
       val SchemeUri = """[a-z]+:.*""".r
