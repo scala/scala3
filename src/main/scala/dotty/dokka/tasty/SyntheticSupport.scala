@@ -24,7 +24,6 @@ trait SyntheticsSupport:
     c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Object)
 
   def isValidPos(pos: Position) =
-    val a = (pos.exists, pos.start, pos.end)
     pos.exists && pos.start != pos.end
 
   def constructorWithoutParamLists(c: ClassDef): Boolean =
