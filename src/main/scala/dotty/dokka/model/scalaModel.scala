@@ -75,3 +75,4 @@ object ScalaTagWrapper {
     descTag: DocTag
   ) extends NamedTagWrapper(descTag, name, null)
 }
+case class ImplicitConversion(conversion: Documentable, from: DRI, to: DRI)

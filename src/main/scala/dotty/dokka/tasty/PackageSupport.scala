@@ -4,6 +4,7 @@ import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.model.doc.DocumentationNode
+import dotty.dokka._
 
 import collection.JavaConverters._
 
@@ -28,8 +29,8 @@ trait PackageSupport:
     }
 
     def parsePackageObject(pckObj: ClassDef): DPackage =
-        parseClasslike(pckObj) match{
-          case clazz:DClass =>
+        parseClasslike(pckObj) match {
+          case clazz: DClass =>
             DPackage(
               new DRI(pckObj.symbol.dri.getPackageName, null, null, PointingToDeclaration.INSTANCE, null),
               clazz.getFunctions,
@@ -40,6 +41,7 @@ trait PackageSupport:
               null,
               sourceSet.toSet,
               PropertyContainer.Companion.empty()
+                .plus(PackageExtension(clazz.get(ClasslikeExtension)))
             )
         }
         

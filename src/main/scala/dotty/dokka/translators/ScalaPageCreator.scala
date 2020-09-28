@@ -17,6 +17,7 @@ import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.base.resolvers.anchors._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
+import org.jetbrains.dokka.links.DRIKt.getParent
 
 class ScalaPageCreator(
     commentsToContentConverter: CommentsToContentConverter,
@@ -28,7 +29,28 @@ class ScalaPageCreator(
 
     override def pageForModule(m: DModule): ModulePageNode = super.pageForModule(m)
 
-    override def pageForPackage(p: DPackage): PackagePageNode = super.pageForPackage(p)
+    override def pageForPackage(p: DPackage): PackagePageNode = {
+        val page = super.pageForPackage(p)
+
+        val ext = Option(p.get(PackageExtension))
+        val extensionPages = ext.fold(
+                List.empty
+            )(
+                _.extensions.flatMap(_.extensions)
+                .map(pageForFunction(_))
+                .map(page =>
+                    page.modified(
+                        "extension_" + page.getName,
+                        page.getChildren
+                    )
+                )
+            )
+
+        page.modified(
+            page.getName,
+            (page.getChildren.asScala ++ extensionPages).asJava
+        )
+    }
 
     override def pageForClasslike(c: DClasslike): ClasslikePageNode = c match {
             case clazz: DClass => pageForDClass(clazz)
@@ -315,6 +337,28 @@ class ScalaPageCreator(
             }
         }
 
+        def buildImplicitConversionInfo(by: Documentable) = 
+            b.table(kind = ContentKind.BriefComment, styles = Set(TableStyle.DescriptionList)){ tbdr => tbdr
+                .cell() { c => c
+                    .text("Implicitly: ")
+                }
+                .cell() { c => c
+                    .text("This member is added by an implicit conversion performed by ")
+                    .driLink(by.getName, by.getDri)
+                }
+            }
+
+        def buildInheritedExtensionInfo(by: Documentable) = 
+            b.table(kind = ContentKind.BriefComment, styles = Set(TableStyle.DescriptionList)){ tbdr => tbdr
+                .cell() { c => c
+                    .text("Implicitly: ")
+                }
+                .cell() { c => c
+                    .text("This member is added by an extension defined in ")
+                    .driLink(by.getName, by.getDri)
+                }
+            }
+
         def contentForScope(
             s: Documentable & WithScope
         ) = {
@@ -326,12 +370,24 @@ class ScalaPageCreator(
             }
             val givens = s match {
                 case c: DClass => Some(c.get(ClasslikeExtension).givens)
+                case p: DPackage => Option(p.get(PackageExtension)).map(_.givens)
                 case _ => None
             }
             val extensions = s match {
                 case c: DClass => Some(c.get(ClasslikeExtension).extensions)
+                case p: DPackage => Option(p.get(PackageExtension)).map(_.extensions)
                 case _ => None
             }
+            val implicitMembers = s match {
+                case c: DClass => Some(c.get(ImplicitMembers))
+                case _ => None
+            }
+
+            val inheritedExtensions = implicitMembers.fold(Map.empty)(_.inheritedExtensions)
+            val implicitMethods = implicitMembers.fold(Map.empty)(_.methods)
+            val implicitInheritedMethods = implicitMembers.fold(Map.empty)(_.inheritedMethods)
+            val implicitFields = implicitMembers.fold(Map.empty)(_.properties)
+            val implicitInheritedFields = implicitMembers.fold(Map.empty)(_.inheritedProperties)
              
             val withoutExtensions = b
                 .contentForComments(s)
@@ -348,22 +404,32 @@ class ScalaPageCreator(
                 )(
                     (bdr, elem) => bdr.header(3, elem)()
                 )
-                .divergentBlock(
+                .groupingBlock(
                     "Methods",
                     List(
-                        "Defined methods" -> s.getFunctions.asScala.toList,
-                        "Inherited methods" -> inheritedDefinitions.fold(List.empty)(_.methods)
+                        "Defined methods" -> (s.getFunctions.asScala ++ implicitMethods.keys ++ inheritedExtensions.keys).toList,
+                        "Inherited methods" -> (inheritedDefinitions.fold(List.empty)(_.methods) ++ implicitInheritedMethods.keys.toList)
                     ),
                     kind = ContentKind.Functions,
                     omitSplitterOnSingletons = false
                 )(
                     (builder, txt) => builder.header(3, txt)()
-                )
+                ){ (bdr, elem) => bdr
+                    .driLink(elem.getName, elem.getDri)
+                    .sourceSetDependentHint(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind = ContentKind.SourceSetDependentHint) { sbdr => 
+                        val withBrief = sbdr.contentForBrief(elem)
+                        (if implicitMethods.contains(elem) then withBrief.buildImplicitConversionInfo(implicitMethods(elem))
+                         else if implicitInheritedMethods.contains(elem) then withBrief.buildImplicitConversionInfo(implicitInheritedMethods(elem))
+                         else if inheritedExtensions.contains(elem) then withBrief.buildInheritedExtensionInfo(inheritedExtensions(elem))
+                         else withBrief)
+                        .signature(elem)
+                    }
+                }
                 .groupingBlock(
                     "Value members",
                     List(
-                        "Defined value members" -> valDefs,
-                        "Inherited value members" -> inheritedDefinitions.fold(List.empty)(_.fields)
+                        "Defined value members" -> (valDefs ++ implicitFields.keys.toList),
+                        "Inherited value members" -> (inheritedDefinitions.fold(List.empty)(_.fields) ++ implicitInheritedFields.keys.toList)
                     ),
                     kind = ContentKind.Properties,
                     omitSplitterOnSingletons = false,
@@ -372,8 +438,11 @@ class ScalaPageCreator(
                     (bdr, elem) => bdr.header(3, elem)()
                 ){ (bdr, elem) => bdr
                     .driLink(elem.getName, elem.getDri)
-                    .sourceSetDependentHint(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind = ContentKind.SourceSetDependentHint) { sbdr => sbdr
-                        .contentForBrief(elem)
+                    .sourceSetDependentHint(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind = ContentKind.SourceSetDependentHint) { sbdr => 
+                        val withBrief = sbdr.contentForBrief(elem)
+                        (if implicitFields.contains(elem) then withBrief.buildImplicitConversionInfo(implicitFields(elem))
+                         else if implicitInheritedFields.contains(elem) then withBrief.buildImplicitConversionInfo(implicitInheritedFields(elem))
+                         else withBrief)
                         .signature(elem)
                     }
                 }
@@ -406,7 +475,7 @@ class ScalaPageCreator(
                         .groupingBlock(
                             "Defined extensions",
                             extensions.getOrElse(List.empty).map(e => e.extendedSymbol -> e.extensions).sortBy(_._2.size),
-                            omitSplitterOnSingletons = false,
+                            omitSplitterOnSingletons = true,
                             kind = ContentKind.Extensions
                         )( (bdr, receiver) => bdr 
                             .group(){ grpbdr => grpbdr
@@ -427,7 +496,7 @@ class ScalaPageCreator(
                         .groupingBlock(
                             "Inherited extensions",
                             inheritedDefinitions.fold(List.empty)(_.extensions).map(e => e.extendedSymbol -> e.extensions).sortBy(_._2.size),
-                            omitSplitterOnSingletons = false,
+                            omitSplitterOnSingletons = true,
                             kind = ContentKind.Extensions
                         )( (bdr, receiver) => bdr 
                             .group(){ grpbdr => grpbdr
@@ -448,7 +517,7 @@ class ScalaPageCreator(
                     }
                 }
         }
-    
+
         def contentForEnum(
             c: DClass
         ) = b.groupingBlock(
@@ -468,24 +537,21 @@ class ScalaPageCreator(
         }
 
         def contentForConstructors(
-            c: DClass
-        ) = b.groupingBlock(
-            "Constructors",
-            List("" -> c.getConstructors.asScala.toList),
-            kind = ContentKind.Constructors
-        )(
-            (bdr, group) => bdr
-        ){ (bdr, elem) => bdr
-            .driLink(elem.getName, elem.getDri)
-            .sourceSetDependentHint(
-                Set(elem.getDri),
-                elem.getSourceSets.asScala.toSet,
-                kind = ContentKind.SourceSetDependentHint
-            ) { sbdr => sbdr
-                .contentForBrief(elem)
-                .signature(elem)
+                c: DClass
+            ) = b.groupingBlock(
+                "Constructors",
+                List("" -> c.getConstructors.asScala.toList),
+                kind = ContentKind.Constructors
+            )(
+                (bdr, group) => bdr
+            ){ (bdr, elem) => bdr
+                    .driLink(elem.getName, elem.getDri)
+                    .sourceSetDependentHint(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind = ContentKind.SourceSetDependentHint) { sbdr => sbdr
+                        .contentForBrief(elem)
+                        .signature(elem)
+                    }
             }
-        }
+    
 
         def contentForTypesInfo(c: DClass) = {
             val inheritanceInfo = c.get(InheritanceInfo)

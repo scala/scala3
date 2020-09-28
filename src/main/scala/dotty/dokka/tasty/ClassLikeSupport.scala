@@ -1,6 +1,6 @@
 package dotty.dokka.tasty
 
-import org.jetbrains.dokka.model._
+import org.jetbrains.dokka.model.{TypeConstructor => DTypeConstructor, _}
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
@@ -60,6 +60,7 @@ trait ClassLikeSupport:
             .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
             .plus(InheritanceInfo(classDef.getSupertypes, List.empty))
             .plus(annotations)
+            .plus(ImplicitConversions(classDef.getImplicitConversions))
             .addAll(additionalExtras.asJava)
       )
     }
@@ -115,6 +116,10 @@ trait ClassLikeSupport:
 
     def inheritedMembers = c.symbol.getAllMembers.filterNot(s => s.isHiddenByVisibility || s.maybeOwner == c.symbol)
 
+    def getNonTrivialInheritedMemberTrees = c.inheritedMembers
+        .filter(s => s.maybeOwner != defn.ObjectClass && s.maybeOwner != defn.AnyClass)
+        .map(_.tree)
+
     private def extractExtensionGroups(functions: List[Symbol]) = {
       case class ExtensionRepr(arg: ValDef, method: Symbol)
       val extensions = functions
@@ -133,6 +138,43 @@ trait ClassLikeSupport:
     }
 
     def getExtensionGroups: List[ExtensionGroup] = extractExtensionGroups(c.symbol.classMethods)
+
+    def getImplicitConversions: List[ImplicitConversion] =
+      val conversionSymbol = Symbol.requiredClass("scala.Conversion")
+      val inherited = c.getNonTrivialInheritedMemberTrees
+      val inheritedDefDefSymbols = inherited.collect{ case dd: DefDef => dd.symbol }.toList
+      val givenFields = (membersToDocument ++ inherited).collect {
+          case vd: ValDef if vd.symbol.flags.is(Flags.Given) => vd
+        }.toList
+        .filter(_.tpt.tpe.derivesFrom(conversionSymbol))
+        .map(vd => parseValDef(vd) -> vd.tpt.tpe.baseType(conversionSymbol))
+
+      val implicitVals = (membersToDocument ++ inherited).collect {
+          case vd: ValDef if vd.symbol.flags.is(Flags.Implicit) => vd
+        }
+        .toList
+        .filter(_.tpt.tpe.derivesFrom(conversionSymbol))
+        .map(vd => parseValDef(vd) -> vd.tpt.tpe.baseType(conversionSymbol))
+
+      val implicitConversionDefs = (getMethods ++ inheritedDefDefSymbols)
+        .filter(sym => sym.flags.is(Flags.Implicit) && (sym.paramSymss.size == 0 || (sym.paramSymss.size == 1 && sym.paramSymss(0).size == 0)))
+        .toList
+        .map(_.tree.asInstanceOf[DefDef])
+        .filter(_.returnTpt.tpe.derivesFrom(conversionSymbol))
+        .map(m => parseMethod(m.symbol) -> m.returnTpt.tpe.baseType(conversionSymbol))
+
+      val implicitDefs = (getMethods ++ inheritedDefDefSymbols).filter(_.flags.is(Flags.Implicit))
+      .filter(m => m.paramSymss.size == 1 && m.paramSymss(0).size == 1)
+      .map(m => parseMethod(m) -> m.tree.asInstanceOf[DefDef])
+      
+      val conversions = (givenFields ++ implicitVals ++ implicitConversionDefs).map {
+        case (d: Documentable, AppliedType(tpe, tpeArgs)) => (tpeArgs(0), tpeArgs(1)) match {
+          case (t1: Type, t2: Type) => ImplicitConversion(d, t1.typeSymbol.dri, t2.typeSymbol.dri)
+        }
+      } ++ implicitDefs.map {
+        case (d, m) => ImplicitConversion(d, m.paramss(0)(0).tpt.tpe.typeSymbol.dri, m.returnTpt.tpe.typeSymbol.dri)
+      }
+      conversions
 
     private def extractGivenMethods(functions: List[Symbol]) = functions
       .filterNot(_.isHiddenByVisibility)
@@ -157,9 +199,7 @@ trait ClassLikeSupport:
     def getMethods: List[Symbol] = extractMethods(c.symbol.classMethods)
 
     def getInheritedDefinitions: InheritedDefinitions = {
-      val trees = c.inheritedMembers
-      .filter(s => s.maybeOwner != defn.ObjectClass && s.maybeOwner != defn.AnyClass)
-      .map(_.tree)
+      val trees = c.getNonTrivialInheritedMemberTrees
       
       val inheritedDefDefs = trees
         .collect { case dd: DefDef if dd.name != "<init>" => dd.symbol }
