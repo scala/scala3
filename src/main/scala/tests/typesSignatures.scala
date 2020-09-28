@@ -36,3 +36,16 @@ class Base
 
   type I = (Int, String, Int) => (String, Int)
 }
+
+class Operators
+{
+  type Binary = String =:= Int
+
+  // Infix annotation is not well supported in Dotty
+  // import scala.annotation.infix
+  // @infix type op[A, B] = Int
+  // type Binary2 = String op Int
+
+  import scala.compiletime.ops.boolean._
+  type Unary = ![true]
+}

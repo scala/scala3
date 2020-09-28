@@ -10,11 +10,19 @@ trait SyntheticsSupport:
   extension (t: Type):
     def isTupleType: Boolean = hackIsTupleType(self.reflect)(t)
 
+    def isCompiletimeAppliedType: Boolean = hackIsCompiletimeAppliedType(self.reflect)(t)
+
     def hackIsTupleType(r: Reflection)(rtpe: r.Type): Boolean = 
       import dotty.tools.dotc
       given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isTupleType(tpe)
+
+    def hackIsCompiletimeAppliedType(r: Reflection)(rtpe: r.Type): Boolean = 
+      import dotty.tools.dotc
+      given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+      val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
+      ctx.definitions.isCompiletimeAppliedType(tpe.typeSymbol)
 
   extension (s: Symbol):
     def isSyntheticFunc: Boolean = s.flags.is(Flags.Synthetic) || s.flags.is(Flags.FieldAccessor)
@@ -22,6 +30,8 @@ trait SyntheticsSupport:
     def isExtensionMethod: Boolean = hackIsExtension(self.reflect)(s)
 
     def isOpaque: Boolean = hackIsOpaque(self.reflect)(s)
+
+    def isInfix: Boolean = hackIsInfix(self.reflect)(s)
 
     def extendedSymbol: Option[ValDef] =
       Option.when(hackIsExtension(self.reflect)(s))(
@@ -45,6 +55,12 @@ trait SyntheticsSupport:
     }
 
   // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
+  def hackIsInfix(r: Reflection)(rsym: r.Symbol): Boolean = {
+    import dotty.tools.dotc
+    given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
+    ctx.definitions.isInfix(sym)
+  }
   def hackIsExtension(r: Reflection)(rsym: r.Symbol): Boolean = {
     import dotty.tools.dotc
     given dotc.core.Contexts.Context = r.rootContext.asInstanceOf

@@ -130,7 +130,14 @@ trait TypesSupport:
                 }
             }
             case t @ AppliedType(tpe, typeOrBoundsList) =>
-                if t.isFunctionType then
+                import scala.internal.Chars._
+                if !t.typeSymbol.name.forall(isIdentifierPart) && typeOrBoundsList.size == 2 then
+                    inner(typeOrBoundsList.head) 
+                    ++ texts(" ") 
+                    ++ inner(tpe) 
+                    ++ texts(" ") 
+                    ++ inner(typeOrBoundsList.last)
+                else if t.isFunctionType then
                     typeOrBoundsList match
                         case Nil => 
                             Nil
@@ -140,7 +147,6 @@ trait TypesSupport:
                             inner(arg) ++ texts(" => ") ++ inner(rtpe)
                         case args => 
                             texts("(") ++ commas(args.init.map(inner)) ++ texts(") => ") ++ inner(args.last)
-                // else if (tpe.) // TODO support tuples here
                 else if t.isTupleType then 
                     typeOrBoundsList match
                         case Nil => 
