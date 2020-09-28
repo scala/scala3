@@ -55,11 +55,11 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
   // TYPES
   //
 
-  /** Symbol of scala.internal.CompileTime.patternHole */
-  def Definitions_InternalQuotedMatcher_patternHole: Symbol
+  /** Symbol of scala.internal.quoted.Patterns.patternHole */
+  def Definitions_InternalQuotedPatterns_patternHole: Symbol
 
-  /** Symbol of scala.internal.CompileTime.higherOrderHole */
-  def Definitions_InternalQuotedMatcher_higherOrderHole: Symbol
+  /** Symbol of scala.internal.quoted.Patterns.higherOrderHole */
+  def Definitions_InternalQuotedPatterns_higherOrderHole: Symbol
 
   /** Returns Some with a beta-reduced application or None */
   def betaReduce(tree: Term): Option[Term]

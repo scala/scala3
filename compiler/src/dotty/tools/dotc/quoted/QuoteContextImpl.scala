@@ -2556,7 +2556,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       def isTypeHoleDef(tree: Tree): Boolean =
         tree match
           case tree: TypeDef =>
-            tree.symbol.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedMatcher_patternTypeAnnot)
+            tree.symbol.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_patternTypeAnnot)
           case _ => false
 
       def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
@@ -2581,7 +2581,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       val qctx1 = dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)
         .asInstanceOf[QuoteContext { val tasty: QuoteContextImpl.this.tasty.type }]
 
-      val matcher = new scala.internal.quoted.Matcher.QuoteMatcher[qctx1.type](qctx1)
+      val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1)
 
       val matchings =
         if pat1.isType then matcher.termMatch(scrutinee, pat1)
@@ -2593,15 +2593,15 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found, seal them in a quoted.Type and add them to the result
         def typeHoleApproximation(sym: Symbol) =
-          ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedMatcher_fromAboveAnnot)).seal
+          ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_fromAboveAnnot)).seal
         matchings.map { tup =>
           Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
         }
       }
     }
 
-    def Definitions_InternalQuotedMatcher_patternHole: Symbol = dotc.core.Symbols.defn.InternalQuotedMatcher_patternHole
-    def Definitions_InternalQuotedMatcher_higherOrderHole: Symbol = dotc.core.Symbols.defn.InternalQuotedMatcher_higherOrderHole
+    def Definitions_InternalQuotedPatterns_patternHole: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole
+    def Definitions_InternalQuotedPatterns_higherOrderHole: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_higherOrderHole
 
     def betaReduce(tree: Term): Option[Term] =
       tree match

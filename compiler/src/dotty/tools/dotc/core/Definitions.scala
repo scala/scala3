@@ -808,12 +808,12 @@ class Definitions {
     @tu lazy val InternalQuoted_exprNestedSplice : Symbol = InternalQuotedModule.requiredMethod("exprNestedSplice")
     @tu lazy val InternalQuoted_QuoteTypeTagAnnot: ClassSymbol = InternalQuotedModule.requiredClass("quoteTypeTag")
 
-  @tu lazy val InternalQuotedMatcher: Symbol = requiredModule("scala.internal.quoted.Matcher")
-    @tu lazy val InternalQuotedMatcher_patternHole: Symbol = InternalQuotedMatcher.requiredMethod("patternHole")
-    @tu lazy val InternalQuotedMatcher_patternHigherOrderHole: Symbol = InternalQuotedMatcher.requiredMethod("patternHigherOrderHole")
-    @tu lazy val InternalQuotedMatcher_higherOrderHole: Symbol = InternalQuotedMatcher.requiredMethod("higherOrderHole")
-    @tu lazy val InternalQuotedMatcher_patternTypeAnnot: ClassSymbol = InternalQuotedMatcher.requiredClass("patternType")
-    @tu lazy val InternalQuotedMatcher_fromAboveAnnot: ClassSymbol = InternalQuotedMatcher.requiredClass("fromAbove")
+  @tu lazy val InternalQuotedPatterns: Symbol = requiredModule("scala.internal.quoted.Patterns")
+    @tu lazy val InternalQuotedPatterns_patternHole: Symbol = InternalQuotedPatterns.requiredMethod("patternHole")
+    @tu lazy val InternalQuotedPatterns_patternHigherOrderHole: Symbol = InternalQuotedPatterns.requiredMethod("patternHigherOrderHole")
+    @tu lazy val InternalQuotedPatterns_higherOrderHole: Symbol = InternalQuotedPatterns.requiredMethod("higherOrderHole")
+    @tu lazy val InternalQuotedPatterns_patternTypeAnnot: ClassSymbol = InternalQuotedPatterns.requiredClass("patternType")
+    @tu lazy val InternalQuotedPatterns_fromAboveAnnot: ClassSymbol = InternalQuotedPatterns.requiredClass("fromAbove")
 
   @tu lazy val InternalQuotedExprModule: Symbol = requiredModule("scala.internal.quoted.Expr")
     @tu lazy val InternalQuotedExpr_unapply: Symbol = InternalQuotedExprModule.requiredMethod(nme.unapply)

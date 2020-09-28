@@ -1,4 +1,4 @@
-package scala.internal.quoted
+package dotty.tools.dotc.quoted
 
 import scala.annotation.internal.sharable
 import scala.annotation.{Annotation, compileTimeOnly}
@@ -98,33 +98,8 @@ import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
  */
 object Matcher {
 
-  /** A splice in a quoted pattern is desugared by the compiler into a call to this method */
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHole`")
-  def patternHole[T]: T = ???
-
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHigherOrderHole`")
-  /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
-  def patternHigherOrderHole[U](pat: Any, args: Any*): U = ???
-
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.higherOrderHole`")
-  /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
-  def higherOrderHole[U](args: Any*): U = ???
-
-  // TODO remove
-  /** A splice of a name in a quoted pattern is desugared by wrapping getting this annotation */
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternBindHole`")
-  class patternBindHole extends Annotation
-
-  /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternType`")
-  class patternType extends Annotation
-
-  /** A type pattern that must be aproximated from above */
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.fromAbove`")
-  class fromAbove extends Annotation
-
   class QuoteMatcher[QCtx <: QuoteContext & Singleton](val qctx0: QCtx) {
-    val qctx = quoteContextWithCompilerInterface(qctx0)
+    val qctx = qctx0.asInstanceOf[qctx0.type { val tasty: qctx0.tasty.type & scala.internal.tasty.CompilerInterface }]
 
     // TODO improve performance
 
@@ -203,8 +178,8 @@ object Matcher {
 
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
-          case (scrutinee as Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
-              if patternHole.symbol == qctx.tasty.Definitions_InternalQuotedMatcher_patternHole &&
+          case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
+              if patternHole.symbol == qctx.tasty.Definitions_InternalQuotedPatterns_patternHole &&
                  s.tpe <:< tpt.tpe &&
                  tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
             matched(scrutinee.seal)
@@ -212,14 +187,14 @@ object Matcher {
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
           case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
-              if patternHole.symbol == qctx.tasty.Definitions_InternalQuotedMatcher_patternHole &&
+              if patternHole.symbol == qctx.tasty.Definitions_InternalQuotedPatterns_patternHole &&
                  scrutinee.tpe <:< tpt.tpe =>
             matched(scrutinee.seal)
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
-          case (scrutinee, pattern as Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
-              if pattern.symbol == qctx.tasty.Definitions_InternalQuotedMatcher_higherOrderHole =>
+          case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
+              if pattern.symbol == qctx.tasty.Definitions_InternalQuotedPatterns_higherOrderHole =>
 
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
               val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
