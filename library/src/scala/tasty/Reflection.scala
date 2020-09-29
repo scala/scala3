@@ -20,8 +20,7 @@ import scala.tasty.reflect._
  *
  *  +- Tree -+- PackageClause
  *           +- Import
- *           +- Statement -+- Definition --+- PackageDef
- *           |             |               +- ClassDef
+ *           +- Statement -+- Definition --+- ClassDef
  *           |             |               +- TypeDef
  *           |             |               +- DefDef
  *           |             |               +- ValDef
@@ -225,7 +224,7 @@ trait Reflection { reflection =>
 
   // ----- Definitions ----------------------------------------------
 
-  /** Tree representing a definition in the source code. It can be `PackageDef`, `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
+  /** Tree representing a definition in the source code. It can be `ClassDef`, `TypeDef`, `DefDef` or `ValDef` */
   type Definition <: Statement
 
   given TypeTest[Tree, Definition] = DefinitionTypeTest
@@ -352,29 +351,6 @@ trait Reflection { reflection =>
     end extension
   end TypeDefMethods
 
-  // PackageDef
-
-  /** Tree representing a package definition. This includes definitions in all source files */
-  type PackageDef <: Definition
-
-  given TypeTest[Tree, PackageDef] = PackageDefTypeTest
-  protected val PackageDefTypeTest: TypeTest[Tree, PackageDef]
-
-  val PackageDef: PackageDefModule
-
-  trait PackageDefModule { this: PackageDef.type =>
-    def unapply(tree: PackageDef): Option[(String, PackageDef)]
-  }
-
-  given PackageDefMethods as PackageDefMethods = PackageDefMethodsImpl
-  protected val PackageDefMethodsImpl: PackageDefMethods
-
-  trait PackageDefMethods:
-    extension (self: PackageDef):
-      def owner: PackageDef
-      def members: List[Statement]
-    end extension
-  end PackageDefMethods
 
   // ----- Terms ----------------------------------------------------
 
@@ -2555,14 +2531,14 @@ trait Reflection { reflection =>
       def documentation: Option[Documentation]
 
       /** Tree of this definition
-        *
-        * if this symbol `isPackageDef` it will return a `PackageDef`,
-        * if this symbol `isClassDef` it will return a `ClassDef`,
-        * if this symbol `isTypeDef` it will return a `TypeDef`,
-        * if this symbol `isValDef` it will return a `ValDef`,
-        * if this symbol `isDefDef` it will return a `DefDef`
-        * if this symbol `isBind` it will return a `Bind`
-        */
+       *
+       *  If this symbol `isClassDef` it will return `a `ClassDef`,
+       *  if this symbol `isTypeDef` it will return `a `TypeDef`,
+       *  if this symbol `isValDef` it will return `a `ValDef`,
+       *  if this symbol `isDefDef` it will return `a `DefDef`
+       *  if this symbol `isBind` it will return `a `Bind`,
+       *  else will throw
+       */
       def tree: Tree
 
       /** Annotations attached to this symbol */
@@ -2625,6 +2601,9 @@ trait Reflection { reflection =>
 
       /** Type member with the given name directly declared in the class */
       def typeMember(name: String): Symbol
+
+      /** All members directly declared in the class */
+      def members: List[Symbol]
 
       /** Get named non-private methods declared or inherited */
       def method(name: String): List[Symbol]

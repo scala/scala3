@@ -1228,12 +1228,11 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
       case RenameSelector(name, newName) => this += name += " => " += newName
     }
 
-    def printDefinitionName(sym: Definition): Buffer = sym match {
+    def printDefinitionName(tree: Definition): Buffer = tree match {
       case ValDef(name, _, _) => this += highlightValDef(name)
       case DefDef(name, _, _, _, _) => this += highlightValDef(name)
       case ClassDef(name, _, _, _, _, _) => this += highlightTypeDef(name.stripSuffix("$"))
       case TypeDef(name, _) => this += highlightTypeDef(name)
-      case PackageDef(name, _) => this += highlightTypeDef(name)
     }
 
     def printAnnotation(annot: Term)(using elideThis: Option[Symbol]): Buffer = {
