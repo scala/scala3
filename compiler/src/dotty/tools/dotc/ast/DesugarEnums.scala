@@ -201,52 +201,6 @@ object DesugarEnums {
         TypeTree(), creator).withFlags(Private | Synthetic)
   }
 
-  /** The return type of an enum case apply method and any widening methods in which
-   *  the apply's right hand side will be wrapped. For parents of the form
-   *
-   *      extends E(args) with T1(args1) with ... TN(argsN)
-   *
-   *  and type parameters `tparams` the generated widen method is
-   *
-   *      def C$to$E[tparams](x$1: E[tparams] with T1 with ... TN) = x$1
-   *
-   *  @param cdef            The case definition
-   *  @param parents         The declared parents of the enum case
-   *  @param tparams         The type parameters of the enum case
-   *  @param appliedEnumRef  The enum class applied to `tparams`.
-   */
-  def enumApplyResult(
-      cdef: TypeDef,
-      parents: List[Tree],
-      tparams: List[TypeDef],
-      appliedEnumRef: Tree)(using Context): (Tree, List[DefDef]) = {
-
-    def extractType(t: Tree): Tree = t match {
-      case Apply(t1, _) => extractType(t1)
-      case TypeApply(t1, ts) => AppliedTypeTree(extractType(t1), ts)
-      case Select(t1, nme.CONSTRUCTOR) => extractType(t1)
-      case New(t1) => t1
-      case t1 => t1
-    }
-
-    val parentTypes = parents.map(extractType)
-    parentTypes.head match {
-      case parent: RefTree if parent.name == enumClass.name =>
-        // need a widen method to compute correct type parameters for enum base class
-        val widenParamType = parentTypes.tail.foldLeft(appliedEnumRef)(makeAndType)
-        val widenParam = makeSyntheticParameter(tpt = widenParamType)
-        val widenDef = DefDef(
-          name = s"${cdef.name}$$to$$${enumClass.name}".toTermName,
-          tparams = tparams,
-          vparamss = (widenParam :: Nil) :: Nil,
-          tpt = TypeTree(),
-          rhs = Ident(widenParam.name))
-        (TypeTree(), widenDef :: Nil)
-      case _ =>
-        (parentTypes.reduceLeft(makeAndType), Nil)
-    }
-  }
-
   /** Is a type parameter in `enumTypeParams` referenced from an enum class case that has
    *  given type parameters `caseTypeParams`, value parameters `vparamss` and parents `parents`?
    *  Issues an error if that is the case but the reference is illegal.
