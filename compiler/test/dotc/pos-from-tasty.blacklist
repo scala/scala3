@@ -13,3 +13,6 @@ i7087.scala
 # Nullability
 nullable.scala
 notNull.scala
+
+# cyclic reference involving @uncheckedVariance
+annot-bootstrap.scala

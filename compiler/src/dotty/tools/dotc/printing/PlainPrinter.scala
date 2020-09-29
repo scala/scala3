@@ -56,6 +56,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
+        case AnnotatedType(parent, annot)
+        if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot =>
+          homogenize(parent)
         case tp: SkolemType =>
           homogenize(tp.info)
         case tp: LazyRef =>

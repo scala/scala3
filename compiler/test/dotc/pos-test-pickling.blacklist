@@ -46,3 +46,6 @@ i7757.scala
 
 # splice type tag dealiased in this reference
 i8651b.scala
+
+# uneliminated @uncheckedVariance after pickling
+annot-bootstrap.scala

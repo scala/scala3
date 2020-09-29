@@ -152,6 +152,9 @@ object TypeOps:
         simplify(l, theMap) & simplify(r, theMap)
       case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
         simplify(l, theMap) | simplify(r, theMap)
+      case AnnotatedType(parent, annot)
+      if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot =>
+        simplify(parent, theMap)
       case _: MatchType =>
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver
