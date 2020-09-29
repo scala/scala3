@@ -42,33 +42,6 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
   /** Symbol of scala.internal.CompileTime.fromAbove */
   def Definitions_InternalQuotedMatcher_fromAboveAnnot: Symbol
 
-  /** The type of primitive type `Unit`. */
-  def Definitions_UnitType: Type
-
-  /** The type of primitive type `Byte`. */
-  def Definitions_ByteType: Type
-
-  /** The type of primitive type `Short`. */
-  def Definitions_ShortType: Type
-
-  /** The type of primitive type `Char`. */
-  def Definitions_CharType: Type
-
-  /** The type of primitive type `Int`. */
-  def Definitions_IntType: Type
-
-  /** The type of primitive type `Long`. */
-  def Definitions_LongType: Type
-
-  /** The type of primitive type `Float`. */
-  def Definitions_FloatType: Type
-
-  /** The type of primitive type `Double`. */
-  def Definitions_DoubleType: Type
-
-  /** The type of primitive type `Boolean`. */
-  def Definitions_BooleanType: Type
-
   /** Returns Some with a beta-reduced application or None */
   def betaReduce(tree: Term): Option[Term]
 

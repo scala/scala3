@@ -2561,27 +2561,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     def Definitions_InternalQuotedMatcher_patternTypeAnnot: Symbol = dotc.core.Symbols.defn.InternalQuotedMatcher_patternTypeAnnot
     def Definitions_InternalQuotedMatcher_fromAboveAnnot: Symbol = dotc.core.Symbols.defn.InternalQuotedMatcher_fromAboveAnnot
 
-    def Definitions_UnitType: Type = dotc.core.Symbols.defn.UnitType
-    def Definitions_ByteType: Type = dotc.core.Symbols.defn.ByteType
-    def Definitions_ShortType: Type = dotc.core.Symbols.defn.ShortType
-    def Definitions_CharType: Type = dotc.core.Symbols.defn.CharType
-    def Definitions_IntType: Type = dotc.core.Symbols.defn.IntType
-    def Definitions_LongType: Type = dotc.core.Symbols.defn.LongType
-    def Definitions_FloatType: Type = dotc.core.Symbols.defn.FloatType
-    def Definitions_DoubleType: Type = dotc.core.Symbols.defn.DoubleType
-    def Definitions_BooleanType: Type = dotc.core.Symbols.defn.BooleanType
-    def Definitions_AnyType: Type = dotc.core.Symbols.defn.AnyType
-    def Definitions_AnyValType: Type = dotc.core.Symbols.defn.AnyValType
-    def Definitions_AnyRefType: Type = dotc.core.Symbols.defn.AnyRefType
-    def Definitions_ObjectType: Type = dotc.core.Symbols.defn.ObjectType
-    def Definitions_NothingType: Type = dotc.core.Symbols.defn.NothingType
-    def Definitions_NullType: Type = dotc.core.Symbols.defn.NullType
-    def Definitions_StringType: Type = dotc.core.Symbols.defn.StringType
-    def Definitions_TupleType: Type = dotc.core.Symbols.defn.TupleTypeRef
-    def Definitions_EmptyTupleType: Type = dotc.core.Symbols.defn.EmptyTupleModule.termRef
-    def Definitions_NonEmptyTupleType: Type = dotc.core.Symbols.defn.NonEmptyTupleClass.typeRef
-    def Definitions_TupleConsType: Type = dotc.core.Symbols.defn.PairClass.typeRef
-
     def betaReduce(tree: Term): Option[Term] =
       tree match
         case app @ tpd.Apply(tpd.Select(fn, nme.apply), args) if dotc.core.Symbols.defn.isFunctionType(fn.tpe) =>

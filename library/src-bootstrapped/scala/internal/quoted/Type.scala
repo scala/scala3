@@ -46,49 +46,34 @@ object Type {
     new Matcher.QuoteMatcher[qctx2.type](qctx2).typeTreeMatch(scrutineeType.unseal, patternType.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
   }
 
-  def Unit: QuoteContext ?=> quoted.Type[Unit] =
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.Definitions_UnitType.seal.asInstanceOf[quoted.Type[Unit]]
 
+  // TODO generalize following optimizations for all classes without parameters
+
+  def Unit: QuoteContext ?=> quoted.Type[Unit] =
+    qctx.tasty.Type.typeConstructorOf(classOf[Unit]).seal.asInstanceOf[quoted.Type[Unit]]
 
   def Boolean: QuoteContext ?=> quoted.Type[Boolean] =
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.Definitions_BooleanType.seal.asInstanceOf[quoted.Type[Boolean]]
-
+    qctx.tasty.Type.typeConstructorOf(classOf[Boolean]).seal.asInstanceOf[quoted.Type[Boolean]]
 
   def Byte: QuoteContext ?=> quoted.Type[Byte] =
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.Definitions_ByteType.seal.asInstanceOf[quoted.Type[Byte]]
-
+    qctx.tasty.Type.typeConstructorOf(classOf[Byte]).seal.asInstanceOf[quoted.Type[Byte]]
 
   def Char: QuoteContext ?=> quoted.Type[Char] =
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.Definitions_CharType.seal.asInstanceOf[quoted.Type[Char]]
-
+    qctx.tasty.Type.typeConstructorOf(classOf[Char]).seal.asInstanceOf[quoted.Type[Char]]
 
   def Short: QuoteContext ?=> quoted.Type[Short] =
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.Definitions_ShortType.seal.asInstanceOf[quoted.Type[Short]]
-
+    qctx.tasty.Type.typeConstructorOf(classOf[Short]).seal.asInstanceOf[quoted.Type[Short]]
 
   def Int: QuoteContext ?=> quoted.Type[Int] =
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.Definitions_IntType.seal.asInstanceOf[quoted.Type[Int]]
-
+    qctx.tasty.Type.typeConstructorOf(classOf[Int]).seal.asInstanceOf[quoted.Type[Int]]
 
   def Long: QuoteContext ?=> quoted.Type[Long] =
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.Definitions_LongType.seal.asInstanceOf[quoted.Type[Long]]
-
+    qctx.tasty.Type.typeConstructorOf(classOf[Long]).seal.asInstanceOf[quoted.Type[Long]]
 
   def Float: QuoteContext ?=> quoted.Type[Float] =
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.Definitions_FloatType.seal.asInstanceOf[quoted.Type[Float]]
-
+    qctx.tasty.Type.typeConstructorOf(classOf[Float]).seal.asInstanceOf[quoted.Type[Float]]
 
   def Double: QuoteContext ?=> quoted.Type[Double] =
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.Definitions_DoubleType.seal.asInstanceOf[quoted.Type[Double]]
-
+    qctx.tasty.Type.typeConstructorOf(classOf[Double]).seal.asInstanceOf[quoted.Type[Double]]
 
 }
