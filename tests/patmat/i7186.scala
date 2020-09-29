@@ -172,7 +172,7 @@ object printMips {
 
     def oneAddr[O]
       ( a: O, indent: String)
-      ( r: O => Dest,
+      ( r: a.type => Dest,
       ): String = {
         val name = a.getClass.getSimpleName.toLowerCase
         s"${indent}$name ${rsrc(r(a))}$endl"
@@ -180,8 +180,8 @@ object printMips {
 
     def twoAddr[O]
       ( a: O, indent: String)
-      ( d: O => Register,
-        r: O => Dest | Constant
+      ( d: a.type => Register,
+        r: a.type => Dest | Constant
       ): String = {
         val name = a.getClass.getSimpleName.toLowerCase
         s"${indent}$name ${registers(d(a))}, ${rsrc(r(a))}$endl"
@@ -190,9 +190,9 @@ object printMips {
     def threeAddr[O]
       ( a: O,
         indent: String )
-      ( d: O => Register,
-        l: O => Register,
-        r: O => Src
+      ( d: a.type => Register,
+        l: a.type => Register,
+        r: a.type => Src
       ): String = {
         val name = a.getClass.getSimpleName.toLowerCase
         s"${indent}$name ${registers(d(a))}, ${registers(l(a))}, ${rsrc(r(a))}$endl"

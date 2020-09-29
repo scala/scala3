@@ -6,7 +6,12 @@ import Macro3.eqGen
 case class Person(name: String, age: Int)
 
 enum Opt[+T] {
-  case Sm[T](t: T) extends Opt[T]
+  case Sm(t: T)
+  case Nn
+}
+
+enum OptInv[+T] {
+  case Sm[T](t: T) extends OptInv[T]
   case Nn
 }
 
@@ -31,6 +36,11 @@ enum Opt[+T] {
   println
 
   val t5 = Sm(23) === Sm(23)
+  println(t5) // true
+  println
+
+  // Here invariant case without explicit type parameter will instantiate T to OptInv[Any]
+  val t5_2 = OptInv.Sm[Int](23) === OptInv.Sm(23)
   println(t5) // true
   println
 

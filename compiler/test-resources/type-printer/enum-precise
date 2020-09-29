@@ -1,0 +1,12 @@
+scala> enum Maybe[+T] { case Something(value: T); case EmptyValue }; import Maybe._
+// defined class Maybe
+
+scala> List(Something(1))
+val res0: List[Maybe[Int]] = List(Something(1))
+
+scala> def listOfSomething[O <: Maybe.Something[_]](listOfSomething: List[O]): listOfSomething.type = listOfSomething
+def listOfSomething
+  [O <: Maybe.Something[?]](listOfSomething: List[O]): listOfSomething.type
+
+scala> listOfSomething(List(Something(1)))
+val res1: List[Maybe.Something[Int]] = List(Something(1))
