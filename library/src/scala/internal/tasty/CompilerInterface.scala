@@ -21,15 +21,15 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
    */
   def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): TypeTree
 
-  /** Pattern matches an the scrutinee against the pattern and returns a tuple
+  /** Pattern matches the scrutinee against the pattern and returns a tuple
    *  with the matched holes if successful.
    *
    *  Examples:
-   *    - `termMatch(< f(0, myInt) >, < f(0, myInt) >, false)`
+   *    - `termMatch(< f(0, myInt) >, < f(0, myInt) >)`
    *       will return `Some(())` (where `()` is a tuple of arity 0)
-   *    - `termMatch(< f(0, myInt) >, < f(patternHole[Int], patternHole[Int]) >, false)`
+   *    - `termMatch(< f(0, myInt) >, < f(patternHole[Int], patternHole[Int]) >)`
    *       will return `Some(Tuple2('{0}, '{ myInt }))`
-   *    - `termMatch(< f(0, "abc") >, < f(0, patternHole[Int]) >, false)`
+   *    - `termMatch(< f(0, "abc") >, < f(0, patternHole[Int]) >)`
    *       will return `None` due to the missmatch of types in the hole
    *
    *  Holes:
@@ -42,7 +42,7 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
    */
   def termMatch(scrutinee: Term, pattern: Term): Option[Tuple]
 
-  /** Pattern matches an the scrutineeType against the patternType and returns a tuple
+  /** Pattern matches the scrutineeType against the patternType and returns a tuple
    *  with the matched holes if successful.
    *
    *  @param scrutinee `TypeTree` on which we are pattern matching
