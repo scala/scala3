@@ -22,13 +22,13 @@ class Converter(val repr: Repr) {
   def convertBody(body: Body): dkkd.DocTag = {
     dkkd.P(
       collect {
-        body.blocks.foreach(emitBlock(_, isTopLevel = true))
+        body.blocks.foreach(emitBlock(_))
       }.asJava,
       kt.emptyMap,
     )
   }
 
-  def emitBlock(block: Block, isTopLevel: Boolean = false)(using Emitter[dkkd.DocTag]): Unit =
+  def emitBlock(block: Block)(using Emitter[dkkd.DocTag]): Unit =
     block match {
       case Title(text, level) =>
         val content = convertInline(text)
@@ -42,11 +42,6 @@ class Converter(val repr: Repr) {
         })
 
       case Paragraph(text) =>
-        if isTopLevel
-        && !lastEmittedItem.exists(_.isInstanceOf[dkkd.H1 | dkkd.H2 | dkkd.H3 | dkkd.H4 | dkkd.H5 | dkkd.H6])
-        then
-          emit(dkkd.Br.INSTANCE)
-
         emit(dkkd.P(
           convertInline(text).asJava,
           kt.emptyMap,
@@ -95,8 +90,8 @@ class Converter(val repr: Repr) {
     listBld.result
   }
 
-  def convertBlock(block: Block, isTopLevel: Boolean = false): Seq[dkkd.DocTag] =
-    collect { emitBlock(block, isTopLevel) }
+  def convertBlock(block: Block): Seq[dkkd.DocTag] =
+    collect { emitBlock(block) }
 
   def emitInline(inl: Inline)(using Emitter[dkkd.DocTag]): Unit = inl match {
     case Chain(items: Seq[Inline]) => items.foreach(emitInline)
