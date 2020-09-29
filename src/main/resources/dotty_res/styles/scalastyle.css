@@ -89,7 +89,7 @@ pre, .symbol.monospace {
   font-weight: 500;
   font-size: 12px;
 }
-a, a:visited {
+a, a:visited, span[data-unresolved-link] {
   text-decoration: none;
   color: var(--link-fg);
 }
@@ -293,7 +293,7 @@ th {
 .main-subrow  {
   margin-bottom: .5em;
 }
-.main-subrow > span > a {
+.main-subrow > span > a, .main-subrow > span > span[data-unresolved-link] {
 	text-decoration: none;
 	font-style: normal;
 	font-weight: bold;
@@ -317,6 +317,7 @@ th {
 .brief-with-platform-tags ~ .main-subrow {
 	padding-top: 0;
 }
+
 .brief {
 	white-space: pre-wrap;
 	overflow: hidden;
