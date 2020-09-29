@@ -1248,7 +1248,7 @@ object Types {
           case TypeAlias(alias) => alias.dealias1(keep)
           case _ => tp
         }
-      case app @ AppliedType(tycon, args) =>
+      case app @ AppliedType(tycon, _) =>
         val tycon1 = tycon.dealias1(keep)
         if (tycon1 ne tycon) app.superType.dealias1(keep)
         else this

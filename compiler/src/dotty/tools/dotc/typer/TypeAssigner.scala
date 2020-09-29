@@ -211,7 +211,7 @@ trait TypeAssigner {
 
       case _ => accessibleSelectionType(tree, qual)
     }
-    ConstFold(tree.withType(tp))
+    ConstFold.Select(tree.withType(tp))
   }
 
   /** Normalize type T appearing in a new T by following eta expansions to
@@ -301,7 +301,7 @@ trait TypeAssigner {
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
         errorType(err.takesNoParamsStr(fn, ""), tree.srcPos)
     }
-    ConstFold(tree.withType(ownType))
+    ConstFold.Apply(tree.withType(ownType))
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(using Context): TypeApply = {
