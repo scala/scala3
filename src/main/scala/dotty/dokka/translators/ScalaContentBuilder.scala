@@ -311,7 +311,7 @@ class ScalaPageContentBuilder(
             .group(styles = Set(ContentStyle.WithExtraAttributes), extra = extra plus SimpleAttr.Companion.header(name)){ bdr =>
                 elements.foldLeft(bdr){ (b, groupped) =>
                     val (key, values) = groupped
-                    (if(values.size > 1 || omitSplitterOnSingletons) b.group()(bd => groupSplitterFunc(bd, key)) else b)
+                    (if(values.size > 1 || (values.size == 1 && !omitSplitterOnSingletons)) b.group()(bd => groupSplitterFunc(bd, key)) else b)
                     .table(kind = kind, headers = headers, styles = styles, extra = extra plus SimpleAttr.Companion.header(name)){ tablebdr => 
                         values.foldLeft(tablebdr){ (tablebdr, elem) =>
                             tablebdr.cell(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind, styles, extra){ cellbdr =>
@@ -461,7 +461,7 @@ class ScalaPageContentBuilder(
             .group(styles = Set(ContentStyle.WithExtraAttributes), extra = extra plus SimpleAttr.Companion.header(name)){ bdr =>
                 elements.foldLeft(bdr){ (b, groupped) =>
                     val (key, values) = groupped
-                    (if(values.size > 1 || omitSplitterOnSingletons) b.group()(bd => groupSplitterFunc(bd, key)) else b)
+                    (if(values.size > 1 || (values.size == 1 && !omitSplitterOnSingletons)) b.group()(bd => groupSplitterFunc(bd, key)) else b)
                     .table(kind = kind, headers = headers, styles = styles, extra = extra plus SimpleAttr.Companion.header(name)){ tablebdr =>
                         values.groupBy(_.getName).foldLeft(tablebdr){ case (tablebdr,(elemName, divergentElems)) => tablebdr
                             .cell(

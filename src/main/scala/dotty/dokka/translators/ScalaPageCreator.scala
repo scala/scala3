@@ -266,7 +266,8 @@ class ScalaPageCreator(
                     List(
                         "Class methods" -> s.getFunctions.asScala.toList, 
                     ) ++ inherited,
-                    kind = ContentKind.Functions
+                    kind = ContentKind.Functions,
+                    omitSplitterOnSingletons = false
                 )(
                     (builder, txt) => builder.header(3, txt)()
                 )
@@ -388,29 +389,34 @@ class ScalaPageCreator(
                     }
                     case o => bdr.text(s"TODO: $o")
             }
-
-            b.header(2, "Linear supertypes")()
-            .group(
-                kind = ContentKind.Comment,
-                styles = Set(ContentStyle.WithExtraAttributes), 
-                extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Linear supertypes")
-            ){ gbdr => gbdr
-                .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
-                    .list(supertypes, separator = ""){ (bdr, elem) => bdr
-                        .group(styles = Set(TextStyle.Paragraph))(contentForBound(_, elem))
+            val withSupertypes = if(!supertypes.isEmpty) {
+                b.header(2, "Linear supertypes")()
+                .group(
+                    kind = ContentKind.Comment,
+                    styles = Set(ContentStyle.WithExtraAttributes), 
+                    extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Linear supertypes")
+                ){ gbdr => gbdr
+                    .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
+                        .list(supertypes, separator = ""){ (bdr, elem) => bdr
+                            .group(styles = Set(TextStyle.Paragraph))(contentForBound(_, elem))
+                        }
                     }
                 }
-            }
-            .header(2, "Known subtypes")()
-            .group(
-                kind = ContentKind.Comment,
-                styles = Set(ContentStyle.WithExtraAttributes), 
-                extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Known subtypes")
-            ){ gbdr => gbdr
-                .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
-                    .list(subtypes)(contentForType)
+            } else b
+
+            if(!subtypes.isEmpty) {
+                withSupertypes.header(2, "Known subtypes")()
+                .group(
+                    kind = ContentKind.Comment,
+                    styles = Set(ContentStyle.WithExtraAttributes), 
+                    extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Known subtypes")
+                ){ gbdr => gbdr
+                    .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
+                        .list(subtypes)(contentForType)
+                    }
                 }
-            }
+            } else withSupertypes
+
         }
 
 }
