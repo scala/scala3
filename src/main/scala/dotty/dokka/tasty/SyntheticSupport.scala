@@ -8,7 +8,11 @@ trait SyntheticsSupport:
   import reflect._
 
   extension (s: Symbol):
-    def isSyntheticFunc: Boolean = s.flags.is(Flags.Synthetic) || s.flags.is(Flags.FieldAccessor)
+    def isSyntheticFunc: Boolean = s.flags.is(Flags.Synthetic) || s.flags.is(Flags.FieldAccessor) || isDefaultHelperMethod
+
+    def isSuperBridgeMethod: Boolean = s.name.contains("$super$")
+
+    def isDefaultHelperMethod: Boolean = ".*\\$default\\$\\d+$".r.matches(s.name)
 
     def isExtensionMethod: Boolean = hackIsExtension(self.reflect)(s)
 

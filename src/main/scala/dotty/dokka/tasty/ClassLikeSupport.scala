@@ -100,6 +100,7 @@ trait ClassLikeSupport:
 
     def getInheritedMethods: List[Symbol] = c.symbol.methods
       .filter(s =>
+        !s.isSuperBridgeMethod &&
         !s.isSyntheticFunc &&
         !s.isExtensionMethod &&
         s.maybeOwner != c.symbol &&
