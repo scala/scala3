@@ -350,13 +350,24 @@ trait ConstraintHandling {
       val tpw = tp.widenSingletons
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
 
+    def widenEnum(tp: Type) =
+      val tpw = tp.widenEnumCase
+      if (tpw ne tp) && (tpw <:< bound) then tpw else tp
+
     def isSingleton(tp: Type): Boolean = tp match
       case WildcardType(optBounds) => optBounds.exists && isSingleton(optBounds.bounds.hi)
       case _ => isSubTypeWhenFrozen(tp, defn.SingletonType)
 
+    def isEnumCase(tp: Type): Boolean = tp match
+      case WildcardType(optBounds) => optBounds.exists && isEnumCase(optBounds.bounds.hi)
+      case _ => tp.classSymbol.isAllOf(EnumCase, butNot=JavaDefined)
+
     val wideInst =
       if isSingleton(bound) then inst
-      else dropSuperTraits(widenOr(widenSingle(inst)))
+      else
+        val lub   = widenOr(widenSingle(inst))
+        val asAdt = if isEnumCase(bound) then lub else widenEnum(lub)
+        dropSuperTraits(asAdt)
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)

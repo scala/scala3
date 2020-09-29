@@ -1146,6 +1146,11 @@ object Types {
       case _ => this
     }
 
+    /** if this type is a reference to a class case of an enum, replace it by its first parent */
+    final def widenEnumCase(using Context): Type = this match
+      case tp: (TypeRef | AppliedType) if tp.classSymbol.isAllOf(EnumCase) => tp.parents.head
+      case _ => this
+
     /** Widen this type and if the result contains embedded union types, replace
      *  them by their joins.
      *  "Embedded" means: inside type lambdas, intersections or recursive types, or in prefixes of refined types.
