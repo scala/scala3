@@ -124,6 +124,7 @@ object NameKinds {
     case class QualInfo(name: SimpleName) extends Info with QualifiedInfo {
       override def map(f: SimpleName => SimpleName): NameInfo = new QualInfo(f(name))
       override def toString: String = s"$infoString $name"
+      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
     }
 
     def apply(qual: TermName, name: SimpleName): TermName =
@@ -173,6 +174,7 @@ object NameKinds {
     type ThisInfo = NumberedInfo
     case class NumberedInfo(val num: Int) extends Info with NameKinds.NumberedInfo {
       override def toString: String = s"$infoString $num"
+      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
     }
     def apply(qual: TermName, num: Int): TermName =
       qual.derived(new NumberedInfo(num))
@@ -371,6 +373,7 @@ object NameKinds {
     case class SignedInfo(sig: Signature) extends Info {
       assert(sig ne Signature.NotAMethod)
       override def toString: String = s"$infoString $sig"
+      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
     }
     type ThisInfo = SignedInfo
 

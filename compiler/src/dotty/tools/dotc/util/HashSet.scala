@@ -48,8 +48,13 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
 
   protected def isDense = limit < DenseLimit
 
-  /** Hashcode, by defualt `x.hashCode`, can be overridden */
-  protected def hash(x: T): Int = x.hashCode
+  /** Hashcode, by default a processed `x.hashCode`, can be overridden */
+  protected def hash(key: T): Int =
+    val h = key.hashCode
+    // Part of the MurmurHash3 32 bit finalizer
+    val i = (h ^ (h >>> 16)) * 0x85EBCA6B
+    val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
+    if j==0 then 0x41081989 else j
 
   /** Hashcode, by default `equals`, can be overridden */
   protected def isEqual(x: T, y: T): Boolean = x.equals(y)
@@ -109,9 +114,11 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
           e = entryAt(idx)
           e != null
         do
+          val eidx = index(hash(e))
           if isDense
-            || index(hole - index(hash(e))) < limit
-               // hash(k) is then logically at or before hole; can be moved forward to fill hole
+            || index(eidx - (hole + 1)) > index(idx - (hole + 1))
+               // entry `e` at `idx` can move unless `index(hash(e))` is in
+               // the (ring-)interval [hole + 1 .. idx]
           then
             setEntry(hole, e)
             hole = idx
