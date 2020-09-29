@@ -105,7 +105,7 @@ import scala.tasty.reflect._
  *
  *  +- Position
  *
- *  +- Comment
+ *  +- Documentation
  *
  *  +- Constant
  *
@@ -2551,8 +2551,8 @@ trait Reflection { reflection =>
 
       def localContext: Context
 
-      /** The comment for this symbol, if any */
-      def comment: Option[Comment]
+      /** The documentation for this symbol, if any */
+      def documentation: Option[Documentation]
 
       /** Tree of this definition
         *
@@ -3138,28 +3138,26 @@ trait Reflection { reflection =>
   /** Emits a warning at a specific range of a file */
   def warning(msg: => String, source: SourceFile, start: Int, end: Int): Unit
 
-  //////////////
-  // COMMENTS //
-  //////////////
-
-  // TODO: misnomer. Rename to `Documentation`
+  ///////////////////
+  // DOCUMENTATION //
+  ///////////////////
 
   /** Attachment representing the documentation of a definition */
-  type Comment <: AnyRef
+  type Documentation <: AnyRef
 
-  val Comment: CommentModule
+  val Documentation: DocumentationModule
 
-  trait CommentModule { this: Comment.type => }
+  trait DocumentationModule { this: Documentation.type => }
 
-  given CommentMethods as CommentMethods = CommentMethodsImpl
-  protected val CommentMethodsImpl: CommentMethods
+  given DocumentationMethods as DocumentationMethods = DocumentationMethodsImpl
+  protected val DocumentationMethodsImpl: DocumentationMethods
 
-  trait CommentMethods {
-    extension (self: Comment):
-      /** Raw comment string */
+  trait DocumentationMethods {
+    extension (self: Documentation):
+      /** Raw documentation string */
       def raw: String
 
-      /** Expanded comment string, if any */
+      /** Expanded documentation string, if any */
       def expanded: Option[String]
 
       /** List of usecases and their corresponding trees, if any */

@@ -2233,11 +2233,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
         def localContext: Context =
           if self.exists then ctx.withOwner(self) else ctx
-        def comment: Option[Comment] =
+        def documentation: Option[Documentation] =
           import dotc.core.Comments.CommentsContext
           val docCtx = ctx.docCtx.getOrElse {
             throw new RuntimeException(
-              "DocCtx could not be found and comments are unavailable. This is a compiler-internal error."
+              "DocCtx could not be found and documentations are unavailable. This is a compiler-internal error."
             )
           }
           docCtx.docstring(self)
@@ -2520,18 +2520,18 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
       dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
 
-    type Comment = dotc.core.Comments.Comment
+    type Documentation = dotc.core.Comments.Comment
 
-    object Comment extends CommentModule
+    object Documentation extends DocumentationModule
 
-    object CommentMethodsImpl extends CommentMethods:
-      extension (self: Comment):
+    object DocumentationMethodsImpl extends DocumentationMethods:
+      extension (self: Documentation):
         def raw: String = self.raw
         def expanded: Option[String] = self.expanded
         def usecases: List[(String, Option[DefDef])] =
           self.usecases.map { uc => (uc.code, uc.tpdCode) }
       end extension
-    end CommentMethodsImpl
+    end DocumentationMethodsImpl
 
     private def optional[T <: dotc.ast.Trees.Tree[?]](tree: T): Option[tree.type] =
       if tree.isEmpty then None else Some(tree)

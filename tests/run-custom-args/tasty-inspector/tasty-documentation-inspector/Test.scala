@@ -3,11 +3,11 @@ import scala.tasty.inspector._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    new CommentInspector().inspect("", List("Foo"))
+    new DocumentationInspector().inspect("", List("Foo"))
   }
 }
 
-class CommentInspector extends TastyInspector {
+class DocumentationInspector extends TastyInspector {
 
   protected def processCompilationUnit(using QuoteContext)(root: qctx.tasty.Tree): Unit = {
     import qctx.tasty._
@@ -15,8 +15,8 @@ class CommentInspector extends TastyInspector {
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
         case tree: Definition =>
-          tree.symbol.comment match {
-            case Some(com) => println(com.raw)
+          tree.symbol.documentation match {
+            case Some(doc) => println(doc.raw)
             case None => println()
           }
           super.traverseTree(tree)
