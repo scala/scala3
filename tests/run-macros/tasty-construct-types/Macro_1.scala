@@ -14,9 +14,9 @@ object Macros {
   def theTestBlockImpl(using qctx : QuoteContext) : Expr[Unit] = {
     import qctx.tasty._
 
-    val x1T = ConstantType(Constant(1))
-    val x2T = OrType(ConstantType(Constant(1)), ConstantType(Constant(2)))
-    val x3T = AndType(ConstantType(Constant(3)), Type.of[Any])
+    val x1T = ConstantType(Constant.Int(1))
+    val x2T = OrType(ConstantType(Constant.Int(1)), ConstantType(Constant.Int(2)))
+    val x3T = AndType(ConstantType(Constant.Int(3)), Type.of[Any])
     val x4T =
       TypeLambda(
         List("A","B"),
@@ -28,7 +28,7 @@ object Macros {
         "T",
         TypeBounds(Type.of[Int], Type.of[Int]))
     val x6T = Type.of[List].appliedTo(List(Type.of[Int]))
-    val x7T = AnnotatedType(ConstantType(Constant(7)), '{ new TestAnnotation }.unseal)
+    val x7T = AnnotatedType(ConstantType(Constant.Int(7)), '{ new TestAnnotation }.unseal)
     val x8T =
       MatchType(
         Type.of[Int],

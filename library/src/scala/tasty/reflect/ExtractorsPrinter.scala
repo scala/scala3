@@ -165,19 +165,19 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
     }
 
     def visitConstant(x: Constant): Buffer = x match {
-      case Constant(()) => this += "Constant(())"
-      case Constant(null) => this += "Constant(null)"
-      case Constant(value: Boolean) => this += "Constant(" += value += ")"
-      case Constant(value: Byte) => this += "Constant(" += value += ": Byte)"
-      case Constant(value: Short) => this += "Constant(" += value += ": Short)"
-      case Constant(value: Char) => this += "Constant('" += value += "')"
-      case Constant(value: Int) => this += "Constant(" += value.toString += ")"
-      case Constant(value: Long) => this += "Constant(" += value += "L)"
-      case Constant(value: Float) => this += "Constant(" += value += "f)"
-      case Constant(value: Double) => this += "Constant(" += value += "d)"
-      case Constant(value: String) => this += "Constant(\"" += value += "\")"
-      case Constant.ClassTag(value) =>
-        this += "Constant.ClassTag("
+      case Constant.Unit() => this += "Constant.Unit()"
+      case Constant.Null() => this += "Constant.Null()"
+      case Constant.Boolean(value) => this += "Constant.Boolean(" += value += ")"
+      case Constant.Byte(value) => this += "Constant.Byte(" += value += ")"
+      case Constant.Short(value) => this += "Constant.Short(" += value += ")"
+      case Constant.Int(value) => this += "Constant.Int(" += value += ")"
+      case Constant.Long(value) => this += "Constant.Long(" += value += "L)"
+      case Constant.Float(value) => this += "Constant.Float(" += value += "f)"
+      case Constant.Double(value) => this += "Constant.Double(" += value += "d)"
+      case Constant.Char(value) => this += "Constant.Char('" += value += "')"
+      case Constant.String(value) => this += "Constant.String(\"" += value += "\")"
+      case Constant.ClassOf(value) =>
+        this += "Constant.ClassOf("
         visitType(value) += ")"
     }
 

@@ -28,7 +28,7 @@ object Index {
     import qctx.tasty._
 
     def name(tp: Type): String = tp match {
-      case ConstantType(Constant(str: String)) => str
+      case ConstantType(Constant.String(str)) => str
     }
 
     def names(tp: Type): List[String] = tp match {

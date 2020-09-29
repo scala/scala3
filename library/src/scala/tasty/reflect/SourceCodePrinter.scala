@@ -279,7 +279,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
       case While(cond, body) =>
         (cond, body) match {
-          case (Block(Block(Nil, body1) :: Nil, Block(Nil, cond1)), Literal(Constant(()))) =>
+          case (Block(Block(Nil, body1) :: Nil, Block(Nil, cond1)), Literal(Constant.Unit())) =>
             this += highlightKeyword("do ")
             printTree(body1) += highlightKeyword(" while ")
             inParens(printTree(cond1))
@@ -555,7 +555,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
           while (it.hasNext)
             extractFlatStats(it.next())
           extractFlatStats(expansion)
-        case Literal(Constant(())) => // ignore
+        case Literal(Constant.Unit()) => // ignore
         case stat => flatStats += stat
       }
       def extractFlatExpr(term: Term): Term = term match {
@@ -937,18 +937,18 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     inline private val qSc = '"'
 
     def printConstant(const: Constant): Buffer = const match {
-      case Constant(()) => this += highlightLiteral("()")
-      case Constant(null) => this += highlightLiteral("null")
-      case Constant(v: Boolean) => this += highlightLiteral(v.toString)
-      case Constant(v: Byte) => this += highlightLiteral(v.toString)
-      case Constant(v: Short) => this += highlightLiteral(v.toString)
-      case Constant(v: Int) => this += highlightLiteral(v.toString)
-      case Constant(v: Long) => this += highlightLiteral(v.toString + "L")
-      case Constant(v: Float) => this += highlightLiteral(v.toString + "f")
-      case Constant(v: Double) => this += highlightLiteral(v.toString)
-      case Constant(v: Char) => this += highlightString(s"${qc}${escapedChar(v)}${qc}")
-      case Constant(v: String) => this += highlightString(s"${qSc}${escapedString(v)}${qSc}")
-      case Constant.ClassTag(v) =>
+      case Constant.Unit() => this += highlightLiteral("()")
+      case Constant.Null() => this += highlightLiteral("null")
+      case Constant.Boolean(v) => this += highlightLiteral(v.toString)
+      case Constant.Byte(v) => this += highlightLiteral(v.toString)
+      case Constant.Short(v) => this += highlightLiteral(v.toString)
+      case Constant.Int(v) => this += highlightLiteral(v.toString)
+      case Constant.Long(v) => this += highlightLiteral(v.toString + "L")
+      case Constant.Float(v) => this += highlightLiteral(v.toString + "f")
+      case Constant.Double(v) => this += highlightLiteral(v.toString)
+      case Constant.Char(v) => this += highlightString(s"${qc}${escapedChar(v)}${qc}")
+      case Constant.String(v) => this += highlightString(s"${qSc}${escapedString(v)}${qSc}")
+      case Constant.ClassOf(v) =>
         this += "classOf"
         inSquare(printType(v))
     }
@@ -1414,8 +1414,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
 
   private def splicedName(sym: Symbol): Option[String] = {
     sym.annots.find(_.symbol.owner == Symbol.requiredClass("scala.internal.quoted.showName")).flatMap {
-      case Apply(_, Literal(Constant(c: String)) :: Nil) => Some(c)
-      case Apply(_, Inlined(_, _, Literal(Constant(c: String))) :: Nil) => Some(c)
+      case Apply(_, Literal(Constant.String(c)) :: Nil) => Some(c)
+      case Apply(_, Inlined(_, _, Literal(Constant.String(c))) :: Nil) => Some(c)
       case annot => None
     }.orElse {
       if sym.owner.isClassDef then None
