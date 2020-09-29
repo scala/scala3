@@ -118,8 +118,6 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Print
         this += ", "
         visitList[TypeTree](derived, visitTree)
         this += ", " += self += ", " ++= body += ")"
-      case PackageDef(name, owner) =>
-        this += "PackageDef(\"" += name += "\", " += owner += ")"
       case Import(expr, selectors) =>
         this += "Import(" += expr += ", " ++= selectors += ")"
       case PackageClause(pid, stats) =>

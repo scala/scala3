@@ -11,7 +11,6 @@ import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted.reflect._
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.quoted.reflect.FromSymbol.{definitionFromSym, packageDefFromSym}
 import dotty.tools.dotc.typer.Implicits
 
 import scala.quoted.QuoteContext
@@ -154,13 +153,12 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         case _ => None
     end StatementTypeTest
 
-    type Definition = tpd.Tree
+    type Definition = tpd.MemberDef
 
     object DefinitionTypeTest extends TypeTest[Tree, Definition]:
       def runtimeClass: Class[?] = classOf[Definition]
       override def unapply(x: Any): Option[Definition] = x match
         case x: tpd.MemberDef @unchecked => Some(x)
-        case x: PackageDefinition @unchecked => Some(x)
         case _ => None
     end DefinitionTypeTest
 
@@ -170,7 +168,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       extension (self: Definition):
         def name: String = self match
           case self: tpd.MemberDef => self.name.toString
-          case self: PackageDefinition => self.symbol.name.toString // TODO make PackageDefinition a MemberDef or NameTree
       end extension
     end DefinitionMethodsImpl
 
@@ -283,29 +280,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def rhs: Tree = self.rhs
       end extension
     end TypeDefMethodsImpl
-
-    type PackageDef = PackageDefinition
-
-    object PackageDefTypeTest extends TypeTest[Tree, PackageDef]:
-      def runtimeClass: Class[?] = classOf[PackageDef]
-      override def unapply(x: Any): Option[PackageDef] = x match
-        case x: PackageDefinition @unchecked => Some(x)
-        case _ => None
-    end PackageDefTypeTest
-
-    object PackageDef extends PackageDefModule:
-      def unapply(tree: PackageDef): Option[(String, PackageDef)] =
-        Some((tree.name, tree.owner))
-    end PackageDef
-
-    object PackageDefMethodsImpl extends PackageDefMethods:
-      extension (self: PackageDef):
-        def owner: PackageDef = packageDefFromSym(self.symbol.owner)
-        def members: List[Statement] =
-          if (self.symbol.is(JavaDefined)) Nil // FIXME should also support java packages
-          else self.symbol.info.decls.iterator.map(definitionFromSym).toList
-      end extension
-    end PackageDefMethodsImpl
 
     type Term = tpd.Tree
 
@@ -1137,13 +1111,13 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
         tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
       def unapply(x: Refined): Option[(TypeTree, List[Definition])] =
-        Some((x.tpt, x.refinements))
+        Some((x.tpt, x.refinements.asInstanceOf[List[Definition]]))
     end Refined
 
     object RefinedMethodsImpl extends RefinedMethods:
       extension (self: Refined):
         def tpt: TypeTree = self.tpt
-        def refinements: List[Definition] = self.refinements
+        def refinements: List[Definition] = self.refinements.asInstanceOf[List[Definition]]
       end extension
     end RefinedMethodsImpl
 
@@ -2287,6 +2261,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           self.typeRef.decls.iterator.collect {
             case sym if isMethod(sym) => sym.asTerm
           }.toList
+
+        def members: List[Symbol] =
+          self.typeRef.info.decls.toList
 
         def typeMembers: List[Symbol] =
           self.unforcedDecls.filter(_.isType)
