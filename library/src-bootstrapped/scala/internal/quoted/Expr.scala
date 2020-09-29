@@ -47,16 +47,14 @@ object Expr {
    *
    *  @param scrutineeExpr `Expr[Any]` on which we are pattern matching
    *  @param patternExpr `Expr[Any]` containing the pattern tree
-   *  @param hasTypeSplices `Boolean` notify if the pattern has type splices (if so we use a GADT context)
+   *  @param hasTypeSplices `Boolean` notify if the pattern has type splices
    *  @param qctx the current QuoteContext
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
    */
-  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[Any])(using patternExpr: scala.quoted.Expr[Any],
-        hasTypeSplices: Boolean, qctx: QuoteContext): Option[Tup] = {
+  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[Any])
+        (using patternExpr: scala.quoted.Expr[Any], qctx: QuoteContext): Option[Tup] = {
     val qctx1 = quoteContextWithCompilerInterface(qctx)
-    val qctx2 = if hasTypeSplices then qctx1.tasty.Constraints_context else qctx1
-    given qctx2.type = qctx2
-    new Matcher.QuoteMatcher[qctx2.type](qctx2).termMatch(scrutineeExpr.unseal, patternExpr.unseal, hasTypeSplices).asInstanceOf[Option[Tup]]
+    qctx1.tasty.termMatch(scrutineeExpr.unseal, patternExpr.unseal).asInstanceOf[Option[Tup]]
   }
 
   /** Returns a null expresssion equivalent to `'{null}` */

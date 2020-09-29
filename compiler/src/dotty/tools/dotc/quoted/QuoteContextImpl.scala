@@ -2546,20 +2546,62 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): TypeTree =
       PickledQuotes.unpickleType(repr, args)
 
-    def Constraints_context[T]: scala.quoted.QuoteContext =
-      val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(dotc.core.Mode.GadtConstraintInference)
-      dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)
+    def termMatch(scrutinee: Term, pattern: Term): Option[Tuple] =
+      treeMatch(scrutinee, pattern)
 
-    def Constraints_add(syms: List[Symbol]): Boolean =
-      ctx.gadt.addToConstraint(syms)
+    def typeTreeMatch(scrutinee: TypeTree, pattern: TypeTree): Option[Tuple] =
+      treeMatch(scrutinee, pattern)
 
-    def Constraints_approximation(sym: Symbol, fromBelow: Boolean): Type =
-      ctx.gadt.approximation(sym, fromBelow)
+    private def treeMatch(scrutinee: Tree, pattern: Tree): Option[Tuple] = {
+      def isTypeHoleDef(tree: Tree): Boolean =
+        tree match
+          case tree: TypeDef =>
+            tree.symbol.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_patternTypeAnnot)
+          case _ => false
 
-    def Definitions_InternalQuotedMatcher_patternHole: Symbol = dotc.core.Symbols.defn.InternalQuotedMatcher_patternHole
-    def Definitions_InternalQuotedMatcher_higherOrderHole: Symbol = dotc.core.Symbols.defn.InternalQuotedMatcher_higherOrderHole
-    def Definitions_InternalQuotedMatcher_patternTypeAnnot: Symbol = dotc.core.Symbols.defn.InternalQuotedMatcher_patternTypeAnnot
-    def Definitions_InternalQuotedMatcher_fromAboveAnnot: Symbol = dotc.core.Symbols.defn.InternalQuotedMatcher_fromAboveAnnot
+      def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
+        pat match
+          case tpd.Inlined(_, Nil, pat2) => extractTypeHoles(pat2)
+          case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
+            val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol)
+            val otherStats = stats.dropWhile(isTypeHoleDef)
+            (tpd.cpy.Block(pat)(otherStats, expr), holes)
+          case _ =>
+            (pat, Nil)
+
+      val (pat1, typeHoles) = extractTypeHoles(pattern)
+
+      val ctx1 =
+        if typeHoles.isEmpty then ctx
+        else
+          val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(dotc.core.Mode.GadtConstraintInference)
+          ctx1.gadt.addToConstraint(typeHoles)
+          ctx1
+
+      val qctx1 = dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)
+        .asInstanceOf[QuoteContext { val tasty: QuoteContextImpl.this.tasty.type }]
+
+      val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1)
+
+      val matchings =
+        if pat1.isType then matcher.termMatch(scrutinee, pat1)
+        else matcher.termMatch(scrutinee, pat1)
+
+      // val matchings = matcher.termMatch(scrutinee, pattern)
+      if typeHoles.isEmpty then matchings
+      else {
+        // After matching and doing all subtype checks, we have to approximate all the type bindings
+        // that we have found, seal them in a quoted.Type and add them to the result
+        def typeHoleApproximation(sym: Symbol) =
+          ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_fromAboveAnnot)).seal
+        matchings.map { tup =>
+          Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
+        }
+      }
+    }
+
+    def Definitions_InternalQuotedPatterns_patternHole: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole
+    def Definitions_InternalQuotedPatterns_higherOrderHole: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_higherOrderHole
 
     def betaReduce(tree: Term): Option[Term] =
       tree match

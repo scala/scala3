@@ -1,11 +1,8 @@
 package scala.internal.quoted
 
-import scala.annotation.internal.sharable
 import scala.annotation.{Annotation, compileTimeOnly}
 
-import scala.quoted._
-
-object Matcher {
+object Patterns {
 
   /** A splice in a quoted pattern is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternHole`")
@@ -31,15 +28,5 @@ object Matcher {
   /** A type pattern that must be aproximated from above */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.fromAbove`")
   class fromAbove extends Annotation
-
-  class QuoteMatcher[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) {
-    import qctx.tasty._
-
-    def termMatch(scrutineeTerm: Term, patternTerm: Term, hasTypeSplices: Boolean): Option[Tuple] =
-      throw new Exception("Non bootstrapped lib")
-
-    def typeTreeMatch(scrutineeTypeTree: TypeTree, patternTypeTree: TypeTree, hasTypeSplices: Boolean): Option[Tuple] =
-      throw new Exception("Non bootstrapped lib")
-  }
 
 }

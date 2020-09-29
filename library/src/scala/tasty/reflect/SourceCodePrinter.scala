@@ -583,7 +583,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlig
     def printFlatBlock(stats: List[Statement], expr: Term)(using elideThis: Option[Symbol]): Buffer = {
       val (stats1, expr1) = flatBlock(stats, expr)
       val stats2 = stats1.filter {
-        case tree: TypeDef => !tree.symbol.annots.exists(_.symbol.owner == Symbol.requiredClass("scala.internal.Quoted.quoteTypeTag"))
+        case tree: TypeDef => !tree.symbol.annots.exists(_.symbol.maybeOwner == Symbol.requiredClass("scala.internal.Quoted.quoteTypeTag"))
         case _ => true
       }
       if (stats2.isEmpty) {
