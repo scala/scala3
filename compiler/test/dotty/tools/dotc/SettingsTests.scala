@@ -37,4 +37,28 @@ class SettingsTests {
     val options  = Array("-encoding", "-d", outputDir.toString, source.toString)
     val reporter = Main.process(options, reporter = StoreReporter())
     assertEquals(1, reporter.errorCount)
+
+  //List(dynamics, existentials, higherKinds, implicitConversions, postfixOps, reflectiveCalls, Scala2Compat, noAutoTupling, strictEquality, adhocExtensions, dependent, 3.0-migration, 3.0, 3.1-migration, 3.1, experimental.macros, experimental.dependent)
+  @Test def `t9901 Settings detects available language features`: Unit =
+    val options = Array("-language:dynamics,strictEquality,experimental.macros")
+    val reporter = Main.process(options, reporter = StoreReporter())
+    assertEquals(0, reporter.errorCount)
+
+  @Test def `t9901 Settings detects one erroneous language feature`: Unit =
+    val options = Array("-language:dynamics,awesome,experimental")
+    val reporter = Main.process(options, reporter = StoreReporter())
+    assertEquals(1, reporter.errorCount)
+    assertEquals("awesome is not a valid choice for -language", reporter.allErrors.head.message)
+
+  @Test def `t9901 Settings excludes experimental`: Unit =
+    val options = Array("-language:dynamics,experimental")
+    val reporter = Main.process(options, reporter = StoreReporter())
+    assertEquals(1, reporter.errorCount)
+    assertEquals("experimental is not a valid choice for -language", reporter.allErrors.head.message)
+
+  @Test def `t9901 Settings includes funky strings`: Unit =
+    val options = Array("-language:3.1-migration")
+    val reporter = Main.process(options, reporter = StoreReporter())
+    assertEquals(0, reporter.errorCount)
+
 }

@@ -9,6 +9,7 @@ import annotation.tailrec
 import collection.mutable.ArrayBuffer
 import language.existentials
 import reflect.ClassTag
+import scala.PartialFunction.cond
 import scala.util.{Success, Failure}
 
 object Settings {
@@ -91,27 +92,16 @@ object Settings {
     def isMultivalue: Boolean = implicitly[ClassTag[T]] == ListTag
 
     def legalChoices: String =
-      choices match {
+      choices match
         case xs if xs.isEmpty => ""
         case r: Range         => s"${r.head}..${r.last}"
         case xs: List[?]      => xs.toString
-      }
 
     def isLegal(arg: Any): Boolean =
-      choices match {
-        case xs if xs.isEmpty =>
-          arg match {
-            case _: T => true
-            case _ => false
-          }
-        case r: Range =>
-          arg match {
-            case x: Int => r.head <= x && x <= r.last
-            case _ => false
-          }
-        case xs: List[?] =>
-          xs.contains(arg)
-      }
+      choices match
+        case xs if xs.isEmpty => cond(arg) { case _: T => true }
+        case r: Range         => cond(arg) { case x: Int => r.head <= x && x <= r.last }
+        case xs: List[?]      => xs.contains(arg)
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
       val ArgsSummary(sstate, arg :: args, errors, warnings) = state
@@ -132,14 +122,21 @@ object Settings {
         ArgsSummary(sstate, args, errors :+ msg, warnings)
       def missingArg =
         fail(s"missing argument for option $name", args)
-      def doSet(argRest: String) = ((implicitly[ClassTag[T]], args): @unchecked) match {
+      def doSet(argRest: String) = ((implicitly[ClassTag[T]], args): @unchecked) match
         case (BooleanTag, _) =>
           update(true, args)
         case (OptionTag, _) =>
           update(Some(propertyClass.get.getConstructor().newInstance()), args)
+        case (ListTag, _) if argRest.isEmpty =>
+          missingArg
+        case (ListTag, _) if choices.nonEmpty =>
+          val ss = argRest.split(",").toList
+          ss.find(s => !choices.exists(c => c.asInstanceOf[List[String]].contains(s))) match {
+            case Some(s) => fail(s"$s is not a valid choice for $name", args)
+            case None    => update(ss, args)
+          }
         case (ListTag, _) =>
-          if (argRest.isEmpty) missingArg
-          else update((argRest split ",").toList, args)
+          update((argRest split ",").toList, args)
         case (StringTag, _) if choices.nonEmpty && argRest.nonEmpty =>
           if (!choices.contains(argRest))
             fail(s"$arg is not a valid choice for $name", args)
@@ -177,7 +174,7 @@ object Settings {
           }
         case (_, Nil) =>
           missingArg
-      }
+      end doSet
 
       if (prefix != "" && arg.startsWith(prefix))
         doSet(arg drop prefix.length)
@@ -277,6 +274,9 @@ object Settings {
 
     def IntSetting(name: String, descr: String, default: Int, range: Seq[Int] = Nil): Setting[Int] =
       publish(Setting(name, descr, default, choices = range))
+
+    def MultiChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String]): Setting[List[String]] =
+      publish(Setting(name, descr, Nil, helpArg, choices.map(c => List(c))))
 
     def MultiStringSetting(name: String, helpArg: String, descr: String): Setting[List[String]] =
       publish(Setting(name, descr, Nil, helpArg))

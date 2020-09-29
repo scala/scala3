@@ -42,7 +42,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val verbose: Setting[Boolean] = BooleanSetting("-verbose", "Output messages about what the compiler is doing.") withAbbreviation "--verbose"
   val version: Setting[Boolean] = BooleanSetting("-version", "Print product version and exit.") withAbbreviation "--version"
   val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", 80) withAbbreviation "--page-width"
-  val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.") withAbbreviation "--language"
+  val language: Setting[List[String]] = MultiChoiceSetting("-language", "feature", "Enable one or more language features.", featureChoices) withAbbreviation "--language"
   val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with a `...-migration` source version, rewrites sources to migrate to new version.") withAbbreviation "--rewrite"
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.") withAbbreviation "--no-warnings"
   val fromTasty: Setting[Boolean] = BooleanSetting("-from-tasty", "Compile classes from tasty files. The arguments are .tasty or .jar files.") withAbbreviation "--from-tasty"
@@ -225,4 +225,24 @@ class ScalaSettings extends Settings.SettingGroup {
   val docSnapshot: Setting[Boolean] = BooleanSetting("-doc-snapshot", "Generate a documentation snapshot for the current Dotty version")
 
   val wikiSyntax: Setting[Boolean] = BooleanSetting("-Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc.")
+
+  // derive choices for -language from scala.language aka scalaShadowing.language
+  private def featureChoices: List[String] =
+    List(scalaShadowing.language.getClass, scalaShadowing.language.experimental.getClass).flatMap { cls =>
+      import java.lang.reflect.{Member, Modifier}
+      def isPublic(m: Member): Boolean = Modifier.isPublic(m.getModifiers)
+      def goodFields(nm: String): List[String] =
+        nm match {
+          case "experimental" => Nil
+          case s if s.contains("$") =>
+            val adjusted = s.replace("$u002E", ".").replace("$minus", "-")
+            if adjusted.contains("$") then Nil else adjusted :: Nil
+          case _ => nm :: Nil
+        }
+      val isX = cls.getName.contains("experimental")
+      def prefixed(nm: String) = if isX then s"experimental.$nm" else nm
+
+      cls.getDeclaredMethods.filter(isPublic).map(_.getName).map(prefixed)
+      ++ cls.getDeclaredFields.filter(isPublic).map(_.getName).flatMap(goodFields).map(prefixed)
+    }
 }

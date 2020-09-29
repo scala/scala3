@@ -51,4 +51,32 @@ class ScalaSettingsTests:
     assertTrue("Has the feature", set.contains("implicitConversions"))
     assertTrue("Has the feature", set.contains("dynamics"))
 
+  @Test def `A multichoice setting is multivalued`: Unit =
+    class SUT extends SettingGroup:
+      val language: Setting[List[String]] = MultiChoiceSetting("-language", "feature", "Enable creature features.", List("foo", "bar", "baz"))
+    val sut  = SUT()
+    val args = tokenize("-language:foo,baz")
+    val sumy = ArgsSummary(sut.defaultState, args, errors = Nil, warnings = Nil)
+    val res  = sut.processArguments(sumy, processAll = true, skipped = Nil)
+    val set  = sut.language.valueIn(res.sstate)
+    assertEquals(1, args.length)
+    assertTrue("No warnings!", res.warnings.isEmpty)
+    assertTrue("No errors!", res.errors.isEmpty)
+    assertTrue("Has the feature", set.contains("foo"))
+    assertTrue("Has the feature", set.contains("baz"))
+
+  @Test def `A multichoice setting is restricted`: Unit =
+    class SUT extends SettingGroup:
+      val language: Setting[List[String]] = MultiChoiceSetting("-language", "feature", "Enable creature features.", List("foo", "bar", "baz"))
+    val sut  = SUT()
+    val args = tokenize("-language:foo,bah")
+    val sumy = ArgsSummary(sut.defaultState, args, errors = Nil, warnings = Nil)
+    val res  = sut.processArguments(sumy, processAll = true, skipped = Nil)
+    val set  = sut.language.valueIn(res.sstate)
+    assertEquals(1, args.length)
+    assertTrue("No warnings!", res.warnings.isEmpty)
+    assertEquals(1, res.errors.size)
+    assertFalse("Has the foo feature", set.contains("foo"))
+    assertFalse("Has the bah feature", set.contains("bah"))
+
 end ScalaSettingsTests
