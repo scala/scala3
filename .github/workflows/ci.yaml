@@ -11,7 +11,7 @@ env:
 
 jobs:
   test:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: lampepfl/dotty:2020-04-24
 
     steps:
@@ -54,7 +54,7 @@ jobs:
           ./project/scripts/cmdTests
 
   test_bootstrapped:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: lampepfl/dotty:2020-04-24
 
     steps:
@@ -97,7 +97,7 @@ jobs:
           ./project/scripts/bootstrapCmdTests
 
   community_build:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: lampepfl/dotty:2020-04-24
 
     steps:
@@ -138,7 +138,7 @@ jobs:
           ./project/scripts/sbt community-build/test
 
   test_sbt:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: lampepfl/dotty:2020-04-24
     if: (
           github.event_name == 'push' &&
@@ -181,7 +181,7 @@ jobs:
         run: ./project/scripts/sbt sbt-dotty/scripted
 
   test_java8:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: lampepfl/dotty:2020-04-24
     if: (
           github.event_name == 'push' &&
@@ -227,7 +227,7 @@ jobs:
         run: ./project/scripts/sbt ";compile ;test"
 
   publish_nightly:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: lampepfl/dotty:2020-04-24
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
     if: github.event_name == 'schedule'
@@ -274,7 +274,7 @@ jobs:
           ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
 
   nightly_documentation:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: lampepfl/dotty:2020-04-24
     needs: [publish_nightly]
     if: github.event_name == 'schedule'
@@ -328,7 +328,7 @@ jobs:
           publish_branch: gh-pages
 
   publish_release:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: lampepfl/dotty:2020-04-24
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
     if: github.event_name == 'push' &&
@@ -423,7 +423,7 @@ jobs:
           asset_content_type: text/plain
 
   release_documentation:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: lampepfl/dotty:2020-04-24
     needs: [publish_release]
     if: github.event_name == 'push' &&
@@ -480,7 +480,7 @@ jobs:
           publish_branch: gh-pages
 
   publish_sbt_release:
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux]
     container: lampepfl/dotty:2020-04-24
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
     if: github.event_name == 'push' &&
