@@ -295,7 +295,20 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         case _ => None
     end TermTypeTest
 
-    object Term extends TermModule
+    object Term extends TermModule:
+      def betaReduce(tree: Term): Option[Term] =
+        tree match
+          case app @ tpd.Apply(tpd.Select(fn, nme.apply), args) if dotc.core.Symbols.defn.isFunctionType(fn.tpe) =>
+            val app1 = dotc.transform.BetaReduce(app, fn, args)
+            if app1 eq app then None
+            else Some(app1.withSpan(tree.span))
+          case tpd.Block(Nil, expr) =>
+            for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(Nil, e)
+          case tpd.Inlined(_, Nil, expr) =>
+            betaReduce(expr)
+          case _ =>
+            None
+    end Term
 
     object TermMethodsImpl extends TermMethods:
       extension (self: Term):
@@ -2654,19 +2667,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     def Definitions_InternalQuotedPatterns_patternHole: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole
     def Definitions_InternalQuotedPatterns_higherOrderHole: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_higherOrderHole
-
-    def betaReduce(tree: Term): Option[Term] =
-      tree match
-        case app @ tpd.Apply(tpd.Select(fn, nme.apply), args) if dotc.core.Symbols.defn.isFunctionType(fn.tpe) =>
-          val app1 = dotc.transform.BetaReduce(app, fn, args)
-          if app1 eq app then None
-          else Some(app1.withSpan(tree.span))
-        case tpd.Block(Nil, expr) =>
-          for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(Nil, e)
-        case tpd.Inlined(_, Nil, expr) =>
-          betaReduce(expr)
-        case _ =>
-          None
 
     def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
 
