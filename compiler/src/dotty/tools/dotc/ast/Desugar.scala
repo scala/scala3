@@ -484,8 +484,9 @@ object desugar {
         val enumCompanionRef = TermRefTree()
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
-        val enumSpecMethods = EnumGetters()
-        (enumImport :: enumSpecMethods :: enumStats, enumCases, enumCompanionRef)
+        val enumLabelDef = DesugarEnums.enumLabelMeth(EmptyTree)
+        val enumGetters = EnumGetters() // optionally generate ordinal method
+        (enumImport :: enumGetters :: enumLabelDef :: enumStats, enumCases, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)
     }
@@ -891,7 +892,7 @@ object desugar {
   }
 
   def enumGetters(getters: EnumGetters)(using Context): Tree =
-   flatTree(DesugarEnums.enumBaseMeths).withSpan(getters.span)
+   flatTree(DesugarEnums.optionalOrdinalMethod).withSpan(getters.span)
 
   /** Transform extension construct to list of extension methods */
   def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {

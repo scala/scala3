@@ -935,8 +935,11 @@ class Namer { typer: Typer =>
     }
     private val (restAfterParents, rest): (List[Tree], List[Tree]) =
       if original.mods.isEnumClass then
+        // in Desugar.scala, desugaring an enum class definition fixes the
+        // first and second statements in the body to be `imports` and `getters`.
+        // `getters` needs to be indexed after parents are resolved because it checks for a java.lang.Enum parent
         val (imports :: getters :: Nil, stats): @unchecked = restOfBody.splitAt(2)
-        (getters :: Nil, imports :: stats) // enum getters desugaring needs to test if a parent is java.lang.Enum
+        (getters :: Nil, imports :: stats)
       else
         (Nil, restOfBody)
 

@@ -322,11 +322,9 @@ object DesugarEnums {
       (ordinal, Nil)
   }
 
-  def enumBaseMeths(using Context): List[Tree] =
-    if isJavaEnum then
-      enumLabelMeth(EmptyTree) :: Nil
-    else
-      ordinalMeth(EmptyTree) :: enumLabelMeth(EmptyTree) :: Nil
+  def optionalOrdinalMethod(using Context): List[Tree] =
+    if isJavaEnum then Nil
+    else ordinalMeth(EmptyTree) :: Nil
 
   def param(name: TermName, typ: Type)(using Context): ValDef = param(name, TypeTree(typ))
   def param(name: TermName, tpt: Tree)(using Context): ValDef = ValDef(name, tpt, EmptyTree).withFlags(Param)
