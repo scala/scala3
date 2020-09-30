@@ -85,7 +85,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       extension [T](tree: Tree)
         def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T] =
           if tree.isExpr then
-            new scala.internal.quoted.Expr(tree, compilerId).asExprOf[T]
+            new scala.internal.quoted.Expr(tree, QuoteContextImpl.this.hashCode).asExprOf[T]
           else tree match
             case TermTypeTest(tree) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
             case _ => throw new Exception("Expected a Term but was: " + tree)
@@ -313,11 +313,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object TermMethodsImpl extends TermMethods:
       extension (self: Term):
         def seal: scala.quoted.Expr[Any] =
-          if self.isExpr then new scala.internal.quoted.Expr(self, compilerId)
+          if self.isExpr then new scala.internal.quoted.Expr(self, QuoteContextImpl.this.hashCode)
           else throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
 
         def sealOpt: Option[scala.quoted.Expr[Any]] =
-          if self.isExpr then Some(new scala.internal.quoted.Expr(self, compilerId))
+          if self.isExpr then Some(new scala.internal.quoted.Expr(self, QuoteContextImpl.this.hashCode))
           else None
 
         def tpe: Type = self.tpe
@@ -1594,7 +1594,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           new SourceCodePrinter[tasty.type](tasty)(syntaxHighlight).showType(self)
 
         def seal: scala.quoted.Type[_] =
-          new scala.internal.quoted.Type(Inferred(self), compilerId)
+          new scala.internal.quoted.Type(Inferred(self), QuoteContextImpl.this.hashCode)
 
         def =:=(that: Type): Boolean = self =:= that
         def <:<(that: Type): Boolean = self <:< that
@@ -2668,8 +2668,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     def Definitions_InternalQuotedPatterns_patternHole: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole
     def Definitions_InternalQuotedPatterns_higherOrderHole: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_higherOrderHole
 
-    def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
-
   end tasty
+
+  private[this] val hash = QuoteContextImpl.scopeId(using ctx)
+  override def hashCode: Int = hash
 
 end QuoteContextImpl
