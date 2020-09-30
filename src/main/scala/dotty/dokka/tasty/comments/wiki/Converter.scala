@@ -107,7 +107,6 @@ class Converter(val repr: Repr) extends BaseConverter {
     case Underline(text) => emit(dkkd.U(convertInline(text).asJava, kt.emptyMap))
     case Monospace(text) => emit(dkkd.CodeInline(convertInline(text).asJava, kt.emptyMap))
     case Link(target, userText) =>
-      val SchemeUri = """[a-z]+:.*""".r
       def resolveText(default: String) =
         if !userText.isEmpty
         then convertInline(userText).asJava
