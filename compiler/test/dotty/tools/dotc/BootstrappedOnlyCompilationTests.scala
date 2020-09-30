@@ -139,7 +139,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     ).checkRuns()
   }
 
-  @Test def runBootstrappedOnly: Unit = {
+  @Test def runBootstrappedOnly: Unit = if (!scala.util.Properties.isWin) {
     implicit val testGroup: TestGroup = TestGroup("runBootstrappedOnly")
     aggregateTests(
       compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),
