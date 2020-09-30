@@ -336,18 +336,6 @@ object Build {
     javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in (`scala3-library-bootstrapped`, Compile)).value).mkString("", File.pathSeparator, "")
   )
 
-  // sbt >= 0.13.12 will automatically rewrite transitive dependencies on
-  // any version in any organization of scala{-library,-compiler,-reflect,p}
-  // to have organization `scalaOrganization` and version `scalaVersion`
-  // (see https://github.com/sbt/sbt/pull/2634).
-  // This means that we need to provide dummy artefacts for these projects,
-  // otherwise users will get compilation errors if they happen to transitively
-  // depend on one of these projects.
-  lazy val commonDummySettings = commonBootstrappedSettings ++ Seq(
-    crossPaths := false,
-    libraryDependencies := Seq()
-  )
-
   /** Projects -------------------------------------------------------------- */
 
   val dottyCompilerBootstrappedRef = LocalProject("scala3-compiler-bootstrapped")
@@ -1100,33 +1088,6 @@ object Build {
   lazy val `scala3-tastydoc` = project.in(file("tastydoc")).asDottyTastydoc(Bootstrapped)
   lazy val `scala3-tastydoc-input` = project.in(file("tastydoc/input")).asDottyTastydocInput(Bootstrapped)
 
-  // Depend on scala3-library so that sbt projects using dotty automatically
-  // depend on the scala3-library
-  lazy val `scala-library` = project.
-    dependsOn(`scala3-library-bootstrapped`).
-    settings(commonDummySettings).
-    settings(
-      // Need a direct dependency on the real scala-library even though we indirectly
-      // depend on it via scala3-library, because sbt may rewrite dependencies
-      // (see https://github.com/sbt/sbt/pull/2634), but won't rewrite the direct
-      // dependencies of scala-library (see https://github.com/sbt/sbt/pull/2897)
-      libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion(Bootstrapped)
-    )
-
-  lazy val `scala-compiler` = project.
-    settings(commonDummySettings)
-  lazy val `scala-reflect` = project.
-    settings(commonDummySettings).
-    settings(
-      libraryDependencies := Seq("org.scala-lang" % "scala-reflect" % stdlibVersion(Bootstrapped))
-    )
-  lazy val scalap = project.
-    settings(commonDummySettings).
-    settings(
-      libraryDependencies := Seq("org.scala-lang" % "scalap" % stdlibVersion(Bootstrapped))
-    )
-
-
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/scala3-example-project for usage.
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
@@ -1164,8 +1125,6 @@ object Build {
         publishLocal in `tasty-core-bootstrapped`,
         publishLocal in `scala3-staging`,
         publishLocal in `scala3-tasty-inspector`,
-        publishLocal in `scala-library`,
-        publishLocal in `scala-reflect`,
         publishLocal in `scala3-doc-bootstrapped`,
         publishLocal in `scala3-bootstrapped` // Needed because sbt currently hardcodes the dotty artifact
       ).evaluated
@@ -1233,8 +1192,6 @@ object Build {
       prepareCommunityBuild := {
         (publishLocal in `scala3-sbt-bridge`).value
         (publishLocal in `scala3-interfaces`).value
-        (publishLocal in `scala-library`).value
-        (publishLocal in `scala-reflect`).value
         (publishLocal in `tasty-core-bootstrapped`).value
         (publishLocal in `scala3-library-bootstrapped`).value
         (publishLocal in `scala3-doc-bootstrapped`).value
@@ -1366,8 +1323,7 @@ object Build {
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, dottyDoc, `scala3-sbt-bridge`).
-      bootstrappedAggregate(`scala-library`, `scala-compiler`, `scala-reflect`, scalap,
-        `scala3-language-server`, `scala3-staging`, `scala3-tasty-inspector`, `scala3-tastydoc`,
+      bootstrappedAggregate(`scala3-language-server`, `scala3-staging`, `scala3-tasty-inspector`, `scala3-tastydoc`,
         `scala3-library-bootstrappedJS`).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
@@ -1382,6 +1338,9 @@ object Build {
         // non-bootstrapped compiler), so publish the bootstrapped one by
         // default.
         addCommandAlias("publishLocal", "scala3-bootstrapped/publishLocal"),
+      ).
+      settings(
+        publish / skip := true
       )
 
     def asDottyCompiler(implicit mode: Mode): Project = project.withCommonSettings.

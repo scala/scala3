@@ -21,10 +21,6 @@ val `tasty-core-scala2` = Build.`tasty-core-scala2`
 val `scala3-tastydoc` = Build.`scala3-tastydoc`
 val `scala3-tastydoc-input` = Build.`scala3-tastydoc-input`
 val `scala3-bench-run` = Build.`scala3-bench-run`
-val `scala-library` = Build.`scala-library`
-val `scala-compiler` = Build.`scala-compiler`
-val `scala-reflect` = Build.`scala-reflect`
-val scalap = Build.scalap
 val dist = Build.dist
 val `community-build` = Build.`community-build`
 
