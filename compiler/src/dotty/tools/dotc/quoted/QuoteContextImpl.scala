@@ -2668,46 +2668,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         case _ =>
           None
 
-    def lambdaExtractor(fn: Term, paramTypes: List[Type]): Option[List[Term] => Term] = {
-      def rec(fn: Term, transformBody: Term => Term): Option[List[Term] => Term] = {
-        fn match {
-          case tpd.Inlined(call, bindings, expansion) =>
-            // this case must go before closureDef to avoid dropping the inline node
-            rec(expansion, tpd.cpy.Inlined(fn)(call, bindings, _))
-          case tpd.Typed(expr, tpt) =>
-            val tpe = tpt.tpe.dropDependentRefinement
-            // we checked that this is a plain Function closure, so there will be an apply method with a MethodType
-            // and the expected signature based on param types
-            val expectedSig = Signature(Nil, tpnme.WILDCARD).prependTermParams(paramTypes, false)
-            val method = tpt.tpe.member(nme.apply).atSignature(expectedSig)
-            if method.symbol.is(Deferred) then
-              val methodType = method.info.asInstanceOf[MethodType]
-              // result might contain paramrefs, so we substitute them with arg termrefs
-              val resultTypeWithSubst = methodType.resultType.substParams(methodType, paramTypes)
-              rec(expr, tpd.Typed(_, tpd.TypeTree(resultTypeWithSubst).withSpan(tpt.span)))
-            else
-              None
-          case cl @ tpd.closureDef(ddef) =>
-            def replace(body: Term, argRefs: List[Term]): Term = {
-              val paramSyms = ddef.vparamss.head.map(param => param.symbol)
-              val paramToVals = paramSyms.zip(argRefs).toMap
-              new dotc.ast.TreeTypeMap(
-                oldOwners = ddef.symbol :: Nil,
-                newOwners = ctx.owner :: Nil,
-                treeMap = tree => paramToVals.get(tree.symbol).map(_.withSpan(tree.span)).getOrElse(tree)
-              ).transform(body)
-            }
-            Some(argRefs => replace(transformBody(ddef.rhs), argRefs))
-          case tpd.Block(stats, expr) =>
-            // this case must go after closureDef to avoid matching the closure
-            rec(expr, tpd.cpy.Block(fn)(stats, _))
-          case _ =>
-            None
-        }
-      }
-      rec(fn, identity)
-    }
-
     def compilerId: Int = rootContext.outersIterator.toList.last.hashCode()
 
   end tasty
