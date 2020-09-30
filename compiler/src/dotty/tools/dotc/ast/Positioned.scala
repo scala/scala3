@@ -19,23 +19,27 @@ import java.io.{ PrintWriter }
 /** A base class for things that have positions (currently: modifiers and trees)
  */
 abstract class Positioned(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable {
+  import Positioned.{ids, nextId, debugId}
 
   private var myUniqueId: Int = _
   private var mySpan: Span = _
 
-  /** A unique identifier. Among other things, used for determining the source file
-   *  component of the position.
+  /** A unique identifier in case -Yshow-tree-ids, or -Ydebug-tree-with-id
+   *  is set, -1 otherwise.
    */
-  def uniqueId: Int = myUniqueId
+  def uniqueId: Int =
+    if ids != null && ids.containsKey(this) then ids.get(this) else -1
 
-  def uniqueId_=(id: Int): Unit = {
-    def printTrace() = {
-      println(s"Debug tree (id=${Positioned.debugId}) creation \n$this\n")
-      Reporter.displayPrompt(Console.in, new PrintWriter(Console.err, true))
-    }
-    if (Positioned.debugId == id) printTrace()
-    myUniqueId = id
-  }
+  private def allocateId() =
+    if ids != null then
+      val ownId = nextId
+      nextId += 1
+      ids.put(this, ownId)
+      if ownId == debugId then
+        println(s"Debug tree (id=$debugId) creation \n$this\n")
+        Reporter.displayPrompt(Console.in, new PrintWriter(Console.err, true))
+
+  allocateId()
 
   /** The span part of the item's position */
   def span: Span = mySpan
@@ -43,7 +47,6 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
   def span_=(span: Span): Unit =
     mySpan = span
 
-  uniqueId = src.nextId
   span = envelope(src)
 
   val source: SourceFile = src
@@ -125,7 +128,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
   /** Clone this node but assign it a fresh id which marks it as a node in `file`. */
   def cloneIn(src: SourceFile): this.type = {
     val newpd: this.type = clone.asInstanceOf[this.type]
-    newpd.uniqueId = src.nextId
+    newpd.allocateId()
     // assert(newpd.uniqueId != 2208, s"source = $this, ${this.uniqueId}, ${this.span}")
     newpd
   }
@@ -237,8 +240,14 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
 }
 
 object Positioned {
-  @sharable private[Positioned] var debugId = Int.MinValue
+  @sharable private var debugId = Int.MinValue
+  @sharable private var ids: java.util.WeakHashMap[Positioned, Int] = null
+  @sharable private var nextId: Int = 0
 
-  def updateDebugPos(using Context): Unit =
+  def init(using Context): Unit =
     debugId = ctx.settings.YdebugTreeWithId.value
+    if ctx.settings.YshowTreeIds.value
+       || debugId != ctx.settings.YdebugTreeWithId.default
+    then
+      ids = java.util.WeakHashMap()
 }

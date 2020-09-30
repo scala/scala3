@@ -181,49 +181,16 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
 
   override def toString: String = file.toString
-
-  // Positioned ids
-
-  private val ctr = new AtomicInteger
-
-  def nextId: Int = {
-    val id = ctr.get
-    if (id % ChunkSize == 0) newChunk
-    else if (ctr.compareAndSet(id, id + 1)) id
-    else nextId
-  }
-
-  private def newChunk: Int = sourceOfChunk.synchronized {
-    val id = chunks << ChunkSizeLog
-    if (chunks == sourceOfChunk.length) {
-      val a = new Array[SourceFile](chunks * 2)
-      System.arraycopy(sourceOfChunk, 0, a, 0, chunks)
-      sourceOfChunk = a
-    }
-    sourceOfChunk(chunks) = this
-    chunks += 1
-    ctr.set(id + 1)
-    id
-  }
 }
 object SourceFile {
   implicit def eqSource: Eql[SourceFile, SourceFile] = Eql.derived
 
   implicit def fromContext(using Context): SourceFile = ctx.source
 
-  def fromId(id: Int): SourceFile = sourceOfChunk(id >> ChunkSizeLog)
-
   def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
     val src = new SourceFile(new VirtualFile(name, content.getBytes(StandardCharsets.UTF_8)), scala.io.Codec.UTF8)
     src._maybeInComplete = maybeIncomplete
     src
-
-  private final val ChunkSizeLog = 10
-  private final val ChunkSize = 1 << ChunkSizeLog
-
-  // These two vars are sharable because they're only used in the synchronized block in newChunk
-  @sharable private var chunks: Int = 0
-  @sharable private var sourceOfChunk: Array[SourceFile] = new Array[SourceFile](2000)
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
