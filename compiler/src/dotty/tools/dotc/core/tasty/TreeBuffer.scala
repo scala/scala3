@@ -8,7 +8,6 @@ import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr, AddrWidth}
 
 import util.Util.bestFit
-import util.SparseIntArray
 import config.Printers.pickling
 import ast.untpd.Tree
 
@@ -21,23 +20,18 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var delta: Array[Int] = _
   private var numOffsets = 0
 
-  /** A map from tree unique ids to the address index at which a tree is pickled.
-   *  Note that trees are looked up by reference equality,
-   *  so one can reliably use this function only directly after `pickler`.
-   */
-  private val addrOfTree = SparseIntArray()
+  /** A map from trees to the address at which a tree is pickled. */
+  private val treeAddrs = new java.util.IdentityHashMap[Tree, Any] // really: Addr | Null
 
-  def registerTreeAddr(tree: Tree): Addr =
-    val id = tree.uniqueId
-    if addrOfTree.contains(id) then Addr(addrOfTree(id))
-    else
-      addrOfTree(tree.uniqueId) = currentAddr.index
-      currentAddr
+  def registerTreeAddr(tree: Tree): Addr = treeAddrs.get(tree) match {
+    case null => treeAddrs.put(tree, currentAddr); currentAddr
+    case addr: Addr => addr
+  }
 
-  def addrOfTree(tree: Tree): Addr =
-    val idx = tree.uniqueId
-    if addrOfTree.contains(idx) then Addr(addrOfTree(idx))
-    else NoAddr
+  def addrOfTree(tree: Tree): Addr = treeAddrs.get(tree) match {
+    case null => NoAddr
+    case addr: Addr => addr
+  }
 
   private def offset(i: Int): Addr = Addr(offsets(i))
 
@@ -162,8 +156,15 @@ class TreeBuffer extends TastyBuffer(50000) {
     wasted
   }
 
-  def adjustTreeAddrs(): Unit =
-    addrOfTree.transform((id, addr) => adjusted(Addr(addr)).index)
+  def adjustTreeAddrs(): Unit = {
+    val it = treeAddrs.keySet.iterator
+    while (it.hasNext) {
+      val tree = it.next
+      treeAddrs.get(tree) match {
+        case addr: Addr => treeAddrs.put(tree, adjusted(addr))
+      }
+    }
+  }
 
   /** Final assembly, involving the following steps:
    *   - compute deltas
