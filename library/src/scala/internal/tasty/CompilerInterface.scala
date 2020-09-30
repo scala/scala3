@@ -64,8 +64,6 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
   /** Returns Some with a beta-reduced application or None */
   def betaReduce(tree: Term): Option[Term]
 
-  def lambdaExtractor(term: Term, paramTypes: List[Type]): Option[List[Term] => Term]
-
   def compilerId: Int
 
 }
