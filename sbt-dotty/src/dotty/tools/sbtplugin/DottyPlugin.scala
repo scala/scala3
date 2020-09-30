@@ -35,7 +35,14 @@ object DottyPlugin extends AutoPlugin {
 
         // get latest nightly version from maven
         def fetchSource(version: String): (scala.io.BufferedSource, String) =
-          try Source.fromURL(s"https://repo1.maven.org/maven2/ch/epfl/lamp/dotty_$version/maven-metadata.xml") -> version
+          try {
+            val url =
+              if (version.startsWith("0"))
+                s"https://repo1.maven.org/maven2/ch/epfl/lamp/dotty-compiler_$version/maven-metadata.xml"
+              else
+                s"https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_$version/maven-metadata.xml"
+            Source.fromURL(url) -> version
+          }
           catch { case t: java.io.FileNotFoundException =>
             val major :: minor :: Nil = version.split('.').toList
             if (minor.toInt <= 0) throw t
@@ -92,7 +99,7 @@ object DottyPlugin extends AutoPlugin {
        */
       def withDottyCompat(scalaVersion: String): ModuleID = {
         val name = moduleID.name
-        if (name != "dotty" && name != "dotty-library" && name != "dotty-compiler")
+        if (name != "scala3" && name != "scala3-library" && name != "scala3-compiler")
           moduleID.crossVersion match {
             case binary: librarymanagement.Binary =>
               val compatVersion =
@@ -167,6 +174,14 @@ object DottyPlugin extends AutoPlugin {
 
   // https://github.com/sbt/sbt/issues/3110
   val Def = sbt.Def
+
+  private def scala3Artefact(version: String, name: String) =
+    if (version.startsWith("0.")) s"dotty-$name"
+    else if (version.startsWith("3.")) s"scala3-$name"
+    else throw new RuntimeException(
+      s"Cannot construct a Scala 3 artefact name $name for a non-Scala3 " +
+      s"scala version ${version}")
+
   override def projectSettings: Seq[Setting[_]] = {
     Seq(
       isDotty := scalaVersion.value.startsWith("0.") || scalaVersion.value.startsWith("3."),
@@ -195,8 +210,10 @@ object DottyPlugin extends AutoPlugin {
       },
 
       scalaOrganization := {
-        if (isDotty.value)
+        if (scalaVersion.value.startsWith("0."))
           "ch.epfl.lamp"
+        else if (scalaVersion.value.startsWith("3."))
+          "org.scala-lang"
         else
           scalaOrganization.value
       },
@@ -212,14 +229,14 @@ object DottyPlugin extends AutoPlugin {
       scalaCompilerBridgeBinaryJar := Def.settingDyn {
         if (isDotty.value) Def.task {
           val updateReport = fetchArtifactsOf(
-            scalaOrganization.value % "dotty-sbt-bridge" % scalaVersion.value,
+            scalaOrganization.value % scala3Artefact(scalaVersion.value, "sbt-bridge") % scalaVersion.value,
             dependencyResolution.value,
             scalaModuleInfo.value,
             updateConfiguration.value,
             (unresolvedWarningConfiguration in update).value,
             streams.value.log,
           )
-          Option(getJar(updateReport, scalaOrganization.value, "dotty-sbt-bridge", scalaVersion.value))
+          Option(getJar(updateReport, scalaOrganization.value, scala3Artefact(scalaVersion.value, "sbt-bridge"), scalaVersion.value))
         }
         else Def.task {
           None: Option[File]
@@ -228,10 +245,15 @@ object DottyPlugin extends AutoPlugin {
 
       // Needed for RCs publishing
       scalaBinaryVersion := {
-        if (isDotty.value)
-          scalaVersion.value.split("\\.").take(2).mkString(".")
-        else
-          scalaBinaryVersion.value
+        scalaVersion.value.split("[\\.-]").toList match {
+          case "0" :: minor :: _ => s"0.$minor"
+          case "3" :: minor :: patch :: suffix =>
+            s"3.$minor.$patch" + (suffix match {
+              case milestone :: _ => s"-$milestone"
+              case Nil => ""
+            })
+          case _ => scalaBinaryVersion.value
+        }
       },
 
       // We want:
@@ -326,7 +348,7 @@ object DottyPlugin extends AutoPlugin {
       // ... instead, we'll fetch the compiler and its dependencies ourselves.
       scalaInstance := Def.taskDyn {
         if (isDotty.value)
-          dottyScalaInstanceTask("dotty-compiler")
+          dottyScalaInstanceTask(scala3Artefact(scalaVersion.value, "compiler"))
         else
           Def.valueStrict { scalaInstance.taskValue }
       }.value,
@@ -334,7 +356,7 @@ object DottyPlugin extends AutoPlugin {
       // We need more stuff on the classpath to run the `doc` task.
       scalaInstance in doc := Def.taskDyn {
         if (isDotty.value)
-          dottyScalaInstanceTask("dotty-doc")
+          dottyScalaInstanceTask(scala3Artefact(scalaVersion.value, "doc"))
         else
           Def.valueStrict { (scalaInstance in doc).taskValue }
       }.value,
@@ -343,8 +365,8 @@ object DottyPlugin extends AutoPlugin {
       libraryDependencies ++= {
         if (isDotty.value && autoScalaLibrary.value) {
           val name =
-            if (isDottyJS.value) "dotty-library_sjs1"
-            else "dotty-library"
+            if (isDottyJS.value) scala3Artefact(scalaVersion.value, "library_sjs1")
+            else scala3Artefact(scalaVersion.value, "library")
           Seq(scalaOrganization.value %% name % scalaVersion.value)
         } else
           Seq()
@@ -479,9 +501,9 @@ object DottyPlugin extends AutoPlugin {
     val scalaLibraryJar = getJar(updateReport,
       "org.scala-lang", "scala-library", revision = AllPassFilter)
     val dottyLibraryJar = getJar(updateReport,
-      scalaOrganization.value, s"dotty-library_${scalaBinaryVersion.value}", scalaVersion.value)
+      scalaOrganization.value, scala3Artefact(scalaVersion.value, s"library_${scalaBinaryVersion.value}"), scalaVersion.value)
     val compilerJar = getJar(updateReport,
-      scalaOrganization.value, s"dotty-compiler_${scalaBinaryVersion.value}", scalaVersion.value)
+      scalaOrganization.value, scala3Artefact(scalaVersion.value, s"compiler_${scalaBinaryVersion.value}"), scalaVersion.value)
     val allJars =
       getJars(updateReport, AllPassFilter, AllPassFilter, AllPassFilter)
 
