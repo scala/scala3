@@ -513,34 +513,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       Match(param, cases)
     }
 
-  /** For an enum T:
-   *
-   *     def enumLabel(x: MirroredMonoType) = x.enumLabel
-   *
-   *  For  sealed trait with children of normalized types C_1, ..., C_n:
-   *
-   *     def enumLabel(x: MirroredMonoType) = x match {
-   *        case _: C_1 => "C_1"
-   *        ...
-   *        case _: C_n => "C_n"
-   *     }
-   *
-   *  Here, the normalized type of a class C is C[?, ...., ?] with
-   *  a wildcard for each type parameter. The normalized type of an object
-   *  O is O.type.
-   */
-  def enumLabelBody(cls: Symbol, param: Tree)(using Context): Tree =
-    if (cls.is(Enum)) param.select(nme.enumLabel).ensureApplied
-    else {
-      val cases =
-        for ((child, idx) <- cls.children.zipWithIndex) yield {
-          val patType = if (child.isTerm) child.termRef else child.rawTypeRef
-          val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
-          CaseDef(pat, EmptyTree, Literal(Constant(child.name.toString)))
-        }
-      Match(param, cases)
-    }
-
   /** - If `impl` is the companion of a generic sum, add `deriving.Mirror.Sum` parent
    *    and `MirroredMonoType` and `ordinal` members.
    *  - If `impl` is the companion of a generic product, add `deriving.Mirror.Product` parent
@@ -592,8 +564,6 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       addParent(defn.Mirror_SumClass.typeRef)
       addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
         ordinalBody(_, _))
-      addMethod(nme.enumLabel, MethodType(monoType.typeRef :: Nil, defn.StringType), cls,
-        enumLabelBody(_, _))
     }
 
     if (clazz.is(Module)) {
