@@ -2,12 +2,14 @@ enum Labelled {
 
   case A
 
-  def enumLabel: String = "nolabel" // error: redefinition of method enumLabel: => String in an enum
+  def enumLabel: String = "nolabel" // error: double definition of method enumLabel: => String
+
 }
 
 enum Ordinalled {
 
-  case A
+  case A // error: double definition of method ordinal: => Int
 
-  def ordinal: Int = -1 // error: redefinition of method ordinal: => Int in an enum
+  def ordinal: Int = -1
+
 }
