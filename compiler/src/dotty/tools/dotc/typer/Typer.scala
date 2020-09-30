@@ -2105,7 +2105,8 @@ class Typer extends Namer
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstTreeIsClass(parents.mapconserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(using superCtx)
-    val firstParent = parents1.head.tpe.dealias.typeSymbol
+    val firstParentTpe = parents1.head.tpe.dealias
+    val firstParent = firstParentTpe.typeSymbol
 
     checkEnumParent(cls, firstParent)
 
@@ -2122,7 +2123,7 @@ class Typer extends Namer
         .withType(dummy.termRef)
       if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
-      if cls.isScalaEnum || firstParent.isScalaEnum then
+      if cls.isScalaEnum || firstParentTpe.classSymbol.isScalaEnum then
         checkEnum(cdef, cls, firstParent)
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
 
