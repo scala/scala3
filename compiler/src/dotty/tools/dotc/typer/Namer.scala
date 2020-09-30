@@ -937,7 +937,8 @@ class Namer { typer: Typer =>
       if original.mods.isEnumClass then
         // in Desugar.scala, desugaring an enum class definition fixes the
         // first and second statements in the body to be `imports` and `getters`.
-        // `getters` needs to be indexed after parents are resolved because it checks for a java.lang.Enum parent
+        // `imports` is an import list of the enum cases from the companion of `cls`
+        // `getters` will expand to `def ordinal: Int` if the parents of `cls` are not java.lang.Enum
         val (imports :: getters :: Nil, stats): @unchecked = restOfBody.splitAt(2)
         (getters :: Nil, imports :: stats)
       else
