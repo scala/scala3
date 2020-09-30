@@ -1,6 +1,9 @@
 window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("leftToggler").onclick = function() {
-        document.getElementById("leftColumn").classList.toggle("open");
+    var e = document.getElementById("leftToggler");
+    if (e) {
+        e.onclick = function() {
+            document.getElementById("leftColumn").classList.toggle("open");
+        };
     }
     hljs.registerLanguage('scala', highlightDotty);
     hljs.registerAliases(['dotty', 'scala3'], 'scala');
