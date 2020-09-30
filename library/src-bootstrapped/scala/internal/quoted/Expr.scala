@@ -60,13 +60,13 @@ object Expr {
   /** Returns a null expresssion equivalent to `'{null}` */
   def `null`: QuoteContext ?=> quoted.Expr[Null] = qctx ?=> {
     import qctx.tasty._
-    Literal(Constant(null)).seal.asInstanceOf[quoted.Expr[Null]]
+    Literal(Constant.Null()).seal.asInstanceOf[quoted.Expr[Null]]
   }
 
   /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
   def Unit: QuoteContext ?=> quoted.Expr[Unit] = qctx ?=> {
     import qctx.tasty._
-    Literal(Constant(())).seal.asInstanceOf[quoted.Expr[Unit]]
+    Literal(Constant.Unit()).seal.asInstanceOf[quoted.Expr[Unit]]
   }
 
 }

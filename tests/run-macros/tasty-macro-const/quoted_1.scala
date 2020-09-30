@@ -8,7 +8,7 @@ object Macros {
     import qctx.tasty._
     val xTree: Term = x.unseal
     xTree match {
-      case Inlined(_, _, Literal(Constant(n: Int))) =>
+      case Inlined(_, _, Literal(Constant.Int(n))) =>
         if (n <= 0) {
           report.error("Parameter must be natural number")
           '{0}

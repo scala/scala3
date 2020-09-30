@@ -22,38 +22,66 @@ object Liftable {
   // IMPORTANT Keep in sync with tests/run-staging/liftables.scala
 
   /** Default liftable for Boolean */
-  given BooleanLiftable[T <: Boolean] as Liftable[T] = new PrimitiveLiftable
+  given BooleanLiftable[T <: Boolean] as Liftable[T] {
+    def toExpr(x: T) =
+      import qctx.tasty._
+      Literal(Constant.Boolean(x)).seal.asInstanceOf[Expr[T]]
+  }
 
   /** Default liftable for Byte */
-  given ByteLiftable[T <: Byte] as Liftable[T] = new PrimitiveLiftable
+  given ByteLiftable[T <: Byte] as Liftable[T] {
+    def toExpr(x: T) =
+      import qctx.tasty._
+      Literal(Constant.Byte(x)).seal.asInstanceOf[Expr[T]]
+  }
 
   /** Default liftable for Short */
-  given ShortLiftable[T <: Short] as Liftable[T] = new PrimitiveLiftable
+  given ShortLiftable[T <: Short] as Liftable[T] {
+    def toExpr(x: T) =
+      import qctx.tasty._
+      Literal(Constant.Short(x)).seal.asInstanceOf[Expr[T]]
+  }
 
   /** Default liftable for Int */
-  given IntLiftable[T <: Int] as Liftable[T] = new PrimitiveLiftable
+  given IntLiftable[T <: Int] as Liftable[T] {
+    def toExpr(x: T) =
+      import qctx.tasty._
+      Literal(Constant.Int(x)).seal.asInstanceOf[Expr[T]]
+  }
 
   /** Default liftable for Long */
-  given LongLiftable[T <: Long] as Liftable[T] = new PrimitiveLiftable
+  given LongLiftable[T <: Long] as Liftable[T] {
+    def toExpr(x: T) =
+      import qctx.tasty._
+      Literal(Constant.Long(x)).seal.asInstanceOf[Expr[T]]
+  }
 
   /** Default liftable for Float */
-  given FloatLiftable[T <: Float] as Liftable[T] = new PrimitiveLiftable
+  given FloatLiftable[T <: Float] as Liftable[T] {
+    def toExpr(x: T) =
+      import qctx.tasty._
+      Literal(Constant.Float(x)).seal.asInstanceOf[Expr[T]]
+  }
 
   /** Default liftable for Double */
-  given DoubleLiftable[T <: Double] as Liftable[T] = new PrimitiveLiftable
+  given DoubleLiftable[T <: Double] as Liftable[T] {
+    def toExpr(x: T) =
+      import qctx.tasty._
+      Literal(Constant.Double(x)).seal.asInstanceOf[Expr[T]]
+  }
 
   /** Default liftable for Char */
-  given CharLiftable[T <: Char] as Liftable[T] = new PrimitiveLiftable
+  given CharLiftable[T <: Char] as Liftable[T] {
+    def toExpr(x: T) =
+      import qctx.tasty._
+      Literal(Constant.Char(x)).seal.asInstanceOf[Expr[T]]
+  }
 
   /** Default liftable for String */
-  given StringLiftable[T <: String] as Liftable[T] = new PrimitiveLiftable
-
-  /** Lift a literal constant value */
-  private class PrimitiveLiftable[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Liftable[T] {
-    def toExpr(x: T) = qctx ?=> {
+  given StringLiftable[T <: String] as Liftable[T] {
+    def toExpr(x: T) =
       import qctx.tasty._
-      Literal(Constant(x)).seal.asInstanceOf[Expr[T]]
-    }
+      Literal(Constant.String(x)).seal.asInstanceOf[Expr[T]]
   }
 
   /** Default liftable for Class[T] */

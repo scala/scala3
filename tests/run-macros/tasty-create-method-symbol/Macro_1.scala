@@ -23,7 +23,7 @@ object Macros {
             Some('{ ${ a.seal.asInstanceOf[Expr[Int]] } - ${ b.seal.asInstanceOf[Expr[Int]] } }.unseal)
         }
       }),
-      '{ assert(${ Apply(Ref(sym1), List(Literal(Constant(2)), Literal(Constant(3)))).seal.asInstanceOf[Expr[Int]] } == -1) }.unseal)
+      '{ assert(${ Apply(Ref(sym1), List(Literal(Constant.Int(2)), Literal(Constant.Int(3)))).seal.asInstanceOf[Expr[Int]] } == -1) }.unseal)
 
     // test for no argument list (no Apply node)
     val sym2 : Symbol = Symbol.newMethod(
@@ -36,7 +36,7 @@ object Macros {
       DefDef(sym2, {
         case List() => {
           case List() =>
-            Some(Literal(Constant(2)))
+            Some(Literal(Constant.Int(2)))
         }
       }),
       '{ assert(${ Ref(sym2).seal.asInstanceOf[Expr[Int]] } == 2) }.unseal)
@@ -59,7 +59,7 @@ object Macros {
             Some(a)
         }
       }),
-      '{ assert(${ Apply(Apply(Ref(sym3), List(Literal(Constant(3)))), List(Literal(Constant(3)))).seal.asInstanceOf[Expr[Int]] } == 3) }.unseal)
+      '{ assert(${ Apply(Apply(Ref(sym3), List(Literal(Constant.Int(3)))), List(Literal(Constant.Int(3)))).seal.asInstanceOf[Expr[Int]] } == 3) }.unseal)
 
     // test for recursive references
     val sym4 : Symbol = Symbol.newMethod(
@@ -81,7 +81,7 @@ object Macros {
             }.unseal)
         }
       }),
-      '{ assert(${ Apply(Ref(sym4), List(Literal(Constant(4)))).seal.asInstanceOf[Expr[Int]] } == 0) }.unseal)
+      '{ assert(${ Apply(Ref(sym4), List(Literal(Constant.Int(4)))).seal.asInstanceOf[Expr[Int]] } == 0) }.unseal)
 
     // test for nested functions (one symbol is the other's parent, and we use a Closure)
     val sym5 : Symbol = Symbol.newMethod(
@@ -115,7 +115,7 @@ object Macros {
             }
         }
       }),
-      '{ assert(${ Apply(Ref(sym5), List(Literal(Constant(5)))).seal.asInstanceOf[Expr[Int=>Int]] }(4) == 1) }.unseal)
+      '{ assert(${ Apply(Ref(sym5), List(Literal(Constant.Int(5)))).seal.asInstanceOf[Expr[Int=>Int]] }(4) == 1) }.unseal)
 
     // test mutually recursive definitions
     val sym6_1 : Symbol = Symbol.newMethod(
@@ -162,7 +162,7 @@ object Macros {
         }
 
       }),
-      '{ assert(${ Apply(Ref(sym6_2), List(Literal(Constant(6)))).seal.asInstanceOf[Expr[Int]] } == 0) }.unseal)
+      '{ assert(${ Apply(Ref(sym6_2), List(Literal(Constant.Int(6)))).seal.asInstanceOf[Expr[Int]] } == 0) }.unseal)
 
     // test polymorphic methods by synthesizing an identity method
     val sym7 : Symbol = Symbol.newMethod(
@@ -182,7 +182,7 @@ object Macros {
             Some(Typed(x, Inferred(t)))
         }
       }),
-      '{ assert(${ Apply(TypeApply(Ref(sym7), List(Inferred(Type.of[Int]))), List(Literal(Constant(7)))).seal.asInstanceOf[Expr[Int]] } == 7) }.unseal)
+      '{ assert(${ Apply(TypeApply(Ref(sym7), List(Inferred(Type.of[Int]))), List(Literal(Constant.Int(7)))).seal.asInstanceOf[Expr[Int]] } == 7) }.unseal)
 
     Block(
       sym1Statements ++
@@ -193,7 +193,7 @@ object Macros {
       sym6Statements ++
       sym7Statements ++
       List('{ println("Ok") }.unseal),
-      Literal(Constant(()))).seal.asInstanceOf[Expr[Unit]]
+      Literal(Constant.Unit())).seal.asInstanceOf[Expr[Unit]]
   }
 }
 

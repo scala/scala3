@@ -2317,25 +2317,144 @@ trait Reflection { reflection =>
   /** Constant value represented as the constant itself */
   type Constant <: AnyRef
 
-  /** Module of Constant literals */
+  /** Constant value represented as the constant itself */
   val Constant: ConstantModule
 
+  /** Constant value represented as the constant itself */
   trait ConstantModule { this: Constant.type =>
 
-    def apply(x: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type): Constant
+    /** Constant Boolean value */
+    val Boolean: ConstantBooleanModule
 
-    def unapply(constant: Constant): Option[Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String | Type]
+    /** Constant Boolean value */
+    trait ConstantBooleanModule { this: Boolean.type =>
+      /** Create a constant Boolean value */
+      def apply(x: Boolean): Constant
+      /** Match Boolean value constant and extract its value */
+      def unapply(constant: Constant): Option[Boolean]
+    }
 
-    /** Module of ClassTag literals */
-    val ClassTag: ClassTagModule
+    /** Constant Byte value */
+    val Byte: ConstantByteModule
 
-    /** Module of ClassTag literals */
-    trait ClassTagModule { this: ClassTag.type =>
-      /** scala.reflect.ClassTag literal */
-      def apply[T](using x: Type): Constant
-      /** Extractor for ClassTag literals */
+    /** Constant Byte value */
+    trait ConstantByteModule { this: Byte.type =>
+      /** Create a constant Byte value */
+      def apply(x: Byte): Constant
+      /** Match Byte value constant and extract its value */
+      def unapply(constant: Constant): Option[Byte]
+    }
+
+    /** Constant Short value */
+    val Short: ConstantShortModule
+
+    /** Constant Short value */
+    trait ConstantShortModule { this: Short.type =>
+      /** Create a constant Short value */
+      def apply(x: Short): Constant
+      /** Match Short value constant and extract its value */
+      def unapply(constant: Constant): Option[Short]
+    }
+
+    /** Constant Int value */
+    val Int: ConstantIntModule
+
+    /** Constant Int value */
+    trait ConstantIntModule { this: Int.type =>
+      /** Create a constant Int value */
+      def apply(x: Int): Constant
+      /** Match Int value constant and extract its value */
+      def unapply(constant: Constant): Option[Int]
+    }
+
+    /** Constant Long value */
+    val Long: ConstantLongModule
+
+    /** Constant Long value */
+    trait ConstantLongModule { this: Long.type =>
+      /** Create a constant Long value */
+      def apply(x: Long): Constant
+      /** Match Long value constant and extract its value */
+      def unapply(constant: Constant): Option[Long]
+    }
+
+    /** Constant Float value */
+    val Float: ConstantFloatModule
+
+    /** Constant Float value */
+    trait ConstantFloatModule { this: Float.type =>
+      /** Create a constant Float value */
+      def apply(x: Float): Constant
+      /** Match Float value constant and extract its value */
+      def unapply(constant: Constant): Option[Float]
+    }
+
+    /** Constant Double value */
+    val Double: ConstantDoubleModule
+
+    /** Constant Double value */
+    trait ConstantDoubleModule { this: Double.type =>
+      /** Create a constant Double value */
+      def apply(x: Double): Constant
+      /** Match Double value constant and extract its value */
+      def unapply(constant: Constant): Option[Double]
+    }
+
+    /** Constant Char value */
+    val Char: ConstantCharModule
+
+    /** Constant Char value */
+    trait ConstantCharModule { this: Char.type =>
+      /** Create a constant Char value */
+      def apply(x: Char): Constant
+      /** Match Char value constant and extract its value */
+      def unapply(constant: Constant): Option[Char]
+    }
+
+    /** Constant String value */
+    val String: ConstantStringModule
+
+    /** Constant String value */
+    trait ConstantStringModule { this: String.type =>
+      /** Create a constant String value */
+      def apply(x: String): Constant
+      /** Match String value constant and extract its value */
+      def unapply(constant: Constant): Option[String]
+    }
+
+    /** Constant Unit value */
+    val Unit: ConstantUnitModule
+
+    /** Constant Unit value */
+    trait ConstantUnitModule { this: Unit.type =>
+      /** Create a constant Unit value */
+      def apply(): Constant
+      /** Match Unit value constant */
+      def unapply(constant: Constant): Boolean
+    }
+
+    /** Constant null value */
+    val Null: ConstantNullModule
+
+    /** Constant null value */
+    trait ConstantNullModule { this: Null.type =>
+      /** Create a constant null value */
+      def apply(): Constant
+      /** Match null value constant */
+      def unapply(constant: Constant): Boolean
+    }
+
+    /** Constant class value representing a `classOf[T]` */
+    val ClassOf: ConstantClassOfModule
+
+    /** Constant class value representing a `classOf[T]` */
+    trait ConstantClassOfModule { this: ClassOf.type =>
+      /** Create a constant class value representing `classOf[<tpe>]` */
+      def apply(tpe: Type): Constant
+      /** Match a class value constant representing `classOf[<tpe>]` and extract its type */
       def unapply(constant: Constant): Option[Type]
     }
+
   }
 
   given ConstantMethods as ConstantMethods = ConstantMethodsImpl
