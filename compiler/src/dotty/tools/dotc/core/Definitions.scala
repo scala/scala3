@@ -553,6 +553,9 @@ class Definitions {
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
 
+  @tu lazy val StringOps: Symbol = requiredClass("scala.collection.StringOps")
+    @tu lazy val StringOps_format: Symbol  = StringOps.requiredMethod(nme.format)
+
   @tu lazy val ArrayType: TypeRef = requiredClassRef("scala.Array")
   def ArrayClass(using Context): ClassSymbol = ArrayType.symbol.asClass
     @tu lazy val Array_apply     : Symbol = ArrayClass.requiredMethod(nme.apply)
@@ -732,9 +735,6 @@ class Definitions {
     @tu lazy val StringContextModule_apply: Symbol = StringContextModule.requiredMethod(nme.apply)
     @tu lazy val StringContextModule_standardInterpolator: Symbol = StringContextModule.requiredMethod(nme.standardInterpolator)
     @tu lazy val StringContextModule_processEscapes: Symbol = StringContextModule.requiredMethod(nme.processEscapes)
-
-  @tu lazy val InternalStringContextMacroModule: Symbol = requiredModule("dotty.internal.StringContextMacro")
-    @tu lazy val InternalStringContextMacroModule_f: Symbol = InternalStringContextMacroModule.requiredMethod(nme.f)
 
   @tu lazy val PartialFunctionClass: ClassSymbol = requiredClass("scala.PartialFunction")
     @tu lazy val PartialFunction_isDefinedAt: Symbol = PartialFunctionClass.requiredMethod(nme.isDefinedAt)

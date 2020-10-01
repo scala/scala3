@@ -1045,7 +1045,6 @@ object Build {
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** (("*.scala": FileFilter)
-            -- "FormatterJSTest.scala" // compile error with the f"" interpolator
             -- "ObjectJSTest.scala" // non-native JS classes
             )).get
 
