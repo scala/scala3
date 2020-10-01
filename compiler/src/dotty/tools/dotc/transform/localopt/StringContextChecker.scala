@@ -361,7 +361,7 @@ object StringContextChecker {
      *  @param notAllowedFlagsOnCondition a list that maps which flags are allowed depending on the conversion Char
      *  @return reports an error if the flag is not allowed, nothing otherwise
      */
-    def checkFlags(partIndex : Int, flags : List[(Char, Int)], notAllowedFlagOnCondition : (Char, Boolean, String)*) = {
+    def checkFlags(partIndex : Int, flags : List[(Char, Int)], notAllowedFlagOnCondition: List[(Char, Boolean, String)]) = {
       for {flag <- flags ; (nonAllowedFlag, condition, message) <- notAllowedFlagOnCondition ; if (flag._1 == nonAllowedFlag && condition)}
         reporter.partError(message, partIndex, flag._2)
     }
@@ -373,7 +373,7 @@ object StringContextChecker {
      *  @param notAllowedFlagsOnCondition a list that maps which flags are allowed depending on the conversion Char
      *  @return reports an error only once if at least one of the flags is not allowed, nothing otherwise
      */
-    def checkUniqueFlags(partIndex : Int, flags : List[(Char, Int)], notAllowedFlagOnCondition : (Char, Boolean, String)*) = {
+    def checkUniqueFlags(partIndex : Int, flags : List[(Char, Int)], notAllowedFlagOnCondition : List[(Char, Boolean, String)]) = {
       reporter.resetReported()
       for {flag <- flags ; (nonAllowedFlag, condition, message) <- notAllowedFlagOnCondition ; if (flag._1 == nonAllowedFlag && condition)} {
         if (!reporter.hasReported())
@@ -394,7 +394,7 @@ object StringContextChecker {
      */
     def checkCharacterConversion(partIndex : Int, flags : List[(Char, Int)], hasPrecision : Boolean, precisionIndex : Int) = {
       val notAllowedFlagOnCondition = for (flag <- List('#', '+', ' ', '0', ',', '(')) yield (flag, true, "Only '-' allowed for c conversion")
-      checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+      checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition)
       checkNotAllowedParameter(hasPrecision, partIndex, precisionIndex, "precision")
     }
 
@@ -413,7 +413,7 @@ object StringContextChecker {
      */
     def checkIntegralConversion(partIndex : Int, argType : Option[Type], conversionChar : Char, flags : List[(Char, Int)], hasPrecision : Boolean, precision : Int) = {
       if (conversionChar == 'd')
-        checkFlags(partIndex, flags, ('#', true,  "# not allowed for d conversion"))
+        checkFlags(partIndex, flags, List(('#', true,  "# not allowed for d conversion")))
 
       checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
     }
@@ -471,7 +471,7 @@ object StringContextChecker {
       }
 
       val notAllowedFlagOnCondition = for (flag <- List('#', '+', ' ', '0', ',', '(')) yield (flag, true, "Only '-' allowed for date/time conversions")
-      checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+      checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition)
       checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
       checkTime(part, partIndex, conversionIndex)
     }
@@ -506,12 +506,12 @@ object StringContextChecker {
         checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
         checkNotAllowedParameter(hasWidth, partIndex, width, "width")
         val notAllowedFlagOnCondition = for (flag <- List('-', '#', '+', ' ', '0', ',', '(')) yield (flag, true, "flags not allowed")
-        checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+        checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition)
       }
       case '%' => {
         checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
         val notAllowedFlagOnCondition = for (flag <- List('#', '+', ' ', '0', ',', '(')) yield (flag, true, "Illegal flag '" + flag + "'")
-        checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+        checkFlags(partIndex, flags, notAllowedFlagOnCondition)
       }
       case _ => // OK
     }
@@ -600,7 +600,7 @@ object StringContextChecker {
             (' ', !(argType <:< defn.JavaBigIntegerClass.typeRef), "only use ' ' for BigInt conversions to o, x, X"),
             ('(', !(argType <:< defn.JavaBigIntegerClass.typeRef), "only use '(' for BigInt conversions to o, x, X"),
             (',', true, "',' only allowed for d conversion of integral types"))
-            checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+            checkFlags(partIndex, flags, notAllowedFlagOnCondition)
           }
         }
         case 'e' | 'E' |'f' | 'g' | 'G' | 'a' | 'A' => checkSubtype(argType, "Double", argIndex, floatingPoints)
@@ -631,7 +631,7 @@ object StringContextChecker {
             (' ', true, "only use ' ' for BigInt conversions to o, x, X"),
             ('(', true, "only use '(' for BigInt conversions to o, x, X"),
             (',', true, "',' only allowed for d conversion of integral types"))
-            checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+            checkFlags(partIndex, flags, notAllowedFlagOnCondition)
           }
           case _ => //OK
         }
