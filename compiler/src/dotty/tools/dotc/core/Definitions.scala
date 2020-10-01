@@ -553,6 +553,9 @@ class Definitions {
     @tu lazy val Seq_length       : Symbol = SeqClass.requiredMethod(nme.length)
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
 
+  @tu lazy val StringOps: Symbol = requiredClass("scala.collection.StringOps")
+    @tu lazy val StringOps_format: Symbol  = StringOps.requiredMethod(nme.format)
+
   @tu lazy val ArrayType: TypeRef = requiredClassRef("scala.Array")
   def ArrayClass(using Context): ClassSymbol = ArrayType.symbol.asClass
     @tu lazy val Array_apply     : Symbol = ArrayClass.requiredMethod(nme.apply)
@@ -684,7 +687,13 @@ class Definitions {
   @tu lazy val SerializableType: TypeRef       = JavaSerializableClass.typeRef
   def SerializableClass(using Context): ClassSymbol = SerializableType.symbol.asClass
 
-   @tu lazy val JavaEnumClass: ClassSymbol = {
+  @tu lazy val JavaBigIntegerClass: ClassSymbol = requiredClass("java.math.BigInteger")
+  @tu lazy val JavaBigDecimalClass: ClassSymbol = requiredClass("java.math.BigDecimal")
+  @tu lazy val JavaCalendarClass: ClassSymbol = requiredClass("java.util.Calendar")
+  @tu lazy val JavaDateClass: ClassSymbol = requiredClass("java.util.Date")
+  @tu lazy val JavaFormattableClass: ClassSymbol = requiredClass("java.util.Formattable")
+
+  @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
     // jl.Enum has a single constructor protected(name: String, ordinal: Int).
     // We remove the arguments from the primary constructor, and enter
@@ -732,9 +741,6 @@ class Definitions {
     @tu lazy val StringContextModule_apply: Symbol = StringContextModule.requiredMethod(nme.apply)
     @tu lazy val StringContextModule_standardInterpolator: Symbol = StringContextModule.requiredMethod(nme.standardInterpolator)
     @tu lazy val StringContextModule_processEscapes: Symbol = StringContextModule.requiredMethod(nme.processEscapes)
-
-  @tu lazy val InternalStringContextMacroModule: Symbol = requiredModule("dotty.internal.StringContextMacro")
-    @tu lazy val InternalStringContextMacroModule_f: Symbol = InternalStringContextMacroModule.requiredMethod(nme.f)
 
   @tu lazy val PartialFunctionClass: ClassSymbol = requiredClass("scala.PartialFunction")
     @tu lazy val PartialFunction_isDefinedAt: Symbol = PartialFunctionClass.requiredMethod(nme.isDefinedAt)

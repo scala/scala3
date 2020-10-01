@@ -7,8 +7,9 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Types.MethodType
+import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /**
@@ -116,6 +117,7 @@ class StringInterpolatorOpt extends MiniPhase {
     val sym = tree.symbol
     val isInterpolatedMethod = // Test names first to avoid loading scala.StringContext if not used
       (sym.name == nme.raw_ && sym.eq(defn.StringContext_raw)) ||
+      (sym.name == nme.f && sym.eq(defn.StringContext_f)) ||
       (sym.name == nme.s && sym.eq(defn.StringContext_s))
     if (isInterpolatedMethod)
       tree match {
@@ -132,6 +134,11 @@ class StringInterpolatorOpt extends MiniPhase {
             if (!str.const.stringValue.isEmpty) concat(str)
           }
           result
+        case Apply(intp, args :: Nil) if sym.eq(defn.StringContext_f) =>
+          val partsStr = StringContextChecker.checkedParts(intp, args).mkString
+          resolveConstructor(defn.StringOps.typeRef, List(Literal(Constant(partsStr))))
+            .select(nme.format)
+            .appliedTo(args)
         // Starting with Scala 2.13, s and raw are macros in the standard
         // library, so we need to expand them manually.
         // sc.s(args)    -->   standardInterpolator(processEscapes, args, sc.parts)

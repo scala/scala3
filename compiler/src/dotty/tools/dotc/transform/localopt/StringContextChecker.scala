@@ -1,16 +1,23 @@
-// ALWAYS KEEP THIS FILE IN src-bootstrapped, DO NOT MOVE TO src
+package dotty.tools.dotc
+package transform.localopt
 
-package dotty.internal
+import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Constants.Constant
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.NameKinds._
+import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Types._
 
-import scala.quoted._
-
-object StringContextMacro {
-
-  /** Implementation of scala.StringContext.f used in Dotty */
-  inline def f(inline sc: StringContext)(inline args: Any*): String = ${ interpolate('sc, 'args) }
+// Ported from old dotty.internal.StringContextMacro
+// TODO: port Scala 2 logic? (see https://github.com/scala/scala/blob/2.13.x/src/compiler/scala/tools/reflect/FormatInterpolator.scala#L74)
+object StringContextChecker {
+  import tpd._
 
   /** This trait defines a tool to report errors/warnings that do not depend on Position. */
-  trait Reporter {
+  trait InterpolationReporter {
 
     /** Reports error/warning of size 1 linked with a part of the StringContext.
       *
@@ -51,53 +58,52 @@ object StringContextMacro {
     def restoreReported() : Unit
   }
 
-  /** Interpolates the arguments to the formatting String given inside a StringContext
-   *
-   *  @param strCtxExpr the Expr that holds the StringContext which contains all the chunks of the formatting string
-   *  @param args the Expr that holds the sequence of arguments to interpolate to the String in the correct format
-   *  @return the Expr containing the formatted and interpolated String or an error/warning if the parameters are not correct
-   */
-  private def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty._
-    val sourceFile = strCtxExpr.unseal.pos.sourceFile
+  /** Check the format of the parts of the f".." arguments and returns the string parts of the StringContext */
+  def checkedParts(strContext_f: Tree, args0: Tree)(using Context): String = {
 
-    val (partsExpr, parts) = strCtxExpr match {
-      case Expr.StringContext(p1 as Consts(p2)) => (p1.toList, p2.toList)
-      case _ => report.throwError("Expected statically known String Context", strCtxExpr)
+    val (partsExpr, parts) = strContext_f match {
+      case TypeApply(Select(Apply(_, (parts: SeqLiteral) :: Nil), _), _) =>
+        (parts.elems, parts.elems.map { case Literal(Constant(str: String)) => str } )
+      case _ =>
+        report.error("Expected statically known String Context", strContext_f.srcPos)
+        return ""
     }
 
-    val args = argsExpr match {
-      case Varargs(args) => args
-      case _ => report.throwError("Expected statically known argument list", argsExpr)
+    val args = args0 match {
+      case args: SeqLiteral => args.elems
+      case _ =>
+        report.error("Expected statically known argument list", args0.srcPos)
+        return ""
     }
 
-    val reporter = new Reporter{
+    val reporter = new InterpolationReporter{
       private[this] var reported = false
       private[this] var oldReported = false
       def partError(message : String, index : Int, offset : Int) : Unit = {
         reported = true
-        val positionStart = partsExpr(index).unseal.pos.start + offset
-        error(message, sourceFile, positionStart, positionStart)
+        val pos = partsExpr(index).sourcePos
+        val posOffset = pos.withSpan(pos.span.shift(offset))
+        report.error(message, posOffset)
       }
       def partWarning(message : String, index : Int, offset : Int) : Unit = {
         reported = true
-        val positionStart = partsExpr(index).unseal.pos.start + offset
-        warning(message, sourceFile, positionStart, positionStart)
+        val pos = partsExpr(index).sourcePos
+        val posOffset = pos.withSpan(pos.span.shift(offset))
+        report.warning(message, posOffset)
       }
 
       def argError(message : String, index : Int) : Unit = {
         reported = true
-        error(message, args(index).unseal.pos)
+        report.error(message, args(index).srcPos)
       }
 
       def strCtxError(message : String) : Unit = {
         reported = true
-        val positionStart = strCtxExpr.unseal.pos.start
-        error(message, sourceFile, positionStart, positionStart)
+        report.error(message, strContext_f.srcPos)
       }
       def argsError(message : String) : Unit = {
         reported = true
-        error(message, argsExpr.unseal.pos)
+        report.error(message, args0.srcPos)
       }
 
       def hasReported() : Boolean = {
@@ -114,18 +120,11 @@ object StringContextMacro {
       }
     }
 
-    interpolate(parts, args, argsExpr, reporter)
+    checked(parts, args, reporter)
   }
 
-  /** Helper function for the interpolate function above
-   *
-   *  @param partsExpr the list of parts enumerated as Expr
-   *  @param args the list of arguments enumerated as Expr
-   *  @param reporter the reporter to return any error/warning when a problem is encountered
-   *  @return the Expr containing the formatted and interpolated String or an error/warning report if the parameters are not correct
-   */
-  def interpolate(parts0 : List[String], args : Seq[Expr[Any]], argsExpr: Expr[Seq[Any]], reporter : Reporter)(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
+  def checked(parts0: List[String], args: List[Tree], reporter: InterpolationReporter)(using Context): String = {
+
 
     /** Checks if the number of arguments are the same as the number of formatting strings
      *
@@ -314,8 +313,8 @@ object StringContextMacro {
      *  @return reports a type mismatch error if the actual type is not a subtype of any of the possibilities,
      *  nothing otherwise
      */
-    def checkSubtype(actualType : Type, expectedType : String, argIndex : Int, possibilities : Type*) = {
-      if (possibilities.find(actualType <:< _).isEmpty)
+    def checkSubtype(actualType: Type, expectedType: String, argIndex: Int, possibilities: List[Type]) = {
+      if !possibilities.exists(actualType <:< _) then
         reporter.argError("type mismatch;\n found   : " + actualType.widen.show.stripPrefix("scala.Predef.").stripPrefix("java.lang.").stripPrefix("scala.") + "\n required: " + expectedType, argIndex)
     }
 
@@ -362,7 +361,7 @@ object StringContextMacro {
      *  @param notAllowedFlagsOnCondition a list that maps which flags are allowed depending on the conversion Char
      *  @return reports an error if the flag is not allowed, nothing otherwise
      */
-    def checkFlags(partIndex : Int, flags : List[(Char, Int)], notAllowedFlagOnCondition : (Char, Boolean, String)*) = {
+    def checkFlags(partIndex : Int, flags : List[(Char, Int)], notAllowedFlagOnCondition: List[(Char, Boolean, String)]) = {
       for {flag <- flags ; (nonAllowedFlag, condition, message) <- notAllowedFlagOnCondition ; if (flag._1 == nonAllowedFlag && condition)}
         reporter.partError(message, partIndex, flag._2)
     }
@@ -374,7 +373,7 @@ object StringContextMacro {
      *  @param notAllowedFlagsOnCondition a list that maps which flags are allowed depending on the conversion Char
      *  @return reports an error only once if at least one of the flags is not allowed, nothing otherwise
      */
-    def checkUniqueFlags(partIndex : Int, flags : List[(Char, Int)], notAllowedFlagOnCondition : (Char, Boolean, String)*) = {
+    def checkUniqueFlags(partIndex : Int, flags : List[(Char, Int)], notAllowedFlagOnCondition : List[(Char, Boolean, String)]) = {
       reporter.resetReported()
       for {flag <- flags ; (nonAllowedFlag, condition, message) <- notAllowedFlagOnCondition ; if (flag._1 == nonAllowedFlag && condition)} {
         if (!reporter.hasReported())
@@ -395,7 +394,7 @@ object StringContextMacro {
      */
     def checkCharacterConversion(partIndex : Int, flags : List[(Char, Int)], hasPrecision : Boolean, precisionIndex : Int) = {
       val notAllowedFlagOnCondition = for (flag <- List('#', '+', ' ', '0', ',', '(')) yield (flag, true, "Only '-' allowed for c conversion")
-      checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+      checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition)
       checkNotAllowedParameter(hasPrecision, partIndex, precisionIndex, "precision")
     }
 
@@ -414,7 +413,7 @@ object StringContextMacro {
      */
     def checkIntegralConversion(partIndex : Int, argType : Option[Type], conversionChar : Char, flags : List[(Char, Int)], hasPrecision : Boolean, precision : Int) = {
       if (conversionChar == 'd')
-        checkFlags(partIndex, flags, ('#', true,  "# not allowed for d conversion"))
+        checkFlags(partIndex, flags, List(('#', true,  "# not allowed for d conversion")))
 
       checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
     }
@@ -472,7 +471,7 @@ object StringContextMacro {
       }
 
       val notAllowedFlagOnCondition = for (flag <- List('#', '+', ' ', '0', ',', '(')) yield (flag, true, "Only '-' allowed for date/time conversions")
-      checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+      checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition)
       checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
       checkTime(part, partIndex, conversionIndex)
     }
@@ -507,12 +506,12 @@ object StringContextMacro {
         checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
         checkNotAllowedParameter(hasWidth, partIndex, width, "width")
         val notAllowedFlagOnCondition = for (flag <- List('-', '#', '+', ' ', '0', ',', '(')) yield (flag, true, "flags not allowed")
-        checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+        checkUniqueFlags(partIndex, flags, notAllowedFlagOnCondition)
       }
       case '%' => {
         checkNotAllowedParameter(hasPrecision, partIndex, precision, "precision")
         val notAllowedFlagOnCondition = for (flag <- List('#', '+', ' ', '0', ',', '(')) yield (flag, true, "Illegal flag '" + flag + "'")
-        checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+        checkFlags(partIndex, flags, notAllowedFlagOnCondition)
       }
       case _ => // OK
     }
@@ -585,31 +584,31 @@ object StringContextMacro {
      *  nothing otherwise
      */
     def checkTypeWithArgs(argument : (Type, Int), conversionChar : Char, partIndex : Int, flags : List[(Char, Int)]) = {
-      val booleans = List(Type.of[Boolean], Type.of[Null])
-      val dates = List(Type.of[Long], Type.of[java.util.Calendar], Type.of[java.util.Date])
-      val floatingPoints = List(Type.of[Double], Type.of[Float], Type.of[java.math.BigDecimal])
-      val integral = List(Type.of[Int], Type.of[Long], Type.of[Short], Type.of[Byte], Type.of[java.math.BigInteger])
-      val character = List(Type.of[Char], Type.of[Byte], Type.of[Short], Type.of[Int])
+      def booleans = List(defn.BooleanType, defn.NullType)
+      def dates = List(defn.LongType, defn.JavaCalendarClass.typeRef, defn.JavaDateClass.typeRef)
+      def floatingPoints = List(defn.DoubleType, defn.FloatType, defn.JavaBigDecimalClass.typeRef)
+      def integral = List(defn.IntType, defn.LongType, defn.ShortType, defn.ByteType, defn.JavaBigIntegerClass.typeRef)
+      def character = List(defn.CharType, defn.ByteType, defn.ShortType, defn.IntType)
 
       val (argType, argIndex) = argument
       conversionChar match {
-        case 'c' | 'C' => checkSubtype(argType, "Char", argIndex, character : _*)
+        case 'c' | 'C' => checkSubtype(argType, "Char", argIndex, character)
         case 'd' | 'o' | 'x' | 'X' => {
-          checkSubtype(argType, "Int", argIndex, integral : _*)
+          checkSubtype(argType, "Int", argIndex, integral)
           if (conversionChar != 'd') {
-            val notAllowedFlagOnCondition = List(('+', !(argType <:< Type.of[java.math.BigInteger]), "only use '+' for BigInt conversions to o, x, X"),
-            (' ', !(argType <:< Type.of[java.math.BigInteger]), "only use ' ' for BigInt conversions to o, x, X"),
-            ('(', !(argType <:< Type.of[java.math.BigInteger]), "only use '(' for BigInt conversions to o, x, X"),
+            val notAllowedFlagOnCondition = List(('+', !(argType <:< defn.JavaBigIntegerClass.typeRef), "only use '+' for BigInt conversions to o, x, X"),
+            (' ', !(argType <:< defn.JavaBigIntegerClass.typeRef), "only use ' ' for BigInt conversions to o, x, X"),
+            ('(', !(argType <:< defn.JavaBigIntegerClass.typeRef), "only use '(' for BigInt conversions to o, x, X"),
             (',', true, "',' only allowed for d conversion of integral types"))
-            checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+            checkFlags(partIndex, flags, notAllowedFlagOnCondition)
           }
         }
-        case 'e' | 'E' |'f' | 'g' | 'G' | 'a' | 'A' => checkSubtype(argType, "Double", argIndex, floatingPoints : _*)
-        case 't' | 'T' => checkSubtype(argType, "Date", argIndex, dates : _*)
-        case 'b' | 'B' => checkSubtype(argType, "Boolean", argIndex, booleans : _*)
+        case 'e' | 'E' |'f' | 'g' | 'G' | 'a' | 'A' => checkSubtype(argType, "Double", argIndex, floatingPoints)
+        case 't' | 'T' => checkSubtype(argType, "Date", argIndex, dates)
+        case 'b' | 'B' => checkSubtype(argType, "Boolean", argIndex, booleans)
         case 'h' | 'H' | 'S' | 's' =>
-          if (!(argType <:< Type.of[java.util.Formattable]))
-            for {flag <- flags ; if (flag._1 == '#')}
+          if !(argType <:< defn.JavaFormattableClass.typeRef) then
+            for flag <- flags; if flag._1 == '#' do
               reporter.argError("type mismatch;\n found   : " + argType.widen.show.stripPrefix("scala.Predef.").stripPrefix("java.lang.").stripPrefix("scala.") + "\n required: java.util.Formattable", argIndex)
         case 'n' | '%' =>
         case illegal =>
@@ -632,7 +631,7 @@ object StringContextMacro {
             (' ', true, "only use ' ' for BigInt conversions to o, x, X"),
             ('(', true, "only use '(' for BigInt conversions to o, x, X"),
             (',', true, "',' only allowed for d conversion of integral types"))
-            checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
+            checkFlags(partIndex, flags, notAllowedFlagOnCondition)
           }
           case _ => //OK
         }
@@ -647,7 +646,7 @@ object StringContextMacro {
      *  @param maxArgumentIndex an Option containing the maximum argument index possible, None if no args are specified
      *  @return a list with all the elements of the conversion per formatting string
      */
-    def checkPart(part : String, start : Int, argument : Option[(Int, Expr[Any])], maxArgumentIndex : Option[Int]) : List[(Option[(Type, Int)], Char, List[(Char, Int)])] = {
+    def checkPart(part : String, start : Int, argument : Option[(Int, Tree)], maxArgumentIndex : Option[Int]) : List[(Option[(Type, Int)], Char, List[(Char, Int)])] = {
       reporter.resetReported()
       val hasFormattingSubstring = getFormattingSubstring(part, part.size, start)
       if (hasFormattingSubstring.nonEmpty) {
@@ -658,7 +657,7 @@ object StringContextMacro {
           case Some(argIndex, arg) => {
             val (hasArgumentIndex, argumentIndex, flags, hasWidth, width, hasPrecision, precision, hasRelative, relativeIndex, conversion) = getFormatSpecifiers(part, argIndex, argIndex + 1, false, formattingStart)
             if (!reporter.hasReported()){
-              val conversionWithType = checkFormatSpecifiers(argIndex + 1, hasArgumentIndex, argumentIndex, Some(argIndex + 1), start == 0, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, Some(arg.unseal.tpe), part)
+              val conversionWithType = checkFormatSpecifiers(argIndex + 1, hasArgumentIndex, argumentIndex, Some(argIndex + 1), start == 0, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, Some(arg.tpe), part)
               nextStart = conversion + 1
               conversionWithType :: checkPart(part, nextStart, argument, maxArgumentIndex)
             } else checkPart(part, conversion + 1, argument, maxArgumentIndex)
@@ -710,7 +709,6 @@ object StringContextMacro {
       }
     }
 
-    // macro expansion
-    '{(${Expr(parts.mkString)}).format(${argsExpr}: _*)}
+    parts.mkString
   }
 }
