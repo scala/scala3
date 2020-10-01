@@ -7,6 +7,7 @@ import java.util.ServiceLoader
 import java.io.File
 import java.util.jar._
 import collection.JavaConverters._
+import collection.immutable.ArraySeq
 import java.util.{List => JList}
 
 import scala.tasty.Reflection
@@ -134,8 +135,9 @@ object Main:
       try 
         def listTastyFiles(f: File): Seq[String] =
           val (files, dirs) = f.listFiles().partition(_.isFile)
-          files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
-        
+          ArraySeq.unsafeWrapArray(
+            files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
+          )
         val tastyFiles = (dirs ++ extracted).flatMap(listTastyFiles).toList
 
         val config = DocConfiguration.Standalone(parsedArgs, tastyFiles)
