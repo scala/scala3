@@ -17,7 +17,7 @@ object StringContextChecker {
   import tpd._
 
   /** This trait defines a tool to report errors/warnings that do not depend on Position. */
-  trait Reporter {
+  trait InterpolationReporter {
 
     /** Reports error/warning of size 1 linked with a part of the StringContext.
       *
@@ -76,7 +76,7 @@ object StringContextChecker {
         return ""
     }
 
-    val reporter = new Reporter{
+    val reporter = new InterpolationReporter{
       private[this] var reported = false
       private[this] var oldReported = false
       def partError(message : String, index : Int, offset : Int) : Unit = {
@@ -123,7 +123,7 @@ object StringContextChecker {
     checked(parts, args, reporter)
   }
 
-  def checked(parts0: List[String], args: List[Tree], reporter: Reporter)(using Context): String = {
+  def checked(parts0: List[String], args: List[Tree], reporter: InterpolationReporter)(using Context): String = {
 
 
     /** Checks if the number of arguments are the same as the number of formatting strings
