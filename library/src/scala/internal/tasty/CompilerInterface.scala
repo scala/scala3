@@ -61,9 +61,6 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
   /** Symbol of scala.internal.quoted.Patterns.higherOrderHole */
   def Definitions_InternalQuotedPatterns_higherOrderHole: Symbol
 
-  /** Returns Some with a beta-reduced application or None */
-  def betaReduce(tree: Term): Option[Term]
-
   def compilerId: Int
 
 }

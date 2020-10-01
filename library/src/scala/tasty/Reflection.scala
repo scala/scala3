@@ -362,7 +362,20 @@ trait Reflection { reflection =>
 
   val Term: TermModule
 
-  trait TermModule { this: Term.type => }
+  trait TermModule { this: Term.type =>
+
+    /** Returns a term that is functionally equivalent to `t`,
+     *  however if `t` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`
+     *  then it optimizes this the top most call by returning the `Some`
+     *  with the result of beta-reducing the application.
+     *  Otherwise returns `None`.
+     *
+     *   To retain semantics the argument `ei` is bound as `val yi = ei` and by-name arguments to `def yi = ei`.
+     *   Some bindings may be elided as an early optimization.
+     */
+    def betaReduce(term: Term): Option[Term]
+
+  }
 
   given TermMethods as TermMethods = TermMethodsImpl
   protected val TermMethodsImpl: TermMethods

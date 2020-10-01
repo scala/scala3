@@ -72,13 +72,15 @@ object Expr {
   end extension
 
   /** `e.betaReduce` returns an expression that is functionally equivalent to `e`,
-   *   however if `e` is of the form `((y1, ..., yn) => e2)(x1, ..., xn)`
+   *   however if `e` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`
    *   then it optimizes this the top most call by returning the result of beta-reducing the application.
    *   Otherwise returns `expr`.
+   *
+   *   To retain semantics the argument `ei` is bound as `val yi = ei` and by-name arguments to `def yi = ei`.
+   *   Some bindings may be elided as an early optimization.
    */
   def betaReduce[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    val qctx2 = quoteContextWithCompilerInterface(qctx)
-    qctx2.tasty.betaReduce(expr.unseal) match
+    qctx.tasty.Term.betaReduce(expr.unseal) match
       case Some(expr1) => expr1.seal.asInstanceOf[Expr[T]]
       case _ => expr
 
