@@ -24,8 +24,9 @@ trait TastyInspector:
    *
    *  @param classpath Classpath where the classes are located
    *  @param classes classes to be inspected
+   *  @return if an error was reported
    */
-  def inspect(classpath: String, classes: List[String]): Unit =
+  def inspect(classpath: String, classes: List[String]): Boolean =
     if (classes.isEmpty)
       throw new IllegalArgumentException("Parameter classes should no be empty")
 
@@ -64,7 +65,9 @@ trait TastyInspector:
 
     val currentClasspath = ClasspathFromClassloader(getClass.getClassLoader)
     val args = "-from-tasty" :: "-Yretain-trees" :: "-classpath" :: s"$classpath$pathSeparator$currentClasspath" :: classes
-    (new InspectorDriver).process(args.toArray)
+    val reporter = (new InspectorDriver).process(args.toArray)
+    reporter.hasErrors
+
   end inspect
 
 
