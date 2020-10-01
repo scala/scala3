@@ -30,19 +30,21 @@ package tests
   * > > a
   * > blockquote
   *
-  * And this is a link: [](method).
+  * And this is a link: [[method]].
   *
-  * And this is another link: [](AA).
+  * This is another way to spell the same link: [[#method]].
   *
-  * And this is another link: [](AA$).
+  * And this is another link: [[AA]].
   *
-  * And this is yet another link: [](tests.Methods).
+  * And this is another link: [[AA$]].
   *
-  * Yet another: [](tests.Methods.simple).
+  * And this is yet another link: [[tests.Methods]].
   *
-  * And yet another: [](example.level2.Documentation).
+  * Yet another: [[tests.Methods.simple]].
   *
-  * This is my friend: [[tests.B]].
+  * And yet another: [[example.level2.Documentation]].
+  *
+  * This is my friend: [[tests\.B\]]].
   *
   * And this is his companion: [[tests.B$ link to the companion]].
   *
@@ -52,7 +54,15 @@ package tests
   * @constructor A class has a constructor, and this one is important.
   */
 class A {
-  /** This is a method. */
+
+  /** This is a method.
+    *
+    * This is a link: [[AA]].
+    *
+    * This is another link: [[AA$]].
+    *
+    * And yet another: [[B]].
+    */
   def method(s: String): String = s
 
   class AA
@@ -100,20 +110,23 @@ class B extends A {
 
 /** Companion object to test linking.
   *
-  * This is my member: [](B$.Z)
+  * This is my member: [[B$.Z]]
   *
-  * And this is my term member: [](B$.Z$)
+  * And this is my term member: [[B$.Z$]]
   *
-  * This is my member, addressed differently: [](this.Z)
+  * This is my member, addressed differently: [[this.Z]]
   *
-  * And this is my term member, addressed differently: [](this.Z$)
+  * And this is my term member, addressed differently: [[this.Z$]]
   */
 object B {
   type Z = Int
   val Z: Int = 0
 }
 
-class C 
+class C {
+  object CC
+  class CC
+}
 class D[T]
 class E[T] extends D[T]
 
