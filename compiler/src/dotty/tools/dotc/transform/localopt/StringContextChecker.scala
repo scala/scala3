@@ -313,8 +313,8 @@ object StringContextChecker {
      *  @return reports a type mismatch error if the actual type is not a subtype of any of the possibilities,
      *  nothing otherwise
      */
-    def checkSubtype(actualType : Type, expectedType : String, argIndex : Int, possibilities : Type*) = {
-      if (possibilities.find(actualType <:< _).isEmpty)
+    def checkSubtype(actualType: Type, expectedType: String, argIndex: Int, possibilities: List[Type]) = {
+      if !possibilities.exists(actualType <:< _) then
         reporter.argError("type mismatch;\n found   : " + actualType.widen.show.stripPrefix("scala.Predef.").stripPrefix("java.lang.").stripPrefix("scala.") + "\n required: " + expectedType, argIndex)
     }
 
@@ -584,31 +584,31 @@ object StringContextChecker {
      *  nothing otherwise
      */
     def checkTypeWithArgs(argument : (Type, Int), conversionChar : Char, partIndex : Int, flags : List[(Char, Int)]) = {
-      val booleans = List(defn.BooleanType, defn.NullType)
-      val dates = List(defn.LongType, requiredClass("java.util.Calendar").typeRef, requiredClass("java.util.Date").typeRef)
-      val floatingPoints = List(defn.DoubleType, defn.FloatType, requiredClass("java.math.BigDecimal").typeRef)
-      val integral = List(defn.IntType, defn.LongType, defn.ShortType, defn.ByteType, requiredClass("java.math.BigInteger").typeRef)
-      val character = List(defn.CharType, defn.ByteType, defn.ShortType, defn.IntType)
+      def booleans = List(defn.BooleanType, defn.NullType)
+      def dates = List(defn.LongType, defn.JavaCalendarClass.typeRef, defn.JavaDateClass.typeRef)
+      def floatingPoints = List(defn.DoubleType, defn.FloatType, defn.JavaBigDecimalClass.typeRef)
+      def integral = List(defn.IntType, defn.LongType, defn.ShortType, defn.ByteType, defn.JavaBigIntegerClass.typeRef)
+      def character = List(defn.CharType, defn.ByteType, defn.ShortType, defn.IntType)
 
       val (argType, argIndex) = argument
       conversionChar match {
-        case 'c' | 'C' => checkSubtype(argType, "Char", argIndex, character : _*)
+        case 'c' | 'C' => checkSubtype(argType, "Char", argIndex, character)
         case 'd' | 'o' | 'x' | 'X' => {
-          checkSubtype(argType, "Int", argIndex, integral : _*)
+          checkSubtype(argType, "Int", argIndex, integral)
           if (conversionChar != 'd') {
-            val notAllowedFlagOnCondition = List(('+', !(argType <:< requiredClass("java.math.BigInteger").typeRef), "only use '+' for BigInt conversions to o, x, X"),
-            (' ', !(argType <:< requiredClass("java.math.BigInteger").typeRef), "only use ' ' for BigInt conversions to o, x, X"),
-            ('(', !(argType <:< requiredClass("java.math.BigInteger").typeRef), "only use '(' for BigInt conversions to o, x, X"),
+            val notAllowedFlagOnCondition = List(('+', !(argType <:< defn.JavaBigIntegerClass.typeRef), "only use '+' for BigInt conversions to o, x, X"),
+            (' ', !(argType <:< defn.JavaBigIntegerClass.typeRef), "only use ' ' for BigInt conversions to o, x, X"),
+            ('(', !(argType <:< defn.JavaBigIntegerClass.typeRef), "only use '(' for BigInt conversions to o, x, X"),
             (',', true, "',' only allowed for d conversion of integral types"))
             checkFlags(partIndex, flags, notAllowedFlagOnCondition : _*)
           }
         }
-        case 'e' | 'E' |'f' | 'g' | 'G' | 'a' | 'A' => checkSubtype(argType, "Double", argIndex, floatingPoints : _*)
-        case 't' | 'T' => checkSubtype(argType, "Date", argIndex, dates : _*)
-        case 'b' | 'B' => checkSubtype(argType, "Boolean", argIndex, booleans : _*)
+        case 'e' | 'E' |'f' | 'g' | 'G' | 'a' | 'A' => checkSubtype(argType, "Double", argIndex, floatingPoints)
+        case 't' | 'T' => checkSubtype(argType, "Date", argIndex, dates)
+        case 'b' | 'B' => checkSubtype(argType, "Boolean", argIndex, booleans)
         case 'h' | 'H' | 'S' | 's' =>
-          if !(argType <:< requiredClass("java.util.Formattable").typeRef) then
-            for {flag <- flags ; if (flag._1 == '#')}
+          if !(argType <:< defn.JavaFormattableClass.typeRef) then
+            for flag <- flags; if flag._1 == '#' do
               reporter.argError("type mismatch;\n found   : " + argType.widen.show.stripPrefix("scala.Predef.").stripPrefix("java.lang.").stripPrefix("scala.") + "\n required: java.util.Formattable", argIndex)
         case 'n' | '%' =>
         case illegal =>

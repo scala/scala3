@@ -687,7 +687,13 @@ class Definitions {
   @tu lazy val SerializableType: TypeRef       = JavaSerializableClass.typeRef
   def SerializableClass(using Context): ClassSymbol = SerializableType.symbol.asClass
 
-   @tu lazy val JavaEnumClass: ClassSymbol = {
+  @tu lazy val JavaBigIntegerClass: ClassSymbol = requiredClass("java.math.BigInteger")
+  @tu lazy val JavaBigDecimalClass: ClassSymbol = requiredClass("java.math.BigDecimal")
+  @tu lazy val JavaCalendarClass: ClassSymbol = requiredClass("java.util.Calendar")
+  @tu lazy val JavaDateClass: ClassSymbol = requiredClass("java.util.Date")
+  @tu lazy val JavaFormattableClass: ClassSymbol = requiredClass("java.util.Formattable")
+
+  @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
     // jl.Enum has a single constructor protected(name: String, ordinal: Int).
     // We remove the arguments from the primary constructor, and enter
