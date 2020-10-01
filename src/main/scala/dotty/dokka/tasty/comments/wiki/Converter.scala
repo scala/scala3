@@ -22,7 +22,7 @@ class Converter(val repr: Repr) {
   def convertBody(body: Body): dkkd.DocTag = {
     dkkd.P(
       collect {
-        body.blocks.foreach(emitBlock(_))
+        body.blocks.foreach(emitBlock)
       }.asJava,
       kt.emptyMap,
     )
