@@ -29,7 +29,7 @@ package tests
   *     1. b.3
   *        a. b.3.a
   *        a. b.3.b
-  *         a. b.3.c
+  *        a. b.3.c
   *
   * @syntax wiki
   */
