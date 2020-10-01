@@ -7,6 +7,7 @@ import java.util.ServiceLoader
 import java.io.File
 import java.util.jar._
 import collection.JavaConverters._
+import collection.immutable.ArraySeq
 import java.util.{List => JList}
 
 import scala.tasty.Reflection
@@ -35,7 +36,7 @@ class RawArgs:
 
     @COption(name="--sources", handler = classOf[StringArrayOptionHandler], aliases = Array("-s"), usage = "Links to source files provided in convention: local_directory=remote_directory#line_suffix")
     private var sourceLinks: JList[String] = null
-    
+
     @COption(name="--projectTitle")
     protected var projectTitle: String = null
 
@@ -82,7 +83,7 @@ case class Args(
   projectLogo: Option[String],
   defaultSyntax: Option[Args.CommentSyntax],
   sourceLinks: List[String]
-)    
+)
 
 object Args:
   enum CommentSyntax:
@@ -118,8 +119,8 @@ enum DocConfiguration extends BaseDocConfiguration:
   * - [](package.DottyDokkaConfig) is our config for Dokka.
   */
 object Main:
-  def main(args: Array[String]): Unit = 
-    try 
+  def main(args: Array[String]): Unit =
+    try
       val rawArgs = new RawArgs
       new CmdLineParser(rawArgs).parseArgument(args:_*)
       val parsedArgs = rawArgs.toArgs
@@ -131,11 +132,12 @@ object Main:
           tempFile
       }
 
-      try 
+      try
         def listTastyFiles(f: File): Seq[String] =
           val (files, dirs) = f.listFiles().partition(_.isFile)
-          files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
-        
+          ArraySeq.unsafeWrapArray(
+            files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
+          )
         val tastyFiles = (dirs ++ extracted).flatMap(listTastyFiles).toList
 
         val config = DocConfiguration.Standalone(parsedArgs, tastyFiles)
@@ -146,14 +148,14 @@ object Main:
         new DokkaGenerator(new DottyDokkaConfig(config), DokkaConsoleLogger.INSTANCE).generate()
 
         println("Done")
-        
-      
+
+
       finally
         extracted.foreach(IO.delete)
       // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
       sys.exit(0)
-    catch 
+    catch
       case a: Exception =>
         a.printStackTrace()
         // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
-        sys.exit(1)     
+        sys.exit(1)
