@@ -30,7 +30,7 @@ class PerfectHashing[Key](initialCapacity: Int = 8, capacityMultiple: Int = 2):
 
   protected def allocate(capacity: Int) =
     keys = new Array[AnyRef](capacity)
-    if capacity > DenseLimit then
+    if !isDense then
       table = new Array[Int](capacity * roundToPower(capacityMultiple))
 
   private def roundToPower(n: Int) =
@@ -50,10 +50,17 @@ class PerfectHashing[Key](initialCapacity: Int = 8, capacityMultiple: Int = 2):
 
   private final def isDense = capacity <= DenseLimit
 
-  /** Hashcode, by default `x.hashCode`, can be overridden */
-  protected def hash(x: Key): Int = x.hashCode
+  /** Hashcode, by default a post-processed versoon of `k.hashCode`,
+   *  can be overridden
+   */
+  protected def hash(k: Key): Int =
+    val h = k.hashCode
+    // Part of the MurmurHash3 32 bit finalizer
+    val i = (h ^ (h >>> 16)) * 0x85EBCA6B
+    val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
+    if (j==0) 0x41081989 else j
 
-  /** Hashcode, by default `equals`, can be overridden */
+  /** Equality test, by default `equals`, can be overridden */
   protected def isEqual(x: Key, y: Key): Boolean = x.equals(y)
 
   private def matches(entry: Int, k: Key) = isEqual(key(entry), k)
@@ -64,7 +71,6 @@ class PerfectHashing[Key](initialCapacity: Int = 8, capacityMultiple: Int = 2):
 
   /** The key at index `idx` */
   def key(idx: Int) = keys(idx).asInstanceOf[Key]
-
   private def setKey(e: Int, k: Key) = keys(e) = k.asInstanceOf[AnyRef]
 
   private def entry(idx: Int): Int = table(idx) - 1
