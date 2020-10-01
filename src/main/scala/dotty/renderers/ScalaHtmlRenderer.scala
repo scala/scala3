@@ -162,22 +162,18 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
                 case "js" => script(`type` := "text/javascript", src := resolveLink(res), defer)
                 case _ => raw(res)
 
-    private def buildWithKotlinx(node: ContentNode, pageContext: ContentPage, sourceSetRestriction: JSet[DisplaySourceSet]): String = {
-        val res = Gen_consumer_tagsKt.div(
+    private def buildWithKotlinx(node: ContentNode, pageContext: ContentPage, sourceSetRestriction: JSet[DisplaySourceSet]): String =
+        Gen_consumer_tagsKt.div(
             StreamKt.createHTML(true, false),
             null,
             (div) => {build(node, div, pageContext, sourceSetRestriction); kotlin.Unit.INSTANCE}
         ).toString.stripPrefix("<div>").stripSuffix("</div>\n")
-        res
-    }
 
-    private def buildWithKotlinx(func: FlowContentConsumer): String = {
-        val res = Gen_consumer_tagsKt.div(
+    private def buildWithKotlinx(func: FlowContentConsumer): String =
+        Gen_consumer_tagsKt.div(
             StreamKt.createHTML(true, false),
             null,
             func
         ).toString.stripPrefix("<div>").stripSuffix("</div>\n")
-        res
-    }
 
 }
