@@ -263,8 +263,12 @@ object Completion {
      */
     private def accessibleMembers(site: Type)(using Context): Seq[Symbol] = site match {
       case site: NamedType if site.symbol.is(Package) =>
-        // Don't look inside package members -- it's too expensive.
-        site.decls.toList.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
+        extension (tpe: Type)
+          def accessibleSymbols = tpe.decls.toList.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
+
+        val packageDecls = site.accessibleSymbols
+        val packageObjectsDecls = packageDecls.filter(_.isPackageObject).flatMap(_.thisType.accessibleSymbols)
+        packageDecls ++ packageObjectsDecls
       case _ =>
         def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
           try buf ++= site.member(name).alternatives

@@ -277,7 +277,7 @@ object Interactive {
 
   def contextOfPath(path: List[Tree])(using Context): Context = path match {
     case Nil | _ :: Nil =>
-      ctx.run.runContext.fresh.setCompilationUnit(ctx.compilationUnit)
+      ctx.fresh
     case nested :: encl :: rest =>
       val outer = contextOfPath(encl :: rest)
       try encl match {

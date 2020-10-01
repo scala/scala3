@@ -143,13 +143,15 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, toSource(uri, sourceCode))
 
   def run(uri: URI, source: SourceFile): List[Diagnostic] = {
+    import typer.ImportInfo._
+
     val previousCtx = myCtx
     try {
       val reporter =
         new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
       val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter))
-      myCtx = run.runContext
+      myCtx = run.runContext.withRootImports
 
       given Context = myCtx
 
