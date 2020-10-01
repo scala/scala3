@@ -343,20 +343,17 @@ class Namer { typer: Typer =>
         tree.pushAttachment(ExpandedTree, expanded)
       }
     tree match {
-      case tree: DefTree     => record(desugar.defTree(tree))
-      case tree: PackageDef  => record(desugar.packageDef(tree))
-      case tree: ExtMethods  => record(desugar.extMethods(tree))
-      case tree: EnumGetters => record(desugar.enumGetters(tree))
-      case _                 =>
+      case tree: DefTree    => record(desugar.defTree(tree))
+      case tree: PackageDef => record(desugar.packageDef(tree))
+      case tree: ExtMethods => record(desugar.extMethods(tree))
+      case _                =>
     }
   }
 
   /** The expanded version of this tree, or tree itself if not expanded */
   def expanded(tree: Tree)(using Context): Tree = tree match {
-    case _: DefTree | _: PackageDef | _: ExtMethods | _: EnumGetters =>
-      tree.attachmentOrElse(ExpandedTree, tree)
-    case _ =>
-      tree
+    case _: DefTree | _: PackageDef | _: ExtMethods => tree.attachmentOrElse(ExpandedTree, tree)
+    case _ => tree
   }
 
   /** For all class definitions `stat` in `xstats`: If the companion class is
@@ -746,8 +743,11 @@ class Namer { typer: Typer =>
     }
 
     /** Invalidate `denot` by overwriting its info with `NoType` if
-     *  `denot` is a compiler generated case class method that clashes
-     *  with a user-defined method in the same scope with a matching type.
+     *  one of the following holds:
+     *  - `denot` is a compiler generated case class method that clashes
+     *     with a user-defined method in the same scope with a matching type.
+     *  - `denot` is a compiler generated `ordinal` method that would override
+     *    `ordinal` declared in `java.lang.Enum`
      */
     private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit = {
       def isCaseClass(owner: Symbol) =
@@ -755,12 +755,22 @@ class Namer { typer: Typer =>
           if (owner.is(Module)) owner.linkedClass.is(CaseClass)
           else owner.is(CaseClass)
         }
-      val isClashingSynthetic =
-        denot.is(Synthetic) &&
-        desugar.isRetractableCaseClassMethodName(denot.name) &&
-        isCaseClass(denot.owner) &&
-        denot.owner.info.decls.lookupAll(denot.name).exists(alt =>
+      def isJavaEnumBaseClass(owner: Symbol) =
+        owner.isClass && owner.isEnumClass && owner.derivesFrom(defn.JavaEnumClass)
+      def firstParentCls(owner: Symbol) =
+        owner.asClass.classParents.head.classSymbol
+      def findMatch(owner: Symbol) =
+        owner.info.decls.lookupAll(denot.name).exists(alt =>
           alt != denot.symbol && alt.info.matchesLoosely(denot.info))
+      def clashingCaseClassMethod =
+        desugar.isRetractableCaseClassMethodName(denot.name)
+        && isCaseClass(denot.owner)
+        && findMatch(denot.owner)
+      def clashingEnumMethod =
+        denot.name == nme.ordinal
+        && isJavaEnumBaseClass(denot.owner)
+        && findMatch(firstParentCls(denot.owner))
+      val isClashingSynthetic = denot.is(Synthetic) && (clashingCaseClassMethod || clashingEnumMethod)
       if (isClashingSynthetic) {
         typr.println(i"invalidating clashing $denot in ${denot.owner}")
         denot.markAbsent()
@@ -928,21 +938,11 @@ class Namer { typer: Typer =>
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 
-    private val (params, restOfBody): (List[Tree], List[Tree]) = impl.body.span {
+    private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
       case td: TypeDef => td.mods.is(Param)
       case vd: ValDef => vd.mods.is(ParamAccessor)
       case _ => false
     }
-    private val (restAfterParents, rest): (List[Tree], List[Tree]) =
-      if original.mods.isEnumClass then
-        // in Desugar.scala, desugaring an enum class definition fixes the
-        // first and second statements in the body to be `imports` and `getters`.
-        // `imports` is an import list of the enum cases from the companion of `cls`
-        // `getters` will expand to `def ordinal: Int` if the parents of `cls` are not java.lang.Enum
-        val (imports :: getters :: Nil, stats): @unchecked = restOfBody.splitAt(2)
-        (getters :: Nil, imports :: stats)
-      else
-        (Nil, restOfBody)
 
     def init(): Context = index(params)
 
@@ -1209,7 +1209,6 @@ class Namer { typer: Typer =>
       cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
       processExports(using localCtx)
-      index(restAfterParents)(using localCtx)
     }
   }
 

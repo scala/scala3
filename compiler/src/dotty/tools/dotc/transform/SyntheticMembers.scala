@@ -94,8 +94,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     lazy val accessors =
       if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
       else clazz.caseAccessors
-    val isEnumCase = clazz.classParents.exists(_.classSymbol.isScalaEnum)
-    val isEnumValue = isEnumCase && clazz.isAnonymousClass && clazz.classParents.head.classSymbol.is(Enum)
+    val isEnumCase = clazz.isEnum || clazz.classParents.exists(_.classSymbol.isEnum)
+    val isEnumValue = isEnumCase && clazz.isAnonymousClass && clazz.classParents.head.classSymbol.isEnum
     val isNonJavaEnumValue = isEnumValue && !clazz.derivesFrom(defn.JavaEnumClass)
 
     val symbolsToSynthesize: List[Symbol] =

@@ -8,8 +8,8 @@ enum Labelled {
 
 enum Ordinalled {
 
-  case A // error: double definition of method ordinal: => Int
+  case A
 
-  def ordinal: Int = -1
+  def ordinal: Int = -1 // error: double definition of method ordinal: => Int
 
 }

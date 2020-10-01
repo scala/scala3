@@ -58,6 +58,9 @@ object desugar {
     case _ => false
   }
 
+  def isRetractableCaseClassOrEnumMethodName(name: Name)(using Context): Boolean =
+    isRetractableCaseClassMethodName(name) || name == nme.ordinal
+
   /** Is `name` the name of a method that is added unconditionally to case classes? */
   def isDesugaredCaseClassMethodName(name: Name)(using Context): Boolean =
     isRetractableCaseClassMethodName(name) || name.isSelectorName
@@ -485,8 +488,8 @@ object desugar {
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
         val enumLabelDef = DesugarEnums.enumLabelMeth(EmptyTree)
-        val enumGetters = EnumGetters() // optionally generate ordinal method
-        (enumImport :: enumGetters :: enumLabelDef :: enumStats, enumCases, enumCompanionRef)
+        val ordinalDef = DesugarEnums.ordinalMeth(EmptyTree).withAddedFlags(Synthetic)
+        (enumImport :: ordinalDef :: enumLabelDef :: enumStats, enumCases, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)
     }
@@ -890,9 +893,6 @@ object desugar {
       Thicket(modul, classDef(cls).withSpan(mdef.span))
     }
   }
-
-  def enumGetters(getters: EnumGetters)(using Context): Tree =
-   flatTree(DesugarEnums.optionalOrdinalMethod).withSpan(getters.span)
 
   /** Transform extension construct to list of extension methods */
   def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {

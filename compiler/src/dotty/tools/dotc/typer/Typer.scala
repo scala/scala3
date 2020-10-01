@@ -1941,11 +1941,10 @@ class Typer extends Namer
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree = {
-    if (!sym.info.exists) { // it's a discarded synthetic case class method, drop it
-      assert(sym.is(Synthetic) && desugar.isRetractableCaseClassMethodName(sym.name))
+    if !sym.info.exists then // it's a discarded synthetic case class method, or ordinal method drop it
+      assert(sym.is(Synthetic) && desugar.isRetractableCaseClassOrEnumMethodName(sym.name))
       sym.owner.info.decls.openForMutations.unlink(sym)
       return EmptyTree
-    }
     val DefDef(name, tparams, vparamss, tpt, _) = ddef
     completeAnnotations(ddef, sym)
     val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
@@ -2123,7 +2122,7 @@ class Typer extends Namer
         .withType(dummy.termRef)
       if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
-      if cls.isScalaEnum || firstParentTpe.classSymbol.isScalaEnum then
+      if cls.isEnum || firstParentTpe.classSymbol.isEnum then
         checkEnum(cdef, cls, firstParent)
       val cdef1 = assignType(cpy.TypeDef(cdef)(name, impl1), cls)
 
@@ -2634,9 +2633,6 @@ class Typer extends Namer
           // no attachment can happen in case of cyclic references
         traverse(rest)
       case (stat: untpd.ExtMethods) :: rest =>
-        val xtree = stat.removeAttachment(ExpandedTree).get
-        traverse(xtree :: rest)
-      case (stat: untpd.EnumGetters) :: rest =>
         val xtree = stat.removeAttachment(ExpandedTree).get
         traverse(xtree :: rest)
       case stat :: rest =>
