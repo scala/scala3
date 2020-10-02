@@ -139,10 +139,7 @@ map into `case class`es or `val`s.
    ```scala
    final case class C <params> extends <parents>
    ```
-   However, unlike for a regular case class, the return type of the associated
-   `apply` method is a fully parameterized type instance of the enum class `E`
-   itself instead of `C`.  Also the enum case defines an `ordinal` method of
-   the form
+   The enum case defines an `ordinal` method of the form
    ```scala
    def ordinal = n
    ```
@@ -153,6 +150,14 @@ map into `case class`es or `val`s.
    in a parameter type in `<params>` or in a type argument of `<parents>`, unless that parameter is already
    a type parameter of the case, i.e. the parameter name is defined in `<params>`.
 
+   The compiler-generated `apply` and `copy` methods of an enum case
+   ```scala
+   case C(ps) extends P1, ..., Pn
+   ```
+   are treated specially. A call `C(ts)` of the apply method is ascribed the underlying type
+   `P1 & ... & Pn` (dropping any [super traits](../other-new-features/super-traits.html))
+   as long as that type is still compatible with the expected type at the point of application.
+   A call `t.copy(ts)` of `C`'s `copy` method is treated in the same way.
 
 ### Translation of Enums with Singleton Cases
 

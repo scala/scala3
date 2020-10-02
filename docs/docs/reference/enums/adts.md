@@ -48,15 +48,13 @@ scala> Option.None
 val res2: t2.Option[Nothing] = None
 ```
 
-Note that the type of the expressions above is always `Option`. That
-is, the implementation case classes are not visible in the result
-types of their `apply` methods. This is a subtle difference with
-respect to normal case classes. The classes making up the cases do
-exist, and can be unveiled by constructing them directly with a `new`.
+Note that the type of the expressions above is always `Option`. Generally, the type of a enum case constructor application will be widened to the underlying enum type, unless a more specific type is expected. This is a subtle difference with respect to normal case classes. The classes making up the cases do exist, and can be unveiled, either by constructing them directly with a `new`, or by explicitly providing an expected type.
 
 ```scala
 scala> new Option.Some(2)
-val res3: t2.Option.Some[Int] = Some(2)
+val res3: Option.Some[Int] = Some(2)
+scala> val x: Option.Some[Int] = Option.Some(3)
+val res4: Option.Some[Int] = Some(3)
 ```
 
 As all other enums, ADTs can define methods. For instance, here is `Option` again, with an
