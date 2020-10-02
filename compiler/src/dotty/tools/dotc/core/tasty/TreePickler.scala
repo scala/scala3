@@ -152,9 +152,6 @@ class TreePickler(pickler: TastyPickler) {
     case ClazzTag =>
       writeByte(CLASSconst)
       pickleType(c.typeValue)
-    case EnumTag =>
-      writeByte(ENUMconst)
-      pickleType(c.symbolValue.termRef)
   }
 
   def pickleVariances(tp: Type)(using Context): Unit = tp match

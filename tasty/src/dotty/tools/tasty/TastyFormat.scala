@@ -141,7 +141,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   STRINGconst           NameRef                                    -- A string literal
                   NULLconst                                                        -- null
                   CLASSconst            Type                                       -- classOf[Type]
-                  ENUMconst             Path                                       -- An enum constant
 
   Type          = Path                                                             -- Paths represent both types and terms
                   TYPEREFdirect         sym_ASTRef                                 -- A reference to a local symbol (without a prefix). Reference is to definition node of symbol.
@@ -254,7 +253,7 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 23
+  val MajorVersion: Int = 24
   val MinorVersion: Int = 0
 
   /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
@@ -387,17 +386,16 @@ object TastyFormat {
   final val THIS = 80
   final val QUALTHIS = 81
   final val CLASSconst = 82
-  final val ENUMconst = 83
-  final val BYNAMEtype = 84
-  final val BYNAMEtpt = 85
-  final val NEW = 86
-  final val THROW = 87
-  final val IMPLICITarg = 88
-  final val PRIVATEqualified = 89
-  final val PROTECTEDqualified = 90
-  final val RECtype = 91
-  final val SINGLETONtpt = 92
-  final val BOUNDED = 93
+  final val BYNAMEtype = 83
+  final val BYNAMEtpt = 84
+  final val NEW = 85
+  final val THROW = 86
+  final val IMPLICITarg = 87
+  final val PRIVATEqualified = 88
+  final val PROTECTEDqualified = 89
+  final val RECtype = 90
+  final val SINGLETONtpt = 91
+  final val BOUNDED = 92
 
   // Cat. 4:    tag Nat AST
 
@@ -651,7 +649,6 @@ object TastyFormat {
     case QUALTHIS => "QUALTHIS"
     case SUPER => "SUPER"
     case CLASSconst => "CLASSconst"
-    case ENUMconst => "ENUMconst"
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
     case TERMREFin => "TERMREFin"

@@ -282,7 +282,6 @@ class ClassfileParser(
 
         val isVarargs = denot.is(Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0
         denot.info = pool.getType(in.nextChar, isVarargs)
-        if (isEnum) denot.info = ConstantType(Constant(sym))
         if (isConstructor) normalizeConstructorParams()
         denot.info = translateTempPoly(parseAttributes(sym, denot.info, isVarargs))
         if (isConstructor) normalizeConstructorInfo()
@@ -525,17 +524,13 @@ class ClassfileParser(
       case CLASS_TAG =>
         if (skip) None else Some(lit(Constant(pool.getType(index))))
       case ENUM_TAG =>
-        val t = pool.getType(index)
-        val n = pool.getName(in.nextChar)
-        val module = t.typeSymbol.companionModule
-        val s = module.info.decls.lookup(n)
+        val enumClassTp = pool.getType(index)
+        val enumCaseName = pool.getName(in.nextChar)
         if (skip)
           None
-        else if (s != NoSymbol)
-          Some(lit(Constant(s)))
         else {
-          report.warning(s"""While parsing annotations in ${in.file}, could not find $n in enum $module.\nThis is likely due to an implementation restriction: an annotation argument cannot refer to a member of the annotated class (SI-7014).""")
-          None
+          val enumModuleClass = enumClassTp.classSymbol.companionModule
+          Some(Select(ref(enumModuleClass), enumCaseName))
         }
       case ARRAY_TAG =>
         val arr = new ArrayBuffer[Tree]()
