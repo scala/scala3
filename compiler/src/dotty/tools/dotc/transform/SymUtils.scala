@@ -160,6 +160,9 @@ object SymUtils {
   def isField(using Context): Boolean =
     self.isTerm && !self.is(Method)
 
+  def isEnumCase(using Context): Boolean =
+    self.isAllOf(EnumCase, butNot = JavaDefined)
+
   def annotationsCarrying(meta: ClassSymbol)(using Context): List[Annotation] =
     self.annotations.filter(_.symbol.hasAnnotation(meta))
 

@@ -25,6 +25,7 @@ import ProtoTypes._
 import Inferencing._
 import reporting._
 import transform.TypeUtils._
+import transform.SymUtils._
 import Nullables.{postProcessByNameArgs, given _}
 import config.Feature
 
@@ -891,7 +892,9 @@ trait Applications extends Compatibility {
           case funRef: TermRef =>
             val app = ApplyTo(tree, fun1, funRef, proto, pt)
             convertNewGenericArray(
-              postProcessByNameArgs(funRef, app).computeNullable())
+              widenEnumCase(
+                postProcessByNameArgs(funRef, app).computeNullable(),
+                pt))
           case _ =>
             handleUnexpectedFunType(tree, fun1)
         }
@@ -1091,7 +1094,7 @@ trait Applications extends Compatibility {
    *  It is performed during typer as creation of generic arrays needs a classTag.
    *  we rely on implicit search to find one.
    */
-  def convertNewGenericArray(tree: Tree)(using Context):  Tree = tree match {
+  def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match {
     case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.span)
 
@@ -1106,6 +1109,26 @@ trait Applications extends Compatibility {
     case _ =>
       tree
   }
+
+  /** If `tree` is a complete application of a compiler-generated `apply`
+   *  or `copy` method of an enum case, widen its type to the underlying
+   *  type by means of a type ascription, unless the expected type is an
+   *  enum case itself.
+   *  The underlying type is the intersection of all class parents of the
+   *  orginal type.
+   */
+  def widenEnumCase(tree: Tree, pt: Type)(using Context): Tree =
+    val sym = tree.symbol
+    def isEnumCopy = sym.name == nme.copy && sym.owner.isEnumCase
+    def isEnumApply = sym.name == nme.apply && sym.owner.linkedClass.isEnumCase
+    if sym.is(Synthetic) && (isEnumApply || isEnumCopy)
+       && tree.tpe.classSymbol.isEnumCase
+       && !pt.isInstanceOf[FunProto]
+       && !pt.classSymbol.isEnumCase
+    then
+      Typed(tree, TypeTree(tree.tpe.parents.reduceLeft(TypeComparer.andType(_, _))))
+    else
+      tree
 
   /** Does `state` contain a  "NotAMember" or "MissingIdent" message as
    *  first pending error message? That message would be

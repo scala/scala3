@@ -73,7 +73,7 @@ object Eq {
 }
 
 object Macro3 {
-  extension [T](x: =>T) inline def === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
+  extension [T](inline x: T) inline def === (inline y: T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
 
   implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
 }
