@@ -1169,18 +1169,6 @@ trait Implicits:
           else SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument))
         case _: SearchFailure => alt2
 
-      /** Faced with an ambiguous implicits failure `fail`, try to find another
-       *  alternative among `pending` that is strictly better than both ambiguous
-       *  alternatives.  If that fails, return `fail`
-       */
-      def healAmbiguous(pending: List[Candidate], fail: SearchFailure) = {
-        val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
-        val newPending = pending.filter(cand =>
-          compareAlternatives(ambi.alt1, cand) < 0 &&
-          compareAlternatives(ambi.alt2, cand) < 0)
-        rank(newPending, fail, Nil).recoverWith(_ => fail)
-      }
-
       /** Try to find a best matching implicit term among all the candidates in `pending`.
        *  @param pending   The list of candidates that remain to be tested
        *  @param found     The result obtained from previously tried candidates
@@ -1194,7 +1182,7 @@ trait Implicits:
        *     worse than the successful candidate.
        *  If a trial failed:
        *    - if the query term is a `Not[T]` treat it as a success,
-       *    - otherwise, if the failure is an ambiguity, try to heal it (see @healAmbiguous)
+       *    - otherwise, if the failure is an ambiguity, try to heal it (see `healAmbiguous`)
        *      and return an ambiguous error otherwise. However, under Scala2 mode this is
        *      treated as a simple failure, with a warning that semantics will change.
        *    - otherwise add the failure to `rfailures` and continue testing the other candidates.
@@ -1202,6 +1190,14 @@ trait Implicits:
       def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult =
         pending match {
           case cand :: remaining =>
+            /** To recover from an ambiguous implicit failure, we need to find a pending
+             *  candidate that is strictly better than the failed candidate(s).
+             *  If no such candidate is found, we propagate the ambiguity.
+             */
+            def healAmbiguous(fail: SearchFailure, betterThanFailed: Candidate => Boolean) =
+              val newPending = remaining.filter(betterThanFailed)
+              rank(newPending, fail, Nil).recoverWith(_ => fail)
+
             negateIfNot(tryImplicit(cand, contextual)) match {
               case fail: SearchFailure =>
                 if (fail.isAmbiguous)
@@ -1210,7 +1206,11 @@ trait Implicits:
                     if (result.isSuccess)
                       warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
                     result
-                  else healAmbiguous(remaining, fail)
+                  else
+                    // The ambiguity happened in a nested search: to recover we
+                    // need a candidate better than `cand`
+                    healAmbiguous(fail, newCand =>
+                      compareAlternatives(newCand, cand) > 0)
                 else rank(remaining, found, fail :: rfailures)
               case best: SearchSuccess =>
                 if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
@@ -1223,7 +1223,12 @@ trait Implicits:
                         compareAlternatives(retained, cand) <= 0)
                     rank(newPending, retained, rfailures)
                   case fail: SearchFailure =>
-                    healAmbiguous(remaining, fail)
+                    // The ambiguity happened in the current search: to recover we
+                    // need a candidate better than the two ambiguous alternatives.
+                    val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
+                    healAmbiguous(fail, newCand =>
+                      compareAlternatives(newCand, ambi.alt1) > 0 &&
+                      compareAlternatives(newCand, ambi.alt2) > 0)
                 }
             }
           case nil =>
