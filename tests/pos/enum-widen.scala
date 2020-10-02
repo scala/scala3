@@ -13,4 +13,9 @@ object test:
   x = None
   xc = None
 
+  enum Nat:
+    case Z
+    case S[N <: Z.type | S[_]](pred: N)
+  import Nat._
 
+  val two = S(S(Z))

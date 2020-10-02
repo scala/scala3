@@ -1123,12 +1123,14 @@ trait Applications extends Compatibility {
     def isEnumApply = sym.name == nme.apply && sym.owner.linkedClass.isEnumCase
     if sym.is(Synthetic) && (isEnumApply || isEnumCopy)
        && tree.tpe.classSymbol.isEnumCase
-       && !pt.isInstanceOf[FunProto]
-       && !pt.classSymbol.isEnumCase
+       && tree.tpe.widen.isValueType
     then
-      Typed(tree, TypeTree(tree.tpe.parents.reduceLeft(TypeComparer.andType(_, _))))
-    else
-      tree
+      val widened = TypeComparer.dropSuperTraits(
+        tree.tpe.parents.reduceLeft(TypeComparer.andType(_, _)),
+        pt)
+      if widened <:< pt then Typed(tree, TypeTree(widened))
+      else tree
+    else tree
 
   /** Does `state` contain a  "NotAMember" or "MissingIdent" message as
    *  first pending error message? That message would be
