@@ -372,8 +372,11 @@ class TreePickler(pickler: TastyPickler) {
   }
 
   def pickleTree(tree: Tree)(using Context): Unit =
-
-    def pickleNamed(tree: Tree) = tree match
+    val addr = registerTreeAddr(tree)
+    if addr != currentAddr then
+      writeByte(SHAREDterm)
+      writeRef(addr)
+    else try tree match
       case Ident(name) =>
         def pickleIdent() = tree.tpe match
           case tp: TermRef if name != nme.WILDCARD =>
@@ -384,6 +387,16 @@ class TreePickler(pickler: TastyPickler) {
             pickleName(name)
             pickleType(tp)
         pickleIdent()
+      case Apply(fun, args) =>
+        if fun.symbol eq defn.throwMethod then
+          writeByte(THROW)
+          pickleTree(args.head)
+        else
+          writeByte(APPLY)
+          withLength {
+            pickleTree(fun)
+            args.foreach(pickleTree)
+          }
       case Select(qual, name) =>
         def pickleSelect() = name match
           case OuterSelectName(_, levels) =>
@@ -413,8 +426,14 @@ class TreePickler(pickler: TastyPickler) {
               pickleNameAndSig(name, sig)
               pickleTree(qual)
         pickleSelect()
+      case tree: TypeTree =>
+        pickleType(tree.tpe)
       case tree: ValDef =>
         pickleDef(VALDEF, tree, tree.tpt, tree.rhs)
+      case Block(stats, expr) =>
+        writeByte(BLOCK)
+        stats.foreach(preRegister)
+        withLength { pickleTree(expr); stats.foreach(pickleTree) }
       case tree: DefDef =>
         def pickleParamss(paramss: List[List[ValDef]]): Unit = paramss match
           case Nil =>
@@ -426,31 +445,14 @@ class TreePickler(pickler: TastyPickler) {
           pickleParams(tree.tparams)
           pickleParamss(tree.vparamss)
         pickleDef(DEFDEF, tree, tree.tpt, tree.rhs, pickleAllParams)
-      case tree: TypeDef =>
-        pickleDef(TYPEDEF, tree, tree.rhs)
-      case Bind(name, body) =>
-        registerDef(tree.symbol)
-        writeByte(BIND)
+      case tree @ If(cond, thenp, elsep) =>
+        writeByte(IF)
         withLength {
-          pickleName(name); pickleType(tree.symbol.info); pickleTree(body)
+          if tree.isInline then writeByte(INLINE)
+          pickleTree(cond)
+          pickleTree(thenp)
+          pickleTree(elsep)
         }
-    end pickleNamed
-
-    def pickleUnnnamed(tree: Tree) = tree match
-      case Apply(fun, args) =>
-        if fun.symbol eq defn.throwMethod then
-          writeByte(THROW)
-          pickleTree(args.head)
-        else
-          writeByte(APPLY)
-          withLength {
-            pickleTree(fun)
-            args.foreach(pickleTree)
-          }
-      case Block(stats, expr) =>
-        writeByte(BLOCK)
-        stats.foreach(preRegister)
-        withLength { pickleTree(expr); stats.foreach(pickleTree) }
       case TypeApply(fun, args) =>
         writeByte(TYPEAPPLY)
         withLength {
@@ -463,25 +465,20 @@ class TreePickler(pickler: TastyPickler) {
             case ConstantType(const2) => const2
             case _ => const1
         }
+      case Typed(expr, tpt) =>
+        writeByte(TYPED)
+        withLength { pickleTree(expr); pickleTpt(tpt) }
+      case tree: TypeDef =>
+        pickleDef(TYPEDEF, tree, tree.rhs)
       case This(qual) =>
         if qual.isEmpty then pickleType(tree.tpe)
         else
           writeByte(QUALTHIS)
           val ThisType(tref) = tree.tpe
           pickleTree(qual.withType(tref))
-      case tree: TypeTree =>
-        pickleType(tree.tpe)
       case New(tpt) =>
         writeByte(NEW)
         pickleTpt(tpt)
-      case tree @ If(cond, thenp, elsep) =>
-        writeByte(IF)
-        withLength {
-          if tree.isInline then writeByte(INLINE)
-          pickleTree(cond)
-          pickleTree(thenp)
-          pickleTree(elsep)
-        }
       case Closure(env, meth, tpt) =>
         writeByte(LAMBDA)
         assert(env.isEmpty)
@@ -501,9 +498,6 @@ class TreePickler(pickler: TastyPickler) {
       case CaseDef(pat, guard, rhs) =>
         writeByte(CASEDEF)
         withLength { pickleTree(pat); pickleTree(rhs); pickleTreeUnlessEmpty(guard) }
-      case Typed(expr, tpt) =>
-        writeByte(TYPED)
-        withLength { pickleTree(expr); pickleTpt(tpt) }
       case NamedArg(name, arg) =>
         writeByte(NAMEDARG)
         pickleName(name)
@@ -532,19 +526,6 @@ class TreePickler(pickler: TastyPickler) {
           for b <- bindings do
             assert(b.isInstanceOf[DefDef] || b.isInstanceOf[ValDef])
             pickleTree(b)
-        }
-      case Alternative(alts) =>
-        writeByte(ALTERNATIVE)
-        withLength { alts.foreach(pickleTree) }
-      case UnApply(fun, implicits, patterns) =>
-        writeByte(UNAPPLY)
-        withLength {
-          pickleTree(fun)
-          for implicitArg <- implicits do
-            writeByte(IMPLICITarg)
-            pickleTree(implicitArg)
-          pickleType(tree.tpe)
-          patterns.foreach(pickleTree)
         }
       case tree: Template =>
         registerDef(tree.symbol)
@@ -584,6 +565,25 @@ class TreePickler(pickler: TastyPickler) {
       case PackageDef(pid, stats) =>
         writeByte(PACKAGE)
         withLength { pickleType(pid.tpe); pickleStats(stats) }
+      case Bind(name, body) =>
+        registerDef(tree.symbol)
+        writeByte(BIND)
+        withLength {
+          pickleName(name); pickleType(tree.symbol.info); pickleTree(body)
+        }
+      case Alternative(alts) =>
+        writeByte(ALTERNATIVE)
+        withLength { alts.foreach(pickleTree) }
+      case UnApply(fun, implicits, patterns) =>
+        writeByte(UNAPPLY)
+        withLength {
+          pickleTree(fun)
+          for implicitArg <- implicits do
+            writeByte(IMPLICITarg)
+            pickleTree(implicitArg)
+          pickleType(tree.tpe)
+          patterns.foreach(pickleTree)
+        }
       case SingletonTypeTree(ref) =>
         writeByte(SINGLETONtpt)
         pickleTree(ref)
@@ -632,15 +632,6 @@ class TreePickler(pickler: TastyPickler) {
           pickleType(tree.tpe, richTypes = true)
           args.foreach(pickleTree)
         }
-    end pickleUnnnamed
-
-    val addr = registerTreeAddr(tree)
-    if addr != currentAddr then
-      writeByte(SHAREDterm)
-      writeRef(addr)
-    else try tree match
-      case tree: NameTree => pickleNamed(tree)
-      case _ => pickleUnnnamed(tree)
     catch
       case ex: TypeError =>
         report.error(ex.toMessage, tree.srcPos.focus)
