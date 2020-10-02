@@ -1,8 +1,16 @@
 -- Error: tests/neg/illegal-extension.scala:2:6 ------------------------------------------------------------------------
-2 |  def extension_n: String = "illegal method" // error: illegal method name: extension_n may not start with `extension_`
+2 |  def extension_n: String = "illegal method" // error: illegal name: extension_n may not start with `extension_`
   |      ^^^^^^^^^^^
-  |      illegal method name: extension_n may not start with `extension_`
+  |      illegal name: extension_n may not start with `extension_`
 -- Error: tests/neg/illegal-extension.scala:4:6 ------------------------------------------------------------------------
-4 |  var extension_val = 23 // error: illegal value name: extension_val may not start with `extension_`
+4 |  val extension_val = 23 // error: illegal name: extension_val may not start with `extension_`
   |      ^^^^^^^^^^^^^
-  |      illegal value name: extension_val may not start with `extension_`
+  |      illegal name: extension_val may not start with `extension_`
+-- Error: tests/neg/illegal-extension.scala:5:14 -----------------------------------------------------------------------
+5 |  private var extension = Nil // error: not allowed because it matches `extension`
+  |              ^^^^^^^^^
+  |              illegal variable name: `extension`
+-- Error: tests/neg/illegal-extension.scala:8:23 -----------------------------------------------------------------------
+8 |extension (x: Any) def extension_foo: String = "foo" // error: illegal name: extension_foo may not start with `extension_`
+  |                       ^^^^^^^^^^^^^
+  |                       illegal name: extension_foo may not start with `extension_`
