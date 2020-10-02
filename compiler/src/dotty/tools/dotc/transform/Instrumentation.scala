@@ -74,6 +74,21 @@ class Instrumentation extends MiniPhase { thisPhase =>
   private def ok(using Context) =
     !ctx.owner.ownersIterator.exists(_.name.toString.startsWith("Stats"))
 
+  override def transformDefDef(tree: DefDef)(using Context): Tree =
+    val sym = tree.symbol
+    if ctx.settings.YinstrumentDefs.value
+      && ok
+      && sym.exists
+      && !sym.isOneOf(Synthetic | Artifact)
+    then
+      def icall = record(i"method/${sym.fullName}", tree)
+      def rhs1 = tree.rhs match
+        case rhs @ Block(stats, expr) => cpy.Block(rhs)(icall :: stats, expr)
+        case _: Match | _: If | _: Try | _: Labeled => cpy.Block(tree.rhs)(icall :: Nil, tree.rhs)
+        case rhs => rhs
+      cpy.DefDef(tree)(rhs = rhs1)
+    else tree
+
   override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
     case Select(nu: New, _) =>
       cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) :: Nil, tree)
