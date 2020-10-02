@@ -488,7 +488,7 @@ object desugar {
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
         val enumLabelDef = DesugarEnums.enumLabelMeth(EmptyTree)
-        val ordinalDef = DesugarEnums.ordinalMeth(EmptyTree).withAddedFlags(Synthetic)
+        val ordinalDef = DesugarEnums.ordinalMeth(EmptyTree)
         (enumImport :: ordinalDef :: enumLabelDef :: enumStats, enumCases, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)
