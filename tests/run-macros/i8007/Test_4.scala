@@ -39,9 +39,8 @@ enum OptInv[+T] {
   println(t5) // true
   println
 
-  // Here invariant case without explicit type parameter will instantiate T to OptInv[Any]
-  val t5_2 = OptInv.Sm[Int](23) === OptInv.Sm(23)
-  println(t5) // true
+  val t5_2 = OptInv.Sm(23) === OptInv.Sm(23)
+  println(t5_2) // true
   println
 
   val t6 = Sm(Person("Test", 23)) === Sm(Person("Test", 23))

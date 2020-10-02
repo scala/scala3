@@ -1112,8 +1112,8 @@ trait Applications extends Compatibility {
 
   /** If `tree` is a complete application of a compiler-generated `apply`
    *  or `copy` method of an enum case, widen its type to the underlying
-   *  type by means of a type ascription, unless the expected type is an
-   *  enum case itself.
+   *  type by means of a type ascription, as long as the widened type is
+   *  still compatible with the expected type.
    *  The underlying type is the intersection of all class parents of the
    *  orginal type.
    */
