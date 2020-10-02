@@ -50,8 +50,14 @@ object Implicits:
     def implicitName(using Context): TermName = alias
   }
 
+  /** Both search candidates and successes are references with a specific nesting level. */
+  sealed trait RefAndLevel {
+    def ref: TermRef
+    def level: Int
+  }
+
   /** An eligible implicit candidate, consisting of an implicit reference and a nesting level */
-  case class Candidate(implicitRef: ImplicitRef, kind: Candidate.Kind, level: Int) {
+  case class Candidate(implicitRef: ImplicitRef, kind: Candidate.Kind, level: Int) extends RefAndLevel {
     def ref: TermRef = implicitRef.underlyingRef
 
     def isExtension = (kind & Candidate.Extension) != 0
@@ -385,7 +391,8 @@ object Implicits:
    *  @param level  The level where the reference was found
    *  @param tstate The typer state to be committed if this alternative is chosen
    */
-  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState, val gstate: GadtConstraint) extends SearchResult with Showable
+  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState, val gstate: GadtConstraint)
+  extends SearchResult with RefAndLevel with Showable
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
@@ -1124,13 +1131,16 @@ trait Implicits:
     /** Search a list of eligible implicit references */
     private def searchImplicit(eligible: List[Candidate], contextual: Boolean): SearchResult =
 
-      /** Compare previous success with reference and level to determine which one would be chosen, if
-       *  an implicit starting with the reference was found.
+      /** Compare `alt1` with `alt2` to determine which one should be chosen.
+       *
+       *  @return  a number > 0   if `alt1` is preferred over `alt2`
+       *           a number < 0   if `alt2` is preferred over `alt1`
+       *           0              if neither alternative is preferred over the other
        */
-      def compareCandidate(prev: SearchSuccess, ref: TermRef, level: Int): Int =
-        if (prev.ref eq ref) 0
-        else if (prev.level != level) prev.level - level
-        else explore(compare(prev.ref, ref))(using nestedContext())
+      def compareAlternatives(alt1: RefAndLevel, alt2: RefAndLevel): Int =
+        if alt1.ref eq alt2.ref then 0
+        else if alt1.level != alt2.level then alt1.level - alt2.level
+        else explore(compare(alt1.ref, alt2.ref))(using nestedContext())
 
       /** If `alt1` is also a search success, try to disambiguate as follows:
        *    - If alt2 is preferred over alt1, pick alt2, otherwise return an
@@ -1138,7 +1148,7 @@ trait Implicits:
        */
       def disambiguate(alt1: SearchResult, alt2: SearchSuccess) = alt1 match
         case alt1: SearchSuccess =>
-          var diff = compareCandidate(alt1, alt2.ref, alt2.level)
+          var diff = compareAlternatives(alt1, alt2)
           assert(diff <= 0)   // diff > 0 candidates should already have been eliminated in `rank`
           if diff == 0 then
             // Fall back: if both results are extension method applications,
@@ -1166,8 +1176,8 @@ trait Implicits:
       def healAmbiguous(pending: List[Candidate], fail: SearchFailure) = {
         val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
         val newPending = pending.filter(cand =>
-          compareCandidate(ambi.alt1, cand.ref, cand.level) < 0 &&
-          compareCandidate(ambi.alt2, cand.ref, cand.level) < 0)
+          compareAlternatives(ambi.alt1, cand) < 0 &&
+          compareAlternatives(ambi.alt2, cand) < 0)
         rank(newPending, fail, Nil).recoverWith(_ => fail)
       }
 
@@ -1210,7 +1220,7 @@ trait Implicits:
                     val newPending =
                       if (retained eq found) || remaining.isEmpty then remaining
                       else remaining.filterConserve(cand =>
-                        compareCandidate(retained, cand.ref, cand.level) <= 0)
+                        compareAlternatives(retained, cand) <= 0)
                     rank(newPending, retained, rfailures)
                   case fail: SearchFailure =>
                     healAmbiguous(remaining, fail)
