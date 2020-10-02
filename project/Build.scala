@@ -1040,28 +1040,12 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk8" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
-            -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
-            )).get
-
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** "*.scala").get
-
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/jsinterop" ** (("*.scala": FileFilter)
+          ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
             -- "ExportsTest.scala" // JS exports + do not compile because of a var in a structural type
-            )).get
-
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** "*.scala").get
-
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/library" ** (("*.scala": FileFilter)
             -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             )).get
-
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/scalalib" ** "*.scala").get
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/typedarray" ** "*.scala").get
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
 
           ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get
