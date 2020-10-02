@@ -1039,11 +1039,7 @@ object Build {
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk8" ** "*.scala").get
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
-
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
-            -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
-            )).get
-
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** "*.scala").get
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/jsinterop" ** (("*.scala": FileFilter)
