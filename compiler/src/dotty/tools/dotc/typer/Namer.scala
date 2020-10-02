@@ -377,13 +377,13 @@ class Namer { typer: Typer =>
   /** Expand tree and create top-level symbols for statement and enter them into symbol table */
   def index(stat: Tree)(using Context): Context = {
     expand(stat)
-    indexExpanded(stat)
+    indexExpanded(stat, mutable.Buffer.empty) // here we do not expect to populate the buffer
   }
 
   /** Create top-level symbols for all statements in the expansion of this statement and
    *  enter them into symbol table
    */
-  def indexExpanded(origStat: Tree)(using Context): Context = {
+  def indexExpanded(origStat: Tree, delayedEntry: mutable.Buffer[Context ?=> Context])(using Context): Context = {
     def recur(stat: Tree): Context = stat match {
       case pcl: PackageDef =>
         val pkg = createPackageSymbol(pcl.pid)
@@ -395,10 +395,23 @@ class Namer { typer: Typer =>
         ctx.importContext(imp, createSymbol(imp))
       case mdef: DefTree =>
         val sym = createSymbol(mdef)
-        enterSymbol(sym)
-        setDocstring(sym, origStat)
-        addEnumConstants(mdef, sym)
-        ctx
+        def enterDefTree(sym: Symbol): Context =
+          enterSymbol(sym)
+          setDocstring(sym, origStat)
+          addEnumConstants(mdef, sym)
+          ctx
+        if sym.is(Synthetic) && isEnumOrdinal(sym) then
+          delayedEntry += { ctx ?=>
+            // Here we delay entering into scope of an enum ordinal method until after
+            // the parents of `sym.owner` are known. This is because it is illegal to override ordinal
+            // in java.lang.Enum
+            if !clashingJavaEnumOrdinal(sym) then
+              enterDefTree(sym)
+            ctx
+          }
+          ctx
+        else
+          enterDefTree(sym)
       case stats: Thicket =>
         stats.toList.foreach(recur)
         ctx
@@ -456,7 +469,10 @@ class Namer { typer: Typer =>
   /** Create top-level symbols for statements and enter them into symbol table
    *  @return A context that reflects all imports in `stats`.
    */
-  def index(stats: List[Tree])(using Context): Context = {
+  def index(stats: List[Tree])(using Context): Context =
+    index(stats, mutable.Buffer.empty) // here we do not expect to fill the buffer
+
+  def index(stats: List[Tree], delayedEntry: mutable.Buffer[Context ?=> Context])(using Context): Context = {
 
     // module name -> (stat, moduleCls | moduleVal)
     val moduleClsDef = mutable.Map[TypeName, (Tree, TypeDef)]()
@@ -631,7 +647,7 @@ class Namer { typer: Typer =>
 
     stats.foreach(expand)
     mergeCompanionDefs()
-    val ctxWithStats = stats.foldLeft(ctx)((ctx, stat) => indexExpanded(stat)(using ctx))
+    val ctxWithStats = stats.foldLeft(ctx)((ctx, stat) => indexExpanded(stat, delayedEntry)(using ctx))
     createCompanionLinks(using ctxWithStats)
     ctxWithStats
   }
@@ -662,6 +678,23 @@ class Namer { typer: Typer =>
     report.error(s"${modifier}type of implicit definition needs to be given explicitly", sym.srcPos)
     sym.resetFlag(GivenOrImplicit)
   }
+
+  private def findMatch(denot: SymDenotation, owner: Symbol)(using Context) =
+    owner.info.decls.lookupAll(denot.name).exists(alt =>
+      alt != denot.symbol && alt.info.matchesLoosely(denot.info))
+
+  private def isEnumOrdinal(denot: SymDenotation)(using Context) =
+    denot.name == nme.ordinal
+    && denot.owner.isClass && denot.owner.isEnumClass
+
+  private def clashingJavaEnumOrdinal(denot: SymDenotation)(using Context) =
+    def firstParentCls(owner: Symbol) =
+      owner.asClass.classParents.head.classSymbol
+    def isJavaEnumBaseClass(owner: Symbol) =
+      owner.isClass && owner.isEnumClass && owner.derivesFrom(defn.JavaEnumClass)
+    denot.name == nme.ordinal
+    && isJavaEnumBaseClass(denot.owner)
+    && findMatch(denot, firstParentCls(denot.owner))
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(val original: Tree)(ictx: Context) extends LazyType with SymbolLoaders.SecondCompleter {
@@ -755,22 +788,11 @@ class Namer { typer: Typer =>
           if (owner.is(Module)) owner.linkedClass.is(CaseClass)
           else owner.is(CaseClass)
         }
-      def isJavaEnumBaseClass(owner: Symbol) =
-        owner.isClass && owner.isEnumClass && owner.derivesFrom(defn.JavaEnumClass)
-      def firstParentCls(owner: Symbol) =
-        owner.asClass.classParents.head.classSymbol
-      def findMatch(owner: Symbol) =
-        owner.info.decls.lookupAll(denot.name).exists(alt =>
-          alt != denot.symbol && alt.info.matchesLoosely(denot.info))
       def clashingCaseClassMethod =
         desugar.isRetractableCaseClassMethodName(denot.name)
         && isCaseClass(denot.owner)
-        && findMatch(denot.owner)
-      def clashingEnumMethod =
-        denot.name == nme.ordinal
-        && isJavaEnumBaseClass(denot.owner)
-        && findMatch(firstParentCls(denot.owner))
-      val isClashingSynthetic = denot.is(Synthetic) && (clashingCaseClassMethod || clashingEnumMethod)
+        && findMatch(denot, denot.owner)
+      val isClashingSynthetic = denot.is(Synthetic) && (clashingCaseClassMethod || clashingJavaEnumOrdinal(denot))
       if (isClashingSynthetic) {
         typr.println(i"invalidating clashing $denot in ${denot.owner}")
         denot.markAbsent()
@@ -936,6 +958,11 @@ class Namer { typer: Typer =>
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
     private var tempInfo: TempClassInfo = _
 
+    /** we delay entry of the following symbols (already created) until after parents are known:
+     *  - def ordinal: Int (if parent is not java.lang.Enum)
+     */
+    private var delayedEntry: List[Context ?=> Context] = _
+
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 
     private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
@@ -1096,8 +1123,11 @@ class Namer { typer: Typer =>
 
       localCtx = completerCtx.inClassContext(selfInfo)
 
+      val delayedEntryBuf = collection.mutable.ListBuffer.empty[Context ?=> Context]
+
       index(constr)
-      index(rest)(using localCtx)
+      index(rest, delayedEntryBuf)(using localCtx)
+      delayedEntry = delayedEntryBuf.toList
 
       symbolOfTree(constr).info.stripPoly match // Completes constr symbol as a side effect
         case mt: MethodType if cls.is(Case) && mt.isParamDependent =>
@@ -1201,6 +1231,10 @@ class Namer { typer: Typer =>
 
       denot.info = tempInfo.finalized(parentTypes)
       tempInfo = null // The temporary info can now be garbage-collected
+
+      // now we know the parents we can decide if we enter the symbols or not
+      delayedEntry.foldLeft(localCtx) { (localCtx, op) => op(using localCtx) }
+      delayedEntry = null
 
       Checking.checkWellFormed(cls)
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
