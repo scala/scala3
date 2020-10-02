@@ -1009,6 +1009,9 @@ object Build {
       scalaJSLinkerConfig ~= { _.withSemantics(build.TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= build.TestSuiteLinkerOptions.moduleInitializers,
 
+      // Perform Ycheck after the Scala.js-specific transformation phases
+      scalacOptions += "-Ycheck:explicitJSClasses,addLocalJSFakeNews",
+
       jsEnvInput in Test := {
         val resourceDir = fetchScalaJSSource.value / "test-suite/js/src/test/resources"
         val f = (resourceDir / "NonNativeJSTypeTestNatives.js").toPath
@@ -1019,12 +1022,12 @@ object Build {
         val dir = fetchScalaJSSource.value / "test-suite/js/src/main/scala"
         val filter = (
           ("*.scala": FileFilter)
-            -- "Typechecking*.scala"
-            -- "NonNativeTypeTestSeparateRun.scala"
+            -- "Typechecking*.scala" // defines a Scala 2 macro
         )
         (dir ** filter).get
       },
 
+      // A first blacklist of tests for those that do not compile or do not link
       managedSources in Test ++= {
         val dir = fetchScalaJSSource.value / "test-suite"
         (
@@ -1038,44 +1041,21 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/compiler" ** (("*.scala": FileFilter)
-            -- "InteroperabilityTest.scala" // nested native JS classes + JS exports
-            -- "OptimizerTest.scala" // non-native JS classes
-            -- "RegressionJSTest.scala" // non-native JS classes
             -- "RuntimeTypesTest.scala" // compile errors: no ClassTag for Null and Nothing
             )).get
 
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** (("*.scala": FileFilter)
-            -- "ObjectJSTest.scala" // non-native JS classes
-            )).get
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/javalib" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/jsinterop" ** (("*.scala": FileFilter)
-            -- "AsyncTest.scala" // needs PromiseMock.scala
-            -- "DynamicTest.scala" // one test requires JS exports, all other tests pass
-            -- "ExportsTest.scala" // JS exports
-            -- "IterableTest.scala" // non-native JS classes
-            -- "JSExportStaticTest.scala" // JS exports
-            -- "JSOptionalTest.scala" // non-native JS classes
-            -- "JSSymbolTest.scala" // non-native JS classes
-            -- "MiscInteropTest.scala" // non-native JS classes
-            -- "ModulesWithGlobalFallbackTest.scala" // non-native JS classes
-            -- "NestedJSClassTest.scala" // non-native JS classes
-            -- "NonNativeJSTypeTest.scala" // non-native JS classes
-            -- "PromiseMock.scala" // non-native JS classes
+            -- "ExportsTest.scala" // JS exports + do not compile because of a var in a structural type
             )).get
 
-          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** (("*.scala": FileFilter)
-            // Tests fail
-            -- "JUnitAbstractClassTest.scala"
-            -- "JUnitNamesTest.scala"
-            -- "JUnitSubClassTest.scala"
-            -- "MultiCompilationSecondUnitTest.scala"
-            )).get
+          ++ (dir / "js/src/test/scala/org/scalajs/testsuite/junit" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/library" ** (("*.scala": FileFilter)
-            -- "BigIntTest.scala" // non-native JS classes
             -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
-            -- "UnionTypeTest.scala" // requires a Scala 2 macro
+            -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             )).get
 
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/niobuffer" ** "*.scala").get
@@ -1083,16 +1063,29 @@ object Build {
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/typedarray" ** "*.scala").get
           ++ (dir / "js/src/test/scala/org/scalajs/testsuite/utils" ** "*.scala").get
 
-          ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
-            -- "JSOptionalTest212.scala" // non-native JS classes
-            )).get
-
-          ++ (dir / "js/src/test/require-sam" ** (("*.scala": FileFilter)
-            -- "SAMJSTest.scala" // non-native JS classes
-            )).get
-
+          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
+          ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
         )
+      },
+
+      // A second blacklist for tests that compile and link, but do not pass at run-time.
+      // Putting them here instead of above makes sure that we do not regress on compilation+linking.
+      Test / testOptions += Tests.Filter { name =>
+        !Set[String](
+          "org.scalajs.testsuite.compiler.InteroperabilityTest", // 3 tests require JS exports, all other tests pass
+
+          "org.scalajs.testsuite.jsinterop.AsyncTest", // needs JS exports in PromiseMock.scala
+          "org.scalajs.testsuite.jsinterop.DynamicTest", // one test requires JS exports, all other tests pass
+          "org.scalajs.testsuite.jsinterop.JSExportStaticTest", // JS exports
+          "org.scalajs.testsuite.jsinterop.NonNativeJSTypeTest", // 1 test fails because of a progression for value class fields (needs an update upstream)
+
+          // Not investigated so far
+          "org.scalajs.testsuite.junit.JUnitAbstractClassTestCheck",
+          "org.scalajs.testsuite.junit.JUnitNamesTestCheck",
+          "org.scalajs.testsuite.junit.JUnitSubClassTestCheck",
+          "org.scalajs.testsuite.junit.MultiCompilationSecondUnitTestCheck",
+        ).contains(name)
       }
     )
 

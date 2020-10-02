@@ -303,7 +303,10 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val finalConstrStats = copyParams ::: mappedSuperCalls ::: lazyAssignments ::: stats
     val expandedConstr =
       if (cls.isAllOf(NoInitsTrait)) {
-        assert(finalConstrStats.isEmpty)
+        assert(finalConstrStats.isEmpty || {
+          import dotty.tools.dotc.transform.sjs.JSSymUtils._
+          ctx.settings.scalajs.value && cls.isJSType
+        })
         constr
       }
       else cpy.DefDef(constr)(rhs = Block(finalConstrStats, unitLiteral))

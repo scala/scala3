@@ -102,7 +102,7 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
 
   def +=(x: T): Unit = put(x)
 
-  def -= (x: T): Unit =
+  def remove(x: T): Boolean =
     Stats.record(statsItem("remove"))
     var idx = firstIndex(x)
     var e = entryAt(idx)
@@ -124,9 +124,13 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
             hole = idx
         table(hole) = null
         used -= 1
-        return
+        return true
       idx = nextIndex(idx)
       e = entryAt(idx)
+    false
+
+  def -=(x: T): Unit =
+    remove(x)
 
   private def addOld(x: T) =
     Stats.record(statsItem("re-enter"))

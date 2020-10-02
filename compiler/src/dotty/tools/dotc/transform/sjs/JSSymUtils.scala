@@ -53,15 +53,17 @@ object JSSymUtils {
     def isNonNativeJSClass(using Context): Boolean =
       sym.isJSType && !sym.hasAnnotation(jsdefn.JSNativeAnnot)
 
+    /** Is this symbol a nested JS class, i.e., an inner or local JS class? */
+    def isNestedJSClass(using Context): Boolean =
+      !sym.isStatic && sym.isJSType
+
     /** Tests whether the given member is exposed, i.e., whether it was
      *  originally a public or protected member of a non-native JS class.
      */
     def isJSExposed(using Context): Boolean = {
       !sym.is(Bridge) && {
-        if (sym.is(Lazy))
-          sym.is(Accessor) && sym.field.hasAnnotation(jsdefn.ExposedJSMemberAnnot)
-        else
-          sym.hasAnnotation(jsdefn.ExposedJSMemberAnnot)
+        sym.hasAnnotation(jsdefn.ExposedJSMemberAnnot)
+          || (sym.is(Accessor) && sym.field.hasAnnotation(jsdefn.ExposedJSMemberAnnot))
       }
     }
 
@@ -76,6 +78,10 @@ object JSSymUtils {
     /** Should this symbol be translated into a JS setter? */
     def isJSSetter(using Context): Boolean =
       sym.originalName.isSetterName && sym.is(Method)
+
+    /** Is this symbol a JS getter or setter? */
+    def isJSProperty(using Context): Boolean =
+      sym.isJSGetter || sym.isJSSetter
 
     /** Should this symbol be translated into a JS bracket access? */
     def isJSBracketAccess(using Context): Boolean =
@@ -94,17 +100,13 @@ object JSSymUtils {
     def isJSDefaultParam(using Context): Boolean = {
       sym.name.is(DefaultGetterName) && {
         val owner = sym.owner
-        if (owner.is(ModuleClass)) {
-          val isConstructor = sym.name match {
-            case DefaultGetterName(methName, _) => methName == nme.CONSTRUCTOR
-            case _ => false
-          }
-          if (isConstructor)
-            owner.linkedClass.isJSType
-          else
-            owner.isJSType
+        val methName = sym.name.exclude(DefaultGetterName)
+        if (methName == nme.CONSTRUCTOR) {
+          owner.linkedClass.isJSType
         } else {
-          owner.isJSType
+          def isAttachedMethodExposed: Boolean =
+            owner.info.decl(methName).hasAltWith(_.symbol.isJSExposed)
+          owner.isJSType && (!owner.isNonNativeJSClass || isAttachedMethodExposed)
         }
       }
     }
