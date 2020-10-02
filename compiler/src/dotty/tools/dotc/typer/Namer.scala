@@ -888,7 +888,7 @@ class Namer { typer: Typer =>
       val unsafeInfo = if (isDerived) rhsBodyType else abstracted(rhsBodyType)
 
       def opaqueToBounds(info: Type): Type =
-        if sym.isOpaqueAlias && tparamSyms.isEmpty && info.typeParams.nonEmpty then
+        if sym.isOpaqueAlias && info.typeParams.nonEmpty then
           report.error(em"opaque type alias must be fully applied", rhs.srcPos)
         sym.opaqueToBounds(info, rhs1, tparamSyms)
 
