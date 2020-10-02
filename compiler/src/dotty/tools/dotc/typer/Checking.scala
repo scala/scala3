@@ -761,29 +761,21 @@ trait Checking {
     }
   }
 
-  /** If `sym` is an implicit conversion, check that that implicit conversions are enabled, unless
-   *    - it is synthetic
-   *    - it is has the same owner as one of the classes it converts to (modulo companions)
-   *    - it is defined in Predef
-   *    - it is the scala.reflect.Selectable.reflectiveSelectable conversion
+  /** If `tree` is an application of a new-style implicit conversion (using the apply
+   *  method of a `scala.Conversion` instance), check that implicit conversions are
+   *  enabled.
    */
-  def checkImplicitConversionUseOK(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    if (sym.exists) {
-      val conv =
-        if (sym.isOneOf(GivenOrImplicit) || sym.info.isErroneous) sym
-        else {
-          assert(sym.name == nme.apply || ctx.reporter.errorsReported)
-          sym.owner
-        }
-      val conversionOK =
-        conv.is(Synthetic) ||
-        sym.info.finalResultType.classSymbols.exists(_.isLinkedWith(conv.owner)) ||
-        defn.isPredefClass(conv.owner) ||
-        conv.name == nme.reflectiveSelectable && conv.maybeOwner.maybeOwner.maybeOwner == defn.ScalaPackageClass
-      if (!conversionOK)
-        checkFeature(nme.implicitConversions,
-          i"Use of implicit conversion ${conv.showLocated}", NoSymbol, pos)
-    }
+  def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit =
+    val sym = tree.symbol
+    if sym.name == nme.apply
+       && sym.owner.derivesFrom(defn.ConversionClass)
+       && !sym.info.isErroneous
+    then
+      def conv = methPart(tree) match
+        case Select(qual, _) => qual.symbol.orElse(sym.owner)
+        case _ => sym.owner
+      checkFeature(nme.implicitConversions,
+        i"Use of implicit conversion ${conv.showLocated}", NoSymbol, tree.srcPos)
 
   private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
     case _: untpd.Block | _: untpd.Match => true
@@ -1244,7 +1236,7 @@ trait NoChecking extends ReChecking {
   override def checkStable(tp: Type, pos: SrcPos, kind: String)(using Context): Unit = ()
   override def checkClassType(tp: Type, pos: SrcPos, traitReq: Boolean, stablePrefixReq: Boolean)(using Context): Type = tp
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
-  override def checkImplicitConversionUseOK(sym: Symbol, pos: SrcPos)(using Context): Unit = ()
+  override def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
   override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
   override def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = ()
