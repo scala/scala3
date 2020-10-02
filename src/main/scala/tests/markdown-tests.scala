@@ -14,17 +14,22 @@ package tests
   * 1. c
   *
   *
-  * * a
-  *   - a.a
-  *   - a.b
-  *   - a.c
-  * * b
-  *   1. b.1
-  *   2. b.2
-  *   3. b.3
-  *      * b.3.a
-  *      * b.3.b
-  *      * b.3.c
+  * If the following list was indented one space less, it wouldn't parse
+  * properly. That is, the first nested list would not be nested. This is
+  * because ATTW we trim _up to two_ spaces between the star "gutter" and actual
+  * comment bodies.
+  *
+  *  * a
+  *    - a.a
+  *    - a.b
+  *    - a.c
+  *  * b
+  *    1. b.1
+  *    2. b.2
+  *    3. b.3
+  *       * b.3.a
+  *       * b.3.b
+  *       * b.3.c
   */
 class MdLists
 
