@@ -231,49 +231,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     }
 
     override def transform(tree: Tree)(using Context): Tree =
-
-      def transformNamed(tree: Tree): Tree = tree match
+      try tree match
         case tree: Ident if !tree.isType =>
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
             case _ => tree
           }
-        case tree @ Select(qual, name) =>
-          if (name.isTypeName) {
-            Checking.checkRealizable(qual.tpe, qual.srcPos)
-            withMode(Mode.Type)(super.transform(tree))
-          }
-          else
-            transformSelect(tree, Nil)
-        case tree: ValDef =>
-          val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
-          processValOrDefDef(super.transform(tree1))
-        case tree: DefDef =>
-          annotateContextResults(tree)
-          val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
-          processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
-        case tree: TypeDef =>
-          def checkTypeDef() =
-            val sym = tree.symbol
-            if sym.isClass then
-              VarianceChecker.check(tree)
-              // Add SourceFile annotation to top-level classes
-              if sym.owner.is(Package)
-                 && ctx.compilationUnit.source.exists
-                 && sym != defn.SourceFileAnnot
-              then
-                sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
-            else (tree.rhs, sym.info) match
-              case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
-                VarianceChecker.checkLambda(rhs, bounds)
-              case _ =>
-          checkTypeDef()
-          processMemberDef(super.transform(tree))
-        case _ =>
-          super.transform(tree)
-      end transformNamed
-
-      def transformUnnamed(tree: Tree): Tree = tree match
         case tree: Apply =>
           def transformApply() =
             val methType = tree.fun.tpe.widen
@@ -299,10 +262,44 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case _ =>
                 app1
           transformApply()
-        case UnApply(fun, implicits, patterns) =>
-          // Reverse transform order for the same reason as in `app1` above.
-          val patterns1 = transform(patterns)
-          cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
+        case tree @ Select(qual, name) =>
+          if (name.isTypeName) {
+            Checking.checkRealizable(qual.tpe, qual.srcPos)
+            withMode(Mode.Type)(super.transform(tree))
+          }
+          else
+            transformSelect(tree, Nil)
+        case tree: TypeTree =>
+          tree.withType(
+            tree.tpe match {
+              case AnnotatedType(tpe, annot) => AnnotatedType(tpe, transformAnnot(annot))
+              case tpe => tpe
+            }
+          )
+        case tree: ValDef =>
+          val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          processValOrDefDef(super.transform(tree1))
+        case tree: DefDef =>
+          annotateContextResults(tree)
+          val tree1 = cpy.DefDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
+          processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
+        case tree: TypeDef =>
+          def checkTypeDef() =
+            val sym = tree.symbol
+            if sym.isClass then
+              VarianceChecker.check(tree)
+              // Add SourceFile annotation to top-level classes
+              if sym.owner.is(Package)
+                 && ctx.compilationUnit.source.exists
+                 && sym != defn.SourceFileAnnot
+              then
+                sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
+            else (tree.rhs, sym.info) match
+              case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
+                VarianceChecker.checkLambda(rhs, bounds)
+              case _ =>
+          checkTypeDef()
+          processMemberDef(super.transform(tree))
         case tree: TypeApply =>
           def transformTypeApply() =
             if tree.symbol.isQuote then
@@ -320,6 +317,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               case _ =>
                 super.transform(tree1)
           transformTypeApply()
+        case UnApply(fun, implicits, patterns) =>
+          // Reverse transform order for the same reason as in `app1` above.
+          val patterns1 = transform(patterns)
+          cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
         case Inlined(call, bindings, expansion) if !call.isEmpty =>
           def transformInlined() =
             val pos = call.sourcePos
@@ -358,13 +359,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case SingletonTypeTree(ref) =>
           Checking.checkRealizable(ref.tpe, ref.srcPos)
           super.transform(tree)
-        case tree: TypeTree =>
-          tree.withType(
-            tree.tpe match {
-              case AnnotatedType(tpe, annot) => AnnotatedType(tpe, transformAnnot(annot))
-              case tpe => tpe
-            }
-          )
         case Import(expr, selectors) =>
           def checkImport() =
             val exprTpe = expr.tpe
@@ -407,11 +401,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           transformMatchTypeTree()
         case tree =>
           super.transform(tree)
-      end transformUnnamed
-
-      try tree match
-        case tree: NameTree => transformNamed(tree)
-        case _ => transformUnnamed(tree)
       catch case ex : AssertionError =>
         println(i"error while transforming $tree")
         throw ex
