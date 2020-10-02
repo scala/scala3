@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import util.Spans._
-import util.{SourceFile, NoSource, SourcePosition, SrcPos}
+import util.{SourceFile, NoSource, SourcePosition, SrcPos, Stats}
 import core.Contexts._
 import core.Decorators._
 import core.NameOps._
@@ -22,6 +22,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
 
   private var myUniqueId: Int = _
   private var mySpan: Span = _
+
+  Stats.record(s"Positioned/$getClass")
 
   /** A unique identifier. Among other things, used for determining the source file
    *  component of the position.
