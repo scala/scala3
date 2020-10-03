@@ -66,35 +66,28 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
       })
 
     case n: mda.Link =>
-      val userText: String = n.getText.toString
+      val body: String = n.getText.toString
       val target: String = n.getUrl.toString
-      def resolveText(default: String) =
-        val resolved = if !userText.isEmpty then userText else default
+      def resolveBody(default: String) =
+        val resolved = if !body.isEmpty then body else default
         List(dkk.text(resolved)).asJava
 
-      emit(dkkd.A(resolveText(default = target), Map("href" -> target).asJava))
+      emit(dkkd.A(resolveBody(default = target), Map("href" -> target).asJava))
 
     case n: mdw.WikiLink =>
-      val (target, userText) =
+      val (target, body) =
         val chars = n.getChars.toString.substring(2, n.getChars.length - 2)
         MarkdownConverter.splitWikiLink(chars)
 
-      def resolveText(default: String) =
-        val resolved = if !userText.isEmpty then userText else default
+      def resolveBody(default: String) =
+        val resolved = if !body.isEmpty then body else default
         List(dkk.text(resolved)).asJava
 
       emit(target match {
         case SchemeUri() =>
-          dkkd.A(resolveText(default = target), Map("href" -> target).asJava)
+          dkkd.A(resolveBody(default = target), Map("href" -> target).asJava)
         case _ =>
-          withParsedQuery(target) { query =>
-            MemberLookup.lookup(using r)(query, owner) match {
-              case Some((sym, targetText)) =>
-                dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
-              case None =>
-                dkkd.A(resolveText(default = query.join), Map("href" -> "#").asJava)
-            }
-          }
+          resolveLinkQuery(target, body)
       })
 
     case n: mda.Code =>
@@ -176,6 +169,21 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
     doc.getChildIterator.asScala.collectFirst { case p: mda.Paragraph =>
       dkkd.P(convertChildren(p).asJava, kt.emptyMap)
     }
+
+  def resolveLinkQuery(queryStr: String, body: String): dkkd.DocTag = {
+    def resolveBody(default: String) =
+      val resolved = if !body.isEmpty then body else default
+      List(dkk.text(resolved)).asJava
+
+    withParsedQuery(queryStr) { query =>
+      MemberLookup.lookup(using r)(query, owner) match {
+        case Some((sym, targetText)) =>
+          dkkd.DocumentationLink(sym.dri, resolveBody(default = targetText), kt.emptyMap)
+        case None =>
+          dkkd.A(resolveBody(default = query.join), Map("href" -> "#").asJava)
+      }
+    }
+  }
 }
 
 object MarkdownConverter {

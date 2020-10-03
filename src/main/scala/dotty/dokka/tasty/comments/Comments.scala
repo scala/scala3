@@ -15,7 +15,7 @@ case class Comment (
   authors:                 List[dkkd.DocTag],
   see:                     List[dkkd.DocTag],
   result:                  Option[dkkd.DocTag],
-  throws:                  Map[String, dkkd.DocTag],
+  throws:                  Map[String, (dkkd.DocTag, dkkd.DocTag)],
   valueParams:             Map[String, dkkd.DocTag],
   typeParams:              Map[String, dkkd.DocTag],
   version:                 Option[dkkd.DocTag],
@@ -60,7 +60,7 @@ case class PreparsedComment (
 case class DokkaCommentBody(summary: Option[dkkd.DocTag], body: dkkd.DocTag)
 
 trait MarkupConversion[T] {
-  protected def linkedExceptions(m: Map[String, String]): Map[String, dkkd.DocTag]
+  protected def linkedExceptions(m: Map[String, String]): Map[String, (dkkd.DocTag, dkkd.DocTag)]
   protected def stringToMarkup(str: String): T
   protected def markupToDokka(t: T): dkkd.DocTag
   protected def markupToDokkaCommentBody(t: T): DokkaCommentBody
@@ -117,11 +117,9 @@ class MarkdownCommentParser(repr: Repr)
     )
 
   def linkedExceptions(m: Map[String, String]) = {
-    // val inlineToMarkdown = InlineToMarkdown(ent)
+    val c = MarkdownConverter(repr)
     m.map { case (targetStr, body) =>
-      // val link = makeRepresentationLink(repr, packages, targetStr, targetStr)
-      // (targetStr, inlineToMarkdown(link))
-      (targetStr, dkk.text(body))
+      targetStr -> (c.resolveLinkQuery(targetStr, ""), dkk.text(body))
     }
   }
 
@@ -154,18 +152,9 @@ case class WikiCommentParser(repr: Repr)
     )
 
   def linkedExceptions(m: Map[String, String]) = {
-    m.view.mapValues(stringToMarkup).toMap.map { case (targetStr, body) =>
-      // import wiki._
-      // val link = lookup(Some(ent), packages, targetStr)
-      // val newBody = body match {
-      //   case Body(List(Paragraph(Chain(content)))) =>
-      //     val descr = Text(" ") +: content
-      //     val link = makeRepresentationLink(ent, packages, targetStr, targetStr)
-      //     Body(List(Paragraph(Chain(link +: descr))))
-      //   case _ => body
-      // }
-      // (targetStr, newBody.show(ent))
-      (targetStr, wiki.Converter(repr).convertBody(body))
+    m.map { case (targetStr, body) =>
+      val c = wiki.Converter(repr)
+      targetStr -> (c.resolveLinkQuery(targetStr, None), c.convertBody(stringToMarkup(body)))
     }
   }
 

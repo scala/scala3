@@ -183,62 +183,106 @@ class ScalaPageCreator(
 
         def contentForDescription(d: Documentable) = {
             val specialTags = Set[Class[_]](classOf[Description])
-            val tags = d.getDocumentation.asScala.toList.flatMap( (pd, doc) => doc.getChildren.asScala.map(pd -> _).toList )
+
+            type SourceSet = DokkaConfiguration$DokkaSourceSet
+
+            val tags: List[(SourceSet, TagWrapper)] =
+                d.getDocumentation.asScala.toList.flatMap( (pd, doc) => doc.getChildren.asScala.map(pd -> _).toList )
 
             val platforms = d.getSourceSets.asScala.toSet
 
             val description = tags.collect{ case (pd, d: Description) => (pd, d) }.drop(1).groupBy(_(0)).map( (key, value) => key -> value.map(_(1)))
 
-            val unnamedTags = tags.filterNot( t => t(1).isInstanceOf[NamedTagWrapper] || specialTags.contains(t(1).getClass))
-                .groupBy(t => (t(0), t(1).getClass))
-                .map( (key, value) => key -> value.map(_(1)) )
-
-            val namedTags = tags.collect{ case (sourcesets, n: NamedTagWrapper) => (sourcesets, n) }.groupBy(_._2.getName).map( (a,b) => (a,b.toMap))
-
-            b.group(Set(d.getDri), styles = Set(TextStyle.Block, TableStyle.Borderless)) { bdr => 
-                val b1 = description.foldLeft(bdr){ 
-                    case (bdr, (key, value)) => bdr
-                        .group(sourceSets = Set(key)){ gbdr => 
-                            value.foldLeft(gbdr) { (gbdr, tag) => gbdr
-                                .comment(tag.getRoot)
-                            }
-                        }
+            /** Collect the key-value pairs from `iter` into a `Map` with a `cleanup` step,
+              * keeping the original order of the pairs.
+              */
+            def collectInMap[K, E, V](
+                iter: Iterator[(K, E)]
+            )(
+                cleanup: List[E] => V
+            ): collection.Map[K, V] = {
+                import scala.collection.mutable
+                import scala.collection.mutable.ListBuffer
+                val lhm = mutable.LinkedHashMap.empty[K, ListBuffer[E]]
+                iter.foreach { case (k, e) =>
+                    lhm.updateWith(k) {
+                        case None => Some(ListBuffer.empty.append(e))
+                        case Some(buf) =>
+                            buf.append(e)
+                            Some(buf)
+                    }
                 }
-                b1.table(kind = ContentKind.Comment, styles = Set(TableStyle.DescriptionList)){ tbdr =>
-                    val withUnnamedTags = unnamedTags.foldLeft(tbdr){ case (bdr, (key, value) ) => bdr
-                            .cell(sourceSets = Set(key(0))){ b => b
-                                .text(key(1).getSimpleName, styles = Set(TextStyle.Bold))
-                            }
-                            .cell(sourceSets = Set(key(0))) { b => b
-                                .list(value){ (bdr, elem) => bdr
-                                    .comment(elem.getRoot)
+                lhm.view.mapValues(buf => cleanup(buf.result)).to(mutable.LinkedHashMap)
+            }
+
+            val unnamedTags: collection.Map[(SourceSet, Class[_]), List[TagWrapper]] =
+                collectInMap {
+                    tags.iterator
+                        .filterNot { t =>
+                            t(1).isInstanceOf[NamedTagWrapper] || specialTags.contains(t(1).getClass)
+                        }.map { t =>
+                            (t(0), t(1).getClass) -> t(1)
+                        }
+                }(cleanup = identity)
+
+            val namedTags: collection.Map[String, Map[SourceSet, NamedTagWrapper]] =
+                collectInMap {
+                    tags.iterator.collect {
+                        case (sourcesets, n: NamedTagWrapper) =>
+                            n.getName -> (sourcesets, n)
+                    }
+                }(cleanup = _.toMap)
+
+            b.group(Set(d.getDri), styles = Set(TextStyle.Block, TableStyle.Borderless)) { bdr =>
+                val b1 = description.foldLeft(bdr){
+                    case (bdr, (key, value)) => bdr
+                            .group(sourceSets = Set(key)){ gbdr =>
+                                value.foldLeft(gbdr) { (gbdr, tag) => gbdr
+                                    .comment(tag.getRoot)
                                 }
                             }
+                }
+
+                b1.table(kind = ContentKind.Comment, styles = Set(TableStyle.DescriptionList)){ tbdr =>
+                    val withUnnamedTags = unnamedTags.foldLeft(tbdr){ case (bdr, (key, value) ) => bdr
+                        .cell(sourceSets = Set(key(0))){ b => b
+                            .text(key(1).getSimpleName, styles = Set(TextStyle.Bold))
+                        }
+                        .cell(sourceSets = Set(key(0))) { b => b
+                            .list(value){ (bdr, elem) => bdr
+                                .comment(elem.getRoot)
+                            }
+                        }
                     }
-                    val withNamedTags = namedTags.foldLeft(withUnnamedTags){ case (bdr, (key, value)) => value.foldLeft(bdr){ case (bdr, (sourceSets, v)) => bdr
+
+                    val withNamedTags = namedTags.foldLeft(withUnnamedTags){ case (bdr, (key, value)) =>
+                        value.foldLeft(bdr){ case (bdr, (sourceSets, v)) => bdr
                             .cell(sourceSets = Set(sourceSets)){ b => b
-                                .text(key)
+                                // NOTE we only display part of the key to allow distinguishing between:
+                                // 1) TagWrappers for two parameters with same names
+                                // 2) TagWrappers for a term and a type parameter with same name
+                                // 3) Analogous examples to the above
+                                .text(key.takeWhile(_ != '#'))
                             }
                             .cell(sourceSets = Set(sourceSets)){ b => b
                                 .comment(v.getRoot)
                             }
                         }
                     }
-                    d match{
+
+                    d match {
                         case d: (WithExpectActual & WithExtraProperties[Documentable]) if d.get(SourceLinks) != null && !d.get(SourceLinks).links.isEmpty => d.get(SourceLinks).links.foldLeft(withNamedTags){
                             case (bdr, (sourceSet, link)) => bdr
-                                .cell(sourceSets = Set(sourceSet)){ b => b
-                                    .text("Source")
-                                }
-                                .cell(sourceSets = Set(sourceSet)){ b => b
-                                    .resolvedLink("(source)", link)
-                                }
+                                    .cell(sourceSets = Set(sourceSet)){ b => b
+                                        .text("Source")
+                                    }
+                                    .cell(sourceSets = Set(sourceSet)){ b => b
+                                        .resolvedLink("(source)", link)
+                                    }
                         }
-                        case other => withNamedTags       
+                        case other => withNamedTags
                     }
-
                 }
-
             }
         }
 

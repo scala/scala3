@@ -48,13 +48,37 @@ trait ScaladocSupport { self: TastyParser =>
     inline def addOpt(opt: Option[dkkd.DocTag])(wrap: dkkd.DocTag => dkkd.TagWrapper) =
       opt.foreach { t => bld.add(wrap(t)) }
 
-    inline def addSeq(seq: Seq[dkkd.DocTag])(wrap: dkkd.DocTag => dkkd.TagWrapper) =
+    inline def addSeq[T](seq: Iterable[T])(wrap: T => dkkd.TagWrapper) =
       seq.foreach { t => bld.add(wrap(t)) }
 
     addSeq(parsed.authors)(dkkd.Author(_))
     addOpt(parsed.version)(dkkd.Version(_))
     addOpt(parsed.since)(dkkd.Since(_))
+    addOpt(parsed.deprecated)(dkkd.Deprecated(_))
+    addSeq(parsed.todo)(dkkd.CustomTagWrapper(_, "Todo"))
+    addSeq(parsed.see)(dkkd.CustomTagWrapper(_, "See"))
+    addSeq(parsed.note)(dkkd.CustomTagWrapper(_, "Note"))
+    addSeq(parsed.example)(dkkd.CustomTagWrapper(_, "Example"))
+
     addOpt(parsed.constructor)(dkkd.Constructor(_))
+    addSeq(parsed.valueParams){ case (name, tag) =>
+      dkkd.CustomTagWrapper(
+        dkk.p(dkk.text(name), tag),
+        s"Param#$name",
+      )
+    }
+    addSeq(parsed.typeParams){ case (name, tag) =>
+      dkkd.CustomTagWrapper(
+        dkk.p(dkk.text(name), tag),
+        s"Type param#$name",
+      )
+    }
+    addSeq(parsed.throws){ case (key, (exc, desc)) =>
+      dkkd.CustomTagWrapper(
+        dkk.p(dkk.p(exc), desc),
+        s"Throws#$key",
+      )
+    }
     addOpt(parsed.result)(dkkd.Return(_)) // does not seem to render for classes, intentional?
 
     new dkkd.DocumentationNode(bld.build())
