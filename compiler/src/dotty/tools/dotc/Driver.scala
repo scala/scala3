@@ -70,7 +70,7 @@ class Driver {
     val summary = CompilerCommand.distill(args)(using ictx)
     ictx.setSettings(summary.sstate)
     MacroClassLoader.init(ictx)
-    Positioned.updateDebugPos(using ictx)
+    Positioned.init(using ictx)
 
     inContext(ictx) {
       if !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments) then

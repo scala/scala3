@@ -221,7 +221,7 @@ object Trees {
       }
     }
 
-    override def hashCode(): Int = uniqueId // for debugging; was: System.identityHashCode(this)
+    override def hashCode(): Int = System.identityHashCode(this)
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
   }
 

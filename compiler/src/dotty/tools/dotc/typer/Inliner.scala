@@ -70,8 +70,6 @@ object Inliner {
    *            and body that replace it.
    */
   def inlineCall(tree: Tree)(using Context): Tree = {
-    val startId = ctx.source.nextId
-
     if tree.symbol.denot != SymDenotations.NoDenotation
       && tree.symbol.owner.companionModule == defn.CompiletimeTestingPackageObject
     then
@@ -136,10 +134,6 @@ object Inliner {
               |You can use ${setting.name} to change the limit.""",
           (tree :: enclosingInlineds).last.srcPos
         )
-
-    val endId = ctx.source.nextId
-    addInlinedTrees(endId - startId)
-
     tree2
   }
 
@@ -735,6 +729,26 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       case _ =>
     }
 
+    /** The number of nodes in this tree, excluding code in nested inline
+     *  calls and annotations of definitions.
+     */
+    def treeSize(x: Any): Int =
+      var siz = 0
+      x match
+        case x: Trees.Inlined[_] =>
+        case x: Positioned =>
+          var i = 0
+          while i < x.productArity do
+            siz += treeSize(x.productElement(i))
+            i += 1
+        case x: List[_] =>
+          var xs = x
+          while xs.nonEmpty do
+            siz += treeSize(xs.head)
+            xs = xs.tail
+        case _ =>
+      siz
+
     trace(i"inlining $call", inlining, show = true) {
 
       // The normalized bindings collected in `bindingsBuf`
@@ -757,6 +771,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.toList, expansion1)
 
       if (inlinedMethod == defn.Compiletime_error) issueError()
+
+      addInlinedTrees(treeSize(finalExpansion))
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
