@@ -365,18 +365,26 @@ th {
   padding-right: 14px;
 }
 
+/* Lists of definitions, e.g. doc @tags */
+dl {
+  background: transparent;
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+dl > div > ol {
+  list-style-type: none;
+}
+
 dl.attributes > dt {
   display: block;
   float: left;
   font-style: italic;
   font-weight: bold;
 }
-
 dl.attributes > dt.implicit {
   font-weight: bold;
   color: darkgreen;
 }
-
 dl.attributes > dd {
   display: block;
   padding-left: 10em;
@@ -384,16 +392,23 @@ dl.attributes > dd {
   min-height: 15px;
 }
 
-dl {
-  background: transparent;
-  -webkit-box-shadow: none;
-  box-shadow: none;
+/* params list documentation */
+dl.paramsdesc {
+	display: flex;
+	flex-flow: row wrap;
 }
-
-dl > div > ol {
-  list-style-type: none;
+dl.paramsdesc dt {
+	flex-basis: 20%;
+	padding: 2px 0;
+	text-align: left;
+	font-weight: bold;
 }
-
+dl.paramsdesc dd {
+	flex-basis: 80%;
+	flex-grow: 1;
+	margin: 0;
+	padding: 2px 0;
+}
 
 /* Footer */
 footer {
