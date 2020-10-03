@@ -21,7 +21,6 @@ import java.io.{ PrintWriter }
 abstract class Positioned(implicit @constructorOnly src: SourceFile) extends SrcPos, Product, Cloneable {
   import Positioned.{ids, nextId, debugId}
 
-  private var myUniqueId: Int = _
   private var mySpan: Span = _
 
   /** A unique identifier in case -Yshow-tree-ids, or -Ydebug-tree-with-id
