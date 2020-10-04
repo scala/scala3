@@ -26,7 +26,7 @@ class VulpixUnitTests extends ParallelTesting {
   // To fail with something else than an AssertionError
   def fail(): Unit = throw new Exception("didn't fail properly")
 
-  @Test def missingFile: Unit =
+  @Test def missingFile: Unit = if (!scala.util.Properties.isWin)
     try {
       compileFile("tests/vulpix-tests/unit/i-dont-exist.scala", defaultOptions).expectFailure.checkExpectedErrors()
       fail()
@@ -64,9 +64,8 @@ class VulpixUnitTests extends ParallelTesting {
   @Test def runDiffOutput1: Unit =
     compileFile("tests/vulpix-tests/unit/runDiffOutput1.scala", defaultOptions).expectFailure.checkRuns()
 
-  @Test def runStackOverflow: Unit =
-    if (!scala.util.Properties.isWin)
-      compileFile("tests/vulpix-tests/unit/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
+  @Test def runStackOverflow: Unit = if (!scala.util.Properties.isWin)
+    compileFile("tests/vulpix-tests/unit/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runOutRedirects: Unit =
     compileFile("tests/vulpix-tests/unit/i2147.scala", defaultOptions).expectFailure.checkRuns()
@@ -83,7 +82,7 @@ class VulpixUnitTests extends ParallelTesting {
   @Test def deadlock: Unit =
     compileFile("tests/vulpix-tests/unit/deadlock.scala", defaultOptions).expectFailure.checkRuns()
 
-  @Test def badJava: Unit =
+  @Test def badJava: Unit = if (!scala.util.Properties.isWin)
     try {
       compileFile("tests/vulpix-tests/unit/BadJava.java", defaultOptions).suppressAllOutput.checkCompile()
       fail()
