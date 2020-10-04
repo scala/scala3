@@ -6,6 +6,7 @@ import scala.tasty.reflect._
 import org.jetbrains.dokka.model.{doc => dkkd}
 
 import dotty.dokka.Args.CommentSyntax
+import dotty.dokka.HackNestedTagWrapper
 import comments.{kt, dkk}
 
 trait ScaladocSupport { self: TastyParser =>
@@ -51,6 +52,17 @@ trait ScaladocSupport { self: TastyParser =>
     inline def addSeq[T](seq: Iterable[T])(wrap: T => dkkd.TagWrapper) =
       seq.foreach { t => bld.add(wrap(t)) }
 
+    // this is a total kludge, this should be done in a deeper layer but we'd
+    // need to refactor code there first
+    def correctParagraphTags(tag: dkkd.DocTag): dkkd.DocTag =
+      tag match {
+        case tag: dkkd.P =>
+          // NOTE we recurse once, since both the top-level element and its children can be P
+          // (there is no special root DocTag)
+          dkkd.Span(tag.getChildren.iterator.asScala.map(correctParagraphTags).toSeq.asJava, tag.getParams)
+        case tag => tag
+      }
+
     addSeq(parsed.authors)(dkkd.Author(_))
     addOpt(parsed.version)(dkkd.Version(_))
     addOpt(parsed.since)(dkkd.Since(_))
@@ -62,22 +74,13 @@ trait ScaladocSupport { self: TastyParser =>
 
     addOpt(parsed.constructor)(dkkd.Constructor(_))
     addSeq(parsed.valueParams){ case (name, tag) =>
-      dkkd.CustomTagWrapper(
-        dkk.p(dkk.text(name), tag),
-        s"Param#$name",
-      )
+      HackNestedTagWrapper.encode("Param", name, dkk.text(name), correctParagraphTags(tag))
     }
     addSeq(parsed.typeParams){ case (name, tag) =>
-      dkkd.CustomTagWrapper(
-        dkk.p(dkk.text(name), tag),
-        s"Type param#$name",
-      )
+      HackNestedTagWrapper.encode("Type param", name, dkk.text(name), correctParagraphTags(tag))
     }
     addSeq(parsed.throws){ case (key, (exc, desc)) =>
-      dkkd.CustomTagWrapper(
-        dkk.p(dkk.p(exc), desc),
-        s"Throws#$key",
-      )
+      HackNestedTagWrapper.encode("Throws", key, exc, correctParagraphTags(desc))
     }
     addOpt(parsed.result)(dkkd.Return(_)) // does not seem to render for classes, intentional?
 

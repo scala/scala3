@@ -161,7 +161,15 @@ class Methods:
    * @param a A param!
    * @param b Another param.
    * @tparam T A type param!
-   * @tparam V Another type param.
+   * @tparam V
+   * Another type param.
+   * ```
+   * with.a("near-pathological").description
+   * ```
+   * But, surprisingly, still displayed quite well.
+   *
+   * Even though this line should be separated from previous one.
+   *
    * @throws scala.Error Throws errors.
    * @example
    * ```

@@ -45,6 +45,7 @@ enum ScalaModifier(val name: String) extends org.jetbrains.dokka.model.Modifier(
 enum TableStyle extends org.jetbrains.dokka.pages.Style:
   case Borderless
   case DescriptionList
+  case NestedDescriptionList
 
 case class HtmlContentNode(
   val body: String, 
@@ -61,3 +62,37 @@ case class HtmlContentNode(
   override def getChildren: JList[ContentNode] = Nil.asJava
   override def getExtra = extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
+
+case class HackNestedTagWrapper(
+  name: String,
+  subname: String,
+  identTag: DocTag,
+  descTag: DocTag,
+)
+object HackNestedTagWrapper {
+  def encode(
+    name: String,
+    subname: String,
+    identTag: DocTag,
+    descTag: DocTag,
+  ) = CustomTagWrapper(P(List(identTag, descTag).asJava, Map.empty.asJava), s"$name#$subname")
+
+  def isNestedTagName(name: String) = name.contains("#")
+
+  def decodeName(name: String): Option[(String, String)] =
+    name.split("#", 2) match {
+      case Array(name, subname) => Some((name, subname))
+      case _ => None
+    }
+
+  def forceDecode(tag: NamedTagWrapper): HackNestedTagWrapper = {
+    val Array(name, subname) = tag.getName.split("#", 2)
+
+    HackNestedTagWrapper(
+      name,
+      subname,
+      tag.getChildren.get(0),
+      tag.getChildren.get(1),
+    )
+  }
+}

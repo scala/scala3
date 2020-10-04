@@ -1,6 +1,7 @@
 package dotty.dokka.tasty.comments
 
 import scala.collection.mutable
+import scala.collection.immutable.SortedMap
 import scala.util.matching.Regex
 
 object Preparser {
@@ -131,7 +132,7 @@ object Preparser {
         def allTags(key: SimpleTagKey): List[String] =
           (bodyTags remove key).getOrElse(Nil).reverse
 
-        def allSymsOneTag(key: TagKey, filterEmpty: Boolean = true): Map[String, String] = {
+        def allSymsOneTag(key: TagKey, filterEmpty: Boolean = true): SortedMap[String, String] = {
           val keys: Seq[SymbolTagKey] =
             bodyTags.keys.toSeq flatMap {
               case stk: SymbolTagKey if (stk.name == key.name) => Some(stk)
@@ -147,7 +148,7 @@ object Preparser {
                 // dottydoc.println(s"$span: only one '@${key.name}' tag for symbol ${key.symbol} is allowed")
               (key.symbol, bs.head)
             }
-          Map.empty[String, String] ++ pairs
+          SortedMap.empty[String, String] ++ pairs
         }
 
         val cmt = PreparsedComment(

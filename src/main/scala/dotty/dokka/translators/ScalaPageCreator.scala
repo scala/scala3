@@ -1,5 +1,8 @@
 package dotty.dokka
 
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
+
 import org.jetbrains.dokka.base.translators.documentables.{DefaultPageCreator, PageContentBuilder, PageContentBuilder$DocumentableContentBuilder}
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
@@ -14,7 +17,6 @@ import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.base.resolvers.anchors._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
-
 
 class ScalaPageCreator(
     commentsToContentConverter: CommentsToContentConverter,
@@ -201,8 +203,6 @@ class ScalaPageCreator(
             )(
                 cleanup: List[E] => V
             ): collection.Map[K, V] = {
-                import scala.collection.mutable
-                import scala.collection.mutable.ListBuffer
                 val lhm = mutable.LinkedHashMap.empty[K, ListBuffer[E]]
                 iter.foreach { case (k, e) =>
                     lhm.updateWith(k) {
@@ -212,7 +212,7 @@ class ScalaPageCreator(
                             Some(buf)
                     }
                 }
-                lhm.view.mapValues(buf => cleanup(buf.result)).to(mutable.LinkedHashMap)
+                lhm.iterator.map { case (key, buf) => key -> cleanup(buf.result)}.to(mutable.LinkedHashMap)
             }
 
             val unnamedTags: collection.Map[(SourceSet, Class[_]), List[TagWrapper]] =
@@ -225,13 +225,38 @@ class ScalaPageCreator(
                         }
                 }(cleanup = identity)
 
-            val namedTags: collection.Map[String, Map[SourceSet, NamedTagWrapper]] =
-                collectInMap {
+            val namedTags: collection.Map[
+                String,
+                Either[
+                    collection.Map[SourceSet, NamedTagWrapper],
+                    collection.Map[(SourceSet, String), HackNestedTagWrapper],
+                ],
+            ] = {
+                val grouped = collectInMap {
                     tags.iterator.collect {
                         case (sourcesets, n: NamedTagWrapper) =>
-                            n.getName -> (sourcesets, n)
+                            val rawName = n.getName
+                            val (name, isNestedTag) = HackNestedTagWrapper.decodeName(rawName) match {
+                                case Some((name, _)) => (name, true)
+                                case None => (rawName, false)
+                            }
+                            (name, isNestedTag) -> (sourcesets, n)
                     }
-                }(cleanup = _.toMap)
+                }(cleanup = identity)
+
+                grouped.iterator.map {
+                    case ((name, true), values) =>
+                        val groupedValues =
+                            values.iterator.map {
+                                case (sourcesets, n) =>
+                                    val tag = HackNestedTagWrapper.forceDecode(n)
+                                    (sourcesets, tag.subname) -> tag
+                            }.to(mutable.LinkedHashMap)
+                        name -> Right(groupedValues)
+                    case ((name, false), values) =>
+                        name -> Left(values.to(mutable.LinkedHashMap))
+                }.to(mutable.LinkedHashMap)
+            }
 
             b.group(Set(d.getDri), styles = Set(TextStyle.Block, TableStyle.Borderless)) { bdr =>
                 val b1 = description.foldLeft(bdr){
@@ -255,19 +280,30 @@ class ScalaPageCreator(
                         }
                     }
 
-                    val withNamedTags = namedTags.foldLeft(withUnnamedTags){ case (bdr, (key, value)) =>
-                        value.foldLeft(bdr){ case (bdr, (sourceSets, v)) => bdr
-                            .cell(sourceSets = Set(sourceSets)){ b => b
-                                // NOTE we only display part of the key to allow distinguishing between:
-                                // 1) TagWrappers for two parameters with same names
-                                // 2) TagWrappers for a term and a type parameter with same name
-                                // 3) Analogous examples to the above
-                                .text(key.takeWhile(_ != '#'))
+                    val withNamedTags = namedTags.foldLeft(withUnnamedTags){
+                        case (bdr, (key, Left(value))) =>
+                            value.foldLeft(bdr){ case (bdr, (sourceSets, v)) => bdr
+                                .cell(sourceSets = Set(sourceSets)){ b => b
+                                    .text(key)
+                                }
+                                .cell(sourceSets = Set(sourceSets)){ b => b
+                                    .comment(v.getRoot)
+                                }
                             }
-                            .cell(sourceSets = Set(sourceSets)){ b => b
-                                .comment(v.getRoot)
+                        case (bdr, (key, Right(groupedValues))) => bdr
+                            .cell(sourceSets = d.getSourceSets.asScala.toSet){ b => b
+                                .text(key)
                             }
-                        }
+                            .cell(sourceSets = d.getSourceSets.asScala.toSet)(_.table(kind = ContentKind.Comment, styles = Set(TableStyle.NestedDescriptionList)){ tbdr =>
+                                groupedValues.foldLeft(tbdr){ case (bdr, ((sourceSets, _), v)) => bdr
+                                    .cell(sourceSets = Set(sourceSets)){ b => b
+                                        .comment(v.identTag)
+                                    }
+                                    .cell(sourceSets = Set(sourceSets)){ b => b
+                                        .comment(v.descTag)
+                                    }
+                                }
+                            })
                     }
 
                     d match {
