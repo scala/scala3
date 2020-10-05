@@ -41,6 +41,36 @@ class CommentParserTest {
       )))
   }
 
+  @Test def testMdAutolinks(): Unit = {
+    val mdp = MarkdownCommentParser(null)
+    val link = "http://www.google.com"
+    val str = s"This is an autolink: $link"
+    val res = mdp.markupToDokka(mdp.stringToMarkup(str))
+
+    assertSame(res,
+      { import dkk._
+        p(p(
+          text("This is an autolink: "),
+          a("href" -> link)(text(link)),
+        ))
+      })
+  }
+
+  @Test def testMdWrappedAutolinks(): Unit = {
+    val mdp = MarkdownCommentParser(null)
+    val link = "http://www.google.com"
+    val str = s"This is an autolink: <$link>"
+    val res = mdp.markupToDokka(mdp.stringToMarkup(str))
+
+    assertSame(res,
+      { import dkk._
+        p(p(
+          text("This is an autolink: "),
+          a("href" -> link)(text(link)),
+        ))
+      })
+  }
+
   @Test def testMdList(): Unit = {
     val mdp = MarkdownCommentParser(null)
     val str =
@@ -158,7 +188,6 @@ object CommentParserTest {
       cmp match {
         case _: ParamComparison.OK => ;
         case _ =>
-          println(s"failed on $cmp")
           fail()
       }
       paramsBld.append(cmp)
@@ -178,6 +207,7 @@ object CommentParserTest {
     def abort(res: TagComparison): Unit = {
       failed = true
       abortedWith = Some(res)
+      parent.foreach(_.fail())
     }
 
     def fail(): Unit = {
@@ -238,17 +268,7 @@ object CommentParserTest {
             val got = gotIter.next
             val childBld = bld.child
             doCompareTags(childBld)(exp, got)
-            // val cmp = childBld.result match {
-            //   case Left(cmp) => cmp
-            //   case Right((children, params)) =>
-            //     exp match {
-            //       case exp: dkkd.Text =>
-            //         TagComparison.TextOK(exp.getBody, children, params)
-            //       case exp =>
-            //         TagComparison.OK(exp.getClass, children, params)
-            //     }
-            // }
-            bld.emit(bld.result(exp))
+            bld.emit(childBld.result(exp))
           }
     }
 
@@ -315,7 +335,7 @@ object CommentParserTest {
         doIndent()
         bld ++= ")"
       case TagComparison.Mismatch(expCls, gotCls, gotTag) =>
-        doLn(s"!!! MISMATCH: expected=${expCls.getSimpleName}, got=${gotCls.getSimpleName}, tag:\n")
+        doLn(s"!!! MISMATCH: expected=${expCls.getSimpleName}, got=${gotCls.getSimpleName}, tag:")
         renderTag(indent + 2)(gotTag)
       case TagComparison.Extra(tag) =>
         doLn(s"!!! EXTRA:")
@@ -335,5 +355,26 @@ object CommentParserTest {
       bld += '\n'
       throw new java.lang.AssertionError(bld.toString)
     }
+  }
+
+
+  object DkkDbg {
+    case class See(n: dkkd.DocTag, c: Seq[See]) {
+      def show(sb: StringBuilder, indent: Int): Unit = {
+        sb ++= " " * indent
+        sb ++= n.toString
+        sb ++= "\n"
+        c.foreach { s => s.show(sb, indent + 2) }
+      }
+
+      override def toString = {
+        val sb = new StringBuilder
+        show(sb, 0)
+        sb.toString
+      }
+    }
+
+    def see(n: dkkd.DocTag): See =
+      See(n, n.getChildren.asScala.map(see).toList)
   }
 }
