@@ -158,6 +158,26 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         ).toString
     }
 
+    override def buildResolvedLink(
+        f: FlowContent,
+        node: ContentResolvedLink,
+        pageContext: ContentPage,
+        sourceSetRestriction: JSet[DisplaySourceSet],
+    ): Unit = {
+        import kotlinx.html.{Gen_consumer_tagsKt => dsl}
+        val c = f.getConsumer
+        val U = kotlin.Unit.INSTANCE
+        dsl.a(c, node.getAddress, /*target*/ null, /*classes*/ null, { e =>
+            import ScalaCommentToContentConverter._
+            // node.getExtra.getMap.asScala.get(LinkAttributesKey)
+            Option(node.get(LinkAttributesKey).asInstanceOf[ExtraLinkAttributes])
+                .flatMap(_.title)
+                .foreach(e.getAttributes.put("title", _))
+            buildText(f, node.getChildren, pageContext, sourceSetRestriction)
+            U
+        })
+    }
+
     override def buildCodeBlock(
         f: FlowContent,
         code: ContentCodeBlock,

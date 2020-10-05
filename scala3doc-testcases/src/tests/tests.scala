@@ -44,9 +44,13 @@ package tests
   *
   * And yet another: [[example.level2.Documentation]].
   *
-  * This is my friend: [[tests\.B\]]].
+  * This is my friend: [[tests.B]].
   *
   * And this is his companion: [[tests.B$ link to the companion]].
+  *
+  * And this is a link that failed to resolve [[absent]].
+  *
+  * And this is a link that failed to parse [[#]].
   *
   * @author Gal Anonim
   * @version 1.0.0
@@ -172,7 +176,7 @@ class Methods:
    *
    * Even though this line should be separated from previous one.
    *
-   * @throws scala.Error Throws errors.
+   * @throws java.lang.Error Throws errors.
    * @example
    * ```
    * (m : Methods).generic2(d(), e()): B

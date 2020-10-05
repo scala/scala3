@@ -13,7 +13,7 @@ trait BaseConverter {
         val msg = err.getMessage
         // TODO: for better experience we should show source location here
         println("WARN: " + msg)
-        dkkd.A(List(dkk.text(queryStr)).asJava, Map("href" -> "#").asJava)
+        dkkd.A(List(dkk.text(queryStr)).asJava, Map("title" -> msg, "href" -> "#").asJava)
       case Right(query) =>
         thunk(query)
     }
