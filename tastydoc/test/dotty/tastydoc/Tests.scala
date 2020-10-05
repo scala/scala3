@@ -55,7 +55,6 @@ class Tests {
       //Individual files
       "scala.\\$times\\$colon*",
       "scala.Conversion*",
-      "scala.Enum*",
       "scala.Eql*",
       "scala.forceInline*",
       "scala.FunctionXXL*",

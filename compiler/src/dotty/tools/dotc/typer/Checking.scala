@@ -1073,7 +1073,7 @@ trait Checking {
     if !Inliner.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
 
-  /** 1. Check that all case classes that extend `scala.Enum` are `enum` cases
+  /** 1. Check that all case classes that extend `scala.reflect.Enum` are `enum` cases
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
    *  3. Check that only a static `enum` base class can extend java.lang.Enum.
    */
