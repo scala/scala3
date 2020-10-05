@@ -526,14 +526,8 @@ object SymDenotations {
     /** Is this denotation a class? */
     final def isClass: Boolean = isInstanceOf[ClassDenotation]
 
-    /** Is this denotation a non-trait class? */
-    final def isRealClass(using Context): Boolean = isClass && !is(Trait)
-
     /** Cast to class denotation */
     final def asClass: ClassDenotation = asInstanceOf[ClassDenotation]
-
-    /** is this symbol the result of an erroneous definition? */
-    def isError: Boolean = false
 
     /** Make denotation not exist.
      *  @pre `isCompleting` is false, or this is a ModuleCompleter or SymbolLoader
@@ -879,17 +873,6 @@ object SymDenotations {
         )
       }
     }
-
-    /** Do members of this symbol need translation via asSeenFrom when
-     *  accessed via prefix `pre`?
-     */
-    def membersNeedAsSeenFrom(pre: Type)(using Context): Boolean =
-      !(  this.isTerm
-       || this.isStaticOwner && !this.seesOpaques
-       || ctx.erasedTypes
-       || (pre eq NoPrefix)
-       || (pre eq thisType)
-       )
 
     /** Is this symbol concrete, or that symbol deferred? */
     def isAsConcrete(that: Symbol)(using Context): Boolean =

@@ -264,13 +264,6 @@ object Symbols {
       else
         denot.isStableMember
 
-    final def seesOpaques(using Context): Boolean =
-      if isCached then
-        cachedFlags.is(Opaque) && isClass
-        || cachedFlags.is(Module, butNot = Package) && cachedOwner.seesOpaques
-      else
-        denot.seesOpaques
-
     final def isEffectivelyErased(using Context): Boolean =
       (!isCached || cachedFlags.isOneOf(ErasedOrInline)) && denot.isEffectivelyErased
 
@@ -310,7 +303,7 @@ object Symbols {
     /** Is the symbol a pattern bound symbol?
      */
     final def isPatternBound(using Context): Boolean =
-      !isClass && this.is(Case, butNot = Enum | Module)
+      !isClass && is(Case, butNot = Enum | Module)
 
     /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
     final def signature(using Context): Signature =
@@ -319,8 +312,43 @@ object Symbols {
       else
         Signature.NotAMethod
 
+    /** Is this symbol the root class or its companion object? */
     final def isRoot(using Context): Boolean =
-      (maybeOwner eq NoSymbol) && (name.toTermName == nme.ROOT || name == nme.ROOTPKG)
+      if isCached then (maybeOwner eq NoSymbol) && (name.toTermName == nme.ROOT || name == nme.ROOTPKG)
+      else denot.isRoot
+
+    /** Is this symbol the empty package class or its companion object? */
+    final def isEmptyPackage(using Context): Boolean =
+      if isCached then name.toTermName == nme.EMPTY_PACKAGE && owner.isRoot
+      else denot.isEmptyPackage
+
+    /** Is this symbol the empty package class or its companion object? */
+    final def isEffectiveRoot(using Context): Boolean = isRoot || isEmptyPackage
+
+    /** Is this a synthetic method that represents conversions between representations of a value class
+      *  These methods are generated in ExtensionMethods
+      *  and used in ElimErasedValueType.
+      */
+    final def isValueClassConvertMethod(using Context): Boolean =
+      name.toTermName == nme.U2EVT || name.toTermName == nme.EVT2U
+
+    /** Is symbol a primitive value class? */
+    def isPrimitiveValueClass(using Context): Boolean =
+      maybeOwner == defn.ScalaPackageClass && defn.ScalaValueClasses().contains(this)
+
+    /** Is symbol a primitive numeric value class? */
+    def isNumericValueClass(using Context): Boolean =
+      maybeOwner == defn.ScalaPackageClass && defn.ScalaNumericValueClasses().contains(this)
+
+    /** Is symbol a class for which no runtime representation exists? */
+    def isNotRuntimeClass(using Context): Boolean = defn.NotRuntimeClasses.contains(this)
+
+    /** Is this symbol a class representing a refinement? These classes
+     *  are used only temporarily in Typer and Unpickler as an intermediate
+     *  step for creating Refinement types.
+     */
+    final def isRefinementClass(using Context): Boolean =
+      name == tpnme.REFINE_CLASS
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(using Context): Boolean =
@@ -331,6 +359,24 @@ object Symbols {
 
     final def isStaticOwner(using Context): Boolean =
       is(ModuleClass) && (is(PackageClass) || isStatic)
+
+    final def seesOpaques(using Context): Boolean =
+      if isCached then
+        cachedFlags.is(Opaque) && isClass
+        || cachedFlags.is(Module, butNot = Package) && cachedOwner.seesOpaques
+      else
+        denot.seesOpaques
+
+    /** Do members of this symbol need translation via asSeenFrom when
+     *  accessed via prefix `pre`?
+     */
+    def membersNeedAsSeenFrom(pre: Type)(using Context): Boolean =
+      !(  isTerm
+       || isStaticOwner && !seesOpaques
+       || ctx.erasedTypes
+       || (pre eq NoPrefix)
+       || (pre eq denot.thisType)
+       )
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(using Context): this.type =
@@ -351,7 +397,7 @@ object Symbols {
         case owner: ClassSymbol =>
           if (owner.is(Package)) {
             denot.validFor |= InitialPeriod
-            if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
+            if (is(Module)) this.moduleClass.validFor |= InitialPeriod
           }
           else owner.ensureFreshScopeAfter(phase)
           assert(isPrivate || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
@@ -380,7 +426,7 @@ object Symbols {
 
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
     def orElse(that: => Symbol)(using Context): Symbol =
-      if (this.exists) this else that
+      if exists then this else that
 
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
     def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
@@ -402,6 +448,9 @@ object Symbols {
       val file = associatedFile
       if (file != null && file.extension == "class") file else null
     }
+
+    /** Is this symbol a non-trait class? */
+    final def isRealClass(using Context): Boolean = isClass && !is(Trait)
 
     /** A trap to avoid calling x.symbol on something that is already a symbol.
      *  This would be expanded to `toDenot(x).symbol` which is guaraneteed to be
