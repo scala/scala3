@@ -735,9 +735,6 @@ object SymDenotations {
     /** is this a symbol representing an import? */
     final def isImport: Boolean = name == nme.IMPORT
 
-    /** is this the constructor of a class? */
-    final def isClassConstructor: Boolean = name == nme.CONSTRUCTOR
-
     /** Is this the constructor of a trait or a class */
     final def isConstructor: Boolean = name.isConstructorName
 
@@ -1031,10 +1028,6 @@ object SymDenotations {
         result
       }
     }
-
-    /** If this is a weak owner, its owner, otherwise the denoting symbol. */
-    final def skipWeakOwner(using Context): Symbol =
-      if (isWeakOwner) owner.skipWeakOwner else symbol
 
     /** The owner, skipping package objects and non-lazy valdefs. */
     final def effectiveOwner(using Context): Symbol = owner.skipWeakOwner

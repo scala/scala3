@@ -275,15 +275,6 @@ object Symbols {
       else
         denot.variance
 
-    final def isConstructor(using Context): Boolean =
-      if isCached then cachedName.isConstructorName
-      else denot.isConstructor
-
-    final def isPackageObject(using Context): Boolean =
-      if isCached then
-        cachedName.isPackageObjectName && cachedOwner.is(Package) && cachedFlags.is(Module)
-      else denot.isPackageObject
-
     def owner(using Context): Symbol =
       if isCached then cachedOwner else denot.owner
 
@@ -349,6 +340,34 @@ object Symbols {
      */
     final def isRefinementClass(using Context): Boolean =
       name == tpnme.REFINE_CLASS
+
+    /** Is this symbol a package object or its module class? */
+    def isPackageObject(using Context): Boolean =
+      name.isPackageObjectName && owner.is(Package) && is(Module)
+
+    /** Is this a local template dummmy? */
+    final def isLocalDummy(using Context): Boolean = name.isLocalDummyName
+
+    /** Symbol is an owner that would be skipped by effectiveOwner. Skipped are
+     *   - package objects
+     *   - non-lazy valdefs
+     */
+    def isWeakOwner(using Context): Boolean =
+      isPackageObject ||
+      isTerm && !isOneOf(MethodOrLazy) && !isLocalDummy
+
+    /** If this is a weak owner, its owner, otherwise the denoting symbol. */
+    final def skipWeakOwner(using Context): Symbol =
+      if (isWeakOwner) owner.skipWeakOwner else this
+
+    /** The owner, skipping package objects and non-lazy valdefs. */
+    final def effectiveOwner(using Context): Symbol = owner.skipWeakOwner
+
+    /** is this the constructor of a class? */
+    final def isClassConstructor(using Context): Boolean = name == nme.CONSTRUCTOR
+
+    /** Is this the constructor of a trait or a class */
+    final def isConstructor(using Context): Boolean = name.isConstructorName
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(using Context): Boolean =

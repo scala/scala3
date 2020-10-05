@@ -2320,7 +2320,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def isAnonymousClass: Boolean = self.denot.isAnonymousClass
         def isAnonymousFunction: Boolean = self.denot.isAnonymousFunction
         def isAbstractType: Boolean = self.denot.isAbstractType
-        def isClassConstructor: Boolean = self.denot.isClassConstructor
+        def isClassConstructor: Boolean = self.isClassConstructor
         def isType: Boolean = self.isType
         def isTerm: Boolean = self.isTerm
         def isPackageDef: Boolean = self.is(dotc.core.Flags.Package)

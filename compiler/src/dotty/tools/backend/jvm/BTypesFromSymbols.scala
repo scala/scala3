@@ -214,7 +214,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   private def definedClasses(sym: Symbol, phase: Phase) =
     if (sym.isDefinedInCurrentRun)
       atPhase(phase) {
-        toDenot(sym).info.decls.filter(_.isClass)
+        sym.info.decls.filter(_.isClass)
       }
     else Nil
 
@@ -231,7 +231,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       val enclosingClassSym = {
         if (innerClassSym.isClass) {
           atPhase(flattenPhase.prev) {
-            toDenot(innerClassSym).owner.enclosingClass
+            innerClassSym.owner.enclosingClass
           }
         }
         else atPhase(flattenPhase.prev)(innerClassSym.enclosingClass)
@@ -301,7 +301,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
 
     val privateFlag = sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
-    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable) && !sym.enclosingClass.is(Trait)
+    val finalFlag = sym.is(Final) && !sym.isClassConstructor && !sym.is(Mutable) && !sym.enclosingClass.is(Trait)
 
     import asm.Opcodes._
     import GenBCodeOps.addFlagIf
