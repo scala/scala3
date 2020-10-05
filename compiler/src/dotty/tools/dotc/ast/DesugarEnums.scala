@@ -282,10 +282,10 @@ object DesugarEnums {
   private def isJavaEnum(using Context): Boolean = enumClass.derivesFrom(defn.JavaEnumClass)
 
   def ordinalMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body)
+    DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body).withAddedFlags(Synthetic)
 
   def enumLabelMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.enumLabel, Nil, Nil, TypeTree(defn.StringType), body)
+    DefDef(nme.enumLabel, Nil, Nil, TypeTree(defn.StringType), body).withAddedFlags(Synthetic)
 
   def ordinalMethLit(ord: Int)(using Context): DefDef =
     ordinalMeth(Literal(Constant(ord)))

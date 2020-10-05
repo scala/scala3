@@ -17,6 +17,8 @@ import scala.jdk.CollectionConverters._
 import collection.mutable
 import java.nio.file.Paths
 
+import dotty.tools.dotc.transform.SymUtils._
+
 import PartialFunction.condOpt
 
 import ast.untpd.{given _}
@@ -191,7 +193,7 @@ class ExtractSemanticDB extends Phase:
           val selfSpan = tree.self.span
           if selfSpan.exists && selfSpan.hasLength then
             traverse(tree.self)
-          if tree.symbol.owner.is(Enum, butNot=Case) then
+          if tree.symbol.owner.isEnumClass then
             tree.body.foreachUntilImport(traverse).foreach(traverse) // the first import statement
           else
             tree.body.foreach(traverse)

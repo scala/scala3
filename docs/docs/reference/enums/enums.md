@@ -109,14 +109,14 @@ For a more in-depth example of using Scala 3 enums from Java, see [this test](ht
 
 ### Implementation
 
-Enums are represented as `sealed` classes that extend the `scala.Enum` trait.
+Enums are represented as `sealed` classes that extend the `scala.reflect.Enum` trait.
 This trait defines two public methods, `ordinal` and `enumLabel`:
 
 ```scala
-package scala
+package scala.reflect
 
-/** A base trait of all enum classes */
-trait Enum extends Product with Serializable {
+/** A base trait of all Scala enum definitions */
+super trait Enum extends Any with Product with Serializable {
 
   /** A string uniquely identifying a case of an enum */
   def enumLabel: String
