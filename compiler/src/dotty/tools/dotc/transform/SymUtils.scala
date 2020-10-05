@@ -171,7 +171,7 @@ object SymUtils {
     self
   }
 
-  def isEnum(using Context): Boolean = self.is(Enum, butNot=JavaDefined)
+  def isEnum(using Context): Boolean = self.is(Enum, butNot = JavaDefined)
   def isEnumClass(using Context): Boolean = isEnum && !self.is(Case)
 
   /** Does this symbol refer to anonymous classes synthesized by enum desugaring? */
