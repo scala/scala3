@@ -249,6 +249,7 @@ class ScalaPageCreator(
                         val groupedValues =
                             values.iterator.map {
                                 case (sourcesets, n) =>
+                                    // NOTE we previously checked that n is an encoded nested tag wrapper
                                     val tag = HackNestedTagWrapper.forceDecode(n)
                                     (sourcesets, tag.subname) -> tag
                             }.to(mutable.LinkedHashMap)
