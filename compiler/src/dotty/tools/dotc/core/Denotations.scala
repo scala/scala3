@@ -184,6 +184,7 @@ object Denotations {
      *  Uncompleted denotations set myInfo to a LazyType.
      */
     final def info(using Context): Type = {
+      util.Stats.record("Denotation.info")
       def completeInfo = { // Written this way so that `info` is small enough to be inlined
         this.asInstanceOf[SymDenotation].completeFrom(myInfo.asInstanceOf[LazyType]); info
       }

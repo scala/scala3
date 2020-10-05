@@ -75,14 +75,17 @@ object SymDenotations {
     private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
 
     /** Update the flag set */
-    final def flags_=(flags: FlagSet): Unit =
-      myFlags = adaptFlags(flags)
+    final def flags_=(flags: FlagSet): Unit = setMyFlags(adaptFlags(flags))
+
+    final def setMyFlags(flags: FlagSet): Unit =
+      myFlags = flags
+      symbol.cachedFlags = flags
 
     /** Set given flags(s) of this denotation */
-    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
+    final def setFlag(flags: FlagSet): Unit = { setMyFlags(myFlags | flags) }
 
     /** Unset given flags(s) of this denotation */
-    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
+    final def resetFlag(flags: FlagSet): Unit = { setMyFlags(myFlags &~ flags) }
 
     /** Set applicable flags in {NoInits, PureInterface}
      *  @param  parentFlags  The flags that match the class or trait's parents
@@ -146,7 +149,7 @@ object SymDenotations {
         indent += 1
 
         if (myFlags.is(Touched)) throw CyclicReference(this)
-        myFlags |= Touched
+        setFlag(Touched)
 
         // completions.println(s"completing ${this.debugString}")
         try atPhase(validFor.firstPhaseId)(completer.complete(this))
@@ -162,7 +165,7 @@ object SymDenotations {
       }
       else {
         if (myFlags.is(Touched)) throw CyclicReference(this)
-        myFlags |= Touched
+        setFlag(Touched)
         atPhase(validFor.firstPhaseId)(completer.complete(this))
       }
 
@@ -179,6 +182,7 @@ object SymDenotations {
         */
       if (Config.checkNoSkolemsInInfo) assertNoSkolems(tp)
       myInfo = tp
+      symbol.fillCaches(this)
     }
 
     /** The name, except

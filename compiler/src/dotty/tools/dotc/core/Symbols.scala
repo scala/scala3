@@ -91,10 +91,24 @@ object Symbols {
 
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
 
+    private[core] var cachedInfoOrCompleter: Type = _
+    private[core] var cachedFlags: FlagSet = _
+    private[core] var cachedName: Name = _
+
+    private[core] def fillCaches(d: SymDenotation) =
+      util.Stats.record("Symbol.fillCaches")
+      cachedInfoOrCompleter =
+        val info = d.infoOrCompleter
+        if info.isInstanceOf[LazyType] then null else info
+      cachedFlags = d.flagsUNSAFE
+      cachedName = d.name
+
     /** Set the denotation of this symbol */
     private[core] def denot_=(d: SymDenotation): Unit = {
-      util.Stats.record("Symbol.denot_=")
-      lastDenot = d
+      if lastDenot ne d then
+        util.Stats.record("Symbol.denot_=")
+        lastDenot = d
+        fillCaches(d)
       checkedPeriod = Nowhere
     }
 
@@ -117,7 +131,9 @@ object Symbols {
     protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.recomputeDenot")
       val newd = lastd.current.asInstanceOf[SymDenotation]
-      lastDenot = newd
+      if newd ne lastd then
+        lastDenot = newd
+        fillCaches(newd)
       newd
     }
 
@@ -149,9 +165,22 @@ object Symbols {
         // valid. If the option would be removed, the check would be no longer needed.
 
     final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
+      util.Stats.record("Symbol.isTerm")
+      if checkedPeriod == ctx.period && cachedInfoOrCompleter != null then
+        cachedName.isTermName && exists
+      else
+        (if (defRunId == ctx.runId) lastDenot else denot).isTerm
+
     final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isType
+      util.Stats.record("Symbol.isType")
+      if checkedPeriod == ctx.period && cachedInfoOrCompleter != null then
+        cachedName.isTypeName
+      else
+        (if (defRunId == ctx.runId) lastDenot else denot).isType
+
+    final def exists(using Context): Boolean =
+      denot ne NoDenotation
+
     final def asTerm(using Context): TermSymbol = {
       assert(isTerm, s"asTerm called on not-a-Term $this" );
       asInstanceOf[TermSymbol]
@@ -168,10 +197,12 @@ object Symbols {
      *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
      *  is a class that is not yet read.
      */
-    final def isPrivate(using Context): Boolean = {
-      val d = lastDenot
-      d != null && d.flagsUNSAFE.is(Private)
-    }
+    final def isPrivate(using Context): Boolean =
+      if checkedPeriod == ctx.period && cachedInfoOrCompleter != null then
+        cachedFlags.is(Private)
+      else
+        val d = lastDenot
+        d != null && d.flagsUNSAFE.is(Private)
 
     /** Is the symbol a pattern bound symbol?
      */
@@ -246,7 +277,13 @@ object Symbols {
     def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
     /** The current name of this symbol */
-    final def name(using Context): ThisName = denot.name.asInstanceOf[ThisName]
+    final def name(using Context): ThisName =
+      util.Stats.record("Symbol.name")
+      ( if checkedPeriod == ctx.period && cachedInfoOrCompleter != null then
+          cachedName
+        else
+          denot.name
+      ).asInstanceOf[ThisName]
 
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
