@@ -543,6 +543,7 @@ object SymDenotations {
         assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
           s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
       myInfo = NoType
+      symbol.fillCaches(this)
     }
 
     /** Is symbol known to not exist?

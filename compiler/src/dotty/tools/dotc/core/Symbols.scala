@@ -30,7 +30,7 @@ import reporting.Message
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
+import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, Stats}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -90,18 +90,6 @@ object Symbols {
     private var checkedPeriod: Period = Nowhere
 
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
-
-    private[core] var cachedInfoOrCompleter: Type = _
-    private[core] var cachedFlags: FlagSet = _
-    private[core] var cachedName: Name = _
-
-    private[core] def fillCaches(d: SymDenotation) =
-      util.Stats.record("Symbol.fillCaches")
-      cachedInfoOrCompleter =
-        val info = d.infoOrCompleter
-        if info.isInstanceOf[LazyType] then null else info
-      cachedFlags = d.flagsUNSAFE
-      cachedName = d.name
 
     /** Set the denotation of this symbol */
     private[core] def denot_=(d: SymDenotation): Unit = {
@@ -164,19 +152,29 @@ object Symbols {
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
+    private var cachedInfo: Type = _
+    private var cachedName: Name = _
+    private[core] var cachedFlags: FlagSet = _
+
+    private def isCached(using Context): Boolean =
+      checkedPeriod == ctx.period && cachedInfo != null
+
+    private[core] def fillCaches(d: SymDenotation) =
+      util.Stats.record("Symbol.fillCaches")
+      val info = d.infoOrCompleter
+      cachedInfo = if info.isInstanceOf[LazyType] then null else info
+      cachedFlags = d.flagsUNSAFE
+      cachedName = d.name
+
     final def isTerm(using Context): Boolean =
       util.Stats.record("Symbol.isTerm")
-      if checkedPeriod == ctx.period && cachedInfoOrCompleter != null then
-        cachedName.isTermName && exists
-      else
-        (if (defRunId == ctx.runId) lastDenot else denot).isTerm
+      if isCached then cachedName.isTermName && exists
+      else (if (defRunId == ctx.runId) lastDenot else denot).isTerm
 
     final def isType(using Context): Boolean =
       util.Stats.record("Symbol.isType")
-      if checkedPeriod == ctx.period && cachedInfoOrCompleter != null then
-        cachedName.isTypeName
-      else
-        (if (defRunId == ctx.runId) lastDenot else denot).isType
+      if isCached then cachedName.isTypeName
+      else (if (defRunId == ctx.runId) lastDenot else denot).isType
 
     final def exists(using Context): Boolean =
       denot ne NoDenotation
@@ -193,13 +191,90 @@ object Symbols {
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
+    final def info(using Context): Type =
+      if isCached then cachedInfo.ensuring(_ == denot.info)
+      else denot.info
+
+    final def info_=(tp: Type)(using Context): Unit = denot.info = tp
+
+    final def infoOrCompleter(using Context): Type =
+      if isCached then cachedInfo.ensuring(_ == denot.infoOrCompleter)
+      else denot.infoOrCompleter
+
+    final def flags(using Context): FlagSet =
+      if isCached then cachedFlags.ensuring(_ == denot.flags)
+      else denot.flags
+
+    private[dotc] final def flagsUNSAFE(using Context): FlagSet =
+      if isCached then cachedFlags.ensuring(_ == denot.flagsUNSAFE)
+      else denot.flagsUNSAFE
+
+    final def flags_=(fs: FlagSet)(using Context): Unit = denot.flags = fs
+
+    final def is(flag: Flag)(using Context): Boolean =
+      Stats.record("Symbol.is")
+      if isCached then cachedFlags.is(flag).ensuring(_ == denot.is(flag))
+      else denot.is(flag)
+
+    /** Has this denotation one of the flags in `fs` set? */
+    final def isOneOf(fs: FlagSet)(using Context): Boolean =
+      Stats.record("Symbol.isOneOf")
+      if isCached then cachedFlags.isOneOf(fs).ensuring(_ == denot.isOneOf(fs))
+      else denot.isOneOf(fs)
+
+    /** Has this denotation the given flag set, whereas none of the flags
+     *  in `butNot` are set?
+     */
+    final def is(flag: Flag, butNot: FlagSet)(using Context): Boolean =
+      Stats.record("Symbol.is")
+      if isCached then cachedFlags.is(flag, butNot).ensuring(_ == denot.is(flag, butNot))
+      else denot.is(flag, butNot)
+
+    /** Has this denotation one of the flags in `fs` set, whereas none of the flags
+     *  in `butNot` are set?
+     */
+    final def isOneOf(fs: FlagSet, butNot: FlagSet)(using Context): Boolean =
+      Stats.record("Symbol.isOneOf")
+      if isCached then cachedFlags.isOneOf(fs, butNot).ensuring(_ == denot.isOneOf(fs, butNot))
+      else denot.isOneOf(fs, butNot)
+
+    /** Has this denotation all of the flags in `fs` set? */
+    final def isAllOf(fs: FlagSet)(using Context): Boolean =
+      Stats.record("Symbol.isAllOf")
+      if isCached then cachedFlags.isAllOf(fs).ensuring(_ == denot.isAllOf(fs))
+      else denot.isAllOf(fs)
+
+    /** Has this denotation all of the flags in `fs` set, whereas none of the flags
+     *  in `butNot` are set?
+     */
+    final def isAllOf(fs: FlagSet, butNot: FlagSet)(using Context): Boolean =
+      Stats.record("Symbol.isAllOf")
+      if isCached then cachedFlags.isAllOf(fs, butNot).ensuring(_ == denot.isAllOf(fs, butNot))
+      else denot.isAllOf(fs, butNot)
+
+    final def isStableMember(using Context): Boolean =
+      if isCached then
+        def isUnstableValue =
+          cachedFlags.isOneOf(UnstableValueFlags) || cachedInfo.isInstanceOf[ExprType]
+        (cachedName.isTypeName
+        || cachedFlags.is(StableRealizable)
+        || exists && !isUnstableValue).ensuring(_ == denot.isStableMember)
+      else
+        denot.isStableMember
+
+    final def seesOpaques(using Context): Boolean =
+      if isCached then
+        (cachedFlags.is(Opaque) && isClass
+        || cachedFlags.is(Module, butNot = Package) && this.owner.seesOpaques).ensuring(_ == denot.seesOpaques)
+      else
+        denot.seesOpaques
+
     /** Test whether symbol is private. This
      *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
      *  is a class that is not yet read.
      */
     final def isPrivate(using Context): Boolean =
-      if checkedPeriod == ctx.period && cachedInfoOrCompleter != null then
-        cachedFlags.is(Private)
+      if isCached then cachedFlags.is(Private)
       else
         val d = lastDenot
         d != null && d.flagsUNSAFE.is(Private)
@@ -279,11 +354,7 @@ object Symbols {
     /** The current name of this symbol */
     final def name(using Context): ThisName =
       util.Stats.record("Symbol.name")
-      ( if checkedPeriod == ctx.period && cachedInfoOrCompleter != null then
-          cachedName
-        else
-          denot.name
-      ).asInstanceOf[ThisName]
+      (if isCached then cachedName else denot.name).asInstanceOf[ThisName]
 
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
