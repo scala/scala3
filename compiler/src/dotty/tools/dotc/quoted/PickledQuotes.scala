@@ -106,8 +106,8 @@ object PickledQuotes {
             }
           end if
 
-         val tree1 = super.transform(tree)
-         tree1.withType(mapAnnots(tree1.tpe))
+          val tree1 = super.transform(tree)
+          tree1.withType(mapAnnots(tree1.tpe))
       }
 
       // Evaluate holes in type annotations
