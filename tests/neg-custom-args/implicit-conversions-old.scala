@@ -18,6 +18,6 @@ object Test {
   import D._
 
   val x1: A = new B
-  val x2: B = new A  // error under -Xfatal-warnings -feature
-  val x3: C = new A  // error under -Xfatal-warnings -feature
+  val x2: B = new A  // ok, since it's an old-style comversion
+  val x3: C = new A  // ok, since it's an old-style comversion
 }

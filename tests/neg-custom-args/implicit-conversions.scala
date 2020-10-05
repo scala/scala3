@@ -23,7 +23,7 @@ object D {
 object Test {
   import D.{given _}
 
-  val x1: A = new B
+  val x1: A = new B  // error under -Xfatal-warnings -feature
   val x2: B = new A  // error under -Xfatal-warnings -feature
   val x3: C = new A  // error under -Xfatal-warnings -feature
 }
