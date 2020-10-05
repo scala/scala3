@@ -1158,11 +1158,9 @@ class Definitions {
   def PolyFunctionType = PolyFunctionClass.typeRef
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
-  def scalaClassName(cls: Symbol)(using Context): TypeName = cls.denot match
-    case clsd: ClassDenotation if clsd.owner eq ScalaPackageClass =>
-      clsd.name.asInstanceOf[TypeName]
-    case _ =>
-      EmptyTypeName
+  def scalaClassName(cls: Symbol)(using Context): TypeName = cls match
+    case cls: ClassSymbol if cls.owner eq ScalaPackageClass => cls.name
+    case _ => EmptyTypeName
 
   /** If type `ref` refers to a class in the scala package, its name, otherwise EmptyTypeName */
   def scalaClassName(ref: Type)(using Context): TypeName = scalaClassName(ref.classSymbol)

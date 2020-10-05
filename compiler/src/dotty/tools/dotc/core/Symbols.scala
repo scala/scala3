@@ -154,6 +154,7 @@ object Symbols {
 
     private var cachedInfo: Type = _
     private var cachedName: Name = _
+    private var cachedOwner: Symbol = _
     private[core] var cachedFlags: FlagSet = _
 
     private def isCached(using Context): Boolean =
@@ -165,6 +166,7 @@ object Symbols {
       cachedInfo = if info.isInstanceOf[LazyType] then null else info
       cachedFlags = d.flagsUNSAFE
       cachedName = d.name
+      cachedOwner = d.maybeOwner
 
     final def isTerm(using Context): Boolean =
       util.Stats.record("Symbol.isTerm")
@@ -265,7 +267,7 @@ object Symbols {
     final def seesOpaques(using Context): Boolean =
       if isCached then
         cachedFlags.is(Opaque) && isClass
-        || cachedFlags.is(Module, butNot = Package) && this.owner.seesOpaques
+        || cachedFlags.is(Module, butNot = Package) && cachedOwner.seesOpaques
       else
         denot.seesOpaques
 
@@ -286,8 +288,14 @@ object Symbols {
 
     final def isPackageObject(using Context): Boolean =
       if isCached then
-        cachedName.isPackageObjectName && this.owner.is(Package) && cachedFlags.is(Module)
+        cachedName.isPackageObjectName && cachedOwner.is(Package) && cachedFlags.is(Module)
       else denot.isPackageObject
+
+    def owner(using Context): Symbol =
+      if isCached then cachedOwner else denot.owner
+
+    def maybeOwner(using Context): Symbol =
+      if isCached then cachedOwner else denot.maybeOwner
 
     /** Test whether symbol is private. This
      *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
@@ -311,18 +319,25 @@ object Symbols {
       else
         Signature.NotAMethod
 
+    final def isRoot(using Context): Boolean =
+      (maybeOwner eq NoSymbol) && (name.toTermName == nme.ROOT || name == nme.ROOTPKG)
+
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(using Context): Boolean =
-      lastDenot != null && lastDenot.initial.isStatic
+      if isCached then
+        if cachedOwner eq NoSymbol then isRoot else cachedOwner.isStaticOwner
+      else
+        lastDenot != null && lastDenot.initial.isStatic
+
+    final def isStaticOwner(using Context): Boolean =
+      is(ModuleClass) && (is(PackageClass) || isStatic)
 
     /** This symbol entered into owner's scope (owner must be a class). */
-    final def entered(using Context): this.type = {
-      if (this.owner.isClass) {
-        this.owner.asClass.enter(this)
-        if (this.is(Module)) this.owner.asClass.enter(this.moduleClass)
-      }
+    final def entered(using Context): this.type =
+      if owner.isClass then
+        owner.asClass.enter(this)
+        if is(Module) then owner.asClass.enter(this.moduleClass)
       this
-    }
 
     /** Enter this symbol in its class owner after given `phase`. Create a fresh
      *  denotation for its owner class if the class has not yet already one
@@ -332,7 +347,7 @@ object Symbols {
     def enteredAfter(phase: DenotTransformer)(using Context): this.type =
       if ctx.phaseId != phase.next.id then
         atPhase(phase.next)(enteredAfter(phase))
-      else this.owner match {
+      else owner match {
         case owner: ClassSymbol =>
           if (owner.is(Package)) {
             denot.validFor |= InitialPeriod
@@ -345,10 +360,9 @@ object Symbols {
       }
 
     /** Remove symbol from scope of owning class */
-    final def drop()(using Context): Unit = {
-      this.owner.asClass.delete(this)
-      if (this.is(Module)) this.owner.asClass.delete(this.moduleClass)
-    }
+    final def drop()(using Context): Unit =
+      owner.asClass.delete(this)
+      if is(Module) then owner.asClass.delete(this.moduleClass)
 
     /** Remove symbol from scope of owning class after given `phase`. Create a fresh
      *  denotation for its owner class if the class has not yet already one that starts being valid after `phase`.
@@ -358,9 +372,9 @@ object Symbols {
       if ctx.phaseId != phase.next.id then
         atPhase(phase.next)(dropAfter(phase))
       else {
-        assert (!this.owner.is(Package))
-        this.owner.asClass.ensureFreshScopeAfter(phase)
-        assert(isPrivate || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
+        assert (!owner.is(Package))
+        owner.asClass.ensureFreshScopeAfter(phase)
+        assert(isPrivate || phase.changesMembers, i"$this deleted in $owner at undeclared phase $phase")
         drop()
       }
 
@@ -548,7 +562,7 @@ object Symbols {
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(using Context): AbstractFile =
-      if (assocFile != null || this.owner.is(PackageClass) || this.isEffectiveRoot) assocFile
+      if (assocFile != null || owner.is(PackageClass) || this.isEffectiveRoot) assocFile
       else super.associatedFile
 
     private var mySource: SourceFile = NoSource
@@ -583,6 +597,7 @@ object Symbols {
   @sharable object NoSymbol extends Symbol(NoCoord, 0) {
     override def associatedFile(using Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
+    override def owner(using Context): Symbol = throw new AssertionError("NoSymbol.owner")
   }
 
   NoDenotation // force it in order to set `denot` field of NoSymbol
