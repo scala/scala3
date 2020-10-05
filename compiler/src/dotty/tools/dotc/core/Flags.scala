@@ -526,6 +526,7 @@ object Flags {
   val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam           // term symbols without right-hand sides
   val DeferredOrTypeParam: FlagSet           = Deferred | TypeParam                           // type symbols without right-hand sides
   val EnumValue: FlagSet                     = Enum | StableRealizable                        // A Scala enum value
+  val ErasedOrInline: FlagSet                = Erased | Inline                                // Ncessary to be effectivelt erased
   val StableOrErased: FlagSet                = Erased | StableRealizable                      // Assumed to be pure
   val FinalOrInline: FlagSet                 = Final | Inline
   val FinalOrModuleClass: FlagSet            = Final | ModuleClass                            // A module class or a final class

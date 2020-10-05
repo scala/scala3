@@ -192,34 +192,34 @@ object Symbols {
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
     final def info(using Context): Type =
-      if isCached then cachedInfo.ensuring(_ == denot.info)
+      if isCached then cachedInfo
       else denot.info
 
     final def info_=(tp: Type)(using Context): Unit = denot.info = tp
 
     final def infoOrCompleter(using Context): Type =
-      if isCached then cachedInfo.ensuring(_ == denot.infoOrCompleter)
+      if isCached then cachedInfo
       else denot.infoOrCompleter
 
     final def flags(using Context): FlagSet =
-      if isCached then cachedFlags.ensuring(_ == denot.flags)
+      if isCached then cachedFlags
       else denot.flags
 
     private[dotc] final def flagsUNSAFE(using Context): FlagSet =
-      if isCached then cachedFlags.ensuring(_ == denot.flagsUNSAFE)
+      if isCached then cachedFlags
       else denot.flagsUNSAFE
 
     final def flags_=(fs: FlagSet)(using Context): Unit = denot.flags = fs
 
     final def is(flag: Flag)(using Context): Boolean =
       Stats.record("Symbol.is")
-      if isCached then cachedFlags.is(flag).ensuring(_ == denot.is(flag))
+      if isCached then cachedFlags.is(flag)
       else denot.is(flag)
 
     /** Has this denotation one of the flags in `fs` set? */
     final def isOneOf(fs: FlagSet)(using Context): Boolean =
       Stats.record("Symbol.isOneOf")
-      if isCached then cachedFlags.isOneOf(fs).ensuring(_ == denot.isOneOf(fs))
+      if isCached then cachedFlags.isOneOf(fs)
       else denot.isOneOf(fs)
 
     /** Has this denotation the given flag set, whereas none of the flags
@@ -227,7 +227,7 @@ object Symbols {
      */
     final def is(flag: Flag, butNot: FlagSet)(using Context): Boolean =
       Stats.record("Symbol.is")
-      if isCached then cachedFlags.is(flag, butNot).ensuring(_ == denot.is(flag, butNot))
+      if isCached then cachedFlags.is(flag, butNot)
       else denot.is(flag, butNot)
 
     /** Has this denotation one of the flags in `fs` set, whereas none of the flags
@@ -235,13 +235,13 @@ object Symbols {
      */
     final def isOneOf(fs: FlagSet, butNot: FlagSet)(using Context): Boolean =
       Stats.record("Symbol.isOneOf")
-      if isCached then cachedFlags.isOneOf(fs, butNot).ensuring(_ == denot.isOneOf(fs, butNot))
+      if isCached then cachedFlags.isOneOf(fs, butNot)
       else denot.isOneOf(fs, butNot)
 
     /** Has this denotation all of the flags in `fs` set? */
     final def isAllOf(fs: FlagSet)(using Context): Boolean =
       Stats.record("Symbol.isAllOf")
-      if isCached then cachedFlags.isAllOf(fs).ensuring(_ == denot.isAllOf(fs))
+      if isCached then cachedFlags.isAllOf(fs)
       else denot.isAllOf(fs)
 
     /** Has this denotation all of the flags in `fs` set, whereas none of the flags
@@ -249,25 +249,45 @@ object Symbols {
      */
     final def isAllOf(fs: FlagSet, butNot: FlagSet)(using Context): Boolean =
       Stats.record("Symbol.isAllOf")
-      if isCached then cachedFlags.isAllOf(fs, butNot).ensuring(_ == denot.isAllOf(fs, butNot))
+      if isCached then cachedFlags.isAllOf(fs, butNot)
       else denot.isAllOf(fs, butNot)
 
     final def isStableMember(using Context): Boolean =
       if isCached then
         def isUnstableValue =
           cachedFlags.isOneOf(UnstableValueFlags) || cachedInfo.isInstanceOf[ExprType]
-        (cachedName.isTypeName
+        cachedName.isTypeName
         || cachedFlags.is(StableRealizable)
-        || exists && !isUnstableValue).ensuring(_ == denot.isStableMember)
+        || exists && !isUnstableValue
       else
         denot.isStableMember
 
     final def seesOpaques(using Context): Boolean =
       if isCached then
-        (cachedFlags.is(Opaque) && isClass
-        || cachedFlags.is(Module, butNot = Package) && this.owner.seesOpaques).ensuring(_ == denot.seesOpaques)
+        cachedFlags.is(Opaque) && isClass
+        || cachedFlags.is(Module, butNot = Package) && this.owner.seesOpaques
       else
         denot.seesOpaques
+
+    final def isEffectivelyErased(using Context): Boolean =
+      (!isCached || cachedFlags.isOneOf(ErasedOrInline)) && denot.isEffectivelyErased
+
+    final def variance(using Context): Variance =
+      if isCached then
+        if cachedFlags.is(Covariant) then Covariant
+        else if cachedFlags.is(Contravariant) then Contravariant
+        else EmptyFlags
+      else
+        denot.variance
+
+    final def isConstructor(using Context): Boolean =
+      if isCached then cachedName.isConstructorName
+      else denot.isConstructor
+
+    final def isPackageObject(using Context): Boolean =
+      if isCached then
+        cachedName.isPackageObjectName && this.owner.is(Package) && cachedFlags.is(Module)
+      else denot.isPackageObject
 
     /** Test whether symbol is private. This
      *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
