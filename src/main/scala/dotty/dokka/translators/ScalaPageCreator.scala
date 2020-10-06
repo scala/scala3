@@ -229,18 +229,13 @@ class ScalaPageCreator(
                 String,
                 Either[
                     collection.Map[SourceSet, NamedTagWrapper],
-                    collection.Map[(SourceSet, String), HackNestedTagWrapper],
+                    collection.Map[(SourceSet, String), ScalaTagWrapper.NestedNamedTag],
                 ],
             ] = {
                 val grouped = collectInMap {
                     tags.iterator.collect {
                         case (sourcesets, n: NamedTagWrapper) =>
-                            val rawName = n.getName
-                            val (name, isNestedTag) = HackNestedTagWrapper.decodeName(rawName) match {
-                                case Some((name, _)) => (name, true)
-                                case None => (rawName, false)
-                            }
-                            (name, isNestedTag) -> (sourcesets, n)
+                            (n.getName, n.isInstanceOf[ScalaTagWrapper.NestedNamedTag]) -> (sourcesets, n)
                     }
                 }(cleanup = identity)
 
@@ -248,9 +243,8 @@ class ScalaPageCreator(
                     case ((name, true), values) =>
                         val groupedValues =
                             values.iterator.map {
-                                case (sourcesets, n) =>
-                                    // NOTE we previously checked that n is an encoded nested tag wrapper
-                                    val tag = HackNestedTagWrapper.forceDecode(n)
+                                case (sourcesets, t) =>
+                                    val tag = t.asInstanceOf[ScalaTagWrapper.NestedNamedTag]
                                     (sourcesets, tag.subname) -> tag
                             }.to(mutable.LinkedHashMap)
                         name -> Right(groupedValues)
@@ -275,7 +269,7 @@ class ScalaPageCreator(
                             .text(key(1).getSimpleName, styles = Set(TextStyle.Bold))
                         }
                         .cell(sourceSets = Set(key(0))) { b => b
-                            .list(value){ (bdr, elem) => bdr
+                            .list(value, separator = ""){ (bdr, elem) => bdr
                                 .comment(elem.getRoot)
                             }
                         }

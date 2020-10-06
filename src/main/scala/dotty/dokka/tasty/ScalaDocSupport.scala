@@ -6,7 +6,7 @@ import scala.tasty.reflect._
 import org.jetbrains.dokka.model.{doc => dkkd}
 
 import dotty.dokka.Args.CommentSyntax
-import dotty.dokka.HackNestedTagWrapper
+import dotty.dokka.ScalaTagWrapper
 import comments.{kt, dkk}
 
 trait ScaladocSupport { self: TastyParser =>
@@ -67,22 +67,22 @@ trait ScaladocSupport { self: TastyParser =>
     addOpt(parsed.version)(dkkd.Version(_))
     addOpt(parsed.since)(dkkd.Since(_))
     addOpt(parsed.deprecated)(dkkd.Deprecated(_))
-    addSeq(parsed.todo)(dkkd.CustomTagWrapper(_, "Todo"))
-    addSeq(parsed.see)(dkkd.CustomTagWrapper(_, "See"))
-    addSeq(parsed.note)(dkkd.CustomTagWrapper(_, "Note"))
-    addSeq(parsed.example)(dkkd.CustomTagWrapper(_, "Example"))
+    addSeq(parsed.todo)(ScalaTagWrapper.Todo)
+    addSeq(parsed.see)(ScalaTagWrapper.See)
+    addSeq(parsed.note)(ScalaTagWrapper.Note)
+    addSeq(parsed.example)(ScalaTagWrapper.Example)
 
     addOpt(parsed.constructor)(dkkd.Constructor(_))
     addSeq(parsed.valueParams){ case (name, tag) =>
-      HackNestedTagWrapper.encode("Param", name, dkk.text(name), correctParagraphTags(tag))
+      ScalaTagWrapper.NestedNamedTag("Param", name, dkk.text(name), correctParagraphTags(tag))
     }
     addSeq(parsed.typeParams){ case (name, tag) =>
-      HackNestedTagWrapper.encode("Type param", name, dkk.text(name), correctParagraphTags(tag))
+      ScalaTagWrapper.NestedNamedTag("Type param", name, dkk.text(name), correctParagraphTags(tag))
     }
     addSeq(parsed.throws){ case (key, (exc, desc)) =>
-      HackNestedTagWrapper.encode("Throws", key, exc, correctParagraphTags(desc))
+      ScalaTagWrapper.NestedNamedTag("Throws", key, exc, correctParagraphTags(desc))
     }
-    addOpt(parsed.result)(dkkd.Return(_)) // does not seem to render for classes, intentional?
+    addOpt(parsed.result)(dkkd.Return(_))
 
     new dkkd.DocumentationNode(bld.build())
   }

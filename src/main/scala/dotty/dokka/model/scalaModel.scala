@@ -63,36 +63,15 @@ case class HtmlContentNode(
   override def getExtra = extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
 
-case class HackNestedTagWrapper(
-  name: String,
-  subname: String,
-  identTag: DocTag,
-  descTag: DocTag,
-)
-object HackNestedTagWrapper {
-  def encode(
+object ScalaTagWrapper {
+  case class See(root: DocTag) extends TagWrapper(root, null)
+  case class Todo(root: DocTag) extends TagWrapper(root, null)
+  case class Note(root: DocTag) extends TagWrapper(root, null)
+  case class Example(root: DocTag) extends TagWrapper(root, null)
+  case class NestedNamedTag(
     name: String,
     subname: String,
     identTag: DocTag,
-    descTag: DocTag,
-  ) = CustomTagWrapper(P(List(identTag, descTag).asJava, Map.empty.asJava), s"$name#$subname")
-
-  def isNestedTagName(name: String) = name.contains("#")
-
-  def decodeName(name: String): Option[(String, String)] =
-    name.split("#", 2) match {
-      case Array(name, subname) => Some((name, subname))
-      case _ => None
-    }
-
-  def forceDecode(tag: NamedTagWrapper): HackNestedTagWrapper = {
-    val Array(name, subname) = tag.getName.split("#", 2)
-
-    HackNestedTagWrapper(
-      name,
-      subname,
-      tag.getChildren.get(0),
-      tag.getChildren.get(1),
-    )
-  }
+    descTag: DocTag
+  ) extends NamedTagWrapper(descTag, name, null)
 }

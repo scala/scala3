@@ -156,8 +156,10 @@ class Methods:
    * @author Gol Anonim
    * @version 1.0.0
    * @since 0.1.0
+   * @todo Consider cleaning up this documentation
    * @todo Add more documentation
    * @note This method is more important than it looks.
+   * @note Much more important.
    * @param a A param!
    * @param b Another param.
    * @tparam T A type param!
@@ -173,7 +175,11 @@ class Methods:
    * @throws scala.Error Throws errors.
    * @example
    * ```
-   * (m : Methods).simple(): B
+   * (m : Methods).generic2(d(), e()): B
+   * ```
+   * @example
+   * ```
+   * (m : Methods).generic2(d2(), e2()): B
    * ```
    * @return Nothing at all!
    */
