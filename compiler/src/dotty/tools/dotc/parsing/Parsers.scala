@@ -3121,7 +3121,7 @@ object Parsers {
                 in.nextToken()
                 ImportSelector(givenSelectorId(start)) // Let the selector span all of `given _`; needed for -Ytest-pickler
               else if canStartTypeTokens.contains(in.token) then
-                ImportSelector(givenSelectorId(start), bound = infixType())
+                ImportSelector(givenSelectorId(start), bound = rejectWildcardType(infixType()))
               else
                 ImportSelector(givenSelectorId(start))
             case _ =>
