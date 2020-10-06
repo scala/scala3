@@ -57,7 +57,8 @@ trait QuotesAndSplices {
     val tree1 =
       if ctx.mode.is(Mode.Pattern) then
         typedQuotePattern(tree, pt, qctx)
-      else if (tree.quoted.isType)
+      else if tree.quoted.isType then
+        report.warning(em"Consider using canonical type constructor scala.quoted.Type[${tree.quoted}] instead", tree.srcPos)
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_apply.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
       else
         typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(using pushQuoteContext(qctx)).select(nme.apply).appliedTo(qctx)
@@ -171,7 +172,9 @@ trait QuotesAndSplices {
           using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
       pat.select(tpnme.spliceType)
     else
-      typedSelect(untpd.Select(tree.expr, tpnme.spliceType), pt)(using spliceContext).withSpan(tree.span)
+      val tree1 = typedSelect(untpd.Select(tree.expr, tpnme.spliceType), pt)(using spliceContext).withSpan(tree.span)
+      report.warning(em"Consider using canonical type reference ${tree1.tpe.show} instead", tree.srcPos)
+      tree1
   }
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(using Context): Unit =
