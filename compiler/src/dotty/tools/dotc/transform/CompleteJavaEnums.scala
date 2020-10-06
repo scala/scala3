@@ -98,16 +98,21 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   /** Return a list of forwarders for enum values defined in the companion object
    *  for java interop.
    */
-  private def addedEnumForwarders(clazz: Symbol)(using Context): List[ValDef] = {
+  private def addedEnumForwarders(clazz: Symbol)(using Context): List[MemberDef] = {
     val moduleCls = clazz.companionClass
     val moduleRef = ref(clazz.companionModule)
 
     val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue))
     for { enumValue <- enums }
     yield {
-      val fieldSym = newSymbol(clazz, enumValue.name.asTermName, EnumValue | JavaStatic, enumValue.info)
-      fieldSym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
-      ValDef(fieldSym, moduleRef.select(enumValue))
+      if ctx.settings.scalajs.value then
+        val methodSym = newSymbol(clazz, enumValue.name.asTermName, EnumValue | Method | JavaStatic, MethodType(Nil, enumValue.info))
+        methodSym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
+        DefDef(methodSym, moduleRef.select(enumValue))
+      else
+        val fieldSym = newSymbol(clazz, enumValue.name.asTermName, EnumValue | JavaStatic, enumValue.info)
+        fieldSym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
+        ValDef(fieldSym, moduleRef.select(enumValue))
     }
   }
 
