@@ -938,7 +938,7 @@ object desugar {
     }
     mdef match {
       case vdef: ValDef if name.isExtension && vdef.mods.is(Mutable) =>
-        report.error(em"illegal variable name: `extension`", errPos)
+        report.error(em"illegal setter name: `extension_=`", errPos)
       case memDef if name.isExtensionName && !mdef.mods.is(ExtensionMethod) =>
         report.error(em"illegal name: $name may not start with `extension_`", errPos)
       case _ =>
