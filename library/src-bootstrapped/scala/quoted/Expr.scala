@@ -182,7 +182,7 @@ object Expr {
     ofTupleFromSeq(elems).asExprOf[Tuple.InverseMap[T, Expr]]
   }
 
-  /** Find an implicit of type `T` in the current scope given by `qctx`.
+  /** Find a given instance of type `T` in the current scope.
    *  Return `Some` containing the expression of the implicit or
    * `None` if implicit resolution failed.
    *
@@ -192,7 +192,7 @@ object Expr {
    */
   def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
     import qctx.tasty._
-    searchImplicit(tpe.unseal.tpe) match {
+    Implicits.search(tpe.unseal.tpe) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None
     }

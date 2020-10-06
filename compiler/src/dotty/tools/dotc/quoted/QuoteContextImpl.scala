@@ -11,7 +11,6 @@ import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted.reflect._
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.typer.Implicits
 
 import scala.quoted.QuoteContext
 import scala.quoted.show.SyntaxHighlight
@@ -2173,10 +2172,12 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       end extension
     end ConstantMethodsImpl
 
-    type ImplicitSearchResult = Tree
+    object Implicits extends ImplicitsModule:
+      def search(tpe: Type): ImplicitSearchResult =
+        ctx.typer.inferImplicitArg(tpe, rootPosition.span)
+    end Implicits
 
-    def searchImplicit(tpe: Type): ImplicitSearchResult =
-      ctx.typer.inferImplicitArg(tpe, rootPosition.span)
+    type ImplicitSearchResult = Tree
 
     type ImplicitSearchSuccess = Tree
 
@@ -2185,7 +2186,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       override def unapply(x: Any): Option[ImplicitSearchSuccess] = x match
         case x: Tree @unchecked =>
           x.tpe match
-            case _: Implicits.SearchFailureType => None
+            case _: dotc.typer.Implicits.SearchFailureType => None
             case _ => Some(x)
         case _ => None
     end ImplicitSearchSuccessTypeTest
@@ -2203,7 +2204,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       override def unapply(x: Any): Option[ImplicitSearchFailure] = x match
         case x: Tree @unchecked =>
           x.tpe match
-            case _: Implicits.SearchFailureType => Some(x)
+            case _: dotc.typer.Implicits.SearchFailureType => Some(x)
             case _ => None
         case _ => None
     end ImplicitSearchFailureTypeTest
@@ -2211,7 +2212,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object ImplicitSearchFailureMethodsImpl extends ImplicitSearchFailureMethods:
       extension (self: ImplicitSearchFailure):
         def explanation: String =
-          self.tpe.asInstanceOf[Implicits.SearchFailureType].explanation
+          self.tpe.asInstanceOf[dotc.typer.Implicits.SearchFailureType].explanation
       end extension
     end ImplicitSearchFailureMethodsImpl
 
@@ -2222,7 +2223,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       override def unapply(x: Any): Option[DivergingImplicit] = x match
         case x: Tree @unchecked =>
           x.tpe match
-            case _: Implicits.DivergingImplicit => Some(x)
+            case _: dotc.typer.Implicits.DivergingImplicit => Some(x)
             case _ => None
         case _ => None
     end DivergingImplicitTypeTest
@@ -2234,7 +2235,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       override def unapply(x: Any): Option[NoMatchingImplicits] = x match
         case x: Tree @unchecked =>
           x.tpe match
-            case _: Implicits.NoMatchingImplicits => Some(x)
+            case _: dotc.typer.Implicits.NoMatchingImplicits => Some(x)
             case _ => None
         case _ => None
     end NoMatchingImplicitsTypeTest
@@ -2246,7 +2247,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       override def unapply(x: Any): Option[AmbiguousImplicits] = x match
         case x: Tree @unchecked =>
           x.tpe match
-            case _: Implicits.AmbiguousImplicits => Some(x)
+            case _: dotc.typer.Implicits.AmbiguousImplicits => Some(x)
             case _ => None
         case _ => None
     end AmbiguousImplicitsTypeTest
