@@ -773,7 +773,7 @@ class JSCodeGen()(using genCtx: Context) {
   // Generate the fields of a class ------------------------------------------
 
   /** Gen definitions for the fields of a class. */
-  private def genClassFields(td: TypeDef): List[js.AnyFieldDef] = {
+  private def genClassFields(td: TypeDef): List[js.MemberDef] = {
     val classSym = td.symbol.asClass
     assert(currentClassSym.get == classSym,
         "genClassFields called with a ClassDef other than the current one")
@@ -785,19 +785,37 @@ class JSCodeGen()(using genCtx: Context) {
       !f.isOneOf(Method | Module) && f.isTerm
         && !f.hasAnnotation(jsdefn.JSNativeAnnot)
         && !f.hasAnnotation(jsdefn.JSOptionalAnnot)
-    }.map({ f =>
+    }.flatMap({ f =>
       implicit val pos = f.span
 
-      val flags = js.MemberFlags.empty.withMutable(f.is(Mutable))
+      val isStaticField = f.is(JavaStatic).ensuring(isStatic => !(isStatic && isJSClass))
+
+      val namespace = if isStaticField then js.MemberNamespace.PublicStatic else js.MemberNamespace.Public
+      val mutable = isStaticField || f.is(Mutable)
+
+      val flags = js.MemberFlags.empty.withMutable(mutable).withNamespace(namespace)
 
       val irTpe =
         if (isJSClass) genExposedFieldIRType(f)
         else toIRType(f.info)
 
       if (isJSClass && f.isJSExposed)
-        js.JSFieldDef(flags, genExpr(f.jsName)(f.sourcePos), irTpe)
+        js.JSFieldDef(flags, genExpr(f.jsName)(f.sourcePos), irTpe) :: Nil
       else
-        js.FieldDef(flags, encodeFieldSym(f), originalNameOfField(f), irTpe)
+        val fieldDef = js.FieldDef(flags, encodeFieldSym(f), originalNameOfField(f), irTpe)
+        val rest =
+          if isStaticField then
+            val className = encodeClassName(classSym)
+            val body = js.Block(
+              js.LoadModule(className),
+              js.SelectStatic(className, encodeFieldSym(f))(toIRType(f.info)))
+            js.MethodDef(js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
+              encodeStaticMemberSym(f), originalNameOfField(f), Nil, toIRType(f.info),
+                Some(body))(
+                  OptimizerHints.empty, None) :: Nil
+          else
+            Nil
+        fieldDef :: rest
     }).toList
   }
 
@@ -1433,8 +1451,6 @@ class JSCodeGen()(using genCtx: Context) {
 
       case Assign(lhs0, rhs) =>
         val sym = lhs0.symbol
-        if (sym.is(JavaStaticTerm))
-          throw new FatalError(s"Assignment to static member ${sym.fullName} not supported")
         def genRhs = genExpr(rhs)
         val lhs = lhs0 match {
           case lhs: Ident => desugarIdent(lhs).getOrElse(lhs)
@@ -3899,8 +3915,13 @@ class JSCodeGen()(using genCtx: Context) {
 
       (f, true)
     } else*/ {
-      val f = js.Select(qual, encodeClassName(sym.owner),
-          encodeFieldSym(sym))(toIRType(sym.info))
+      val f =
+        if sym.is(JavaStatic) then
+          js.SelectStatic(encodeClassName(sym.owner),
+            encodeFieldSym(sym))(toIRType(sym.info))
+        else
+          js.Select(qual, encodeClassName(sym.owner),
+            encodeFieldSym(sym))(toIRType(sym.info))
 
       (f, false)
     }
