@@ -24,7 +24,7 @@ local.sbt
 # npm
 node_modules
 
-# VS Code 
+# VS Code
 .vscode/
 # Metals
 .bloop/
@@ -87,3 +87,4 @@ community-build/sbt-dotty-sbt
 
 # Vulpix output files
 *.check.out
+!/dist/bin/

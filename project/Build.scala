@@ -114,11 +114,11 @@ object Build {
   // Spawns a repl with the correct classpath
   val repl = inputKey[Unit]("run the REPL with correct classpath")
 
-  // Used to compile files similar to ./bin/dotc script
-  val dotc = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
+  // Used to compile files similar to ./bin/scalac script
+  val scalac = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
 
-  // Used to run binaries similar to ./bin/dotr script
-  val dotr = inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
+  // Used to run binaries similar to ./bin/scala script
+  val scala = inputKey[Unit]("run compiled binary using the correct classpath, or the user supplied classpath")
 
   // Compiles the documentation and static site
   val genDocs = inputKey[Unit]("run dottydoc to generate static documentation site")
@@ -557,7 +557,7 @@ object Build {
         }
       }.evaluated,
 
-      dotr := {
+      scala := {
         val args: List[String] = spaceDelimited("<arg>").parsed.toList
         val externalDeps = externalCompilerClasspathTask.value
         val jars = packageAll.value
@@ -571,7 +571,7 @@ object Build {
         }
 
         if (args.isEmpty) {
-          println("Couldn't run `dotr` without args. Use `repl` to run the repl or add args to run the dotty application")
+          println("Couldn't run `scala` without args. Use `repl` to run the repl or add args to run the dotty application")
         } else if (scalaLib == "") {
           println("Couldn't find scala-library on classpath, please run using script in bin dir instead")
         } else if (args.contains("-with-compiler")) {
@@ -586,8 +586,8 @@ object Build {
         } else run(args)
       },
 
-      run := dotc.evaluated,
-      dotc := runCompilerMain().evaluated,
+      run := scalac.evaluated,
+      scalac := runCompilerMain().evaluated,
       repl := runCompilerMain(repl = true).evaluated,
 
       /* Add the sources of scalajs-ir.
@@ -1021,7 +1021,7 @@ object Build {
         (
           (dir / "shared/src/test/scala" ** (("*.scala": FileFilter)
             -- "ReflectiveCallTest.scala" // uses many forms of structural calls that are not allowed in Scala 3 anymore
-            -- "EnumerationTest.scala" // scala.Enumeration support for Scala.js is not implemented in dotc (yet)
+            -- "EnumerationTest.scala" // scala.Enumeration support for Scala.js is not implemented in scalac (yet)
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
