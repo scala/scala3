@@ -491,10 +491,9 @@ object RefChecks {
        */
       def missingTermSymbols: List[Symbol] =
         val buf = new mutable.ListBuffer[Symbol]
-        for bc <- clazz.baseClasses
-            sym <- bc.info.decls.toList
-            if sym.is(DeferredTerm) && !isImplemented(sym) && !ignoreDeferred(sym)
-        do buf += sym
+        for bc <- clazz.baseClasses; sym <- bc.info.decls.toList do
+          if sym.is(DeferredTerm) && !isImplemented(sym) && !ignoreDeferred(sym)
+            buf += sym
         buf.toList
 
       // 2. Check that only abstract classes have deferred members
