@@ -82,6 +82,7 @@ object Implicits:
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
 
+
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
    */
@@ -832,126 +833,40 @@ trait Implicits:
     arg
   }
 
-  def missingArgMsg(arg: Tree, pt: Type, where: String)(using Context): String = {
+  /** @param arg                          Tree representing a failed result of implicit search
+   *  @param pt                           Type for which an implicit value was searched
+   *  @param where                        Description of where the search was performed. Might be empty
+   *  @param paramSymWithMethodCallTree   Symbol of the parameter for which the implicit was searched and tree of the method call that triggered the implicit search
+   */
+  def missingArgMsg(
+    arg: Tree,
+    pt: Type,
+    where: String,
+    paramSymWithMethodCallTree: Option[(Symbol, Tree)] = None
+  )(using Context): String = {
+    def findHiddenImplicitsCtx(c: Context): Context =
+      if c == NoContext then c
+      else c.freshOver(findHiddenImplicitsCtx(c.outer)).addMode(Mode.FindHiddenImplicits)
 
-    def msg(shortForm: String)(headline: String = shortForm) = arg match {
-      case arg: Trees.SearchFailureIdent[?] =>
-        shortForm
-      case _ =>
-        arg.tpe match {
-          case tpe: SearchFailureType =>
-            val original = arg match
-              case Inlined(call, _, _) => call
-              case _ => arg
-
-            i"""$headline.
-              |I found:
-              |
-              |    ${original.show.replace("\n", "\n    ")}
-              |
-              |But ${tpe.explanation}."""
-        }
-    }
-
-    def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
-
-    /** Extract a user defined error message from a symbol `sym`
-     *  with an annotation matching the given class symbol `cls`.
-     */
-    def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
-      ann <- sym.getAnnotation(cls)
-      Trees.Literal(Constant(msg: String)) <- ann.argument(0)
-    }
-    yield msg
-
-
-    arg.tpe match {
-      case ambi: AmbiguousImplicits =>
-        object AmbiguousImplicitMsg {
-          def unapply(search: SearchSuccess): Option[String] =
-            userDefinedMsg(search.ref.symbol, defn.ImplicitAmbiguousAnnot)
-        }
-
-        /** Construct a custom error message given an ambiguous implicit
-         *  candidate `alt` and a user defined message `raw`.
-         */
-        def userDefinedAmbiguousImplicitMsg(alt: SearchSuccess, raw: String) = {
-          val params = alt.ref.underlying match {
-            case p: PolyType => p.paramNames.map(_.toString)
-            case _           => Nil
+    def ignoredInstanceNormalImport = arg.tpe match
+      case fail: SearchFailureType =>
+        if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
+          inferImplicit(fail.expectedType, fail.argument, arg.span) match {
+            case s: SearchSuccess => Some(s)
+            case f: SearchFailure =>
+              f.reason match {
+                case ambi: AmbiguousImplicits => Some(ambi.alt1)
+                case r => None
+              }
           }
-          def resolveTypes(targs: List[Tree])(using Context) =
-            targs.map(a => fullyDefinedType(a.tpe, "type argument", a.span))
+        else
+          // It's unsafe to search for parts of the expected type if they are not fully defined,
+          // since these come with nested contexts that are lost at this point. See #7249 for an
+          // example where searching for a nested type causes an infinite loop.
+          None
 
-          // We can extract type arguments from:
-          //   - a function call:
-          //     @implicitAmbiguous("msg A=${A}")
-          //     implicit def f[A](): String = ...
-          //     implicitly[String] // found: f[Any]()
-          //
-          //   - an eta-expanded function:
-          //     @implicitAmbiguous("msg A=${A}")
-          //     implicit def f[A](x: Int): String = ...
-          //     implicitly[Int => String] // found: x => f[Any](x)
-
-          val call = closureBody(alt.tree) // the tree itself if not a closure
-          val (_, targs, _) = decomposeCall(call)
-          val args = resolveTypes(targs)(using ctx.fresh.setTyperState(alt.tstate))
-          err.userDefinedErrorString(raw, params, args)
-        }
-
-        (ambi.alt1, ambi.alt2) match {
-          case (alt @ AmbiguousImplicitMsg(msg), _) =>
-            userDefinedAmbiguousImplicitMsg(alt, msg)
-          case (_, alt @ AmbiguousImplicitMsg(msg)) =>
-            userDefinedAmbiguousImplicitMsg(alt, msg)
-          case _ =>
-            msg(s"ambiguous implicit arguments: ${ambi.explanation}${location("of")}")(
-                s"ambiguous implicit arguments of type ${pt.show} found${location("for")}")
-        }
-
-      case _ =>
-        val userDefined = userDefinedMsg(pt.typeSymbol, defn.ImplicitNotFoundAnnot).map(raw =>
-          err.userDefinedErrorString(
-            raw,
-            pt.typeSymbol.typeParams.map(_.name.unexpandedName.toString),
-            pt.widenExpr.dropDependentRefinement.argInfos))
-
-        def hiddenImplicitsAddendum: String =
-
-          def hiddenImplicitNote(s: SearchSuccess) =
-            em"\n\nNote: given instance ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
-
-          def findHiddenImplicitsCtx(c: Context): Context =
-            if c == NoContext then c
-            else c.freshOver(findHiddenImplicitsCtx(c.outer)).addMode(Mode.FindHiddenImplicits)
-
-          val normalImports = arg.tpe match
-            case fail: SearchFailureType =>
-              if (fail.expectedType eq pt) || isFullyDefined(fail.expectedType, ForceDegree.none) then
-                inferImplicit(fail.expectedType, fail.argument, arg.span)(
-                  using findHiddenImplicitsCtx(ctx)) match {
-                  case s: SearchSuccess => hiddenImplicitNote(s)
-                  case f: SearchFailure =>
-                    f.reason match {
-                      case ambi: AmbiguousImplicits => hiddenImplicitNote(ambi.alt1)
-                      case r => ""
-                    }
-                }
-              else
-                // It's unsafe to search for parts of the expected type if they are not fully defined,
-                // since these come with nested contexts that are lost at this point. See #7249 for an
-                // example where searching for a nested type causes an infinite loop.
-                ""
-
-          def suggestedImports = importSuggestionAddendum(pt)
-          if normalImports.isEmpty then suggestedImports else normalImports
-        end hiddenImplicitsAddendum
-
-        msg(userDefined.getOrElse(
-          em"no implicit argument of type $pt was found${location("for")}"))() ++
-        hiddenImplicitsAddendum
-    }
+    val error = new ImplicitSearchError(arg, pt, where, paramSymWithMethodCallTree, ignoredInstanceNormalImport, importSuggestionAddendum(pt))
+    error.missingArgMsg
   }
 
   /** A string indicating the formal parameter corresponding to a  missing argument */
