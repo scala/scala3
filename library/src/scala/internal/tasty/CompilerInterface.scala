@@ -51,17 +51,11 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
    */
   def typeTreeMatch(scrutinee: TypeTree, pattern: TypeTree): Option[Tuple]
 
-  //
-  // TYPES
-  //
-
   /** Symbol of scala.internal.quoted.Patterns.patternHole */
-  def Definitions_InternalQuotedPatterns_patternHole: Symbol
+  def Definitions_InternalQuotedPatterns_patternHole: Symbol // TODO remove
 
   /** Symbol of scala.internal.quoted.Patterns.higherOrderHole */
-  def Definitions_InternalQuotedPatterns_higherOrderHole: Symbol
-
-  def compilerId: Int
+  def Definitions_InternalQuotedPatterns_higherOrderHole: Symbol // TODO remove
 
 }
 

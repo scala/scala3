@@ -20,7 +20,7 @@ import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
   }
 
   def unseal(using qctx: QuoteContext): qctx.tasty.Term =
-    if (quoteContextWithCompilerInterface(qctx).tasty.compilerId != scopeId)
+    if (qctx.hashCode != scopeId)
       throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
     tree.asInstanceOf[qctx.tasty.Term]
 
