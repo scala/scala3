@@ -15,26 +15,30 @@ class InheritanceInformationTransformer(val ctx: DokkaContext) extends Documenta
         completeInheritanceInformation(original, subtypes)
     }
 
-    private def getSupertypes(d: Documentable): List[(DRI, DRI)] = d match {
+    private def getSupertypes(d: Documentable): List[(DRIWithKind, DRIWithKind)] = d match {
         case m: DModule => m.getPackages.asScala.toList.flatMap(p => getSupertypes(p))
         case p: DPackage => p.getClasslikes.asScala.toList.flatMap(c => getSupertypes(c))
-        case c: DClass => c.get(InheritanceInfo).parents.map(p => (c.getDri, getTypeDRI(p))) ++ c.getClasslikes.asScala.toList.flatMap(c => getSupertypes(c))
+        case c: DClass => c.get(InheritanceInfo).parents.map(p => (getDRIWithKind(c), getTypeDRI(p))) ++ c.getClasslikes.asScala.toList.flatMap(c => getSupertypes(c))
         case other => List.empty
     }
 
-    private def getTypeDRI(b: Bound) = b match {
-        case t: TypeConstructor => t.getDri
+    private def getDRIWithKind(c: DClass): DRIWithKind = {
+        DRIWithKind(c.getDri, c.get(ClasslikeExtension).kind)
+    }
+
+    private def getTypeDRI(b: BoundWithKind) = b match {
+        case BoundWithKind(t: TypeConstructor, kind: Kind) => DRIWithKind(t.getDri, kind)
         case other => throw IllegalStateException(s"Supertype without DRI: $b")
     }
 
-    private def getSubtypesMap(supertypesList: List[(DRI, DRI)]): Map[DRI, List[DRI]] = supertypesList
+    private def getSubtypesMap(supertypesList: List[(DRIWithKind, DRIWithKind)]): Map[DRI, List[DRIWithKind]] = supertypesList
         .map( (a,b) => (b,a) )
         .groupBy( (a,b) => a )
         .map{
-            case (key, l) => (key, l.map(_(1)))
+            case (key, l) => (key.dri, l.map(_(1)))
         }.toMap
 
-    private def completeInheritanceInformation[T <: Documentable](d: T, subtypes: Map[DRI, List[DRI]]): T = d match {
+    private def completeInheritanceInformation[T <: Documentable](d: T, subtypes: Map[DRI, List[DRIWithKind]]): T = d match {
         case m: DModule => m.copy(
             m.getName,
             m.getPackages.asScala.map(m => completeInheritanceInformation(m,subtypes)).asJava,

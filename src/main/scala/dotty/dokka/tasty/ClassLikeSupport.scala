@@ -225,7 +225,20 @@ trait ClassLikeSupport:
         if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass
       yield parentTree.dokkaType
 
-    def getSupertypes: List[Bound] = getSupertypes(c).filterNot(s => s == defn.ObjectType || s == defn.AnyType).map(_.dokkaType)
+    private def classDefToKind: Kind = c match {
+      case c if c.symbol.flags.is(Flags.Object) => Kind.Object
+      case c if c.symbol.flags.is(Flags.Trait) => Kind.Trait
+      case c if c.symbol.flags.is(Flags.Enum) => Kind.Enum
+      case _ => Kind.Class
+    }
+
+    def getSupertypes: List[BoundWithKind] = getSupertypes(c).flatMap { tp => tp.classSymbol.map { s =>
+       (tp, s.tree.asInstanceOf[ClassDef].classDefToKind) 
+    } }.filterNot {
+      case (bound, _) => bound == defn.ObjectType || bound == defn.AnyType 
+    }.map {
+      case (bound, kind) => BoundWithKind(bound.dokkaType, kind)
+    }
 
     def getConstructors: List[Symbol] = membersToDocument.collect {
       case d: DefDef if d.symbol.isClassConstructor && c.constructor.symbol != d.symbol => d.symbol

@@ -113,13 +113,17 @@ case class SourceLinks(
 
 object SourceLinks extends BaseKey[Documentable, SourceLinks]
 
+case class DRIWithKind(val dri: DRI, val kind: Kind)
+case class BoundWithKind(val bound: Bound, val kind: Kind)
+
 case class InheritanceInfo(
-  val parents: List[Bound],
-  val knownChildren: List[DRI]
+  val parents: List[BoundWithKind],
+  val knownChildren: List[DRIWithKind]
 ) extends ExtraProperty[DClasslike]:
   override def getKey = InheritanceInfo
 
-object InheritanceInfo extends BaseKey[DClasslike, InheritanceInfo]  
+
+object InheritanceInfo extends BaseKey[DClasslike, InheritanceInfo]
 
 case class PropertyExtension(kind: "val" | "var" | "type", isAbstract: Boolean) extends ExtraProperty[DProperty]:
   override def getKey = PropertyExtension
