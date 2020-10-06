@@ -603,7 +603,7 @@ object Erasure {
       if (tree.typeOpt.isRef(defn.UnitClass))
         tree.withType(tree.typeOpt)
       else if (tree.const.tag == Constants.ClazzTag)
-        clsOf(tree.const.typeValue)
+        clsOf(tree.const.typeValue).withSpan(tree.span)
       else
         super.typedLiteral(tree)
 
@@ -738,6 +738,23 @@ object Erasure {
 
       checkValue(checkNotErased(recur(qual1)), pt)
     }
+
+    // TODO track in a cleaner way
+    private var enclosingSpan: util.Spans.Span = util.Spans.NoSpan
+
+    override def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+      val old = enclosingSpan
+      enclosingSpan = tree.span
+      val tree1 =
+        try super.typed(tree, pt, locked)
+        finally enclosingSpan = old
+
+      if tree1.source.exists && ctx.source != tree1.source && ctx.source == ctx.owner.topLevelClass.source
+      then
+        // TODO reposition while erasing instead of retraversing
+        Inliner.reposition(tree1, enclosingSpan)
+      else tree1
+
 
     override def typedThis(tree: untpd.This)(using Context): Tree =
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)

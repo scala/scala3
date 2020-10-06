@@ -207,16 +207,13 @@ object Inliner {
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(using Context): Tree =
-    val tree1 =
-      if inlined.bindings.isEmpty then inlined.expansion
-      else cpy.Block(inlined)(inlined.bindings, inlined.expansion)
-    // Reposition in the outer most inlined call
-    if (enclosingInlineds.nonEmpty) tree1 else reposition(tree1, inlined.span)
+    if inlined.bindings.isEmpty then inlined.expansion
+    else cpy.Block(inlined)(inlined.bindings, inlined.expansion)
 
   def reposition(tree: Tree, callSpan: Span)(using Context): Tree = {
     // Reference test tests/run/i4947b
 
-    val curSource = ctx.compilationUnit.source
+    val curSource = ctx.owner.topLevelClass.source
 
     // Tree copier that changes the source of all trees to `curSource`
     val cpyWithNewSource = new TypedTreeCopier {
