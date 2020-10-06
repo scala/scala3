@@ -7,7 +7,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 lazy val communitybuildDir: Path = Paths.get(sys.props("user.dir"))
 
 lazy val compilerVersion: String =
-  val file = communitybuildDir.resolve("dotty-bootstrapped.version")
+  val file = communitybuildDir.resolve("scala3-bootstrapped.version")
   new String(Files.readAllBytes(file), UTF_8)
 
 lazy val sbtPluginFilePath: String =
