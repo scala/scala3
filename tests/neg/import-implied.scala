@@ -16,12 +16,12 @@ object C {
   foo(using tc)  // ok
 }
 object D {
-  import A.{foo, given _}
+  import A.{foo, given}
   foo            // ok
   foo(using tc)  // ok
 }
 object E {
-  import A.{_, given _}
+  import A.{_, given}
   foo            // ok
   foo(using tc)  // ok
 }

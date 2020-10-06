@@ -1,6 +1,6 @@
 import scala.deriving._
 import scala.quoted._
-import JsonEncoder.{given _, _}
+import JsonEncoder.{given, _}
 
 object SummonJsonEncoderTest {
 

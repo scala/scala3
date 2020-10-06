@@ -348,10 +348,11 @@ Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
 ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec                          Import(expr, sels)
 ImportSpec        ::=  id
                     | ‘_’
+                    | ‘given’
                     | ‘{’ ImportSelectors) ‘}’
 ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
                     |  WildCardSelector {‘,’ WildCardSelector}
-WildCardSelector  ::=  ‘given’ (‘_' | InfixType)
+WildCardSelector  ::=  ‘given’ [InfixType]
                     |  ‘_'
 Export            ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
 

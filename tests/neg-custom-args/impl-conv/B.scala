@@ -1,7 +1,7 @@
 package implConv
 
 object B {
-  import A.{_, given _}
+  import A.{_, given}
 
   "".foo
 
