@@ -2574,17 +2574,19 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           case cu => ""
     end Source
 
-    def error(msg: => String, pos: Position): Unit =
-      dotc.report.error(msg, pos)
+    object Reporting extends ReportingModule:
+      def error(msg: => String, pos: Position): Unit =
+        dotc.report.error(msg, pos)
 
-    def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
-      dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
+      def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
+        dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
 
-    def warning(msg: => String, pos: Position): Unit =
-      dotc.report.warning(msg, pos)
+      def warning(msg: => String, pos: Position): Unit =
+        dotc.report.warning(msg, pos)
 
-    def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
-      dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
+      def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
+        dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
+    end Reporting
 
     type Documentation = dotc.core.Comments.Comment
 

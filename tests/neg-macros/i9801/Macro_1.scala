@@ -15,6 +15,6 @@ def impl(prog: Expr[Double])(using QuoteContext) : Expr[Double] =
     triggerStackOverflow(0)
   } catch {
     case e =>
-      qctx.tasty.error(e.getMessage, prog.unseal.pos)
+      qctx.tasty.Reporting.error(e.getMessage, prog.unseal.pos)
       '{ 42.0 }
   }

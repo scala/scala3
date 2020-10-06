@@ -10,7 +10,7 @@ object Macro {
     sc match {
       case '{ StringContext(${Varargs(parts)}: _*) } =>
         for (part @ Const(s) <- parts)
-          error(s, part.unseal.pos)
+          Reporting.error(s, part.unseal.pos)
     }
     '{}
   }
