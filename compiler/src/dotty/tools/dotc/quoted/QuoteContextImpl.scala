@@ -2646,7 +2646,10 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       val qctx1 = dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)
         .asInstanceOf[QuoteContext { val tasty: QuoteContextImpl.this.tasty.type }]
 
-      val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1)
+      val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1) {
+        def patternHoleSymbol: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole
+        def higherOrderHoleSymbol: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_higherOrderHole
+      }
 
       val matchings =
         if pat1.isType then matcher.termMatch(scrutinee, pat1)
@@ -2664,9 +2667,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         }
       }
     }
-
-    def Definitions_InternalQuotedPatterns_patternHole: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole
-    def Definitions_InternalQuotedPatterns_higherOrderHole: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_higherOrderHole
 
   end tasty
 
