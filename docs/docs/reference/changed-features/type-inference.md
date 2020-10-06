@@ -3,5 +3,4 @@ layout: doc-page
 title: "Changes in Type Inference"
 ---
 
-[//]: # todo: fill in
-
+See https://www.youtube.com/watch?v=lMvOykNQ4zs.
