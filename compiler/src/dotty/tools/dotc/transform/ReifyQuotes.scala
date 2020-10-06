@@ -163,10 +163,12 @@ class ReifyQuotes extends MacroTransform {
       }
 
       def pickleAsTasty() = {
-        val meth = if isType then defn.Unpickler_unpickleType else defn.Unpickler_unpickleExpr
+        val meth = if isType then defn.PickledType_make else defn.PickledExpr_make
         val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType)
+        // TODO: generate an instance of PickledSplices directly instead of passing through a List
         val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), defn.AnyType))
-        ref(meth).appliedToType(originalTp).appliedTo(pickledQuoteStrings, splicesList)
+        val pickledSplices = ref(defn.PickledSplices_make).appliedTo(splicesList)
+        ref(meth).appliedToType(originalTp).appliedTo(pickledQuoteStrings, pickledSplices).select("unpickle".toTermName).appliedToArgs(Nil)
       }
 
       def taggedType(sym: Symbol) = ref(defn.InternalQuotedTypeModule).select(sym.name.toTermName)

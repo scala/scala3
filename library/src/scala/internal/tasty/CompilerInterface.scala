@@ -2,7 +2,9 @@ package scala.internal.tasty
 
 import scala.quoted.QuoteContext
 import scala.tasty.reflect._
-import scala.internal.quoted.Unpickler
+import scala.internal.quoted.PickledExpr
+import scala.internal.quoted.PickledSplices
+import scala.internal.quoted.PickledType
 
 /** Part of the reflection interface that needs to be implemented by the compiler */
 trait CompilerInterface { self: scala.tasty.Reflection =>
@@ -12,14 +14,14 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
   //////////////////////
 
   /** Unpickle `repr` which represents a pickled `Expr` tree,
-   *  replacing splice nodes with `args`
+   *  replacing splice nodes with `holes`
    */
-  def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): Term
+  def unpickleTerm(bytes: Array[Byte], splices: PickledSplices): Term
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
-   *  replacing splice nodes with `args`
+   *  replacing splice nodes with `holes`
    */
-  def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): TypeTree
+  def unpickleTypeTree(bytes: Array[Byte], splices: PickledSplices): TypeTree
 
   /** Pattern matches the scrutinee against the pattern and returns a tuple
    *  with the matched holes if successful.

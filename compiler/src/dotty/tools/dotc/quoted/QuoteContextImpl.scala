@@ -15,7 +15,9 @@ import dotty.tools.dotc.core.Decorators._
 import scala.quoted.QuoteContext
 import scala.quoted.show.SyntaxHighlight
 
-import scala.internal.quoted.Unpickler
+import scala.internal.quoted.PickledExpr
+import scala.internal.quoted.PickledSplices
+import scala.internal.quoted.PickledType
 import scala.tasty.reflect._
 
 object QuoteContextImpl {
@@ -2607,12 +2609,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     private def withDefaultPos[T <: Tree](fn: Context ?=> T): T =
       fn(using ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
 
+    def unpickleTerm(bytes: Array[Byte], splices: PickledSplices): Term =
+      PickledQuotes.unpickleTerm(bytes, splices)
 
-    def unpickleExpr(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): Term =
-      PickledQuotes.unpickleExpr(repr, args)
-
-    def unpickleType(repr: Unpickler.PickledQuote, args: Unpickler.PickledArgs): TypeTree =
-      PickledQuotes.unpickleType(repr, args)
+    def unpickleTypeTree(bytes: Array[Byte], splices: PickledSplices): TypeTree =
+      PickledQuotes.unpickleTypeTree(bytes, splices)
 
     def termMatch(scrutinee: Term, pattern: Term): Option[Tuple] =
       treeMatch(scrutinee, pattern)
