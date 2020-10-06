@@ -102,6 +102,7 @@ trait ClassLikeSupport:
       .filter(s =>
         !s.isSuperBridgeMethod &&
         !s.isSyntheticFunc &&
+        !s.isGiven &&
         !s.isExtensionMethod &&
         s.maybeOwner != c.symbol &&
         s.maybeOwner != defn.AnyClass &&
