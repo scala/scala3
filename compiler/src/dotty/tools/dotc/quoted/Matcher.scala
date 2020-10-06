@@ -98,8 +98,7 @@ import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
  */
 object Matcher {
 
-  class QuoteMatcher[QCtx <: QuoteContext & Singleton](val qctx0: QCtx) {
-    val qctx = qctx0.asInstanceOf[qctx0.type { val tasty: qctx0.tasty.type & scala.internal.tasty.CompilerInterface }]
+  abstract class QuoteMatcher[QCtx <: QuoteContext { val tasty: scala.internal.tasty.CompilerInterface } & Singleton](val qctx: QCtx) {
 
     // TODO improve performance
 
@@ -108,6 +107,9 @@ object Matcher {
 
     import qctx.tasty._
     import Matching._
+
+    def patternHoleSymbol: Symbol
+    def higherOrderHoleSymbol: Symbol
 
     /** A map relating equivalent symbols from the scrutinee and the pattern
      *  For example in
@@ -179,7 +181,7 @@ object Matcher {
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
           case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
-              if patternHole.symbol == qctx.tasty.Definitions_InternalQuotedPatterns_patternHole &&
+              if patternHole.symbol == patternHoleSymbol &&
                  s.tpe <:< tpt.tpe &&
                  tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
             matched(scrutinee.seal)
@@ -187,14 +189,14 @@ object Matcher {
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
           case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
-              if patternHole.symbol == qctx.tasty.Definitions_InternalQuotedPatterns_patternHole &&
+              if patternHole.symbol == patternHoleSymbol &&
                  scrutinee.tpe <:< tpt.tpe =>
             matched(scrutinee.seal)
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
           case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
-              if pattern.symbol == qctx.tasty.Definitions_InternalQuotedPatterns_higherOrderHole =>
+              if pattern.symbol == higherOrderHoleSymbol =>
 
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
               val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
