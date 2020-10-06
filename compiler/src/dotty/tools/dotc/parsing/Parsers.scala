@@ -3094,16 +3094,18 @@ object Parsers {
     /**  ImportExpr ::= SimpleRef {‘.’ id} ‘.’ ImportSpec
      *   ImportSpec  ::=  id
      *                 | ‘_’
+     *                 | ‘given’
      *                 | ‘{’ ImportSelectors) ‘}’
      */
     def importExpr(mkTree: ImportConstr): () => Tree = {
 
       /** '_' */
       def wildcardSelectorId() = atSpan(in.skipToken()) { Ident(nme.WILDCARD) }
+      def givenSelectorId(start: Offset) = atSpan(start) { Ident(nme.EMPTY) }
 
       /** ImportSelectors  ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
        *                     |  WildCardSelector {‘,’ WildCardSelector}
-       *  WildCardSelector ::=  ‘given’ (‘_' | InfixType)
+       *  WildCardSelector ::=  ‘given’ [InfixType]
        *                     |  ‘_'
        */
       def importSelectors(idOK: Boolean): List[ImportSelector] =
@@ -3114,12 +3116,13 @@ object Parsers {
               ImportSelector(wildcardSelectorId())
             case GIVEN =>
               val start = in.skipToken()
-              def givenSelector() = atSpan(start) { Ident(nme.EMPTY) }
               if in.token == USCORE then
                 in.nextToken()
-                ImportSelector(givenSelector()) // Let the selector span all of `given _`; needed for -Ytest-pickler
+                ImportSelector(givenSelectorId(start)) // Let the selector span all of `given _`; needed for -Ytest-pickler
+              else if canStartTypeTokens.contains(in.token) then
+                ImportSelector(givenSelectorId(start), bound = rejectWildcardType(infixType()))
               else
-                ImportSelector(givenSelector(), bound = infixType())
+                ImportSelector(givenSelectorId(start))
             case _ =>
               val from = termIdent()
               if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
@@ -3143,6 +3146,8 @@ object Parsers {
         in.token match
           case USCORE =>
             mkTree(qual, ImportSelector(wildcardSelectorId()) :: Nil)
+          case GIVEN =>
+            mkTree(qual, ImportSelector(givenSelectorId(in.skipToken())) :: Nil)
           case LBRACE =>
             mkTree(qual, inBraces(importSelectors(idOK = true)))
           case _ =>
