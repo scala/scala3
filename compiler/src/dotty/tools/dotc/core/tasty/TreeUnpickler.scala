@@ -584,7 +584,15 @@ class TreeUnpickler(reader: TastyReader,
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
-        case cls: ClassSymbol if !isScala2MacroDefinedInScala3 => cls.enter(sym)
+        case cls: ClassSymbol if !isScala2MacroDefinedInScala3 || cls == defn.StringContextClass  =>
+          // Enter all members of classes that are not Scala 2 macros.
+          //
+          // For `StringContext`, enter `s`, `f` and `raw`
+          // These definitions will be entered when defined in Scala 2. It is fine to enter them
+          // as they are intrinsic macros and are specially handled by the compiler.
+          // Dual macro definitions will not work on `StringContext` as we would enter the symbol twice.
+          // But dual macros will never be needed for those definitions due to their intinsic nature.
+          cls.enter(sym)
         case _ =>
       }
       registerSym(start, sym)
