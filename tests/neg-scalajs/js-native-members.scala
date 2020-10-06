@@ -55,6 +55,7 @@ object A3 {
 class A4 extends js.Object {
   def foo = js.native // error
   val bar = js.native // error
+  def assign[T, U](target: T, source: U): T with U = js.native // ok
 }
 
 // Members named `apply`
