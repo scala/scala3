@@ -307,7 +307,7 @@ object Implicits:
      */
     override val level: Int =
       if outerImplicits == null then 1
-      else if isImport
+      else if isImport && (irefCtx.owner eq outerImplicits.irefCtx.owner)
               || migrateTo3(using irefCtx)
               || (irefCtx.owner eq outerImplicits.irefCtx.owner)
                  && (irefCtx.scope eq outerImplicits.irefCtx.scope)
