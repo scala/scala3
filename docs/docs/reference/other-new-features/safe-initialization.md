@@ -29,11 +29,11 @@ The checker will report:
 
 ``` scala
 -- Warning: tests/init/neg/AbstractFile.scala:7:4 ------------------------------
-7 |	val localFile: String = url.hashCode + ".tmp"  // error
-  |	    ^
-  |    Access non-initialized field value localFile. Calling trace:
-  |     -> val extension: String = name.substring(4)	[ AbstractFile.scala:3 ]
-  |      -> def name: String = localFile            	[ AbstractFile.scala:8 ]
+7 |	  val localFile: String = s"${url.##}.tmp"    // error: usage of `localFile` before it's initialized
+  |	      ^
+  |       Access non-initialized field value localFile. Calling trace:
+  |        -> val extension: String = name.substring(4)	[ AbstractFile.scala:3 ]
+  |         -> def name: String = localFile     [ AbstractFile.scala:8 ]
 ```
 
 ### Inner-Outer Interaction
