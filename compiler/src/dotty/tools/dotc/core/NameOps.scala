@@ -134,7 +134,10 @@ object NameOps {
     }
 
     /** Does the name match `extension`? */
-    def isExtension: Boolean = name.toString == "extension"
+    def isExtension: Boolean = name match
+      case name: SimpleName =>
+        name.length == "extension".length && name.startsWith("extension")
+      case _ => false
 
     /** Does this name start with `extension_`? */
     def isExtensionName: Boolean = name match

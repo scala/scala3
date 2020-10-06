@@ -147,26 +147,32 @@ object desugar {
 
 // ----- Desugar methods -------------------------------------------------
 
+  /** Setter generation is needed for:
+   *    - non-private class members
+   *    - all trait members
+   *    - all package object members
+   */
+  def isSetterNeeded(valDef: ValDef)(using Context): Boolean = {
+    val mods = valDef.mods
+    mods.is(Mutable)
+      && ctx.owner.isClass
+      && (!mods.is(Private) || ctx.owner.is(Trait) || ctx.owner.isPackageObject)
+  }
+
   /**   var x: Int = expr
    *  ==>
    *    def x: Int = expr
    *    def x_=($1: <TypeTree()>): Unit = ()
    *
-   *  Generate the setter only for
-   *    - non-private class members
-   *    - all trait members
-   *    - all package object members
+   *  Generate setter where needed
    */
   def valDef(vdef0: ValDef)(using Context): Tree = {
     val vdef @ ValDef(_, tpt, rhs) = vdef0
     val mods = vdef.mods
-    val setterNeeded =
-      mods.is(Mutable)
-      && ctx.owner.isClass
-      && (!mods.is(Private) || ctx.owner.is(Trait) || ctx.owner.isPackageObject)
+
     val valName = normalizeName(vdef, tpt).asTermName
 
-    if (setterNeeded) {
+    if (isSetterNeeded(vdef)) {
       // TODO: copy of vdef as getter needed?
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
       // right now vdef maps via expandedTree to a thicket which concerns itself.
@@ -937,7 +943,7 @@ object desugar {
       name = name.errorName
     }
     mdef match {
-      case vdef: ValDef if name.isExtension && vdef.mods.is(Mutable) =>
+      case vdef: ValDef if name.isExtension && isSetterNeeded(vdef)  =>
         report.error(em"illegal setter name: `extension_=`", errPos)
       case memDef if name.isExtensionName && !mdef.mods.is(ExtensionMethod) =>
         report.error(em"illegal name: $name may not start with `extension_`", errPos)
