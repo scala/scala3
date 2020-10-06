@@ -46,6 +46,20 @@ object o {
 def id(x: o.T): o.T = x
 ```
 
+### Type Parameters of Opaque Types
+
+Opaque type aliases can have a single type parameter list. The following aliases
+are well-formed
+```scala
+opaque type F[T] = (T, T)
+opaque type G = [T] =>> List[T]
+```
+but the following are not:
+```scala
+opaque type BadF[T] = [U] =>> (T, U)
+opaque type BadG = [T] =>> [U] => (T, U)
+```
+
 ### Translation of Equality
 
 Comparing two values of opaque type with `==` or `!=` normally uses universal equality,
