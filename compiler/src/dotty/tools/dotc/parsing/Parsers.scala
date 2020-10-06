@@ -3117,7 +3117,6 @@ object Parsers {
             case GIVEN =>
               val start = in.skipToken()
               if in.token == USCORE then
-                deprecationWarning(em"`given _` is deprecated in imports; replace with just `given`", start)
                 in.nextToken()
                 ImportSelector(givenSelectorId(start)) // Let the selector span all of `given _`; needed for -Ytest-pickler
               else if canStartTypeTokens.contains(in.token) then
