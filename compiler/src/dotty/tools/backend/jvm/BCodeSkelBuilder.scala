@@ -31,7 +31,7 @@ import dotty.tools.dotc.transform.SymUtils._
  *
  */
 trait BCodeSkelBuilder extends BCodeHelpers {
-  import int.{_, given _}
+  import int.{_, given}
   import DottyBackendInterface.{symExtensions, _}
   import tpd._
   import bTypes._

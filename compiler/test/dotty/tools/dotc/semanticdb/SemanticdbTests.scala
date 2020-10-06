@@ -19,7 +19,7 @@ import org.junit.experimental.categories.Category
 
 import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
-import dotty.tools.dotc.semanticdb.Scala3.{given _}
+import dotty.tools.dotc.semanticdb.Scala3.given
 import dotty.tools.dotc.util.SourceFile
 
 @main def updateExpect =

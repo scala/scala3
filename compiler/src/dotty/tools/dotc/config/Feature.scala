@@ -5,7 +5,7 @@ package config
 import core._
 import Contexts._, Symbols._, Names._, NameOps._, Phases._
 import StdNames.nme
-import Decorators.{_, given _}
+import Decorators.{_, given}
 import util.SrcPos
 import SourceVersion._
 import reporting.Message

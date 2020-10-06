@@ -44,7 +44,7 @@ import NavigateAST._
 import transform.SymUtils._
 import transform.TypeUtils._
 import reporting._
-import Nullables.{NotNullInfo, given _}
+import Nullables.{NotNullInfo, given}
 import NullOpsDecorator._
 
 object Typer {

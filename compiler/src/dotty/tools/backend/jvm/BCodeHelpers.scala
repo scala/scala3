@@ -47,7 +47,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   import bTypes._
   import tpd._
   import coreBTypes._
-  import int.{_, given _}
+  import int.{_, given}
   import DottyBackendInterface._
 
   def ScalaATTRName: String = "Scala"
@@ -468,7 +468,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   } // end of trait BCAnnotGen
 
   trait BCJGenSigGen {
-    import int.{_, given _}
+    import int.{_, given}
 
     def getCurrentCUnit(): CompilationUnit
 

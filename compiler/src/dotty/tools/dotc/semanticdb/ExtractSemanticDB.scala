@@ -21,7 +21,7 @@ import dotty.tools.dotc.transform.SymUtils._
 
 import PartialFunction.condOpt
 
-import ast.untpd.{given _}
+import ast.untpd.given
 import NameOps._
 
 import scala.annotation.{ threadUnsafe => tu, tailrec }
@@ -32,8 +32,8 @@ import scala.annotation.{ threadUnsafe => tu, tailrec }
  *  TODO: Also extract type information
  */
 class ExtractSemanticDB extends Phase:
-  import Scala3.{_, given _}
-  import Symbols.{given _}
+  import Scala3.{_, given}
+  import Symbols.given
 
   override val phaseName: String = ExtractSemanticDB.name
 

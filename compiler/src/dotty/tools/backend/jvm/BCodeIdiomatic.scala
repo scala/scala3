@@ -20,7 +20,7 @@ trait BCodeIdiomatic {
   val int: DottyBackendInterface
   final lazy val bTypes = new BTypesFromSymbols[int.type](int)
 
-  import int.{_, given _}
+  import int.{_, given}
   import bTypes._
   import coreBTypes._
 
