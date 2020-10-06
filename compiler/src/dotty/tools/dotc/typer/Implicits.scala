@@ -295,7 +295,10 @@ object Implicits:
    *                   name, b, whereas the name of the symbol is the original name, a.
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
-  class ContextualImplicits(val refs: List[ImplicitRef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
+  class ContextualImplicits(
+      val refs: List[ImplicitRef],
+      val outerImplicits: ContextualImplicits,
+      isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
     private val eligibleCache = EqHashMap[Type, List[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
@@ -304,7 +307,8 @@ object Implicits:
      */
     override val level: Int =
       if outerImplicits == null then 1
-      else if migrateTo3(using irefCtx)
+      else if isImport
+              || migrateTo3(using irefCtx)
               || (irefCtx.owner eq outerImplicits.irefCtx.owner)
                  && (irefCtx.scope eq outerImplicits.irefCtx.scope)
                  && !refs.head.implicitName.is(LazyImplicitName)
@@ -370,7 +374,7 @@ object Implicits:
         val outerExcluded = outerImplicits exclude root
         if (irefCtx.importInfo.site.termSymbol == root) outerExcluded
         else if (outerExcluded eq outerImplicits) this
-        else new ContextualImplicits(refs, outerExcluded)(irefCtx)
+        else new ContextualImplicits(refs, outerExcluded, isImport)(irefCtx)
       }
   }
 

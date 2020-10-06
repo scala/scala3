@@ -247,7 +247,7 @@ object Contexts {
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
-          else new ContextualImplicits(implicitRefs, outerImplicits)(this)
+          else new ContextualImplicits(implicitRefs, outerImplicits, isImportContext)(this)
         }
       implicitsCache
     }
@@ -777,7 +777,7 @@ object Contexts {
 
   @sharable object NoContext extends Context(null) {
     source = NoSource
-    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
+    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this)
   }
 
   /** A context base defines state and associated methods that exist once per
