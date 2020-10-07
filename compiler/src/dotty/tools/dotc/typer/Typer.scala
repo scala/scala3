@@ -2536,7 +2536,7 @@ class Typer extends Namer
       if (!tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
           || tree.isDef) {                             // ... unless tree is a definition
         interpolateTypeVars(tree, pt, locked)
-        tree.overwriteType(tree.tpe.simplified)
+        tree.setType(tree.tpe.simplified)
       }
     tree
   }

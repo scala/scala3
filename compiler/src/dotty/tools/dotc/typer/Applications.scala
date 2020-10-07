@@ -226,7 +226,7 @@ object Applications {
    */
   class ExtMethodApply(app: Tree)(implicit @constructorOnly src: SourceFile)
   extends IntegratedTypeArgs(app) {
-    overwriteType(WildcardType)
+    setType(WildcardType)
       // ExtMethodApply always has wildcard type in order not to prompt any further adaptations
       // such as eta expansion before the method is fully applied.
   }

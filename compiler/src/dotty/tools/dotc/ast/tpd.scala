@@ -575,7 +575,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[Type] =
       copied.withTypeUnchecked(tree.tpe)
 
-    protected val untpdCpy = untpd.cpy
+    protected val untpdCpy: untpd.TreeCopier = untpd.cpy
 
     override def Select(tree: Tree)(qualifier: Tree, name: Name)(using Context): Select = {
       val tree1 = untpdCpy.Select(tree)(qualifier, name)
@@ -759,7 +759,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // Same remark as for Apply
 
     override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
-            ta.assignType(untpdCpy.Closure(tree)(env, meth, tpt), meth, tpt)
+      ta.assignType(untpdCpy.Closure(tree)(env, meth, tpt), meth, tpt)
 
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
