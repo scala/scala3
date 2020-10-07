@@ -205,11 +205,6 @@ object Inliner {
         using ctx.withOwner(retainer)))
     .reporting(i"retainer for $meth: $result", inlining)
 
-  /** Replace `Inlined` node by a block that contains its bindings and expansion */
-  def dropInlined(inlined: Inlined)(using Context): Tree =
-    if inlined.bindings.isEmpty then inlined.expansion
-    else cpy.Block(inlined)(inlined.bindings, inlined.expansion)
-
   def reposition(tree: Tree, callSpan: Span)(using Context): Tree = {
     // Reference test tests/run/i4947b
 

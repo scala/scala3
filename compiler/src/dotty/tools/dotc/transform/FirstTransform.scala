@@ -214,6 +214,9 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     case _ => tree
   }
 
+  override def transformInlined(tree: Inlined)(using Context): Tree =
+    cpy.Block(tree)(tree.bindings, tree.expansion)
+
   // invariants: all modules have companion objects
   // all types are TypeTrees
   // all this types are explicit

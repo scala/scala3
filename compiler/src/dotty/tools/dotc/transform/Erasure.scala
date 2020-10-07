@@ -847,16 +847,17 @@ object Erasure {
     override def typedTry(tree: untpd.Try, pt: Type)(using Context): Try =
       super.typedTry(tree, adaptProto(tree, pt))
 
+    override def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree =
+      super.typedBlock(tree, pt) match
+        // Drop empty block after it has been repositioned (see Inliner.reposition)
+        case Block(Nil, expr) => expr
+        case block => block
+
     private def adaptProto(tree: untpd.Tree, pt: Type)(using Context) =
       if (pt.isValueType) pt else
         if (tree.typeOpt.derivesFrom(ctx.definitions.UnitClass))
           tree.typeOpt
         else valueErasure(tree.typeOpt)
-
-    override def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
-      super.typedInlined(tree, pt) match {
-        case tree: Inlined => Inliner.dropInlined(tree)
-      }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
       if (sym.isEffectivelyErased) erasedDef(sym)

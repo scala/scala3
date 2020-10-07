@@ -134,7 +134,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(6, Label(0)),
+          LineNumber(2, Label(0)), // TODO this lable seems to not be used
           LineNumber(3, Label(0)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking"),
@@ -199,7 +199,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(12, Label(0)),
+          LineNumber(6, Label(0)), // TODO this lable seems to not be used
           LineNumber(7, Label(0)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking"),
@@ -259,7 +259,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(12, Label(0)),
+          LineNumber(2, Label(0)), // TODO this lable seems to not be used
           LineNumber(3, Label(0)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking2"),
@@ -320,7 +320,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val expected =
         List(
           Label(0),
-          LineNumber(13, Label(0)),
+          LineNumber(2, Label(0)), // TODO this lable seems to not be used
           LineNumber(3, Label(0)),
           VarOp(ALOAD, 0),
           Ldc(LDC, "tracking2"),
