@@ -1,5 +1,7 @@
 package dotty.dokka.tasty.comments
 
+import scala.collection.immutable.SortedMap
+
 import org.jetbrains.dokka.model.{doc => dkkd}
 
 import com.vladsch.flexmark.util.{ast => mdu}
@@ -15,9 +17,9 @@ case class Comment (
   authors:                 List[dkkd.DocTag],
   see:                     List[dkkd.DocTag],
   result:                  Option[dkkd.DocTag],
-  throws:                  Map[String, dkkd.DocTag],
-  valueParams:             Map[String, dkkd.DocTag],
-  typeParams:              Map[String, dkkd.DocTag],
+  throws:                  SortedMap[String, (dkkd.DocTag, dkkd.DocTag)],
+  valueParams:             SortedMap[String, dkkd.DocTag],
+  typeParams:              SortedMap[String, dkkd.DocTag],
   version:                 Option[dkkd.DocTag],
   since:                   Option[dkkd.DocTag],
   todo:                    List[dkkd.DocTag],
@@ -26,9 +28,10 @@ case class Comment (
   example:                 List[dkkd.DocTag],
   constructor:             Option[dkkd.DocTag],
   group:                   Option[dkkd.DocTag],
-  groupDesc:               Map[String, dkkd.DocTag],
-  groupNames:              Map[String, dkkd.DocTag],
-  groupPrio:               Map[String, dkkd.DocTag],
+  // see comment in PreparsedComment below regarding these
+  groupDesc:               SortedMap[String, dkkd.DocTag],
+  groupNames:              SortedMap[String, dkkd.DocTag],
+  groupPrio:               SortedMap[String, dkkd.DocTag],
   /** List of conversions to hide - containing e.g: `scala.Predef.FloatArrayOps` */
   hideImplicitConversions: List[dkkd.DocTag]
 )
@@ -38,9 +41,9 @@ case class PreparsedComment (
   authors:                 List[String],
   see:                     List[String],
   result:                  List[String],
-  throws:                  Map[String, String],
-  valueParams:             Map[String, String],
-  typeParams:              Map[String, String],
+  throws:                  SortedMap[String, String],
+  valueParams:             SortedMap[String, String],
+  typeParams:              SortedMap[String, String],
   version:                 List[String],
   since:                   List[String],
   todo:                    List[String],
@@ -49,9 +52,10 @@ case class PreparsedComment (
   example:                 List[String],
   constructor:             List[String],
   group:                   List[String],
-  groupDesc:               Map[String, String],
-  groupNames:              Map[String, String],
-  groupPrio:               Map[String, String],
+  // NOTE these don't need to be sorted in principle, but code is nicer if they are
+  groupDesc:               SortedMap[String, String],
+  groupNames:              SortedMap[String, String],
+  groupPrio:               SortedMap[String, String],
   hideImplicitConversions: List[String],
   shortDescription:        List[String],
   syntax:                  List[String],
@@ -60,12 +64,12 @@ case class PreparsedComment (
 case class DokkaCommentBody(summary: Option[dkkd.DocTag], body: dkkd.DocTag)
 
 trait MarkupConversion[T] {
-  protected def linkedExceptions(m: Map[String, String]): Map[String, dkkd.DocTag]
+  protected def linkedExceptions(m: SortedMap[String, String]): SortedMap[String, (dkkd.DocTag, dkkd.DocTag)]
   protected def stringToMarkup(str: String): T
   protected def markupToDokka(t: T): dkkd.DocTag
   protected def markupToDokkaCommentBody(t: T): DokkaCommentBody
   protected def filterEmpty(xs: List[String]): List[T]
-  protected def filterEmpty(xs: Map[String, String]): Map[String, T]
+  protected def filterEmpty(xs: SortedMap[String, String]): SortedMap[String, T]
 
   private def single(annot: String, xs: List[String], filter: Boolean = true): Option[T] =
     (if (filter) filterEmpty(xs) else xs.map(stringToMarkup)) match {
@@ -83,8 +87,8 @@ trait MarkupConversion[T] {
       see                     = filterEmpty(preparsed.see).map(markupToDokka),
       result                  = single("@result", preparsed.result).map(markupToDokka),
       throws                  = linkedExceptions(preparsed.throws),
-      valueParams             = filterEmpty(preparsed.valueParams).view.mapValues(markupToDokka).toMap,
-      typeParams              = filterEmpty(preparsed.typeParams).view.mapValues(markupToDokka).toMap,
+      valueParams             = filterEmpty(preparsed.valueParams).view.mapValues(markupToDokka).to(SortedMap),
+      typeParams              = filterEmpty(preparsed.typeParams).view.mapValues(markupToDokka).to(SortedMap),
       version                 = single("@version", preparsed.version).map(markupToDokka),
       since                   = single("@since", preparsed.since).map(markupToDokka),
       todo                    = filterEmpty(preparsed.todo).map(markupToDokka),
@@ -93,9 +97,9 @@ trait MarkupConversion[T] {
       example                 = filterEmpty(preparsed.example).map(markupToDokka),
       constructor             = single("@constructor", preparsed.constructor).map(markupToDokka),
       group                   = single("@group", preparsed.group).map(markupToDokka),
-      groupDesc               = filterEmpty(preparsed.groupDesc).view.mapValues(markupToDokka).toMap,
-      groupNames              = filterEmpty(preparsed.groupNames).view.mapValues(markupToDokka).toMap,
-      groupPrio               = filterEmpty(preparsed.groupPrio).view.mapValues(markupToDokka).toMap,
+      groupDesc               = filterEmpty(preparsed.groupDesc).view.mapValues(markupToDokka).to(SortedMap),
+      groupNames              = filterEmpty(preparsed.groupNames).view.mapValues(markupToDokka).to(SortedMap),
+      groupPrio               = filterEmpty(preparsed.groupPrio).view.mapValues(markupToDokka).to(SortedMap),
       hideImplicitConversions = filterEmpty(preparsed.hideImplicitConversions).map(markupToDokka)
     )
 }
@@ -116,12 +120,10 @@ class MarkdownCommentParser(repr: Repr)
       body = converter.convertDocument(md),
     )
 
-  def linkedExceptions(m: Map[String, String]) = {
-    // val inlineToMarkdown = InlineToMarkdown(ent)
+  def linkedExceptions(m: SortedMap[String, String]) = {
+    val c = MarkdownConverter(repr)
     m.map { case (targetStr, body) =>
-      // val link = makeRepresentationLink(repr, packages, targetStr, targetStr)
-      // (targetStr, inlineToMarkdown(link))
-      (targetStr, dkk.text(body))
+      targetStr -> (c.resolveLinkQuery(targetStr, ""), dkk.text(body))
     }
   }
 
@@ -131,10 +133,10 @@ class MarkdownCommentParser(repr: Repr)
       .map(stringToMarkup)
   }
 
-  def filterEmpty(xs: Map[String, String]) =
-    xs.view.mapValues(_.trim).toMap
+  def filterEmpty(xs: SortedMap[String,String]) =
+    xs.view.mapValues(_.trim)
       .filterNot { case (_, v) => v.isEmpty }
-      .view.mapValues(stringToMarkup).toMap
+      .mapValues(stringToMarkup).to(SortedMap)
 }
 
 case class WikiCommentParser(repr: Repr)
@@ -153,27 +155,18 @@ case class WikiCommentParser(repr: Repr)
       body = converter.convertBody(body),
     )
 
-  def linkedExceptions(m: Map[String, String]) = {
-    m.view.mapValues(stringToMarkup).toMap.map { case (targetStr, body) =>
-      // import wiki._
-      // val link = lookup(Some(ent), packages, targetStr)
-      // val newBody = body match {
-      //   case Body(List(Paragraph(Chain(content)))) =>
-      //     val descr = Text(" ") +: content
-      //     val link = makeRepresentationLink(ent, packages, targetStr, targetStr)
-      //     Body(List(Paragraph(Chain(link +: descr))))
-      //   case _ => body
-      // }
-      // (targetStr, newBody.show(ent))
-      (targetStr, wiki.Converter(repr).convertBody(body))
+  def linkedExceptions(m: SortedMap[String, String]) = {
+    m.map { case (targetStr, body) =>
+      val c = wiki.Converter(repr)
+      targetStr -> (c.resolveLinkQuery(targetStr, None), c.convertBody(stringToMarkup(body)))
     }
   }
 
   def filterEmpty(xs: List[String]) =
     xs.map(stringToMarkup)
 
-  def filterEmpty(xs: Map[String,String]) =
-    xs.view.mapValues(stringToMarkup).toMap
+  def filterEmpty(xs: SortedMap[String,String]) =
+    xs.view.mapValues(stringToMarkup).to(SortedMap)
       .filterNot { case (_, v) => v.blocks.isEmpty }
 
 }

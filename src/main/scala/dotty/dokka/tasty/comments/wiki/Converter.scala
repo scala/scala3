@@ -101,24 +101,17 @@ class Converter(val repr: Repr) extends BaseConverter {
     case Bold(text) => emit(dkkd.B(convertInline(text).asJava, kt.emptyMap))
     case Underline(text) => emit(dkkd.U(convertInline(text).asJava, kt.emptyMap))
     case Monospace(text) => emit(dkkd.CodeInline(convertInline(text).asJava, kt.emptyMap))
-    case Link(target, userText) =>
-      def resolveText(default: String) =
-        if !userText.isEmpty
-        then convertInline(userText).asJava
+    case Link(target, body) =>
+      def resolveBody(default: String) =
+        if !body.isEmpty
+        then convertInline(body).asJava
         else Seq(dkk.text(default)).asJava
 
       emit(target match {
         case SchemeUri() =>
-          dkkd.A(resolveText(default = target), Map("href" -> target).asJava)
+          dkkd.A(resolveBody(default = target), Map("href" -> target).asJava)
         case _ =>
-          withParsedQuery(target) { query =>
-            MemberLookup.lookup(using r)(query, owner) match {
-              case Some((sym, targetText)) =>
-                dkkd.DocumentationLink(sym.dri, resolveText(default = targetText), kt.emptyMap)
-              case None =>
-                dkkd.A(resolveText(default = target), Map("href" -> "#").asJava)
-            }
-          }
+          resolveLinkQuery(target, Some(body).filter(!_.isEmpty))
       })
 
     case _: (Superscript | Subscript | RepresentationLink | HtmlTag) =>
@@ -127,4 +120,23 @@ class Converter(val repr: Repr) extends BaseConverter {
 
   def convertInline(inl: Inline): Seq[dkkd.DocTag] =
     collect { emitInline(inl) }
+
+  def resolveLinkQuery(queryStr: String, bodyOpt: Option[Inline]): dkkd.DocTag = {
+    def resolveBody(default: String) =
+      bodyOpt match {
+        case Some(body) =>
+          convertInline(body).asJava
+        case None =>
+          Seq(dkk.text(default)).asJava
+      }
+
+    withParsedQuery(queryStr) { query =>
+      MemberLookup.lookup(using r)(query, owner) match {
+        case Some((sym, targetText)) =>
+          dkkd.DocumentationLink(sym.dri, resolveBody(default = targetText), kt.emptyMap)
+        case None =>
+          dkkd.A(resolveBody(default = query.join), Map("href" -> "#").asJava)
+      }
+    }
+  }
 }

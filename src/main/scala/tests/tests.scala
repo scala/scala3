@@ -130,6 +130,10 @@ class C {
 class D[T]
 class E[T] extends D[T]
 
+/** A class with a semi-non-trivial constructor.
+  *
+  * @param a Hello!
+  */
 class Constructors(a: String):
     def this() = this("Ala")
     def this(a: A)(b: A) = this("Ala")
@@ -138,15 +142,47 @@ class Constructors(a: String):
 class Methods:
  def nobraces: A = ???
  /** Class doc test.
-   * @throws [[Error]] Throws errors.
    */
  def simple(): B = ???
  def oneParam(a: A): B = ???
  def multipleParams(a: A, b: B): C = ???
  def vararg(a: A*): C = ???
  def multipleList(a: A)(b: B): C = ???
-
  def generic[T](a: D[T]): D[T] = ???
+
+ /** A generic method.
+   *
+   * @author Gal Anonim
+   * @author Gol Anonim
+   * @version 1.0.0
+   * @since 0.1.0
+   * @todo Consider cleaning up this documentation
+   * @todo Add more documentation
+   * @note This method is more important than it looks.
+   * @note Much more important.
+   * @param a A param!
+   * @param b Another param.
+   * @tparam T A type param!
+   * @tparam V
+   * Another type param.
+   * ```
+   * with.a("near-pathological").description
+   * ```
+   * But, surprisingly, still displayed quite well.
+   *
+   * Even though this line should be separated from previous one.
+   *
+   * @throws scala.Error Throws errors.
+   * @example
+   * ```
+   * (m : Methods).generic2(d(), e()): B
+   * ```
+   * @example
+   * ```
+   * (m : Methods).generic2(d2(), e2()): B
+   * ```
+   * @return Nothing at all!
+   */
  def generic2[T, V](a: D[T], b: E[V]): D[T] = ???
 
  def primitives(a: Int, b: Double, c: Short): Byte = 0

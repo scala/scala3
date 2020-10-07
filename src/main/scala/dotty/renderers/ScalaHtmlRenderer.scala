@@ -21,7 +21,9 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
     type FlowContentConsumer = kotlin.jvm.functions.Function1[? >: kotlinx.html.FlowContent, kotlin.Unit]
 
     override def buildTable(f: FlowContent, node: ContentTable, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {
-        if(node.getStyle.asScala.toSet.contains(TableStyle.DescriptionList)) withHtml(f, buildDescriptionList(node, pageContext, sourceSetRestriciton))
+        val nodeStyles = node.getStyle.asScala.toSet
+        if nodeStyles.contains(TableStyle.DescriptionList) || nodeStyles.contains(TableStyle.NestedDescriptionList) then
+            withHtml(f, buildDescriptionList(node, pageContext, sourceSetRestriciton))
         else super.buildTable(f, node, pageContext, sourceSetRestriciton)
     }
 
@@ -44,7 +46,9 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
 
     def buildDescriptionList(node: ContentTable, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {
         val children = node.getChildren.asScala.toList.zipWithIndex
-        dl(cls := "attributes")(
+        val nodeStyles = node.getStyle.asScala.toSet
+        val classes = if nodeStyles.contains(TableStyle.NestedDescriptionList) then "paramsdesc" else "attributes"
+        dl(cls := classes)(
             children.map((e, i) =>
                 if(i % 2 == 0)
                     dt(

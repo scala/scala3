@@ -45,6 +45,7 @@ enum ScalaModifier(val name: String) extends org.jetbrains.dokka.model.Modifier(
 enum TableStyle extends org.jetbrains.dokka.pages.Style:
   case Borderless
   case DescriptionList
+  case NestedDescriptionList
 
 case class HtmlContentNode(
   val body: String, 
@@ -61,3 +62,16 @@ case class HtmlContentNode(
   override def getChildren: JList[ContentNode] = Nil.asJava
   override def getExtra = extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
+
+object ScalaTagWrapper {
+  case class See(root: DocTag) extends TagWrapper(root, null)
+  case class Todo(root: DocTag) extends TagWrapper(root, null)
+  case class Note(root: DocTag) extends TagWrapper(root, null)
+  case class Example(root: DocTag) extends TagWrapper(root, null)
+  case class NestedNamedTag(
+    name: String,
+    subname: String,
+    identTag: DocTag,
+    descTag: DocTag
+  ) extends NamedTagWrapper(descTag, name, null)
+}
