@@ -3023,7 +3023,7 @@ class Typer extends Namer
         if (matchingApply(wtp, pt))
           if needsTupledDual(wtp, pt) then adapt(tree, pt.tupledDual, locked)
           else tree
-        else if (wtp.isContextualMethod)
+        else if wtp.isContextualMethod then
           def isContextBoundParams = wtp.stripPoly match
             case MethodType(EvidenceParamName(_) :: _) => true
             case _ => false

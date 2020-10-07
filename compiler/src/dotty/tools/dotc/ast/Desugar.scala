@@ -613,7 +613,7 @@ object desugar {
         }
       }
 
-      if (isCaseClass)
+      if isCaseClass then
         val (enumMeths, enumScaffolding) = enumCaseMeths
         (copyMeths ::: enumMeths ::: productElemMeths, enumScaffolding)
       else (Nil, Nil)
@@ -1002,7 +1002,7 @@ object desugar {
    */
   def patDef(pdef: PatDef)(using Context): Tree = flatTree {
     val PatDef(mods, pats, tpt, rhs) = pdef
-    if (mods.isEnumCase)
+    if mods.isEnumCase then
       def expand(id: Ident, definesLookups: Boolean) =
         expandSimpleEnumCase(id.name.asTermName, mods, definesLookups,
             Span(id.span.start, id.span.end, id.span.start))
