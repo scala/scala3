@@ -1,5 +1,5 @@
 object Test {
-  import implicits.Not
+  import scala.util.Not
 
   class Foo
   implicit def foo: Foo = ???
