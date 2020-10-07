@@ -9,6 +9,7 @@ import util.Stats.record
 import util.{SrcPos, NoSourcePosition, SourceFile}
 import Trees.Untyped
 import Contexts._
+import Phases._
 import Flags._
 import Symbols._
 import Denotations.Denotation
@@ -539,6 +540,8 @@ trait Applications extends Compatibility {
            *           in the remaining formal parameters.
            */
           def addTyped(arg: Arg, formal: Type): List[Type] =
+            if !ctx.isAfterTyper && isVarArg(arg) && !formal.isRepeatedParam then
+              fail(i"Sequence argument type annotation `: _*` cannot be used here: the corresponding parameter has type $formal which is not a repeated parameter type", arg)
             addArg(typedArg(arg, formal), formal)
             if methodType.isParamDependent && typeOfArg(arg).exists then
               // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors

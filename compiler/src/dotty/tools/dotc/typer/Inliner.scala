@@ -407,7 +407,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         wrapArray(arg1, arg0.tpe.elemType)
       case _ => arg0
     }
-    val argtpe = arg.tpe.dealiasKeepAnnots
+    val argtpe = arg.tpe.dealiasKeepAnnots.translateFromRepeated(toArray = false)
     val isByName = paramtp.dealias.isInstanceOf[ExprType]
     var inlineFlags: FlagSet = InlineProxy
     if (paramtp.widenExpr.hasAnnotation(defn.InlineParamAnnot)) inlineFlags |= Inline
