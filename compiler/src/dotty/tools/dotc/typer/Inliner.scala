@@ -132,7 +132,7 @@ object Inliner {
           i"""|Maximal number of $reason (${setting.value}) exceeded,
               |Maybe this is caused by a recursive inline method?
               |You can use ${setting.name} to change the limit.""",
-          (tree :: enclosingInlineds).last.srcPos
+          (tree :: enclosingInlineds).last
         )
     tree2
   }
@@ -724,7 +724,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         val callToReport = if (enclosingInlineds.nonEmpty) enclosingInlineds.last else call
         val ctxToReport = ctx.outersIterator.dropWhile(enclosingInlineds(using _).nonEmpty).next
         inContext(ctxToReport) {
-          report.error(message, callToReport.srcPos)
+          report.error(message, callToReport)
         }
       case _ =>
     }
@@ -1432,7 +1432,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         ctx.compilationUnit.suspend() // this throws a SuspendException
 
     val evaluatedSplice = inContext(quoted.MacroExpansion.context(inlinedFrom)) {
-      Splicer.splice(body, inlinedFrom.srcPos, MacroClassLoader.fromContext)
+      Splicer.splice(body, inlinedFrom, MacroClassLoader.fromContext)
     }
     val inlinedNormailizer = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {

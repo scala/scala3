@@ -26,7 +26,7 @@ object QuoteContextImpl {
     new QuoteContextImpl(ctx)
 
   def showTree(tree: tpd.Tree)(using Context): String = {
-    val qctx = QuoteContextImpl()(using MacroExpansion.context(tree))
+    val qctx = QuoteContextImpl()(using MacroExpansion.context(tree.sourcePos))
     val syntaxHighlight =
       if (ctx.settings.color.value == "always") SyntaxHighlight.ANSI
       else SyntaxHighlight.plain

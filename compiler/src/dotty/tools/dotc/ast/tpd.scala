@@ -7,7 +7,7 @@ import typer.ProtoTypes
 import transform.SymUtils._
 import transform.TypeUtils._
 import core._
-import util.Spans._, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
+import util.Spans._, util.SourcePosition, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
 import collection.{immutable, mutable}
@@ -1232,7 +1232,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** A key to be used in a context property that tracks enclosing inlined calls */
-  private val InlinedCalls = Property.Key[List[Tree]]()
+  private val InlinedCalls = Property.Key[List[SourcePosition]]()
 
   /** A key to be used in a context property that tracks the number of inlined trees */
   private val InlinedTrees = Property.Key[Counter]()
@@ -1254,7 +1254,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case t1 :: ts2 => ts2
           case _ => oldIC
       else
-        call :: oldIC
+        call.sourcePos :: oldIC
 
     val ctx1 = ctx.fresh.setProperty(InlinedCalls, newIC)
     if oldIC.isEmpty then ctx1.setProperty(InlinedTrees, new Counter) else ctx1
@@ -1262,7 +1262,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.
    */
-  def enclosingInlineds(using Context): List[Tree] =
+  def enclosingInlineds(using Context): List[SourcePosition] =
     ctx.property(InlinedCalls).getOrElse(Nil)
 
   /** Record inlined trees */

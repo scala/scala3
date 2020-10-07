@@ -115,7 +115,7 @@ object report:
     if (ctx.settings.Ydebug.value) warning(msg, pos)
 
   private def addInlineds(pos: SrcPos)(using Context): SourcePosition =
-    def recur(pos: SourcePosition, inlineds: List[Trees.Tree[?]]): SourcePosition = inlineds match
+    def recur(pos: SourcePosition, inlineds: List[SourcePosition]): SourcePosition = inlineds match
       case inlined :: inlineds1 => pos.withOuter(recur(inlined.sourcePos, inlineds1))
       case Nil => pos
     recur(pos.sourcePos, tpd.enclosingInlineds)

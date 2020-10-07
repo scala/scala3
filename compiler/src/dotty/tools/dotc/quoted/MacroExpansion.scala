@@ -13,7 +13,7 @@ object MacroExpansion {
   def position(using Context): Option[SourcePosition] =
     ctx.property(MacroExpansionPosition)
 
-  def context(inlinedFrom: tpd.Tree)(using Context): Context =
+  def context(inlinedFrom: SourcePosition)(using Context): Context =
     ctx.fresh.setProperty(MacroExpansionPosition, SourcePosition(inlinedFrom.source, inlinedFrom.span)).setTypeAssigner(new Typer).withSource(inlinedFrom.source)
 }
 
