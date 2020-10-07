@@ -1,8 +1,8 @@
 package scala.tasty
 package reflect
 
-class ExtractorsPrinter[R <: Reflection & Singleton](val tasty: R) extends Printer[R] {
-  import tasty._
+class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Printer[R] {
+  import reflect._
 
   def showTree(tree: Tree): String =
     new Buffer().visitTree(tree).result()

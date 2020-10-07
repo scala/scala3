@@ -6,7 +6,7 @@ object Foo {
     ${ inspectBodyImpl('i) }
 
   def inspectBodyImpl(x: Expr[Int])(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
+    import qctx.reflect._
 
     def definitionString(sym: Symbol): Expr[String] =
       if sym.isClassDef || sym.isDefDef || sym.isValDef then Expr(sym.tree.showExtractors)

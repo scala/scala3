@@ -42,7 +42,7 @@ from the signature. The body of the `derived` method is shown below:
 
 ```scala
 given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
-  import qctx.tasty._
+  import qctx.reflect._
 
   val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get
 
@@ -177,7 +177,7 @@ object Eq {
   }
 
   given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
-    import qctx.tasty._
+    import qctx.reflect._
 
     val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get
 

@@ -30,10 +30,10 @@ object QuoteContextImpl {
     val syntaxHighlight =
       if (ctx.settings.color.value == "always") SyntaxHighlight.ANSI
       else SyntaxHighlight.plain
-    show(using qctx)(tree.asInstanceOf[qctx.tasty.Tree], syntaxHighlight)(using ctx.asInstanceOf[qctx.tasty.Context])
+    show(using qctx)(tree.asInstanceOf[qctx.reflect.Tree], syntaxHighlight)(using ctx.asInstanceOf[qctx.reflect.Context])
   }
 
-  private def show(using qctx: QuoteContext)(tree: qctx.tasty.Tree, syntaxHighlight: SyntaxHighlight)(using qctx.tasty.Context) =
+  private def show(using qctx: QuoteContext)(tree: qctx.reflect.Tree, syntaxHighlight: SyntaxHighlight)(using qctx.reflect.Context) =
     tree.showWith(syntaxHighlight)
 
   private[dotty] def checkScopeId(id: ScopeId)(using Context): Unit =
@@ -49,7 +49,7 @@ object QuoteContextImpl {
 
 class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
-  object tasty extends scala.tasty.Reflection, scala.internal.tasty.CompilerInterface:
+  object reflect extends scala.tasty.Reflection, scala.internal.tasty.CompilerInterface:
 
     def rootContext: Context = ctx
 
@@ -67,11 +67,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def pos: Position = self.sourcePos
         def symbol: Symbol = self.symbol
         def showExtractors: String =
-          new ExtractorsPrinter[tasty.type](tasty).showTree(self)
+          new ExtractorsPrinter[reflect.type](reflect).showTree(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[tasty.type](tasty)(syntaxHighlight).showTree(self)
+          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showTree(self)
         def isExpr: Boolean =
           self match
             case TermTypeTest(self) =>
@@ -1584,13 +1584,13 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object TypeMethodsImpl extends TypeMethods:
       extension (self: Type):
         def showExtractors: String =
-          new ExtractorsPrinter[tasty.type](tasty).showType(self)
+          new ExtractorsPrinter[reflect.type](reflect).showType(self)
 
         def show: String =
           self.showWith(SyntaxHighlight.plain)
 
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[tasty.type](tasty)(syntaxHighlight).showType(self)
+          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showType(self)
 
         def seal: scala.quoted.Type[_] =
           new scala.internal.quoted.Type(Inferred(self), QuoteContextImpl.this.hashCode)
@@ -2164,11 +2164,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       extension (self: Constant):
         def value: Any = self.value
         def showExtractors: String =
-          new ExtractorsPrinter[tasty.type](tasty).showConstant(self)
+          new ExtractorsPrinter[reflect.type](reflect).showConstant(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[tasty.type](tasty)(syntaxHighlight).showConstant(self)
+          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showConstant(self)
       end extension
     end ConstantMethodsImpl
 
@@ -2387,11 +2387,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def children: List[Symbol] = self.denot.children
 
         def showExtractors: String =
-          new ExtractorsPrinter[tasty.type](tasty).showSymbol(self)
+          new ExtractorsPrinter[reflect.type](reflect).showSymbol(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[tasty.type](tasty)(syntaxHighlight).showSymbol(self)
+          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showSymbol(self)
 
       end extension
 
@@ -2523,11 +2523,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def |(that: Flags): Flags = dotc.core.Flags.extension_|(self)(that)
         def &(that: Flags): Flags = dotc.core.Flags.extension_&(self)(that)
         def showExtractors: String =
-          new ExtractorsPrinter[tasty.type](tasty).showFlags(self)
+          new ExtractorsPrinter[reflect.type](reflect).showFlags(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[tasty.type](tasty)(syntaxHighlight).showFlags(self)
+          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showFlags(self)
       end extension
     end FlagsMethodsImpl
 
@@ -2647,7 +2647,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           ctx1
 
       val qctx1 = dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)
-        .asInstanceOf[QuoteContext { val tasty: QuoteContextImpl.this.tasty.type }]
+        .asInstanceOf[QuoteContext { val reflect: QuoteContextImpl.this.reflect.type }]
 
       val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1) {
         def patternHoleSymbol: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole
@@ -2671,7 +2671,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       }
     }
 
-  end tasty
+  end reflect
 
   private[this] val hash = QuoteContextImpl.scopeId(using ctx)
   override def hashCode: Int = hash

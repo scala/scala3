@@ -7,7 +7,7 @@ class B extends A[P, String]
 inline def test(): Unit = ${ testExpr }
 
 def testExpr(using QuoteContext): Expr[Unit] = {
-  import qctx.tasty._
+  import qctx.reflect._
 
   val t = '[B].unseal.tpe
   val baseTypes = t.baseClasses.map(b => t.baseType(b))

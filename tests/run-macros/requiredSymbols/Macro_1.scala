@@ -3,7 +3,7 @@ import scala.quoted._
 object Macro {
   inline def foo: String = ${ fooImpl }
   def fooImpl(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
+    import qctx.reflect._
     val list = List(
       Symbol.requiredPackage("java"),
       Symbol.requiredPackage("java.lang"),

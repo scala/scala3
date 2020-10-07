@@ -44,7 +44,7 @@ abstract class Expr[+T] private[scala] {
   }
 
   /** View this expression `quoted.Expr[T]` as a `Term` */
-  def unseal(using qctx: QuoteContext): qctx.tasty.Term
+  def unseal(using qctx: QuoteContext): qctx.reflect.Term
 
 }
 
@@ -80,7 +80,7 @@ object Expr {
    *   Some bindings may be elided as an early optimization.
    */
   def betaReduce[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    qctx.tasty.Term.betaReduce(expr.unseal) match
+    qctx.reflect.Term.betaReduce(expr.unseal) match
       case Some(expr1) => expr1.seal.asInstanceOf[Expr[T]]
       case _ => expr
 
@@ -89,7 +89,7 @@ object Expr {
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty._
+    import qctx.reflect._
     Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
   }
 
@@ -191,7 +191,7 @@ object Expr {
    *  @param qctx current context
    */
   def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
-    import qctx.tasty._
+    import qctx.reflect._
     Implicits.search(tpe.unseal.tpe) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None

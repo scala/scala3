@@ -7,15 +7,15 @@ import dotty.tastydoc.representations._
 
 /** A trait containing useful methods for extracting information from the reflect API */
 trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentCleaner{
-  def extractPath(using QuoteContext)(symbol: qctx.tasty.Symbol) : List[String] = {
-    import qctx.tasty._
+  def extractPath(using QuoteContext)(symbol: qctx.reflect.Symbol) : List[String] = {
+    import qctx.reflect._
 
     val pathArray = symbol.show.split("\\.") // NOTE: this should print w/o colors, inspect afterwards
     pathArray.iterator.slice(0, pathArray.length - 1).toList
   }
 
-  def extractModifiers(using QuoteContext)(flags: qctx.tasty.Flags, privateWithin: Option[qctx.tasty.Type], protectedWithin: Option[qctx.tasty.Type]) : (List[String], Option[Reference], Option[Reference]) = {
-    import qctx.tasty._
+  def extractModifiers(using QuoteContext)(flags: qctx.reflect.Flags, privateWithin: Option[qctx.reflect.Type], protectedWithin: Option[qctx.reflect.Type]) : (List[String], Option[Reference], Option[Reference]) = {
+    import qctx.reflect._
 
     (((if(flags.is(Flags.Override)) "override" else "") ::
     (if(flags.is(Flags.Private)) "private" else "")::
@@ -39,7 +39,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     })
   }
 
-  def extractComments(using QuoteContext)(comment: Option[qctx.tasty.Documentation], rep: Representation) : (Map[String, EmulatedPackageRepresentation], String) => Option[Comment] = {
+  def extractComments(using QuoteContext)(comment: Option[qctx.reflect.Documentation], rep: Representation) : (Map[String, EmulatedPackageRepresentation], String) => Option[Comment] = {
     comment match {
       case Some(com) =>
         (packages, userDocSyntax) => {
@@ -56,8 +56,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     }
   }
 
-  def extractClassMembers(using QuoteContext)(body: List[qctx.tasty.Statement], symbol: qctx.tasty.Symbol, parentRepresentation: Some[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) : List[Representation with Modifiers] = {
-    import qctx.tasty._
+  def extractClassMembers(using QuoteContext)(body: List[qctx.reflect.Statement], symbol: qctx.reflect.Symbol, parentRepresentation: Some[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) : List[Representation with Modifiers] = {
+    import qctx.reflect._
 
     /** Filter fields which shouldn't be displayed in the doc
      */
@@ -83,7 +83,7 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
       filterSymbol(x)
     }.flatMap {
       case x if x.isValDef => Some(x)
-      // case qctx.tasty.IsValDefSymbol(x) => Some(x)
+      // case qctx.reflect.IsValDefSymbol(x) => Some(x)
       case _ => None
     }.map { x =>
       convertToRepresentation(x.tree, parentRepresentation)
@@ -96,8 +96,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     .sortBy(_.name)
   }
 
-  def extractParents(using QuoteContext)(parents: List[qctx.tasty.Tree]): List[Reference] = {
-    import qctx.tasty._
+  def extractParents(using QuoteContext)(parents: List[qctx.reflect.Tree]): List[Reference] = {
+    import qctx.reflect._
 
     val parentsReferences = parents.map{
       case c: TypeTree => convertTypeToReference(c.tpe)
@@ -115,8 +115,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
   *
   * @return (is case, is a trait, is an object, the kind as a String)
   */
-  def extractKind(using QuoteContext)(flags: qctx.tasty.Flags): (Boolean, Boolean, Boolean, String) = {
-    import qctx.tasty._
+  def extractKind(using QuoteContext)(flags: qctx.reflect.Flags): (Boolean, Boolean, Boolean, String) = {
+    import qctx.reflect._
 
     val isCase = flags.is(Flags.Case)
     val isTrait = flags.is(Flags.Trait)
@@ -140,8 +140,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     (isCase, isTrait, isObject, kind)
   }
 
-  def extractCompanion(using QuoteContext)(companionModule: Option[qctx.tasty.Symbol], companionClass: Option[qctx.tasty.Symbol], companionIsObject: Boolean): Option[CompanionReference] = {
-    import qctx.tasty._
+  def extractCompanion(using QuoteContext)(companionModule: Option[qctx.reflect.Symbol], companionClass: Option[qctx.reflect.Symbol], companionIsObject: Boolean): Option[CompanionReference] = {
+    import qctx.reflect._
 
     if(companionIsObject){
       companionModule match {
@@ -162,8 +162,8 @@ trait TastyExtractor extends TastyTypeConverter with CommentParser with CommentC
     }
   }
 
-  def extractAnnotations(using QuoteContext)(annots: List[qctx.tasty.Term]): List[TypeReference] = {
-    import qctx.tasty._
+  def extractAnnotations(using QuoteContext)(annots: List[qctx.reflect.Term]): List[TypeReference] = {
+    import qctx.reflect._
 
     def keepAnnot(label: String, link: String): Boolean = {
       !(label == "SourceFile" && link == "/internal") &&

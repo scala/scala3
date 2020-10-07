@@ -14,10 +14,10 @@ final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quote
   }
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
-  def unseal(using qctx: QuoteContext): qctx.tasty.TypeTree =
+  def unseal(using qctx: QuoteContext): qctx.reflect.TypeTree =
     if (qctx.hashCode != scopeId)
       throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
-    typeTree.asInstanceOf[qctx.tasty.TypeTree]
+    typeTree.asInstanceOf[qctx.reflect.TypeTree]
 
   override def hashCode: Int = typeTree.hashCode
   override def toString: String = "'[ ... ]"
@@ -37,37 +37,37 @@ object Type {
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: scala.quoted.Type[_])
       (using patternType: scala.quoted.Type[_], qctx: QuoteContext): Option[Tup] = {
     val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.typeTreeMatch(scrutineeType.unseal, patternType.unseal).asInstanceOf[Option[Tup]]
+    qctx1.reflect.typeTreeMatch(scrutineeType.unseal, patternType.unseal).asInstanceOf[Option[Tup]]
   }
 
 
   // TODO generalize following optimizations for all classes without parameters
 
   def Unit: QuoteContext ?=> quoted.Type[Unit] =
-    qctx.tasty.Type.typeConstructorOf(classOf[Unit]).seal.asInstanceOf[quoted.Type[Unit]]
+    qctx.reflect.Type.typeConstructorOf(classOf[Unit]).seal.asInstanceOf[quoted.Type[Unit]]
 
   def Boolean: QuoteContext ?=> quoted.Type[Boolean] =
-    qctx.tasty.Type.typeConstructorOf(classOf[Boolean]).seal.asInstanceOf[quoted.Type[Boolean]]
+    qctx.reflect.Type.typeConstructorOf(classOf[Boolean]).seal.asInstanceOf[quoted.Type[Boolean]]
 
   def Byte: QuoteContext ?=> quoted.Type[Byte] =
-    qctx.tasty.Type.typeConstructorOf(classOf[Byte]).seal.asInstanceOf[quoted.Type[Byte]]
+    qctx.reflect.Type.typeConstructorOf(classOf[Byte]).seal.asInstanceOf[quoted.Type[Byte]]
 
   def Char: QuoteContext ?=> quoted.Type[Char] =
-    qctx.tasty.Type.typeConstructorOf(classOf[Char]).seal.asInstanceOf[quoted.Type[Char]]
+    qctx.reflect.Type.typeConstructorOf(classOf[Char]).seal.asInstanceOf[quoted.Type[Char]]
 
   def Short: QuoteContext ?=> quoted.Type[Short] =
-    qctx.tasty.Type.typeConstructorOf(classOf[Short]).seal.asInstanceOf[quoted.Type[Short]]
+    qctx.reflect.Type.typeConstructorOf(classOf[Short]).seal.asInstanceOf[quoted.Type[Short]]
 
   def Int: QuoteContext ?=> quoted.Type[Int] =
-    qctx.tasty.Type.typeConstructorOf(classOf[Int]).seal.asInstanceOf[quoted.Type[Int]]
+    qctx.reflect.Type.typeConstructorOf(classOf[Int]).seal.asInstanceOf[quoted.Type[Int]]
 
   def Long: QuoteContext ?=> quoted.Type[Long] =
-    qctx.tasty.Type.typeConstructorOf(classOf[Long]).seal.asInstanceOf[quoted.Type[Long]]
+    qctx.reflect.Type.typeConstructorOf(classOf[Long]).seal.asInstanceOf[quoted.Type[Long]]
 
   def Float: QuoteContext ?=> quoted.Type[Float] =
-    qctx.tasty.Type.typeConstructorOf(classOf[Float]).seal.asInstanceOf[quoted.Type[Float]]
+    qctx.reflect.Type.typeConstructorOf(classOf[Float]).seal.asInstanceOf[quoted.Type[Float]]
 
   def Double: QuoteContext ?=> quoted.Type[Double] =
-    qctx.tasty.Type.typeConstructorOf(classOf[Double]).seal.asInstanceOf[quoted.Type[Double]]
+    qctx.reflect.Type.typeConstructorOf(classOf[Double]).seal.asInstanceOf[quoted.Type[Double]]
 
 }

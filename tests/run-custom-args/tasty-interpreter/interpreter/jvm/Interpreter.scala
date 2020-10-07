@@ -6,7 +6,7 @@ import scala.tasty.interpreter.jvm.JVMReflection
 import scala.tasty.Reflection
 
 class Interpreter[QCtx <: QuoteContext & Singleton](using qctx0: QCtx) extends TreeInterpreter[QCtx] {
-  import qctx.tasty._
+  import qctx.reflect._
 
   // All references are represented by themselves and values are boxed
   type AbstractAny = Any

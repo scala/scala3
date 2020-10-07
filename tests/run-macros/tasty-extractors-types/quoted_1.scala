@@ -5,7 +5,7 @@ object Macros {
   implicit inline def printType[T]: Unit = ${ impl('[T]) }
 
   def impl[T](x: Type[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.reflect._
 
     val tree = x.unseal
     '{

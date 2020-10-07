@@ -82,8 +82,8 @@ object representations extends TastyExtractor {
     }
   }
 
-  class PackageRepresentation(using QuoteContext)(internal: qctx.tasty.PackageClause, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
-    import qctx.tasty._
+  class PackageRepresentation(using QuoteContext)(internal: qctx.reflect.PackageClause, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members {
+    import qctx.reflect._
 
     override val (name, path) = extractPackageNameAndPath(internal.pid.show)
     override val members = internal.stats.map(convertToRepresentation(_, Some(this)))
@@ -92,8 +92,8 @@ object representations extends TastyExtractor {
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
-  class ImportRepresentation(using QuoteContext)(internal: qctx.tasty.Import, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation {
-    import qctx.tasty._
+  class ImportRepresentation(using QuoteContext)(internal: qctx.reflect.Import, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation {
+    import qctx.reflect._
 
     override val name = if (internal.selectors.size > 1){
         internal.selectors.map(_.toString).mkString("{", ", ", "}")
@@ -106,8 +106,8 @@ object representations extends TastyExtractor {
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
-  class ClassRepresentation(using QuoteContext)(internal: qctx.tasty.ClassDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
-    import qctx.tasty._
+  class ClassRepresentation(using QuoteContext)(internal: qctx.reflect.ClassDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Members with Parents with Modifiers with Companion with Constructors with TypeParams {
+    import qctx.reflect._
 
     override val path = extractPath(internal.symbol)
     override val parents = extractParents(internal.parents)
@@ -142,8 +142,8 @@ object representations extends TastyExtractor {
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
-  class DefRepresentation(using QuoteContext)(internal: qctx.tasty.DefDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
-    import qctx.tasty._
+  class DefRepresentation(using QuoteContext)(internal: qctx.reflect.DefDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams with MultipleParamList with ReturnValue {
+    import qctx.reflect._
 
     override val name = internal.name
     override val path = extractPath(internal.symbol)
@@ -161,8 +161,8 @@ object representations extends TastyExtractor {
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
-  class ValRepresentation(using QuoteContext)(internal: qctx.tasty.ValDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with ReturnValue {
-    import qctx.tasty._
+  class ValRepresentation(using QuoteContext)(internal: qctx.reflect.ValDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with ReturnValue {
+    import qctx.reflect._
 
     override val name = internal.name
     override val path = extractPath(internal.symbol)
@@ -174,8 +174,8 @@ object representations extends TastyExtractor {
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
-  class TypeRepresentation(using QuoteContext)(internal: qctx.tasty.TypeDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams {
-    import qctx.tasty._
+  class TypeRepresentation(using QuoteContext)(internal: qctx.reflect.TypeDef, override val parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]) extends Representation with Modifiers with TypeParams {
+    import qctx.reflect._
 
     override val name = internal.name
     override val path = extractPath(internal.symbol)
@@ -191,8 +191,8 @@ object representations extends TastyExtractor {
     override def comments(packages: Map[String, EmulatedPackageRepresentation], userDocSyntax: String) = extractComments(internal.symbol.documentation, this)(packages, userDocSyntax)
   }
 
-  def convertToRepresentation(using QuoteContext)(tree: qctx.tasty.Tree, parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]): Representation = {
-    import qctx.tasty._
+  def convertToRepresentation(using QuoteContext)(tree: qctx.reflect.Tree, parentRepresentation: Option[Representation])(using mutablePackagesMap: scala.collection.mutable.HashMap[String, EmulatedPackageRepresentation]): Representation = {
+    import qctx.reflect._
 
     tree match {
       case t: PackageClause =>

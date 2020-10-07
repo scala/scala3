@@ -19,10 +19,10 @@ import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
     case _ => false
   }
 
-  def unseal(using qctx: QuoteContext): qctx.tasty.Term =
+  def unseal(using qctx: QuoteContext): qctx.reflect.Term =
     if (qctx.hashCode != scopeId)
       throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
-    tree.asInstanceOf[qctx.tasty.Term]
+    tree.asInstanceOf[qctx.reflect.Term]
 
   override def hashCode: Int = tree.hashCode
   override def toString: String = "'{ ... }"

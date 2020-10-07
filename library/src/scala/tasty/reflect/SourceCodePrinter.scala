@@ -5,8 +5,8 @@ import scala.annotation.switch
 import scala.quoted.show.SyntaxHighlight
 
 /** Printer for fully elaborated representation of the source code */
-class SourceCodePrinter[R <: Reflection & Singleton](val tasty: R)(syntaxHighlight: SyntaxHighlight) extends Printer[R] {
-  import tasty._
+class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighlight: SyntaxHighlight) extends Printer[R] {
+  import reflect._
   import syntaxHighlight._
 
   def showTree(tree: Tree): String =

@@ -5,20 +5,21 @@ package reflect
 trait Printer[R <: Reflection & Singleton] {
 
   /** Instance of reflection interface */
-  val tasty: R
+  val reflect: R
+  import reflect._
 
-  /** Show a String representation of a tasty.Tree */
-  def showTree(tree: tasty.Tree): String
+  /** Show a String representation of a reflect.Tree */
+  def showTree(tree: Tree): String
 
-  /** Show a String representation of a tasty.Type */
-  def showType(tpe: tasty.Type): String
+  /** Show a String representation of a reflect.Type */
+  def showType(tpe: Type): String
 
-  /** Show a String representation of a tasty.Constant */
-  def showConstant(const: tasty.Constant): String
+  /** Show a String representation of a reflect.Constant */
+  def showConstant(const: Constant): String
 
-  /** Show a String representation of a tasty.Symbol */
-  def showSymbol(symbol: tasty.Symbol): String
+  /** Show a String representation of a reflect.Symbol */
+  def showSymbol(symbol: Symbol): String
 
-  /** Show a String representation of a tasty.Flags */
-  def showFlags(flags: tasty.Flags): String
+  /** Show a String representation of a reflect.Flags */
+  def showFlags(flags: Flags): String
 }

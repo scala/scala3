@@ -19,10 +19,10 @@ import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
     case _ => false
   }
 
-  def unseal(using qctx: QuoteContext): qctx.tasty.Term =
+  def unseal(using qctx: QuoteContext): qctx.reflect.Term =
     if (qctx.hashCode != scopeId)
       throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
-    tree.asInstanceOf[qctx.tasty.Term]
+    tree.asInstanceOf[qctx.reflect.Term]
 
   override def hashCode: Int = tree.hashCode
   override def toString: String = "'{ ... }"
@@ -54,18 +54,18 @@ object Expr {
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[Any])
         (using patternExpr: scala.quoted.Expr[Any], qctx: QuoteContext): Option[Tup] = {
     val qctx1 = quoteContextWithCompilerInterface(qctx)
-    qctx1.tasty.termMatch(scrutineeExpr.unseal, patternExpr.unseal).asInstanceOf[Option[Tup]]
+    qctx1.reflect.termMatch(scrutineeExpr.unseal, patternExpr.unseal).asInstanceOf[Option[Tup]]
   }
 
   /** Returns a null expresssion equivalent to `'{null}` */
   def `null`: QuoteContext ?=> quoted.Expr[Null] = qctx ?=> {
-    import qctx.tasty._
+    import qctx.reflect._
     Literal(Constant.Null()).seal.asInstanceOf[quoted.Expr[Null]]
   }
 
   /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
   def Unit: QuoteContext ?=> quoted.Expr[Unit] = qctx ?=> {
-    import qctx.tasty._
+    import qctx.reflect._
     Literal(Constant.Unit()).seal.asInstanceOf[quoted.Expr[Unit]]
   }
 

@@ -5,7 +5,7 @@ object Macros {
   inline def matches[A, B](inline a: A, inline b: B): Unit = ${impl('a, 'b)}
 
   private def impl[A, B](a: Expr[A], b: Expr[B])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.reflect._
 
     val res = scala.internal.quoted.Expr.unapply[Tuple, Tuple](a)(using b, qctx).map { tup =>
       tup.toArray.toList.map {

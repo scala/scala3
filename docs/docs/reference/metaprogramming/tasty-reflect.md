@@ -20,7 +20,7 @@ guarantees and may fail at macro expansion time, hence additional explicit
 checks must be done.
 
 To provide reflection capabilities in macros we need to add an implicit
-parameter of type `scala.quoted.QuoteContext` and import `tasty._` from it in
+parameter of type `scala.quoted.QuoteContext` and import `qctx.reflect._` from it in
 the scope where it is used.
 
 ```scala
@@ -29,19 +29,19 @@ import scala.quoted._
 inline def natConst(x: => Int): Int = ${natConstImpl('{x})}
 
 def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
-  import qctx.tasty._
+  import qctx.reflect._
   ...
 }
 ```
 
 ### Extractors
 
-`import qctx.tasty._` will provide all extractors and methods on TASTy Reflect
+`import qctx.reflect._` will provide all extractors and methods on TASTy Reflect
 trees. For example the `Literal(_)` extractor used below.
 
 ```scala
 def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
-  import qctx.tasty._
+  import qctx.reflect._
   val xTree: Term = x.unseal
   xTree match {
     case Inlined(_, _, Literal(Constant(n: Int))) =>
@@ -59,9 +59,9 @@ def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
 ```
 
 To easily know which extractors are needed, the `showExtractors` method on a
-`qctx.tasty.Term` returns the string representation of the extractors.
+`qctx.reflect.Term` returns the string representation of the extractors.
 
-The method `qctx.tasty.Term.seal` provides a way to go back to a
+The method `qctx.reflect.Term.seal` provides a way to go back to a
 `quoted.Expr[Any]`. Note that the type is `Expr[Any]`. Consequently, the type
 must be set explicitly with a checked `cast` call. If the type does not conform
 to it an exception will be thrown at runtime.
@@ -77,7 +77,7 @@ operation expression passed while calling the `macro` below.
 inline def macro(param: => Boolean): Unit = ${ macroImpl('param) }
 
 def macroImpl(param: Expr[Boolean])(using qctx: QuoteContext): Expr[Unit] = {
-  import qctx.tasty._
+  import qctx.reflect._
   import util._
 
   param.unseal.underlyingArgument match {
@@ -91,7 +91,7 @@ macro(this.checkCondition())
 
 ### Positions
 
-The tasty context provides a `rootPosition` value. It corresponds to
+The `ast` in the context provides a `rootPosition` value. It corresponds to
 the expansion site for macros. The macro authors can obtain various information about that
 expansion site. The example below shows how we can obtain position information
 such as the start line, the end line or even the source code at the expansion
@@ -99,7 +99,7 @@ point.
 
 ```scala
 def macroImpl()(qctx: QuoteContext): Expr[Unit] = {
-  import qctx.tasty._
+  import qctx.reflect._
   val pos = rootPosition
 
   val path = pos.sourceFile.jpath.toString

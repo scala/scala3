@@ -12,7 +12,7 @@ object OtherMacro {
 object Macro {
 
   def impl(using qctx: QuoteContext): Expr[Int] = {
-    import qctx.tasty._
+    import qctx.reflect._
 
     let(
       Select.unique(

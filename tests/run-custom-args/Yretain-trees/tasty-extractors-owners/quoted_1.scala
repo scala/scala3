@@ -6,11 +6,11 @@ object Macros {
     ${ impl('x) }
 
   def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.reflect._
 
     val buff = new StringBuilder
 
-    val output = new MyTraverser(qctx.tasty)(buff)
+    val output = new MyTraverser(qctx.reflect)(buff)
 
     val tree = x.unseal
     output.traverseTree(tree)
@@ -18,7 +18,7 @@ object Macros {
   }
 
   class MyTraverser[R <: scala.tasty.Reflection & Singleton](val reflect: R)(buff: StringBuilder) extends scala.tasty.reflect.TreeTraverser {
-    import reflect.{given, _}
+    import reflect._
     override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
       tree match {
         case tree @ DefDef(name, _, _, _, _) =>

@@ -3,7 +3,7 @@ import quoted.unsafe._
 object Main {
 
   def myMacroImpl(body: Expr[_])(using qctx: QuoteContext) : Expr[_] = {
-    import qctx.tasty._
+    import qctx.reflect._
     val bodyTerm = UnsafeExpr.underlyingArgument(body).unseal
     val showed = bodyTerm.show
     '{
