@@ -86,15 +86,15 @@
 57 |  val bar = js.native // error
    |  ^^^^^^^^^^^^^^^^^^^
    |  The type of bar must be explicitly specified because it is JS native.
--- Error: tests/neg-scalajs/js-native-members.scala:65:8 ---------------------------------------------------------------
-65 |    def apply: Int = js.native // error
+-- Error: tests/neg-scalajs/js-native-members.scala:66:8 ---------------------------------------------------------------
+66 |    def apply: Int = js.native // error
    |        ^
    |A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
--- Error: tests/neg-scalajs/js-native-members.scala:76:8 ---------------------------------------------------------------
-76 |    val apply: Int = js.native // error
+-- Error: tests/neg-scalajs/js-native-members.scala:77:8 ---------------------------------------------------------------
+77 |    val apply: Int = js.native // error
    |        ^
    |A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
--- Error: tests/neg-scalajs/js-native-members.scala:87:8 ---------------------------------------------------------------
-87 |    var apply: Int = js.native // error
+-- Error: tests/neg-scalajs/js-native-members.scala:88:8 ---------------------------------------------------------------
+88 |    var apply: Int = js.native // error
    |        ^
    |A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
