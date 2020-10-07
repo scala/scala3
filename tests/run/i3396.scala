@@ -1,4 +1,4 @@
-import implicits.Not
+import scala.util.Not
 
 object Test {
 
