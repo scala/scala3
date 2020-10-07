@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Set JDK 11 as default
-        run: echo "::add-path::/usr/lib/jvm/java-11-openjdk-amd64/bin"
+        run: echo "/usr/lib/jvm/java-11-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -59,7 +59,7 @@ jobs:
 
     steps:
       - name: Set JDK 11 as default
-        run: echo "::add-path::/usr/lib/jvm/java-11-openjdk-amd64/bin"
+        run: echo "/usr/lib/jvm/java-11-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -191,7 +191,7 @@ jobs:
 
     steps:
       - name: Set JDK 8 as default
-        run: echo "::add-path::/usr/lib/jvm/java-1.8.0-openjdk-amd64/bin"
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -378,7 +378,7 @@ jobs:
           ./project/scripts/sbt dist/packArchive
           sha256sum dist/target/dotty-* > dist/target/sha256sum.txt
           ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
-          echo "::set-env name=RELEASE_TAG::${GITHUB_REF#*refs/tags/}"
+          echo "name=RELEASE_TAG::${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         id: create_gh_release
