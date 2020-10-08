@@ -76,7 +76,6 @@ object desugar {
     val pair: Int ~ String = 1 -> "abc"
     def foo(xs: Int*) = xs.length
     foo(list: _*)
-    println(list: _*)
     (list length)
     - desugar.x
     def bar(x: => Int) = x
