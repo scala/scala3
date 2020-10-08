@@ -1302,7 +1302,7 @@ object Trees {
             case SeqLiteral(elems, elemtpt) =>
               cpy.SeqLiteral(tree)(transform(elems), transform(elemtpt))
             case Inlined(call, bindings, expansion) =>
-              cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion)(using inlineContext(call)))
+              cpy.Inlined(tree)(call, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
             case TypeTree() =>
               tree
             case SingletonTypeTree(ref) =>
@@ -1440,7 +1440,7 @@ object Trees {
             case SeqLiteral(elems, elemtpt) =>
               this(this(x, elems), elemtpt)
             case Inlined(call, bindings, expansion) =>
-              this(this(x, bindings), expansion)(using inlineContext(call))
+              this(this(x, bindings), expansion)(using inlineContext(tree))
             case TypeTree() =>
               x
             case SingletonTypeTree(ref) =>
