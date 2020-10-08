@@ -653,87 +653,93 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
   }
 
-  object InPlaceCopier extends TreeCopier:
+  class InPlaceCopier(updated: util.HashSet[Tree])(using Context) extends TreeCopier:
     def postProcess(tree: Tree, copied: Tree): copied.ThisTree[Untyped] =
       copied.asInstanceOf[copied.ThisTree[Untyped]]
 
     def postProcess(tree: Tree, copied: MemberDef): copied.ThisTree[Untyped] =
       copied.asInstanceOf[copied.ThisTree[Untyped]]
 
+    private def done(tree: Tree) =
+      updated += tree
+      tree.envelope(tree.source)
+      //println(i"kEEP: $tree")
+      true
+
     override def keep(tree: Select)(qualifier: Tree): Boolean =
-      tree.update(qualifier); tree.setType(null); true
+      super.keep(tree)(qualifier) || { tree.update(qualifier); done(tree) }
     override def keep(tree: Super)(qual: Tree): Boolean =
-      tree.update(qual); tree.setType(null); true
+      super.keep(tree)(qual) || { tree.update(qual); done(tree) }
     override def keep(tree: Apply)(fun: Tree, args: List[Tree]): Boolean =
-      tree.update(fun, args); tree.setType(null); true
+      super.keep(tree)(fun, args) || { tree.update(fun, args); done(tree) }
     override def keep(tree: TypeApply)(fun: Tree, args: List[Tree]): Boolean =
-      tree.update(fun, args); tree.setType(null); true
+      super.keep(tree)(fun, args) || { tree.update(fun, args); done(tree) }
     override def keep(tree: New)(tpt: Tree): Boolean =
-      tree.update(tpt); tree.setType(null); true
+      super.keep(tree)(tpt) || { tree.update(tpt); done(tree) }
     override def keep(tree: Typed)(expr: Tree, tpt: Tree): Boolean =
-      tree.update(expr, tpt); tree.setType(null); true
+      super.keep(tree)(expr, tpt) || { tree.update(expr, tpt); done(tree) }
     override def keep(tree: NamedArg)(arg: Tree): Boolean =
-      tree.update(arg); tree.setType(null); true
+      super.keep(tree)(arg) || { tree.update(arg); done(tree) }
     override def keep(tree: Assign)(lhs: Tree, rhs: Tree): Boolean =
-      tree.update(lhs, rhs); tree.setType(null); true
+      super.keep(tree)(lhs, rhs) || { tree.update(lhs, rhs); done(tree) }
     override def keep(tree: Block)(stats: List[Tree], expr: Tree): Boolean =
-      tree.update(stats, expr); tree.setType(null); true
+      super.keep(tree)(stats, expr) || { tree.update(stats, expr); done(tree) }
     override def keep(tree: If)(cond: Tree, thenp: Tree, elsep: Tree): Boolean =
-      tree.update(cond, thenp, elsep); tree.setType(null); true
+      super.keep(tree)(cond, thenp, elsep) || { tree.update(cond, thenp, elsep); done(tree) }
     override def keep(tree: Closure)(env: List[Tree], meth: Tree, tpt: Tree): Boolean =
-      tree.update(env, meth, tpt); tree.setType(null); true
+      super.keep(tree)(env, meth, tpt) || { tree.update(env, meth, tpt); done(tree) }
     override def keep(tree: Match)(selector: Tree, cases: List[CaseDef]): Boolean =
-      tree.update(selector, cases); tree.setType(null); true
+      super.keep(tree)(selector, cases) || { tree.update(selector, cases); done(tree) }
     override def keep(tree: CaseDef)(pat: Tree, guard: Tree, body: Tree): Boolean =
-      tree.update(pat, guard, body); tree.setType(null); true
+      super.keep(tree)(pat, guard, body) || { tree.update(pat, guard, body); done(tree) }
     override def keep(tree: Labeled)(bind: Bind, expr: Tree): Boolean =
-      tree.update(bind, expr); tree.setType(null); true
+      super.keep(tree)(bind, expr) || { tree.update(bind, expr); done(tree) }
     override def keep(tree: Return)(expr: Tree, from: Tree): Boolean =
-      tree.update(expr, from); tree.setType(null); true
+      super.keep(tree)(expr, from) || { tree.update(expr, from); done(tree) }
     override def keep(tree: WhileDo)(cond: Tree, body: Tree): Boolean =
-      tree.update(cond, body); tree.setType(null); true
+      super.keep(tree)(cond, body) || { tree.update(cond, body); done(tree) }
     override def keep(tree: Try)(expr: Tree, cases: List[CaseDef], finalizer: Tree): Boolean =
-      tree.update(expr, cases, finalizer); tree.setType(null); true
+      super.keep(tree)(expr, cases, finalizer) || { tree.update(expr, cases, finalizer); done(tree) }
     override def keep(tree: SeqLiteral)(elems: List[Tree], elemtpt: Tree): Boolean =
-      tree.update(elems, elemtpt); tree.setType(null); true
+      super.keep(tree)(elems, elemtpt) || { tree.update(elems, elemtpt); done(tree) }
     override def keep(tree: Inlined)(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree): Boolean =
-      tree.update(call, bindings, expansion); tree.setType(null); true
+      super.keep(tree)(call, bindings, expansion) || { tree.update(call, bindings, expansion); done(tree) }
     override def keep(tree: SingletonTypeTree)(ref: Tree): Boolean =
-      tree.update(ref); tree.setType(null); true
+      super.keep(tree)(ref) || { tree.update(ref); done(tree) }
     override def keep(tree: RefinedTypeTree)(tpt: Tree, refinements: List[Tree]): Boolean =
-      tree.update(tpt, refinements); tree.setType(null); true
+      super.keep(tree)(tpt, refinements) || { tree.update(tpt, refinements); done(tree) }
     override def keep(tree: AppliedTypeTree)(tpt: Tree, args: List[Tree]): Boolean =
-      tree.update(tpt, args); tree.setType(null); true
+      super.keep(tree)(tpt, args) || { tree.update(tpt, args); done(tree) }
     override def keep(tree: LambdaTypeTree)(tparams: List[TypeDef], body: Tree): Boolean =
-      tree.update(tparams, body); tree.setType(null); true
+      super.keep(tree)(tparams, body) || { tree.update(tparams, body); done(tree) }
     override def keep(tree: TermLambdaTypeTree)(params: List[ValDef], body: Tree): Boolean =
-      tree.update(params, body); tree.setType(null); true
+      super.keep(tree)(params, body) || { tree.update(params, body); done(tree) }
     override def keep(tree: MatchTypeTree)(bound: Tree, selector: Tree, cases: List[CaseDef]): Boolean =
-      tree.update(bound, selector, cases); tree.setType(null); true
+      super.keep(tree)(bound, selector, cases) || { tree.update(bound, selector, cases); done(tree) }
     override def keep(tree: ByNameTypeTree)(result: Tree): Boolean =
-      tree.update(result); tree.setType(null); true
+      super.keep(tree)(result) || { tree.update(result); done(tree) }
     override def keep(tree: TypeBoundsTree)(lo: Tree, hi: Tree, alias: Tree): Boolean =
-      tree.update(lo, hi, alias); tree.setType(null); true
+      super.keep(tree)(lo, hi, alias) || { tree.update(lo, hi, alias); done(tree) }
     override def keep(tree: Bind)(body: Tree): Boolean =
-      tree.update(body); tree.setType(null); true
+      super.keep(tree)(body) || { tree.update(body); done(tree) }
     override def keep(tree: Alternative)(trees: List[Tree]): Boolean =
-      tree.update(trees); tree.setType(null); true
+      super.keep(tree)(trees) || { tree.update(trees); done(tree) }
     override def keep(tree: UnApply)(fun: Tree, implicits: List[Tree], patterns: List[Tree]): Boolean =
-      tree.update(fun, implicits, patterns); tree.setType(null); true
+      super.keep(tree)(fun, implicits, patterns) || { tree.update(fun, implicits, patterns); done(tree) }
     override def keep(tree: ValDef)(tpt: Tree, rhs: LazyTree): Boolean =
-      tree.update(tpt, rhs); tree.setType(null); true
+      super.keep(tree)(tpt, rhs) || { tree.update(tpt, rhs); done(tree) }
     override def keep(tree: DefDef)(tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): Boolean =
-      tree.update(tparams, vparamss, tpt, rhs); tree.setType(null); true
+      super.keep(tree)(tparams, vparamss, tpt, rhs) || { tree.update(tparams, vparamss, tpt, rhs); done(tree) }
     override def keep(tree: TypeDef)(rhs: Tree): Boolean =
-      tree.update(rhs); tree.setType(null); true
+      super.keep(tree)(rhs) || { tree.update(rhs); done(tree) }
     override def keep(tree: Template)(constr: DefDef, parents: List[Tree], derived: List[untpd.Tree], self: ValDef, body: LazyTreeList): Boolean =
-      tree.update(constr, parents ++ derived, self, body); tree.setType(null); true
+      super.keep(tree)(constr, parents, derived, self, body) || { tree.update(constr, parents ++ derived, self, body); done(tree) }
     override def keep(tree: Import)(expr: Tree, selectors: List[untpd.ImportSelector]): Boolean =
-      tree.update(expr, selectors); tree.setType(null); true
+      super.keep(tree)(expr, selectors) || { tree.update(expr, selectors); done(tree) }
     override def keep(tree: PackageDef)(pid: RefTree, stats: List[Tree]): Boolean =
-      tree.update(pid, stats); tree.setType(null); true
+      super.keep(tree)(pid, stats) || { tree.update(pid, stats); done(tree) }
     override def keep(tree: Annotated)(arg: Tree, annot: Tree): Boolean =
-      tree.update(arg, annot); tree.setType(null); true
+      super.keep(tree)(arg, annot) || { tree.update(arg, annot); done(tree) }
   end InPlaceCopier
 
   abstract class UntypedTreeMap(cpy: UntypedTreeCopier = untpd.cpy) extends TreeMap(cpy) {

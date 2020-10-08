@@ -4,6 +4,7 @@ package transform
 
 import core._
 import ast.Trees._
+import ast.untpd
 import Contexts._, Phases._, Symbols._, Decorators._
 import Flags.PackageVal
 
@@ -152,7 +153,13 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     relaxedTypingCache
   }
 
-  private val cpy: TypedTreeCopier = cpyBetweenPhases
+  private var c: Context = _
+
+  private val updated = util.HashSet[untpd.Tree]()
+
+  private lazy val cpy: TypedTreeCopier =
+    if false then cpyBetweenPhases
+    else TimeTravellingTreeCopier(untpd.InPlaceCopier(updated)(using c))
 
   /** Transform node using all phases in this group that have idxInGroup >= start */
   def transformNode(tree: Tree, start: Int)(using Context): Tree = {
@@ -421,7 +428,10 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
         }
     }
 
-    if (tree.source != ctx.source && tree.source.exists)
+    if updated.contains(tree) then
+      println(i"already updated at ${ctx.phase}: $tree")
+      tree
+    else if (tree.source != ctx.source && tree.source.exists)
       transformTree(tree, start)(using ctx.withSource(tree.source))
     else if (tree.isInstanceOf[NameTree])
       transformNamed(tree, start, ctx)
@@ -444,6 +454,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   }
 
   def transformUnit(tree: Tree)(using Context): Tree = {
+    c = ctx
     val nestedCtx = prepUnit(tree, 0)
     val tree1 = transformTree(tree, 0)(using nestedCtx)
     goUnit(tree1, 0)(using nestedCtx)
