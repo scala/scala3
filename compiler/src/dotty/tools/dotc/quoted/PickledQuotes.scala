@@ -32,7 +32,8 @@ object PickledQuotes {
   def pickleQuote(tree: Tree)(using Context): PickledQuote =
     if (ctx.reporter.hasErrors) Nil
     else {
-      assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'{$x}` which should be optimized to `x`
+      // FIXME handle new optimization opportunities. Previousliy we got some `Inlined(EmptyTree, Nil, Hole(...))` that did not get optimized
+      // assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'{$x}` which should be optimized to `x`
       val pickled = pickle(tree)
       TastyString.pickle(pickled)
     }
@@ -56,11 +57,9 @@ object PickledQuotes {
     val tastyBytes = TastyString.unpickle(tasty)
     val unpickled = withMode(Mode.ReadPositions)(
       unpickle(tastyBytes, splices, isType = false))
-    val Inlined(call, Nil, expnasion) = unpickled
-    val inlineCtx = inlineContext(call)
-    val expansion1 = spliceTypes(expnasion, splices)(using inlineCtx)
-    val expansion2 = spliceTerms(expansion1, splices)(using inlineCtx)
-    cpy.Inlined(unpickled)(call, Nil, expansion2)
+    val expansion1 = spliceTypes(unpickled, splices)
+    val expansion2 = spliceTerms(expansion1, splices)
+    cpy.Inlined(unpickled)(EmptyTree, Nil, expansion2)
   }
 
   /** Unpickle the tree contained in the TastyType */

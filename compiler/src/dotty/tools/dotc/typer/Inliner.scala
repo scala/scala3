@@ -258,19 +258,6 @@ object Inliner {
     (new Reposition).transform(tree)
   }
 
-  /** Leave only a call trace consisting of
-   *  - a reference to the top-level class from which the call was inlined,
-   *  - the call's position
-   *  in the call field of an Inlined node.
-   *  The trace has enough info to completely reconstruct positions.
-   *  Note: For macros it returns a Select and for other inline methods it returns an Ident (this distinction is only temporary to be able to run YCheckPositions)
-   */
-  def inlineCallTrace(callSym: Symbol, pos: SourcePosition)(using Context): Tree = {
-    assert(ctx.source == pos.source)
-    if (callSym.is(Macro)) ref(callSym.topLevelClass.owner).select(callSym.topLevelClass.name).withSpan(pos.span)
-    else Ident(callSym.topLevelClass.typeRef).withSpan(pos.span)
-  }
-
   object Intrinsics {
     import dotty.tools.dotc.reporting.Diagnostic.Error
     private enum ErrorKind:

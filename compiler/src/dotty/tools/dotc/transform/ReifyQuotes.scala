@@ -132,14 +132,8 @@ class ReifyQuotes extends MacroTransform {
       }
       else {
         val (body1, splices) = nested(isQuote = true).splitQuote(body)(using quoteContext)
-        if (level == 0) {
-          val body2 =
-            if (body1.isType) body1
-            else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
-          pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
-        }
-        else
-          body
+        if level == 0 then pickledQuote(body1, splices, body.tpe, isType).withSpan(quote.span)
+        else body
       }
     }
 
