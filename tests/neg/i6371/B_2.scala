@@ -1,3 +1,3 @@
 object B {
-  A.foo("aa") // error
+  A.foo("aa")
 }
