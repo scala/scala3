@@ -382,7 +382,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         tparamStr ~ binder
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)
-        val (tparams, otherDecls) = decls.toList partition treatAsTypeParam
+        val (tparams, otherDecls) = decls.toLst.toList partition treatAsTypeParam
         val tparamsText =
           if (tparams.isEmpty) Text() else ("[" ~ dclsText(tparams) ~ "]").close
         val selfText: Text = selfInfo match {
@@ -538,7 +538,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def dclsText(syms: List[Symbol], sep: String): Text = Text(syms map dclText, sep)
 
   def toText(sc: Scope): Text =
-    ("Scope{" ~ dclsText(sc.toList) ~ "}").close
+    ("Scope{" ~ dclsText(sc.toLst.toList) ~ "}").close
 
   def toText[T >: Untyped](tree: Tree[T]): Text = {
     def toTextElem(elem: Any): Text = elem match {

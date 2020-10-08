@@ -251,8 +251,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               cls.srcPos)
           EmptyTree
 
-      for (getter <- mixin.info.decls.toList if getter.isGetter && !wasOneOf(getter, Deferred)) yield {
-        if (isCurrent(getter) || getter.name.is(ExpandedName)) {
+      for
+        getter <- mixin.info.decls.filter(sym => sym.isGetter && !wasOneOf(sym, Deferred))
+      yield
+        if isCurrent(getter) || getter.name.is(ExpandedName) then
           val rhs =
             if (wasOneOf(getter, ParamAccessor))
               nextArgument()
@@ -264,9 +266,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run
           transformFollowing(DefDef(mkForwarderSym(getter.asTerm), rhs))
-        }
         else EmptyTree
-      }
     }
 
     def setters(mixin: ClassSymbol): List[Tree] =
@@ -277,11 +277,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       yield transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
 
     def mixinForwarders(mixin: ClassSymbol): List[Tree] =
-      for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
-      yield {
+      for meth <- mixin.info.decls.filter(needsMixinForwarder(_))
+      yield
         util.Stats.record("mixin forwarders")
         transformFollowing(polyDefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))
-      }
 
     cpy.Template(impl)(
       constr =

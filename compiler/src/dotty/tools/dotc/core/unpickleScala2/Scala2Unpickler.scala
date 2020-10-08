@@ -346,7 +346,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (denot.exists && !denot1.exists) { // !!!DEBUG
           val alts = denot.alternatives map (d => s"$d:${d.info}/${d.signature}")
           System.err.println(s"!!! disambiguation failure: $alts")
-          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => s"$d:${d.info}/${d.signature}")
+          val members = denot.alternatives.head.symbol.owner.info.decls.toLst.map(d => s"$d:${d.info}/${d.signature}")
           System.err.println(s"!!! all members: $members")
         }
         if (tag == EXTref) sym else sym.moduleClass
@@ -778,7 +778,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         else {
           def subst(info: Type, rt: RecType) = info.substThis(clazz.asClass, rt.recThis)
           def addRefinement(tp: Type, sym: Symbol) = RefinedType(tp, sym.name, sym.info)
-          val refined = decls.toList.foldLeft(parent)(addRefinement)
+          val refined = decls.toLst.foldLeft(parent)(addRefinement)
           RecType.closeOver(rt => refined.substThis(clazz, rt.recThis))
         }
       case CLASSINFOtpe =>

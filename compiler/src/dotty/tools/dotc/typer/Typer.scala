@@ -1457,7 +1457,7 @@ class Typer extends Namer
       }
       val pat1 = indexPattern(tree).transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
-      var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toList)
+      var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toLst.toList)
       if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)

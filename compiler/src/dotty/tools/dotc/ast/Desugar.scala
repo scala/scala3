@@ -118,7 +118,7 @@ object desugar {
             if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
               def msg =
-                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
+                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toLst}"
               ErrorType(msg).assertingErrorsReported(msg)
             }
           case _ =>

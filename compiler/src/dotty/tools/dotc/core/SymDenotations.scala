@@ -1543,8 +1543,9 @@ object SymDenotations {
                   case _ => false
 
         if owner.isClass then
-          for c <- owner.info.decls.toList if maybeChild(c) do
-            c.ensureCompleted()
+          for c <- owner.info.decls.toLst do
+            if maybeChild(c) then
+              c.ensureCompleted()
       end completeChildrenIn
 
       if is(Sealed) then
@@ -2310,7 +2311,7 @@ object SymDenotations {
     /** Unlink all package members defined in `file` in a previous run. */
     def unlinkFromFile(file: AbstractFile)(using Context): Unit = {
       val scope = unforcedDecls.openForMutations
-      for (sym <- scope.toList.iterator)
+      for sym <- scope.toLst.iterator() do
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
         if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)

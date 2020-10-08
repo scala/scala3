@@ -712,7 +712,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             case (_: Apply) | Block(_, (_: Apply)) if rhs.symbol eq defn.throwMethod => ()
             case tpd.EmptyTree =>
               report.error("Concrete method has no definition: " + dd + (
-                if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
+                if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toLst.mkString(", ") + ")"
                 else ""),
                 ctx.source.atSpan(NoSpan)
               )

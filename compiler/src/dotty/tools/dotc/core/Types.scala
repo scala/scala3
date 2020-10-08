@@ -4485,7 +4485,7 @@ object Types {
      *  If there are opaque alias members, updates `cls` to have `Opaque` flag as a side effect.
      */
     def integrateOpaqueMembers(using Context): ClassInfo =
-      decls.toList.foldLeft(this) { (cinfo, sym) =>
+      decls.toLst.foldLeft(this) { (cinfo, sym) =>
         if sym.isOpaqueAlias then
           cls.setFlag(Opaque)
           def force(using Context) =
@@ -5140,7 +5140,7 @@ object Types {
     def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
 
     def mapOver(scope: Scope): Scope = {
-      val elems = scope.toList
+      val elems = scope.toLst.toList
       val elems1 = mapOver(elems)
       if (elems1 eq elems) scope
       else newScopeWith(elems1: _*)

@@ -689,7 +689,7 @@ object Symbols {
     def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
     typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
-    typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    typr.println(s"decls = ${normalizedOwner.unforcedDecls.toLst.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>

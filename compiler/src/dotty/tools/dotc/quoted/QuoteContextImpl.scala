@@ -2352,7 +2352,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           }.toList
 
         def members: List[Symbol] =
-          self.typeRef.info.decls.toList
+          self.typeRef.info.decls.toLst.toList
 
         def typeMembers: List[Symbol] =
           self.unforcedDecls.filter(_.isType)
