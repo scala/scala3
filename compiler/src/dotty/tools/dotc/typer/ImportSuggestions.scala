@@ -13,6 +13,7 @@ import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
 import java.util.{Timer, TimerTask}
 import collection.mutable
+import scala.util.control.NonFatal
 
 /** This trait defines the method `importSuggestionAddendum` that adds an addendum
  *  to error messages suggesting additional imports.
@@ -58,10 +59,12 @@ trait ImportSuggestions:
     val seen = mutable.Set[TermRef]()
 
     def lookInside(root: Symbol)(using Context): Boolean =
-      if root.is(Package) then root.isTerm && root.isCompleted
-      else !root.name.is(FlatName)
-        && !root.name.lastPart.contains('$')
-        && root.is(ModuleVal, butNot = JavaDefined)
+      explore {
+        if root.is(Package) then root.isTerm && root.isCompleted
+        else !root.name.is(FlatName)
+          && !root.name.lastPart.contains('$')
+          && root.is(ModuleVal, butNot = JavaDefined)
+      }
 
     def nestedRoots(site: Type)(using Context): List[Symbol] =
       val seenNames = mutable.Set[Name]()
@@ -245,12 +248,11 @@ trait ImportSuggestions:
         match
           case (Nil, partials) => (extensionImports, partials)
           case givenImports => givenImports
-    catch
-      case ex: Throwable =>
-        if ctx.settings.Ydebug.value then
-          println("caught exception when searching for suggestions")
-          ex.printStackTrace()
-        (Nil, Nil)
+    catch case NonFatal(ex) =>
+      if ctx.settings.Ydebug.value then
+        println("caught exception when searching for suggestions")
+        ex.printStackTrace()
+      (Nil, Nil)
     finally
       timer.cancel()
       reduceTimeBudget(((System.currentTimeMillis() - start) min Int.MaxValue).toInt)

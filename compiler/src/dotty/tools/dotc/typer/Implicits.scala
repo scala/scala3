@@ -295,7 +295,10 @@ object Implicits:
    *                   name, b, whereas the name of the symbol is the original name, a.
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
-  class ContextualImplicits(val refs: List[ImplicitRef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
+  class ContextualImplicits(
+      val refs: List[ImplicitRef],
+      val outerImplicits: ContextualImplicits,
+      isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
     private val eligibleCache = EqHashMap[Type, List[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
@@ -303,13 +306,16 @@ object Implicits:
      *  Scala2 mode, since we do not want to change the implicit disambiguation then.
      */
     override val level: Int =
+      def isSameOwner = irefCtx.owner eq outerImplicits.irefCtx.owner
+      def isSameScope = irefCtx.scope eq outerImplicits.irefCtx.scope
+      def isLazyImplicit = refs.head.implicitName.is(LazyImplicitName)
+
       if outerImplicits == null then 1
       else if migrateTo3(using irefCtx)
-              || (irefCtx.owner eq outerImplicits.irefCtx.owner)
-                 && (irefCtx.scope eq outerImplicits.irefCtx.scope)
-                 && !refs.head.implicitName.is(LazyImplicitName)
+              || isSameOwner && (isImport || isSameScope && !isLazyImplicit)
       then outerImplicits.level
       else outerImplicits.level + 1
+    end level
 
     /** Is this the outermost implicits? This is the case if it either the implicits
      *  of NoContext, or the last one before it.
@@ -370,7 +376,7 @@ object Implicits:
         val outerExcluded = outerImplicits exclude root
         if (irefCtx.importInfo.site.termSymbol == root) outerExcluded
         else if (outerExcluded eq outerImplicits) this
-        else new ContextualImplicits(refs, outerExcluded)(irefCtx)
+        else new ContextualImplicits(refs, outerExcluded, isImport)(irefCtx)
       }
   }
 
