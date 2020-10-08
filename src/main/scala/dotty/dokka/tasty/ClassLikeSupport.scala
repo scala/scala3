@@ -54,7 +54,7 @@ trait ClassLikeSupport:
               kind,
               classDef.getCompanion,
               classDef.getExtensionGroups,
-              classDef.getInheritedMethods.map(parseMethod(_)),
+              classDef.getInheritedDefinitions,
               classDef.getGivenMethods ++ classDef.getGivenFields
             ))
             .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
@@ -64,12 +64,60 @@ trait ClassLikeSupport:
       )
     }
 
+    def parseForSignatureOnly(classDef: ClassDef)(
+      kind: Kind,
+      dri: DRI = classDef.symbol.dri,
+      name: String = classDef.name,
+      constructors: List[DFunction] = classDef.getConstructors.map(parseMethod(_)),
+      sources: Map[DokkaConfiguration$DokkaSourceSet, DocumentableSource] = classDef.symbol.source,
+      visibility: Map[DokkaConfiguration$DokkaSourceSet, Visibility] = Map(sourceSet.getSourceSet -> (classDef.symbol.getVisibility())),
+      generics: List[DTypeParameter] = classDef.getTypeParams.map(parseTypeArgument),
+      supertypes: Map[DokkaConfiguration$DokkaSourceSet, List[TypeConstructorWithKind]] = Map.empty,
+      documentation: Map[DokkaConfiguration$DokkaSourceSet, DocumentationNode] = classDef.symbol.documentation,
+      modifier: Map[DokkaConfiguration$DokkaSourceSet, Modifier] = Map(sourceSet.getSourceSet -> classDef.symbol.getModifier()),
+      additionalExtras: Seq[ExtraProperty[DClass]] = Seq.empty
+    ): DClass = {
+      val annotations = AnnotationsInfo(classDef.symbol.getAnnotations())
+      new DClass(
+          dri,
+          name,
+          JList(),
+          JList(),
+          JList(),
+          JList(),
+          sources.asJava,
+          visibility.asJava,
+          null,
+          generics.asJava,
+          supertypes.map{case (key,value) => (key, value.asJava)}.asJava,
+          documentation.asJava,
+          null,
+          modifier.asJava,
+          inspector.sourceSet.toSet,
+          PropertyContainer.Companion.empty()
+            .plus(ClasslikeExtension(
+              classDef.getParents,
+              classDef.getConstructorMethod,
+              kind,
+              None,
+              List.empty,
+              null,
+              List.empty
+            ))
+            .plus(AdditionalModifiers(sourceSet.asMap(classDef.symbol.getExtraModifiers().asJava)))
+            .plus(annotations)
+            .addAll(additionalExtras.asJava)
+      )
+    }
+
   extension (c: ClassDef):
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
-    def getExtensionGroups: List[ExtensionGroup] =
+    def inheritedMembers = c.symbol.getAllMembers.filterNot(s => s.isHiddenByVisibility || s.maybeOwner == c.symbol)
+
+    private def extractExtensionGroups(functions: List[Symbol]) = {
       case class ExtensionRepr(arg: ValDef, method: Symbol)
-      val extensions = c.symbol.classMethods
+      val extensions = functions
         .filterNot(_.isHiddenByVisibility)
         .filterNot(_.isSyntheticFunc)
         .filter(_.isExtensionMethod)
@@ -82,32 +130,53 @@ trait ClassLikeSupport:
           ExtensionGroup(parseArgument(extensions(0).arg, _ => "", isExtendedSymbol = true, isGroupped), dMethods)
         }
       }.toList
+    }
 
-    def getGivenMethods: List[DFunction] =
-      c.symbol.classMethods
+    def getExtensionGroups: List[ExtensionGroup] = extractExtensionGroups(c.symbol.classMethods)
+
+    private def extractGivenMethods(functions: List[Symbol]) = functions
       .filterNot(_.isHiddenByVisibility)
       .filter(_.isGiven)
       .map(m => parseMethod(m, paramPrefix = _ => "using ", isGiven = true))
 
+    def getGivenMethods: List[DFunction] = extractGivenMethods(c.symbol.classMethods)
+
+    private def extractGivenFields(members: List[ValDef]) = members.filter(_.symbol.isGiven).map(parseValDef(_, isGiven = true))
+
     def getGivenFields: List[DProperty] =
-      val valDefs = membersToDocument.collect {
-        case vd: ValDef if vd.symbol.isGiven => vd
-      }
-      valDefs.map(parseValDef(_, isGiven = true))
+      val valDefs = membersToDocument.collect { case vd: ValDef => vd }.toList
+      extractGivenFields(valDefs)
 
-    def getMethods: List[Symbol] = c.symbol.classMethods
-      .filterNot(s => s.isHiddenByVisibility || s.isGiven || s.isSyntheticFunc || s.isExtensionMethod)
+    private def extractMethods(methods: List[Symbol]) = methods.filterNot(s => 
+      s.isHiddenByVisibility || 
+      s.isGiven || 
+      s.isSyntheticFunc || 
+      s.isExtensionMethod
+    )
 
-    def getInheritedMethods: List[Symbol] = c.symbol.methods
-      .filter(s =>
-        !s.isSuperBridgeMethod &&
-        !s.isSyntheticFunc &&
-        !s.isGiven &&
-        !s.isExtensionMethod &&
-        s.maybeOwner != c.symbol &&
-        s.maybeOwner != defn.AnyClass &&
-        s.maybeOwner != defn.ObjectClass
+    def getMethods: List[Symbol] = extractMethods(c.symbol.classMethods)
+
+    def getInheritedDefinitions: InheritedDefinitions = {
+      val trees = c.inheritedMembers
+      .filter(s => s.maybeOwner != defn.ObjectClass && s.maybeOwner != defn.AnyClass)
+      .map(_.tree)
+      
+      val inheritedDefDefs = trees
+        .collect { case dd: DefDef if dd.name != "<init>" => dd.symbol }
+        .filterNot(s => s.isSuperBridgeMethod || s.isDefaultHelperMethod)
+        .toList
+      val inheritedValDefs = trees.collect { case vd: ValDef => vd }.toList
+      val inheritedTypeDefs = trees.collect { case td: TypeDef => td }.toList
+      val inheritedClassDefs = trees.collect { case cd: ClassDef => cd }.toList
+      InheritedDefinitions(
+        extractNestedClasslikes(inheritedClassDefs).map(cd => parseClasslike(cd, forSignature = true)),
+        extractTypeDefs(inheritedTypeDefs).map(parseTypeDef(_)),
+        extractMethods(inheritedDefDefs).map(parseMethod(_)),
+        extractValDefs(inheritedValDefs).map(parseValDef(_)),
+        extractExtensionGroups(inheritedDefDefs),
+        extractGivenFields(inheritedValDefs) ++ extractGivenMethods(inheritedDefDefs)
       )
+    }
 
     def getParents: List[Bound] =
       for
@@ -122,9 +191,17 @@ trait ClassLikeSupport:
       case d: DefDef if d.name == "<init>" && c.constructor.symbol != d.symbol => d.symbol
     }.toList
 
-    def getNestedClasslikes: List[DClasslike] = membersToDocument.collect {
-      case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => processTree(c)(parseClasslike(c))
-    }.flatten.toList
+    private def extractNestedClasslikes(classDefs: List[ClassDef]): List[ClassDef] = classDefs.filter(c =>
+      c.symbol.shouldDocumentClasslike && 
+      !c.symbol.isGiven
+    )
+
+    def getNestedClasslikes: List[DClasslike] = extractNestedClasslikes(
+      membersToDocument.collect { case c: ClassDef => c }
+    )
+    .map(c => 
+      processTree(c)(parseClasslike(c)) 
+    ).toList.flatten
 
     def getParameterModifier(parameter: Symbol): String =
       val fieldSymbol = c.symbol.field(parameter.name)
@@ -134,15 +211,23 @@ trait ClassLikeSupport:
 
     def getTypeParams: List[TypeDef] = c.body.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam)
 
-    def getTypeDefs: List[TypeDef] = membersToDocument.collect {
-      case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum))
-        => td
-    }
+    private def extractTypeDefs(typeDefs: List[TypeDef]) = typeDefs.filter(td =>
+      !td.symbol.flags.is(Flags.Synthetic) && 
+      (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum))
+    )
 
-    def getValDefs: List[ValDef] = membersToDocument.collect {
-      case vd: ValDef if !isSyntheticField(vd.symbol, c) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
-        => vd
-    }
+    def getTypeDefs: List[TypeDef] = extractTypeDefs(
+      membersToDocument.collect { case td: TypeDef => td }.toList
+    )
+
+    private def extractValDefs(valDefs: List[ValDef]) = valDefs.filter(vd =>
+      !isSyntheticField(vd.symbol, c) && 
+      (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
+    )
+
+    def getValDefs: List[ValDef] = extractValDefs(
+      membersToDocument.collect { case vd: ValDef => vd }
+    )
 
     def getCompanion: Option[DRI] = c.symbol.getCompanionSymbol
       .filter(!_.flags.is(Flags.Synthetic))
@@ -154,25 +239,29 @@ trait ClassLikeSupport:
         parseMethod(d, constructorWithoutParamLists(c), s => c.getParameterModifier(s))
       )
 
-  def parseClasslike(classDef: reflect.ClassDef)(using ctx: Context): DClass = classDef match
-    case c: ClassDef if classDef.symbol.flags.is(Flags.Object) => parseObject(c)
-    case c: ClassDef if classDef.symbol.flags.is(Flags.Trait) => parseTrait(c)
-    case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) => parseEnum(c)
-    case clazz => parseClass(clazz)
+  def parseClasslike(classDef: reflect.ClassDef, forSignature: Boolean = false)(using ctx: Context): DClass = classDef match
+    case c: ClassDef if classDef.symbol.flags.is(Flags.Object) => parseObject(c, forSignature)
+    case c: ClassDef if classDef.symbol.flags.is(Flags.Trait) => parseTrait(c, forSignature)
+    case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) => parseEnum(c, forSignature)
+    case clazz => parseClass(clazz, forSignature)
 
-  def parseObject(classDef: reflect.ClassDef)(using ctx: Context): DClass =
+  def parseObject(classDef: reflect.ClassDef, forSignature: Boolean = false)(using ctx: Context): DClass =
     val modifier = classDef.symbol.getModifier() match
       case ScalaModifier.Final => ScalaModifier.Empty
       case other => other
-
-    DClass(classDef)(
+    if forSignature then DClass.parseForSignatureOnly(classDef)(
+      name = classDef.name.stripSuffix("$"),
+      modifier = Map(sourceSet.getSourceSet -> modifier),
+      kind = Kind.Object
+    ) 
+    else DClass(classDef)(
       name = classDef.name.stripSuffix("$"),
       modifier = Map(sourceSet.getSourceSet -> modifier),
       kind = Kind.Object
     )
 
 
-  def parseEnum(classDef: reflect.ClassDef)(using ctx: Context): DClass =
+  def parseEnum(classDef: reflect.ClassDef, forSignature: Boolean = false)(using ctx: Context): DClass =
     val extraModifiers = classDef.symbol.getExtraModifiers().filter(_ != ScalaOnlyModifiers.Sealed)
     val modifier = classDef.symbol.getModifier() match {
       case ScalaModifier.Abstract => ScalaModifier.Empty
@@ -192,20 +281,31 @@ trait ClassLikeSupport:
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
     }.flatten.toList.map(p => p.withNewExtras(p.getExtra plus IsEnumEntry.Class))
 
-    DClass(classDef)(
+    if forSignature then DClass.parseForSignatureOnly(classDef)(
+      modifier = Map(sourceSet.getSourceSet -> modifier),
+      kind = Kind.Enum,
+      additionalExtras = Seq()
+    )
+    else DClass(classDef)(
       modifier = Map(sourceSet.getSourceSet -> modifier),
       kind = Kind.Enum,
       additionalExtras = Seq(EnumExtension(enumVals ++ enumTypes ++ enumNested))
     )
 
-  def parseTrait(classDef: reflect.ClassDef)(using ctx: Context): DClass =
-    DClass(classDef)(
+  def parseTrait(classDef: reflect.ClassDef, forSignature: Boolean = false)(using ctx: Context): DClass =
+    if forSignature then DClass.parseForSignatureOnly(classDef)(
+      kind = Kind.Trait,
+    ) 
+    else DClass(classDef)(
       kind = Kind.Trait,
     )
 
 
-  def parseClass(classDef: reflect.ClassDef)(using ctx: Context): DClass =
-    DClass(classDef)(
+  def parseClass(classDef: reflect.ClassDef, forSignature: Boolean = false)(using ctx: Context): DClass =
+    if forSignature then DClass.parseForSignatureOnly(classDef)(
+      kind = Kind.Class
+    )
+    else DClass(classDef)(
       kind = Kind.Class
     )
 

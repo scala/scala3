@@ -68,10 +68,19 @@ case class ClasslikeExtension(
   kind: Kind, 
   companion: Option[DRI], 
   extensions: List[ExtensionGroup],
-  inheritedMethods: List[DFunction],
+  inherited: InheritedDefinitions,
   givens: List[Documentable]
 ) extends ExtraProperty[DClasslike]:
   override def getKey = ClasslikeExtension
+
+case class InheritedDefinitions(
+  classlikes: List[DClasslike],
+  types: List[DProperty],
+  methods: List[DFunction],
+  fields: List[DProperty],
+  extensions: List[ExtensionGroup],
+  givens: List[Documentable]
+)
 
 object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]
 
@@ -105,3 +114,8 @@ object AnnotationsInfo extends BaseKey[Documentable, AnnotationsInfo]:
     case class PrimitiveParameter(val name: Option[String] = None, val value: String) extends AnnotationParameter
     case class LinkParameter(val name: Option[String] = None, val dri: DRI, val value: String) extends AnnotationParameter
     case class UnresolvedParameter(val name: Option[String] = None, val unresolvedText: String) extends AnnotationParameter
+
+case class IsInherited(flag: Boolean) extends ExtraProperty[Documentable]:
+  override def getKey = IsInherited
+
+object IsInherited extends BaseKey[Documentable, IsInherited]

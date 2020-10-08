@@ -42,6 +42,8 @@ trait SyntheticsSupport:
         if(hackIsLeftAssoc(s)) s.tree.asInstanceOf[DefDef].paramss(0)(0)
         else s.tree.asInstanceOf[DefDef].paramss(1)(0)
       )
+    
+    def getAllMembers: List[Symbol] = hackGetAllMembers(self.reflect)(s)
 
   def isSyntheticField(c: Symbol, classDef: ClassDef) =
     c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Object)
@@ -69,6 +71,22 @@ trait SyntheticsSupport:
     given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     sym.is(dotc.core.Flags.Extension)
+  }
+  /* We need there to filter out symbols with certain flagsets, because these symbols come from compiler and TASTY can't handle them well. 
+  They are valdefs that describe case companion objects and cases from enum.
+  TASTY crashed when calling _.tree on them.
+  */
+  def hackGetAllMembers(r: Reflection)(rsym: r.Symbol): List[r.Symbol] = {
+    import dotty.tools.dotc
+    given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
+    sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef)).allMembers.iterator.map(_.symbol)
+      .collect {
+         case sym if
+          !sym.is(dotc.core.Flags.ModuleVal) &&
+          !sym.flags.isAllOf(dotc.core.Flags.Enum | dotc.core.Flags.Case | dotc.core.Flags.JavaStatic) =>
+              sym.asInstanceOf[r.Symbol]
+      }.toList
   }
 
   def hackIsOpaque(r: Reflection)(rsym: r.Symbol): Boolean = {
