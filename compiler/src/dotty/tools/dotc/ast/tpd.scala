@@ -7,7 +7,7 @@ import typer.ProtoTypes
 import transform.SymUtils._
 import transform.TypeUtils._
 import core._
-import util.Spans._, util.SourcePosition, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
+import util.Spans._, util.SrcPos, Types._, Contexts._, Constants._, Names._, Flags._, NameOps._
 import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
 import collection.{immutable, mutable}
@@ -1232,7 +1232,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** A key to be used in a context property that tracks enclosing inlined calls */
-  private val InlinedCalls = Property.Key[List[SourcePosition]]()
+  private val InlinedCalls = Property.Key[List[SrcPos]]()
 
   /** A key to be used in a context property that tracks the number of inlined trees */
   private val InlinedTrees = Property.Key[Counter]()
@@ -1240,21 +1240,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     var count: Int = 0
   }
 
-  /** Record an enclosing inlined call.
-   *  EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
-   *  We assume parameters are never nested inside parameters.
-   */
-  override def inlineContext(call: Tree)(using Context): Context = {
+  /** Record an enclosing inlined positions. */
+  override def inlineContext(pos: SrcPos)(using Context): Context = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
     val oldIC = enclosingInlineds
-
-    val newIC =
-      if call.isEmpty then
-        oldIC match
-          case t1 :: ts2 => ts2
-          case _ => oldIC
-      else
-        call.sourcePos :: oldIC
+    val newIC = pos :: oldIC
 
     val ctx1 = ctx.fresh.setProperty(InlinedCalls, newIC)
     if oldIC.isEmpty then ctx1.setProperty(InlinedTrees, new Counter) else ctx1
@@ -1262,7 +1252,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.
    */
-  def enclosingInlineds(using Context): List[SourcePosition] =
+  def enclosingInlineds(using Context): List[SrcPos] =
     ctx.property(InlinedCalls).getOrElse(Nil)
 
   /** Record inlined trees */

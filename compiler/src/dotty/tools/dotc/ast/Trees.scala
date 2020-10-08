@@ -1242,11 +1242,9 @@ object Trees {
     protected def skipTransform(tree: Tree)(using Context): Boolean = false
 
     /** For untyped trees, this is just the identity.
-     *  For typed trees, a context derived form `ctx` that records `call` as the
-     *  innermost enclosing call for which the inlined version is currently
-     *  processed.
+     *  For typed trees, this record the position of an enclosing inlined positions
      */
-    protected def inlineContext(call: Tree)(using Context): Context = ctx
+    protected def inlineContext(pos: SrcPos)(using Context): Context = ctx
 
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
       def transform(tree: Tree)(using Context): Tree = {
