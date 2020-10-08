@@ -306,14 +306,16 @@ object Implicits:
      *  Scala2 mode, since we do not want to change the implicit disambiguation then.
      */
     override val level: Int =
+      def isSameOwner = irefCtx.owner eq outerImplicits.irefCtx.owner
+      def isSameScope = irefCtx.scope eq outerImplicits.irefCtx.scope
+      def isLazyImplicit = refs.head.implicitName.is(LazyImplicitName)
+
       if outerImplicits == null then 1
-      else if isImport && (irefCtx.owner eq outerImplicits.irefCtx.owner)
-              || migrateTo3(using irefCtx)
-              || (irefCtx.owner eq outerImplicits.irefCtx.owner)
-                 && (irefCtx.scope eq outerImplicits.irefCtx.scope)
-                 && !refs.head.implicitName.is(LazyImplicitName)
+      else if migrateTo3(using irefCtx)
+              || isSameOwner && (isImport || isSameScope && !isLazyImplicit)
       then outerImplicits.level
       else outerImplicits.level + 1
+    end level
 
     /** Is this the outermost implicits? This is the case if it either the implicits
      *  of NoContext, or the last one before it.
