@@ -740,19 +740,19 @@ object Erasure {
     }
 
     // TODO track in a cleaner way
-    private var enclosingSpan: util.Spans.Span = util.Spans.NoSpan
+    private var enclosingSrcPos: util.SrcPos = util.NoSourcePosition
 
     override def typed(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
-      val old = enclosingSpan
-      enclosingSpan = tree.span
+      val old = enclosingSrcPos
+      enclosingSrcPos = tree
       val tree1 =
         try super.typed(tree, pt, locked)
-        finally enclosingSpan = old
+        finally enclosingSrcPos = old
 
       if tree1.source.exists && ctx.source != tree1.source && ctx.source == ctx.owner.topLevelClass.source
       then
         // TODO reposition while erasing instead of retraversing
-        Inliner.reposition(tree1, enclosingSpan)
+        Inliner.reposition(tree1, enclosingSrcPos.span)
       else tree1
 
 
