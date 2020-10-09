@@ -167,11 +167,6 @@ jobs:
   test_sbt:
     runs-on: [self-hosted, Linux]
     container: lampepfl/dotty:2020-04-24
-    if: (
-          github.event_name == 'push' &&
-          startsWith(github.event.ref, 'refs/tags/')
-        ) ||
-        github.event_name == 'schedule'
 
     steps:
       - name: Checkout cleanup script
