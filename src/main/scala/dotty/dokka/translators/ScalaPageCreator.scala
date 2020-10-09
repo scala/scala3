@@ -137,9 +137,7 @@ class ScalaPageCreator(
             .group(styles = Set(ContentStyle.TabbedContent)) { b => b
                 .contentForScope(c)
                 .contentForEnum(c)
-                .contentForGivens(c)
                 .contentForConstructors(c)
-                .contentForExtensions(c)
                 .contentForTypesInfo(c)
             }
         contentBuilder.contentForDocumentable(c, buildBlock = buildBlock)
@@ -322,25 +320,40 @@ class ScalaPageCreator(
         ) = {
             val (typeDefs, valDefs) = s.getProperties.asScala.toList.partition(_.get(PropertyExtension).kind == "type")
             val classes = s.getClasslikes.asScala.toList
-            val inherited = s match {
-                case c: DClass => List("Inherited" -> c.get(ClasslikeExtension).inheritedMethods)
-                case other => List.empty
+            val inheritedDefinitions = s match {
+                case c: DClass => Some(c.get(ClasslikeExtension).inherited)
+                case _ => None
+            }
+            val givens = s match {
+                case c: DClass => Some(c.get(ClasslikeExtension).givens)
+                case _ => None
+            }
+            val extensions = s match {
+                case c: DClass => Some(c.get(ClasslikeExtension).extensions)
+                case _ => None
             }
              
-            b
+            val withoutExtensions = b
                 .contentForComments(s)
                 .divergentBlock(
                     "Type members",
-                    List("Types" -> typeDefs, "Classlikes" -> classes),
-                    kind = ContentKind.Classlikes
+                    List(
+                        "Types" -> typeDefs, 
+                        "Classlikes" -> classes, 
+                        "Inherited types" -> inheritedDefinitions.fold(List.empty)(_.types),
+                        "Inherited classlikes" -> inheritedDefinitions.fold(List.empty)(_.classlikes),
+                    ),
+                    kind = ContentKind.Classlikes,
+                    omitSplitterOnSingletons = false
                 )(
                     (bdr, elem) => bdr.header(3, elem)()
                 )
                 .divergentBlock(
                     "Methods",
                     List(
-                        "Class methods" -> s.getFunctions.asScala.toList, 
-                    ) ++ inherited,
+                        "Defined methods" -> s.getFunctions.asScala.toList,
+                        "Inherited methods" -> inheritedDefinitions.fold(List.empty)(_.methods)
+                    ),
                     kind = ContentKind.Functions,
                     omitSplitterOnSingletons = false
                 )(
@@ -348,16 +361,90 @@ class ScalaPageCreator(
                 )
                 .groupingBlock(
                     "Value members",
-                    List("" -> valDefs),
+                    List(
+                        "Defined value members" -> valDefs,
+                        "Inherited value members" -> inheritedDefinitions.fold(List.empty)(_.fields)
+                    ),
                     kind = ContentKind.Properties,
+                    omitSplitterOnSingletons = false,
                     sourceSets = s.getSourceSets.asScala.toSet
                 )(
-                    (bdr, group) => bdr
+                    (bdr, elem) => bdr.header(3, elem)()
                 ){ (bdr, elem) => bdr
                     .driLink(elem.getName, elem.getDri)
                     .sourceSetDependentHint(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind = ContentKind.SourceSetDependentHint) { sbdr => sbdr
                         .contentForBrief(elem)
                         .signature(elem)
+                    }
+                }
+                .groupingBlock(
+                    "Given",
+                    List(
+                        "Defined given" -> givens.getOrElse(List.empty),
+                        "Inherited given" -> inheritedDefinitions.fold(List.empty)(_.givens)
+                    ),
+                    kind = ContentKind.Functions,
+                    omitSplitterOnSingletons = false
+                )(
+                    (bdr, elem) => bdr.header(3, elem)()
+                ){ (bdr, elem) => bdr
+                    .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
+                    .sourceSetDependentHint(
+                        dri = Set(elem.getDri), 
+                        sourceSets = elem.getSourceSets.asScala.toSet,
+                        kind = ContentKind.SourceSetDependentHint
+                    ){ srcsetbdr => srcsetbdr
+                        .contentForBrief(elem)
+                        .signature(elem)
+                    }
+                }
+                if(extensions.getOrElse(List.empty).isEmpty && inheritedDefinitions.fold(List.empty)(_.extensions).isEmpty) then withoutExtensions
+                else withoutExtensions
+                .header(2, "Extensions")()
+                .group(styles = Set(ContentStyle.WithExtraAttributes), extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Extensions")){ gbdr => gbdr
+                    .group(){ gdbdr => gbdr
+                        .groupingBlock(
+                            "Defined extensions",
+                            extensions.getOrElse(List.empty).map(e => e.extendedSymbol -> e.extensions).sortBy(_._2.size),
+                            omitSplitterOnSingletons = false,
+                            kind = ContentKind.Extensions
+                        )( (bdr, receiver) => bdr 
+                            .group(){ grpbdr => grpbdr
+                                .header(4, "Extension group")()
+                                .signature(receiver)
+                            }
+                        ){ (bdr, elem) => bdr
+                            .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
+                            .sourceSetDependentHint(
+                                dri = Set(elem.getDri), 
+                                sourceSets = elem.getSourceSets.asScala.toSet, 
+                                kind = ContentKind.SourceSetDependentHint
+                            ){ srcsetbdr => srcsetbdr
+                                .contentForBrief(elem)
+                                .signature(elem)
+                            }
+                        }
+                        .groupingBlock(
+                            "Inherited extensions",
+                            inheritedDefinitions.fold(List.empty)(_.extensions).map(e => e.extendedSymbol -> e.extensions).sortBy(_._2.size),
+                            omitSplitterOnSingletons = false,
+                            kind = ContentKind.Extensions
+                        )( (bdr, receiver) => bdr 
+                            .group(){ grpbdr => grpbdr
+                                .header(4, "Extension group")()
+                                .signature(receiver)
+                            }
+                        ){ (bdr, elem) => bdr
+                            .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
+                            .sourceSetDependentHint(
+                                dri = Set(elem.getDri), 
+                                sourceSets = elem.getSourceSets.asScala.toSet, 
+                                kind = ContentKind.SourceSetDependentHint
+                            ){ srcsetbdr => srcsetbdr
+                                .contentForBrief(elem)
+                                .signature(elem)
+                            }
+                        }
                     }
                 }
         }
@@ -369,47 +456,6 @@ class ScalaPageCreator(
             List(() -> Option(c.get(EnumExtension)).fold(List.empty)(_.enumEntries.sortBy(_.getName).toList)),
             kind = ContentKind.Properties
         )( (bdr, splitter) => bdr ){ (bdr, elem) => bdr
-            .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
-            .sourceSetDependentHint(
-                dri = Set(elem.getDri), 
-                sourceSets = elem.getSourceSets.asScala.toSet, 
-                kind = ContentKind.SourceSetDependentHint
-            ){ srcsetbdr => srcsetbdr
-                .contentForBrief(elem)
-                .signature(elem)
-            }
-        }
-
-        def contentForGivens(c: DClass) = {
-            val givens = c.get(ClasslikeExtension).givens
-            b.groupingBlock(
-                "Given",
-                if(!givens.isEmpty) List(() -> givens.sortBy(_.getName).toList) else List.empty,
-                kind = ContentKind.Functions
-            )( (bdr, splitter) => bdr ){ (bdr, elem) => bdr
-                .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
-                .sourceSetDependentHint(
-                    dri = Set(elem.getDri), 
-                    sourceSets = elem.getSourceSets.asScala.toSet, 
-                    kind = ContentKind.SourceSetDependentHint
-                ){ srcsetbdr => srcsetbdr
-                    .contentForBrief(elem)
-                    .signature(elem)
-                }
-            }
-        }
-
-        def contentForExtensions(
-            c: DClass
-        ) = b.groupingBlock(
-            "Extensions",
-            c.get(ClasslikeExtension).extensions.map(e => e.extendedSymbol -> e.extensions).sortBy(_._2.size),
-            kind = ContentKind.Extensions
-        )( (bdr, receiver) => bdr 
-            .group(){ grpbdr => grpbdr
-                .signature(receiver)
-            }
-        ){ (bdr, elem) => bdr
             .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
             .sourceSetDependentHint(
                 dri = Set(elem.getDri), 
