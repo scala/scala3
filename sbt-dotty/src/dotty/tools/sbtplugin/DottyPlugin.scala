@@ -117,6 +117,56 @@ object DottyPlugin extends AutoPlugin {
         else
           moduleID
       }
+
+      /** If this ModuleID cross-version does not match the Scala 3 version provided,
+       *  replace it, else do nothing.
+       *
+       *  This setting is useful when your build contains dependencies that have
+       *  been published with Scala 3.x, but you would like to use them from Scala 2.x.
+       *
+       *  If you have:
+       *  {{{
+       *  val dottyVersion = "3.0.0" // or equivalent
+       *  libraryDependencies += "a" %% "b" % "c"
+       *  }}}
+       *  you can replace it by:
+       *  {{{
+       *  libraryDependencies += ("a" %% "b" % "c").asDottyDep(dottyVersion)
+       *  }}}
+       *  This will have no effect when compiling when `scalaVersion` == `dottyVersion`,
+       *  but when compiling
+       *  with Scala 2 this will change the cross-version to a Scala 3.x one. This
+       *  works because Scala 2.13 is currently forward-compatible with Scala 3.x.
+       *
+       *  NOTE: As a special-case, the cross-version of dotty-library, dotty-compiler and
+       *  dotty will never be rewritten because we know that they're Dotty-only.
+       *  This makes it possible to do something like:
+       *  {{{
+       *  libraryDependencies ~= (_.map(_.withDottyCompat(scalaVersion.value)))
+       *  }}}
+       */
+      def asDottyDep(scalaVersion: String): ModuleID = {
+        val name = moduleID.name
+        if (name != "dotty" && name != "dotty-library" && name != "dotty-compiler")
+          moduleID.crossVersion match {
+            case binary: librarymanagement.Binary =>
+              val compatVersion =
+                CrossVersion.partialVersion(scalaVersion) match {
+                  case Some((m @ (3 | 0), x)) =>
+                    s"$m.$x"
+                  case _ =>
+                    ""
+                }
+              if (compatVersion.nonEmpty)
+                moduleID.cross(CrossVersion.constant(binary.prefix + compatVersion + binary.suffix))
+              else
+                moduleID
+            case _ =>
+              moduleID
+          }
+        else
+          moduleID
+      }
     }
   }
 
