@@ -162,7 +162,7 @@ trait ClassLikeSupport:
       .map(_.tree)
       
       val inheritedDefDefs = trees
-        .collect { case dd: DefDef if dd.name != "<init>" => dd.symbol }
+        .collect { case dd: DefDef if !dd.symbol.isClassConstructor => dd.symbol }
         .filterNot(s => s.isSuperBridgeMethod || s.isDefaultHelperMethod)
         .toList
       val inheritedValDefs = trees.collect { case vd: ValDef => vd }.toList
@@ -188,7 +188,7 @@ trait ClassLikeSupport:
     def getSupertypes: List[Bound] = getSupertypes(c).filterNot(s => s == defn.ObjectType || s == defn.AnyType).map(_.dokkaType)
 
     def getConstructors: List[Symbol] = membersToDocument.collect {
-      case d: DefDef if d.name == "<init>" && c.constructor.symbol != d.symbol => d.symbol
+      case d: DefDef if d.symbol.isClassConstructor && c.constructor.symbol != d.symbol => d.symbol
     }.toList
 
     private def extractNestedClasslikes(classDefs: List[ClassDef]): List[ClassDef] = classDefs.filter(c =>
