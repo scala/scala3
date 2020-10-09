@@ -132,7 +132,7 @@ object ProtoTypes {
 
     // equals comes from case class; no need to redefine
   end IgnoredProto
-  
+
   final class CachedIgnoredProto(ignored: Type) extends IgnoredProto(ignored)
 
   object IgnoredProto:
