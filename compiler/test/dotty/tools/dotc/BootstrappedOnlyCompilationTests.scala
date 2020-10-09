@@ -131,12 +131,15 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
-    aggregateTests(
+    val basicTests = List(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
       compileFilesInDir("tests/run-staging", withStagingOptions),
-      compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions),
-      compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions),
-    ).checkRuns()
+      compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions)
+    )
+    val tests =
+      if (scala.util.Properties.isWin) basicTests
+      else compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions) :: basicTests
+    aggregateTests(tests: _*).checkRuns()
   }
 
   @Test def runBootstrappedOnly: Unit = {
