@@ -49,6 +49,9 @@ trait RunnerOrchestration {
   def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
     monitor.runMain(classPath)
 
+  /** Kill all processes */
+  def cleanup() = monitor.killAll()
+
   private val monitor = new RunnerMonitor
 
   /** The runner monitor object keeps track of child JVM processes by keeping
@@ -195,9 +198,10 @@ trait RunnerOrchestration {
       result
     }
 
-    private def killAll(): Unit =
+    def killAll(): Unit = {
       freeRunners.foreach(_.kill())
       busyRunners.foreach(_.kill())
+    }
 
     // On shutdown, we need to kill all runners:
     sys.addShutdownHook(killAll())
