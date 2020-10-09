@@ -30,7 +30,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   // Positive tests ------------------------------------------------------------
 
-  @Test def posMacros: Unit = if (!scala.util.Properties.isWin) {
+  @Test def posMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosMacros")
     aggregateTests(
       compileFilesInDir("tests/bench", defaultOptions),
@@ -129,7 +129,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     )
   }.checkRuns()
 
-  @Test def runWithCompiler: Unit = if (!scala.util.Properties.isWin) {
+  @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
@@ -139,7 +139,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     ).checkRuns()
   }
 
-  @Test def runBootstrappedOnly: Unit = if (!scala.util.Properties.isWin) {
+  @Test def runBootstrappedOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runBootstrappedOnly")
     aggregateTests(
       compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),
@@ -151,7 +151,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   // Pickling tests are very memory intensive and as such need to be run with a
   // lower level of concurrency as to not kill their running VMs
 
-  @Test def picklingWithCompiler: Unit = if (!scala.util.Properties.isWin) {
+  @Test def picklingWithCompiler: Unit = {
     val jvmBackendFilter = FileFilter.exclude(List("BTypes.scala", "Primitives.scala")) // TODO
     implicit val testGroup: TestGroup = TestGroup("testPicklingWithCompiler")
     aggregateTests(
