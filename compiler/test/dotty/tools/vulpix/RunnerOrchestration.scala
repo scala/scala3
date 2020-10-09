@@ -49,7 +49,7 @@ trait RunnerOrchestration {
   def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
     monitor.runMain(classPath)
 
-  private val monitor = new RunnerMonitor
+  lazy private val monitor = new RunnerMonitor
 
   /** The runner monitor object keeps track of child JVM processes by keeping
    *  them in two structures - one for free, and one for busy children.
