@@ -119,9 +119,9 @@ jobs:
         run: sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test"
         shell: cmd
 
-      # - name: Scala.js Test
-      #   run: sbt ";sjsJUnitTests/test"
-      #   shell: cmd
+      - name: Scala.js Test
+        run: sbt ";sjsJUnitTests/test"
+        shell: cmd
 
   community_build:
     runs-on: [self-hosted, Linux]
