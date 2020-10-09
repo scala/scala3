@@ -120,7 +120,7 @@ jobs:
         shell: cmd
 
       - name: Scala.js Test
-        run: sbt ";sjsJUnitTests/test"
+        run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
 
   community_build:
