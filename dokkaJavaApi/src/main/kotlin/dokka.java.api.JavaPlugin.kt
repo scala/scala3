@@ -122,6 +122,12 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
         } override dokkaBase.docTagToContentConverter
     }
 
+    val implicitMembersExtensionTransformer by extending {
+        CoreExtensions.documentableTransformer providing { ctx ->
+            createImplicitMembersExtensionTransformer(ctx)
+        }
+    }
+
 
     abstract fun createSourceToDocumentableTranslator(cxt: DokkaContext, sourceSet: SourceSetWrapper): DModule
     abstract fun createSignatureProvider(ctcc: CommentsToContentConverter, logger: DokkaLogger): SignatureProvider
@@ -142,6 +148,7 @@ abstract class JavaDokkaPlugin : DokkaPlugin() {
     ): DocumentableTransformer
     abstract fun createHtmlRenderer(ctx: DokkaContext): Renderer
     abstract fun createCommentToContentConverter(): CommentsToContentConverter
+    abstract fun createImplicitMembersExtensionTransformer(ctx: DokkaContext): DocumentableTransformer
 }
 
 // TODO we probably does not need that

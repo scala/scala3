@@ -76,3 +76,4 @@ class DottyDokkaPlugin extends JavaDokkaPlugin:
     ) = ScalaSourceLinksTransformer(ctx, commentsToContentConverter, signatureProvider, logger)
   override def createHtmlRenderer(ctx: DokkaContext) = ScalaHtmlRenderer(ctx)
   override def createCommentToContentConverter() = ScalaCommentToContentConverter
+  override def createImplicitMembersExtensionTransformer(ctx: DokkaContext) = ImplicitMembersExtensionTransformer(ctx)

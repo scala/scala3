@@ -13,6 +13,7 @@ import org.jetbrains.dokka.plugability.DokkaContext
 import dokka.java.api._
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties.PropertyContainer
+import org.jetbrains.dokka.model.properties.PropertyContainerKt._
 import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 import java.util.{List => JList}
 
@@ -126,7 +127,7 @@ trait DokkaBaseTastyInspector:
             f.getDocumentation,
             null,
             sourceSet.toSet,
-            PropertyContainer.Companion.empty()
+            f.getExtra
           )
         )
         found.getOrElse(throw IllegalStateException("No package for entries found"))
@@ -136,7 +137,8 @@ trait DokkaBaseTastyInspector:
   extension (self: DPackage) def mergeWith(other: DPackage): DPackage =
     val doc1 = self.getDocumentation.asScala.get(sourceSet.getSourceSet).map(_.getChildren).getOrElse(Nil.asJava)
     val doc2 = other.getDocumentation.asScala.get(sourceSet.getSourceSet).map(_.getChildren).getOrElse(Nil.asJava)
-    DPackage(
+    mergeExtras(
+      DPackage(
         self.getDri,
         (self.getFunctions.asScala ++ other.getFunctions.asScala).asJava,
         (self.getProperties.asScala ++ other.getProperties.asScala).asJava,
@@ -152,6 +154,9 @@ trait DokkaBaseTastyInspector:
         null,
         sourceSet.toSet,
         PropertyContainer.Companion.empty()
+      ),
+      self, 
+      other
     )
 
 /** Parses a single Tasty compilation unit. */
