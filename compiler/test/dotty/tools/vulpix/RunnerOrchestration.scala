@@ -49,7 +49,7 @@ trait RunnerOrchestration {
   def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
     monitor.runMain(classPath)
 
-  lazy private val monitor = new RunnerMonitor
+  private val monitor = new RunnerMonitor
 
   /** The runner monitor object keeps track of child JVM processes by keeping
    *  them in two structures - one for free, and one for busy children.
@@ -167,14 +167,15 @@ trait RunnerOrchestration {
         .start()
     }
 
-    private val allRunners = List.fill(numberOfSlaves)(new Runner(createProcess))
-    private val freeRunners = mutable.Queue(allRunners: _*)
+    private val freeRunners = mutable.Queue.empty[Runner]
     private val busyRunners = mutable.Set.empty[Runner]
 
     private def getRunner(): Runner = synchronized {
-      while (freeRunners.isEmpty) wait()
+      while (freeRunners.isEmpty && busyRunners.size >= numberOfSlaves) wait()
 
-      val runner = freeRunners.dequeue()
+      val runner =
+        if (freeRunners.isEmpty) new Runner(createProcess)
+        else freeRunners.dequeue()
       busyRunners += runner
 
       notify()
@@ -194,7 +195,9 @@ trait RunnerOrchestration {
       result
     }
 
-    private def killAll(): Unit = allRunners.foreach(_.kill())
+    private def killAll(): Unit =
+      freeRunners.foreach(_.kill())
+      busyRunners.foreach(_.kill())
 
     // On shutdown, we need to kill all runners:
     sys.addShutdownHook(killAll())
