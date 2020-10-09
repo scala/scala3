@@ -674,7 +674,7 @@ object Contexts {
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
   }
 
-  private def exploreCtx(using Context): Context =
+  private def exploreCtx(using Context): FreshContext =
     util.Stats.record("explore")
     val base = ctx.base
     import base._
@@ -698,6 +698,10 @@ object Contexts {
     ectx.base.exploresInUse -= 1
 
   inline def explore[T](inline op: Context ?=> T)(using Context): T =
+    val ectx = exploreCtx
+    try op(using ectx) finally wrapUpExplore(ectx)
+
+  inline def exploreInFreshCtx[T](inline op: FreshContext ?=> T)(using Context): T =
     val ectx = exploreCtx
     try op(using ectx) finally wrapUpExplore(ectx)
 

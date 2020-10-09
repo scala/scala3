@@ -239,7 +239,7 @@ object Symbols {
       }
 
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
-    def orElse(that: => Symbol)(using Context): Symbol =
+    inline def orElse(inline that: Symbol)(using Context): Symbol =
       if (this.exists) this else that
 
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
