@@ -3,30 +3,24 @@ package vulpix
 
 import java.io.{File => JFile}
 import org.junit.Assert._
-import org.junit.Test
+import org.junit.{ Test, AfterClass }
 
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 /** Unit tests for the Vulpix test suite */
-class VulpixUnitTests extends ParallelTesting {
+class VulpixUnitTests {
+  import VulpixUnitTests._
   import TestConfiguration._
 
   implicit val _: SummaryReporting = new NoSummaryReport
 
   implicit def testGroup: TestGroup = TestGroup("VulpixTests")
 
-  def maxDuration = 3.seconds
-  def numberOfSlaves = 5
-  def safeMode = sys.env.get("SAFEMODE").isDefined
-  def isInteractive = !sys.env.contains("DRONE")
-  def testFilter = None
-  def updateCheckFiles: Boolean = false
-
   // To fail with something else than an AssertionError
   def fail(): Unit = throw new Exception("didn't fail properly")
 
-  @Test def missingFile: Unit = if (!scala.util.Properties.isWin)
+  @Test def missingFile: Unit =
     try {
       compileFile("tests/vulpix-tests/unit/i-dont-exist.scala", defaultOptions).expectFailure.checkExpectedErrors()
       fail()
@@ -64,7 +58,7 @@ class VulpixUnitTests extends ParallelTesting {
   @Test def runDiffOutput1: Unit =
     compileFile("tests/vulpix-tests/unit/runDiffOutput1.scala", defaultOptions).expectFailure.checkRuns()
 
-  @Test def runStackOverflow: Unit = if (!scala.util.Properties.isWin)
+  @Test def runStackOverflow: Unit =
     compileFile("tests/vulpix-tests/unit/stackOverflow.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def runOutRedirects: Unit =
@@ -82,7 +76,7 @@ class VulpixUnitTests extends ParallelTesting {
   @Test def deadlock: Unit =
     compileFile("tests/vulpix-tests/unit/deadlock.scala", defaultOptions).expectFailure.checkRuns()
 
-  @Test def badJava: Unit = if (!scala.util.Properties.isWin)
+  @Test def badJava: Unit =
     try {
       compileFile("tests/vulpix-tests/unit/BadJava.java", defaultOptions).suppressAllOutput.checkCompile()
       fail()
@@ -90,7 +84,7 @@ class VulpixUnitTests extends ParallelTesting {
       case ae: AssertionError => assertTrue(ae.getMessage.contains("java compilation failed"))
     }
 
-  @Test def runTimeout: Unit = if (!scala.util.Properties.isWin) {
+  @Test def runTimeout: Unit = {
     val fileName = s"tests/vulpix-tests/unit/timeout.scala"
     try {
       compileFile(fileName, defaultOptions).checkRuns()
@@ -102,4 +96,17 @@ class VulpixUnitTests extends ParallelTesting {
         assert(actual.matches(expect), "actual = " + actual)
     }
   }
+}
+
+
+object VulpixUnitTests extends ParallelTesting {
+  def maxDuration = 3.seconds
+  def numberOfSlaves = 5
+  def safeMode = sys.env.get("SAFEMODE").isDefined
+  def isInteractive = !sys.env.contains("DRONE")
+  def testFilter = None
+  def updateCheckFiles: Boolean = false
+
+  @AfterClass
+  def tearDown() = this.cleanup()
 }
