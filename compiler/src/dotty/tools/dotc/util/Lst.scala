@@ -5,6 +5,7 @@ package util
 import collection.mutable.{ListBuffer, StringBuilder}
 import collection.immutable.Map
 import reflect.ClassTag
+import annotation.infix
 
 /** A lightweight class for lists, optimized for short and medium lengths.
  *  A list is represented at runtime as
@@ -14,711 +15,711 @@ import reflect.ClassTag
  *    and the element is not an array:   the element itself
  *    Otherwise:                         an Array[Any] containing the elements
  */
-class Lst[+T](val elems: Any) extends AnyVal { self =>
-  import Lst._
 
-  inline def locally[T](body: => T): T = body
-
-  def length: Int = elems match {
-    case null => 0
-    case elems: Arr => elems.length
-    case elem => 1
-  }
-
-  def isEmpty = elems == null
-  def nonEmpty = elems != null
-
-  inline def foreach(op: => T => Unit): Unit = {
-    def sharedOp(x: T) = op(x)
-    elems match {
-      case null =>
-      case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-        var i = 0
-        while (i < elems.length) { sharedOp(elem(i)); i += 1 }
-      case elem: T @ unchecked => sharedOp(elem)
-    }
-  }
-
-  inline def foreachReversed(inline op: T => Unit): Unit = {
-    def sharedOp(x: T) = op(x)
-    elems match {
-      case null =>
-      case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-        var i = elems.length
-        while (i > 0) { i -= 1; sharedOp(elem(i)) }
-      case elem: T @ unchecked => sharedOp(elem)
-    }
-  }
-
-  /** Like `foreach`, but completely inlines `op`, at the price of generating the code twice.
-   *  Should be used only of `op` is small
-   */
-  inline def foreachInlined(op: => T => Unit): Unit = {
-    elems match {
-      case null =>
-      case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-        var i = 0
-        while (i < elems.length) { op(elem(i)); i += 1 }
-      case elem: T @unchecked => op(elem)
-    }
-  }
-
-  def iterator(): Iterator[T] = elems match {
-    case null => Iterator.empty
-    case elems: Arr => elems.iterator.asInstanceOf[Iterator[T]]
-    case elem: T @unchecked => Iterator.single(elem)
-  }
-
-  def copyToArray[U >: T](target: Array[U], from: Int) = elems match {
-    case null =>
-    case elems: Arr => System.arraycopy(elems, 0, target, from, elems.length)
-    case elem: T @ unchecked => target(from) = elem
-  }
-
-  def toArray[U >: T : ClassTag]: Array[U] = {
-    val result = new Array[U](length)
-    copyToArray(result, 0)
-    result
-  }
-
-  def toSet[U >: T]: collection.immutable.Set[U] = {
-    var xs = Set[U]()
-    foreach(xs += _)
-    xs
-  }
-
-  def toList: List[T] = {
-    val buf = new collection.mutable.ListBuffer[T]
-    foreach(buf += _)
-    buf.toList
-  }
-
-  def toListReversed: List[T] = {
-    var result: List[T] = Nil
-    foreach(x => result = x :: result)
-    result
-  }
-
-  def toIterable: Iterable[T] = new Iterable[T] {
-    def iterator = self.iterator()
-  }
-
-  /** `f` is pulled out, not duplicated */
-  inline def map[U](f: => T => U): Lst[U] = {
-    def op(x: T) = f(x)
-    elems match {
-      case null => Empty
-      case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-        val newElems = new Arr(elems.length)
-        var i = 0
-        while (i < elems.length) { newElems(i) = op(elem(i)); i += 1 }
-        multi[U](newElems)
-      case elem: T @ unchecked => single[U](op(elem))
-    }
-  }
-
-  def mapConserve[U](f: T => U): Lst[U] = elems match {
-    case null => Empty
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      var newElems: Arr = null
-      var i = 0
-      while (i < elems.length) {
-        val x = elem(i)
-        val y = f(x)
-        if (newElems != null) newElems(i) = y
-        else if (!eq(x, y)) {
-          newElems = new Arr(elems.length)
-          System.arraycopy(elems, 0, newElems, 0, i)
-          newElems(i) = y
-        }
-        i += 1
-      }
-      if (newElems == null) this.asInstanceOf[Lst[U]] else multi[U](newElems)
-    case elem: T @ unchecked => single[U](f(elem))
-  }
-
-  def flatMapIterable[U](f: T => Iterable[U]): Lst[U] = flatMap(x => fromIterable(f(x)))
-
-  def flatMap[U](f: T => Lst[U]): Lst[U] = elems match {
-    case null => Empty
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      val newElemss: Arr = new Arr(elems.length)
-      var i = 0
-      var len = 0
-      while (i < elems.length) {
-        val ys = f(elem(i))
-        len += ys.length
-        newElemss(i) = ys.elems
-        i += 1
-      }
-      if (len == 0) Empty
-      else if (len == 1) {
-        i = 0
-        while (newElemss(i) == null) i += 1
-        new Lst[U](newElemss(i))
-      }
-      else {
-        val newElems = new Arr(len)
-        i = 0
-        var j = 0
-        while (i < newElemss.length) {
-          val ys = new Lst[U](newElemss(i))
-          ys.copyToArray(newElems, j)
-          j += ys.length
-          i += 1
-        }
-        multi[U](newElems)
-      }
-    case elem: T @ unchecked => f(elem)
-  }
-
-  def filter(p: T => Boolean): Lst[T] = elems match {
-    case null => Empty
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      val scratch = new Arr(elems.length)
-      var i = 0
-      var len = 0
-      while (i < elems.length) {
-        val x = elem(i)
-        if (p(x)) { scratch(len) = x; len += 1 }
-        i += 1
-      }
-      if (len == elems.length) this
-      else _fromArray(scratch, 0, len)
-    case elem: T @unchecked =>
-      if (p(elem)) this else Empty
-  }
-  def filterNot(p: T => Boolean): Lst[T] = filter(!p(_))
-
-  def withFilter(p: T => Boolean): Lst[T] = filter(p)
-
-  def partition(p: T => Boolean): (Lst[T], Lst[T]) = elems match
-    case null => (Empty, Empty)
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      val hits, misses = new Arr(elems.length)
-      var i = 0
-      var hitCount = 0
-      var missCount = 0
-      while i < elems.length do
-        val x = elem(i)
-        if p(x) then
-          hits(hitCount) = x
-          hitCount += 1
-        else
-          misses(missCount) = x
-          missCount += 1
-        i += 1
-      if hitCount == elems.length then (this, Empty)
-      else if missCount == elems.length then (Empty, this)
-      else (_fromArray(hits, 0, hitCount), _fromArray(misses, 0, missCount))
-    case elem: T @unchecked =>
-      if (p(elem)) (this, Empty) else (Empty, this)
-
-  def collect[U](pf: PartialFunction[T, U]): Lst[U] = {
-    val buf = new Lst.Buffer[U]
-    foreach(x => if (pf.isDefinedAt(x)) buf += pf(x))
-    buf.toLst
-  }
-
-  inline def exists(p: => T => Boolean): Boolean = {
-    def op(x: T) = p(x)
-    elems match {
-      case null => false
-      case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-        var i = 0
-        while (i < elems.length && !op(elem(i))) i += 1
-        i < elems.length
-      case elem: T @unchecked =>
-        op(elem)
-    }
-  }
-
-  inline def forall(p: => T => Boolean): Boolean = {
-    def op(x: T) = p(x)
-    elems match {
-      case null => true
-      case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-        var i = 0
-        while (i < elems.length && op(elem(i))) i += 1
-        i == elems.length
-      case elem: T @unchecked =>
-        op(elem)
-    }
-  }
-
-  def contains[U >: T](x: U): Boolean = elems match {
-    case null => false
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      var i = 0
-      while (i < elems.length && elem(i) != x) i += 1
-      i < elems.length
-    case elem: T @unchecked =>
-      elem == x
-  }
-
-  inline def foldLeft[U](z: U)(f: => (U, T) => U) = {
-    def op(x: U, y: T) = f(x, y)
-    elems match {
-      case null => z
-      case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-        var i = 0
-        var acc = z
-        while (i < elems.length) { acc = op(acc, elem(i)); i += 1 }
-        acc
-      case elem: T @unchecked =>
-        op(z, elem)
-    }
-  }
-
-  inline def /: [U](z: U)(op: => (U, T) => U) = foldLeft(z)(op)
-
-  def reduceLeft[U >: T](op: (U, U) => U) = elems match {
-    case null =>
-      throw new UnsupportedOperationException("Lst.Empty.reduceLeft")
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      var i = 1
-      var acc: U = elem(0)
-      while (i < elems.length) { acc = op(acc, elem(i)); i += 1 }
-      acc
-    case elem: T @unchecked =>
-      elem
-  }
-
-  def count(p: T => Boolean): Int = elems match
-    case null => 0
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      var i = 0
-      var cnt = 0
-      while i < elems.length do
-        if p(elem(i)) then cnt += 1
-        i += 1
-      cnt
-    case elem: T @unchecked =>
-      if p(elem) then 1 else 0
-
-  def reverse: Lst[T] = elems match {
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      val newElems = new Arr(elems.length)
-      var i = 0
-      while (i < elems.length) {
-        newElems(elems.length - 1 - i) = elem(i)
-        i += 1
-      }
-      multi[T](newElems)
-    case _ => this
-  }
-
-  def apply(n: Int): T = elems match {
-    case null => throw new IndexOutOfBoundsException(n.toString)
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      elem(n)
-    case elem: T @unchecked =>
-      if (n == 0) elem else throw new IndexOutOfBoundsException(n.toString)
-  }
-
-  def head: T = apply(0)
-  def last: T = apply(length - 1)
-
-  def headOr[U >: T](alt: => U): U = if (isEmpty) alt else head
-
-  def slice(start: Int, end: Int): Lst[T] =
-    if (start < 0) slice(0, end)
-    else elems match {
-      case null => this
-      case elems: Arr => _fromArray(elems, start, end `min` elems.length)
-      case elem: T @ unchecked => if (start == 0 && end > 0) this else Empty
-    }
-
-  def drop(n: Int): Lst[T] = slice(n, length)
-  def tail = drop(1)
-  def take(n: Int): Lst[T] = slice(0, n)
-
-  def dropRight(n: Int): Lst[T] = take(length - n)
-  def takeRight(n: Int): Lst[T] = drop(length - n)
-  def init = dropRight(1)
-
-  def firstIndexOf[U >: T](x: U, from: Int = 0): Int = elems match {
-    case null => 0
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      var i = from
-      while (i < length && elem(i) != x) i += 1
-      i
-    case elem: T @ unchecked => if (from == 0 && elem == x) 0 else 1
-  }
-
-  def firstIndexWhere(p: T => Boolean, from: Int = 0): Int = elems match {
-    case null => 0
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      var i = from
-      while (i < length && !p(elem(i))) i += 1
-      i
-    case elem: T @ unchecked => if (from == 0 && p(elem)) 0 else 1
-  }
-
-  def find(p: T => Boolean): Option[T] = {
-    val idx = firstIndexWhere(p)
-    if (idx < length) Some(apply(idx)) else None
-  }
-
-  def takeWhile(p: T => Boolean): Lst[T] = take(firstIndexWhere(!p(_)))
-  def dropWhile(p: T => Boolean): Lst[T] = drop(firstIndexWhere(!p(_)))
-
-  def ++ [U >: T](that: Lst[U]): Lst[U] =
-    if (elems == null) that
-    else if (that.elems == null) this
-    else {
-      val len1 = this.length
-      val len2 = that.length
-      val newElems = new Arr(len1 + len2)
-      this.copyToArray(newElems, 0)
-      that.copyToArray(newElems, len1)
-      multi[U](newElems)
-    }
-
-  def :: [U >: T](x: U): Lst[U] = elems match {
-    case null => Lst(x)
-    case elems: Arr =>
-      val newElems = new Arr(1 + elems.length)
-      newElems(0) = x
-      copyToArray(newElems, 1)
-      multi[U](newElems)
-    case elem: T @unchecked =>
-      Lst(x, elem)
-  }
-
-  def :+ [U >: T](x: U): Lst[U] = elems match {
-    case null => Lst(x)
-    case elems: Arr =>
-      val newElems = new Arr(elems.length + 1)
-      copyToArray(newElems, 0)
-      newElems(elems.length) = x
-      multi[U](newElems)
-    case elem: T @unchecked =>
-      Lst(elem, x)
-  }
-
-  def union [U >: T](that: Lst[U]): Lst[U] = this ++ that.filterNot(this.contains)
-  def intersect [U >: T](that: Lst[U]): Lst[U] = this.filter(that.contains)
-
-  def zipWith[U, V](that: Lst[U])(op: (T, U) => V): Lst[V] =
-    this.elems match {
-      case null => Empty
-      case elems1: Arr => def elem1(i: Int) = elems1(i).asInstanceOf[T]
-        that.elems match {
-          case null => Empty
-          case elems2: Arr => def elem2(i: Int) = elems2(i).asInstanceOf[U]
-            val len = elems1.length min elems2.length
-            if (len == 0) Empty
-            else if (len == 1) single[V](op(elem1(0), elem2(0)))
-            else {
-              var newElems: Arr = null
-              var i = 0
-              while (i < len) {
-                val x = elem1(i)
-                val y = op(x, elem2(i))
-                if (newElems != null) newElems(i) = y
-                else if (!eq(x, y)) {
-                  newElems = new Arr(len)
-                  System.arraycopy(elems, 0, newElems, 0, i)
-                  newElems(i) = y
-                }
-                i += 1
-              }
-              multi[V](newElems)
-            }
-          case elem2: U @unchecked =>
-            single[V](op(elem1(0), elem2))
-        }
-      case elem1: T @unchecked =>
-        that.elems match {
-          case null => Empty
-          case elems2: Arr => def elem2(i: Int) = elems2(i).asInstanceOf[U]
-            single[V](op(elem1, elem2(0)))
-          case elem2: U @unchecked => single[V](op(elem1, elem2))
-        }
-    }
-
-  def zip[U](that: Lst[U]): Lst[(T, U)] = zipWith(that)((_, _))
-
-  def zipWithIndex: Lst[(T, Int)] = elems match {
-    case null => Empty
-    case elems: Arr => def elem(i: Int) = elems(i).asInstanceOf[T]
-      val newElems = new Arr(elems.length)
-      var i = 0
-      while (i < elems.length) { newElems(i) = (elem(i), i); i += 1 }
-      multi[(T, Int)](newElems)
-    case elem: T @unchecked =>
-      single[(T, Int)]((elem, 0))
-  }
-
-  def indices: Lst[Int] = elems match {
-    case null => Empty
-    case elems: Arr =>
-      val newElems: Arr = new Arr(elems.length)
-      var i = 0
-      while (i < elems.length) { newElems(i) = i; i += 1 }
-      multi[Int](newElems)
-    case elem =>
-      single[Int](0)
-  }
-
-  def corresponds[U](that: Lst[U])(p: (T, U) => Boolean): Boolean =
-    (this `eqLst` that) || {
-      this.elems match {
-        case null =>
-          that.elems == null
-        case elems1: Arr => def elem1(i: Int) = elems1(i).asInstanceOf[T]
-          that.elems match {
-            case elems2: Arr => def elem2(i: Int) = elems2(i).asInstanceOf[U]
-              val len = elems1.length
-              len == elems2.length && {
-                var i = 0
-                while (i < len && p(elem1(i), elem2(i))) i += 1
-                i == len
-              }
-            case _ => false
-          }
-        case elem1: T @unchecked =>
-          that.elems match {
-            case null => false
-            case elems2: Arr => false
-            case elem2: U @unchecked => p(elem1, elem2)
-          }
-      }
-    }
-
-  override def equals(that: Any) = that match {
-    case that: Lst[_] =>
-      (this `eqLst` that) || {
-        elems match {
-          case elems1: Arr =>
-            that.elems match {
-              case elems2: Arr =>
-                val len = elems1.length
-                len == elems2.length && {
-                  var i = 0
-                  while (i < len && elems1(i).equals(elems2(i))) i += 1
-                  i == len
-                }
-              case _ => false
-            }
-          case elem => elem == that.elems
-        }
-      }
-    case _ =>
-      false
-  }
-
-  def eqLst[U](that: Lst[U]) = eq(elems, that.elems)
-
-  def eqElements[U](that: Lst[U]): Boolean = corresponds(that)(eqFn)
-
-  def mkString: String = mkString(", ")
-
-  def mkString(sep: String): String = mkString("", sep, "")
-  def mkString(left: String, sep: String, right: String): String = {
-    val b = new StringBuilder(left)
-    var first = true
-    foreachInlined { elem =>
-      if (first) first = false else b ++= sep
-      b ++= elem.toString
-    }
-    b ++= right
-    b.toString
-  }
-
-  override def toString = mkString("Lst(", ", ", ")")
-}
-
-object Lst {
+type Lst[+T] = Lst.Vault.Lst[T]
+object Lst:
 
   private type Arr = Array[Any]
 
-  private def eq(x: Any, y: Any) = x.asInstanceOf[AnyRef] `eq` y.asInstanceOf[AnyRef]
-  private val eqFn = (x: Any, y: Any) => eq(x, y)
+  object Vault:
+    opaque type Lst[+T] = Any
 
-  val Empty = new Lst[Nothing](null)
+    private[Lst] def Empty: Lst[Nothing] = null
+
+    /** Create a list of length 1 from given element `x` */
+    private[Lst] def single[T](x: T): Lst[T] = x match
+      case null | _: Arr =>
+        val wrapped = new Arr(1)
+        wrapped(0) = x
+        wrapped
+      case _ =>
+        x
+
+    /** Create a list of length `xs.length` from the elements in `xs`
+     *  @pre  xs is not empty
+     */
+    private[Lst] def multi[T](xs: Arr): Lst[T] =
+      if xs.length == 0 then Empty
+      else if xs.length == 1 then single(xs(0).asInstanceOf[T])
+      else xs
+
+    /** Create a list directly from the given array. Do not convert arrays of size <= 1.
+     */
+    private[Lst] def fromArr[T](xs: Arr): Lst[T] =
+      xs
+  end Vault
+
+  val Empty = Vault.Empty
+  import Vault.{single, multi, fromArr}
+
+  private inline def eq(x: Any, y: Any) = x.asInstanceOf[AnyRef] `eq` y.asInstanceOf[AnyRef]
+  private val eqFn = (x: Any, y: Any) => eq(x, y)
 
   def apply[T](): Lst[T] = Empty
 
   def apply[T](x0: T): Lst[T] = single[T](x0)
 
-  def apply[T](x0: T, x1: T): Lst[T] = {
-    val elems = new Arr(2)
-    elems(0) = x0
-    elems(1) = x1
-    new Lst[T](elems)
-  }
+  def apply[T](x0: T, x1: T): Lst[T] =
+    val xs = new Arr(2)
+    xs(0) = x0
+    xs(1) = x1
+    fromArr[T](xs)
 
-  def apply[T](x0: T, x1: T, x2: T): Lst[T] = {
-    val elems = new Arr(3)
-    elems(0) = x0
-    elems(1) = x1
-    elems(2) = x2
-    new Lst[T](elems)
-  }
+  def apply[T](x0: T, x1: T, x2: T): Lst[T] =
+    val xs = new Arr(3)
+    xs(0) = x0
+    xs(1) = x1
+    xs(2) = x2
+    fromArr[T](xs)
 
-  def apply[T](x0: T, x1: T, x2: T, x3: T): Lst[T] = {
-    val elems = new Arr(4)
-    elems(0) = x0
-    elems(1) = x1
-    elems(2) = x2
-    elems(3) = x3
-    new Lst[T](elems)
-  }
+  def apply[T](x0: T, x1: T, x2: T, x3: T): Lst[T] =
+    val xs = new Arr(4)
+    xs(0) = x0
+    xs(1) = x1
+    xs(2) = x2
+    xs(3) = x3
+    fromArr[T](xs)
 
-  def apply[T](x0: T, x1: T, x2: T, x3: T, x4: T, xs: T*): Lst[T] = {
-    val elems = new Arr(5 + xs.length)
-    elems(0) = x0
-    elems(1) = x1
-    elems(2) = x2
-    elems(3) = x3
-    elems(4) = x4
-    xs.copyToArray(elems, 5)
-    new Lst[T](elems)
-  }
+  def apply[T](x0: T, x1: T, x2: T, x3: T, x4: T, others: T*): Lst[T] =
+    val xs = new Arr(5 + others.length)
+    xs(0) = x0
+    xs(1) = x1
+    xs(2) = x2
+    xs(3) = x3
+    xs(4) = x4
+    others.copyToArray(xs, 5)
+    fromArr[T](xs)
 
-  def fill[T](n: Int)(elem: => T) = {
-    val elems = new Arr(n)
+
+  private def _fromArray[T](xs: Arr, start: Int, end: Int): Lst[T] =
+    val len = end - start
+    if len <= 0 then Empty
+    else if len == 1 then single[T](xs(start).asInstanceOf[T])
+    else if start == 0 && end == xs.length then fromArr(xs)
+    else
+      val newElems = new Arr(len)
+      System.arraycopy(xs, start, newElems, 0, len)
+      fromArr(newElems)
+
+
+  def fromArray[T](xs: Array[T], start: Int, end: Int): Lst[T] =
+    _fromArray(xs.asInstanceOf[Arr], start, end)
+
+  def fromIterator[T](it: Iterator[T]): Lst[T] =
+    val buf = new Buffer[T]
+    it.foreach(buf += _)
+    buf.toLst
+
+  def fromIterable[T](xs: Iterable[T]): Lst[T] = fromIterator(xs.iterator)
+
+  extension [T](xs: Lst[T] & Arr)
+    private def at(i: Int): T = (xs: Arr)(i).asInstanceOf[T]
+
+  extension[T](xs: Lst[T]):
+
+    def length: Int = xs match
+      case null => 0
+      case xs: Arr => xs.length
+      case x => 1
+
+    def isEmpty = eq(xs, null)
+    def nonEmpty = !eq(xs, null)
+
+    inline def foreach(inline op: T => Unit): Unit =
+      def sharedOp(x: T) = op(x)
+      xs match
+        case null =>
+        case xs: Arr =>
+          var i = 0
+          while i < xs.length do
+            sharedOp(xs.at(i))
+            i += 1
+        case x: T @ unchecked => sharedOp(x)
+
+    inline def foreachReversed(inline op: T => Unit): Unit =
+      def sharedOp(x: T) = op(x)
+      xs match
+        case null =>
+        case xs: Arr =>
+          var i = xs.length
+          while (i > 0) do
+            i -= 1
+            sharedOp(xs.at(i))
+        case x: T @ unchecked => sharedOp(x)
+
+    /** Like `foreach`, but completely inlines `op`, at the price of generating the code twice.
+    *  Should be used only of `op` is small
+    */
+    inline def foreachInlined(inline op: T => Unit): Unit =
+      xs match
+        case null =>
+        case xs: Arr =>
+          var i = 0
+          while i < xs.length do
+            op(xs.at(i))
+            i += 1
+        case x: T @unchecked => op(x)
+
+    def iterator: Iterator[T] = xs match
+      case null => Iterator.empty
+      case xs: Arr => xs.iterator.asInstanceOf[Iterator[T]]
+      case x: T @unchecked => Iterator.single(x)
+
+    def copyToArray(target: Array[T], from: Int) = xs match
+      case null =>
+      case xs: Arr => System.arraycopy(xs, 0, target, from, xs.length)
+      case x: T @ unchecked => target(from) = x
+
+    def toSet: collection.immutable.Set[T] =
+      var xs = Set[T]()
+      foreachInlined(xs += _)
+      xs
+
+    def toList: List[T] =
+      val buf = new collection.mutable.ListBuffer[T]
+      foreachInlined(buf += _)
+      buf.toList
+
+    def toListReversed: List[T] =
+      var result: List[T] = Nil
+      foreachInlined(x => result = x :: result)
+      result
+
+    def toIterable: Iterable[T] = new Iterable[T]:
+      def iterator = xs.iterator
+
+    def filter(p: T => Boolean): Lst[T] = xs match
+      case null => Empty
+      case xs: Arr =>
+        val scratch = new Arr(xs.length)
+        var i = 0
+        var len = 0
+        while i < xs.length do
+          val x = xs.at(i)
+          if p(x) then
+            scratch(len) = x
+            len += 1
+          i += 1
+        if len == xs.length then xs
+        else _fromArray(scratch, 0, len)
+      case x: T @unchecked => if (p(x)) xs else Empty
+
+    def filterNot(p: T => Boolean): Lst[T] = filter(!p(_))
+
+    def withFilter(p: T => Boolean): Lst[T] = filter(p)
+
+    def partition(p: T => Boolean): (Lst[T], Lst[T]) = xs match
+      case null => (Empty, Empty)
+      case xs: Arr =>
+        val hits, misses = new Arr(xs.length)
+        var i = 0
+        var hitCount = 0
+        var missCount = 0
+        while i < xs.length do
+          val x = xs.at(i)
+          if p(x) then
+            hits(hitCount) = x
+            hitCount += 1
+          else
+            misses(missCount) = x
+            missCount += 1
+          i += 1
+        if hitCount == xs.length then (xs, Empty)
+        else if missCount == xs.length then (Empty, xs)
+        else (_fromArray(hits, 0, hitCount), _fromArray(misses, 0, missCount))
+      case x: T @unchecked =>
+        if (p(x)) (xs, Empty) else (Empty, xs)
+
+    inline def exists(inline p: T => Boolean): Boolean =
+      def op(x: T) = p(x)
+      xs match
+        case null => false
+        case xs: Arr =>
+          var i = 0
+          while i < xs.length && !op(xs.at(i)) do i += 1
+          i < xs.length
+        case x: T @unchecked =>
+          op(x)
+
+    inline def forall(inline p: T => Boolean): Boolean =
+      def op(x: T) = p(x)
+      xs match
+        case null => true
+        case xs: Arr =>
+          var i = 0
+          while i < xs.length && op(xs.at(i)) do i += 1
+          i == xs.length
+        case x: T @unchecked =>
+          op(x)
+
+    def contains(x: T): Boolean = xs match
+      case null => false
+      case xs: Arr =>
+        var i = 0
+        while i < xs.length && xs.at(i) != x do i += 1
+        i < xs.length
+      case elem: T @unchecked =>
+        elem == x
+
+    def reverse: Lst[T] = xs match
+      case xs: Arr =>
+        val newElems = new Arr(xs.length)
+        var i = 0
+        while i < xs.length do
+          newElems(xs.length - 1 - i) = xs.at(i)
+          i += 1
+        multi[T](newElems)
+      case _ => xs
+
+    def apply(n: Int): T = xs match
+      case null =>
+        throw new IndexOutOfBoundsException(n.toString)
+      case xs: Arr =>
+        xs.at(n)
+      case x: T @unchecked =>
+        if n == 0 then x else throw new IndexOutOfBoundsException(n.toString)
+
+    def head: T = xs.apply(0)
+    def last: T = xs.apply(length - 1)
+
+    inline def headOr(inline alt: T): T = if isEmpty then alt else head
+
+    def slice(start: Int, end: Int): Lst[T] =
+      if start < 0 then slice(0, end)
+      else xs match
+        case null => xs
+        case xs: Arr => _fromArray(xs, start, end min xs.length)
+        case x: T @ unchecked => if start == 0 && end > 0 then xs else Empty
+
+    def drop(n: Int): Lst[T] = slice(n, length)
+    def tail: Lst[T] = drop(1)
+    def take(n: Int): Lst[T] = slice(0, n)
+
+    def dropRight(n: Int): Lst[T] = take(length - n)
+    def takeRight(n: Int): Lst[T] = drop(length - n)
+    def init: Lst[T] = dropRight(1)
+
+    def firstIndexOf(x: T, from: Int = 0): Int = xs match
+      case null => 0
+      case xs: Arr =>
+        var i = from
+        while i < length && xs.at(i) != x do i += 1
+        i
+      case elem: T @ unchecked => if from == 0 && elem == x then 0 else 1
+
+    def firstIndexWhere(p: T => Boolean, from: Int = 0): Int = xs match
+      case null => 0
+      case xs: Arr =>
+        var i = from
+        while i < length && !p(xs.at(i)) do i += 1
+        i
+      case elem: T @ unchecked => if from == 0 && p(elem) then 0 else 1
+
+    def find(p: T => Boolean): Option[T] =
+      val idx = firstIndexWhere(p)
+      if idx < length then Some(xs.apply(idx)) else None
+
+    def takeWhile(p: T => Boolean): Lst[T] = take(firstIndexWhere(!p(_)))
+    def dropWhile(p: T => Boolean): Lst[T] = drop(firstIndexWhere(!p(_)))
+
+    def reduceLeft(op: (T, T) => T) = xs match
+      case null =>
+        throw new UnsupportedOperationException("Lst.Empty.reduceLeft")
+      case xs: Arr =>
+        var i = 1
+        var acc = xs.at(0)
+        while i < xs.length do
+          acc = op(acc, xs.at(i))
+          i += 1
+        acc
+      case x: T @unchecked =>
+        x
+
+    def ++ (ys: Lst[T]): Lst[T] =
+      if xs.isEmpty then ys
+      else if ys.isEmpty then xs
+      else
+        val len1 = xs.length
+        val len2 = ys.length
+        val newElems = new Arr(len1 + len2)
+        xs.copyToArray(newElems, 0)
+        ys.copyToArray(newElems, len1)
+        multi[T](newElems)
+
+    def :+ (x: T): Lst[T] = xs match
+      case null => Lst(x)
+      case xs: Arr =>
+        val newElems = new Arr(xs.length + 1)
+        xs.copyToArray(newElems, 0)
+        newElems(xs.length) = x
+        multi[T](newElems)
+      case elem: T @unchecked =>
+        Lst(elem, x)
+
+    def union(ys: Lst[T]): Lst[T] = xs ++ ys.filterNot(xs.contains(_))
+    def intersect(ys: Lst[T]): Lst[T] = xs.filter(ys.contains(_))
+
+    def zipWithIndex: Lst[(T, Int)] = xs match
+      case null => Empty
+      case xs: Arr =>
+        val newElems = new Arr(xs.length)
+        var i = 0
+        while i < xs.length do
+          newElems(i) = (xs.at(i), i)
+          i += 1
+        multi[(T, Int)](newElems)
+      case x: T @unchecked =>
+        single[(T, Int)]((x, 0))
+
+    def indices: Lst[Int] = xs match
+      case null => Empty
+      case xs: Arr =>
+        val newElems: Arr = new Arr(xs.length)
+        var i = 0
+        while i < xs.length do
+          newElems(i) = i
+          i += 1
+        multi[Int](newElems)
+      case elem =>
+        single[Int](0)
+
+  extension [T: ClassTag](xs: Lst[T]):
+    def toArray: Array[T] =
+      val result = new Array[T](xs.length)
+      xs.copyToArray(result, 0)
+      result
+
+  extension [T, U](xs: Lst[T]):
+
+    /** `f` is pulled out, not duplicated */
+    inline def map(inline f: T => U): Lst[U] =
+      def op(x: T) = f(x)
+      xs match
+        case null => Empty
+        case xs: Arr =>
+          val newElems = new Arr(xs.length)
+          var i = 0
+          while i < xs.length do
+            newElems(i) = op(xs.at(i))
+            i += 1
+          multi[U](newElems)
+        case x: T @ unchecked => single[U](op(x))
+
+    def mapConserve(f: T => U): Lst[U] = xs match
+      case null => Empty
+      case xs: Arr =>
+        var newElems: Arr = null
+        var i = 0
+        while i < xs.length do
+          val x = xs.at(i)
+          val y = f(x)
+          if newElems != null then newElems(i) = y
+          else if !eq(x, y) then
+            newElems = new Arr(xs.length)
+            System.arraycopy(xs, 0, newElems, 0, i)
+            newElems(i) = y
+          i += 1
+        if newElems == null then xs.asInstanceOf[Lst[U]] else multi[U](newElems)
+      case x: T @ unchecked => single[U](f(x))
+
+    def flatMap(f: T => Lst[U]): Lst[U] = xs match
+      case null => Empty
+      case xs: Arr =>
+        val newElemss = new Array[Lst[U]](xs.length)
+        var i = 0
+        var len = 0
+        while i < xs.length do
+          val ys = f(xs.at(i))
+          len += ys.length
+          newElemss(i) = ys
+          i += 1
+        if len == 0 then Empty
+        else if len == 1 then
+          i = 0
+          while eq(newElemss(i), null) do i += 1
+          newElemss(i)
+        else
+          val newElems = new Arr(len)
+          i = 0
+          var j = 0
+          while i < newElemss.length do
+            val ys = newElemss(i)
+            ys.copyToArray(newElems, j)
+            j += ys.length
+            i += 1
+          fromArr[U](newElems)
+      case x: T @ unchecked => f(x)
+
+    def flatMap(f: T => Iterable[U], dummy: Null = null): Lst[U] =
+      flatMap(x => fromIterable(f(x)))
+
+    def collect(pf: PartialFunction[T, U]): Lst[U] =
+      val buf = new Buffer[U]
+      xs.foreach(x => if pf.isDefinedAt(x) then buf += pf(x))
+      buf.toLst
+
+    inline def foldLeft(z: U)(inline f: (U, T) => U) =
+      def op(x: U, y: T) = f(x, y)
+      xs match
+        case null => z
+        case xs: Arr =>
+          var i = 0
+          var acc = z
+          while i < xs.length do
+            acc = op(acc, xs.at(i))
+            i += 1
+          acc
+        case x: T @unchecked =>
+          op(z, x)
+
+    def zip(ys: Lst[U]): Lst[(T, U)] = xs.zipWith(ys)((_, _))
+
+    @infix def eqLst(ys: Lst[U]) = eq(xs, ys)
+
+    def corresponds(ys: Lst[U])(p: (T, U) => Boolean): Boolean =
+      (xs `eqLst` ys)
+      || xs.match
+          case null =>
+            ys.isEmpty
+          case xs: Arr =>
+            ys match
+              case ys: Arr =>
+                val len = xs.length
+                len == ys.length
+                && {
+                  var i = 0
+                  while i < len && p(xs.at(i), ys.at(i)) do i += 1
+                  i == len
+                }
+              case y: U @unchecked =>
+                xs.length == 1 && p(xs.at(0), y)
+          case x: T @unchecked =>
+            ys match
+              case null => false
+              case ys: Arr => ys.length == 1 && p(x, ys.at(0))
+              case y: U @unchecked => p(x, y)
+
+    def eqElements(ys: Lst[U]): Boolean = corresponds(ys)(eqFn)
+
+  extension [T](x: T)
+    def :: (xs: Lst[T]): Lst[T] = xs match
+      case null => Lst(x)
+      case xs: Arr =>
+        val newElems = new Arr(1 + xs.length)
+        newElems(0) = x
+        xs.copyToArray(newElems, 1)
+        multi[T](newElems)
+      case elem: T @unchecked =>
+        Lst(x, elem)
+
+  extension [T, U](z: T)
+    inline def /: (xs: Lst[U])(inline f: (T, U) => T): T =
+      xs.foldLeft(z)(f)
+
+  extension [T, U, V](xs: Lst[T]):
+    def zipWith(ys: Lst[U])(op: (T, U) => V): Lst[V] = xs match
+      case null => Empty
+      case xs: Arr =>
+        ys match
+          case null => Empty
+          case ys: Arr =>
+            val len = xs.length min ys.length
+            if len == 0 then Empty
+            else if len == 1 then single[V](op(xs.at(0), ys.at(0)))
+            else
+              var newElems: Arr = null
+              var i = 0
+              while i < len do
+                val x = xs.at(i)
+                val y = op(x, ys.at(i))
+                if newElems != null then
+                  newElems(i) = y
+                else if !eq(x, y) then
+                  newElems = new Arr(len)
+                  System.arraycopy(xs, 0, newElems, 0, i)
+                  newElems(i) = y
+                i += 1
+              if newElems == null then fromArr[V](xs)
+              else multi[V](newElems)
+          case y: U @unchecked =>
+            single[V](op(xs.at(0), y))
+      case x: T @unchecked =>
+        ys match
+          case null => Empty
+          case ys: Arr => single[V](op(x, ys.at(0)))
+          case y: U @unchecked => single[V](op(x, y))
+  end extension
+
+  def fill[T](n: Int)(elem: => T) =
+    val xs = new Arr(n)
     var i = 0
-    while (i < n) { elems(i) = elem; i += 1}
-    new Lst[T](elems)
-  }
+    while i < n do
+      xs(i) = elem
+      i += 1
+    multi[T](xs)
 
-  def tabulate[T](n: Int)(elem: Int => T) = {
-    val elems = new Arr(n)
+  def tabulate[T](n: Int)(elem: Int => T) =
+    val xs = new Arr(n)
     var i = 0
-    while (i < n) { elems(i) = elem(i); i += 1}
-    new Lst[T](elems)
-  }
+    while i < n do
+      xs(i) = elem(i)
+      i += 1
+    multi[T](xs)
 
-  def range(from: Int, until: Int): Lst[Int] = {
-    val elems = new Arr(until - from)
+  def range(from: Int, until: Int): Lst[Int] =
+    val xs = new Arr(until - from)
     var i = from
-    while (i < until) { elems(i) = i; i += 1}
-    new Lst[Int](elems)
-  }
+    while i < until do
+      xs(i) = i
+      i += 1
+    multi[Int](xs)
 
-  class Buffer[T] {
+  class Buffer[T]:
     private var len = 0
-    private var elem: Any = _
+    private var elem: T = _
     private var elems: Arr = _
 
     def size = len
 
     /** pre: len > 0, n >= 1 */
-    private def ensureSize(n: Int) =
-      if (len == 1) {
-        elems = new Arr(n `max` 16)
+    private def ensureSize(n: Int): Unit =
+      if len == 1 then
+        elems = new Arr(n max 16)
         elems(0) = elem
-      }
-      else if (len < n) {
-        val newLen = n `max` len << 2
+      else if len < n then
+        val newLen = n max len * 2
         val newElems = new Arr(newLen)
         System.arraycopy(elems, 0, newElems, 0, len)
         elems = newElems
-      }
 
     def isEmpty = size == 0
 
-    def += (x: T): this.type = {
-      if (len == 0) elem = x
-      else {
+    def += (x: T): this.type =
+      if len == 0 then elem = x
+      else
         ensureSize(len + 1)
         elems(len) = x
-      }
       len += 1
       this
-    }
 
-    def ++= (xs: Lst[T]): this.type = {
-      xs.elems match {
-        case null => this
-        case elems2: Arr =>
-          if (len == 0 && elems2.length != 1)
-            // if elems2.length == 1, elems2 is a wrapped single element list, which has to be unpacked
-            elems = elems2
-          else {
-            ensureSize(len + elems2.length)
-            System.arraycopy(elems2, 0, elems, len, elems2.length)
-          }
-          len += elems2.length
-        case elem: T @unchecked => this += elem
-      }
+    def ++= (xs: Lst[T]): this.type =
+      xs match
+        case null =>
+        case xs: Arr =>
+          if len == 0 && xs.length != 1 then
+            // if xs.length == 1, xs is a wrapped single element list, which has to remain packed
+            elems = xs
+          else
+            ensureSize(len + xs.length)
+            System.arraycopy(xs, 0, elems, len, xs.length)
+          len += xs.length
+        case x: T @unchecked => this += x
       this
-    }
 
     def exists(p: T => Boolean): Boolean =
-      if (len == 0) false
-      else if (len == 1) p(elem.asInstanceOf[T])
-      else {
+      if len == 0 then false
+      else if len == 1 then p(elem)
+      else
         var i = 0
-        while (i < len && !p(elems(i).asInstanceOf[T])) i += 1
+        while i < len && !p(elems(i).asInstanceOf[T]) do i += 1
         i < len
-      }
+
     def forall(p: T => Boolean): Boolean = !exists(!p(_))
 
     def contains(x: T): Boolean =
-      if (len == 0) false
-      else if (len == 1) elem == x
-      else {
+      if len == 0 then false
+      else if len == 1 then elem == x
+      else
         var i = 0
-        while (i < len && elems(i) != x) i += 1
+        while i < len && elems(i) != x do i += 1
         i < len
-      }
 
     def toLst: Lst[T] =
-      if (len == 0) Empty
-      else if (len == 1) single(elem)
+      if len == 0 then Empty
+      else if len == 1 then single(elem)
       else _fromArray(elems, 0, len)
 
     def clear() =
       len = 0
-  }
+  end Buffer
 
-  private def single[T](elem: Any): Lst[T] = elem match {
-    case null | _: Arr =>
-      val wrapped = new Arr(1)
-      wrapped(0) = elem
-      new Lst[T](wrapped)
-    case _ =>
-      new Lst[T](elem)
-  }
-
-  private def multi[T](elems: Array[Any]) =
-    if (elems.length == 1) single(elems(0))
-    else new Lst[T](elems)
-
-  private def _fromArray[T](elems: Arr, start: Int, end: Int): Lst[T] = {
-    val len = end - start
-    if (len <= 0) Empty
-    else if (len == 1) single[T](elems(start))
-    else if (start == 0 && end == elems.length) new Lst[T](elems)
-    else {
-      val newElems = new Arr(len)
-      System.arraycopy(elems, start, newElems, 0, len)
-      new Lst[T](newElems)
-    }
-  }
-
-  def fromArray[T](elems: Array[T], start: Int, end: Int): Lst[T] =
-    _fromArray(elems.asInstanceOf[Arr], start, end)
-
-  def fromIterator[T](it: Iterator[T]): Lst[T] = {
-    val buf = new Buffer[T]
-    it.foreach(buf += _)
-    buf.toLst
-  }
-
-  def fromIterable[T](xs: Iterable[T]): Lst[T] = fromIterator(xs.iterator)
-
-  object :: {
-    def unapply[T](xs: Lst[T]): Option[(T, Lst[T])] = xs.elems match {
+  object :: :
+    def unapply[T](xs: Lst[T]): Option[(T, Lst[T])] = xs match
       case null => None
-      case elems: Arr =>
-        Some((elems(0).asInstanceOf[T], _fromArray[T](elems, 1, elems.length)))
-      case elem: T @unchecked =>
-        Some((elem, Empty))
-    }
-  }
-}
+      case xs: Arr =>
+        Some((xs(0).asInstanceOf[T], _fromArray[T](xs, 1, xs.length)))
+      case x: T @unchecked =>
+        Some((x, Empty))
+  end ::
+
+  trait Show[T]:
+    extension (x: T) def show: String
+
+  given lstShow[T: Show] as Show[Lst[T]]:
+    extension (xs: Lst[T]) def show: String =
+      val b = new StringBuilder("Lst(")
+      xs match
+        case null =>
+        case xs: Arr =>
+          var i = 0
+          while
+            b ++= xs.at(i).show
+            i += 1
+            i < xs.length
+          do
+            b ++= ", "
+        case x: T @unchecked =>
+          b ++= summon[Show[T]].extension_show(x)
+      (b ++= ")").toString
+
+  given anyShow[T] as Show[T]:
+    extension (x: T) def show: String = String.valueOf(x)
+
+  trait Eq[T]:
+    extension (x: T) def === (y: T): Boolean
+
+  given lstEq[T: Eq] as Eq[Lst[T]]:
+    extension (xs: Lst[T]) def === (ys: Lst[T]): Boolean =
+      (xs eqLst ys)
+      || xs.match
+          case xs: Arr =>
+            ys match
+              case ys: Arr =>
+                val len = xs.length
+                len == ys.length
+                && {
+                  var i = 0
+                  while i < len && xs.at(i) === ys.at(i) do i += 1
+                  i == len
+                }
+              case _ => false
+          case x => x.equals(ys)
+
+  given anyEq[T] as Eq[T]:
+    extension (x: T) def === (y: T): Boolean = x == y
+
+  extension [T: Show](xs: Lst[T])
+    def mkString(left: String, sep: String, right: String): String =
+      val b = new StringBuilder(left)
+      xs match
+        case null =>
+        case xs: Arr =>
+          var i = 0
+          while
+            b ++= xs.at(i).show
+            i += 1
+            i < xs.length
+          do
+            b ++= sep
+        case x: T @unchecked =>
+          b ++= x.toString
+      (b ++= right).toString
+    def mkString(sep: String): String = mkString("", sep, "")
+    def mkString: String = mkString(", ")
+
+  extension (x: Any)
+    def debugString: String = x match
+      case x: Arr => x.map(_.debugString).mkString("Array(", ", ", ")")
+      case _ => String.valueOf(x)
+
+end Lst
