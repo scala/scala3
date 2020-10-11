@@ -27,6 +27,7 @@ val `scala-reflect` = Build.`scala-reflect`
 val scalap = Build.scalap
 val dist = Build.dist
 val `community-build` = Build.`community-build`
+val `scala2-interop-tests` = Build.`scala2-interop-tests`
 
 val sjsSandbox = Build.sjsSandbox
 val sjsJUnitTests = Build.sjsJUnitTests

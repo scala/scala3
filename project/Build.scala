@@ -1126,6 +1126,39 @@ object Build {
       libraryDependencies := Seq("org.scala-lang" % "scalap" % stdlibVersion(Bootstrapped))
     )
 
+  lazy val `scala2-interop-tests` = project.in(file("tests/scala2-interop")).
+    enablePlugins(SbtPlugin).
+    settings(commonSettings).
+    settings(
+      sbtTestDirectory := baseDirectory.value / "sbt-test",
+      scriptedLaunchOpts ++= Seq(
+        "-Dplugin.version=" + sbtDottyVersion,
+        "-Dplugin.scalaVersion=" + dottyVersion,
+        "-Dplugin.scala2Version=" + stdlibVersion(Bootstrapped),
+        "-Dsbt.boot.directory=" + ((baseDirectory in ThisBuild).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
+      ),
+      // Pass along ivy home and repositories settings to sbt instances run from the tests
+      scriptedLaunchOpts ++= {
+        val repositoryPath = (io.Path.userHome / ".sbt" / "repositories").absolutePath
+        s"-Dsbt.repository.config=$repositoryPath" ::
+        ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList
+      },
+      scriptedBufferLog := true,
+      scripted := scripted.dependsOn(
+        publishLocal in `dotty-sbt-bridge`,
+        publishLocal in `dotty-interfaces`,
+        publishLocal in `dotty-compiler-bootstrapped`,
+        publishLocal in `dotty-library-bootstrapped`,
+        publishLocal in `dotty-library-bootstrappedJS`,
+        publishLocal in `tasty-core-bootstrapped`,
+        publishLocal in `dotty-tasty-inspector`,
+        publishLocal in `scala-library`,
+        publishLocal in `scala-reflect`,
+        publishLocal in `dotty-doc-bootstrapped`,
+        publishLocal in `dotty-bootstrapped`,
+        publishLocal in `sbt-dotty`
+      ).evaluated
+    )
 
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/dotty-example-project for usage.
