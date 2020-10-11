@@ -1029,10 +1029,13 @@ class Namer { typer: Typer =>
 
         def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
           for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
-            val alias = mbr.name.toTermName
-            if !seen.contains(alias)
-               && mbr.matchesImportBound(if mbr.symbol.is(Given) then givenBound else wildcardBound)
-            then addForwarder(alias, mbr, span)
+            if !mbr.symbol.isSuperAccessor then
+              // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
+              // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
+              val alias = mbr.name.toTermName
+              if !seen.contains(alias)
+                && mbr.matchesImportBound(if mbr.symbol.is(Given) then givenBound else wildcardBound)
+              then addForwarder(alias, mbr, span)
 
         def addForwarders(sels: List[untpd.ImportSelector], seen: List[TermName]): Unit = sels match
           case sel :: sels1 =>

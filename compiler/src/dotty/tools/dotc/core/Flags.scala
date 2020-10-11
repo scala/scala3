@@ -517,6 +517,8 @@ object Flags {
   val AccessorOrDeferred: FlagSet            = Accessor | Deferred
   val PrivateAccessor: FlagSet               = Accessor | Private
   val AccessorOrSynthetic: FlagSet           = Accessor | Synthetic
+  val JavaOrPrivateOrSynthetic: FlagSet      = Artifact | JavaDefined | Private | Synthetic
+  val PrivateOrSynthetic: FlagSet            = Artifact | Private | Synthetic
   val EnumCase: FlagSet                      = Case | Enum
   val CovariantLocal: FlagSet                = Covariant | Local                              // A covariant type parameter
   val ContravariantLocal: FlagSet            = Contravariant | Local                          // A contravariant type parameter
@@ -540,7 +542,6 @@ object Flags {
   val InlineByNameProxy: FlagSet             = InlineProxy | Method
   val JavaEnumTrait: FlagSet                 = JavaDefined | Enum                             // A Java enum trait
   val JavaEnumValue: FlagSet                 = JavaDefined | EnumValue                        // A Java enum value
-  val JavaOrPrivateOrSynthetic: FlagSet      = JavaDefined | Private | Synthetic
   val StaticProtected: FlagSet               = JavaDefined | JavaStatic | Protected           // Java symbol which is `protected` and `static`
   val JavaModule: FlagSet                    = JavaDefined | Module                           // A Java companion object
   val JavaInterface: FlagSet                 = JavaDefined | NoInits | Trait
@@ -561,7 +562,6 @@ object Flags {
   val ValidForeverFlags: FlagSet             = Package | Permanent | Scala2SpecialFlags
   val TermParamOrAccessor: FlagSet           = Param | ParamAccessor
   val PrivateParamAccessor: FlagSet          = ParamAccessor | Private
-  val PrivateOrSynthetic: FlagSet            = Private | Synthetic
   val PrivateOrArtifact: FlagSet             = Private | Artifact
   val ClassTypeParam: FlagSet                = Private | TypeParam
   val Scala2Trait: FlagSet                   = Scala2x | Trait
