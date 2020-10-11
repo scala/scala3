@@ -86,7 +86,7 @@ object Scopes {
 
     /** Return all symbols as an iterator in the order they were entered in this scope.
      */
-    def iterator(using Context): Iterator[Symbol] = toLst.iterator()
+    def iterator(using Context): Iterator[Symbol] = toLst.iterator
 
     /** Is the scope empty? */
     def isEmpty: Boolean = lastEntry eq null

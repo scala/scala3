@@ -2311,7 +2311,7 @@ object SymDenotations {
     /** Unlink all package members defined in `file` in a previous run. */
     def unlinkFromFile(file: AbstractFile)(using Context): Unit = {
       val scope = unforcedDecls.openForMutations
-      for sym <- scope.toLst.iterator() do
+      for sym <- scope.toLst.iterator do
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
         if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
@@ -2595,7 +2595,7 @@ object SymDenotations {
 
     protected def invalidateDependents() = {
       if (dependent != null) {
-        val it = dependent.keySet.iterator()
+        val it = dependent.keySet.iterator
         while (it.hasNext()) it.next().invalidate()
       }
       dependent = null

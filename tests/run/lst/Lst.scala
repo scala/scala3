@@ -118,6 +118,8 @@ object Lst:
       case xs: Arr => xs.length
       case x => 1
 
+    def size: Int = length
+
     def isEmpty = eq(xs, null)
     def nonEmpty = !eq(xs, null)
 
@@ -158,7 +160,7 @@ object Lst:
 
     def iterator: Iterator[T] = xs match
       case null => Iterator.empty
-      case xs: Arr => xs.iterator.asInstanceOf[Iterator[T]]
+      case xs: Arr => (xs: Arr).iterator.asInstanceOf[Iterator[T]]
       case x: T @unchecked => Iterator.single(x)
 
     def copyToArray(target: Array[T], from: Int) = xs match
@@ -230,6 +232,15 @@ object Lst:
       case x: T @unchecked =>
         if (p(x)) (xs, Empty) else (Empty, xs)
 
+    def span(p: T => Boolean): (Lst[T], Lst[T]) = xs match
+      case null => (Empty, Empty)
+      case xs: Arr =>
+        var i = 0
+        while i < xs.length && p(xs.at(i)) do i += 1
+        if i == xs.length then (xs, Empty)
+        else if i == 0 then (Empty, xs)
+        else (_fromArray(xs, 0, i), _fromArray(xs, i, xs.length))
+
     inline def exists(inline p: T => Boolean): Boolean =
       def op(x: T) = p(x)
       xs match
@@ -273,7 +284,7 @@ object Lst:
 
     def apply(n: Int): T = xs match
       case null =>
-        throw new IndexOutOfBoundsException(n.toString)
+        throw IndexOutOfBoundsException(n.toString)
       case xs: Arr =>
         xs.at(n)
       case x: T @unchecked =>
@@ -283,6 +294,8 @@ object Lst:
     def last: T = xs.apply(length - 1)
 
     inline def headOr(inline alt: T): T = if isEmpty then alt else head
+
+    def headOption: Option[T] = if isEmpty then None else Some(head)
 
     def slice(start: Int, end: Int): Lst[T] =
       if start < 0 then slice(0, end)
@@ -458,7 +471,7 @@ object Lst:
           fromArr[U](newElems)
       case x: T @ unchecked => f(x)
 
-    def flatMap(f: T => IterableOnce[U], dummy: Null = null): Lst[U] =
+    def flatMapIterable(f: T => IterableOnce[U]): Lst[U] =
       flatMap(x => fromIterableOnce(f(x)))
 
     def collect(pf: PartialFunction[T, U]): Lst[U] =
@@ -581,6 +594,9 @@ object Lst:
           case y: U @unchecked => single[V](op(x, y))
   end extension
 
+  extension [T, U] (xs: Lst[(T, U)])
+    def toMap: Map[T, U] = Map() ++ xs.iterator
+
   def fill[T](n: Int)(elem: => T) =
     val xs = new Arr(n)
     var i = 0
@@ -633,17 +649,19 @@ object Lst:
       len += 1
       this
 
-    def ++= (xs: Lst[T]): this.type =
+    def ++= (xs: Lst[T]): this.type = appendSlice(xs, 0, xs.length)
+
+    def appendSlice(xs: Lst[T], start: Int, end: Int): this.type =
       xs match
         case null =>
         case xs: Arr =>
-          if len == 0 && xs.length != 1 then
-            // if xs.length == 1, xs is a wrapped single element list, which has to remain packed
-            elems = xs
+          val copiedLength = (end - start) min xs.length
+          if len == 0 && copiedLength > 1 then
+            elems = (xs: Arr).slice(start, end).asInstanceOf[Arr]
           else
-            ensureSize(len + xs.length)
-            System.arraycopy(xs, 0, elems, len, xs.length)
-          len += xs.length
+            ensureSize(len + copiedLength)
+            System.arraycopy(xs, 0, elems, len, copiedLength)
+          len += copiedLength
         case x: T @unchecked => this += x
       this
 
@@ -669,6 +687,15 @@ object Lst:
         while i < len && elems(i) != x do i += 1
         i < len
 
+    def apply(idx: Int): T =
+      if 0 <= idx && idx < len then
+        if len == 1 then elem
+        else elems(idx).asInstanceOf[T]
+      else throw IndexOutOfBoundsException(idx.toString)
+
+    def head = apply(0)
+    def last = apply(len - 1)
+
     def toLst: Lst[T] =
       if len == 0 then Empty
       else if len == 1 then single(elem)
@@ -678,14 +705,14 @@ object Lst:
       len = 0
   end Buffer
 
-  object :: :
+  object +: :
     def unapply[T](xs: Lst[T]): Option[(T, Lst[T])] = xs match
       case null => None
       case xs: Arr =>
         Some((xs(0).asInstanceOf[T], _fromArray[T](xs, 1, xs.length)))
       case x: T @unchecked =>
         Some((x, Empty))
-  end ::
+  end +:
 
   trait Show[T]:
     extension (x: T) def show: String
@@ -760,6 +787,7 @@ object Lst:
   class LstSlice[T](xs: Lst[T], start: Int, end: Int) extends IndexedSeq[T]:
     val length = (end min xs.length) - (start max 0) max 0
     def apply(i: Int) = xs.apply(i + start)
+    def toLst: Lst[T] = xs.slice(start, end)
     override def drop(n: Int) = xs.sliceToSeq(start + n, end)
     override def take(n: Int) = xs.sliceToSeq(start, (start + n) min end)
     override def dropRight(n: Int) = xs.sliceToSeq(start, end - n)
