@@ -409,13 +409,13 @@ object Implicits:
   }
 
   object SearchFailure {
-    def apply(tpe: SearchFailureType)(using Context): SearchFailure = {
+    def apply(tpe: SearchFailureType, span: Span)(using Context): SearchFailure = {
       val id = tpe match
         case tpe: AmbiguousImplicits =>
           untpd.SearchFailureIdent(nme.AMBIGUOUS, s"/* ambiguous: ${tpe.explanation} */")
         case _ =>
           untpd.SearchFailureIdent(nme.MISSING, "/* missing */")
-      SearchFailure(id.withTypeUnchecked(tpe))
+      SearchFailure(id.withTypeUnchecked(tpe).withSpan(span))
     }
   }
 
@@ -483,7 +483,7 @@ object Implicits:
   @sharable object NoMatchingImplicits extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty)
 
   @sharable val NoMatchingImplicitsFailure: SearchFailure =
-    SearchFailure(NoMatchingImplicits)(using NoContext)
+    SearchFailure(NoMatchingImplicits, NoSpan)(using NoContext)
 
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
@@ -1022,7 +1022,7 @@ trait Implicits:
               }
             else result
           case NoMatchingImplicitsFailure =>
-            SearchFailure(new NoMatchingImplicits(pt, argument, ctx.typerState.constraint))
+            SearchFailure(new NoMatchingImplicits(pt, argument, ctx.typerState.constraint), span)
           case _ =>
             result0
         }
@@ -1123,7 +1123,7 @@ trait Implicits:
       */
     def tryImplicit(cand: Candidate, contextual: Boolean): SearchResult =
       if checkDivergence(cand) then
-        SearchFailure(new DivergingImplicit(cand.ref, wideProto, argument))
+        SearchFailure(new DivergingImplicit(cand.ref, wideProto, argument), span)
       else {
         val history = ctx.searchHistory.nest(cand, pt)
         val result =
@@ -1174,7 +1174,7 @@ trait Implicits:
 
           if diff < 0 then alt2
           else if diff > 0 then alt1
-          else SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument))
+          else SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument), span)
         case _: SearchFailure => alt2
 
       /** Try to find a best matching implicit term among all the candidates in `pending`.
