@@ -213,6 +213,9 @@ object language {
 
     /** Experimental support for richer dependent types */
     object dependent
+
+    /** Experimental support for named type arguments */
+    object namedTypeArguments
   }
 
   /** Where imported, a backwards compatibility mode for Scala2 is enabled */
@@ -241,9 +244,6 @@ object language {
    *  That's why the language import is required for them.
    */
   object adhocExtensions
-
-  /** Experimental support for richer dependent types */
-  object dependent
 
   /** Source version */
   object `3.0-migration`

@@ -1,3 +1,4 @@
+import language.experimental.namedTypeArguments
 object Test extends App {
   class A {
     def run = "A"

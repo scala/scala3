@@ -60,6 +60,9 @@ object Feature:
   def dependentEnabled(using Context) =
     enabled(nme.dependent, defn.LanguageExperimentalModule.moduleClass)
 
+  def namedTypeArgsEnabled(using Context) =
+    enabled(nme.namedTypeArguments, defn.LanguageExperimentalModule.moduleClass)
+
   def scala2ExperimentalMacroEnabled(using Context) =
     enabled("macros".toTermName, defn.LanguageExperimentalModule.moduleClass)
 

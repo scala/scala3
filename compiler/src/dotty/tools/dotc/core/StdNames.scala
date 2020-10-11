@@ -528,6 +528,7 @@ object StdNames {
     val moduleClass : N         = "moduleClass"
     val name: N                 = "name"
     val nameDollar: N           = "$name"
+    val namedTypeArguments: N   = "namedTypeArguments"
     val ne: N                   = "ne"
     val newFreeTerm: N          = "newFreeTerm"
     val newFreeType: N          = "newFreeType"
