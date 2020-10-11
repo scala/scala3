@@ -103,12 +103,10 @@ object Lst:
   def fromArray[T](xs: Array[T], start: Int, end: Int): Lst[T] =
     _fromArray(xs.asInstanceOf[Arr], start, end)
 
-  def fromIterator[T](it: Iterator[T]): Lst[T] =
+  def fromIterableOnce[T](it: IterableOnce[T]): Lst[T] =
     val buf = new Buffer[T]
-    it.foreach(buf += _)
+    it.iterator.foreach(buf += _)
     buf.toLst
-
-  def fromIterable[T](xs: Iterable[T]): Lst[T] = fromIterator(xs.iterator)
 
   extension [T](xs: Lst[T] & Arr)
     private def at(i: Int): T = (xs: Arr)(i).asInstanceOf[T]
@@ -185,6 +183,10 @@ object Lst:
 
     def toIterable: Iterable[T] = new Iterable[T]:
       def iterator = xs.iterator
+
+    def toSeq: LstSlice[T] = sliceToSeq(0, length)
+
+    def sliceToSeq(start: Int = 0, end: Int = xs.length): LstSlice[T] = LstSlice[T](xs, start, end)
 
     def filter(p: T => Boolean): Lst[T] = xs match
       case null => Empty
@@ -333,6 +335,8 @@ object Lst:
       case x: T @unchecked =>
         x
 
+    def ::: (ys: Lst[T]): Lst[T] = xs ++ ys
+
     def ++ (ys: Lst[T]): Lst[T] =
       if xs.isEmpty then ys
       else if ys.isEmpty then xs
@@ -343,6 +347,12 @@ object Lst:
         xs.copyToArray(newElems, 0)
         ys.copyToArray(newElems, len1)
         multi[T](newElems)
+
+    def ++ (ys: IterableOnce[T]): Lst[T] =
+      val yit = ys.iterator
+      if yit.isEmpty then xs
+      else if xs.isEmpty then fromIterableOnce(yit)
+      else (Buffer[T]() ++= xs ++= yit).toLst
 
     def :+ (x: T): Lst[T] = xs match
       case null => Lst(x)
@@ -448,8 +458,8 @@ object Lst:
           fromArr[U](newElems)
       case x: T @ unchecked => f(x)
 
-    def flatMap(f: T => Iterable[U], dummy: Null = null): Lst[U] =
-      flatMap(x => fromIterable(f(x)))
+    def flatMap(f: T => IterableOnce[U], dummy: Null = null): Lst[U] =
+      flatMap(x => fromIterableOnce(f(x)))
 
     def collect(pf: PartialFunction[T, U]): Lst[U] =
       val buf = new Buffer[U]
@@ -469,6 +479,20 @@ object Lst:
           acc
         case x: T @unchecked =>
           op(z, x)
+
+    inline def foldRight(z: U)(inline f: (T, U) => U) =
+      def op(x: T, y: U) = f(x, y)
+      xs match
+        case null => z
+        case xs: Arr =>
+          var i = xs.length
+          var acc = z
+          while i > 0 do
+            i -= 1
+            acc = op(xs.at(i), acc)
+          acc
+        case x: T @unchecked =>
+          op(x, z)
 
     def zip(ys: Lst[U]): Lst[(T, U)] = xs.zipWith(ys)((_, _))
 
@@ -509,6 +533,15 @@ object Lst:
         multi[T](newElems)
       case elem: T @unchecked =>
         Lst(x, elem)
+
+  extension [T](xs: IterableOnce[T])
+    def toLst: Lst[T] = (Buffer[T]() ++= xs).toLst
+
+    def ::: (ys: Lst[T]): Lst[T] =
+      val xit = xs.iterator
+      if xit.isEmpty then ys
+      else if ys.isEmpty then fromIterableOnce(xit)
+      else (Buffer[T]() ++= xit ++= ys).toLst
 
   extension [T, U](z: T)
     inline def /: (xs: Lst[U])(inline f: (T, U) => T): T =
@@ -612,6 +645,10 @@ object Lst:
             System.arraycopy(xs, 0, elems, len, xs.length)
           len += xs.length
         case x: T @unchecked => this += x
+      this
+
+    def ++= (xs: IterableOnce[T]): this.type =
+      xs.iterator.foreach(this += _)
       this
 
     def exists(p: T => Boolean): Boolean =
@@ -719,5 +756,26 @@ object Lst:
     def debugString: String = x match
       case x: Arr => x.map(_.debugString).mkString("Array(", ", ", ")")
       case _ => String.valueOf(x)
+
+  class LstSlice[T](xs: Lst[T], start: Int, end: Int) extends IndexedSeq[T]:
+    val length = (end min xs.length) - (start max 0) max 0
+    def apply(i: Int) = xs.apply(i + start)
+    override def drop(n: Int) = xs.sliceToSeq(start + n, end)
+    override def take(n: Int) = xs.sliceToSeq(start, (start + n) min end)
+    override def dropRight(n: Int) = xs.sliceToSeq(start, end - n)
+    override def takeRight(n: Int) = xs.sliceToSeq((end - n) max start, end)
+    override def fromSpecific(coll: IterableOnce[T]) = fromIterableOnce(coll).toSeq
+
+  def unapplySeq[T](xs: Lst[T]): UnapplySeqWrapper[T] = new UnapplySeqWrapper(xs)
+
+  final class UnapplySeqWrapper[T](private val xs: Lst[T]) extends AnyVal:
+    def isEmpty: Boolean = xs.isEmpty
+    def get: UnapplySeqWrapper[T] = this
+    def lengthCompare(len: Int): Int =
+      val l = xs.length
+      if l < len then -1 else if l > len then 1 else 0
+    def apply(i: Int): T = xs(i)
+    def drop(n: Int): Seq[T] = xs.sliceToSeq(n)
+    def toSeq: Seq[T] = xs.toSeq
 
 end Lst

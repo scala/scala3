@@ -188,6 +188,10 @@ object Lst:
     def toIterable: Iterable[T] = new Iterable[T]:
       def iterator = xs.iterator
 
+    def toSeq: Seq[T] = toSeq(0, length)
+
+    def toSeq(start: Int = 0, end: Int = xs.length): LstSlice[T] = LstSlice[T](xs, start, end)
+
     def filter(p: T => Boolean): Lst[T] = xs match
       case null => Empty
       case xs: Arr =>
@@ -721,5 +725,15 @@ object Lst:
     def debugString: String = x match
       case x: Arr => x.map(_.debugString).mkString("Array(", ", ", ")")
       case _ => String.valueOf(x)
+
+  class LstSlice[T](xs: Lst[T], start: Int, end: Int) extends IndexedSeq[T]:
+    val length = (end min xs.length) - (start max 0) max 0
+    def apply(i: Int) = xs.apply(i + start)
+    override def drop(n: Int) = xs.toSeq(start + n, end)
+    override def take(n: Int) = xs.toSeq(start, (start + n) min end)
+    override def dropRight(n: Int) = xs.toSeq(start, end - n)
+    override def takeRight(n: Int) = xs.toSeq((end - n) max start, end)
+    override def fromSpecificIterable(coll: IterableOnce[T]): LstSlice[T] =
+      fromIterableOnce(coll).toSeq
 
 end Lst

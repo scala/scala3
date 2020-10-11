@@ -408,6 +408,18 @@ object Test extends App {
     }
   }
 
+  def extractorTest() =
+    xss5 match
+      case Lst(x1, x2, x3, x4, x5) =>
+        assert(x1 === Lst("a") && x5 === Lst("e"))
+    xss5 match
+      case Lst(x1, rest: _*) =>
+        assert(x1 === Lst("a"))
+        println(s"rest = $rest")
+    xss5 match
+      case Lst(_, _, _, _, _, _) => assertFail()
+      case _ =>
+
   lengthTest()
   concatTest()
   foreachTest()
@@ -425,5 +437,6 @@ object Test extends App {
   zipWithTest()
   correspondsTest()
   bufferTest()
+  extractorTest()
   lst.QuickTest.test()
 }
