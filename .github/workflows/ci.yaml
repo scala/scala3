@@ -126,7 +126,7 @@ jobs:
   community_build:
     runs-on: [self-hosted, Linux]
     container: lampepfl/dotty:2020-04-24
-
+    if: false
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v2
