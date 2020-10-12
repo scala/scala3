@@ -429,7 +429,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
    *  and not deriving from `java.lang.Enum` add the method:
    *
    *      private def readResolve(): AnyRef =
-   *        MyEnum.$fromOrdinal(this.ordinal)
+   *        MyEnum.fromOrdinal(this.ordinal)
    *
    *  unless an implementation already exists, otherwise do nothing.
    */
@@ -443,7 +443,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       List(
         DefDef(readResolveDef(clazz),
           _ => ref(clazz.owner.owner.sourceModule)
-                .select(nme.fromOrdinalDollar)
+                .select(nme.fromOrdinal)
                 .appliedTo(This(clazz).select(nme.ordinal).ensureApplied))
           .withSpan(ctx.owner.span.focus))
     else

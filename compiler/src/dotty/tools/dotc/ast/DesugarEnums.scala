@@ -154,22 +154,24 @@ object DesugarEnums {
   private def enumLookupMethods(constraints: EnumConstraints)(using Context): List[Tree] =
     def scaffolding: List[Tree] = if constraints.cached then enumScaffolding(constraints.enumCases.map(_._2)) else Nil
     def valueCtor: List[Tree] = if constraints.requiresCreator then enumValueCreator :: Nil else Nil
-    def byOrdinal: List[Tree] =
-      if isJavaEnum || !constraints.cached then Nil
+    def fromOrdinal: Tree =
+      def throwArg(ordinal: Tree) =
+        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(Select(ordinal, nme.toString_) :: Nil)))
+      if !constraints.cached then
+        fromOrdinalMeth(throwArg)
       else
-        val defaultCase =
-          val ord = Ident(nme.ordinal)
-          val err = Throw(New(TypeTree(defn.IndexOutOfBoundsException.typeRef), List(Select(ord, nme.toString_) :: Nil)))
-          CaseDef(ord, EmptyTree, err)
-        val valueCases = constraints.enumCases.map((i, enumValue) =>
-          CaseDef(Literal(Constant(i)), EmptyTree, enumValue)
-        ) ::: defaultCase :: Nil
-        val fromOrdinalDef = DefDef(nme.fromOrdinalDollar, Nil, List(param(nme.ordinalDollar_, defn.IntType) :: Nil),
-          rawRef(enumClass.typeRef), Match(Ident(nme.ordinalDollar_), valueCases))
-            .withFlags(Synthetic | Private)
-        fromOrdinalDef :: Nil
+        def default(ordinal: Tree) =
+          CaseDef(Ident(nme.x_0), EmptyTree, throwArg(ordinal))
+        if constraints.isEnumeration then
+          fromOrdinalMeth(ordinal =>
+            Try(Apply(valuesDot(nme.apply), ordinal), default(ordinal) :: Nil, EmptyTree))
+        else
+          fromOrdinalMeth(ordinal =>
+            Match(ordinal,
+              constraints.enumCases.map((i, enumValue) => CaseDef(Literal(Constant(i)), EmptyTree, enumValue))
+              :+ default(ordinal)))
 
-    scaffolding ::: valueCtor ::: byOrdinal
+    scaffolding ::: valueCtor ::: fromOrdinal :: Nil
   end enumLookupMethods
 
   /** A creation method for a value of enum type `E`, which is defined as follows:
@@ -277,6 +279,10 @@ object DesugarEnums {
 
   def ordinalMethLit(ord: Int)(using Context): DefDef =
     ordinalMeth(Literal(Constant(ord)))
+
+  def fromOrdinalMeth(body: Tree => Tree)(using Context): DefDef =
+    DefDef(nme.fromOrdinal, Nil, List(param(nme.ordinalDollar_, defn.IntType) :: Nil),
+      rawRef(enumClass.typeRef), body(Ident(nme.ordinalDollar_))).withFlags(Synthetic)
 
   /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, definesLookups: Boolean, span: Span)(using Context): Tree = {

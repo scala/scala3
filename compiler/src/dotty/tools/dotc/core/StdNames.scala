@@ -617,7 +617,7 @@ object StdNames {
     val using: N                = "using"
     val value: N                = "value"
     val valueOf : N             = "valueOf"
-    val fromOrdinalDollar: N    = "$fromOrdinal"
+    val fromOrdinal: N          = "fromOrdinal"
     val values: N               = "values"
     val view_ : N               = "view"
     val wait_ : N               = "wait"
