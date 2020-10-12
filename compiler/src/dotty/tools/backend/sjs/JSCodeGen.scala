@@ -802,20 +802,25 @@ class JSCodeGen()(using genCtx: Context) {
       if (isJSClass && f.isJSExposed)
         js.JSFieldDef(flags, genExpr(f.jsName)(f.sourcePos), irTpe) :: Nil
       else
-        val fieldDef = js.FieldDef(flags, encodeFieldSym(f), originalNameOfField(f), irTpe)
-        val rest =
+        val fieldIdent = encodeFieldSym(f)
+        val originalName = originalNameOfField(f)
+        val fieldDef = js.FieldDef(flags, fieldIdent, originalName, irTpe)
+        val optionalStaticFieldGetter =
           if isStaticField then
+            // Here we are generating a public static getter for the static field,
+            // this is its API for other units. This is necessary for singleton
+            // enum values, which are backed by static fields.
             val className = encodeClassName(classSym)
             val body = js.Block(
-              js.LoadModule(className),
-              js.SelectStatic(className, encodeFieldSym(f))(toIRType(f.info)))
+                js.LoadModule(className),
+                js.SelectStatic(className, fieldIdent)(irTpe))
             js.MethodDef(js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
-              encodeStaticMemberSym(f), originalNameOfField(f), Nil, toIRType(f.info),
+                encodeStaticMemberSym(f), originalName, Nil, irTpe,
                 Some(body))(
-                  OptimizerHints.empty, None) :: Nil
+                OptimizerHints.empty, None) :: Nil
           else
             Nil
-        fieldDef :: rest
+        fieldDef :: optionalStaticFieldGetter
     }).toList
   }
 
@@ -1451,6 +1456,8 @@ class JSCodeGen()(using genCtx: Context) {
 
       case Assign(lhs0, rhs) =>
         val sym = lhs0.symbol
+        if (sym.is(JavaStaticTerm) && sym.source != ctx.compilationUnit.source)
+          throw new FatalError(s"Assignment to static member ${sym.fullName} not supported")
         def genRhs = genExpr(rhs)
         val lhs = lhs0 match {
           case lhs: Ident => desugarIdent(lhs).getOrElse(lhs)
@@ -3916,12 +3923,14 @@ class JSCodeGen()(using genCtx: Context) {
       (f, true)
     } else*/ {
       val f =
+        val className = encodeClassName(sym.owner)
+        val fieldIdent = encodeFieldSym(sym)
+        val irType = toIRType(sym.info)
+
         if sym.is(JavaStatic) then
-          js.SelectStatic(encodeClassName(sym.owner),
-            encodeFieldSym(sym))(toIRType(sym.info))
+          js.SelectStatic(className, fieldIdent)(irType)
         else
-          js.Select(qual, encodeClassName(sym.owner),
-            encodeFieldSym(sym))(toIRType(sym.info))
+          js.Select(qual, className, fieldIdent)(irType)
 
       (f, false)
     }
