@@ -733,10 +733,10 @@ object SymDenotations {
       originalName.isSetterName &&
       (!isCompleted || info.firstParamTypes.nonEmpty) // to avoid being fooled by   var x_= : Unit = ...
 
-    /** is this a symbol representing an import? */
+    /** Is this a symbol representing an import? */
     final def isImport: Boolean = name == nme.IMPORT
 
-    /** is this the constructor of a class? */
+    /** Is this the constructor of a class? */
     final def isClassConstructor: Boolean = name == nme.CONSTRUCTOR
 
     /** Is this the constructor of a trait or a class */
