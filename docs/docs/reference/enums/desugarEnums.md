@@ -34,12 +34,12 @@ map into `case class`es or `val`s.
    ```scala
    enum E ... { <defs> <cases> }
    ```
-   expands to a `sealed abstract` class that extends the `scala.Enum` trait and
+   expands to a `sealed abstract` class that extends the `scala.reflect.Enum` trait and
    an associated companion object that contains the defined cases, expanded according
    to rules (2 - 8). The enum class starts with a compiler-generated import that imports
    the names `<caseIds>` of all cases so that they can be used without prefix in the class.
    ```scala
-   sealed abstract class E ... extends <parents> with scala.Enum {
+   sealed abstract class E ... extends <parents> with scala.reflect.Enum {
      import E.{ <caseIds> }
       <defs>
    }
