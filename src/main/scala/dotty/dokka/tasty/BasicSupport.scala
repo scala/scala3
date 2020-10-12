@@ -136,6 +136,16 @@ class SymOps[R <: Reflection](val r: R):
 
     def isGiven: Boolean = sym.flags.is(Flags.Given)
 
+    def isExtensionMethod: Boolean = sym.flags.is(Flags.ExtensionMethod)
+
+    def isLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
+
+    def extendedSymbol: Option[ValDef] =
+      Option.when(sym.isExtensionMethod)(
+        if(isLeftAssoc(sym)) sym.tree.asInstanceOf[DefDef].paramss(0)(0)
+        else sym.tree.asInstanceOf[DefDef].paramss(1)(0)
+      )
+
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri: DRI =
       if sym == Symbol.noSymbol then emptyDRI else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri else
