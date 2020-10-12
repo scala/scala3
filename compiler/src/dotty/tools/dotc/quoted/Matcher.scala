@@ -98,14 +98,14 @@ import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
  */
 object Matcher {
 
-  abstract class QuoteMatcher[QCtx <: QuoteContext { val tasty: scala.internal.tasty.CompilerInterface } & Singleton](val qctx: QCtx) {
+  abstract class QuoteMatcher[QCtx <: QuoteContext { val reflect: scala.internal.tasty.CompilerInterface } & Singleton](val qctx: QCtx) {
 
     // TODO improve performance
 
-    // TODO use flag from qctx.tasty. Maybe -debug or add -debug-macros
+    // TODO use flag from qctx.reflect. Maybe -debug or add -debug-macros
     private final val debug = false
 
-    import qctx.tasty._
+    import qctx.reflect._
     import Matching._
 
     def patternHoleSymbol: Symbol

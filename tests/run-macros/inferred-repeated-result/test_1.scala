@@ -3,7 +3,7 @@ object Macros {
 
   inline def go[T](inline t: T) = ${ impl('t) }
   def impl[T](expr: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.reflect._
 
     val tree = expr.unseal
 

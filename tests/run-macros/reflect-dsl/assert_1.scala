@@ -5,7 +5,7 @@ object scalatest {
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(using qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.reflect._
     import util._
 
     def isImplicitMethodType(tp: Type): Boolean = tp match

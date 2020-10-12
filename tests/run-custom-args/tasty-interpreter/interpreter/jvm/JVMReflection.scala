@@ -4,7 +4,7 @@ import scala.quoted._
 import scala.tasty.Reflection
 
 class JVMReflection[QCtx <: QuoteContext & Singleton](using val tasty: QCtx) {
-  import qctx.tasty._
+  import qctx.reflect._
 
   import java.lang.reflect.{InvocationTargetException, Method}
   private val classLoader: ClassLoader = getClass.getClassLoader

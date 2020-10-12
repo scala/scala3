@@ -23,7 +23,7 @@ object X {
  }
 
  def transformImpl[A:Type](x:Expr[A])(using qctx: QuoteContext):Expr[A] = {
-    import qctx.tasty._
+    import qctx.reflect._
     val slowPath = '{ SlowPath }.unseal
     val fastPath = '{ FastPath }.unseal
     val transformer = new TreeMap() {

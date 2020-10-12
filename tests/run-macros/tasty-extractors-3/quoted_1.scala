@@ -7,7 +7,7 @@ object Macros {
     ${impl('x)}
 
   def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.reflect._
 
     val buff = new StringBuilder
     val traverser = new TreeTraverser {

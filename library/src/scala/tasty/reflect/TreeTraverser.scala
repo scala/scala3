@@ -7,7 +7,7 @@ package reflect
  *  ```
  *  class MyTraverser[R <: scala.tasty.Reflection & Singleton](val reflect: R)
  *      extends scala.tasty.reflect.TreeTraverser {
- *    import reflect.{given _, _}
+ *    import reflect._
  *    override def traverseTree(tree: Tree)(using ctx: Context): Unit = ...
  *  }
  *  ```

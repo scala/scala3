@@ -56,7 +56,7 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
 
 object CompilerInterface {
 
-  private[scala] def quoteContextWithCompilerInterface(qctx: QuoteContext): qctx.type { val tasty: qctx.tasty.type & scala.internal.tasty.CompilerInterface } =
-    qctx.asInstanceOf[qctx.type { val tasty: qctx.tasty.type & scala.internal.tasty.CompilerInterface }]
+  private[scala] def quoteContextWithCompilerInterface(qctx: QuoteContext): qctx.type { val reflect: qctx.reflect.type & scala.internal.tasty.CompilerInterface } =
+    qctx.asInstanceOf[qctx.type { val reflect: qctx.reflect.type & scala.internal.tasty.CompilerInterface }]
 
 }

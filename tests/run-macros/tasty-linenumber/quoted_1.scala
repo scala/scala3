@@ -10,7 +10,7 @@ object LineNumber {
     ${lineImpl('[T])}
 
   def lineImpl(x: Type[Unit])(using QuoteContext) : Expr[LineNumber] = {
-    import qctx.tasty._
+    import qctx.reflect._
     '{new LineNumber(${Expr(rootPosition.startLine)})}
   }
 

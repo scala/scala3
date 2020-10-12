@@ -17,7 +17,7 @@ object Macro1 {
     ${ test1Impl('value) }
 
   def test1Impl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[List[String]] = {
-    import qctx.tasty._
+    import qctx.reflect._
 
     val mirrorTpe = '[Mirror.Of[T]]
 

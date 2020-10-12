@@ -7,6 +7,6 @@ object SourceFiles {
     ${getThisFileImpl}
 
   private def getThisFileImpl(using qctx: QuoteContext) : Expr[String] =
-    Expr(qctx.tasty.Source.path.getFileName.toString)
+    Expr(qctx.reflect.Source.path.getFileName.toString)
 
 }

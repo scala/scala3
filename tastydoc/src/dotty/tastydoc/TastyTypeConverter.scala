@@ -6,8 +6,8 @@ import dotty.tastydoc.references._
 /** Trait containing methods for converting from Reflect types to References */
 trait TastyTypeConverter {
 
-  def convertTypeToReference(using QuoteContext)(tp: qctx.tasty.Type): Reference = {
-    import qctx.tasty._
+  def convertTypeToReference(using QuoteContext)(tp: qctx.reflect.Type): Reference = {
+    import qctx.reflect._
 
     //Inner method to avoid passing the reflection each time
     def inner(tp: Type): Reference = tp match {

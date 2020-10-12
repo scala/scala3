@@ -6,7 +6,7 @@ trait CB[T]
 inline def shift : Unit = ${ shiftTerm }
 
 def shiftTerm(using QuoteContext): Expr[Unit] = {
-  import qctx.tasty._
+  import qctx.reflect._
   val nTree = '{ ??? : CB[Int] }.unseal
   val tp1 = '[CB[Int]].unseal.tpe
   val tp2 = '[([X] =>> CB[X])[Int]].unseal.tpe

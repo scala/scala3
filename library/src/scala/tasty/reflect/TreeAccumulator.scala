@@ -7,7 +7,7 @@ package reflect
  *  ```
  *  class MyTreeAccumulator[R <: scala.tasty.Reflection & Singleton](val reflect: R)
  *      extends scala.tasty.reflect.TreeAccumulator[X] {
- *    import reflect.{given _, _}
+ *    import reflect._
  *    def foldTree(x: X, tree: Tree)(using ctx: Context): X = ...
  *  }
  *  ```
@@ -15,7 +15,7 @@ package reflect
 trait TreeAccumulator[X] {
 
   val reflect: Reflection
-  import reflect.{given _, _}
+  import reflect._
 
   // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
   def foldTree(x: X, tree: Tree)(using ctx: Context): X

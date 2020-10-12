@@ -5,7 +5,7 @@ object Macros {
   inline def natConst(x: Int): Int = ${ natConstImpl('x) }
 
   def natConstImpl(x: Expr[Int])(using qctx: QuoteContext) : Expr[Int] = {
-    import qctx.tasty._
+    import qctx.reflect._
     val xTree: Term = x.unseal
     xTree match {
       case Inlined(_, _, Literal(Constant.Int(n))) =>

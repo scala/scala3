@@ -16,7 +16,7 @@ abstract class Type[X <: AnyKind] private[scala] {
     this.unseal.showWith(syntaxHighlight)
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
-  def unseal(using qctx: QuoteContext): qctx.tasty.TypeTree
+  def unseal(using qctx: QuoteContext): qctx.reflect.TypeTree
 
 }
 

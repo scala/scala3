@@ -19,7 +19,7 @@ object Async {
 
 
   def checkPrintTypeImpl[F[_]:Type,T:Type](f: Expr[T])(using qctx: QuoteContext): Expr[Unit] =
-    import qctx.tasty._
+    import qctx.reflect._
 
     val fu = f.unseal
     fu match

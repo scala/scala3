@@ -9,7 +9,7 @@ object AsObject {
     def unsafe(i: Int): LineNo = new LineNo(i)
     inline given LineNo = ${impl}
     private def impl(using qctx: QuoteContext): Expr[LineNo] = {
-      import qctx.tasty._
+      import qctx.reflect._
       '{unsafe(${Expr(rootPosition.startLine)})}
     }
   }
@@ -21,7 +21,7 @@ package AsPackage {
     def unsafe(i: Int): LineNo = new LineNo(i)
     inline given LineNo = ${impl}
     private def impl(using qctx: QuoteContext): Expr[LineNo] = {
-      import qctx.tasty._
+      import qctx.reflect._
       '{unsafe(${Expr(rootPosition.startLine)})}
     }
   }
