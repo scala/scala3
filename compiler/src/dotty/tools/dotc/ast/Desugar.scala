@@ -594,7 +594,7 @@ object desugar {
       def enumCaseMeths =
         if isEnumCase then
           val (ordinal, scaffolding) = nextOrdinal(className, CaseKind.Class, definesEnumLookupMethods(cdef))
-          (ordinalMethLit(ordinal) :: enumLabelLit(className.toString) :: Nil, scaffolding)
+          (ordinalMethLit(ordinal) :: Nil, scaffolding)
         else (Nil, Nil)
       def copyMeths = {
         val hasRepeatedParam = constrVparamss.nestedExists {

@@ -175,20 +175,11 @@ object DesugarEnums {
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
    *   private def $new(_$ordinal: Int, $name: String) = new E with scala.runtime.EnumValue {
-   *     def ordinal = _$ordinal   // if `E` does not derive from `java.lang.Enum`
-   *     def enumLabel = $name     // if `E` does not derive from `java.lang.Enum`
-   *     def enumLabel = this.name // if `E` derives from `java.lang.Enum`
+   *     def ordinal = _$ordinal // if `E` does not derive from `java.lang.Enum`
    *   }
    */
   private def enumValueCreator(using Context) = {
-    val fieldMethods =
-      if isJavaEnum then
-        val enumLabelDef = enumLabelMeth(Select(This(Ident(tpnme.EMPTY)), nme.name))
-        enumLabelDef :: Nil
-      else
-        val ordinalDef   = ordinalMeth(Ident(nme.ordinalDollar_))
-        val enumLabelDef = enumLabelMeth(Ident(nme.nameDollar))
-        ordinalDef :: enumLabelDef :: Nil
+    val fieldMethods = if isJavaEnum then Nil else ordinalMeth(Ident(nme.ordinalDollar_)) :: Nil
     val creator = New(Template(
       constr = emptyConstructor,
       parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
@@ -284,14 +275,8 @@ object DesugarEnums {
   def ordinalMeth(body: Tree)(using Context): DefDef =
     DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body).withAddedFlags(Synthetic)
 
-  def enumLabelMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.enumLabel, Nil, Nil, TypeTree(defn.StringType), body).withAddedFlags(Synthetic)
-
   def ordinalMethLit(ord: Int)(using Context): DefDef =
     ordinalMeth(Literal(Constant(ord)))
-
-  def enumLabelLit(name: String)(using Context): DefDef =
-    enumLabelMeth(Literal(Constant(name)))
 
   /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, definesLookups: Boolean, span: Span)(using Context): Tree = {
@@ -301,11 +286,9 @@ object DesugarEnums {
       expandSimpleEnumCase(name, mods, definesLookups, span)
     else {
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Object, definesLookups)
-      val ordinalDef   = if isJavaEnum then Nil else ordinalMethLit(tag) :: Nil
-      val enumLabelDef = enumLabelLit(name.toString)
       val impl1 = cpy.Template(impl)(
         parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue),
-        body = ordinalDef ::: enumLabelDef :: Nil
+        body = if isJavaEnum then Nil else ordinalMethLit(tag) :: Nil
       ).withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(vdef :: scaffolding).withSpan(span)
