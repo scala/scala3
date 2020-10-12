@@ -2679,14 +2679,30 @@ trait Reflection { reflection =>
       /** Annotations attached to this symbol */
       def annots: List[Term]
 
+      /** Does this symbol come from a currently compiled source file? */
       def isDefinedInCurrentRun: Boolean
 
+      /** Dummy val symbol that owns all statements within the initialization of the class.
+       *  This may also contain local definitions such as classes defined in a `locally` block in the class.
+       */
       def isLocalDummy: Boolean
+
+      /** Is this symbol a class representing a refinement? */
       def isRefinementClass: Boolean
+
+      /** Is this symbol an alias type? */
       def isAliasType: Boolean
+
+      /** Is this symbol an anonymous class? */
       def isAnonymousClass: Boolean
+
+      /** Is this symbol an anonymous function? */
       def isAnonymousFunction: Boolean
+
+      /** Is this symbol an abstract type? */
       def isAbstractType: Boolean
+
+      /** Is this the constructor of a class? */
       def isClassConstructor: Boolean
 
       /** Is this the definition of a type? */
