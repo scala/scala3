@@ -127,14 +127,18 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       def nameRef: Tree =
         if isJavaEnumValue then
           Select(This(clazz), nme.name).ensureApplied
-        else if isSimpleEnumValue then // owner is `def $new(_$ordinal: Int, $name: String) = new MyEnum { ... }`
+        else
+          identifierRef
+
+      def identifierRef: Tree =
+        if isSimpleEnumValue then // owner is `def $new(_$ordinal: Int, $name: String) = new MyEnum { ... }`
           ref(clazz.owner.paramSymss.head.find(_.name == nme.nameDollar).get)
         else // assume owner is `val Foo = new MyEnum { def ordinal = 0 }`
           Literal(Constant(clazz.owner.name.toString))
 
       def toStringBody(vrefss: List[List[Tree]]): Tree =
         if (clazz.is(ModuleClass)) ownName
-        else if (isNonJavaEnumValue) nameRef
+        else if (isNonJavaEnumValue) identifierRef
         else forwardToRuntime(vrefss.head)
 
       def syntheticRHS(vrefss: List[List[Tree]])(using Context): Tree = synthetic.name match {
