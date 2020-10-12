@@ -7,7 +7,7 @@ import Contexts._
 import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._, Phases._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
-import util.SourcePosition
+import util.{SourcePosition}
 import parsing.Scanners.Token
 import parsing.Tokens
 import printing.Highlighting._
@@ -24,6 +24,7 @@ import ast.Trees._
 import ast.untpd
 import ast.tpd
 import transform.SymUtils._
+import util.Lst; // import Lst.::
 
 /**  Messages
   *  ========
@@ -74,7 +75,7 @@ import transform.SymUtils._
   extends SyntaxMsg(EmptyCatchOrFinallyBlockID) {
     def explain = {
       val tryString = tryBody match {
-        case Block(Nil, untpd.EmptyTree) => "{}"
+        case Block(Lst.Empty, untpd.EmptyTree) => "{}"
         case _ => tryBody.show
       }
 
@@ -210,7 +211,7 @@ import transform.SymUtils._
       }
 
       val body = tree.body match {
-        case Block(Nil, untpd.EmptyTree) => ""
+        case Block(Lst.Empty, untpd.EmptyTree) => ""
         case body => s" ${body.show}"
       }
 
@@ -1902,7 +1903,7 @@ import transform.SymUtils._
       em"${hl("@static")} members are only allowed inside objects."
   }
 
-  class StaticFieldsShouldPrecedeNonStatic(member: Symbol, defns: List[tpd.Tree])(using Context) extends SyntaxMsg(StaticFieldsShouldPrecedeNonStaticID) {
+  class StaticFieldsShouldPrecedeNonStatic(member: Symbol, defns: Lst[tpd.Tree])(using Context) extends SyntaxMsg(StaticFieldsShouldPrecedeNonStaticID) {
     def msg = em"${hl("@static")} $member in ${member.owner} must be defined before non-static fields."
     def explain = {
       val nonStatics = defns.takeWhile(_.symbol != member).take(3).filter(_.isInstanceOf[tpd.ValDef])

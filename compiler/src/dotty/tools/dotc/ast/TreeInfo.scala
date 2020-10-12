@@ -11,6 +11,8 @@ import dotty.tools.dotc.transform.SymUtils._
 import Decorators._
 import Constants.Constant
 import scala.collection.mutable
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import scala.annotation.tailrec
 
@@ -290,7 +292,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       else None
     case Match(EmptyTree, _) =>
       Some(tree)
-    case Block(Nil, expr) =>
+    case Block(Lst.Empty, expr) =>
       functionWithUnknownParamType(expr)
     case _ =>
       None
@@ -304,8 +306,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case tree: FunctionWithMods => tree.mods.is(Given)
     case Function((param: untpd.ValDef) :: _, _) => param.mods.is(Given)
     case Closure(_, meth, _) => true
-    case Block(Nil, expr) => isContextualClosure(expr)
-    case Block(DefDef(nme.ANON_FUN, _, params :: _, _, _) :: Nil, cl: Closure) =>
+    case Block(Lst.Empty, expr) => isContextualClosure(expr)
+    case Block(Lst(DefDef(nme.ANON_FUN, _, params :: _, _, _)), cl: Closure) =>
       params match {
         case param :: _ => param.mods.is(Given)
         case Nil => cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isContextFunctionType(cl.tpt.typeOpt)
@@ -412,7 +414,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Typed(expr, _) =>
       exprPurity(expr)
     case Block(stats, expr) =>
-      minOf(exprPurity(expr), stats.map(statPurity))
+      minOf(exprPurity(expr), stats.map(statPurity).toList)
     case Inlined(_, bindings, expr) =>
       minOf(exprPurity(expr), bindings.map(statPurity))
     case NamedArg(_, expr) =>
@@ -531,7 +533,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         if (isIdempotentExpr(tree1)) Literal(value).withSpan(tree.span)
         else {
           def keepPrefix(pre: Tree) =
-            Block(pre :: Nil, Literal(value)).withSpan(tree.span)
+            Block(Lst(pre), Literal(value)).withSpan(tree.span)
 
           tree1 match {
             case Select(pre, _) if tree1.tpe.isInstanceOf[ConstantType] =>
@@ -627,7 +629,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** Decompose a template body into parameters and other statements */
-  def decomposeTemplateBody(body: List[Tree])(using Context): (List[Tree], List[Tree]) =
+  def decomposeTemplateBody(body: Lst[Tree])(using Context): (Lst[Tree], Lst[Tree]) =
     body.partition {
       case stat: TypeDef => stat.symbol is Flags.Param
       case stat: ValOrDefDef =>
@@ -649,9 +651,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** An extractor for def of a closure contained the block of the closure. */
   object closureDef {
     def unapply(tree: Tree)(using Context): Option[DefDef] = tree match {
-      case Block((meth : DefDef) :: Nil, closure: Closure) if meth.symbol == closure.meth.symbol =>
+      case Block(Lst(meth : DefDef), closure: Closure) if meth.symbol == closure.meth.symbol =>
         Some(meth)
-      case Block(Nil, expr) =>
+      case Block(Lst.Empty, expr) =>
         unapply(expr)
       case Inlined(_, bindings, expr) if bindings.forall(isPureBinding) =>
         unapply(expr)
@@ -731,7 +733,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  are not a linked class of some other class in the result.
    */
   def topLevelClasses(tree: Tree)(using Context): List[ClassSymbol] = tree match {
-    case PackageDef(_, stats) => stats.flatMap(topLevelClasses)
+    case PackageDef(_, stats) => stats.flatMapIterable(topLevelClasses).toList
     case tdef: TypeDef if tdef.symbol.isClass => tdef.symbol.asClass :: Nil
     case _ => Nil
   }
@@ -741,8 +743,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case PackageDef(pid, stats) =>
       val slicedStats = stats.flatMap(sliceTopLevel(_, cls))
       val isEffectivelyEmpty = slicedStats.forall(_.isInstanceOf[Import])
-      if isEffectivelyEmpty then Nil
-      else cpy.PackageDef(tree)(pid, slicedStats) :: Nil
+      if isEffectivelyEmpty then NIL
+      else Lst(cpy.PackageDef(tree)(pid, slicedStats))
     case tdef: TypeDef =>
       val sym = tdef.symbol
       assert(sym.isClass)
@@ -762,27 +764,27 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  For a tree to be found, The symbol must have a position and its definition
    *  tree must be reachable from come tree stored in an enclosing context.
    */
-  def definingStats(sym: Symbol)(using Context): List[Tree] =
-    if (!sym.span.exists || (ctx eq NoContext) || ctx.compilationUnit == null) Nil
+  def definingStats(sym: Symbol)(using Context): Lst[Tree] =
+    if (!sym.span.exists || (ctx eq NoContext) || ctx.compilationUnit == null) Lst()
     else defPath(sym, ctx.compilationUnit.tpdTree) match {
       case defn :: encl :: _ =>
-        def verify(stats: List[Tree]) =
-          if (stats exists (definedSym(_) == sym)) stats else Nil
+        def verify(stats: Lst[Tree]) =
+          if (stats exists (definedSym(_) == sym)) stats else Lst()
         encl match {
           case Block(stats, _) => verify(stats)
           case encl: Template => verify(encl.body)
           case PackageDef(_, stats) => verify(stats)
-          case _ => Nil
+          case _ => Lst()
         }
       case nil =>
-        Nil
+        Lst()
     }
 
   /** If `tree` is an instance of `TupleN[...](e1, ..., eN)`, the arguments `e1, ..., eN`
    *  otherwise the empty list.
    */
   def tupleArgs(tree: Tree)(using Context): List[Tree] = tree match {
-    case Block(Nil, expr) => tupleArgs(expr)
+    case Block(Lst.Empty, expr) => tupleArgs(expr)
     case Inlined(_, Nil, expr) => tupleArgs(expr)
     case Apply(fn, args)
     if fn.symbol.name == nme.apply &&
@@ -837,11 +839,18 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  The supercall is always the first statement (if it exists)
    */
   final def splitAtSuper(constrStats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
-    constrStats.toList match {
+    constrStats match {
       case (sc: Apply) :: rest if sc.symbol.isConstructor => (sc :: Nil, rest)
       case (block @ Block(_, sc: Apply)) :: rest if sc.symbol.isConstructor => (block :: Nil, rest)
       case stats => (Nil, stats)
     }
+
+  final def splitAtSuper(constrStats: Lst[Tree])(implicit ctx: Context): (Lst[Tree], Lst[Tree]) =
+    if constrStats.isEmpty then (Lst(), Lst())
+    else constrStats.head match
+      case sc: Apply if sc.symbol.isConstructor => (Lst(sc), constrStats.tail)
+      case block @ Block(_, sc: Apply) if sc.symbol.isConstructor => (Lst(block), constrStats.tail)
+      case _ => (Lst(), constrStats)
 
   /** Structural tree comparison (since == on trees is reference equality).
    *  For the moment, only Ident, Select, Literal, Apply and TypeApply are supported

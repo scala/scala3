@@ -21,13 +21,15 @@ import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, EqHashMap, SourceFile, SourcePosition, SrcPos}
-import dotty.tools.dotc.parsing.Parsers.Parser
+import util.{SimpleIdentityMap, SimpleIdentitySet, EqHashMap, SourceFile, SourcePosition, SrcPos}
+import parsing.Parsers.Parser
 import Nullables.{given _}
+import util.Lst; // import Lst.::
 
 import collection.mutable
 import reporting.trace
 import util.Spans.Span
+import util.Lst.toLst
 import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
 
 object Inliner {
@@ -99,7 +101,7 @@ object Inliner {
      */
     def liftBindings(tree: Tree, liftPos: Tree => Tree): Tree = tree match {
       case Block(stats, expr) =>
-        bindings ++= stats.map(liftPos)
+        bindings ++= stats.map(liftPos).iterator
         liftBindings(expr, liftPos)
       case Inlined(call, stats, expr) =>
         bindings ++= stats.map(liftPos)
@@ -119,7 +121,7 @@ object Inliner {
     val tree1 = liftBindings(tree, identity)
     val tree2 =
       if bindings.nonEmpty then
-        cpy.Block(tree)(bindings.toList, inlineCall(tree1))
+        cpy.Block(tree)(bindings.toList.toLst, inlineCall(tree1))
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
         val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
         new Inliner(tree, body).inlined(tree.srcPos)
@@ -173,8 +175,8 @@ object Inliner {
     val unapply = DefDef(unappplySym, argss =>
       inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unappplySym))
     )
-    val cdef = ClassDef(cls, DefDef(constr), List(unapply))
-    val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
+    val cdef = ClassDef(cls, DefDef(constr), Lst(unapply))
+    val newUnapply = Block(Lst(cdef), New(cls.typeRef, Nil))
     val newFun = newUnapply.select(unappplySym).withSpan(unapp.span)
     cpy.UnApply(unapp)(newFun, implicits, patterns)
   }
@@ -209,7 +211,7 @@ object Inliner {
   def dropInlined(inlined: Inlined)(using Context): Tree =
     val tree1 =
       if inlined.bindings.isEmpty then inlined.expansion
-      else cpy.Block(inlined)(inlined.bindings, inlined.expansion)
+      else cpy.Block(inlined)(inlined.bindings.toLst, inlined.expansion)
     // Reposition in the outer most inlined call
     if (enclosingInlineds.nonEmpty) tree1 else reposition(tree1, inlined.span)
 
@@ -824,7 +826,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           case Inlined(_, bindings, expansion) =>
             unapplyLet(bindings, expansion)
           case Block(stats, expr) if isElideableExpr(tree) =>
-            unapplyLet(stats, expr)
+            unapplyLet(stats.toList, expr)
           case _ =>
             None
         }
@@ -867,8 +869,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               val trailing = collectImpure(idx + 1, args.length)
               val argInPlace =
                 if (trailing.isEmpty) arg
-                else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
-              finish(seq(prefix, seq(leading, argInPlace)))
+                else letBindUnless(TreeInfo.Pure, arg)(seq(trailing.toLst, _))
+              finish(seq(prefix.toLst, seq(leading.toLst, argInPlace)))
             }
           }
           else tree
@@ -954,7 +956,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               newOwners = ctx.owner :: Nil,
               substFrom = ddef.vparamss.head.map(_.symbol),
               substTo = argSyms)
-            Block(bindingsBuf.toList, expander.transform(ddef.rhs))
+            Block(bindingsBuf.toList.toLst, expander.transform(ddef.rhs))
           case _ => tree
         }
       case _ => tree
@@ -1232,7 +1234,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           val selected0 = if (b) tree.thenp else tree.elsep
           val selected = if (selected0.isEmpty) tpd.Literal(Constant(())) else typed(selected0, pt)
           if (isIdempotentExpr(cond1)) selected
-          else Block(cond1 :: Nil, selected)
+          else Block(Lst(cond1), selected)
         case cond1 =>
           if (tree.isInline)
             errorTree(tree, em"""cannot reduce inline if
@@ -1285,7 +1287,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               case _ => rhs0
             }
             val (usedBindings, rhs2) = dropUnusedDefs(caseBindings, rhs1)
-            val rhs = seq(usedBindings, rhs2)
+            val rhs = seq(usedBindings.toLst, rhs2)
             inlining.println(i"""--- reduce:
                                 |$tree
                                 |--- to:
@@ -1337,8 +1339,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           case tree => tree
         }
       )
-      val Block(termBindings1, tree1) = inlineTypeBindings(Block(termBindings, tree))
-      dropUnusedDefs(termBindings1.asInstanceOf[List[ValOrDefDef]], tree1)
+      val Block(termBindings1, tree1) = inlineTypeBindings(Block(termBindings.toLst, tree))
+      dropUnusedDefs(termBindings1.toList.asInstanceOf[List[ValOrDefDef]], tree1)
     }
     else {
       val refCount = MutableSymbolMap[Int]()
@@ -1400,7 +1402,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           case t: Apply =>
             val t1 = super.transform(t)
             if (t1 `eq` t) t else reducer.betaReduce(t1)
-          case Block(Nil, expr) =>
+          case Block(Lst.Empty, expr) =>
             super.transform(expr)
           case _ =>
             super.transform(t)

@@ -9,10 +9,7 @@ import Types._
 import StdNames._
 import ast.Trees._
 import dotty.tools.dotc.ast.tpd
-
-
-import scala.collection.immutable.::
-
+import util.Lst; // import Lst.::
 
 /** This phase rewrites calls to array constructors to newArray method in Dotty.runtime.Arrays module.
  *
@@ -41,7 +38,7 @@ class ArrayConstructors extends MiniPhase {
           expand(targ.head.tpe, dims)
         case Apply(TypeApply(t: Select, targ), dims)
           if !TypeErasure.isGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>
-          Block(t.qualifier :: Nil, expand(targ.head.tpe, dims))
+          Block(Lst(t.qualifier), expand(targ.head.tpe, dims))
         case _ => tree
       }
     }

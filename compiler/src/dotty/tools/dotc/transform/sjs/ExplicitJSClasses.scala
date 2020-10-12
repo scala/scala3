@@ -27,6 +27,9 @@ import dotty.tools.dotc.ast.tpd
 
 import util.Store
 
+import util.Lst; // import Lst.::
+import util.Lst.toLst
+
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
 import JSSymUtils._
@@ -436,12 +439,12 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def prepareForBlock(tree: Block)(using Context): Context = {
-    populateNestedObject2superClassTpe(tree.stats)
+    populateNestedObject2superClassTpe(tree.stats.toList)
     ctx
   }
 
   override def prepareForTemplate(tree: Template)(using Context): Context = {
-    populateNestedObject2superClassTpe(tree.body)
+    populateNestedObject2superClassTpe(tree.body.toList)
     ctx
   }
 
@@ -500,7 +503,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
         newStats += stat
       }
 
-      cpy.Template(tree)(tree.constr, fixedParents, Nil, tree.self, newStats.result())
+      cpy.Template(tree)(tree.constr, fixedParents, Nil, tree.self, newStats.result().toLst)
     }
   }
 

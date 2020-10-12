@@ -13,6 +13,7 @@ import ast.Trees.mods
 import annotation.constructorOnly
 import annotation.internal.sharable
 import reporting.Reporter
+import util.Lst; // import Lst.::
 
 import java.io.{ PrintWriter }
 
@@ -88,6 +89,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     case Trees.Inlined(call, _, _) =>
       call.span
     case _ =>
+      import scala.::
       def include(span: Span, x: Any): Span = x match {
         case p: Positioned =>
           if (p.source != src) span
@@ -103,6 +105,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
           include(include(span, m.mods), m.annotations)
         case y :: ys =>
           include(include(span, y), ys)
+        case xs: Lst.Arr =>
+          xs.foldLeft(span)(include(_, _))
         case _ => span
       }
       val limit = productArity

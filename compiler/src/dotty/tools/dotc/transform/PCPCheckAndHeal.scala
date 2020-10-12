@@ -22,6 +22,8 @@ import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.core.Annotations._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import scala.collection.mutable
 import dotty.tools.dotc.util.Property
@@ -112,7 +114,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     val body2 =
       taggedTypes.getTypeTags match
         case Nil  => body1
-        case tags => tpd.Block(tags, body1).withSpan(body.span)
+        case tags => tpd.Block(tags.toLst, body1).withSpan(body.span)
 
     super.transformQuotation(body2, quote)
   }

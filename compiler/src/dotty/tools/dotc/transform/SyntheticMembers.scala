@@ -15,6 +15,8 @@ import SymUtils._
 import util.Property
 import config.Printers.derive
 import NullOpsDecorator._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 object SyntheticMembers {
 
@@ -343,7 +345,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val mixes = for (accessor <- accessors) yield
         Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
-      Block(accDef :: mixPrefix :: mixes, finish)
+      Block(Lst(accDef, mixPrefix) ::: mixes.toLst, finish)
     }
 
     /** The `hashCode` implementation for given symbol `sym`. */

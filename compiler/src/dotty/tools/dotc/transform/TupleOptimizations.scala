@@ -14,6 +14,8 @@ import Symbols._
 import MegaPhase._
 import Types._
 import dotty.tools.dotc.ast.tpd
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import scala.annotation.tailrec
 
@@ -84,7 +86,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           // TupleN-1(it.next(), ..., it.next())
           evalOnce(tup.asInstance(defn.ProductClass.typeRef).select(nme.productIterator)) { it =>
             Block(
-              it.select(nme.next).ensureApplied :: Nil,
+              Lst(it.select(nme.next).ensureApplied),
               knownTupleFromIterator(size - 1, it).asInstance(tree.tpe)
             )
           }

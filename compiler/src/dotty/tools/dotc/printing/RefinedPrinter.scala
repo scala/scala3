@@ -23,6 +23,9 @@ import Decorators._
 import scala.internal.Chars.isOperatorPart
 import transform.TypeUtils._
 import transform.SymUtils._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
+
 
 import language.implicitConversions
 import dotty.tools.dotc.util.{NameTransformer, SourcePosition}
@@ -271,7 +274,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def blockToText[T >: Untyped](block: Block[T]): Text =
     blockText(block.stats :+ block.expr)
 
-  protected def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
+  protected def blockText[T >: Untyped](trees: Lst[Tree[T]]): Text =
     ("{" ~ toText(trees, "\n") ~ "}").close
 
   protected def typeApplyText[T >: Untyped](tree: TypeApply[T]): Text = {
@@ -330,7 +333,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def dropBlock(tree: Tree): Tree = tree match {
-      case Block(Nil, expr) => expr
+      case Block(Lst.Empty, expr) => expr
       case _ => tree
     }
 
@@ -436,14 +439,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextGlobal(ref) ~ (":" ~ toText(target) provided !target.isEmpty) ~ ")"
       case Match(sel, cases) =>
         val isInline = tree.isInstanceOf[Trees.InlineMatch[?]]
-        if (sel.isEmpty && !isInline) blockText(cases)
+        if (sel.isEmpty && !isInline) blockText(cases.toLst)
         else changePrec(GlobalPrec) {
           val selTxt: Text =
             if (isInline)
               if (sel.isEmpty) keywordStr("implicit")
               else keywordStr("inline ") ~ toText(sel)
             else toText(sel)
-          selTxt ~ keywordStr(" match ") ~ blockText(cases)
+          selTxt ~ keywordStr(" match ") ~ blockText(cases.toLst)
         }
       case CaseDef(pat, guard, body) =>
         keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ caseBlockText(body)
@@ -470,7 +473,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree @ Inlined(call, bindings, body) =>
         (("/* inlined from " ~ (if (call.isEmpty) "outside" else toText(call)) ~ " */ ") `provided`
           !homogenizedView && ctx.settings.XprintInline.value) ~
-          (if bindings.isEmpty then toText(body) else blockText(bindings :+ body))
+          (if bindings.isEmpty then toText(body) else blockText(bindings.toLst :+ body))
       case tpt: untpd.DerivedTypeTree =>
         "<derived typetree watching " ~ tpt.watched.showSummary() ~ ">"
       case TypeTree() =>
@@ -478,7 +481,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ "." ~ keywordStr("type")
       case RefinedTypeTree(tpt, refines) =>
-        toTextLocal(tpt) ~ " " ~ blockText(refines)
+        toTextLocal(tpt) ~ " " ~ blockText(refines.toLst)
       case AppliedTypeTree(tpt, args) =>
         if (tpt.symbol == defn.orType && args.length == 2)
           changePrec(OrTypePrec) { toText(args(0)) ~ " | " ~ atPrec(OrTypePrec + 1) { toText(args(1)) } }
@@ -499,7 +502,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case MatchTypeTree(bound, sel, cases) =>
         changePrec(GlobalPrec) {
-          toText(sel) ~ keywordStr(" match ") ~ blockText(cases) ~
+          toText(sel) ~ keywordStr(" match ") ~ blockText(cases.toLst) ~
           (" <: " ~ toText(bound) provided !bound.isEmpty)
         }
       case ByNameTypeTree(tpt) =>
@@ -551,7 +554,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case ExtMethods(tparams, vparamss, mdefs) =>
         keywordText("extension ")
         ~ addVparamssText(tparamsText(tparams), vparamss)
-        ~ " " ~ (if mdefs.length == 1 then toText(mdefs.head) else blockText(mdefs))
+        ~ " " ~ (if mdefs.length == 1 then toText(mdefs.head) else blockText(mdefs.toLst))
       case packageDef: PackageDef =>
         packageDefText(packageDef)
       case tree: Template =>
@@ -873,7 +876,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def packageDefText(tree: PackageDef): Text = {
     val statsText = tree.stats match {
-      case (pdef: PackageDef) :: Nil => toText(pdef)
+      case Lst(pdef: PackageDef) => toText(pdef)
       case _ => toTextGlobal(tree.stats, "\n")
     }
     val bodyText =
@@ -911,7 +914,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (tree.isEmpty) "" else encl(toText(tree))
 
   def optText[T >: Untyped](tree: List[Tree[T]])(encl: Text => Text): Text =
-    if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
+    if (tree.exists(!_.isEmpty)) encl(blockText(tree.toLst)) else ""
 
   override protected def ParamRefNameString(name: Name): String =
     name.toString

@@ -18,6 +18,8 @@ import NameKinds._
 import NameOps._
 import ast.Trees._
 import collection.mutable
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 object Mixin {
   val name: String = "mixin"
@@ -179,15 +181,15 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     val ops = new MixinOps(cls, thisPhase)
     import ops._
 
-    def traitDefs(stats: List[Tree]): List[Tree] = {
+    def traitDefs(stats: Lst[Tree]): Lst[Tree] = {
       stats.flatMap {
         case stat: DefDef if needsTraitSetter(stat.symbol) =>
           // add a trait setter for this getter
-          stat :: DefDef(stat.symbol.traitSetter.asTerm, EmptyTree) :: Nil
+          Lst(stat, DefDef(stat.symbol.traitSetter.asTerm, EmptyTree))
         case stat: DefDef if stat.symbol.isSetter =>
-          cpy.DefDef(stat)(rhs = EmptyTree) :: Nil
+          Lst(cpy.DefDef(stat)(rhs = EmptyTree))
         case stat =>
-          stat :: Nil
+          Lst(stat)
       }
     }
 
@@ -197,7 +199,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
      *     due to reorderings with named and/or default parameters).
      *   - a list of arguments to be used as initializers of trait parameters
      */
-    def transformConstructor(tree: Tree): (Tree, List[Tree], List[Tree]) = tree match {
+    def transformConstructor(tree: Tree): (Tree, Lst[Tree], Lst[Tree]) = tree match {
       case Block(stats, expr) =>
         val (scall, inits, args) = transformConstructor(expr)
         if args.isEmpty then
@@ -212,14 +214,14 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               ).installAfter(thisPhase)
               stat.symbol.enteredAfter(thisPhase)
           }
-          (scall, stats ::: inits, args)
+          (scall, stats ++ inits, args)
       case _ =>
         val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
         val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
-        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), Nil, initArgs)
+        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), Lst.Empty, initArgs.toLst)
     }
 
-    val superCallsAndArgs: Map[Symbol, (Tree, List[Tree], List[Tree])] = (
+    val superCallsAndArgs: Map[Symbol, (Tree, Lst[Tree], Lst[Tree])] = (
       for (p <- impl.parents; constr = stripBlock(p).symbol if constr.isConstructor)
       yield constr.owner -> transformConstructor(p)
     ).toMap
@@ -292,10 +294,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         else if (!cls.isPrimitiveValueClass) {
           val mixInits = mixins.flatMap { mixin =>
             val prefix = superCallsAndArgs.get(mixin) match
-              case Some((_, inits, _)) => inits
+              case Some((_, inits, _)) => inits.toList
               case _ => Nil
             prefix
-            ::: flatten(traitInits(mixin))
+            ::: flatten(traitInits(mixin).toLst).toList
             ::: superCallOpt(mixin)
             ::: setters(mixin)
             ::: mixinForwarders(mixin)

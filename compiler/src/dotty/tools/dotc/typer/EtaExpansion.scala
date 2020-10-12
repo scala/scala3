@@ -15,6 +15,8 @@ import util.Spans._
 import collection.mutable
 import Trees._
 import Decorators._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** A class that handles argument lifting. Argument lifting is needed in the following
  *  scenarios:
@@ -119,7 +121,7 @@ abstract class Lifter {
     case Select(pre, name) if isPureRef(tree) =>
       cpy.Select(tree)(liftPrefix(defs, pre), name)
     case Block(stats, expr) =>
-      liftApp(defs ++= stats, expr)
+      liftApp(defs ++= stats.iterator, expr)
     case New(tpt) =>
       tree
     case _ =>
@@ -248,6 +250,6 @@ object EtaExpansion extends LiftImpure {
       if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given))
       else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
       else untpd.Function(params, body)
-    if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
+    if (defs.nonEmpty) untpd.Block(defs.toList.toLst map (untpd.TypedSplice(_)), fn) else fn
   }
 }

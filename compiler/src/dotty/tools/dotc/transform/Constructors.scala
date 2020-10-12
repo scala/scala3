@@ -16,6 +16,8 @@ import Decorators._
 import DenotTransformers._
 import Constants.Constant
 import collection.mutable
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 object Constructors {
   val name: String = "constructors"
@@ -167,7 +169,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     def isRetained(acc: Symbol) =
       !mightBeDropped(acc) || retainedPrivateVals(acc)
 
-    val constrStats, clsStats = new mutable.ListBuffer[Tree]
+    val constrStats, clsStats = Lst.Buffer[Tree]()
 
     /** Map outer getters $outer and outer accessors $A$B$$$outer to the given outer parameter. */
     def mapOuter(outerParam: Symbol) = new TreeMap {
@@ -189,9 +191,9 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
     // Split class body into statements that go into constructor and
     // definitions that are kept as members of the class.
-    def splitStats(stats: List[Tree]): Unit = stats match {
-      case stat :: stats1 =>
-        stat match {
+    def splitStats(stats: Lst[Tree]): Unit =
+      for i <- 0 until stats.length do
+        stats(i) match
           case stat @ ValDef(name, tpt, _) if !stat.symbol.is(Lazy) && !stat.symbol.hasAnnotation(defn.ScalaStaticAnnot) =>
             val sym = stat.symbol
             if (isRetained(sym)) {
@@ -232,16 +234,13 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
                 else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
               constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
             clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
-          case DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
+          case stat @ DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
             clsStats += mapOuter(outerParam.symbol).transform(stat)
-          case _: DefTree =>
+          case stat: DefTree =>
             clsStats += stat
-          case _ =>
+          case stat =>
             constrStats += intoConstr(stat, tree.symbol)
-        }
-        splitStats(stats1)
-      case Nil =>
-    }
+    end splitStats
     splitStats(tree.body)
 
     // The initializers for the retained accessors */
@@ -284,7 +283,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       // TODO: this happens to work only because Constructors is the last phase in group
     }
 
-    val (superCalls, followConstrStats) = splitAtSuper(constrStats.toList)
+    val (superCalls, followConstrStats) = splitAtSuper(constrStats.toLst)
 
     val mappedSuperCalls = vparams match {
       case (outerParam @ ValDef(nme.OUTER, _, _)) :: _ =>
@@ -311,6 +310,6 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       }
       else cpy.DefDef(constr)(rhs = Block(finalConstrStats, unitLiteral))
 
-    cpy.Template(tree)(constr = expandedConstr, body = clsStats.toList)
+    cpy.Template(tree)(constr = expandedConstr, body = clsStats.toLst)
   }
 }

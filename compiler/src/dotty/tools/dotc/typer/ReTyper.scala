@@ -12,6 +12,7 @@ import ast.{tpd, untpd, Trees}
 import Trees._
 import scala.util.control.NonFatal
 import util.Spans.Span
+import util.Lst; // import Lst.::
 
 /** A version of Typer that keeps all symbols defined and referenced in a
  *  previously typed tree.
@@ -96,7 +97,7 @@ class ReTyper extends Typer with ReChecking {
 
   override def localTyper(sym: Symbol): Typer = this
 
-  override def index(trees: List[untpd.Tree])(using Context): Context = ctx
+  override def index(trees: Lst[untpd.Tree])(using Context): Context = ctx
 
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(using Context): Tree =
     fallBack
@@ -135,7 +136,7 @@ class ReTyper extends Typer with ReChecking {
 
   override def widenEnumCase(tree: Tree, pt: Type)(using Context): Tree = tree
 
-  override protected def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] = body
+  override protected def addAccessorDefs(cls: Symbol, body: Lst[Tree])(using Context): Lst[Tree] = body
   override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(using Context): Unit = ()
   override protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(using Context): Boolean = true
 }

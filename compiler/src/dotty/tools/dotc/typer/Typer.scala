@@ -30,6 +30,8 @@ import TypeComparer.CompareResult
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 import Applications.{ExtMethodApply, IntegratedTypeArgs, productSelectorTypes, wrapDefs}
 
 import collection.mutable
@@ -649,7 +651,7 @@ class Typer extends Namer
               case _ => Nil
             }
             var app: untpd.Tree = untpd.Apply(fromDigits, firstArg :: otherArgs)
-            if (ctx.mode.is(Mode.Pattern)) app = untpd.Block(Nil, app)
+            if (ctx.mode.is(Mode.Pattern)) app = untpd.Block(Lst.Empty, app)
             return typed(app, pt)
           case _ =>
         }
@@ -694,7 +696,7 @@ class Typer extends Namer
         }
         val x = tpnme.ANON_CLASS
         val clsDef = TypeDef(x, templ1).withFlags(Final | Synthetic)
-        typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
+        typed(cpy.Block(tree)(Lst(clsDef), New(Ident(x), Nil)), pt)
       case _ =>
         var tpt1 = typedType(tree.tpt)
         tpt1 = tpt1.withType(ensureAccessible(tpt1.tpe, superAccess = false, tpt1.srcPos))
@@ -892,7 +894,7 @@ class Typer extends Namer
         }
     }
 
-  def typedBlockStats(stats: List[untpd.Tree])(using Context): (List[tpd.Tree], Context) =
+  def typedBlockStats(stats: Lst[untpd.Tree])(using Context): (Lst[tpd.Tree], Context) =
     index(stats)
     typedStats(stats, ctx.owner)
 
@@ -905,7 +907,7 @@ class Typer extends Namer
       cpy.Block(tree)(stats1, expr1)
         .withType(expr1.tpe)
         .withNotNullInfo(stats1.foldRight(expr1.notNullInfo)(_.notNullInfo.seq(_))),
-      pt, localSyms(stats1))
+      pt, localSyms(stats1.toList))
   }
 
   def escapingRefs(block: Tree, localSyms: => List[Symbol])(using Context): List[NamedType] = {
@@ -1049,7 +1051,7 @@ class Typer extends Namer
         else params
       val params2 = params1.map(fixThis.transformSub)
       val appDef0 = untpd.DefDef(nme.apply, Nil, List(params2), body, EmptyTree).withSpan(tree.span)
-      index(appDef0 :: Nil)
+      index(Lst(appDef0))
       val appDef = typed(appDef0).asInstanceOf[DefDef]
       val mt = appDef.symbol.info.asInstanceOf[MethodType]
       if (mt.isParamDependent)
@@ -1626,7 +1628,8 @@ class Typer extends Namer
   }
 
   def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree = {
-    val (bindings1, exprCtx) = typedBlockStats(tree.bindings)
+    val (bindings0, exprCtx) = typedBlockStats(tree.bindings.toLst)
+    val bindings1 = bindings0.toList
     val expansion1 = typed(tree.expansion, pt)(using inlineContext(tree.call)(using exprCtx))
     assignType(cpy.Inlined(tree)(tree.call, bindings1.asInstanceOf[List[MemberDef]], expansion1),
         bindings1, expansion1)
@@ -1664,7 +1667,7 @@ class Typer extends Namer
     val refineClsDef = desugar.refinedTypeToClass(tpt1, tree.refinements).withSpan(tree.span)
     val refineCls = createSymbol(refineClsDef).asClass
     val TypeDef(_, impl: Template) = typed(refineClsDef)
-    val refinements1 = impl.body
+    val refinements1 = impl.body.toList
     assert(tree.refinements.hasSameLengthAs(refinements1), i"${tree.refinements}%, % > $refinements1%, %")
     val seen = mutable.Set[Symbol]()
     for (refinement <- refinements1) { // TODO: get clarity whether we want to enforce these conditions
@@ -1779,7 +1782,7 @@ class Typer extends Namer
 
   def typedLambdaTypeTree(tree: untpd.LambdaTypeTree)(using Context): Tree =
     val LambdaTypeTree(tparams, body) = tree
-    index(tparams)
+    index(tparams.toLst)
     typeIndexedLambdaTypeTree(tree, tparams, body)
 
   def typedTermLambdaTypeTree(tree: untpd.TermLambdaTypeTree)(using Context): Tree =
@@ -1997,7 +2000,7 @@ class Typer extends Namer
         case app: Apply if untpd.isSelfConstrCall(app) =>
           if (sym.span.exists && app.symbol.span.exists && sym.span.start <= app.symbol.span.start)
             report.error("secondary constructor must call a preceding constructor", app.srcPos)
-        case Block(call :: _, _) => checkThisConstrCall(call)
+        case Block(Lst(stat, _: _*), _) => checkThisConstrCall(stat)
         case _ =>
       }
       checkThisConstrCall(rhs1)
@@ -2171,7 +2174,7 @@ class Typer extends Namer
       // 3. Types do not override classes.
       // 4. Polymorphic type defs override nothing.
 
-  protected def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] =
+  protected def addAccessorDefs(cls: Symbol, body: Lst[Tree])(using Context): Lst[Tree] =
     ctx.compilationUnit.inlineAccessors.addAccessorDefs(cls, body)
 
   /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
@@ -2595,24 +2598,35 @@ class Typer extends Namer
   def typedTrees(trees: List[untpd.Tree])(using Context): List[Tree] =
     trees mapconserve (typed(_))
 
-  def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
-    val buf = new mutable.ListBuffer[Tree]
+  def typedStats(stats: Lst[untpd.Tree], exprOwner: Symbol)(using Context): (Lst[Tree], Context) = {
+    val buf = Lst.Buffer[Tree]()
     var enumContexts: SimpleIdentityMap[Symbol, Context] = SimpleIdentityMap.empty
     val initialNotNullInfos = ctx.notNullInfos
       // A map from `enum` symbols to the contexts enclosing their definitions
-    @tailrec def traverse(stats: List[untpd.Tree])(using Context): (List[Tree], Context) = stats match {
-      case (imp: untpd.Import) :: rest =>
-        val imp1 = typed(imp)
-        buf += imp1
-        traverse(rest)(using ctx.importContext(imp, imp1.symbol))
-      case (mdef: untpd.DefTree) :: rest =>
-        mdef.removeAttachment(ExpandedTree) match {
-          case Some(xtree) =>
-            traverse(xtree :: rest)
-          case none =>
-            val newCtx = if (ctx.owner.isTerm && adaptCreationContext(mdef)) ctx
+
+    @tailrec def traverse(stats: Lst[untpd.Tree], idx: Int, more: List[(Lst[untpd.Tree], Int)])(using Context): (Lst[Tree], Context) =
+      if idx == stats.length then
+        more match
+          case (moreStats, start) :: rest => traverse(moreStats, start, rest)
+          case Nil => (buf.toLst, ctx)
+      else
+        var stat = stats(idx)
+        stat match
+          case _: untpd.DefTree =>
+            stat = stat.removeAttachment(ExpandedTree).getOrElse(stat)
+          case _: untpd.ExtMethods =>
+            stat = stat.removeAttachment(ExpandedTree).get
+          case _ =>
+        stat match
+          case imp: untpd.Import =>
+            val imp1 = typed(imp)
+            buf += imp1
+            traverse(stats, idx + 1, more)(using ctx.importContext(imp, imp1.symbol))
+          case mdef: untpd.DefTree =>
+            val newCtx =
+              if ctx.owner.isTerm && adaptCreationContext(mdef) then ctx
               else ctx.withNotNullInfos(initialNotNullInfos)
-            typed(mdef)(using newCtx) match {
+            typed(mdef)(using newCtx) match
               case mdef1: DefDef
               if mdef1.symbol.is(Inline, butNot = Deferred) && !Inliner.bodyToInline(mdef1.symbol).isEmpty =>
                 buf ++= inlineExpansion(mdef1)
@@ -2625,26 +2639,20 @@ class Typer extends Namer
                 // clashing synthetic case methods are converted to empty trees, drop them here
               case mdef1 =>
                 buf += mdef1
-            }
-            traverse(rest)
-        }
-      case Thicket(stats) :: rest =>
-        traverse(stats ::: rest)
-      case (stat: untpd.Export) :: rest =>
-        buf ++= stat.attachmentOrElse(ExportForwarders, Nil)
-          // no attachment can happen in case of cyclic references
-        traverse(rest)
-      case (stat: untpd.ExtMethods) :: rest =>
-        val xtree = stat.removeAttachment(ExpandedTree).get
-        traverse(xtree :: rest)
-      case stat :: rest =>
-        val stat1 = typed(stat)(using ctx.exprContext(stat, exprOwner))
-        checkStatementPurity(stat1)(stat, exprOwner)
-        buf += stat1
-        traverse(rest)(using stat1.nullableContext)
-      case nil =>
-        (buf.toList, ctx)
-    }
+            traverse(stats, idx + 1, more)
+          case Thicket(ts) =>
+            traverse(ts.toLst, 0, (stats, idx + 1) :: more)
+          case stat: untpd.Export =>
+            buf ++= stat.attachmentOrElse(ExportForwarders, Nil)
+              // no attachment can happen in case of cyclic references
+            traverse(stats, idx + 1, more)
+          case _ =>
+            val stat1 = typed(stat)(using ctx.exprContext(stat, exprOwner))
+            checkStatementPurity(stat1)(stat, exprOwner)
+            buf += stat1
+            traverse(stats, idx + 1, more)(using stat1.nullableContext)
+    end traverse
+
     val localCtx = {
       val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
       ctx.withProperty(ExprOwner, exprOwnerOpt)
@@ -2661,7 +2669,7 @@ class Typer extends Namer
       case _ =>
         stat
     }
-    val (stats0, finalCtx) = traverse(stats)(using localCtx)
+    val (stats0, finalCtx) = traverse(stats, 0, Nil)(using localCtx)
     val stats1 = stats0.mapConserve(finalize)
     if (ctx.owner == exprOwner) checkNoAlphaConflict(stats1)
     (stats1, finalCtx)
@@ -3363,7 +3371,7 @@ class Typer extends Namer
         case tree @ Block(stats, expr) => tpd.cpy.Block(tree)(stats, adaptConstant(expr, tpe))
         case tree =>
           if (isIdempotentExpr(tree)) lit // See discussion in phase Literalize why we demand isIdempotentExpr
-          else Block(tree :: Nil, lit)
+          else Block(Lst(tree), lit)
       }
     }
 
@@ -3418,7 +3426,7 @@ class Typer extends Namer
         // so will take the code path that decides on inlining
         val tree1 = adapt(tree, WildcardType, locked)
         checkStatementPurity(tree1)(tree, ctx.owner)
-        return tpd.Block(tree1 :: Nil, Literal(Constant(())))
+        return tpd.Block(Lst(tree1), Literal(Constant(())))
       }
 
       // convert function literal to SAM closure
@@ -3644,7 +3652,7 @@ class Typer extends Namer
         val bundle = untpd.Apply(untpd.Select(untpd.New(ref), nme.CONSTRUCTOR), untpd.Literal(Constant(null))).withSpan(call.span)
         val bundle1 = typedExpr(bundle, defn.AnyType)
         val bundleVal = SyntheticValDef(NameKinds.UniqueName.fresh(nme.bundle), bundle1).withSpan(call.span)
-        tpd.Block(List(bundleVal), splice(tpd.ref(bundleVal.symbol))).withSpan(call.span)
+        tpd.Block(Lst(bundleVal), splice(tpd.ref(bundleVal.symbol))).withSpan(call.span)
       }
     }
     if ctx.phase.isTyper then

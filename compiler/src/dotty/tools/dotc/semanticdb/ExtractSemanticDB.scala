@@ -16,6 +16,7 @@ import util.{SourceFile, SourcePosition}
 import scala.jdk.CollectionConverters._
 import collection.mutable
 import java.nio.file.Paths
+import util.Lst; // import Lst.::
 
 import dotty.tools.dotc.transform.SymUtils._
 
@@ -155,7 +156,7 @@ class ExtractSemanticDB extends Phase:
           case tree: ValDef
           if tree.symbol.isAllOf(EnumValue) =>
             tree.rhs match
-            case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
+            case Block(Lst(TypeDef(_, template: Template), _: _*), _) => // simple case with specialised extends clause
               template.parents.foreach(traverse)
             case _ => // calls $new
           case tree: ValDef
@@ -187,14 +188,14 @@ class ExtractSemanticDB extends Phase:
           if !excludeDef(ctorSym) then
             traverseAnnotsOfDefinition(ctorSym)
             registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
-            ctorParams(tree.constr.vparamss, tree.body)
+            ctorParams(tree.constr.vparamss, tree.body.toList)
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
             traverse(parent)
           val selfSpan = tree.self.span
           if selfSpan.exists && selfSpan.hasLength then
             traverse(tree.self)
           if tree.symbol.owner.isEnumClass then
-            tree.body.foreachUntilImport(traverse).foreach(traverse) // the first import statement
+            tree.body.toList.foreachUntilImport(traverse).foreach(traverse) // the first import statement
           else
             tree.body.foreach(traverse)
         case tree: Apply =>

@@ -7,6 +7,8 @@ import ast.{Trees, tpd, untpd, desugar}
 import util.Spans._
 import util.Stats.record
 import util.{SrcPos, NoSourcePosition, SourceFile}
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 import Trees.Untyped
 import Contexts._
 import Phases._
@@ -194,7 +196,7 @@ object Applications {
   }
 
   def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
-    if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
+    if (defs != null && defs.nonEmpty) tpd.Block(defs.toList.toLst, tree) else tree
 
   /** A wrapper indicating that its `app` argument has already integrated the type arguments
    *  of the expected type, provided that type is a (possibly ignored) PolyProto.
@@ -1819,7 +1821,7 @@ trait Applications extends Compatibility {
      *       formal parameter that is a unary function.
      */
     def normArg(alts: List[TermRef], arg: untpd.Tree, idx: Int): untpd.Tree = arg match
-      case Block(Nil, expr) => normArg(alts, expr, idx)
+      case Block(Lst.Empty, expr) => normArg(alts, expr, idx)
       case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
 
         // If ref refers to a method whose parameter at index `idx` is a function type,

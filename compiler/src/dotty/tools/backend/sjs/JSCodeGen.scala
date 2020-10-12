@@ -25,6 +25,10 @@ import Phases._
 import StdNames._
 import TypeErasure.ErasedValueType
 
+import dotty.tools.dotc.util
+import util.Lst; // import Lst.::
+import util.Lst.toLst
+
 import dotty.tools.dotc.transform.{Erasure, ValueClasses}
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.SourcePosition
@@ -179,7 +183,7 @@ class JSCodeGen()(using genCtx: Context) {
     def collectTypeDefs(tree: Tree): List[TypeDef] = {
       tree match {
         case EmptyTree            => Nil
-        case PackageDef(_, stats) => stats.flatMap(collectTypeDefs)
+        case PackageDef(_, stats) => stats.flatMapIterable(collectTypeDefs).toList
         case cd: TypeDef          => cd :: Nil
         case _: ValDef            => Nil // module instance
       }
@@ -1446,7 +1450,7 @@ class JSCodeGen()(using genCtx: Context) {
         }
 
       case Block(stats, expr) =>
-        js.Block(stats.map(genStat) :+ genStatOrExpr(expr, isStat))
+        js.Block(stats.map(genStat).toList :+ genStatOrExpr(expr, isStat))
 
       case Typed(expr, _) =>
         expr match {

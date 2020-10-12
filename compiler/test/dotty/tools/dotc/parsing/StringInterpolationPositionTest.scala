@@ -4,6 +4,7 @@ package parsing
 
 import ast.untpd._
 import org.junit.Test
+import util.Lst; // import Lst.::
 
 class StringInterpolationPositionTest extends ParserTest {
 
@@ -23,9 +24,9 @@ class StringInterpolationPositionTest extends ParserTest {
   def interpolationLiteralPosition: Unit = {
     val t = parseText(program)
     t match {
-      case PackageDef(_, List(TypeDef(_, Template(_, _, _, statements: List[Tree])))) => {
+      case PackageDef(_, Lst(TypeDef(_, Template(_, _, _, statements: Lst[Tree])))) => {
         val interpolations = statements.collect{ case ValDef(_, _, InterpolatedString(_, int)) => int }
-        val lits = interpolations.flatten.flatMap {
+        val lits = interpolations.toList.flatten.flatMap {
           case l @ Literal(_) => List(l)
           case Thicket(trees) => trees.collect { case l @ Literal(_) => l }
         }

@@ -5,6 +5,7 @@ package typer
 import core._
 import Contexts._, Symbols._, Decorators._, Comments.{_, given _}
 import ast.tpd
+import util.Lst; // import Lst.::
 
 object Docstrings {
 
@@ -33,8 +34,8 @@ object Docstrings {
         expandComment(sym).map { expanded =>
           val typedUsecases = expanded.usecases.map { usecase =>
             ctx.typer.enterSymbol(ctx.typer.createSymbol(usecase.untpdCode))
-            ctx.typer.typedStats(usecase.untpdCode :: Nil, owner)._1 match {
-              case List(df: tpd.DefDef) =>
+            ctx.typer.typedStats(Lst(usecase.untpdCode), owner)._1 match {
+              case Lst(df: tpd.DefDef) =>
                 usecase.typed(df)
               case _ =>
                 report.error("`@usecase` was not a valid definition", ctx.source.atSpan(usecase.codePos))

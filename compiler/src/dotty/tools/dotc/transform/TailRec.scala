@@ -14,6 +14,8 @@ import core.Symbols._
 import reporting._
 import transform.MegaPhase.MiniPhase
 import util.LinearSet
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import scala.collection.mutable
 
@@ -203,7 +205,7 @@ class TailRec extends MiniPhase {
 
         cpy.DefDef(tree)(rhs =
           Block(
-            initialVarDefs,
+            initialVarDefs.toLst,
             WhileDo(EmptyTree, {
               Labeled(transformer.continueLabel.asTerm, {
                 Return(rhsFullyTransformed, method)
@@ -291,6 +293,10 @@ class TailRec extends MiniPhase {
       if (isTraversalNeeded) transform(tree, tailPosition = false)
       else tree
 
+    def noTailTransforms[Tr <: Tree](trees: Lst[Tr])(using Context): Lst[Tr] =
+      if (isTraversalNeeded) trees.mapConserve(noTailTransform).asInstanceOf[Lst[Tr]]
+      else trees
+
     def noTailTransforms[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
       if (isTraversalNeeded) trees.mapConserve(noTailTransform).asInstanceOf[List[Tr]]
       else trees
@@ -364,7 +370,7 @@ class TailRec extends MiniPhase {
              * which can cause Ycheck errors.
              */
             val tpt = TypeTree(method.info.resultType)
-            seq(assignments, Typed(Return(unitLiteral.withSpan(tree.span), continueLabel), tpt))
+            seq(assignments.toLst, Typed(Return(unitLiteral.withSpan(tree.span), continueLabel), tpt))
           }
           else fail("it is not in tail position")
         else if (isRecursiveSuperCall)

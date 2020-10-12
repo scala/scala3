@@ -11,6 +11,8 @@ import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted.reflect._
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.util.Lst
+import dotty.tools.dotc.util.Lst.toLst
 
 import scala.quoted.QuoteContext
 import scala.quoted.show.SyntaxHighlight
@@ -102,17 +104,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object PackageClause extends PackageClauseModule:
       def apply(pid: Ref, stats: List[Tree]): PackageClause =
-        withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats))
+        withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats.toLst))
       def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause =
-        tpd.cpy.PackageDef(original)(pid, stats)
+        tpd.cpy.PackageDef(original)(pid, stats.toLst)
       def unapply(tree: PackageClause): Some[(Ref, List[Tree])] =
-        Some((tree.pid, tree.stats))
+        Some((tree.pid, tree.stats.toList))
     end PackageClause
 
     object PackageClauseMethodsImpl extends PackageClauseMethods:
       extension (self: PackageClause):
         def pid: Ref = self.pid
-        def stats: List[Tree] = self.stats
+        def stats: List[Tree] = self.stats.toList
       end extension
     end PackageClauseMethodsImpl
 
@@ -182,11 +184,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object ClassDef extends ClassDefModule:
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original
-        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
+        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body.toLst))
       }
       def unapply(cdef: ClassDef): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
-        Some((cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body))
+        Some((cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body.toList))
     end ClassDef
 
     object ClassDefMethodsImpl extends ClassDefMethods:
@@ -200,7 +202,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def self: Option[ValDef] =
           optional(self.rhs.asInstanceOf[tpd.Template].self)
         def body: List[Statement] =
-          self.rhs.asInstanceOf[tpd.Template].body
+          self.rhs.asInstanceOf[tpd.Template].body.toList
       end extension
     end ClassDefMethodsImpl
 
@@ -301,8 +303,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
             val app1 = dotc.transform.BetaReduce(app, fn, args)
             if app1 eq app then None
             else Some(app1.withSpan(tree.span))
-          case tpd.Block(Nil, expr) =>
-            for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(Nil, e)
+          case tpd.Block(Lst.Empty, expr) =>
+            for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(Lst.Empty, e)
           case tpd.Inlined(_, Nil, expr) =>
             betaReduce(expr)
           case _ =>
@@ -672,18 +674,18 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         case block: tpd.Block if block.stats.size > 1 =>
           def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
             case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
-              tpd.Block(x :: Nil, y) :: normalizeInnerLoops(xs)
+              tpd.Block(Lst(x), y) :: normalizeInnerLoops(xs)
             case x :: xs => x :: normalizeInnerLoops(xs)
             case Nil => Nil
           }
           if (needsNormalization(block.expr)) {
-            val stats1 = normalizeInnerLoops(block.stats.init)
-            val normalLoop = tpd.Block(block.stats.last :: Nil, block.expr)
-            tpd.Block(stats1, normalLoop)
+            val stats1 = normalizeInnerLoops(block.stats.init.toList)
+            val normalLoop = tpd.Block(Lst(block.stats.last), block.expr)
+            tpd.Block(stats1.toLst, normalLoop)
           }
           else {
-            val stats1 = normalizeInnerLoops(block.stats)
-            tpd.cpy.Block(block)(stats1, block.expr)
+            val stats1 = normalizeInnerLoops(block.stats.toList)
+            tpd.cpy.Block(block)(stats1.toLst, block.expr)
           }
         case _ => tree
       }
@@ -697,16 +699,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Block extends BlockModule:
       def apply(stats: List[Statement], expr: Term): Block =
-        withDefaultPos(tpd.Block(stats, expr))
+        withDefaultPos(tpd.Block(stats.toLst, expr))
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block =
-        tpd.cpy.Block(original)(stats, expr)
+        tpd.cpy.Block(original)(stats.toLst, expr)
       def unapply(x: Block): Option[(List[Statement], Term)] =
         Some((x.statements, x.expr))
     end Block
 
     object BlockMethodsImpl extends BlockMethods:
       extension (self: Block):
-        def statements: List[Statement] = self.stats
+        def statements: List[Statement] = self.stats.toList
         def expr: Term = self.expr
       end extension
     end BlockMethodsImpl
@@ -1292,16 +1294,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object TypeBlock extends TypeBlockModule:
       def apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
-        withDefaultPos(tpd.Block(aliases, tpt))
+        withDefaultPos(tpd.Block(aliases.toLst, tpt))
       def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
-        tpd.cpy.Block(original)(aliases, tpt)
+        tpd.cpy.Block(original)(aliases.toLst, tpt)
       def unapply(x: TypeBlock): Option[(List[TypeDef], TypeTree)] =
         Some((x.aliases, x.tpt))
     end TypeBlock
 
     object TypeBlockMethodsImpl extends TypeBlockMethods:
       extension (self: TypeBlock):
-        def aliases: List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
+        def aliases: List[TypeDef] = self.stats.toList.map { case alias: TypeDef => alias }
         def tpt: TypeTree = self.expr
       end extension
     end TypeBlockMethodsImpl
@@ -2630,8 +2632,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
         pat match
           case tpd.Inlined(_, Nil, pat2) => extractTypeHoles(pat2)
-          case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
-            val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol)
+          case tpd.Block(stats @ Lst(typeHole: TypeDef, _: _*), expr) if isTypeHoleDef(typeHole) =>
+            val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol).toList
             val otherStats = stats.dropWhile(isTypeHoleDef)
             (tpd.cpy.Block(pat)(otherStats, expr), holes)
           case _ =>

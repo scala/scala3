@@ -20,6 +20,9 @@ import printing.Texts._
 import util.SourceFile
 import annotation.constructorOnly
 import collection.mutable
+import util.Lst; // import Lst.::
+import util.Lst.toLst
+
 
 object TreePickler {
 
@@ -363,7 +366,7 @@ class TreePickler(pickler: TastyPickler) {
     trees.foreach(pickleParam)
   }
 
-  def pickleStats(stats: List[Tree])(using Context): Unit = {
+  def pickleStats(stats: Lst[Tree])(using Context): Unit = {
     stats.foreach(preRegister)
     stats.foreach(stat => if (!stat.isEmpty) pickleTree(stat))
   }
@@ -563,7 +566,7 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(TEMPLATE)
           val (params, rest) = decomposeTemplateBody(tree.body)
           withLength {
-            pickleParams(params)
+            pickleParams(params.toList)
             tree.parents.foreach(pickleTree)
             val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info
             if (!tree.self.isEmpty) {

@@ -9,6 +9,9 @@ import Decorators._
 import util.{Property, SourceFile}
 import typer.ErrorReporting._
 import transform.SyntheticMembers.ExtendsSingletonMirror
+import util.Lst; // import Lst.::
+import util.Lst.toLst
+
 
 import scala.annotation.internal.sharable
 
@@ -193,7 +196,7 @@ object DesugarEnums {
       parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
       derived = Nil,
       self = EmptyValDef,
-      body = fieldMethods
+      body = fieldMethods.toLst
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, Nil,
         List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
@@ -300,7 +303,7 @@ object DesugarEnums {
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Object, definesLookups)
       val impl1 = cpy.Template(impl)(
         parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue),
-        body = if isJavaEnum then Nil else ordinalMethLit(tag) :: Nil
+        body = if isJavaEnum then Lst.Empty else Lst(ordinalMethLit(tag))
       ).withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(vdef :: scaffolding).withSpan(span)
@@ -312,7 +315,7 @@ object DesugarEnums {
     if (!enumClass.exists) EmptyTree
     else if (enumClass.typeParams.nonEmpty) {
       val parent = interpolatedEnumParent(span)
-      val impl = Template(emptyConstructor, parent :: Nil, Nil, EmptyValDef, Nil)
+      val impl = Template(emptyConstructor, parent :: Nil, Nil, EmptyValDef, Lst())
       expandEnumModule(name, impl, mods, definesLookups, span)
     }
     else {

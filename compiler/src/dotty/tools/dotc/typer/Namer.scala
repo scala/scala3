@@ -13,6 +13,8 @@ import ast.desugar, ast.desugar._
 import ProtoTypes._
 import util.Spans._
 import util.Property
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 import collection.mutable
 import tpd.tpes
 import Variances.alwaysInvariant
@@ -360,7 +362,7 @@ class Namer { typer: Typer =>
     * not also defined in `xstats`, invalidate it by setting its info to
     * NoType.
     */
-  def invalidateCompanions(pkg: Symbol, xstats: List[untpd.Tree])(using Context): Unit = {
+  def invalidateCompanions(pkg: Symbol, xstats: Lst[untpd.Tree])(using Context): Unit = {
     val definedNames = xstats collect { case stat: NameTree => stat.name }
     def invalidate(name: TypeName) =
       if (!(definedNames contains name)) {
@@ -456,7 +458,7 @@ class Namer { typer: Typer =>
   /** Create top-level symbols for statements and enter them into symbol table
    *  @return A context that reflects all imports in `stats`.
    */
-  def index(stats: List[Tree])(using Context): Context = {
+  def index(stats: Lst[Tree])(using Context): Context = {
 
     // module name -> (stat, moduleCls | moduleVal)
     val moduleClsDef = mutable.Map[TypeName, (Tree, TypeDef)]()
@@ -643,7 +645,7 @@ class Namer { typer: Typer =>
   def lateEnter(tree: Tree)(using Context): Context = {
     val saved = lateCompile
     lateCompile = true
-    try index(tree :: Nil) finally lateCompile = saved
+    try index(Lst(tree)) finally lateCompile = saved
   }
 
   /** The type bound on wildcard imports of an import list, with special values
@@ -826,7 +828,7 @@ class Namer { typer: Typer =>
           case _ => Nil
 
         val tparams = typeParamTrees(original)
-        index(tparams)
+        index(tparams.toLst)
         myTypeParams = tparams.map(symbolOfTree(_).asType)
         for param <- tparams do typedAheadExpr(param)
       end if
@@ -925,7 +927,7 @@ class Namer { typer: Typer =>
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original
 
-    private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
+    private val (params, rest): (Lst[Tree], Lst[Tree]) = impl.body.span {
       case td: TypeDef => td.mods.is(Param)
       case vd: ValDef => vd.mods.is(ParamAccessor)
       case _ => false
@@ -1196,7 +1198,7 @@ class Namer { typer: Typer =>
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
-      cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
+      cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest.toList))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
       processExports(using localCtx)
     }
@@ -1243,7 +1245,7 @@ class Namer { typer: Typer =>
 
   /** Enter and typecheck parameter list */
   def completeParams(params: List[MemberDef])(using Context): Unit = {
-    index(params)
+    index(params.toLst)
     for (param <- params) typedAheadExpr(param)
   }
 
@@ -1461,7 +1463,7 @@ class Namer { typer: Typer =>
     //   3. Info of CP is computed (to be copied to DP).
     //   4. CP is completed.
     //   5. Info of CP is copied to DP and DP is completed.
-    index(tparams)
+    index(tparams.toLst)
     if (isConstructor) sym.owner.typeParams.foreach(_.ensureCompleted())
     for (tparam <- tparams) typedAheadExpr(tparam)
 

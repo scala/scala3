@@ -8,6 +8,7 @@ import ast.tpd
 import core._
 import Contexts._, NameOps._, Symbols._, StdNames._
 import util._, util.Spans._
+import util.Lst.toLst
 
 /**
  * A `tree` coming from `source`
@@ -59,7 +60,7 @@ object SourceTree {
       import ast.Trees._
       def sourceTreeOfClass(tree: tpd.Tree): Option[SourceTree] = tree match {
         case PackageDef(_, stats) =>
-          stats.flatMap(sourceTreeOfClass).headOption
+          stats.flatMapIterable(sourceTreeOfClass).headOption
         case tree: tpd.TypeDef if tree.symbol == sym =>
           Some(SourceTree(tree, sym.source))
         case _ =>
@@ -67,7 +68,7 @@ object SourceTree {
       }
 
       def sourceImports(tree: tpd.Tree, sourceFile: SourceFile): List[SourceTree] = tree match {
-        case PackageDef(_, stats) => stats.flatMap(sourceImports(_, sourceFile))
+        case PackageDef(_, stats) => stats.flatMapIterable(sourceImports(_, sourceFile)).toList
         case imp: tpd.Import => SourceTree(imp, sourceFile) :: Nil
         case _ => Nil
       }

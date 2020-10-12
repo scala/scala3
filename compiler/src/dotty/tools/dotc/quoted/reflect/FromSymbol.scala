@@ -8,6 +8,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.util.Lst.toLst
 
 object FromSymbol {
 
@@ -32,7 +33,7 @@ object FromSymbol {
       val constr = tpd.DefDef(constrSym.asTerm)
       val parents = cls.classParents.map(tpd.TypeTree(_))
       val body = cls.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definitionFromSym(s))
-      tpd.ClassDefWithParents(cls, constr, parents, body)
+      tpd.ClassDefWithParents(cls, constr, parents, body.toLst)
   }
 
   def typeDefFromSym(sym: TypeSymbol)(using Context): tpd.TypeDef = sym.defTree match {

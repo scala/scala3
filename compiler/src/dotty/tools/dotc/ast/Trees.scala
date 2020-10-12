@@ -11,12 +11,14 @@ import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
 import util.{Stats, Attachment, Property, SourceFile, NoSource, SrcPos, SourcePosition}
+import util.Lst.toLst
 import config.Config
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
 import Decorators._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
+import util.Lst; // import Lst.::
 
 object Trees {
 
@@ -230,7 +232,7 @@ object Trees {
   }
 
   type LazyTree[-T >: Untyped] = Tree[T] | Lazy[Tree[T]]
-  type LazyTreeList[-T >: Untyped] = List[Tree[T]] | Lazy[List[Tree[T]]]
+  type LazyTreeLst[-T >: Untyped] = Lst[Tree[T]] | Lazy[Lst[Tree[T]]]
 
   // ------ Categories of trees -----------------------------------
 
@@ -503,7 +505,7 @@ object Trees {
   }
 
   /** { stats; expr } */
-  case class Block[-T >: Untyped] private[ast] (stats: List[Tree[T]], expr: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class Block[-T >: Untyped] private[ast] (stats: Lst[Tree[T]], expr: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = Block[T]
     override def isType: Boolean = expr.isType
@@ -784,13 +786,13 @@ object Trees {
    *                            if this is of class untpd.DerivingTemplate.
    *                            Typed templates only have parents.
    */
-  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parentsOrDerived: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
-    extends DefTree[T] with WithLazyField[List[Tree[T]]] {
+  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parentsOrDerived: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeLst[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
+    extends DefTree[T] with WithLazyField[Lst[Tree[T]]] {
     type ThisTree[-T >: Untyped] = Template[T]
-    def unforcedBody: LazyTreeList[T] = unforced
-    def unforced: LazyTreeList[T] = preBody
-    protected def force(x: List[Tree[T @uncheckedVariance]]): Unit = preBody = x
-    def body(using Context): List[Tree[T]] = forceIfLazy
+    def unforcedBody: LazyTreeLst[T] = unforced
+    def unforced: LazyTreeLst[T] = preBody
+    protected def force(x: Lst[Tree[T @uncheckedVariance]]): Unit = preBody = x
+    def body(using Context): Lst[Tree[T]] = forceIfLazy
 
     def parents: List[Tree[T]] = parentsOrDerived // overridden by DerivingTemplate
     def derived: List[untpd.Tree] = Nil           // overridden by DerivingTemplate
@@ -807,7 +809,7 @@ object Trees {
   }
 
   /** package pid { stats } */
-  case class PackageDef[-T >: Untyped] private[ast] (pid: RefTree[T], stats: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class PackageDef[-T >: Untyped] private[ast] (pid: RefTree[T], stats: Lst[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends ProxyTree[T] {
     type ThisTree[-T >: Untyped] = PackageDef[T]
     def forwardTo: RefTree[T] = pid
@@ -903,6 +905,22 @@ object Trees {
     if (buf != null) buf.toList else trees
   }
 
+  def flatten[T >: Untyped](trees: Lst[Tree[T]]): Lst[Tree[T]] =
+    def recur(buf: Lst.Buffer[Tree[T]], trees: Lst[Tree[T]], idx: Int): Lst.Buffer[Tree[T]] =
+      if idx == trees.length then buf
+      else trees(idx) match
+        case Thicket(elems) =>
+          var buf1 = buf
+          if buf1 == null then
+            buf1 = Lst.Buffer[Tree[T]]()
+            buf1.appendSlice(trees, 0, idx)
+          recur(recur(buf1, elems.toLst, 0), trees, idx + 1)
+        case tree =>
+          if buf != null then buf += tree
+          recur(buf, trees, idx + 1)
+    val buf = recur(null, trees, 0)
+    if buf != null then buf.toLst else trees
+
   // ----- Lazy trees and tree sequences
 
   /** A tree that can have a lazy field
@@ -910,7 +928,7 @@ object Trees {
    *  accessed by `unforced` and `force`. Forcing the field will
    *  set the `var` to the underlying value.
    */
-  trait WithLazyField[+T <: AnyRef] {
+  trait WithLazyField[+T] {
     def unforced: T | Lazy[T]
     protected def force(x: T @uncheckedVariance): Unit
     def forceIfLazy(using Context): T = unforced match {
@@ -918,7 +936,7 @@ object Trees {
         val x = lzy.complete
         force(x)
         x
-      case x: T @ unchecked => x
+      case x => x.asInstanceOf[T]
     }
   }
 
@@ -926,7 +944,7 @@ object Trees {
    *  These can be instantiated with Lazy instances which
    *  can delay tree construction until the field is first demanded.
    */
-  trait Lazy[+T <: AnyRef] {
+  trait Lazy[+T] {
     def complete(using Context): T
   }
 
@@ -947,7 +965,7 @@ object Trees {
     type MemberDef = Trees.MemberDef[T]
     type ValOrDefDef = Trees.ValOrDefDef[T]
     type LazyTree = Trees.LazyTree[T]
-    type LazyTreeList = Trees.LazyTreeList[T]
+    type LazyTreeLst = Trees.LazyTreeLst[T]
 
     type Ident = Trees.Ident[T]
     type SearchFailureIdent = Trees.SearchFailureIdent[T]
@@ -1090,8 +1108,8 @@ object Trees {
         case tree: Assign if (lhs eq tree.lhs) && (rhs eq tree.rhs) => tree
         case _ => finalize(tree, untpd.Assign(lhs, rhs)(sourceFile(tree)))
       }
-      def Block(tree: Tree)(stats: List[Tree], expr: Tree)(using Context): Block = tree match {
-        case tree: Block if (stats eq tree.stats) && (expr eq tree.expr) => tree
+      def Block(tree: Tree)(stats: Lst[Tree], expr: Tree)(using Context): Block = tree match {
+        case tree: Block if (stats eqLst tree.stats) && (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Block(stats, expr)(sourceFile(tree)))
       }
       def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If = tree match {
@@ -1195,16 +1213,16 @@ object Trees {
         case tree: TypeDef if (name == tree.name) && (rhs eq tree.rhs) => tree
         case _ => finalize(tree, untpd.TypeDef(name, rhs)(sourceFile(tree)))
       }
-      def Template(tree: Tree)(constr: DefDef, parents: List[Tree], derived: List[untpd.Tree], self: ValDef, body: LazyTreeList)(using Context): Template = tree match {
-        case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (derived eq tree.derived) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
+      def Template(tree: Tree)(constr: DefDef, parents: List[Tree], derived: List[untpd.Tree], self: ValDef, body: LazyTreeLst)(using Context): Template = tree match {
+        case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (derived eq tree.derived) && (self eq tree.self) && (body.asInstanceOf[AnyRef] eq tree.unforcedBody.asInstanceOf[AnyRef]) => tree
         case tree => finalize(tree, untpd.Template(constr, parents, derived, self, body)(sourceFile(tree)))
       }
       def Import(tree: Tree)(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import = tree match {
         case tree: Import if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
         case _ => finalize(tree, untpd.Import(expr, selectors)(sourceFile(tree)))
       }
-      def PackageDef(tree: Tree)(pid: RefTree, stats: List[Tree])(using Context): PackageDef = tree match {
-        case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
+      def PackageDef(tree: Tree)(pid: RefTree, stats: Lst[Tree])(using Context): PackageDef = tree match {
+        case tree: PackageDef if (pid eq tree.pid) && (stats eqLst tree.stats) => tree
         case _ => finalize(tree, untpd.PackageDef(pid, stats)(sourceFile(tree)))
       }
       def Annotated(tree: Tree)(arg: Tree, annot: Tree)(using Context): Annotated = tree match {
@@ -1234,7 +1252,7 @@ object Trees {
         DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
       def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs)(using Context): TypeDef =
         TypeDef(tree: Tree)(name, rhs)
-      def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody)(using Context): Template =
+      def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeLst = tree.unforcedBody)(using Context): Template =
         Template(tree: Tree)(constr, parents, derived, self, body)
     }
 
@@ -1366,14 +1384,18 @@ object Trees {
         }
       }
 
-      def transformStats(trees: List[Tree])(using Context): List[Tree] =
-        transform(trees)
+      def transformStats(trees: Lst[Tree])(using Context): Lst[Tree] =
+        trees.mapConserve(transform(_))
       def transform(trees: List[Tree])(using Context): List[Tree] =
+        flatten(trees mapConserve (transform(_)))
+      def transform(trees: Lst[Tree])(using Context): Lst[Tree] =
         flatten(trees mapConserve (transform(_)))
       def transformSub[Tr <: Tree](tree: Tr)(using Context): Tr =
         transform(tree).asInstanceOf[Tr]
       def transformSub[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
         transform(trees).asInstanceOf[List[Tr]]
+      def transformSub[Tr <: Tree](trees: Lst[Tr])(using Context): Lst[Tr] =
+        transform(trees).asInstanceOf[Lst[Tr]]
 
       protected def transformMoreCases(tree: Tree)(using Context): Tree = {
         assert(ctx.reporter.errorsReported)
@@ -1384,6 +1406,8 @@ object Trees {
     abstract class TreeAccumulator[X] { self =>
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
       def apply(x: X, tree: Tree)(using Context): X
+
+      def apply(x: X, trees: Lst[Tree])(using Context): X = trees.foldLeft(x)(apply)
 
       def apply(x: X, trees: List[Tree])(using Context): X =
         def fold(x: X, trees: List[Tree]): X = trees match

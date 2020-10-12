@@ -23,6 +23,9 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.util
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /*
  *
@@ -145,7 +148,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.isStaticConstructor)
 
-        val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats)
+        val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats.toList)
         val clInitSymbol: TermSymbol =
           if (clinits.nonEmpty) clinits.head.symbol.asTerm
           else newSymbol(
@@ -184,14 +187,14 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val assignModuleField = Assign(ref(moduleField), callConstructor)
         val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
         val clinit = clinits match {
-          case (ddef: DefDef) :: _ =>
-            cpy.DefDef(ddef)(rhs = Block(ddef.rhs :: assignModuleField :: remainingConstrStatsSubst, unitLiteral))
+          case Lst((ddef: DefDef), _: _*) =>
+            cpy.DefDef(ddef)(rhs = Block((ddef.rhs :: assignModuleField :: remainingConstrStatsSubst).toLst, unitLiteral))
           case _ =>
-            DefDef(clInitSymbol, Block(assignModuleField :: remainingConstrStatsSubst, unitLiteral))
+            DefDef(clInitSymbol, Block((assignModuleField :: remainingConstrStatsSubst).toLst, unitLiteral))
         }
 
         val constr2 = {
-          val rhs = Block(uptoSuperStats, impl.constr.rhs.asInstanceOf[Block].expr)
+          val rhs = Block(uptoSuperStats.toLst, impl.constr.rhs.asInstanceOf[Block].expr)
           cpy.DefDef(impl.constr)(rhs = rhs)
         }
 

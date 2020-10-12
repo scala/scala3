@@ -11,6 +11,8 @@ import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
 import Symbols._, Contexts._
 import util.Spans._
 import Parsers.Parser
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** This class builds instance of `Tree` that represent XML.
  *
@@ -163,7 +165,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
 
-    atSpan(span)(new XMLBlock(buffer :: applies.toList, Ident(_buf)) )
+    atSpan(span)(new XMLBlock((buffer :: applies.toList).toLst, Ident(_buf)) )
   }
 
   /** Returns (Some(prefix) | None, rest) based on position of ':' */
@@ -237,10 +239,10 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
     val (attrResult, nsResult) =
       (attributes.isEmpty, namespaces.isEmpty) match {
-        case (true ,  true)   => (Nil, Nil)
-        case (true , false)   => (scopeDef :: Nil, tmpScopeDef :: namespaces)
-        case (false,  true)   => (metadataDef :: attributes, Nil)
-        case (false, false)   => (scopeDef :: metadataDef :: attributes, tmpScopeDef :: namespaces)
+        case (true ,  true)   => (Lst(), Lst())
+        case (true , false)   => (Lst(scopeDef), (tmpScopeDef :: namespaces).toLst)
+        case (false,  true)   => ((metadataDef :: attributes).toLst, Lst())
+        case (false, false)   => ((scopeDef :: metadataDef :: attributes).toLst, (tmpScopeDef :: namespaces).toLst)
       }
 
     val body = mkXML(

@@ -45,6 +45,8 @@ import dotty.tools.tasty.TastyFormat._
 import scala.quoted
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** Unpickler for typed trees
  *  @param reader              the reader from which to unpickle
@@ -933,8 +935,8 @@ class TreeUnpickler(reader: TastyReader,
       val mappedParents = parents.map(_.changeOwner(localDummy, constr.symbol))
 
       val lazyStats = readLater(end, rdr => {
-        val stats = rdr.readIndexedStats(localDummy, end)
-        tparams ++ vparams ++ stats
+        val stats = rdr.readIndexedStats(localDummy, end).toLst
+        tparams ::: vparams ::: stats
       })
       setSpan(start,
         untpd.Template(constr, mappedParents, Nil, self, lazyStats)
@@ -970,7 +972,7 @@ class TreeUnpickler(reader: TastyReader,
       case PACKAGE =>
         val start = currentAddr
         processPackage { (pid, end) =>
-          setSpan(start, PackageDef(pid, readIndexedStats(exprOwner, end)))
+          setSpan(start, PackageDef(pid, readIndexedStats(exprOwner, end).toLst))
         }
       case _ =>
         readTerm()(using ctx.withOwner(exprOwner))
@@ -1130,7 +1132,7 @@ class TreeUnpickler(reader: TastyReader,
               skipTree()
               val stats = readStats(ctx.owner, end)
               val expr = exprReader.readTerm()
-              Block(stats, expr)
+              Block(stats.toLst, expr)
             case INLINED =>
               val exprReader = fork
               skipTree()
@@ -1274,7 +1276,7 @@ class TreeUnpickler(reader: TastyReader,
           skipTree()
           val aliases = readStats(ctx.owner, end)
           val tpt = typeReader.readTpt()
-          Block(aliases, tpt)
+          Block(aliases.toLst, tpt)
         case HOLE =>
           readByte()
           val end = readEnd()
@@ -1314,10 +1316,10 @@ class TreeUnpickler(reader: TastyReader,
       setSpan(start, CaseDef(pat, guard, rhs))
     }
 
-    def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Trees.Lazy[T] =
+    def readLater[T](end: Addr, op: TreeReader => Context ?=> T)(using Context): Trees.Lazy[T] =
       readLaterWithOwner(end, op)(ctx.owner)
 
-    def readLaterWithOwner[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Symbol => Trees.Lazy[T] = {
+    def readLaterWithOwner[T](end: Addr, op: TreeReader => Context ?=> T)(using Context): Symbol => Trees.Lazy[T] = {
       val localReader = fork
       goto(end)
       owner => new LazyReader(localReader, owner, ctx.mode, ctx.source, op)
@@ -1376,7 +1378,7 @@ class TreeUnpickler(reader: TastyReader,
     }
   }
 
-  class LazyReader[T <: AnyRef](
+  class LazyReader[T](
       reader: TreeReader, owner: Symbol, mode: Mode, source: SourceFile,
       op: TreeReader => Context ?=> T) extends Trees.Lazy[T] {
     def complete(using Context): T = {

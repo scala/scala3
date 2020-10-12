@@ -11,6 +11,7 @@ import ValueClasses._
 import SymUtils._
 import core.Flags._
 import util.Spans._
+import util.Lst; // import Lst.::
 import reporting._
 import config.Printers.{ transforms => debug }
 
@@ -281,7 +282,7 @@ object TypeTestsCasts {
             Typed(expr, tree.args.head) // Replace cast by type ascription (which does not generate any bytecode)
           else if (testCls eq defn.BoxedUnitClass)
             // as a special case, casting to Unit always successfully returns Unit
-            Block(expr :: Nil, Literal(Constant(()))).withSpan(expr.span)
+            Block(Lst(expr), Literal(Constant(()))).withSpan(expr.span)
           else if (foundClsSymPrimitive)
             if (testCls.isPrimitiveValueClass) primitiveConversion(expr, testCls)
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
@@ -294,7 +295,7 @@ object TypeTestsCasts {
             // To avoid this loophole we execute `x` and then regardless of the result throw a `ClassCastException`
             val throwCCE = Throw(New(defn.ClassCastExceptionClass.typeRef, defn.ClassCastExceptionClass_stringConstructor,
                 Literal(Constant("Cannot cast to scala.Nothing")) :: Nil))
-            Block(expr :: Nil, throwCCE).withSpan(expr.span)
+            Block(Lst(expr), throwCCE).withSpan(expr.span)
           }
           else
             derivedTree(expr, defn.Any_asInstanceOf, testType)

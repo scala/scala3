@@ -9,6 +9,9 @@ import Symbols._, Contexts._, Types._, Decorators._
 import StdNames.nme
 import ast.Trees._
 import ast.TreeTypeMap
+import util.Lst; // import Lst.::
+import util.Lst.toLst
+
 
 /** Rewrite an application
  *
@@ -51,9 +54,9 @@ object BetaReduce:
   def apply(tree: Apply, fn: Tree, args: List[Tree])(using Context): Tree =
     fn match
       case Typed(expr, _) => BetaReduce(tree, expr, args)
-      case Block(Nil, expr) => BetaReduce(tree, expr, args)
+      case Block(Lst.Empty, expr) => BetaReduce(tree, expr, args)
       case Inlined(_, Nil, expr) => BetaReduce(tree, expr, args)
-      case Block((anonFun: DefDef) :: Nil, closure: Closure) => BetaReduce(anonFun, args)
+      case Block(Lst(anonFun: DefDef), closure: Closure) => BetaReduce(anonFun, args)
       case _ => tree
   end apply
 
@@ -89,5 +92,5 @@ object BetaReduce:
     val bindings1 =
       bindings.result().filterNot(vdef => vdef.tpt.tpe.isInstanceOf[ConstantType] && isPureExpr(vdef.rhs))
 
-    seq(bindings1, expansion1)
+    seq(bindings1.toLst, expansion1)
   end apply

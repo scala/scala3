@@ -3,7 +3,8 @@ package dotty.tools.dotc.core.tasty
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext, ContextDocstrings}
 import dotty.tools.dotc.core.Contexts._
-
+import dotty.tools.dotc.util
+import util.Lst; // import Lst.::
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr}
 
@@ -24,6 +25,7 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr, docStr
       buf.writeBytes(bytes, length)
       buf.writeLongInt(comment.span.coords)
 
+  import scala.::
   private def traverse(x: Any): Unit = x match
     case x: untpd.Tree @unchecked =>
       x match
@@ -38,6 +40,8 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr, docStr
     case y :: ys =>
       traverse(y)
       traverse(ys)
+    case ys: Lst.Arr =>
+      ys.foreach(traverse)
     case _ =>
 
 end CommentPickler

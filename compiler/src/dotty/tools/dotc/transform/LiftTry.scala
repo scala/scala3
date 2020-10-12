@@ -11,6 +11,7 @@ import core.Decorators._
 import core.NameKinds.LiftedTreeName
 import NonLocalReturns._
 import util.Store
+import util.Lst; // import Lst.::
 
 /** Lifts try's that might be executed on non-empty expression stacks
  *  to their own methods. I.e.
@@ -74,7 +75,7 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         ctx.owner, LiftedTreeName.fresh(), Synthetic | Method,
         MethodType(Nil, tree.tpe.widenIfUnstable), coord = tree.span)
       tree.changeOwnerAfter(ctx.owner, fn, thisPhase)
-      Block(DefDef(fn, tree) :: Nil, ref(fn).appliedToNone)
+      Block(Lst(DefDef(fn, tree)), ref(fn).appliedToNone)
     }
     else tree
 }

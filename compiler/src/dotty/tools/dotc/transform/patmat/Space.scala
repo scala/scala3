@@ -23,6 +23,7 @@ import config.Printers.{exhaustivity => debug}
 import util.SrcPos
 import NullOpsDecorator._
 import collection.mutable
+import util.Lst; import Lst.::
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching
  *
@@ -412,7 +413,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
     case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
       Typ(WildcardType, false)
 
-    case Block(Nil, expr) =>
+    case Block(Lst.Empty, expr) =>
       project(expr)
 
     case _ =>

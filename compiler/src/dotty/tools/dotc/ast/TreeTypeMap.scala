@@ -8,6 +8,8 @@ import Symbols._, Annotations._, Trees._, Symbols._
 import Decorators._
 import dotty.tools.dotc.transform.SymUtils._
 import core.tasty.TreePickler.Hole
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** A map that applies three functions and a substitution together to a tree and
  *  makes sure they are coordinated so that the result is well-typed. The functions are
@@ -83,8 +85,8 @@ class TreeTypeMap(
           constr = tmap.transformSub(constr),
           parents = parents.mapconserve(transform),
           self = tmap.transformSub(self),
-          body = impl.body mapconserve
-            (tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner))))
+          body = impl.body.mapConserve(
+            (tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner)))))
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {
@@ -104,9 +106,9 @@ class TreeTypeMap(
           val (tmap1, tparams1) = transformDefs(tparams)
           cpy.LambdaTypeTree(tdef)(tparams1, tmap1.transform(body))
         case blk @ Block(stats, expr) =>
-          val (tmap1, stats1) = transformDefs(stats)
+          val (tmap1, stats1) = transformDefs(stats.toList)
           val expr1 = tmap1.transform(expr)
-          cpy.Block(blk)(stats1, expr1)
+          cpy.Block(blk)(stats1.toLst, expr1)
         case inlined @ Inlined(call, bindings, expanded) =>
           val (tmap1, bindings1) = transformDefs(bindings)
           val expanded1 = tmap1.transform(expanded)
@@ -129,8 +131,8 @@ class TreeTypeMap(
       }
   }
 
-  override def transformStats(trees: List[tpd.Tree])(using Context): List[Tree] =
-    transformDefs(trees)._2
+  override def transformStats(trees: Lst[tpd.Tree])(using Context): Lst[Tree] =
+    transformDefs(trees.toList)._2.toLst
 
   def transformDefs[TT <: tpd.Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) = {
     val tmap = withMappedSyms(tpd.localSyms(trees))

@@ -22,6 +22,7 @@ import config.Printers.inlining
 import util.Property
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.transform.TreeMapWithStages._
+import util.Lst; import Lst.::
 
 object PrepareInlineable {
   import tpd._
@@ -263,10 +264,10 @@ object PrepareInlineable {
             report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)
           new PCPCheckAndHeal(freshStagingContext).transform(body) // Ignore output, only check PCP
-        case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
-        case Block(Nil, expr) => checkMacro(expr)
+        case Block(stats, Literal(Constants.Constant(()))) if stats.length == 1 => checkMacro(stats.head)
+        case Block(Lst.Empty, expr) => checkMacro(expr)
         case Typed(expr, _) => checkMacro(expr)
-        case Block(DefDef(nme.ANON_FUN, _, _, _, _) :: Nil, Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
+        case Block(Lst(DefDef(nme.ANON_FUN, _, _, _, _)), Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
           // TODO Support this pattern
           report.error(
             """Macros using a return type of the form `foo(): X ?=> Y` are not yet supported.

@@ -18,6 +18,9 @@ import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.{ParsedComment, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
 import dotty.tools.repl.results._
+import dotty.tools.dotc.util
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import scala.collection.mutable
 
@@ -75,8 +78,8 @@ class ReplCompiler extends Compiler {
     // If trees is of the form `{ def1; def2; def3 }` then `List(def1, def2, def3)`
     val flattened = trees match {
       case List(Block(stats, expr)) =>
-        if (expr eq EmptyTree) stats // happens when expr is not an expression
-        else stats :+ expr
+        if (expr eq EmptyTree) stats.toList // happens when expr is not an expression
+        else stats.toList :+ expr
       case _ =>
         trees
     }
@@ -127,11 +130,11 @@ class ReplCompiler extends Compiler {
     inContext(defs.state.context) {
       import untpd._
 
-      val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, defs.stats)
+      val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, defs.stats.toLst)
       val module = ModuleDef(objectTermName, tmpl)
         .withSpan(span)
 
-      PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
+      PackageDef(Ident(nme.EMPTY_PACKAGE), Lst(module))
     }
 
   private def createUnit(defs: Definitions, span: Span)(using Context): CompilationUnit = {
@@ -227,12 +230,12 @@ class ReplCompiler extends Compiler {
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
         import untpd._
 
-        val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, unitLiteral).withSpan(Span(0, expr.length)))
-        val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, List(valdef))
+        val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees.toLst, unitLiteral).withSpan(Span(0, expr.length)))
+        val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, Lst(valdef))
         val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
           .withMods(Modifiers(Final))
           .withSpan(Span(0, expr.length))
-        PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
+        PackageDef(Ident(nme.EMPTY_PACKAGE), Lst(wrapper))
       }
 
       ParseResult(sourceFile)(state) match {
@@ -257,8 +260,8 @@ class ReplCompiler extends Compiler {
 
       import tpd._
       tree match {
-        case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
-          tmpl.body
+        case PackageDef(_, Lst(TypeDef(_, tmpl: Template))) =>
+          tmpl.body.toList
               .collectFirst { case dd: ValDef if dd.name.show == "expr" => dd.result }
               .getOrElse(error)
         case _ =>

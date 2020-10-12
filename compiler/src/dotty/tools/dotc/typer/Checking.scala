@@ -21,7 +21,7 @@ import util.Spans.Span
 import Phases.refchecksPhase
 
 import util.SrcPos
-import util.Spans.Span
+import util.Lst; // import Lst.::
 import rewrites.Rewrites.patch
 import transform.SymUtils._
 import transform.ValueClasses._
@@ -587,7 +587,7 @@ object Checking {
   }
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = {
+  def checkDerivedValueClass(clazz: Symbol, stats: Lst[Tree])(using Context): Unit = {
     def checkValueClassMember(stat: Tree) = stat match {
       case _: TypeDef if stat.symbol.isClass =>
         report.error(ValueClassesMayNotDefineInner(clazz, stat.symbol), stat.srcPos)
@@ -949,7 +949,7 @@ trait Checking {
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
 
   /** Verify classes extending AnyVal meet the requirements */
-  def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit =
+  def checkDerivedValueClass(clazz: Symbol, stats: Lst[Tree])(using Context): Unit =
     Checking.checkDerivedValueClass(clazz, stats)
 
   /** Given a parent `parent` of a class `cls`, if `parent` is a trait check that
@@ -1156,7 +1156,7 @@ trait Checking {
             parents.foreach(check)
           case vdef: ValDef =>
             vdef.rhs match {
-              case Block((clsDef @ TypeDef(_, impl: Template)) :: Nil, _)
+              case Block(Lst(clsDef @ TypeDef(_, impl: Template)), _)
               if clsDef.symbol.isAnonymousClass =>
                 impl.parents.foreach(check)
               case _ =>
@@ -1182,7 +1182,7 @@ trait Checking {
         val cases =
           for (stat <- impl.body if isCase(stat))
           yield untpd.ImportSelector(untpd.Ident(stat.symbol.name.toTermName))
-        val caseImport: Import = Import(ref(cdef.symbol), cases)
+        val caseImport: Import = Import(ref(cdef.symbol), cases.toList)
         val caseCtx = enumCtx.importContext(caseImport, caseImport.symbol)
         for (stat <- impl.body) checkCaseOrDefault(stat, caseCtx)
       case _ =>
@@ -1204,7 +1204,7 @@ trait Checking {
     }
 
   /** Check that symbol's external name does not clash with symbols defined in the same scope */
-  def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = {
+  def checkNoAlphaConflict(stats: Lst[Tree])(using Context): Unit = {
     var seen = Set[Name]()
     for (stat <- stats) {
       val sym = stat.symbol
@@ -1239,10 +1239,10 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
   override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
-  override def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = ()
+  override def checkNoAlphaConflict(stats: Lst[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
-  override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+  override def checkDerivedValueClass(clazz: Symbol, stats: Lst[Tree])(using Context): Unit = ()
   override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
   override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()

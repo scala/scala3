@@ -24,6 +24,8 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Inliner
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import scala.annotation.constructorOnly
 
@@ -295,7 +297,7 @@ class ReifyQuotes extends MacroTransform {
 
       val captures = captured.result().valuesIterator.toList
       if (captures.isEmpty) tree2
-      else Block(captures, tree2)
+      else Block(captures.toLst, tree2)
     }
 
     /** Returns true if this tree will be captured by `makeLambda`. Checks phase consistency and presence of capturer. */
@@ -406,7 +408,7 @@ object ReifyQuotes {
 
   def getLiteral(tree: tpd.Tree): Option[Literal] = tree match {
     case tree: Literal => Some(tree)
-    case Block(Nil, e) => getLiteral(e)
+    case Block(Lst.Empty, e) => getLiteral(e)
     case Inlined(_, Nil, e) => getLiteral(e)
     case _ => None
   }

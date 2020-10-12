@@ -11,6 +11,8 @@ import ast.desugar
 import ast.desugar._
 import core.Mode
 import Contexts.Context
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import scala.collection.mutable.ListBuffer
 
@@ -64,7 +66,7 @@ class DeSugarTest extends ParserTest {
         case tree1 @ TypeDef(name, rhs) =>
           cpy.TypeDef(tree1)(name, transform(rhs, Type))
         case impl @ Template(constr, parents, self, _) =>
-          cpy.Template(tree1)(transformSub(constr), transform(parents), Nil, transformSub(self), transform(impl.body, Expr))
+          cpy.Template(tree1)(transformSub(constr), transform(parents), Nil, transformSub(self), transform(impl.body.toList, Expr).toLst)
         case Thicket(trees) =>
           Thicket(flatten(trees mapConserve super.transform))
         case tree1 =>
@@ -83,7 +85,7 @@ class DeSugarTest extends ParserTest {
 
   def firstClass(tree: Tree): String = tree match {
     case PackageDef(pid, stats) =>
-      pid.show + "." + firstClass(stats)
+      pid.show + "." + firstClass(stats.toList)
     case _ => "??? " + tree.getClass
   }
 

@@ -15,6 +15,8 @@ import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
 import config.Printers.interactiv
 import StdNames.nme
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** High-level API to get information out of typed trees, designed to be used by IDEs.
  *
@@ -284,7 +286,7 @@ object Interactive {
         case tree @ PackageDef(pkg, stats) =>
           assert(tree.symbol.exists)
           if (nested `eq` pkg) outer
-          else contextOfStat(stats, nested, pkg.symbol.moduleClass, outer.packageContext(tree, tree.symbol))
+          else contextOfStat(stats.toList, nested, pkg.symbol.moduleClass, outer.packageContext(tree, tree.symbol))
         case tree: DefDef =>
           assert(tree.symbol.exists)
           val localCtx = outer.localContext(tree, tree.symbol).setNewScope
@@ -302,7 +304,7 @@ object Interactive {
             case stat: MemberDef => localCtx.enter(stat.symbol)
             case _ =>
           }
-          contextOfStat(stats, nested, ctx.owner, localCtx)
+          contextOfStat(stats.toList, nested, ctx.owner, localCtx)
         case tree @ CaseDef(pat, guard, rhs) if nested `eq` rhs =>
           val localCtx = outer.fresh.setNewScope
           pat.foreachSubTree {
@@ -312,7 +314,7 @@ object Interactive {
           localCtx
         case tree @ Template(constr, parents, self, _) =>
           if ((constr :: self :: parents).contains(nested)) ctx
-          else contextOfStat(tree.body, nested, tree.symbol, outer.inClassContext(self.symbol))
+          else contextOfStat(tree.body.toList, nested, tree.symbol, outer.inClassContext(self.symbol))
         case _ =>
           outer
       }

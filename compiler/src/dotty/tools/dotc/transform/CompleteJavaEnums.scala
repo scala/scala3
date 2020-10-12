@@ -15,6 +15,8 @@ import Decorators._
 import DenotTransformers._
 import dotty.tools.dotc.ast.Trees._
 import SymUtils._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import annotation.threadUnsafe
 
@@ -164,7 +166,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       val addedForwarders = addedEnumForwarders(cls)
       cpy.Template(templ)(
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
-        body = params ++ addedDefs ++ addedForwarders ++ rest)
+        body = params ::: addedDefs ::: addedForwarders ::: rest)
     else if isJavaEnumValueImpl(cls) then
       def creatorParamRef(name: TermName) =
         ref(cls.owner.paramSymss.head.find(_.name == name).get)

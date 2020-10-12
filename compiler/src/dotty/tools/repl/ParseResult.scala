@@ -116,7 +116,7 @@ object ParseResult {
     val parser = new Parser(ctx.source)
     val stats = parser.blockStatSeq()
     parser.accept(Tokens.EOF)
-    stats
+    stats.toList
   }
 
   private val commands: List[(String, String => ParseResult)] = List(

@@ -6,6 +6,8 @@ import core._
 import ast.Trees._
 import Contexts._, Phases._, Symbols._, Decorators._
 import Flags.PackageVal
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** A MegaPhase combines a number of mini-phases which are all executed in
  *  a single tree traversal.
@@ -76,7 +78,7 @@ object MegaPhase {
     def prepareForTypeDef(tree: TypeDef)(using Context): Context = ctx
     def prepareForTemplate(tree: Template)(using Context): Context = ctx
     def prepareForPackageDef(tree: PackageDef)(using Context): Context = ctx
-    def prepareForStats(trees: List[Tree])(using Context): Context = ctx
+    def prepareForStats(trees: Lst[Tree])(using Context): Context = ctx
     def prepareForUnit(tree: Tree)(using Context): Context = ctx
     def prepareForOther(tree: Tree)(using Context): Context = ctx
 
@@ -110,7 +112,7 @@ object MegaPhase {
     def transformTypeDef(tree: TypeDef)(using Context): Tree = tree
     def transformTemplate(tree: Template)(using Context): Tree = tree
     def transformPackageDef(tree: PackageDef)(using Context): Tree = tree
-    def transformStats(trees: List[Tree])(using Context): List[Tree] = trees
+    def transformStats(trees: Lst[Tree])(using Context): Lst[Tree] = trees
     def transformUnit(tree: Tree)(using Context): Tree = tree
     def transformOther(tree: Tree)(using Context): Tree = tree
 
@@ -432,7 +434,7 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def transformSpecificTree[T <: Tree](tree: T, start: Int)(using Context): T =
     transformTree(tree, start).asInstanceOf[T]
 
-  def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] = {
+  def transformStats(trees: Lst[Tree], exprOwner: Symbol, start: Int)(using Context): Lst[Tree] = {
     def transformStat(stat: Tree)(using Context): Tree = stat match {
       case _: Import | _: DefTree => transformTree(stat, start)
       case Thicket(stats) => cpy.Thicket(stat)(stats.mapConserve(transformStat))
@@ -446,11 +448,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def transformUnit(tree: Tree)(using Context): Tree = {
     val nestedCtx = prepUnit(tree, 0)
     val tree1 = transformTree(tree, 0)(using nestedCtx)
-    goUnit(tree1, 0)(using nestedCtx)
+    goUnit (tree1, 0)(using nestedCtx)
   }
 
   def transformTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
-    trees.mapInline(transformTree(_, start))
+    flatten(trees.mapConserve(transformTree(_, start)))
 
   def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformTrees(trees, start).asInstanceOf[List[T]]
@@ -1022,13 +1024,13 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     }
   }
 
-  def prepStats(trees: List[Tree], start: Int)(using Context): Context = {
+  def prepStats(trees: Lst[Tree], start: Int)(using Context): Context = {
     val phase = nxStatsPrepPhase(start)
     if (phase == null) ctx
     else prepStats(trees, phase.idxInGroup + 1)(using phase.prepareForStats(trees))
   }
 
-  def goStats(trees: List[Tree], start: Int)(using Context): List[Tree] = {
+  def goStats(trees: Lst[Tree], start: Int)(using Context): Lst[Tree] = {
     val phase = nxStatsTransPhase(start)
     if (phase == null) trees
     else goStats(phase.transformStats(trees), phase.idxInGroup + 1)

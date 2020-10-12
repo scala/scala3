@@ -22,11 +22,11 @@ class PureStats extends MiniPhase {
 
   override def transformBlock(tree: Block)(using Context): Tree =
     val stats = tree.stats.mapConserve {
-      case Typed(Block(stats, expr), _) if isPureExpr(expr) => Thicket(stats)
+      case Typed(Block(stats, expr), _) if isPureExpr(expr) => Thicket(stats.toList)
       case stat if !stat.symbol.isConstructor && isPureExpr(stat) => EmptyTree
       case stat => stat
     }
-    if stats eq tree.stats then tree
+    if stats eqLst tree.stats then tree
     else cpy.Block(tree)(Trees.flatten(stats), tree.expr)
 
 }

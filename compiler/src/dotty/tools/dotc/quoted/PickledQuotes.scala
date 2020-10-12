@@ -24,6 +24,9 @@ import scala.reflect.ClassTag
 import scala.internal.quoted.Unpickler._
 import scala.quoted.QuoteContext
 import scala.collection.mutable
+import dotty.tools.dotc.util
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 object PickledQuotes {
   import tpd._
@@ -129,8 +132,8 @@ object PickledQuotes {
   /** Replace all type holes generated with the spliced types */
   private def spliceTypes(tree: Tree, splices: PickledArgs)(using Context): Tree = {
     tree match
-      case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) =>
-        val typeSpliceMap = (stat :: rest).iterator.map {
+      case Block(stats, expr1) if stats.nonEmpty && stats.head.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) =>
+        val typeSpliceMap = stats.iterator.map {
           case tdef: TypeDef =>
             assert(tdef.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot))
             val tree = tdef.rhs match

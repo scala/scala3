@@ -18,7 +18,7 @@ import SymDenotations._
 import printing.Texts._
 import printing.Printer
 import util.common._
-import util.Lst
+import util.Lst; // import Lst.::
 import SymDenotations.NoDenotation
 import collection.mutable
 

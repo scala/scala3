@@ -8,6 +8,8 @@ import Contexts._
 import Symbols._
 import Flags.PackageVal
 import Decorators._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** A base class for transforms.
  *  A transform contains a compiler phase which applies a tree transformer.
@@ -37,12 +39,12 @@ abstract class MacroTransform extends Phase {
       ctx.fresh.setTree(tree).setOwner(owner)
     }
 
-    def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
+    def transformStats(trees: Lst[Tree], exprOwner: Symbol)(using Context): Lst[Tree] = {
       def transformStat(stat: Tree): Tree = stat match {
         case _: Import | _: DefTree => transform(stat)
         case _ => transform(stat)(using ctx.exprContext(stat, exprOwner))
       }
-      flatten(trees.mapconserve(transformStat(_)))
+      flatten(trees.mapConserve(transformStat(_)))
     }
 
     override def transform(tree: Tree)(using Context): Tree =

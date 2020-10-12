@@ -22,6 +22,8 @@ import dotty.tools.dotc.typer.Inferencing._
 import dotty.tools.dotc.typer.ProtoTypes._
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Stats.record
+import dotty.tools.dotc.util.Lst
+import dotty.tools.dotc.util.Lst.toLst
 
 import scala.collection.mutable
 
@@ -318,7 +320,7 @@ trait QuotesAndSplices {
     val freshTypeBindings = splitter.freshTypeBindingsBuff.result()
 
     val shape1 = seq(
-      freshTypeBindings,
+      freshTypeBindings.toLst,
       shape0
     )
     val shape2 =

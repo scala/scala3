@@ -12,8 +12,10 @@ import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
 import collection.{immutable, mutable}
 import util.{Property, SourceFile, NoSource}
+import util.Lst.toLst
 import NameKinds.{TempResultName, OuterSelectName}
 import typer.ConstFold
+import util.Lst; // import Lst.::
 
 import scala.annotation.tailrec
 import scala.io.Codec
@@ -74,11 +76,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Assign(lhs: Tree, rhs: Tree)(using Context): Assign =
     ta.assignType(untpd.Assign(lhs, rhs))
 
-  def Block(stats: List[Tree], expr: Tree)(using Context): Block =
+  def Block(stats: Lst[Tree], expr: Tree)(using Context): Block =
     ta.assignType(untpd.Block(stats, expr), stats, expr)
 
   /** Join `stats` in front of `expr` creating a new block if necessary */
-  def seq(stats: List[Tree], expr: Tree)(using Context): Tree =
+  def seq(stats: Lst[Tree], expr: Tree)(using Context): Tree =
     if (stats.isEmpty) expr
     else expr match {
       case Block(_, _: Closure) =>
@@ -115,7 +117,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (targs.isEmpty) Ident(TermRef(NoPrefix, meth))
       else TypeApply(Ident(TermRef(NoPrefix, meth)), targs)
     Block(
-      DefDef(meth, rhsFn) :: Nil,
+      Lst(DefDef(meth, rhsFn)),
       Closure(Nil, call, targetTpt))
   }
 
@@ -290,7 +292,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def TypeDef(sym: TypeSymbol)(using Context): TypeDef =
     ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym)
 
-  def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(using Context): TypeDef = {
+  def ClassDef(cls: ClassSymbol, constr: DefDef, body: Lst[Tree], superArgs: List[Tree] = Nil)(using Context): TypeDef = {
     val firstParent :: otherParents = cls.info.parents
     val superRef =
       if (cls.is(Trait)) TypeTree(firstParent)
@@ -309,7 +311,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ClassDefWithParents(cls, constr, superRef :: otherParents.map(TypeTree(_)), body)
   }
 
-  def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(using Context): TypeDef = {
+  def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: Lst[Tree])(using Context): TypeDef = {
     val selfType =
       if (cls.classInfo.selfInfo ne NoType) ValDef(newSelfSym(cls))
       else EmptyValDef
@@ -322,7 +324,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val findLocalDummy = FindLocalDummyAccumulator(cls)
     val localDummy = body.foldLeft(NoSymbol: Symbol)(findLocalDummy.apply)
       .orElse(newLocalDummy(cls))
-    val impl = untpd.Template(constr, parents, Nil, selfType, newTypeParams ++ body)
+    val impl = untpd.Template(constr, parents, Nil, selfType, newTypeParams ::: body)
       .withType(localDummy.termRef)
     ta.assignType(untpd.TypeDef(cls.name, impl), cls)
   }
@@ -354,14 +356,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       polyDefDef(fwdMeth, tprefs => prefss => ref(fn).appliedToTypes(tprefs).appliedToArgss(prefss))
     }
     val forwarders = fns.lazyZip(methNames).map(forwarder)
-    val cdef = ClassDef(cls, DefDef(constr), forwarders)
-    Block(cdef :: Nil, New(cls.typeRef, Nil))
+    val cdef = ClassDef(cls, DefDef(constr), forwarders.toLst)
+    Block(Lst(cdef), New(cls.typeRef, Nil))
   }
 
   def Import(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import =
     ta.assignType(untpd.Import(expr, selectors), newImportSymbol(ctx.owner, expr))
 
-  def PackageDef(pid: RefTree, stats: List[Tree])(using Context): PackageDef =
+  def PackageDef(pid: RefTree, stats: Lst[Tree])(using Context): PackageDef =
     ta.assignType(untpd.PackageDef(pid, stats), pid)
 
   def Annotated(arg: Tree, annot: Tree)(using Context): Annotated =
@@ -526,7 +528,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  the RHS of a method contains a class owned by the method, this would be
    *  an error.)
    */
-  def ModuleDef(sym: TermSymbol, body: List[Tree])(using Context): tpd.Thicket = {
+  def ModuleDef(sym: TermSymbol, body: Lst[Tree])(using Context): tpd.Thicket = {
     val modcls = sym.moduleClass.asClass
     val constrSym = modcls.primaryConstructor orElse newDefaultConstructor(modcls).entered
     val constr = DefDef(constrSym.asTerm, EmptyTree)
@@ -629,7 +631,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Assign(tree: Tree)(lhs: Tree, rhs: Tree)(using Context): Assign =
       ta.assignType(untpdCpy.Assign(tree)(lhs, rhs))
 
-    override def Block(tree: Tree)(stats: List[Tree], expr: Tree)(using Context): Block = {
+    override def Block(tree: Tree)(stats: Lst[Tree], expr: Tree)(using Context): Block = {
       val tree1 = untpdCpy.Block(tree)(stats, expr)
       tree match {
         case tree: Block if (expr.tpe eq tree.expr.tpe) && (expr.tpe eq tree.tpe) =>
@@ -1088,7 +1090,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   inline val MapRecursionLimit = 10
 
-  extension (trees: List[Tree])
+  extension (trees: Lst[Tree])
 
     /** A map that expands to a recursive function. It's equivalent to
      *
@@ -1100,21 +1102,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  Note `op` is duplicated in the generated code, so it should be
      *  kept small.
      */
-    inline def mapInline(inline op: Tree => Tree): List[Tree] =
-      def recur(trees: List[Tree], count: Int): List[Tree] =
-        if count > MapRecursionLimit then
-          // use a slower implementation that avoids stack overflows
-          flatten(trees.mapConserve(op))
-        else trees match
-          case tree :: rest =>
-            val tree1 = op(tree)
-            val rest1 = recur(rest, count + 1)
-            if (tree1 eq tree) && (rest1 eq rest) then trees
-            else tree1 match
-              case Thicket(elems1) => elems1 ::: rest1
-              case _ => tree1 :: rest1
-          case nil => nil
-      recur(trees, 0)
+    inline def mapInline(inline op: Tree => Tree): Lst[Tree] =
+      flatten(trees.mapConserve(op))
   end extension
 
   /** Map Inlined nodes, NamedArgs, Blocks with no statements and local references to underlying arguments.
@@ -1131,7 +1120,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case _ => tree
         }
       case Inlined(_, Nil, arg) => transform(arg)
-      case Block(Nil, arg) => transform(arg)
+      case Block(Lst.Empty, arg) => transform(arg)
       case NamedArg(_, arg) => transform(arg)
       case tree => super.transform(tree)
     }
@@ -1213,7 +1202,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (exprPurity(tree) >= level) within(tree)
     else {
       val vdef = SyntheticValDef(TempResultName.fresh(), tree)
-      Block(vdef :: Nil, within(Ident(vdef.namedType)))
+      Block(Lst(vdef), within(Ident(vdef.namedType)))
     }
 
   /** Let bind `tree` unless `tree` is at least idempotent */

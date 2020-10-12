@@ -1,4 +1,5 @@
-package dotty.tools.dotc.printing
+package dotty.tools.dotc
+package printing
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.untpd.{Tree, PackageDef, Template, TypeDef}
@@ -10,6 +11,8 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Annotations.Annotation
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
@@ -18,11 +21,11 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   override protected def blockToText[T >: Untyped](block: Block[T]): Text =
     block match {
-      case Block(DefDef(_, _, _, _, Trees.If(cond, Trees.Block(body :: Nil, _), _)) :: Nil, y) if y.symbol.name == nme.WHILE_PREFIX =>
+      case Block(Lst(DefDef(_, _, _, _, Trees.If(cond, Trees.Block(Lst(body), _), _))), y) if y.symbol.name == nme.WHILE_PREFIX =>
         keywordText("while") ~ " (" ~ toText(cond) ~ ")" ~ toText(body)
-      case Block(DefDef(_, _, _, _, Trees.Block(body :: Nil, Trees.If(cond, _, _))) :: Nil, y) if y.symbol.name == nme.DO_WHILE_PREFIX =>
+      case Block(Lst(DefDef(_, _, _, _, Trees.Block(Lst(body), Trees.If(cond, _, _)))), y) if y.symbol.name == nme.DO_WHILE_PREFIX =>
         keywordText("do") ~ toText(body) ~ keywordText("while") ~ " (" ~ toText(cond) ~ ")"
-      case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, _: Closure[T]) =>
+      case Block(Lst(meth @ DefDef(nme.ANON_FUN, _, _, _, _)), _: Closure[T]) =>
         withEnclosingDef(meth) {
           addVparamssText("", meth.vparamss) ~ " => " ~ toText(meth.rhs)
         }
@@ -31,12 +34,12 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     }
 
   override protected def packageDefText(tree: PackageDef): Text = {
-    val stats = tree.stats.filter {
+    val stats: Lst[Tree] = tree.stats.filter {
       case vdef: ValDef[?] => !vdef.symbol.is(Module)
       case _ => true
     }
     val statsText = stats match {
-      case (pdef: PackageDef) :: Nil => toText(pdef)
+      case Lst(pdef: PackageDef) => toText(pdef)
       case _ => Fluid(toTextGlobal(stats, "\n") :: Nil)
     }
     val bodyText =

@@ -21,6 +21,7 @@ import ast.{tpd, untpd}
 import scala.internal.Chars._
 import collection.mutable
 import ProtoTypes._
+import util.Lst; // import Lst.::
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -165,7 +166,7 @@ class TreeChecker extends Phase with SymTransformer {
     private val everDefinedSyms = MutableSymbolMap[untpd.Tree]()
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
-    override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+    override def checkDerivedValueClass(clazz: Symbol, stats: Lst[Tree])(using Context): Unit = ()
 
     def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(using Context): T = {
       var locally = List.empty[Symbol]
@@ -443,7 +444,7 @@ class TreeChecker extends Phase with SymTransformer {
       val decls   = cls.classInfo.decls.toLst.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
 
-      val symbolsNotDefined = decls -- defined - constr.symbol
+      val symbolsNotDefined = decls -- defined.iterator - constr.symbol
 
       assert(symbolsNotDefined.isEmpty,
           i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
@@ -487,7 +488,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree = {
       if (!ctx.phase.lambdaLifted) nestingBlock match {
-        case block @ Block((meth : untpd.DefDef) :: Nil, closure: untpd.Closure) =>
+        case block @ Block(Lst(meth : untpd.DefDef), closure: untpd.Closure) =>
           assert(meth.symbol == closure.meth.symbol, "closure.meth symbol not equal to method symbol. Block: " + block.show)
 
         case block: untpd.Block =>
@@ -500,7 +501,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree =
-      withBlock(tree) { withDefinedSyms(tree.stats) { super.typedBlock(tree, pt) } }
+      withBlock(tree) { withDefinedSyms(tree.stats.toList) { super.typedBlock(tree, pt) } }
 
     override def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
       withDefinedSyms(tree.bindings) { super.typedInlined(tree, pt) }
@@ -512,7 +513,7 @@ class TreeChecker extends Phase with SymTransformer {
      *  is that we should be able to pull out an expression as an initializer
      *  of a helper value without having to do a change owner traversal of the expression.
      */
-    override def typedStats(trees: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
+    override def typedStats(trees: Lst[untpd.Tree], exprOwner: Symbol)(using Context): (Lst[Tree], Context) = {
       for (tree <- trees) tree match {
         case tree: untpd.DefTree => checkOwner(tree)
         case _: untpd.Thicket => assert(false, i"unexpanded thicket $tree in statement sequence $trees%\n%")

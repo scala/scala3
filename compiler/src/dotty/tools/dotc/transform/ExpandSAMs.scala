@@ -8,6 +8,7 @@ import SymUtils._
 import ast.Trees._
 import reporting._
 import dotty.tools.dotc.util.Spans.Span
+import util.Lst; // import Lst.::
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
  *  These fall into five categories
@@ -32,7 +33,7 @@ class ExpandSAMs extends MiniPhase {
     ctx.platform.isSam(cls)
 
   override def transformBlock(tree: Block)(using Context): Tree = tree match {
-    case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
+    case Block(stats @ Lst(fn: DefDef), Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
       tpt.tpe match {
         case NoType =>
           tree // it's a plain function
@@ -97,7 +98,7 @@ class ExpandSAMs extends MiniPhase {
     /** An extractor for match, either contained in a block or standalone. */
     object PartialFunctionRHS {
       def unapply(tree: Tree): Option[Match] = tree match {
-        case Block(Nil, expr) => unapply(expr)
+        case Block(Lst.Empty, expr) => unapply(expr)
         case m: Match => Some(m)
         case _ => None
       }
@@ -158,8 +159,8 @@ class ExpandSAMs extends MiniPhase {
         val constr = newConstructor(pfSym, Synthetic, Nil, Nil).entered
         val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)(using ctx.withOwner(isDefinedAtFn))))
         val applyOrElseDef = transformFollowingDeep(DefDef(applyOrElseFn, applyOrElseRhs(_)(using ctx.withOwner(applyOrElseFn))))
-        val pfDef = ClassDef(pfSym, DefDef(constr), List(isDefinedAtDef, applyOrElseDef))
-        cpy.Block(tree)(pfDef :: Nil, New(pfSym.typeRef, Nil))
+        val pfDef = ClassDef(pfSym, DefDef(constr), Lst(isDefinedAtDef, applyOrElseDef))
+        cpy.Block(tree)(Lst(pfDef), New(pfSym.typeRef, Nil))
 
       case _ =>
         val found = tpe.baseType(defn.FunctionClass(1))

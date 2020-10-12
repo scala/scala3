@@ -33,6 +33,8 @@ import ContextFunctionResults._
 import ExplicitOuter._
 import core.Mode
 import util.Property
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 import reporting._
 import collection.mutable
 
@@ -236,7 +238,7 @@ object Erasure {
     }
 
     def constant(tree: Tree, const: Tree)(using Context): Tree =
-      (if (isPureExpr(tree)) const else Block(tree :: Nil, const)).withSpan(tree.span)
+      (if (isPureExpr(tree)) const else Block(Lst(tree), const)).withSpan(tree.span)
 
     final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
@@ -518,7 +520,7 @@ object Erasure {
           ctx.typer.typed(app, pt)
             .changeOwnerAfter(origOwner, ctx.owner, erasurePhase.asInstanceOf[Erasure])
 
-      seq(defs.toList, abstracted(Nil, origType, pt))
+      seq(defs.toList.toLst, abstracted(Nil, origType, pt))
     end etaExpand
 
   end Boxing
@@ -882,7 +884,7 @@ object Erasure {
               assignType(untpd.cpy.ValDef(paramDef)(rhs = selector(idx)), paramDef.symbol)
           }
           vparams = ValDef(bunchedParam) :: Nil
-          rhs1 = Block(paramDefs, rhs1)
+          rhs1 = Block(paramDefs.toLst, rhs1)
 
         val ddef1 = untpd.cpy.DefDef(ddef)(
           tparams = Nil,
@@ -931,7 +933,7 @@ object Erasure {
      *  `f$retainedBody` is subseqently mapped to the empty tree in `typedDefDef`
      *  which is then dropped in `typedStats`.
      */
-    private def addRetainedInlineBodies(stats: List[untpd.Tree])(using Context): List[untpd.Tree] =
+    private def addRetainedInlineBodies(stats: Lst[untpd.Tree])(using Context): Lst[untpd.Tree] =
       lazy val retainerDef: Map[Symbol, DefDef] = stats.collect {
         case stat: DefDef @unchecked if stat.symbol.name.is(BodyRetainerName) =>
           val retainer = stat.symbol
@@ -971,13 +973,13 @@ object Erasure {
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree =
       typed(tree.arg, pt)
 
-    override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
+    override def typedStats(stats: Lst[untpd.Tree], exprOwner: Symbol)(using Context): (Lst[Tree], Context) = {
       val stats0 = addRetainedInlineBodies(stats)(using preErasureCtx)
-      val stats1 =
+      val stats1: Lst[untpd.Tree] =
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats0)
         else stats0
       val (stats2, finalCtx) = super.typedStats(stats1, exprOwner)
-      (stats2.filterConserve(!_.isEmpty), finalCtx)
+      (stats2.filter(!_.isEmpty), finalCtx)
     }
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =

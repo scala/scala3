@@ -26,6 +26,8 @@ import scala.reflect.ClassTag
 
 import dotty.tools.dotc.quoted._
 import scala.quoted.QuoteContext
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** Utility class to splice quoted expressions */
 object Splicer {
@@ -140,7 +142,7 @@ object Splicer {
       }
 
       def checkIfValidArgument(tree: Tree)(using Env): Unit = tree match {
-        case Block(Nil, expr) => checkIfValidArgument(expr)
+        case Block(Lst.Empty, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
         case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
@@ -274,7 +276,7 @@ object Splicer {
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
       // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
-      case Block(stats, expr) => interpretBlock(stats, expr)
+      case Block(stats, expr) => interpretBlock(stats.toList, expr)
       case NamedArg(_, arg) => interpretTree(arg)
 
       case Inlined(_, bindings, expansion) => interpretBlock(bindings, expansion)

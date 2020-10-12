@@ -18,6 +18,8 @@ import core.{Names, StdNames}
 import transform.MegaPhase.MiniPhase
 import transform.SymUtils._
 import scala.collection.mutable
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 class LazyVals extends MiniPhase with IdentityDenotTransformer {
   import LazyVals._
@@ -114,8 +116,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
 
-  private def addInFront(prefix: List[Tree], stats: List[Tree]) = stats match {
-    case first :: rest if isSuperConstrCall(first) => first :: prefix ::: rest
+  private def addInFront(prefix: List[Tree], stats: Lst[Tree]) = stats match {
+    case Lst(first, _: _*) if isSuperConstrCall(first) => first :: prefix ::: stats.tail
     case _ => prefix ::: stats
   }
 
@@ -185,7 +187,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   }
 
 
-  override def transformStats(trees: List[tpd.Tree])(using Context): List[Tree] = {
+  override def transformStats(trees: Lst[tpd.Tree])(using Context): Lst[Tree] = {
     // backend requires field usage to be after field definition
     // need to bring containers to start of method
     val (holders, stats) =
@@ -222,10 +224,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val stats = targetRef.becomes(rhs) :: flagRef.becomes(Literal(Constant(true))) :: nullOut(nullableFor(sym))
     val init = If(
       flagRef.ensureApplied.select(nme.UNARY_!).ensureApplied,
-      Block(stats.init, stats.last),
+      Block(stats.toLst.init, stats.last),
       unitLiteral
     )
-    DefDef(sym.asTerm, Block(List(init), targetRef.ensureApplied))
+    DefDef(sym.asTerm, Block(Lst(init), targetRef.ensureApplied))
   }
 
   /** Create thread-unsafe lazy accessor for not-nullable types  equivalent to such code
@@ -244,10 +246,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val stats = targetRef.becomes(rhs) :: nullOut(nullableFor(sym))
     val init = If(
       targetRef.select(nme.eq).appliedTo(nullLiteral),
-      Block(stats.init, stats.last),
+      Block(stats.toLst.init, stats.last),
       unitLiteral
     )
-    DefDef(sym.asTerm, Block(List(init), targetRef.ensureApplied))
+    DefDef(sym.asTerm, Block(Lst(init), targetRef.ensureApplied))
   }
 
   def transformMemberDefThreadUnsafe(x: ValOrDefDef)(using Context): Thicket = {
@@ -339,7 +341,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         (nullOut(nullableFor(methodSymbol)) :+
         setFlagState.appliedTo(thiz, offset, computedState, fieldId))
       )
-      Block(stats, Return(resultRef, methodSymbol))
+      Block(stats.toLst, Return(resultRef, methodSymbol))
     }
 
     val retryCase = {
@@ -348,7 +350,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       CaseDef(
         Bind(caseSymbol, ref(caseSymbol)),
         EmptyTree,
-        Block(List(triggerRetry), Throw(ref(caseSymbol)))
+        Block(Lst(triggerRetry), Throw(ref(caseSymbol)))
       )
     }
 
@@ -368,7 +370,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       )
     )
 
-    val loop = WhileDo(EmptyTree, Block(List(flagDef, stateDef), condition))
+    val loop = WhileDo(EmptyTree, Block(Lst(flagDef, stateDef), condition))
     DefDef(methodSymbol, loop)
   }
 

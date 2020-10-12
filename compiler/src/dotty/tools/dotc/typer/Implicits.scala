@@ -29,6 +29,8 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import Hashable._
 import util.{SourceFile, NoSource, EqHashMap, Stats}
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 import config.{Config, Feature}
 import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}
@@ -1665,7 +1667,7 @@ final class SearchRoot extends SearchHistory:
             }
 
             val constr = newConstructor(classSym, Synthetic, Nil, Nil).entered
-            val classDef = ClassDef(classSym, DefDef(constr), vdefs)
+            val classDef = ClassDef(classSym, DefDef(constr), vdefs.toLst)
 
             val valSym = newLazyImplicit(classSym.typeRef, span)
             val inst = ValDef(valSym, New(classSym.typeRef, Nil))
@@ -1679,7 +1681,7 @@ final class SearchRoot extends SearchHistory:
 
             val res = resMap(tree)
 
-            val blk = Block(classDef :: inst :: Nil, res).withSpan(span)
+            val blk = Block(Lst(classDef, inst), res).withSpan(span)
 
             success.copy(tree = blk)(success.tstate, success.gstate)
           }

@@ -14,6 +14,8 @@ import Types._
 import util.NoSourcePosition
 import reporting.trace
 import config.Printers.init
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import Effects._, Potentials._, Summary._, Util._, Errors._
 
@@ -104,7 +106,7 @@ object Checking {
     }
 
     def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
-      val Block(ctorCall :: stats, expr) = ctor.defTree.asInstanceOf[DefDef].rhs
+      val Block(Lst(ctorCall, stats: _*), expr) = ctor.defTree.asInstanceOf[DefDef].rhs
       val cls = ctor.owner.asClass
 
       traceOp("check ctor: " + ctorCall.show, init) {

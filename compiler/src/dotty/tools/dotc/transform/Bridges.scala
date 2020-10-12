@@ -9,6 +9,7 @@ import ast.untpd
 import collection.{mutable, immutable}
 import util.Spans.Span
 import util.SrcPos
+import util.Lst; // import Lst.::
 
 /** A helper class for generating bridge methods in class `root`. */
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
@@ -111,12 +112,12 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   /** Add all necessary bridges to template statements `stats`, and remove at the same
    *  time deferred methods in `stats` that are replaced by a bridge with the same signature.
    */
-  def add(stats: List[untpd.Tree]): List[untpd.Tree] =
+  def add(stats: Lst[untpd.Tree]): Lst[untpd.Tree] =
     val opc = new BridgesCursor()(using preErasureCtx)
     while opc.hasNext do
       if !opc.overriding.is(Deferred) then
         addBridgeIfNeeded(opc.overriding, opc.overridden)
       opc.next()
     if bridges.isEmpty then stats
-    else stats.filterNot(stat => toBeRemoved contains stat.symbol) ::: bridges.toList
+    else stats.filterNot(stat => toBeRemoved contains stat.symbol) ++ bridges.toList
 }

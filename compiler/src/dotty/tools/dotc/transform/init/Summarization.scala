@@ -13,6 +13,8 @@ import Types._
 import ast.tpd._
 import config.Printers.init
 import reporting.trace
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import Effects._, Potentials._, Summary._, Util._
 
@@ -293,11 +295,11 @@ object Summarization {
         effs ++ (parent match {
           case tree @ Block(stats, parent) =>
             val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffsWithInit(qual :: stats ++ argss.flatten, ctor.symbol, tree)
+            parentArgEffsWithInit(qual :: stats.toList ++ argss.flatten, ctor.symbol, tree)
 
           case tree @ Apply(Block(stats, parent), args) =>
             val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffsWithInit(qual :: stats ++ args ++ argss.flatten, ctor.symbol, tree)
+            parentArgEffsWithInit(qual :: stats.toList ++ args ++ argss.flatten, ctor.symbol, tree)
 
           case parent : Apply =>
             val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)

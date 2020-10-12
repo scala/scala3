@@ -23,6 +23,8 @@ import reporting._
 import dotty.tools.dotc.util.SourceFile
 import util.Spans._
 import scala.collection.mutable.ListBuffer
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 object JavaParsers {
 
@@ -124,7 +126,7 @@ object JavaParsers {
       else if (constr1 == EmptyTree) {
         constr1 = makeConstructor(List(), tparams)
       }
-      Template(constr1.asInstanceOf[DefDef], parents, Nil, EmptyValDef, stats1)
+      Template(constr1.asInstanceOf[DefDef], parents, Nil, EmptyValDef, stats1.toLst)
     }
 
     def makeSyntheticParam(count: Int, tpt: Tree): ValDef =
@@ -976,7 +978,7 @@ object JavaParsers {
           buf ++= typeDecl(start, mods)
         }
       }
-      val unit = atSpan(start) { PackageDef(pkg, buf.toList) }
+      val unit = atSpan(start) { PackageDef(pkg, buf.toList.toLst) }
       accept(EOF)
       unit
     }

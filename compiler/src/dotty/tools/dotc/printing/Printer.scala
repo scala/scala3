@@ -7,8 +7,9 @@ import Texts._, ast.Trees._
 import Types.{Type, SingletonType}, Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation
 import typer.Implicits.SearchResult
-import util.SourcePosition
+import util.{SourcePosition}
 import typer.ImportInfo
+import util.Lst; // import Lst.::
 
 import scala.annotation.internal.sharable
 
@@ -160,7 +161,11 @@ abstract class Printer {
 
   /** Render elements alternating with `sep` string */
   def toText(elems: Traversable[Showable], sep: String): Text =
-    Text(elems map (_ toText this), sep)
+    Text(elems.map(_.toText(this)), sep)
+
+  /** Render elements alternating with `sep` string */
+  def toText(elems: Lst[Showable], sep: String): Text =
+    Text(elems.map(_.toText(this)).toList, sep)
 
   /** Render elements within highest precedence */
   def toTextLocal(elems: Traversable[Showable], sep: String): Text =
@@ -168,6 +173,10 @@ abstract class Printer {
 
   /** Render elements within lowest precedence */
   def toTextGlobal(elems: Traversable[Showable], sep: String): Text =
+    atPrec(GlobalPrec) { toText(elems, sep) }
+
+  /** Render elements within lowest precedence */
+  def toTextGlobal(elems: Lst[Showable], sep: String): Text =
     atPrec(GlobalPrec) { toText(elems, sep) }
 
   /** A plain printer without any embellishments */

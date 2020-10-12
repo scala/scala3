@@ -4,6 +4,8 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.util
+import util.Lst; // import Lst.::
 
 /** A phase that collects user defined top level imports.
  *
@@ -20,8 +22,8 @@ class CollectTopLevelImports extends Phase {
 
   def run(using Context): Unit = {
     def topLevelImports(tree: Tree) = {
-      val PackageDef(_, _ :: TypeDef(_, rhs: Template) :: _) = tree
-      rhs.body.collect { case tree: Import => tree }
+      val PackageDef(_, Lst(_, TypeDef(_, rhs: Template), _ : _*)) = tree
+      rhs.body.collect{ case tree: Import => tree }.toList
     }
 
     val tree = ctx.compilationUnit.tpdTree

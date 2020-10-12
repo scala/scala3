@@ -15,6 +15,7 @@ import core._
 import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
 import util.Spans._
+import util.Lst; // import Lst.::
 
 class PositionPickler(
     pickler: TastyPickler,
@@ -91,6 +92,7 @@ class PositionPickler(
       case _ => false
     }
 
+    import scala.::
     def traverse(x: Any, current: SourceFile): Unit = x match {
       case x: untpd.Tree =>
         if (x.span.exists) {
@@ -120,6 +122,8 @@ class PositionPickler(
       case y :: ys =>
         traverse(y, current)
         traverse(ys, current)
+      case ys: Lst.Arr =>
+        ys.foreach(traverse(_, current))
       case _ =>
     }
     for (root <- roots)

@@ -28,6 +28,7 @@ import org.jline.reader._
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.Using
+import dotty.tools.dotc.util.Lst; import Lst.::
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
@@ -219,7 +220,7 @@ class ReplDriver(settings: Array[String],
   /** Compile `parsed` trees and evolve `state` in accordance */
   private def compile(parsed: Parsed, istate: State): State = {
     def extractNewestWrapper(tree: untpd.Tree): Name = tree match {
-      case PackageDef(_, (obj: untpd.ModuleDef) :: Nil) => obj.name.moduleClassName
+      case PackageDef(_, Lst(obj: untpd.ModuleDef)) => obj.name.moduleClassName
       case _ => nme.NO_NAME
     }
 

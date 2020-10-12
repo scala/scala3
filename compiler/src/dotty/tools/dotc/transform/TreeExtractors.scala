@@ -5,6 +5,7 @@ import ast.{Trees, tpd}
 import core._
 import Contexts._, Trees._, Types._, StdNames._, Symbols._
 import ValueClasses._
+import util.Lst; import Lst.::
 
 object TreeExtractors {
   import tpd._
@@ -27,7 +28,7 @@ object TreeExtractors {
       case Apply(Select(New(_), nme.CONSTRUCTOR), args) =>
         Some((t.tpe, args))
       case Typed(expr, _) => unapply(expr)
-      case Block(Nil, expr) => unapply(expr)
+      case Block(Lst.Empty, expr) => unapply(expr)
       case _ =>
         None
     }

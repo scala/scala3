@@ -17,6 +17,8 @@ import config.Printers.patmatch
 import reporting._
 import dotty.tools.dotc.ast._
 import util.Property._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** The pattern matching transform.
  *  After this phase, the only Match nodes remaining in the code are simple switches
@@ -896,13 +898,13 @@ object PatternMatcher {
           }
           emitWithMashedConditions(plan :: Nil)
         case LetPlan(sym, body) =>
-          seq(ValDef(sym, initializer(sym).ensureConforms(sym.info)) :: Nil, emit(body))
+          seq(Lst(ValDef(sym, initializer(sym).ensureConforms(sym.info))), emit(body))
         case LabeledPlan(label, expr) =>
           Labeled(label, emit(expr))
         case ReturnPlan(label) =>
           Return(Literal(Constant(())), ref(label))
         case plan: SeqPlan =>
-          def default = seq(emit(plan.head) :: Nil, emit(plan.tail))
+          def default = seq(Lst(emit(plan.head)), emit(plan.tail))
           def maybeEmitSwitch(scrutinee: Tree): Tree = {
             val switchCases = collectSwitchCases(scrutinee, plan)
             if (hasEnoughSwitchCases(switchCases, MinSwitchCases)) // at least 3 cases + default

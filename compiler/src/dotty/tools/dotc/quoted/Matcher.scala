@@ -5,6 +5,7 @@ import scala.annotation.{Annotation, compileTimeOnly}
 
 import scala.quoted._
 import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
+import dotty.tools.dotc.util.Lst; import Lst.::
 
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.
@@ -156,7 +157,7 @@ object Matcher {
         /* Match block flattening */ // TODO move to cases
         /** Normalize the tree */
         def normalize(tree: Tree): Tree = tree match {
-          case Block(Nil, expr) => normalize(expr)
+          case Block(Lst.Empty, expr) => normalize(expr)
           case Block(stats1, Block(stats2, expr)) =>
             expr match
               case _: Closure => tree

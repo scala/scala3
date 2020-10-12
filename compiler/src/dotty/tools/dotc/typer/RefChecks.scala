@@ -21,6 +21,7 @@ import config.Feature.{warnOnMigration, migrateTo3}
 import reporting._
 import scala.util.matching.Regex._
 import Constants.Constant
+import util.Lst; // import Lst.::
 
 object RefChecks {
   import tpd.{Tree, MemberDef, Literal, Template, DefDef}
@@ -913,7 +914,7 @@ object RefChecks {
   }
 
   /** A class to help in forward reference checking */
-  class LevelInfo(outerLevelAndIndex: LevelAndIndex, stats: List[Tree])(using Context)
+  class LevelInfo(outerLevelAndIndex: LevelAndIndex, stats: Lst[Tree])(using Context)
   extends OptLevelInfo {
     override val levelAndIndex: LevelAndIndex =
       stats.foldLeft(outerLevelAndIndex, 0) {(mi, stat) =>
@@ -1056,7 +1057,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def initContext(ctx: FreshContext): Unit =
     LevelInfo = ctx.addLocation(NoLevelInfo)
 
-  override def prepareForStats(trees: List[Tree])(using Context): Context =
+  override def prepareForStats(trees: Lst[Tree])(using Context): Context =
     if (ctx.owner.isTerm)
       ctx.fresh.updateStore(LevelInfo, new LevelInfo(currentLevel.levelAndIndex, trees))
     else ctx

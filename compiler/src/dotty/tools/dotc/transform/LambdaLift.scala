@@ -18,6 +18,8 @@ import ExplicitOuter.outer
 import util.Store
 import collection.mutable
 import collection.mutable.{ HashMap, HashSet, LinkedHashMap, TreeSet }
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 object LambdaLift {
   import ast.tpd._
@@ -448,7 +450,7 @@ object LambdaLift {
           val classProxies = fvs.map(proxyOf(sym.owner, _))
           val constrProxies = fvs.map(proxyOf(sym, _))
           report.debuglog(i"copy params ${constrProxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")
-          seq(classProxies.lazyZip(constrProxies).map(proxyInit), rhs)
+          seq(classProxies.lazyZip(constrProxies).map(proxyInit).toLst, rhs)
         }
 
         tree match {
@@ -459,7 +461,7 @@ object LambdaLift {
                   if (sym.isPrimaryConstructor && !sym.owner.is(Trait)) copyParams(tree.rhs)
                   else tree.rhs)
           case tree: Template =>
-            cpy.Template(tree)(body = freeParamDefs ++ tree.body)
+            cpy.Template(tree)(body = freeParamDefs ::: tree.body)
         }
     }
 

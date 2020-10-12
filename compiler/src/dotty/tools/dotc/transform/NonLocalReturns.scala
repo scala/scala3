@@ -7,6 +7,7 @@ import MegaPhase._
 import NameKinds.NonLocalReturnKeyName
 import config.Feature.sourceVersion
 import config.SourceVersion._
+import util.Lst; // import Lst.::
 
 object NonLocalReturns {
   import ast.tpd._
@@ -79,7 +80,7 @@ class NonLocalReturns extends MiniPhase {
         Throw(ref(ex)))
     val catches = CaseDef(pat, EmptyTree, rhs) :: Nil
     val tryCatch = Try(body, catches, EmptyTree)
-    Block(keyDef :: Nil, tryCatch)
+    Block(Lst(keyDef), tryCatch)
   }
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =

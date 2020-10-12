@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform.SymUtils._
+import util.Lst; // import Lst.::
 
 /** Removes `Select`s that would be compiled into `GetStatic`.
  *
@@ -58,7 +59,7 @@ class SelectStatic extends MiniPhase with IdentityDenotTransformer {
     val tree1 =
       if isStaticRef && !tree.qualifier.symbol.isAllOf(JavaModule) && !tree.qualifier.isType then
         if isStaticOwnerRef(tree.qualifier) then ref(sym)
-        else Block(List(tree.qualifier), ref(sym))
+        else Block(Lst(tree.qualifier), ref(sym))
       else tree
 
     normalize(tree1)

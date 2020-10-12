@@ -12,13 +12,14 @@ import Parsers.Parser
 import util.SourceFile
 import core.Contexts._
 import core.Flags
+import util.Lst; // import Lst.::
 
 object ModifiersParsingTest {
   given Context = (new ContextBase).initialCtx
 
   def parse(code: String): Tree = {
     val (_, stats) = new Parser(SourceFile.virtual("<meta>", code)).templateStatSeq()
-    stats match { case List(stat) => stat; case stats => Thicket(stats) }
+    stats match { case Lst(stat) => stat; case stats => Thicket(stats.toList) }
   }
 
   extension (code: Tree) {

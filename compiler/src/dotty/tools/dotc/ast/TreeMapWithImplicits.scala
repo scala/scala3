@@ -7,6 +7,9 @@ import core.ContextOps.enter
 import core.Flags._
 import core.Symbols._
 import core.TypeError
+import util.Lst; // import Lst.::
+import util.Lst.toLst
+
 
 import scala.annotation.tailrec
 
@@ -26,41 +29,26 @@ class TreeMapWithImplicits extends tpd.TreeMap {
    *   - be tail-recursive where possible
    *   - don't re-allocate trees where nothing has changed
    */
-  def transformStats(stats: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
+  def transformStats(stats: Lst[Tree], exprOwner: Symbol)(using Context): Lst[Tree] =
+    var buf: Lst.Buffer[Tree] = null
+    var curCtx: Context = ctx
+    for n <- 0 until stats.length do
+      val stat = stats(n)
+      val statCtx = stat match
+        case stat: DefTree => curCtx
+        case _ => curCtx.exprContext(stat, exprOwner)
+      val stat1 = transform(stat)(using statCtx)
+      if buf == null && (stat1 ne stat) then
+        buf = Lst.Buffer()
+        buf.appendSlice(stats, 0, n)
+      if buf != null then
+        buf += stat1
+      curCtx = stat match
+        case stat: Import => curCtx.importContext(stat, stat.symbol)
+        case _ => curCtx
+    if buf == null then stats else buf.toLst
 
-    @tailrec def traverse(curStats: List[Tree])(using Context): List[Tree] = {
-
-      def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(using Context): List[Tree] =
-        if (stats eq curStats) {
-          val rest1 = transformStats(rest, exprOwner)
-          changed match {
-            case Thicket(trees) => trees ::: rest1
-            case tree => tree :: rest1
-          }
-        }
-        else stats.head :: recur(stats.tail, changed, rest)
-
-      curStats match {
-        case stat :: rest =>
-          val statCtx = stat match {
-            case stat: DefTree => ctx
-            case _ => ctx.exprContext(stat, exprOwner)
-          }
-          val restCtx = stat match {
-            case stat: Import => ctx.importContext(stat, stat.symbol)
-            case _ => ctx
-          }
-          val stat1 = transform(stat)(using statCtx)
-          if (stat1 ne stat) recur(stats, stat1, rest)(using restCtx)
-          else traverse(rest)(using restCtx)
-        case nil =>
-          stats
-      }
-    }
-    traverse(stats)
-  }
-
-  private def nestedScopeCtx(defs: List[Tree])(using Context): Context = {
+  private def nestedScopeCtx(defs: Lst[Tree])(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
     defs foreach {
       case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) => nestedCtx.enter(d.symbol)
@@ -97,7 +85,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
             transformSub(tree.tparams),
             tree.vparamss mapConserve (transformSub(_)),
             transform(tree.tpt),
-            transform(tree.rhs)(using nestedScopeCtx(tree.vparamss.flatten)))
+            transform(tree.rhs)(using nestedScopeCtx(tree.vparamss.flatten.toLst)))
         }
       case EmptyValDef =>
         tree

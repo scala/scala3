@@ -11,6 +11,8 @@ import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, Name
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._, Phases._
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
 import util.Spans._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
 import ast.untpd.Modifiers
 import printing.Texts._
@@ -1028,16 +1030,16 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         setSym()
         val pid = readTreeRef().asInstanceOf[RefTree]
         val stats = until(end, () => readTreeRef())
-        PackageDef(pid, stats)
+        PackageDef(pid, stats.toLst)
 
       case CLASStree =>
         setSymModsName()
         val impl = readTemplateRef()
         val tparams = until(end, () => readTypeDefRef())
         val cls = symbol.asClass
-        val ((constr: DefDef) :: Nil, stats) =
+        val (Lst(constr: DefDef), stats) =
           impl.body.partition(_.symbol == cls.primaryConstructor)
-        ClassDef(cls, constr, tparams ++ stats)
+        ClassDef(cls, constr, tparams ::: stats)
 
       case MODULEtree =>
         setSymModsName()
@@ -1071,7 +1073,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val ldef = DefDef(symbol.asTerm, rhs)
         def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw.toString)
         if (isCaseLabel(symbol)) ldef
-        else Block(ldef :: Nil, Apply(Ident(symbol.termRef), Nil))
+        else Block(Lst(ldef), Apply(Ident(symbol.termRef), Nil))
 
       case IMPORTtree =>
         setSym()
@@ -1090,13 +1092,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val parents = times(readNat(), () => readTreeRef())
         val self = readValDefRef()
         val body = until(end, () => readTreeRef())
-        untpd.Template(???, parents, Nil, self, body) // !!! TODO: pull out primary constructor
+        untpd.Template(???, parents, Nil, self, body.toLst) // !!! TODO: pull out primary constructor
           .withType(symbol.namedType)
 
       case BLOCKtree =>
         val expr = readTreeRef()
         val stats = until(end, () => readTreeRef())
-        Block(stats, expr)
+        Block(stats.toLst, expr)
 
       case CASEtree =>
         val pat = readTreeRef()

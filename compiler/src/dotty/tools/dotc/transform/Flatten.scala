@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -9,6 +10,7 @@ import SymDenotations.SymDenotation
 import collection.mutable
 import MegaPhase.MiniPhase
 import util.Store
+import util.Lst; // import Lst.::
 
 /** Lift nested classes to toplevel */
 class Flatten extends MiniPhase with SymTransformer {
@@ -45,7 +47,7 @@ class Flatten extends MiniPhase with SymTransformer {
       EmptyTree
     }
 
-  override def transformStats(stats: List[Tree])(using Context): List[Tree] =
+  override def transformStats(stats: Lst[Tree])(using Context): Lst[Tree] =
     if (ctx.owner.is(Package)) {
       val liftedStats = stats ++ liftedDefs
       liftedDefs.clear()

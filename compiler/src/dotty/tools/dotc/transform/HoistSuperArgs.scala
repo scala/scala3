@@ -13,6 +13,7 @@ import collection.mutable
 import ast.Trees._
 import core.NameKinds.SuperArgName
 import SymUtils._
+import util.Lst; // import Lst.::
 
 object HoistSuperArgs {
   val name: String = "hoistSuperArgs"
@@ -185,10 +186,11 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       case stat: DefDef if stat.symbol.isClassConstructor =>
         cpy.DefDef(stat)(rhs =
           stat.rhs match {
-            case Block(superCall :: stats, expr) =>
+            case Block(Lst(superCall, stats: _*), expr) =>
               val superCall1 = hoistSuperArgsFromCall(superCall, stat)
               if (superCall1 eq superCall) stat.rhs
-              else cpy.Block(stat.rhs)(superCall1 :: stats, expr)
+              else cpy.Block(stat.rhs)(
+                superCall1 :: stats.asInstanceOf[Lst.LstSlice[Tree]].toLst, expr)
             case _ =>
               hoistSuperArgsFromCall(stat.rhs, stat)
           })
@@ -202,7 +204,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       case impl @ Template(cdef, superCall :: others, _, _) =>
         val hoist = new Hoister(tdef.symbol)
         val hoistedSuperCall = hoist.hoistSuperArgsFromCall(superCall, cdef)
-        val hoistedBody = impl.body.mapconserve(hoist.hoistSuperArgsFromConstr)
+        val hoistedBody = impl.body.mapConserve(hoist.hoistSuperArgsFromConstr)
         if (hoist.superArgDefs.isEmpty) tdef
         else {
           val (staticSuperArgDefs, enclSuperArgDefs) =

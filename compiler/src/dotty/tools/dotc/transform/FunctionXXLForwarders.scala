@@ -11,6 +11,7 @@ import StdNames._
 import Symbols._
 import MegaPhase._
 import Types._
+import util.Lst; // import Lst.::
 
 
 /** This phase adds forwarder for XXL functions `apply` methods that are implemented with a method
@@ -40,18 +41,16 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
     }
 
     val forwarders =
-      for {
-        tree <- if (impl.symbol.owner.is(Trait)) Nil else impl.body
+      for
+        tree <- if impl.symbol.owner.is(Trait) then Lst.Empty else impl.body
         if tree.symbol.is(Method) && tree.symbol.name == nme.apply &&
            tree.symbol.signature.paramsSig.size > MaxImplementedFunctionArity &&
            tree.symbol.allOverriddenSymbols.exists(sym => defn.isXXLFunctionClass(sym.owner))
-      }
-      yield {
+      yield
         val xsType = defn.ArrayType.appliedTo(List(defn.ObjectType))
         val methType = MethodType(List(nme.args))(_ => List(xsType), _ => defn.ObjectType)
         val meth = newSymbol(tree.symbol.owner, nme.apply, Synthetic | Method, methType)
         DefDef(meth, paramss => forwarderRhs(tree, paramss.head.head))
-      }
 
     cpy.Template(impl)(body = forwarders ::: impl.body)
   }

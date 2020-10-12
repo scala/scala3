@@ -12,6 +12,7 @@ import core.Names._
 import core.NameKinds.TempResultName
 import ast.Trees._
 import util.Store
+import util.Lst; // import Lst.::
 import collection.mutable
 
 /** This phase translates variables that are captured in closures to
@@ -145,7 +146,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
         recur(qual)
       case Select(_, nme.elem) if refInfo.boxedRefClasses.contains(lhs.symbol.maybeOwner) =>
         val tempDef = transformFollowing(SyntheticValDef(TempResultName.fresh(), tree.rhs))
-        transformFollowing(Block(tempDef :: Nil, cpy.Assign(tree)(lhs, ref(tempDef.symbol))))
+        transformFollowing(Block(Lst(tempDef), cpy.Assign(tree)(lhs, ref(tempDef.symbol))))
       case _ =>
         tree
     }

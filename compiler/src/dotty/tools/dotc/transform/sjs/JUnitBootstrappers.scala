@@ -16,6 +16,8 @@ import Scopes._
 import Symbols._
 import StdNames._
 import Types._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import dotty.tools.dotc.transform.MegaPhase._
 
@@ -163,7 +165,7 @@ class JUnitBootstrappers extends MiniPhase {
 
     val testMethods = annotatedMethods(testClass, junitdefn.TestAnnotClass)
 
-    val defs = List(
+    val defs = Lst(
       genCallOnModule(classSym, junitNme.beforeClass, testClass.companionModule, junitdefn.BeforeClassAnnotClass),
       genCallOnModule(classSym, junitNme.afterClass, testClass.companionModule, junitdefn.AfterClassAnnotClass),
       genCallOnParam(classSym, junitNme.before, testClass, junitdefn.BeforeAnnotClass),
@@ -182,7 +184,7 @@ class JUnitBootstrappers extends MiniPhase {
     val sym = newDefaultConstructor(owner).entered
     DefDef(sym, {
       Block(
-        Super(This(owner), tpnme.EMPTY).select(defn.ObjectClass.primaryConstructor).appliedToNone :: Nil,
+        Lst(Super(This(owner), tpnme.EMPTY).select(defn.ObjectClass.primaryConstructor).appliedToNone),
         unitLiteral
       )
     })
@@ -196,7 +198,7 @@ class JUnitBootstrappers extends MiniPhase {
       if (module.exists) {
         val calls = annotatedMethods(module.moduleClass.asClass, annot)
           .map(m => Apply(ref(module).select(m), Nil))
-        Block(calls, unitLiteral)
+        Block(calls.toLst, unitLiteral)
       } else {
         unitLiteral
       }
@@ -211,7 +213,7 @@ class JUnitBootstrappers extends MiniPhase {
       val List(List(instanceParamRef)) = paramRefss
       val calls = annotatedMethods(testClass, annot)
         .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Nil))
-      Block(calls, unitLiteral)
+      Block(calls.toLst, unitLiteral)
     })
   }
 
@@ -261,7 +263,7 @@ class JUnitBootstrappers extends MiniPhase {
       val List(List(instanceParamRef, nameParamRef)) = paramRefss
       val castInstanceSym = newSymbol(sym, junitNme.castInstance, Synthetic, testClass.typeRef, coord = owner.span)
       Block(
-        ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef)) :: Nil,
+        Lst(ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef))),
         tests.foldRight[Tree] {
           val tp = junitdefn.NoSuchMethodExceptionType
           Throw(resolveConstructor(tp, nameParamRef :: Nil))
@@ -281,7 +283,7 @@ class JUnitBootstrappers extends MiniPhase {
     if (resultType.isRef(defn.UnitClass)) {
       val newSuccess = ref(junitdefn.SuccessModule_apply).appliedTo(ref(defn.BoxedUnit_UNIT))
       Block(
-        instance.select(testMethod).appliedToNone :: Nil,
+        Lst(instance.select(testMethod).appliedToNone),
         ref(junitdefn.FutureModule_successful).appliedTo(newSuccess)
       )
     } else if (resultType.isRef(junitdefn.FutureClass)) {

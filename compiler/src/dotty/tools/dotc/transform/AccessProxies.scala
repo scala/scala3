@@ -14,6 +14,7 @@ import Types._
 import NameKinds.ClassifiedNameKind
 import ast.Trees._
 import util.Spans.Span
+import util.Lst; // import Lst.::
 import config.Printers.transforms
 
 /** A utility class for generating access proxies. Currently used for
@@ -58,10 +59,10 @@ abstract class AccessProxies {
       })
 
   /** Add all needed accessors to the `body` of class `cls` */
-  def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] = {
+  def addAccessorDefs(cls: Symbol, body: Lst[Tree])(using Context): Lst[Tree] = {
     val accDefs = accessorDefs(cls)
     transforms.println(i"add accessors for $cls: $accDefs%, %")
-    if (accDefs.isEmpty) body else body ++ accDefs
+    body ++ accDefs
   }
 
   trait Insert {

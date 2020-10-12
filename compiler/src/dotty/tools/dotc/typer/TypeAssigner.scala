@@ -8,6 +8,8 @@ import Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
 import util.Spans._
 import util.SrcPos
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 import config.Printers.typr
 import ast.Trees._
 import NameOps._
@@ -39,8 +41,8 @@ trait TypeAssigner {
     }
   }
 
-  def avoidingType(expr: Tree, bindings: List[Tree])(using Context): Type =
-    TypeOps.avoid(expr.tpe, localSyms(bindings).filterConserve(_.isTerm))
+  def avoidingType(expr: Tree, bindings: Lst[Tree])(using Context): Type =
+    TypeOps.avoid(expr.tpe, localSyms(bindings.toList).filterConserve(_.isTerm))
 
   def avoidPrivateLeaks(sym: Symbol)(using Context): Type =
     if sym.owner.isClass && !sym.isOneOf(JavaOrPrivateOrSynthetic)
@@ -384,11 +386,11 @@ trait TypeAssigner {
   def assignType(tree: untpd.Assign)(using Context): Assign =
     tree.withType(defn.UnitType)
 
-  def assignType(tree: untpd.Block, stats: List[Tree], expr: Tree)(using Context): Block =
+  def assignType(tree: untpd.Block, stats: Lst[Tree], expr: Tree)(using Context): Block =
     tree.withType(avoidingType(expr, stats))
 
   def assignType(tree: untpd.Inlined, bindings: List[Tree], expansion: Tree)(using Context): Inlined =
-    tree.withType(avoidingType(expansion, bindings))
+    tree.withType(avoidingType(expansion, bindings.toLst))
 
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(using Context): If =
     tree.withType(thenp.tpe | elsep.tpe)

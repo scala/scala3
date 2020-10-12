@@ -9,6 +9,7 @@ import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}
+import util.Lst.toLst
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
 import collection.mutable.ListBuffer
@@ -16,6 +17,7 @@ import reporting._
 import annotation.constructorOnly
 import printing.Formatting.hl
 import config.Printers
+import util.Lst; // import Lst.::
 
 import scala.annotation.internal.sharable
 
@@ -474,7 +476,7 @@ object desugar {
       val stats0 = impl.body.map(expandConstructor)
       val stats =
         if (ctx.owner eq defn.ScalaPackageClass) && defn.hasProblematicGetClass(className) then
-          stats0.filterConserve {
+          stats0.filter {
             case ddef: DefDef =>
               ddef.name ne nme.getClass_
             case _ =>
@@ -491,8 +493,8 @@ object desugar {
           enumCases.last.pushAttachment(DesugarEnums.DefinesEnumLookupMethods, ())
         val enumCompanionRef = TermRefTree()
         val enumImport =
-          Import(enumCompanionRef, enumCases.flatMap(caseIds).map(ImportSelector(_)))
-        (enumImport :: enumStats, enumCases, enumCompanionRef)
+          Import(enumCompanionRef, enumCases.toList.flatMap(caseIds).map(ImportSelector(_)))
+        (enumImport :: enumStats, enumCases.toList, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)
     }
@@ -644,7 +646,7 @@ object desugar {
     def companionDefs(parentTpt: Tree, defs: List[Tree]) = {
       val mdefs = moduleDef(
         ModuleDef(
-          className.toTermName, Template(emptyConstructor, parentTpt :: Nil, companionDerived, EmptyValDef, defs))
+          className.toTermName, Template(emptyConstructor, parentTpt :: Nil, companionDerived, EmptyValDef, defs.toLst))
             .withMods(companionMods | Synthetic))
         .withSpan(cdef.span).toList
       if (companionDerived.nonEmpty)
@@ -804,7 +806,7 @@ object desugar {
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
-          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths)): TypeDef
+          (tparamAccessors ::: vparamAccessors ::: normalizedBody) ++ caseClassMeths)): TypeDef
     }
 
     // install the watch on classTycon
@@ -832,7 +834,7 @@ object desugar {
     val moduleName = normalizeName(mdef, impl).asTermName
     if (mods.is(Package))
       PackageDef(Ident(moduleName),
-        cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package) :: Nil)
+        Lst(cpy.ModuleDef(mdef)(nme.PACKAGE, impl).withMods(mods &~ Package)))
     else
       mdef
 
@@ -1341,7 +1343,7 @@ object desugar {
         case (param, idx) =>
           DefDef(param.name, Nil, Nil, param.tpt, selector(idx)).withSpan(param.span)
       }
-    Function(param :: Nil, Block(vdefs, body))
+    Function(param :: Nil, Block(vdefs.toLst, body))
   }
 
   def makeContextualFunction(formals: List[Tree], body: Tree, isErased: Boolean)(using Context): Function = {
@@ -1557,7 +1559,7 @@ object desugar {
           val (defpat0, id0) = makeIdPat(gen.pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
           val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map(makePatDef(_, Modifiers(), _, _))
-          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
+          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs.toLst, makeTuple(id0 :: ids)))
           val allpats = gen.pat :: pats
           val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
@@ -1600,7 +1602,7 @@ object desugar {
           val applyVParams = vargs.asInstanceOf[List[ValDef]]
             .map(varg => varg.withAddedFlags(mods.flags | Param))
             New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
-              List(DefDef(nme.apply, applyTParams, List(applyVParams), TypeTree(), res))
+              Lst(DefDef(nme.apply, applyTParams, List(applyVParams), TypeTree(), res))
               ))
         }
       case _ =>
@@ -1636,8 +1638,8 @@ object desugar {
           case ts: Thicket => ts.trees.tail
           case t => Nil
         } map {
-          case Block(Nil, EmptyTree) => Literal(Constant(())) // for s"... ${} ..."
-          case Block(Nil, expr) => expr // important for interpolated string as patterns, see i1773.scala
+          case Block(Lst.Empty, EmptyTree) => Literal(Constant(())) // for s"... ${} ..."
+          case Block(Lst.Empty, expr) => expr // important for interpolated string as patterns, see i1773.scala
           case t => t
         }
         // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
@@ -1676,7 +1678,7 @@ object desugar {
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(tree, mods, _, rhs)))
       case ext: ExtMethods =>
-        Block(List(ext), Literal(Constant(())).withSpan(ext.span))
+        Block(Lst(ext), Literal(Constant(())).withSpan(ext.span))
     }
     desugared.withSpan(tree.span)
   }
@@ -1704,7 +1706,7 @@ object desugar {
           Apply(Select(tmpId, nme.isDefinedAt), excId),
           Apply(Select(tmpId, nme.apply), excId),
           Throw(excId))
-        Block(init :: Nil, test)
+        Block(Lst(init), test)
       else
         Apply(Select(handler, nme.apply), excId)
     CaseDef(excId, EmptyTree, rhs)
@@ -1748,7 +1750,7 @@ object desugar {
     val (classParents, self) =
       if (parentCores.length == 1 && (parent.tpe eq parentCores.head)) (untpdParent :: Nil, EmptyValDef)
       else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
-    val impl = Template(emptyConstructor, classParents, Nil, self, refinements)
+    val impl = Template(emptyConstructor, classParents, Nil, self, refinements.toLst)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
   }
 
@@ -1799,7 +1801,7 @@ object desugar {
         trees foreach collect
       case Thicket(trees) =>
         trees foreach collect
-      case Block(Nil, expr) =>
+      case Block(Lst.Empty, expr) =>
         collect(expr)
       case Quote(expr) =>
         new UntypedTreeTraverser {

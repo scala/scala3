@@ -15,6 +15,7 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import transform.SyntheticMembers._
 import util.Property
+import util.Lst; // import Lst.::
 import annotation.{tailrec, constructorOnly}
 
 /** Synthesize terms for special classes */
@@ -193,7 +194,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       parents = untpd.TypeTree(defn.ObjectType) :: Nil,
       derived = Nil,
       self = EmptyValDef,
-      body = monoTypeDef :: Nil
+      body = Lst(monoTypeDef)
     ).withAttachment(attachment, ())
     typer.typed(untpd.New(newImpl).withSpan(span))
 

@@ -14,7 +14,8 @@ import MegaPhase._
 import StdNames.nme
 import Names._
 import Constants.Constant
-
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** The phase is enabled if the -Yinstrument option is set.
  *  If enabled, it counts the number of closures or allocations for each source position.
@@ -84,16 +85,16 @@ class Instrumentation extends MiniPhase { thisPhase =>
       def icall = record(i"method/${sym.fullName}", tree)
       def rhs1 = tree.rhs match
         case rhs @ Block(stats, expr) => cpy.Block(rhs)(icall :: stats, expr)
-        case _: Match | _: If | _: Try | _: Labeled => cpy.Block(tree.rhs)(icall :: Nil, tree.rhs)
+        case _: Match | _: If | _: Try | _: Labeled => cpy.Block(tree.rhs)(Lst(icall), tree.rhs)
         case rhs => rhs
       cpy.DefDef(tree)(rhs = rhs1)
     else tree
 
   override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
     case Select(nu: New, _) =>
-      cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) :: Nil, tree)
+      cpy.Block(tree)(Lst(record(i"alloc/${nu.tpe}", tree)), tree)
     case ref: RefTree if namesToRecord.contains(ref.name) && ok =>
-      cpy.Block(tree)(record(i"call/${ref.name}", tree) :: Nil, recordSize(tree))
+      cpy.Block(tree)(Lst(record(i"call/${ref.name}", tree)), recordSize(tree))
     case _ =>
       tree
   }

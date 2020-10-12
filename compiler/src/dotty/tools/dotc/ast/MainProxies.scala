@@ -5,6 +5,7 @@ import core._
 import Symbols._, Types._, Contexts._, Decorators._, util.Spans._, Flags._, Constants._
 import StdNames.nme
 import ast.Trees._
+import util.Lst; // import Lst.::
 
 /** Generate proxy classes for @main functions.
  *  A function like
@@ -26,21 +27,21 @@ import ast.Trees._
  */
 object MainProxies {
 
-  def mainProxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
+  def mainProxies(stats: Lst[tpd.Tree])(using Context): Lst[untpd.Tree] = {
     import tpd._
-    def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
+    def mainMethods(stats: Lst[Tree]): Lst[Symbol] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
-        stat.symbol :: Nil
+        Lst(stat.symbol)
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(impl.body)
       case _ =>
-        Nil
+        Lst.Empty
     }
     mainMethods(stats).flatMap(mainProxy)
   }
 
   import untpd._
-  def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] = {
+  def mainProxy(mainFun: Symbol)(using Context): Lst[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     def pos = mainFun.sourcePos
     val argsRef = Ident(nme.args)
@@ -72,7 +73,7 @@ object MainProxies {
         }
       }
 
-    var result: List[TypeDef] = Nil
+    var result: Lst[TypeDef] = Lst.Empty
     if (!mainFun.owner.isStaticOwner)
       report.error(s"@main method is not statically accessible", pos)
     else {
@@ -96,10 +97,10 @@ object MainProxies {
         .withFlags(Param)
       val mainMeth = DefDef(nme.main, Nil, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
         .withFlags(JavaStatic)
-      val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
+      val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, Lst(mainMeth))
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
         .withFlags(Final)
-      if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
+      if (!ctx.reporter.hasErrors) result = Lst(mainCls.withSpan(mainAnnotSpan.toSynthetic))
     }
     result
   }

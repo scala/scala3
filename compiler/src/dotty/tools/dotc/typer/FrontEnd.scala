@@ -13,7 +13,7 @@ import parsing.Parsers.Parser
 import config.Config
 import config.Printers.{typr, default}
 import util.Stats._
-import util.{ SourcePosition, NoSourcePosition }
+import util.{ SourcePosition, NoSourcePosition, Lst }
 import scala.util.control.NonFatal
 import ast.Trees._
 
@@ -89,13 +89,6 @@ class FrontEnd extends Phase {
     if unit.isJava then
       JavaChecks.check(unit.tpdTree)
   }
-
-
-  private def firstTopLevelDef(trees: List[tpd.Tree])(using Context): Symbol = trees match
-    case PackageDef(_, defs) :: _    => firstTopLevelDef(defs)
-    case Import(_, _) :: defs        => firstTopLevelDef(defs)
-    case (tree @ TypeDef(_, _)) :: _ => tree.symbol
-    case _ => NoSymbol
 
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
     unit.isJava || unit.suspended

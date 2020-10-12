@@ -5,7 +5,9 @@ package parsing
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{ SourceFile, SourcePosition, NoSourcePosition }
+import util.{SourceFile, SourcePosition, NoSourcePosition}
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 import Tokens._
 import Scanners._
 import xml.MarkupParsers.MarkupParser
@@ -64,7 +66,7 @@ object Parsers {
     val Spliced = 2
   }
 
-  extension (buf: ListBuffer[Tree]):
+  extension (buf: Lst.Buffer[Tree]):
     def +++=(x: Tree) = x match {
       case x: Thicket => buf ++= x.trees
       case x => buf += x
@@ -363,7 +365,7 @@ object Parsers {
     def acceptStatSep(): Unit =
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
-    def acceptStatSepUnlessAtEnd[T <: Tree](stats: ListBuffer[T], altEnd: Token = EOF): Unit =
+    def acceptStatSepUnlessAtEnd[T <: Tree](stats: Lst.Buffer[T], altEnd: Token = EOF): Unit =
       in.observeOutdented()
       in.token match
         case SEMI | NEWLINE | NEWLINES =>
@@ -1221,7 +1223,7 @@ object Parsers {
                 This(EmptyTypeIdent)
               }
               else if (in.token == LBRACE)
-                if (inPattern) Block(Nil, inBraces(pattern()))
+                if (inPattern) Block(Lst.Empty, inBraces(pattern()))
                 else expr()
               else {
                 report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
@@ -1288,7 +1290,7 @@ object Parsers {
       else
         newLineOptWhenFollowedBy(LBRACE)
 
-    def checkEndMarker[T <: Tree](stats: ListBuffer[T]): Unit =
+    def checkEndMarker[T <: Tree](stats: Lst.Buffer[T]): Unit =
 
       def matches(stat: Tree): Boolean = stat match
         case stat: MemberDef if !stat.name.isEmpty =>
@@ -1771,7 +1773,7 @@ object Parsers {
     /** Refinement ::= `{' RefineStatSeq `}'
      */
     def refinement(): List[Tree] =
-      inBracesOrIndented(refineStatSeq(), rewriteWithColon = true)
+      inBracesOrIndented(refineStatSeq().toList, rewriteWithColon = true)
 
     /** TypeBounds ::= [`>:' Type] [`<:' Type]
      */
@@ -1971,7 +1973,7 @@ object Parsers {
             else (EmptyTree, -1)
 
           handler match {
-            case Block(Nil, EmptyTree) =>
+            case Block(Lst.Empty, EmptyTree) =>
               assert(handlerStart != -1)
               syntaxError(
                 EmptyCatchBlock(body),
@@ -3327,11 +3329,11 @@ object Parsers {
           inBracesOrIndented {
             val stats = selfInvocation() :: (
               if (isStatSep) { in.nextToken(); blockStatSeq() }
-              else Nil)
+              else Lst())
             Block(stats, Literal(Constant(())))
           }
         }
-      else Block(selfInvocation() :: Nil, Literal(Constant(())))
+      else Block(Lst(selfInvocation()), Literal(Constant(())))
 
     /** SelfInvocation  ::= this ArgumentExprs {ArgumentExprs}
      */
@@ -3505,7 +3507,7 @@ object Parsers {
           constrApps(commaOK = true, templateCanFollow = false)
         }
         else Nil
-      Template(constr, parents, Nil, EmptyValDef, Nil)
+      Template(constr, parents, Nil, EmptyValDef, Lst())
     }
 
     def checkExtensionMethod(tparams: List[Tree],
@@ -3574,13 +3576,13 @@ object Parsers {
       if (in.token == COLONEOL) in.nextToken()
       val methods =
         if isDefIntro(modifierTokens) then
-          extMethod() :: Nil
+          extMethod() :: Lst()
         else
           in.observeIndented()
           newLineOptWhenFollowedBy(LBRACE)
           if in.isNestedStart then inDefScopeBraces(extMethods())
-          else { syntaxError("Extension without extension methods"); Nil }
-      val result = atSpan(start)(ExtMethods(tparams, extParams :: givenParamss, methods))
+          else { syntaxError("Extension without extension methods"); Lst() }
+      val result = atSpan(start)(ExtMethods(tparams, extParams :: givenParamss, methods.toList))
       val comment = in.getDocComment(start)
       if comment.isDefined then
         for meth <- methods do
@@ -3598,15 +3600,15 @@ object Parsers {
 
     /** ExtMethods ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’
      */
-    def extMethods(): List[DefDef] = checkNoEscapingPlaceholders {
-      val meths = new ListBuffer[DefDef]
+    def extMethods(): Lst[DefDef] = checkNoEscapingPlaceholders {
+      val meths = new Lst.Buffer[DefDef]
       val exitOnError = false
       while !isStatSeqEnd && !exitOnError do
         setLastStatOffset()
         meths += extMethod()
         acceptStatSepUnlessAtEnd(meths)
       if meths.isEmpty then syntaxError("`def` expected")
-      meths.toList
+      meths.toLst
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
@@ -3680,7 +3682,7 @@ object Parsers {
           template(constr)
         else
           checkNextNotIndented()
-          Template(constr, Nil, Nil, EmptyValDef, Nil)
+          Template(constr, Nil, Nil, EmptyValDef, Lst())
 
     /** TemplateBody ::=  [nl] `{' TemplateStatSeq `}'
      *  EnumBody     ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
@@ -3691,10 +3693,10 @@ object Parsers {
           templateBody()
         else
           checkNextNotIndented()
-          (EmptyValDef, Nil)
+          (EmptyValDef, Lst())
       Template(constr, parents, derived, self, stats)
 
-    def templateBody(): (ValDef, List[Tree]) =
+    def templateBody(): (ValDef, Lst[Tree]) =
       val r = inDefScopeBraces(templateStatSeq(), rewriteWithColon = true)
       if in.token == WITH then
         syntaxError(EarlyDefinitionsNotSupported())
@@ -3705,7 +3707,7 @@ object Parsers {
 /* -------- STATSEQS ------------------------------------------- */
 
     /** Create a tree representing a packaging */
-    def makePackaging(start: Int, pkg: Tree, stats: List[Tree]): PackageDef = pkg match {
+    def makePackaging(start: Int, pkg: Tree, stats: Lst[Tree]): PackageDef = pkg match {
       case x: RefTree => atSpan(start, pointOffset(pkg))(PackageDef(x, stats))
     }
 
@@ -3726,8 +3728,8 @@ object Parsers {
      *            | Extension
      *            |
      */
-    def topStatSeq(outermost: Boolean = false): List[Tree] = {
-      val stats = new ListBuffer[Tree]
+    def topStatSeq(outermost: Boolean = false): Lst[Tree] = {
+      val stats = Lst.Buffer[Tree]()
       while (!isStatSeqEnd) {
         setLastStatOffset()
         if (in.token == PACKAGE) {
@@ -3753,7 +3755,7 @@ object Parsers {
             syntaxErrorOrIncomplete(ExpectedToplevelDef())
         acceptStatSepUnlessAtEnd(stats)
       }
-      stats.toList
+      stats.toLst
     }
 
     /** TemplateStatSeq  ::= [id [`:' Type] `=>'] TemplateStat {semi TemplateStat}
@@ -3767,9 +3769,9 @@ object Parsers {
      *  EnumStat         ::= TemplateStat
      *                     | Annotations Modifiers EnumCase
      */
-    def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
+    def templateStatSeq(): (ValDef, Lst[Tree]) = checkNoEscapingPlaceholders {
       var self: ValDef = EmptyValDef
-      val stats = new ListBuffer[Tree]
+      val stats = Lst.Buffer[Tree]()
       if (isExprIntro && !isDefIntro(modifierTokens)) {
         val first = expr1()
         if (in.token == ARROW) {
@@ -3808,7 +3810,7 @@ object Parsers {
         }
         acceptStatSepUnlessAtEnd(stats)
       }
-      (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
+      (self, if (stats.isEmpty) Lst(EmptyTree) else stats.toLst)
     }
 
     /** RefineStatSeq    ::=  RefineStat {semi RefineStat}
@@ -3817,8 +3819,8 @@ object Parsers {
      *                     |  ‘type’ {nl} TypeDcl
      *  (in reality we admit Defs and vars and filter them out afterwards in `checkLegal`)
      */
-    def refineStatSeq(): List[Tree] = {
-      val stats = new ListBuffer[Tree]
+    def refineStatSeq(): Lst[Tree] = {
+      val stats = Lst.Buffer[Tree]()
       def checkLegal(tree: Tree): List[Tree] =
         val problem = tree match
           case tree: MemberDef if !(tree.mods.flags & ModifierFlags).isEmpty =>
@@ -3846,7 +3848,7 @@ object Parsers {
              else ""))
         acceptStatSepUnlessAtEnd(stats)
       }
-      stats.toList
+      stats.toLst
     }
 
     def localDef(start: Int, implicitMods: Modifiers = EmptyModifiers): Tree = {
@@ -3867,8 +3869,8 @@ object Parsers {
      *                 | Expr1
      *                 |
      */
-    def blockStatSeq(): List[Tree] = checkNoEscapingPlaceholders {
-      val stats = new ListBuffer[Tree]
+    def blockStatSeq(): Lst[Tree] = checkNoEscapingPlaceholders {
+      val stats = new Lst.Buffer[Tree]
       var exitOnError = false
       while (!isStatSeqEnd && in.token != CASE && !exitOnError) {
         setLastStatOffset()
@@ -3888,14 +3890,14 @@ object Parsers {
         }
         acceptStatSepUnlessAtEnd(stats, CASE)
       }
-      stats.toList
+      stats.toLst
     }
 
     /** CompilationUnit ::= {package QualId semi} TopStatSeq
      */
     def compilationUnit(): Tree = checkNoEscapingPlaceholders {
-      def topstats(): List[Tree] = {
-        val ts = new ListBuffer[Tree]
+      def topstats(): Lst[Tree] = {
+        val ts = Lst.Buffer[Tree]
         while (in.token == SEMI) in.nextToken()
         val start = in.offset
         if (in.token == PACKAGE) {
@@ -3913,7 +3915,7 @@ object Parsers {
             var continue = false
             possibleTemplateStart()
             if in.token == EOF then
-              ts += makePackaging(start, pkg, List())
+              ts += makePackaging(start, pkg, Lst.Empty)
             else if in.isNestedStart then
               ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()), rewriteWithColon = true)
               continue = true
@@ -3927,12 +3929,12 @@ object Parsers {
         else
           ts ++= topStatSeq(outermost = true)
 
-        ts.toList
+        ts.toLst
       }
 
       topstats() match {
-        case List(stat @ PackageDef(_, _)) => stat
-        case Nil => EmptyTree  // without this case we'd get package defs without positions
+        case Lst(stat @ PackageDef(_, _)) => stat
+        case Lst.Empty => EmptyTree  // without this case we'd get package defs without positions
         case stats => PackageDef(Ident(nme.EMPTY_PACKAGE), stats)
       }
     }
@@ -3951,9 +3953,9 @@ object Parsers {
       EmptyTree
     }
 
-    override def templateBody(): (ValDef, List[Thicket]) = {
+    override def templateBody(): (ValDef, Lst[Thicket]) = {
       skipBraces()
-      (EmptyValDef, List(EmptyTree))
+      (EmptyValDef, Lst(EmptyTree))
     }
   }
 }
