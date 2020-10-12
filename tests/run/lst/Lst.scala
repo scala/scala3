@@ -17,7 +17,7 @@ import annotation.infix
 type Lst[+T] = Lst.Vault.Lst[T]
 object Lst:
 
-  private type Arr = Array[Any]
+  type Arr = Array[Any]
 
   object Vault:
     opaque type Lst[+T] = Any
@@ -240,6 +240,8 @@ object Lst:
         if i == xs.length then (xs, Empty)
         else if i == 0 then (Empty, xs)
         else (_fromArray(xs, 0, i), _fromArray(xs, i, xs.length))
+      case x: T @unchecked =>
+        if p(x) then (single[T](x), Empty) else (Empty, single[T](x))
 
     inline def exists(inline p: T => Boolean): Boolean =
       def op(x: T) = p(x)
@@ -652,17 +654,18 @@ object Lst:
     def ++= (xs: Lst[T]): this.type = appendSlice(xs, 0, xs.length)
 
     def appendSlice(xs: Lst[T], start: Int, end: Int): this.type =
-      xs match
-        case null =>
-        case xs: Arr =>
-          val copiedLength = (end - start) min xs.length
-          if len == 0 && copiedLength > 1 then
-            elems = (xs: Arr).slice(start, end).asInstanceOf[Arr]
-          else
-            ensureSize(len + copiedLength)
-            System.arraycopy(xs, 0, elems, len, copiedLength)
-          len += copiedLength
-        case x: T @unchecked => this += x
+      val copiedLength = (end - start) min xs.length
+      if copiedLength > 1 then
+        xs match
+          case xs: Arr =>
+            if len == 0 then
+              elems = (xs: Arr).slice(start, end)
+            else
+              ensureSize(len + copiedLength)
+              System.arraycopy(xs, 0, elems, len, copiedLength)
+      else if copiedLength == 1 then
+        this += xs(start)
+      len += copiedLength
       this
 
     def ++= (xs: IterableOnce[T]): this.type =
@@ -705,14 +708,14 @@ object Lst:
       len = 0
   end Buffer
 
-  object +: :
+  object ++ :
     def unapply[T](xs: Lst[T]): Option[(T, Lst[T])] = xs match
       case null => None
       case xs: Arr =>
         Some((xs(0).asInstanceOf[T], _fromArray[T](xs, 1, xs.length)))
       case x: T @unchecked =>
         Some((x, Empty))
-  end +:
+  end ++
 
   trait Show[T]:
     extension (x: T) def show: String
