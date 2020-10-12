@@ -132,28 +132,12 @@ class ScalaPageCreator(
     }
 
     def contentForClass(c: DClass) = {
-        val ext = c.get(ClasslikeExtension)
-        val co = ext.companion
-
         def buildBlock = (builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) => builder
             .group(kind = ContentKind.Cover, sourceSets = c.getSourceSets.asScala.toSet) { gbdr => gbdr
                 .cover(c.getName)()
-                .sourceSetDependentHint(Set(c.getDri), c.getSourceSets.asScala.toSet) { sbdr => 
-                    val s1 = sbdr
-                        .signature(c)
-                    co.fold(s1){ co => s1
-                        .group(kind = ContentKind.Symbol){ gbdr => gbdr
-                            .text("Companion ")
-                            .driLink(
-                                ext.kind match {
-                                    case dotty.dokka.Kind.Object => "class"
-                                    case _ => "object"
-                                },
-                                co
-                            )
-                        }
-                    }.contentForDescription(c)
-
+                .sourceSetDependentHint(Set(c.getDri), c.getSourceSets.asScala.toSet) { sbdr => sbdr
+                    .signature(c)
+                    .contentForDescription(c)
                 }
             }
             .group(styles = Set(ContentStyle.TabbedContent)) { b => b
@@ -321,8 +305,29 @@ class ScalaPageCreator(
                             })
                     }
 
-                    d match {
-                        case d: (WithExpectActual & WithExtraProperties[Documentable]) if d.get(SourceLinks) != null && !d.get(SourceLinks).links.isEmpty => d.get(SourceLinks).links.foldLeft(withNamedTags){
+                    val withCompanion = d match {
+                        case d: DClass =>
+                            val ext = d.get(ClasslikeExtension)
+                            val co = ext.companion
+                            co.fold(withNamedTags) { co => withNamedTags
+                                .cell(sourceSets = d.getSourceSets.asScala.toSet){ b => b
+                                    .text("Companion")
+                                }
+                                .cell(sourceSets = d.getSourceSets.asScala.toSet){ b => b
+                                    .driLink(
+                                        ext.kind match {
+                                            case dotty.dokka.Kind.Object => "class"
+                                            case _ => "object"
+                                        },
+                                        co
+                                    )
+                                }
+                            }
+                        case _ => withNamedTags
+                    }
+
+                    d match{
+                        case d: (WithExpectActual & WithExtraProperties[Documentable]) if d.get(SourceLinks) != null && !d.get(SourceLinks).links.isEmpty => d.get(SourceLinks).links.foldLeft(withCompanion){
                             case (bdr, (sourceSet, link)) => bdr
                                     .cell(sourceSets = Set(sourceSet)){ b => b
                                         .text("Source")
@@ -331,7 +336,7 @@ class ScalaPageCreator(
                                         .resolvedLink("(source)", link)
                                     }
                         }
-                        case other => withNamedTags
+                        case other => withCompanion
                     }
                 }
             }
