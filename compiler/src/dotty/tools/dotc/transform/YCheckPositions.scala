@@ -23,7 +23,8 @@ class YCheckPositions extends Phase {
       case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
         new TreeTraverser {
           private var sources: List[SourceFile] = ctx.source :: Nil
-          def traverse(tree: tpd.Tree)(using Context): Unit = {
+          def traverse(tree: tpd.Tree)(using Context): Unit =
+            if false then {
 
             // Check current context is correct
             assert(ctx.source == sources.head)
