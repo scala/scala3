@@ -93,7 +93,7 @@ jobs:
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;configureIDE"
+          ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;scala2-interop-tests/scripted ;configureIDE"
           ./project/scripts/bootstrapCmdTests
 
 
