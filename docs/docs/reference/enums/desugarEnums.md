@@ -34,12 +34,12 @@ map into `case class`es or `val`s.
    ```scala
    enum E ... { <defs> <cases> }
    ```
-   expands to a `sealed abstract` class that extends the `scala.Enum` trait and
+   expands to a `sealed abstract` class that extends the `scala.reflect.Enum` trait and
    an associated companion object that contains the defined cases, expanded according
    to rules (2 - 8). The enum class starts with a compiler-generated import that imports
    the names `<caseIds>` of all cases so that they can be used without prefix in the class.
    ```scala
-   sealed abstract class E ... extends <parents> with scala.Enum {
+   sealed abstract class E ... extends <parents> with scala.reflect.Enum {
      import E.{ <caseIds> }
       <defs>
    }
@@ -165,7 +165,7 @@ An enum `E` (possibly generic) that defines one or more singleton cases
 will define the following additional synthetic members in its companion object (where `E'` denotes `E` with
 any type parameters replaced by wildcards):
 
-   - A method `valueOf(name: String): E'`. It returns the singleton case value whose `enumLabel` is `name`.
+   - A method `valueOf(name: String): E'`. It returns the singleton case value whose identifier is `name`.
    - A method `values` which returns an `Array[E']` of all singleton case
      values defined by `E`, in the order of their definitions.
 
@@ -177,9 +177,8 @@ If `E` contains at least one simple case, its companion object will define in ad
      ```scala
      private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue {
        def ordinal = _$ordinal
-       def enumLabel = $name
-       override def productPrefix = enumLabel // if not overridden in `E`
-       override def toString = enumLabel      // if not overridden in `E`
+       override def productPrefix = $name // if not overridden in `E`
+       override def toString = $name      // if not overridden in `E`
      }
      ```
 
@@ -187,7 +186,7 @@ The anonymous class also implements the abstract `Product` methods that it inher
 The `ordinal` method is only generated if the enum does not extend from `java.lang.Enum` (as Scala enums do not extend
 `java.lang.Enum`s unless explicitly specified). In case it does, there is no need to generate `ordinal` as
 `java.lang.Enum` defines it. Similarly there is no need to override `toString` as that is defined in terms of `name` in
-`java.lang.Enum`. Finally, `enumLabel` will call `this.name` when `E` extends `java.lang.Enum`.
+`java.lang.Enum`. Finally, `productPrefix` will call `this.name` when `E` extends `java.lang.Enum`.
 
 ### Scopes for Enum Cases
 

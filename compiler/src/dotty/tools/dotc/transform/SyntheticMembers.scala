@@ -95,7 +95,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
       else clazz.caseAccessors
     val isEnumValue = clazz.isAnonymousClass && clazz.classParents.head.classSymbol.is(Enum)
-    val isNonJavaEnumValue = isEnumValue && !clazz.derivesFrom(defn.JavaEnumClass)
+    val isSimpleEnumValue = isEnumValue && !clazz.owner.isAllOf(EnumCase)
+    val isJavaEnumValue = isEnumValue && clazz.derivesFrom(defn.JavaEnumClass)
+    val isNonJavaEnumValue = isEnumValue && !isJavaEnumValue
 
     val symbolsToSynthesize: List[Symbol] =
       if (clazz.is(Case))
@@ -122,12 +124,21 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       def ownName: Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
 
-      def callEnumLabel: Tree =
-        Select(This(clazz), nme.enumLabel).ensureApplied
+      def nameRef: Tree =
+        if isJavaEnumValue then
+          Select(This(clazz), nme.name).ensureApplied
+        else
+          identifierRef
+
+      def identifierRef: Tree =
+        if isSimpleEnumValue then // owner is `def $new(_$ordinal: Int, $name: String) = new MyEnum { ... }`
+          ref(clazz.owner.paramSymss.head.find(_.name == nme.nameDollar).get)
+        else // assume owner is `val Foo = new MyEnum { def ordinal = 0 }`
+          Literal(Constant(clazz.owner.name.toString))
 
       def toStringBody(vrefss: List[List[Tree]]): Tree =
         if (clazz.is(ModuleClass)) ownName
-        else if (isNonJavaEnumValue) callEnumLabel
+        else if (isNonJavaEnumValue) identifierRef
         else forwardToRuntime(vrefss.head)
 
       def syntheticRHS(vrefss: List[List[Tree]])(using Context): Tree = synthetic.name match {
@@ -137,7 +148,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case nme.equals_ => equalsBody(vrefss.head.head)
         case nme.canEqual_ => canEqualBody(vrefss.head.head)
         case nme.productArity => Literal(Constant(accessors.length))
-        case nme.productPrefix if isEnumValue => callEnumLabel
+        case nme.productPrefix if isEnumValue => nameRef
         case nme.productPrefix => ownName
         case nme.productElement => productElementBody(accessors.length, vrefss.head.head)
         case nme.productElementName => productElementNameBody(accessors.length, vrefss.head.head)
