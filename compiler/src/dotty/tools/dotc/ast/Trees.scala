@@ -1242,7 +1242,7 @@ object Trees {
     protected def skipTransform(tree: Tree)(using Context): Boolean = false
 
     /** For untyped trees, this is just the identity.
-     *  For typed trees, this record the position of an enclosing inlined positions
+     *  For typed trees, this records the position of an enclosing inlined position
      */
     protected def inlineContext(pos: SrcPos)(using Context): Context = ctx
 
