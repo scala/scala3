@@ -57,7 +57,6 @@ object Lst:
   import Vault.{single, multi, fromArr}
 
   private inline def eq(x: Any, y: Any) = x.asInstanceOf[AnyRef] `eq` y.asInstanceOf[AnyRef]
-  private val eqFn = (x: Any, y: Any) => eq(x, y)
 
   def apply[T](): Lst[T] = Empty
 
@@ -518,30 +517,16 @@ object Lst:
 
     @infix def eqLst(ys: Lst[U]) = eq(xs, ys)
 
-    def corresponds(ys: Lst[U])(p: (T, U) => Boolean): Boolean =
+    inline def corresponds(ys: Lst[U])(p: (T, U) => Boolean): Boolean =
       (xs `eqLst` ys)
-      || xs.match
-          case null =>
-            ys.isEmpty
-          case xs: Arr =>
-            ys match
-              case ys: Arr =>
-                val len = xs.length
-                len == ys.length
-                && {
-                  var i = 0
-                  while i < len && p(xs.at(i), ys.at(i)) do i += 1
-                  i == len
-                }
-              case y: U @unchecked =>
-                xs.length == 1 && p(xs.at(0), y)
-          case x: T @unchecked =>
-            ys match
-              case null => false
-              case ys: Arr => ys.length == 1 && p(x, ys.at(0))
-              case y: U @unchecked => p(x, y)
+      || xs.length == ys.length
+         && {
+           var i = 0
+           while i < xs.length && p(xs(i), ys(i)) do i += 1
+           i == xs.length
+         }
 
-    def eqElements(ys: Lst[U]): Boolean = corresponds(ys)(eqFn)
+    def eqElements(ys: Lst[U]): Boolean = corresponds(ys)(eq(_, _))
 
   extension [T](x: T)
     def :: (xs: Lst[T]): Lst[T] = xs match

@@ -55,7 +55,7 @@ object BetaReduce:
     fn match
       case Typed(expr, _) => BetaReduce(tree, expr, args)
       case Block(Lst.Empty, expr) => BetaReduce(tree, expr, args)
-      case Inlined(_, Nil, expr) => BetaReduce(tree, expr, args)
+      case Inlined(_, Lst.Empty, expr) => BetaReduce(tree, expr, args)
       case Block(Lst(anonFun: DefDef), closure: Closure) => BetaReduce(anonFun, args)
       case _ => tree
   end apply

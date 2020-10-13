@@ -92,7 +92,7 @@ private class QuoteCompiler extends Compiler:
       tree match
         case Literal(lit) => Some(lit.value)
         case Block(Lst.Empty, expr) => getLiteral(expr)
-        case Inlined(_, Nil, expr) => getLiteral(expr)
+        case Inlined(_, Lst.Empty, expr) => getLiteral(expr)
         case _ => None
 
     def run(implicit ctx: Context): Unit = unsupported("run")

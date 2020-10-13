@@ -305,7 +305,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
             else Some(app1.withSpan(tree.span))
           case tpd.Block(Lst.Empty, expr) =>
             for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(Lst.Empty, e)
-          case tpd.Inlined(_, Nil, expr) =>
+          case tpd.Inlined(_, Lst.Empty, expr) =>
             betaReduce(expr)
           case _ =>
             None
@@ -911,17 +911,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Inlined extends InlinedModule:
       def apply(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion))
+        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.toLst.map { case b: tpd.MemberDef => b }, expansion))
       def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
+        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.toLst.asInstanceOf[Lst[tpd.MemberDef]], expansion)
       def unapply(x: Inlined): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
-        Some((optional(x.call), x.bindings, x.body))
+        Some((optional(x.call), x.bindings.toList, x.body))
     end Inlined
 
     object InlinedMethodsImpl extends InlinedMethods:
       extension (self: Inlined):
         def call: Option[Tree] = optional(self.call)
-        def bindings: List[Definition] = self.bindings
+        def bindings: List[Definition] = self.bindings.toList
         def body: Term = self.expansion
       end extension
     end InlinedMethodsImpl
@@ -2631,7 +2631,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
       def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
         pat match
-          case tpd.Inlined(_, Nil, pat2) => extractTypeHoles(pat2)
+          case tpd.Inlined(_, Lst.Empty, pat2) => extractTypeHoles(pat2)
           case tpd.Block(stats @ Lst(typeHole: TypeDef, _: _*), expr) if isTypeHoleDef(typeHole) =>
             val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol).toList
             val otherStats = stats.dropWhile(isTypeHoleDef)

@@ -58,7 +58,6 @@ object Lst:
   import Vault.{single, multi, fromArr}
 
   private inline def eq(x: Any, y: Any) = x.asInstanceOf[AnyRef] `eq` y.asInstanceOf[AnyRef]
-  private val eqFn = (x: Any, y: Any) => eq(x, y)
 
   def apply[T](): Lst[T] = Empty
 
@@ -522,30 +521,16 @@ object Lst:
 
     @infix def eqLst(ys: Lst[U]) = eq(xs, ys)
 
-    def corresponds(ys: Lst[U])(p: (T, U) => Boolean): Boolean =
-      (xs `eqLst` ys)
-      || xs.match
-          case null =>
-            ys.isEmpty
-          case xs: Arr =>
-            ys match
-              case ys: Arr =>
-                val len = xs.length
-                len == ys.length
-                && {
-                  var i = 0
-                  while i < len && p(xs.at(i), ys.at(i)) do i += 1
-                  i == len
-                }
-              case y: U @unchecked =>
-                xs.length == 1 && p(xs.at(0), y)
-          case x: T @unchecked =>
-            ys match
-              case null => false
-              case ys: Arr => ys.length == 1 && p(x, ys.at(0))
-              case y: U @unchecked => p(x, y)
+    inline def corresponds(ys: Lst[U])(p: (T, U) => Boolean): Boolean =
+      xs.length == ys.length
+      && {
+        var i = 0
+        while i < xs.length && p(xs(i), ys(i)) do i += 1
+        i == xs.length
+      }
 
-    def eqElements(ys: Lst[U]): Boolean = corresponds(ys)(eqFn)
+    def eqElements(ys: Lst[U]): Boolean =
+      (xs `eqLst` ys) || corresponds(ys)(eq(_, _))
 
   extension [T](x: T)
     def :: (xs: Lst[T]): Lst[T] = xs match
@@ -662,6 +647,7 @@ object Lst:
         elems = newElems
 
     def isEmpty = size == 0
+    def nonEmpty = size != 0
 
     def += (x: T): this.type =
       if len == 0 then elem = x
@@ -692,6 +678,15 @@ object Lst:
       xs.iterator.foreach(this += _)
       this
 
+    def find(p: T => Boolean): Option[T] =
+      if len == 0 then None
+      else if len == 1 then
+        if p(elem) then Some(elem) else None
+      else
+        var i = 0
+        while i < len && !p(elems(i).asInstanceOf[T]) do i += 1
+        if i < len then Some(elems(i).asInstanceOf[T]) else None
+
     def exists(p: T => Boolean): Boolean =
       if len == 0 then false
       else if len == 1 then p(elem)
@@ -718,6 +713,16 @@ object Lst:
 
     def head = apply(0)
     def last = apply(len - 1)
+
+    def mapInPlace(f: T => T): this.type =
+      if len == 1 then
+        elem = f(elem)
+      else if len > 1 then
+        var i = 0
+        while i < len do
+          elems(i) = f(elems(i).asInstanceOf[T])
+          i += 1
+      this
 
     def toLst: Lst[T] =
       if len == 0 then Empty

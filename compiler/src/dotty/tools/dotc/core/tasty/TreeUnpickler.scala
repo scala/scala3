@@ -1016,9 +1016,9 @@ class TreeUnpickler(reader: TastyReader,
     def readIndexedStats(exprOwner: Symbol, end: Addr)(using Context): List[Tree] =
       until(end)(readIndexedStat(exprOwner))
 
-    def readStats(exprOwner: Symbol, end: Addr)(using Context): List[Tree] = {
+    def readStats(exprOwner: Symbol, end: Addr)(using Context): Lst[Tree] = {
       fork.indexStats(end)
-      readIndexedStats(exprOwner, end)
+      readIndexedStats(exprOwner, end).toLst
     }
 
     def readIndexedParams[T <: MemberDef](tag: Int)(using Context): List[T] =
@@ -1132,7 +1132,7 @@ class TreeUnpickler(reader: TastyReader,
               skipTree()
               val stats = readStats(ctx.owner, end)
               val expr = exprReader.readTerm()
-              Block(stats.toLst, expr)
+              Block(stats, expr)
             case INLINED =>
               val exprReader = fork
               skipTree()
@@ -1141,7 +1141,7 @@ class TreeUnpickler(reader: TastyReader,
                 case _ => readTerm()
               }
               val call = ifBefore(end)(maybeCall, EmptyTree)
-              val bindings = readStats(ctx.owner, end).asInstanceOf[List[ValOrDefDef]]
+              val bindings = readStats(ctx.owner, end).asInstanceOf[Lst[ValOrDefDef]]
               val expansion = exprReader.readTerm() // need bindings in scope, so needs to be read before
               Inlined(call, bindings, expansion)
             case IF =>
@@ -1215,7 +1215,7 @@ class TreeUnpickler(reader: TastyReader,
               typeAtAddr(start) = refineCls.typeRef
               val parent = readTpt()
               val refinements = readStats(refineCls, end)(using localContext(refineCls))
-              RefinedTypeTree(parent, refinements, refineCls)
+              RefinedTypeTree(parent, refinements.toList, refineCls)
             case APPLIEDtpt =>
               // If we do directly a tpd.AppliedType tree we might get a
               // wrong number of arguments in some scenarios reading F-bounded
@@ -1276,7 +1276,7 @@ class TreeUnpickler(reader: TastyReader,
           skipTree()
           val aliases = readStats(ctx.owner, end)
           val tpt = typeReader.readTpt()
-          Block(aliases.toLst, tpt)
+          Block(aliases, tpt)
         case HOLE =>
           readByte()
           val end = readEnd()

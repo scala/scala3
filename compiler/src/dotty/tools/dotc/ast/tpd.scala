@@ -160,7 +160,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(using Context): JavaSeqLiteral =
     ta.assignType(untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
 
-  def Inlined(call: Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined =
+  def Inlined(call: Tree, bindings: Lst[MemberDef], expansion: Tree)(using Context): Inlined =
     ta.assignType(untpd.Inlined(call, bindings, expansion), bindings, expansion)
 
   def TypeTree(tp: Type)(using Context): TypeTree =
@@ -702,10 +702,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Inlined(tree: Tree)(call: Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined = {
+    override def Inlined(tree: Tree)(call: Tree, bindings: Lst[MemberDef], expansion: Tree)(using Context): Inlined = {
       val tree1 = untpdCpy.Inlined(tree)(call, bindings, expansion)
       tree match {
-        case tree: Inlined if sameTypes(bindings, tree.bindings) && (expansion.tpe eq tree.expansion.tpe) =>
+        case tree: Inlined if sameTypes(bindings.toList, tree.bindings.toList) && (expansion.tpe eq tree.expansion.tpe) =>
           tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, bindings, expansion)
       }
@@ -1119,7 +1119,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             transform(rhs)
           case _ => tree
         }
-      case Inlined(_, Nil, arg) => transform(arg)
+      case Inlined(_, Lst.Empty, arg) => transform(arg)
       case Block(Lst.Empty, arg) => transform(arg)
       case NamedArg(_, arg) => transform(arg)
       case tree => super.transform(tree)
@@ -1188,6 +1188,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (trees.isEmpty) trees.isEmpty
     else if (trees1.isEmpty) trees.isEmpty
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
+
+  def sameTypes(ts1: Lst[Tree], ts2: Lst[Tree]): Boolean =
+    ts1.corresponds(ts2)((t1, t2) => t1.tpe eq t2.tpe)
 
   /** If `tree`'s purity level is less than `level`, let-bind it so that it gets evaluated
    *  only once. I.e. produce a

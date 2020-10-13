@@ -14,6 +14,8 @@ import Symbols._, SymUtils._, NameOps._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import reporting._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 object PostTyper {
   val name: String = "posttyper"
@@ -225,7 +227,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val newExpansion = tree.tpe match
             case ConstantType(c) => Literal(c)
             case _ => Typed(ref(defn.Predef_undefined), TypeTree(tree.tpe))
-          cpy.Inlined(tree)(call, Nil, newExpansion.withSpan(tree.span))
+          cpy.Inlined(tree)(call, Lst(), newExpansion.withSpan(tree.span))
         case _ => super.transform(tree)
       }
     }

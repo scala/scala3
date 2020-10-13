@@ -504,7 +504,7 @@ class TreeChecker extends Phase with SymTransformer {
       withBlock(tree) { withDefinedSyms(tree.stats.toList) { super.typedBlock(tree, pt) } }
 
     override def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
-      withDefinedSyms(tree.bindings) { super.typedInlined(tree, pt) }
+      withDefinedSyms(tree.bindings.toList) { super.typedInlined(tree, pt) }
 
     /** Check that all defined symbols have legal owners.
      *  An owner is legal if it is either the same as the context's owner

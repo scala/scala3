@@ -43,7 +43,7 @@ object Formatting {
       case arg: Seq[?] if suffix.nonEmpty && suffix.head == '%' =>
         val (rawsep, rest) = suffix.tail.span(_ != '%')
         val sep = StringContext.processEscapes(rawsep)
-        if (rest.nonEmpty) (arg.map(showArg).mkString(sep), rest.tail)
+        if rest.nonEmpty then (arg.map(showArg).mkString(sep), rest.tail)
         else (arg, suffix)
       case _ =>
         (showArg(arg), suffix)

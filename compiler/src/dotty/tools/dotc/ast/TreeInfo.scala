@@ -414,9 +414,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Typed(expr, _) =>
       exprPurity(expr)
     case Block(stats, expr) =>
-      minOf(exprPurity(expr), stats.map(statPurity).toList)
+      minOf(exprPurity(expr), stats.map(statPurity))
     case Inlined(_, bindings, expr) =>
-      minOf(exprPurity(expr), bindings.map(statPurity))
+      minOf(exprPurity(expr), bindings.toList.map(statPurity))
     case NamedArg(_, expr) =>
       exprPurity(expr)
     case _ =>
@@ -424,6 +424,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   private def minOf(l0: PurityLevel, ls: List[PurityLevel]) = ls.foldLeft(l0)(_ `min` _)
+  private def minOf(l0: PurityLevel, ls: Lst[PurityLevel]) = ls.foldLeft(l0)(_ `min` _)
 
   def isPurePath(tree: Tree)(using Context): Boolean = tree.tpe match {
     case tpe: ConstantType => exprPurity(tree) >= Pure
@@ -791,7 +792,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def tupleArgs(tree: Tree)(using Context): List[Tree] = tree match {
     case Block(Lst.Empty, expr) => tupleArgs(expr)
-    case Inlined(_, Nil, expr) => tupleArgs(expr)
+    case Inlined(_, Lst.Empty, expr) => tupleArgs(expr)
     case Apply(fn, args)
     if fn.symbol.name == nme.apply &&
         fn.symbol.owner.is(Module) &&

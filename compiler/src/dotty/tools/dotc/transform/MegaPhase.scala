@@ -454,8 +454,14 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   def transformTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
     flatten(trees.mapConserve(transformTree(_, start)))
 
+  def transformTrees(trees: Lst[Tree], start: Int)(using Context): Lst[Tree] =
+    flatten(trees.mapConserve(transformTree(_, start)))
+
   def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformTrees(trees, start).asInstanceOf[List[T]]
+
+  def transformSpecificTrees[T <: Tree](trees: Lst[T], start: Int)(using Context): Lst[T] =
+    transformTrees(trees, start).asInstanceOf[Lst[T]]
 
   override def run(using Context): Unit =
     ctx.compilationUnit.tpdTree =

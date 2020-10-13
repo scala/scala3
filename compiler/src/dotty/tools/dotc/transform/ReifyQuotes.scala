@@ -137,7 +137,7 @@ class ReifyQuotes extends MacroTransform {
         if (level == 0) {
           val body2 =
             if (body1.isType) body1
-            else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
+            else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Lst(), body1)
           pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
         }
         else
@@ -202,7 +202,7 @@ class ReifyQuotes extends MacroTransform {
         // Note that lifted trees are not necessarily expressions and that Inlined nodes are expected to be expressions.
         // For example we can have a lifted tree containing the LHS of an assignment (see tests/run-with-compiler/quote-var.scala).
         if (outer.embedded.isLiftedSymbol(body.symbol)) hole
-        else Inlined(EmptyTree, Nil, hole).withSpan(splice.span)
+        else Inlined(EmptyTree, Lst(), hole).withSpan(splice.span)
       }
 
      /** If inside a quote, split the body of the splice into a core and a list of embedded quotes
@@ -409,7 +409,7 @@ object ReifyQuotes {
   def getLiteral(tree: tpd.Tree): Option[Literal] = tree match {
     case tree: Literal => Some(tree)
     case Block(Lst.Empty, e) => getLiteral(e)
-    case Inlined(_, Nil, e) => getLiteral(e)
+    case Inlined(_, Lst.Empty, e) => getLiteral(e)
     case _ => None
   }
 

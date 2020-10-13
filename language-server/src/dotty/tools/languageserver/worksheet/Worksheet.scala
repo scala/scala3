@@ -37,7 +37,7 @@ object Worksheet {
               case td @ TypeDef(_, template: Template) =>
                 val seen = collection.mutable.Set.empty[(Int, Int)]
 
-                template.body.flatMap {
+                template.body.toList.flatMap {
                   case statement: DefTree if statement.symbol.is(Synthetic) =>
                     None
                   case statement if seen.add(bounds(statement.span)) =>

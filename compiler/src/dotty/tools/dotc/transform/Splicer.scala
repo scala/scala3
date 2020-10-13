@@ -276,7 +276,7 @@ object Splicer {
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
       // `val j$1 = x; val i$1 = y; foo(i = i$1, j = j$1)`
-      case Block(stats, expr) => interpretBlock(stats.toList, expr)
+      case Block(stats, expr) => interpretBlock(stats, expr)
       case NamedArg(_, arg) => interpretTree(arg)
 
       case Inlined(_, bindings, expansion) => interpretBlock(bindings, expansion)
@@ -317,7 +317,7 @@ object Splicer {
           Nil
     }
 
-    private def interpretBlock(stats: List[Tree], expr: Tree)(implicit env: Env) = {
+    private def interpretBlock(stats: Lst[Tree], expr: Tree)(implicit env: Env) = {
       var unexpected: Option[Object] = None
       val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
         case stat: ValDef =>
@@ -331,7 +331,7 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.Expr(Inlined(EmptyTree, Nil, PickledQuotes.healOwner(tree)).withSpan(tree.span), QuoteContextImpl.scopeId)
+      new scala.internal.quoted.Expr(Inlined(EmptyTree, Lst(), PickledQuotes.healOwner(tree)).withSpan(tree.span), QuoteContextImpl.scopeId)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
       new scala.internal.quoted.Type(PickledQuotes.healOwner(tree), QuoteContextImpl.scopeId)
