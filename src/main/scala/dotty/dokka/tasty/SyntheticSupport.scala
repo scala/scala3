@@ -1,7 +1,6 @@
 package dotty.dokka.tasty
 
 import scala.tasty.Reflection
-import dotty.dokka.Kind
 
 trait SyntheticsSupport:
   self: TastyParser =>
