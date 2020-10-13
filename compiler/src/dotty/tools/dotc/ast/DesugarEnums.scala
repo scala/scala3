@@ -172,6 +172,8 @@ object DesugarEnums {
               :+ default(ordinal)))
 
     if !enumClass.exists then
+      // in the case of a double definition of an enum that only defines class cases (see tests/neg/i4470c.scala)
+      // it seems `enumClass` might be `NoSymbol`; in this case we provide no scaffolding.
       Nil
     else
       scaffolding ::: valueCtor ::: fromOrdinal :: Nil
