@@ -1594,7 +1594,9 @@ object Trees {
 
     def resolveConstructor(atp: Type, args: List[Tree])(using Context): tpd.Tree = {
       val targs = atp.argTypes
-      applyOverloaded(tpd.New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
+      withoutMode(Mode.PatternOrTypeBits) {
+        applyOverloaded(tpd.New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
+      }
     }
   }
 }

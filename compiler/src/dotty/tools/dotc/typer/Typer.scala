@@ -3608,20 +3608,18 @@ class Typer extends Namer
    *  Overwritten to no-op in ReTyper.
    */
   protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(using Context) : Unit =
-    tree match {
+    tree match
       case _: RefTree | _: Literal
-      if !isVarPattern(tree)
-         && !(pt <:< tree.tpe)
-         && !withMode(Mode.GadtConstraintInference) {
-              TypeComparer.constrainPatternType(tree.tpe, pt)
-            } =>
+      if !isVarPattern(tree) && !(pt <:< tree.tpe) =>
+        withMode(Mode.GadtConstraintInference) {
+          TypeComparer.constrainPatternType(tree.tpe, pt)
+        }
         val cmp =
           untpd.Apply(
             untpd.Select(untpd.TypedSplice(tree), nme.EQ),
             untpd.TypedSplice(dummyTreeOfType(pt)))
         typedExpr(cmp, defn.BooleanType)
       case _ =>
-    }
 
   private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(using Context): Unit =
     if !tree.tpe.isErroneous
