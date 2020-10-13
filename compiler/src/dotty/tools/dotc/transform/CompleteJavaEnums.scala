@@ -98,16 +98,25 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   /** Return a list of forwarders for enum values defined in the companion object
    *  for java interop.
    */
-  private def addedEnumForwarders(clazz: Symbol)(using Context): List[ValDef] = {
+  private def addedEnumForwarders(clazz: Symbol)(using Context): List[MemberDef] = {
     val moduleCls = clazz.companionClass
     val moduleRef = ref(clazz.companionModule)
 
     val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue))
     for { enumValue <- enums }
     yield {
-      val fieldSym = newSymbol(clazz, enumValue.name.asTermName, EnumValue | JavaStatic, enumValue.info)
-      fieldSym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
-      ValDef(fieldSym, moduleRef.select(enumValue))
+      def forwarderSym(flags: FlagSet, info: Type): Symbol { type ThisName = TermName } =
+        val sym = newSymbol(clazz, enumValue.name.asTermName, flags, info)
+        sym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
+        sym
+      val body = moduleRef.select(enumValue)
+      if ctx.settings.scalajs.value then
+        // Scala.js has no support for <clinit> so we must avoid assigning static fields in the enum class.
+        // However, since the public contract for reading static fields in the IR ABI is to call "static getters",
+        // we achieve the right contract with static forwarders instead.
+        DefDef(forwarderSym(EnumValue | Method | JavaStatic, MethodType(Nil, enumValue.info)), body)
+      else
+        ValDef(forwarderSym(EnumValue | JavaStatic, enumValue.info), body)
     }
   }
 
