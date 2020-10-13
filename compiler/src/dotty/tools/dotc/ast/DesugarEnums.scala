@@ -161,7 +161,7 @@ object DesugarEnums {
         fromOrdinalMeth(throwArg)
       else
         def default(ordinal: Tree) =
-          CaseDef(Ident(nme.x_0), EmptyTree, throwArg(ordinal))
+          CaseDef(Ident(nme.WILDCARD), EmptyTree, throwArg(ordinal))
         if constraints.isEnumeration then
           fromOrdinalMeth(ordinal =>
             Try(Apply(valuesDot(nme.apply), ordinal), default(ordinal) :: Nil, EmptyTree))
