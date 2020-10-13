@@ -235,7 +235,7 @@ object DesugarEnums {
             underBinders(lambdaParams, foldOver(x, tree))
           case RefinedTypeTree(parent, refinements) =>
             val refinementDefs = refinements collect { case r: MemberDef => r }
-            underBinders(refinementDefs, foldOver(x, tree))
+            underBinders(refinementDefs.toList, foldOver(x, tree))
           case _ => foldOver(x, tree)
         }
       }

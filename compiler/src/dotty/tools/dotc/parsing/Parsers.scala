@@ -1772,8 +1772,8 @@ object Parsers {
 
     /** Refinement ::= `{' RefineStatSeq `}'
      */
-    def refinement(): List[Tree] =
-      inBracesOrIndented(refineStatSeq().toList, rewriteWithColon = true)
+    def refinement(): Lst[Tree] =
+      inBracesOrIndented(refineStatSeq(), rewriteWithColon = true)
 
     /** TypeBounds ::= [`>:' Type] [`<:' Type]
      */

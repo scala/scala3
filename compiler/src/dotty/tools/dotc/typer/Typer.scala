@@ -1060,7 +1060,7 @@ class Typer extends Namer
       val typeArgs = appDef.vparamss.head.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
       val core = AppliedTypeTree(tycon, typeArgs)
-      RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
+      RefinedTypeTree(core, Lst(appDef), ctx.owner.asClass)
     end typedDependent
 
     args match {
@@ -1666,8 +1666,8 @@ class Typer extends Namer
     val refineClsDef = desugar.refinedTypeToClass(tpt1, tree.refinements).withSpan(tree.span)
     val refineCls = createSymbol(refineClsDef).asClass
     val TypeDef(_, impl: Template) = typed(refineClsDef)
-    val refinements1 = impl.body.toList
-    assert(tree.refinements.hasSameLengthAs(refinements1), i"${tree.refinements}%, % > $refinements1%, %")
+    val refinements1 = impl.body
+    assert(tree.refinements.length == refinements1.length, i"${tree.refinements.mkString("%, %")} > ${refinements1.mkString("%, %")}")
     val seen = mutable.Set[Symbol]()
     for (refinement <- refinements1) { // TODO: get clarity whether we want to enforce these conditions
       typr.println(s"adding refinement $refinement")

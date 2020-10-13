@@ -1123,9 +1123,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Refined extends RefinedModule:
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
-        tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
+        tpd.cpy.RefinedTypeTree(original)(tpt, refinements.toLst)
       def unapply(x: Refined): Option[(TypeTree, List[Definition])] =
-        Some((x.tpt, x.refinements.asInstanceOf[List[Definition]]))
+        Some((x.tpt, x.refinements.toList.asInstanceOf[List[Definition]]))
     end Refined
 
     object RefinedMethodsImpl extends RefinedMethods:

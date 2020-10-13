@@ -1591,7 +1591,7 @@ object desugar {
             case (p: ValDef, _) => p.withAddedFlags(mods.flags)
             case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
           }
-          RefinedTypeTree(polyFunctionTpt, List(
+          RefinedTypeTree(polyFunctionTpt, Lst(
             DefDef(nme.apply, applyTParams, List(applyVParams), res, EmptyTree)
           ))
         }
@@ -1737,7 +1737,7 @@ object desugar {
    *  The result of this method is used for validity checking, is thrown away afterwards.
    *  @param parent  The type of `parent`
    */
-  def refinedTypeToClass(parent: tpd.Tree, refinements: List[Tree])(using Context): TypeDef = {
+  def refinedTypeToClass(parent: tpd.Tree, refinements: Lst[Tree])(using Context): TypeDef = {
     def stripToCore(tp: Type): List[Type] = tp match {
       case tp: AppliedType => tp :: Nil
       case tp: TypeRef if tp.symbol.isClass => tp :: Nil     // monomorphic class type
@@ -1750,7 +1750,7 @@ object desugar {
     val (classParents, self) =
       if (parentCores.length == 1 && (parent.tpe eq parentCores.head)) (untpdParent :: Nil, EmptyValDef)
       else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
-    val impl = Template(emptyConstructor, classParents, Nil, self, refinements.toLst)
+    val impl = Template(emptyConstructor, classParents, Nil, self, refinements)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
   }
 

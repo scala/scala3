@@ -1215,7 +1215,7 @@ class TreeUnpickler(reader: TastyReader,
               typeAtAddr(start) = refineCls.typeRef
               val parent = readTpt()
               val refinements = readStats(refineCls, end)(using localContext(refineCls))
-              RefinedTypeTree(parent, refinements.toList, refineCls)
+              RefinedTypeTree(parent, refinements, refineCls)
             case APPLIEDtpt =>
               // If we do directly a tpd.AppliedType tree we might get a
               // wrong number of arguments in some scenarios reading F-bounded

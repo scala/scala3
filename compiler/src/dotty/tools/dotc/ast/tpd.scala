@@ -169,7 +169,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def SingletonTypeTree(ref: Tree)(using Context): SingletonTypeTree =
     ta.assignType(untpd.SingletonTypeTree(ref), ref)
 
-  def RefinedTypeTree(parent: Tree, refinements: List[Tree], refineCls: ClassSymbol)(using Context): Tree =
+  def RefinedTypeTree(parent: Tree, refinements: Lst[Tree], refineCls: ClassSymbol)(using Context): Tree =
     ta.assignType(untpd.RefinedTypeTree(parent, refinements), parent, refinements, refineCls)
 
   def AppliedTypeTree(tycon: Tree, args: List[Tree])(using Context): AppliedTypeTree =

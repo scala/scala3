@@ -122,6 +122,7 @@ object Trees {
               assert(x.hasType || ctx.reporter.errorsReported,
                      s"$this has untyped child $x")
             case xs: List[?] => checkChildrenTyped(xs.iterator)
+            case xs: Array[?] => checkChildrenTyped(xs.iterator)
             case _ =>
           }
 
@@ -185,6 +186,7 @@ object Trees {
       def addSize(elem: Any): Unit = elem match {
         case t: Tree[?] => s += t.treeSize
         case ts: List[?] => ts foreach addSize
+        case ts: Array[?] => ts foreach addSize
         case _ =>
       }
       productIterator foreach addSize
@@ -210,6 +212,11 @@ object Trees {
             case x: List[?] =>
               y match {
                 case y: List[?] => x.corresponds(y)(isSame)
+                case _ => false
+              }
+            case x: Array[?] =>
+              y match {
+                case y: Array[?] => x.corresponds(y)(isSame)
                 case _ => false
               }
             case _ =>
@@ -643,7 +650,7 @@ object Trees {
   }
 
   /** tpt { refinements } */
-  case class RefinedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], refinements: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class RefinedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], refinements: Lst[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends ProxyTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = RefinedTypeTree[T]
     def forwardTo: Tree[T] = tpt
@@ -1161,8 +1168,8 @@ object Trees {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
         case _ => finalize(tree, untpd.SingletonTypeTree(ref)(sourceFile(tree)))
       }
-      def RefinedTypeTree(tree: Tree)(tpt: Tree, refinements: List[Tree])(using Context): RefinedTypeTree = tree match {
-        case tree: RefinedTypeTree if (tpt eq tree.tpt) && (refinements eq tree.refinements) => tree
+      def RefinedTypeTree(tree: Tree)(tpt: Tree, refinements: Lst[Tree])(using Context): RefinedTypeTree = tree match {
+        case tree: RefinedTypeTree if (tpt eq tree.tpt) && (refinements eqLst tree.refinements) => tree
         case _ => finalize(tree, untpd.RefinedTypeTree(tpt, refinements)(sourceFile(tree)))
       }
       def AppliedTypeTree(tree: Tree)(tpt: Tree, args: List[Tree])(using Context): AppliedTypeTree = tree match {

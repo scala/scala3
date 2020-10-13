@@ -447,7 +447,7 @@ trait TypeAssigner {
   /** Assign type of RefinedType.
    *  Refinements are typed as if they were members of refinement class `refineCls`.
    */
-  def assignType(tree: untpd.RefinedTypeTree, parent: Tree, refinements: List[Tree], refineCls: ClassSymbol)(using Context): RefinedTypeTree = {
+  def assignType(tree: untpd.RefinedTypeTree, parent: Tree, refinements: Lst[Tree], refineCls: ClassSymbol)(using Context): RefinedTypeTree = {
     def addRefinement(parent: Type, refinement: Tree): Type = {
       val rsym = refinement.symbol
       val rinfo = if (rsym.is(Accessor)) rsym.info.resultType else rsym.info
