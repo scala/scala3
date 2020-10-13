@@ -181,9 +181,11 @@ object Lst:
       xs
 
     def toList: List[T] =
-      val buf = new collection.mutable.ListBuffer[T]
-      foreachInlined(buf += _)
-      buf.toList
+      if length == 0 then Nil
+      else
+        val buf = new collection.mutable.ListBuffer[T]
+        foreachInlined(buf += _)
+        buf.toList
 
     def toListReversed: List[T] =
       var result: List[T] = Nil
@@ -555,6 +557,11 @@ object Lst:
         multi[T](newElems)
       case elem: T @unchecked =>
         Lst(x, elem)
+
+  extension [T](xs: Iterable[T])
+    def toLst: Lst[T] =
+      if xs.isEmpty then Empty
+      else (xs: IterableOnce[T]).toLst
 
   extension [T](xs: IterableOnce[T])
     def toLst: Lst[T] = (Buffer[T]() ++= xs).toLst

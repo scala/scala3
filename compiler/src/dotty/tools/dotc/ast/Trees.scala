@@ -1385,7 +1385,7 @@ object Trees {
       }
 
       def transformStats(trees: Lst[Tree])(using Context): Lst[Tree] =
-        trees.mapConserve(transform(_))
+        flatten(trees.mapConserve(transform(_)))
       def transform(trees: List[Tree])(using Context): List[Tree] =
         flatten(trees mapConserve (transform(_)))
       def transform(trees: Lst[Tree])(using Context): Lst[Tree] =

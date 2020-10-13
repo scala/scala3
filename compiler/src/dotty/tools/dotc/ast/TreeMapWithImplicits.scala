@@ -26,7 +26,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
 
   /** Transform statements, while maintaining import contexts and expression contexts
    *  in the same way as Typer does. The code addresses additional concerns:
-   *   - be tail-recursive where possible
+   *   - dissolve thickets
    *   - don't re-allocate trees where nothing has changed
    */
   def transformStats(stats: Lst[Tree], exprOwner: Symbol)(using Context): Lst[Tree] =
@@ -42,7 +42,9 @@ class TreeMapWithImplicits extends tpd.TreeMap {
         buf = Lst.Buffer()
         buf.appendSlice(stats, 0, n)
       if buf != null then
-        buf += stat1
+        stat1 match
+          case Thicket(elems) => buf ++= elems
+          case _ => buf += stat1
       curCtx = stat match
         case stat: Import => curCtx.importContext(stat, stat.symbol)
         case _ => curCtx

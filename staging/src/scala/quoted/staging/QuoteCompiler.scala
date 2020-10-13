@@ -20,6 +20,7 @@ import dotty.tools.dotc.transform.ReifyQuotes
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{Path, VirtualFile}
+import dotty.tools.dotc.util.Lst; import Lst.::
 
 import scala.annotation.tailrec
 import scala.concurrent.Promise
@@ -79,8 +80,8 @@ private class QuoteCompiler extends Compiler:
               None // Stop copilation here we already have the result
             case None =>
               val run = DefDef(meth, quoted)
-              val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), run :: Nil)
-              val tree = PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], classTree :: Nil).withSpan(pos)
+              val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), Lst(run))
+              val tree = PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], Lst(classTree)).withSpan(pos)
               val source = SourceFile.virtual("<quoted.Expr>", "")
               result = Left(outputClassName.toString)
               Some(CompilationUnit(source, tree, forceTrees = true))
@@ -90,7 +91,7 @@ private class QuoteCompiler extends Compiler:
     @tailrec private def getLiteral(tree: Tree): Option[Any] =
       tree match
         case Literal(lit) => Some(lit.value)
-        case Block(Nil, expr) => getLiteral(expr)
+        case Block(Lst.Empty, expr) => getLiteral(expr)
         case Inlined(_, Nil, expr) => getLiteral(expr)
         case _ => None
 

@@ -19,6 +19,12 @@ object Lst:
 
   type Arr = Array[Any]
 
+  /** Lsts can only be compared with other Lsts... */
+  given lstEql[T, U] as Eql[Lst[T], Lst[U]] = Eql.derived
+
+  /** ... except that locally we can also match with `null` */
+  private given lstNullEq[T] as Eql[Null, Lst[T]] = Eql.derived
+
   object Vault:
     opaque type Lst[+T] = Any
 
@@ -87,7 +93,6 @@ object Lst:
     xs(4) = x4
     others.copyToArray(xs, 5)
     fromArr[T](xs)
-
 
   private def _fromArray[T](xs: Arr, start: Int, end: Int): Lst[T] =
     val len = end - start
