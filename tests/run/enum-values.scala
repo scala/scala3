@@ -31,11 +31,11 @@ enum ClassOnly: // this should still generate the `ordinal` and `fromOrdinal` co
 @main def Test: Unit =
   import Color._, Tag._, Expr._, ListLike._, TypeCtorsK._, MixedParams._, ClassOnly._
 
-  type FromOrdinal[T <: AnyRef] = {
+  type FromOrdinal[T] = {
     def fromOrdinal(ordinal: Int): T
   }
 
-  type ValueOf[T <: AnyRef] = {
+  type ValueOf[T] = {
     def valueOf(s: String): T
   }
 

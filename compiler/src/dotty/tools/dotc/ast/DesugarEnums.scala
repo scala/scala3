@@ -171,7 +171,10 @@ object DesugarEnums {
               constraints.enumCases.map((i, enumValue) => CaseDef(Literal(Constant(i)), EmptyTree, enumValue))
               :+ default(ordinal)))
 
-    scaffolding ::: valueCtor ::: fromOrdinal :: Nil
+    if !enumClass.exists then
+      Nil
+    else
+      scaffolding ::: valueCtor ::: fromOrdinal :: Nil
   end enumLookupMethods
 
   /** A creation method for a value of enum type `E`, which is defined as follows:
@@ -281,8 +284,8 @@ object DesugarEnums {
     ordinalMeth(Literal(Constant(ord)))
 
   def fromOrdinalMeth(body: Tree => Tree)(using Context): DefDef =
-    DefDef(nme.fromOrdinal, Nil, List(param(nme.ordinalDollar_, defn.IntType) :: Nil),
-      rawRef(enumClass.typeRef), body(Ident(nme.ordinalDollar_))).withFlags(Synthetic)
+    DefDef(nme.fromOrdinal, Nil, (param(nme.ordinal, defn.IntType) :: Nil) :: Nil,
+      rawRef(enumClass.typeRef), body(Ident(nme.ordinal))).withFlags(Synthetic)
 
   /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, definesLookups: Boolean, span: Span)(using Context): Tree = {
