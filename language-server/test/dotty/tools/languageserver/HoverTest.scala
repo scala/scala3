@@ -4,7 +4,7 @@ import org.junit.Test
 
 import dotty.tools.languageserver.util.Code._
 
-class HoverTest {
+class HoverTest {/*
   def hoverContent(typeInfo: String, comment: String = ""): Option[String] =
     Some((
       if (comment == "")
@@ -208,5 +208,5 @@ class HoverTest {
       // The test framework will place the code above in a virtual file called Source0.scala,
       // sp the top-level definitions should be enclosed in an object called `Source0$package`.
       .hover(m1 to m2, hoverContent("(hello.Source0$package : hello.Source0$package.type)"))
-  }
+  }*/
 }

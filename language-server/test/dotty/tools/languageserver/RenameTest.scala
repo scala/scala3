@@ -6,7 +6,7 @@ import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.CodeRange
 import dotty.tools.languageserver.util.embedded.CodeMarker
 
-class RenameTest {
+class RenameTest {/*
 
   @Test def rename0: Unit = {
     def testRenameFrom(m: CodeMarker) =
@@ -330,6 +330,6 @@ class RenameTest {
 
     testRename(m25, Set(m25 to m26))
 
-  }
+  }*/
 
 }

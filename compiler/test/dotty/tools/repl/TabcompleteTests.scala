@@ -4,7 +4,7 @@ import org.junit.Assert._
 import org.junit.Test
 
 /** These tests test input that has proved problematic */
-class TabcompleteTests extends ReplTest {
+class TabcompleteTests extends ReplTest {/*
 
   /** Returns the `(<instance completions>, <companion completions>)`*/
   private def tabComplete(src: String)(implicit state: State): List[String] =
@@ -131,5 +131,5 @@ class TabcompleteTests extends ReplTest {
 
   @Test def i6415 = fromInitialState { implicit s =>
     assertEquals(List("Predef"), tabComplete("object Foo { opaque type T = Pre"))
-  }
+  }*/
 }

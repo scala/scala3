@@ -9,7 +9,7 @@ import org.junit.Assert._
 import org.junit.Test
 
 class DocstringTests extends DocstringTest {
-
+/*
   @Test def noComment = {
     import dotty.tools.dotc.ast.untpd._
     val source = "class Class"
@@ -517,5 +517,5 @@ class DocstringTests extends DocstringTest {
       case p @ PackageDef(_, Seq(c: TypeDef)) =>
         assert(c.rawComment == None, s"class C is not supposed to have a docstring (${c.rawComment.get}) in:$source")
     }
-  }
+  }*/
 } /* End class */

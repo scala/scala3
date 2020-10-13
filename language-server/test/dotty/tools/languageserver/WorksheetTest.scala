@@ -10,7 +10,7 @@ import dotty.tools.languageserver.util.embedded.CodeMarker
 
 import java.lang.System.{lineSeparator => nl}
 
-class WorksheetTest {
+class WorksheetTest {/*
 
   @Test def runExpression: Unit = {
     ws"${m1}2 + 2${m2}".withSource
@@ -228,5 +228,5 @@ class WorksheetTest {
       .run(m1,
         ((m1 to m2), "Oh no"))
   }
-
+*/
 }
