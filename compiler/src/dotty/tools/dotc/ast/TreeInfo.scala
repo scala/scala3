@@ -698,6 +698,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       false
   }
 
+  def localSyms(stats: Lst[Tree])(using Context): List[Symbol] =
+    val locals = new mutable.ListBuffer[Symbol]
+    for stat <- stats do
+      if stat.isDef && stat.symbol.exists then locals += stat.symbol
+    locals.toList
+
   /** The symbols defined locally in a statement list */
   def localSyms(stats: List[Tree])(using Context): List[Symbol] =
     val locals = new mutable.ListBuffer[Symbol]

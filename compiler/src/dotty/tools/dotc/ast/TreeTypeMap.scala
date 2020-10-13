@@ -106,9 +106,9 @@ class TreeTypeMap(
           val (tmap1, tparams1) = transformDefs(tparams)
           cpy.LambdaTypeTree(tdef)(tparams1, tmap1.transform(body))
         case blk @ Block(stats, expr) =>
-          val (tmap1, stats1) = transformDefs(stats.toList)
+          val (tmap1, stats1) = transformDefs(stats)
           val expr1 = tmap1.transform(expr)
-          cpy.Block(blk)(stats1.toLst, expr1)
+          cpy.Block(blk)(stats1, expr1)
         case inlined @ Inlined(call, bindings, expanded) =>
           val (tmap1, bindings1) = transformDefs(bindings)
           val expanded1 = tmap1.transform(expanded)
@@ -132,7 +132,12 @@ class TreeTypeMap(
   }
 
   override def transformStats(trees: Lst[tpd.Tree])(using Context): Lst[Tree] =
-    transformDefs(trees.toList)._2.toLst
+    transformDefs(trees)._2
+
+  def transformDefs[TT <: tpd.Tree](trees: Lst[TT])(using Context): (TreeTypeMap, Lst[TT]) = {
+    val tmap = withMappedSyms(tpd.localSyms(trees))
+    (tmap, tmap.transformSub(trees))
+  }
 
   def transformDefs[TT <: tpd.Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) = {
     val tmap = withMappedSyms(tpd.localSyms(trees))
