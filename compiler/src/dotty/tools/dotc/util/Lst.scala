@@ -18,9 +18,13 @@ import annotation.infix
 
 type Lst[+T] = Lst.Vault.Lst[T]
 object Lst:
+  type Arr = Array[Any]
+
+  /** Lsts can only be compared with other Lsts... */
   given lstEql[T, U] as Eql[Lst[T], Lst[U]] = Eql.derived
 
-  type Arr = Array[Any]
+  /** ... except that locally we can also match with `null` */
+  private given lstNullEq[T] as Eql[Null, Lst[T]] = Eql.derived
 
   object Vault:
     opaque type Lst[+T] = Any

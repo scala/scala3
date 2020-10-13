@@ -157,7 +157,7 @@ object Matcher {
         /* Match block flattening */ // TODO move to cases
         /** Normalize the tree */
         def normalize(tree: Tree): Tree = tree match {
-          case Block(Lst.Empty, expr) => normalize(expr)
+          case Block(Nil, expr) => normalize(expr)
           case Block(stats1, Block(stats2, expr)) =>
             expr match
               case _: Closure => tree
