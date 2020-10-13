@@ -78,7 +78,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
           j -= 1
         }
         (i < 0 || p1(i) == separatorChar) &&
-        (j < 0 || p1(j) == separatorChar)
+        (j < 0 || p2(j) == separatorChar)
       }
 
       assert(d.symbol.source.exists &&
