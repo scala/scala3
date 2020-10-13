@@ -1096,6 +1096,7 @@ object Build {
     settings(
       name := sbtDottyName,
       version := sbtDottyVersion,
+      organization := "ch.epfl.lamp",
       // Keep in sync with inject-sbt-dotty.sbt
       libraryDependencies ++= Seq(
         Dependencies.`jackson-databind`,

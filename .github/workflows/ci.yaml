@@ -262,8 +262,8 @@ jobs:
       NIGHTLYBUILD: yes
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
       PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+      SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
+      SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
       - name: Checkout cleanup script
@@ -366,8 +366,8 @@ jobs:
       RELEASEBUILD: yes
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
       PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+      SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
+      SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
       - name: Checkout cleanup script
