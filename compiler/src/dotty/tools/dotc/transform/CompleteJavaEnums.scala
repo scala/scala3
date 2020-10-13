@@ -105,14 +105,18 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue))
     for { enumValue <- enums }
     yield {
+      def forwarderSym(flags: FlagSet, info: Type): Symbol { type ThisName = TermName } =
+        val sym = newSymbol(clazz, enumValue.name.asTermName, flags, info)
+        sym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
+        sym
+      val body = moduleRef.select(enumValue)
       if ctx.settings.scalajs.value then
-        val methodSym = newSymbol(clazz, enumValue.name.asTermName, EnumValue | Method | JavaStatic, MethodType(Nil, enumValue.info))
-        methodSym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
-        DefDef(methodSym, moduleRef.select(enumValue))
+        // Scala.js has no support for <clinit> so we must avoid assigning static fields in the enum class.
+        // However, since the public contract for reading static fields in the IR ABI is to call "static getters",
+        // we achieve the right contract with static forwarders instead.
+        DefDef(forwarderSym(EnumValue | Method | JavaStatic, MethodType(Nil, enumValue.info)), body)
       else
-        val fieldSym = newSymbol(clazz, enumValue.name.asTermName, EnumValue | JavaStatic, enumValue.info)
-        fieldSym.addAnnotation(Annotations.Annotation(defn.ScalaStaticAnnot))
-        ValDef(fieldSym, moduleRef.select(enumValue))
+        ValDef(forwarderSym(EnumValue | JavaStatic, enumValue.info), body)
     }
   }
 
