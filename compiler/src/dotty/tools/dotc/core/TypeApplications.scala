@@ -45,7 +45,7 @@ object TypeApplications {
     private def weakerBounds(tp: HKTypeLambda, tparams: List[ParamInfo])(using Context): Boolean =
       val onlyEmptyBounds = tp.typeParams.forall(_.paramInfo == TypeBounds.empty)
       onlyEmptyBounds
-        // Note: this pre-test helps efficiency. It is also necessary since in some cases
+        // Note: this pre-test helps efficiency. It is also necessary to workaround  #9965 since in some cases
         // tparams is empty. This can happen when we change the owners of inlined local
         // classes in mapSymbols. See pos/reference/delegates.scala for an example.
         // In this case, we can still return true if we know that the hk lambda bounds
