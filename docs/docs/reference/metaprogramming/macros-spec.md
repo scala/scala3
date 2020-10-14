@@ -21,7 +21,7 @@ In addition, an identifier `$x` starting with a `$` that appears inside
 a quoted expression or type is treated as a splice `${x}` and a quoted identifier
 `'x` that appears inside a splice is treated as a quote `'{x}`
 
-### Implementation in `dotc`
+### Implementation in `scalac`
 
 Quotes and splices are primitive forms in the generated abstract syntax trees.
 Top-level splices are eliminated during macro expansion while typing. On the

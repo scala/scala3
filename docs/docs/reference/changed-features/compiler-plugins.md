@@ -25,10 +25,10 @@ _standard plugins_ in Dotty. In terms of features, they are similar to
 
 ## Using Compiler Plugins
 
-Both standard and research plugins can be used with `dotc` by adding the `-Xplugin:` option:
+Both standard and research plugins can be used with `scalac` by adding the `-Xplugin:` option:
 
 ```shell
-dotc -Xplugin:pluginA.jar -Xplugin:pluginB.jar Test.scala
+scalac -Xplugin:pluginA.jar -Xplugin:pluginB.jar Test.scala
 ```
 
 The compiler will examine the jar provided, and look for a property file named

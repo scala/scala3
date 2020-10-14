@@ -46,8 +46,8 @@ Note that if we need to run the main (in the example below defined in an object 
 compilation we need to make the compiler available to the runtime:
 
 ```shell
-dotc -d out Test.scala
-dotr -with-compiler -classpath out Test
+scalac -d out Test.scala
+scala -with-compiler -classpath out Test
 ```
 
 
