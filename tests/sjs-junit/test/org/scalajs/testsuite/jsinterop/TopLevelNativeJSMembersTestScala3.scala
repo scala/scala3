@@ -6,6 +6,8 @@ import org.junit.Test
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
+class TopLevelNativeJSMembersTestScala3
+/*
 @js.native
 @JSGlobal("interoperabilityTestGlobalValDefConstant")
 val interoperabilityTestGlobalValDefConstant: Int = js.native
@@ -83,3 +85,4 @@ class TopLevelNativeJSMembersTestScala3 {
   }
   */
 }
+*/

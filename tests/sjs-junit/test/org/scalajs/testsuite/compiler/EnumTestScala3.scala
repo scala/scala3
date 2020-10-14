@@ -3,7 +3,7 @@ package org.scalajs.testsuite.compiler
 import org.junit.Assert._
 import org.junit.Test
 
-class EnumTestScala3:
+class EnumTestScala3 /*:
   import EnumTestScala3._
 
   @Test def testColor1(): Unit =
@@ -164,4 +164,4 @@ object EnumTestScala3:
     case Sm[+T1](value: T1) extends Opt[T1]
     case Nn                 extends Opt[Nothing]
 
-end EnumTestScala3
+end EnumTestScala3*/

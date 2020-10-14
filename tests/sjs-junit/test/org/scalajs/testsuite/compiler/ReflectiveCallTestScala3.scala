@@ -10,7 +10,7 @@ import scala.reflect.Selectable.reflectiveSelectable
 import org.junit.Assert._
 import org.junit.Test
 
-object ReflectiveCallTestScala3 {
+object ReflectiveCallTestScala3 {/*
   class C { type S = String; type I }
   class D extends C { type I = Int }
 
@@ -171,5 +171,5 @@ class ReflectiveCallTestScala3 {
     //if (Math.random() > 2) // always false
     //  foo.nothingMeth(???)
   }
-
+*/
 }
