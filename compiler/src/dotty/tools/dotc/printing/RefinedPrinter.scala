@@ -576,7 +576,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case InterpolatedString(id, segments) =>
         def strText(str: Literal) = withPos(escapedString(str.const.stringValue), tree.sourcePos)
         def segmentText(segment: Tree) = segment match {
-          case Thicket(List(str: Literal, expr)) => strText(str) ~ "{" ~ toTextGlobal(expr) ~ "}"
+          case Thicket(Lst(str: Literal, expr)) => strText(str) ~ "{" ~ toTextGlobal(expr) ~ "}"
           case str: Literal => strText(str)
         }
         toText(id) ~ "\"" ~ Text(segments map segmentText, "") ~ "\""

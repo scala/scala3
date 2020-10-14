@@ -187,7 +187,7 @@ object Summarization {
         else
           (Potentials.empty, pots.promote(vdef) ++ effs)
 
-      case Thicket(List()) =>
+      case Thicket(Lst.Empty) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
         Summary.empty
 

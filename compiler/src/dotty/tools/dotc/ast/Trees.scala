@@ -840,36 +840,32 @@ object Trees {
    *  The contained trees will be integrated when transformed with
    *  a `transform(List[Tree])` call.
    */
-  case class Thicket[-T >: Untyped](trees: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class Thicket[-T >: Untyped](trees: Lst[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] with WithoutTypeOrPos[T] {
     myTpe = NoType.asInstanceOf[T]
     type ThisTree[-T >: Untyped] = Thicket[T]
 
     def mapElems(op: Tree[T] => Tree[T] @uncheckedVariance): Thicket[T] = {
       val newTrees = trees.mapConserve(op)
-      if (trees eq newTrees)
+      if (trees eqLst newTrees)
         this
       else
         Thicket[T](newTrees)(source).asInstanceOf[this.type]
     }
 
     override def foreachInThicket(op: Tree[T] => Unit): Unit =
-      trees foreach (_.foreachInThicket(op))
+      trees.foreach(_.foreachInThicket(op))
 
     override def isEmpty: Boolean = trees.isEmpty
-    override def toList: List[Tree[T]] = flatten(trees)
+    override def toList: List[Tree[T]] = flatten(trees.toList)
     override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
-    override def span: Span =
-      def combine(s: Span, ts: List[Tree[T]]): Span = ts match
-        case t :: ts1 => combine(s.union(t.span), ts1)
-        case nil => s
-      combine(NoSpan, trees)
+    override def span: Span = trees.foldLeft(NoSpan)((s, t) => s.union(t.span))
 
     override def withSpan(span: Span): this.type =
       mapElems(_.withSpan(span)).asInstanceOf[this.type]
   }
 
-  class EmptyTree[T >: Untyped] extends Thicket(Nil)(NoSource) {
+  class EmptyTree[T >: Untyped] extends Thicket(Lst.Empty)(NoSource) {
     // assert(uniqueId != 1492)
     override def withSpan(span: Span) = throw AssertionError("Cannot change span of EmptyTree")
   }
@@ -901,7 +897,7 @@ object Trees {
               scanned = scanned.tail
             }
           }
-          recur(recur(buf1, elems), remaining1)
+          recur(recur(buf1, elems.toList), remaining1)
         case tree :: remaining1 =>
           if (buf != null) buf += tree
           recur(buf, remaining1)
@@ -921,7 +917,7 @@ object Trees {
           if buf1 == null then
             buf1 = Lst.Buffer[Tree[T]]()
             buf1.appendSlice(trees, 0, idx)
-          recur(recur(buf1, elems.toLst, 0), trees, idx + 1)
+          recur(recur(buf1, elems, 0), trees, idx + 1)
         case tree =>
           if buf != null then buf += tree
           recur(buf, trees, idx + 1)
@@ -1029,11 +1025,11 @@ object Trees {
     // ----- Auxiliary creation methods ------------------
 
     def Thicket(): Thicket = EmptyTree
-    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = Thicket(x1 :: x2 :: Nil)
-    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = Thicket(x1 :: x2 :: x3 :: Nil)
+    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = Thicket(Lst(x1, x2))
+    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = Thicket(Lst(x1, x2, x3))
     def flatTree(xs: List[Tree])(implicit src: SourceFile): Tree = flatten(xs) match {
       case x :: Nil => x
-      case ys => Thicket(ys)
+      case ys => Thicket(ys.toLst)
     }
 
     // ----- Helper classes for copying, transforming, accumulating -----------------
@@ -1236,8 +1232,8 @@ object Trees {
         case tree: Annotated if (arg eq tree.arg) && (annot eq tree.annot) => tree
         case _ => finalize(tree, untpd.Annotated(arg, annot)(sourceFile(tree)))
       }
-      def Thicket(tree: Tree)(trees: List[Tree])(using Context): Thicket = tree match {
-        case tree: Thicket if (trees eq tree.trees) => tree
+      def Thicket(tree: Tree)(trees: Lst[Tree])(using Context): Thicket = tree match {
+        case tree: Thicket if (trees eqLst tree.trees) => tree
         case _ => finalize(tree, untpd.Thicket(trees)(sourceFile(tree)))
       }
 
@@ -1384,7 +1380,7 @@ object Trees {
               cpy.Annotated(tree)(transform(arg), transform(annot))
             case Thicket(trees) =>
               val trees1 = transform(trees)
-              if (trees1 eq trees) tree else Thicket(trees1)
+              if (trees1 eqLst trees) tree else Thicket(trees1)
             case _ =>
               transformMoreCases(tree)
           }

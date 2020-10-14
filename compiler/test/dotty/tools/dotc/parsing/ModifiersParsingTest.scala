@@ -19,7 +19,7 @@ object ModifiersParsingTest {
 
   def parse(code: String): Tree = {
     val (_, stats) = new Parser(SourceFile.virtual("<meta>", code)).templateStatSeq()
-    stats match { case Lst(stat) => stat; case stats => Thicket(stats.toList) }
+    stats match { case Lst(stat) => stat; case stats => Thicket(stats) }
   }
 
   extension (code: Tree) {

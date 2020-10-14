@@ -2638,7 +2638,7 @@ class Typer extends Namer
                 buf += mdef1
             traverse(stats, idx + 1, more)
           case Thicket(ts) =>
-            traverse(ts.toLst, 0, (stats, idx + 1) :: more)
+            traverse(ts, 0, (stats, idx + 1) :: more)
           case stat: untpd.Export =>
             buf ++= stat.attachmentOrElse(ExportForwarders, Nil)
               // no attachment can happen in case of cyclic references

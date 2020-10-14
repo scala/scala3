@@ -8,6 +8,7 @@ import org.junit.Assert._
 import dotc.core.Contexts._
 import dotc.parsing.Parsers.Parser
 import dotc.util.SourceFile
+import util.Lst; // import Lst.::
 
 class UntpdTreeMapTest extends DottyTest {
 
@@ -15,7 +16,9 @@ class UntpdTreeMapTest extends DottyTest {
 
   def parse(code: String): Tree = {
     val (_, stats) = new Parser(SourceFile.virtual("<meta>", code)).templateStatSeq()
-    stats.toList match { case List(stat) => stat; case stats => untpd.Thicket(stats) }
+    stats match
+      case Lst(stat) => stat;
+      case stats => untpd.Thicket(stats)
   }
 
   @Test

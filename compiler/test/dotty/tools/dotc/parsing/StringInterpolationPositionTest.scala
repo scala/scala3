@@ -28,7 +28,7 @@ class StringInterpolationPositionTest extends ParserTest {
         val interpolations = statements.collect{ case ValDef(_, _, InterpolatedString(_, int)) => int }
         val lits = interpolations.toList.flatten.flatMap {
           case l @ Literal(_) => List(l)
-          case Thicket(trees) => trees.collect { case l @ Literal(_) => l }
+          case Thicket(trees) => trees.toList.collect { case l @ Literal(_) => l }
         }
         for {
           lit <- lits

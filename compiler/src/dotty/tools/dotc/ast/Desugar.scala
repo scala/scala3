@@ -289,7 +289,7 @@ object desugar {
     if (defGetters.isEmpty) meth1
     else {
       val meth2 = cpy.DefDef(meth1)(vparamss = normalizedVparamss)
-      Thicket(meth2 :: defGetters)
+      Thicket((meth2 :: defGetters).toLst)
     }
   }
 
@@ -382,8 +382,8 @@ object desugar {
 
     def decompose(ddef: Tree): DefDef = ddef match {
       case meth: DefDef => meth
-      case Thicket((meth: DefDef) :: defaults) =>
-        defaultGetters = defaults
+      case Thicket(Lst(meth: DefDef, defaults: _*)) =>
+        defaultGetters = defaults.toList
         meth
     }
 
@@ -1635,7 +1635,7 @@ object desugar {
           case t => t
         }
         val elems = segments flatMap {
-          case ts: Thicket => ts.trees.tail
+          case ts: Thicket => ts.trees.toList.tail
           case t => Nil
         } map {
           case Block(Lst.Empty, EmptyTree) => Literal(Constant(())) // for s"... ${} ..."
