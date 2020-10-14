@@ -130,10 +130,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(using Context): CaseDef =
     ta.assignType(untpd.CaseDef(pat, guard, body), pat, body)
 
-  def Match(selector: Tree, cases: List[CaseDef])(using Context): Match =
+  def Match(selector: Tree, cases: Lst[CaseDef])(using Context): Match =
     ta.assignType(untpd.Match(selector, cases), selector, cases)
 
-  def InlineMatch(selector: Tree, cases: List[CaseDef])(using Context): Match =
+  def InlineMatch(selector: Tree, cases: Lst[CaseDef])(using Context): Match =
     ta.assignType(untpd.InlineMatch(selector, cases), selector, cases)
 
   def Labeled(bind: Bind, expr: Tree)(using Context): Labeled =
@@ -151,7 +151,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def WhileDo(cond: Tree, body: Tree)(using Context): WhileDo =
     ta.assignType(untpd.WhileDo(cond, body))
 
-  def Try(block: Tree, cases: List[CaseDef], finalizer: Tree)(using Context): Try =
+  def Try(block: Tree, cases: Lst[CaseDef], finalizer: Tree)(using Context): Try =
     ta.assignType(untpd.Try(block, cases, finalizer), block, cases)
 
   def SeqLiteral(elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral =
@@ -181,7 +181,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(using Context): LambdaTypeTree =
     ta.assignType(untpd.LambdaTypeTree(tparams, body), tparams, body)
 
-  def MatchTypeTree(bound: Tree, selector: Tree, cases: List[CaseDef])(using Context): MatchTypeTree =
+  def MatchTypeTree(bound: Tree, selector: Tree, cases: Lst[CaseDef])(using Context): MatchTypeTree =
     ta.assignType(untpd.MatchTypeTree(bound, selector, cases), bound, selector, cases)
 
   def TypeBoundsTree(lo: Tree, hi: Tree, alias: Tree = EmptyTree)(using Context): TypeBoundsTree =
@@ -669,7 +669,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(using Context): Match = {
+    override def Match(tree: Tree)(selector: Tree, cases: Lst[CaseDef])(using Context): Match = {
       val tree1 = untpdCpy.Match(tree)(selector, cases)
       tree match {
         case tree: Match if sameTypes(cases, tree.cases) => tree1.withTypeUnchecked(tree.tpe)
@@ -694,7 +694,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def WhileDo(tree: Tree)(cond: Tree, body: Tree)(using Context): WhileDo =
       ta.assignType(untpdCpy.WhileDo(tree)(cond, body))
 
-    override def Try(tree: Tree)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(using Context): Try = {
+    override def Try(tree: Tree)(expr: Tree, cases: Lst[CaseDef], finalizer: Tree)(using Context): Try = {
       val tree1 = untpdCpy.Try(tree)(expr, cases, finalizer)
       tree match {
         case tree: Try if (expr.tpe eq tree.expr.tpe) && sameTypes(cases, tree.cases) => tree1.withTypeUnchecked(tree.tpe)
@@ -736,7 +736,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Closure(tree: Tree)(env, meth, tpt)
     override def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body)(using Context): CaseDef =
       CaseDef(tree: Tree)(pat, guard, body)
-    override def Try(tree: Try)(expr: Tree = tree.expr, cases: List[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(using Context): Try =
+    override def Try(tree: Try)(expr: Tree = tree.expr, cases: Lst[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(using Context): Try =
       Try(tree: Tree)(expr, cases, finalizer)
   }
 
@@ -1139,6 +1139,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case x :: xs1 => x.tpe :: xs1.tpes
       case nil => Nil
     }
+
+  extension (xs: Lst[tpd.Tree]):
+    def tpes: List[Type] = xs.length match
+      case 0 => Nil
+      case 1 => xs(0).tpe :: Nil
+      case 2 => xs(0).tpe :: xs(1).tpe :: Nil
+      case 3 => xs(0).tpe :: xs(1).tpe :: xs(2).tpe :: Nil
+      case _ =>
+        val buf = new mutable.ListBuffer[Type]()
+        xs.foreachInlined(x => buf += x.tpe)
+        buf.toList
 
   /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
   trait TreeProvider {

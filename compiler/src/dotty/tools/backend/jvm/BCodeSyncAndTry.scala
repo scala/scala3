@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeOps
+import dotty.tools.dotc.util.Lst; // import Lst.::
 
 /*
  *
@@ -180,7 +181,7 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       case Try(block, catches, finalizer) =>
       val kind = tpeTK(tree)
 
-      val caseHandlers: List[EHClause] =
+      val caseHandlers: Lst[EHClause] =
         for (CaseDef(pat, _, caseBody) <- catches) yield {
           pat match {
             case Typed(Ident(nme.WILDCARD), tpt)  => NamelessEH(tpeTK(tpt).asClassBType, caseBody)

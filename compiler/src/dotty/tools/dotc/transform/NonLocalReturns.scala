@@ -78,7 +78,7 @@ class NonLocalReturns extends MiniPhase {
         ref(ex).select(nme.key).appliedToNone.select(nme.eq).appliedTo(ref(key)),
         ref(ex).select(nme.value).ensureConforms(meth.info.finalResultType),
         Throw(ref(ex)))
-    val catches = CaseDef(pat, EmptyTree, rhs) :: Nil
+    val catches = Lst(CaseDef(pat, EmptyTree, rhs))
     val tryCatch = Try(body, catches, EmptyTree)
     Block(Lst(keyDef), tryCatch)
   }

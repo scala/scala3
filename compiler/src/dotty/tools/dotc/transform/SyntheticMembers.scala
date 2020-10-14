@@ -177,11 +177,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      */
     def productElementBody(arity: Int, index: Tree)(using Context): Tree = {
       // case N => _${N + 1}
-      val cases = 0.until(arity).map { i =>
+      val cases = Lst.tabulate(arity)(i =>
         CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
-      }
-
-      Match(index, (cases :+ generateIOBECase(index)).toList)
+      )
+      Match(index, cases :+ generateIOBECase(index))
     }
 
     /** The class
@@ -202,11 +201,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      */
     def productElementNameBody(arity: Int, index: Tree)(using Context): Tree = {
       // case N => // name for case arg N
-      val cases = 0.until(arity).map { i =>
+      val cases = Lst.tabulate(arity)(i =>
         CaseDef(Literal(Constant(i)), EmptyTree, Literal(Constant(accessors(i).name.toString)))
-      }
+      )
 
-      Match(index, (cases :+ generateIOBECase(index)).toList)
+      Match(index, cases :+ generateIOBECase(index))
     }
 
     def generateIOBECase(index: Tree): CaseDef = {
@@ -260,7 +259,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         if (comparisons.isEmpty) Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
       val matchingCase = CaseDef(pattern, EmptyTree, rhs) // case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
       val defaultCase = CaseDef(Underscore(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
-      val matchExpr = Match(that, List(matchingCase, defaultCase))
+      val matchExpr = Match(that, Lst(matchingCase, defaultCase))
       if (isDerivedValueClass(clazz)) matchExpr
       else {
         val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
@@ -517,7 +516,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     if (cls.is(Enum)) param.select(nme.ordinal).ensureApplied
     else {
       val cases =
-        for ((child, idx) <- cls.children.zipWithIndex) yield {
+        for ((child, idx) <- cls.children.toLst.zipWithIndex) yield {
           val patType = if (child.isTerm) child.termRef else child.rawTypeRef
           val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
           CaseDef(pat, EmptyTree, Literal(Constant(idx)))

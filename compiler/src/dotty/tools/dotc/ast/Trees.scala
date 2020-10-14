@@ -546,12 +546,12 @@ object Trees {
   }
 
   /** selector match { cases } */
-  case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
+  case class Match[-T >: Untyped] private[ast] (selector: Tree[T], cases: Lst[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Match[T]
     def isInline = false
   }
-  class InlineMatch[-T >: Untyped] private[ast] (selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
+  class InlineMatch[-T >: Untyped] private[ast] (selector: Tree[T], cases: Lst[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
     extends Match(selector, cases) {
     override def isInline = true
     override def toString = s"InlineMatch($selector, $cases)"
@@ -587,7 +587,7 @@ object Trees {
   }
 
   /** try block catch cases finally finalizer */
-  case class Try[-T >: Untyped] private[ast] (expr: Tree[T], cases: List[CaseDef[T]], finalizer: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class Try[-T >: Untyped] private[ast] (expr: Tree[T], cases: Lst[CaseDef[T]], finalizer: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Try[T]
   }
@@ -697,7 +697,7 @@ object Trees {
   }
 
   /** [bound] selector match { cases } */
-  case class MatchTypeTree[-T >: Untyped] private[ast] (bound: Tree[T], selector: Tree[T], cases: List[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
+  case class MatchTypeTree[-T >: Untyped] private[ast] (bound: Tree[T], selector: Tree[T], cases: Lst[CaseDef[T]])(implicit @constructorOnly src: SourceFile)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = MatchTypeTree[T]
   }
@@ -1128,8 +1128,8 @@ object Trees {
         case tree: Closure if (env eq tree.env) && (meth eq tree.meth) && (tpt eq tree.tpt) => tree
         case _ => finalize(tree, untpd.Closure(env, meth, tpt)(sourceFile(tree)))
       }
-      def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(using Context): Match = tree match {
-        case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
+      def Match(tree: Tree)(selector: Tree, cases: Lst[CaseDef])(using Context): Match = tree match {
+        case tree: Match if (selector eq tree.selector) && (cases eqLst tree.cases) => tree
         case tree: InlineMatch => finalize(tree, untpd.InlineMatch(selector, cases)(sourceFile(tree)))
         case _ => finalize(tree, untpd.Match(selector, cases)(sourceFile(tree)))
       }
@@ -1149,8 +1149,8 @@ object Trees {
         case tree: WhileDo if (cond eq tree.cond) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.WhileDo(cond, body)(sourceFile(tree)))
       }
-      def Try(tree: Tree)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(using Context): Try = tree match {
-        case tree: Try if (expr eq tree.expr) && (cases eq tree.cases) && (finalizer eq tree.finalizer) => tree
+      def Try(tree: Tree)(expr: Tree, cases: Lst[CaseDef], finalizer: Tree)(using Context): Try = tree match {
+        case tree: Try if (expr eq tree.expr) && (cases eqLst tree.cases) && (finalizer eq tree.finalizer) => tree
         case _ => finalize(tree, untpd.Try(expr, cases, finalizer)(sourceFile(tree)))
       }
       def SeqLiteral(tree: Tree)(elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral = tree match {
@@ -1184,8 +1184,8 @@ object Trees {
         case tree: TermLambdaTypeTree if (params eq tree.params) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.TermLambdaTypeTree(params, body)(sourceFile(tree)))
       }
-      def MatchTypeTree(tree: Tree)(bound: Tree, selector: Tree, cases: List[CaseDef])(using Context): MatchTypeTree = tree match {
-        case tree: MatchTypeTree if (bound eq tree.bound) && (selector eq tree.selector) && (cases eq tree.cases) => tree
+      def MatchTypeTree(tree: Tree)(bound: Tree, selector: Tree, cases: Lst[CaseDef])(using Context): MatchTypeTree = tree match {
+        case tree: MatchTypeTree if (bound eq tree.bound) && (selector eq tree.selector) && (cases eqLst tree.cases) => tree
         case _ => finalize(tree, untpd.MatchTypeTree(bound, selector, cases)(sourceFile(tree)))
       }
       def ByNameTypeTree(tree: Tree)(result: Tree)(using Context): ByNameTypeTree = tree match {
@@ -1249,7 +1249,7 @@ object Trees {
         Closure(tree: Tree)(env, meth, tpt)
       def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body)(using Context): CaseDef =
         CaseDef(tree: Tree)(pat, guard, body)
-      def Try(tree: Try)(expr: Tree = tree.expr, cases: List[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(using Context): Try =
+      def Try(tree: Try)(expr: Tree = tree.expr, cases: Lst[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(using Context): Try =
         Try(tree: Tree)(expr, cases, finalizer)
       def UnApply(tree: UnApply)(fun: Tree = tree.fun, implicits: List[Tree] = tree.implicits, patterns: List[Tree] = tree.patterns)(using Context): UnApply =
         UnApply(tree: Tree)(fun, implicits, patterns)

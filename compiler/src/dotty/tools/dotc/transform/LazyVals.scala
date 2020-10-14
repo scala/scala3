@@ -356,7 +356,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
     val initialize = If(
       casFlag.appliedTo(thiz, offset, flagRef, computeState, fieldId),
-      Try(compute, List(retryCase), EmptyTree),
+      Try(compute, Lst(retryCase), EmptyTree),
       unitLiteral
     )
 

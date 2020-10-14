@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Spans.Span
+import util.Lst; // import Lst.::
 
 /** Compiles the cases that can not be handled by primitive catch cases as a common pattern match.
  *
@@ -81,7 +82,7 @@ class TryCatchPatterns extends MiniPhase {
       false
   }
 
-  private def mkFallbackPatterMatchCase(patternMatchCases: List[CaseDef], span: Span)(
+  private def mkFallbackPatterMatchCase(patternMatchCases: Lst[CaseDef], span: Span)(
       implicit ctx: Context): Option[CaseDef] =
     if (patternMatchCases.isEmpty) None
     else {
@@ -93,7 +94,7 @@ class TryCatchPatterns extends MiniPhase {
       Some(CaseDef(
           Bind(fallbackSelector, Underscore(fallbackSelector.info).withSpan(span)),
           EmptyTree,
-          transformFollowing(Match(sel, patternMatchCases ::: rethrow :: Nil)))
+          transformFollowing(Match(sel, patternMatchCases :+ rethrow)))
       )
     }
 }

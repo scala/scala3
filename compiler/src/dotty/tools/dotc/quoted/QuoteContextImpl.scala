@@ -786,19 +786,19 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Match extends MatchModule:
       def apply(selector: Term, cases: List[CaseDef]): Match =
-        withDefaultPos(tpd.Match(selector, cases))
+        withDefaultPos(tpd.Match(selector, cases.toLst))
 
       def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match =
-        tpd.cpy.Match(original)(selector, cases)
+        tpd.cpy.Match(original)(selector, cases.toLst)
 
       def unapply(x: Match): Option[(Term, List[CaseDef])] =
-        Some((x.scrutinee, x.cases))
+        Some((x.scrutinee, x.cases.toList))
     end Match
 
     object MatchMethodsImpl extends MatchMethods:
       extension (self: Match):
         def scrutinee: Term = self.selector
-        def cases: List[CaseDef] = self.cases
+        def cases: List[CaseDef] = self.cases.toList
       end extension
     end MatchMethodsImpl
 
@@ -813,16 +813,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object GivenMatch extends GivenMatchModule:
       def apply(cases: List[CaseDef]): GivenMatch =
-        withDefaultPos(tpd.Match(tpd.EmptyTree, cases))
+        withDefaultPos(tpd.Match(tpd.EmptyTree, cases.toLst))
       def copy(original: Tree)(cases: List[CaseDef]): GivenMatch =
-        tpd.cpy.Match(original)(tpd.EmptyTree, cases)
+        tpd.cpy.Match(original)(tpd.EmptyTree, cases.toLst)
       def unapply(x: GivenMatch): Option[List[CaseDef]] =
-        Some(x.cases)
+        Some(x.cases.toList)
     end GivenMatch
 
     object GivenMatchMethodsImpl extends GivenMatchMethods:
       extension (self: GivenMatch):
-        def cases: List[CaseDef] = self.cases
+        def cases: List[CaseDef] = self.cases.toList
       end extension
     end GivenMatchMethodsImpl
 
@@ -837,17 +837,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Try extends TryModule:
       def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        withDefaultPos(tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.Try(expr, cases.toLst, finalizer.getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        tpd.cpy.Try(original)(expr, cases, finalizer.getOrElse(tpd.EmptyTree))
+        tpd.cpy.Try(original)(expr, cases.toLst, finalizer.getOrElse(tpd.EmptyTree))
       def unapply(x: Try): Option[(Term, List[CaseDef], Option[Term])] =
-        Some((x.body, x.cases, optional(x.finalizer)))
+        Some((x.body, x.cases.toList, optional(x.finalizer)))
     end Try
 
     object TryMethodsImpl extends TryMethods:
       extension (self: Try):
         def body: Term = self.expr
-        def cases: List[CaseDef] = self.cases
+        def cases: List[CaseDef] = self.cases.toList
         def finalizer: Option[Term] = optional(self.finalizer)
       end extension
     end TryMethodsImpl
@@ -1196,18 +1196,18 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object MatchTypeTree extends MatchTypeTreeModule:
       def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
-        withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases))
+        withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases.toLst))
       def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
-        tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
+        tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases.toLst)
       def unapply(x: MatchTypeTree): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-        Some((optional(x.bound), x.selector, x.cases))
+        Some((optional(x.bound), x.selector, x.cases.toList))
     end MatchTypeTree
 
     object MatchTypeTreeMethodsImpl extends MatchTypeTreeMethods:
       extension (self: MatchTypeTree):
         def bound: Option[TypeTree] = optional(self.bound)
         def selector: TypeTree = self.selector
-        def cases: List[TypeCaseDef] = self.cases
+        def cases: List[TypeCaseDef] = self.cases.toList
       end extension
     end MatchTypeTreeMethodsImpl
 

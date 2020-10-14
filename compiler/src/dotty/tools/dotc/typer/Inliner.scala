@@ -978,7 +978,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
      *   @return    optionally, if match can be reduced to a matching case: A pair of
      *              bindings for all pattern-bound variables and the RHS of the case.
      */
-    def reduceInlineMatch(scrutinee: Tree, scrutType: Type, cases: List[CaseDef], typer: Typer)(using Context): MatchRedux = {
+    def reduceInlineMatch(scrutinee: Tree, scrutType: Type, cases: Lst[CaseDef], typer: Typer)(using Context): MatchRedux = {
 
       val isImplicit = scrutinee.isEmpty
 
@@ -1178,12 +1178,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         else None
       }
 
-      def recur(cases: List[CaseDef]): MatchRedux = cases match {
-        case Nil => None
-        case cdef :: cases1 => reduceCase(cdef) `orElse` recur(cases1)
-      }
+      def recur(cases: Iterator[CaseDef]): MatchRedux =
+        if cases.isEmpty then None
+        else reduceCase(cases.next) `orElse` recur(cases)
 
-      recur(cases)
+      recur(cases.iterator)
     }
   }
 
@@ -1265,12 +1264,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         case res => res
       }
 
-    override def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(using Context) =
+    override def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: Lst[untpd.CaseDef], pt: Type)(using Context) =
       if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
         super.typedMatchFinish(tree, sel, wideSelType, cases, pt)
       else {
         val selType = if (sel.isEmpty) wideSelType else sel.tpe
-        reduceInlineMatch(sel, selType, cases.asInstanceOf[List[CaseDef]], this) match {
+        reduceInlineMatch(sel, selType, cases.asInstanceOf[Lst[CaseDef]], this) match {
           case Some((caseBindings, rhs0)) =>
             // drop type ascriptions/casts hiding pattern-bound types (which are now aliases after reducing the match)
             // note that any actually necessary casts will be reinserted by the typing pass below

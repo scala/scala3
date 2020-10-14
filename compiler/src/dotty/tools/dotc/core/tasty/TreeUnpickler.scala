@@ -1295,14 +1295,14 @@ class TreeUnpickler(reader: TastyReader,
       setSpan(start, tree)
     }
 
-    def readCases(end: Addr)(using Context): List[CaseDef] =
+    def readCases(end: Addr)(using Context): Lst[CaseDef] =
       collectWhile((nextUnsharedTag == CASEDEF) && currentAddr != end) {
         if (nextByte == SHAREDterm) {
           readByte()
           forkAt(readAddr()).readCase()(using ctx.fresh.setNewScope)
         }
         else readCase()(using ctx.fresh.setNewScope)
-      }
+      }.toLst
 
     def readCase()(using Context): CaseDef = {
       val sctx = sourceChangeContext()

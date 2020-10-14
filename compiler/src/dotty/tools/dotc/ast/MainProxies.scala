@@ -92,7 +92,7 @@ object MainProxies {
         Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
         EmptyTree,
         Apply(ref(defn.CLP_showError.termRef), errVar :: Nil))
-      val body = Try(call, handler :: Nil, EmptyTree)
+      val body = Try(call, Lst(handler), EmptyTree)
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
       val mainMeth = DefDef(nme.main, Nil, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)

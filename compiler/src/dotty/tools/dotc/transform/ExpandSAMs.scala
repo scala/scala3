@@ -122,7 +122,7 @@ class ExpandSAMs extends MiniPhase {
         val isDefinedAtFn = overrideSym(defn.PartialFunction_isDefinedAt)
         val applyOrElseFn = overrideSym(defn.PartialFunction_applyOrElse)
 
-        def translateMatch(tree: Match, pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree)(using Context) = {
+        def translateMatch(tree: Match, pfParam: Symbol, cases: Lst[CaseDef], defaultValue: Tree)(using Context) = {
           val selector = tree.selector
           val selectorTpe = selector.tpe.widen
           val defaultSym = newSymbol(pfParam.owner, nme.WILDCARD, Synthetic | Case, selectorTpe)

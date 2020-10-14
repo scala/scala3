@@ -1297,7 +1297,7 @@ class Typer extends Namer
       case EmptyTree =>
         if (tree.isInline) {
           checkInInlineContext("summonFrom", tree.srcPos)
-          val cases1 = tree.cases.mapconserve {
+          val cases1 = tree.cases.mapConserve {
             case cdef @ CaseDef(pat @ Typed(Ident(nme.WILDCARD), _), _, _) =>
               // case _ : T  -->  case evidence$n : T
               cpy.CaseDef(cdef)(pat = untpd.Bind(EvidenceParamName.fresh(), pat))
@@ -1343,7 +1343,7 @@ class Typer extends Namer
           && tree.cases.forall(_.guard.isEmpty)
           && tree.cases
             .map(cas => untpd.unbind(untpd.unsplice(cas.pat)))
-            .zip(mt.cases)
+            .zip(mt.cases.toLst)
             .forall {
               case (pat: untpd.Typed, pt) =>
                 // To check that pattern types correspond we need to type
@@ -1366,7 +1366,7 @@ class Typer extends Namer
         }
 
         result match {
-          case Match(sel, CaseDef(pat, _, _) :: _) =>
+          case Match(sel, Lst(CaseDef(pat, _, _), _: _*)) =>
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
               case Some(checkMode) =>
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
@@ -1383,28 +1383,26 @@ class Typer extends Namer
   /** Special typing of Match tree when the expected type is a MatchType,
    *  and the patterns of the Match tree and the MatchType correspond.
    */
-  def typedDependentMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: MatchType)(using Context): Tree = {
+  def typedDependentMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: Lst[untpd.CaseDef], pt: MatchType)(using Context): Tree = {
     var caseCtx = ctx
-    val cases1 = tree.cases.zip(pt.cases)
-      .map { case (cas, tpe) =>
-        val case1 = typedCase(cas, sel, wideSelType, tpe)(using caseCtx)
-        caseCtx = Nullables.afterPatternContext(sel, case1.pat)
-        case1
-      }
-      .asInstanceOf[List[CaseDef]]
+    val cases1 = tree.cases.zipWith(pt.cases.toLst) { (cas, tpe) =>
+      val case1 = typedCase(cas, sel, wideSelType, tpe)(using caseCtx)
+      caseCtx = Nullables.afterPatternContext(sel, case1.pat)
+      case1
+    }
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1).cast(pt)
   }
 
   // Overridden in InlineTyper for inline matches
-  def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(using Context): Tree = {
-    val cases1 = harmonic(harmonize, pt)(typedCases(cases, sel, wideSelType, pt.dropIfProto))
-      .asInstanceOf[List[CaseDef]]
+  def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: Lst[untpd.CaseDef], pt: Type)(using Context): Tree = {
+    val cases1 = harmonic(harmonize, pt)(typedCases(cases, sel, wideSelType, pt.dropIfProto).toList)
+      .asInstanceOf[List[CaseDef]].toLst
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
 
-  def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType: Type, pt: Type)(using Context): List[CaseDef] =
+  def typedCases(cases: Lst[untpd.CaseDef], sel: Tree, wideSelType: Type, pt: Type)(using Context): Lst[CaseDef] =
     var caseCtx = ctx
-    cases.mapconserve { cas =>
+    cases.mapConserve { cas =>
       val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx)
       caseCtx = Nullables.afterPatternContext(sel, case1.pat)
       case1
@@ -1576,21 +1574,21 @@ class Typer extends Namer
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try = {
     val expr2 :: cases2x = harmonic(harmonize, pt) {
       val expr1 = typed(tree.expr, pt.dropIfProto)
-      val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto)
+      val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto).toList
       expr1 :: cases1
     }
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
-    val cases2 = cases2x.asInstanceOf[List[CaseDef]]
+    val cases2 = cases2x.asInstanceOf[List[CaseDef]].toLst
     assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2)
   }
 
   def typedTry(tree: untpd.ParsedTry, pt: Type)(using Context): Try =
-    val cases: List[untpd.CaseDef] = tree.handler match
+    val cases: Lst[untpd.CaseDef] = tree.handler match
       case Match(EmptyTree, cases) => cases
-      case EmptyTree => Nil
+      case EmptyTree => Lst()
       case handler =>
         val handler1 = typed(handler, defn.FunctionType(1).appliedTo(defn.ThrowableType, pt))
-        desugar.makeTryCase(handler1) :: Nil
+        Lst(desugar.makeTryCase(handler1))
     typedTry(untpd.Try(tree.expr, cases, tree.finalizer).withSpan(tree.span), pt)
 
   def typedThrow(tree: untpd.Throw)(using Context): Tree = {
@@ -1796,7 +1794,7 @@ class Typer extends Namer
       else typed(tree.bound)
     val sel1 = typed(tree.selector)
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
-    val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1.tpe, pt1))
+    val cases1 = tree.cases.mapConserve(typedTypeCase(_, sel1.tpe, pt1))
     assignType(cpy.MatchTypeTree(tree)(bound1, sel1, cases1), bound1, sel1, cases1)
   }
 

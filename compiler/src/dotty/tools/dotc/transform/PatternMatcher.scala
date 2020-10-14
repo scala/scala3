@@ -847,7 +847,7 @@ object PatternMatcher {
         CaseDef(pat, EmptyTree, emit(ons))
       }
 
-      Match(intScrutinee, caseDefs)
+      Match(intScrutinee, caseDefs.toLst)
     }
 
     /** If selfCheck is `true`, used to check whether a tree gets generated twice */
@@ -975,15 +975,15 @@ object PatternMatcher {
         val resultCases = result match {
           case Match(_, cases) => cases
           case Block(_, Match(_, cases)) => cases
-          case _ => Nil
+          case _ => Lst.Empty
         }
         def typesInPattern(pat: Tree): List[Type] = pat match {
           case Alternative(pats) => pats.flatMap(typesInPattern)
           case _ => pat.tpe :: Nil
         }
-        def typesInCases(cdefs: List[CaseDef]): List[Type] =
-          cdefs.flatMap(cdef => typesInPattern(cdef.pat))
-        def numTypes(cdefs: List[CaseDef]): Int =
+        def typesInCases(cdefs: Lst[CaseDef]): Lst[Type] =
+          cdefs.flatMapIterable(cdef => typesInPattern(cdef.pat))
+        def numTypes(cdefs: Lst[CaseDef]): Int =
           typesInCases(cdefs).toSet.size: Int // without the type ascription, testPickling fails because of #2840.
         if (numTypes(resultCases) < numTypes(original.cases)) {
           patmatch.println(i"switch warning for ${ctx.compilationUnit}")

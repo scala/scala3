@@ -357,6 +357,7 @@ object Lst:
         acc
       case x: T @unchecked =>
         x
+    def reduce(op: (T, T) => T) = reduceLeft(op)
 
     def ::: (ys: Lst[T]): Lst[T] = xs ++ ys
 

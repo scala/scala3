@@ -1095,7 +1095,7 @@ object desugar {
       val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
       val matchExpr =
         if (tupleOptimizable) rhs
-        else Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+        else Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), Lst(caseDef))
       vars match {
         case Nil if !mods.is(Lazy) =>
           matchExpr
@@ -1303,7 +1303,7 @@ object desugar {
    *
    *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked?) match { cases }
    */
-  def makeCaseLambda(cases: List[CaseDef], checkMode: MatchCheck, nparams: Int = 1)(using Context): Function = {
+  def makeCaseLambda(cases: Lst[CaseDef], checkMode: MatchCheck, nparams: Int = 1)(using Context): Function = {
     val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
     val selector = makeTuple(params.map(p => Ident(p.name)))
     Function(params, Match(makeSelector(selector, checkMode), cases))
@@ -1453,7 +1453,7 @@ object desugar {
           val matchCheckMode =
             if (gen.checkMode == GenCheckMode.Check) MatchCheck.IrrefutableGenFrom
             else MatchCheck.None
-          makeCaseLambda(CaseDef(gen.pat, EmptyTree, body) :: Nil, matchCheckMode)
+          makeCaseLambda(Lst(CaseDef(gen.pat, EmptyTree, body)), matchCheckMode)
       }
 
       /** If `pat` is not an Identifier, a Typed(Ident, _), or a Bind, wrap
@@ -1496,7 +1496,7 @@ object desugar {
        *    else real withFilter
        */
       def makePatFilter(rhs: Tree, pat: Tree): Tree = {
-        val cases = List(
+        val cases = Lst(
           CaseDef(pat, EmptyTree, Literal(Constant(true))),
           CaseDef(Ident(nme.WILDCARD), EmptyTree, Literal(Constant(false))))
         Apply(Select(rhs, nme.withFilter), makeCaseLambda(cases, MatchCheck.None))

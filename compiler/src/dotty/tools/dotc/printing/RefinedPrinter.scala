@@ -439,14 +439,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextGlobal(ref) ~ (":" ~ toText(target) provided !target.isEmpty) ~ ")"
       case Match(sel, cases) =>
         val isInline = tree.isInstanceOf[Trees.InlineMatch[?]]
-        if (sel.isEmpty && !isInline) blockText(cases.toLst)
+        if (sel.isEmpty && !isInline) blockText(cases)
         else changePrec(GlobalPrec) {
           val selTxt: Text =
             if (isInline)
               if (sel.isEmpty) keywordStr("implicit")
               else keywordStr("inline ") ~ toText(sel)
             else toText(sel)
-          selTxt ~ keywordStr(" match ") ~ blockText(cases.toLst)
+          selTxt ~ keywordStr(" match ") ~ blockText(cases)
         }
       case CaseDef(pat, guard, body) =>
         keywordStr("case ") ~ inPattern(toText(pat)) ~ optText(guard)(keywordStr(" if ") ~ _) ~ " => " ~ caseBlockText(body)
@@ -502,7 +502,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case MatchTypeTree(bound, sel, cases) =>
         changePrec(GlobalPrec) {
-          toText(sel) ~ keywordStr(" match ") ~ blockText(cases.toLst) ~
+          toText(sel) ~ keywordStr(" match ") ~ blockText(cases) ~
           (" <: " ~ toText(bound) provided !bound.isEmpty)
         }
       case ByNameTypeTree(tpt) =>
@@ -913,8 +913,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def optText[T >: Untyped](tree: Tree[T])(encl: Text => Text): Text =
     if (tree.isEmpty) "" else encl(toText(tree))
 
-  def optText[T >: Untyped](tree: List[Tree[T]])(encl: Text => Text): Text =
-    if (tree.exists(!_.isEmpty)) encl(blockText(tree.toLst)) else ""
+  def optText[T >: Untyped](trees: Lst[Tree[T]])(encl: Text => Text): Text =
+    if (trees.exists(!_.isEmpty)) encl(blockText(trees)) else ""
 
   override protected def ParamRefNameString(name: Name): String =
     name.toString

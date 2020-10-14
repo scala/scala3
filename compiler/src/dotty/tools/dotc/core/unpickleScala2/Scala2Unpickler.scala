@@ -1150,7 +1150,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case MATCHtree =>
         val selector = readTreeRef()
         val cases = until(end, () => readCaseDefRef())
-        Match(selector, cases)
+        Match(selector, cases.toLst)
 
       case RETURNtree =>
         setSym()
@@ -1160,7 +1160,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val block = readTreeRef()
         val finalizer = readTreeRef()
         val catches = until(end, () => readCaseDefRef())
-        Try(block, catches, finalizer)
+        Try(block, catches.toLst, finalizer)
 
       case THROWtree =>
         Throw(readTreeRef())

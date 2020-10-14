@@ -1967,7 +1967,7 @@ object Parsers {
             if in.token == CATCH then
               val span = in.offset
               in.nextToken()
-              (if in.token == CASE then Match(EmptyTree, caseClause(exprOnly = true) :: Nil)
+              (if in.token == CASE then Match(EmptyTree, Lst(caseClause(exprOnly = true)))
                 else subExpr(),
                 span)
             else (EmptyTree, -1)
@@ -2540,11 +2540,11 @@ object Parsers {
     /** CaseClauses         ::= CaseClause {CaseClause}
      *  TypeCaseClauses     ::= TypeCaseClause {TypeCaseClause}
      */
-    def caseClauses(clause: () => CaseDef): List[CaseDef] = {
-      val buf = new ListBuffer[CaseDef]
+    def caseClauses(clause: () => CaseDef): Lst[CaseDef] = {
+      val buf = Lst.Buffer[CaseDef]()
       buf += clause()
       while (in.token == CASE) buf += clause()
-      buf.toList
+      buf.toLst
     }
 
     /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block

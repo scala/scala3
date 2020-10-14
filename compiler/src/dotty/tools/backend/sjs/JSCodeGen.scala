@@ -1595,7 +1595,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
   }
 
-  private def genTryCatch(body: js.Tree, catches: List[CaseDef],
+  private def genTryCatch(body: js.Tree, catches: Lst[CaseDef],
       resultType: jstpe.Type,
       isStat: Boolean)(implicit pos: SourcePosition): js.Tree = {
     val exceptIdent = freshLocalIdent("e")

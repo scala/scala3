@@ -417,7 +417,7 @@ trait TypeAssigner {
     tree.withType(ownType)
   }
 
-  def assignType(tree: untpd.Match, scrutinee: Tree, cases: List[CaseDef])(using Context): Match =
+  def assignType(tree: untpd.Match, scrutinee: Tree, cases: Lst[CaseDef])(using Context): Match =
     tree.withType(TypeComparer.lub(cases.tpes))
 
   def assignType(tree: untpd.Labeled)(using Context): Labeled =
@@ -429,7 +429,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.WhileDo)(using Context): WhileDo =
     tree.withType(if (tree.cond eq EmptyTree) defn.NothingType else defn.UnitType)
 
-  def assignType(tree: untpd.Try, expr: Tree, cases: List[CaseDef])(using Context): Try =
+  def assignType(tree: untpd.Try, expr: Tree, cases: Lst[CaseDef])(using Context): Try =
     if (cases.isEmpty) tree.withType(expr.tpe)
     else tree.withType(TypeComparer.lub(expr.tpe :: cases.tpes))
 
@@ -474,7 +474,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.LambdaTypeTree, tparamDefs: List[TypeDef], body: Tree)(using Context): LambdaTypeTree =
     tree.withType(HKTypeLambda.fromParams(tparamDefs.map(_.symbol.asType), body.tpe))
 
-  def assignType(tree: untpd.MatchTypeTree, bound: Tree, scrutinee: Tree, cases: List[CaseDef])(using Context): MatchTypeTree = {
+  def assignType(tree: untpd.MatchTypeTree, bound: Tree, scrutinee: Tree, cases: Lst[CaseDef])(using Context): MatchTypeTree = {
     val boundType = if (bound.isEmpty) defn.AnyType else bound.tpe
     tree.withType(MatchType(boundType, scrutinee.tpe, cases.tpes))
   }

@@ -874,7 +874,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         project(OrType(selTyp, constantNullType))
 
     // in redundancy check, take guard as false in order to soundly approximate
-    def projectPrevCases(cases: List[CaseDef]): Space =
+    def projectPrevCases(cases: Lst[CaseDef]): Space =
       cases.map { x =>
         if (x.guard.isEmpty) project(x.pat)
         else Empty

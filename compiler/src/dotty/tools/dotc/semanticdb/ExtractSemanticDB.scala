@@ -257,7 +257,7 @@ class ExtractSemanticDB extends Phase:
 
       def unapply(tree: ValDef)(using Context): Option[(Tree, Tree)] = tree.rhs match
 
-        case Match(Typed(selected: Tree, tpt: TypeTree), CaseDef(pat: Tree, _, _) :: Nil)
+        case Match(Typed(selected: Tree, tpt: TypeTree), Lst(CaseDef(pat: Tree, _, _)))
         if tpt.span.exists && !tpt.span.hasLength && tpt.tpe.isAnnotatedByUnchecked =>
           Some((pat, selected))
 

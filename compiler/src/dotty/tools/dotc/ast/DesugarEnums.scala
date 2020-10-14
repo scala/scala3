@@ -144,7 +144,7 @@ object DesugarEnums {
       val stringCases = enumValues.map(enumValue =>
         CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, enumValue)
       ) ::: defaultCase :: Nil
-      Match(Ident(nme.nameDollar), stringCases)
+      Match(Ident(nme.nameDollar), stringCases.toLst)
     val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.nameDollar, defn.StringType) :: Nil),
       TypeTree(), valuesOfBody)
         .withFlags(Synthetic)
