@@ -16,10 +16,10 @@ def Test: Unit =
   import Tag._, ListLike._, TypeCtorsK._
   import reflect.Selectable.reflectiveSelectable
 
-  val tags: Array[Tag[?]]              = Tag.values // error: value values is not a member of object Tag
-  val listlikes: Array[ListLike[?]]    = ListLike.values // error: value values is not a member of object ListLike
-  val typeCtorsK: Array[TypeCtorsK[?]] = TypeCtorsK.values // error: value values is not a member of object TypeCtorsK
+  val tags: Array[Tag[?]]              = Tag.values // error
+  val listlikes: Array[ListLike[?]]    = ListLike.values // error
+  val typeCtorsK: Array[TypeCtorsK[?]] = TypeCtorsK.values // error
 
-  Tag.valueOf("Int") // error: value valueOf is not a member of object Tag
-  ListLike.valueOf("EmptyListLike") // error: value valueOf is not a member of object ListLike
-  TypeCtorsK.valueOf("Option") // error: value valueOf is not a member of object TypeCtorsK
+  Tag.valueOf("Int") // error
+  ListLike.valueOf("EmptyListLike") // error
+  TypeCtorsK.valueOf("Option") // error

@@ -1,0 +1,24 @@
+-- Error: tests/neg/enum-values.scala:19:45 ----------------------------------------------------------------------------
+19 |  val tags: Array[Tag[?]]              = Tag.values // error
+   |                                         ^^^^^^^^^^
+   |         Although class Tag is an enum, it has non-singleton cases, which prevents it from having a values array
+-- Error: tests/neg/enum-values.scala:20:50 ----------------------------------------------------------------------------
+20 |  val listlikes: Array[ListLike[?]]    = ListLike.values // error
+   |                                         ^^^^^^^^^^^^^^^
+   |    Although class ListLike is an enum, it has non-singleton cases, which prevents it from having a values array
+-- Error: tests/neg/enum-values.scala:21:52 ----------------------------------------------------------------------------
+21 |  val typeCtorsK: Array[TypeCtorsK[?]] = TypeCtorsK.values // error
+   |                                         ^^^^^^^^^^^^^^^^^
+   |  Although class TypeCtorsK is an enum, it has non-singleton cases, which prevents it from having a values array
+-- Error: tests/neg/enum-values.scala:23:13 ----------------------------------------------------------------------------
+23 |  Tag.valueOf("Int") // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |Although class Tag is an enum, it has non-singleton cases, which prevents it from having a valueOf lookup method
+-- Error: tests/neg/enum-values.scala:24:18 ----------------------------------------------------------------------------
+24 |  ListLike.valueOf("EmptyListLike") // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Although class ListLike is an enum, it has non-singleton cases, which prevents it from having a valueOf lookup method
+-- Error: tests/neg/enum-values.scala:25:20 ----------------------------------------------------------------------------
+25 |  TypeCtorsK.valueOf("Option") // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |Although class TypeCtorsK is an enum, it has non-singleton cases, which prevents it from having a valueOf lookup method
