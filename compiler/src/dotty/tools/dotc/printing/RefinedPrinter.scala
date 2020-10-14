@@ -337,7 +337,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => tree
     }
 
-    def importText(expr: Tree, selectors: List[untpd.ImportSelector]) =
+    def importText(expr: Tree, selectors: Lst[untpd.ImportSelector]) =
 
       def selectorText(sel: untpd.ImportSelector): Text =
         val id: Text =
@@ -351,10 +351,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         id ~ rename ~ bound
 
       val selectorsText: Text = selectors match
-        case (sel @ untpd.ImportSelector(name, EmptyTree, EmptyTree)) :: Nil =>
+        case Lst(sel @ untpd.ImportSelector(name, EmptyTree, EmptyTree)) =>
           selectorText(sel)
         case _ =>
-          "{" ~ Text(selectors.map(selectorText), ", ") ~ "}"
+          "{" ~ Text(selectors.map(selectorText).toList, ", ") ~ "}"
 
       toTextLocal(expr) ~ "." ~ selectorsText
 

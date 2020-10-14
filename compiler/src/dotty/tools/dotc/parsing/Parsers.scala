@@ -3056,7 +3056,7 @@ object Parsers {
     def finalizeDef(md: MemberDef, mods: Modifiers, start: Int): md.ThisTree[Untyped] =
       md.withMods(mods).setComment(in.getDocComment(start))
 
-    type ImportConstr = (Tree, List[ImportSelector]) => Tree
+    type ImportConstr = (Tree, Lst[ImportSelector]) => Tree
 
     /** Import  ::= `import' [`given'] [ImportExpr {`,' ImportExpr}
      *  Export  ::= `export' [`given'] [ImportExpr {`,' ImportExpr}
@@ -3110,9 +3110,9 @@ object Parsers {
        *  WildCardSelector ::=  ‘given’ [InfixType]
        *                     |  ‘_'
        */
-      def importSelectors(idOK: Boolean): List[ImportSelector] =
+      def importSelectors(buf: Lst.Buffer[ImportSelector], idOK: Boolean): Lst[ImportSelector] =
         val isWildcard = in.token == USCORE || in.token == GIVEN
-        val selector = atSpan(in.offset) {
+        buf += atSpan(in.offset) {
           in.token match
             case USCORE =>
               ImportSelector(wildcardSelectorId())
@@ -3135,23 +3135,21 @@ object Parsers {
                 }
               else ImportSelector(from)
         }
-        val rest =
-          if in.token == COMMA then
-            in.nextToken()
-            importSelectors(idOK = idOK && !isWildcard)
-          else
-            Nil
-        selector :: rest
+        if in.token == COMMA then
+          in.nextToken()
+          importSelectors(buf, idOK = idOK && !isWildcard)
+        else
+          buf.toLst
 
       def importSelection(qual: Tree): Tree =
         accept(DOT)
         in.token match
           case USCORE =>
-            mkTree(qual, ImportSelector(wildcardSelectorId()) :: Nil)
+            mkTree(qual, Lst(ImportSelector(wildcardSelectorId())))
           case GIVEN =>
-            mkTree(qual, ImportSelector(givenSelectorId(in.skipToken())) :: Nil)
+            mkTree(qual, Lst(ImportSelector(givenSelectorId(in.skipToken()))))
           case LBRACE =>
-            mkTree(qual, inBraces(importSelectors(idOK = true)))
+            mkTree(qual, inBraces(importSelectors(Lst.Buffer(), idOK = true)))
           case _ =>
             val start = in.offset
             val name = ident()
@@ -3159,7 +3157,7 @@ object Parsers {
               importSelection(atSpan(startOffset(qual), start) { Select(qual, name) })
             else
               atSpan(startOffset(qual)) {
-                mkTree(qual, ImportSelector(atSpan(start) { Ident(name) }) :: Nil)
+                mkTree(qual, Lst(ImportSelector(atSpan(start) { Ident(name) })))
               }
 
       () => importSelection(simpleRef())

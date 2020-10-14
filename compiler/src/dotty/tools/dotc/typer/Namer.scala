@@ -652,7 +652,7 @@ class Namer { typer: Typer =>
    *    Nothing  if no wildcard imports of this kind exist
    *    Any      if there are unbounded wildcard imports of this kind
    */
-  def importBound(sels: List[untpd.ImportSelector], isGiven: Boolean)(using Context): Type =
+  def importBound(sels: Lst[untpd.ImportSelector], isGiven: Boolean)(using Context): Type =
     sels.foldLeft(defn.NothingType: Type) { (bound, sel) =>
       if sel.isWildcard && sel.isGiven == isGiven then
         if sel.bound.isEmpty then defn.AnyType
@@ -1039,17 +1039,17 @@ class Namer { typer: Typer =>
                 && mbr.matchesImportBound(if mbr.symbol.is(Given) then givenBound else wildcardBound)
               then addForwarder(alias, mbr, span)
 
-        def addForwarders(sels: List[untpd.ImportSelector], seen: List[TermName]): Unit = sels match
-          case sel :: sels1 =>
+        def addForwarders(sels: Iterator[untpd.ImportSelector], seen: List[TermName]): Unit =
+          if sels.hasNext then
+            val sel = sels.next
             if sel.isWildcard then
               addWildcardForwarders(seen, sel.span)
             else
               if sel.rename != nme.WILDCARD then
                 addForwardersNamed(sel.name, sel.rename, sel.span)
-              addForwarders(sels1, sel.name :: seen)
-          case _ =>
+              addForwarders(sels, sel.name :: seen)
 
-        addForwarders(selectors, Nil)
+        addForwarders(selectors.iterator, Nil)
         val forwarders = buf.toList
         exp.pushAttachment(ExportForwarders, forwarders)
         forwarders

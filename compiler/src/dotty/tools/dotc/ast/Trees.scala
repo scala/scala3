@@ -810,7 +810,7 @@ object Trees {
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped thicket consisting of `name` and `rename`.
    */
-  case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[untpd.ImportSelector])(implicit @constructorOnly src: SourceFile)
+  case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: Lst[untpd.ImportSelector])(implicit @constructorOnly src: SourceFile)
     extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] = Import[T]
   }
@@ -1220,8 +1220,8 @@ object Trees {
         case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (derived eq tree.derived) && (self eq tree.self) && (body.asInstanceOf[AnyRef] eq tree.unforcedBody.asInstanceOf[AnyRef]) => tree
         case tree => finalize(tree, untpd.Template(constr, parents, derived, self, body)(sourceFile(tree)))
       }
-      def Import(tree: Tree)(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import = tree match {
-        case tree: Import if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+      def Import(tree: Tree)(expr: Tree, selectors: Lst[untpd.ImportSelector])(using Context): Import = tree match {
+        case tree: Import if (expr eq tree.expr) && (selectors eqLst tree.selectors) => tree
         case _ => finalize(tree, untpd.Import(expr, selectors)(sourceFile(tree)))
       }
       def PackageDef(tree: Tree)(pid: RefTree, stats: Lst[Tree])(using Context): PackageDef = tree match {

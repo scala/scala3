@@ -129,17 +129,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Import extends ImportModule:
       def apply(expr: Term, selectors: List[ImportSelector]): Import =
-        withDefaultPos(tpd.Import(expr, selectors))
+        withDefaultPos(tpd.Import(expr, selectors.toLst))
       def copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import =
-        tpd.cpy.Import(original)(expr, selectors)
+        tpd.cpy.Import(original)(expr, selectors.toLst)
       def unapply(tree: Import): Option[(Term, List[ImportSelector])] =
-        Some((tree.expr, tree.selectors))
+        Some((tree.expr, tree.selectors.toList))
     end Import
 
     object ImportMethodsImpl extends ImportMethods:
       extension (self: Import):
         def expr: Term = self.expr
-        def selectors: List[ImportSelector] = self.selectors
+        def selectors: List[ImportSelector] = self.selectors.toList
       end extension
     end ImportMethodsImpl
 

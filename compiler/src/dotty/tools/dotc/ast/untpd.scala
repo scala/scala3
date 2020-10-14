@@ -114,7 +114,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class GenAlias(pat: Tree, expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @constructorOnly src: SourceFile) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
-  case class Export(expr: Tree, selectors: List[ImportSelector])(implicit @constructorOnly src: SourceFile) extends Tree
+  case class Export(expr: Tree, selectors: Lst[ImportSelector])(implicit @constructorOnly src: SourceFile) extends Tree
   case class ExtMethods(tparams: List[TypeDef], vparamss: List[List[ValDef]], methods: List[DefDef])(implicit @constructorOnly src: SourceFile) extends Tree
   case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
@@ -404,7 +404,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Template(constr: DefDef, parents: List[Tree], derived: List[Tree], self: ValDef, body: LazyTreeLst)(implicit src: SourceFile): Template =
     if (derived.isEmpty) new Template(constr, parents, self, body)
     else new DerivingTemplate(constr, parents ++ derived, self, body, derived.length)
-  def Import(expr: Tree, selectors: List[ImportSelector])(implicit src: SourceFile): Import = new Import(expr, selectors)
+  def Import(expr: Tree, selectors: Lst[ImportSelector])(implicit src: SourceFile): Import = new Import(expr, selectors)
   def PackageDef(pid: RefTree, stats: Lst[Tree])(implicit src: SourceFile): PackageDef = new PackageDef(pid, stats)
   def Annotated(arg: Tree, annot: Tree)(implicit src: SourceFile): Annotated = new Annotated(arg, annot)
 
@@ -629,8 +629,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs)(tree.source))
     }
-    def Export(tree: Tree)(expr: Tree, selectors: List[ImportSelector])(using Context): Tree = tree match {
-      case tree: Export if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+    def Export(tree: Tree)(expr: Tree, selectors: Lst[ImportSelector])(using Context): Tree = tree match {
+      case tree: Export if (expr eq tree.expr) && (selectors eqLst tree.selectors) => tree
       case _ => finalize(tree, untpd.Export(expr, selectors)(tree.source))
     }
     def ExtMethods(tree: Tree)(tparams: List[TypeDef], vparamss: List[List[ValDef]], methods: List[DefDef])(using Context): Tree = tree match

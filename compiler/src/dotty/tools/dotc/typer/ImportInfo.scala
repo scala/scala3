@@ -14,6 +14,7 @@ import StdNames.nme
 import printing.Texts.Text
 import ProtoTypes.NoViewsAllowed.normalizedCompatible
 import Decorators._
+import util.Lst; // import Lst.::
 
 object ImportInfo {
 
@@ -21,10 +22,10 @@ object ImportInfo {
 
   /** The import info for a root import */
   def rootImport(ref: RootRef)(using Context): ImportInfo =
-    var selectors =
-      untpd.ImportSelector(untpd.Ident(nme.WILDCARD))  // import all normal members...
-      :: untpd.ImportSelector(untpd.Ident(nme.EMPTY))  // ... and also all given members
-      :: Nil
+    var selectors = Lst(
+      untpd.ImportSelector(untpd.Ident(nme.WILDCARD)),  // import all normal members...
+      untpd.ImportSelector(untpd.Ident(nme.EMPTY))     // ... and also all given members
+    )
     if ref.isPredef then                               // do not import any2stringadd
       selectors = untpd.ImportSelector(untpd.Ident(nme.any2stringadd), untpd.Ident(nme.WILDCARD))
         :: selectors
@@ -54,7 +55,7 @@ object ImportInfo {
  *                         scala.Predef or dotty.DottyPredef in the start context, false otherwise.
  */
 class ImportInfo(symf: Context ?=> Symbol,
-                 val selectors: List[untpd.ImportSelector],
+                 val selectors: Lst[untpd.ImportSelector],
                  symNameOpt: Option[TermName],
                  val isRootImport: Boolean = false) extends Showable {
 

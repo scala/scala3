@@ -360,7 +360,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Block(Lst(cdef), New(cls.typeRef, Nil))
   }
 
-  def Import(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import =
+  def Import(expr: Tree, selectors: Lst[untpd.ImportSelector])(using Context): Import =
     ta.assignType(untpd.Import(expr, selectors), newImportSymbol(ctx.owner, expr))
 
   def PackageDef(pid: RefTree, stats: Lst[Tree])(using Context): PackageDef =
@@ -1337,7 +1337,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    * The list of select trees that resolve to the same symbols as the ones that are imported
    * by `imp`.
    */
-  def importSelections(imp: Import)(using Context): List[Select] = {
+  def importSelections(imp: Import)(using Context): Lst[Select] = {
     def imported(sym: Symbol, id: untpd.Ident, rename: Option[untpd.Ident]): List[Select] = {
       // Give a zero-extent position to the qualifier to prevent it from being included several
       // times in results in the language server.
@@ -1356,7 +1356,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    imp.selectors.flatMap { sel =>
+    imp.selectors.flatMapIterable { sel =>
       if sel.isWildcard then Nil
       else
         val renamedOpt = sel.renamed match

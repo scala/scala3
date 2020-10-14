@@ -988,15 +988,16 @@ class TreeUnpickler(reader: TastyReader,
       val expr = readTerm()
       setSpan(start, Import(expr, readSelectors(importGiven)))
     }
-    def readSelectors(givenPrefix: Boolean)(using Context): List[untpd.ImportSelector] =
-      if nextByte == IMPORTED then
+    def readSelectors(givenPrefix: Boolean)(using Context): Lst[untpd.ImportSelector] =
+      val buf = Lst.Buffer[untpd.ImportSelector]()
+      while nextByte == IMPORTED do
         val start = currentAddr
         assert(sourcePathAt(start).isEmpty)
         readByte()
         var name = readName()
         if givenPrefix && name == nme.WILDCARD then name = EmptyTermName
         val from = setSpan(start, untpd.Ident(name))
-        val selector = nextByte match
+        buf += nextByte.match
           case RENAMED =>
             val start2 = currentAddr
             readByte()
@@ -1009,9 +1010,7 @@ class TreeUnpickler(reader: TastyReader,
             untpd.ImportSelector(from, EmptyTree, bound)
           case _ =>
             untpd.ImportSelector(from)
-        selector :: readSelectors(givenPrefix)
-      else
-        Nil
+      buf.toLst
 
     def readIndexedStats(exprOwner: Symbol, end: Addr)(using Context): List[Tree] =
       until(end)(readIndexedStat(exprOwner))

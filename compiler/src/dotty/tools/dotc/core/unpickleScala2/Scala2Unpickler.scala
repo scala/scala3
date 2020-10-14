@@ -1084,7 +1084,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           untpd.ImportSelector(
             untpd.Ident(fromName),
             if toName.isEmpty then EmptyTree else untpd.Ident(toName))
-        })
+        }).toLst
         Import(expr, selectors)
 
       case TEMPLATEtree =>

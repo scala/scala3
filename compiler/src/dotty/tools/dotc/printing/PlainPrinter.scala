@@ -15,6 +15,7 @@ import util.SourcePosition
 import java.lang.Integer.toOctalString
 import scala.util.control.NonFatal
 import scala.annotation.switch
+import util.Lst; // import Lst.::
 
 class PlainPrinter(_ctx: Context) extends Printer {
   /** The context of all public methods in Printer and subclasses.
@@ -581,7 +582,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     val siteStr = importInfo.site.show
     val exprStr = if siteStr.endsWith(".type") then siteStr.dropRight(5) else siteStr
     val selectorStr = importInfo.selectors match
-      case sel :: Nil if sel.renamed.isEmpty && sel.bound.isEmpty =>
+      case Lst(sel) if sel.renamed.isEmpty && sel.bound.isEmpty =>
         if sel.isGiven then "given" else sel.name.show
       case _ => "{...}"
     s"import $exprStr.$selectorStr"

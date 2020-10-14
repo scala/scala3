@@ -656,7 +656,7 @@ class TreePickler(pickler: TastyPickler) {
       }
   }
 
-  def pickleSelectors(selectors: List[untpd.ImportSelector])(using Context): Unit =
+  def pickleSelectors(selectors: Lst[untpd.ImportSelector])(using Context): Unit =
     for sel <- selectors do
       pickleSelector(IMPORTED, sel.imported)
       sel.renamed match

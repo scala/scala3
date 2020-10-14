@@ -226,10 +226,12 @@ class Typer extends Namer
           then n.toExtensionName
           else n
 
-        def recur(selectors: List[untpd.ImportSelector]): Type = selectors match
-          case selector :: rest =>
+        def recur(idx: Int): Type =
+          if idx == imp.selectors.length then NoType
+          else
+            val selector = imp.selectors(idx)
             def checkUnambiguous(found: Type) =
-              val other = recur(selectors.tail)
+              val other = recur(idx + 1)
               if other.exists && found.exists && found != other then
                 fail(em"reference to `$name` is ambiguous; it is imported twice")
               found
@@ -241,12 +243,9 @@ class Typer extends Namer
                 else selector.name
               checkUnambiguous(selection(imp, adjustExtension(memberName), checkBounds = false))
             else
-              recur(rest)
+              recur(idx + 1)
 
-          case nil =>
-            NoType
-
-        recur(imp.selectors)
+        recur(0)
       }
 
       /** The type representing a wildcard import with enclosing name when imported
@@ -2227,7 +2226,7 @@ class Typer extends Namer
   def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import = {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
     checkLegalImportPath(expr1)
-    val selectors1: List[untpd.ImportSelector] = imp.selectors.mapConserve { sel =>
+    val selectors1: Lst[untpd.ImportSelector] = imp.selectors.mapConserve { sel =>
       if sel.bound.isEmpty then sel
       else cpy.ImportSelector(sel)(
         sel.imported, sel.renamed, untpd.TypedSplice(typedType(sel.bound)))
