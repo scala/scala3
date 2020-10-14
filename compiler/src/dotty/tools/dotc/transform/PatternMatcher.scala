@@ -842,7 +842,7 @@ object PatternMatcher {
         val pat = alts match {
           case alt :: Nil => intLiteral(alt)
           case Nil => Underscore(defn.IntType) // default case
-          case _ => Alternative(alts.map(intLiteral))
+          case _ => Alternative(alts.map(intLiteral).toLst)
         }
         CaseDef(pat, EmptyTree, emit(ons))
       }
@@ -977,12 +977,12 @@ object PatternMatcher {
           case Block(_, Match(_, cases)) => cases
           case _ => Lst.Empty
         }
-        def typesInPattern(pat: Tree): List[Type] = pat match {
+        def typesInPattern(pat: Tree): Lst[Type] = pat match {
           case Alternative(pats) => pats.flatMap(typesInPattern)
-          case _ => pat.tpe :: Nil
+          case _ => Lst(pat.tpe)
         }
         def typesInCases(cdefs: Lst[CaseDef]): Lst[Type] =
-          cdefs.flatMapIterable(cdef => typesInPattern(cdef.pat))
+          cdefs.flatMap(cdef => typesInPattern(cdef.pat))
         def numTypes(cdefs: Lst[CaseDef]): Int =
           typesInCases(cdefs).toSet.size: Int // without the type ascription, testPickling fails because of #2840.
         if (numTypes(resultCases) < numTypes(original.cases)) {

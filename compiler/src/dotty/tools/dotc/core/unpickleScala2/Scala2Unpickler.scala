@@ -1107,7 +1107,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         CaseDef(pat, guard, body)
 
       case ALTERNATIVEtree =>
-        Alternative(until(end, () => readTreeRef()))
+        Alternative(until(end, () => readTreeRef()).toLst)
 
       case STARtree =>
         readTreeRef()

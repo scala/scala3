@@ -2581,7 +2581,7 @@ object Parsers {
     def pattern(location: Location = Location.InPattern): Tree =
       val pat = pattern1(location)
       if (isIdent(nme.raw.BAR))
-        atSpan(startOffset(pat)) { Alternative(pat :: patternAlts(location)) }
+        atSpan(startOffset(pat)) { Alternative((pat :: patternAlts(location)).toLst) }
       else pat
 
     def patternAlts(location: Location): List[Tree] =

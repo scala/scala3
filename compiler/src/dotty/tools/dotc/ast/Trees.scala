@@ -728,7 +728,7 @@ object Trees {
   }
 
   /** tree_1 | ... | tree_n */
-  case class Alternative[-T >: Untyped] private[ast] (trees: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class Alternative[-T >: Untyped] private[ast] (trees: Lst[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends PatternTree[T] {
     type ThisTree[-T >: Untyped] = Alternative[T]
   }
@@ -1196,8 +1196,8 @@ object Trees {
         case tree: Bind if (name eq tree.name) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.Bind(name, body)(sourceFile(tree)))
       }
-      def Alternative(tree: Tree)(trees: List[Tree])(using Context): Alternative = tree match {
-        case tree: Alternative if (trees eq tree.trees) => tree
+      def Alternative(tree: Tree)(trees: Lst[Tree])(using Context): Alternative = tree match {
+        case tree: Alternative if (trees eqLst tree.trees) => tree
         case _ => finalize(tree, untpd.Alternative(trees)(sourceFile(tree)))
       }
       def UnApply(tree: Tree)(fun: Tree, implicits: List[Tree], patterns: List[Tree])(using Context): UnApply = tree match {

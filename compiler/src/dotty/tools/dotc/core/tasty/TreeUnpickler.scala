@@ -1197,7 +1197,7 @@ class TreeUnpickler(reader: TastyReader,
               readType()
               Bind(sym, readTerm())
             case ALTERNATIVE =>
-              Alternative(until(end)(readTerm()))
+              Alternative(until(end)(readTerm()).toLst)
             case UNAPPLY =>
               val fn = readTerm()
               val implicitArgs =

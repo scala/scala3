@@ -491,7 +491,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.Bind, sym: Symbol)(using Context): Bind =
     tree.withType(NamedType(NoPrefix, sym))
 
-  def assignType(tree: untpd.Alternative, trees: List[Tree])(using Context): Alternative =
+  def assignType(tree: untpd.Alternative, trees: Lst[Tree])(using Context): Alternative =
     tree.withType(TypeComparer.lub(trees.tpes))
 
   def assignType(tree: untpd.UnApply, proto: Type)(using Context): UnApply =

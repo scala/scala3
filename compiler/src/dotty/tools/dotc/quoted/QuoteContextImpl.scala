@@ -1472,16 +1472,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Alternatives extends AlternativesModule:
       def apply(patterns: List[Tree]): Alternatives =
-        withDefaultPos(tpd.Alternative(patterns))
+        withDefaultPos(tpd.Alternative(patterns.toLst))
       def copy(original: Tree)(patterns: List[Tree]): Alternatives =
-        tpd.cpy.Alternative(original)(patterns)
+        tpd.cpy.Alternative(original)(patterns.toLst)
       def unapply(x: Alternatives): Option[List[Tree]] =
-        Some(x.patterns)
+        Some(x.patterns.toList)
     end Alternatives
 
     object AlternativesMethodsImpl extends AlternativesMethods:
       extension (self: Alternatives):
-        def patterns: List[Tree] = self.trees
+        def patterns: List[Tree] = self.trees.toList
       end extension
     end AlternativesMethodsImpl
 

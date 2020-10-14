@@ -1893,8 +1893,8 @@ class Typer extends Namer
       else
         assert(ctx.reporter.errorsReported)
         tree.withType(defn.AnyType)
-    val trees1 = tree.trees.mapconserve(typed(_, pt)(using nestedCtx))
-      .mapconserve(ensureValueTypeOrWildcard)
+    val trees1 = tree.trees.mapConserve(typed(_, pt)(using nestedCtx))
+      .mapConserve(ensureValueTypeOrWildcard)
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 

@@ -194,7 +194,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def BindTyped(sym: TermSymbol, tpe: Type)(using Context): Bind =
     Bind(sym, Typed(Underscore(tpe), TypeTree(tpe)))
 
-  def Alternative(trees: List[Tree])(using Context): Alternative =
+  def Alternative(trees: Lst[Tree])(using Context): Alternative =
     ta.assignType(untpd.Alternative(trees), trees)
 
   def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree], proto: Type)(using Context): UnApply = {

@@ -2921,7 +2921,7 @@ class JSCodeGen()(using genCtx: Context) {
         case Ident(nme.WILDCARD) =>
           optDefaultClause = Some(genBody)
         case Alternative(alts) =>
-          val genAlts = alts.map {
+          val genAlts = alts.toList.map {
             case lit: Literal => genExpr(lit)
             case _            => abortMatch("Invalid case in alternative")
           }

@@ -377,7 +377,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       Typ(erase(pat.tpe.stripAnnots), false)
 
     case Alternative(trees) =>
-      Or(trees.map(project(_)))
+      Or(trees.map(project(_)).toList)
 
     case Bind(_, pat) =>
       project(pat)
