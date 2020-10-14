@@ -375,7 +375,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Block(stats: Lst[Tree], expr: Tree)(implicit src: SourceFile): Block = new Block(stats, expr)
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit src: SourceFile): If = new If(cond, thenp, elsep)
   def InlineIf(cond: Tree, thenp: Tree, elsep: Tree)(implicit src: SourceFile): If = new InlineIf(cond, thenp, elsep)
-  def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit src: SourceFile): Closure = new Closure(env, meth, tpt)
+  def Closure(env: Lst[Tree], meth: Tree, tpt: Tree)(implicit src: SourceFile): Closure = new Closure(env, meth, tpt)
   def Match(selector: Tree, cases: Lst[CaseDef])(implicit src: SourceFile): Match = new Match(selector, cases)
   def InlineMatch(selector: Tree, cases: Lst[CaseDef])(implicit src: SourceFile): Match = new InlineMatch(selector, cases)
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit src: SourceFile): CaseDef = new CaseDef(pat, guard, body)

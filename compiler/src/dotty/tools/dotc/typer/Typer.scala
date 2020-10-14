@@ -1245,7 +1245,7 @@ class Typer extends Namer
   }
 
   def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree = {
-    val env1 = tree.env mapconserve (typed(_))
+    val env1 = tree.env.mapConserve(typed(_))
     val meth1 = typedUnadapted(tree.meth)
     val target =
       if (tree.tpt.isEmpty)
@@ -3428,7 +3428,7 @@ class Typer extends Namer
 
       // convert function literal to SAM closure
       tree match {
-        case closure(Nil, id @ Ident(nme.ANON_FUN), _)
+        case closure(Lst.Empty, id @ Ident(nme.ANON_FUN), _)
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
             case SAMType(sam)

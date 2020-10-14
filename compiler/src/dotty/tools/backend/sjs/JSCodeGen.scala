@@ -3071,7 +3071,7 @@ class JSCodeGen()(using genCtx: Context) {
       val actualCapture = genExpr(value)
       (formalCapture, actualCapture)
     }
-    val (formalCaptures, actualCaptures) = formalAndActualCaptures.unzip
+    val (formalCaptures, actualCaptures) = formalAndActualCaptures.toList.unzip
 
     val formalParamNames = sym.info.paramNamess.flatten.drop(envSize)
     val formalParamTypes = sym.info.paramInfoss.flatten.drop(envSize)

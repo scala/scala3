@@ -1291,7 +1291,7 @@ object desugar {
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
         .withMods(synthetic | Artifact),
-      Closure(Nil, Ident(nme.ANON_FUN), if (isContextual) ContextualEmptyTree else EmptyTree))
+      Closure(Lst(), Ident(nme.ANON_FUN), if (isContextual) ContextualEmptyTree else EmptyTree))
 
   /** If `nparams` == 1, expand partial function
    *

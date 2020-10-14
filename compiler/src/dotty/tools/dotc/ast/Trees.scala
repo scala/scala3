@@ -540,7 +540,7 @@ object Trees {
    *                of the closure is a function type, otherwise it is the type
    *                given in `tpt`, which must be a SAM type.
    */
-  case class Closure[-T >: Untyped] private[ast] (env: List[Tree[T]], meth: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class Closure[-T >: Untyped] private[ast] (env: Lst[Tree[T]], meth: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Closure[T]
   }
@@ -1120,8 +1120,8 @@ object Trees {
         case tree: InlineIf => finalize(tree, untpd.InlineIf(cond, thenp, elsep)(sourceFile(tree)))
         case _ => finalize(tree, untpd.If(cond, thenp, elsep)(sourceFile(tree)))
       }
-      def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure = tree match {
-        case tree: Closure if (env eq tree.env) && (meth eq tree.meth) && (tpt eq tree.tpt) => tree
+      def Closure(tree: Tree)(env: Lst[Tree], meth: Tree, tpt: Tree)(using Context): Closure = tree match {
+        case tree: Closure if (env eqLst tree.env) && (meth eq tree.meth) && (tpt eq tree.tpt) => tree
         case _ => finalize(tree, untpd.Closure(env, meth, tpt)(sourceFile(tree)))
       }
       def Match(tree: Tree)(selector: Tree, cases: Lst[CaseDef])(using Context): Match = tree match {
@@ -1241,7 +1241,7 @@ object Trees {
       // is of the same class as the copy. We only include trees with more than 2 elements here.
       def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(using Context): If =
         If(tree: Tree)(cond, thenp, elsep)
-      def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
+      def Closure(tree: Closure)(env: Lst[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
         Closure(tree: Tree)(env, meth, tpt)
       def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body)(using Context): CaseDef =
         CaseDef(tree: Tree)(pat, guard, body)

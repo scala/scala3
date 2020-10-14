@@ -97,7 +97,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def InlineIf(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If =
     ta.assignType(untpd.InlineIf(cond, thenp, elsep), thenp, elsep)
 
-  def Closure(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
+  def Closure(env: Lst[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
     ta.assignType(untpd.Closure(env, meth, tpt), meth, tpt)
 
   /** A function def
@@ -118,7 +118,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else TypeApply(Ident(TermRef(NoPrefix, meth)), targs)
     Block(
       Lst(DefDef(meth, rhsFn)),
-      Closure(Nil, call, targetTpt))
+      Closure(Lst(), call, targetTpt))
   }
 
   /** A closure whole anonymous function has the given method type */
@@ -660,7 +660,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure = {
+    override def Closure(tree: Tree)(env: Lst[Tree], meth: Tree, tpt: Tree)(using Context): Closure = {
       val tree1 = untpdCpy.Closure(tree)(env, meth, tpt)
       tree match {
         case tree: Closure if sameTypes(env, tree.env) && (meth.tpe eq tree.meth.tpe) && (tpt.tpe eq tree.tpt.tpe) =>
@@ -705,7 +705,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Inlined(tree: Tree)(call: Tree, bindings: Lst[MemberDef], expansion: Tree)(using Context): Inlined = {
       val tree1 = untpdCpy.Inlined(tree)(call, bindings, expansion)
       tree match {
-        case tree: Inlined if sameTypes(bindings.toList, tree.bindings.toList) && (expansion.tpe eq tree.expansion.tpe) =>
+        case tree: Inlined if sameTypes(bindings, tree.bindings) && (expansion.tpe eq tree.expansion.tpe) =>
           tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, bindings, expansion)
       }
@@ -732,7 +732,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(using Context): If =
       If(tree: Tree)(cond, thenp, elsep)
-    override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
+    override def Closure(tree: Closure)(env: Lst[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
     override def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body)(using Context): CaseDef =
       CaseDef(tree: Tree)(pat, guard, body)
@@ -760,10 +760,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       ta.assignType(untpdCpy.TypeApply(tree)(fun, args), fun, args)
       // Same remark as for Apply
 
-    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
-            ta.assignType(untpdCpy.Closure(tree)(env, meth, tpt), meth, tpt)
+    override def Closure(tree: Tree)(env: Lst[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
+      ta.assignType(untpdCpy.Closure(tree)(env, meth, tpt), meth, tpt)
 
-    override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
+    override def Closure(tree: Closure)(env: Lst[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
   }
 

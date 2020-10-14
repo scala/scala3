@@ -1154,7 +1154,7 @@ class TreeUnpickler(reader: TastyReader,
             case LAMBDA =>
               val meth = readTerm()
               val tpt = ifBefore(end)(readTpt(), EmptyTree)
-              Closure(Nil, meth, tpt)
+              Closure(Lst(), meth, tpt)
             case MATCH =>
               if (nextByte == IMPLICIT) {
                 readByte()

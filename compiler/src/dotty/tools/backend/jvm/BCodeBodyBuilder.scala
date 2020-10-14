@@ -22,6 +22,7 @@ import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.report
+import dotty.tools.dotc.util.Lst; // import Lst.::
 
 /*
  *
@@ -319,7 +320,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
                 "  Call was genLoad" + ((tree, expectedType)))
 
         case app: Closure =>
-          val env: List[Tree] = app.env
+          val env: Lst[Tree] = app.env
           val call: Tree = app.meth
           val functionalInterface: Symbol = {
             val t = app.tpt.tpe.typeSymbol
@@ -349,7 +350,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genLoad(prefix)
           }
 
-          genLoadArguments(env, fun.symbol.info.firstParamTypes map toTypeKind)
+          genLoadArguments(env.toList, fun.symbol.info.firstParamTypes map toTypeKind)
           generatedType = genInvokeDynamicLambda(NoSymbol, fun.symbol, env.size, functionalInterface)
 
         case app @ Apply(_, _) =>

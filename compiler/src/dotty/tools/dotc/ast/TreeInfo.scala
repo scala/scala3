@@ -641,7 +641,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** An extractor for closures, either contained in a block or standalone.
    */
   object closure {
-    def unapply(tree: Tree): Option[(List[Tree], Tree, Tree)] = tree match {
+    def unapply(tree: Tree): Option[(Lst[Tree], Tree, Tree)] = tree match {
       case Block(_, expr) => unapply(expr)
       case Closure(env, meth, tpt) => Some(env, meth, tpt)
       case Typed(expr, _)  => unapply(expr)

@@ -724,9 +724,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Closure extends ClosureModule:
       def apply(meth: Term, tpe: Option[Type]): Closure =
-        withDefaultPos(tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.Closure(Lst(), meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(meth: Tree, tpe: Option[Type]): Closure =
-        tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
+        tpd.cpy.Closure(original)(Lst(), meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
       def unapply(x: Closure): Option[(Term, Option[Type])] =
         Some((x.meth, x.tpeOpt))
     end Closure
