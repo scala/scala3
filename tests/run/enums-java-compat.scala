@@ -1,14 +1,19 @@
-class JEnum {
-  def name: String = "Foo"
-  def action = "fofofo"
+trait JEnum[E <: JEnum[E]] { self: reflect.Enum =>
+  final def name: String = productPrefix
 }
 
-enum A extends JEnum {
+trait JEnumCompanion[E <: JEnum[E]] {
+  def valueOf(name: String): E
+  def values: Array[E]
+}
+
+enum A extends JEnum[A] {
   case MONDAY, TUESDAY, SATURDAY
   case Stuff
-  case Someday(x: String)
+  // case Someday(x: String) // uncommenting this line will prevent `object A` from compiling
   def report = "Reported"
 }
+object A extends JEnumCompanion[A]
 
 trait Foo1
 trait Bar

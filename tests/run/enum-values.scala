@@ -80,22 +80,15 @@ enum ClassOnly: // this should still generate the `ordinal` and `fromOrdinal` co
 
   assert(summon[Mirror.SumOf[ClassOnly]].ordinal(BranchProd(1)) == 0)
 
-  val colors: Array[Color]             = Color.values
-  val tags: Array[Tag[?]]              = Tag.values
-  val exprs: Array[Expr[? >: Null]]    = Expr.values
-  val listlikes: Array[ListLike[?]]    = ListLike.values
-  val typeCtorsK: Array[TypeCtorsK[?]] = TypeCtorsK.values
-
+  val colors: Array[Color] = Color.values
+  val exprs: Array[Expr[? >: Null]] = Expr.values
   val mixedParams: Array[MixedParams[?, ? <: [X, Y] =>> collection.Map[X, Y], ?]] = MixedParams.values
 
   def sameAs[T](arr: Array[T], compare: T*): Unit =
     assert(arr sameElements compare, s"${arr.show} does not correspond to ${compare.show}")
 
   sameAs(colors,      Red, Green, Blue)
-  sameAs(tags,        Int, String)
   sameAs(exprs,       EmptyTree, AnyTree)
-  sameAs(listlikes,   EmptyListLike)
-  sameAs(typeCtorsK,  List, Option)
   sameAs(mixedParams, Foo)
 
   def singleton[E <: AnyRef](value: E, name: String, companion: ValueOf[E]) =
@@ -103,8 +96,5 @@ enum ClassOnly: // this should still generate the `ordinal` and `fromOrdinal` co
     assert(value eq lookup, s"${value.show} is not identical to ${lookup.show}")
 
   singleton(Green, "Green", Color)
-  singleton(String, "String", Tag)
   singleton(AnyTree, "AnyTree", Expr)
-  singleton(EmptyListLike, "EmptyListLike", ListLike)
-  singleton(Option, "Option", TypeCtorsK)
   singleton(Foo, "Foo", MixedParams)

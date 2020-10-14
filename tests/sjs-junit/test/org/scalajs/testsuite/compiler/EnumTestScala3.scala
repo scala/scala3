@@ -135,8 +135,6 @@ class EnumTestScala3:
     assert(Opt.Nn.ordinal == 1)
     assert(Opt.Sm(1).productPrefix == "Sm")
     assert(Opt.Nn.productPrefix == "Nn")
-    assert(Opt.valueOf("Nn") == Opt.Nn)
-    assert(Opt.values(0) == Opt.Nn)
     assert(Opt.Sm("hello").value == "hello")
     assert(encode(Opt.Sm(23)) == 23)
     assert(encode(Opt.Nn)     == null)

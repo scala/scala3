@@ -641,7 +641,7 @@ Schema => SemanticDB v4
 Uri => Enums.scala
 Text => empty
 Language => Scala
-Symbols => 185 entries
+Symbols => 181 entries
 Occurrences => 203 entries
 
 Symbols:
@@ -697,7 +697,6 @@ _empty_/Enums.Maybe# => abstract sealed enum class Maybe
 _empty_/Enums.Maybe#[A] => covariant typeparam A
 _empty_/Enums.Maybe#`<init>`(). => primary ctor <init>
 _empty_/Enums.Maybe. => final object Maybe
-_empty_/Enums.Maybe.$values. => val method $values
 _empty_/Enums.Maybe.Just# => final case enum class Just
 _empty_/Enums.Maybe.Just#[A] => covariant typeparam A
 _empty_/Enums.Maybe.Just#_1(). => method _1
@@ -721,9 +720,6 @@ _empty_/Enums.Maybe.Just.unapply().[A] => typeparam A
 _empty_/Enums.Maybe.None. => case val static enum method None
 _empty_/Enums.Maybe.fromOrdinal(). => method fromOrdinal
 _empty_/Enums.Maybe.fromOrdinal().(ordinal) => param ordinal
-_empty_/Enums.Maybe.valueOf(). => method valueOf
-_empty_/Enums.Maybe.valueOf().($name) => param $name
-_empty_/Enums.Maybe.values(). => method values
 _empty_/Enums.Planet# => abstract sealed enum class Planet
 _empty_/Enums.Planet#G. => final val method G
 _empty_/Enums.Planet#`<init>`(). => primary ctor <init>
