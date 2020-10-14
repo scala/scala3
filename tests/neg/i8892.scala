@@ -24,5 +24,5 @@ class Dummy extends Reporter:
         case Succ(p) => toIntg(p) + 1
       }
 
-    val j31 = toIntg(Zero.++.++.++ + Zero.++)
+    val j31 = toIntg(Zero.++.++.++ + Zero.++) // error
   }
