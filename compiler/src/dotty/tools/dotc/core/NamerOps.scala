@@ -51,7 +51,7 @@ object NamerOps:
       completer.withSourceModule(findModuleBuddy(name.sourceModuleName, scope))
 
   /** Find moduleClass/sourceModule in effective scope */
-  private def findModuleBuddy(name: Name, scope: Scope)(using Context) = {
+  def findModuleBuddy(name: Name, scope: Scope)(using Context) = {
     val it = scope.lookupAll(name).filter(_.is(Module))
     if (it.hasNext) it.next()
     else NoSymbol.assertingErrorsReported(s"no companion $name in $scope")
