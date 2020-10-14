@@ -806,7 +806,7 @@ object Erasure {
               case Apply(fun2, prevArgs) =>
                 mkApply(fun2, prevArgs ++ args1)
               case _ if bunchArgs =>
-                mkApply(fun1, JavaSeqLiteral(args1, TypeTree(defn.ObjectType)) :: Nil)
+                mkApply(fun1, JavaSeqLiteral(args1.toLst, TypeTree(defn.ObjectType)) :: Nil)
               case _ =>
                 mkApply(fun1, args1)
 

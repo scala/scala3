@@ -726,7 +726,7 @@ trait Applications extends Compatibility {
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.trimEnd(n)
       val elemtpt = TypeTree(elemFormal)
-      typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
+      typedArgBuf += seqToRepeated(SeqLiteral(args.toLst, elemtpt))
     }
 
     def harmonizeArgs(args: List[TypedArg]): List[Tree] = harmonize(args)

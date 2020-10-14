@@ -16,6 +16,8 @@ import core.Symbols._
 import core.Definitions
 import ErrorReporting._
 import reporting._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 object Dynamic {
   def isDynamicMethod(name: Name): Boolean =
@@ -190,7 +192,7 @@ trait Dynamic {
                  && ctagsParam.argInfos.head.isRef(defn.ClassTagClass) =>
                   val ctagType = defn.ClassTagClass.typeRef.appliedTo(TypeBounds.empty)
                   cpy.Apply(tree)(fn,
-                    nameArg :: seqToRepeated(SeqLiteral(ctags, TypeTree(ctagType))) :: Nil)
+                    nameArg :: seqToRepeated(SeqLiteral(ctags.toLst, TypeTree(ctagType))) :: Nil)
               case _ => tree
             case other => tree
         case _ => tree

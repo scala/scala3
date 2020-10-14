@@ -886,16 +886,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Repeated extends RepeatedModule:
       def apply(elems: List[Term], elemtpt: TypeTree): Repeated =
-        withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
+        withDefaultPos(tpd.SeqLiteral(elems.toLst, elemtpt))
       def copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated =
-        tpd.cpy.SeqLiteral(original)(elems, elemtpt)
+        tpd.cpy.SeqLiteral(original)(elems.toLst, elemtpt)
       def unapply(x: Repeated): Option[(List[Term], TypeTree)] =
-        Some((x.elems, x.elemtpt))
+        Some((x.elems.toList, x.elemtpt))
     end Repeated
 
     object RepeatedMethodsImpl extends RepeatedMethods:
       extension (self: Repeated):
-        def elems: List[Term] = self.elems
+        def elems: List[Term] = self.elems.toList
         def elemtpt: TypeTree = self.elemtpt
       end extension
     end RepeatedMethodsImpl
@@ -1457,7 +1457,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       end extension
       private def effectivePatterns(patterns: List[Tree]): List[Tree] =
         patterns match
-          case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems
+          case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems.toList
           case _ => patterns
     end UnapplyMethodsImpl
 

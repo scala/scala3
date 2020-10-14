@@ -595,13 +595,13 @@ object Trees {
   /** Seq(elems)
    *  @param  tpt  The element type of the sequence.
    */
-  case class SeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class SeqLiteral[-T >: Untyped] private[ast] (elems: Lst[Tree[T]], elemtpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = SeqLiteral[T]
   }
 
   /** Array(elems) */
-  class JavaSeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]], elemtpt: Tree[T])(implicit @constructorOnly src: SourceFile)
+  class JavaSeqLiteral[-T >: Untyped] private[ast] (elems: Lst[Tree[T]], elemtpt: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends SeqLiteral(elems, elemtpt) {
     override def toString: String = s"JavaSeqLiteral($elems, $elemtpt)"
   }
@@ -1149,11 +1149,11 @@ object Trees {
         case tree: Try if (expr eq tree.expr) && (cases eqLst tree.cases) && (finalizer eq tree.finalizer) => tree
         case _ => finalize(tree, untpd.Try(expr, cases, finalizer)(sourceFile(tree)))
       }
-      def SeqLiteral(tree: Tree)(elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral = tree match {
+      def SeqLiteral(tree: Tree)(elems: Lst[Tree], elemtpt: Tree)(using Context): SeqLiteral = tree match {
         case tree: JavaSeqLiteral =>
-          if ((elems eq tree.elems) && (elemtpt eq tree.elemtpt)) tree
+          if ((elems eqLst tree.elems) && (elemtpt eq tree.elemtpt)) tree
           else finalize(tree, untpd.JavaSeqLiteral(elems, elemtpt))
-        case tree: SeqLiteral if (elems eq tree.elems) && (elemtpt eq tree.elemtpt) => tree
+        case tree: SeqLiteral if (elems eqLst tree.elems) && (elemtpt eq tree.elemtpt) => tree
         case _ => finalize(tree, untpd.SeqLiteral(elems, elemtpt)(sourceFile(tree)))
       }
       def Inlined(tree: Tree)(call: tpd.Tree, bindings: Lst[MemberDef], expansion: Tree)(using Context): Inlined = tree match {

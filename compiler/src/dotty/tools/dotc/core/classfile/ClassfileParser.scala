@@ -23,6 +23,7 @@ import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.{AbstractFile, PlainFile, ZipArchive}
 import scala.util.control.NonFatal
+import util.Lst; // import Lst.::
 
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
@@ -533,7 +534,7 @@ class ClassfileParser(
           Some(Select(ref(enumModuleClass), enumCaseName))
         }
       case ARRAY_TAG =>
-        val arr = new ArrayBuffer[Tree]()
+        val arr = Lst.Buffer[Tree]()
         var hasError = false
         for (i <- 0 until index)
           parseAnnotArg(skip) match {
@@ -543,7 +544,7 @@ class ClassfileParser(
         if (hasError) None
         else if (skip) None
         else {
-          val elems = arr.toList
+          val elems = arr.toLst
           Some(untpd.JavaSeqLiteral(elems, TypeTree()))
         }
       case ANNOTATION_TAG =>

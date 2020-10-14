@@ -2871,7 +2871,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genJavaSeqLiteral(tree: JavaSeqLiteral): js.Tree = {
     implicit val pos = tree.span
 
-    val genElems = tree.elems.map(genExpr)
+    val genElems = tree.elems.toList.map(genExpr)
     val arrayTypeRef = toTypeRef(tree.tpe).asInstanceOf[jstpe.ArrayTypeRef]
     js.ArrayValue(arrayTypeRef, genElems)
   }
@@ -3391,7 +3391,7 @@ class JSCodeGen()(using genCtx: Context) {
               val outer = genThis()
               List.fill(classSym.info.decls.lookupAll(nme.CONSTRUCTOR).size)(outer)
             } else {
-              val fakeNewInstances = args(2).asInstanceOf[JavaSeqLiteral].elems
+              val fakeNewInstances = args(2).asInstanceOf[JavaSeqLiteral].elems.toList
               fakeNewInstances.flatMap(genCaptureValuesFromFakeNewInstance(_))
             }
           }
@@ -3630,7 +3630,7 @@ class JSCodeGen()(using genCtx: Context) {
       args.tail match {
         case WrapArray(classTagsArray: JavaSeqLiteral) :: WrapArray(actualArgsAnyArray: JavaSeqLiteral) :: Nil =>
           // Extract jstpe.Type's and jstpe.TypeRef's from the ClassTag.apply(_) trees
-          val formalParamTypesAndTypeRefs = classTagsArray.elems.map {
+          val formalParamTypesAndTypeRefs = classTagsArray.elems.toList.map {
             // ClassTag.apply(classOf[tp]) -> tp
             case Apply(fun, Literal(const) :: Nil)
                 if fun.symbol == defn.ClassTagModule_apply && const.tag == Constants.ClazzTag =>
@@ -3653,7 +3653,7 @@ class JSCodeGen()(using genCtx: Context) {
           }
 
           // Gen the actual args, downcasting them to the formal param types
-          val actualArgs = actualArgsAnyArray.elems.zip(formalParamTypesAndTypeRefs).map {
+          val actualArgs = actualArgsAnyArray.elems.toList.zip(formalParamTypesAndTypeRefs).map {
             (actualArgAny, formalParamTypeAndTypeRef) =>
               val genActualArgAny = genExpr(actualArgAny)
               js.AsInstanceOf(genActualArgAny, formalParamTypeAndTypeRef._1)(genActualArgAny.pos)
@@ -3831,7 +3831,7 @@ class JSCodeGen()(using genCtx: Context) {
          * the type before erasure.
          * TODO Is this true in dotty?
          */
-        Some(array.elems.map(e => box(genExpr(e), e.tpe)))
+        Some(array.elems.map(e => box(genExpr(e), e.tpe)).toList)
 
       // foo()
       case Ident(_) if handleNil && arg.symbol == defn.NilModule =>

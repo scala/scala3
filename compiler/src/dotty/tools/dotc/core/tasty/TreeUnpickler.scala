@@ -1190,7 +1190,7 @@ class TreeUnpickler(reader: TastyReader,
                   select(name, owner.decl(name))
             case REPEATED =>
               val elemtpt = readTpt()
-              SeqLiteral(until(end)(readTerm()), elemtpt)
+              SeqLiteral(until(end)(readTerm()).toLst, elemtpt)
             case BIND =>
               val sym = symAtAddr.getOrElse(start, forkAt(start).createSymbol())
               readName()

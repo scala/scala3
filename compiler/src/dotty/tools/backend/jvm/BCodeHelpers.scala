@@ -400,7 +400,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
           val flatArgs = actualArgs.flatMap { arg =>
             normalizeArgument(arg) match {
-              case t: tpd.SeqLiteral => t.elems
+              case t: tpd.SeqLiteral => t.elems.toList
               case e => List(e)
             }
           }

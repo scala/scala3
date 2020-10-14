@@ -383,7 +383,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       project(pat)
 
     case SeqLiteral(pats, _) =>
-      projectSeq(pats)
+      projectSeq(pats.toList)
 
     case UnApply(fun, _, pats) =>
       val (fun1, _, _) = decomposeCall(fun)

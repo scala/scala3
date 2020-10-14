@@ -10,6 +10,7 @@ import StdNames._
 import ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** This phase rewrites calls to array constructors to newArray method in Dotty.runtime.Arrays module.
  *
@@ -23,7 +24,7 @@ class ArrayConstructors extends MiniPhase {
 
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree = {
     def expand(elemType: Type, dims: List[Tree]) =
-      tpd.newArray(elemType, tree.tpe, tree.span, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
+      tpd.newArray(elemType, tree.tpe, tree.span, JavaSeqLiteral(dims.toLst, TypeTree(defn.IntClass.typeRef)))
 
     if (tree.fun.symbol eq defn.ArrayConstructor) {
       val TypeApply(tycon, targ :: Nil) = tree.fun

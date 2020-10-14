@@ -13,6 +13,8 @@ import core.Symbols._
 import core.Types._
 import ast.Trees._
 import dotty.tools.dotc.ast.tpd
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
@@ -74,7 +76,7 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
       val fakeNews = {
         val ctors = cls.info.decls.lookupAll(nme.CONSTRUCTOR).toList.reverse
         val elems = ctors.map(ctor => fakeNew(cls, ctor.asTerm))
-        JavaSeqLiteral(elems, TypeTree(defn.ObjectType))
+        JavaSeqLiteral(elems.toLst, TypeTree(defn.ObjectType))
       }
 
       cpy.Apply(tree)(tree.fun, classValueArg :: superClassValueArg :: fakeNews :: Nil)

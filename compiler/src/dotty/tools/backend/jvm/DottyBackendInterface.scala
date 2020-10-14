@@ -86,7 +86,7 @@ class DottyBackendInterface(val outputDirectory: AbstractFile, val superCallsMap
         report.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", ctx.source.atSpan(field.span))
         UnspecifiedErrorType
     }
-    def _2: List[Tree] = field.elems
+    def _2: List[Tree] = field.elems.toList
   }
 
   abstract class DeconstructorCommon[T >: Null <: AnyRef] {

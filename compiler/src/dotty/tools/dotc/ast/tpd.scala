@@ -154,10 +154,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Try(block: Tree, cases: Lst[CaseDef], finalizer: Tree)(using Context): Try =
     ta.assignType(untpd.Try(block, cases, finalizer), block, cases)
 
-  def SeqLiteral(elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral =
+  def SeqLiteral(elems: Lst[Tree], elemtpt: Tree)(using Context): SeqLiteral =
     ta.assignType(untpd.SeqLiteral(elems, elemtpt), elems, elemtpt)
 
-  def JavaSeqLiteral(elems: List[Tree], elemtpt: Tree)(using Context): JavaSeqLiteral =
+  def JavaSeqLiteral(elems: Lst[Tree], elemtpt: Tree)(using Context): JavaSeqLiteral =
     ta.assignType(untpd.JavaSeqLiteral(elems, elemtpt), elems, elemtpt).asInstanceOf[JavaSeqLiteral]
 
   def Inlined(call: Tree, bindings: Lst[MemberDef], expansion: Tree)(using Context): Inlined =
@@ -711,7 +711,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def SeqLiteral(tree: Tree)(elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral = {
+    override def SeqLiteral(tree: Tree)(elems: Lst[Tree], elemtpt: Tree)(using Context): SeqLiteral = {
       val tree1 = untpdCpy.SeqLiteral(tree)(elems, elemtpt)
       tree match {
         case tree: SeqLiteral
@@ -1392,7 +1392,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  Used to make arguments for methods that accept varargs.
    */
   def repeated(trees: List[Tree], tpt: Tree)(using Context): Tree =
-    ctx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees, tpt))
+    ctx.typeAssigner.arrayToRepeated(JavaSeqLiteral(trees.toLst, tpt))
 
   /** Create a tree representing a list containing all
    *  the elements of the argument list. A "list of tree to

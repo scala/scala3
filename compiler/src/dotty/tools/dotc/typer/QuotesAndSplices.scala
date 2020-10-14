@@ -141,7 +141,7 @@ trait QuotesAndSplices {
         report.error("Missing arguments for open pattern", tree.srcPos)
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
       val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
-      ref(defn.InternalQuotedPatterns_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
+      ref(defn.InternalQuotedPatterns_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs.toLst, TypeTree(defn.AnyType)))
   }
 
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */

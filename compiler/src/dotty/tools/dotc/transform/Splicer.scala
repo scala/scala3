@@ -339,8 +339,8 @@ object Splicer {
     private def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]
 
-    private def interpretVarargs(args: List[Object])(implicit env: Env): Object =
-      args.toSeq
+    private def interpretVarargs(args: Lst[Object])(implicit env: Env): Object =
+      args.toList.toSeq
 
     private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol)(implicit env: Env): List[Object] => Object = {
       val (inst, clazz) =

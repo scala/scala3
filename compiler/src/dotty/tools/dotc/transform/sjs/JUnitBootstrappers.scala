@@ -249,7 +249,7 @@ class JUnitBootstrappers extends MiniPhase {
         val reifiedAnnot = resolveConstructor(junitdefn.TestAnnotType, mappedArguments)
         New(junitdefn.TestMetadataType, List(name, ignored, reifiedAnnot))
       }
-      JavaSeqLiteral(metadata, TypeTree(junitdefn.TestMetadataType))
+      JavaSeqLiteral(metadata.toLst, TypeTree(junitdefn.TestMetadataType))
     })
   }
 

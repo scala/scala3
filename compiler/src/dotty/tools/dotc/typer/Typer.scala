@@ -1603,16 +1603,16 @@ class Typer extends Namer
       case elemtp => elemtp
     }
 
-    def assign(elems1: List[Tree], elemtpt1: Tree) =
+    def assign(elems1: Lst[Tree], elemtpt1: Tree) =
       assignType(cpy.SeqLiteral(tree)(elems1, elemtpt1), elems1, elemtpt1)
 
     if (!tree.elemtpt.isEmpty) {
       val elemtpt1 = typed(tree.elemtpt, elemProto)
-      val elems1 = tree.elems.mapconserve(typed(_, elemtpt1.tpe))
+      val elems1 = tree.elems.mapConserve(typed(_, elemtpt1.tpe))
       assign(elems1, elemtpt1)
     }
     else {
-      val elems1 = tree.elems.mapconserve(typed(_, elemProto))
+      val elems1 = tree.elems.mapConserve(typed(_, elemProto))
       val elemtptType =
         if (isFullyDefined(elemProto, ForceDegree.none))
           elemProto
