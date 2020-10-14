@@ -192,26 +192,33 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
     }
 
-    homogenize(tp) match {
+    def appliedText(tp: Type): Text = tp match
       case tp @ AppliedType(tycon, args) =>
         val cls = tycon.typeSymbol
-        if (tycon.isRepeatedParam)  toTextLocal(args.head) ~ "*"
-        else if (defn.isFunctionClass(cls))  toTextFunction(args, cls.name.isContextFunction, cls.name.isErasedFunction)
-        else if (tp.tupleArity >= 2 && !printDebug)  toTextTuple(tp.tupleElementTypes)
-        else if (isInfixType(tp)) {
+        if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
+        else if defn.isFunctionClass(cls) then toTextFunction(args, cls.name.isContextFunction, cls.name.isErasedFunction)
+        else if tp.tupleArity >= 2 && !printDebug then toTextTuple(tp.tupleElementTypes)
+        else if isInfixType(tp) then
           val l :: r :: Nil = args
           val opName = tyconName(tycon)
           toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
-        }
-        else super.toText(tp)
+        else Str("")
+      case _ =>
+        Str("")
 
+    homogenize(tp) match {
+      case tp: AppliedType =>
+        val refined = appliedText(tp)
+        if refined.isEmpty then super.toText(tp) else refined
       // Since RefinedPrinter, unlike PlainPrinter, can output right-associative type-operators, we must override handling
       // of AndType and OrType to account for associativity
       case AndType(tp1, tp2) =>
         toTextInfixType(tpnme.raw.AMP, tp1, tp2) { toText(tpnme.raw.AMP) }
       case OrType(tp1, tp2) =>
         toTextInfixType(tpnme.raw.BAR, tp1, tp2) { toText(tpnme.raw.BAR) }
-      case EtaExpansion(tycon) if !printDebug =>
+      case tp @ EtaExpansion(tycon)
+      if !printDebug && appliedText(tp.asInstanceOf[HKLambda].resType).isEmpty =>
+        // don't eta contract if the application would be printed specially
         toText(tycon)
       case tp: RefinedType if defn.isFunctionType(tp) && !printDebug =>
         toTextDependentFunction(tp.refinedInfo.asInstanceOf[MethodType])

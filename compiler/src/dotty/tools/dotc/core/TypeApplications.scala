@@ -26,25 +26,46 @@ object TypeApplications {
 
   /** Extractor for
    *
-   *    [v1 X1: B1, ..., vn Xn: Bn] -> C[X1, ..., Xn]
+   *    [X1: B1, ..., Xn: Bn] -> C[X1, ..., Xn]
    *
-   *  where v1, ..., vn and B1, ..., Bn are the variances and bounds of the type parameters
-   *  of the class C.
+   *  where B1, ..., Bn are bounds of the type parameters of the class C.
    *
    *  @param tycon     C
    */
-  object EtaExpansion {
-    def apply(tycon: Type)(using Context): Type = {
+  object EtaExpansion:
+
+    def apply(tycon: Type)(using Context): Type =
       assert(tycon.typeParams.nonEmpty, tycon)
       tycon.EtaExpand(tycon.typeParamSymbols)
-    }
 
-    def unapply(tp: Type)(using Context): Option[Type] = tp match {
+    /** Test that the parameter bounds in a hk type lambda `[X1,...,Xn] => C[X1, ..., Xn]`
+     *  contain the bounds of the type parameters of `C`. This is necessary to be able to
+     *  contract the hk lambda to `C`.
+     */
+    private def weakerBounds(tp: HKTypeLambda, tparams: List[ParamInfo])(using Context): Boolean =
+      val onlyEmptyBounds = tp.typeParams.forall(_.paramInfo == TypeBounds.empty)
+      onlyEmptyBounds
+        // Note: this pre-test helps efficiency. It is also necessary to workaround  #9965 since in some cases
+        // tparams is empty. This can happen when we change the owners of inlined local
+        // classes in mapSymbols. See pos/reference/delegates.scala for an example.
+        // In this case, we can still return true if we know that the hk lambda bounds
+        // are empty anyway.
+      || {
+        val paramRefs = tparams.map(_.paramRef)
+        tp.typeParams.corresponds(tparams) { (param1, param2) =>
+          param2.paramInfo <:< param1.paramInfo.substParams(tp, paramRefs)
+        }
+      }
+
+    def unapply(tp: Type)(using Context): Option[Type] = tp match
       case tp @ HKTypeLambda(tparams, AppliedType(fn: Type, args))
-          if args.lazyZip(tparams).forall((arg, tparam) => arg == tparam.paramRef) => Some(fn)
+      if fn.typeSymbol.isClass
+         && tparams.hasSameLengthAs(args)
+         && args.lazyZip(tparams).forall((arg, tparam) => arg == tparam.paramRef)
+         && weakerBounds(tp, fn.typeParams) => Some(fn)
       case _ => None
-    }
-  }
+
+  end EtaExpansion
 
    /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
