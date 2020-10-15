@@ -13,6 +13,7 @@ import annotation.constructorOnly
 import annotation.internal.sharable
 import Decorators._
 import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
@@ -365,8 +366,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit src: SourceFile): Select = new SelectWithSig(qualifier, name, sig)
   def This(qual: Ident)(implicit src: SourceFile): This = new This(qual)
   def Super(qual: Tree, mix: Ident)(implicit src: SourceFile): Super = new Super(qual, mix)
-  def Apply(fun: Tree, args: List[Tree])(implicit src: SourceFile): Apply = new Apply(fun, args)
-  def TypeApply(fun: Tree, args: List[Tree])(implicit src: SourceFile): TypeApply = new TypeApply(fun, args)
+  def Apply(fun: Tree, args: Lst[Tree])(implicit src: SourceFile): Apply = new Apply(fun, args)
+  def TypeApply(fun: Tree, args: Lst[Tree])(implicit src: SourceFile): TypeApply = new TypeApply(fun, args)
   def Literal(const: Constant)(implicit src: SourceFile): Literal = new Literal(const)
   def New(tpt: Tree)(implicit src: SourceFile): New = new New(tpt)
   def Typed(expr: Tree, tpt: Tree)(implicit src: SourceFile): Typed = new Typed(expr, tpt)
@@ -419,7 +420,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  navigation into these arguments from the IDE, and to do the right thing in
    *  PrepareInlineable.
    */
-  def New(tpt: Tree, argss: List[List[Tree]])(using Context): Tree =
+  def New(tpt: Tree, argss: List[Lst[Tree]])(using Context): Tree =
     ensureApplied(argss.foldLeft(makeNew(tpt))(Apply(_, _)))
 
   /** A new expression with constrictor and possibly type arguments. See
@@ -437,18 +438,18 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         (tpt, Nil)
     }
     val nu: Tree = Select(New(tycon), nme.CONSTRUCTOR)
-    if (targs.nonEmpty) TypeApply(nu, targs) else nu
+    if (targs.nonEmpty) TypeApply(nu, targs.toLst) else nu
   }
 
   def Block(stat: Tree, expr: Tree)(implicit src: SourceFile): Block =
     Block(Lst(stat), expr)
 
   def Apply(fn: Tree, arg: Tree)(implicit src: SourceFile): Apply =
-    Apply(fn, arg :: Nil)
+    Apply(fn, Lst(arg))
 
   def ensureApplied(tpt: Tree)(implicit src: SourceFile): Tree = tpt match {
     case _: Apply => tpt
-    case _ => Apply(tpt, Nil)
+    case _ => Apply(tpt, Lst())
   }
 
   def AppliedTypeTree(tpt: Tree, arg: Tree)(implicit src: SourceFile): AppliedTypeTree =

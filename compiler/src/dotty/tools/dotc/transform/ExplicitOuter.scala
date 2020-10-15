@@ -19,6 +19,7 @@ import dotty.tools.dotc.ast.tpd
 
 import collection.mutable
 import scala.annotation.tailrec
+import util.Lst; // import Lst.::
 
 /** This phase adds outer accessors to classes and traits that need them.
  *  Compared to Scala 2.x, it tries to minimize the set of classes
@@ -106,7 +107,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
             // make sure we have a contructor
             case parent: TypeTree
             if !cls.is(Trait) && !parentCls.is(Trait) && !defn.NotRuntimeClasses.contains(parentCls) =>
-              New(parent.tpe, Nil).withSpan(impl.span)
+              New(parent.tpe, Lst()).withSpan(impl.span)
             case _ => parent
       cpy.Template(impl)(parents = parents1, body = impl.body ++ newDefs)
     }

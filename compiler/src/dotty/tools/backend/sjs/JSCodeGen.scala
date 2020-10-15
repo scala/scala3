@@ -27,7 +27,7 @@ import TypeErasure.ErasedValueType
 
 import dotty.tools.dotc.util
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{toLst, +:}
 
 import dotty.tools.dotc.transform.{Erasure, ValueClasses}
 import dotty.tools.dotc.transform.SymUtils._
@@ -1720,7 +1720,8 @@ class JSCodeGen()(using genCtx: Context) {
    */
   private def genSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
     implicit val pos = tree.span
-    val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
+    val Apply(fun @ Select(sup @ Super(qual, _), _), args0) = tree
+    val args = args0.toList
     val sym = fun.symbol
 
     if (sym == defn.Any_getClass) {
@@ -1761,7 +1762,8 @@ class JSCodeGen()(using genCtx: Context) {
   private def genApplyNew(tree: Apply): js.Tree = {
     implicit val pos: SourcePosition = tree.sourcePos
 
-    val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) = tree
+    val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args0) = tree
+    val args = args0.toList
     val ctor = fun.symbol
     val tpe = tpt.tpe
 
@@ -1810,7 +1812,8 @@ class JSCodeGen()(using genCtx: Context) {
     acquireContextualJSClassValue { jsClassValue =>
       implicit val pos: Position = tree.span
 
-      val Apply(fun @ Select(New(tpt), _), args) = tree
+      val Apply(fun @ Select(New(tpt), _), args0) = tree
+      val args = args0.toList
       val cls = tpt.tpe.typeSymbol
       val ctor = fun.symbol
 
@@ -2070,7 +2073,8 @@ class JSCodeGen()(using genCtx: Context) {
 
     implicit val pos = tree.span
 
-    val Apply(fun, args) = tree
+    val Apply(fun, args0) = tree
+    val args = args0.toList
     val receiver = qualifierOf(fun)
 
     val code = primitives.getPrimitive(tree, receiver.tpe)
@@ -2535,7 +2539,7 @@ class JSCodeGen()(using genCtx: Context) {
     /* JavaScript is single-threaded, so we can drop the
      * synchronization altogether.
      */
-    val Apply(fun, List(arg)) = tree
+    val Apply(fun, Lst(arg)) = tree
     val receiver = qualifierOf(fun)
 
     val genReceiver = genExpr(receiver)
@@ -2597,7 +2601,7 @@ class JSCodeGen()(using genCtx: Context) {
       case fun: Select => fun
     }
     val receiver = fun.qualifier
-    val args = tree.args
+    val args = tree.args.toList
     val sym = fun.symbol
 
     def isStringMethodFromObject: Boolean = sym.name match {
@@ -2793,7 +2797,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     val boxedResult =
       if (sym.isJSGetter) jsNativeMemberValue
-      else js.JSFunctionApply(jsNativeMemberValue, genActualJSArgs(sym, args))
+      else js.JSFunctionApply(jsNativeMemberValue, genActualJSArgs(sym, args.toList))
 
     unbox(boxedResult, atPhase(elimErasedValueTypePhase) {
       sym.info.resultType
@@ -2803,7 +2807,8 @@ class JSCodeGen()(using genCtx: Context) {
   private def genJSSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
     acquireContextualJSClassValue { explicitJSSuperClassValue =>
       implicit val pos = tree.span
-      val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
+      val Apply(fun @ Select(sup @ Super(qual, _), _), args0) = tree
+      val args = args0.toList
       val sym = fun.symbol
 
       val genReceiver = genExpr(qual)
@@ -3589,14 +3594,15 @@ class JSCodeGen()(using genCtx: Context) {
    */
   private def genReflectiveCall(tree: Apply, isSelectDynamic: Boolean): js.Tree = {
     implicit val pos = tree.span
-    val Apply(fun @ Select(receiver0, _), args) = tree
+    val Apply(fun @ Select(receiver0, _), args0) = tree
+    val args = args0.toList
 
     /* Extract the real receiver, which is the first argument to one of the
      * implicit conversions scala.reflect.Selectable.reflectiveSelectable or
      * scala.Selectable.reflectiveSelectableFromLangReflectiveCalls.
      */
     val receiver = receiver0 match {
-      case Apply(fun1, receiver :: _)
+      case Apply(fun1, receiver +: _)
           if fun1.symbol == jsdefn.ReflectSelectable_reflectiveSelectable ||
               fun1.symbol == jsdefn.Selectable_reflectiveSelectableFromLangReflectiveCalls =>
         genExpr(receiver)
@@ -3636,7 +3642,7 @@ class JSCodeGen()(using genCtx: Context) {
                 if fun.symbol == defn.ClassTagModule_apply && const.tag == Constants.ClazzTag =>
               toIRTypeAndTypeRef(const.typeValue)
             // ClassTag.SpecialType -> erasure(SepecialType.typeRef) (e.g., ClassTag.Any -> Object)
-            case Apply(Select(classTagModule, name), Nil)
+            case Apply(Select(classTagModule, name), Lst.Empty)
                 if classTagModule.symbol == defn.ClassTagModule &&
                     defn.SpecialClassTagClasses.exists(_.name == name.toTypeName) =>
               toIRTypeAndTypeRef(TypeErasure.erasure(
@@ -3863,7 +3869,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     def unapply(tree: Apply): Option[Tree] = tree match {
-      case Apply(wrapArray_?, List(wrapped)) if isWrapArray(wrapArray_?.symbol) =>
+      case Apply(wrapArray_?, Lst(wrapped)) if isWrapArray(wrapArray_?.symbol) =>
         Some(wrapped)
       case _ =>
         None
@@ -3890,7 +3896,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     for {
-      (arg, paramName) <- args.zip(sym.info.paramNamess.flatten)
+      (arg, paramName) <- args.zip(sym.info.paramNamess.flatten).toList
       if !existedBeforeUncurry(paramName)
     } yield {
       genExpr(arg)

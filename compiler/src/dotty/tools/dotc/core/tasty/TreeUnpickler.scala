@@ -1117,9 +1117,9 @@ class TreeUnpickler(reader: TastyReader,
               tpd.Super(qual, mixId, mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTerm()
-              tpd.Apply(fn, until(end)(readTerm()))
+              tpd.Apply(fn, until(end)(readTerm()).toLst)
             case TYPEAPPLY =>
-              tpd.TypeApply(readTerm(), until(end)(readTpt()))
+              tpd.TypeApply(readTerm(), until(end)(readTpt()).toLst)
             case TYPED =>
               val expr = readTerm()
               val tpt = readTpt()

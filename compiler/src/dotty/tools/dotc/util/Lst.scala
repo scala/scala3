@@ -109,10 +109,18 @@ object Lst:
   def fromArray[T](xs: Array[T], start: Int, end: Int): Lst[T] =
     _fromArray(xs.asInstanceOf[Arr], start, end)
 
+  def fromArray[T](xs: Array[T]): Lst[T] =
+    fromArray(xs, 0, xs.length)
+
   def fromIterableOnce[T](it: IterableOnce[T]): Lst[T] =
     val buf = new Buffer[T]
     it.iterator.foreach(buf += _)
     buf.toLst
+
+  def fromSeq[T](seq: Seq[T]): Lst[T] =
+    val elems = new Arr(seq.length)
+    seq.copyToArray(elems)
+    multi[T](elems)
 
   extension [T](xs: Lst[T] & Arr)
     private def at(i: Int): T = (xs: Arr)(i).asInstanceOf[T]
@@ -338,6 +346,10 @@ object Lst:
         i
       case elem: T @ unchecked => if from == 0 && p(elem) then 0 else 1
 
+    def indexWhere(p: T => Boolean): Int =
+      val idx = firstIndexWhere(p)
+      if idx == length then -1 else idx
+
     def find(p: T => Boolean): Option[T] =
       val idx = firstIndexWhere(p)
       if idx < length then Some(xs.apply(idx)) else None
@@ -519,6 +531,7 @@ object Lst:
           op(x, z)
 
     def zip(ys: Lst[U]): Lst[(T, U)] = xs.zipWith(ys)((_, _))
+    def zip(ys: IterableOnce[U]): Lst[(T, U)] = xs.zipWith(ys)((_, _))
 
     @infix def eqLst(ys: Lst[U]) = eq(xs, ys)
 
@@ -594,13 +607,82 @@ object Lst:
           case null => Empty
           case ys: Arr => single[V](op(x, ys.at(0)))
           case y: U @unchecked => single[V](op(x, y))
+
+    def zipWith(ys: IterableOnce[U])(op: (T, U) => V): Lst[V] =
+      val yit = ys.iterator
+      xs match
+        case null => Empty
+        case xs: Arr =>
+          var newElems: Arr = null
+          var i = 0
+          while i < xs.length && yit.hasNext do
+            val x = xs.at(i)
+            val y = op(x, yit.next)
+            if newElems != null then
+              newElems(i) = y
+            else if !eq(x, y) then
+              newElems = new Arr(xs.length)
+              System.arraycopy(xs, 0, newElems, 0, i)
+              newElems(i) = y
+            i += 1
+          if newElems == null then fromArr[V](xs)
+          else _fromArray[V](newElems, 0, i)
+        case x: T @unchecked =>
+          if yit.hasNext then single[V](op(x, yit.next))
+          else Empty
   end extension
+
+  extension [T, U, V, W](xs: Lst[T]):
+    def zipWith(ys: IterableOnce[U], zs: IterableOnce[V])(op: (T, U, V) => W): Lst[W] =
+      val yit = ys.iterator
+      val zit = zs.iterator
+      xs match
+        case null => Empty
+        case xs: Arr =>
+          var newElems: Arr = null
+          var i = 0
+          while i < xs.length && yit.hasNext && zit.hasNext do
+            val x = xs.at(i)
+            val y = op(x, yit.next, zit.next)
+            if newElems != null then
+              newElems(i) = y
+            else if !eq(x, y) then
+              newElems = new Arr(xs.length)
+              System.arraycopy(xs, 0, newElems, 0, i)
+              newElems(i) = y
+            i += 1
+          if newElems == null then fromArr[W](xs)
+          else _fromArray[W](newElems, 0, i)
+        case x: T @unchecked =>
+          if yit.hasNext && zit.hasNext then single[W](op(x, yit.next, zit.next))
+          else Empty
 
   extension [T, U] (xs: Lst[(T, U)])
     def toMap: Map[T, U] = Map() ++ xs.iterator
 
+    def unzip: (Lst[T], Lst[U]) = xs match
+      case null => (Lst.Empty, Lst.Empty)
+      case xs: Arr =>
+        val fst, snd = new Arr(xs.length)
+        var i = 0
+        while i < xs.length do
+          val p = xs.at(i)
+          fst(i) = p._1
+          snd(i) = p._2
+          i += 1
+        (multi[T](fst), multi[U](snd))
+      case x: (T, U) @unchecked =>
+        (single[T](x._1), single[U](x._2))
+  end extension
+
   extension [T](xs: Lst[Iterable[T]])
     def flatten: Lst[T] =
+      val buf = Buffer[T]()
+      xs.foreach(buf ++= _)
+      buf.toLst
+
+  extension [T](xs: Iterable[Lst[T]])
+    def flattenLst: Lst[T] =
       val buf = Buffer[T]()
       xs.foreach(buf ++= _)
       buf.toLst

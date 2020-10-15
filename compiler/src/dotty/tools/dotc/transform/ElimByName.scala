@@ -8,6 +8,7 @@ import Contexts._
 import Types._
 import core.StdNames.nme
 import ast.Trees._
+import util.Lst; // import Lst.::
 
 /** This phase eliminates ExprTypes `=> T` as types of method parameter references, and replaces them b
  *  nullary function types.  More precisely:
@@ -53,7 +54,7 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
     applyIfFunction(tree, tree)
 
   override def transformTypeApply(tree: TypeApply)(using Context): Tree = tree match {
-    case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
+    case TypeApply(Select(_, nme.asInstanceOf_), Lst(arg)) =>
       // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
       // See pos/t296.scala
       applyIfFunction(tree, arg)

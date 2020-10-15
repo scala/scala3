@@ -10,6 +10,8 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.util.Lst; // import Lst.::
+
 
 // Ported from old dotty.internal.StringContextMacro
 // TODO: port Scala 2 logic? (see https://github.com/scala/scala/blob/2.13.x/src/compiler/scala/tools/reflect/FormatInterpolator.scala#L74)
@@ -62,7 +64,7 @@ object StringContextChecker {
   def checkedParts(strContext_f: Tree, args0: Tree)(using Context): String = {
 
     val (partsExpr, parts) = strContext_f match {
-      case TypeApply(Select(Apply(_, (parts: SeqLiteral) :: Nil), _), _) =>
+      case TypeApply(Select(Apply(_, Lst(parts: SeqLiteral)), _), _) =>
         (parts.elems, parts.elems.toList.map { case Literal(Constant(str: String)) => str } )
       case _ =>
         report.error("Expected statically known String Context", strContext_f.srcPos)

@@ -228,7 +228,7 @@ object Splicer {
       }
 
     def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
-      case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
+      case Apply(Select(Apply(TypeApply(fn, _), Lst(quoted)), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
         val quoted1 = quoted match {
           case quoted: Ident if quoted.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
@@ -238,7 +238,7 @@ object Splicer {
         }
         interpretQuote(quoted1)
 
-      case Apply(Select(TypeApply(fn, quoted :: Nil), _), _) if fn.symbol == defn.QuotedTypeModule_apply =>
+      case Apply(Select(TypeApply(fn, Lst(quoted)), _), _) if fn.symbol == defn.QuotedTypeModule_apply =>
         interpretTypeQuote(quoted)
 
       case Literal(Constant(value)) =>
@@ -535,7 +535,7 @@ object Splicer {
         case fn: Select => Some((fn, Nil))
         case Apply(f @ Call0(fn, args1), args2) =>
           if (f.tpe.widenDealias.isErasedMethod) Some((fn, args1))
-          else Some((fn, args2 :: args1))
+          else Some((fn, args2.toList :: args1))
         case TypeApply(Call0(fn, args), _) => Some((fn, args))
         case _ => None
       }

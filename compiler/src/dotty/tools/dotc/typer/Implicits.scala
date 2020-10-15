@@ -878,7 +878,7 @@ trait Implicits:
 
           val call = closureBody(alt.tree) // the tree itself if not a closure
           val (_, targs, _) = decomposeCall(call)
-          val args = resolveTypes(targs)(using ctx.fresh.setTyperState(alt.tstate))
+          val args = resolveTypes(targs.toList)(using ctx.fresh.setTyperState(alt.tstate))
           err.userDefinedErrorString(raw, params, args)
         }
 
@@ -1056,7 +1056,7 @@ trait Implicits:
                   nme.apply)
               else untpdGenerated
             typed(
-              untpd.Apply(untpdConv, untpd.TypedSplice(argument) :: Nil),
+              untpd.Apply(untpdConv, Lst(untpd.TypedSplice(argument))),
               pt, locked)
           }
           pt match
@@ -1670,7 +1670,7 @@ final class SearchRoot extends SearchHistory:
             val classDef = ClassDef(classSym, DefDef(constr), vdefs.toLst)
 
             val valSym = newLazyImplicit(classSym.typeRef, span)
-            val inst = ValDef(valSym, New(classSym.typeRef, Nil))
+            val inst = ValDef(valSym, New(classSym.typeRef, Lst()))
 
             // Substitute dictionary references into outermost result term.
             val resMap = new TreeTypeMap(treeMap = {

@@ -179,7 +179,7 @@ object TypeTestsCasts {
         def isPrimitive(tp: Type) = tp.classSymbol.isPrimitiveValueClass
 
         def derivedTree(expr1: Tree, sym: Symbol, tp: Type) =
-          cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), List(TypeTree(tp)))
+          cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), Lst(TypeTree(tp)))
 
         def effectiveClass(tp: Type): Symbol =
           if tp.isRef(defn.PairClass) then effectiveClass(erasure(tp))
@@ -294,7 +294,7 @@ object TypeTestsCasts {
             // In the JVM `x.asInstanceOf[Nothing]` would throw a class cast exception except when `x eq null`.
             // To avoid this loophole we execute `x` and then regardless of the result throw a `ClassCastException`
             val throwCCE = Throw(New(defn.ClassCastExceptionClass.typeRef, defn.ClassCastExceptionClass_stringConstructor,
-                Literal(Constant("Cannot cast to scala.Nothing")) :: Nil))
+                Lst(Literal(Constant("Cannot cast to scala.Nothing")))))
             Block(Lst(expr), throwCCE).withSpan(expr.span)
           }
           else

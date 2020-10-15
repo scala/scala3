@@ -17,7 +17,7 @@ import Symbols._
 import StdNames._
 import Types._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{toLst, +:}
 
 import dotty.tools.dotc.transform.MegaPhase._
 
@@ -197,7 +197,7 @@ class JUnitBootstrappers extends MiniPhase {
     DefDef(sym, {
       if (module.exists) {
         val calls = annotatedMethods(module.moduleClass.asClass, annot)
-          .map(m => Apply(ref(module).select(m), Nil))
+          .map(m => Apply(ref(module).select(m), Lst()))
         Block(calls.toLst, unitLiteral)
       } else {
         unitLiteral
@@ -212,7 +212,7 @@ class JUnitBootstrappers extends MiniPhase {
     DefDef(sym, { (paramRefss: List[List[Tree]]) =>
       val List(List(instanceParamRef)) = paramRefss
       val calls = annotatedMethods(testClass, annot)
-        .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Nil))
+        .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Lst()))
       Block(calls.toLst, unitLiteral)
     })
   }
@@ -229,9 +229,9 @@ class JUnitBootstrappers extends MiniPhase {
         val ignored = Literal(Constant(test.hasAnnotation(junitdefn.IgnoreAnnotClass)))
         val testAnnot = test.getAnnotation(junitdefn.TestAnnotClass).get
 
-        val mappedArguments = testAnnot.arguments.flatMap{
+        val mappedArguments = testAnnot.arguments.flatMapIterable {
           // Since classOf[...] in annotations would not be transformed, grab the resulting class constant here
-          case NamedArg(expectedName: SimpleName, TypeApply(Ident(nme.classOf), fstArg :: _))
+          case NamedArg(expectedName: SimpleName, TypeApply(Ident(nme.classOf), fstArg +: _))
             if expectedName.toString == "expected" => Some(clsOf(fstArg.tpe))
           // The only other valid argument to @Test annotations is timeout
           case NamedArg(timeoutName: TermName, timeoutLiteral: Literal)
@@ -247,7 +247,7 @@ class JUnitBootstrappers extends MiniPhase {
         }
 
         val reifiedAnnot = resolveConstructor(junitdefn.TestAnnotType, mappedArguments)
-        New(junitdefn.TestMetadataType, List(name, ignored, reifiedAnnot))
+        New(junitdefn.TestMetadataType, Lst(name, ignored, reifiedAnnot))
       }
       JavaSeqLiteral(metadata.toLst, TypeTree(junitdefn.TestMetadataType))
     })
@@ -266,7 +266,7 @@ class JUnitBootstrappers extends MiniPhase {
         Lst(ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef))),
         tests.foldRight[Tree] {
           val tp = junitdefn.NoSuchMethodExceptionType
-          Throw(resolveConstructor(tp, nameParamRef :: Nil))
+          Throw(resolveConstructor(tp, Lst(nameParamRef)))
         } { (test, next) =>
           If(Literal(Constant(test.name.toString)).select(defn.Any_equals).appliedTo(nameParamRef),
             genTestInvocation(testClass, test, ref(castInstanceSym)),
@@ -299,7 +299,7 @@ class JUnitBootstrappers extends MiniPhase {
     val sym = newSymbol(owner, junitNme.newInstance, Synthetic | Method,
       MethodType(Nil, defn.ObjectType)).entered
 
-    DefDef(sym, New(testClass.typeRef, Nil))
+    DefDef(sym, New(testClass.typeRef, Lst()))
   }
 
   private def castParam(param: Symbol, clazz: Symbol)(using Context): Tree =

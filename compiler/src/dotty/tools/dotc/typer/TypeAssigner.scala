@@ -291,10 +291,10 @@ trait TypeAssigner {
       tp
   }
 
-  def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(using Context): Apply = {
+  def assignType(tree: untpd.Apply, fn: Tree, args: Lst[Tree])(using Context): Apply = {
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
-        if (sameLength(fntpe.paramInfos, args) || ctx.phase.prev.relaxedTyping)
+        if (fntpe.paramInfos.length == args.length || ctx.phase.prev.relaxedTyping)
           if (fntpe.isResultDependent) safeSubstParams(fntpe.resultType, fntpe.paramRefs, args.tpes)
           else fntpe.resultType
         else
@@ -306,7 +306,7 @@ trait TypeAssigner {
     ConstFold.Apply(tree.withType(ownType))
   }
 
-  def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(using Context): TypeApply = {
+  def assignType(tree: untpd.TypeApply, fn: Tree, args: Lst[Tree])(using Context): TypeApply = {
     def fail = tree.withType(errorType(err.takesNoParamsStr(fn, "type "), tree.srcPos))
     ConstFold(fn.tpe.widen match {
       case pt: TypeLambda =>
@@ -358,7 +358,7 @@ trait TypeAssigner {
           else {
             val argTypes = args.tpes
             if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
-            else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
+            else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args.toList, tree.srcPos)
           }
         }
       case err: ErrorType =>

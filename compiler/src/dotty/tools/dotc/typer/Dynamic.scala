@@ -17,7 +17,7 @@ import core.Definitions
 import ErrorReporting._
 import reporting._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{toLst, +:}
 
 object Dynamic {
   def isDynamicMethod(name: Name): Boolean =
@@ -28,9 +28,9 @@ object DynamicUnapply {
   def unapply(tree: tpd.Tree): Option[List[tpd.Tree]] = tree match
     case TypeApply(Select(qual, name), _) if name == nme.asInstanceOfPM =>
       unapply(qual)
-    case Apply(Apply(Select(selectable, fname), Literal(Constant(name)) :: ctag :: Nil), _ :: implicits)
+    case Apply(Apply(Select(selectable, fname), Lst(Literal(Constant(name)), ctag)), _ +: implicits)
     if fname == nme.applyDynamic && (name == "unapply" || name == "unapplySeq") =>
-      Some(selectable :: ctag :: implicits)
+      Some(selectable :: ctag :: implicits.toList)
     case _ =>
       None
 }
@@ -64,7 +64,7 @@ trait Dynamic {
    *    foo.bar[T0, ...](x = bazX, y = bazY, baz, ...) ~~> foo.applyDynamicNamed[T0, ...]("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
    */
   def typedDynamicApply(tree: untpd.Apply, isInsertedApply: Boolean, pt: Type)(using Context): Tree = {
-    def typedDynamicApply(qual: untpd.Tree, name: Name, selSpan: Span, targs: List[untpd.Tree]): Tree = {
+    def typedDynamicApply(qual: untpd.Tree, name: Name, selSpan: Span, targs: Lst[untpd.Tree]): Tree = {
       def isNamedArg(arg: untpd.Tree): Boolean = arg match { case NamedArg(_, _) => true; case _ => false }
       val args = tree.args
       val dynName = if (args.exists(isNamedArg)) nme.applyDynamicNamed else nme.applyDynamic
@@ -86,12 +86,12 @@ trait Dynamic {
         case TypeApply(fun, targs) =>
           typedDynamicApply(fun, nme.apply, fun.span, targs)
         case fun =>
-          typedDynamicApply(fun, nme.apply, fun.span, Nil)
+          typedDynamicApply(fun, nme.apply, fun.span, Lst())
       }
     } else {
       tree.fun match {
         case sel @ Select(qual, name) if !isDynamicMethod(name) =>
-          typedDynamicApply(qual, name, sel.span, Nil)
+          typedDynamicApply(qual, name, sel.span, Lst())
         case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
           typedDynamicApply(qual, name, sel.span, targs)
         case _ =>
@@ -107,18 +107,18 @@ trait Dynamic {
    *  Note: inner part of translation foo.bar(baz) = quux ~~> foo.selectDynamic(bar).update(baz, quux) is achieved
    *  through an existing transformation of in typedAssign [foo.bar(baz) = quux ~~> foo.bar.update(baz, quux)].
    */
-  def typedDynamicSelect(tree: untpd.Select, targs: List[Tree], pt: Type)(using Context): Tree =
+  def typedDynamicSelect(tree: untpd.Select, targs: Lst[Tree], pt: Type)(using Context): Tree =
     typedApply(coreDynamic(tree.qualifier, nme.selectDynamic, tree.name, tree.span, targs), pt)
 
   /** Translate selection that does not typecheck according to the normal rules into a updateDynamic.
    *    foo.bar = baz ~~> foo.updateDynamic(bar)(baz)
    */
   def typedDynamicAssign(tree: untpd.Assign, pt: Type)(using Context): Tree = {
-    def typedDynamicAssign(qual: untpd.Tree, name: Name, selSpan: Span, targs: List[untpd.Tree]): Tree =
+    def typedDynamicAssign(qual: untpd.Tree, name: Name, selSpan: Span, targs: Lst[untpd.Tree]): Tree =
       typedApply(untpd.Apply(coreDynamic(qual, nme.updateDynamic, name, selSpan, targs), tree.rhs), pt)
     tree.lhs match {
       case sel @ Select(qual, name) if !isDynamicMethod(name) =>
-        typedDynamicAssign(qual, name, sel.span, Nil)
+        typedDynamicAssign(qual, name, sel.span, Lst.Empty)
       case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, targs)
       case _ =>
@@ -126,7 +126,7 @@ trait Dynamic {
     }
   }
 
-  private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selSpan: Span, targs: List[untpd.Tree])(using Context): untpd.Apply = {
+  private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selSpan: Span, targs: Lst[untpd.Tree])(using Context): untpd.Apply = {
     val select = untpd.Select(qual, dynName).withSpan(selSpan)
     val selectWithTypes =
       if (targs.isEmpty) select
@@ -173,18 +173,18 @@ trait Dynamic {
       val base =
         untpd.Apply(
           untpd.TypedSplice(selectable.select(selectorName)).withSpan(fun.span),
-          (Literal(Constant(name.toString)) :: Nil).map(untpd.TypedSplice(_)))
+          Lst(Literal(Constant(name.toString))).map(untpd.TypedSplice(_)))
 
       val scall =
         if (vargss.isEmpty) base
-        else untpd.Apply(base, vargss.flatten.map(untpd.TypedSplice(_)))
+        else untpd.Apply(base, vargss.flattenLst.map(untpd.TypedSplice(_)))
 
       // If function is an `applyDynamic` that takes a ClassTag* parameter,
       // add `ctags`.
       def addClassTags(tree: Tree): Tree = tree match
         case Apply(fn: Apply, args) =>
           cpy.Apply(tree)(addClassTags(fn), args)
-        case Apply(fn @ Select(_, nme.applyDynamic), nameArg :: _ :: Nil) =>
+        case Apply(fn @ Select(_, nme.applyDynamic), Lst(nameArg, _)) =>
           fn.tpe.widen match
             case mt: MethodType => mt.paramInfos match
               case _ :: ctagsParam :: Nil
@@ -192,7 +192,7 @@ trait Dynamic {
                  && ctagsParam.argInfos.head.isRef(defn.ClassTagClass) =>
                   val ctagType = defn.ClassTagClass.typeRef.appliedTo(TypeBounds.empty)
                   cpy.Apply(tree)(fn,
-                    nameArg :: seqToRepeated(SeqLiteral(ctags.toLst, TypeTree(ctagType))) :: Nil)
+                    Lst(nameArg, seqToRepeated(SeqLiteral(ctags.toLst, TypeTree(ctagType)))))
               case _ => tree
             case other => tree
         case _ => tree

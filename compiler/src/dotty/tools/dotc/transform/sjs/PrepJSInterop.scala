@@ -26,6 +26,7 @@ import SymDenotations._
 import SymUtils._
 import Trees._
 import Types._
+import util.Lst; // import Lst.::
 
 import JSSymUtils._
 
@@ -244,7 +245,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
     private def transformStatOrExpr(tree: Tree)(using Context): Tree = {
       tree match {
         // Validate js.constructorOf[T]
-        case TypeApply(ctorOfTree, List(tpeArg))
+        case TypeApply(ctorOfTree, Lst(tpeArg))
             if ctorOfTree.symbol == jsdefn.JSPackage_constructorOf =>
           validateJSConstructorOf(tree, tpeArg)
           super.transform(tree)
@@ -252,7 +253,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         /* Rewrite js.ConstructorTag.materialize[T] into
          * runtime.newConstructorTag[T](js.constructorOf[T])
          */
-        case TypeApply(ctorOfTree, List(tpeArg))
+        case TypeApply(ctorOfTree, Lst(tpeArg))
             if ctorOfTree.symbol == jsdefn.JSConstructorTag_materialize =>
           validateJSConstructorOf(tree, tpeArg)
           val ctorOf = ref(jsdefn.JSPackage_constructorOf).appliedToTypeTree(tpeArg)
@@ -716,7 +717,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
               tree.rhs match {
                 case sel: Select if sel.symbol == jsdefn.JSPackage_undefined =>
                   // ok
-                case Apply(Apply(TypeApply(fromTypeConstructorFun, _), (sel: Select) :: Nil), _)
+                case Apply(Apply(TypeApply(fromTypeConstructorFun, _), Lst(sel: Select)), _)
                     if sel.symbol == jsdefn.JSPackage_undefined
                         && fromTypeConstructorFun.symbol == jsdefn.PseudoUnion_fromTypeConstructor =>
                   // ok: js.|.fromTypeConstructor(js.undefined)(...)

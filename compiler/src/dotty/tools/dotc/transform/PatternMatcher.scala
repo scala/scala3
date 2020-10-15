@@ -384,7 +384,7 @@ object PatternMatcher {
               case mt: MethodType =>
                 assert(mt.isImplicitMethod)
                 val (args, rest) = implicits.splitAt(mt.paramNames.size)
-                applyImplicits(acc.appliedToArgs(args), rest, mt.resultType)
+                applyImplicits(acc.appliedToArgs(args.toLst), rest, mt.resultType)
               case _ =>
                 assert(implicits.isEmpty)
                 acc
@@ -433,7 +433,7 @@ object PatternMatcher {
 
     private def matchPlan(tree: Match): Plan =
       letAbstract(tree.selector) { scrutinee =>
-        val matchError: Plan = ResultPlan(Throw(New(defn.MatchErrorClass.typeRef, ref(scrutinee) :: Nil)))
+        val matchError: Plan = ResultPlan(Throw(New(defn.MatchErrorClass.typeRef, Lst(ref(scrutinee)))))
         tree.cases.foldRight(matchError) { (cdef, next) =>
           SeqPlan(caseDefPlan(scrutinee, cdef), next)
         }

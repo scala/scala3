@@ -8,6 +8,7 @@ import StdNames.nme
 import ast.untpd
 import ast.tpd._
 import config.Config
+import util.Lst; import Lst.::
 
 object ContextFunctionResults:
 
@@ -46,7 +47,7 @@ object ContextFunctionResults:
   def contextResultCount(sym: Symbol)(using Context): Int =
     sym.getAnnotation(defn.ContextResultCountAnnot) match
       case Some(annot) =>
-        val ast.Trees.Literal(Constant(crCount: Int)) :: Nil: @unchecked = annot.arguments
+        val Lst(ast.Trees.Literal(Constant(crCount: Int))): @unchecked = annot.arguments
         crCount
       case none => 0
 

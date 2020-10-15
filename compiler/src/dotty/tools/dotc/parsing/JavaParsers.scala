@@ -896,7 +896,7 @@ object JavaParsers {
         AppliedTypeTree(javaLangDot(tpnme.Enum), List(enumType))
         */
       val superclazz = Apply(TypeApply(
-        Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)), Nil)
+        Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), Lst(enumType)), Lst())
       val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
           makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnumTrait)

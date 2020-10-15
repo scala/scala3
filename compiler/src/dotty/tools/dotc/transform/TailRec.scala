@@ -337,7 +337,7 @@ class TailRec extends MiniPhase {
             rewrote = true
 
             val assignParamPairs = for {
-              (param, arg) <- paramSyms.zip(arguments)
+              (arg, param) <- arguments.zip(paramSyms)
               if (arg match {
                 case arg: Ident => arg.symbol != param
                 case _ => true
@@ -352,25 +352,22 @@ class TailRec extends MiniPhase {
                 // TODO Opt: also avoid assigning `this` if the prefix is `this.`
                 (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
 
-            val assignments = assignThisAndParamPairs match {
-              case (lhs, rhs) :: Nil =>
-                Assign(ref(lhs), rhs) :: Nil
-              case _ :: _ =>
+            val assignments = assignThisAndParamPairs match
+              case Lst.Empty => Lst.Empty
+              case Lst((lhs, rhs)) => Lst(Assign(ref(lhs), rhs))
+              case _ =>
                 val (tempValDefs, assigns) = (for ((lhs, rhs) <- assignThisAndParamPairs) yield {
                   val temp = newSymbol(method, TailTempName.fresh(lhs.name.toTermName), Synthetic, lhs.info)
                   (ValDef(temp, rhs), Assign(ref(lhs), ref(temp)).withSpan(tree.span))
                 }).unzip
                 tempValDefs ::: assigns
-              case nil =>
-                Nil
-            }
 
             /* The `Typed` node is necessary to perfectly preserve the type of the node.
              * Without it, lubbing in enclosing if/else or match can infer a different type,
              * which can cause Ycheck errors.
              */
             val tpt = TypeTree(method.info.resultType)
-            seq(assignments.toLst, Typed(Return(unitLiteral.withSpan(tree.span), continueLabel), tpt))
+            seq(assignments, Typed(Return(unitLiteral.withSpan(tree.span), continueLabel), tpt))
           }
           else fail("it is not in tail position")
         else if (isRecursiveSuperCall)

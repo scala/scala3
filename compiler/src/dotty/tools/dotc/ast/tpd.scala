@@ -43,12 +43,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Super(qual: Tree, mixName: TypeName, mixinClass: Symbol = NoSymbol)(using Context): Super =
     Super(qual, if (mixName.isEmpty) untpd.EmptyTypeIdent else untpd.Ident(mixName), mixinClass)
 
-  def Apply(fn: Tree, args: List[Tree])(using Context): Apply = {
+  def Apply(fn: Tree, args: Lst[Tree])(using Context): Apply = {
     assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]] || fn.isInstanceOf[Inlined] || fn.isInstanceOf[tasty.TreePickler.Hole])
     ta.assignType(untpd.Apply(fn, args), fn, args)
   }
 
-  def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = {
+  def TypeApply(fn: Tree, args: Lst[Tree])(using Context): TypeApply = {
     assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]])
     ta.assignType(untpd.TypeApply(fn, args), fn, args)
   }
@@ -111,7 +111,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
    */
-  def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: List[Tree] = Nil, targetType: Type = NoType)(using Context): Block = {
+  def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: Lst[Tree] = Lst(), targetType: Type = NoType)(using Context): Block = {
     val targetTpt = if (targetType.exists) TypeTree(targetType) else EmptyTree
     val call =
       if (targs.isEmpty) Ident(TermRef(NoPrefix, meth))
@@ -306,7 +306,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             false
         }
         val constr = firstParent.decl(nme.CONSTRUCTOR).suchThat(constr => isApplicable(constr.info))
-        New(firstParent, constr.symbol.asTerm, superArgs)
+        New(firstParent, constr.symbol.asTerm, superArgs.toLst)
       }
     ClassDefWithParents(cls, constr, superRef :: otherParents.map(TypeTree(_)), body)
   }
@@ -357,7 +357,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
     val forwarders = fns.lazyZip(methNames).map(forwarder)
     val cdef = ClassDef(cls, DefDef(constr), forwarders.toLst)
-    Block(Lst(cdef), New(cls.typeRef, Nil))
+    Block(Lst(cdef), New(cls.typeRef, Lst()))
   }
 
   def Import(expr: Tree, selectors: Lst[untpd.ImportSelector])(using Context): Import =
@@ -462,10 +462,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     if (!ctx.erasedTypes) {
       assert(!TypeErasure.isGeneric(elemTpe), elemTpe) //needs to be done during typer. See Applications.convertNewGenericArray
-      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
+      newArr.appliedToTypeTrees(Lst(TypeTree(returnTpe))).appliedToArgs(Lst(clsOf(elemTpe), clsOf(returnTpe), dims)).withSpan(span)
     }
     else  // after erasure
-      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
+      newArr.appliedToArgs(Lst(clsOf(elemTpe), clsOf(returnTpe), dims)).withSpan(span)
   }
 
   /** The wrapped array method name for an array of type elemtp */
@@ -489,11 +489,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
   /** new C(args), calling the primary constructor of C */
-  def New(tp: Type, args: List[Tree])(using Context): Apply =
+  def New(tp: Type, args: Lst[Tree])(using Context): Apply =
     New(tp, tp.dealias.typeSymbol.primaryConstructor.asTerm, args)
 
   /** new C(args), calling given constructor `constr` of C */
-  def New(tp: Type, constr: TermSymbol, args: List[Tree])(using Context): Apply = {
+  def New(tp: Type, constr: TermSymbol, args: Lst[Tree])(using Context): Apply = {
     val targs = tp.argTypes
     val tycon = tp.typeConstructor
     New(tycon)
@@ -596,7 +596,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply = {
+    override def Apply(tree: Tree)(fun: Tree, args: Lst[Tree])(using Context): Apply = {
       val tree1 = untpdCpy.Apply(tree)(fun, args)
       tree match {
         case tree: Apply
@@ -606,7 +606,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply = {
+    override def TypeApply(tree: Tree)(fun: Tree, args: Lst[Tree])(using Context): TypeApply = {
       val tree1 = untpdCpy.TypeApply(tree)(fun, args)
       tree match {
         case tree: TypeApply
@@ -741,10 +741,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   class TimeTravellingTreeCopier extends TypedTreeCopier {
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+    override def Apply(tree: Tree)(fun: Tree, args: Lst[Tree])(using Context): Apply =
       tree match
         case tree: Apply
-        if (tree.fun eq fun) && (tree.args eq args)
+        if (tree.fun eq fun) && (tree.args eqLst args)
            && tree.tpe.isInstanceOf[ConstantType]
            && isPureExpr(tree) => tree
         case _ =>
@@ -756,7 +756,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // However, we keep constant types of pure expressions. This uses the underlying assumptions
       // that pure functions yielding a constant will not change in later phases.
 
-    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply =
+    override def TypeApply(tree: Tree)(fun: Tree, args: Lst[Tree])(using Context): TypeApply =
       ta.assignType(untpdCpy.TypeApply(tree)(fun, args), fun, args)
       // Same remark as for Apply
 
@@ -897,14 +897,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** A unary apply node with given argument: `tree(arg)` */
     def appliedTo(arg: Tree)(using Context): Apply =
-      appliedToArgs(arg :: Nil)
+      appliedToArgs(Lst(arg))
 
     /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
     def appliedTo(arg: Tree, args: Tree*)(using Context): Apply =
-      appliedToArgs(arg :: args.toList)
+      appliedToArgs(arg :: args.toLst)
 
     /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
-    def appliedToArgs(args: List[Tree])(using Context): Apply =
+    def appliedToArgs(args: Lst[Tree])(using Context): Apply =
       Apply(tree, args)
 
     /** An applied node that accepts only varargs as arguments */
@@ -915,10 +915,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  `tree (argss(0)) ... (argss(argss.length -1))`
      */
     def appliedToArgss(argss: List[List[Tree]])(using Context): Tree =
-      argss.foldLeft(tree: Tree)(Apply(_, _))
+      argss.foldLeft(tree: Tree)((fn, args) => Apply(fn, args.toLst))
+
+    /** The current tree applied to given argument lists:
+     *  `tree (argss(0)) ... (argss(argss.length -1))`
+     */
+    def appliedToArgssLst(argss: List[Lst[Tree]])(using Context): Tree =
+      argss.foldLeft(tree: Tree)((fn, args) => Apply(fn, args))
 
     /** The current tree applied to (): `tree()` */
-    def appliedToNone(using Context): Apply = appliedToArgs(Nil)
+    def appliedToNone(using Context): Apply = appliedToArgs(Lst())
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToType(targ: Type)(using Context): Tree =
@@ -926,14 +932,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
     def appliedToTypes(targs: List[Type])(using Context): Tree =
-      appliedToTypeTrees(targs map (TypeTree(_)))
+      appliedToTypeTrees(targs.toLst.map(TypeTree(_)))
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToTypeTree(targ: Tree)(using Context): Tree =
-      appliedToTypeTrees(targ :: Nil)
+      appliedToTypeTrees(Lst(targ))
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
-    def appliedToTypeTrees(targs: List[Tree])(using Context): Tree =
+    def appliedToTypeTrees(targs: Lst[Tree])(using Context): Tree =
       if (targs.isEmpty) tree else TypeApply(tree, targs)
 
     /** Apply to `()` unless tree's widened type is parameterless */
@@ -945,7 +951,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (that.tpe.widen.isRef(defn.NothingClass))
         Literal(Constant(false))
       else
-        applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
+        applyOverloaded(tree, nme.EQ, Lst(that), Nil, defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(using Context): Tree = tp.dealias match {
@@ -1183,7 +1189,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree
     else {
       report.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
-      Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)).withSpan(tree.span)
+      Throw(New(defn.ClassCastExceptionClass.typeRef, Lst())).withSpan(tree.span)
     }
   }
 
@@ -1223,14 +1229,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def evalOnce(tree: Tree)(within: Tree => Tree)(using Context): Tree =
     letBindUnless(TreeInfo.Idempotent, tree)(within)
 
-  def runtimeCall(name: TermName, args: List[Tree])(using Context): Tree =
+  def runtimeCall(name: TermName, args: Lst[Tree])(using Context): Tree =
     Ident(defn.ScalaRuntimeModule.requiredMethod(name).termRef).appliedToArgs(args)
 
   /** An extractor that pulls out type arguments */
   object MaybePoly {
-    def unapply(tree: Tree): Option[(Tree, List[Tree])] = tree match {
+    def unapply(tree: Tree): Option[(Tree, Lst[Tree])] = tree match {
       case TypeApply(tree, targs) => Some(tree, targs)
-      case _ => Some(tree, Nil)
+      case _ => Some(tree, Lst())
     }
   }
 

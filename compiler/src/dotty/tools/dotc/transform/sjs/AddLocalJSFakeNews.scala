@@ -63,7 +63,7 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
 
   override def transformApply(tree: Apply)(using Context): Tree = {
     if (tree.symbol == jsdefn.Runtime_createLocalJSClass) {
-      val classValueArg :: superClassValueArg :: _ :: Nil = tree.args
+      val Lst(classValueArg, superClassValueArg, _) = tree.args
       val cls = classValueArg match {
         case Literal(constant) if constant.tag == Constants.ClazzTag =>
           constant.typeValue.typeSymbol.asClass
@@ -79,7 +79,7 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
         JavaSeqLiteral(elems.toLst, TypeTree(defn.ObjectType))
       }
 
-      cpy.Apply(tree)(tree.fun, classValueArg :: superClassValueArg :: fakeNews :: Nil)
+      cpy.Apply(tree)(tree.fun, Lst(classValueArg, superClassValueArg, fakeNews))
     } else {
       tree
     }
@@ -92,7 +92,7 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
     val nonOuterArgCount = ctor.info.firstParamTypes.size - outerArgs.size
     val nonOuterArgs = List.fill(nonOuterArgCount)(ref(defn.Predef_undefined).appliedToNone)
 
-    New(tycon, ctor, outerArgs ::: nonOuterArgs)
+    New(tycon, ctor, (outerArgs ::: nonOuterArgs).toLst)
   }
 }
 

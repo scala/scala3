@@ -6,6 +6,7 @@ import Symbols._, Types._, Contexts._, Decorators._, util.Spans._, Flags._, Cons
 import StdNames.nme
 import ast.Trees._
 import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** Generate proxy classes for @main functions.
  *  A function like
@@ -52,14 +53,14 @@ object MainProxies {
         call
       }
       else {
-        val args = mt.paramInfos.zipWithIndex map {
+        val args = mt.paramInfos.toLst.zipWithIndex map {
           (formal, n) =>
             val (parserSym, formalElem) =
               if (formal.isRepeatedParam) (defn.CLP_parseRemainingArguments, formal.argTypes.head)
               else (defn.CLP_parseArgument, formal)
             val arg = Apply(
-              TypeApply(ref(parserSym.termRef), TypeTree(formalElem) :: Nil),
-              argsRef :: Literal(Constant(idx + n)) :: Nil)
+              TypeApply(ref(parserSym.termRef), Lst(TypeTree(formalElem))),
+              Lst(argsRef, Literal(Constant(idx + n))))
             if (formal.isRepeatedParam) repeated(arg) else arg
         }
         val call1 = Apply(call, args)
@@ -91,7 +92,7 @@ object MainProxies {
       val handler = CaseDef(
         Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
         EmptyTree,
-        Apply(ref(defn.CLP_showError.termRef), errVar :: Nil))
+        Apply(ref(defn.CLP_showError.termRef), Lst(errVar)))
       val body = Try(call, Lst(handler), EmptyTree)
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)

@@ -66,7 +66,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
   import xmlterms.{_Null, __Elem, __Text, _buf, _md, _plus, _scope, _tmpscope, _xml}
 
   // convenience methods
-  private def LL[A](x: A*): List[List[A]] = List(List(x:_*))
+  private def LL[A](x: A*): List[Lst[A]] = List(Lst.fromSeq(x))
   private def const(x: Any) = Literal(Constant(x))
   private def wild                          = Ident(nme.WILDCARD)
   private def wildStar                      = Ident(tpnme.WILDCARD_STAR)
@@ -101,10 +101,10 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     children: collection.Seq[Tree]): Tree =
   {
     def starArgs =
-      if (children.isEmpty) Nil
-      else List(Typed(makeXMLseq(span, children), wildStar))
+      if (children.isEmpty) Lst.Empty
+      else Lst(Typed(makeXMLseq(span, children), wildStar))
 
-    def pat    = Apply(_scala_xml__Elem, List(pre, label, wild, wild) ::: convertToTextPat(children))
+    def pat    = Apply(_scala_xml__Elem, Lst(pre, label, wild, wild) ++ convertToTextPat(children))
     def nonpat = New(_scala_xml_Elem, List(List(pre, label, attrs, scope, if (empty) Literal(Constant(true)) else Literal(Constant(false))) ::: starArgs))
 
     atSpan(span) { if (isPattern) pat else nonpat }
@@ -119,7 +119,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     else makeText1(const(txt))
   }
 
-  def makeTextPat(txt: Tree): Apply               = Apply(_scala_xml__Text, List(txt))
+  def makeTextPat(txt: Tree): Apply               = Apply(_scala_xml__Text, Lst(txt))
   def makeText1(txt: Tree): Tree                  = New(_scala_xml_Text, LL(txt))
   def comment(span: Span, text: String): Tree  = atSpan(span)( Comment(const(text)) )
   def charData(span: Span, txt: String): Tree  = atSpan(span)( makeText1(const(txt)) )
@@ -162,8 +162,8 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
   def makeXMLseq(span: Span, args: collection.Seq[Tree]): Block = {
-    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
-    val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
+    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, Lst() :: Nil))
+    val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), Lst(t)))
 
     atSpan(span)(new XMLBlock((buffer :: applies.toList).toLst, Ident(_buf)) )
   }

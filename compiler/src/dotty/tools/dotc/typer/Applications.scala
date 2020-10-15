@@ -773,7 +773,7 @@ trait Applications extends Compatibility {
 
     val result:   Tree = {
       var typedArgs = typedArgBuf.toList
-      def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
+      def app0 = cpy.Apply(app)(normalizedFun, typedArgs.toLst) // needs to be a `def` because typedArgs can change later
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
         else {
@@ -785,7 +785,7 @@ trait Applications extends Compatibility {
 
             // lift arguments in the definition order
             val argDefBuf = mutable.ListBuffer.empty[Tree]
-            typedArgs = lifter.liftArgs(argDefBuf, methType, typedArgs)
+            typedArgs = lifter.liftArgs(argDefBuf, methType, typedArgs.toLst).toList
             // Lifted arguments ordered based on the original order of typedArgBuf and
             // with all non-explicit default parameters at the end in declaration order.
             val orderedArgDefs = {
@@ -811,7 +811,7 @@ trait Applications extends Compatibility {
           }
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
-          assignType(app0, normalizedFun, typedArgs)
+          assignType(app0, normalizedFun, typedArgs.toLst)
         }
       wrapDefs(liftedDefs, app1)
     }
@@ -868,7 +868,7 @@ trait Applications extends Compatibility {
 
     def realApply(using Context): Tree = {
       val originalProto =
-        new FunProto(tree.args, IgnoredProto(pt))(this, tree.applyKind)(using argCtx(tree))
+        new FunProto(tree.args.toList, IgnoredProto(pt))(this, tree.applyKind)(using argCtx(tree))
       record("typedApply")
       val fun1 = typedFunPart(tree.fun, originalProto)
 
@@ -921,7 +921,7 @@ trait Applications extends Compatibility {
           }
 
       fun1.tpe match {
-        case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
+        case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs().toLst).withType(err)
         case TryDynamicCallType =>
           val isInsertedApply = fun1 match {
             case Select(_, nme.apply) => fun1.span.isSynthetic
@@ -1025,7 +1025,7 @@ trait Applications extends Compatibility {
           case _: untpd.Splice if ctx.mode.is(Mode.QuotedPattern) => typedAppliedSplice(tree, pt)
           case _ => realApply
         app match {
-          case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
+          case Apply(fn @ Select(left, _), Lst(right)) if fn.hasType =>
             val op = fn.symbol
             if (op == defn.Any_== || op == defn.Any_!=)
               checkCanEqual(left.tpe.widen, right.tpe.widen, app.span)
@@ -1057,7 +1057,7 @@ trait Applications extends Compatibility {
     else
       throw Error(i"unexpected type.\n  fun = $fun,\n  methPart(fun) = ${methPart(fun)},\n  methPart(fun).tpe = ${methPart(fun).tpe},\n  tpe = ${fun.tpe}")
 
-  def typedNamedArgs(args: List[untpd.Tree])(using Context): List[NamedArg] =
+  def typedNamedArgs(args: Lst[untpd.Tree])(using Context): Lst[NamedArg] =
     for (arg @ NamedArg(id, argtpt) <- args) yield {
       val argtpt1 = typedType(argtpt)
       cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)
@@ -1068,9 +1068,9 @@ trait Applications extends Compatibility {
       return errorTree(tree, "invalid pattern")
 
     val isNamed = hasNamedArg(tree.args)
-    val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
+    val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapConserve(typedType(_))
     record("typedTypeApply")
-    typedFunPart(tree.fun, PolyProto(typedArgs, pt)) match {
+    typedFunPart(tree.fun, PolyProto(typedArgs.toList, pt)) match {
       case IntegratedTypeArgs(app) =>
         app
       case _: TypeApply if !ctx.isAfterTyper =>
@@ -1100,7 +1100,7 @@ trait Applications extends Compatibility {
    *  we rely on implicit search to find one.
    */
   def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match {
-    case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
+    case Apply(TypeApply(tycon, targs@Lst(targ)), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.span)
 
       def newGenericArrayCall =
@@ -1296,26 +1296,26 @@ trait Applications extends Compatibility {
             unapplyArgType
           }
         val dummyArg = dummyTreeOfType(ownType)
-        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
+        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, Lst(dummyArg))))
         def unapplyImplicits(unapp: Tree): List[Tree] = {
           val res = List.newBuilder[Tree]
           def loop(unapp: Tree): Unit = unapp match {
-            case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
-            case Apply(unapply, `dummyArg` :: Nil) =>
+            case Apply(Apply(unapply, Lst(`dummyArg`)), args2) => assert(args2.nonEmpty); res ++= args2.toList
+            case Apply(unapply, Lst(`dummyArg`)) =>
             case Inlined(u, _, _) => loop(u)
             case DynamicUnapply(_) => report.error("Structural unapply is not supported", unapplyFn.srcPos)
-            case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
+            case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args.toList
             case _ => ().assertingErrorsReported
           }
           loop(unapp)
           res.result()
         }
 
-        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
+        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args.toList, tree.srcPos)
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil =>
-            if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled) untpd.Tuple(args) :: Nil
+            if (args.length > 1 && Feature.autoTuplingEnabled) Lst(untpd.Tuple(args.toList))
             else args
           case _ => args
         }
@@ -1324,15 +1324,15 @@ trait Applications extends Compatibility {
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
-        val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
-        val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
+        val unapplyPatterns = bunchedArgs.zipWith(argTypes)(typed(_, _))
+        val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns.toList), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq selType) || ownType.isError) result
         else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
-        val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
-        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType unapplyErr.tpe
+        val typedArgsErr = args mapConserve (typed(_, defn.AnyType))
+        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr.toList) withType unapplyErr.tpe
     }
   }
 
@@ -2152,14 +2152,14 @@ trait Applications extends Compatibility {
       case _: SelectionProto =>
         (tree, IgnoredProto(currentPt))
       case PolyProto(targs, restpe) =>
-        val tree1 = untpd.TypeApply(tree, targs.map(untpd.TypedSplice(_)))
+        val tree1 = untpd.TypeApply(tree, targs.map(untpd.TypedSplice(_)).toLst)
         normalizePt(tree1, restpe)
       case _ =>
         (tree, currentPt)
 
     val (core, pt1) = normalizePt(methodRef, pt)
     val app = withMode(Mode.SynthesizeExtMethodReceiver) {
-      typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)
+      typed(untpd.Apply(core, Lst(untpd.TypedSplice(receiver))), pt1, ctx.typerState.ownedVars)
     }
     def isExtension(tree: Tree): Boolean = methPart(tree) match {
       case Inlined(call, _, _) => isExtension(call)

@@ -11,6 +11,8 @@ import StdNames.nme
 import NameOps._
 import ast._
 import ast.Trees._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** Provides methods to produce fully parameterized versions of instance methods,
  *  where the `this` of the enclosing class is abstracted out in an extra leading
@@ -157,7 +159,7 @@ trait FullParameterization {
       /** If tree should be rewired, the rewired tree, otherwise EmptyTree.
        *  @param   targs  Any type arguments passed to the rewired tree.
        */
-      def rewireTree(tree: Tree, targs: List[Tree])(using Context): Tree = {
+      def rewireTree(tree: Tree, targs: Lst[Tree])(using Context): Tree = {
         def rewireCall(thisArg: Tree): Tree = {
           val rewired = rewiredTarget(tree, derived)
           if (rewired.exists) {
@@ -208,7 +210,7 @@ trait FullParameterization {
           .substThisUnlessStatic(origClass, thisRef.tpe),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef
-          case tree => rewireTree(tree, Nil) orElse tree
+          case tree => rewireTree(tree, Lst()) orElse tree
         },
         oldOwners = origMeth :: Nil,
         newOwners = derived :: Nil
@@ -237,7 +239,7 @@ trait FullParameterization {
           vparams.lazyZip(paramTypes).map((vparam, paramType) => {
             assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
             ref(vparam.symbol).ensureConforms(paramType)
-          }))
+          }).toLst)
       })
     }).withSpan(originalDef.rhs.span)
   }

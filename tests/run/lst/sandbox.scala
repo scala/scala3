@@ -14,6 +14,10 @@
       assert(ys == Lst(2, 3).toList)
 
   xs match
+    case Lst(x, y, z) =>
+      assert(x == 1 && y == 2 && z == 3)
+
+  xs match
     case x +: _ =>
       assert(x == 1)
 

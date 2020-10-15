@@ -14,6 +14,8 @@ import Decorators._
 import Denotations._, SymDenotations._
 import TypeErasure.erasure
 import DenotTransformers._
+import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 object ElimRepeated {
   val name: String = "elimRepeated"
@@ -230,7 +232,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         ref(sym.termRef)
           .appliedToTypes(trefs)
           .appliedToArgss(init)
-          .appliedToArgs(last :+ wrapArray(vararg, elemtp))
+          .appliedToArgs((last :+ wrapArray(vararg, elemtp)).toLst)
         })
       Thicket(tree, forwarderDef)
     else

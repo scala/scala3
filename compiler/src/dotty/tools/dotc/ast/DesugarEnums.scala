@@ -100,10 +100,10 @@ object DesugarEnums {
     Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
 
   private def ArrayLiteral(values: List[Tree], tpt: Tree)(using Context): Tree =
-    val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), tpt :: Nil)
-    val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), tpt :: Nil), clazzOf :: Nil)
+    val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), Lst(tpt))
+    val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), Lst(tpt)), Lst(clazzOf))
     val apply   = Select(ref(defn.ArrayModule.termRef), nme.apply)
-    Apply(Apply(TypeApply(apply, tpt :: Nil), values), ctag :: Nil)
+    Apply(Apply(TypeApply(apply, Lst(tpt)), values.toLst), Lst(ctag))
 
   /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *
@@ -140,7 +140,7 @@ object DesugarEnums {
       val defaultCase =
         val msg = Apply(Select(Literal(Constant("enum case not found: ")), nme.PLUS), Ident(nme.nameDollar))
         CaseDef(Ident(nme.WILDCARD), EmptyTree,
-          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(msg :: Nil))))
+          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(Lst(msg)))))
       val stringCases = enumValues.map(enumValue =>
         CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, enumValue)
       ) ::: defaultCase :: Nil
@@ -160,7 +160,7 @@ object DesugarEnums {
     def valueCtor: List[Tree] = if constraints.requiresCreator then enumValueCreator :: Nil else Nil
     def fromOrdinal: Tree =
       def throwArg(ordinal: Tree) =
-        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(Select(ordinal, nme.toString_) :: Nil)))
+        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(Lst(Select(ordinal, nme.toString_)))))
       if !constraints.cached then
         fromOrdinalMeth(throwArg)
       else
@@ -320,7 +320,7 @@ object DesugarEnums {
     }
     else {
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Simple, definesLookups)
-      val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
+      val creator = Apply(Ident(nme.DOLLAR_NEW), Lst(Literal(Constant(tag)), Literal(Constant(name.toString))))
       val vdef = ValDef(name, enumClassRef, creator).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(vdef :: scaffolding).withSpan(span)
     }

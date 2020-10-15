@@ -552,7 +552,7 @@ class ClassfileParser(
     }
   }
 
-  class ClassfileAnnotation(annotType: Type, args: List[untpd.Tree]) extends LazyAnnotation {
+  class ClassfileAnnotation(annotType: Type, args: Lst[untpd.Tree]) extends LazyAnnotation {
     protected var mySym: Symbol | (Context ?=> Symbol) =
       (using ctx: Context) => annotType.classSymbol
 
@@ -578,7 +578,7 @@ class ClassfileParser(
       case _ =>
 
     val nargs = in.nextChar
-    val argbuf = new ListBuffer[untpd.Tree]
+    val argbuf = Lst.Buffer[untpd.Tree]()
     var hasError = false
     for (i <- 0 until nargs) {
       val name = pool.getName(in.nextChar)
@@ -588,7 +588,7 @@ class ClassfileParser(
       }
     }
     if (hasError || skip) None
-    else Some(ClassfileAnnotation(attrType, argbuf.toList))
+    else Some(ClassfileAnnotation(attrType, argbuf.toLst))
   }
   catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
@@ -631,7 +631,7 @@ class ClassfileParser(
           if (c ne null) newType = ConstantType(c)
           else report.warning(s"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
         case tpnme.AnnotationDefaultATTR =>
-          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil))
+          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Lst()))
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeVisibleAnnotationATTR
           | tpnme.RuntimeInvisibleAnnotationATTR =>

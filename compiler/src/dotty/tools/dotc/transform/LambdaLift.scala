@@ -429,9 +429,9 @@ object LambdaLift {
       thisPhase.transformFollowingDeep(if (psym.owner.isTerm) ref(psym) else memberRef(psym))
     }
 
-    def addFreeArgs(sym: Symbol, args: List[Tree])(using Context): List[Tree] =
+    def addFreeArgs(sym: Symbol, args: Lst[Tree])(using Context): Lst[Tree] =
       free get sym match {
-        case Some(fvs) => fvs.toList.map(proxyRef(_)) ++ args
+        case Some(fvs) => fvs.toList.map(proxyRef(_)) ::: args
         case _ => args
       }
 
@@ -555,7 +555,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     cpy.Apply(tree)(tree.fun, lifter.addFreeArgs(tree.symbol, tree.args)).withSpan(tree.span)
 
   override def transformClosure(tree: Closure)(using Context): Closure =
-    cpy.Closure(tree)(env = lifter.addFreeArgs(tree.meth.symbol, tree.env.toList).toLst)
+    cpy.Closure(tree)(env = lifter.addFreeArgs(tree.meth.symbol, tree.env))
 
   override def transformDefDef(tree: DefDef)(using Context): Tree = {
     val sym = tree.symbol

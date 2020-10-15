@@ -10,6 +10,7 @@ import collection.{mutable, immutable}
 import util.Spans.Span
 import util.SrcPos
 import util.Lst; // import Lst.::
+import util.Lst.toLst
 
 /** A helper class for generating bridge methods in class `root`. */
 class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
@@ -103,7 +104,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       assert(argss.tail.isEmpty)
       val ref = This(root).select(member)
       if (member.info.isParameterless) ref // can happen if `member` is a module
-      else Erasure.partialApply(ref, argss.head)
+      else Erasure.partialApply(ref, argss.head.toLst)
     }
 
     bridges += DefDef(bridge, bridgeRhs(_).withSpan(bridge.span))

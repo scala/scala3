@@ -121,7 +121,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
       def forwardToRuntime(vrefs: List[Tree]): Tree =
-        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefs)
+        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs((This(clazz) :: vrefs).toLst)
 
       def ownName: Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
@@ -218,8 +218,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case _ => false
       }
       val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor _).asTerm
-      val stringIndex = Apply(Select(index, nme.toString_), Nil)
-      val error = Throw(New(ioob, constructor, List(stringIndex)))
+      val stringIndex = Apply(Select(index, nme.toString_), Lst())
+      val error = Throw(New(ioob, constructor, Lst(stringIndex)))
 
       // case _ => throw new IndexOutOfBoundsException(i.toString)
       CaseDef(Underscore(defn.IntType), EmptyTree, error)
@@ -417,7 +417,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         DefDef(writeReplaceDef(clazz),
           _ => New(defn.ModuleSerializationProxyClass.typeRef,
                    defn.ModuleSerializationProxyConstructor,
-                   List(Literal(Constant(clazz.sourceModule.termRef)))))
+                   Lst(Literal(Constant(clazz.sourceModule.termRef)))))
           .withSpan(ctx.owner.span.focus))
     else
       Nil
@@ -492,7 +492,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
                 .ensureConforms(formal.translateFromRepeated(toArray = false))
             if (formal.isRepeatedParam) ctx.typer.seqToRepeated(elem) else elem
           }
-        New(classRef, elems)
+        New(classRef, elems.toLst)
     }
   }
 

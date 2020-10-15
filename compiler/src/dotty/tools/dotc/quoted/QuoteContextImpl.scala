@@ -332,7 +332,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand)
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head.toLst).etaExpand)
           case _ => self
         }
 
@@ -415,7 +415,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
         withDefaultPos(tpd.Select(qualifier, name.toTermName))
       def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args.toLst, targs, Types.WildcardType).asInstanceOf[Apply])
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         tpd.cpy.Select(original)(qualifier, name.toTermName)
       def unapply(x: Select): Option[(Term, String)] =
@@ -539,17 +539,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Apply extends ApplyModule:
       def apply(fun: Term, args: List[Term]): Apply =
-        withDefaultPos(tpd.Apply(fun, args))
+        withDefaultPos(tpd.Apply(fun, args.toLst))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
-        tpd.cpy.Apply(original)(fun, args)
+        tpd.cpy.Apply(original)(fun, args.toLst)
       def unapply(x: Apply): Option[(Term, List[Term])] =
-        Some((x.fun, x.args))
+        Some((x.fun, x.args.toList))
     end Apply
 
     object ApplyMethodsImpl extends ApplyMethods:
       extension (self: Apply):
         def fun: Term = self.fun
-        def args: List[Term] = self.args
+        def args: List[Term] = self.args.toList
       end extension
     end ApplyMethodsImpl
 
@@ -564,17 +564,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object TypeApply extends TypeApplyModule:
       def apply(fun: Term, args: List[TypeTree]): TypeApply =
-        withDefaultPos(tpd.TypeApply(fun, args))
+        withDefaultPos(tpd.TypeApply(fun, args.toLst))
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
-        tpd.cpy.TypeApply(original)(fun, args)
+        tpd.cpy.TypeApply(original)(fun, args.toLst)
       def unapply(x: TypeApply): Option[(Term, List[TypeTree])] =
-        Some((x.fun, x.args))
+        Some((x.fun, x.args.toList))
     end TypeApply
 
     object TypeApplyMethodsImpl extends TypeApplyMethods:
       extension (self: TypeApply):
         def fun: Term = self.fun
-        def args: List[TypeTree] = self.args
+        def args: List[TypeTree] = self.args.toList
       end extension
     end TypeApplyMethodsImpl
 

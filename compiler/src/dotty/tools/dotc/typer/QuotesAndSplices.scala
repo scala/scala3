@@ -60,7 +60,7 @@ trait QuotesAndSplices {
       if ctx.mode.is(Mode.Pattern) then
         typedQuotePattern(tree, pt, qctx)
       else if (tree.quoted.isType)
-        typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_apply.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
+        typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_apply.termRef), Lst(tree.quoted)), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
       else
         typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(using pushQuoteContext(qctx)).select(nme.apply).appliedTo(qctx)
     tree1.withSpan(tree.span)
@@ -126,7 +126,7 @@ trait QuotesAndSplices {
       tree.withType(UnspecifiedErrorType)
     else if splice.isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
-      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr).toList
       val splice1 = typedSplice(splice, defn.FunctionOf(argTypes, pt))
       Apply(splice1.select(nme.apply), typedArgs).withType(pt).withSpan(tree.span)
     else // $x(...) higher-order quasipattern
@@ -139,9 +139,9 @@ trait QuotesAndSplices {
       }
       if args.isEmpty then
         report.error("Missing arguments for open pattern", tree.srcPos)
-      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr).toList
       val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
-      ref(defn.InternalQuotedPatterns_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs.toLst, TypeTree(defn.AnyType)))
+      ref(defn.InternalQuotedPatterns_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
   }
 
   /** Translate ${ t: Type[T] }` into type `t.splice` while tracking the quotation level in the context */
@@ -233,12 +233,12 @@ trait QuotesAndSplices {
       val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
       val typePatBuf = new mutable.ListBuffer[Tree]
       override def transform(tree: Tree)(using Context) = tree match {
-        case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol.isExprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+        case Typed(Apply(fn, Lst(pat)), tpt) if fn.symbol.isExprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
           val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
           val newSplice = ref(defn.InternalQuoted_exprSplice).appliedToType(tpt1.tpe).appliedTo(Typed(pat, exprTpt))
           transform(newSplice)
-        case Apply(TypeApply(fn, targs), Apply(sp, pat :: Nil) :: args :: Nil) if fn.symbol == defn.InternalQuotedPatterns_patternHigherOrderHole =>
+        case Apply(TypeApply(fn, targs), Lst(Apply(sp, Lst(pat)), args)) if fn.symbol == defn.InternalQuotedPatterns_patternHigherOrderHole =>
           args match // TODO support these patterns. Possibly using scala.quoted.util.Var
             case SeqLiteral(args, _) =>
               for arg <- args; if arg.symbol.is(Mutable) do
@@ -250,7 +250,7 @@ trait QuotesAndSplices {
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
-        case Apply(fn, pat :: Nil) if fn.symbol.isExprSplice =>
+        case Apply(fn, Lst(pat)) if fn.symbol.isExprSplice =>
           try ref(defn.InternalQuotedPatterns_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen
@@ -451,7 +451,7 @@ trait QuotesAndSplices {
       if (tree.quoted.isTerm) ref(defn.InternalQuoted_exprQuote.termRef).appliedToType(defn.AnyType).appliedTo(shape).select(nme.apply).appliedTo(qctx)
       else ref(defn.QuotedTypeModule_apply.termRef).appliedToTypeTree(shape).select(nme.apply).appliedTo(qctx)
     UnApply(
-      fun = ref(unapplySym.termRef).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
+      fun = ref(unapplySym.termRef).appliedToTypeTrees(Lst(typeBindingsTuple, TypeTree(patType))),
       implicits = quotedPattern :: qctx :: Nil,
       patterns = splicePat :: Nil,
       proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))

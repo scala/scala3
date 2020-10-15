@@ -1116,7 +1116,7 @@ class Namer { typer: Typer =>
         else {
           val (core, targs) = stripApply(parent) match {
             case TypeApply(core, targs) => (core, targs)
-            case core => (core, Nil)
+            case core => (core, Lst())
           }
           core match {
             case Select(New(tpt), nme.CONSTRUCTOR) =>

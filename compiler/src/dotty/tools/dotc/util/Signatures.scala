@@ -60,7 +60,7 @@ object Signatures {
 
         val (alternativeIndex, alternatives) = fun.tpe match {
           case err: ErrorType =>
-            val (alternativeIndex, alternatives) = alternativesFromError(err, params)
+            val (alternativeIndex, alternatives) = alternativesFromError(err, params.toList)
             (alternativeIndex, alternatives)
 
           case _ =>

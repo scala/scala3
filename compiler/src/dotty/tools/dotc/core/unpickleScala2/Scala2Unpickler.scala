@@ -951,7 +951,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       }
       t.toList
     }
-    resolveConstructor(atp, args)
+    resolveConstructor(atp, args.toLst)
   }
 
   /** Read an annotation and as a side effect store it into
@@ -1073,7 +1073,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val ldef = DefDef(symbol.asTerm, rhs)
         def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw.toString)
         if (isCaseLabel(symbol)) ldef
-        else Block(Lst(ldef), Apply(Ident(symbol.termRef), Nil))
+        else Block(Lst(ldef), Apply(Ident(symbol.termRef), Lst()))
 
       case IMPORTtree =>
         setSym()
@@ -1176,7 +1176,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case TYPEAPPLYtree =>
         val fun = readTreeRef()
         val args = until(end, () => readTreeRef())
-        TypeApply(fun, args)
+        TypeApply(fun, args.toLst)
 
       case APPLYtree =>
         val fun = readTreeRef()
@@ -1187,7 +1187,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
             inferMethodAlternative(fun, args map (_.tpe), tpe)
           }
 */
-        Apply(fun, args) // note: can't deal with overloaded syms yet
+        Apply(fun, args.toLst) // note: can't deal with overloaded syms yet
 
       case APPLYDYNAMICtree =>
         setSym()

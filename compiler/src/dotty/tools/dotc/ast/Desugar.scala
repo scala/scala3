@@ -562,7 +562,7 @@ object desugar {
           constrVparamss
       }
       val nu = vparamss.foldLeft(makeNew(classTypeRef)) { (nu, vparams) =>
-        val app = Apply(nu, vparams.map(refOfDef))
+        val app = Apply(nu, vparams.toLst.map(refOfDef))
         vparams match {
           case vparam :: _ if vparam.mods.is(Given) => app.setApplyKind(ApplyKind.Using)
           case _ => app
@@ -1112,7 +1112,7 @@ object desugar {
           val useSelectors = vars.length <= 22
           def selector(n: Int) =
             if useSelectors then Select(Ident(tmpName), nme.selectorName(n))
-            else Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(n)) :: Nil)
+            else Apply(Select(Ident(tmpName), nme.apply), Lst(Literal(Constant(n))))
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex if named.name != nme.WILDCARD)
             yield
@@ -1203,13 +1203,13 @@ object desugar {
         sel.pushAttachment(MultiLineInfix, ())
       arg match
         case Parens(arg) =>
-          Apply(sel, assignToNamedArg(arg) :: Nil)
+          Apply(sel, Lst(assignToNamedArg(arg)))
         case Tuple(args) if args.exists(_.isInstanceOf[Assign]) =>
-          Apply(sel, args.mapConserve(assignToNamedArg))
+          Apply(sel, args.toLst.mapConserve(assignToNamedArg))
         case Tuple(args) =>
-          Apply(sel, arg :: Nil).setApplyKind(ApplyKind.InfixTuple)
+          Apply(sel, Lst(arg)).setApplyKind(ApplyKind.InfixTuple)
         case _ =>
-          Apply(sel, arg :: Nil)
+          Apply(sel, Lst(arg))
 
     if op.name.isRightAssocOperatorName then
       makeOp(right, left, Span(op.span.start, right.span.end))
@@ -1224,13 +1224,13 @@ object desugar {
    *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
    */
   def smallTuple(tree: Tuple)(using Context): Tree = {
-    val ts = tree.trees
+    val ts = tree.trees.toLst
     val arity = ts.length
     assert(arity <= Definitions.MaxTupleArity)
     def tupleTypeRef = defn.TupleType(arity)
     if (arity == 0)
       if (ctx.mode is Mode.Type) TypeTree(defn.UnitType) else unitLiteral
-    else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
+    else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts.toList)
     else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
   }
 
@@ -1629,15 +1629,16 @@ object desugar {
       case SymbolLit(str) =>
         Apply(
           ref(defn.ScalaSymbolClass.companionModule.termRef),
-          Literal(Constant(str)) :: Nil)
-      case InterpolatedString(id, segments) =>
+          Lst(Literal(Constant(str))))
+      case InterpolatedString(id, segments0) =>
+        val segments = segments0.toLst
         val strs = segments map {
           case ts: Thicket => ts.trees.head
           case t => t
         }
         val elems = segments flatMap {
-          case ts: Thicket => ts.trees.toList.tail
-          case t => Nil
+          case ts: Thicket => ts.trees.tail
+          case t => Lst()
         } map {
           case Block(Lst.Empty, EmptyTree) => Literal(Constant(())) // for s"... ${} ..."
           case Block(Lst.Empty, expr) => expr // important for interpolated string as patterns, see i1773.scala
@@ -1652,7 +1653,7 @@ object desugar {
           else
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
-              New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
+              New(ref(defn.RepeatedAnnot.typeRef), Lst() :: Nil))
         }
         else {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)

@@ -9,6 +9,7 @@ import Types._
 import StdNames._
 import ast.Trees._
 import dotty.tools.dotc.ast.tpd
+import util.Lst; // import Lst.::
 
 import scala.reflect.ClassTag
 
@@ -25,11 +26,11 @@ class ArrayApply extends MiniPhase {
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
     if (tree.symbol.name == nme.apply && tree.symbol.owner == defn.ArrayModule.moduleClass) // Is `Array.apply`
       tree.args match {
-        case StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: ct :: Nil
+        case Lst(StripAscription(Apply(wrapRefArrayMeth, Lst(seqLit: tpd.JavaSeqLiteral))), ct)
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>
           seqLit
 
-        case elem0 :: StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: Nil
+        case Lst(elem0, StripAscription(Apply(wrapRefArrayMeth, Lst(seqLit: tpd.JavaSeqLiteral))))
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) =>
           tpd.JavaSeqLiteral(elem0 :: seqLit.elems, seqLit.elemtpt)
 
@@ -45,7 +46,7 @@ class ArrayApply extends MiniPhase {
    *  - `ClassTag.XYZ` for primitive types
    */
   private def elideClassTag(ct: Tree)(using Context): Boolean = ct match {
-    case Apply(_, rc :: Nil) if ct.symbol == defn.ClassTagModule_apply =>
+    case Apply(_, Lst(rc)) if ct.symbol == defn.ClassTagModule_apply =>
       rc match {
         case _: Literal => true // ClassTag.apply(classOf[XYZ])
         case rc: RefTree if rc.name == nme.TYPE_ =>

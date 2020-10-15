@@ -446,7 +446,7 @@ object Trees {
   abstract class GenericApply[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends ProxyTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] <: GenericApply[T]
     val fun: Tree[T]
-    val args: List[Tree[T]]
+    val args: Lst[Tree[T]]
     def forwardTo: Tree[T] = fun
   }
 
@@ -457,7 +457,7 @@ object Trees {
     case InfixTuple   // r f (x1, ..., xN) where N != 1;  needs to be treated specially for an error message in typedApply
 
   /** fun(args) */
-  case class Apply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class Apply[-T >: Untyped] private[ast] (fun: Tree[T], args: Lst[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = Apply[T]
 
@@ -475,7 +475,7 @@ object Trees {
 
 
   /** fun[args] */
-  case class TypeApply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class TypeApply[-T >: Untyped] private[ast] (fun: Tree[T], args: Lst[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends GenericApply[T] {
     type ThisTree[-T >: Untyped] = TypeApply[T]
   }
@@ -1082,13 +1082,13 @@ object Trees {
         case tree: Super if (qual eq tree.qual) && (mix eq tree.mix) => tree
         case _ => finalize(tree, untpd.Super(qual, mix)(sourceFile(tree)))
       }
-      def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply = tree match {
-        case tree: Apply if (fun eq tree.fun) && (args eq tree.args) => tree
+      def Apply(tree: Tree)(fun: Tree, args: Lst[Tree])(using Context): Apply = tree match {
+        case tree: Apply if (fun eq tree.fun) && (args eqLst tree.args) => tree
         case _ => finalize(tree, untpd.Apply(fun, args)(sourceFile(tree)))
             //.ensuring(res => res.uniqueId != 2213, s"source = $tree, ${tree.uniqueId}, ${tree.span}")
       }
-      def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply = tree match {
-        case tree: TypeApply if (fun eq tree.fun) && (args eq tree.args) => tree
+      def TypeApply(tree: Tree)(fun: Tree, args: Lst[Tree])(using Context): TypeApply = tree match {
+        case tree: TypeApply if (fun eq tree.fun) && (args eqLst tree.args) => tree
         case _ => finalize(tree, untpd.TypeApply(fun, args)(sourceFile(tree)))
       }
       def Literal(tree: Tree)(const: Constant)(using Context): Literal = tree match {
@@ -1581,13 +1581,13 @@ object Trees {
      *  @param expectedType  An expected type of the application used to guide overloading resolution
      */
     def applyOverloaded(
-        receiver: tpd.Tree, method: TermName, args: List[Tree], targs: List[Type],
+        receiver: tpd.Tree, method: TermName, args: Lst[Tree], targs: List[Type],
         expectedType: Type)(using parentCtx: Context): tpd.Tree = {
       given ctx as Context = parentCtx.retractMode(Mode.ImplicitsEnabled)
       import dotty.tools.dotc.ast.tpd.TreeOps
 
       val typer = ctx.typer
-      val proto = FunProto(args, expectedType)
+      val proto = FunProto(args.toList, expectedType)
       val denot = receiver.tpe.member(method)
       assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
       val selected =
@@ -1619,7 +1619,7 @@ object Trees {
     }
 
 
-    def resolveConstructor(atp: Type, args: List[Tree])(using Context): tpd.Tree = {
+    def resolveConstructor(atp: Type, args: Lst[Tree])(using Context): tpd.Tree = {
       val targs = atp.argTypes
       withoutMode(Mode.PatternOrTypeBits) {
         applyOverloaded(tpd.New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)

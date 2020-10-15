@@ -13,7 +13,7 @@ object TreeExtractors {
   /** Match arg1.op(arg2) and extract (arg1, op.symbol, arg2) */
   object BinaryOp {
     def unapply(t: Tree)(using Context): Option[(Tree, Symbol, Tree)] = t match {
-      case Apply(sel @ Select(arg1, _), List(arg2)) =>
+      case Apply(sel @ Select(arg1, _), Lst(arg2)) =>
         Some((arg1, sel.symbol, arg2))
       case _ =>
         None
@@ -24,7 +24,7 @@ object TreeExtractors {
   *  Also admit new C(args): T and {new C(args)}.
   */
   object NewWithArgs {
-    def unapply(t: Tree)(using Context): Option[(Type, List[Tree])] = t match {
+    def unapply(t: Tree)(using Context): Option[(Type, Lst[Tree])] = t match {
       case Apply(Select(New(_), nme.CONSTRUCTOR), args) =>
         Some((t.tpe, args))
       case Typed(expr, _) => unapply(expr)
@@ -40,7 +40,7 @@ object TreeExtractors {
    */
   object ValueClassUnbox {
     def unapply(t: Tree)(using Context): Option[Tree] = t match {
-      case Apply(sel @ Select(ref, _), Nil) =>
+      case Apply(sel @ Select(ref, _), Lst()) =>
         val sym = ref.tpe.widenDealias.typeSymbol
         if (isDerivedValueClass(sym) && (sel.symbol eq valueClassUnbox(sym.asClass)))
           Some(ref)

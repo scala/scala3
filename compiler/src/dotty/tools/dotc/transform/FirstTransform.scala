@@ -188,7 +188,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   private def foldCondition(tree: Apply)(using Context) = tree.fun match {
     case Select(x @ Literal(Constant(c: Boolean)), op) =>
       tree.args match {
-        case y :: Nil if y.tpe.widen.isRef(defn.BooleanClass) =>
+        case Lst(y) if y.tpe.widen.isRef(defn.BooleanClass) =>
           op match {
             case nme.ZAND => if (c) y else x
             case nme.ZOR  => if (c) x else y

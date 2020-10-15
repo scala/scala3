@@ -153,11 +153,11 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
           var sym = tree.symbol
           if (sym.is(ParamAccessor, butNot = Mutable)) sym = sym.subst(accessors, paramSyms)
           if (sym.maybeOwner.isConstructor) ref(sym).withSpan(tree.span) else tree
-        case Apply(fn, Nil) =>
+        case Apply(fn, Lst.Empty) =>
           val fn1 = transform(fn)
           if ((fn1 ne fn) && fn1.symbol.is(Param) && fn1.symbol.owner.isPrimaryConstructor)
             fn1 // in this case, fn1.symbol was an alias for a parameter in a superclass
-          else cpy.Apply(tree)(fn1, Nil)
+          else cpy.Apply(tree)(fn1, Lst())
         case _ =>
           if (noDirectRefsFrom(tree)) tree else super.transform(tree)
       }
@@ -174,7 +174,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     /** Map outer getters $outer and outer accessors $A$B$$$outer to the given outer parameter. */
     def mapOuter(outerParam: Symbol) = new TreeMap {
       override def transform(tree: Tree)(using Context) = tree match {
-        case Apply(fn, Nil)
+        case Apply(fn, Lst.Empty)
           if (fn.symbol.is(OuterAccessor)
              || fn.symbol.isGetter && fn.symbol.name == nme.OUTER
              ) &&
@@ -232,7 +232,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
               val setter =
                 if (symSetter.exists) symSetter
                 else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
-              constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
+              constrStats += Apply(ref(setter), Lst(intoConstr(stat.rhs, sym).withSpan(stat.span)))
             clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
           case stat @ DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
             clsStats += mapOuter(outerParam.symbol).transform(stat)
@@ -266,7 +266,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
             // insert test: if ($outer eq null) throw new NullPointerException
             val nullTest =
               If(ref(param).select(defn.Object_eq).appliedTo(nullLiteral),
-                 Throw(New(defn.NullPointerExceptionClass.typeRef, Nil)),
+                 Throw(New(defn.NullPointerExceptionClass.typeRef, Lst())),
                  unitLiteral)
             nullTest :: assigns
           }

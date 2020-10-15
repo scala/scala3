@@ -160,7 +160,7 @@ class ExpandSAMs extends MiniPhase {
         val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)(using ctx.withOwner(isDefinedAtFn))))
         val applyOrElseDef = transformFollowingDeep(DefDef(applyOrElseFn, applyOrElseRhs(_)(using ctx.withOwner(applyOrElseFn))))
         val pfDef = ClassDef(pfSym, DefDef(constr), Lst(isDefinedAtDef, applyOrElseDef))
-        cpy.Block(tree)(Lst(pfDef), New(pfSym.typeRef, Nil))
+        cpy.Block(tree)(Lst(pfDef), New(pfSym.typeRef, Lst()))
 
       case _ =>
         val found = tpe.baseType(defn.FunctionClass(1))

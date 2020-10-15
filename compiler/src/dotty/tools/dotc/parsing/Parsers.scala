@@ -598,7 +598,17 @@ object Parsers {
       ts.toList
     }
 
+    def tokenSeparatedLst[T](separator: Int, part: () => T): Lst[T] = {
+      val ts = Lst.Buffer[T]() += part()
+      while (in.token == separator) {
+        in.nextToken()
+        ts += part()
+      }
+      ts.toLst
+    }
+
     def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
+    def commaSeparatedLst[T](part: () => T): Lst[T] = tokenSeparatedLst(COMMA, part)
 
     def inSepRegion[T](f: Region => Region)(op: => T): T =
       val cur = in.currentRegion
@@ -2281,7 +2291,7 @@ object Parsers {
           in.nextToken()
           simpleExprRest(selectorOrMatch(t), canApply = true)
         case LBRACKET =>
-          val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
+          val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false).toLst) }
           simpleExprRest(tapp, canApply = true)
         case LPAREN | LBRACE | INDENT if canApply =>
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
@@ -2320,23 +2330,23 @@ object Parsers {
     /** ParArgumentExprs ::= `(' [‘using’] [ExprsInParens] `)'
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'
      */
-    def parArgumentExprs(): (List[Tree], Boolean) = inParens {
+    def parArgumentExprs(): (Lst[Tree], Boolean) = inParens {
       if in.token == RPAREN then
-        (Nil, false)
+        (Lst(), false)
       else if isIdent(nme.using) then
         in.nextToken()
-        (commaSeparated(argumentExpr), true)
+        (commaSeparatedLst(argumentExpr), true)
       else
-        (commaSeparated(argumentExpr), false)
+        (commaSeparatedLst(argumentExpr), false)
     }
 
     /** ArgumentExprs ::= ParArgumentExprs
      *                 |  [nl] BlockExpr
      */
-    def argumentExprs(): (List[Tree], Boolean) =
-      if (in.isNestedStart) (blockExpr() :: Nil, false) else parArgumentExprs()
+    def argumentExprs(): (Lst[Tree], Boolean) =
+      if (in.isNestedStart) (Lst(blockExpr()), false) else parArgumentExprs()
 
-    def mkApply(fn: Tree, args: (List[Tree], Boolean)): Tree =
+    def mkApply(fn: Tree, args: (Lst[Tree], Boolean)): Tree =
       val res = Apply(fn, args._1)
       if args._2 then res.setApplyKind(ApplyKind.Using)
       res
@@ -2702,9 +2712,9 @@ object Parsers {
       else
         var p = t
         if (in.token == LBRACKET)
-          p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false)) }
+          p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false).toLst) }
         if (in.token == LPAREN)
-          p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
+          p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns().toLst) }
         p
 
     /** Patterns          ::=  Pattern [`,' Pattern]

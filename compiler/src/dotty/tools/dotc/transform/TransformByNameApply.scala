@@ -14,6 +14,7 @@ import DenotTransformers._
 import core.StdNames.nme
 import ast.Trees._
 import reporting.trace
+import util.Lst; // import Lst.::
 
 /** Abstract base class of ByNameClosures and ElimByName, factoring out the
  *  common functionality to transform arguments of by-name parameters.
@@ -46,7 +47,7 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
           def wrap(arg: Tree) =
             ref(defn.cbnArg).appliedToType(argType).appliedTo(arg).withSpan(arg.span)
           arg match {
-            case Apply(Select(qual, nme.apply), Nil)
+            case Apply(Select(qual, nme.apply), Lst.Empty)
             if qual.tpe.derivesFrom(defn.FunctionClass(0)) && (isPureExpr(qual) || qual.symbol.isAllOf(Inline | Param)) =>
               wrap(qual)
             case _ =>
@@ -58,7 +59,7 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
       }
 
       val mt @ MethodType(_) = tree.fun.tpe.widen
-      val args1 = tree.args.zipWithConserve(mt.paramInfos)(transformArg)
+      val args1 = tree.args.zipWith(mt.paramInfos)(transformArg)
       cpy.Apply(tree)(tree.fun, args1)
     }
 }

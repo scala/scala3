@@ -61,7 +61,7 @@ object PrepareInlineable {
 
       def postTransform(tree: Tree)(using Context): Tree = tree match {
         case Assign(lhs, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
-          cpy.Apply(tree)(useSetter(lhs), rhs :: Nil)
+          cpy.Apply(tree)(useSetter(lhs), Lst(rhs))
         case _ =>
           tree
       }
@@ -161,8 +161,8 @@ object PrepareInlineable {
             accessed = accessed)
 
           ref(accessor)
-            .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
-            .appliedToArgss((qual :: Nil) :: argss)
+            .appliedToTypeTrees(localRefs.map(TypeTree(_)) ::: targs)
+            .appliedToArgssLst(Lst(qual) :: argss)
             .withSpan(tree.span)
 
             // TODO: Handle references to non-public types.

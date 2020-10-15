@@ -11,6 +11,8 @@ import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
+import dotty.tools.dotc.util.Lst; // import Lst.::
+import Lst.toLst
 
 /**
   * MiniPhase to transform s and raw string interpolators from using StringContext to string
@@ -57,8 +59,11 @@ class StringInterpolatorOpt extends MiniPhase {
   private object SOrRawInterpolator {
     def unapply(tree: Tree)(using Context): Option[(List[Literal], List[Tree])] = {
       tree match {
-        case Apply(Select(Apply(StringContextApply(), List(Literals(strs))), _),
-        List(SeqLiteral(elems, _))) if elems.length == strs.length - 1 =>
+        case Apply(
+          Select(
+            Apply(StringContextApply(),
+            Lst(Literals(strs))), _),
+          Lst(SeqLiteral(elems, _))) if elems.length == strs.length - 1 =>
           Some(strs, elems.toList)
         case _ => None
       }
@@ -134,16 +139,16 @@ class StringInterpolatorOpt extends MiniPhase {
             if (!str.const.stringValue.isEmpty) concat(str)
           }
           result
-        case Apply(intp, args :: Nil) if sym.eq(defn.StringContext_f) =>
+        case Apply(intp, Lst(args)) if sym.eq(defn.StringContext_f) =>
           val partsStr = StringContextChecker.checkedParts(intp, args).mkString
-          resolveConstructor(defn.StringOps.typeRef, List(Literal(Constant(partsStr))))
+          resolveConstructor(defn.StringOps.typeRef, Lst(Literal(Constant(partsStr))))
             .select(nme.format)
             .appliedTo(args)
         // Starting with Scala 2.13, s and raw are macros in the standard
         // library, so we need to expand them manually.
         // sc.s(args)    -->   standardInterpolator(processEscapes, args, sc.parts)
         // sc.raw(args)  -->   standardInterpolator(x => x,         args, sc.parts)
-        case Apply(intp, args :: Nil) =>
+        case Apply(intp, Lst(args)) =>
           val pre = intp match {
             case Select(pre, _) => pre
             case intp: Ident => tpd.desugarIdentPrefix(intp)
@@ -152,13 +157,13 @@ class StringInterpolatorOpt extends MiniPhase {
           val stringToString = defn.StringContextModule_processEscapes.info.asInstanceOf[MethodType]
 
           val process = tpd.Lambda(stringToString, args =>
-            if (isRaw) args.head else ref(defn.StringContextModule_processEscapes).appliedToArgs(args))
+            if (isRaw) args.head else ref(defn.StringContextModule_processEscapes).appliedToArgs(args.toLst))
 
           evalOnce(pre) { sc =>
             val parts = sc.select(defn.StringContext_parts)
 
             ref(defn.StringContextModule_standardInterpolator)
-              .appliedToArgs(List(process, args, parts))
+              .appliedToArgs(Lst(process, args, parts))
           }
       }
     else

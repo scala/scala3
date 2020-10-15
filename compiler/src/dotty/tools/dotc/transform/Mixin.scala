@@ -217,8 +217,8 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           (scall, stats ++ inits, args)
       case _ =>
         val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
-        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
-        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), Lst.Empty, initArgs.toLst)
+        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Lst.Empty, args) else (args, Lst.Empty)
+        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), Lst.Empty, initArgs)
     }
 
     val superCallsAndArgs: Map[Symbol, (Tree, Lst[Tree], Lst[Tree])] = (
@@ -263,7 +263,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
             else if (getter.is(Lazy, butNot = Module))
               transformFollowing(superRef(getter).appliedToNone)
             else if (getter.is(Module))
-              New(getter.info.resultType, List(This(cls)))
+              New(getter.info.resultType, Lst(This(cls)))
             else
               Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run

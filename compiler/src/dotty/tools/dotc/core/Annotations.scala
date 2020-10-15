@@ -7,6 +7,7 @@ import StdNames._
 import dotty.tools.dotc.ast.tpd
 import scala.util.Try
 import util.Spans.Span
+import util.Lst; // import Lst.::
 
 object Annotations {
 
@@ -26,7 +27,7 @@ object Annotations {
     def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else Annotation(tree)
 
-    def arguments(using Context): List[Tree] = ast.tpd.arguments(tree)
+    def arguments(using Context): Lst[Tree] = ast.tpd.arguments(tree)
 
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments
@@ -96,7 +97,7 @@ object Annotations {
     override def symbol(using Context): ClassSymbol = defn.BodyAnnot
     override def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
-    override def arguments(using Context): List[Tree] = Nil
+    override def arguments(using Context): Lst[Tree] = Lst()
     override def ensureCompleted(using Context): Unit = ()
   }
 
@@ -132,24 +133,24 @@ object Annotations {
     def apply(tree: Tree): ConcreteAnnotation = ConcreteAnnotation(tree)
 
     def apply(cls: ClassSymbol)(using Context): Annotation =
-      apply(cls, Nil)
+      apply(cls, Lst())
 
     def apply(cls: ClassSymbol, arg: Tree)(using Context): Annotation =
-      apply(cls, arg :: Nil)
+      apply(cls, Lst(arg))
 
     def apply(cls: ClassSymbol, arg1: Tree, arg2: Tree)(using Context): Annotation =
-      apply(cls, arg1 :: arg2 :: Nil)
+      apply(cls, Lst(arg1, arg2))
 
-    def apply(cls: ClassSymbol, args: List[Tree])(using Context): Annotation =
+    def apply(cls: ClassSymbol, args: Lst[Tree])(using Context): Annotation =
       apply(cls.typeRef, args)
 
     def apply(atp: Type, arg: Tree)(using Context): Annotation =
-      apply(atp, arg :: Nil)
+      apply(atp, Lst(arg))
 
     def apply(atp: Type, arg1: Tree, arg2: Tree)(using Context): Annotation =
-      apply(atp, arg1 :: arg2 :: Nil)
+      apply(atp, Lst(arg1, arg2))
 
-    def apply(atp: Type, args: List[Tree])(using Context): Annotation =
+    def apply(atp: Type, args: Lst[Tree])(using Context): Annotation =
       apply(New(atp, args))
 
     /** Create an annotation where the tree is computed lazily. */
@@ -173,7 +174,7 @@ object Annotations {
       def later(delayedSym: Context ?=> Symbol, span: Span)(using Context): Annotation = {
         def makeChildLater(using Context) = {
           val sym = delayedSym
-          New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
+          New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Lst())
             .withSpan(span)
         }
         deferred(defn.ChildAnnot)(makeChildLater)
@@ -215,7 +216,7 @@ object Annotations {
         // new-style: @throws[Exception], @throws[Exception]("cause")
         case _ =>
           stripApply(a.tree) match {
-            case TypeApply(_, List(tpt)) =>
+            case TypeApply(_, Lst(tpt)) =>
               Some(tpt.tpe)
             case _ =>
               None

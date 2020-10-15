@@ -7,6 +7,7 @@ import core._
 import Contexts._, Trees._, Types._
 import DenotTransformers._, MegaPhase._
 import ExtensionMethods._, ValueClasses._
+import util.Lst; // import Lst.::
 
 
 /** This phase inlines calls to methods of value classes.
@@ -54,13 +55,13 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
    *  @param mArgss Arguments for the method call not present in `tree`
    *  @return       A tree for the extension method call
    */
-  private def rewire(tree: Tree, mtArgs: List[Tree] = Nil, mArgss: List[List[Tree]] = Nil)
+  private def rewire(tree: Tree, mtArgs: Lst[Tree] = Lst(), mArgss: List[Lst[Tree]] = Nil)
     (using Context): Tree =
     tree match {
       case Apply(qual, mArgs) =>
         rewire(qual, mtArgs, mArgs :: mArgss)
       case TypeApply(qual, mtArgs2) =>
-        assert(mtArgs == Nil)
+        assert(mtArgs.isEmpty)
         rewire(qual, mtArgs2, mArgss)
       case sel @ Select(qual, _) =>
         val origMeth = sel.symbol
@@ -76,13 +77,13 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
               ref(extensionMeth)
               .appliedToTypeTrees(mtArgs ++ ctArgs)
               .appliedTo(ev)
-              .appliedToArgss(mArgss))
+              .appliedToArgssLst(mArgss))
           }
         else
           ref(extensionMeth)
             .appliedToTypeTrees(mtArgs)
             .appliedTo(qual)
-            .appliedToArgss(mArgss)
+            .appliedToArgssLst(mArgss)
     }
 
   /** If this tree corresponds to a fully-applied value class method call, replace it

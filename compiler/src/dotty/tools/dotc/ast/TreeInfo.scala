@@ -116,11 +116,11 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /** The (last) list of arguments of an application */
-  def arguments(tree: Tree): List[Tree] = unsplice(tree) match {
+  def arguments(tree: Tree): Lst[Tree] = unsplice(tree) match {
     case Apply(_, args) => args
     case TypeApply(fn, _) => arguments(fn)
     case Block(_, expr) => arguments(expr)
-    case _ => Nil
+    case _ => Lst()
   }
 
   /** Is tree a path? */
@@ -203,7 +203,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     (ddef.tparams ::: ddef.vparamss.flatten).map(_.symbol)
 
   /** Does this argument list end with an argument of the form <expr> : _* ? */
-  def isWildcardStarArgList(trees: List[Tree])(using Context): Boolean =
+  def isWildcardStarArgList(trees: Lst[Tree])(using Context): Boolean =
     trees.nonEmpty && isWildcardStarArg(trees.last)
 
   /** Is the argument a wildcard argument of the form `_` or `x @ _`?
@@ -215,6 +215,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** Does this list contain a named argument tree? */
   def hasNamedArg(args: List[Any]): Boolean = args exists isNamedArg
+  def hasNamedArg(args: Lst[Any]): Boolean = args exists isNamedArg
   val isNamedArg: Any => Boolean = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
 
   /** Is this pattern node a catch-all (wildcard or variable) pattern? */
@@ -540,7 +541,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
             case Select(pre, _) if tree1.tpe.isInstanceOf[ConstantType] =>
               // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
               keepPrefix(pre)
-            case Apply(TypeApply(Select(pre, nme.getClass_), _), Nil) =>
+            case Apply(TypeApply(Select(pre, nme.getClass_), _), Lst.Empty) =>
               keepPrefix(pre)
             case _ =>
               tree1
@@ -603,7 +604,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     unsplice(tree) match {
       case TypeApply(sel @ Select(inner, _), _) if isCast(sel) =>
         stripCast(inner)
-      case Apply(TypeApply(sel @ Select(inner, _), _), Nil) if isCast(sel) =>
+      case Apply(TypeApply(sel @ Select(inner, _), _), Lst.Empty) if isCast(sel) =>
         stripCast(inner)
       case t =>
         t
@@ -615,9 +616,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *
    *  Note: targ and vargss may be empty
    */
-  def decomposeCall(tree: Tree): (Tree, List[Tree], List[List[Tree]]) = {
+  def decomposeCall(tree: Tree): (Tree, Lst[Tree], List[Lst[Tree]]) = {
     @tailrec
-    def loop(tree: Tree, targss: List[Tree], argss: List[List[Tree]]): (Tree, List[Tree], List[List[Tree]]) =
+    def loop(tree: Tree, targss: Lst[Tree], argss: List[Lst[Tree]]): (Tree, Lst[Tree], List[Lst[Tree]]) =
       tree match {
         case Apply(fn, args) =>
           loop(fn, targss, args :: argss)
@@ -626,7 +627,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         case _ =>
           (tree, targss, argss)
       }
-    loop(tree, Nil, Nil)
+    loop(tree, Lst(), Nil)
   }
 
   /** Decompose a template body into parameters and other statements */
@@ -790,14 +791,14 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** If `tree` is an instance of `TupleN[...](e1, ..., eN)`, the arguments `e1, ..., eN`
    *  otherwise the empty list.
    */
-  def tupleArgs(tree: Tree)(using Context): List[Tree] = tree match {
+  def tupleArgs(tree: Tree)(using Context): Lst[Tree] = tree match {
     case Block(Lst.Empty, expr) => tupleArgs(expr)
     case Inlined(_, Lst.Empty, expr) => tupleArgs(expr)
     case Apply(fn, args)
     if fn.symbol.name == nme.apply &&
         fn.symbol.owner.is(Module) &&
         defn.isTupleClass(fn.symbol.owner.companionClass) => args
-    case _ => Nil
+    case _ => Lst()
   }
 
   /** The qualifier part of a Select or Ident.
@@ -936,7 +937,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       tree.select(defn.Any_typeCast).appliedToType(AndType(tree.tpe, tpnn))
 
     def unapply(tree: tpd.TypeApply)(using Context): Option[tpd.Tree] = tree match
-      case TypeApply(Select(qual: RefTree, nme.asInstanceOfPM), arg :: Nil) =>
+      case TypeApply(Select(qual: RefTree, nme.asInstanceOfPM), Lst(arg)) =>
         arg.tpe match
           case AndType(ref, nn1) if qual.tpe eq ref =>
             qual.tpe.widen match

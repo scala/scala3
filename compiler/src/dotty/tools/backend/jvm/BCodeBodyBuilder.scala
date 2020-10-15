@@ -23,6 +23,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.report
 import dotty.tools.dotc.util.Lst; // import Lst.::
+import Lst.toLst
 
 /*
  *
@@ -122,7 +123,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       args match {
         // unary operation
-        case Nil =>
+        case Lst.Empty =>
           genLoad(larg, resKind)
           code match {
             case POS => () // nothing
@@ -132,7 +133,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
 
         // binary operation
-        case rarg :: Nil =>
+        case Lst(rarg) =>
           val isShift = isShiftOp(code)
           resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg))
 
@@ -184,7 +185,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         bc.aload(elementType)
       }
       else if (isArraySet(code)) {
-        val List(a1, a2) = args
+        val Lst(a1, a2) = args
         genLoad(a1, INT)
         genLoad(a2)
         generatedType = UNIT
@@ -690,7 +691,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(app)
       app match {
         case Apply(_, args) if app.symbol eq defn.newArrayMethod =>
-          val List(elemClaz, Literal(c: Constant), ArrayValue(_, dims)) = args
+          val Lst(elemClaz, Literal(c: Constant), ArrayValue(_, dims)) = args
 
           generatedType = toTypeKind(c.typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, dims)
@@ -709,7 +710,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
           // scala/bug#10290: qual can be `this.$outer()` (not just `this`), so we call genLoad (not just ALOAD_0)
           genLoad(superQual)
-          genLoadArguments(args, paramTKs(app))
+          genLoadArguments(args.toList, paramTKs(app))
           generatedType = genCallMethod(fun.symbol, InvokeStyle.Super, app.span)
 
         // 'new' constructor call: Note: since constructors are
@@ -725,27 +726,27 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
           generatedType match {
             case arr: ArrayBType =>
-              mkArrayConstructorCall(arr, app, args)
+              mkArrayConstructorCall(arr, app, args.toList)
 
             case rt: ClassBType =>
               assert(classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.showFullName} is different from $rt")
               mnode.visitTypeInsn(asm.Opcodes.NEW, rt.internalName)
               bc dup generatedType
-              genLoadArguments(args, paramTKs(app))
+              genLoadArguments(args.toList, paramTKs(app))
               genCallMethod(ctor, InvokeStyle.Special, app.span)
 
             case _ =>
               abort(s"Cannot instantiate $tpt of kind: $generatedType")
           }
 
-        case Apply(fun, List(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
+        case Apply(fun, Lst(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
           val MethodNameAndType(mname, methodType) = asmBoxTo(nativeKind)
           bc.invokestatic(BoxesRunTime.internalName, mname, methodType.descriptor, itf = false)
           generatedType = boxResultType(fun.symbol) // was toTypeKind(fun.symbol.tpe.resultType)
 
-        case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
+        case Apply(fun, Lst(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           genLoad(expr)
           val boxType = unboxResultType(fun.symbol) // was toTypeKind(fun.symbol.owner.linkedClassOfClass.tpe)
           generatedType = boxType
@@ -765,7 +766,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               else InvokeStyle.Virtual
 
             if (invokeStyle.hasInstance) genLoadQualifier(fun)
-            genLoadArguments(args, paramTKs(app))
+            genLoadArguments(args.toList, paramTKs(app))
 
             val DesugaredSelect(qual, name) = fun // fun is a Select, also checked in genLoadQualifier
             val isArrayClone = name == nme.clone_ && qual.tpe.widen.isInstanceOf[JavaArrayType]
@@ -1086,7 +1087,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           bc.genStartConcat
           for (elem <- concatenations) {
             val loadedElem = elem match {
-              case Apply(boxOp, value :: Nil) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
+              case Apply(boxOp, Lst(value)) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
@@ -1189,7 +1190,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       case tree @ Apply(fun @ DesugaredSelect(larg, method), rarg) =>
         if (isPrimitive(fun) &&
             primitives.getPrimitive(tree, larg.tpe) == ScalaPrimitivesOps.CONCAT)
-          liftStringConcat(larg) ::: rarg
+          liftStringConcat(larg) ::: rarg.toList
         else
           tree :: Nil
       case _ =>

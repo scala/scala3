@@ -127,16 +127,16 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
   protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree = {
     val body1 = transform(body)(using spliceContext)
     splice.fun match {
-      case fun @ TypeApply(_, _ :: Nil) =>
+      case fun @ TypeApply(_, Lst(_)) =>
         // Type of the splice itsel must also be healed
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
         val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
-        cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
-      case f @ Apply(fun @ TypeApply(_, _), qctx :: Nil) =>
+        cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, Lst(tpd.TypeTree(tp))), Lst(body1))
+      case f @ Apply(fun @ TypeApply(_, _), Lst(qctx)) =>
         // Type of the splice itsel must also be healed
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
         val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
-        cpy.Apply(splice)(cpy.Apply(f)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), qctx :: Nil), body1 :: Nil)
+        cpy.Apply(splice)(cpy.Apply(f)(cpy.TypeApply(fun)(fun.fun, Lst(tpd.TypeTree(tp))), Lst(qctx)), Lst(body1))
     }
   }
 

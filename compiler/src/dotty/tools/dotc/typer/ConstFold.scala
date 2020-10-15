@@ -13,6 +13,7 @@ import Names._
 import StdNames._
 import Contexts._
 import transform.TypeUtils._
+import util.Lst; // import Lst.::
 
 object ConstFold:
 
@@ -32,7 +33,7 @@ object ConstFold:
         xt.tpe.widenTermRefExpr.normalized match
           case ConstantType(x) =>
             tree.args match
-              case yt :: Nil =>
+              case Lst(yt) =>
                 yt.tpe.widenTermRefExpr.normalized match
                   case ConstantType(y) => tree.withFoldedType(foldBinop(op, x, y))
                   case _ => tree
@@ -55,7 +56,7 @@ object ConstFold:
   def apply[T <: Tree](tree: T)(using Context): T = tree match
     case tree: Apply => Apply(tree)
     case tree: Select => Select(tree)
-    case TypeApply(_, targ :: Nil) if tree.symbol eq defn.Predef_classOf =>
+    case TypeApply(_, Lst(targ)) if tree.symbol eq defn.Predef_classOf =>
       tree.withFoldedType(Constant(targ.tpe))
     case _ => tree
 

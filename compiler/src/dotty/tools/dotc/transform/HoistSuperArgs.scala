@@ -127,8 +127,8 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
       // begin hoistSuperArg
       arg match {
-        case Apply(fn, arg1 :: Nil) if fn.symbol == defn.cbnArg =>
-          cpy.Apply(arg)(fn, hoistSuperArg(arg1, cdef) :: Nil)
+        case Apply(fn, Lst(arg1)) if fn.symbol == defn.cbnArg =>
+          cpy.Apply(arg)(fn, Lst(hoistSuperArg(arg1, cdef)))
         case _ if arg.existsSubTree(needsHoist) =>
           val superMeth = newSuperArgMethod(arg.tpe)
           val superArgDef = polyDefDef(superMeth, trefs => vrefss => {
@@ -177,7 +177,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
     /** Hoist complex arguments in super call out of the class. */
     def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef): Tree = superCall match {
       case Apply(fn, args) =>
-        cpy.Apply(superCall)(hoistSuperArgsFromCall(fn, cdef), args.mapconserve(hoistSuperArg(_, cdef)))
+        cpy.Apply(superCall)(hoistSuperArgsFromCall(fn, cdef), args.mapConserve(hoistSuperArg(_, cdef)))
       case _ =>
         superCall
     }

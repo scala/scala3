@@ -166,9 +166,9 @@ object Inliner {
 
     val targs = fun match
       case TypeApply(_, targs) => targs
-      case _ => Nil
+      case _ => Lst()
     val unapplyInfo = sym.info match
-      case info: PolyType => info.instantiate(targs.map(_.tpe))
+      case info: PolyType => info.instantiate(targs.tpes)
       case info => info
 
     val unappplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
@@ -176,7 +176,7 @@ object Inliner {
       inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unappplySym))
     )
     val cdef = ClassDef(cls, DefDef(constr), Lst(unapply))
-    val newUnapply = Block(Lst(cdef), New(cls.typeRef, Nil))
+    val newUnapply = Block(Lst(cdef), New(cls.typeRef, Lst()))
     val newFun = newUnapply.select(unappplySym).withSpan(unapp.span)
     cpy.UnApply(unapp)(newFun, implicits, patterns)
   }
@@ -285,7 +285,7 @@ object Inliner {
         case _ => t
       }
 
-      val Apply(_, codeArg :: Nil) = tree
+      val Apply(_, Lst(codeArg)) = tree
       val underlyingCodeArg = stripTyped(codeArg.underlying)
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
@@ -430,19 +430,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    *  corresponding arguments. `bindingbuf` will be further extended later by
    *  proxies to this-references. Issue an error if some arguments are missing.
    */
-  private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Boolean = tp match
+  private def computeParamBindings(tp: Type, targs: Lst[Tree], argss: List[Lst[Tree]]): Boolean = tp match
     case tp: PolyType =>
-      tp.paramNames.lazyZip(targs).foreach { (name, arg) =>
+      tp.paramNames.lazyZip(targs.toList).foreach { (name, arg) =>
         paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.stripTypeVar
       }
-      computeParamBindings(tp.resultType, Nil, argss)
+      computeParamBindings(tp.resultType, Lst(), argss)
     case tp: MethodType =>
       if argss.isEmpty then
         report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
         false
       else
-        tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
+        tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head.toList).foreach { (name, paramtp, arg) =>
           paramSpan(name) = arg.span
           paramBinding(name) = arg.tpe.dealias match {
             case _: SingletonType if isIdempotentPath(arg) => arg.tpe
@@ -618,7 +618,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
     // Special handling of `requireConst`
     callValueArgss match
-      case (arg :: Nil) :: Nil if inlinedMethod == defn.Compiletime_requireConst =>
+      case Lst(arg) :: Nil if inlinedMethod == defn.Compiletime_requireConst =>
         arg match
           case ConstantValue(_) | Inlined(_, Lst.Empty, Typed(ConstantValue(_), _)) => // ok
           case _ => report.error(em"expected a constant value but found: $arg", arg.srcPos)
@@ -635,7 +635,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         val constVal = tryConstValue
         return (
           if (constVal.isEmpty) ref(defn.NoneModule.termRef)
-          else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
+          else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), Lst(constVal))
         )
       }
 
@@ -714,7 +714,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     val expansion = inliner.transform(rhsToInline)
 
     def issueError() = callValueArgss match {
-      case (msgArg :: Nil) :: Nil =>
+      case Lst(msgArg) :: Nil =>
         val message = msgArg.tpe match {
           case ConstantType(Constant(msg: String)) => msg
           case _ => s"A literal string is expected as an argument to `compiletime.error`. Got ${msgArg.show}"
@@ -796,7 +796,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
      *             - whether the instance creation is precomputed or by-name
      */
     private object NewInstance {
-      def unapply(tree: Tree)(using Context): Option[(Symbol, List[Tree], Lst[Tree], Boolean)] = {
+      def unapply(tree: Tree)(using Context): Option[(Symbol, Lst[Tree], Lst[Tree], Boolean)] = {
         def unapplyLet(bindings: Lst[Tree], expr: Tree) =
           unapply(expr) map {
             case (cls, reduced, prefix, precomputed) => (cls, reduced, bindings ::: prefix, precomputed)
@@ -863,14 +863,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             else {
               // newInstance is evaluated in place, need to reflect side effects of
               // arguments in the order they were written originally
-              def collectImpure(from: Int, end: Int) =
-                (from until end).filterNot(i => isElideableExpr(args(i))).toList.map(args)
+              def collectImpure(from: Int, end: Int) = args.slice(from, end).filterNot(isElideableExpr(_))
               val leading = collectImpure(0, idx)
               val trailing = collectImpure(idx + 1, args.length)
               val argInPlace =
                 if (trailing.isEmpty) arg
-                else letBindUnless(TreeInfo.Pure, arg)(seq(trailing.toLst, _))
-              finish(seq(prefix, seq(leading.toLst, argInPlace)))
+                else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
+              finish(seq(prefix, seq(leading, argInPlace)))
             }
           }
           else tree
@@ -942,7 +941,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         ddef.tpe.widen match {
           case mt: MethodType if ddef.vparamss.head.length == args.length =>
             val bindingsBuf = new Lst.Buffer[ValOrDefDef]
-            val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
+            val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args.toList).map { (name, paramtp, arg) =>
               arg.tpe.dealias match {
                 case ref @ TermRef(NoPrefix, _) => ref.symbol
                 case _ =>

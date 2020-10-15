@@ -167,7 +167,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedValueOf: SpecialHandler = (formal, span) =>
 
     def success(t: Tree) =
-      New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
+      New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), Lst(t)).withSpan(span)
 
     formal.argInfos match
       case arg :: Nil =>
@@ -243,7 +243,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           val modulePath = pathFor(mirroredType).withSpan(span)
           if module.info.classSymbol.is(Scala2x) then
             val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, module.name, formal)
-            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, modulePath :: Nil)
+            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, Lst(modulePath))
             mirrorRef.cast(mirrorType)
           else
             val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, module.name, formal)

@@ -36,7 +36,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     else tree
 
   private def transformTupleCons(tree: tpd.Apply)(using Context): Tree = {
-    val head :: tail :: Nil = tree.args
+    val Lst(head, tail) = tree.args
     defn.tupleTypes(tree.tpe.widenTermRefExpr.dealias) match {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN+1.apply
@@ -51,7 +51,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         else {
           // val it = Iterator.single(head) ++ tail.asInstanceOf[Product].productIterator
           // TupleN+1(it.next(), ..., it.next())
-          val fullIterator = ref(defn.RuntimeTuple_consIterator).appliedToArgs(head :: tail :: Nil)
+          val fullIterator = ref(defn.RuntimeTuple_consIterator).appliedToArgs(Lst(head, tail))
           evalOnce(fullIterator) { it =>
             knownTupleFromIterator(tpes.length, it).asInstance(tree.tpe)
           }
@@ -64,7 +64,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   }
 
   private def transformTupleTail(tree: tpd.Apply)(using Context): Tree = {
-    val Apply(_, tup :: Nil) = tree
+    val Apply(_, Lst(tup)) = tree
     defn.tupleTypes(tup.tpe.widenTermRefExpr.dealias, MaxTupleArity + 1) match {
       case Some(tpes) =>
         // Generate a the tuple directly with TupleN-1.apply
@@ -107,7 +107,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     }
 
   private def transformTupleConcat(tree: tpd.Apply)(using Context): Tree = {
-    val Apply(_, self :: that :: Nil) = tree
+    val Apply(_, Lst(self, that)) = tree
     (defn.tupleTypes(self.tpe.widenTermRefExpr.dealias), defn.tupleTypes(that.tpe.widenTermRefExpr.dealias)) match {
       case (Some(tpes1), Some(tpes2)) =>
         // Generate a the tuple directly with TupleN+M.apply
@@ -142,7 +142,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   }
 
   private def transformTupleApply(tree: tpd.Apply)(using Context): Tree = {
-    val Apply(_, tup :: nTree :: Nil) = tree
+    val Apply(_, Lst(tup, nTree)) = tree
     (defn.tupleTypes(tup.tpe.widenTermRefExpr.dealias), nTree.tpe) match {
       case (Some(tpes), nTpe: ConstantType) =>
         // Get the element directly with TupleM._n+1 or TupleXXL.productElement(n)
@@ -169,7 +169,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   }
 
   private def transformTupleToArray(tree: tpd.Apply)(using Context): Tree = {
-    val Apply(_, tup :: Nil) = tree
+    val Apply(_, Lst(tup)) = tree
     defn.tupleTypes(tup.tpe.widen, MaxTupleArity) match {
       case Some(tpes) =>
         val size = tpes.size
@@ -194,7 +194,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     val size = elements.size
     assert(0 < size && size <= MaxTupleArity)
     val tupleModule = defn.TupleType(size).classSymbol.companionModule
-    ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToArgs(elements)
+    ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToArgs(elements.toLst)
   }
 
   private def knownTupleFromIterator(size: Int, it: Tree)(using Context): Tree =

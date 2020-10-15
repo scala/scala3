@@ -34,7 +34,7 @@ import ExplicitOuter._
 import core.Mode
 import util.Property
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{toLst, +:}
 import reporting._
 import collection.mutable
 
@@ -186,12 +186,12 @@ object Erasure {
   private val BunchedArgs = new Property.Key[Unit]
 
   /** An Apply node which might still be missing some arguments */
-  def partialApply(fn: Tree, args: List[Tree])(using Context): Tree =
-    untpd.Apply(fn, args.toList)
+  def partialApply(fn: Tree, args: Lst[Tree])(using Context): Tree =
+    untpd.Apply(fn, args)
       .withType(applyResultType(fn.tpe.widen.asInstanceOf[MethodType], args))
 
   /** The type of an Apply node which might still be missing some arguments */
-  private def applyResultType(mt: MethodType, args: List[Tree])(using Context): Type =
+  private def applyResultType(mt: MethodType, args: Lst[Tree])(using Context): Type =
     if mt.paramInfos.length <= args.length then mt.resultType
     else MethodType(mt.paramInfos.drop(args.length), mt.resultType)
 
@@ -230,7 +230,7 @@ object Erasure {
      *  fields (see TupleX). (ID)
      */
     private def safelyRemovableUnboxArg(tree: Tree)(using Context): Tree = tree match {
-      case Apply(fn, arg :: Nil)
+      case Apply(fn, Lst(arg))
       if isUnbox(fn.symbol) && defn.ScalaBoxedClasses().contains(arg.tpe.typeSymbol) =>
         arg
       case _ =>
@@ -243,7 +243,7 @@ object Erasure {
     final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
         case ErasedValueType(tycon, _) =>
-          New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) :: Nil) // todo: use adaptToType?
+          New(tycon, Lst(cast(tree, underlyingOfValueClass(tycon.symbol.asClass)))) // todo: use adaptToType?
         case tp =>
           val cls = tp.classSymbol
           if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
@@ -456,7 +456,7 @@ object Erasure {
                 inContext(ctx.withOwner(bridge)) {
                   val List(bridgeParams) = bridgeParamss
                   assert(ctx.typer.isInstanceOf[Erasure.Typer])
-                  val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)))
+                  val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)).toLst)
                   ctx.typer.adapt(rhs, bridgeType.resultType)
                 },
                 targetType = implClosure.tpt.tpe)
@@ -486,7 +486,7 @@ object Erasure {
       // The original type from which closures should be constructed
       val origType = contextFunctionResultTypeCovering(tree.symbol, targetLength)
 
-      def abstracted(args: List[Tree], tp: Type, pt: Type)(using Context): Tree =
+      def abstracted(args: Lst[Tree], tp: Type, pt: Type)(using Context): Tree =
         if args.length < targetLength then
           try
             val defn.ContextFunctionType(argTpes, resTpe, isErased): @unchecked = tp
@@ -505,7 +505,7 @@ object Erasure {
                         .select(nme.primitive.arrayApply)
                         .appliedTo(Literal(Constant(n))))
                   case refs1 => refs1
-                abstracted(args ::: expandedRefs, resTpe, anonFun.info.finalResultType)(
+                abstracted(args ++ expandedRefs, resTpe, anonFun.info.finalResultType)(
                   using ctx.withOwner(anonFun))
 
               val unadapted = Closure(anonFun, lambdaBody)
@@ -520,7 +520,7 @@ object Erasure {
           ctx.typer.typed(app, pt)
             .changeOwnerAfter(origOwner, ctx.owner, erasurePhase.asInstanceOf[Erasure])
 
-      seq(defs.toList.toLst, abstracted(Nil, origType, pt))
+      seq(defs.toList.toLst, abstracted(Lst(), origType, pt))
     end etaExpand
 
   end Boxing
@@ -670,7 +670,7 @@ object Erasure {
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
         if erasedPre.isAnyRef then
-          partialApply(ref(defn.runtimeMethodRef(tree.name.genericArrayOp)), qual :: Nil)
+          partialApply(ref(defn.runtimeMethodRef(tree.name.genericArrayOp)), Lst(qual))
         else if !(qual.tpe <:< erasedPre) then
           selectArrayMember(cast(qual, erasedPre), erasedPre)
         else
@@ -758,7 +758,7 @@ object Erasure {
           val fun1 = typedExpr(fun, AnyFunctionProto)
           fun1.tpe.widen match {
             case funTpe: PolyType =>
-              val args1 = args.mapconserve(typedType(_))
+              val args1 = args.mapConserve(typedType(_))
               untpd.cpy.TypeApply(tree)(fun1, args1).withType(funTpe.instantiate(args1.tpes))
             case _ => fun1
           }
@@ -776,7 +776,7 @@ object Erasure {
       else
         val origFun = fun.asInstanceOf[tpd.Tree]
         val origFunType = origFun.tpe.widen(using preErasureCtx)
-        val ownArgs = if origFunType.isErasedMethod then Nil else args
+        val ownArgs = if origFunType.isErasedMethod then Lst() else args
         val fun1 = typedExpr(fun, AnyFunctionProto)
         fun1.tpe.widen match
           case mt: MethodType =>
@@ -790,10 +790,9 @@ object Erasure {
                 (xmt, xmt ne mt, outer.args(origFun))
 
             val args0 = outers ::: ownArgs
-            val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
-              .asInstanceOf[List[Tree]]
+            val args1 = args0.zipWith(xmt.paramInfos)(typedExpr)
 
-            def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
+            def mkApply(finalFun: Tree, finalArgs: Lst[Tree]) =
               val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)
                 .withType(applyResultType(xmt, args1))
               if bunchArgs then app.withAttachment(BunchedArgs, ()) else app
@@ -801,12 +800,12 @@ object Erasure {
             def app(fun1: Tree): Tree = fun1 match
               case Block(stats, expr) =>
                 cpy.Block(fun1)(stats, app(expr))
-              case Apply(fun2, SeqLiteral(prevArgs, argTpt) :: _) if bunchArgs =>
-                mkApply(fun2, JavaSeqLiteral(prevArgs ++ args1, argTpt) :: Nil)
+              case Apply(fun2, SeqLiteral(prevArgs, argTpt) +: _) if bunchArgs =>
+                mkApply(fun2, Lst(JavaSeqLiteral(prevArgs ++ args1, argTpt)))
               case Apply(fun2, prevArgs) =>
                 mkApply(fun2, prevArgs ++ args1)
               case _ if bunchArgs =>
-                mkApply(fun1, JavaSeqLiteral(args1.toLst, TypeTree(defn.ObjectType)) :: Nil)
+                mkApply(fun1, Lst(JavaSeqLiteral(args1, TypeTree(defn.ObjectType))))
               case _ =>
                 mkApply(fun1, args1)
 

@@ -51,7 +51,7 @@ object BetaReduce:
   import ast.tpd._
 
   /** Beta-reduces a call to `fn` with arguments `argSyms` or returns `tree` */
-  def apply(tree: Apply, fn: Tree, args: List[Tree])(using Context): Tree =
+  def apply(tree: Apply, fn: Tree, args: Lst[Tree])(using Context): Tree =
     fn match
       case Typed(expr, _) => BetaReduce(tree, expr, args)
       case Block(Lst.Empty, expr) => BetaReduce(tree, expr, args)
@@ -61,10 +61,10 @@ object BetaReduce:
   end apply
 
   /** Beta-reduces a call to `ddef` with arguments `argSyms` */
-  def apply(ddef: DefDef, args: List[Tree])(using Context) =
+  def apply(ddef: DefDef, args: Lst[Tree])(using Context) =
     val bindings = List.newBuilder[ValDef]
     val vparams = ddef.vparamss.iterator.flatten.toList
-    assert(args.hasSameLengthAs(vparams))
+    assert(args.length == vparams.length)
     val argSyms =
       for (arg, param) <- args.zip(vparams) yield
         arg.tpe.dealias match
@@ -81,7 +81,7 @@ object BetaReduce:
       oldOwners = ddef.symbol :: Nil,
       newOwners = ctx.owner :: Nil,
       substFrom = vparams.map(_.symbol),
-      substTo = argSyms
+      substTo = argSyms.toList
     ).transform(ddef.rhs)
 
     val expansion1 = new TreeMap {

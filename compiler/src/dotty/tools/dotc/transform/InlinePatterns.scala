@@ -51,13 +51,13 @@ class InlinePatterns extends MiniPhase:
   private object App:
     def unapply(app: Tree): (Tree, List[List[Tree]]) =
       app match
-        case Apply(App(fn, argss), args) => (fn, argss :+ args)
+        case Apply(App(fn, argss), args) => (fn, argss :+ args.toList)
         case _ => (app, Nil)
 
   private def betaReduce(tree: Apply, fn: Tree, name: Name, args: List[Tree])(using Context): Tree =
     fn match
-      case Block(Lst(TypeDef(_, template: Template)), Apply(Select(New(_),_), Nil)) if template.constr.rhs.isEmpty =>
+      case Block(Lst(TypeDef(_, template: Template)), Apply(Select(New(_),_), Lst.Empty)) if template.constr.rhs.isEmpty =>
         template.body match
-          case Lst(ddef @ DefDef(`name`, _, _, _, _)) => BetaReduce(ddef, args)
+          case Lst(ddef @ DefDef(`name`, _, _, _, _)) => BetaReduce(ddef, args.toLst)
           case _ => tree
       case _ => tree

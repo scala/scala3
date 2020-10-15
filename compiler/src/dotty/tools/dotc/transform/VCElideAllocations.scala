@@ -6,6 +6,7 @@ import core._
 import Contexts._, Symbols._, Types._, Flags._, Phases._
 import DenotTransformers._, MegaPhase._
 import TreeExtractors._, ValueClasses._
+import util.Lst; // import Lst.::
 
 /** This phase elides unnecessary value class allocations
  *
@@ -32,7 +33,7 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
     tree match {
       // new V(u1) == new V(u2) => u1 == u2, unless V defines its own equals.
       // (We don't handle != because it has been eliminated by InterceptedMethods)
-      case BinaryOp(NewWithArgs(tp1, List(u1)), op, NewWithArgs(tp2, List(u2)))
+      case BinaryOp(NewWithArgs(tp1, Lst(u1)), op, NewWithArgs(tp2, Lst(u2)))
       if (tp1 eq tp2) && (op eq defn.Any_==)
          && isDerivedValueClass(tp1.typeSymbol)
          && !hasUserDefinedEquals(tp1) =>
@@ -40,7 +41,7 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
         u1.equal(u2)
 
       // (new V(u)).underlying() => u
-      case ValueClassUnbox(NewWithArgs(_, List(u))) =>
+      case ValueClassUnbox(NewWithArgs(_, Lst(u))) =>
         u
 
       case _ =>

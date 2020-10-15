@@ -170,7 +170,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         => Checking.checkAppliedTypesIn(tree)
       case _ =>
 
-    private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
+    private def transformSelect(tree: Select, targs: Lst[Tree])(using Context): Tree = {
       val qual = tree.qualifier
       qual.symbol.moduleClass.denot match {
         case pkg: PackageClassDenotation =>
@@ -190,7 +190,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       case pt: PolyType => // wait for more arguments coming
         tree
       case _ =>
-        def decompose(tree: TypeApply): (Tree, List[Tree]) = tree.fun match {
+        def decompose(tree: TypeApply): (Tree, Lst[Tree]) = tree.fun match {
           case fun: TypeApply =>
             val (tycon, args) = decompose(fun)
             (tycon, args ++ tree.args)
@@ -214,7 +214,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         tycon.tpe.widen match {
           case tp: PolyType if args.exists(isNamedArg) =>
             val (namedArgs, otherArgs) = args.partition(isNamedArg)
-            val args1 = reorderArgs(tp.paramNames, namedArgs.asInstanceOf[List[NamedArg]], otherArgs)
+            val args1 = reorderArgs(tp.paramNames, namedArgs.toList.asInstanceOf[List[NamedArg]], otherArgs.toList).toLst
             TypeApply(tycon, args1).withSpan(tree.span).withType(tree.tpe)
           case _ =>
             tree
@@ -245,7 +245,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             withMode(Mode.Type)(super.transform(tree))
           }
           else
-            transformSelect(tree, Nil)
+            transformSelect(tree, Lst.Empty)
         case tree: Apply =>
           val methType = tree.fun.tpe.widen
           val app =
@@ -281,7 +281,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           args.foreach(checkInferredWellFormed)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
-            Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
+            Checking.checkBounds(args.toList, fn.tpe.widen.asInstanceOf[PolyType])
           fn match {
             case sel: Select =>
               val args1 = transform(args)

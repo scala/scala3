@@ -28,6 +28,7 @@ import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
+import dotty.tools.dotc.util.Lst; // import Lst.::
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -400,8 +401,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
           val flatArgs = actualArgs.flatMap { arg =>
             normalizeArgument(arg) match {
-              case t: tpd.SeqLiteral => t.elems.toList
-              case e => List(e)
+              case t: tpd.SeqLiteral => t.elems
+              case e => Lst(e)
             }
           }
           for(arg <- flatArgs) {
@@ -458,7 +459,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         case Apply(fun, args) =>
           fun.tpe.widen match {
             case MethodType(names) =>
-              (names zip args).filter {
+              (names zip args.toList).filter {
                 case (_, t: tpd.Ident) if (t.tpe.normalizedPrefix eq NoPrefix) => false
                 case _ => true
               }

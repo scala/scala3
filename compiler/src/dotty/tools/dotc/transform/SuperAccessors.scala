@@ -13,6 +13,7 @@ import Symbols._
 import util.Spans._
 import Decorators._
 import NameKinds.{ SuperAccessorName, ExpandPrefixName }
+import util.Lst; // import Lst.::
 
 /** This class adds super accessors for all super calls that either
  *  appear in a trait or have as a target a member of some outer class.
@@ -170,7 +171,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     (sym eq defn.Any_##)
 
   /** Transform select node, adding super and protected accessors as needed */
-  def transformSelect(tree: Tree, targs: List[Tree])(using Context): Tree = {
+  def transformSelect(tree: Tree, targs: Lst[Tree])(using Context): Tree = {
     val sel @ Select(qual, name) = tree
     val sym = sel.symbol
 

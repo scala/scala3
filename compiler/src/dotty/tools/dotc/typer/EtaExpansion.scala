@@ -86,10 +86,10 @@ abstract class Lifter {
   /** Lift arguments that are not-idempotent into ValDefs in buffer `defs`
    *  and replace by the idents of so created ValDefs.
    */
-  def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(using Context): List[Tree] =
+  def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: Lst[Tree])(using Context): Lst[Tree] =
     methRef.widen match {
       case mt: MethodType =>
-        args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map { (arg, name, tp) =>
+        args.zipWith(mt.paramNames, mt.paramInfos) { (arg, name, tp) =>
           val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
           lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
@@ -243,7 +243,7 @@ object EtaExpansion extends LiftImpure {
     var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
-    val app = Apply(lifted, ids)
+    val app = Apply(lifted, ids.toLst)
     if (mt.isContextualMethod) app.setApplyKind(ApplyKind.Using)
     val body = if (isLastApplication) app else PostfixOp(app, Ident(nme.WILDCARD))
     val fn =

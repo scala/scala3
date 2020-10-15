@@ -336,6 +336,10 @@ object Lst:
         i
       case elem: T @ unchecked => if from == 0 && p(elem) then 0 else 1
 
+    def indexWhere(p: T => Boolean): Int =
+      val idx = firstIndexWhere(p)
+      if idx == length then -1 else idx
+
     def find(p: T => Boolean): Option[T] =
       val idx = firstIndexWhere(p)
       if idx < length then Some(xs.apply(idx)) else None
@@ -597,11 +601,28 @@ object Lst:
   extension [T, U] (xs: Lst[(T, U)])
     def toMap: Map[T, U] = Map() ++ xs.iterator
 
+    def unzip: (Lst[T], Lst[U]) = xs match
+      case null => (Lst.Empty, Lst.Empty)
+      case xs: Arr =>
+        val fst, snd = new Arr(xs.length)
+        var i = 0
+        while i < xs.length do
+          val p = xs.at(i)
+          fst(i) = p._1
+          snd(i) = p._2
+          i += 1
+        (multi[T](fst), multi[U](snd))
+      case x: (T, U) @unchecked =>
+        (single[T](x._1), single[U](x._2))
+
+  end extension
+
   extension [T](xs: Lst[Iterable[T]])
     def flatten: Lst[T] =
       val buf = Buffer[T]()
       xs.foreach(buf ++= _)
       buf.toLst
+  end extension
 
   def fill[T](n: Int)(elem: => T) =
     val xs = new Arr(n)

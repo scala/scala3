@@ -8,6 +8,7 @@ import core.Flags._
 import core.Decorators._
 import MegaPhase.MiniPhase
 import config.Printers.transforms
+import util.Lst; // import Lst.::
 
 /** Add accessors for all protected accesses. An accessor is needed if
  *  according to the rules of the JVM a protected class member is not accessible
@@ -73,7 +74,7 @@ class ProtectedAccessors extends MiniPhase {
   override def transformAssign(tree: Assign)(using Context): Tree =
     tree.lhs match {
       case lhs: RefTree if lhs.name.is(ProtectedAccessorName) =>
-        cpy.Apply(tree)(Accessors.insert.useSetter(lhs), tree.rhs :: Nil)
+        cpy.Apply(tree)(Accessors.insert.useSetter(lhs), Lst(tree.rhs))
       case _ =>
         tree
     }
