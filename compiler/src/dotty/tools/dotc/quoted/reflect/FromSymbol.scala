@@ -8,7 +8,8 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.util.Lst.toLst
+import dotty.tools.dotc.util.Lst
+import Lst.{NIL, +:, toLst}
 
 object FromSymbol {
 

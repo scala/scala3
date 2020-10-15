@@ -19,6 +19,7 @@ import printing.Texts._
 import printing.Printer
 import util.common._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 import SymDenotations.NoDenotation
 import collection.mutable
 
@@ -463,7 +464,7 @@ object Scopes {
     override private[dotc] def lastEntry: ScopeEntry = null
     override def size: Int = 0
     override def nestingLevel: Int = 0
-    override def toLst(using Context): Lst[Symbol] = Lst.Empty
+    override def toLst(using Context): Lst[Symbol] = NIL
     override def cloneScope(using Context): MutableScope = unsupported("cloneScope")
     override def lookupEntry(name: Name)(using Context): ScopeEntry = null
     override def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry = null

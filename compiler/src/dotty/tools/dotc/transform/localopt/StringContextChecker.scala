@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.util.Lst; // import Lst.::
+import Lst.{NIL, +:, toLst}
 
 
 // Ported from old dotty.internal.StringContextMacro

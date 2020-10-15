@@ -13,7 +13,7 @@ import annotation.constructorOnly
 import annotation.internal.sharable
 import Decorators._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
@@ -449,7 +449,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def ensureApplied(tpt: Tree)(implicit src: SourceFile): Tree = tpt match {
     case _: Apply => tpt
-    case _ => Apply(tpt, Lst())
+    case _ => Apply(tpt, NIL)
   }
 
   def AppliedTypeTree(tpt: Tree, arg: Tree)(implicit src: SourceFile): AppliedTypeTree =

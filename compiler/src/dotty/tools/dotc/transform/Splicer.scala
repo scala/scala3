@@ -26,8 +26,8 @@ import scala.reflect.ClassTag
 
 import dotty.tools.dotc.quoted._
 import scala.quoted.QuoteContext
-import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst; import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 /** Utility class to splice quoted expressions */
 object Splicer {
@@ -142,13 +142,13 @@ object Splicer {
       }
 
       def checkIfValidArgument(tree: Tree)(using Env): Unit = tree match {
-        case Block(Lst.Empty, expr) => checkIfValidArgument(expr)
+        case Block(NIL, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
-        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
+        case Apply(Select(Apply(fn, Lst(quoted)), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
           // OK
 
-        case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.QuotedTypeModule_apply =>
+        case TypeApply(fn, Lst(quoted)) if fn.symbol == defn.QuotedTypeModule_apply =>
           // OK
 
         case Literal(Constant(value)) =>
@@ -331,7 +331,7 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.Expr(Inlined(EmptyTree, Lst(), PickledQuotes.healOwner(tree)).withSpan(tree.span), QuoteContextImpl.scopeId)
+      new scala.internal.quoted.Expr(Inlined(EmptyTree, NIL, PickledQuotes.healOwner(tree)).withSpan(tree.span), QuoteContextImpl.scopeId)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
       new scala.internal.quoted.Type(PickledQuotes.healOwner(tree), QuoteContextImpl.scopeId)

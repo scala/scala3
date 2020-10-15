@@ -12,7 +12,7 @@ import Symbols._, Contexts._
 import util.Spans._
 import Parsers.Parser
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** This class builds instance of `Tree` that represent XML.
  *
@@ -101,7 +101,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     children: collection.Seq[Tree]): Tree =
   {
     def starArgs =
-      if (children.isEmpty) Lst.Empty
+      if (children.isEmpty) NIL
       else Lst(Typed(makeXMLseq(span, children), wildStar))
 
     def pat    = Apply(_scala_xml__Elem, Lst(pre, label, wild, wild) ++ convertToTextPat(children))
@@ -162,7 +162,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
   def makeXMLseq(span: Span, args: collection.Seq[Tree]): Block = {
-    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, Lst() :: Nil))
+    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, NIL :: Nil))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), Lst(t)))
 
     atSpan(span)(new XMLBlock((buffer :: applies.toList).toLst, Ident(_buf)) )
@@ -239,9 +239,9 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
     val (attrResult, nsResult) =
       (attributes.isEmpty, namespaces.isEmpty) match {
-        case (true ,  true)   => (Lst(), Lst())
+        case (true ,  true)   => (NIL, NIL)
         case (true , false)   => (Lst(scopeDef), (tmpScopeDef :: namespaces).toLst)
-        case (false,  true)   => ((metadataDef :: attributes).toLst, Lst())
+        case (false,  true)   => ((metadataDef :: attributes).toLst, NIL)
         case (false, false)   => ((scopeDef :: metadataDef :: attributes).toLst, (tmpScopeDef :: namespaces).toLst)
       }
 

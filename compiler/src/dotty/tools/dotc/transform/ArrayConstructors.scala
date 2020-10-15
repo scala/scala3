@@ -10,7 +10,7 @@ import StdNames._
 import ast.Trees._
 import dotty.tools.dotc.ast.tpd
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** This phase rewrites calls to array constructors to newArray method in Dotty.runtime.Arrays module.
  *

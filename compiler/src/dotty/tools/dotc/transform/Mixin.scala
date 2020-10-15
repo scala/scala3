@@ -19,7 +19,7 @@ import NameOps._
 import ast.Trees._
 import collection.mutable
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 object Mixin {
   val name: String = "mixin"
@@ -217,8 +217,8 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           (scall, stats ++ inits, args)
       case _ =>
         val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
-        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Lst.Empty, args) else (args, Lst.Empty)
-        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), Lst.Empty, initArgs)
+        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (NIL, args) else (args, NIL)
+        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), NIL, initArgs)
     }
 
     val superCallsAndArgs: Map[Symbol, (Tree, Lst[Tree], Lst[Tree])] = (

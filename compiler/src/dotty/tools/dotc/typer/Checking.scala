@@ -22,6 +22,7 @@ import Phases.refchecksPhase
 
 import util.SrcPos
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 import rewrites.Rewrites.patch
 import transform.SymUtils._
 import transform.ValueClasses._

@@ -24,6 +24,7 @@ import typer.Checking.checkNonCyclic
 import io.{AbstractFile, PlainFile, ZipArchive}
 import scala.util.control.NonFatal
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 object ClassfileParser {
   /** Marker trait for unpicklers that can be embedded in classfiles. */
@@ -631,7 +632,7 @@ class ClassfileParser(
           if (c ne null) newType = ConstantType(c)
           else report.warning(s"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
         case tpnme.AnnotationDefaultATTR =>
-          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Lst()))
+          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, NIL))
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeVisibleAnnotationATTR
           | tpnme.RuntimeInvisibleAnnotationATTR =>

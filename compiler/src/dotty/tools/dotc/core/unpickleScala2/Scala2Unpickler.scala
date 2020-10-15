@@ -12,7 +12,7 @@ import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
 import util.Spans._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
 import ast.untpd.Modifiers
 import printing.Texts._
@@ -1073,7 +1073,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val ldef = DefDef(symbol.asTerm, rhs)
         def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw.toString)
         if (isCaseLabel(symbol)) ldef
-        else Block(Lst(ldef), Apply(Ident(symbol.termRef), Lst()))
+        else Block(Lst(ldef), Apply(Ident(symbol.termRef), NIL))
 
       case IMPORTtree =>
         setSym()

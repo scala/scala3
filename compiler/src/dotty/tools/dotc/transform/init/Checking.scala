@@ -15,7 +15,7 @@ import util.NoSourcePosition
 import reporting.trace
 import config.Printers.init
 import util.Lst; // import Lst.::
-import util.Lst.{toLst, +:}
+import util.Lst.{NIL, +:, toLst}
 
 import Effects._, Potentials._, Summary._, Util._, Errors._
 

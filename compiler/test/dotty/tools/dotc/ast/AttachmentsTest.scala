@@ -8,6 +8,7 @@ import dotty.tools.dotc.transform.PostTyper
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertTrue, fail}
 import dotty.tools.dotc.util.Lst; // import Lst.::
+import Lst.{NIL, +:, toLst}
 
 class AttachmentsTests extends DottyTest {
 

@@ -11,6 +11,7 @@ import dotty.tools.dotc.core._
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform.SymUtils._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 /** Removes `Select`s that would be compiled into `GetStatic`.
  *

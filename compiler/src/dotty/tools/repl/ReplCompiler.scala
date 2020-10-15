@@ -20,7 +20,7 @@ import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
 import dotty.tools.repl.results._
 import dotty.tools.dotc.util
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 import scala.collection.mutable
 

@@ -24,7 +24,7 @@ import scala.internal.Chars.isOperatorPart
 import transform.TypeUtils._
 import transform.SymUtils._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 
 import language.implicitConversions
@@ -333,7 +333,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def dropBlock(tree: Tree): Tree = tree match {
-      case Block(Lst.Empty, expr) => expr
+      case Block(NIL, expr) => expr
       case _ => tree
     }
 

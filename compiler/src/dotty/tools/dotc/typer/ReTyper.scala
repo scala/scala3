@@ -13,6 +13,7 @@ import Trees._
 import scala.util.control.NonFatal
 import util.Spans.Span
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 /** A version of Typer that keeps all symbols defined and referenced in a
  *  previously typed tree.

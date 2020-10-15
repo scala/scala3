@@ -15,7 +15,7 @@ import reporting._
 import transform.MegaPhase.MiniPhase
 import util.LinearSet
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 import scala.collection.mutable
 
@@ -353,7 +353,7 @@ class TailRec extends MiniPhase {
                 (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
 
             val assignments = assignThisAndParamPairs match
-              case Lst.Empty => Lst.Empty
+              case NIL => NIL
               case Lst((lhs, rhs)) => Lst(Assign(ref(lhs), rhs))
               case _ =>
                 val (tempValDefs, assigns) = (for ((lhs, rhs) <- assignThisAndParamPairs) yield {

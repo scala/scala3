@@ -12,7 +12,7 @@ import Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Decorators._, DenotTransformers._
 import collection.{immutable, mutable}
 import util.{Property, SourceFile, NoSource}
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 import NameKinds.{TempResultName, OuterSelectName}
 import typer.ConstFold
 import util.Lst; // import Lst.::
@@ -111,14 +111,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
    */
-  def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: Lst[Tree] = Lst(), targetType: Type = NoType)(using Context): Block = {
+  def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: Lst[Tree] = NIL, targetType: Type = NoType)(using Context): Block = {
     val targetTpt = if (targetType.exists) TypeTree(targetType) else EmptyTree
     val call =
       if (targs.isEmpty) Ident(TermRef(NoPrefix, meth))
       else TypeApply(Ident(TermRef(NoPrefix, meth)), targs)
     Block(
       Lst(DefDef(meth, rhsFn)),
-      Closure(Lst(), call, targetTpt))
+      Closure(NIL, call, targetTpt))
   }
 
   /** A closure whole anonymous function has the given method type */
@@ -357,7 +357,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
     val forwarders = fns.lazyZip(methNames).map(forwarder)
     val cdef = ClassDef(cls, DefDef(constr), forwarders.toLst)
-    Block(Lst(cdef), New(cls.typeRef, Lst()))
+    Block(Lst(cdef), New(cls.typeRef, NIL))
   }
 
   def Import(expr: Tree, selectors: Lst[untpd.ImportSelector])(using Context): Import =
@@ -924,7 +924,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       argss.foldLeft(tree: Tree)((fn, args) => Apply(fn, args))
 
     /** The current tree applied to (): `tree()` */
-    def appliedToNone(using Context): Apply = appliedToArgs(Lst())
+    def appliedToNone(using Context): Apply = appliedToArgs(NIL)
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToType(targ: Type)(using Context): Tree =
@@ -1125,8 +1125,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             transform(rhs)
           case _ => tree
         }
-      case Inlined(_, Lst.Empty, arg) => transform(arg)
-      case Block(Lst.Empty, arg) => transform(arg)
+      case Inlined(_, NIL, arg) => transform(arg)
+      case Block(NIL, arg) => transform(arg)
       case NamedArg(_, arg) => transform(arg)
       case tree => super.transform(tree)
     }
@@ -1189,7 +1189,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree
     else {
       report.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
-      Throw(New(defn.ClassCastExceptionClass.typeRef, Lst())).withSpan(tree.span)
+      Throw(New(defn.ClassCastExceptionClass.typeRef, NIL)).withSpan(tree.span)
     }
   }
 
@@ -1236,7 +1236,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   object MaybePoly {
     def unapply(tree: Tree): Option[(Tree, Lst[Tree])] = tree match {
       case TypeApply(tree, targs) => Some(tree, targs)
-      case _ => Some(tree, Lst())
+      case _ => Some(tree, NIL)
     }
   }
 

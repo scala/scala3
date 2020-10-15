@@ -18,7 +18,7 @@ import reporting._
 import dotty.tools.dotc.ast._
 import util.Property._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** The pattern matching transform.
  *  After this phase, the only Match nodes remaining in the code are simple switches
@@ -977,7 +977,7 @@ object PatternMatcher {
         val resultCases = result match {
           case Match(_, cases) => cases
           case Block(_, Match(_, cases)) => cases
-          case _ => Lst.Empty
+          case _ => NIL
         }
         def typesInPattern(pat: Tree): Lst[Type] = pat match {
           case Alternative(pats) => pats.flatMap(typesInPattern)

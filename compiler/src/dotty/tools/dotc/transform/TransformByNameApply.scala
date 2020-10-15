@@ -15,6 +15,7 @@ import core.StdNames.nme
 import ast.Trees._
 import reporting.trace
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 /** Abstract base class of ByNameClosures and ElimByName, factoring out the
  *  common functionality to transform arguments of by-name parameters.
@@ -47,7 +48,7 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
           def wrap(arg: Tree) =
             ref(defn.cbnArg).appliedToType(argType).appliedTo(arg).withSpan(arg.span)
           arg match {
-            case Apply(Select(qual, nme.apply), Lst.Empty)
+            case Apply(Select(qual, nme.apply), NIL)
             if qual.tpe.derivesFrom(defn.FunctionClass(0)) && (isPureExpr(qual) || qual.symbol.isAllOf(Inline | Param)) =>
               wrap(qual)
             case _ =>

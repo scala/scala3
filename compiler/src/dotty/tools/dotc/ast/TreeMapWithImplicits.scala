@@ -8,7 +8,7 @@ import core.Flags._
 import core.Symbols._
 import core.TypeError
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 
 import scala.annotation.tailrec

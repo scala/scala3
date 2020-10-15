@@ -25,7 +25,7 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util
 import util.Lst; // import Lst.::
-import util.Lst.{toLst, +:}
+import util.Lst.{NIL, +:, toLst}
 
 /*
  *

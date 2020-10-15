@@ -12,6 +12,7 @@ import SymUtils._
 import core.Flags._
 import util.Spans._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 import reporting._
 import config.Printers.{ transforms => debug }
 

@@ -127,7 +127,7 @@ object ScriptParsers {
         Nil,
         List(Nil),
         TypeTree(),
-        Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), Lst())), Literal(Constant(())))
+        Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), NIL)), Literal(Constant(())))
       )
 
       // def main

@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted.reflect._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.util.Lst
-import dotty.tools.dotc.util.Lst.{toLst, +:}
+import dotty.tools.dotc.util.Lst.{NIL, +:, toLst}
 
 import scala.quoted.QuoteContext
 import scala.quoted.show.SyntaxHighlight
@@ -303,9 +303,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
             val app1 = dotc.transform.BetaReduce(app, fn, args)
             if app1 eq app then None
             else Some(app1.withSpan(tree.span))
-          case tpd.Block(Lst.Empty, expr) =>
-            for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(Lst.Empty, e)
-          case tpd.Inlined(_, Lst.Empty, expr) =>
+          case tpd.Block(NIL, expr) =>
+            for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(NIL, e)
+          case tpd.Inlined(_, NIL, expr) =>
             betaReduce(expr)
           case _ =>
             None
@@ -724,9 +724,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Closure extends ClosureModule:
       def apply(meth: Term, tpe: Option[Type]): Closure =
-        withDefaultPos(tpd.Closure(Lst(), meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.Closure(NIL, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(meth: Tree, tpe: Option[Type]): Closure =
-        tpd.cpy.Closure(original)(Lst(), meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
+        tpd.cpy.Closure(original)(NIL, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
       def unapply(x: Closure): Option[(Term, Option[Type])] =
         Some((x.meth, x.tpeOpt))
     end Closure
@@ -2631,7 +2631,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
       def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
         pat match
-          case tpd.Inlined(_, Lst.Empty, pat2) => extractTypeHoles(pat2)
+          case tpd.Inlined(_, NIL, pat2) => extractTypeHoles(pat2)
           case tpd.Block(stats @ (typeHole: TypeDef) +: _, expr) if isTypeHoleDef(typeHole) =>
             val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol).toList
             val otherStats = stats.dropWhile(isTypeHoleDef)

@@ -10,7 +10,7 @@ import StdNames.nme
 import ast.Trees._
 import ast.TreeTypeMap
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 
 /** Rewrite an application
@@ -54,8 +54,8 @@ object BetaReduce:
   def apply(tree: Apply, fn: Tree, args: Lst[Tree])(using Context): Tree =
     fn match
       case Typed(expr, _) => BetaReduce(tree, expr, args)
-      case Block(Lst.Empty, expr) => BetaReduce(tree, expr, args)
-      case Inlined(_, Lst.Empty, expr) => BetaReduce(tree, expr, args)
+      case Block(NIL, expr) => BetaReduce(tree, expr, args)
+      case Inlined(_, NIL, expr) => BetaReduce(tree, expr, args)
       case Block(Lst(anonFun: DefDef), closure: Closure) => BetaReduce(anonFun, args)
       case _ => tree
   end apply

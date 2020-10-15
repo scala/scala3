@@ -15,7 +15,7 @@ import Denotations._, SymDenotations._
 import TypeErasure.erasure
 import DenotTransformers._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 object ElimRepeated {
   val name: String = "elimRepeated"

@@ -20,6 +20,7 @@ import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.util.Lst; import Lst.::
+import Lst.{NIL, +:, toLst}
 
 import scala.collection.mutable
 import scala.annotation.constructorOnly
@@ -91,7 +92,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
           }
 
       def dropEmptyBlocks(tree: Tree): Tree = tree match {
-        case Block(Lst.Empty, expr) => dropEmptyBlocks(expr)
+        case Block(NIL, expr) => dropEmptyBlocks(expr)
         case _ => tree
       }
 

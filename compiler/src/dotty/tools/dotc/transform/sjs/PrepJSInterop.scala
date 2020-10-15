@@ -27,6 +27,7 @@ import SymUtils._
 import Trees._
 import Types._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 import JSSymUtils._
 

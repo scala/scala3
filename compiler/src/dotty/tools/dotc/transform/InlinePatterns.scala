@@ -11,7 +11,7 @@ import Names._
 import ast.Trees._
 import ast.TreeTypeMap
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** Rewrite an application
  *
@@ -56,7 +56,7 @@ class InlinePatterns extends MiniPhase:
 
   private def betaReduce(tree: Apply, fn: Tree, name: Name, args: List[Tree])(using Context): Tree =
     fn match
-      case Block(Lst(TypeDef(_, template: Template)), Apply(Select(New(_),_), Lst.Empty)) if template.constr.rhs.isEmpty =>
+      case Block(Lst(TypeDef(_, template: Template)), Apply(Select(New(_),_), NIL)) if template.constr.rhs.isEmpty =>
         template.body match
           case Lst(ddef @ DefDef(`name`, _, _, _, _)) => BetaReduce(ddef, args.toLst)
           case _ => tree

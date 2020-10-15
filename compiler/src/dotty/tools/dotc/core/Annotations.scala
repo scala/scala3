@@ -8,6 +8,7 @@ import dotty.tools.dotc.ast.tpd
 import scala.util.Try
 import util.Spans.Span
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 object Annotations {
 
@@ -97,7 +98,7 @@ object Annotations {
     override def symbol(using Context): ClassSymbol = defn.BodyAnnot
     override def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
-    override def arguments(using Context): Lst[Tree] = Lst()
+    override def arguments(using Context): Lst[Tree] = NIL
     override def ensureCompleted(using Context): Unit = ()
   }
 
@@ -133,7 +134,7 @@ object Annotations {
     def apply(tree: Tree): ConcreteAnnotation = ConcreteAnnotation(tree)
 
     def apply(cls: ClassSymbol)(using Context): Annotation =
-      apply(cls, Lst())
+      apply(cls, NIL)
 
     def apply(cls: ClassSymbol, arg: Tree)(using Context): Annotation =
       apply(cls, Lst(arg))
@@ -174,7 +175,7 @@ object Annotations {
       def later(delayedSym: Context ?=> Symbol, span: Span)(using Context): Annotation = {
         def makeChildLater(using Context) = {
           val sym = delayedSym
-          New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Lst())
+          New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), NIL)
             .withSpan(span)
         }
         deferred(defn.ChildAnnot)(makeChildLater)

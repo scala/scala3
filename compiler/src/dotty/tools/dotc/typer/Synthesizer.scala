@@ -16,6 +16,7 @@ import transform.TypeUtils._
 import transform.SyntheticMembers._
 import util.Property
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 import annotation.{tailrec, constructorOnly}
 
 /** Synthesize terms for special classes */

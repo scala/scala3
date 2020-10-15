@@ -11,6 +11,7 @@ import collection.mutable
 import MegaPhase.MiniPhase
 import util.Store
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 /** Lift nested classes to toplevel */
 class Flatten extends MiniPhase with SymTransformer {

@@ -22,6 +22,7 @@ import scala.internal.Chars._
 import collection.mutable
 import ProtoTypes._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 

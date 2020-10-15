@@ -26,7 +26,7 @@ import scala.quoted.QuoteContext
 import scala.collection.mutable
 import dotty.tools.dotc.util
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 object PickledQuotes {
   import tpd._
@@ -59,11 +59,11 @@ object PickledQuotes {
     val tastyBytes = TastyString.unpickle(tasty)
     val unpickled = withMode(Mode.ReadPositions)(
       unpickle(tastyBytes, splices, isType = false))
-    val Inlined(call, Lst.Empty, expansion) = unpickled
+    val Inlined(call, NIL, expansion) = unpickled
     val inlineCtx = inlineContext(call)
     val expansion1 = spliceTypes(expansion, splices)(using inlineCtx)
     val expansion2 = spliceTerms(expansion1, splices)(using inlineCtx)
-    cpy.Inlined(unpickled)(call, Lst(), expansion2)
+    cpy.Inlined(unpickled)(call, NIL, expansion2)
   }
 
   /** Unpickle the tree contained in the TastyType */

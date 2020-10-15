@@ -8,7 +8,7 @@ import ast.tpd
 import core._
 import Contexts._, NameOps._, Symbols._, StdNames._
 import util._, util.Spans._
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /**
  * A `tree` coming from `source`

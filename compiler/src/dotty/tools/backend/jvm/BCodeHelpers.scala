@@ -29,6 +29,7 @@ import dotty.tools.dotc.transform.GenericSignatures
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
 import dotty.tools.dotc.util.Lst; // import Lst.::
+import Lst.{NIL, +:, toLst}
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 

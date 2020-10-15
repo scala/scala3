@@ -29,6 +29,7 @@ import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.util.Using
 import dotty.tools.dotc.util.Lst; import Lst.::
+import Lst.{NIL, +:, toLst}
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation

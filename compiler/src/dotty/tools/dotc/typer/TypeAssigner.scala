@@ -9,7 +9,7 @@ import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdName
 import util.Spans._
 import util.SrcPos
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 import config.Printers.typr
 import ast.Trees._
 import NameOps._

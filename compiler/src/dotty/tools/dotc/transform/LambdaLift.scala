@@ -19,7 +19,7 @@ import util.Store
 import collection.mutable
 import collection.mutable.{ HashMap, HashSet, LinkedHashMap, TreeSet }
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 object LambdaLift {
   import ast.tpd._

@@ -17,7 +17,7 @@ import Symbols._
 import StdNames._
 import Types._
 import util.Lst; // import Lst.::
-import util.Lst.{toLst, +:}
+import util.Lst.{NIL, +:, toLst}
 
 import dotty.tools.dotc.transform.MegaPhase._
 
@@ -197,7 +197,7 @@ class JUnitBootstrappers extends MiniPhase {
     DefDef(sym, {
       if (module.exists) {
         val calls = annotatedMethods(module.moduleClass.asClass, annot)
-          .map(m => Apply(ref(module).select(m), Lst()))
+          .map(m => Apply(ref(module).select(m), NIL))
         Block(calls.toLst, unitLiteral)
       } else {
         unitLiteral
@@ -212,7 +212,7 @@ class JUnitBootstrappers extends MiniPhase {
     DefDef(sym, { (paramRefss: List[List[Tree]]) =>
       val List(List(instanceParamRef)) = paramRefss
       val calls = annotatedMethods(testClass, annot)
-        .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Lst()))
+        .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), NIL))
       Block(calls.toLst, unitLiteral)
     })
   }
@@ -299,7 +299,7 @@ class JUnitBootstrappers extends MiniPhase {
     val sym = newSymbol(owner, junitNme.newInstance, Synthetic | Method,
       MethodType(Nil, defn.ObjectType)).entered
 
-    DefDef(sym, New(testClass.typeRef, Lst()))
+    DefDef(sym, New(testClass.typeRef, NIL))
   }
 
   private def castParam(param: Symbol, clazz: Symbol)(using Context): Tree =

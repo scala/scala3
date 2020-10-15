@@ -19,7 +19,7 @@ import transform.MegaPhase.MiniPhase
 import transform.SymUtils._
 import scala.collection.mutable
 import util.Lst; // import Lst.::
-import util.Lst.{toLst, +:}
+import util.Lst.{NIL, toLst, +:}
 
 class LazyVals extends MiniPhase with IdentityDenotTransformer {
   import LazyVals._
@@ -158,7 +158,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val holderName = LazyLocalName.fresh(xname)
     val holderImpl = defn.LazyHolder()(tpe.typeSymbol)
     val holderSymbol = newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.span)
-    val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, Lst()))
+    val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, NIL))
 
     val holderRef = ref(holderSymbol)
     val getValue = holderRef.select(lazyNme.value).ensureApplied.withSpan(x.span)

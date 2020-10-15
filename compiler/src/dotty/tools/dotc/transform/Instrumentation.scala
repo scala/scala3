@@ -15,7 +15,7 @@ import StdNames.nme
 import Names._
 import Constants.Constant
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** The phase is enabled if the -Yinstrument option is set.
  *  If enabled, it counts the number of closures or allocations for each source position.

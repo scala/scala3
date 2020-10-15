@@ -7,7 +7,7 @@ import ast.Trees._
 import Contexts._, Phases._, Symbols._, Decorators._
 import Flags.PackageVal
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** A MegaPhase combines a number of mini-phases which are all executed in
  *  a single tree traversal.

@@ -14,7 +14,7 @@ import ast.Trees._
 import core.NameKinds.SuperArgName
 import SymUtils._
 import util.Lst; // import Lst.::
-import Lst.+:
+import util.Lst.{NIL, +:, toLst}
 
 object HoistSuperArgs {
   val name: String = "hoistSuperArgs"

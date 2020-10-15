@@ -29,7 +29,7 @@ import util.Lst; // import Lst.::
 import collection.mutable
 import reporting.trace
 import util.Spans.Span
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
 
 object Inliner {
@@ -87,7 +87,7 @@ object Inliner {
       override def transform(t: Tree)(using Context) =
         if call.span.exists then
           t match
-            case Inlined(t, Lst.Empty, expr) if t.isEmpty => expr
+            case Inlined(t, NIL, expr) if t.isEmpty => expr
             case _ if t.isEmpty => t
             case _ => super.transform(t.withSpan(call.span))
         else t
@@ -106,7 +106,7 @@ object Inliner {
       case Inlined(call, stats, expr) =>
         bindings ++= stats.map(liftPos).toList
         val lifter = liftFromInlined(call)
-        cpy.Inlined(tree)(call, Lst(), liftBindings(expr, liftFromInlined(call).transform(_)))
+        cpy.Inlined(tree)(call, NIL, liftBindings(expr, liftFromInlined(call).transform(_)))
       case Apply(fn, args) =>
         cpy.Apply(tree)(liftBindings(fn, liftPos), args)
       case TypeApply(fn, args) =>
@@ -166,7 +166,7 @@ object Inliner {
 
     val targs = fun match
       case TypeApply(_, targs) => targs
-      case _ => Lst()
+      case _ => NIL
     val unapplyInfo = sym.info match
       case info: PolyType => info.instantiate(targs.tpes)
       case info => info
@@ -176,7 +176,7 @@ object Inliner {
       inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unappplySym))
     )
     val cdef = ClassDef(cls, DefDef(constr), Lst(unapply))
-    val newUnapply = Block(Lst(cdef), New(cls.typeRef, Lst()))
+    val newUnapply = Block(Lst(cdef), New(cls.typeRef, NIL))
     val newFun = newUnapply.select(unappplySym).withSpan(unapp.span)
     cpy.UnApply(unapp)(newFun, implicits, patterns)
   }
@@ -436,7 +436,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.stripTypeVar
       }
-      computeParamBindings(tp.resultType, Lst(), argss)
+      computeParamBindings(tp.resultType, NIL, argss)
     case tp: MethodType =>
       if argss.isEmpty then
         report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
@@ -620,7 +620,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     callValueArgss match
       case Lst(arg) :: Nil if inlinedMethod == defn.Compiletime_requireConst =>
         arg match
-          case ConstantValue(_) | Inlined(_, Lst.Empty, Typed(ConstantValue(_), _)) => // ok
+          case ConstantValue(_) | Inlined(_, NIL, Typed(ConstantValue(_), _)) => // ok
           case _ => report.error(em"expected a constant value but found: $arg", arg.srcPos)
       case _ =>
 
@@ -657,7 +657,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     val inlineCtx = inlineContext(call).fresh.setTyper(inlineTyper).setNewScope
 
     def inlinedFromOutside(tree: Tree)(span: Span): Tree =
-      Inlined(EmptyTree, Lst(), tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
+      Inlined(EmptyTree, NIL, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
 
     // A tree type map to prepare the inlined body for typechecked.
     // The translation maps references to `this` and parameters to
@@ -805,15 +805,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           case Apply(fn, args) =>
             fn match {
               case Select(New(tpt), nme.CONSTRUCTOR) =>
-                Some((tpt.tpe.classSymbol, args, Lst(), false))
+                Some((tpt.tpe.classSymbol, args, NIL, false))
               case TypeApply(Select(New(tpt), nme.CONSTRUCTOR), _) =>
-                Some((tpt.tpe.classSymbol, args, Lst(), false))
+                Some((tpt.tpe.classSymbol, args, NIL, false))
               case _ =>
                 val meth = fn.symbol
                 if (meth.name == nme.apply &&
                     meth.flags.is(Synthetic) &&
                     meth.owner.linkedClass.is(Case))
-                  Some(meth.owner.linkedClass, args, Lst(), false)
+                  Some(meth.owner.linkedClass, args, NIL, false)
                 else None
             }
           case Typed(inner, _) =>
@@ -1136,7 +1136,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               case _ =>
                 false
             }
-          case Inlined(EmptyTree, Lst.Empty, ipat) =>
+          case Inlined(EmptyTree, NIL, ipat) =>
             reducePattern(caseBindingMap, scrut, ipat)
           case _ => false
         }
@@ -1401,7 +1401,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           case t: Apply =>
             val t1 = super.transform(t)
             if (t1 `eq` t) t else reducer.betaReduce(t1)
-          case Block(Lst.Empty, expr) =>
+          case Block(NIL, expr) =>
             super.transform(expr)
           case _ =>
             super.transform(t)
@@ -1437,7 +1437,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
     val inlinedNormailizer = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
-        case Inlined(EmptyTree, Lst.Empty, expr) if enclosingInlineds.isEmpty => transform(expr)
+        case Inlined(EmptyTree, NIL, expr) if enclosingInlineds.isEmpty => transform(expr)
         case _ => super.transform(tree)
       }
     }

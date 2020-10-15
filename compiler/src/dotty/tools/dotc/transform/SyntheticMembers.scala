@@ -16,7 +16,7 @@ import util.Property
 import config.Printers.derive
 import NullOpsDecorator._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 object SyntheticMembers {
 
@@ -218,7 +218,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         case _ => false
       }
       val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor _).asTerm
-      val stringIndex = Apply(Select(index, nme.toString_), Lst())
+      val stringIndex = Apply(Select(index, nme.toString_), NIL)
       val error = Throw(New(ioob, constructor, Lst(stringIndex)))
 
       // case _ => throw new IndexOutOfBoundsException(i.toString)

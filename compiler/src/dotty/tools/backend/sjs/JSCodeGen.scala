@@ -27,7 +27,7 @@ import TypeErasure.ErasedValueType
 
 import dotty.tools.dotc.util
 import util.Lst; // import Lst.::
-import util.Lst.{toLst, +:}
+import util.Lst.{NIL, +:, toLst}
 
 import dotty.tools.dotc.transform.{Erasure, ValueClasses}
 import dotty.tools.dotc.transform.SymUtils._
@@ -3638,11 +3638,11 @@ class JSCodeGen()(using genCtx: Context) {
           // Extract jstpe.Type's and jstpe.TypeRef's from the ClassTag.apply(_) trees
           val formalParamTypesAndTypeRefs = classTagsArray.elems.toList.map {
             // ClassTag.apply(classOf[tp]) -> tp
-            case Apply(fun, Literal(const) :: Nil)
+            case Apply(fun, Lst(Literal(const)))
                 if fun.symbol == defn.ClassTagModule_apply && const.tag == Constants.ClazzTag =>
               toIRTypeAndTypeRef(const.typeValue)
             // ClassTag.SpecialType -> erasure(SepecialType.typeRef) (e.g., ClassTag.Any -> Object)
-            case Apply(Select(classTagModule, name), Lst.Empty)
+            case Apply(Select(classTagModule, name), NIL)
                 if classTagModule.symbol == defn.ClassTagModule &&
                     defn.SpecialClassTagClasses.exists(_.name == name.toTypeName) =>
               toIRTypeAndTypeRef(TypeErasure.erasure(

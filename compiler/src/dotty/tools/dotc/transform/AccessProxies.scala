@@ -15,6 +15,7 @@ import NameKinds.ClassifiedNameKind
 import ast.Trees._
 import util.Spans.Span
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 import config.Printers.transforms
 
 /** A utility class for generating access proxies. Currently used for

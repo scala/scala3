@@ -24,7 +24,7 @@ import dotty.tools.dotc.util.SourceFile
 import util.Spans._
 import scala.collection.mutable.ListBuffer
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 object JavaParsers {
 
@@ -896,7 +896,7 @@ object JavaParsers {
         AppliedTypeTree(javaLangDot(tpnme.Enum), List(enumType))
         */
       val superclazz = Apply(TypeApply(
-        Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), Lst(enumType)), Lst())
+        Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), Lst(enumType)), NIL)
       val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
           makeTemplate(superclazz :: interfaces, body, List(), true)).withMods(mods | Flags.JavaEnumTrait)

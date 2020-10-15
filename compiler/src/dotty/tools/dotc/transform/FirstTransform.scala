@@ -19,7 +19,7 @@ import NameKinds.OuterSelectName
 import StdNames._
 import NullOpsDecorator._
 import util.HashMap
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 import util.Lst; // import Lst.::
 
 object FirstTransform {

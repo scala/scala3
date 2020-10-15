@@ -9,6 +9,7 @@ import Types._
 import core.StdNames.nme
 import ast.Trees._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 /** This phase eliminates ExprTypes `=> T` as types of method parameter references, and replaces them b
  *  nullary function types.  More precisely:

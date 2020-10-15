@@ -7,6 +7,7 @@ import Contexts._, Symbols._, Types._, Flags._, Phases._
 import DenotTransformers._, MegaPhase._
 import TreeExtractors._, ValueClasses._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 /** This phase elides unnecessary value class allocations
  *

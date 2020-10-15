@@ -7,7 +7,7 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
 import util.{SourceFile, SourcePosition, NoSourcePosition}
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 import Tokens._
 import Scanners._
 import xml.MarkupParsers.MarkupParser
@@ -1233,7 +1233,7 @@ object Parsers {
                 This(EmptyTypeIdent)
               }
               else if (in.token == LBRACE)
-                if (inPattern) Block(Lst.Empty, inBraces(pattern()))
+                if (inPattern) Block(NIL, inBraces(pattern()))
                 else expr()
               else {
                 report.error(InterpolatedStringError(), source.atSpan(Span(in.offset)))
@@ -1983,7 +1983,7 @@ object Parsers {
             else (EmptyTree, -1)
 
           handler match {
-            case Block(Lst.Empty, EmptyTree) =>
+            case Block(NIL, EmptyTree) =>
               assert(handlerStart != -1)
               syntaxError(
                 EmptyCatchBlock(body),
@@ -2332,7 +2332,7 @@ object Parsers {
      */
     def parArgumentExprs(): (Lst[Tree], Boolean) = inParens {
       if in.token == RPAREN then
-        (Lst(), false)
+        (NIL, false)
       else if isIdent(nme.using) then
         in.nextToken()
         (commaSeparatedLst(argumentExpr), true)
@@ -3337,7 +3337,7 @@ object Parsers {
           inBracesOrIndented {
             val stats = selfInvocation() :: (
               if (isStatSep) { in.nextToken(); blockStatSeq() }
-              else Lst())
+              else NIL)
             Block(stats, Literal(Constant(())))
           }
         }
@@ -3515,7 +3515,7 @@ object Parsers {
           constrApps(commaOK = true, templateCanFollow = false)
         }
         else Nil
-      Template(constr, parents, Nil, EmptyValDef, Lst())
+      Template(constr, parents, Nil, EmptyValDef, NIL)
     }
 
     def checkExtensionMethod(tparams: List[Tree],
@@ -3584,12 +3584,12 @@ object Parsers {
       if (in.token == COLONEOL) in.nextToken()
       val methods =
         if isDefIntro(modifierTokens) then
-          extMethod() :: Lst()
+          extMethod() :: NIL
         else
           in.observeIndented()
           newLineOptWhenFollowedBy(LBRACE)
           if in.isNestedStart then inDefScopeBraces(extMethods())
-          else { syntaxError("Extension without extension methods"); Lst() }
+          else { syntaxError("Extension without extension methods"); NIL }
       val result = atSpan(start)(ExtMethods(tparams, extParams :: givenParamss, methods.toList))
       val comment = in.getDocComment(start)
       if comment.isDefined then
@@ -3690,7 +3690,7 @@ object Parsers {
           template(constr)
         else
           checkNextNotIndented()
-          Template(constr, Nil, Nil, EmptyValDef, Lst())
+          Template(constr, Nil, Nil, EmptyValDef, NIL)
 
     /** TemplateBody ::=  [nl] `{' TemplateStatSeq `}'
      *  EnumBody     ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
@@ -3701,7 +3701,7 @@ object Parsers {
           templateBody()
         else
           checkNextNotIndented()
-          (EmptyValDef, Lst())
+          (EmptyValDef, NIL)
       Template(constr, parents, derived, self, stats)
 
     def templateBody(): (ValDef, Lst[Tree]) =
@@ -3923,7 +3923,7 @@ object Parsers {
             var continue = false
             possibleTemplateStart()
             if in.token == EOF then
-              ts += makePackaging(start, pkg, Lst.Empty)
+              ts += makePackaging(start, pkg, NIL)
             else if in.isNestedStart then
               ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()), rewriteWithColon = true)
               continue = true
@@ -3942,7 +3942,7 @@ object Parsers {
 
       topstats() match {
         case Lst(stat @ PackageDef(_, _)) => stat
-        case Lst.Empty => EmptyTree  // without this case we'd get package defs without positions
+        case NIL => EmptyTree  // without this case we'd get package defs without positions
         case stats => PackageDef(Ident(nme.EMPTY_PACKAGE), stats)
       }
     }

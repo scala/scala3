@@ -5,6 +5,7 @@ import dotty.tools.dotc.core.Comments.{Comment, CommentsContext, ContextDocstrin
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr}
 

@@ -14,6 +14,7 @@ import config.Config
 import config.Printers.{typr, default}
 import util.Stats._
 import util.{ SourcePosition, NoSourcePosition, Lst }
+import util.Lst.{NIL, +:, toLst}
 import scala.util.control.NonFatal
 import ast.Trees._
 

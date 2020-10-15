@@ -8,6 +8,7 @@ import Contexts._, Trees._, Types._
 import DenotTransformers._, MegaPhase._
 import ExtensionMethods._, ValueClasses._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 
 /** This phase inlines calls to methods of value classes.
@@ -55,7 +56,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
    *  @param mArgss Arguments for the method call not present in `tree`
    *  @return       A tree for the extension method call
    */
-  private def rewire(tree: Tree, mtArgs: Lst[Tree] = Lst(), mArgss: List[Lst[Tree]] = Nil)
+  private def rewire(tree: Tree, mtArgs: Lst[Tree] = NIL, mArgss: List[Lst[Tree]] = Nil)
     (using Context): Tree =
     tree match {
       case Apply(qual, mArgs) =>

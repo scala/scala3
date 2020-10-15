@@ -9,6 +9,7 @@ import ast.Trees._
 import reporting._
 import dotty.tools.dotc.util.Spans.Span
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
  *  These fall into five categories
@@ -98,7 +99,7 @@ class ExpandSAMs extends MiniPhase {
     /** An extractor for match, either contained in a block or standalone. */
     object PartialFunctionRHS {
       def unapply(tree: Tree): Option[Match] = tree match {
-        case Block(Lst.Empty, expr) => unapply(expr)
+        case Block(NIL, expr) => unapply(expr)
         case m: Match => Some(m)
         case _ => None
       }
@@ -160,7 +161,7 @@ class ExpandSAMs extends MiniPhase {
         val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)(using ctx.withOwner(isDefinedAtFn))))
         val applyOrElseDef = transformFollowingDeep(DefDef(applyOrElseFn, applyOrElseRhs(_)(using ctx.withOwner(applyOrElseFn))))
         val pfDef = ClassDef(pfSym, DefDef(constr), Lst(isDefinedAtDef, applyOrElseDef))
-        cpy.Block(tree)(Lst(pfDef), New(pfSym.typeRef, Lst()))
+        cpy.Block(tree)(Lst(pfDef), New(pfSym.typeRef, NIL))
 
       case _ =>
         val found = tpe.baseType(defn.FunctionClass(1))

@@ -23,6 +23,7 @@ import util.Property
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import util.Lst; import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 object PrepareInlineable {
   import tpd._
@@ -265,7 +266,7 @@ object PrepareInlineable {
           Splicer.checkValidMacroBody(code)
           new PCPCheckAndHeal(freshStagingContext).transform(body) // Ignore output, only check PCP
         case Block(stats, Literal(Constants.Constant(()))) if stats.length == 1 => checkMacro(stats.head)
-        case Block(Lst.Empty, expr) => checkMacro(expr)
+        case Block(NIL, expr) => checkMacro(expr)
         case Typed(expr, _) => checkMacro(expr)
         case Block(Lst(DefDef(nme.ANON_FUN, _, _, _, _)), Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
           // TODO Support this pattern

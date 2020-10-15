@@ -14,7 +14,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 import core.Decorators._
 
 object MoveStatics {

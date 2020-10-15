@@ -31,7 +31,7 @@ import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
 import util.Lst; // import Lst.::
-import util.Lst.{toLst, +:}
+import util.Lst.{NIL, +:, toLst}
 import Applications.{ExtMethodApply, IntegratedTypeArgs, productSelectorTypes, wrapDefs}
 
 import collection.mutable
@@ -549,7 +549,7 @@ class Typer extends Namer
       else if pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto then
         select1
       else
-        typedDynamicSelect(tree, Lst(), pt)
+        typedDynamicSelect(tree, NIL, pt)
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
@@ -650,7 +650,7 @@ class Typer extends Namer
               case _ => Lst(firstArg)
             }
             var app: untpd.Tree = untpd.Apply(fromDigits, allArgs)
-            if (ctx.mode.is(Mode.Pattern)) app = untpd.Block(Lst.Empty, app)
+            if (ctx.mode.is(Mode.Pattern)) app = untpd.Block(NIL, app)
             return typed(app, pt)
           case _ =>
         }
@@ -1584,7 +1584,7 @@ class Typer extends Namer
   def typedTry(tree: untpd.ParsedTry, pt: Type)(using Context): Try =
     val cases: Lst[untpd.CaseDef] = tree.handler match
       case Match(EmptyTree, cases) => cases
-      case EmptyTree => Lst()
+      case EmptyTree => NIL
       case handler =>
         val handler1 = typed(handler, defn.FunctionType(1).appliedTo(defn.ThrowableType, pt))
         Lst(desugar.makeTryCase(handler1))
@@ -2967,7 +2967,7 @@ class Typer extends Namer
                 case alt :: Nil => readaptSimplified(tree.withType(alt))
                 case _ =>
                   if (altDenots exists (_.info.paramInfoss == ListOfNil))
-                    typed(untpd.Apply(untpd.TypedSplice(tree), Lst()), pt, locked)
+                    typed(untpd.Apply(untpd.TypedSplice(tree), NIL), pt, locked)
                   else
                     noMatches
               }
@@ -3096,7 +3096,7 @@ class Typer extends Namer
         val args = implicitArgs(wtp.paramInfos, 0, pt).toLst
 
         def propagatedFailure(args: Lst[Tree]): Type = args match {
-          case Lst.Empty => NoType
+          case NIL => NoType
           case arg +: args1 =>
             arg.tpe match {
               case ambi: AmbiguousImplicits =>
@@ -3220,7 +3220,7 @@ class Typer extends Namer
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
       }
       else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
-        readaptSimplified(tpd.Apply(tree, Lst()))
+        readaptSimplified(tpd.Apply(tree, NIL))
       else if (wtp.isImplicitMethod)
         err.typeMismatch(tree, pt)
       else
@@ -3427,7 +3427,7 @@ class Typer extends Namer
 
       // convert function literal to SAM closure
       tree match {
-        case closure(Lst.Empty, id @ Ident(nme.ANON_FUN), _)
+        case closure(NIL, id @ Ident(nme.ANON_FUN), _)
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
             case SAMType(sam)

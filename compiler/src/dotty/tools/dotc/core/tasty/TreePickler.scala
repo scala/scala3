@@ -21,7 +21,7 @@ import util.SourceFile
 import annotation.constructorOnly
 import collection.mutable
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 
 object TreePickler {

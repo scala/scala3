@@ -9,6 +9,7 @@ import ast.untpd
 import ast.tpd._
 import config.Config
 import util.Lst; import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 object ContextFunctionResults:
 

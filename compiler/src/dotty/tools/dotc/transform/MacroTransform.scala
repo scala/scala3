@@ -9,7 +9,7 @@ import Symbols._
 import Flags.PackageVal
 import Decorators._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** A base class for transforms.
  *  A transform contains a compiler phase which applies a tree transformer.

@@ -12,7 +12,7 @@ import Decorators._
 import Constants.Constant
 import scala.collection.mutable
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 import scala.annotation.tailrec
 
@@ -31,7 +31,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   def isOpAssign(tree: Tree): Boolean = unsplice(tree) match {
-    case Apply(fn, _ :: _) =>
+    case Apply(fn, _ +: _) =>
       unsplice(fn) match {
         case Select(_, name) if name.isOpAssignmentName => true
         case _ => false
@@ -120,7 +120,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case Apply(_, args) => args
     case TypeApply(fn, _) => arguments(fn)
     case Block(_, expr) => arguments(expr)
-    case _ => Lst()
+    case _ => NIL
   }
 
   /** Is tree a path? */
@@ -259,7 +259,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
    */
   def parentsKind(parents: List[Tree])(using Context): FlagSet = parents match {
     case Nil => NoInitsInterface
-    case Apply(_, _ :: _) :: _ => EmptyFlags
+    case Apply(_, _ +: _) :: _ => EmptyFlags
     case _ :: parents1 => parentsKind(parents1)
   }
 
@@ -293,7 +293,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       else None
     case Match(EmptyTree, _) =>
       Some(tree)
-    case Block(Lst.Empty, expr) =>
+    case Block(NIL, expr) =>
       functionWithUnknownParamType(expr)
     case _ =>
       None
@@ -307,7 +307,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case tree: FunctionWithMods => tree.mods.is(Given)
     case Function((param: untpd.ValDef) :: _, _) => param.mods.is(Given)
     case Closure(_, meth, _) => true
-    case Block(Lst.Empty, expr) => isContextualClosure(expr)
+    case Block(NIL, expr) => isContextualClosure(expr)
     case Block(Lst(DefDef(nme.ANON_FUN, _, params :: _, _, _)), cl: Closure) =>
       params match {
         case param :: _ => param.mods.is(Given)
@@ -541,7 +541,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
             case Select(pre, _) if tree1.tpe.isInstanceOf[ConstantType] =>
               // it's a primitive unary operator; Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
               keepPrefix(pre)
-            case Apply(TypeApply(Select(pre, nme.getClass_), _), Lst.Empty) =>
+            case Apply(TypeApply(Select(pre, nme.getClass_), _), NIL) =>
               keepPrefix(pre)
             case _ =>
               tree1
@@ -604,7 +604,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     unsplice(tree) match {
       case TypeApply(sel @ Select(inner, _), _) if isCast(sel) =>
         stripCast(inner)
-      case Apply(TypeApply(sel @ Select(inner, _), _), Lst.Empty) if isCast(sel) =>
+      case Apply(TypeApply(sel @ Select(inner, _), _), NIL) if isCast(sel) =>
         stripCast(inner)
       case t =>
         t
@@ -627,7 +627,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         case _ =>
           (tree, targss, argss)
       }
-    loop(tree, Lst(), Nil)
+    loop(tree, NIL, Nil)
   }
 
   /** Decompose a template body into parameters and other statements */
@@ -655,7 +655,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     def unapply(tree: Tree)(using Context): Option[DefDef] = tree match {
       case Block(Lst(meth : DefDef), closure: Closure) if meth.symbol == closure.meth.symbol =>
         Some(meth)
-      case Block(Lst.Empty, expr) =>
+      case Block(NIL, expr) =>
         unapply(expr)
       case Inlined(_, bindings, expr) if bindings.forall(isPureBinding) =>
         unapply(expr)
@@ -773,32 +773,32 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  tree must be reachable from come tree stored in an enclosing context.
    */
   def definingStats(sym: Symbol)(using Context): Lst[Tree] =
-    if (!sym.span.exists || (ctx eq NoContext) || ctx.compilationUnit == null) Lst()
+    if (!sym.span.exists || (ctx eq NoContext) || ctx.compilationUnit == null) NIL
     else defPath(sym, ctx.compilationUnit.tpdTree) match {
       case defn :: encl :: _ =>
         def verify(stats: Lst[Tree]) =
-          if (stats exists (definedSym(_) == sym)) stats else Lst()
+          if (stats exists (definedSym(_) == sym)) stats else NIL
         encl match {
           case Block(stats, _) => verify(stats)
           case encl: Template => verify(encl.body)
           case PackageDef(_, stats) => verify(stats)
-          case _ => Lst()
+          case _ => NIL
         }
       case nil =>
-        Lst()
+        NIL
     }
 
   /** If `tree` is an instance of `TupleN[...](e1, ..., eN)`, the arguments `e1, ..., eN`
    *  otherwise the empty list.
    */
   def tupleArgs(tree: Tree)(using Context): Lst[Tree] = tree match {
-    case Block(Lst.Empty, expr) => tupleArgs(expr)
-    case Inlined(_, Lst.Empty, expr) => tupleArgs(expr)
+    case Block(NIL, expr) => tupleArgs(expr)
+    case Inlined(_, NIL, expr) => tupleArgs(expr)
     case Apply(fn, args)
     if fn.symbol.name == nme.apply &&
         fn.symbol.owner.is(Module) &&
         defn.isTupleClass(fn.symbol.owner.companionClass) => args
-    case _ => Lst()
+    case _ => NIL
   }
 
   /** The qualifier part of a Select or Ident.
@@ -854,11 +854,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
 
   final def splitAtSuper(constrStats: Lst[Tree])(implicit ctx: Context): (Lst[Tree], Lst[Tree]) =
-    if constrStats.isEmpty then (Lst(), Lst())
+    if constrStats.isEmpty then (NIL, NIL)
     else constrStats.head match
       case sc: Apply if sc.symbol.isConstructor => (Lst(sc), constrStats.tail)
       case block @ Block(_, sc: Apply) if sc.symbol.isConstructor => (Lst(block), constrStats.tail)
-      case _ => (Lst(), constrStats)
+      case _ => (NIL, constrStats)
 
   /** Structural tree comparison (since == on trees is reference equality).
    *  For the moment, only Ident, Select, Literal, Apply and TypeApply are supported

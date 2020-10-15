@@ -17,7 +17,7 @@ import DenotTransformers._
 import Constants.Constant
 import collection.mutable
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 object Constructors {
   val name: String = "constructors"
@@ -153,11 +153,11 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
           var sym = tree.symbol
           if (sym.is(ParamAccessor, butNot = Mutable)) sym = sym.subst(accessors, paramSyms)
           if (sym.maybeOwner.isConstructor) ref(sym).withSpan(tree.span) else tree
-        case Apply(fn, Lst.Empty) =>
+        case Apply(fn, NIL) =>
           val fn1 = transform(fn)
           if ((fn1 ne fn) && fn1.symbol.is(Param) && fn1.symbol.owner.isPrimaryConstructor)
             fn1 // in this case, fn1.symbol was an alias for a parameter in a superclass
-          else cpy.Apply(tree)(fn1, Lst())
+          else cpy.Apply(tree)(fn1, NIL)
         case _ =>
           if (noDirectRefsFrom(tree)) tree else super.transform(tree)
       }
@@ -174,7 +174,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     /** Map outer getters $outer and outer accessors $A$B$$$outer to the given outer parameter. */
     def mapOuter(outerParam: Symbol) = new TreeMap {
       override def transform(tree: Tree)(using Context) = tree match {
-        case Apply(fn, Lst.Empty)
+        case Apply(fn, NIL)
           if (fn.symbol.is(OuterAccessor)
              || fn.symbol.isGetter && fn.symbol.name == nme.OUTER
              ) &&
@@ -266,7 +266,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
             // insert test: if ($outer eq null) throw new NullPointerException
             val nullTest =
               If(ref(param).select(defn.Object_eq).appliedTo(nullLiteral),
-                 Throw(New(defn.NullPointerExceptionClass.typeRef, Lst())),
+                 Throw(New(defn.NullPointerExceptionClass.typeRef, NIL)),
                  unitLiteral)
             nullTest :: assigns
           }

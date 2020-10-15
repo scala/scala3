@@ -14,6 +14,7 @@ import annotation.constructorOnly
 import annotation.internal.sharable
 import reporting.Reporter
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 import java.io.{ PrintWriter }
 

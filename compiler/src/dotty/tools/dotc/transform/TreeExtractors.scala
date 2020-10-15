@@ -6,6 +6,7 @@ import core._
 import Contexts._, Trees._, Types._, StdNames._, Symbols._
 import ValueClasses._
 import util.Lst; import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 object TreeExtractors {
   import tpd._
@@ -28,7 +29,7 @@ object TreeExtractors {
       case Apply(Select(New(_), nme.CONSTRUCTOR), args) =>
         Some((t.tpe, args))
       case Typed(expr, _) => unapply(expr)
-      case Block(Lst.Empty, expr) => unapply(expr)
+      case Block(NIL, expr) => unapply(expr)
       case _ =>
         None
     }
@@ -40,7 +41,7 @@ object TreeExtractors {
    */
   object ValueClassUnbox {
     def unapply(t: Tree)(using Context): Option[Tree] = t match {
-      case Apply(sel @ Select(ref, _), Lst()) =>
+      case Apply(sel @ Select(ref, _), NIL) =>
         val sym = ref.tpe.widenDealias.typeSymbol
         if (isDerivedValueClass(sym) && (sel.symbol eq valueClassUnbox(sym.asClass)))
           Some(ref)

@@ -11,7 +11,7 @@ import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
 import util.{Stats, Attachment, Property, SourceFile, NoSource, SrcPos, SourcePosition}
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 import config.Config
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
@@ -865,7 +865,7 @@ object Trees {
       mapElems(_.withSpan(span)).asInstanceOf[this.type]
   }
 
-  class EmptyTree[T >: Untyped] extends Thicket(Lst.Empty)(NoSource) {
+  class EmptyTree[T >: Untyped] extends Thicket(NIL)(NoSource) {
     // assert(uniqueId != 1492)
     override def withSpan(span: Span) = throw AssertionError("Cannot change span of EmptyTree")
   }

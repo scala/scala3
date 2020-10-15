@@ -30,7 +30,7 @@ import transform.TypeUtils._
 import Hashable._
 import util.{SourceFile, NoSource, EqHashMap, Stats}
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 import config.{Config, Feature}
 import Feature.migrateTo3
 import config.Printers.{implicits, implicitsDetailed}
@@ -1670,7 +1670,7 @@ final class SearchRoot extends SearchHistory:
             val classDef = ClassDef(classSym, DefDef(constr), vdefs.toLst)
 
             val valSym = newLazyImplicit(classSym.typeRef, span)
-            val inst = ValDef(valSym, New(classSym.typeRef, Lst()))
+            val inst = ValDef(valSym, New(classSym.typeRef, NIL))
 
             // Substitute dictionary references into outermost result term.
             val resMap = new TreeTypeMap(treeMap = {

@@ -9,7 +9,6 @@ import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
 import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}
-import util.Lst.toLst
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
 import collection.mutable.ListBuffer
@@ -18,7 +17,7 @@ import annotation.constructorOnly
 import printing.Formatting.hl
 import config.Printers
 import util.Lst; // import Lst.::
-import util.Lst.{toLst, +:}
+import util.Lst.{NIL, +:, toLst}
 
 import scala.annotation.internal.sharable
 
@@ -1292,7 +1291,7 @@ object desugar {
     Block(
       DefDef(nme.ANON_FUN, Nil, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
         .withMods(synthetic | Artifact),
-      Closure(Lst(), Ident(nme.ANON_FUN), if (isContextual) ContextualEmptyTree else EmptyTree))
+      Closure(NIL, Ident(nme.ANON_FUN), if (isContextual) ContextualEmptyTree else EmptyTree))
 
   /** If `nparams` == 1, expand partial function
    *
@@ -1638,10 +1637,10 @@ object desugar {
         }
         val elems = segments flatMap {
           case ts: Thicket => ts.trees.tail
-          case t => Lst()
+          case t => NIL
         } map {
-          case Block(Lst.Empty, EmptyTree) => Literal(Constant(())) // for s"... ${} ..."
-          case Block(Lst.Empty, expr) => expr // important for interpolated string as patterns, see i1773.scala
+          case Block(NIL, EmptyTree) => Literal(Constant(())) // for s"... ${} ..."
+          case Block(NIL, expr) => expr // important for interpolated string as patterns, see i1773.scala
           case t => t
         }
         // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
@@ -1653,7 +1652,7 @@ object desugar {
           else
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
-              New(ref(defn.RepeatedAnnot.typeRef), Lst() :: Nil))
+              New(ref(defn.RepeatedAnnot.typeRef), NIL :: Nil))
         }
         else {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
@@ -1803,7 +1802,7 @@ object desugar {
         trees foreach collect
       case Thicket(trees) =>
         trees foreach collect
-      case Block(Lst.Empty, expr) =>
+      case Block(NIL, expr) =>
         collect(expr)
       case Quote(expr) =>
         new UntypedTreeTraverser {

@@ -8,6 +8,7 @@ import NameKinds.NonLocalReturnKeyName
 import config.Feature.sourceVersion
 import config.SourceVersion._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 object NonLocalReturns {
   import ast.tpd._
@@ -71,7 +72,7 @@ class NonLocalReturns extends MiniPhase {
    *  }
    */
   private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(using Context) = {
-    val keyDef = ValDef(key, New(defn.ObjectType, Lst()))
+    val keyDef = ValDef(key, New(defn.ObjectType, NIL))
     val ex = newSymbol(meth, nme.ex, Case, nonLocalReturnControl, coord = body.span)
     val pat = BindTyped(ex, nonLocalReturnControl)
     val rhs = If(

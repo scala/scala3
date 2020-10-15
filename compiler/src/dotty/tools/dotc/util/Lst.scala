@@ -10,7 +10,7 @@ import annotation.infix
 /** A lightweight class for lists, optimized for short and medium lengths.
  *  A list is represented at runtime as
  *
- *    If it is empty:                    the value `Lst.Empty`
+ *    If it is empty:                    the value `Lst.NIL`
  *    If it contains one element,
  *    and the element is not an array:   the element itself
  *    Otherwise:                         an Array[Any] containing the elements
@@ -30,7 +30,7 @@ object Lst:
   object Vault:
     opaque type Lst[+T] = Any
 
-    private[Lst] def Empty: Lst[Nothing] = null
+    private[Lst] def NIL: Lst[Nothing] = null
 
     /** Create a list of length 1 from given element `x` */
     private[Lst] def single[T](x: T): Lst[T] = x match
@@ -45,7 +45,7 @@ object Lst:
      *  @pre  xs is not empty
      */
     private[Lst] def multi[T](xs: Arr): Lst[T] =
-      if xs.length == 0 then Empty
+      if xs.length == 0 then NIL
       else if xs.length == 1 then single(xs(0).asInstanceOf[T])
       else xs
 
@@ -55,12 +55,12 @@ object Lst:
       xs
   end Vault
 
-  val Empty = Vault.Empty
+  val NIL = Vault.NIL
   import Vault.{single, multi, fromArr}
 
   private inline def eq(x: Any, y: Any) = x.asInstanceOf[AnyRef] `eq` y.asInstanceOf[AnyRef]
 
-  def apply[T](): Lst[T] = Empty
+  def apply[T](): Lst[T] = NIL
 
   def apply[T](x0: T): Lst[T] = single[T](x0)
 
@@ -97,7 +97,7 @@ object Lst:
 
   private def _fromArray[T](xs: Arr, start: Int, end: Int): Lst[T] =
     val len = end - start
-    if len <= 0 then Empty
+    if len <= 0 then NIL
     else if len == 1 then single[T](xs(start).asInstanceOf[T])
     else if start == 0 && end == xs.length then fromArr(xs)
     else
@@ -207,7 +207,7 @@ object Lst:
     def sliceToSeq(start: Int = 0, end: Int = xs.length): LstSlice[T] = LstSlice[T](xs, start, end)
 
     def filter(p: T => Boolean): Lst[T] = xs match
-      case null => Empty
+      case null => NIL
       case xs: Arr =>
         val scratch = new Arr(xs.length)
         var i = 0
@@ -220,14 +220,14 @@ object Lst:
           i += 1
         if len == xs.length then xs
         else _fromArray(scratch, 0, len)
-      case x: T @unchecked => if (p(x)) xs else Empty
+      case x: T @unchecked => if (p(x)) xs else NIL
 
     def filterNot(p: T => Boolean): Lst[T] = filter(!p(_))
 
     def withFilter(p: T => Boolean): Lst[T] = filter(p)
 
     def partition(p: T => Boolean): (Lst[T], Lst[T]) = xs match
-      case null => (Empty, Empty)
+      case null => (NIL, NIL)
       case xs: Arr =>
         val hits, misses = new Arr(xs.length)
         var i = 0
@@ -242,22 +242,22 @@ object Lst:
             misses(missCount) = x
             missCount += 1
           i += 1
-        if hitCount == xs.length then (xs, Empty)
-        else if missCount == xs.length then (Empty, xs)
+        if hitCount == xs.length then (xs, NIL)
+        else if missCount == xs.length then (NIL, xs)
         else (_fromArray(hits, 0, hitCount), _fromArray(misses, 0, missCount))
       case x: T @unchecked =>
-        if (p(x)) (xs, Empty) else (Empty, xs)
+        if (p(x)) (xs, NIL) else (NIL, xs)
 
     def span(p: T => Boolean): (Lst[T], Lst[T]) = xs match
-      case null => (Empty, Empty)
+      case null => (NIL, NIL)
       case xs: Arr =>
         var i = 0
         while i < xs.length && p(xs.at(i)) do i += 1
-        if i == xs.length then (xs, Empty)
-        else if i == 0 then (Empty, xs)
+        if i == xs.length then (xs, NIL)
+        else if i == 0 then (NIL, xs)
         else (_fromArray(xs, 0, i), _fromArray(xs, i, xs.length))
       case x: T @unchecked =>
-        if p(x) then (single[T](x), Empty) else (Empty, single[T](x))
+        if p(x) then (single[T](x), NIL) else (NIL, single[T](x))
 
     inline def exists(inline p: T => Boolean): Boolean =
       def op(x: T) = p(x)
@@ -320,7 +320,7 @@ object Lst:
       else xs match
         case null => xs
         case xs: Arr => _fromArray(xs, start, end min xs.length)
-        case x: T @ unchecked => if start == 0 && end > 0 then xs else Empty
+        case x: T @ unchecked => if start == 0 && end > 0 then xs else NIL
 
     def drop(n: Int): Lst[T] = slice(n, length)
     def tail: Lst[T] = drop(1)
@@ -359,7 +359,7 @@ object Lst:
 
     def reduceLeft(op: (T, T) => T) = xs match
       case null =>
-        throw new UnsupportedOperationException("Lst.Empty.reduceLeft")
+        throw new UnsupportedOperationException("Lst.NIL.reduceLeft")
       case xs: Arr =>
         var i = 1
         var acc = xs.at(0)
@@ -404,7 +404,7 @@ object Lst:
     def intersect(ys: Lst[T]): Lst[T] = xs.filter(ys.contains(_))
 
     def zipWithIndex: Lst[(T, Int)] = xs match
-      case null => Empty
+      case null => NIL
       case xs: Arr =>
         val newElems = new Arr(xs.length)
         var i = 0
@@ -416,7 +416,7 @@ object Lst:
         single[(T, Int)]((x, 0))
 
     def indices: Lst[Int] = xs match
-      case null => Empty
+      case null => NIL
       case xs: Arr =>
         val newElems: Arr = new Arr(xs.length)
         var i = 0
@@ -439,7 +439,7 @@ object Lst:
     inline def map(inline f: T => U): Lst[U] =
       def op(x: T) = f(x)
       xs match
-        case null => Empty
+        case null => NIL
         case xs: Arr =>
           val newElems = new Arr(xs.length)
           var i = 0
@@ -450,7 +450,7 @@ object Lst:
         case x: T @ unchecked => single[U](op(x))
 
     def mapConserve(f: T => U): Lst[U] = xs match
-      case null => Empty
+      case null => NIL
       case xs: Arr =>
         var newElems: Arr = null
         var i = 0
@@ -467,7 +467,7 @@ object Lst:
       case x: T @ unchecked => single[U](f(x))
 
     def flatMap(f: T => Lst[U]): Lst[U] = xs match
-      case null => Empty
+      case null => NIL
       case xs: Arr =>
         val newElemss = new Array[Lst[U]](xs.length)
         var i = 0
@@ -477,7 +477,7 @@ object Lst:
           len += ys.length
           newElemss(i) = ys
           i += 1
-        if len == 0 then Empty
+        if len == 0 then NIL
         else if len == 1 then
           i = 0
           while eq(newElemss(i), null) do i += 1
@@ -559,7 +559,7 @@ object Lst:
 
   extension [T](xs: Iterable[T])
     def toLst: Lst[T] =
-      if xs.isEmpty then Empty
+      if xs.isEmpty then NIL
       else (xs: IterableOnce[T]).toLst
 
   extension [T](xs: IterableOnce[T])
@@ -577,13 +577,13 @@ object Lst:
 
   extension [T, U, V](xs: Lst[T]):
     def zipWith(ys: Lst[U])(op: (T, U) => V): Lst[V] = xs match
-      case null => Empty
+      case null => NIL
       case xs: Arr =>
         ys match
-          case null => Empty
+          case null => NIL
           case ys: Arr =>
             val len = xs.length min ys.length
-            if len == 0 then Empty
+            if len == 0 then NIL
             else if len == 1 then single[V](op(xs.at(0), ys.at(0)))
             else
               var newElems: Arr = null
@@ -604,14 +604,14 @@ object Lst:
             single[V](op(xs.at(0), y))
       case x: T @unchecked =>
         ys match
-          case null => Empty
+          case null => NIL
           case ys: Arr => single[V](op(x, ys.at(0)))
           case y: U @unchecked => single[V](op(x, y))
 
     def zipWith(ys: IterableOnce[U])(op: (T, U) => V): Lst[V] =
       val yit = ys.iterator
       xs match
-        case null => Empty
+        case null => NIL
         case xs: Arr =>
           var newElems: Arr = null
           var i = 0
@@ -629,7 +629,7 @@ object Lst:
           else _fromArray[V](newElems, 0, i)
         case x: T @unchecked =>
           if yit.hasNext then single[V](op(x, yit.next))
-          else Empty
+          else NIL
   end extension
 
   extension [T, U, V, W](xs: Lst[T]):
@@ -637,7 +637,7 @@ object Lst:
       val yit = ys.iterator
       val zit = zs.iterator
       xs match
-        case null => Empty
+        case null => NIL
         case xs: Arr =>
           var newElems: Arr = null
           var i = 0
@@ -655,13 +655,13 @@ object Lst:
           else _fromArray[W](newElems, 0, i)
         case x: T @unchecked =>
           if yit.hasNext && zit.hasNext then single[W](op(x, yit.next, zit.next))
-          else Empty
+          else NIL
 
   extension [T, U] (xs: Lst[(T, U)])
     def toMap: Map[T, U] = Map() ++ xs.iterator
 
     def unzip: (Lst[T], Lst[U]) = xs match
-      case null => (Lst.Empty, Lst.Empty)
+      case null => (Lst.NIL, Lst.NIL)
       case xs: Arr =>
         val fst, snd = new Arr(xs.length)
         var i = 0
@@ -808,7 +808,7 @@ object Lst:
       this
 
     def toLst: Lst[T] =
-      if len == 0 then Empty
+      if len == 0 then NIL
       else if len == 1 then single(elem)
       else _fromArray(elems, 0, len)
 

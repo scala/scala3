@@ -12,7 +12,7 @@ import NameOps._
 import ast._
 import ast.Trees._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** Provides methods to produce fully parameterized versions of instance methods,
  *  where the `this` of the enclosing class is abstracted out in an extra leading
@@ -210,7 +210,7 @@ trait FullParameterization {
           .substThisUnlessStatic(origClass, thisRef.tpe),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef
-          case tree => rewireTree(tree, Lst()) orElse tree
+          case tree => rewireTree(tree, NIL) orElse tree
         },
         oldOwners = origMeth :: Nil,
         newOwners = derived :: Nil

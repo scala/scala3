@@ -14,7 +14,7 @@ import ProtoTypes._
 import util.Spans._
 import util.Property
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 import collection.mutable
 import tpd.tpes
 import Variances.alwaysInvariant
@@ -1116,7 +1116,7 @@ class Namer { typer: Typer =>
         else {
           val (core, targs) = stripApply(parent) match {
             case TypeApply(core, targs) => (core, targs)
-            case core => (core, Lst())
+            case core => (core, NIL)
           }
           core match {
             case Select(New(tpt), nme.CONSTRUCTOR) =>

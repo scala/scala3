@@ -17,7 +17,7 @@ import core.Definitions
 import ErrorReporting._
 import reporting._
 import util.Lst; // import Lst.::
-import util.Lst.{toLst, +:}
+import util.Lst.{NIL, +:, toLst}
 
 object Dynamic {
   def isDynamicMethod(name: Name): Boolean =
@@ -86,12 +86,12 @@ trait Dynamic {
         case TypeApply(fun, targs) =>
           typedDynamicApply(fun, nme.apply, fun.span, targs)
         case fun =>
-          typedDynamicApply(fun, nme.apply, fun.span, Lst())
+          typedDynamicApply(fun, nme.apply, fun.span, NIL)
       }
     } else {
       tree.fun match {
         case sel @ Select(qual, name) if !isDynamicMethod(name) =>
-          typedDynamicApply(qual, name, sel.span, Lst())
+          typedDynamicApply(qual, name, sel.span, NIL)
         case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
           typedDynamicApply(qual, name, sel.span, targs)
         case _ =>
@@ -118,7 +118,7 @@ trait Dynamic {
       typedApply(untpd.Apply(coreDynamic(qual, nme.updateDynamic, name, selSpan, targs), tree.rhs), pt)
     tree.lhs match {
       case sel @ Select(qual, name) if !isDynamicMethod(name) =>
-        typedDynamicAssign(qual, name, sel.span, Lst.Empty)
+        typedDynamicAssign(qual, name, sel.span, NIL)
       case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, targs)
       case _ =>

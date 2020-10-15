@@ -46,7 +46,7 @@ import scala.quoted
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** Unpickler for typed trees
  *  @param reader              the reader from which to unpickle
@@ -1153,7 +1153,7 @@ class TreeUnpickler(reader: TastyReader,
             case LAMBDA =>
               val meth = readTerm()
               val tpt = ifBefore(end)(readTpt(), EmptyTree)
-              Closure(Lst(), meth, tpt)
+              Closure(NIL, meth, tpt)
             case MATCH =>
               if (nextByte == IMPLICIT) {
                 readByte()

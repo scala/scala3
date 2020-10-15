@@ -34,7 +34,7 @@ import ExplicitOuter._
 import core.Mode
 import util.Property
 import util.Lst; // import Lst.::
-import util.Lst.{toLst, +:}
+import util.Lst.{NIL, +:, toLst}
 import reporting._
 import collection.mutable
 
@@ -520,7 +520,7 @@ object Erasure {
           ctx.typer.typed(app, pt)
             .changeOwnerAfter(origOwner, ctx.owner, erasurePhase.asInstanceOf[Erasure])
 
-      seq(defs.toList.toLst, abstracted(Lst(), origType, pt))
+      seq(defs.toList.toLst, abstracted(NIL, origType, pt))
     end etaExpand
 
   end Boxing
@@ -776,7 +776,7 @@ object Erasure {
       else
         val origFun = fun.asInstanceOf[tpd.Tree]
         val origFunType = origFun.tpe.widen(using preErasureCtx)
-        val ownArgs = if origFunType.isErasedMethod then Lst() else args
+        val ownArgs = if origFunType.isErasedMethod then NIL else args
         val fun1 = typedExpr(fun, AnyFunctionProto)
         fun1.tpe.widen match
           case mt: MethodType =>

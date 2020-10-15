@@ -14,6 +14,7 @@ import util.Spans._
 import Decorators._
 import NameKinds.{ SuperAccessorName, ExpandPrefixName }
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 /** This class adds super accessors for all super calls that either
  *  appear in a trait or have as a target a member of some outer class.

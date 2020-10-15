@@ -22,6 +22,7 @@ import reporting._
 import scala.util.matching.Regex._
 import Constants.Constant
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 object RefChecks {
   import tpd.{Tree, MemberDef, Literal, Template, DefDef}

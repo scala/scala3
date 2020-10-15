@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.util.Lst; // import Lst.::
+import Lst.{NIL, +:, toLst}
 
 /*
  *

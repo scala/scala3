@@ -25,6 +25,7 @@ import ast.untpd
 import ast.tpd
 import transform.SymUtils._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 /**  Messages
   *  ========
@@ -75,7 +76,7 @@ import util.Lst; // import Lst.::
   extends SyntaxMsg(EmptyCatchOrFinallyBlockID) {
     def explain = {
       val tryString = tryBody match {
-        case Block(Lst.Empty, untpd.EmptyTree) => "{}"
+        case Block(NIL, untpd.EmptyTree) => "{}"
         case _ => tryBody.show
       }
 
@@ -211,7 +212,7 @@ import util.Lst; // import Lst.::
       }
 
       val body = tree.body match {
-        case Block(Lst.Empty, untpd.EmptyTree) => ""
+        case Block(NIL, untpd.EmptyTree) => ""
         case body => s" ${body.show}"
       }
 

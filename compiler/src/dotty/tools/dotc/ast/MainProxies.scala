@@ -6,7 +6,7 @@ import Symbols._, Types._, Contexts._, Decorators._, util.Spans._, Flags._, Cons
 import StdNames.nme
 import ast.Trees._
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** Generate proxy classes for @main functions.
  *  A function like
@@ -36,7 +36,7 @@ object MainProxies {
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(impl.body)
       case _ =>
-        Lst.Empty
+        NIL
     }
     mainMethods(stats).flatMap(mainProxy)
   }
@@ -74,7 +74,7 @@ object MainProxies {
         }
       }
 
-    var result: Lst[TypeDef] = Lst.Empty
+    var result: Lst[TypeDef] = NIL
     if (!mainFun.owner.isStaticOwner)
       report.error(s"@main method is not statically accessible", pos)
     else {

@@ -14,6 +14,7 @@ import StdNames._
 import Contexts._
 import transform.TypeUtils._
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 object ConstFold:
 

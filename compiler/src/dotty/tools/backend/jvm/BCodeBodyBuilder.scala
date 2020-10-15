@@ -23,7 +23,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.report
 import dotty.tools.dotc.util.Lst; // import Lst.::
-import Lst.toLst
+import Lst.{NIL, +:, toLst}
 
 /*
  *
@@ -123,7 +123,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       args match {
         // unary operation
-        case Lst.Empty =>
+        case NIL =>
           genLoad(larg, resKind)
           code match {
             case POS => () // nothing

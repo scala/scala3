@@ -14,7 +14,7 @@ import ast.tpd._
 import config.Printers.init
 import reporting.trace
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 import Effects._, Potentials._, Summary._, Util._
 
@@ -187,7 +187,7 @@ object Summarization {
         else
           (Potentials.empty, pots.promote(vdef) ++ effs)
 
-      case Thicket(Lst.Empty) =>
+      case Thicket(NIL) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
         Summary.empty
 

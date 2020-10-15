@@ -16,7 +16,7 @@ import config.Printers.nullables
 import ast.{tpd, untpd}
 import ast.Trees.mods
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{NIL, +:, toLst}
 
 /** Operations for implementing a flow analysis for nullability */
 object Nullables:

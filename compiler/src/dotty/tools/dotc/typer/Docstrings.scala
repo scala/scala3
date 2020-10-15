@@ -6,6 +6,7 @@ import core._
 import Contexts._, Symbols._, Decorators._, Comments.{_, given _}
 import ast.tpd
 import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 
 object Docstrings {
 

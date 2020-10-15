@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Lst; // import Lst.::
-import Lst.toLst
+import Lst.{NIL, +:, toLst}
 
 /**
   * MiniPhase to transform s and raw string interpolators from using StringContext to string

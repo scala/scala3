@@ -7,8 +7,8 @@ import ast.{Trees, tpd, untpd, desugar}
 import util.Spans._
 import util.Stats.record
 import util.{SrcPos, NoSourcePosition, SourceFile}
-import util.Lst; //import Lst.::
-import util.Lst.toLst
+import util.Lst; // import Lst.::
+import util.Lst.{NIL, +:, toLst}
 import Trees.Untyped
 import Contexts._
 import Phases._
@@ -1821,7 +1821,7 @@ trait Applications extends Compatibility {
      *       formal parameter that is a unary function.
      */
     def normArg(alts: List[TermRef], arg: untpd.Tree, idx: Int): untpd.Tree = arg match
-      case Block(Lst.Empty, expr) => normArg(alts, expr, idx)
+      case Block(NIL, expr) => normArg(alts, expr, idx)
       case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
 
         // If ref refers to a method whose parameter at index `idx` is a function type,
