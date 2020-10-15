@@ -168,11 +168,11 @@ object DesugarEnums {
           CaseDef(Ident(nme.WILDCARD), EmptyTree, throwArg(ordinal))
         if constraints.isEnumeration then
           fromOrdinalMeth(ordinal =>
-            Try(Apply(valuesDot(nme.apply), ordinal), default(ordinal) :: Nil, EmptyTree))
+            Try(Apply(valuesDot(nme.apply), ordinal), Lst(default(ordinal)), EmptyTree))
         else
           fromOrdinalMeth(ordinal =>
             Match(ordinal,
-              constraints.enumCases.map((i, enumValue) => CaseDef(Literal(Constant(i)), EmptyTree, enumValue))
+              constraints.enumCases.toLst.map((i, enumValue) => CaseDef(Literal(Constant(i)), EmptyTree, enumValue))
               :+ default(ordinal)))
 
     if !enumClass.exists then
