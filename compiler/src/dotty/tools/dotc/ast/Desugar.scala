@@ -147,24 +147,32 @@ object desugar {
 
 // ----- Desugar methods -------------------------------------------------
 
+  /** Setter generation is needed for:
+   *    - non-private class members
+   *    - all trait members
+   *    - all package object members
+   */
+  def isSetterNeeded(valDef: ValDef)(using Context): Boolean = {
+    val mods = valDef.mods
+    mods.is(Mutable)
+      && ctx.owner.isClass
+      && (!mods.is(Private) || ctx.owner.is(Trait) || ctx.owner.isPackageObject)
+  }
+
   /**   var x: Int = expr
    *  ==>
    *    def x: Int = expr
    *    def x_=($1: <TypeTree()>): Unit = ()
    *
-   *  Generate the setter only for
-   *    - non-private class members
-   *    - all trait members
-   *    - all package object members
+   *  Generate setter where needed
    */
   def valDef(vdef0: ValDef)(using Context): Tree = {
-    val vdef @ ValDef(name, tpt, rhs) = vdef0
+    val vdef @ ValDef(_, tpt, rhs) = vdef0
     val mods = vdef.mods
-    val setterNeeded =
-      mods.is(Mutable)
-      && ctx.owner.isClass
-      && (!mods.is(Private) || ctx.owner.is(Trait) || ctx.owner.isPackageObject)
-    if (setterNeeded) {
+
+    val valName = normalizeName(vdef, tpt).asTermName
+
+    if (isSetterNeeded(vdef)) {
       // TODO: copy of vdef as getter needed?
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos?
       // right now vdef maps via expandedTree to a thicket which concerns itself.
@@ -173,7 +181,7 @@ object desugar {
       // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef)(
-        name     = name.setterName,
+        name     = valName.setterName,
         tparams  = Nil,
         vparamss = (setterParam :: Nil) :: Nil,
         tpt      = TypeTree(defn.UnitType),
@@ -887,7 +895,7 @@ object desugar {
           mdef.tparams.head.srcPos)
       defDef(
         cpy.DefDef(mdef)(
-          name = mdef.name.toExtensionName,
+          name = normalizeName(mdef, ext).toExtensionName,
           tparams = ext.tparams ++ mdef.tparams,
           vparamss = mdef.vparamss match
             case vparams1 :: vparamss1 if mdef.name.isRightAssocOperatorName =>
@@ -934,8 +942,13 @@ object desugar {
       report.error(IllegalRedefinitionOfStandardKind(kind, name), errPos)
       name = name.errorName
     }
-    if name.isExtensionName && (!mdef.mods.is(ExtensionMethod) || name.dropExtension.isExtensionName) then
-      report.error(em"illegal method name: $name may not start with `extension_`", errPos)
+    mdef match {
+      case vdef: ValDef if name.isExtension && isSetterNeeded(vdef)  =>
+        report.error(em"illegal setter name: `extension_=`", errPos)
+      case memDef if name.isExtensionName && !mdef.mods.is(ExtensionMethod) =>
+        report.error(em"illegal name: $name may not start with `extension_`", errPos)
+      case _ =>
+    }
     name
   }
 
