@@ -18,6 +18,7 @@ import annotation.infix
 
 type Lst[+T] = Lst.Vault.Lst[T]
 object Lst:
+
   type Arr = Array[Any]
 
   /** Lsts can only be compared with other Lsts... */
@@ -93,7 +94,6 @@ object Lst:
     xs(4) = x4
     others.copyToArray(xs, 5)
     fromArr[T](xs)
-
 
   private def _fromArray[T](xs: Arr, start: Int, end: Int): Lst[T] =
     val len = end - start
@@ -734,6 +734,18 @@ object Lst:
       len = 0
   end Buffer
 
+  final class UnapplyWrapper[T](val xs: Lst[T]) extends AnyVal with Product:
+    def canEqual(that: Any) = true
+    def isEmpty = xs.isEmpty
+    def productArity = 2
+    def productElement(n: Int): Any = if n == 0 then _1 else _2
+    def _1: T = xs.head
+    def _2: Lst[T] = xs.tail
+
+  object +: :
+    def unapply[T](xs: Lst[T]): UnapplyWrapper[T] = UnapplyWrapper(xs)
+  end +:
+
   object :: :
     def unapply[T](xs: List[T]): Option[(T, List[T])] = xs match
       case xs : ::[_] => Some((xs.head, xs.tail))
@@ -828,9 +840,7 @@ object Lst:
   final class UnapplySeqWrapper[T](private val xs: Lst[T]) extends AnyVal:
     def isEmpty: Boolean = xs.isEmpty
     def get: UnapplySeqWrapper[T] = this
-    def lengthCompare(len: Int): Int =
-      val l = xs.length
-      if l < len then -1 else if l > len then 1 else 0
+    def lengthCompare(len: Int): Int = xs.length - len
     def apply(i: Int): T = xs(i)
     def drop(n: Int): Seq[T] = xs.sliceToSeq(n)
     def toSeq: Seq[T] = xs.toSeq

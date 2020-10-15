@@ -178,9 +178,11 @@ object Lst:
       xs
 
     def toList: List[T] =
-      val buf = new collection.mutable.ListBuffer[T]
-      foreachInlined(buf += _)
-      buf.toList
+      if length == 0 then Nil
+      else
+        val buf = new collection.mutable.ListBuffer[T]
+        foreachInlined(buf += _)
+        buf.toList
 
     def toListReversed: List[T] =
       var result: List[T] = Nil
@@ -519,15 +521,15 @@ object Lst:
     @infix def eqLst(ys: Lst[U]) = eq(xs, ys)
 
     inline def corresponds(ys: Lst[U])(p: (T, U) => Boolean): Boolean =
-      (xs `eqLst` ys)
-      || xs.length == ys.length
-         && {
-           var i = 0
-           while i < xs.length && p(xs(i), ys(i)) do i += 1
-           i == xs.length
-         }
+      xs.length == ys.length
+      && {
+        var i = 0
+        while i < xs.length && p(xs(i), ys(i)) do i += 1
+        i == xs.length
+      }
 
-    def eqElements(ys: Lst[U]): Boolean = corresponds(ys)(eq(_, _))
+    def eqElements(ys: Lst[U]): Boolean =
+      (xs `eqLst` ys) || corresponds(ys)(eq(_, _))
 
   extension [T](x: T)
     def :: (xs: Lst[T]): Lst[T] = xs match
@@ -539,6 +541,11 @@ object Lst:
         multi[T](newElems)
       case elem: T @unchecked =>
         Lst(x, elem)
+
+  extension [T](xs: Iterable[T])
+    def toLst: Lst[T] =
+      if xs.isEmpty then Empty
+      else (xs: IterableOnce[T]).toLst
 
   extension [T](xs: IterableOnce[T])
     def toLst: Lst[T] = (Buffer[T]() ++= xs).toLst
@@ -590,6 +597,12 @@ object Lst:
   extension [T, U] (xs: Lst[(T, U)])
     def toMap: Map[T, U] = Map() ++ xs.iterator
 
+  extension [T](xs: Lst[Iterable[T]])
+    def flatten: Lst[T] =
+      val buf = Buffer[T]()
+      xs.foreach(buf ++= _)
+      buf.toLst
+
   def fill[T](n: Int)(elem: => T) =
     val xs = new Arr(n)
     var i = 0
@@ -633,6 +646,7 @@ object Lst:
         elems = newElems
 
     def isEmpty = size == 0
+    def nonEmpty = size != 0
 
     def += (x: T): this.type =
       if len == 0 then elem = x
@@ -654,14 +668,23 @@ object Lst:
             else
               ensureSize(len + copiedLength)
               System.arraycopy(xs, 0, elems, len, copiedLength)
+        len += copiedLength
       else if copiedLength == 1 then
         this += xs(start)
-      len += copiedLength
       this
 
     def ++= (xs: IterableOnce[T]): this.type =
       xs.iterator.foreach(this += _)
       this
+
+    def find(p: T => Boolean): Option[T] =
+      if len == 0 then None
+      else if len == 1 then
+        if p(elem) then Some(elem) else None
+      else
+        var i = 0
+        while i < len && !p(elems(i).asInstanceOf[T]) do i += 1
+        if i < len then Some(elems(i).asInstanceOf[T]) else None
 
     def exists(p: T => Boolean): Boolean =
       if len == 0 then false
@@ -690,6 +713,16 @@ object Lst:
     def head = apply(0)
     def last = apply(len - 1)
 
+    def mapInPlace(f: T => T): this.type =
+      if len == 1 then
+        elem = f(elem)
+      else if len > 1 then
+        var i = 0
+        while i < len do
+          elems(i) = f(elems(i).asInstanceOf[T])
+          i += 1
+      this
+
     def toLst: Lst[T] =
       if len == 0 then Empty
       else if len == 1 then single(elem)
@@ -699,14 +732,17 @@ object Lst:
       len = 0
   end Buffer
 
-  object ++ :
-    def unapply[T](xs: Lst[T]): Option[(T, Lst[T])] = xs match
-      case null => None
-      case xs: Arr =>
-        Some((xs(0).asInstanceOf[T], _fromArray[T](xs, 1, xs.length)))
-      case x: T @unchecked =>
-        Some((x, Empty))
-  end ++
+  final class UnapplyWrapper[T](val xs: Lst[T]) extends AnyVal with Product:
+    def canEqual(that: Any) = true
+    def isEmpty = xs.isEmpty
+    def productArity = 2
+    def productElement(n: Int): Any = if n == 0 then _1 else _2
+    def _1: T = xs.head
+    def _2: Lst[T] = xs.tail
+
+  object +: :
+    def unapply[T](xs: Lst[T]): UnapplyWrapper[T] = UnapplyWrapper(xs)
+  end +:
 
   trait Show[T]:
     extension (x: T) def show: String
@@ -793,9 +829,7 @@ object Lst:
   final class UnapplySeqWrapper[T](private val xs: Lst[T]) extends AnyVal:
     def isEmpty: Boolean = xs.isEmpty
     def get: UnapplySeqWrapper[T] = this
-    def lengthCompare(len: Int): Int =
-      val l = xs.length
-      if l < len then -1 else if l > len then 1 else 0
+    def lengthCompare(len: Int): Int = xs.length - len
     def apply(i: Int): T = xs(i)
     def drop(n: Int): Seq[T] = xs.sliceToSeq(n)
     def toSeq: Seq[T] = xs.toSeq
