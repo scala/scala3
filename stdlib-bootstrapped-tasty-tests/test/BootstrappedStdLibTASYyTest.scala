@@ -149,55 +149,6 @@ object BootstrappedStdLibTASYyTest:
     "scala.Long",
     "scala.Short",
     "scala.Unit",
-
-    // See #9994
-    // -- Error:
-    //     |  def addOne(kv: (K, V)) = {
-    //     |      ^
-    //     |error overriding method addOne in trait Growable of type (elem: (K, V)): (TrieMap.this : scala.collection.concurrent.TrieMap[K, V]);
-    //     |  method addOne of type (kv: (K, V)): (TrieMap.this : scala.collection.concurrent.TrieMap[K, V]) has incompatible type
-    // -- Error:
-    //     |  def subtractOne(k: K) = {
-    //     |      ^
-    //     |error overriding method subtractOne in trait Shrinkable of type (elem: K): (TrieMap.this : scala.collection.concurrent.TrieMap[K, V]);
-    //     |  method subtractOne of type (k: K): (TrieMap.this : scala.collection.concurrent.TrieMap[K, V]) has incompatible type
-    "scala.collection.concurrent.TrieMap",
-    "scala.collection.immutable.HashMapBuilder",
-    "scala.collection.immutable.HashSetBuilder",
-    "scala.collection.immutable.LazyList",
-    "scala.collection.immutable.ListMapBuilder",
-    "scala.collection.immutable.MapBuilderImpl",
-    "scala.collection.immutable.SetBuilderImpl",
-    "scala.collection.immutable.TreeSeqMap",
-    "scala.collection.immutable.VectorBuilder",
-    "scala.collection.immutable.VectorMapBuilder",
-    "scala.collection.mutable.AnyRefMap",
-    "scala.collection.mutable.ArrayBuilder",
-    "scala.collection.mutable.CollisionProofHashMap",
-    "scala.collection.mutable.LongMap",
-    "scala.collection.mutable.SortedMap",
-    "scala.collection.mutable.StringBuilder",
-    "scala.jdk.AnyAccumulator",
-    "scala.jdk.DoubleAccumulator",
-    "scala.jdk.IntAccumulator",
-    "scala.jdk.LongAccumulator",
-
-    // See #9994
-    // -- Error:
-    //   |  override def filterInPlace(p: A => Boolean): this.type = {
-    //   |               ^
-    //   |error overriding method filterInPlace in trait SetOps of type (p: A => Boolean): (HashSet.this : scala.collection.mutable.HashSet[A]);
-    //   |  method filterInPlace of type (p: A => Boolean): (HashSet.this : scala.collection.mutable.HashSet[A]) has incompatible type
-    "scala.collection.mutable.HashSet",
-
-    // See #9994
-    // -- Error:
-    //   |    def force: this.type = {
-    //   |        ^
-    //   |error overriding method force in class Stream of type => (Cons.this : scala.collection.immutable.Stream.Cons[A]);
-    //   |  method force of type => (Cons.this : scala.collection.immutable.Stream.Cons[A]) has incompatible type
-    "scala.collection.immutable.Stream",
-
   )
 
   /** Set of classes that cannot be loaded from TASTy */
