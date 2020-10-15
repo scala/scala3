@@ -117,8 +117,7 @@ extension[T] (member: Member):
 
   def visibility: Visibility = memberExt.fold(Visibility.Unrestricted)(_.visibility)
   
-  def signature: Signature = memberExt.fold(Signature(name))(_.signature) // TODO!
-
+  def signature: Signature = memberExt.fold(Signature(name))(_.signature) 
   def asLink: LinkToType = LinkToType(signature, dri, kind)
   
   def modifiers: Seq[dotty.dokka.model.api.Modifier] = memberExt.fold(Nil)(_.modifiers)

@@ -427,12 +427,11 @@ class ScalaPageCreator(
                         }
                     }
 
-            withSubtypes.header(2, "Type hierarchy")()
-                .group(
-                    kind = ContentKind.Comment,
-                    styles = Set(ContentStyle.WithExtraAttributes), 
-                    extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Type hierarchy")
-                ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
-                        _.dotDiagram(HierarchyDiagramBuilder.build(c))
-                    }
+            withSubtypes.header(2, "Type hierarchy")().group(
+                kind = ContentKind.Comment,
+                styles = Set(ContentStyle.WithExtraAttributes), 
+                extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Type hierarchy")
+            ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
+                    _.dotDiagram(HierarchyDiagramBuilder.build(c))
                 }
+            }

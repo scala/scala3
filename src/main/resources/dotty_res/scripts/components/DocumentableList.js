@@ -68,10 +68,10 @@ class DocumentableList extends Component {
   }
 }
 
-class List {
-  _linearTab = "Linear supertypes";
-  _knownTab = "Known subtypes";
-  
+class List { 
+  filterTab(name) { 
+    return name !== "Linear supertypes" && name !== "Known subtypes" && name !== "Type hierarchy"
+  }
 
   constructor(tabsRef, sectionRefs) {
     this._tabsRef = tabsRef;
@@ -79,15 +79,11 @@ class List {
   }
 
   get tabsRefs() {
-    return this._tabsRef.filter(
-      (tabRef) => this._getTogglable(tabRef) !== this._linearTab && this._getTogglable(tabRef) !== this._knownTab 
-    );
+    return this._tabsRef.filter((tabRef) => this.filterTab(this._getTogglable(tabRef)));
   }
 
   get sectionsRefs() {
-    return this._sectionRefs.filter(
-      (sectionRef) => this._getTogglable(sectionRef) !== this._linearTab && this._getTogglable(sectionRef) !== this._knownTab 
-    );
+    return this._sectionRefs.filter( (sectionRef) => this.filterTab(this._getTogglable(sectionRef)));
   }
 
   getTabRefFromSectionRef(sectionRef) {

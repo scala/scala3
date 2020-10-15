@@ -30,73 +30,50 @@ trait ClassLikeSupport:
     def apply[T >: DClass](classDef: ClassDef)(
       dri: DRI = classDef.symbol.dri,
       name: String = classDef.name,
+      signatureOnly: Boolean = false,
       modifiers: Seq[Modifier] = classDef.symbol.getExtraModifiers(),
-      constructors: List[DFunction] = classDef.getConstructors.map(parseMethod(_)),
-      sources: Map[DokkaConfiguration$DokkaSourceSet, DocumentableSource] = classDef.symbol.source,
-      supertypes: Map[DokkaConfiguration$DokkaSourceSet, List[TypeConstructorWithKind]] = Map.empty,
-      documentation: Map[DokkaConfiguration$DokkaSourceSet, DocumentationNode] = classDef.symbol.documentation,
     ): DClass = 
       val supertypes = classDef.getParents.map {tree =>
         val actualSymbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
         LinkToType(tree.dokkaType.asSignature, actualSymbol.dri, kindForClasslike(actualSymbol))
       }
+      val cSymbol = classDef.symbol
 
-      val kind = kindForClasslike(classDef.symbol)
-      new DClass(
-          dri,
-          name,
-          constructors.asJava,
-          Nil.asJava,
-          Nil.asJava,
-          Nil.asJava,
-          sources.asJava,
-          placeholderVisibility,
-          null,
-          /*generics =*/classDef.getTypeParams.map(parseTypeArgument).asJava,
-          Map.empty.asJava,
-          documentation.asJava,
-          null,
-          placeholderModifier,
-          inspector.sourceSet.toSet,
-          PropertyContainer.Companion.empty()
+      val baseExtra = PropertyContainer.Companion.empty()
             .plus(ClasslikeExtension(
               classDef.getConstructorMethod,
               classDef.getCompanion
             ))
-            .plus(CompositeMemberExtension(classDef.extractMembers, supertypes, Nil))
-            .plus(MemberExtension(classDef.symbol.getVisibility(), modifiers,kind , classDef.symbol.getAnnotations()))
-      )
+            .plus(MemberExtension(
+              cSymbol.getVisibility(),
+              modifiers, 
+              kindForClasslike(classDef.symbol), 
+              cSymbol.getAnnotations(), 
+              classDef.constructor.returnTpt.dokkaType.asSignature
+            ))
 
-    def parseForSignatureOnly(classDef: ClassDef)(
-      dri: DRI = classDef.symbol.dri,
-      name: String = classDef.name,
-      sources: Map[DokkaConfiguration$DokkaSourceSet, DocumentableSource] = classDef.symbol.source,
-      supertypes: Map[DokkaConfiguration$DokkaSourceSet, List[TypeConstructorWithKind]] = Map.empty,
-      documentation: Map[DokkaConfiguration$DokkaSourceSet, DocumentationNode] = classDef.symbol.documentation,
-      modifiers: Seq[Modifier] = classDef.symbol.getExtraModifiers(),
-    ): DClass = new DClass(
-        dri,
-        name,
-        JList(),
-        JList(),
-        JList(),
-        JList(),
-        sources.asJava,
-        placeholderVisibility,
-        null,
-        /*generics =*/classDef.getTypeParams.map(parseTypeArgument).asJava,
-        supertypes.map{case (key,value) => (key, value.asJava)}.asJava,
-        documentation.asJava,
-        null,
-        placeholderModifier,
-        inspector.sourceSet.toSet,
-        PropertyContainer.Companion.empty()
-          .plus(ClasslikeExtension(
-            classDef.getConstructorMethod,
-            None,
-          ))
-          .plus(MemberExtension(classDef.symbol.getVisibility(), modifiers, kindForClasslike(classDef.symbol), classDef.symbol.getAnnotations()))
-    )
+      val fullExtra = 
+        if (signatureOnly) baseExtra 
+        else baseExtra.plus(CompositeMemberExtension(classDef.extractMembers, supertypes, Nil))
+
+      new DClass(
+          dri,
+          name,
+          (if(signatureOnly) Nil else classDef.getConstructors.map(parseMethod(_))).asJava,
+          Nil.asJava,
+          Nil.asJava,
+          Nil.asJava,
+          classDef.symbol.source.asJava,
+          placeholderVisibility,
+          null,
+          /*generics =*/classDef.getTypeParams.map(parseTypeArgument).asJava,
+          Map.empty.asJava,
+          classDef.symbol.documentation.asJava,
+          null,
+          placeholderModifier,
+          inspector.sourceSet.toSet,
+          fullExtra.asInstanceOf[PropertyContainer[DClass]]
+      )
     
   private val conversionSymbol = Symbol.requiredClass("scala.Conversion")
 
@@ -181,26 +158,21 @@ trait ClassLikeSupport:
         parseMethod(d, constructorWithoutParamLists(c), s => c.getParameterModifier(s))
       )
 
-  def parseClasslike(classDef: reflect.ClassDef, forSignature: Boolean = false)(using ctx: Context): DClass = classDef match
-    case c: ClassDef if classDef.symbol.flags.is(Flags.Object) => parseObject(c, forSignature)
-    case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) => parseEnum(c, forSignature)
-    case clazz => if forSignature then DClass.parseForSignatureOnly(classDef)() else DClass(classDef)()
+  def parseClasslike(classDef: reflect.ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass = classDef match
+    case c: ClassDef if classDef.symbol.flags.is(Flags.Object) => parseObject(c, signatureOnly)
+    case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) => parseEnum(c, signatureOnly)
+    case clazz => DClass(classDef)(signatureOnly = signatureOnly)
 
-  def parseObject(classDef: reflect.ClassDef, forSignature: Boolean = false)(using ctx: Context): DClass =
-    // All objects are final so we do not need final modifer!
-    val modifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Final)
-
-    if forSignature then DClass.parseForSignatureOnly(classDef)(
+  def parseObject(classDef: reflect.ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass =
+    DClass(classDef)(
       name = classDef.name.stripSuffix("$"),
-      modifiers = modifiers,
-    ) 
-    else DClass(classDef)(
-      name = classDef.name.stripSuffix("$"),
-      modifiers = modifiers,
+      // All objects are final so we do not need final modifer!
+      modifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Final), 
+      signatureOnly = signatureOnly
     )
 
     // TODO check withNewExtras?
-  def parseEnum(classDef: reflect.ClassDef, forSignature: Boolean = false)(using ctx: Context): DClass =
+  def parseEnum(classDef: reflect.ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass =
     val extraModifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Sealed).filter(_ != Modifier.Abstract)
     val companion = classDef.symbol.getCompanionSymbol.map(_.tree.asInstanceOf[ClassDef]).get
 
@@ -216,10 +188,7 @@ trait ClassLikeSupport:
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
     }.flatten
 
-    val classlikie = 
-      if forSignature then DClass.parseForSignatureOnly(classDef)(modifiers = extraModifiers)
-      else DClass(classDef)(modifiers = extraModifiers)
-
+    val classlikie = DClass(classDef)(modifiers = extraModifiers, signatureOnly = signatureOnly)
     classlikie.withNewMembers((enumVals ++ enumTypes ++ enumNested).map(_.withKind(Kind.EnumCase))).asInstanceOf[DClass]
    
   def parseMethod(
@@ -267,7 +236,9 @@ trait ClassLikeSupport:
           methodSymbol.getVisibility(), 
           methodSymbol.getExtraModifiers(), 
           methodKind, 
-          methodSymbol.getAnnotations()))
+          methodSymbol.getAnnotations(),
+          method.returnTpt.dokkaType.asSignature
+        ))
     )
 
   def parseArgument(argument: ValDef, prefix: Symbol => String, isExtendedSymbol: Boolean = false, isGrouped: Boolean = false): DParameter =
@@ -331,7 +302,8 @@ trait ClassLikeSupport:
         typeDef.symbol.getVisibility(),
         typeDef.symbol.getExtraModifiers(), 
         Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque),
-        typeDef.symbol.getAnnotations()
+        typeDef.symbol.getAnnotations(),
+        tpeTree.dokkaType.asSignature
         )
     )
 
@@ -367,7 +339,8 @@ trait ClassLikeSupport:
           valDef.symbol.getVisibility(), 
           valDef.symbol.getExtraModifiers(), 
           kind,
-          valDef.symbol.getAnnotations()
+          valDef.symbol.getAnnotations(),
+          valDef.tpt.tpe.dokkaType.asSignature
       ))
     )
   

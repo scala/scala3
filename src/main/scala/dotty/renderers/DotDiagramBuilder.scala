@@ -32,10 +32,12 @@ object DotDiagramBuilder:
         case Kind.Object => "fill: #285577;"
         case Kind.Trait => "fill: #1CAACF;"
         case Kind.Enum => "fill: #B66722;"
+        case Kind.EnumCase => "fill: #B66722;"
+        
 
-    private def getHtmlLabel(vertex: Vertex, renderer: SignatureRenderer): String = 
-        span(style := "color: #FFFFFF; text-decoration: underline;")(
+    private def getHtmlLabel(vertex: Vertex, renderer: SignatureRenderer): String =
+        span(style := "color: #FFFFFF;")(
             vertex.body.kind.name,
             " ",
-            vertex.body.signature.map(renderer.renderElement)
-        ).toString
+            span(style := "text-decoration: underline;")(vertex.body.signature.map(renderer.renderElement))
+        ).toString.replace("\"", "\\\"")
