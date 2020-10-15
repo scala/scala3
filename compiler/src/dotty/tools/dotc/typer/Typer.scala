@@ -2311,7 +2311,7 @@ class Typer extends Namer
     nestedCtx.typerState.commit()
     if sourceVersion.isAtLeast(`3.1`) then
       lazy val (prefix, suffix) = res match {
-        case Block(mdef @ DefDef(_, _, vparams :: Nil, _, _) :: Nil, _: Closure) =>
+        case Block(Lst(mdef @ DefDef(_, _, vparams :: Nil, _, _)), _: Closure) =>
           val arity = vparams.length
           if (arity > 0) ("", "") else ("(() => ", "())")
         case _ =>

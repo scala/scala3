@@ -24,6 +24,7 @@ import config.Config
 import reporting._
 import collection.mutable
 import transform.TypeUtils._
+import util.Lst; // import Lst.::
 
 import scala.annotation.internal.sharable
 
@@ -501,7 +502,7 @@ object SymDenotations {
       alphaAnnot match {
         case Some(ann) =>
           ann.arguments match {
-            case Literal(Constant(str: String)) :: Nil =>
+            case Lst(Literal(Constant(str: String))) =>
               if (isType)
                 if (is(ModuleClass))
                   str.toTypeName.moduleClassName

@@ -960,7 +960,7 @@ trait Applications extends Compatibility {
             // an inline function that it should expand only if there are no enclosing
             // applications of inline functions.
             tree.args match {
-              case (arg @ Match(EmptyTree, cases)) :: Nil =>
+              case Lst(arg @ Match(EmptyTree, cases)) =>
                 cases.foreach {
                   case CaseDef(Typed(_: untpd.Ident, _), _, _) => // OK
                   case CaseDef(Bind(_, Typed(_: untpd.Ident, _)), _, _) => // OK
