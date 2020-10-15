@@ -23,6 +23,7 @@ import printing.Formatting.hl
 import ast.Trees._
 import ast.untpd
 import ast.tpd
+import transform.SymUtils._
 
 /**  Messages
   *  ========
@@ -323,16 +324,29 @@ import ast.tpd
         .filter((d, n) => d <= maxDist && d < missing.length && d < n.length)
         .sorted  // sort by distance first, alphabetically second
 
+      val enumClause =
+        if ((name eq nme.values) || (name eq nme.valueOf)) && site.classSymbol.companionClass.isEnumClass then
+          val kind = if name eq nme.values then i"${nme.values} array" else i"${nme.valueOf} lookup method"
+          // an assumption is made here that the values and valueOf methods were not generated
+          // because the enum defines non-singleton cases
+          i"""
+              |Although ${site.classSymbol.companionClass} is an enum, it has non-singleton cases,
+              |meaning a $kind is not defined"""
+        else
+          ""
+
+      def prefixEnumClause(addendum: String) =
+        if enumClause.nonEmpty then s".$enumClause$addendum" else addendum
+
       val finalAddendum =
-        if addendum.nonEmpty then addendum
-        else closest match {
+        if addendum.nonEmpty then prefixEnumClause(addendum)
+        else closest match
           case (d, n) :: _ =>
             val siteName = site match
               case site: NamedType => site.name.show
               case site => i"$site"
-            s" - did you mean $siteName.$n?"
-          case Nil => ""
-        }
+            s" - did you mean $siteName.$n?$enumClause"
+          case Nil => prefixEnumClause("")
 
       ex"$selected $name is not a member of ${site.widen}$finalAddendum"
     }
