@@ -520,4 +520,3 @@ trait TypeAssigner {
 
 
 object TypeAssigner extends TypeAssigner
-

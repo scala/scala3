@@ -152,7 +152,8 @@ object DesugarEnums {
   }
 
   private def enumLookupMethods(constraints: EnumConstraints)(using Context): List[Tree] =
-    def scaffolding: List[Tree] = if constraints.cached then enumScaffolding(constraints.enumCases.map(_._2)) else Nil
+    def scaffolding: List[Tree] =
+      if constraints.isEnumeration then enumScaffolding(constraints.enumCases.map(_._2)) else Nil
     def valueCtor: List[Tree] = if constraints.requiresCreator then enumValueCreator :: Nil else Nil
     def fromOrdinal: Tree =
       def throwArg(ordinal: Tree) =
