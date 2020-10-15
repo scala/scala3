@@ -87,11 +87,11 @@ In case you prefer to create the project on your own, make sure to define the fo
 libraryDependencies += "ch.epfl.lamp" %% "dotty-staging" % scalaVersion.value
 ```
 
-and in case you use `dotc`/`dotr` directly, then use the `-with-compiler` flag for both:
+and in case you use `scalac`/`scala` directly, then use the `-with-compiler` flag for both:
 
 ```shell
-dotc -with-compiler -d out Test.scala
-dotr -with-compiler -classpath out Test
+scalac -with-compiler -d out Test.scala
+scala -with-compiler -classpath out Test
 ```
 
 ## Example

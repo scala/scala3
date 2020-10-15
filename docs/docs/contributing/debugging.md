@@ -32,7 +32,7 @@ object Playground {
 }
 ```
 
-Then, you can debug Dotty by compiling this file via `dotc ../issues/Playground.scala` (from the SBT console) and collecting various debug output in process. This section documents techniques you can use to collect the debug info.
+Then, you can debug Dotty by compiling this file via `scalac ../issues/Playground.scala` (from the SBT console) and collecting various debug output in process. This section documents techniques you can use to collect the debug info.
 
 [This](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/typer/Typer.scala#L2231) is the entry point to the Typer. The job of the Typer is to take an untyped tree, compute its type and turn it into a typed tree by attaching the type information to that tree. We will use this entry point to practice debugging techniques. E.g.:
 
@@ -46,7 +46,7 @@ Then, you can debug Dotty by compiling this file via `dotc ../issues/Playground.
 Then:
 
 ```shell
-dotc ../issues/Playground.scala
+scalac ../issues/Playground.scala
 ```
 
 The techniques discussed below can be tried out in place of `println("Hello Debug")` in that location. They are of course applicable throughout the codebase.
@@ -70,9 +70,9 @@ if (tree.show == """println("Hello World")""")
 
 The intention above is to output an extended debug info on a tree that matches a particular human-readable representation. However, because of the color characters, the comparison will fail.
 
-To disable color output from `show`, run `dotc` as follows:
+To disable color output from `show`, run `scalac` as follows:
 
-`dotc -color:never ../issues/Playground.scala`
+`scalac -color:never ../issues/Playground.scala`
 
 ## Reporting as a non-intrusive println
 Consider you want to debug the `tree` that goes into `assertPositioned(tree)` in the `typed` method. You can do:
@@ -94,19 +94,19 @@ assertPositioned(tree.reporting(s"Tree is: $result"))
 To print out the trees you are compiling after the FrontEnd (scanner, parser, namer, typer) phases:
 
 ```shell
-dotc -Xprint:typer ../issues/Playground.scala
+scalac -Xprint:typer ../issues/Playground.scala
 ```
 
 To print out the trees after Frontend and CollectSuperCalls phases:
 
 ```shell
-dotc -Xprint:typer,collectSuperCalls ../issues/Playground.scala
+scalac -Xprint:typer,collectSuperCalls ../issues/Playground.scala
 ```
 
 To print out the trees after all phases:
 
 ```shell
-dotc -Xprint:all ../issues/Playground.scala
+scalac -Xprint:all ../issues/Playground.scala
 ```
 
 To find out the list of all the phases and their names, check out [this](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/Compiler.scala#L34) line in `Compiler.scala`. Each `Phase` object has `phaseName` defined on it, this is the phase name.
@@ -119,7 +119,7 @@ object Foo
 object Foo
 ```
 
-Clearly we cannot define an object `Foo` twice. Now compile it as follows: `dotc -Ydebug-error ../issues/Playground.scala` (use whatever path you saved it under). The result will be as follows:
+Clearly we cannot define an object `Foo` twice. Now compile it as follows: `scalac -Ydebug-error ../issues/Playground.scala` (use whatever path you saved it under). The result will be as follows:
 
 ```scala
 -- Error: ../issues/Playground.scala:2:0 ---------------------------------------
@@ -173,7 +173,7 @@ val YprintPos: Setting[Boolean] = BooleanSetting("-Yprint-pos", "show tree posit
 And is to be used as:
 
 ```scala
-dotc -Yprint-pos  ../issues/Playground.scala
+scalac -Yprint-pos  ../issues/Playground.scala
 ```
 
 If used, all the trees output with `show` or via `-Xprint:typer` will also have positions attached to them, e.g.:
@@ -204,7 +204,7 @@ package <empty>@<Playground.scala:1> {
 Every [Positioned](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/ast/Positioned.scala) (a parent class of `Tree`) object has a `uniqueId` field. It is an integer that is unique for that tree and doesn't change from compile run to compile run. You can output these IDs from any printer (such as the ones used by `.show` and `-Xprint`) via `-Yshow-tree-ids` flag, e.g.:
 
 ```shell
-dotc -Xprint:typer -Yshow-tree-ids  ../issues/Playground.scala
+scalac -Xprint:typer -Yshow-tree-ids  ../issues/Playground.scala
 ```
 
 Gives:
@@ -229,7 +229,7 @@ package <empty>#1047 {
 You can then use these IDs to locate the creation site of a given tree using that ID via `-Ydebug-tree-with-id`, e.g.:
 
 ```shell
-dotc -Ydebug-tree-with-id 1049 ../issues/Playground.scala
+scalac -Ydebug-tree-with-id 1049 ../issues/Playground.scala
 ```
 
 When the tree with the correspond id is allocated, the following prompt will appear:
@@ -363,4 +363,4 @@ trace.force(i"typing $tree", typr, show = true) { // ...
 ```
 
 ### Reporter
-Defined in [Reporter.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `report.log`. To enable, run dotc with `-Ylog:typer` option.
+Defined in [Reporter.scala](https://github.com/lampepfl/dotty/blob/10526a7d0aa8910729b6036ee51942e05b71abf6/compiler/src/dotty/tools/dotc/reporting/Reporter.scala). Enables calls such as `report.log`. To enable, run scalac with `-Ylog:typer` option.

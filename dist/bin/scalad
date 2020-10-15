@@ -29,8 +29,8 @@ fi
 
 source "$PROG_HOME/bin/common"
 
-# Set dotty-doc dep:
-DOTTY_DOC_LIB=$(find_lib "*dotty-doc*")
+# Set scala3-doc dep:
+DOTTY_DOC_LIB=$(find_lib "*scala3-doc*")
 
 # Set flexmark deps:
 FLEXMARK_LIBS=""

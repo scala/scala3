@@ -89,8 +89,8 @@ if [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicat
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
-  echo "Starting dotty REPL..."
-  eval "\"$PROG_HOME/bin/dotc\" $cp_arg ${java_options[@]} -repl ${residual_args[@]}"
+  echo "Starting scala3 REPL..."
+  eval "\"$PROG_HOME/bin/scalac\" $cp_arg ${java_options[@]} -repl ${residual_args[@]}"
 elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
   cp_arg="$DOTTY_LIB$PSEP$SCALA_LIB"
   if [ -z "$CLASS_PATH" ]; then
@@ -99,7 +99,7 @@ elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
     cp_arg+="$PSEP$CLASS_PATH"
   fi
   if [ "$class_path_count" -gt 1 ]; then
-    echo "warning: multiple classpaths are found, dotr only use the last one."
+    echo "warning: multiple classpaths are found, scala only use the last one."
   fi
   if [ $with_compiler == true ]; then
     cp_arg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"

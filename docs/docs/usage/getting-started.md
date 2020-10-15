@@ -37,28 +37,28 @@ Start using the Dotty IDE in any Dotty project by following the
 
 ### Standalone installation
 Releases are available for download on the [Releases Section](https://github.com/lampepfl/dotty/releases)
-of the Dotty repository. Releases include three executables: `dotc` the Dotty compiler,
-`dotd` the [Dotty Documentation tool](./dottydoc.md) and `dotr` the Dotty REPL.
+of the Dotty repository. Releases include three executables: `scalac` the Dotty compiler,
+`scalad` the [Dotty Documentation tool](./dottydoc.md) and `scala` the Dotty REPL.
 
 ```
 .
 └── bin
-    ├── dotc
-    ├── dotd
-    └── dotr
+    ├── scalac
+    ├── scalad
+    └── scala
 ```
 
 Add these executables to your `PATH` and you will be able to run the corresponding commands directly
 from your console:
 ```bash
 # Compile code using Dotty
-$ dotc HelloWorld.scala
+$ scalac HelloWorld.scala
 
 # Run it with the proper classpath
-$ dotr HelloWorld
+$ scala HelloWorld
 
 # Start a Dotty REPL
-$ dotr
+$ scala
 Starting dotty REPL...
 scala>
 ```

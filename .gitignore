@@ -24,7 +24,7 @@ local.sbt
 # npm
 node_modules
 
-# VS Code 
+# VS Code
 .vscode/
 # Metals
 .bloop/
@@ -82,8 +82,9 @@ bench/compile.txt
 # The vscode app for testing
 vscode-dotty/.vscode-test
 
-community-build/dotty-bootstrapped.version
+community-build/scala3-bootstrapped.version
 community-build/sbt-dotty-sbt
 
 # Vulpix output files
 *.check.out
+!/dist/bin/

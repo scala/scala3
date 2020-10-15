@@ -20,7 +20,7 @@ classes, [Compiler] and [Run].
 
 Package Structure
 -----------------
-Most functionality of `dotc` is implemented in subpackages of `dotc`. Here's a
+Most functionality of `scalac` is implemented in subpackages of `dotc`. Here's a
 list of sub-packages and their focus.
 
 ```
@@ -44,10 +44,10 @@ list of sub-packages and their focus.
 
 Contexts
 --------
-`dotc` has almost no global state (the only significant bit of global state is
+`scalac` has almost no global state (the only significant bit of global state is
 the name table, which is used to hash strings into unique names). Instead, all
 essential bits of information that can vary over a compiler run are collected
-in a [Context]. Most methods in `dotc` take a `Context` value as an implicit
+in a [Context]. Most methods in `scalac` take a `Context` value as an implicit
 parameter.
 
 Contexts give a convenient way to customize values in some part of the
@@ -88,7 +88,7 @@ a problem.
 
 Compiler Phases
 ---------------
-Seen from a temporal perspective, the `dotc` compiler consists of a list of
+Seen from a temporal perspective, the `scalac` compiler consists of a list of
 phases. The current list of phases is specified in class [Compiler] as follows:
 
 ```scala

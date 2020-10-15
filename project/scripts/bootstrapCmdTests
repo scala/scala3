@@ -5,41 +5,41 @@ set -e
 source $(dirname $0)/cmdTestsCommon.inc.sh
 
 # check that benchmarks can run
-"$SBT" "dotty-bench/jmh:run 1 1 tests/pos/alias.scala"
+"$SBT" "scala3-bench/jmh:run 1 1 tests/pos/alias.scala"
 # The above is here as it relies on the bootstrapped library.
-"$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
-"$SBT" "dotty-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
+"$SBT" "scala3-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
+"$SBT" "scala3-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
 
-echo "testing scala.quoted.Expr.run from sbt dotr"
-"$SBT" ";dotty-compiler-bootstrapped/dotc -with-compiler tests/run-staging/quote-run.scala; dotty-compiler-bootstrapped/dotr -with-compiler Test" > "$tmp"
+echo "testing scala.quoted.Expr.run from sbt scala"
+"$SBT" ";scala3-compiler-bootstrapped/scalac -with-compiler tests/run-staging/quote-run.scala; scala3-compiler-bootstrapped/scala -with-compiler Test" > "$tmp"
 grep -qe "val a: scala.Int = 3" "$tmp"
 
 
-# setup for `dotc`/`dotr` script tests
+# setup for `scalac`/`scala` script tests
 "$SBT" dist/pack
 
-# check that `dotc` compiles and `dotr` runs it
-echo "testing ./bin/dotc and ./bin/dotr"
+# check that `scalac` compiles and `scala` runs it
+echo "testing ./bin/scalac and ./bin/scala"
 clear_out "$OUT"
-./bin/dotc "$SOURCE" -d "$OUT"
-./bin/dotr -classpath "$OUT" "$MAIN" > "$tmp"
+./bin/scalac "$SOURCE" -d "$OUT"
+./bin/scala -classpath "$OUT" "$MAIN" > "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
-# check that `dotc` and `dotr` works for staging
+# check that `scalac` and `scala` works for staging
 clear_out "$OUT"
-./bin/dotc tests/run-staging/i4044f.scala -d "$OUT"
-./bin/dotr -with-compiler -classpath "$OUT" Test > "$tmp"
-./bin/dotd -project Staging -siteroot "$OUT" "tests/run-staging/i4044f.scala"
+./bin/scalac tests/run-staging/i4044f.scala -d "$OUT"
+./bin/scala -with-compiler -classpath "$OUT" Test > "$tmp"
+./bin/scalad -project Staging -siteroot "$OUT" "tests/run-staging/i4044f.scala"
 
-# check that `dotc -from-tasty` compiles and `dotr` runs it
-echo "testing ./bin/dotc -from-tasty and dotr -classpath"
+# check that `scalac -from-tasty` compiles and `scala` runs it
+echo "testing ./bin/scalac -from-tasty and scala -classpath"
 clear_out "$OUT1"
-./bin/dotc -from-tasty -classpath "$OUT" -d "$OUT1" "$MAIN"
-./bin/dotr -classpath "$OUT1" "$MAIN" > "$tmp"
+./bin/scalac -from-tasty -classpath "$OUT" -d "$OUT1" "$MAIN"
+./bin/scala -classpath "$OUT1" "$MAIN" > "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
-# echo ":quit" | ./dist/target/pack/bin/dotr  # not supported by CI
+# echo ":quit" | ./dist/target/pack/bin/scala  # not supported by CI
 
-echo "testing ./bin/dotd"
+echo "testing ./bin/scalad"
 clear_out "$OUT"
-./bin/dotd -project Hello -siteroot "$OUT" "$SOURCE"
+./bin/scalad -project Hello -siteroot "$OUT" "$SOURCE"
