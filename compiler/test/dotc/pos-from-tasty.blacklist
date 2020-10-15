@@ -16,3 +16,6 @@ notNull.scala
 
 # cyclic reference involving @uncheckedVariance
 annot-bootstrap.scala
+
+# missing position
+rbtree.scala
