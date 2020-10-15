@@ -9,6 +9,7 @@ import Decorators._
 import Symbols.{Symbol, requiredClass}
 import Constants.Constant
 import StdNames._
+import util.Lst
 
 class DivideZero extends MiniPhase with ResearchPlugin {
   val name: String = "divideZero"
@@ -29,7 +30,7 @@ class DivideZero extends MiniPhase with ResearchPlugin {
   }
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = tree match {
-    case tpd.Apply(fun, tpd.Literal(Constants.Constant(v)) :: Nil) if isNumericDivide(fun.symbol) && v == 0 =>
+    case tpd.Apply(fun, Lst(tpd.Literal(Constants.Constant(v)))) if isNumericDivide(fun.symbol) && v == 0 =>
       report.error("divide by zero", tree.sourcePos)
       tree
     case _ =>

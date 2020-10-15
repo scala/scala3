@@ -20,7 +20,8 @@ import dotty.tools.dotc.transform.ReifyQuotes
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{Path, VirtualFile}
-import dotty.tools.dotc.util.Lst; import Lst.::
+import dotty.tools.dotc.util.Lst; // import Lst.::
+import Lst.{NIL, +:, toLst}
 
 import scala.annotation.tailrec
 import scala.concurrent.Promise
@@ -91,8 +92,8 @@ private class QuoteCompiler extends Compiler:
     @tailrec private def getLiteral(tree: Tree): Option[Any] =
       tree match
         case Literal(lit) => Some(lit.value)
-        case Block(Lst.Empty, expr) => getLiteral(expr)
-        case Inlined(_, Lst.Empty, expr) => getLiteral(expr)
+        case Block(NIL, expr) => getLiteral(expr)
+        case Inlined(_, NIL, expr) => getLiteral(expr)
         case _ => None
 
     def run(implicit ctx: Context): Unit = unsupported("run")
