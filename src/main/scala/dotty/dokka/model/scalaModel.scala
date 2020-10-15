@@ -1,5 +1,6 @@
 package dotty.dokka
 
+import dotty.dokka.model.HierarchyDiagram
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model._
@@ -75,4 +76,21 @@ object ScalaTagWrapper {
     descTag: DocTag
   ) extends NamedTagWrapper(descTag, name, null)
 }
+
 case class ImplicitConversion(conversion: Documentable, from: DRI, to: DRI)
+
+case class HierarchyDiagramContentNode(
+  val diagram: HierarchyDiagram, 
+  val dci: DCI, 
+  val sourceSets: Set[DisplaySourceSet], 
+  val style: Set[Style],
+  val extra: PropertyContainer[ContentNode] = PropertyContainer.Companion.empty
+) extends ContentNode:
+  override def getDci = dci
+  override def getSourceSets = sourceSets.asJava
+  override def getStyle = style.asJava
+  override def hasAnyContent = !diagram.edges.isEmpty
+  def withSourceSets(sourceSets: JSet[DisplaySourceSet]) = copy(sourceSets = sourceSets.asScala.toSet)
+  override def getChildren: JList[ContentNode] = Nil.asJava
+  override def getExtra = extra
+  override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)

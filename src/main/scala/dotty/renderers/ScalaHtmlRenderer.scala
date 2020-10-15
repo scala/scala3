@@ -1,10 +1,13 @@
 package dotty.dokka
 
+import dotty.dokka.model.HierarchyDiagram
 import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.model._
 import org.jetbrains.dokka._
 import scalatags.Text.all._
+import scalatags.Text.svgTags._
+import scalatags.Text.svgTags.attr
 import scalatags.Text.tags2.{title, main, nav}
 import scalatags.Text.TypedTag
 import collection.JavaConverters._
@@ -40,6 +43,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
     override def buildContentNode(f: FlowContent, node: ContentNode, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {
         node match {
             case n: HtmlContentNode => withHtml(f, raw(n.body).toString)
+            case n: HierarchyDiagramContentNode => buildDiagram(f, n.diagram, pageContext)
             case other => super.buildContentNode(f, node, pageContext, sourceSetRestriciton)
         }
     }
@@ -89,6 +93,22 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
             U
         })
     }
+
+    private lazy val dotDiagramBuilder = DotDiagramBuilder(getLocationProvider)
+    
+    def buildDiagram(
+        f: FlowContent,
+        diagram: HierarchyDiagram,
+        pageContext: ContentPage,
+    ) = withHtml(f, div( id := "inheritance-diagram",
+            svg(id := "graph"),
+            script(`type` := "text/dot", id := "dot", raw(dotDiagramBuilder.build(
+                diagram, 
+                DisplaySourceSetKt.toDisplaySourceSet(ctx.getConfiguration.getSourceSets.get(0).asInstanceOf[DokkaConfiguration$DokkaSourceSet]),
+                pageContext)
+            ))
+        ).render
+    )
 
     override def buildHtml(page: PageNode, resources: JList[String], kotlinxContent: FlowContentConsumer): String =
         val (pageTitle, pageResources, fromTemplate) = page match
@@ -163,7 +183,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         for res <- resources yield
             fileExtension(res) match
                 case "css" => link(rel := "stylesheet", href := resolveLink(res))
-                case "js" => script(`type` := "text/javascript", src := resolveLink(res), defer)
+                case "js" => script(`type` := "text/javascript", src := resolveLink(res), defer := "true")
                 case _ => raw(res)
 
     private def buildWithKotlinx(node: ContentNode, pageContext: ContentPage, sourceSetRestriction: JSet[DisplaySourceSet]): String =

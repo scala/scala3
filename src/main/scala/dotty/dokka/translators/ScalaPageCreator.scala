@@ -2,7 +2,7 @@ package dotty.dokka
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-
+import scala.util.chaining._
 import org.jetbrains.dokka.base.translators.documentables.{DefaultPageCreator, PageContentBuilder, PageContentBuilder$DocumentableContentBuilder}
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
@@ -581,34 +581,46 @@ class ScalaPageCreator(
                     }
                     case o => bdr.text(s"TODO: $o")
             }
-            val withSupertypes = if(!supertypes.isEmpty) {
-                b.header(2, "Linear supertypes")()
-                .group(
-                    kind = ContentKind.Comment,
-                    styles = Set(ContentStyle.WithExtraAttributes), 
-                    extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Linear supertypes")
-                ){ gbdr => gbdr
-                    .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
-                        .list(supertypes, separator = ""){ (bdr, elem) => bdr
-                            .group(styles = Set(TextStyle.Paragraph))(contentForBound(_, elem))
+
+            b.pipe { content =>
+                if (!supertypes.isEmpty) {
+                    content.header(2, "Linear supertypes")()
+                    .group(
+                        kind = ContentKind.Comment,
+                        styles = Set(ContentStyle.WithExtraAttributes), 
+                        extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Linear supertypes")
+                    ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
+                            _.list(supertypes, separator = "") { (bdr, elem) => bdr
+                                .group(styles = Set(TextStyle.Paragraph))(contentForBound(_, elem.bound))
+                            }
                         }
                     }
-                }
-            } else b
-
-            if(!subtypes.isEmpty) {
-                withSupertypes.header(2, "Known subtypes")()
+                } else content
+            }.pipe { content =>
+                if (!subtypes.isEmpty) {
+                    content.header(2, "Known subtypes")()
+                    .group(
+                        kind = ContentKind.Comment,
+                        styles = Set(ContentStyle.WithExtraAttributes), 
+                        extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Known subtypes")
+                    ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
+                            _.list(subtypes.map(_.dri))(contentForType)
+                        }
+                    }
+                } else content
+            }.pipe { content =>
+                content.header(2, "Type hierarchy")()
                 .group(
                     kind = ContentKind.Comment,
                     styles = Set(ContentStyle.WithExtraAttributes), 
-                    extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Known subtypes")
-                ){ gbdr => gbdr
-                    .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
-                        .list(subtypes)(contentForType)
+                    extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Type hierarchy")
+                ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
+                        _.dotDiagram(
+                            HierarchyDiagramBuilder.build(DRIWithKind(c.getDri, c.get(ClasslikeExtension).kind),supertypes, subtypes)
+                        )
                     }
                 }
-            } else withSupertypes
-
+            }
         }
 
 }

@@ -25,7 +25,7 @@ libraryDependencies ++= Seq(
   "com.lihaoyi" % "scalatags_2.13" % scalaTagsVersion,
   "nl.big-o" % "liqp" % "0.6.7",
   "args4j" % "args4j" % "2.33",
-  "com.novocode" % "junit-interface" % "0.11" % "test"
+  "com.novocode" % "junit-interface" % "0.11" % "test",
 )
 
 resolvers += Resolver.jcenterRepo
@@ -66,7 +66,7 @@ generateSelfDocumentation := {
 unmanagedJars in Compile += dokkaJavaApiJar
 
 // Uncomment to debug dokka processing (require to run debug in listen mode on 5005 port)
-//javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:5005,suspend=y"
+// javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:5005,suspend=y"
 
 fork.in(run) := true
 // There is a bug in dokka that prevents parallel tests withing the same jvm

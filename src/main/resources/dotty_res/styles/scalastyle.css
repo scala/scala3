@@ -414,6 +414,19 @@ dl.paramsdesc dd {
   padding-left: 3em;
 }
 
+/* Workaround for dynamically rendered content inside hidden tab. 
+There's some limitation of css/html that causes wrong width/height property of elements that are rendered dynamically inside element with display:none;
+Same solution is already used in Dokka. 
+*/
+.platform-hinted[data-togglable="Type hierarchy"] > .content:not([data-active]),
+.tabs-section-body > *[data-togglable="Type hierarchy"]:not([data-active]) {
+    display: block !important;
+    visibility: hidden;
+    height: 0;
+    position: fixed;
+    top: 0;
+}
+
 
 /* Footer */
 footer {

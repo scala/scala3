@@ -1,5 +1,6 @@
 package dotty.dokka
 
+import dotty.dokka.model.HierarchyDiagram
 import org.jetbrains.dokka.base.translators.documentables.{DefaultPageCreator, PageContentBuilder, PageContentBuilder$DocumentableContentBuilder}
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
@@ -289,6 +290,15 @@ class ScalaPageContentBuilder(
             styles: Set[Style] = mainStyles,
             extra: PropertyContainer[ContentNode] = mainExtra
         ) = ContentText(text, DCI(mainDRI.asJava, kind), sourceSets.toDisplay, styles.asJava, extra)
+
+
+        def dotDiagram(
+            diagram: HierarchyDiagram,
+            kind: Kind = ContentKind.Main,
+            sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = mainSourcesetData,
+            styles: Set[Style] = mainStyles,
+            extra: PropertyContainer[ContentNode] = mainExtra
+        ) = addChild(HierarchyDiagramContentNode(diagram, DCI(mainDRI.asJava, kind), sourceSets.toDisplay.asScala.toSet, styles, extra))
 
         def groupingBlock[A, T <: Documentable, G <: List[(A, List[T])]](
             name: String,
