@@ -5,6 +5,7 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.model.doc.DocumentationNode
 import dotty.dokka._
+import dotty.dokka.model.api.CompositeMemberExtension
 
 import collection.JavaConverters._
 
@@ -41,7 +42,7 @@ trait PackageSupport:
               null,
               sourceSet.toSet,
               PropertyContainer.Companion.empty()
-                .plus(PackageExtension(clazz.get(ClasslikeExtension)))
+                .plus(clazz.get(CompositeMemberExtension))
             )
         }
         

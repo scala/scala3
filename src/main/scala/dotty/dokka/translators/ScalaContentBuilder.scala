@@ -1,6 +1,6 @@
 package dotty.dokka
 
-import dotty.dokka.model.HierarchyDiagram
+import dotty.dokka.translators.FilterAttributes
 import org.jetbrains.dokka.base.translators.documentables.{DefaultPageCreator, PageContentBuilder, PageContentBuilder$DocumentableContentBuilder}
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
@@ -16,7 +16,12 @@ import org.jetbrains.dokka.base.resolvers.anchors._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.doc._
+import dotty.dokka.model.api.{Kind => _, Link => SLink, _}
 
+
+case class DocumentableSubGroup(val title: Signature, val extensions: Seq[Documentable])
+
+case class DocumentableGroup(name: Option[String | Documentable], documenables: Seq[Documentable | DocumentableSubGroup])    
 
 class ScalaPageContentBuilder(
     val commentsConverter: CommentsToContentConverter,
@@ -185,6 +190,8 @@ class ScalaPageContentBuilder(
         def addChild(c: ContentNode) = copy(children = children :+ c)
 
         def addChildren(c: Seq[ContentNode]) = copy(children = children ++ c)
+
+        def reset() = copy(children = Nil)
 
         def buildContent() = ContentGroup(
             children.asJava,
@@ -413,15 +420,23 @@ class ScalaPageContentBuilder(
             extra: PropertyContainer[ContentNode] = mainExtra
         ) = addChild(
             contentForDRIs(mainDRI, sourceSets, kind, styles, extra, bdr => bdr.addChildren(
-                commentsConverter.buildContent(
+                rawComment(docTag, kind, sourceSets, styles, extra)
+            ))
+        )
+
+        def rawComment(
+            docTag: DocTag,
+            kind: Kind = ContentKind.Comment,
+            sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = mainSourcesetData,
+            styles: Set[Style] = mainStyles,
+            extra: PropertyContainer[ContentNode] = mainExtra
+        ) = commentsConverter.buildContent(
                     docTag,
                     DCI(mainDRI.asJava, kind),
                     sourceSets.asJava,
                     Set().asJava,
                     PropertyContainer.Companion.empty()
-                ).asScala.toSeq
-            ))
-        )
+                ).asScala.toSeq   
 
         def divergentGroup(
             groupId: ContentDivergentGroup.GroupID,
@@ -450,6 +465,72 @@ class ScalaPageContentBuilder(
                 contentForDRIs(dri, sourceSets, kind, styles, extra, buildBlock),
                 sourceSets.toDisplay
             )
+        )
+
+        type Self = ScalaPageContentBuilder#ScalaDocumentableContentBuilder
+
+        def documentableTab(name: String)(children: DocumentableGroup*): Self = 
+            def buildSignature(d: Documentable) = 
+                ScalaSignatureProvider.rawSignature(d, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
+            
+            def buildAnnotations(d: Member) = 
+                InlineSignatureBuilder().annotationsBlock(d).asInstanceOf[InlineSignatureBuilder].names.reverse
+
+            def documentableElement(documentable: Member): DocumentableElement =
+                val docs = documentable.getDocumentation.asScala.values.headOption.flatMap(_.getChildren.asScala.headOption)
+                val signatureBuilder = buildSignature(documentable)
+                val originInfo = documentable.origin match {
+                    case Origin.ImplicitlyAddedBy(name, dri) => Signature("Implicitly added by ", SLink(name, dri))
+                    case Origin.ExtensionFrom(name, dri) => Signature("Extension method from ", SLink(name, dri))
+                    case _ => Nil 
+                }
+                
+                DocumentableElement(
+                    buildAnnotations(documentable),
+                    signatureBuilder.preName.reverse, 
+                    documentable.getName, 
+                    signatureBuilder.names.reverse,
+                    docs.fold(Nil)(d => reset().rawComment(d.getRoot)),
+                    originInfo,
+                    FilterAttributes.attributesFor(documentable),
+                    asParams(documentable.getDri)
+                )
+                     
+            def element(e: Documentable | DocumentableSubGroup): DocumentableElement | DocumentableElementGroup = e match 
+                case e: Documentable => documentableElement(e)
+                case e: DocumentableSubGroup =>
+                    DocumentableElementGroup(
+                        e.title,
+                        e.extensions.map(documentableElement),
+                        asParams(mainDRI)
+                    )    
+
+            if (children.forall(_.documenables.isEmpty)) this else
+                    header(3, name, mainKind,mainSourcesetData, mainStyles, mainExtra plus SimpleAttr.Companion.header(name))()
+                    .group(styles = Set(ContentStyle.WithExtraAttributes), extra = mainExtra plus SimpleAttr.Companion.header(name)){ bdr =>
+                        children.foldLeft(bdr){ (bdr, list) =>
+                            if list.documenables.isEmpty then bdr
+                            else 
+                                val header = list.name match 
+                                    case Some(o: Documentable) => 
+                                        buildSignature(o).names.reverse
+                                    case option =>
+                                        option.toSeq.map(_.toString)
+                                    
+
+                                bdr.addChild(DocumentableList(header, list.documenables.map(element), asParams(mainDRI)))
+                        }
+            }
+
+        def documentableFilter() = addChild(DocumentableFilter(asParams(mainDRI)))    
+
+        def asParams(dri: DRI): ContentNodeParams = asParams(Set(dri))
+
+        def asParams(dri: Set[DRI]): ContentNodeParams = ContentNodeParams(
+            new DCI(dri.asJava, mainKind),
+            mainSourcesetData.toDisplay,
+            mainStyles,
+            mainExtra
         )
 
         def divergentBlock[A, T <: Documentable, G <: List[(A, List[T])]](
@@ -509,6 +590,6 @@ class ScalaPageContentBuilder(
                     case None => builder
                 }
             }
-
+            
     }
 }

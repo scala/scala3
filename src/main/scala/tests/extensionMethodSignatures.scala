@@ -6,17 +6,22 @@ class ClassOne
     // Commented cases won't work for now
     // extension ClassTwoOps on (c: ClassTwo):
     //     def getA() = c.a
-    extension (c: ClassTwo) def getB(): String
-        = c.b
+    extension (c: ClassTwo) 
+        def getB(): String
+            = c.b
         
-    extension (c: ClassTwo) def getGivenParams(a: Int, b: Int, d: Int)(e: String): Int
-        = 56
+    extension (c: ClassTwo) 
+        def getGivenParams(a: Int, b: Int, d: Int)(e: String): Int
+            = 56
 
-    extension (c: ClassTwo) def |||:(a: Int, b: Int, d: Int)(e: String): Int
-        = 56
+    extension (c: ClassTwo) 
+        def |||:(a: Int, b: Int, d: Int)(e: String): Int
+            = 56
 
-    extension (b: Int) def secondGroup(): String
-        = ???
+    extension (b: Int) 
+        def secondGroup(): String
+            = ???
+
     extension (c:ClassTwo)
     :
         def getString(a: String): String
@@ -36,3 +41,5 @@ case class ClassTwo(a: String, b: String)
 {
 
 }
+
+class ClassOneTwo extends ClassOne

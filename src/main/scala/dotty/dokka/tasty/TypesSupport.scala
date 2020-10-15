@@ -8,6 +8,33 @@ trait TypesSupport:
     self: TastyParser =>
     import reflect._
 
+    def getGivenInstance(method: DefDef): Option[Bound] = {
+      def extractTypeSymbol(t: Tree): Option[Symbol] = t match
+        case tpeTree: TypeTree =>
+          inner(tpeTree.tpe)
+        case other => None
+
+      def inner(tpe: TypeOrBounds): Option[Symbol] = tpe match
+        case ThisType(tpe) => inner(tpe)
+        case AnnotatedType(tpe, _) => inner(tpe)
+        case AppliedType(tpe, typeOrBoundsList) => inner(tpe)
+        case tp @ TermRef(qual, typeName) =>
+          qual match
+            case _: Type | _: NoPrefix => Some(tp.termSymbol)
+            case other => None
+        case tp @ TypeRef(qual, typeName) =>
+          qual match
+            case _: Type | _: NoPrefix => Some(tp.typeSymbol)
+            case other => None
+
+      val typeSymbol = extractTypeSymbol(method.returnTpt)
+
+      typeSymbol.map(_.tree).collect {
+        case c: ClassDef => c.getParents.headOption
+        case _ => Some(method.returnTpt)
+      }.flatten.map(_.dokkaType)
+    }
+
     given TreeSyntax as AnyRef:
         extension (tpeTree: Tree):
             def dokkaType(using cxt: reflect.Context): Bound =

@@ -3,7 +3,8 @@ package dotty.dokka
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.chaining._
-import org.jetbrains.dokka.base.translators.documentables.{DefaultPageCreator, PageContentBuilder, PageContentBuilder$DocumentableContentBuilder}
+import org.jetbrains.dokka.base.translators.documentables.{DefaultPageCreator, PageContentBuilder}
+import org.jetbrains.dokka.base.translators.documentables.PageContentBuilder$DocumentableContentBuilder 
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.transformers.documentation.DocumentableToPageTranslator
@@ -18,39 +19,40 @@ import org.jetbrains.dokka.base.resolvers.anchors._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.links.DRIKt.getParent
+import dotty.dokka.model.api._
+import dotty.dokka.model.api.Kind
+import dotty.dokka.model.api.Link
+
+type DocBuilder = ScalaPageContentBuilder#ScalaDocumentableContentBuilder
 
 class ScalaPageCreator(
     commentsToContentConverter: CommentsToContentConverter,
     signatureProvider: SignatureProvider,
     val logger: DokkaLogger
-) extends DefaultPageCreator(commentsToContentConverter, signatureProvider, logger) {
+) extends DefaultPageCreator(commentsToContentConverter, signatureProvider, logger):
 
     private val contentBuilder = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger)
 
     override def pageForModule(m: DModule): ModulePageNode = super.pageForModule(m)
 
-    override def pageForPackage(p: DPackage): PackagePageNode = {
-        val page = super.pageForPackage(p)
+    private def updatePageNameForMember(page: PageNode, p: Member) = 
+        val name = p.kind match 
+            case Kind.Extension(_) =>  s"extension_${page.getName}"
+            case _ => page.getName
+        
+        page.modified(name, page.getChildren)
 
-        val ext = Option(p.get(PackageExtension))
-        val extensionPages = ext.fold(
-                List.empty
-            )(
-                _.extensions.flatMap(_.extensions)
-                .map(pageForFunction(_))
-                .map(page =>
-                    page.modified(
-                        "extension_" + page.getName,
-                        page.getChildren
-                    )
-                )
-            )
-
-        page.modified(
-            page.getName,
-            (page.getChildren.asScala ++ extensionPages).asJava
-        )
+    private def pagesForMembers(p: Member): Seq[PageNode] = 
+    p.allMembers.filter(_.origin == Origin.DefinedWithin).collect {
+        case f: DFunction => updatePageNameForMember(pageForFunction(f), f)
+        case c: DClass => updatePageNameForMember(pageForDClass(c), c)
     }
+
+    override def pageForPackage(p: DPackage): PackagePageNode = 
+        val originalPage = super.pageForPackage(p)
+        val originalPages: Seq[PageNode] = originalPage.getChildren.asScala.toList
+        val allPage: Seq[PageNode] = originalPages ++ pagesForMembers(p)
+        originalPage.modified(p.getName, allPage.asJava) 
 
     override def pageForClasslike(c: DClasslike): ClasslikePageNode = c match {
             case clazz: DClass => pageForDClass(clazz)
@@ -62,19 +64,7 @@ class ScalaPageCreator(
 
         val ext = c.get(ClasslikeExtension)
 
-        val name = if ext.kind == dotty.dokka.Kind.Object && ext.companion.isDefined then c.getName + "$" else c.getName
-
-        val extensionPages = ext.extensions.flatMap(_.extensions)
-            .map(pageForFunction(_))
-            .map(page =>
-                page.modified(
-                    "extension_" + page.getName,
-                    page.getChildren
-                )
-            )
-        val enumEntryPages = Option(c.get(EnumExtension)).map(_.enumEntries).collect{
-            case c: DClasslike => pageForClasslike(c)
-        }
+        val name = if c.kind == Kind.Object && ext.companion.isDefined then c.getName + "$" else c.getName
 
         ClasslikePageNode(
             name,
@@ -84,7 +74,7 @@ class ScalaPageCreator(
             (constructors.asScala.map(pageForFunction) ++
             c.getClasslikes.asScala.map(pageForClasslike) ++
             c.getFunctions.asScala.map(pageForFunction) ++
-            enumEntryPages ++ extensionPages).asJava,
+            pagesForMembers(c)).asJava,
             List.empty.asJava
         )
 
@@ -93,7 +83,7 @@ class ScalaPageCreator(
     override def pageForFunction(f: DFunction) = super.pageForFunction(f)
 
     override def contentForModule(m: DModule) = {
-        def buildBlock = (builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) => builder
+        def buildBlock = (builder: DocBuilder) => builder
             .group(kind = ContentKind.Cover) { gbuilder => gbuilder
                 .cover(m.getName)()
                 .descriptionIfNotEmpty(m)
@@ -114,7 +104,7 @@ class ScalaPageCreator(
     }
 
     override def contentForPackage(p: DPackage) = {
-        def buildBlock = (builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) => builder
+        def buildBlock = (builder: DocBuilder) => builder
             .group(kind = ContentKind.Cover) { gbuilder => gbuilder
                 .cover(p.getName)()
                 .descriptionIfNotEmpty(p)
@@ -132,7 +122,7 @@ class ScalaPageCreator(
     }
 
     def contentForClass(c: DClass) = {
-        def buildBlock = (builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) => builder
+        def buildBlock = (builder: DocBuilder) => builder
             .group(kind = ContentKind.Cover, sourceSets = c.getSourceSets.asScala.toSet) { gbdr => gbdr
                 .cover(c.getName)()
                 .sourceSetDependentHint(Set(c.getDri), c.getSourceSets.asScala.toSet) { sbdr => sbdr
@@ -140,6 +130,7 @@ class ScalaPageCreator(
                     .contentForDescription(c)
                 }
             }
+            .documentableFilter()
             .group(styles = Set(ContentStyle.TabbedContent)) { b => b
                 .contentForScope(c)
                 .contentForEnum(c)
@@ -150,7 +141,7 @@ class ScalaPageCreator(
     }
 
     override def contentForMember(d: Documentable) = {
-        def buildBlock = (builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) => builder
+        def buildBlock = (builder: DocBuilder) => builder
             .group(kind = ContentKind.Cover){ bd => bd.cover(d.getName)() }
             .divergentGroup(
                 ContentDivergentGroup.GroupID("member")
@@ -170,8 +161,8 @@ class ScalaPageCreator(
 
     override def contentForFunction(f: DFunction) = contentForMember(f)
 
-    extension (b: ScalaPageContentBuilder#ScalaDocumentableContentBuilder):
-        def descriptionIfNotEmpty(d: Documentable): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = {
+    extension (b: DocBuilder):
+        def descriptionIfNotEmpty(d: Documentable): DocBuilder = {
             val desc = contentForDescription(d).asScala.toSeq
             val res = if desc.isEmpty then b else b
                 .sourceSetDependentHint(
@@ -315,8 +306,8 @@ class ScalaPageCreator(
                                 }
                                 .cell(sourceSets = d.getSourceSets.asScala.toSet){ b => b
                                     .driLink(
-                                        ext.kind match {
-                                            case dotty.dokka.Kind.Object => "class"
+                                        d.kind match {
+                                            case Kind.Object => "class"
                                             case _ => "object"
                                         },
                                         co
@@ -342,285 +333,106 @@ class ScalaPageCreator(
             }
         }
 
-        def buildImplicitConversionInfo(by: Documentable) = 
-            b.table(kind = ContentKind.BriefComment, styles = Set(TableStyle.DescriptionList)){ tbdr => tbdr
-                .cell() { c => c
-                    .text("Implicitly: ")
-                }
-                .cell() { c => c
-                    .text("This member is added by an implicit conversion performed by ")
-                    .driLink(by.getName, by.getDri)
-                }
-            }
+        def contentForScope(s: Documentable & WithScope & WithExtraProperties[_]) = 
+            def groupExtensions(extensions: Seq[Member]): Seq[DocumentableSubGroup] = 
+                extensions.groupBy(_.kind).map { case (Kind.Extension(on), members) => 
+                    val signature = Signature(s"extension (${on.name}: ") join on.signature join Signature(")")
+                    DocumentableSubGroup(signature, members.toSeq)
+                }.toSeq
+            
+                
+            val (definedMethods, inheritedMethods) = s.membersBy(_.kind == Kind.Def)
+            val (definedFields, inheritedFiles) = s.membersBy(m => m.kind == Kind.Val || m.kind == Kind.Var)
+            val (definedClasslikes, inheritedClasslikes) = 
+                s.membersBy(m => m.kind == Kind.Class || m.kind == Kind.Object || m.kind == Kind.Trait)
+            val (definedTypes, inheritedTypes) = s.membersBy(_.kind.isInstanceOf[Kind.Type])
+            val (definedGivens, inheritedGives) = s.membersBy(_.kind.isInstanceOf[Kind.Given])
+            val (definedExtensions, inheritedExtensions) = s.membersBy(_.kind.isInstanceOf[Kind.Extension])
+            val (definedImplicits, inheritedImplicits) = s.membersBy(_.kind.isInstanceOf[Kind.Implicit])
 
-        def buildInheritedExtensionInfo(by: Documentable) = 
-            b.table(kind = ContentKind.BriefComment, styles = Set(TableStyle.DescriptionList)){ tbdr => tbdr
-                .cell() { c => c
-                    .text("Implicitly: ")
-                }
-                .cell() { c => c
-                    .text("This member is added by an extension defined in ")
-                    .driLink(by.getName, by.getDri)
-                }
-            }
-
-        def contentForScope(
-            s: Documentable & WithScope
-        ) = {
-            val (typeDefs, valDefs) = s.getProperties.asScala.toList.partition(_.get(PropertyExtension).kind == "type")
-            val classes = s.getClasslikes.asScala.toList
-            val inheritedDefinitions = s match {
-                case c: DClass => Some(c.get(ClasslikeExtension).inherited)
-                case _ => None
-            }
-            val givens = s match {
-                case c: DClass => Some(c.get(ClasslikeExtension).givens)
-                case p: DPackage => Option(p.get(PackageExtension)).map(_.givens)
-                case _ => None
-            }
-            val extensions = s match {
-                case c: DClass => Some(c.get(ClasslikeExtension).extensions)
-                case p: DPackage => Option(p.get(PackageExtension)).map(_.extensions)
-                case _ => None
-            }
-            val implicitMembers = s match {
-                case c: DClass => Some(c.get(ImplicitMembers))
-                case _ => None
-            }
-
-            val inheritedExtensions = implicitMembers.fold(Map.empty)(_.inheritedExtensions)
-            val implicitMethods = implicitMembers.fold(Map.empty)(_.methods)
-            val implicitInheritedMethods = implicitMembers.fold(Map.empty)(_.inheritedMethods)
-            val implicitFields = implicitMembers.fold(Map.empty)(_.properties)
-            val implicitInheritedFields = implicitMembers.fold(Map.empty)(_.inheritedProperties)
-             
-            val withoutExtensions = b
+            b
                 .contentForComments(s)
-                .divergentBlock(
-                    "Type members",
-                    List(
-                        "Types" -> typeDefs, 
-                        "Classlikes" -> classes, 
-                        "Inherited types" -> inheritedDefinitions.fold(List.empty)(_.types),
-                        "Inherited classlikes" -> inheritedDefinitions.fold(List.empty)(_.classlikes),
-                    ),
-                    kind = ContentKind.Classlikes,
-                    omitSplitterOnSingletons = false
-                )(
-                    (bdr, elem) => bdr.header(3, elem)()
+                .documentableTab("Type members")(
+                    DocumentableGroup(Some("Types"), definedTypes),
+                    DocumentableGroup(Some("Classlikes"), definedClasslikes), 
+                    DocumentableGroup(Some("Inherited types"), inheritedTypes),
+                    DocumentableGroup(Some("Inherited classlikes"), inheritedClasslikes)
                 )
-                .groupingBlock(
-                    "Methods",
-                    List(
-                        "Defined methods" -> (s.getFunctions.asScala ++ implicitMethods.keys ++ inheritedExtensions.keys).toList,
-                        "Inherited methods" -> (inheritedDefinitions.fold(List.empty)(_.methods) ++ implicitInheritedMethods.keys.toList)
-                    ),
-                    kind = ContentKind.Functions,
-                    omitSplitterOnSingletons = false
-                )(
-                    (builder, txt) => builder.header(3, txt)()
-                ){ (bdr, elem) => bdr
-                    .driLink(elem.getName, elem.getDri)
-                    .sourceSetDependentHint(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind = ContentKind.SourceSetDependentHint) { sbdr => 
-                        val withBrief = sbdr.contentForBrief(elem)
-                        (if implicitMethods.contains(elem) then withBrief.buildImplicitConversionInfo(implicitMethods(elem))
-                         else if implicitInheritedMethods.contains(elem) then withBrief.buildImplicitConversionInfo(implicitInheritedMethods(elem))
-                         else if inheritedExtensions.contains(elem) then withBrief.buildInheritedExtensionInfo(inheritedExtensions(elem))
-                         else withBrief)
-                        .signature(elem)
-                    }
-                }
-                .groupingBlock(
-                    "Value members",
-                    List(
-                        "Defined value members" -> (valDefs ++ implicitFields.keys.toList),
-                        "Inherited value members" -> (inheritedDefinitions.fold(List.empty)(_.fields) ++ implicitInheritedFields.keys.toList)
-                    ),
-                    kind = ContentKind.Properties,
-                    omitSplitterOnSingletons = false,
-                    sourceSets = s.getSourceSets.asScala.toSet
-                )(
-                    (bdr, elem) => bdr.header(3, elem)()
-                ){ (bdr, elem) => bdr
-                    .driLink(elem.getName, elem.getDri)
-                    .sourceSetDependentHint(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind = ContentKind.SourceSetDependentHint) { sbdr => 
-                        val withBrief = sbdr.contentForBrief(elem)
-                        (if implicitFields.contains(elem) then withBrief.buildImplicitConversionInfo(implicitFields(elem))
-                         else if implicitInheritedFields.contains(elem) then withBrief.buildImplicitConversionInfo(implicitInheritedFields(elem))
-                         else withBrief)
-                        .signature(elem)
-                    }
-                }
-                .groupingBlock(
-                    "Given",
-                    List(
-                        "Defined given" -> givens.getOrElse(List.empty),
-                        "Inherited given" -> inheritedDefinitions.fold(List.empty)(_.givens)
-                    ),
-                    kind = ContentKind.Functions,
-                    omitSplitterOnSingletons = false
-                )(
-                    (bdr, elem) => bdr.header(3, elem)()
-                ){ (bdr, elem) => bdr
-                    .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
-                    .sourceSetDependentHint(
-                        dri = Set(elem.getDri), 
-                        sourceSets = elem.getSourceSets.asScala.toSet,
-                        kind = ContentKind.SourceSetDependentHint
-                    ){ srcsetbdr => srcsetbdr
-                        .contentForBrief(elem)
-                        .signature(elem)
-                    }
-                }
-                if(extensions.getOrElse(List.empty).isEmpty && inheritedDefinitions.fold(List.empty)(_.extensions).isEmpty) then withoutExtensions
-                else withoutExtensions
-                .header(2, "Extensions")()
-                .group(styles = Set(ContentStyle.WithExtraAttributes), extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Extensions")){ gbdr => gbdr
-                    .group(){ gdbdr => gbdr
-                        .groupingBlock(
-                            "Defined extensions",
-                            extensions.getOrElse(List.empty).map(e => e.extendedSymbol -> e.extensions).sortBy(_._2.size),
-                            omitSplitterOnSingletons = true,
-                            kind = ContentKind.Extensions
-                        )( (bdr, receiver) => bdr 
-                            .group(){ grpbdr => grpbdr
-                                .header(4, "Extension group")()
-                                .signature(receiver)
-                            }
-                        ){ (bdr, elem) => bdr
-                            .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
-                            .sourceSetDependentHint(
-                                dri = Set(elem.getDri), 
-                                sourceSets = elem.getSourceSets.asScala.toSet, 
-                                kind = ContentKind.SourceSetDependentHint
-                            ){ srcsetbdr => srcsetbdr
-                                .contentForBrief(elem)
-                                .signature(elem)
-                            }
-                        }
-                        .groupingBlock(
-                            "Inherited extensions",
-                            inheritedDefinitions.fold(List.empty)(_.extensions).map(e => e.extendedSymbol -> e.extensions).sortBy(_._2.size),
-                            omitSplitterOnSingletons = true,
-                            kind = ContentKind.Extensions
-                        )( (bdr, receiver) => bdr 
-                            .group(){ grpbdr => grpbdr
-                                .header(4, "Extension group")()
-                                .signature(receiver)
-                            }
-                        ){ (bdr, elem) => bdr
-                            .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
-                            .sourceSetDependentHint(
-                                dri = Set(elem.getDri), 
-                                sourceSets = elem.getSourceSets.asScala.toSet, 
-                                kind = ContentKind.SourceSetDependentHint
-                            ){ srcsetbdr => srcsetbdr
-                                .contentForBrief(elem)
-                                .signature(elem)
-                            }
-                        }
-                    }
-                }
-        }
-
-        def contentForEnum(
-            c: DClass
-        ) = b.groupingBlock(
-            "Enum entries",
-            List(() -> Option(c.get(EnumExtension)).fold(List.empty)(_.enumEntries.sortBy(_.getName).toList)),
-            kind = ContentKind.Properties
-        )( (bdr, splitter) => bdr ){ (bdr, elem) => bdr
-            .driLink(elem.getName, elem.getDri, kind = ContentKind.Main)
-            .sourceSetDependentHint(
-                dri = Set(elem.getDri), 
-                sourceSets = elem.getSourceSets.asScala.toSet, 
-                kind = ContentKind.SourceSetDependentHint
-            ){ srcsetbdr => srcsetbdr
-                .contentForBrief(elem)
-                .signature(elem)
-            }
-        }
-
-        def contentForConstructors(
-                c: DClass
-            ) = b.groupingBlock(
-                "Constructors",
-                List("" -> c.getConstructors.asScala.toList),
-                kind = ContentKind.Constructors
-            )(
-                (bdr, group) => bdr
-            ){ (bdr, elem) => bdr
-                    .driLink(elem.getName, elem.getDri)
-                    .sourceSetDependentHint(Set(elem.getDri), elem.getSourceSets.asScala.toSet, kind = ContentKind.SourceSetDependentHint) { sbdr => sbdr
-                        .contentForBrief(elem)
-                        .signature(elem)
-                    }
-            }
+                .documentableTab("Methods")(
+                    DocumentableGroup(Some("Defined methods"), definedMethods),
+                    DocumentableGroup(Some("Inherited methods"),  inheritedMethods),
+                )
+                .documentableTab("Value members")(
+                    DocumentableGroup(Some("Defined value members"), definedFields), 
+                    DocumentableGroup(Some("Inherited value members"), inheritedFiles)
+                )
+                .documentableTab("Givens")(
+                    DocumentableGroup(Some("Defined givens"), definedGivens), 
+                    DocumentableGroup(Some("Inherited givens"), inheritedGives)
+                )
+                .documentableTab("Extensions")(
+                    DocumentableGroup(Some("Defined extensions"), groupExtensions(definedExtensions)), 
+                    DocumentableGroup(Some("Inherited extensions"), groupExtensions(inheritedExtensions))
+                )
+                .documentableTab("Implicits")(
+                    DocumentableGroup(Some("Defined implicits"), definedImplicits), 
+                    DocumentableGroup(Some("Inherited implicits"), inheritedImplicits)
+                )
     
 
-        def contentForTypesInfo(c: DClass) = {
-            val inheritanceInfo = c.get(InheritanceInfo)
-            val supertypes = inheritanceInfo.parents
-            val subtypes = inheritanceInfo.knownChildren
-            def contentForType(
-                bdr: ScalaPageContentBuilder#ScalaDocumentableContentBuilder,
-                b: DRI
-            ): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = bdr
-                .driLink(b.getClassNames, b)
+        def contentForEnum(c: DClass) = 
+            b.documentableTab("Enum entries")(
+                DocumentableGroup(None, c.membersBy(_.kind == Kind.EnumCase)._1) // Enum entries cannot be inherited 
+            )
+        
 
-            def contentForBound(
-                bdr: ScalaPageContentBuilder#ScalaDocumentableContentBuilder,
-                b: Bound
-            ): ScalaPageContentBuilder#ScalaDocumentableContentBuilder = b match {
-                    case t: org.jetbrains.dokka.model.TypeConstructor => t.getProjections.asScala.foldLeft(bdr){
-                        case (builder, p) => p match {
-                            case text: UnresolvedBound => builder.text(text.getName)
-                            case link: TypeParameter => builder.driLink(link.getName, link.getDri) 
-                            case other => builder.text(s"TODO: $other")
-                        }
+        def contentForConstructors(c: DClass) = 
+             b.documentableTab("Constructors")(
+                DocumentableGroup(None, c.getConstructors.asScala.toList)
+            )
+        
+
+        def contentForTypesInfo(c: DClass) =
+            val supertypes = c.parents
+            val subtypes = c.knownChildren
+
+            def contentForTypeLink(builder: DocBuilder, link: LinkToType): DocBuilder =
+                builder.group(styles = Set(TextStyle.Paragraph)) { builder => 
+                    link.signature.foldLeft(builder.text(link.kind.name).text(" ")){ (builder, sigElement) => sigElement match 
+                        case Link(name, dri) => builder.driLink(name, dri)
+                        case str: String => builder.text(str)   
                     }
-                    case o => bdr.text(s"TODO: $o")
-            }
+                }
 
-            b.pipe { content =>
-                if (!supertypes.isEmpty) {
-                    content.header(2, "Linear supertypes")()
+            val withSupertypes = if supertypes.isEmpty then b else
+                b.header(2, "Linear supertypes")()
                     .group(
                         kind = ContentKind.Comment,
                         styles = Set(ContentStyle.WithExtraAttributes), 
                         extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Linear supertypes")
-                    ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
-                            _.list(supertypes, separator = "") { (bdr, elem) => bdr
-                                .group(styles = Set(TextStyle.Paragraph))(contentForBound(_, elem.bound))
-                            }
+                    ){ gbdr => gbdr
+                        .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
+                            .list(supertypes.toList, separator = "")(contentForTypeLink)
                         }
-                    }
-                } else content
-            }.pipe { content =>
-                if (!subtypes.isEmpty) {
-                    content.header(2, "Known subtypes")()
+                    } 
+
+            val withSubtypes = if (subtypes.isEmpty) withSupertypes else
+                withSupertypes.header(2, "Known subtypes")()
                     .group(
                         kind = ContentKind.Comment,
                         styles = Set(ContentStyle.WithExtraAttributes), 
                         extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Known subtypes")
                     ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
-                            _.list(subtypes.map(_.dri))(contentForType)
+                            _.list(subtypes.toList)(contentForTypeLink)
                         }
                     }
-                } else content
-            }.pipe { content =>
-                content.header(2, "Type hierarchy")()
+
+            withSubtypes.header(2, "Type hierarchy")()
                 .group(
                     kind = ContentKind.Comment,
                     styles = Set(ContentStyle.WithExtraAttributes), 
                     extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Type hierarchy")
                 ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
-                        _.dotDiagram(
-                            HierarchyDiagramBuilder.build(DRIWithKind(c.getDri, c.get(ClasslikeExtension).kind),supertypes, subtypes)
-                        )
+                        _.dotDiagram(HierarchyDiagramBuilder.build(c))
                     }
                 }
-            }
-        }
-
-}

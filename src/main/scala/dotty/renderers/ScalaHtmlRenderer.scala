@@ -1,6 +1,5 @@
 package dotty.dokka
 
-import dotty.dokka.model.HierarchyDiagram
 import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.model._
@@ -18,6 +17,21 @@ import java.util.{List => JList, Set => JSet}
 import kotlinx.html.FlowContent
 import kotlinx.html.stream.StreamKt
 import kotlinx.html.Gen_consumer_tagsKt
+import org.jetbrains.dokka.links.DRI
+import dotty.dokka.model.api.Link
+import dotty.dokka.model.api.HierarchyDiagram
+import org.jetbrains.dokka.base.resolvers.local.LocationProvider
+
+
+class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
+    def link(dri: DRI): String = locationProvider.resolve(dri, sourceSetRestriciton, pageContext) match
+        case null => ""
+        case link => link
+
+    def renderElement(e: String | (String, DRI) | Link) = e match
+        case (name, dri) =>  a(href := link(dri))(name)
+        case name: String => raw(name)
+        case Link(name, dri) => a(href := link(dri))(name)
 
 class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
 
@@ -44,9 +58,77 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         node match {
             case n: HtmlContentNode => withHtml(f, raw(n.body).toString)
             case n: HierarchyDiagramContentNode => buildDiagram(f, n.diagram, pageContext)
+            case n: DocumentableList => 
+                val ss = if sourceSetRestriciton == null then Set.empty.asJava else sourceSetRestriciton
+                withHtml(f, buildDocumentableList(n, pageContext, ss).toString())
+            case n: DocumentableFilter => withHtml(f, buildDocumentableFilter.toString)
             case other => super.buildContentNode(f, node, pageContext, sourceSetRestriciton)
         }
     }
+
+    private val clazz = `class`
+
+    private val anchor = raw("""
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="darkgray" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21.2496 5.3C20.3496 4.5 19.2496 4 18.0496 4C16.8496 4 15.6496 4.5 14.8496 5.3L10.3496 9.8L11.7496 11.2L16.2496 6.7C17.2496 5.7 18.8496 5.7 19.8496 6.7C20.8496 7.7 20.8496 9.3 19.8496 10.3L15.3496 14.8L16.7496 16.2L21.2496 11.7C22.1496 10.8 22.5496 9.7 22.5496 8.5C22.5496 7.3 22.1496 6.2 21.2496 5.3Z"></path>
+            <path d="M8.35 16.7998C7.35 17.7998 5.75 17.7998 4.75 16.7998C3.75 15.7998 3.75 14.1998 4.75 13.1998L9.25 8.6998L7.85 7.2998L3.35 11.7998C1.55 13.5998 1.55 16.3998 3.35 18.1998C4.25 19.0998 5.35 19.4998 6.55 19.4998C7.75 19.4998 8.85 19.0998 9.75 18.1998L14.25 13.6998L12.85 12.2998L8.35 16.7998Z"></path>
+        </svg>
+    """)
+
+    
+
+    private def buildDocumentableList(n: DocumentableList, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = 
+        def render(n: ContentNode) = raw(buildWithKotlinx(n, pageContext, null)) 
+
+        val renderer = SignatureRenderer(pageContext, sourceSetRestriciton, getLocationProvider)
+        import renderer._
+
+        def buildDocumentable(element: DocumentableElement) = 
+            def topLevelAttr = Seq(clazz := "documentableElement") ++ element.attributes.map{ case (n, v) => attr(s"data-f-$n") := v }
+            val kind = element.modifiers.takeRight(1)
+            val otherModifiers = element.modifiers.dropRight(1)
+
+            div(topLevelAttr:_*)(
+                div(clazz := "annotations")(element.annotations.map(renderElement)),
+                div(
+                    a(href:=link(element.params.dri), clazz := "documentableAnchor")(anchor),
+                    span(clazz := "modifiers monospace")(
+                        span(clazz := "other-modifiers")(otherModifiers.map(renderElement)),
+                        span(clazz := "kind")(kind.map(renderElement)),
+                    ),
+                    a(clazz := "documentableName monospace", href := link(element.params.dri) )(element.name),
+                    span(clazz := "signature monospace")(element.signature.map(renderElement)),
+                    div(clazz := "documentableBrief")(element.brief.map(render)),
+                ),
+                div(clazz := "originInfo")(element.originInfo.map(renderElement)),
+            )    
+
+        div(clazz := "documentableList")(
+            if(n.groupName.isEmpty) raw("") else h3(clazz := "documentableHeader")(n.groupName.map(renderElement)),
+            n.elements.flatMap { 
+                case element: DocumentableElement =>
+                    Seq(buildDocumentable(element))
+                case group: DocumentableElementGroup =>
+                    h4(clazz := "documentable-extension-target")(
+                        group.header.map(renderElement)
+                    ) +: group.elements.map(buildDocumentable)
+        }
+        )
+
+    private def buildDocumentableFilter = div(clazz := "documentableFilter")(
+        div(clazz := "filterUpperContainer")(
+            button(clazz := "filterToggleButton")(
+                raw("""
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
+                        <path d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                    </svg>
+                """)
+            ),
+            input(clazz := "filterableInput", placeholder := "Filter all members")
+        ),
+        div(clazz := "filterLowerContainer")()
+    )
 
     def buildDescriptionList(node: ContentTable, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {
         val children = node.getChildren.asScala.toList.zipWithIndex
@@ -94,21 +176,15 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         })
     }
 
-    private lazy val dotDiagramBuilder = DotDiagramBuilder(getLocationProvider)
     
-    def buildDiagram(
-        f: FlowContent,
-        diagram: HierarchyDiagram,
-        pageContext: ContentPage,
-    ) = withHtml(f, div( id := "inheritance-diagram",
-            svg(id := "graph"),
-            script(`type` := "text/dot", id := "dot", raw(dotDiagramBuilder.build(
-                diagram, 
-                DisplaySourceSetKt.toDisplaySourceSet(ctx.getConfiguration.getSourceSets.get(0).asInstanceOf[DokkaConfiguration$DokkaSourceSet]),
-                pageContext)
-            ))
-        ).render
-    )
+    def buildDiagram(f: FlowContent, diagram: HierarchyDiagram, pageContext: ContentPage) = 
+        val ss = DisplaySourceSetKt.toDisplaySourceSet(ctx.getConfiguration.getSourceSets.get(0).asInstanceOf[DokkaConfiguration$DokkaSourceSet])
+        val renderer = SignatureRenderer(pageContext, ss, getLocationProvider)
+        withHtml(f, div( id := "inheritance-diagram",
+                svg(id := "graph"),
+                script(`type` := "text/dot", id := "dot", raw(DotDiagramBuilder.build(diagram, renderer)))
+            ).render
+        )
 
     override def buildHtml(page: PageNode, resources: JList[String], kotlinxContent: FlowContentConsumer): String =
         val (pageTitle, pageResources, fromTemplate) = page match

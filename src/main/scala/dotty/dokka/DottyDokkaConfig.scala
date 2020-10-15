@@ -33,7 +33,7 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
       /*includes=*/ Set().asJava,
       /*includeNonPublic=*/ true,
       /*reportUndocumented=*/ false, /* changed because of exception in reportUndocumentedTransformer - there's 'when' which doesnt match because it contains only KotlinVisbility cases */
-      /*skipEmptyPackages=*/ true,
+      /*skipEmptyPackages=*/ false, // Now all our packages are empty from dokka perspective
       /*skipDeprecated=*/ true,
       /*jdkVersion=*/ 8,
       /*sourceLinks=*/ sourceLinks.asJava,

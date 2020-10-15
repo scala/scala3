@@ -43,7 +43,7 @@ class B {
 }
 
 class C {
-
+    def extensionInCompanion: String = ???
 }
 
 object C {
