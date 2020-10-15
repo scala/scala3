@@ -625,8 +625,7 @@ object Lst:
               System.arraycopy(xs, 0, newElems, 0, i)
               newElems(i) = y
             i += 1
-          if newElems == null then fromArr[V](xs)
-          else _fromArray[V](newElems, 0, i)
+          _fromArray[V](if newElems == null then xs else newElems, 0, i)
         case x: T @unchecked =>
           if yit.hasNext then single[V](op(x, yit.next))
           else NIL
@@ -651,8 +650,7 @@ object Lst:
               System.arraycopy(xs, 0, newElems, 0, i)
               newElems(i) = y
             i += 1
-          if newElems == null then fromArr[W](xs)
-          else _fromArray[W](newElems, 0, i)
+          _fromArray[W](if newElems == null then xs else newElems, 0, i)
         case x: T @unchecked =>
           if yit.hasNext && zit.hasNext then single[W](op(x, yit.next, zit.next))
           else NIL

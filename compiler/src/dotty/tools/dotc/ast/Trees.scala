@@ -235,7 +235,7 @@ object Trees {
   }
 
   class UnAssignedTypeException[T >: Untyped](tree: Tree[T]) extends RuntimeException {
-    override def getMessage: String = s"type of $tree is not assigned"
+    override def getMessage: String = s"type of $tree # ${tree.uniqueId} is not assigned"
   }
 
   type LazyTree[-T >: Untyped] = Tree[T] | Lazy[Tree[T]]

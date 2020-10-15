@@ -1326,7 +1326,7 @@ trait Applications extends Compatibility {
         }
         val unapplyPatterns = bunchedArgs.zipWith(argTypes)(typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns.toList), ownType)
-        unapp.println(s"unapply patterns = $unapplyPatterns")
+        unapp.println(s"unapply patterns = ${unapplyPatterns.toList}")
         if ((ownType eq selType) || ownType.isError) result
         else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)
       case tp =>
