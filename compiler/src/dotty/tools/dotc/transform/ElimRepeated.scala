@@ -171,9 +171,10 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *        of generic Java varargs in `elimRepeated`.
    */
   private def adaptToArray(tree: Tree, elemPt: Type)(implicit ctx: Context): Tree =
-    val elemTp = tree.tpe.elemType
+    val treeTpe = tree.tpe.widenUnion
+    val elemTp = treeTpe.elemType
     val elemTpMatches = elemTp <:< elemPt
-    val treeIsArray = tree.tpe.derivesFrom(defn.ArrayClass)
+    val treeIsArray = treeTpe.derivesFrom(defn.ArrayClass)
     if elemTpMatches && treeIsArray then
       tree // No adaptation necessary
     else tree match
