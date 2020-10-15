@@ -1029,7 +1029,7 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
-            -- "ExportsTest.scala" // JS exports + do not compile because of a var in a structural type
+            -- "ExportsTest.scala" // JS exports + IR checking error
             -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
@@ -1045,12 +1045,8 @@ object Build {
       // Putting them here instead of above makes sure that we do not regress on compilation+linking.
       Test / testOptions += Tests.Filter { name =>
         !Set[String](
-          "org.scalajs.testsuite.compiler.InteroperabilityTest", // 3 tests require JS exports, all other tests pass
-
           "org.scalajs.testsuite.jsinterop.AsyncTest", // needs JS exports in PromiseMock.scala
-          "org.scalajs.testsuite.jsinterop.DynamicTest", // one test requires JS exports, all other tests pass
           "org.scalajs.testsuite.jsinterop.JSExportStaticTest", // JS exports
-          "org.scalajs.testsuite.jsinterop.NonNativeJSTypeTest", // 1 test fails because of a progression for value class fields (needs an update upstream)
 
           // Not investigated so far
           "org.scalajs.testsuite.junit.JUnitAbstractClassTestCheck",
