@@ -740,10 +740,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def sliceTopLevel(tree: Tree, cls: ClassSymbol)(using Context): List[Tree] = tree match {
     case PackageDef(pid, stats) =>
       val slicedStats = stats.flatMap(sliceTopLevel(_, cls))
-      if (!slicedStats.isEmpty)
-        cpy.PackageDef(tree)(pid, slicedStats) :: Nil
-      else
-        Nil
+      val isEffectivelyEmpty = slicedStats.forall(_.isInstanceOf[Import])
+      if isEffectivelyEmpty then Nil
+      else cpy.PackageDef(tree)(pid, slicedStats) :: Nil
     case tdef: TypeDef =>
       val sym = tdef.symbol
       assert(sym.isClass)
