@@ -25,7 +25,7 @@ import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{toLst, +:}
 
 /*
  *
@@ -187,7 +187,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val assignModuleField = Assign(ref(moduleField), callConstructor)
         val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
         val clinit = clinits match {
-          case Lst((ddef: DefDef), _: _*) =>
+          case (ddef: DefDef) +: _ =>
             cpy.DefDef(ddef)(rhs = Block((ddef.rhs :: assignModuleField :: remainingConstrStatsSubst).toLst, unitLiteral))
           case _ =>
             DefDef(clInitSymbol, Block((assignModuleField :: remainingConstrStatsSubst).toLst, unitLiteral))

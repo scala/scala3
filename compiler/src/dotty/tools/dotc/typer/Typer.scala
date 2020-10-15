@@ -31,7 +31,7 @@ import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{toLst, +:}
 import Applications.{ExtMethodApply, IntegratedTypeArgs, productSelectorTypes, wrapDefs}
 
 import collection.mutable
@@ -1365,7 +1365,7 @@ class Typer extends Namer
         }
 
         result match {
-          case Match(sel, Lst(CaseDef(pat, _, _), _: _*)) =>
+          case Match(sel, CaseDef(pat, _, _) +: _) =>
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
               case Some(checkMode) =>
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
@@ -1996,7 +1996,7 @@ class Typer extends Namer
         case app: Apply if untpd.isSelfConstrCall(app) =>
           if (sym.span.exists && app.symbol.span.exists && sym.span.start <= app.symbol.span.start)
             report.error("secondary constructor must call a preceding constructor", app.srcPos)
-        case Block(Lst(stat, _: _*), _) => checkThisConstrCall(stat)
+        case Block(stat +: _, _) => checkThisConstrCall(stat)
         case _ =>
       }
       checkThisConstrCall(rhs1)

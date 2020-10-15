@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted.reflect._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.util.Lst
-import dotty.tools.dotc.util.Lst.toLst
+import dotty.tools.dotc.util.Lst.{toLst, +:}
 
 import scala.quoted.QuoteContext
 import scala.quoted.show.SyntaxHighlight
@@ -2632,7 +2632,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
         pat match
           case tpd.Inlined(_, Lst.Empty, pat2) => extractTypeHoles(pat2)
-          case tpd.Block(stats @ Lst(typeHole: TypeDef, _: _*), expr) if isTypeHoleDef(typeHole) =>
+          case tpd.Block(stats @ (typeHole: TypeDef) +: _, expr) if isTypeHoleDef(typeHole) =>
             val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol).toList
             val otherStats = stats.dropWhile(isTypeHoleDef)
             (tpd.cpy.Block(pat)(otherStats, expr), holes)

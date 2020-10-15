@@ -17,6 +17,7 @@ import scala.jdk.CollectionConverters._
 import collection.mutable
 import java.nio.file.Paths
 import util.Lst; // import Lst.::
+import Lst.+:
 
 import dotty.tools.dotc.transform.SymUtils._
 
@@ -156,7 +157,7 @@ class ExtractSemanticDB extends Phase:
           case tree: ValDef
           if tree.symbol.isAllOf(EnumValue) =>
             tree.rhs match
-            case Block(Lst(TypeDef(_, template: Template), _: _*), _) => // simple case with specialised extends clause
+            case Block(TypeDef(_, template: Template) +: _, _) => // simple case with specialised extends clause
               template.parents.foreach(traverse)
             case _ => // calls $new
           case tree: ValDef

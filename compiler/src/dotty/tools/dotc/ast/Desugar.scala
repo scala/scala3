@@ -18,6 +18,7 @@ import annotation.constructorOnly
 import printing.Formatting.hl
 import config.Printers
 import util.Lst; // import Lst.::
+import util.Lst.{toLst, +:}
 
 import scala.annotation.internal.sharable
 
@@ -382,7 +383,7 @@ object desugar {
 
     def decompose(ddef: Tree): DefDef = ddef match {
       case meth: DefDef => meth
-      case Thicket(Lst(meth: DefDef, defaults: _*)) =>
+      case Thicket((meth: DefDef) +: defaults) =>
         defaultGetters = defaults.toList
         meth
     }

@@ -19,7 +19,7 @@ import transform.MegaPhase.MiniPhase
 import transform.SymUtils._
 import scala.collection.mutable
 import util.Lst; // import Lst.::
-import util.Lst.toLst
+import util.Lst.{toLst, +:}
 
 class LazyVals extends MiniPhase with IdentityDenotTransformer {
   import LazyVals._
@@ -117,7 +117,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
 
   private def addInFront(prefix: List[Tree], stats: Lst[Tree]) = stats match {
-    case Lst(first, _: _*) if isSuperConstrCall(first) => first :: prefix ::: stats.tail
+    case first +: _ if isSuperConstrCall(first) => first :: prefix ::: stats.tail
     case _ => prefix ::: stats
   }
 
