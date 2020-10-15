@@ -1,24 +1,44 @@
--- Error: tests/neg/enum-values.scala:19:45 ----------------------------------------------------------------------------
-19 |  val tags: Array[Tag[?]]              = Tag.values // error
+-- [E008] Not Found Error: tests/neg/enum-values.scala:28:45 -----------------------------------------------------------
+28 |  val tags: Array[Tag[?]]              = Tag.values // error
    |                                         ^^^^^^^^^^
-   |         Although class Tag is an enum, it has non-singleton cases, which prevents it from having a values array
--- Error: tests/neg/enum-values.scala:20:50 ----------------------------------------------------------------------------
-20 |  val listlikes: Array[ListLike[?]]    = ListLike.values // error
+   |                                         value values is not a member of object example.Tag.
+   |                                         Although class Tag is an enum, it has non-singleton cases,
+   |                                         which prevents it from having a values array.
+-- [E008] Not Found Error: tests/neg/enum-values.scala:29:50 -----------------------------------------------------------
+29 |  val listlikes: Array[ListLike[?]]    = ListLike.values // error
    |                                         ^^^^^^^^^^^^^^^
-   |    Although class ListLike is an enum, it has non-singleton cases, which prevents it from having a values array
--- Error: tests/neg/enum-values.scala:21:52 ----------------------------------------------------------------------------
-21 |  val typeCtorsK: Array[TypeCtorsK[?]] = TypeCtorsK.values // error
+   |                                         value values is not a member of object example.ListLike.
+   |                                         Although class ListLike is an enum, it has non-singleton cases,
+   |                                         which prevents it from having a values array.
+-- [E008] Not Found Error: tests/neg/enum-values.scala:30:52 -----------------------------------------------------------
+30 |  val typeCtorsK: Array[TypeCtorsK[?]] = TypeCtorsK.values // error
    |                                         ^^^^^^^^^^^^^^^^^
-   |  Although class TypeCtorsK is an enum, it has non-singleton cases, which prevents it from having a values array
--- Error: tests/neg/enum-values.scala:23:13 ----------------------------------------------------------------------------
-23 |  Tag.valueOf("Int") // error
+   |                                         value values is not a member of object example.TypeCtorsK.
+   |                                         Although class TypeCtorsK is an enum, it has non-singleton cases,
+   |                                         which prevents it from having a values array.
+-- [E008] Not Found Error: tests/neg/enum-values.scala:32:6 ------------------------------------------------------------
+32 |  Tag.valueOf("Int") // error
+   |  ^^^^^^^^^^^
+   |  value valueOf is not a member of object example.Tag.
+   |  Although class Tag is an enum, it has non-singleton cases,
+   |  which prevents it from having a valueOf lookup method.
+-- [E008] Not Found Error: tests/neg/enum-values.scala:33:11 -----------------------------------------------------------
+33 |  ListLike.valueOf("EmptyListLike") // error
+   |  ^^^^^^^^^^^^^^^^
+   |  value valueOf is not a member of object example.ListLike.
+   |  Although class ListLike is an enum, it has non-singleton cases,
+   |  which prevents it from having a valueOf lookup method.
+-- [E008] Not Found Error: tests/neg/enum-values.scala:34:13 -----------------------------------------------------------
+34 |  TypeCtorsK.valueOf("Option") // error
    |  ^^^^^^^^^^^^^^^^^^
-   |Although class Tag is an enum, it has non-singleton cases, which prevents it from having a valueOf lookup method
--- Error: tests/neg/enum-values.scala:24:18 ----------------------------------------------------------------------------
-24 |  ListLike.valueOf("EmptyListLike") // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Although class ListLike is an enum, it has non-singleton cases, which prevents it from having a valueOf lookup method
--- Error: tests/neg/enum-values.scala:25:20 ----------------------------------------------------------------------------
-25 |  TypeCtorsK.valueOf("Option") // error
-   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |Although class TypeCtorsK is an enum, it has non-singleton cases, which prevents it from having a valueOf lookup method
+   |  value valueOf is not a member of object example.TypeCtorsK.
+   |  Although class TypeCtorsK is an enum, it has non-singleton cases,
+   |  which prevents it from having a valueOf lookup method.
+-- [E008] Not Found Error: tests/neg/enum-values.scala:36:12 -----------------------------------------------------------
+36 |  NotAnEnum.values // error
+   |  ^^^^^^^^^^^^^^^^
+   |  value values is not a member of object example.NotAnEnum
+-- [E008] Not Found Error: tests/neg/enum-values.scala:37:12 -----------------------------------------------------------
+37 |  NotAnEnum.valueOf("Foo") // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  value valueOf is not a member of object example.NotAnEnum

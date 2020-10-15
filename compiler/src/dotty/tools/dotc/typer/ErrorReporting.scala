@@ -4,13 +4,15 @@ package typer
 
 import ast._
 import core._
-import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
+import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._, Names._
 import Implicits._, Flags._, Constants.Constant
 import util.Spans._
 import util.SrcPos
 import config.Feature
 import java.util.regex.Matcher.quoteReplacement
 import reporting._
+import transform.SymUtils._
+import StdNames._
 
 object ErrorReporting {
 
@@ -145,7 +147,7 @@ object ErrorReporting {
       else ""
 
     def selectErrorAddendum
-      (tree: untpd.RefTree, qual1: Tree, qualType: Type, suggestImports: Type => String)
+      (tree: untpd.RefTree, qual1: Tree, qualType: Type, name: Name, suggestImports: Type => String)
       (using Context): String =
       val attempts: List[Tree] = qual1.getAttachment(Typer.HiddenSearchFailure) match
         case Some(failures) =>
@@ -171,6 +173,13 @@ object ErrorReporting {
            |or drop any spaces behind the operator."""
       else if qualType.isBottomType then
         ""
+      else if ((name eq nme.values) || (name eq nme.valueOf)) && qualType.classSymbol.companionClass.isEnumClass then
+        val kind = if name eq nme.values then i"${nme.values} array" else i"${nme.valueOf} lookup method"
+        // an assumption is made here that the values and valueOf methods were not generated
+        // because the enum defines non-singleton cases
+        i""".
+            |Although ${qualType.classSymbol.companionClass} is an enum, it has non-singleton cases,
+            |which prevents it from having a $kind."""
       else
         val add = suggestImports(
           ViewProto(qualType.widen,
