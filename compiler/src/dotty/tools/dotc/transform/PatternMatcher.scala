@@ -641,7 +641,9 @@ object PatternMatcher {
 
       def toDrop(sym: Symbol) = initializer.get(sym) match {
         case Some(rhs) =>
-          isPatmatGenerated(sym) && refCount(sym) <= 1 && sym != topSym && isPureExpr(rhs)
+          isPatmatGenerated(sym)
+          && sym != topSym
+          && (refCount(sym) == 0 || refCount(sym) == 1 && isPureExpr(rhs))
         case none =>
           false
       }
