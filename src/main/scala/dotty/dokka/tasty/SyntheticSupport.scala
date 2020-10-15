@@ -31,17 +31,9 @@ trait SyntheticsSupport:
 
     def isDefaultHelperMethod: Boolean = ".*\\$default\\$\\d+$".r.matches(s.name)
 
-    def isExtensionMethod: Boolean = hackIsExtension(self.reflect)(s)
-
     def isOpaque: Boolean = hackIsOpaque(self.reflect)(s)
 
     def isInfix: Boolean = hackIsInfix(self.reflect)(s)
-
-    def extendedSymbol: Option[ValDef] =
-      Option.when(hackIsExtension(self.reflect)(s))(
-        if(hackIsLeftAssoc(s)) s.tree.asInstanceOf[DefDef].paramss(0)(0)
-        else s.tree.asInstanceOf[DefDef].paramss(1)(0)
-      )
     
     def getAllMembers: List[Symbol] = hackGetAllMembers(self.reflect)(s)
 
@@ -66,12 +58,6 @@ trait SyntheticsSupport:
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     ctx.definitions.isInfix(sym)
   }
-  def hackIsExtension(r: Reflection)(rsym: r.Symbol): Boolean = {
-    import dotty.tools.dotc
-    given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
-    val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
-    sym.is(dotc.core.Flags.Extension)
-  }
   /* We need there to filter out symbols with certain flagsets, because these symbols come from compiler and TASTY can't handle them well. 
   They are valdefs that describe case companion objects and cases from enum.
   TASTY crashed when calling _.tree on them.
@@ -95,8 +81,6 @@ trait SyntheticsSupport:
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     sym.is(dotc.core.Flags.Opaque)
   }
-
-  def hackIsLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
 
   def hackGetSupertypes(r: Reflection)(rdef: r.ClassDef) = {
     import dotty.tools.dotc
