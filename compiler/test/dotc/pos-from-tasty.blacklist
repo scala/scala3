@@ -1,18 +1,10 @@
-# has location not matching its contents: contains class mixins.Collections
-collections_1.scala
-
 # Infinite loop
 t3612.scala
 
-# Other failure
+# java.lang.AssertionError: assertion failed:
+# Found:    (File.this.parens0 : => Test.this.parens.BraceImpl)
+# Required: ((Test.this.parens : Test.this.ParensImpl) | (Test.this.bracks : Test.this.BracksImpl))#BraceImpl
 t802.scala
 
-# Matchtype
-i7087.scala
-
-# Nullability
-nullable.scala
-notNull.scala
-
-# cyclic reference involving @uncheckedVariance
-annot-bootstrap.scala
+# missing position
+rbtree.scala
