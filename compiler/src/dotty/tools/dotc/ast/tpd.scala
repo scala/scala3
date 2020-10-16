@@ -15,7 +15,7 @@ import util.{Property, SourceFile, NoSource}
 import util.Lst.{NIL, +:, toLst}
 import NameKinds.{TempResultName, OuterSelectName}
 import typer.ConstFold
-import util.Lst; // import Lst.::
+import util.Lst
 
 import scala.annotation.tailrec
 import scala.io.Codec

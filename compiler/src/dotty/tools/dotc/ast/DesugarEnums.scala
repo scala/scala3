@@ -9,7 +9,7 @@ import Decorators._
 import util.{Property, SourceFile}
 import typer.ErrorReporting._
 import transform.SyntheticMembers.ExtendsSingletonMirror
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 

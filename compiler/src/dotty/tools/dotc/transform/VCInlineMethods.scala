@@ -7,7 +7,7 @@ import core._
 import Contexts._, Trees._, Types._
 import DenotTransformers._, MegaPhase._
 import ExtensionMethods._, ValueClasses._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 

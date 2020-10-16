@@ -23,7 +23,7 @@ import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.{AbstractFile, PlainFile, ZipArchive}
 import scala.util.control.NonFatal
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object ClassfileParser {

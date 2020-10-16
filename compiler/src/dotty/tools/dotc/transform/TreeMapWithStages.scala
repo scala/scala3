@@ -19,7 +19,7 @@ import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
-import dotty.tools.dotc.util.Lst; import Lst.::
+import dotty.tools.dotc.util.Lst
 import Lst.{NIL, +:, toLst}
 
 import scala.collection.mutable

@@ -4,7 +4,7 @@ import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext, ContextDocstrings}
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NoAddr}

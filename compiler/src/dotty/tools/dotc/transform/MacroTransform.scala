@@ -8,7 +8,7 @@ import Contexts._
 import Symbols._
 import Flags.PackageVal
 import Decorators._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** A base class for transforms.

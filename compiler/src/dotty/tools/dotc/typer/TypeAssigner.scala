@@ -8,7 +8,7 @@ import Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators
 import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
 import util.Spans._
 import util.SrcPos
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 import config.Printers.typr
 import ast.Trees._

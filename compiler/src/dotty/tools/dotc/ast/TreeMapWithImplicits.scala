@@ -7,7 +7,7 @@ import core.ContextOps.enter
 import core.Flags._
 import core.Symbols._
 import core.TypeError
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 

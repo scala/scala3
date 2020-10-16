@@ -22,7 +22,7 @@ import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.core.Annotations._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import scala.collection.mutable

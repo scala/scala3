@@ -26,7 +26,7 @@ import scala.reflect.ClassTag
 
 import dotty.tools.dotc.quoted._
 import scala.quoted.QuoteContext
-import util.Lst; import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Utility class to splice quoted expressions */

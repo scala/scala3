@@ -13,7 +13,7 @@ import ast.desugar, ast.desugar._
 import ProtoTypes._
 import util.Spans._
 import util.Property
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 import collection.mutable
 import tpd.tpes

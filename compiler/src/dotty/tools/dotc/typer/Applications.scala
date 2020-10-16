@@ -7,7 +7,7 @@ import ast.{Trees, tpd, untpd, desugar}
 import util.Spans._
 import util.Stats.record
 import util.{SrcPos, NoSourcePosition, SourceFile}
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 import Trees.Untyped
 import Contexts._

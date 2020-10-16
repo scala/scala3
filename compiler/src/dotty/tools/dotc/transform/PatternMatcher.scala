@@ -17,7 +17,7 @@ import config.Printers.patmatch
 import reporting._
 import dotty.tools.dotc.ast._
 import util.Property._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** The pattern matching transform.

@@ -13,7 +13,7 @@ import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 import core.Decorators._
 

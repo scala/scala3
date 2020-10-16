@@ -7,7 +7,7 @@ import MegaPhase._
 import NameKinds.NonLocalReturnKeyName
 import config.Feature.sourceVersion
 import config.SourceVersion._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object NonLocalReturns {

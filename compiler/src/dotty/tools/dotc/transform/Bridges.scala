@@ -9,7 +9,7 @@ import ast.untpd
 import collection.{mutable, immutable}
 import util.Spans.Span
 import util.SrcPos
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** A helper class for generating bridge methods in class `root`. */

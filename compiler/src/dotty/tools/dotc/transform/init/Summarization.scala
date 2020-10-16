@@ -13,7 +13,7 @@ import Types._
 import ast.tpd._
 import config.Printers.init
 import reporting.trace
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import Effects._, Potentials._, Summary._, Util._

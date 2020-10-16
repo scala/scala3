@@ -14,7 +14,7 @@ import StdNames.nme
 import printing.Texts.Text
 import ProtoTypes.NoViewsAllowed.normalizedCompatible
 import Decorators._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object ImportInfo {

@@ -23,7 +23,7 @@ import Decorators._
 import scala.internal.Chars.isOperatorPart
 import transform.TypeUtils._
 import transform.SymUtils._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 

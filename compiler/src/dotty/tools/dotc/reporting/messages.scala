@@ -24,7 +24,7 @@ import ast.Trees._
 import ast.untpd
 import ast.tpd
 import transform.SymUtils._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /**  Messages

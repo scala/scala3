@@ -10,7 +10,7 @@ import SymDenotations.SymDenotation
 import collection.mutable
 import MegaPhase.MiniPhase
 import util.Store
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Lift nested classes to toplevel */

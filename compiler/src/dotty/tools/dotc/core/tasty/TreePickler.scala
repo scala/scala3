@@ -20,7 +20,7 @@ import printing.Texts._
 import util.SourceFile
 import annotation.constructorOnly
 import collection.mutable
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 

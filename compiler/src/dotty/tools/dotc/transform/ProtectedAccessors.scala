@@ -8,7 +8,7 @@ import core.Flags._
 import core.Decorators._
 import MegaPhase.MiniPhase
 import config.Printers.transforms
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Add accessors for all protected accesses. An accessor is needed if

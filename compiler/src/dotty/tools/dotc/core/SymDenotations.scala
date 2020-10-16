@@ -24,7 +24,7 @@ import config.Config
 import reporting._
 import collection.mutable
 import transform.TypeUtils._
-import util.Lst; // import Lst.::
+import util.Lst
 
 import scala.annotation.internal.sharable
 

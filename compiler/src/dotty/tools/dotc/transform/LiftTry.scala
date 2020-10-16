@@ -11,7 +11,7 @@ import core.Decorators._
 import core.NameKinds.LiftedTreeName
 import NonLocalReturns._
 import util.Store
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Lifts try's that might be executed on non-empty expression stacks

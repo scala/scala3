@@ -5,7 +5,7 @@ import ast.{Trees, tpd}
 import core._
 import Contexts._, Trees._, Types._, StdNames._, Symbols._
 import ValueClasses._
-import util.Lst; import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object TreeExtractors {

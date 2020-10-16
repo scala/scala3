@@ -16,7 +16,7 @@ import reporting._
 import annotation.constructorOnly
 import printing.Formatting.hl
 import config.Printers
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import scala.annotation.internal.sharable

@@ -11,7 +11,7 @@ import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
 import Symbols._, Contexts._
 import util.Spans._
 import Parsers.Parser
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** This class builds instance of `Tree` that represent XML.

@@ -23,7 +23,7 @@ import reporting._
 import dotty.tools.dotc.util.SourceFile
 import util.Spans._
 import scala.collection.mutable.ListBuffer
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object JavaParsers {

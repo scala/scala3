@@ -18,7 +18,7 @@ import ExplicitOuter.outer
 import util.Store
 import collection.mutable
 import collection.mutable.{ HashMap, HashSet, LinkedHashMap, TreeSet }
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object LambdaLift {

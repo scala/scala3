@@ -18,7 +18,7 @@ import NameKinds._
 import NameOps._
 import ast.Trees._
 import collection.mutable
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object Mixin {

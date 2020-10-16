@@ -22,7 +22,7 @@ import config.Printers.inlining
 import util.Property
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.transform.TreeMapWithStages._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object PrepareInlineable {

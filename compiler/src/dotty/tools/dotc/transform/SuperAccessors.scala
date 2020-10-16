@@ -13,7 +13,7 @@ import Symbols._
 import util.Spans._
 import Decorators._
 import NameKinds.{ SuperAccessorName, ExpandPrefixName }
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** This class adds super accessors for all super calls that either

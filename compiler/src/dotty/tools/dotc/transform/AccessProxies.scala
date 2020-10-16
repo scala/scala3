@@ -14,7 +14,7 @@ import Types._
 import NameKinds.ClassifiedNameKind
 import ast.Trees._
 import util.Spans.Span
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 import config.Printers.transforms
 

@@ -5,7 +5,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.util
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** A phase that collects user defined top level imports.

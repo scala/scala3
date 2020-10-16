@@ -5,7 +5,7 @@ import scala.annotation.{Annotation, compileTimeOnly}
 
 import scala.quoted._
 import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
-import dotty.tools.dotc.util.Lst; // import Lst.::
+import dotty.tools.dotc.util.Lst
 import Lst.{NIL, +:, toLst}
 
 /** Matches a quoted tree against a quoted pattern tree.

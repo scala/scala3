@@ -14,7 +14,7 @@ import DenotTransformers._
 import core.StdNames.nme
 import ast.Trees._
 import reporting.trace
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Abstract base class of ByNameClosures and ElimByName, factoring out the

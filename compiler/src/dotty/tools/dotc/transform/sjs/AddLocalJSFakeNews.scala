@@ -13,7 +13,7 @@ import core.Symbols._
 import core.Types._
 import ast.Trees._
 import dotty.tools.dotc.ast.tpd
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn

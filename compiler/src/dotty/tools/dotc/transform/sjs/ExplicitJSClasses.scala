@@ -27,7 +27,7 @@ import dotty.tools.dotc.ast.tpd
 
 import util.Store
 
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn

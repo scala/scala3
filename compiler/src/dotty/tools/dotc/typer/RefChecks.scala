@@ -21,7 +21,7 @@ import config.Feature.{warnOnMigration, migrateTo3}
 import reporting._
 import scala.util.matching.Regex._
 import Constants.Constant
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object RefChecks {

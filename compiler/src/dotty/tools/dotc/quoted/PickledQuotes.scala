@@ -25,7 +25,7 @@ import scala.internal.quoted.Unpickler._
 import scala.quoted.QuoteContext
 import scala.collection.mutable
 import dotty.tools.dotc.util
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object PickledQuotes {

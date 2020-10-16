@@ -26,7 +26,7 @@ import StdNames._
 import TypeErasure.ErasedValueType
 
 import dotty.tools.dotc.util
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import dotty.tools.dotc.transform.{Erasure, ValueClasses}

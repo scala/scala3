@@ -15,7 +15,7 @@ import core._
 import Contexts._, Symbols._, Annotations._, Decorators._
 import collection.mutable
 import util.Spans._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 class PositionPickler(

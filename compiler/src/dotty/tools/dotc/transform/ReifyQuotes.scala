@@ -24,7 +24,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Inliner
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import scala.annotation.constructorOnly

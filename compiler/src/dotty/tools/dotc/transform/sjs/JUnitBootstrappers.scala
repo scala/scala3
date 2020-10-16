@@ -16,7 +16,7 @@ import Scopes._
 import Symbols._
 import StdNames._
 import Types._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import dotty.tools.dotc.transform.MegaPhase._

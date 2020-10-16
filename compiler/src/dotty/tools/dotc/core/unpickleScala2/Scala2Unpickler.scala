@@ -11,7 +11,7 @@ import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, Name
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._, Phases._
 import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
 import util.Spans._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
 import ast.untpd.Modifiers

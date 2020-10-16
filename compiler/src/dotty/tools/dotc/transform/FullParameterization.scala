@@ -11,7 +11,7 @@ import StdNames.nme
 import NameOps._
 import ast._
 import ast.Trees._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Provides methods to produce fully parameterized versions of instance methods,

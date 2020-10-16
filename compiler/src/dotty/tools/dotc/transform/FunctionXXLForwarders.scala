@@ -11,7 +11,7 @@ import StdNames._
 import Symbols._
 import MegaPhase._
 import Types._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 

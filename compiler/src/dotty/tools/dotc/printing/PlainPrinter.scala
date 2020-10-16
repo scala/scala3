@@ -15,7 +15,7 @@ import util.SourcePosition
 import java.lang.Integer.toOctalString
 import scala.util.control.NonFatal
 import scala.annotation.switch
-import util.Lst; // import Lst.::
+import util.Lst
 
 class PlainPrinter(_ctx: Context) extends Printer {
   /** The context of all public methods in Printer and subclasses.

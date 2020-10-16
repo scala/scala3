@@ -10,7 +10,7 @@ import NameOps._
 import Names._
 import ast.Trees._
 import ast.TreeTypeMap
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Rewrite an application

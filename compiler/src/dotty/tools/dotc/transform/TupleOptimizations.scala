@@ -14,7 +14,7 @@ import Symbols._
 import MegaPhase._
 import Types._
 import dotty.tools.dotc.ast.tpd
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import scala.annotation.tailrec

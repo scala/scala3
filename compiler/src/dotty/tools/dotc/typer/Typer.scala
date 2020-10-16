@@ -30,7 +30,7 @@ import TypeComparer.CompareResult
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 import Applications.{ExtMethodApply, IntegratedTypeArgs, productSelectorTypes, wrapDefs}
 

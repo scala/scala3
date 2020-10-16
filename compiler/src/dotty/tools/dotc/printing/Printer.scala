@@ -9,7 +9,7 @@ import Types.{Type, SingletonType}, Symbols.Symbol, Scopes.Scope, Constants.Cons
 import typer.Implicits.SearchResult
 import util.{SourcePosition}
 import typer.ImportInfo
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import scala.annotation.internal.sharable

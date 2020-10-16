@@ -15,7 +15,7 @@ import core.Denotations.SingleDenotation
 import NameKinds.SimpleNameKind
 import config.Printers.interactiv
 import StdNames.nme
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** High-level API to get information out of typed trees, designed to be used by IDEs.

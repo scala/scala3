@@ -4,7 +4,7 @@ package parsing
 
 import ast.untpd._
 import org.junit.Test
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 class StringInterpolationPositionTest extends ParserTest {

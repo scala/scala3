@@ -22,7 +22,7 @@ import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.report
-import dotty.tools.dotc.util.Lst; // import Lst.::
+import dotty.tools.dotc.util.Lst
 import Lst.{NIL, +:, toLst}
 
 /*

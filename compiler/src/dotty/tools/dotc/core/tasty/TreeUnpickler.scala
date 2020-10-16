@@ -45,7 +45,7 @@ import dotty.tools.tasty.TastyFormat._
 import scala.quoted
 import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Unpickler for typed trees

@@ -14,7 +14,7 @@ import Symbols._, SymUtils._, NameOps._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import reporting._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object PostTyper {

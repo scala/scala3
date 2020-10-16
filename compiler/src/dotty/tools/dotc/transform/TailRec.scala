@@ -14,7 +14,7 @@ import core.Symbols._
 import reporting._
 import transform.MegaPhase.MiniPhase
 import util.LinearSet
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import scala.collection.mutable

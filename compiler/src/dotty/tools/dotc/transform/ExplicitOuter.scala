@@ -19,7 +19,7 @@ import dotty.tools.dotc.ast.tpd
 
 import collection.mutable
 import scala.annotation.tailrec
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** This phase adds outer accessors to classes and traits that need them.

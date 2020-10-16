@@ -9,7 +9,7 @@ import Symbols._, Contexts._, Types._, Decorators._
 import StdNames.nme
 import ast.Trees._
 import ast.TreeTypeMap
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 

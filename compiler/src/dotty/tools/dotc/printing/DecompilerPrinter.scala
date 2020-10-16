@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Annotations.Annotation
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {

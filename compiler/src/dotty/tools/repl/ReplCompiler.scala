@@ -19,7 +19,7 @@ import dotty.tools.dotc.util.{ParsedComment, SourceFile}
 import dotty.tools.dotc.{CompilationUnit, Compiler, Run}
 import dotty.tools.repl.results._
 import dotty.tools.dotc.util
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import scala.collection.mutable

@@ -12,7 +12,7 @@ import Parsers.Parser
 import util.SourceFile
 import core.Contexts._
 import core.Flags
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object ModifiersParsingTest {

@@ -16,7 +16,7 @@ import Decorators._
 import DenotTransformers._
 import Constants.Constant
 import collection.mutable
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object Constructors {

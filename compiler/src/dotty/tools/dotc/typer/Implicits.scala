@@ -29,7 +29,7 @@ import transform.SymUtils._
 import transform.TypeUtils._
 import Hashable._
 import util.{SourceFile, NoSource, EqHashMap, Stats}
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 import config.{Config, Feature}
 import Feature.migrateTo3

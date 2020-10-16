@@ -15,7 +15,7 @@ import util.Spans._
 import collection.mutable
 import Trees._
 import Decorators._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** A class that handles argument lifting. Argument lifting is needed in the following

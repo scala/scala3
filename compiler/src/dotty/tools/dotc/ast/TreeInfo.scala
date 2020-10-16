@@ -11,7 +11,7 @@ import dotty.tools.dotc.transform.SymUtils._
 import Decorators._
 import Constants.Constant
 import scala.collection.mutable
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import scala.annotation.tailrec

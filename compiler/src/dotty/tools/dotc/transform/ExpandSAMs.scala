@@ -8,7 +8,7 @@ import SymUtils._
 import ast.Trees._
 import reporting._
 import dotty.tools.dotc.util.Spans.Span
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.

@@ -16,7 +16,7 @@ import util.{SourceFile, SourcePosition}
 import scala.jdk.CollectionConverters._
 import collection.mutable
 import java.nio.file.Paths
-import util.Lst; // import Lst.::
+import util.Lst
 import Lst.+:
 
 import dotty.tools.dotc.transform.SymUtils._

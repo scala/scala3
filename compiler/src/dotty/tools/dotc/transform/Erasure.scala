@@ -33,7 +33,7 @@ import ContextFunctionResults._
 import ExplicitOuter._
 import core.Mode
 import util.Property
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 import reporting._
 import collection.mutable

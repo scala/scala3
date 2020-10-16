@@ -8,7 +8,7 @@ import org.junit.Assert._
 import dotc.core.Contexts._
 import dotc.parsing.Parsers.Parser
 import dotc.util.SourceFile
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 class UntpdTreeMapTest extends DottyTest {

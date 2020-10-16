@@ -12,7 +12,7 @@ import language.higherKinds
 import annotation.constructorOnly
 import annotation.internal.sharable
 import Decorators._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {

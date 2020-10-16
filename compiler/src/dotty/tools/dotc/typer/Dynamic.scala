@@ -16,7 +16,7 @@ import core.Symbols._
 import core.Definitions
 import ErrorReporting._
 import reporting._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object Dynamic {

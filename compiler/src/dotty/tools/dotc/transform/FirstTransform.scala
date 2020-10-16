@@ -20,7 +20,7 @@ import StdNames._
 import NullOpsDecorator._
 import util.HashMap
 import util.Lst.{NIL, +:, toLst}
-import util.Lst; // import Lst.::
+import util.Lst
 
 object FirstTransform {
   val name: String = "firstTransform"

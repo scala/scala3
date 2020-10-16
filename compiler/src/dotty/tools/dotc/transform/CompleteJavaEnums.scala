@@ -15,7 +15,7 @@ import Decorators._
 import DenotTransformers._
 import dotty.tools.dotc.ast.Trees._
 import SymUtils._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import annotation.threadUnsafe

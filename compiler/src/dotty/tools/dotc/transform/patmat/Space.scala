@@ -23,7 +23,7 @@ import config.Printers.{exhaustivity => debug}
 import util.SrcPos
 import NullOpsDecorator._
 import collection.mutable
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Space logic for checking exhaustivity and unreachability of pattern matching

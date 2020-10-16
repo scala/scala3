@@ -8,7 +8,7 @@ import Symbols._, Annotations._, Trees._, Symbols._
 import Decorators._
 import dotty.tools.dotc.transform.SymUtils._
 import core.tasty.TreePickler.Hole
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** A map that applies three functions and a substitution together to a tree and

@@ -24,7 +24,7 @@ import ErrorReporting.errorTree
 import util.{SimpleIdentityMap, SimpleIdentitySet, EqHashMap, SourceFile, SourcePosition, SrcPos}
 import parsing.Parsers.Parser
 import Nullables.{given _}
-import util.Lst; // import Lst.::
+import util.Lst
 
 import collection.mutable
 import reporting.trace

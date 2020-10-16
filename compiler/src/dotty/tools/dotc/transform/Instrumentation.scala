@@ -14,7 +14,7 @@ import MegaPhase._
 import StdNames.nme
 import Names._
 import Constants.Constant
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** The phase is enabled if the -Yinstrument option is set.

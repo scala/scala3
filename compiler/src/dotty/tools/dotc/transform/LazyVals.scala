@@ -18,7 +18,7 @@ import core.{Names, StdNames}
 import transform.MegaPhase.MiniPhase
 import transform.SymUtils._
 import scala.collection.mutable
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, toLst, +:}
 
 class LazyVals extends MiniPhase with IdentityDenotTransformer {

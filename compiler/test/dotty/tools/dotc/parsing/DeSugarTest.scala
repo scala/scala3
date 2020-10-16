@@ -11,7 +11,7 @@ import ast.desugar
 import ast.desugar._
 import core.Mode
 import Contexts.Context
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 import scala.collection.mutable.ListBuffer

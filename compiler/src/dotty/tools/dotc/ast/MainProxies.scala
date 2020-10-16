@@ -5,7 +5,7 @@ import core._
 import Symbols._, Types._, Contexts._, Decorators._, util.Spans._, Flags._, Constants._
 import StdNames.nme
 import ast.Trees._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 /** Generate proxy classes for @main functions.

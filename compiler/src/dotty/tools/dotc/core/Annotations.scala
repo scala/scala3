@@ -7,7 +7,7 @@ import StdNames._
 import dotty.tools.dotc.ast.tpd
 import scala.util.Try
 import util.Spans.Span
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object Annotations {

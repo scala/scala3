@@ -15,7 +15,7 @@ import SymUtils._
 import util.Property
 import config.Printers.derive
 import NullOpsDecorator._
-import util.Lst; // import Lst.::
+import util.Lst
 import util.Lst.{NIL, +:, toLst}
 
 object SyntheticMembers {

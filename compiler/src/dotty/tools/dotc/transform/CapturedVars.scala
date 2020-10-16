@@ -12,7 +12,7 @@ import core.Names._
 import core.NameKinds.TempResultName
 import ast.Trees._
 import util.Store
-import util.Lst; // import Lst.::
+import util.Lst
 import collection.mutable
 
 /** This phase translates variables that are captured in closures to
