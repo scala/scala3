@@ -155,9 +155,9 @@ case class Site(
         "js/bootstrap.min.js" -> "/js/bootstrap.min.js",
         "js/jquery.min.js" -> "/js/jquery.min.js",
         "js/highlight.pack.js" -> "/js/highlight.pack.js",
-        "images/dotty-logo.svg" -> "/images/dotty-logo.svg",
+        "images/scala3-logo.svg" -> "/images/scala3-logo.svg",
         "images/scala-logo.svg" -> "/images/scala-logo.svg",
-        "images/dotty-logo-white.svg" -> "/images/dotty-logo-white.svg",
+        "images/scala3-logo-white.svg" -> "/images/scala3-logo-white.svg",
         "images/scala-logo-white.svg" -> "/images/scala-logo-white.svg"
       )
       .transform((_, v) => getResource(v))
