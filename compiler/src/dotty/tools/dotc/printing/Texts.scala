@@ -1,6 +1,9 @@
 package dotty.tools.dotc
 package printing
 import language.implicitConversions
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
+
 
 object Texts {
 
@@ -157,13 +160,16 @@ object Texts {
     /** A concatenation of elements in `xs` and interspersed with
      *  separator strings `sep`.
      */
-    def apply(xs: Traversable[Text], sep: String = " "): Text =
-      if (sep == "\n") lines(xs)
-      else {
-        val ys = xs filterNot (_.isEmpty)
-        if (ys.isEmpty) Str("")
-        else ys reduce (_ ~ sep ~ _)
-      }
+    def apply(xs: Traversable[Text] | Lst[Text], sep: String = " "): Text = xs match
+      case xs: Traversable[Text] @unchecked =>
+        if (sep == "\n") lines(xs)
+        else {
+          val ys = xs filterNot (_.isEmpty)
+          if (ys.isEmpty) Str("")
+          else ys reduce (_ ~ sep ~ _)
+        }
+      case xs: Lst[Text] =>
+        apply(xs.toList, sep)
 
     /** The given texts `xs`, each on a separate line */
     def lines(xs: Traversable[Text]): Vertical = Vertical(xs.toList.reverse)

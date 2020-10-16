@@ -1146,17 +1146,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Applied extends AppliedModule:
       def apply(tpt: TypeTree, args: List[Tree]): Applied =
-        withDefaultPos(tpd.AppliedTypeTree(tpt, args))
+        withDefaultPos(tpd.AppliedTypeTree(tpt, args.toLst))
       def copy(original: Tree)(tpt: TypeTree, args: List[Tree]): Applied =
-        tpd.cpy.AppliedTypeTree(original)(tpt, args)
+        tpd.cpy.AppliedTypeTree(original)(tpt, args.toLst)
       def unapply(x: Applied): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
-        Some((x.tpt, x.args))
+        Some((x.tpt, x.args.toList))
     end Applied
 
     object AppliedMethodsImpl extends AppliedMethods:
       extension (self: Applied):
         def tpt: TypeTree = self.tpt
-        def args: List[Tree] = self.args
+        def args: List[Tree] = self.args.toList
       end extension
     end AppliedMethodsImpl
 

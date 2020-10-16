@@ -680,7 +680,7 @@ import util.Lst.{NIL, +:, toLst}
            |"""
   }
 
-  class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree])(using Context)
+  class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: Lst[untpd.Tree])(using Context)
   extends SyntaxMsg(WrongNumberOfTypeArgsID) {
 
     private val expectedCount = expectedArgs.length
@@ -1363,7 +1363,7 @@ import util.Lst.{NIL, +:, toLst}
            |""".stripMargin
   }
 
-  class TypeDoesNotTakeParameters(tpe: Type, params: List[Trees.Tree[Trees.Untyped]])(using Context)
+  class TypeDoesNotTakeParameters(tpe: Type, params: Lst[Trees.Tree[Trees.Untyped]])(using Context)
     extends TypeMsg(TypeDoesNotTakeParametersID) {
     def msg = em"$tpe does not take type parameters"
     def explain =

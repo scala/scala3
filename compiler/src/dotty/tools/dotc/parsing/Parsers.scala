@@ -1392,9 +1392,9 @@ object Parsers {
 
           if (imods.isOneOf(Given | Erased)) new FunctionWithMods(params, t, imods)
           else if (ctx.settings.YkindProjector.value) {
-            val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t)
+            val (newParams, tparams) = replaceKindProjectorPlaceholders(params.toLst :+ t)
 
-            lambdaAbstract(tparams, Function(newParams, newT))
+            lambdaAbstract(tparams.toList, Function(newParams.init.toList, newParams.last))
           } else {
             Function(params, t)
           }
@@ -1491,8 +1491,8 @@ object Parsers {
     /** Replaces kind-projector's `*` in a list of types arguments with synthetic names,
      *  returning the new argument list and the synthetic type definitions.
      */
-    private def replaceKindProjectorPlaceholders(params: List[Tree]): (List[Tree], List[TypeDef]) = {
-      val tparams = new ListBuffer[TypeDef]
+    private def replaceKindProjectorPlaceholders(params: Lst[Tree]): (Lst[Tree], Lst[TypeDef]) = {
+      val tparams = Lst.Buffer[TypeDef]()
 
       val newParams = params.mapConserve {
         case param @ Ident(tpnme.raw.STAR) =>
@@ -1502,7 +1502,7 @@ object Parsers {
         case other => other
       }
 
-      (newParams, tparams.toList)
+      (newParams, tparams.toLst)
     }
 
     private def implicitKwPos(start: Int): Span =
@@ -1619,7 +1619,7 @@ object Parsers {
       else
         def singletonArgs(t: Tree): Tree =
           if in.token == LPAREN
-          then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton))))
+          then singletonArgs(AppliedTypeTree(t, inParens(commaSeparatedLst(singleton))))
           else t
         singletonArgs(simpleType1())
 
@@ -1635,7 +1635,7 @@ object Parsers {
     def simpleType1() = simpleTypeRest {
       if in.token == LPAREN then
         atSpan(in.offset) {
-          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true).toLst))
+          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
         }
       else if in.token == LBRACE then
         atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
@@ -1672,7 +1672,7 @@ object Parsers {
           applied match {
             case Ident(tpnme.raw.LAMBDA) =>
               args match {
-                case List(Function(params, body)) =>
+                case Lst(Function(params, body)) =>
                   val typeDefs = params.collect {
                     case param @ Ident(name) => makeKindProjectorTypeDef(name.toTypeName).withSpan(param.span)
                   }
@@ -1684,7 +1684,7 @@ object Parsers {
             case _ =>
               val (newArgs, tparams) = replaceKindProjectorPlaceholders(args)
 
-              lambdaAbstract(tparams, AppliedTypeTree(applied, newArgs))
+              lambdaAbstract(tparams.toList, AppliedTypeTree(applied, newArgs))
           }
 
         } else {
@@ -1695,12 +1695,12 @@ object Parsers {
         if (ctx.settings.YkindProjector.value) {
           t match {
             case Tuple(params) =>
-              val (newParams, tparams) = replaceKindProjectorPlaceholders(params.toList)
+              val (newParams, tparams) = replaceKindProjectorPlaceholders(params)
 
               if (tparams.isEmpty) {
                 t
               } else {
-                LambdaTypeTree(tparams, Tuple(newParams.toLst))
+                LambdaTypeTree(tparams.toList, Tuple(newParams))
               }
             case _ => t
           }
@@ -1719,7 +1719,7 @@ object Parsers {
      *                        |  NamedTypeArg {`,' NamedTypeArg}
      *    NamedTypeArg      ::=  id `=' Type
      */
-    def argTypes(namedOK: Boolean, wildOK: Boolean): List[Tree] = {
+    def argTypes(namedOK: Boolean, wildOK: Boolean): Lst[Tree] = {
 
       def argType() = {
         val t = typ()
@@ -1732,14 +1732,14 @@ object Parsers {
         NamedArg(name.toTypeName, argType())
       }
 
-      def otherArgs(first: Tree, arg: () => Tree): List[Tree] = {
+      def otherArgs(first: Tree, arg: () => Tree): Lst[Tree] = {
         val rest =
           if (in.token == COMMA) {
             in.nextToken()
-            commaSeparated(arg)
+            commaSeparatedLst(arg)
           }
-          else Nil
-        first :: rest
+          else NIL
+        first +: rest
       }
       if (namedOK && in.token == IDENTIFIER)
         argType() match {
@@ -1749,7 +1749,7 @@ object Parsers {
           case firstArg =>
             otherArgs(firstArg, () => argType())
         }
-      else commaSeparated(() => argType())
+      else commaSeparatedLst(() => argType())
     }
 
     /** FunArgType ::=  Type | `=>' Type
@@ -1778,7 +1778,7 @@ object Parsers {
     /** TypeArgs      ::= `[' Type {`,' Type} `]'
      *  NamedTypeArgs ::= `[' NamedTypeArg {`,' NamedTypeArg} `]'
      */
-    def typeArgs(namedOK: Boolean, wildOK: Boolean): List[Tree] = inBrackets(argTypes(namedOK, wildOK))
+    def typeArgs(namedOK: Boolean, wildOK: Boolean): Lst[Tree] = inBrackets(argTypes(namedOK, wildOK))
 
     /** Refinement ::= `{' RefineStatSeq `}'
      */
@@ -2291,7 +2291,7 @@ object Parsers {
           in.nextToken()
           simpleExprRest(selectorOrMatch(t), canApply = true)
         case LBRACKET =>
-          val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false).toLst) }
+          val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
           simpleExprRest(tapp, canApply = true)
         case LPAREN | LBRACE | INDENT if canApply =>
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
@@ -2712,7 +2712,7 @@ object Parsers {
       else
         var p = t
         if (in.token == LBRACKET)
-          p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false).toLst) }
+          p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false)) }
         if (in.token == LPAREN)
           p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
         p

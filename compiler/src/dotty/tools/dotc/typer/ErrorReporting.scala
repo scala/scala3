@@ -11,6 +11,8 @@ import util.SrcPos
 import config.Feature
 import java.util.regex.Matcher.quoteReplacement
 import reporting._
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 object ErrorReporting {
 
@@ -35,7 +37,7 @@ object ErrorReporting {
     ErrorType(ex.toMessage)
   }
 
-  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: Lst[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual), pos)
 
   class Errors(using Context) {

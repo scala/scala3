@@ -109,7 +109,7 @@ object Checking {
        && tycon.symbol != defn.TypeBoxClass // TypeBox types are generated for capture
                                             // conversion, may contain AnyKind as arguments
     then
-      checkBounds(args, bounds, instantiate, tree.tpe, tpt)
+      checkBounds(args.toList, bounds, instantiate, tree.tpe, tpt)
 
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
@@ -120,7 +120,7 @@ object Checking {
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
-      checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)))
+      checkWildcardApply(tycon.tpe.appliedTo(args.tpes))
     withMode(Mode.AllowLambdaWildcardApply)(checkValidIfApply)
   }
 
@@ -131,7 +131,7 @@ object Checking {
         tp match
           case AppliedType(tycon, argTypes) =>
             checkAppliedType(
-              untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree))
+              untpd.AppliedTypeTree(TypeTree(tycon), argTypes.toLst.map(TypeTree))
                 .withType(tp).withSpan(tpt.span.toSynthetic),
               tpt)
           case _ =>
@@ -159,8 +159,8 @@ object Checking {
         arg.tpe.hasSameKindAs(paramBounds.bounds.hi)) arg
     else errorTree(arg, em"Type argument ${arg.tpe} has not the same kind as its bound $paramBounds")
 
-  def preCheckKinds(args: List[Tree], paramBoundss: List[Type])(using Context): List[Tree] = {
-    val args1 = args.zipWithConserve(paramBoundss)(preCheckKind)
+  def preCheckKinds(args: Lst[Tree], paramBoundss: Lst[Type])(using Context): Lst[Tree] = {
+    val args1 = args.zipWith(paramBoundss)(preCheckKind)
     args1 ++ args.drop(paramBoundss.length)
       // add any arguments that do not correspond to a parameter back,
       // so the wrong number of parameters is reported afterwards.

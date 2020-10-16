@@ -235,7 +235,7 @@ trait QuotesAndSplices {
       override def transform(tree: Tree)(using Context) = tree match {
         case Typed(Apply(fn, Lst(pat)), tpt) if fn.symbol.isExprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
-          val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
+          val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), Lst(tpt1))
           val newSplice = ref(defn.InternalQuoted_exprSplice).appliedToType(tpt1.tpe).appliedTo(Typed(pat, exprTpt))
           transform(newSplice)
         case Apply(TypeApply(fn, targs), Lst(Apply(sp, Lst(pat)), args)) if fn.symbol == defn.InternalQuotedPatterns_patternHigherOrderHole =>
@@ -276,7 +276,7 @@ trait QuotesAndSplices {
           else
             super.transform(tree)
         case tree @ AppliedTypeTree(tpt, args) =>
-            val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
+            val args1: Lst[Tree] = args.zipWith(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
               arg.tpe match {
                 case _: TypeBounds => transform(arg)
                 case _ => atVariance(variance * v)(transform(arg))
@@ -418,7 +418,7 @@ trait QuotesAndSplices {
     val replaceBindings = new ReplaceBindings
     val patType = defn.tupleType(splices.tpes.map(tpe => replaceBindings(tpe.widen)))
 
-    val typeBindingsTuple = tpd.tupleTypeTree(typeBindings.values.toList)
+    val typeBindingsTuple = tpd.tupleTypeTree(typeBindings.values.toList.toLst)
 
     val replaceBindingsInTree = new TreeMap {
       private var bindMap = Map.empty[Symbol, Symbol]

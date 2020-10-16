@@ -657,7 +657,7 @@ object Trees {
   }
 
   /** tpt[args] */
-  case class AppliedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class AppliedTypeTree[-T >: Untyped] private[ast] (tpt: Tree[T], args: Lst[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends ProxyTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = AppliedTypeTree[T]
     def forwardTo: Tree[T] = tpt
@@ -1172,8 +1172,8 @@ object Trees {
         case tree: RefinedTypeTree if (tpt eq tree.tpt) && (refinements eqLst tree.refinements) => tree
         case _ => finalize(tree, untpd.RefinedTypeTree(tpt, refinements)(sourceFile(tree)))
       }
-      def AppliedTypeTree(tree: Tree)(tpt: Tree, args: List[Tree])(using Context): AppliedTypeTree = tree match {
-        case tree: AppliedTypeTree if (tpt eq tree.tpt) && (args eq tree.args) => tree
+      def AppliedTypeTree(tree: Tree)(tpt: Tree, args: Lst[Tree])(using Context): AppliedTypeTree = tree match {
+        case tree: AppliedTypeTree if (tpt eq tree.tpt) && (args eqLst tree.args) => tree
         case _ => finalize(tree, untpd.AppliedTypeTree(tpt, args)(sourceFile(tree)))
       }
       def LambdaTypeTree(tree: Tree)(tparams: List[TypeDef], body: Tree)(using Context): LambdaTypeTree = tree match {

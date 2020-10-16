@@ -358,7 +358,7 @@ trait TypeAssigner {
           else {
             val argTypes = args.tpes
             if (sameLength(argTypes, paramNames)) pt.instantiate(argTypes)
-            else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args.toList, tree.srcPos)
+            else wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
           }
         }
       case err: ErrorType =>
@@ -459,11 +459,11 @@ trait TypeAssigner {
     tree.withType(RecType.closeOver(rt => refined.substThis(refineCls, rt.recThis)))
   }
 
-  def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: List[Tree])(using Context): AppliedTypeTree = {
+  def assignType(tree: untpd.AppliedTypeTree, tycon: Tree, args: Lst[Tree])(using Context): AppliedTypeTree = {
     assert(!hasNamedArg(args) || ctx.reporter.errorsReported, tree)
     val tparams = tycon.tpe.typeParams
     val ownType =
-      if (sameLength(tparams, args))
+      if (tparams.length == args.length)
         if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
         else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe)
         else tycon.tpe.appliedTo(args.tpes)

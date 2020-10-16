@@ -77,7 +77,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         super.transform(tree) match
           case tree1: AppliedTypeTree if tree1 ne tree =>
             // propagate healed types
-            tree1.withType(tree1.tpt.tpe.appliedTo(tree1.args.map(_.tpe)))
+            tree1.withType(tree1.tpt.tpe.appliedTo(tree1.args.tpes))
           case tree1 => tree1
 
       case _: Ident | _: This =>

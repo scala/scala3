@@ -505,7 +505,7 @@ object desugar {
 
     val classTycon: Tree = TypeRefTree() // watching is set at end of method
 
-    def appliedTypeTree(tycon: Tree, args: List[Tree]) =
+    def appliedTypeTree(tycon: Tree, args: Lst[Tree]) =
       (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
         .withSpan(cdef.span.startPos)
 
@@ -516,11 +516,11 @@ object desugar {
     }
 
     def appliedRef(tycon: Tree, tparams: List[TypeDef] = constrTparams, widenHK: Boolean = false) = {
-      val targs = for (tparam <- tparams) yield {
+      val targs = for (tparam <- tparams.toLst) yield {
         val targ = refOfDef(tparam)
         def fullyApplied(tparam: Tree): Tree = tparam match {
           case TypeDef(_, LambdaTypeTree(tparams, body)) =>
-            AppliedTypeTree(targ, tparams.map(_ => WildcardTypeBoundsTree()))
+            AppliedTypeTree(targ, tparams.toLst.map(_ => WildcardTypeBoundsTree()))
           case TypeDef(_, rhs: DerivedTypeTree) =>
             fullyApplied(rhs.watched)
           case _ =>
@@ -549,7 +549,7 @@ object desugar {
       else {
         report.error(TypedCaseDoesNotExplicitlyExtendTypedEnum(enumClass, cdef)
             , cdef.srcPos.startPos)
-        appliedTypeTree(enumClassRef, constrTparams map (_ => anyRef))
+        appliedTypeTree(enumClassRef, constrTparams.toLst.map(_ => anyRef))
       }
 
     // new C[Ts](paramss)
@@ -976,7 +976,7 @@ object desugar {
     str.toTermName.asSimpleName
 
   private class NameExtractor(followArgs: Boolean) extends UntypedTreeAccumulator[String] {
-    private def extractArgs(args: List[Tree])(using Context): String =
+    private def extractArgs(args: Lst[Tree])(using Context): String =
       args.map(argNameExtractor.apply("", _)).mkString("_")
     override def apply(x: String, tree: Tree)(using Context): String =
       if (x.isEmpty)
@@ -989,9 +989,9 @@ object desugar {
           case tree: LambdaTypeTree =>
             apply(x, tree.body)
           case tree: Tuple =>
-            extractArgs(tree.trees.toList)
+            extractArgs(tree.trees)
           case tree: Function if tree.args.nonEmpty =>
-            if (followArgs) s"${extractArgs(tree.args)}_to_${apply("", tree.body)}" else "Function"
+            if (followArgs) s"${extractArgs(tree.args.toLst)}_to_${apply("", tree.body)}" else "Function"
           case _ => foldOver(x, tree)
         }
       else x
@@ -1229,7 +1229,7 @@ object desugar {
     def tupleTypeRef = defn.TupleType(arity)
     if (arity == 0)
       if (ctx.mode is Mode.Type) TypeTree(defn.UnitType) else unitLiteral
-    else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts.toList)
+    else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleTypeRef), ts)
     else Apply(ref(tupleTypeRef.classSymbol.companionModule.termRef), ts)
   }
 

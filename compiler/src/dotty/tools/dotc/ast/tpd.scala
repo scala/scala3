@@ -172,7 +172,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def RefinedTypeTree(parent: Tree, refinements: Lst[Tree], refineCls: ClassSymbol)(using Context): Tree =
     ta.assignType(untpd.RefinedTypeTree(parent, refinements), parent, refinements, refineCls)
 
-  def AppliedTypeTree(tycon: Tree, args: List[Tree])(using Context): AppliedTypeTree =
+  def AppliedTypeTree(tycon: Tree, args: Lst[Tree])(using Context): AppliedTypeTree =
     ta.assignType(untpd.AppliedTypeTree(tycon, args), tycon, args)
 
   def ByNameTypeTree(result: Tree)(using Context): ByNameTypeTree =
@@ -1375,15 +1375,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** Creates the tuple type tree repesentation of the type trees in `ts` */
-  def tupleTypeTree(elems: List[Tree])(using Context): Tree = {
+  def tupleTypeTree(elems: Lst[Tree])(using Context): Tree = {
     val arity = elems.length
     if (arity <= Definitions.MaxTupleArity && defn.TupleType(arity) != null) AppliedTypeTree(TypeTree(defn.TupleType(arity)), elems)
     else nestedPairsTypeTree(elems)
   }
 
   /** Creates the nested pairs type tree repesentation of the type trees in `ts` */
-  def nestedPairsTypeTree(ts: List[Tree])(using Context): Tree =
-    ts.foldRight[Tree](TypeTree(defn.EmptyTupleModule.termRef))((x, acc) => AppliedTypeTree(TypeTree(defn.PairClass.typeRef), x :: acc :: Nil))
+  def nestedPairsTypeTree(ts: Lst[Tree])(using Context): Tree =
+    ts.foldRight(TypeTree(defn.EmptyTupleModule.termRef): Tree)((x, acc) => AppliedTypeTree(TypeTree(defn.PairClass.typeRef), Lst(x, acc)))
 
   /** Replaces all positions in `tree` with zero-extent positions */
   private def focusPositions(tree: Tree)(using Context): Tree = {

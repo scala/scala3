@@ -390,7 +390,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def TypeTree()(implicit src: SourceFile): TypeTree = new TypeTree()
   def SingletonTypeTree(ref: Tree)(implicit src: SourceFile): SingletonTypeTree = new SingletonTypeTree(ref)
   def RefinedTypeTree(tpt: Tree, refinements: Lst[Tree])(implicit src: SourceFile): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
-  def AppliedTypeTree(tpt: Tree, args: List[Tree])(implicit src: SourceFile): AppliedTypeTree = new AppliedTypeTree(tpt, args)
+  def AppliedTypeTree(tpt: Tree, args: Lst[Tree])(implicit src: SourceFile): AppliedTypeTree = new AppliedTypeTree(tpt, args)
   def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(implicit src: SourceFile): LambdaTypeTree = new LambdaTypeTree(tparams, body)
   def TermLambdaTypeTree(params: List[ValDef], body: Tree)(implicit src: SourceFile): TermLambdaTypeTree = new TermLambdaTypeTree(params, body)
   def MatchTypeTree(bound: Tree, selector: Tree, cases: Lst[CaseDef])(implicit src: SourceFile): MatchTypeTree = new MatchTypeTree(bound, selector, cases)
@@ -433,12 +433,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case TypedSplice(tpt1: tpd.Tree) =>
         val argTypes = tpt1.tpe.dealias.argTypesLo
         def wrap(tpe: Type) = TypeTree(tpe).withSpan(tpt.span)
-        (tpt, argTypes.map(wrap))
+        (tpt, argTypes.toLst.map(wrap))
       case _ =>
-        (tpt, Nil)
+        (tpt, NIL)
     }
     val nu: Tree = Select(New(tycon), nme.CONSTRUCTOR)
-    if (targs.nonEmpty) TypeApply(nu, targs.toLst) else nu
+    if (targs.nonEmpty) TypeApply(nu, targs) else nu
   }
 
   def Block(stat: Tree, expr: Tree)(implicit src: SourceFile): Block =
@@ -453,7 +453,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   def AppliedTypeTree(tpt: Tree, arg: Tree)(implicit src: SourceFile): AppliedTypeTree =
-    AppliedTypeTree(tpt, arg :: Nil)
+    AppliedTypeTree(tpt, Lst(arg))
 
   def TypeTree(tpe: Type)(using Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
@@ -467,7 +467,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def rawRef(tp: NamedType)(using Context): Tree =
     if tp.typeParams.isEmpty then ref(tp)
-    else AppliedTypeTree(ref(tp), tp.typeParams.map(_ => WildcardTypeBoundsTree()))
+    else AppliedTypeTree(ref(tp), tp.typeParams.toLst.map(_ => WildcardTypeBoundsTree()))
 
   def rootDot(name: Name)(implicit src: SourceFile): Select = Select(Ident(nme.ROOTPKG), name)
   def scalaDot(name: Name)(implicit src: SourceFile): Select = Select(rootDot(nme.scala), name)
@@ -497,7 +497,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   def makeAndType(left: Tree, right: Tree)(using Context): AppliedTypeTree =
-    AppliedTypeTree(ref(defn.andType.typeRef), left :: right :: Nil)
+    AppliedTypeTree(ref(defn.andType.typeRef), Lst(left, right))
 
   def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers, isBackquoted: Boolean = false)(using Context): ValDef = {
     val vdef = ValDef(pname, tpe, EmptyTree)

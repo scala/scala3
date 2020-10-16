@@ -20,6 +20,8 @@ import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 import config.Printers.gadts
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 object Inferencing {
 
@@ -259,7 +261,7 @@ object Inferencing {
   def inferTypeParams(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match {
     case tl: TypeLambda =>
       val (tl1, tvars) = constrained(tl, tree)
-      var tree1 = AppliedTypeTree(tree.withType(tl1), tvars)
+      var tree1 = AppliedTypeTree(tree.withType(tl1), tvars.toLst)
       tree1.tpe <:< pt
       fullyDefinedType(tree1.tpe, "template parent", tree.span)
       tree1

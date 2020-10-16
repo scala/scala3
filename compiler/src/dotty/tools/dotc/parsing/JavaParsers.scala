@@ -103,7 +103,7 @@ object JavaParsers {
     def javaLangObject(): Tree = javaLangDot(tpnme.Object)
 
     def arrayOf(tpt: Tree): AppliedTypeTree =
-      AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
+      AppliedTypeTree(scalaDot(tpnme.Array), Lst(tpt))
 
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
       def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {
@@ -327,7 +327,7 @@ object JavaParsers {
         val args = repsep(() => typeArg(), COMMA)
         acceptClosingAngle()
         atSpan(t1.span.start) {
-          AppliedTypeTree(t1, args)
+          AppliedTypeTree(t1, args.toLst)
         }
       }
       else t

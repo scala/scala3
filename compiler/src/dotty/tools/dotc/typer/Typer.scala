@@ -1058,7 +1058,7 @@ class Typer extends Namer
       val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
       val typeArgs = appDef.vparamss.head.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
-      val core = AppliedTypeTree(tycon, typeArgs)
+      val core = AppliedTypeTree(tycon, typeArgs.toLst)
       RefinedTypeTree(core, Lst(appDef), ctx.owner.asClass)
     end typedDependent
 
@@ -1067,7 +1067,7 @@ class Typer extends Namer
         typedDependent(args.asInstanceOf[List[untpd.ValDef]])(
           using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
       case _ =>
-        typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt)
+        typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args.toLst :+ body), pt)
     }
   }
 
@@ -1684,7 +1684,7 @@ class Typer extends Namer
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(using Context): Tree = {
     tree.args match
-      case arg :: _ if arg.isTerm =>
+      case arg +: _ if arg.isTerm =>
         if dependentEnabled then
           return errorTree(tree, i"Not yet implemented: T(...)")
         else
@@ -1739,31 +1739,31 @@ class Typer extends Namer
             }
           else desugaredArg.withType(UnspecifiedErrorType)
         }
-        args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
+        args.zipWith(tparams)(typedArg(_, _))
       }
-      val paramBounds = tparams.lazyZip(args).map {
-        case (tparam, untpd.WildcardTypeBoundsTree()) =>
+      val paramBounds = args.zipWith(tparams) {
+        case (untpd.WildcardTypeBoundsTree(), tparam) =>
           // if type argument is a wildcard, suppress kind checking since
           // there is no real argument.
           NoType
-        case (tparam, _) =>
+        case (_, tparam) =>
           tparam.paramInfo.bounds
       }
       var checkedArgs = preCheckKinds(args1, paramBounds)
         // check that arguments conform to bounds is done in phase PostTyper
       if (tpt1.symbol == defn.andType)
-        checkedArgs = checkedArgs.mapconserve(arg =>
+        checkedArgs = checkedArgs.mapConserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
       else if (tpt1.symbol == defn.orType)
-        checkedArgs = checkedArgs.mapconserve(arg =>
+        checkedArgs = checkedArgs.mapConserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
       else if (ctx.isJava)
         if (tpt1.symbol eq defn.ArrayClass) then
           checkedArgs match {
-            case List(arg) =>
+            case Lst(arg) =>
               val elemtp = arg.tpe.translateJavaArrayElementType
               if (elemtp ne arg.tpe)
-                checkedArgs = List(TypeTree(elemtp).withSpan(arg.span))
+                checkedArgs = Lst(TypeTree(elemtp).withSpan(arg.span))
             case _ =>
           }
       assignType(cpy.AppliedTypeTree(tree)(tpt1, checkedArgs), tpt1, checkedArgs)
@@ -2342,7 +2342,7 @@ class Typer extends Namer
     val untpd.InfixOp(l, op, r) = tree
     val result =
       if (ctx.mode.is(Mode.Type))
-        typedAppliedTypeTree(cpy.AppliedTypeTree(tree)(op, l :: r :: Nil))
+        typedAppliedTypeTree(cpy.AppliedTypeTree(tree)(op, Lst(l, r)))
       else if (ctx.mode.is(Mode.Pattern))
         typedUnApply(cpy.Apply(tree)(op, Lst(l, r)), pt)
       else {
@@ -2376,7 +2376,7 @@ class Typer extends Namer
       val elems = tree.trees.zipWith(pts)(typed(_, _))
       if (ctx.mode.is(Mode.Type))
         elems.foldRight(TypeTree(defn.EmptyTupleModule.termRef): Tree)((elemTpt, elemTpts) =>
-          AppliedTypeTree(TypeTree(defn.PairClass.typeRef), List(elemTpt, elemTpts)))
+          AppliedTypeTree(TypeTree(defn.PairClass.typeRef), Lst(elemTpt, elemTpts)))
           .withSpan(tree.span)
       else {
         val tupleXXLobj = untpd.ref(defn.TupleXXLModule.termRef)
@@ -2766,7 +2766,7 @@ class Typer extends Namer
             case PolyProto(targs, pt1) if !targs.exists(_.isInstanceOf[NamedArg]) =>
               // Applications with named arguments cannot be converted, since new expressions
               // don't accept named arguments
-              IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs.toList), pt1))
+              IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs), pt1))
             case _ =>
               typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)
           }

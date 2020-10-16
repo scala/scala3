@@ -1225,7 +1225,7 @@ class TreeUnpickler(reader: TastyReader,
                 if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
                 else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe)
                 else tycon.tpe.safeAppliedTo(args.tpes)
-              untpd.AppliedTypeTree(tycon, args).withType(ownType)
+              untpd.AppliedTypeTree(tycon, args.toLst).withType(ownType)
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTerm())
             case LAMBDAtpt =>
