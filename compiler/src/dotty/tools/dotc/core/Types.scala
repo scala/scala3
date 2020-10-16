@@ -266,7 +266,7 @@ object Types {
       }
 
     /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
-    def isNothingType(using Context): Boolean = this match {
+    def isNothing(using Context): Boolean = this match {
       case tp: TypeRef =>
         tp.name == tpnme.Nothing && (tp.symbol eq defn.NothingClass)
       case _ => false
@@ -2126,7 +2126,7 @@ object Types {
           case arg: TypeBounds =>
             val v = param.paramVarianceSign
             val pbounds = param.paramInfo
-            if (v > 0 && pbounds.loBound.dealiasKeepAnnots.isNothingType) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
+            if (v > 0 && pbounds.loBound.dealiasKeepAnnots.isNothing) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
             else if (v < 0 && pbounds.hiBound.dealiasKeepAnnots.isTopType) TypeAlias(arg.loBound | rebase(pbounds.loBound))
             else arg recoverable_& rebase(pbounds)
           case arg => TypeAlias(arg)
@@ -2289,7 +2289,7 @@ object Types {
           if (base.isAnd == variance >= 0) tp1 & tp2 else tp1 | tp2
         case _ =>
           if (pre.termSymbol.is(Package)) argForParam(pre.select(nme.PACKAGE))
-          else if (pre.isNothingType) pre
+          else if (pre.isNothing) pre
           else NoType
       }
     }
@@ -2308,7 +2308,7 @@ object Types {
      */
     def derivedSelect(prefix: Type)(using Context): Type =
       if (prefix eq this.prefix) this
-      else if (prefix.isNothingType) prefix
+      else if (prefix.isNothing) prefix
       else {
         if (isType) {
           val res =
@@ -4292,7 +4292,7 @@ object Types {
 
     /** For uninstantiated type variables: Is the lower bound different from Nothing? */
     def hasLowerBound(using Context): Boolean =
-      !ctx.typerState.constraint.entry(origin).loBound.isNothingType
+      !ctx.typerState.constraint.entry(origin).loBound.isNothing
 
     /** For uninstantiated type variables: Is the upper bound different from Any? */
     def hasUpperBound(using Context): Boolean =
@@ -5297,7 +5297,7 @@ object Types {
         case _ =>
           def propagate(lo: Type, hi: Type) =
             range(derivedRefinedType(tp, parent, lo), derivedRefinedType(tp, parent, hi))
-          if (parent.isNothingType) parent
+          if (parent.isNothing) parent
           else info match {
             case Range(infoLo: TypeBounds, infoHi: TypeBounds) =>
               assert(variance == 0)
@@ -5390,7 +5390,7 @@ object Types {
         case Range(lo, hi) =>
           range(tp.derivedAnnotatedType(lo, annot), tp.derivedAnnotatedType(hi, annot))
         case _ =>
-          if (underlying.isNothingType) underlying
+          if (underlying.isNothing) underlying
           else tp.derivedAnnotatedType(underlying, annot)
       }
     override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType =
@@ -5638,7 +5638,7 @@ object Types {
       else {
         seen += tp
         tp match {
-          case tp if tp.isTopType || tp.isNothingType =>
+          case tp if tp.isTopType || tp.isNothing =>
             cs
           case tp: AppliedType =>
             foldOver(cs + tp.typeSymbol, tp)
