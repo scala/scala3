@@ -397,7 +397,7 @@ object Build {
 
       // Make majorVersion available at dotty.epfl.ch/versions/latest-nightly-base
       // Used by sbt-dotty to resolve the latest nightly
-      val majorVersion = baseVersion.take(baseVersion.lastIndexOf('.'))
+      val majorVersion = (scalaBinaryVersion in LocalProject("scala3-library-bootstrapped")).value
       IO.write(file("./docs/_site/versions/latest-nightly-base"), majorVersion)
 
       // This file is used by GitHub Pages when the page is available in a custom domain
