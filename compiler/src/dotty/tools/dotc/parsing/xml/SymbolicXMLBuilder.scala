@@ -189,9 +189,9 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
       )
 
       val uri1 = attrMap(z) match {
-        case Apply(_, List(uri @ Literal(Constant(_)))) => mkAssign(uri)
-        case Select(_, nme.Nil)                         => mkAssign(const(null))  // allow for xmlns="" -- bug #1626
-        case x                                          => mkAssign(x)
+        case Apply(_, Lst(uri @ Literal(Constant(_)))) => mkAssign(uri)
+        case Select(_, nme.Nil)                        => mkAssign(const(null))  // allow for xmlns="" -- bug #1626
+        case x                                         => mkAssign(x)
       }
       attrMap -= z
       uri1

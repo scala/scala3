@@ -826,15 +826,6 @@ object Lst:
     def unapply[T](xs: Lst[T]): UnapplyWrapper[T] = UnapplyWrapper(xs)
   end +:
 
-  object :: :
-    def unapply[T](xs: List[T]): Option[(T, List[T])] = xs match
-      case xs : ::[_] => Some((xs.head, xs.tail))
-      case _ => None
-
-    def unapply[T](xs: Lst[T]): Option[(Impossible, Impossible)] = None
-    final class Impossible
-  end ::
-
   trait Show[T]:
     extension (x: T) def show: String
 
@@ -925,4 +916,14 @@ object Lst:
     def drop(n: Int): Seq[T] = xs.sliceToSeq(n)
     def toSeq: Seq[T] = xs.toSeq
 
+// -------- Temporary poison pill to detect mistakes when matching Lst selectors against List patterns
+
+  object :: :
+    def unapply[T](xs: List[T]): Option[(T, List[T])] = xs match
+      case xs : ::[_] => Some((xs.head, xs.tail))
+      case _ => None
+
+    def unapply[T](xs: Lst[T]): Option[(Impossible, Impossible)] = None
+  end ::
+  final class Impossible
 end Lst
