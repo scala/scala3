@@ -96,17 +96,19 @@ jobs:
           ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE"
           ./project/scripts/bootstrapCmdTests
 
+  ## Only run bootstrapped tests for Windows since that's a superset of the
+  ## non-bootstrapped tests and bootstrapping issues should be caught by
+  ## the non-bootstrapped Linux runner.
+  # test-windows:
+  #   runs-on: [self-hosted, Windows]
 
-  test-windows:
-    runs-on: [self-hosted, Windows]
+  #   steps:
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@v2
-
-      - name: Test
-        run: sbt ";compile ;test"
-        shell: cmd
+  #     - name: Test
+  #       run: sbt ";compile ;test"
+  #       shell: cmd
 
   test_bootstrapped-windows:
     runs-on: [self-hosted, Windows]
