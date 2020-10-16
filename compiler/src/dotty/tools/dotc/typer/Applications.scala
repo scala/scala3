@@ -821,7 +821,7 @@ trait Applications extends Compatibility {
   class ApplyToUntyped(
     app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto,
     resultType: Type)(using Context)
-  extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind) {
+  extends TypedApply(app, fun, methRef, proto.args.toList, resultType, proto.applyKind) {
     def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
     def typeOfArg(arg: untpd.Tree): Type = proto.typeOfArg(arg)
@@ -868,7 +868,7 @@ trait Applications extends Compatibility {
 
     def realApply(using Context): Tree = {
       val originalProto =
-        new FunProto(tree.args.toList, IgnoredProto(pt))(this, tree.applyKind)(using argCtx(tree))
+        new FunProto(tree.args, IgnoredProto(pt))(this, tree.applyKind)(using argCtx(tree))
       record("typedApply")
       val fun1 = typedFunPart(tree.fun, originalProto)
 
@@ -921,7 +921,7 @@ trait Applications extends Compatibility {
           }
 
       fun1.tpe match {
-        case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs().toLst).withType(err)
+        case err: ErrorType => cpy.Apply(tree)(fun1, proto.typedArgs()).withType(err)
         case TryDynamicCallType =>
           val isInsertedApply = fun1 match {
             case Select(_, nme.apply) => fun1.span.isSynthetic
@@ -1045,7 +1045,7 @@ trait Applications extends Compatibility {
   def ApplyTo(app: untpd.Apply, fun: tpd.Tree, methRef: TermRef, proto: FunProto, resultType: Type)(using Context): tpd.Tree =
     val typer = ctx.typer
     if (proto.allArgTypesAreCurrent())
-      typer.ApplyToTyped(app, fun, methRef, proto.typedArgs(), resultType, proto.applyKind).result
+      typer.ApplyToTyped(app, fun, methRef, proto.typedArgs().toList, resultType, proto.applyKind).result
     else
       typer.ApplyToUntyped(app, fun, methRef, proto, resultType)(
         using fun.nullableInArgContext(using argCtx(app))).result
@@ -1881,9 +1881,9 @@ trait Applications extends Compatibility {
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] =
           if args.exists(untpd.isFunctionWithUnknownParamType) then
-            val normArgs = args.mapWithIndexConserve(normArg(alts, _, _))
-            if hasNamedArg(args) then narrowByTrees(alts, normArgs.map(treeShape), resultType)
-            else narrowByTypes(alts, normArgs.map(typeShape), resultType)
+            val normArgs = args.zipWith(args.indices)(normArg(alts, _, _))
+            if hasNamedArg(args) then narrowByTrees(alts, normArgs.map(treeShape).toList, resultType)
+            else narrowByTypes(alts, normArgs.map(typeShape).toList, resultType)
           else
             alts
 
@@ -1911,7 +1911,7 @@ trait Applications extends Compatibility {
           else
             record("resolveOverloaded.narrowedByShape", alts2.length)
             pretypeArgs(alts2, pt)
-            narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)), resultType)
+            narrowByTrees(alts2, pt.typedArgs(normArg(alts2, _, _)).toList, resultType)
 
       case pt @ PolyProto(targs1, pt1) =>
         val alts1 = alts.filter(pt.canInstantiate)
@@ -2069,7 +2069,7 @@ trait Applications extends Compatibility {
         recur(altFormals.map(_.tail), args1)
       case _ =>
     }
-    recur(alts.map(_.widen.firstParamTypes), pt.args)
+    recur(alts.map(_.widen.firstParamTypes), pt.args.toList)
   }
 
   private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(using Context): List[T] = {

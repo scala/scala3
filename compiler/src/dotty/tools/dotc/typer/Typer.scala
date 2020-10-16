@@ -1150,7 +1150,7 @@ class Typer extends Namer
               val outerCtx = ctx
               val nestedCtx = outerCtx.fresh.setNewTyperState()
               inContext(nestedCtx) {
-                val protoArgs = args.map(_ withType WildcardType).toList
+                val protoArgs = args.map(_ withType WildcardType)
                 val callProto = FunProto(protoArgs, WildcardType)(this, app.applyKind)
                 val expr1 = typedExpr(expr, callProto)
                 if nestedCtx.reporter.hasErrors then NoType
@@ -2844,7 +2844,7 @@ class Typer extends Namer
       // Suppress insertion of apply or implicit conversion on extension method receiver
       tree
     else pt match {
-      case pt @ FunProto(Nil, _)
+      case pt @ FunProto(NIL, _)
       if tree.symbol.allOverriddenSymbols.exists(_.info.isNullaryMethod) &&
          !tree.hasAttachment(DroppedEmptyArgs) =>
         tree.putAttachment(DroppedEmptyArgs, ())
@@ -3012,12 +3012,12 @@ class Typer extends Namer
      */
     def needsTupledDual(funType: Type, pt: FunProto): Boolean =
       pt.args match
-        case untpd.Tuple(elems) :: Nil =>
+        case Lst(untpd.Tuple(elems)) =>
           elems.length > 1
           && pt.applyKind == ApplyKind.InfixTuple
           && !isUnary(funType)
         case args =>
-          args.lengthCompare(1) > 0
+          args.length > 1
           && isUnary(funType)
           && autoTuplingEnabled
 

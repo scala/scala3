@@ -1575,7 +1575,7 @@ object Trees {
     }.asInstanceOf[tree.ThisTree[T]]
 
     /** Delegate to FunProto or FunProtoTyped depending on whether the prefix is `untpd` or `tpd`. */
-    protected def FunProto(args: List[Tree], resType: Type)(using Context): ProtoTypes.FunProto
+    protected def FunProto(args: Lst[Tree], resType: Type)(using Context): ProtoTypes.FunProto
 
     /** Construct the application `$receiver.$method[$targs]($args)` using overloading resolution
      *  to find a matching overload of `$method` if necessary.
@@ -1591,7 +1591,7 @@ object Trees {
       import dotty.tools.dotc.ast.tpd.TreeOps
 
       val typer = ctx.typer
-      val proto = FunProto(args.toList, expectedType)
+      val proto = FunProto(args, expectedType)
       val denot = receiver.tpe.member(method)
       assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
       val selected =

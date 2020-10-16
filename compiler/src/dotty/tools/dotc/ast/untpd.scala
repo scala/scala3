@@ -798,6 +798,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     acc(false, tree)
   }
 
-  protected def FunProto(args: List[Tree], resType: Type)(using Context) =
+  protected def FunProto(args: Lst[Tree], resType: Type)(using Context) =
     ProtoTypes.FunProto(args, resType)(ctx.typer, ApplyKind.Regular)
 }

@@ -15,6 +15,8 @@ import config.Printers.typr
 import util.SourceFile
 import util.Property
 import TypeComparer.necessarySubType
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 import scala.annotation.internal.sharable
 import util.Lst
@@ -261,7 +263,7 @@ object ProtoTypes {
   class FunProtoState {
 
     /** The list of typed arguments, if all arguments are typed */
-    var typedArgs: List[Tree] = Nil
+    var typedArgs: Lst[Tree] = NIL
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
     var typedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.empty
@@ -277,7 +279,7 @@ object ProtoTypes {
    *
    *  [](args): resultType
    */
-  case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer,
+  case class FunProto(args: Lst[untpd.Tree], resType: Type)(typer: Typer,
     override val applyKind: ApplyKind, state: FunProtoState = new FunProtoState)(using protoCtx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(using Context): Type = resType
@@ -287,11 +289,11 @@ object ProtoTypes {
       def isPoly(tree: Tree) = tree.tpe.widenSingleton.isInstanceOf[PolyType]
       // See remark in normalizedCompatible for why we can't keep the constraint
       // if one of the arguments has a PolyType.
-      typer.isApplicableType(tp, args, resultType, keepConstraint && !args.exists(isPoly))
+      typer.isApplicableType(tp, args.toList, resultType, keepConstraint && !args.exists(isPoly))
     }
 
-    def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
-      if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
+    def derivedFunProto(args: Lst[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
+      if ((args eqLst this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
       else new FunProto(args, resultType)(typer, applyKind)
 
     /** @return True if all arguments have types.
@@ -337,15 +339,16 @@ object ProtoTypes {
      *  @param norm   a normalization function that is applied to an untyped argument tree
      *                before it is typed. The second Int parameter is the parameter index.
      */
-    def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree = sameTree)(using Context): List[Tree] =
+    def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree = sameTree)(using Context): Lst[Tree] =
       if (state.typedArgs.size == args.length) state.typedArgs
       else {
         val prevConstraint = protoCtx.typerState.constraint
 
         try
           inContext(protoCtx) {
-            val args1 = args.mapWithIndexConserve((arg, idx) =>
-              cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
+            val args1 = args.zipWith(args.indices) { (arg, idx) =>
+              cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false)
+            }
             if !args1.exists(arg => isUndefined(arg.tpe)) then state.typedArgs = args1
             args1
           }
@@ -383,9 +386,9 @@ object ProtoTypes {
         pt
       case _ =>
         val dualArgs = args match
-          case untpd.Tuple(elems) :: Nil => elems
-          case _ => Lst(untpd.Tuple(args.toLst))
-        state.tupledDual = new FunProto(dualArgs.toList, resultType)(typer, applyKind)
+          case Lst(untpd.Tuple(elems)) => elems
+          case _ => Lst(untpd.Tuple(args))
+        state.tupledDual = new FunProto(dualArgs, resultType)(typer, applyKind)
         tupledDual
     }
 
@@ -427,9 +430,9 @@ object ProtoTypes {
    *
    *  [](args): resultType, where args are known to be typed
    */
-  class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, applyKind: ApplyKind)(using Context)
+  class FunProtoTyped(args: Lst[tpd.Tree], resultType: Type)(typer: Typer, applyKind: ApplyKind)(using Context)
   extends FunProto(args, resultType)(typer, applyKind):
-    override def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree)(using Context): List[tpd.Tree] = args
+    override def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree)(using Context): Lst[tpd.Tree] = args
     override def typedArg(arg: untpd.Tree, formal: Type)(using Context): tpd.Tree = arg.asInstanceOf[tpd.Tree]
     override def allArgTypesAreCurrent()(using Context): Boolean = true
     override def withContext(ctx: Context): FunProtoTyped = this
@@ -480,7 +483,7 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(using Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source)) :: Nil, WildcardType)(typer, applyKind = ApplyKind.Regular)
+    Lst(untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source))), WildcardType)(typer, applyKind = ApplyKind.Regular)
 
   /** A prototype for expressions [] that are type-parameterized:
    *

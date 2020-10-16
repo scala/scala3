@@ -1415,6 +1415,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       .appliedToVarargs(trees, tpe)
 
 
-  protected def FunProto(args: List[Tree], resType: Type)(using Context) =
+  protected def FunProto(args: Lst[Tree], resType: Type)(using Context) =
     ProtoTypes.FunProtoTyped(args, resType)(ctx.typer, ApplyKind.Regular)
 }
