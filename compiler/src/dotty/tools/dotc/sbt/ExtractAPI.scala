@@ -632,6 +632,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     end positionedHash
 
     def iteratorHash(it: Iterator[Any], initHash: Int): Int =
+      import core.Constants._
       var h = initHash
       while it.hasNext do
         it.next() match
@@ -639,9 +640,22 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
             h = positionedHash(p, h)
           case xs: List[?] =>
             h = iteratorHash(xs.iterator, h)
-          case c: core.Constants.Constant =>
+          case c: Constant =>
             h = MurmurHash3.mix(h, c.tag)
-            h = MurmurHash3.mix(h, c.value.##) // We can't use `value.hashCode` since value might be null
+            c.tag match
+              case NullTag =>
+                // No value to hash, the tag is enough.
+              case ClazzTag =>
+                // Go through `apiType` to get a value with a stable hash, it'd
+                // be better to use Murmur here too instead of relying on
+                // `hashCode`, but that would essentially mean duplicating
+                // https://github.com/sbt/zinc/blob/develop/internal/zinc-apiinfo/src/main/scala/xsbt/api/HashAPI.scala
+                // and at that point we might as well do type hashing on our own
+                // representation.
+                val apiValue = apiType(c.typeValue)
+                h = MurmurHash3.mix(h, apiValue.hashCode)
+              case _ =>
+                h = MurmurHash3.mix(h, c.value.hashCode)
           case n: Name =>
             // The hashCode of the name itself is not stable across compiler instances
             h = MurmurHash3.mix(h, n.toString.hashCode)
