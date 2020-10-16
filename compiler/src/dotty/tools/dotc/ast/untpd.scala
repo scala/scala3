@@ -99,7 +99,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class Parens(t: Tree)(implicit @constructorOnly src: SourceFile) extends ProxyTree {
     def forwardTo: Tree = t
   }
-  case class Tuple(trees: List[Tree])(implicit @constructorOnly src: SourceFile) extends Tree {
+  case class Tuple(trees: Lst[Tree])(implicit @constructorOnly src: SourceFile) extends Tree {
     override def isTerm: Boolean = trees.isEmpty || trees.head.isTerm
     override def isType: Boolean = !isTerm
   }
@@ -486,13 +486,13 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeSelfDef(name: TermName, tpt: Tree)(using Context): ValDef =
     ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal)
 
-  def makeTupleOrParens(ts: List[Tree])(using Context): Tree = ts match {
-    case t :: Nil => Parens(t)
+  def makeTupleOrParens(ts: Lst[Tree])(using Context): Tree = ts match {
+    case Lst(t) => Parens(t)
     case _ => Tuple(ts)
   }
 
-  def makeTuple(ts: List[Tree])(using Context): Tree = ts match {
-    case t :: Nil => t
+  def makeTuple(ts: Lst[Tree])(using Context): Tree = ts match {
+    case Lst(t) => t
     case _ => Tuple(ts)
   }
 
@@ -586,8 +586,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Parens if t eq tree.t => tree
       case _ => finalize(tree, untpd.Parens(t)(tree.source))
     }
-    def Tuple(tree: Tree)(trees: List[Tree])(using Context): Tree = tree match {
-      case tree: Tuple if trees eq tree.trees => tree
+    def Tuple(tree: Tree)(trees: Lst[Tree])(using Context): Tree = tree match {
+      case tree: Tuple if trees eqLst tree.trees => tree
       case _ => finalize(tree, untpd.Tuple(trees)(tree.source))
     }
     def Throw(tree: Tree)(expr: Tree)(using Context): TermTree = tree match {

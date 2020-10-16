@@ -18,7 +18,7 @@ import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
 import Decorators._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
-import util.Lst; // import Lst.::
+import util.Lst
 
 object Trees {
 
@@ -1030,6 +1030,10 @@ object Trees {
     def flatTree(xs: List[Tree])(implicit src: SourceFile): Tree = flatten(xs) match {
       case x :: Nil => x
       case ys => Thicket(ys.toLst)
+    }
+    def flatTree(xs: Lst[Tree])(implicit src: SourceFile): Tree = flatten(xs) match {
+      case Lst(x) => x
+      case ys => Thicket(ys)
     }
 
     // ----- Helper classes for copying, transforming, accumulating -----------------

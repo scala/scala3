@@ -13,6 +13,7 @@ import core._
 import Constants._
 import util.SourceFile
 import Utility._
+import util.Lst
 
 
 // XXX/Note: many/most of the functions in here are almost direct cut and pastes
@@ -417,7 +418,7 @@ object MarkupParsers {
 
     /** xScalaPatterns  ::= patterns
      */
-    def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns(), "pattern")
+    def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns().toList, "pattern")
 
     def reportSyntaxError(offset: Int, str: String): Unit = parser.syntaxError(str, offset)
     def reportSyntaxError(str: String): Unit = {

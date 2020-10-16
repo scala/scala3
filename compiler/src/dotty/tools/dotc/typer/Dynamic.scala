@@ -71,7 +71,7 @@ trait Dynamic {
       if (dynName == nme.applyDynamicNamed && untpd.isWildcardStarArgList(args))
         errorTree(tree, "applyDynamicNamed does not support passing a vararg parameter")
       else {
-        def namedArgTuple(name: String, arg: untpd.Tree) = untpd.Tuple(List(Literal(Constant(name)), arg))
+        def namedArgTuple(name: String, arg: untpd.Tree) = untpd.Tuple(Lst(Literal(Constant(name)), arg))
         def namedArgs = args.map {
           case NamedArg(argName, arg) => namedArgTuple(argName.toString, arg)
           case arg => namedArgTuple("", arg)

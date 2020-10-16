@@ -624,7 +624,7 @@ trait Applications extends Compatibility {
           args match {
             case arg :: args1 =>
               def msg = arg match
-                case untpd.Tuple(Nil)
+                case untpd.Tuple(NIL)
                 if applyKind == ApplyKind.InfixTuple && funType.widen.isNullaryMethod =>
                   i"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
                 case _ =>
@@ -1325,7 +1325,7 @@ trait Applications extends Compatibility {
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil =>
-            if (args.length > 1 && Feature.autoTuplingEnabled) Lst(untpd.Tuple(args.toList))
+            if (args.length > 1 && Feature.autoTuplingEnabled) Lst(untpd.Tuple(args))
             else args
           case _ => args
         }

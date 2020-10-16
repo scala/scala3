@@ -632,6 +632,8 @@ object Lst:
   end extension
 
   extension [T, U, V, W](xs: Lst[T]):
+    def zipWith(ys: Lst[U], zs: Lst[V])(op: (T, U, V) => W): Lst[W] =
+      zipWith(ys.iterator, zs.iterator)(op)
     def zipWith(ys: IterableOnce[U], zs: IterableOnce[V])(op: (T, U, V) => W): Lst[W] =
       val yit = ys.iterator
       val zit = zs.iterator

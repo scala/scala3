@@ -17,6 +17,8 @@ import util.Property
 import TypeComparer.necessarySubType
 
 import scala.annotation.internal.sharable
+import util.Lst
+import Lst.{NIL, +:, toLst}
 
 object ProtoTypes {
 
@@ -382,8 +384,8 @@ object ProtoTypes {
       case _ =>
         val dualArgs = args match
           case untpd.Tuple(elems) :: Nil => elems
-          case _ => untpd.Tuple(args) :: Nil
-        state.tupledDual = new FunProto(dualArgs, resultType)(typer, applyKind)
+          case _ => Lst(untpd.Tuple(args.toLst))
+        state.tupledDual = new FunProto(dualArgs.toList, resultType)(typer, applyKind)
         tupledDual
     }
 

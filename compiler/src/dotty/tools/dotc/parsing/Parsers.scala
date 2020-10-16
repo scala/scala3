@@ -449,7 +449,7 @@ object Parsers {
       case Parens(t) =>
         convertToParam(t, mods) :: Nil
       case Tuple(ts) =>
-        ts.map(convertToParam(_, mods))
+        ts.map(convertToParam(_, mods)).toList
       case t: Typed =>
         report.errorOrMigrationWarning(
           em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
@@ -1443,7 +1443,7 @@ object Parsers {
                     case _ =>
                       t
                   }
-              val tuple = atSpan(start) { makeTupleOrParens(ts1) }
+              val tuple = atSpan(start) { makeTupleOrParens(ts1.toLst) }
               infixTypeRest(
                 refinedTypeRest(
                   withTypeRest(
@@ -1635,7 +1635,7 @@ object Parsers {
     def simpleType1() = simpleTypeRest {
       if in.token == LPAREN then
         atSpan(in.offset) {
-          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
+          makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true).toLst))
         }
       else if in.token == LBRACE then
         atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
@@ -1695,12 +1695,12 @@ object Parsers {
         if (ctx.settings.YkindProjector.value) {
           t match {
             case Tuple(params) =>
-              val (newParams, tparams) = replaceKindProjectorPlaceholders(params)
+              val (newParams, tparams) = replaceKindProjectorPlaceholders(params.toList)
 
               if (tparams.isEmpty) {
                 t
               } else {
-                LambdaTypeTree(tparams, Tuple(newParams))
+                LambdaTypeTree(tparams, Tuple(newParams.toLst))
               }
             case _ => t
           }
@@ -2324,8 +2324,8 @@ object Parsers {
 
     /**   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
      */
-    def exprsInParensOpt(): List[Tree] =
-      if (in.token == RPAREN) Nil else commaSeparated(exprInParens)
+    def exprsInParensOpt(): Lst[Tree] =
+      if (in.token == RPAREN) NIL else commaSeparatedLst(exprInParens)
 
     /** ParArgumentExprs ::= `(' [‘using’] [ExprsInParens] `)'
      *                    |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'
@@ -2714,21 +2714,21 @@ object Parsers {
         if (in.token == LBRACKET)
           p = atSpan(startOffset(t), in.offset) { TypeApply(p, typeArgs(namedOK = false, wildOK = false).toLst) }
         if (in.token == LPAREN)
-          p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns().toLst) }
+          p = atSpan(startOffset(t), in.offset) { Apply(p, argumentPatterns()) }
         p
 
     /** Patterns          ::=  Pattern [`,' Pattern]
      */
-    def patterns(location: Location = Location.InPattern): List[Tree] =
-      commaSeparated(() => pattern(location))
+    def patterns(location: Location = Location.InPattern): Lst[Tree] =
+      commaSeparatedLst(() => pattern(location))
 
-    def patternsOpt(location: Location = Location.InPattern): List[Tree] =
-      if (in.token == RPAREN) Nil else patterns(location)
+    def patternsOpt(location: Location = Location.InPattern): Lst[Tree] =
+      if (in.token == RPAREN) NIL else patterns(location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
      *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
      */
-    def argumentPatterns(): List[Tree] =
+    def argumentPatterns(): Lst[Tree] =
       inParens(patternsOpt(Location.InPatternArgs))
 
 /* -------- MODIFIERS and ANNOTATIONS ------------------------------------------- */

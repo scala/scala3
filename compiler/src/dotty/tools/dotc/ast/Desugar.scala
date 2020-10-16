@@ -989,7 +989,7 @@ object desugar {
           case tree: LambdaTypeTree =>
             apply(x, tree.body)
           case tree: Tuple =>
-            extractArgs(tree.trees)
+            extractArgs(tree.trees.toList)
           case tree: Function if tree.args.nonEmpty =>
             if (followArgs) s"${extractArgs(tree.args)}_to_${apply("", tree.body)}" else "Function"
           case _ => foldOver(x, tree)
@@ -1089,7 +1089,7 @@ object desugar {
             case Tuple(pats) =>
               pats.map { case id: Ident => id -> TypeTree() }
           }
-        else getVariables(pat)  // no `_`
+        else getVariables(pat).toLst  // no `_`
 
       val ids = for ((named, _) <- vars) yield Ident(named.name)
       val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
@@ -1097,9 +1097,9 @@ object desugar {
         if (tupleOptimizable) rhs
         else Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), Lst(caseDef))
       vars match {
-        case Nil if !mods.is(Lazy) =>
+        case NIL if !mods.is(Lazy) =>
           matchExpr
-        case (named, tpt) :: Nil =>
+        case Lst((named, tpt)) =>
           derivedValDef(original, named, tpt, matchExpr, mods)
         case _ =>
           val tmpName = UniqueName.fresh()
@@ -1204,7 +1204,7 @@ object desugar {
         case Parens(arg) =>
           Apply(sel, Lst(assignToNamedArg(arg)))
         case Tuple(args) if args.exists(_.isInstanceOf[Assign]) =>
-          Apply(sel, args.toLst.mapConserve(assignToNamedArg))
+          Apply(sel, args.mapConserve(assignToNamedArg))
         case Tuple(args) =>
           Apply(sel, Lst(arg)).setApplyKind(ApplyKind.InfixTuple)
         case _ =>
@@ -1223,7 +1223,7 @@ object desugar {
    *     (t1, ..., tN)  ==>   TupleN(t1, ..., tN)
    */
   def smallTuple(tree: Tuple)(using Context): Tree = {
-    val ts = tree.trees.toLst
+    val ts = tree.trees
     val arity = ts.length
     assert(arity <= Definitions.MaxTupleArity)
     def tupleTypeRef = defn.TupleType(arity)
@@ -1304,9 +1304,9 @@ object desugar {
    *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked?) match { cases }
    */
   def makeCaseLambda(cases: Lst[CaseDef], checkMode: MatchCheck, nparams: Int = 1)(using Context): Function = {
-    val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
+    val params = (1 to nparams).toLst.map(makeSyntheticParameter(_))
     val selector = makeTuple(params.map(p => Ident(p.name)))
-    Function(params, Match(makeSelector(selector, checkMode), cases))
+    Function(params.toList, Match(makeSelector(selector, checkMode), cases))
   }
 
   /** Map n-ary function `(x1: T1, ..., xn: Tn) => body` where n != 1 to unary function as follows:
@@ -1334,7 +1334,7 @@ object desugar {
     val param = makeSyntheticParameter(
       tpt =
         if params.exists(_.tpt.isEmpty) then TypeTree()
-        else Tuple(params.map(_.tpt)))
+        else Tuple(params.toLst.map(_.tpt)))
     def selector(n: Int) =
       if (isGenericTuple) Apply(Select(refOfDef(param), nme.apply), Literal(Constant(n)))
       else Select(refOfDef(param), nme.selectorName(n))
@@ -1507,7 +1507,7 @@ object desugar {
        *  is done later in the pattern matcher (see discussion in @makePatFilter).
        */
       def isIrrefutable(pat: Tree, rhs: Tree): Boolean = {
-        def matchesTuple(pats: List[Tree], rhs: Tree): Boolean = rhs match {
+        def matchesTuple(pats: Lst[Tree], rhs: Tree): Boolean = rhs match {
           case Tuple(trees) => (pats corresponds trees)(isIrrefutable)
           case Parens(rhs1) => matchesTuple(pats, rhs1)
           case Block(_, rhs1) => matchesTuple(pats, rhs1)
@@ -1553,16 +1553,16 @@ object desugar {
           val cont = makeFor(mapName, flatMapName, rest, body)
           Apply(rhsSelect(gen, flatMapName), makeLambda(gen, cont))
         case (gen: GenFrom) :: (rest @ GenAlias(_, _) :: _) =>
-          val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
+          val (valeqs, rest1) = rest.toLst.span(_.isInstanceOf[GenAlias])
           val pats = valeqs map { case GenAlias(pat, _) => pat }
           val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
           val (defpat0, id0) = makeIdPat(gen.pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
-          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map(makePatDef(_, Modifiers(), _, _))
-          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs.toLst, makeTuple(id0 :: ids)))
+          val pdefs = valeqs.zipWith(defpats, rhss)(makePatDef(_, Modifiers(), _, _))
+          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = gen.pat :: pats
           val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
-          makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
+          makeFor(mapName, flatMapName, (vfrom1 :: rest1).toList, body)
         case (gen: GenFrom) :: test :: rest =>
           val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
           val genFrom = GenFrom(gen.pat, filtered, GenCheckMode.Ignore)
