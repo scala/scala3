@@ -13,6 +13,8 @@ jobs:
   test:
     runs-on: [self-hosted, Linux]
     container: lampepfl/dotty:2020-04-24
+    if: "!(github.event_name == 'push' &&
+           startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
 
     steps:
       - name: Set JDK 11 as default
@@ -56,6 +58,8 @@ jobs:
   test_bootstrapped:
     runs-on: [self-hosted, Linux]
     container: lampepfl/dotty:2020-04-24
+    if: "!(github.event_name == 'push' &&
+           startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
 
     steps:
       - name: Set JDK 11 as default
@@ -101,6 +105,8 @@ jobs:
   ## the non-bootstrapped Linux runner.
   # test-windows:
   #   runs-on: [self-hosted, Windows]
+  #   if: "!(github.event_name == 'push' &&
+  #          startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
 
   #   steps:
   #     - name: Git Checkout
@@ -112,6 +118,8 @@ jobs:
 
   test_bootstrapped-windows:
     runs-on: [self-hosted, Windows]
+    if: "!(github.event_name == 'push' &&
+           startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
 
     steps:
       - name: Git Checkout
@@ -212,11 +220,12 @@ jobs:
   test_java8:
     runs-on: [self-hosted, Linux]
     container: lampepfl/dotty:2020-04-24
-    if: (
+    if: "(
           github.event_name == 'push' &&
-          startsWith(github.event.ref, 'refs/tags/')
-        ) ||
-        github.event_name == 'schedule'
+          startsWith(github.event.ref, 'refs/tags/') &&
+          !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         ) ||
+         github.event_name == 'schedule'"
 
     steps:
       - name: Set JDK 8 as default
@@ -511,7 +520,7 @@ jobs:
   publish_sbt_release:
     runs-on: [self-hosted, Linux]
     container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
+    needs: [community_build, test_sbt]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
 
