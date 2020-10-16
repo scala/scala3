@@ -935,6 +935,7 @@ object Build {
 
       fetchScalaJSSource := {
         import org.eclipse.jgit.api._
+        import org.eclipse.jgit.lib._
 
         val s = streams.value
         val ver = scalaJSVersion
@@ -946,12 +947,14 @@ object Build {
           new CloneCommand()
             .setDirectory(trgDir)
             .setURI("https://github.com/scala-js/scala-js.git")
+            .setNoCheckout(true)
             .call()
         }
 
         // Checkout proper ref. We do this anyway so we fail if something is wrong
         val git = Git.open(trgDir)
         s.log.info(s"Checking out Scala.js source version $ver")
+        git.getRepository().getConfig().setEnum("core", null, "autocrlf", CoreConfig.AutoCRLF.FALSE)
         git.checkout().setName(s"v$ver").call()
 
         trgDir
