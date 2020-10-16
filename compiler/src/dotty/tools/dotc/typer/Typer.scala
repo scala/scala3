@@ -753,7 +753,6 @@ class Typer extends Namer
           if (ctx.mode.is(Mode.QuotedPattern)) pt.translateFromRepeated(toArray = false, translateWildcard = true)
           else pt.translateFromRepeated(toArray = false, translateWildcard = true) |
                pt.translateFromRepeated(toArray = true,  translateWildcard = true)
-        val tpdExpr = typedExpr(tree.expr, ptArg)
         val expr1 = typedExpr(tree.expr, ptArg)
         val fromCls = if expr1.tpe.derivesFrom(defn.ArrayClass) then defn.ArrayClass else defn.SeqClass
         val tpt1 = TypeTree(expr1.tpe.widen.translateToRepeated(fromCls)).withSpan(tree.tpt.span)
