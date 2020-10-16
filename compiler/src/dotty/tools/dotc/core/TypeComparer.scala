@@ -2325,7 +2325,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   def provablyEmpty(tp: Type): Boolean =
     tp.dealias match {
-      case tp if tp.isBottomType => true
+      case tp if tp.isNothingType => true
       case AndType(tp1, tp2) => provablyDisjoint(tp1, tp2)
       case OrType(tp1, tp2) => provablyEmpty(tp1) && provablyEmpty(tp2)
       case at @ AppliedType(tycon, args) =>

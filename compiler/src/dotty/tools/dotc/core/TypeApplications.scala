@@ -406,7 +406,11 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ =>
       if (self.derivesFrom(from)) {
         def elemType(tp: Type): Type = tp.widenDealias match
-          case tp: AndOrType => tp.derivedAndOrType(elemType(tp.tp1), elemType(tp.tp2))
+          case tp: OrType =>
+            if defn.isBottomType(tp.tp1) then elemType(tp.tp2)
+            else if defn.isBottomType(tp.tp2) then elemType(tp.tp1)
+            else tp.derivedOrType(elemType(tp.tp1), elemType(tp.tp2))
+          case tp: AndType => tp.derivedAndType(elemType(tp.tp1), elemType(tp.tp2))
           case _ => tp.baseType(from).argInfos.headOption.getOrElse(defn.NothingType)
         val arg = elemType(self)
         val arg1 = if (wildcardArg) TypeBounds.upper(arg) else arg
@@ -499,6 +503,8 @@ class TypeApplications(val self: Type) extends AnyVal {
   def elemType(using Context): Type = self.widenDealias match {
     case defn.ArrayOf(elemtp) => elemtp
     case JavaArrayType(elemtp) => elemtp
+    case tp: OrType if defn.isBottomType(tp.tp1) => tp.tp2.elemType
+    case tp: OrType if defn.isBottomType(tp.tp2) => tp.tp1.elemType
     case _ => self.baseType(defn.SeqClass).argInfos.headOption.getOrElse(NoType)
   }
 }

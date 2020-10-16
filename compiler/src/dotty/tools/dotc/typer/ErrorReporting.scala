@@ -169,7 +169,7 @@ object ErrorReporting {
            |Note that `${tree.name}` is treated as an infix operator in Scala 3.
            |If you do not want that, insert a `;` or empty line in front
            |or drop any spaces behind the operator."""
-      else if qualType.isBottomType then
+      else if qualType.isNothingType then
         ""
       else
         val add = suggestImports(
