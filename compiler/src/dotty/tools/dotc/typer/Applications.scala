@@ -131,10 +131,10 @@ object Applications {
   def productArity(tp: Type, errorPos: SrcPos = NoSourcePosition)(using Context): Int =
     if (defn.isProductSubType(tp)) productSelectorTypes(tp, errorPos).size else -1
 
-  def productSelectors(tp: Type)(using Context): List[Symbol] = {
+  def productSelectors(tp: Type)(using Context): Lst[Symbol] = {
     val sels = for (n <- Iterator.from(0)) yield
       tp.member(nme.selectorName(n)).suchThat(_.info.isParameterless).symbol
-    sels.takeWhile(_.exists).toList
+    sels.takeWhile(_.exists).toLst
   }
 
   def getUnapplySelectors(tp: Type, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] =
@@ -1286,18 +1286,18 @@ trait Applications extends Compatibility {
           }
         val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, Lst(dummyArg))))
-        def unapplyImplicits(unapp: Tree): List[Tree] = {
-          val res = List.newBuilder[Tree]
+        def unapplyImplicits(unapp: Tree): Lst[Tree] = {
+          val res = Lst.Buffer[Tree]()
           def loop(unapp: Tree): Unit = unapp match {
-            case Apply(Apply(unapply, Lst(`dummyArg`)), args2) => assert(args2.nonEmpty); res ++= args2.toList
+            case Apply(Apply(unapply, Lst(`dummyArg`)), args2) => assert(args2.nonEmpty); res ++= args2
             case Apply(unapply, Lst(`dummyArg`)) =>
             case Inlined(u, _, _) => loop(u)
             case DynamicUnapply(_) => report.error("Structural unapply is not supported", unapplyFn.srcPos)
-            case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args.toList
+            case Apply(fn, args) => assert(args.nonEmpty); loop(fn); res ++= args
             case _ => ().assertingErrorsReported
           }
           loop(unapp)
-          res.result()
+          res.toLst
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args.toList, tree.srcPos)
@@ -1314,14 +1314,14 @@ trait Applications extends Compatibility {
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val unapplyPatterns = bunchedArgs.zipWith(argTypes)(typed(_, _))
-        val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns.toList), ownType)
+        val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = ${unapplyPatterns.toList}")
         if ((ownType eq selType) || ownType.isError) result
         else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
-        val typedArgsErr = args mapConserve (typed(_, defn.AnyType))
-        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr.toList) withType unapplyErr.tpe
+        val typedArgsErr = args.mapConserve(typed(_, defn.AnyType))
+        cpy.UnApply(tree)(unapplyErr, NIL, typedArgsErr) withType unapplyErr.tpe
     }
   }
 

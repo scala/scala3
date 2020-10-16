@@ -1837,13 +1837,13 @@ class Typer extends Namer
       return errorTree(tree, i"expected type of $tree is not fully defined")
     val body1 = typed(tree.body, pt)
     body1 match {
-      case UnApply(fn, Nil, arg :: Nil)
+      case UnApply(fn, NIL, Lst(arg))
       if fn.symbol.exists && fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
         // A typed pattern `x @ (e: T)` with an implicit `ctag: ClassTag[T]`
         // was rewritten to `x @ ctag(e)` by `tryWithClassTag`.
         // Rewrite further to `ctag(x @ e)`
-        tpd.cpy.UnApply(body1)(fn, Nil,
-            typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withSpan(tree.span), arg.tpe) :: Nil)
+        tpd.cpy.UnApply(body1)(fn, NIL,
+            Lst(typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withSpan(tree.span), arg.tpe)))
       case _ =>
         var name = tree.name
         if (name == nme.WILDCARD && tree.mods.is(Given)) {

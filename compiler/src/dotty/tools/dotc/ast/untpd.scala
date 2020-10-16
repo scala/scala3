@@ -398,7 +398,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def TypeBoundsTree(lo: Tree, hi: Tree, alias: Tree = EmptyTree)(implicit src: SourceFile): TypeBoundsTree = new TypeBoundsTree(lo, hi, alias)
   def Bind(name: Name, body: Tree)(implicit src: SourceFile): Bind = new Bind(name, body)
   def Alternative(trees: Lst[Tree])(implicit src: SourceFile): Alternative = new Alternative(trees)
-  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree])(implicit src: SourceFile): UnApply = new UnApply(fun, implicits, patterns)
+  def UnApply(fun: Tree, implicits: Lst[Tree], patterns: Lst[Tree])(implicit src: SourceFile): UnApply = new UnApply(fun, implicits, patterns)
   def ValDef(name: TermName, tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): ValDef = new ValDef(name, tpt, rhs)
   def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
   def TypeDef(name: TypeName, rhs: Tree)(implicit src: SourceFile): TypeDef = new TypeDef(name, rhs)

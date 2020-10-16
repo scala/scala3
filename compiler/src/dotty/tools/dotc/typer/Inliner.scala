@@ -1109,9 +1109,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             unapp.tpe.widen match {
               case mt: MethodType if mt.paramInfos.length == 1 =>
 
-                def reduceSubPatterns(pats: List[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
-                  case (Nil, Nil) => true
-                  case (pat :: pats1, selector :: selectors1) =>
+                def reduceSubPatterns(pats: Lst[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
+                  case (NIL, Nil) => true
+                  case (pat +: pats1, selector :: selectors1) =>
                     val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenTermRefExpr).asTerm
                     val rhs = constToLiteral(selector)
                     elem.defTree = rhs

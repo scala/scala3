@@ -700,8 +700,9 @@ trait Checking {
           case UnApply(fn, _, pats) =>
             check(pat, pt) &&
             (isIrrefutableUnapply(fn, pats.length) || fail(pat, pt)) && {
-              val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
-              pats.corresponds(argPts)(recur)
+              val patsList = pats.toList
+              val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, patsList, pat.srcPos)
+              patsList.corresponds(argPts)(recur)
             }
           case Alternative(pats) =>
             pats.forall(recur(_, pt))

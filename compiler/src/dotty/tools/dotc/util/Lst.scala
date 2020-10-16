@@ -259,6 +259,8 @@ object Lst:
       case x: T @unchecked =>
         if p(x) then (single[T](x), NIL) else (NIL, single[T](x))
 
+    def splitAt(n: Int): (Lst[T], Lst[T]) = (slice(0, n), slice(n, length))
+
     inline def exists(inline p: T => Boolean): Boolean =
       def op(x: T) = p(x)
       xs match
@@ -314,6 +316,7 @@ object Lst:
     inline def headOr(inline alt: T): T = if isEmpty then alt else head
 
     def headOption: Option[T] = if isEmpty then None else Some(head)
+    def lastOption: Option[T] = if isEmpty then None else Some(last)
 
     def slice(start: Int, end: Int): Lst[T] =
       if start < 0 then slice(0, end)
@@ -399,6 +402,12 @@ object Lst:
         multi[T](newElems)
       case elem: T @unchecked =>
         Lst(elem, x)
+
+    def updated(idx: Int, x: T): Lst[T] =
+      xs match
+        case xs: Arr => multi[T]((xs: Arr).updated(idx, x))
+        case elem: T @unchecked if idx == 0 => single[T](x)
+        case _ => throw IndexOutOfBoundsException(idx.toString)
 
     def union(ys: Lst[T]): Lst[T] = xs ++ ys.filterNot(xs.contains(_))
     def intersect(ys: Lst[T]): Lst[T] = xs.filter(ys.contains(_))

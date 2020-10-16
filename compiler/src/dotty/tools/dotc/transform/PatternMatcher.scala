@@ -226,7 +226,7 @@ object PatternMatcher {
     private def patternPlan(scrutinee: Symbol, tree: Tree, onSuccess: Plan): Plan = {
 
       /** Plan for matching `selectors` against argument patterns `args` */
-      def matchArgsPlan(selectors: List[Tree], args: List[Tree], onSuccess: Plan): Plan = {
+      def matchArgsPlan(selectors: Lst[Tree], args: Lst[Tree], onSuccess: Plan): Plan = {
         /* For a case with arguments that have some test on them such as
          * ```
          * case Foo(1, 2) => someCode
@@ -243,19 +243,19 @@ object PatternMatcher {
          * } else ()
          * ```
          */
-        def matchArgsSelectorsPlan(selectors: List[Tree], syms: List[Symbol]): Plan =
+        def matchArgsSelectorsPlan(selectors: Lst[Tree], syms: List[Symbol]): Plan =
           selectors match {
-            case selector :: selectors1 => letAbstract(selector)(sym => matchArgsSelectorsPlan(selectors1, sym :: syms))
-            case Nil => matchArgsPatternPlan(args, syms.reverse)
+            case NIL => matchArgsPatternPlan(args, syms.reverse)
+            case selector +: selectors1 => letAbstract(selector)(sym => matchArgsSelectorsPlan(selectors1, sym :: syms))
           }
-        def matchArgsPatternPlan(args: List[Tree], syms: List[Symbol]): Plan =
+        def matchArgsPatternPlan(args: Lst[Tree], syms: List[Symbol]): Plan =
           args match {
-            case arg :: args1 =>
-              val sym :: syms1 = syms
-              patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1))
-            case Nil =>
+            case NIL =>
               assert(syms.isEmpty)
               onSuccess
+            case arg +: args1 =>
+              val sym :: syms1 = syms
+              patternPlan(sym, arg, matchArgsPatternPlan(args1, syms1))
           }
         matchArgsSelectorsPlan(selectors, Nil)
       }
@@ -263,8 +263,8 @@ object PatternMatcher {
       /** Plan for matching the sequence in `seqSym` against sequence elements `args`.
        *  If `exact` is true, the sequence is not permitted to have any elements following `args`.
        */
-      def matchElemsPlan(seqSym: Symbol, args: List[Tree], exact: Boolean, onSuccess: Plan) = {
-        val selectors = args.indices.toList.map(idx =>
+      def matchElemsPlan(seqSym: Symbol, args: Lst[Tree], exact: Boolean, onSuccess: Plan) = {
+        val selectors = args.indices.map(idx =>
           ref(seqSym).select(defn.Seq_apply.matchingMember(seqSym.info)).appliedTo(Literal(Constant(idx))))
         TestPlan(LengthTest(args.length, exact), seqSym, seqSym.span,
           matchArgsPlan(selectors, args, onSuccess))
@@ -273,7 +273,7 @@ object PatternMatcher {
       /** Plan for matching the sequence in `getResult` against sequence elements
        *  and a possible last varargs argument `args`.
        */
-      def unapplySeqPlan(getResult: Symbol, args: List[Tree]): Plan = args.lastOption match {
+      def unapplySeqPlan(getResult: Symbol, args: Lst[Tree]): Plan = args.lastOption match {
         case Some(VarArgPattern(arg)) =>
           val matchRemaining =
             if (args.length == 1) {
@@ -300,7 +300,7 @@ object PatternMatcher {
        *
        *  `getResult` is a product, where the last element is a sequence of elements.
        */
-      def unapplyProductSeqPlan(getResult: Symbol, args: List[Tree], arity: Int): Plan = {
+      def unapplyProductSeqPlan(getResult: Symbol, args: Lst[Tree], arity: Int): Plan = {
         assert(arity <= args.size + 1)
         val selectors = productSelectors(getResult.info).map(ref(getResult).select(_))
 
@@ -312,9 +312,9 @@ object PatternMatcher {
       }
 
       /** Plan for matching the result of an unapply against argument patterns `args` */
-      def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
+      def unapplyPlan(unapp: Tree, args: Lst[Tree]): Plan = {
         def caseClass = unapp.symbol.owner.linkedClass
-        lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
+        lazy val caseAccessors = caseClass.caseAccessors.toLst.filter(_.is(Method))
 
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
@@ -351,7 +351,7 @@ object PatternMatcher {
                 else
                   letAbstract(get) { getResult =>
                     val selectors =
-                      if (args.tail.isEmpty) ref(getResult) :: Nil
+                      if (args.length == 1) Lst(ref(getResult))
                       else productSelectors(get.tpe).map(ref(getResult).select(_))
                     matchArgsPlan(selectors, args, onSuccess)
                   }
@@ -380,11 +380,11 @@ object PatternMatcher {
             // This plan will never execute because it'll be guarded by a `NonNullTest`.
             ResultPlan(tpd.Throw(tpd.nullLiteral))
           else {
-            def applyImplicits(acc: Tree, implicits: List[Tree], mt: Type): Tree = mt match {
+            def applyImplicits(acc: Tree, implicits: Lst[Tree], mt: Type): Tree = mt match {
               case mt: MethodType =>
                 assert(mt.isImplicitMethod)
                 val (args, rest) = implicits.splitAt(mt.paramNames.size)
-                applyImplicits(acc.appliedToArgs(args.toLst), rest, mt.resultType)
+                applyImplicits(acc.appliedToArgs(args), rest, mt.resultType)
               case _ =>
                 assert(implicits.isEmpty)
                 acc
@@ -418,7 +418,7 @@ object PatternMatcher {
         case WildcardPattern() =>
           onSuccess
         case SeqLiteral(pats, _) =>
-          matchElemsPlan(scrutinee, pats.toList, exact = true, onSuccess)
+          matchElemsPlan(scrutinee, pats, exact = true, onSuccess)
         case _ =>
           TestPlan(EqualTest(tree), scrutinee, tree.span, onSuccess)
       }

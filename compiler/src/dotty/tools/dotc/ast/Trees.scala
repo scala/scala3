@@ -747,7 +747,7 @@ object Trees {
    *    val result = fun(sel)(implicits)
    *    if (result.isDefined) "match patterns against result"
    */
-  case class UnApply[-T >: Untyped] private[ast] (fun: Tree[T], implicits: List[Tree[T]], patterns: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class UnApply[-T >: Untyped] private[ast] (fun: Tree[T], implicits: Lst[Tree[T]], patterns: Lst[Tree[T]])(implicit @constructorOnly src: SourceFile)
     extends ProxyTree[T] with PatternTree[T] {
     type ThisTree[-T >: Untyped] = UnApply[T]
     def forwardTo = fun
@@ -1204,8 +1204,8 @@ object Trees {
         case tree: Alternative if (trees eqLst tree.trees) => tree
         case _ => finalize(tree, untpd.Alternative(trees)(sourceFile(tree)))
       }
-      def UnApply(tree: Tree)(fun: Tree, implicits: List[Tree], patterns: List[Tree])(using Context): UnApply = tree match {
-        case tree: UnApply if (fun eq tree.fun) && (implicits eq tree.implicits) && (patterns eq tree.patterns) => tree
+      def UnApply(tree: Tree)(fun: Tree, implicits: Lst[Tree], patterns: Lst[Tree])(using Context): UnApply = tree match {
+        case tree: UnApply if (fun eq tree.fun) && (implicits eqLst tree.implicits) && (patterns eqLst tree.patterns) => tree
         case _ => finalize(tree, untpd.UnApply(fun, implicits, patterns)(sourceFile(tree)))
       }
       def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: LazyTree)(using Context): ValDef = tree match {
@@ -1251,7 +1251,7 @@ object Trees {
         CaseDef(tree: Tree)(pat, guard, body)
       def Try(tree: Try)(expr: Tree = tree.expr, cases: Lst[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(using Context): Try =
         Try(tree: Tree)(expr, cases, finalizer)
-      def UnApply(tree: UnApply)(fun: Tree = tree.fun, implicits: List[Tree] = tree.implicits, patterns: List[Tree] = tree.patterns)(using Context): UnApply =
+      def UnApply(tree: UnApply)(fun: Tree = tree.fun, implicits: Lst[Tree] = tree.implicits, patterns: Lst[Tree] = tree.patterns)(using Context): UnApply =
         UnApply(tree: Tree)(fun, implicits, patterns)
       def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(using Context): ValDef =
         ValDef(tree: Tree)(name, tpt, rhs)

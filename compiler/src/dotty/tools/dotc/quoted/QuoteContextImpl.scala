@@ -1444,16 +1444,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Unapply extends UnapplyModule:
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
-        withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
+        withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits.toLst, patterns.toLst))
       def unapply(x: Unapply): Option[(Term, List[Term], List[Tree])] =
-        Some((x.fun, x.implicits, x.patterns))
+        Some((x.fun, x.implicits.toList, x.patterns.toList))
     end Unapply
 
     object UnapplyMethodsImpl extends UnapplyMethods:
       extension (self: Unapply):
         def fun: Term = self.fun
-        def implicits: List[Term] = self.implicits
-        def patterns: List[Tree] = effectivePatterns(self.patterns)
+        def implicits: List[Term] = self.implicits.toList
+        def patterns: List[Tree] = effectivePatterns(self.patterns.toList)
       end extension
       private def effectivePatterns(patterns: List[Tree]): List[Tree] =
         patterns match

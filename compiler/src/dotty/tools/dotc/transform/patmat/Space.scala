@@ -71,7 +71,7 @@ case object Empty extends Space
 case class Typ(tp: Type, decomposed: Boolean = true) extends Space
 
 /** Space representing an extractor pattern */
-case class Prod(tp: Type, unappTp: TermRef, params: List[Space], full: Boolean) extends Space
+case class Prod(tp: Type, unappTp: TermRef, params: Lst[Space], full: Boolean) extends Space
 
 /** Union of spaces */
 case class Or(spaces: List[Space]) extends Space
@@ -155,10 +155,10 @@ trait SpaceLogic {
   def flatten(space: Space)(using Context): List[Space] = space match {
     case Prod(tp, fun, spaces, full) =>
       spaces.map(flatten) match {
-        case Nil => Prod(tp, fun, Nil, full) :: Nil
+        case NIL => Prod(tp, fun, NIL, full) :: Nil
         case ss  =>
           ss.foldLeft(List[Prod]()) { (acc, flat) =>
-            if (acc.isEmpty) flat.map(s => Prod(tp, fun, s :: Nil, full))
+            if (acc.isEmpty) flat.map(s => Prod(tp, fun, Lst(s), full))
             else for (Prod(tp, fun, ss, full) <- acc; s <- flat) yield Prod(tp, fun, ss :+ s, full)
           }
       }
@@ -187,7 +187,7 @@ trait SpaceLogic {
         isSubType(tp1, tp2)
       case (Typ(tp1, _), Prod(tp2, fun, ss, full)) =>
         // approximation: a type can never be fully matched by a partial extractor
-        full && isSubType(tp1, tp2) && isSubspace(Prod(tp2, fun, signature(fun, tp2, ss.length).map(Typ(_, false)), full), b)
+        full && isSubType(tp1, tp2) && isSubspace(Prod(tp2, fun, signature(fun, tp2, ss.length).toLst.map(Typ(_, false)), full), b)
       case (Prod(_, fun1, ss1, _), Prod(_, fun2, ss2, _)) =>
         isSameUnapply(fun1, fun2) && ss1.zip(ss2).forall((isSubspace _).tupled)
     }
@@ -248,7 +248,7 @@ trait SpaceLogic {
         else a
       case (Typ(tp1, _), Prod(tp2, fun, ss, true)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
-        if (isSubType(tp1, tp2)) minus(Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false)), true), b)
+        if (isSubType(tp1, tp2)) minus(Prod(tp1, fun, signature(fun, tp1, ss.length).toLst.map(Typ(_, false)), true), b)
         else if (canDecompose(tp1)) tryDecompose1(tp1)
         else a
       case (_, Or(ss)) =>
@@ -384,7 +384,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       project(pat)
 
     case SeqLiteral(pats, _) =>
-      projectSeq(pats.toList)
+      projectSeq(pats)
 
     case UnApply(fun, _, pats) =>
       val (fun1, _, _) = decomposeCall(fun)
@@ -395,7 +395,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         else {
           val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
           if (elemTp.exists)
-            Prod(erase(pat.tpe.stripAnnots), funRef, projectSeq(pats) :: Nil, isIrrefutableUnapplySeq(fun, pats.size))
+            Prod(erase(pat.tpe.stripAnnots), funRef, Lst(projectSeq(pats)), isIrrefutableUnapplySeq(fun, pats.size))
           else
             Prod(erase(pat.tpe.stripAnnots), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)), isIrrefutableUnapplySeq(fun, pats.size))
         }
@@ -497,7 +497,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
   /** Space of the pattern: unapplySeq(a, b, c: _*)
    */
-  def projectSeq(pats: List[Tree]): Space = {
+  def projectSeq(pats: Lst[Tree]): Space = {
     if (pats.isEmpty) return Typ(scalaNilType, false)
 
     val (items, zero) = if (isWildcardStarArg(pats.last))
@@ -506,9 +506,9 @@ class SpaceEngine(using Context) extends SpaceLogic {
       (pats, Typ(scalaNilType, false))
 
     val unapplyTp = scalaConsType.classSymbol.companionModule.termRef.select(nme.unapply)
-    items.foldRight[Space](zero) { (pat, acc) =>
+    items.foldRight(zero: Space) { (pat, acc) =>
       val consTp = scalaConsType.appliedTo(pats.head.tpe.widen)
-      Prod(consTp, unapplyTp, project(pat) :: acc :: Nil, true)
+      Prod(consTp, unapplyTp, Lst(project(pat), acc), true)
     }
   }
 
@@ -716,19 +716,19 @@ class SpaceEngine(using Context) extends SpaceLogic {
   def satisfiable(sp: Space): Boolean = {
     def impossible: Nothing = throw new AssertionError("`satisfiable` only accepts flattened space.")
 
-    def genConstraint(space: Space): List[(Type, Type)] = space match {
+    def genConstraint(space: Space): Lst[(Type, Type)] = space match {
       case Prod(tp, unappTp, ss, _) =>
         val tps = signature(unappTp, tp, ss.length)
         ss.zip(tps).flatMap {
-          case (sp : Prod, tp) => sp.tp -> tp :: genConstraint(sp)
-          case (Typ(tp1, _), tp2) => tp1 -> tp2 :: Nil
+          case (sp : Prod, tp) => (sp.tp -> tp) +: genConstraint(sp)
+          case (Typ(tp1, _), tp2) => Lst(tp1 -> tp2)
           case _ => impossible
         }
-      case Typ(_, _) => Nil
+      case Typ(_, _) => NIL
       case _ => impossible
     }
 
-    def checkConstraint(constrs: List[(Type, Type)])(using Context): Boolean = {
+    def checkConstraint(constrs: Lst[(Type, Type)])(using Context): Boolean = {
       val tvarMap = collection.mutable.Map.empty[Symbol, TypeVar]
       val typeParamMap = new TypeMap() {
         override def apply(tp: Type): Type = tp match {
