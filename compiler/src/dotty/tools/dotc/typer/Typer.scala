@@ -957,10 +957,10 @@ class Typer extends Namer
         val elsep1 = tpd.unitLiteral.withSpan(tree.span.endPos)
         cpy.If(tree)(cond1, thenp1, elsep1).withType(defn.UnitType)
       else
-        val thenp1 :: elsep1 :: Nil = harmonic(harmonize, pt) {
+        val Lst(thenp1, elsep1) = harmonic(harmonize, pt) {
           val thenp0 = typed(tree.thenp, pt.dropIfProto)(using cond1.nullableContextIf(true))
           val elsep0 = typed(tree.elsep, pt.dropIfProto)(using cond1.nullableContextIf(false))
-          thenp0 :: elsep0 :: Nil
+          Lst(thenp0, elsep0)
         }
         assignType(cpy.If(tree)(cond1, thenp1, elsep1), thenp1, elsep1)
 
@@ -1394,8 +1394,8 @@ class Typer extends Namer
 
   // Overridden in InlineTyper for inline matches
   def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: Lst[untpd.CaseDef], pt: Type)(using Context): Tree = {
-    val cases1 = harmonic(harmonize, pt)(typedCases(cases, sel, wideSelType, pt.dropIfProto).toList)
-      .asInstanceOf[List[CaseDef]].toLst
+    val cases1 = harmonic(harmonize, pt)(typedCases(cases, sel, wideSelType, pt.dropIfProto))
+      .asInstanceOf[Lst[CaseDef]]
     assignType(cpy.Match(tree)(sel, cases1), sel, cases1)
   }
 
@@ -1571,13 +1571,13 @@ class Typer extends Namer
     }
 
   def typedTry(tree: untpd.Try, pt: Type)(using Context): Try = {
-    val expr2 :: cases2x = harmonic(harmonize, pt) {
+    val expr2 +: cases2x = harmonic(harmonize, pt) {
       val expr1 = typed(tree.expr, pt.dropIfProto)
-      val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto).toList
-      expr1 :: cases1
+      val cases1 = typedCases(tree.cases, EmptyTree, defn.ThrowableType, pt.dropIfProto)
+      expr1 +: cases1
     }
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
-    val cases2 = cases2x.asInstanceOf[List[CaseDef]].toLst
+    val cases2 = cases2x.asInstanceOf[Lst[CaseDef]]
     assignType(cpy.Try(tree)(expr2, cases2, finalizer1), expr2, cases2)
   }
 
@@ -2766,7 +2766,7 @@ class Typer extends Namer
             case PolyProto(targs, pt1) if !targs.exists(_.isInstanceOf[NamedArg]) =>
               // Applications with named arguments cannot be converted, since new expressions
               // don't accept named arguments
-              IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs), pt1))
+              IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs.toList), pt1))
             case _ =>
               typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)
           }

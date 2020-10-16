@@ -11,7 +11,6 @@ import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
 import util.{Stats, Attachment, Property, SourceFile, NoSource, SrcPos, SourcePosition}
-import util.Lst.{NIL, +:, toLst}
 import config.Config
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
@@ -19,6 +18,7 @@ import annotation.constructorOnly
 import Decorators._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 object Trees {
 

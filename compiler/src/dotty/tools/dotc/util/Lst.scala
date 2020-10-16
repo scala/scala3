@@ -556,6 +556,7 @@ object Lst:
         multi[T](newElems)
       case elem: T @unchecked =>
         Lst(x, elem)
+    def +: (xs: Lst[T]): Lst[T] = x :: xs
 
   extension [T](xs: Iterable[T])
     def toLst: Lst[T] =
@@ -806,6 +807,13 @@ object Lst:
           elems(i) = f(elems(i).asInstanceOf[T])
           i += 1
       this
+
+    def trimEnd(n: Int) =
+      val remaining = (len - n) max 0
+      if len > 1 && remaining <= 1 then
+        if remaining == 1 then elem = elems(0).asInstanceOf[T]
+        elems = null
+      len = remaining
 
     def toLst: Lst[T] =
       if len == 0 then NIL

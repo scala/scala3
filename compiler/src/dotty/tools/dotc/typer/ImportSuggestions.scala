@@ -14,6 +14,8 @@ import Implicits.{hasExtMethod, Candidate}
 import java.util.{Timer, TimerTask}
 import collection.mutable
 import scala.util.control.NonFatal
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 /** This trait defines the method `importSuggestionAddendum` that adds an addendum
  *  to error messages suggesting additional imports.
@@ -224,7 +226,7 @@ trait ImportSuggestions:
         .map(mbr => TermRef(site, mbr.symbol))
         .filter(ref =>
           ref.symbol.is(ExtensionMethod)
-          && isApplicableMethodRef(ref, argType :: Nil, WildcardType))
+          && isApplicableMethodRef(ref, Lst(argType), WildcardType))
         .headOption
 
     try

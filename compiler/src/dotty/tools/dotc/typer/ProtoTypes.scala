@@ -289,7 +289,7 @@ object ProtoTypes {
       def isPoly(tree: Tree) = tree.tpe.widenSingleton.isInstanceOf[PolyType]
       // See remark in normalizedCompatible for why we can't keep the constraint
       // if one of the arguments has a PolyType.
-      typer.isApplicableType(tp, args.toList, resultType, keepConstraint && !args.exists(isPoly))
+      typer.isApplicableType(tp, args, resultType, keepConstraint && !args.exists(isPoly))
     }
 
     def derivedFunProto(args: Lst[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
@@ -447,7 +447,7 @@ object ProtoTypes {
     override def resultType(using Context): Type = resType
 
     def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
-      ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
+      ctx.typer.isApplicableType(tp, Lst(argType), resultType) || {
         resType match {
           case selProto @ SelectionProto(_: TermName, mbrType, _, _) =>
             ctx.typer.hasExtensionMethodNamed(tp, selProto.extensionName, argType, mbrType)
@@ -489,7 +489,7 @@ object ProtoTypes {
    *
    *    [] [targs] resultType
    */
-  case class PolyProto(targs: List[Tree], resType: Type) extends UncachedGroundType with FunOrPolyProto {
+  case class PolyProto(targs: Lst[Tree], resType: Type) extends UncachedGroundType with FunOrPolyProto {
 
     override def resultType(using Context): Type = resType
 
@@ -500,8 +500,8 @@ object ProtoTypes {
     override def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
       canInstantiate(tp) || tp.member(nme.apply).hasAltWith(d => canInstantiate(d.info))
 
-    def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
-      if ((targs eq this.targs) && (resType eq this.resType)) this
+    def derivedPolyProto(targs: Lst[Tree], resultType: Type): PolyProto =
+      if ((targs eqLst this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
 
     def map(tm: TypeMap)(using Context): PolyProto =

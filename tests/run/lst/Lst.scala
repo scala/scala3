@@ -744,6 +744,13 @@ object Lst:
           i += 1
       this
 
+    def trimEnd(n: Int) =
+      val remaining = (len - n) max 0
+      if len > 1 && remaining <= 1 then
+        if remaining == 1 then elem = elems(0).asInstanceOf[T]
+        elems = null
+      len = remaining
+
     def toLst: Lst[T] =
       if len == 0 then Empty
       else if len == 1 then single(elem)
