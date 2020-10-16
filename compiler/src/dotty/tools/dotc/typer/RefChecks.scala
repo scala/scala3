@@ -95,7 +95,7 @@ object RefChecks {
    *  and required classes. Also check that only `enum` constructs extend
    *  `java.lang.Enum`.
    */
-  private def checkParents(cls: Symbol)(using Context): Unit = cls.info match {
+  private def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
@@ -109,12 +109,25 @@ object RefChecks {
       for (reqd <- cinfo.cls.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
 
+      def illegalEnumFlags = !cls.isOneOf(Enum | Trait)
+      def isJavaEnum = parents.exists(_.classSymbol == defn.JavaEnumClass)
+
       // Prevent wrong `extends` of java.lang.Enum
-      if !migrateTo3 &&
-         !cls.isOneOf(Enum | Trait) &&
-         parents.exists(_.classSymbol == defn.JavaEnumClass)
-      then
+      if !migrateTo3 && illegalEnumFlags && isJavaEnum then
         report.error(CannotExtendJavaEnum(cls), cls.sourcePos)
+      else if illegalEnumFlags && isJavaEnum then
+        val javaEnumCtor = defn.JavaEnumClass.primaryConstructor
+        parentTrees.exists(parent =>
+          parent.tpe.typeSymbol == defn.JavaEnumClass
+          && (
+            parent match
+              case tpd.Apply(tpd.TypeApply(fn, _), _) if fn.tpe.termSymbol eq javaEnumCtor =>
+                // here we are simulating the error for missing arguments to a constructor.
+                report.error(JavaEnumParentArgs(parent.tpe), cls.sourcePos)
+                true
+              case _ =>
+                false
+          ))
 
     case _ =>
   }
@@ -1089,7 +1102,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformTemplate(tree: Template)(using Context): Tree = try {
     val cls = ctx.owner.asClass
     checkOverloadedRestrictions(cls)
-    checkParents(cls)
+    checkParents(cls, tree.parents)
     if (cls.is(Trait)) tree.parents.foreach(checkParentPrefix(cls, _))
     checkCompanionNameClashes(cls)
     checkAllOverrides(cls)

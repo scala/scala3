@@ -1528,6 +1528,12 @@ import transform.SymUtils._
       def explain = ""
     }
 
+  class JavaEnumParentArgs(parent: Type)(using Context)
+    extends TypeMsg(JavaEnumParentArgsID) {
+      def msg = em"""not enough arguments for constructor Enum: ${hl("(name: String, ordinal: Int)")}: ${hl(parent.show)}"""
+      def explain = ""
+    }
+
   class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(using Context)
     extends SyntaxMsg(CannotHaveSameNameAsID) {
     import CannotHaveSameNameAs._
