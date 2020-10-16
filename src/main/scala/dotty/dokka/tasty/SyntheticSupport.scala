@@ -84,6 +84,24 @@ trait SyntheticsSupport:
     sym.is(dotc.core.Flags.Opaque)
   }
 
+  def hackGetSupertypes(r: Reflection)(rdef: r.ClassDef) = {
+    import dotty.tools.dotc
+    given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    val classdef = rdef.asInstanceOf[dotc.ast.tpd.TypeDef]
+    val ref = classdef.symbol.info.asInstanceOf[dotc.core.Types.ClassInfo].appliedRef
+    val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] = 
+      ref.baseClasses.map(b => b -> ref.baseType(b))
+    baseTypes.asInstanceOf[List[(r.Symbol, r.Type)]]
+  }
+
+  def getSupertypes(c: ClassDef) = hackGetSupertypes(self.reflect)(c).tail
+
+  def typeForClass(c: ClassDef): r.Type = 
+    import dotty.tools.dotc
+    given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
+    cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[r.Type]
+
   def hackIsLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
 
   object MatchTypeCase:

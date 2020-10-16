@@ -14,6 +14,8 @@ import org.jetbrains.dokka.model.Bound
 import org.jetbrains.dokka.model.TypeConstructor
 import org.jetbrains.dokka.model.TypeParameter
 import org.jetbrains.dokka.model.UnresolvedBound
+import org.jetbrains.dokka.model.DPackage
+import org.jetbrains.dokka.model.DModule
 
 import collection.JavaConverters._
 import org.jetbrains.dokka.links._
@@ -34,10 +36,11 @@ private [model] case class MemberExtension(
  override def getKey = MemberExtension
 
 object MemberExtension extends BaseKey[Documentable, MemberExtension]:
-  val empty = MemberExtension(Visibility.Unrestricted, Nil, Kind.Uknown, Nil, Nil)
+  val empty = MemberExtension(Visibility.Unrestricted, Nil, Kind.Unknown, Nil, Nil)
 
 case class CompositeMemberExtension(
   members : Seq[Member] = Nil,
+  directParents: Seq[Signature] = Nil,
   parents: Seq[LinkToType] = Nil,
   knownChildren: Seq[LinkToType] = Nil
 ) extends ExtraProperty[Documentable]:
@@ -72,20 +75,21 @@ extension (member: Member):
     putInMember(ext)  
 
   def withMembers(newMembers: Seq[Member]): Member =
-    val original = member.compisteMemberExt.getOrElse(CompositeMemberExtension())
+    val original = member.compositeMemberExt.getOrElse(CompositeMemberExtension())
     val newExt = original.copy(members = newMembers)
     putInCompositeMember(newExt)
 
   def withNewMembers(newMembers: Seq[Member]): Member =
-    val original = member.compisteMemberExt.getOrElse(CompositeMemberExtension())
+    val original = member.compositeMemberExt.getOrElse(CompositeMemberExtension())
     val newExt = original.copy(members = original.members ++ newMembers)
     putInCompositeMember(newExt)
 
   def withKnownChildren(knownChildren: Seq[LinkToType]): Member =
-    val original = member.compisteMemberExt.getOrElse(CompositeMemberExtension())
+    val original = member.compositeMemberExt.getOrElse(CompositeMemberExtension())
     val newExt = original.copy(knownChildren = knownChildren)
-    putInCompositeMember(newExt)  
+    putInCompositeMember(newExt)
     
+  def updateRecusivly(op: Member => Member) = op(member).withMembers(member.allMembers.map(op))  
 
 extension (bound: Bound):
   def asSignature: Signature = bound match 
@@ -95,3 +99,16 @@ extension (bound: Bound):
         case link: TypeParameter =>
           Link(link.getName, link.getDri)
       }
+
+extension (m: DModule):
+  def updatePackages(op: Seq[DPackage] => Seq[DPackage]): DModule = 
+    m.copy(
+            m.getName,
+            op(m.getPackages.asScala.toSeq).asJava,
+            m.getDocumentation,
+            m.getExpectPresentInSet,
+            m.getSourceSets,
+            m.getExtra
+        )
+
+  def updateMembers(op: Member => Member): DModule = updatePackages(_.map(p => p.updateRecusivly(op).asInstanceOf[DPackage]))

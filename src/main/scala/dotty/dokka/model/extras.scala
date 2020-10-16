@@ -43,15 +43,6 @@ case class SourceLinks(
 
 object SourceLinks extends BaseKey[Documentable, SourceLinks]
 
-enum OriginInfo extends ExtraProperty[Documentable]:
-  case InheritedFrom(name: String, dri: DRI)
-  case ImplicitlyAddedBy(name: String, dri: DRI)
-  case ExtensionFrom(name: String, dri: DRI)
-
-  override def getKey = OriginInfo
-
-object OriginInfo extends BaseKey[Documentable, OriginInfo]  
-
 // case class ImplicitConversions(val conversions: List[ImplicitConversion]) extends ExtraProperty[WithScope]:
 //   override def getKey = ImplicitConversions
 

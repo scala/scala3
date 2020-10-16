@@ -43,10 +43,10 @@ class ScalaPageCreator(
         page.modified(name, page.getChildren)
 
     private def pagesForMembers(p: Member): Seq[PageNode] = 
-    p.allMembers.filter(_.origin == Origin.DefinedWithin).collect {
-        case f: DFunction => updatePageNameForMember(pageForFunction(f), f)
-        case c: DClass => updatePageNameForMember(pageForDClass(c), c)
-    }
+        p.allMembers.filter(_.origin == Origin.DefinedWithin).collect {
+            case f: DFunction => updatePageNameForMember(pageForFunction(f), f)
+            case c: DClass => updatePageNameForMember(pageForDClass(c), c)
+        }
 
     override def pageForPackage(p: DPackage): PackagePageNode = 
         val originalPage = super.pageForPackage(p)
@@ -109,6 +109,7 @@ class ScalaPageCreator(
                 .cover(p.getName)()
                 .descriptionIfNotEmpty(p)
             }
+            .documentableFilter()
             .group(styles = Set(ContentStyle.TabbedContent)) { b => b
                 .contentForScope(p)
             }
@@ -343,8 +344,7 @@ class ScalaPageCreator(
                 
             val (definedMethods, inheritedMethods) = s.membersBy(_.kind == Kind.Def)
             val (definedFields, inheritedFiles) = s.membersBy(m => m.kind == Kind.Val || m.kind == Kind.Var)
-            val (definedClasslikes, inheritedClasslikes) = 
-                s.membersBy(m => m.kind == Kind.Class || m.kind == Kind.Object || m.kind == Kind.Trait)
+            val (definedClasslikes, inheritedClasslikes) = s.membersBy(m => m.kind.isInstanceOf[Classlike])
             val (definedTypes, inheritedTypes) = s.membersBy(_.kind.isInstanceOf[Kind.Type])
             val (definedGivens, inheritedGives) = s.membersBy(_.kind.isInstanceOf[Kind.Given])
             val (definedExtensions, inheritedExtensions) = s.membersBy(_.kind.isInstanceOf[Kind.Extension])
@@ -410,7 +410,7 @@ class ScalaPageCreator(
                         kind = ContentKind.Comment,
                         styles = Set(ContentStyle.WithExtraAttributes), 
                         extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Linear supertypes")
-                    ){ gbdr => gbdr
+                ){ gbdr => gbdr
                         .group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)){ grbdr => grbdr
                             .list(supertypes.toList, separator = "")(contentForTypeLink)
                         }
@@ -423,7 +423,7 @@ class ScalaPageCreator(
                         styles = Set(ContentStyle.WithExtraAttributes), 
                         extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Known subtypes")
                     ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
-                            _.list(subtypes.toList)(contentForTypeLink)
+                            _.list(subtypes.toList, separator="")(contentForTypeLink)
                         }
                     }
 

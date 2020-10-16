@@ -13,13 +13,15 @@ case class InlineSignatureBuilder(names: Signature = Nil, preName: Signature = N
     override def text(str: String): SignatureBuilder = copy(names = str +: names)
     override def name(str: String, dri: DRI): SignatureBuilder = copy(names = Nil, preName = names)
     override def driLink(text: String, dri: DRI): SignatureBuilder = copy(names = Link(text, dri) +: names)
-    override def group(styles: Any = "", kind: Any = "")(op: SignatureBuilder => SignatureBuilder): SignatureBuilder = op(this)
+
+object InlineSignatureBuilder:
+    def typeSignatureFor(d: Documentable): Signature =
+            ScalaSignatureProvider.rawSignature(d, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder].names.reverse
 
 trait SignatureBuilder extends ScalaSignatureUtils {
     def text(str: String): SignatureBuilder
     def name(str: String, dri: DRI) = driLink(str, dri)
     def driLink(text: String, dri: DRI): SignatureBuilder
-    def group(styles: Any = "", kind: Any = "")(op: SignatureBuilder => SignatureBuilder): SignatureBuilder
     
     def signature(s: Signature) = s.foldLeft(this){ (b, e) => e match
         case Link(name, dri) => b.driLink(name, dri)
@@ -40,35 +42,17 @@ trait SignatureBuilder extends ScalaSignatureUtils {
         }
 
     def annotationsBlock(d: Member): SignatureBuilder = 
-            group(styles = Set(TextStyle.Block), kind = ContentKind.Annotations){ bdr => 
-                d.annotations.foldLeft(bdr){ (bdr, annotation) => bdr
-                    .buildAnnotation(annotation)
-                }
-            }
+            d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation)}
         
         def annotationsInline(d: Documentable with WithExtraProperties[_]): SignatureBuilder =
-            group(styles = Set(TextStyle.Span), kind = ContentKind.Annotations){ bdr => 
-                d.annotations.foldLeft(bdr){ (bdr, annotation) => bdr
-                    .buildAnnotation(annotation)
-                }
-            }
+                d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation) }
 
         private def buildAnnotation(a: Annotation): SignatureBuilder = 
-            group(){ bdr => bdr
-                .text("@")
-                .driLink(a.dri.getClassNames, a.dri)
-                .buildAnnotationParams(a)
-                .text(" ")
-            }
-
+           text("@").driLink(a.dri.getClassNames, a.dri).buildAnnotationParams(a).text(" ")
 
         private def buildAnnotationParams(a: Annotation): SignatureBuilder = 
             if !a.params.isEmpty then 
-                group(styles = Set(TextStyle.BreakableAfter)){ bdr => bdr
-                    .list(a.params, "(", ")", ", "){ (bdr, param) => bdr
-                        .buildAnnotationParameter(param)
-                    }
-                }
+                list(a.params, "(", ")", ", "){ (bdr, param) => bdr.buildAnnotationParameter(param)}
             else this
 
         private def addParameterName(txt: Option[String]): SignatureBuilder = txt match {

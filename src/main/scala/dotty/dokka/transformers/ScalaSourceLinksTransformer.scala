@@ -12,6 +12,7 @@ import org.jetbrains.dokka.utilities.DokkaLogger
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.model.properties._
+import dotty.dokka.model.api._
 
 class ScalaSourceLinksTransformer(
       val ctx: DokkaContext,        
@@ -30,53 +31,16 @@ class ScalaSourceLinksTransformer(
             SourceLink(sourceLinkDef.getLocalDirectory, sourceLinkDef.getRemoteUrl.toString, Option(sourceLinkDef.getRemoteLineSuffix), sourceSetData)
     }
 
-    private def processDocumentable[T] (d: T): T = (d match {
-        case m: DModule => m.copy(
-            m.getName,
-            m.getPackages.asScala.map(processDocumentable).asJava,
-            m.getDocumentation,
-            m.getExpectPresentInSet,
-            m.getSourceSets,
-            m.getExtra
-        )
-        case p: DPackage => p.copy(
-            p.getDri,
-            p.getFunctions.asScala.map(processDocumentable).asJava,
-            p.getProperties.asScala.map(processDocumentable).asJava,
-            p.getClasslikes.asScala.map(processDocumentable).asJava,
-            p.getTypealiases.asScala.map(processDocumentable).asJava,
-            p.getDocumentation,
-            p.getExpectPresentInSet,
-            p.getSourceSets,
-            p.getExtra
-        )
-        case c: DClass => c.copy(
-            c.getDri,
-            c.getName,
-            c.getConstructors.asScala.map(processDocumentable).asJava,
-            c.getFunctions.asScala.map(processDocumentable).asJava,
-            c.getProperties.asScala.map(processDocumentable).asJava,
-            c.getClasslikes.asScala.map(processDocumentable).asJava,
-            c.getSources,
-            c.getVisibility,
-            c.getCompanion,
-            c.getGenerics,
-            c.getSupertypes,
-            c.getDocumentation,
-            c.getExpectPresentInSet,
-            c.getModifier,
-            c.getSourceSets,
-            c.getExtra
-        ).withNewExtras(c.getExtra plus getSourceLinks(c))
-        case f: DFunction => f.withNewExtras(f.getExtra plus getSourceLinks(f))
-        case p: DProperty => p.withNewExtras(p.getExtra plus getSourceLinks(p))
-        case other => other
-    }).asInstanceOf[T]
 
-    override def invoke(input: DModule, context: DokkaContext): DModule = processDocumentable(input)
+    override def invoke(input: DModule, context: DokkaContext): DModule = 
+        input.updateMembers { 
+            case c: Member with WithExpectActual with WithExtraProperties[Member] => 
+                c.withNewExtras(c.getExtra plus getSourceLinks(c))
+            case c => c
+        }
+    
 
-
-    private def getSourceLinks(doc: WithExpectActual): SourceLinks = {
+    private def getSourceLinks(doc: WithExpectActual): ExtraProperty[Member] = {
         val urls = doc.getSources.asScala.toMap.flatMap{
             case (key,value) => sourceLinks.find(s => value.getPath.contains(s.path) && key == s.sourceSetData).map(
                     link => (key, createLink(value, link))

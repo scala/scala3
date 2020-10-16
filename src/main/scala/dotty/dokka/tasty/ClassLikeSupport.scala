@@ -12,6 +12,8 @@ import dotty.dokka.model.api._
 import dotty.dokka.model.api.Modifier
 import dotty.dokka.model.api.Kind
 import dotty.dokka.model.api.ImplicitConversion
+import dotty.dokka.model.api.{Signature => DSignature, Link => DLink}
+
 
 trait ClassLikeSupport:
   self: TastyParser =>
@@ -33,28 +35,27 @@ trait ClassLikeSupport:
       signatureOnly: Boolean = false,
       modifiers: Seq[Modifier] = classDef.symbol.getExtraModifiers(),
     ): DClass = 
-      val supertypes = classDef.getParents.map {tree =>
-        val actualSymbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
-        LinkToType(tree.dokkaType.asSignature, actualSymbol.dri, kindForClasslike(actualSymbol))
+      val supertypes = getSupertypes(classDef).map{ case (symbol, tpe) =>
+        LinkToType(tpe.dokkaType.asSignature, symbol.dri, kindForClasslike(symbol))
       }
-      val cSymbol = classDef.symbol
-
+      val selfSiangture: DSignature = typeForClass(classDef).dokkaType.asSignature
       val baseExtra = PropertyContainer.Companion.empty()
-            .plus(ClasslikeExtension(
-              classDef.getConstructorMethod,
-              classDef.getCompanion
-            ))
+            .plus(ClasslikeExtension(classDef.getConstructorMethod, classDef.getCompanion))
             .plus(MemberExtension(
-              cSymbol.getVisibility(),
+              classDef.symbol.getVisibility(),
               modifiers, 
-              kindForClasslike(classDef.symbol), 
-              cSymbol.getAnnotations(), 
-              classDef.constructor.returnTpt.dokkaType.asSignature
+              kindForClasslike( classDef.symbol), 
+              classDef.symbol.getAnnotations(), 
+              selfSiangture
             ))
 
       val fullExtra = 
         if (signatureOnly) baseExtra 
-        else baseExtra.plus(CompositeMemberExtension(classDef.extractMembers, supertypes, Nil))
+        else baseExtra.plus(CompositeMemberExtension(
+          classDef.extractMembers, 
+          classDef.getParents.map(_.dokkaType.asSignature),
+          supertypes, 
+          Nil))
 
       new DClass(
           dri,

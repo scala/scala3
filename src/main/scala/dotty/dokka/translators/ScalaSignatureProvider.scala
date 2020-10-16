@@ -14,13 +14,7 @@ import dokka.java.api._
 import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
 import org.jetbrains.dokka.links.DRI
-import dotty.dokka.model.api.modifiers
-import dotty.dokka.model.api.Modifier
-import dotty.dokka.model.api.kind
-import dotty.dokka.model.api.Kind
-import dotty.dokka.model.api.parents
-import dotty.dokka.model.api.Link
-import dotty.dokka.model.api.LinkToType
+import dotty.dokka.model.api.{Kind, _}
 
 
 class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logger: DokkaLogger) extends SignatureProvider with ScalaSignatureUtils:
@@ -36,15 +30,14 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
     case class ContentNodeBuilder(builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) extends SignatureBuilder{
         def text(str: String): SignatureBuilder = ContentNodeBuilder(builder.text(str))
         def driLink(text: String, dri: DRI): SignatureBuilder = ContentNodeBuilder(builder.driLink(text, dri))
-        def group(styles: Any = "", kind: Any = "")(op: SignatureBuilder => SignatureBuilder): SignatureBuilder =
-            this // TODO
     }
 
     override def signature(documentable: Documentable) = 
         JList(signatureContent(documentable){ builder => 
-        val res = ScalaSignatureProvider.rawSignature(documentable, ContentNodeBuilder(builder))
-        res.asInstanceOf[ContentNodeBuilder].builder 
-    })
+            val withAnnotations = ContentNodeBuilder(builder).annotationsBlock(documentable)
+            val res = ScalaSignatureProvider.rawSignature(documentable, withAnnotations)
+            res.asInstanceOf[ContentNodeBuilder].builder 
+        })
 
 object ScalaSignatureProvider:     
     def rawSignature(documentable: Documentable, builder: SignatureBuilder): SignatureBuilder = 
@@ -100,11 +93,11 @@ object ScalaSignatureProvider:
             .typeSignature(modifiedType)
 
     private def parentsSignature(d: DClass, builder: SignatureBuilder): SignatureBuilder =
-        d.parents match
-        case Nil => builder
-        case extendType :: withTypes =>
-            val extendPart = builder.text(" extends ").signature(extendType.signature)
-            withTypes.foldLeft(extendPart)((bdr, tpe) => bdr.text(" with ").signature(tpe.signature))
+        d.directParents match
+            case Nil => builder
+            case extendType :: withTypes =>
+                val extendPart = builder.text(" extends ").signature(extendType)
+                withTypes.foldLeft(extendPart)((bdr, tpe) => bdr.text(" with ").signature(tpe))
 
     private def classSignature(clazz: DClass, builder: SignatureBuilder): SignatureBuilder =
         val ext = clazz.get(ClasslikeExtension)

@@ -47,4 +47,4 @@ class ImplicitMembersExtensionTransformer(ctx: DokkaContext) extends Documentabl
             val expandedMembers = c.allMembers.map(expandMember(newImplicitMembers ++ Seq(c)))
             c.withMembers(newImplicitMembers ++ expandedMembers)
 
-        original.updatePackanges(_.map(expandMember(Nil)(_).asInstanceOf[DPackage]))
+        original.updatePackages(_.map(expandMember(Nil)(_).asInstanceOf[DPackage]))

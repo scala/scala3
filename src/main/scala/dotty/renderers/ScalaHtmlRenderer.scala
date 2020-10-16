@@ -24,14 +24,22 @@ import org.jetbrains.dokka.base.resolvers.local.LocationProvider
 
 
 class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
-    def link(dri: DRI): String = locationProvider.resolve(dri, sourceSetRestriciton, pageContext) match
-        case null => ""
-        case link => link
+    def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
 
-    def renderElement(e: String | (String, DRI) | Link) = e match
-        case (name, dri) =>  a(href := link(dri))(name)
+    def renderLink(name: String, dri: DRI, modifiers: scalatags.Text.all.Modifier*) =
+        link(dri) match
+            case Some(link) => a(href := link, modifiers)(name)
+            case None if modifiers.isEmpty => raw(name)
+            case _ => span(modifiers)(name)
+            
+
+    def renderElementWith(e: String | (String, DRI) | Link, modifiers: scalatags.Text.all.Modifier*) = e match
+        case (name, dri) => renderLink(name, dri, modifiers)
         case name: String => raw(name)
-        case Link(name, dri) => a(href := link(dri))(name)
+        case Link(name, dri) => renderLink(name, dri, modifiers)
+            
+
+    def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
 
 class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
 
@@ -66,7 +74,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         }
     }
 
-    private val clazz = `class`
+    private val cls = `class`
 
     private val anchor = raw("""
         <svg width="24" height="24" viewBox="0 0 24 24" fill="darkgray" xmlns="http://www.w3.org/2000/svg">
@@ -84,40 +92,43 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         import renderer._
 
         def buildDocumentable(element: DocumentableElement) = 
-            def topLevelAttr = Seq(clazz := "documentableElement") ++ element.attributes.map{ case (n, v) => attr(s"data-f-$n") := v }
+            def topLevelAttr = Seq(cls := "documentableElement") ++ element.attributes.map{ case (n, v) => attr(s"data-f-$n") := v }
             val kind = element.modifiers.takeRight(1)
             val otherModifiers = element.modifiers.dropRight(1)
 
             div(topLevelAttr:_*)(
-                div(clazz := "annotations")(element.annotations.map(renderElement)),
+                div(cls := "annotations monospace")(element.annotations.map(renderElement)),
                 div(
-                    a(href:=link(element.params.dri), clazz := "documentableAnchor")(anchor),
-                    span(clazz := "modifiers monospace")(
-                        span(clazz := "other-modifiers")(otherModifiers.map(renderElement)),
-                        span(clazz := "kind")(kind.map(renderElement)),
+                    a(href:=link(element.params.dri).getOrElse("#"), cls := "documentableAnchor")(anchor),
+                    span(cls := "modifiers monospace")(
+                        span(cls := "other-modifiers")(otherModifiers.map(renderElement)),
+                        span(cls := "kind")(kind.map(renderElement)),
                     ),
-                    a(clazz := "documentableName monospace", href := link(element.params.dri) )(element.name),
-                    span(clazz := "signature monospace")(element.signature.map(renderElement)),
-                    div(clazz := "documentableBrief")(element.brief.map(render)),
+                    renderLink(element.name, element.params.dri, cls := "documentableName monospace"),
+                    span(cls := "signature monospace")(element.signature.map(renderElement)),
+                    div(
+                        div(cls := "originInfo")(element.originInfo.map(renderElement)),
+                        div(cls := "documentableBrief")(element.brief.map(render)),
+                    )
                 ),
-                div(clazz := "originInfo")(element.originInfo.map(renderElement)),
+                
             )    
 
-        div(clazz := "documentableList")(
-            if(n.groupName.isEmpty) raw("") else h3(clazz := "documentableHeader")(n.groupName.map(renderElement)),
+        div(cls := "documentableList")(
+            if(n.groupName.isEmpty) raw("") else h3(cls := "documentableHeader")(n.groupName.map(renderElement)),
             n.elements.flatMap { 
                 case element: DocumentableElement =>
                     Seq(buildDocumentable(element))
                 case group: DocumentableElementGroup =>
-                    h4(clazz := "documentable-extension-target")(
+                    h4(cls := "documentable-extension-target")(
                         group.header.map(renderElement)
                     ) +: group.elements.map(buildDocumentable)
         }
         )
 
-    private def buildDocumentableFilter = div(clazz := "documentableFilter")(
-        div(clazz := "filterUpperContainer")(
-            button(clazz := "filterToggleButton")(
+    private def buildDocumentableFilter = div(cls := "documentableFilter")(
+        div(cls := "filterUpperContainer")(
+            button(cls := "filterToggleButton")(
                 raw("""
                     <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
                         <path d="M0 0h24v24H0z" fill="none"/>
@@ -125,9 +136,9 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
                     </svg>
                 """)
             ),
-            input(clazz := "filterableInput", placeholder := "Filter all members")
+            input(cls := "filterableInput", placeholder := "Filter all members")
         ),
-        div(clazz := "filterLowerContainer")()
+        div(cls := "filterLowerContainer")()
     )
 
     def buildDescriptionList(node: ContentTable, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {

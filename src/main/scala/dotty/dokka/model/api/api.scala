@@ -54,12 +54,13 @@ enum Modifier(val name: String, val prefix: Boolean):
 case class ExtensionTarget(name: String, signature: Signature, dri: DRI)
 case class ImplicitConversion(from: DRI, to: DRI)
 trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
+trait Classlike
 
 enum Kind(val name: String){
-  case Class extends Kind("class")
-  case Object extends Kind("object")
-  case Trait extends Kind("trait")
-  case Enum extends Kind("enum")
+  case Class extends Kind("class") with Classlike
+  case Object extends Kind("object") with Classlike
+  case Trait extends Kind("trait") with Classlike
+  case Enum extends Kind("enum") with Classlike
   case EnumCase extends Kind("case")
   case Def extends Kind("def")
   case Extension(on: ExtensionTarget) extends Kind("def")
@@ -69,7 +70,7 @@ enum Kind(val name: String){
   case Type(concreate: Boolean, opaque: Boolean) extends Kind("Type") // should we handle opaque as modifier?
   case Given(as: Option[Signature], conversion: Option[ImplicitConversion]) extends Kind("Given") with ImplicitConversionProvider
   case Implicit(kind: Kind, conversion: Option[ImplicitConversion]) extends Kind(kind.name)  with ImplicitConversionProvider
-  case Uknown extends Kind("Unknown")
+  case Unknown extends Kind("Unknown")
 }
 
 enum Origin:
@@ -113,7 +114,7 @@ extension[T] (member: Member):
 
   private[api] def memberExt = MemberExtension.getFrom(member)
 
-  private[api] def compisteMemberExt = CompositeMemberExtension.getFrom(member)
+  private[api] def compositeMemberExt = CompositeMemberExtension.getFrom(member)
 
   def visibility: Visibility = memberExt.fold(Visibility.Unrestricted)(_.visibility)
   
@@ -121,16 +122,17 @@ extension[T] (member: Member):
   def asLink: LinkToType = LinkToType(signature, dri, kind)
   
   def modifiers: Seq[dotty.dokka.model.api.Modifier] = memberExt.fold(Nil)(_.modifiers)
-  def kind: Kind = memberExt.fold(Kind.Uknown)(_.kind)
+  def kind: Kind = memberExt.fold(Kind.Unknown)(_.kind)
   def origin: Origin =  memberExt.fold(Origin.DefinedWithin)(_.origin)
   def annotations: List[Annotation] = memberExt.fold(Nil)(_.annotations)
   def name = member.getName
   def dri = member.getDri 
 
   // TODO rename parent and knownChildren
-  def allMembers: Seq[Member] = compisteMemberExt.fold(Nil)(_.members)
-  def parents: Seq[LinkToType] = compisteMemberExt.fold(Nil)(_.parents)
-  def knownChildren: Seq[LinkToType] = compisteMemberExt.fold(Nil)(_.knownChildren)
+  def allMembers: Seq[Member] = compositeMemberExt.fold(Nil)(_.members)
+  def parents: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.parents)
+  def directParents: Seq[Signature] = compositeMemberExt.fold(Nil)(_.directParents)
+  def knownChildren: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.knownChildren)
 
   def membersBy(op: Member => Boolean): (Seq[Member], Seq[Member]) = allMembers.filter(op).partition(_.origin == Origin.DefinedWithin)
 
