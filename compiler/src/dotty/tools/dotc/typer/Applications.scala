@@ -1150,9 +1150,19 @@ trait Applications extends Compatibility {
           case _ => false
       case _ => false
 
+
+  inline val poisonPills = true
+
   def typedUnApply(tree: untpd.Apply, selType: Type)(using Context): Tree = {
     record("typedUnApply")
     val Apply(qual, args) = tree
+
+    if poisonPills then
+      qual match
+        case qual: Trees.RefTree[_] if qual.name.toString == "List" || qual.name.toString == "::" =>
+          if selType.typeSymbol.name.toString == "Lst" then
+            report.error("bad pattern match for Lst", tree.srcPos)
+        case _ =>
 
     def notAnExtractor(tree: Tree): Tree =
       // prefer inner errors

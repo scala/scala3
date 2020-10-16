@@ -266,7 +266,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
               fun.symbol == jsdefn.JSDynamicLiteral_applyDynamicNamed =>
           // Check that the first argument list is a constant string "apply"
           nameArgs match {
-            case List(Literal(Constant(s: String))) =>
+            case Lst(Literal(Constant(s: String))) =>
               if (s != "apply")
                 report.error(i"js.Dynamic.literal does not have a method named $s", tree)
             case _ =>
@@ -745,7 +745,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         } else if (sym.isConstructor) {
           // Force secondary ctor to have only a call to the primary ctor inside
           tree.rhs match {
-            case Block(List(Apply(trg, _)), Literal(Constant(())))
+            case Block(Lst(Apply(trg, _)), Literal(Constant(())))
                 if trg.symbol.isPrimaryConstructor && trg.symbol.owner == sym.owner =>
               // everything is fine here
             case _ =>
