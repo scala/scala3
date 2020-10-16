@@ -520,7 +520,7 @@ object desugar {
         val targ = refOfDef(tparam)
         def fullyApplied(tparam: Tree): Tree = tparam match {
           case TypeDef(_, LambdaTypeTree(tparams, body)) =>
-            AppliedTypeTree(targ, tparams.toLst.map(_ => WildcardTypeBoundsTree()))
+            AppliedTypeTree(targ, tparams.map(_ => WildcardTypeBoundsTree()))
           case TypeDef(_, rhs: DerivedTypeTree) =>
             fullyApplied(rhs.watched)
           case _ =>
@@ -698,7 +698,7 @@ object desugar {
              || isEnumCase
           then anyRef
           else
-            constrVparamss.foldRight(classTypeRef)((vparams, restpe) => Function(vparams map (_.tpt), restpe))
+            constrVparamss.foldRight(classTypeRef)((vparams, restpe) => Function(vparams.toLst map (_.tpt), restpe))
         val applyMeths =
           if (mods.is(Abstract)) Nil
           else {
@@ -991,7 +991,7 @@ object desugar {
           case tree: Tuple =>
             extractArgs(tree.trees)
           case tree: Function if tree.args.nonEmpty =>
-            if (followArgs) s"${extractArgs(tree.args.toLst)}_to_${apply("", tree.body)}" else "Function"
+            if (followArgs) s"${extractArgs(tree.args)}_to_${apply("", tree.body)}" else "Function"
           case _ => foldOver(x, tree)
         }
       else x
@@ -1306,7 +1306,7 @@ object desugar {
   def makeCaseLambda(cases: Lst[CaseDef], checkMode: MatchCheck, nparams: Int = 1)(using Context): Function = {
     val params = (1 to nparams).toLst.map(makeSyntheticParameter(_))
     val selector = makeTuple(params.map(p => Ident(p.name)))
-    Function(params.toList, Match(makeSelector(selector, checkMode), cases))
+    Function(params, Match(makeSelector(selector, checkMode), cases))
   }
 
   /** Map n-ary function `(x1: T1, ..., xn: Tn) => body` where n != 1 to unary function as follows:
@@ -1330,11 +1330,11 @@ object desugar {
    *  If some of the Ti's are absent, omit the : (T1, ..., Tn) type ascription
    *  in the selector.
    */
-  def makeTupledFunction(params: List[ValDef], body: Tree, isGenericTuple: Boolean)(using Context): Tree = {
+  def makeTupledFunction(params: Lst[ValDef], body: Tree, isGenericTuple: Boolean)(using Context): Tree = {
     val param = makeSyntheticParameter(
       tpt =
         if params.exists(_.tpt.isEmpty) then TypeTree()
-        else Tuple(params.toLst.map(_.tpt)))
+        else Tuple(params.map(_.tpt)))
     def selector(n: Int) =
       if (isGenericTuple) Apply(Select(refOfDef(param), nme.apply), Literal(Constant(n)))
       else Select(refOfDef(param), nme.selectorName(n))
@@ -1343,13 +1343,13 @@ object desugar {
         case (param, idx) =>
           DefDef(param.name, Nil, Nil, param.tpt, selector(idx)).withSpan(param.span)
       }
-    Function(param :: Nil, Block(vdefs.toLst, body))
+    Function(Lst(param), Block(vdefs, body))
   }
 
   def makeContextualFunction(formals: List[Tree], body: Tree, isErased: Boolean)(using Context): Function = {
     val mods = if (isErased) Given | Erased else Given
     val params = makeImplicitParameters(formals, mods)
-    FunctionWithMods(params, body, Modifiers(mods))
+    FunctionWithMods(params.toLst, body, Modifiers(mods))
   }
 
   /** Add annotation to tree:
@@ -1448,7 +1448,7 @@ object desugar {
        */
       def makeLambda(gen: GenFrom, body: Tree): Tree = gen.pat match {
         case IdPattern(named, tpt) if gen.checkMode != GenCheckMode.FilterAlways =>
-          Function(derivedValDef(gen.pat, named, tpt, EmptyTree, Modifiers(Param)) :: Nil, body)
+          Function(Lst(derivedValDef(gen.pat, named, tpt, EmptyTree, Modifiers(Param))), body)
         case _ =>
           val matchCheckMode =
             if (gen.checkMode == GenCheckMode.Check) MatchCheck.IrrefutableGenFrom
@@ -1572,7 +1572,7 @@ object desugar {
       }
     }
 
-    def makePolyFunction(targs: List[Tree], body: Tree): Tree = body match {
+    def makePolyFunction(targs: Lst[Tree], body: Tree): Tree = body match {
       case Parens(body1) =>
         makePolyFunction(targs, body1)
       case Function(vargs, res) =>
@@ -1582,7 +1582,7 @@ object desugar {
           case _ => untpd.EmptyModifiers
         }
         val polyFunctionTpt = ref(defn.PolyFunctionType)
-        val applyTParams = targs.asInstanceOf[List[TypeDef]]
+        val applyTParams = targs.asInstanceOf[Lst[TypeDef]].toList
         if (ctx.mode.is(Mode.Type)) {
           // Desugar [T_1, ..., T_M] -> (P_1, ..., P_N) => R
           // Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
@@ -1590,7 +1590,7 @@ object desugar {
           val applyVParams = vargs.zipWithIndex.map {
             case (p: ValDef, _) => p.withAddedFlags(mods.flags)
             case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
-          }
+          }.toList
           RefinedTypeTree(polyFunctionTpt, Lst(
             DefDef(nme.apply, applyTParams, List(applyVParams), res, EmptyTree)
           ))
@@ -1599,11 +1599,11 @@ object desugar {
           // Desugar [T_1, ..., T_M] -> (x_1: P_1, ..., x_N: P_N) => body
           // Into    new scala.PolyFunction { def apply[T_1, ..., T_M](x_1: P_1, ..., x_N: P_N) = body }
 
-          val applyVParams = vargs.asInstanceOf[List[ValDef]]
+          val applyVParams = vargs.asInstanceOf[Lst[ValDef]]
             .map(varg => varg.withAddedFlags(mods.flags | Param))
-            New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
-              Lst(DefDef(nme.apply, applyTParams, List(applyVParams), TypeTree(), res))
-              ))
+          New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
+            Lst(DefDef(nme.apply, applyTParams, List(applyVParams.toList), TypeTree(), res))
+            ))
         }
       case _ =>
         // may happen for erroneous input. An error will already have been reported.

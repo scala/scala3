@@ -1246,16 +1246,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object LambdaTypeTree extends LambdaTypeTreeModule:
       def apply(tparams: List[TypeDef], body: Tree): LambdaTypeTree =
-        withDefaultPos(tpd.LambdaTypeTree(tparams, body))
+        withDefaultPos(tpd.LambdaTypeTree(tparams.toLst, body))
       def copy(original: Tree)(tparams: List[TypeDef], body: Tree): LambdaTypeTree =
-        tpd.cpy.LambdaTypeTree(original)(tparams, body)
+        tpd.cpy.LambdaTypeTree(original)(tparams.toLst, body)
       def unapply(tree: LambdaTypeTree): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
-        Some((tree.tparams, tree.body))
+        Some((tree.tparams.toList, tree.body))
     end LambdaTypeTree
 
     object LambdaTypeTreeMethodsImpl extends LambdaTypeTreeMethods:
       extension (self: LambdaTypeTree):
-        def tparams: List[TypeDef] = self.tparams
+        def tparams: List[TypeDef] = self.tparams.toList
         def body: Tree = self.body
       end extension
     end LambdaTypeTreeMethodsImpl

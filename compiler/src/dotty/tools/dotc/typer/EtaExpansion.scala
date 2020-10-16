@@ -238,7 +238,7 @@ object EtaExpansion extends LiftImpure {
     var paramFlag = Synthetic | Param
     if (mt.isContextualMethod) paramFlag |= Given
     else if (mt.isImplicitMethod) paramFlag |= Implicit
-    val params = mt.paramNames.lazyZip(paramTypes).map((name, tpe) =>
+    val params = mt.paramNames.toLst.zipWith(paramTypes)((name, tpe) =>
       ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
     var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)

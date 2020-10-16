@@ -1780,7 +1780,7 @@ trait Applications extends Compatibility {
     /** The shape of given tree as a type; cannot handle named arguments. */
     def typeShape(tree: untpd.Tree): Type = tree match {
       case untpd.Function(args, body) =>
-        defn.FunctionOf(args map Function.const(defn.AnyType), typeShape(body))
+        defn.FunctionOf(args.toList map Function.const(defn.AnyType), typeShape(body))
       case Match(EmptyTree, _) =>
         defn.PartialFunctionClass.typeRef.appliedTo(defn.AnyType :: defn.NothingType :: Nil)
       case _ =>
@@ -1811,7 +1811,7 @@ trait Applications extends Compatibility {
      */
     def normArg(alts: List[TermRef], arg: untpd.Tree, idx: Int): untpd.Tree = arg match
       case Block(NIL, expr) => normArg(alts, expr, idx)
-      case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
+      case untpd.Function(args: Lst[untpd.ValDef] @unchecked, body) =>
 
         // If ref refers to a method whose parameter at index `idx` is a function type,
         // the arity of that function, otherise -1.

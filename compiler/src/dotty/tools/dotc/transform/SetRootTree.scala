@@ -4,6 +4,8 @@ import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.util.Lst
+import Lst.{NIL, +:, toLst}
 
 /** Set the `rootTreeOrProvider` property of class symbols. */
 class SetRootTree extends Phase {
@@ -29,7 +31,7 @@ class SetRootTree extends Phase {
           if (td.symbol.isClass) {
             val sym = td.symbol.asClass
             tpd.sliceTopLevel(ctx.compilationUnit.tpdTree, sym) match {
-              case (pkg: tpd.PackageDef) :: Nil =>
+              case Lst(pkg: tpd.PackageDef) =>
                 sym.rootTreeOrProvider = pkg
               case _ =>
                 sym.rootTreeOrProvider = td

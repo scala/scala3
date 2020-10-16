@@ -819,17 +819,17 @@ class Namer { typer: Typer =>
         nestedCtx = localContext(sym).setNewScope
         given Context = nestedCtx
 
-        def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match
+        def typeParamTrees(tdef: Tree): Lst[TypeDef] = tdef match
           case TypeDef(_, original) =>
             original match
               case LambdaTypeTree(tparams, _) => tparams
               case original: DerivedFromParamTree => typeParamTrees(original.watched)
-              case _ => Nil
-          case _ => Nil
+              case _ => NIL
+          case _ => NIL
 
         val tparams = typeParamTrees(original)
-        index(tparams.toLst)
-        myTypeParams = tparams.map(symbolOfTree(_).asType)
+        index(tparams)
+        myTypeParams = tparams.toList.map(symbolOfTree(_).asType)
         for param <- tparams do typedAheadExpr(param)
       end if
       myTypeParams

@@ -1231,7 +1231,7 @@ class TreeUnpickler(reader: TastyReader,
             case LAMBDAtpt =>
               val tparams = readParams[TypeDef](TYPEPARAM)
               val body = readTpt()
-              LambdaTypeTree(tparams, body)
+              LambdaTypeTree(tparams.toLst, body)
             case MATCHtpt =>
               val fst = readTpt()
               val (bound, scrut) =

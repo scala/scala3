@@ -445,11 +445,11 @@ object Parsers {
 
     /** Convert tree to formal parameter list
     */
-    def convertToParams(tree: Tree, mods: Modifiers): List[ValDef] = tree match {
+    def convertToParams(tree: Tree, mods: Modifiers): Lst[ValDef] = tree match {
       case Parens(t) =>
-        convertToParam(t, mods) :: Nil
+        Lst(convertToParam(t, mods))
       case Tuple(ts) =>
-        ts.map(convertToParam(_, mods)).toList
+        ts.map(convertToParam(_, mods))
       case t: Typed =>
         report.errorOrMigrationWarning(
           em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
@@ -457,9 +457,9 @@ object Parsers {
         if migrateTo3 then
           patch(source, t.span.startPos, "(")
           patch(source, t.span.endPos, ")")
-        convertToParam(t, mods) :: Nil
+        Lst(convertToParam(t, mods))
       case t =>
-        convertToParam(t, mods) :: Nil
+        Lst(convertToParam(t, mods))
     }
 
     /** Convert tree to formal parameter
@@ -1371,7 +1371,7 @@ object Parsers {
     def typ(): Tree = {
       val start = in.offset
       var imods = Modifiers()
-      def functionRest(params: List[Tree]): Tree =
+      def functionRest(params: Lst[Tree]): Tree =
         atSpan(start, in.offset) {
           if in.token == TLARROW then
             if !imods.flags.isEmpty || params.isEmpty then
@@ -1381,7 +1381,7 @@ object Parsers {
               for case ValDef(_, tpt: ByNameTypeTree, _) <- params do
                 syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
               in.nextToken()
-              return TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], typ())
+              return TermLambdaTypeTree(params.asInstanceOf[Lst[ValDef]], typ())
 
           if in.token == CTXARROW then
             in.nextToken()
@@ -1392,20 +1392,20 @@ object Parsers {
 
           if (imods.isOneOf(Given | Erased)) new FunctionWithMods(params, t, imods)
           else if (ctx.settings.YkindProjector.value) {
-            val (newParams, tparams) = replaceKindProjectorPlaceholders(params.toLst :+ t)
+            val (newParams, tparams) = replaceKindProjectorPlaceholders(params :+ t)
 
-            lambdaAbstract(tparams.toList, Function(newParams.init.toList, newParams.last))
+            lambdaAbstract(tparams, Function(newParams.init, newParams.last))
           } else {
             Function(params, t)
           }
         }
-      def funArgTypesRest(first: Tree, following: () => Tree) = {
-        val buf = new ListBuffer[Tree] += first
+      def funArgTypesRest(first: Tree, following: () => Tree): Lst[Tree] = {
+        val buf = Lst.Buffer[Tree] += first
         while (in.token == COMMA) {
           in.nextToken()
           buf += following()
         }
-        buf.toList
+        buf.toLst
       }
       var isValParamList = false
 
@@ -1414,7 +1414,7 @@ object Parsers {
           in.nextToken()
           if (in.token == RPAREN) {
             in.nextToken()
-            functionRest(Nil)
+            functionRest(NIL)
           }
           else {
             openParens.change(LPAREN, 1)
@@ -1443,7 +1443,7 @@ object Parsers {
                     case _ =>
                       t
                   }
-              val tuple = atSpan(start) { makeTupleOrParens(ts1.toLst) }
+              val tuple = atSpan(start) { makeTupleOrParens(ts1) }
               infixTypeRest(
                 refinedTypeRest(
                   withTypeRest(
@@ -1454,7 +1454,7 @@ object Parsers {
         }
         else if (in.token == LBRACKET) {
           val start = in.offset
-          val tparams = typeParamClause(ParamOwner.TypeParam)
+          val tparams = typeParamClause(ParamOwner.TypeParam).toLst
           if (in.token == TLARROW)
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
           else if (in.token == ARROW) {
@@ -1475,7 +1475,7 @@ object Parsers {
         else infixType()
 
       in.token match {
-        case ARROW | CTXARROW => functionRest(t :: Nil)
+        case ARROW | CTXARROW => functionRest(Lst(t))
         case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
@@ -1517,10 +1517,10 @@ object Parsers {
 
     /**  FunParamClause ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
      */
-    def funParamClause(): List[ValDef] =
-      inParens(commaSeparated(() => typedFunParam(in.offset, ident())))
+    def funParamClause(): Lst[ValDef] =
+      inParens(commaSeparatedLst(() => typedFunParam(in.offset, ident())))
 
-    def funParamClauses(): List[List[ValDef]] =
+    def funParamClauses(): List[Lst[ValDef]] =
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
 
     /** InfixType ::= RefinedType {id [nl] RefinedType}
@@ -1684,7 +1684,7 @@ object Parsers {
             case _ =>
               val (newArgs, tparams) = replaceKindProjectorPlaceholders(args)
 
-              lambdaAbstract(tparams.toList, AppliedTypeTree(applied, newArgs))
+              lambdaAbstract(tparams, AppliedTypeTree(applied, newArgs))
           }
 
         } else {
@@ -1700,7 +1700,7 @@ object Parsers {
               if (tparams.isEmpty) {
                 t
               } else {
-                LambdaTypeTree(tparams.toList, Tuple(newParams))
+                LambdaTypeTree(tparams, Tuple(newParams))
               }
             case _ => t
           }
@@ -1813,7 +1813,7 @@ object Parsers {
           "view bounds `<%' are deprecated, use a context bound `:' instead",
           in.sourcePos())
         atSpan(in.skipToken()) {
-          Function(Ident(pname) :: Nil, toplevelTyp())
+          Function(Lst(Ident(pname)), toplevelTyp())
         } :: contextBounds(pname)
       case _ =>
         Nil
@@ -1918,7 +1918,7 @@ object Parsers {
 
         def wrapPlaceholders(t: Tree) = try
           if (placeholderParams.isEmpty) t
-          else new WildcardFunction(placeholderParams.reverse, t)
+          else new WildcardFunction(placeholderParams.toLst.reverse, t)
         finally placeholderParams = saved
 
         val t = expr1(location)
@@ -2019,7 +2019,7 @@ object Parsers {
         forExpr()
       case LBRACKET =>
         val start = in.offset
-        val tparams = typeParamClause(ParamOwner.TypeParam)
+        val tparams = typeParamClause(ParamOwner.TypeParam).toLst
         val arrowOffset = accept(ARROW)
         val body = expr()
         atSpan(start, arrowOffset) {
@@ -2129,11 +2129,11 @@ object Parsers {
      *                     |   `_'
      *  Bindings          ::=  `(' [[‘using’] [‘erased’] Binding {`,' Binding}] `)'
      */
-    def funParams(mods: Modifiers, location: Location): List[Tree] =
+    def funParams(mods: Modifiers, location: Location): Lst[Tree] =
       if in.token == LPAREN then
         in.nextToken()
         if in.token == RPAREN then
-          Nil
+          NIL
         else
           openParens.change(LPAREN, 1)
           var mods1 = mods
@@ -2141,7 +2141,7 @@ object Parsers {
             if isIdent(nme.using) then mods1 = addMod(mods1, atSpan(in.skipToken()) { Mod.Given() })
             if in.token == ERASED then mods1 = addModifier(mods1)
           try
-            commaSeparated(() => binding(mods1))
+            commaSeparatedLst(() => binding(mods1))
           finally
             accept(RPAREN)
             openParens.change(LPAREN, -1)
@@ -2165,7 +2165,7 @@ object Parsers {
             t
           }
           else TypeTree()
-        (atSpan(start) { makeParameter(name, t, mods) }) :: Nil
+        Lst(atSpan(start) { makeParameter(name, t, mods) })
       }
 
     /**  Binding           ::= (id | `_') [`:' Type]
@@ -2186,7 +2186,7 @@ object Parsers {
     def closure(start: Int, location: Location, implicitMods: Modifiers): Tree =
       closureRest(start, location, funParams(implicitMods, location))
 
-    def closureRest(start: Int, location: Location, params: List[Tree]): Tree =
+    def closureRest(start: Int, location: Location, params: Lst[Tree]): Tree =
       atSpan(start, in.offset) {
         if in.token == CTXARROW then in.nextToken() else accept(ARROW)
         Function(params, if (location == Location.InBlock) block() else expr())
@@ -2910,7 +2910,7 @@ object Parsers {
               WildcardParamName.fresh().toTypeName
             }
             else ident().toTypeName
-          val hkparams = typeParamClauseOpt(ParamOwner.Type)
+          val hkparams = typeParamClauseOpt(ParamOwner.Type).toLst
           val bounds = if (isAbstractOwner) typeBounds() else typeParamBounds(name)
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
@@ -3357,7 +3357,7 @@ object Parsers {
       newLinesOpt()
       atSpan(start, nameStart) {
         val nameIdent = typeIdent()
-        val tparams = typeParamClauseOpt(ParamOwner.Type)
+        val tparams = typeParamClauseOpt(ParamOwner.Type).toLst
         val vparamss = funParamClauses()
         def makeTypeDef(rhs: Tree): Tree = {
           val rhs1 = lambdaAbstractAll(tparams :: vparamss, rhs)

@@ -494,11 +494,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             toTextLocal(tpt) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
       case LambdaTypeTree(tparams, body) =>
         changePrec(GlobalPrec) {
-          tparamsText(tparams) ~ " =>> " ~ toText(body)
+          tparamsText(tparams.toList) ~ " =>> " ~ toText(body)
         }
       case TermLambdaTypeTree(params, body) =>
         changePrec(GlobalPrec) {
-          paramsText(params) ~ " =>> " ~ toText(body)
+          paramsText(params.toList) ~ " =>> " ~ toText(body)
         }
       case MatchTypeTree(bound, sel, cases) =>
         changePrec(GlobalPrec) {
@@ -540,7 +540,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case rhs: TypeBoundsTree =>
             typeDefText(tparamsTxt, toText(rhs))
           case LambdaTypeTree(tparams, body) if printMemberArgs =>
-            recur(body, tparamsText(tparams), false)
+            recur(body, tparamsText(tparams.toList), false)
           case rhs: TypeTree if isBounds(rhs.typeOpt) =>
             typeDefText(tparamsTxt, toText(rhs))
           case rhs =>
@@ -596,7 +596,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             toText(arg)
         }
         val argsText = args match {
-          case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
+          case Lst(arg @ ValDef(_, tpt, _)) if tpt.isEmpty => argToText(arg)
           case _ =>
             "("
             ~ keywordText("erased ").provided(isErased)

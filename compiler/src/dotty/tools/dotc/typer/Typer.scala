@@ -1037,7 +1037,7 @@ class Typer extends Namer
         isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
 
     /** Typechecks dependent function type with given parameters `params` */
-    def typedDependent(params: List[untpd.ValDef])(using Context): Tree =
+    def typedDependent(params: Lst[untpd.ValDef])(using Context): Tree =
       val fixThis = new untpd.UntypedTreeMap:
         // pretype all references of this in outer context,
         // so that they do not refer to the refined type being constructed
@@ -1049,7 +1049,7 @@ class Typer extends Namer
         if funFlags.is(Given) then params.map(_.withAddedFlags(Given))
         else params
       val params2 = params1.map(fixThis.transformSub)
-      val appDef0 = untpd.DefDef(nme.apply, Nil, List(params2), body, EmptyTree).withSpan(tree.span)
+      val appDef0 = untpd.DefDef(nme.apply, Nil, List(params2.toList), body, EmptyTree).withSpan(tree.span)
       index(Lst(appDef0))
       val appDef = typed(appDef0).asInstanceOf[DefDef]
       val mt = appDef.symbol.info.asInstanceOf[MethodType]
@@ -1063,17 +1063,16 @@ class Typer extends Namer
     end typedDependent
 
     args match {
-      case ValDef(_, _, _) :: _ =>
-        typedDependent(args.asInstanceOf[List[untpd.ValDef]])(
+      case ValDef(_, _, _) +: _ =>
+        typedDependent(args.asInstanceOf[Lst[untpd.ValDef]])(
           using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
       case _ =>
-        typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args.toLst :+ body), pt)
+        typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt)
     }
   }
 
   def typedFunctionValue(tree: untpd.Function, pt: Type)(using Context): Tree = {
-    val untpd.Function(params: List[untpd.ValDef] @unchecked, _) = tree
-
+    val params = tree.args.asInstanceOf[Lst[ValDef]]
     val isContextual = tree match {
       case tree: untpd.FunctionWithMods => tree.mods.is(Given)
       case _ => false
@@ -1139,7 +1138,7 @@ class Typer extends Namer
         else NoType
       case app @ Apply(expr, args) =>
         paramIndex = {
-          for (param <- params; idx <- paramIndices(param, args))
+          for (param <- params; idx <- paramIndices(param, args).toLst)
           yield param.name -> idx
         }.toMap
         if (paramIndex.size == params.length)
@@ -1219,7 +1218,7 @@ class Typer extends Namer
     def ptIsCorrectProduct(formal: Type) =
       isFullyDefined(formal, ForceDegree.flipBottom) &&
       (defn.isProductSubType(formal) || formal.derivesFrom(defn.PairClass)) &&
-      productSelectorTypes(formal, tree.srcPos).corresponds(params) {
+      productSelectorTypes(formal, tree.srcPos).toLst.corresponds(params) {
         (argType, param) =>
           param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
       }
@@ -1232,13 +1231,13 @@ class Typer extends Namer
         desugar.makeTupledFunction(params, fnBody, isGenericTuple)
       }
       else {
-        val inferredParams: List[untpd.ValDef] =
+        val inferredParams: Lst[untpd.ValDef] =
           for ((param, i) <- params.zipWithIndex) yield
             if (!param.tpt.isEmpty) param
             else cpy.ValDef(param)(
               tpt = untpd.TypeTree(
                 inferredParamType(param, protoFormal(i)).translateFromRepeated(toArray = false)))
-        desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual)
+        desugar.makeClosure(inferredParams.toList, fnBody, resultTpt, isContextual)
       }
     typed(desugared, pt)
   }
@@ -1771,14 +1770,14 @@ class Typer extends Namer
   }
 
   private def typeIndexedLambdaTypeTree(
-      tree: untpd.LambdaTypeTree, tparams: List[untpd.TypeDef], body: untpd.Tree)(using Context) =
-    val tparams1 = tparams.map(typed(_)).asInstanceOf[List[TypeDef]]
+      tree: untpd.LambdaTypeTree, tparams: Lst[untpd.TypeDef], body: untpd.Tree)(using Context) =
+    val tparams1 = tparams.map(typed(_)).asInstanceOf[Lst[TypeDef]]
     val body1 = typedType(body)
     assignType(cpy.LambdaTypeTree(tree)(tparams1, body1), tparams1, body1)
 
   def typedLambdaTypeTree(tree: untpd.LambdaTypeTree)(using Context): Tree =
     val LambdaTypeTree(tparams, body) = tree
-    index(tparams.toLst)
+    index(tparams)
     typeIndexedLambdaTypeTree(tree, tparams, body)
 
   def typedTermLambdaTypeTree(tree: untpd.TermLambdaTypeTree)(using Context): Tree =
@@ -2305,7 +2304,7 @@ class Typer extends Namer
           // Under -rewrite, patch `x _` to `(() => x)`
           patch(Span(tree.span.start), "(() => ")
           patch(Span(qual.span.end, tree.span.end), ")")
-          return typed(untpd.Function(Nil, qual), pt)
+          return typed(untpd.Function(NIL, qual), pt)
         }
     }
     nestedCtx.typerState.commit()

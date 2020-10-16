@@ -686,12 +686,12 @@ object Trees {
    *  source code written by the user with the trees used by the compiler (for
    *  example, to make "find all references" work in the IDE).
    */
-  case class LambdaTypeTree[-T >: Untyped] private[ast] (tparams: List[TypeDef[T]], body: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class LambdaTypeTree[-T >: Untyped] private[ast] (tparams: Lst[TypeDef[T]], body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = LambdaTypeTree[T]
   }
 
-  case class TermLambdaTypeTree[-T >: Untyped] private[ast] (params: List[ValDef[T]], body: Tree[T])(implicit @constructorOnly src: SourceFile)
+  case class TermLambdaTypeTree[-T >: Untyped] private[ast] (params: Lst[ValDef[T]], body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends TypTree[T] {
     type ThisTree[-T >: Untyped] = TermLambdaTypeTree[T]
   }
@@ -1176,12 +1176,12 @@ object Trees {
         case tree: AppliedTypeTree if (tpt eq tree.tpt) && (args eqLst tree.args) => tree
         case _ => finalize(tree, untpd.AppliedTypeTree(tpt, args)(sourceFile(tree)))
       }
-      def LambdaTypeTree(tree: Tree)(tparams: List[TypeDef], body: Tree)(using Context): LambdaTypeTree = tree match {
-        case tree: LambdaTypeTree if (tparams eq tree.tparams) && (body eq tree.body) => tree
+      def LambdaTypeTree(tree: Tree)(tparams: Lst[TypeDef], body: Tree)(using Context): LambdaTypeTree = tree match {
+        case tree: LambdaTypeTree if (tparams eqLst tree.tparams) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.LambdaTypeTree(tparams, body)(sourceFile(tree)))
       }
-      def TermLambdaTypeTree(tree: Tree)(params: List[ValDef], body: Tree)(using Context): TermLambdaTypeTree = tree match {
-        case tree: TermLambdaTypeTree if (params eq tree.params) && (body eq tree.body) => tree
+      def TermLambdaTypeTree(tree: Tree)(params: Lst[ValDef], body: Tree)(using Context): TermLambdaTypeTree = tree match {
+        case tree: TermLambdaTypeTree if (params eqLst tree.params) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.TermLambdaTypeTree(params, body)(sourceFile(tree)))
       }
       def MatchTypeTree(tree: Tree)(bound: Tree, selector: Tree, cases: Lst[CaseDef])(using Context): MatchTypeTree = tree match {

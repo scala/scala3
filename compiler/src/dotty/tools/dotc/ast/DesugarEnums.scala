@@ -218,9 +218,9 @@ object DesugarEnums {
 
     object searchRef extends UntypedTreeAccumulator[Boolean] {
       var tparamNames = enumTypeParams.map(_.name).toSet[Name]
-      def underBinders(binders: List[MemberDef], op: => Boolean): Boolean = {
+      def underBinders(binders: Lst[MemberDef], op: => Boolean): Boolean = {
         val saved = tparamNames
-        tparamNames = tparamNames -- binders.map(_.name)
+        tparamNames = tparamNames -- binders.map(_.name).iterator
         try op
         finally tparamNames = saved
       }
@@ -235,12 +235,12 @@ object DesugarEnums {
             underBinders(lambdaParams, foldOver(x, tree))
           case RefinedTypeTree(parent, refinements) =>
             val refinementDefs = refinements collect { case r: MemberDef => r }
-            underBinders(refinementDefs.toList, foldOver(x, tree))
+            underBinders(refinementDefs, foldOver(x, tree))
           case _ => foldOver(x, tree)
         }
       }
       def apply(tree: Tree)(using Context): Boolean =
-        underBinders(caseTypeParams, apply(false, tree))
+        underBinders(caseTypeParams.toLst, apply(false, tree))
     }
 
     def typeHasRef(tpt: Tree) = searchRef(tpt)

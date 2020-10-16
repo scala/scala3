@@ -144,7 +144,7 @@ import util.Lst.{NIL, +:, toLst}
   }
 
   class AnonymousFunctionMissingParamType(param: untpd.ValDef,
-                                          args: List[untpd.Tree],
+                                          args: Lst[untpd.Tree],
                                           tree: untpd.Function,
                                           pt: Type)
                                           (using Context)

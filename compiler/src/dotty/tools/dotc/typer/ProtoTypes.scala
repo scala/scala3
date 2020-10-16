@@ -318,7 +318,7 @@ object ProtoTypes {
               case ValDef(_, tpt, _) if !tpt.isEmpty => typer.typedType(tpt).typeOpt
               case _ => WildcardType
             }
-            targ = arg.withType(defn.FunctionOf(paramTypes, WildcardType))
+            targ = arg.withType(defn.FunctionOf(paramTypes.toList, WildcardType))
           case Some(_) if !force =>
             targ = arg.withType(WildcardType)
           case _ =>

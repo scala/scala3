@@ -305,7 +305,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   /** Is `tree` an context function or closure, possibly nested in a block? */
   def isContextualClosure(tree: Tree)(using Context): Boolean = unsplice(tree) match {
     case tree: FunctionWithMods => tree.mods.is(Given)
-    case Function((param: untpd.ValDef) :: _, _) => param.mods.is(Given)
+    case Function((param: untpd.ValDef) +: _, _) => param.mods.is(Given)
     case Closure(_, meth, _) => true
     case Block(NIL, expr) => isContextualClosure(expr)
     case Block(Lst(DefDef(nme.ANON_FUN, _, params :: _, _, _)), cl: Closure) =>
@@ -747,7 +747,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   }
 
   /** The tree containing only the top-level classes and objects matching either `cls` or its companion object */
-  def sliceTopLevel(tree: Tree, cls: ClassSymbol)(using Context): List[Tree] = tree match {
+  def sliceTopLevel(tree: Tree, cls: ClassSymbol)(using Context): Lst[Tree] = tree match {
     case PackageDef(pid, stats) =>
       val slicedStats = stats.flatMap(sliceTopLevel(_, cls))
       val isEffectivelyEmpty = slicedStats.forall(_.isInstanceOf[Import])
@@ -756,15 +756,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case tdef: TypeDef =>
       val sym = tdef.symbol
       assert(sym.isClass)
-      if (cls == sym || cls == sym.linkedClass) tdef :: Nil
-      else Nil
+      if (cls == sym || cls == sym.linkedClass) Lst(tdef)
+      else NIL
     case vdef: ValDef =>
       val sym = vdef.symbol
       assert(sym.is(Module))
-      if (cls == sym.companionClass || cls == sym.moduleClass) vdef :: Nil
-      else Nil
+      if (cls == sym.companionClass || cls == sym.moduleClass) Lst(vdef)
+      else NIL
     case tree =>
-      tree :: Nil
+      Lst(tree)
   }
 
   /** The statement sequence that contains a definition of `sym`, or Nil

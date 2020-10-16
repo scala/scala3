@@ -471,8 +471,8 @@ trait TypeAssigner {
     tree.withType(ownType)
   }
 
-  def assignType(tree: untpd.LambdaTypeTree, tparamDefs: List[TypeDef], body: Tree)(using Context): LambdaTypeTree =
-    tree.withType(HKTypeLambda.fromParams(tparamDefs.map(_.symbol.asType), body.tpe))
+  def assignType(tree: untpd.LambdaTypeTree, tparamDefs: Lst[TypeDef], body: Tree)(using Context): LambdaTypeTree =
+    tree.withType(HKTypeLambda.fromParams(tparamDefs.map(_.symbol.asType).toList, body.tpe))
 
   def assignType(tree: untpd.MatchTypeTree, bound: Tree, scrutinee: Tree, cases: Lst[CaseDef])(using Context): MatchTypeTree = {
     val boundType = if (bound.isEmpty) defn.AnyType else bound.tpe
