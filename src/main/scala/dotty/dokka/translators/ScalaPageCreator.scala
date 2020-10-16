@@ -426,12 +426,13 @@ class ScalaPageCreator(
                             _.list(subtypes.toList, separator="")(contentForTypeLink)
                         }
                     }
-
-            withSubtypes.header(2, "Type hierarchy")().group(
-                kind = ContentKind.Comment,
-                styles = Set(ContentStyle.WithExtraAttributes), 
-                extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Type hierarchy")
-            ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
-                    _.dotDiagram(HierarchyDiagramBuilder.build(c))
-                }
+                    
+            if subtypes.isEmpty && supertypes.isEmpty then withSubtypes else
+                withSubtypes.header(2, "Type hierarchy")().group(
+                    kind = ContentKind.Comment,
+                    styles = Set(ContentStyle.WithExtraAttributes), 
+                    extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Type hierarchy")
+                ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
+                        _.dotDiagram(HierarchyDiagramBuilder.build(c))
+                    }
             }
