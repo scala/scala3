@@ -224,19 +224,7 @@ object Lst:
 
     def filterNot(p: T => Boolean): Lst[T] = filter(!p(_))
 
-    def withFilter(p: T => Boolean): MonadZeroOps[T] = new MonadZeroOps:
-      def withFilter(q: T => Boolean) = xs.withFilter(x => p(x) && q(x))
-      def map[U](f: T => U): Lst[U] =
-        val buf = Buffer[U]()
-        xs.foreachInlined(x => if p(x) then buf += f(x))
-        buf.toLst
-      def flatMap[U](f: T => Lst[U]): Lst[U] =
-        val buf = Buffer[U]()
-        xs.foreachInlined(x => if p(x) then buf ++= f(x))
-        buf.toLst
-      def foreach(f: T => Unit) =
-        xs.foreachInlined(x => if p(x) then f(x))
-    // end withFilter  !!! causes a parsing error if uncommented
+    def withFilter(p: T => Boolean) = WithFilter(xs, p)
 
     def partition(p: T => Boolean): (Lst[T], Lst[T]) = xs match
       case null => (NIL, NIL)
@@ -519,7 +507,7 @@ object Lst:
       flatMap(x => fromIterable(f(x)))
 
     def collect(pf: PartialFunction[T, U]): Lst[U] =
-      val buf = new Buffer[U]
+      val buf = new Buffer[U](xs.length)
       xs.foreach(x => if pf.isDefinedAt(x) then buf += pf(x))
       buf.toLst
 
@@ -551,8 +539,10 @@ object Lst:
         case x: T @unchecked =>
           op(x, z)
 
+    def lazyZip(ys: IterableOnce[U]) = LazyZip2(xs, ys)
+
     def zip(ys: Lst[U]): Lst[(T, U)] = xs.zipWith(ys)((_, _))
-    def zip(ys: IterableOnce[U]): Lst[(T, U)] = xs.zipWith(ys)((_, _))
+    def zip(ys: IterableOnce[U]): Lst[(T, U)] = xs.lazyZip(ys).map((_, _))
 
     def zipForeach(ys: IterableOnce[U])(op: (T, U) => Unit): Unit =
       val yit = ys.iterator
@@ -624,8 +614,7 @@ object Lst:
                   System.arraycopy(xs, 0, newElems, 0, i)
                   newElems(i) = y
                 i += 1
-              if newElems == null then fromArr[V](xs)
-              else multi[V](newElems)
+              _fromArray[V](if newElems == null then xs else newElems, 0, i)
           case y: U @unchecked =>
             single[V](op(xs.at(0), y))
       case x: T @unchecked =>
@@ -737,7 +726,7 @@ object Lst:
       i += 1
     multi[Int](xs)
 
-  class Buffer[T]:
+  class Buffer[T](minArraySize: Int = 16):
     private var len = 0
     private var elem: T = _
     private var elems: Arr = _
@@ -746,14 +735,15 @@ object Lst:
 
     /** pre: len > 0, n >= 1 */
     private def ensureSize(n: Int): Unit =
-      if len == 1 then
-        elems = new Arr(n max 16)
-        elems(0) = elem
-      else if len < n then
-        val newLen = n max len * 2
-        val newElems = new Arr(newLen)
-        System.arraycopy(elems, 0, newElems, 0, len)
-        elems = newElems
+      if len < n then
+        if len == 1 then
+          elems = new Arr(n max minArraySize)
+          elems(0) = elem
+        else
+          val newLen = n max len * 2
+          val newElems = new Arr(newLen)
+          System.arraycopy(elems, 0, newElems, 0, len)
+          elems = newElems
 
     def isEmpty = size == 0
     def nonEmpty = size != 0
@@ -849,11 +839,84 @@ object Lst:
       len = 0
   end Buffer
 
-  abstract class MonadZeroOps[T]:
-    def withFilter(f: T => Boolean): MonadZeroOps[T]
-    def map[U](f: T => U): Lst[U]
-    def flatMap[U](f: T => Lst[U]): Lst[U]
-    def foreach(f: T => Unit): Unit
+  class WithFilter[T](xs: Lst[T], p: T => Boolean):
+    def lazyZip[U](ys: IterableOnce[U]) =
+      LazyZip2(xs, ys).withFilter((x, y) => p(x))
+
+    def map[U](f: T => U): Lst[U] =
+      val buf = Buffer[U](xs.length)
+      foreach(x => buf += f(x))
+      buf.toLst
+
+    def flatMap[U](f: T => Lst[U]): Lst[U] =
+      val buf = Buffer[U]()
+      foreach(x => buf ++= f(x))
+      buf.toLst
+
+    def foreach(f: T => Unit) =
+      xs.foreachInlined(x => if p(x) then f(x))
+
+    def withFilter(q: T => Boolean): WithFilter[T] = new WithFilter(xs, x => p(x) && q(x))
+  end WithFilter
+
+  class LazyZip2[T, U](xs: Lst[T], ys: IterableOnce[U]):
+    self =>
+
+    def lazyZip[V](zs: IterableOnce[V]): LazyZip3[T, U, V] = new LazyZip3(xs, ys, zs):
+      override def include(x: T, y: U, z: V) = self.include(x, y)
+
+    def map[V](f: (T, U) => V): Lst[V] =
+      val buf = Buffer[V](xs.length)
+      foreach((x, y) => buf += f(x, y))
+      buf.toLst
+
+    def flatMap[V](f: (T, U) => Lst[V]): Lst[V] =
+      val buf = Buffer[V]()
+      foreach((x, y) => buf ++= f(x, y))
+      buf.toLst
+
+    def foreach(f: (T, U) => Unit): Unit =
+      val yit = ys.iterator
+      xs.foreachInlined { x =>
+        if yit.hasNext then
+          val y = yit.next()
+          if include(x, y) then f(x, y)
+      }
+
+    protected def include(x: T, y: U): Boolean = true
+
+    def withFilter(p: (T, U) => Boolean): LazyZip2[T, U] = new LazyZip2[T, U](xs, ys):
+      override def include(x: T, y: U) = self.include(x, y) && p(x, y)
+  end LazyZip2
+
+  class LazyZip3[T, U, V](xs: Lst[T], ys: IterableOnce[U], zs: IterableOnce[V]):
+    self =>
+
+    def map[W](f: (T, U, V) => W): Lst[W] =
+      val buf = Buffer[W](xs.length)
+      foreach((x, y, z) => buf += f(x, y, z))
+      buf.toLst
+
+    def flatMap[W](f: (T, U, V) => Lst[W]): Lst[W] =
+      val buf = Buffer[W]()
+      foreach((x, y, z) => buf ++= f(x, y, z))
+      buf.toLst
+
+    def foreach(f: (T, U, V) => Unit): Unit =
+      val yit = ys.iterator
+      val zit = zs.iterator
+      xs.foreachInlined { x =>
+        if yit.hasNext && zit.hasNext then
+          val y = yit.next()
+          val z = zit.next()
+          if include(x, y, z) then f(x, y, z)
+      }
+
+    protected def include(x: T, y: U, z: V): Boolean = true
+
+    def withFilter(p: (T, U, V) => Boolean): LazyZip3[T, U, V] = new LazyZip3[T, U, V](xs, ys, zs):
+      override def include(x: T, y: U, z: V) = self.include(x, y, z) && p(x, y, z)
+  end LazyZip3
 
   final class UnapplyWrapper[T](val xs: Lst[T]) extends AnyVal with Product:
     def canEqual(that: Any) = true

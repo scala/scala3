@@ -1400,7 +1400,7 @@ object Parsers {
           }
         }
       def funArgTypesRest(first: Tree, following: () => Tree): Lst[Tree] = {
-        val buf = Lst.Buffer[Tree] += first
+        val buf = Lst.Buffer[Tree]() += first
         while (in.token == COMMA) {
           in.nextToken()
           buf += following()
@@ -3905,7 +3905,7 @@ object Parsers {
      */
     def compilationUnit(): Tree = checkNoEscapingPlaceholders {
       def topstats(): Lst[Tree] = {
-        val ts = Lst.Buffer[Tree]
+        val ts = Lst.Buffer[Tree]()
         while (in.token == SEMI) in.nextToken()
         val start = in.offset
         if (in.token == PACKAGE) {
