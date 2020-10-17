@@ -7,8 +7,7 @@ import org.junit.{Ignore, Test}
 import org.junit.Assert.{assertEquals, fail}
 import org.junit.experimental.categories.Category
 
-@Category(Array(classOf[TestCategory]))
-class CommunityBuildTest:
+abstract class CommunityBuildTest:
   given CommunityBuildTest = this
 
   /** Depending on the mode of operation, either
@@ -79,7 +78,30 @@ class CommunityBuildTest:
           |""".stripMargin)
     }
   }
+end CommunityBuildTest
 
+@Category(Array(classOf[TestCategory]))
+class CommunityBuildTestA extends CommunityBuildTest:
+  @Test def fansi = projects.fansi.run()
+  @Test def fastparse = projects.fastparse.run()
+  @Test def geny = projects.geny.run()
+  @Test def oslib = projects.oslib.run()
+  // @Test def oslibWatch = projects.oslibWatch.run()
+  @Test def pprint = projects.pprint.run()
+  @Test def requests = projects.requests.run()
+  @Test def scalacheck = projects.scalacheck.run()
+  @Test def scalatest = projects.scalatest.run()
+  @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
+  @Test def sourcecode = projects.sourcecode.run()
+  @Test def scodec = projects.scodec.run()
+  @Test def scodecBits = projects.scodecBits.run()
+  @Test def ujson = projects.ujson.run()
+  @Test def upickle = projects.upickle.run()
+  @Test def utest = projects.utest.run()
+end CommunityBuildTestA
+
+@Category(Array(classOf[TestCategory]))
+class CommunityBuildTestB extends CommunityBuildTest:
   @Test def algebra = projects.algebra.run()
   @Test def betterfiles = projects.betterfiles.run()
   @Test def catsEffect2 = projects.catsEffect2.run()
@@ -88,38 +110,22 @@ class CommunityBuildTest:
   // @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
   @Test def effpi = projects.effpi.run()
   @Test def endpoints4s = projects.endpoints4s.run()
-  @Test def fansi = projects.fansi.run()
-  @Test def fastparse = projects.fastparse.run()
-  @Test def geny = projects.geny.run()
   @Test def intent = projects.intent.run()
   @Test def minitest = projects.minitest.run()
   @Test def munit = projects.munit.run()
-  @Test def oslib = projects.oslib.run()
-  // @Test def oslibWatch = projects.oslibWatch.run()
-  @Test def pprint = projects.pprint.run()
-  @Test def requests = projects.requests.run()
-  @Test def scalacheck = projects.scalacheck.run()
   @Test def scalap = projects.scalap.run()
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
   @Test def ScalaPB = projects.ScalaPB.run()
-  @Test def scalatest = projects.scalatest.run()
-  @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
   @Test def scalaXml = projects.scalaXml.run()
   @Test def scalaz = projects.scalaz.run()
   @Test def scas = projects.scas.run()
-  @Test def scodec = projects.scodec.run()
-  @Test def scodecBits = projects.scodecBits.run()
   @Test def sconfig = projects.sconfig.run()
   @Test def scopt = projects.scopt.run()
   @Test def shapeless = projects.shapeless.run()
-  @Test def sourcecode = projects.sourcecode.run()
   @Test def squants = projects.squants.run()
   @Test def stdLib213 = projects.stdLib213.run()
-  @Test def ujson = projects.ujson.run()
-  @Test def upickle = projects.upickle.run()
-  @Test def utest = projects.utest.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
   @Test def zio = projects.zio.run()
-end CommunityBuildTest
+end CommunityBuildTestB
 
 class TestCategory
