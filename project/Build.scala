@@ -935,6 +935,7 @@ object Build {
 
       fetchScalaJSSource := {
         import org.eclipse.jgit.api._
+        import org.eclipse.jgit.lib._
 
         val s = streams.value
         val ver = scalaJSVersion
@@ -946,12 +947,14 @@ object Build {
           new CloneCommand()
             .setDirectory(trgDir)
             .setURI("https://github.com/scala-js/scala-js.git")
+            .setNoCheckout(true)
             .call()
         }
 
         // Checkout proper ref. We do this anyway so we fail if something is wrong
         val git = Git.open(trgDir)
         s.log.info(s"Checking out Scala.js source version $ver")
+        git.getRepository().getConfig().setEnum("core", null, "autocrlf", CoreConfig.AutoCRLF.FALSE)
         git.checkout().setName(s"v$ver").call()
 
         trgDir
@@ -1029,7 +1032,7 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
-            -- "ExportsTest.scala" // JS exports + do not compile because of a var in a structural type
+            -- "ExportsTest.scala" // JS exports + IR checking error
             -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
@@ -1045,12 +1048,8 @@ object Build {
       // Putting them here instead of above makes sure that we do not regress on compilation+linking.
       Test / testOptions += Tests.Filter { name =>
         !Set[String](
-          "org.scalajs.testsuite.compiler.InteroperabilityTest", // 3 tests require JS exports, all other tests pass
-
           "org.scalajs.testsuite.jsinterop.AsyncTest", // needs JS exports in PromiseMock.scala
-          "org.scalajs.testsuite.jsinterop.DynamicTest", // one test requires JS exports, all other tests pass
           "org.scalajs.testsuite.jsinterop.JSExportStaticTest", // JS exports
-          "org.scalajs.testsuite.jsinterop.NonNativeJSTypeTest", // 1 test fails because of a progression for value class fields (needs an update upstream)
 
           // Not investigated so far
           "org.scalajs.testsuite.junit.JUnitAbstractClassTestCheck",
@@ -1205,6 +1204,9 @@ object Build {
           s"""updateOptions in Global ~= (_.withLatestSnapshots(false))
              |addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")""".stripMargin
         IO.write(baseDirectory.value / "sbt-dotty-sbt", pluginText)
+        val scalaJSPluginText =
+          s"""addSbtPlugin("org.scala-js" % "sbt-scalajs" % "$scalaJSVersion")\n"""
+        IO.write(baseDirectory.value / "sbt-scalajs-sbt", scalaJSPluginText)
         IO.write(baseDirectory.value / "scala3-bootstrapped.version", dottyVersion)
       },
       testOptions in Test += Tests.Argument(
