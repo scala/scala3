@@ -112,7 +112,7 @@ object Lst:
   def fromArray[T](xs: Array[T]): Lst[T] =
     fromArray(xs, 0, xs.length)
 
-  def fromIterableOnce[T](it: IterableOnce[T]): Lst[T] =
+  def fromIterable[T](it: IterableOnce[T]): Lst[T] =
     val buf = new Buffer[T]
     it.iterator.foreach(buf += _)
     buf.toLst
@@ -224,7 +224,19 @@ object Lst:
 
     def filterNot(p: T => Boolean): Lst[T] = filter(!p(_))
 
-    def withFilter(p: T => Boolean): Lst[T] = filter(p)
+    def withFilter(p: T => Boolean): MonadZeroOps[T] = new MonadZeroOps:
+      def withFilter(q: T => Boolean) = xs.withFilter(x => p(x) && q(x))
+      def map[U](f: T => U): Lst[U] =
+        val buf = Buffer[U]()
+        xs.foreachInlined(x => if p(x) then buf += f(x))
+        buf.toLst
+      def flatMap[U](f: T => Lst[U]): Lst[U] =
+        val buf = Buffer[U]()
+        xs.foreachInlined(x => if p(x) then buf ++= f(x))
+        buf.toLst
+      def foreach(f: T => Unit) =
+        xs.foreachInlined(x => if p(x) then f(x))
+    // end withFilter  !!! causes a parsing error if uncommented
 
     def partition(p: T => Boolean): (Lst[T], Lst[T]) = xs match
       case null => (NIL, NIL)
@@ -390,7 +402,7 @@ object Lst:
     def ++ (ys: IterableOnce[T]): Lst[T] =
       val yit = ys.iterator
       if yit.isEmpty then xs
-      else if xs.isEmpty then fromIterableOnce(yit)
+      else if xs.isEmpty then fromIterable(yit)
       else (Buffer[T]() ++= xs ++= yit).toLst
 
     def :+ (x: T): Lst[T] = xs match
@@ -504,7 +516,7 @@ object Lst:
       case x: T @ unchecked => f(x)
 
     def flatMapIterable(f: T => IterableOnce[U]): Lst[U] =
-      flatMap(x => fromIterableOnce(f(x)))
+      flatMap(x => fromIterable(f(x)))
 
     def collect(pf: PartialFunction[T, U]): Lst[U] =
       val buf = new Buffer[U]
@@ -542,6 +554,10 @@ object Lst:
     def zip(ys: Lst[U]): Lst[(T, U)] = xs.zipWith(ys)((_, _))
     def zip(ys: IterableOnce[U]): Lst[(T, U)] = xs.zipWith(ys)((_, _))
 
+    def zipForeach(ys: IterableOnce[U])(op: (T, U) => Unit): Unit =
+      val yit = ys.iterator
+      xs.foreach(x => if yit.hasNext then op(x, yit.next))
+
     @infix def eqLst(ys: Lst[U]) = eq(xs, ys)
 
     inline def corresponds(ys: Lst[U])(p: (T, U) => Boolean): Boolean =
@@ -578,7 +594,7 @@ object Lst:
     def ::: (ys: Lst[T]): Lst[T] =
       val xit = xs.iterator
       if xit.isEmpty then ys
-      else if ys.isEmpty then fromIterableOnce(xit)
+      else if ys.isEmpty then fromIterable(xit)
       else (Buffer[T]() ++= xit ++= ys).toLst
 
   extension [T, U](z: T)
@@ -833,6 +849,12 @@ object Lst:
       len = 0
   end Buffer
 
+  abstract class MonadZeroOps[T]:
+    def withFilter(f: T => Boolean): MonadZeroOps[T]
+    def map[U](f: T => U): Lst[U]
+    def flatMap[U](f: T => Lst[U]): Lst[U]
+    def foreach(f: T => Unit): Unit
+
   final class UnapplyWrapper[T](val xs: Lst[T]) extends AnyVal with Product:
     def canEqual(that: Any) = true
     def isEmpty = xs.isEmpty
@@ -923,7 +945,7 @@ object Lst:
     override def take(n: Int) = xs.sliceToSeq(start, (start + n) min end)
     override def dropRight(n: Int) = xs.sliceToSeq(start, end - n)
     override def takeRight(n: Int) = xs.sliceToSeq((end - n) max start, end)
-    override def fromSpecific(coll: IterableOnce[T]) = fromIterableOnce(coll).toSeq
+    override def fromSpecific(coll: IterableOnce[T]) = fromIterable(coll).toSeq
 
   def unapplySeq[T](xs: Lst[T]): UnapplySeqWrapper[T] = new UnapplySeqWrapper(xs)
 
