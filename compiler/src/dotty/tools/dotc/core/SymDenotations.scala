@@ -1661,7 +1661,7 @@ object SymDenotations {
      */
     private def typeParamsFromDecls(using Context) =
       unforcedDecls.filter(sym =>
-        sym.is(TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
+        sym.is(TypeParam) && sym.owner == symbol).toList.asInstanceOf[List[TypeSymbol]]
 
     /** The type parameters of this class */
     override final def typeParams(using Context): List[TypeSymbol] = {
@@ -2120,7 +2120,7 @@ object SymDenotations {
      *  Both getters and setters are returned in this list.
      */
     def paramAccessors(using Context): Lst[Symbol] =
-      unforcedDecls.filter(_.is(ParamAccessor)).toLst
+      unforcedDecls.filter(_.is(ParamAccessor))
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.

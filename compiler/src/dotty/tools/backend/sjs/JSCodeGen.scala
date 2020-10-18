@@ -789,7 +789,7 @@ class JSCodeGen()(using genCtx: Context) {
       !f.isOneOf(Method | Module) && f.isTerm
         && !f.hasAnnotation(jsdefn.JSNativeAnnot)
         && !f.hasAnnotation(jsdefn.JSOptionalAnnot)
-    }.flatMap({ f =>
+    }.flatMapIterable({ f =>
       implicit val pos = f.span
 
       val isStaticField = f.is(JavaStatic).ensuring(isStatic => !(isStatic && isJSClass))

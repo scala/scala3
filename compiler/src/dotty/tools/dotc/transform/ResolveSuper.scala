@@ -48,7 +48,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
     import ops._
 
     def superAccessors(mixin: ClassSymbol): Lst[Tree] =
-      for (superAcc <- mixin.info.decls.filter(_.isSuperAccessor).toLst)
+      for (superAcc <- mixin.info.decls.filter(_.isSuperAccessor))
         yield {
           util.Stats.record("super accessors")
           polyDefDef(mkForwarderSym(superAcc.asTerm), forwarderRhsFn(rebindSuper(cls, superAcc)))

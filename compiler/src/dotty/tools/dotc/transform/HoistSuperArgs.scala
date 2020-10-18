@@ -69,7 +69,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       val constr = cdef.symbol
       lazy val origParams = // The parameters that can be accessed in the supercall
         if (constr == cls.primaryConstructor)
-          cls.info.decls.filter(d => d.is(TypeParam) || d.is(ParamAccessor)).toLst
+          cls.info.decls.filter(d => d.is(TypeParam) || d.is(ParamAccessor))
         else
           allParamSyms(cdef)
 

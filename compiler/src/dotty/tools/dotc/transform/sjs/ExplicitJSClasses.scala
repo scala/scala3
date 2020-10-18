@@ -345,7 +345,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
       val innerJSClasses = decls.filter(isJSClass)
 
       val innerObjectsForAdHocExposed =
-        if (!cls.isStaticOwner) Nil // those already have a module accessor
+        if (!cls.isStaticOwner) NIL // those already have a module accessor
         else decls.filter(isExposedModule)
 
       if (innerJSClasses.isEmpty && innerObjectsForAdHocExposed.isEmpty) {
