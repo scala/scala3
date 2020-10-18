@@ -695,7 +695,7 @@ class Typer extends Namer
         }
         val x = tpnme.ANON_CLASS
         val clsDef = TypeDef(x, templ1).withFlags(Final | Synthetic)
-        typed(cpy.Block(tree)(Lst(clsDef), New(Ident(x), Nil)), pt)
+        typed(cpy.Block(tree)(Lst(clsDef), New(Ident(x), NIL)), pt)
       case _ =>
         var tpt1 = typedType(tree.tpt)
         tpt1 = tpt1.withType(ensureAccessible(tpt1.tpe, superAccess = false, tpt1.srcPos))
@@ -1049,7 +1049,7 @@ class Typer extends Namer
         if funFlags.is(Given) then params.map(_.withAddedFlags(Given))
         else params
       val params2 = params1.map(fixThis.transformSub)
-      val appDef0 = untpd.DefDef(nme.apply, NIL, List(params2), body, EmptyTree).withSpan(tree.span)
+      val appDef0 = untpd.DefDef(nme.apply, NIL, Lst(params2), body, EmptyTree).withSpan(tree.span)
       index(Lst(appDef0))
       val appDef = typed(appDef0).asInstanceOf[DefDef]
       val mt = appDef.symbol.info.asInstanceOf[MethodType]
@@ -1495,7 +1495,7 @@ class Typer extends Namer
      * @param  paramss  the parameters of the anonymous functions
      *                  enclosing the return expression
      */
-    def instantiateCFT(pt: Type, paramss: => List[Lst[Symbol]]): Type =
+    def instantiateCFT(pt: Type, paramss: => Lst[Lst[Symbol]]): Type =
       val ift = defn.asContextFunctionType(pt)
       if ift.exists then
         ift.nonPrivateMember(nme.apply).info match
@@ -1510,7 +1510,7 @@ class Typer extends Namer
         // by the local type and value parameters. It would be nice if we could look up that
         // type simply in the tpt field of the enclosing function. But the tree argument in
         // a context is an untyped tree, so we cannot extract its type.
-        def instantiateRT(info: Type, psymss: List[Lst[Symbol]]): Type = info match
+        def instantiateRT(info: Type, psymss: Lst[Lst[Symbol]]): Type = info match
           case info: PolyType =>
             instantiateRT(info.instantiate(psymss.head.typeRefs), psymss.tail)
           case info: MethodType =>
@@ -1524,7 +1524,7 @@ class Typer extends Namer
           .toList
           .reverse
           .map(_.paramSymss.head)
-        instantiateCFT(rt, iftParamss)
+        instantiateCFT(rt, iftParamss.toLst)
 
     def enclMethInfo(cx: Context): (Tree, Type) = {
       val owner = cx.owner
@@ -1948,7 +1948,7 @@ class Typer extends Namer
     val DefDef(name, tparams, vparamss, tpt, _) = ddef
     completeAnnotations(ddef, sym)
     val tparams1 = tparams.mapConserve(typed(_).asInstanceOf[TypeDef])
-    val vparamss1 = vparamss.nestedMapConserveLst(typed(_).asInstanceOf[ValDef])
+    val vparamss1 = vparamss.nestedMap(typed(_).asInstanceOf[ValDef])
     vparamss1.foreach(checkNoForwardDependencies)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
@@ -2040,7 +2040,7 @@ class Typer extends Namer
      */
     def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo.stripPoly match {
       case cinfo @ MethodType(Nil) if cinfo.resultType.isImplicitMethod =>
-        typedExpr(untpd.New(untpd.TypedSplice(ref)(using superCtx), Nil))(using superCtx)
+        typedExpr(untpd.New(untpd.TypedSplice(ref)(using superCtx), NIL))(using superCtx)
       case cinfo @ MethodType(Nil) if !cinfo.resultType.isInstanceOf[MethodType] =>
         ref
       case cinfo: MethodType =>
@@ -2217,7 +2217,7 @@ class Typer extends Namer
   def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(using Context): List[Tree] = {
     val firstParent :: otherParents = parents
     if (firstParent.isType && !cls.is(Trait) && !cls.is(JavaDefined))
-      typed(untpd.New(untpd.TypedSplice(firstParent), Nil)) :: otherParents
+      typed(untpd.New(untpd.TypedSplice(firstParent), NIL)) :: otherParents
     else parents
   }
 
@@ -2312,7 +2312,7 @@ class Typer extends Namer
     nestedCtx.typerState.commit()
     if sourceVersion.isAtLeast(`3.1`) then
       lazy val (prefix, suffix) = res match {
-        case Block(Lst(mdef @ DefDef(_, _, vparams :: Nil, _, _)), _: Closure) =>
+        case Block(Lst(mdef @ DefDef(_, _, Lst(vparams), _, _)), _: Closure) =>
           val arity = vparams.length
           if (arity > 0) ("", "") else ("(() => ", "())")
         case _ =>

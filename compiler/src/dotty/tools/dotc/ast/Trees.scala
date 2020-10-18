@@ -764,7 +764,7 @@ object Trees {
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: Lst[TypeDef[T]],
-      vparamss: List[Lst[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
+      vparamss: Lst[Lst[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
     assert(tpt != genericEmptyTree)
@@ -1212,8 +1212,8 @@ object Trees {
         case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs)(sourceFile(tree)))
       }
-      def DefDef(tree: Tree)(name: TermName, tparams: Lst[TypeDef], vparamss: List[Lst[ValDef]], tpt: Tree, rhs: LazyTree)(using Context): DefDef = tree match {
-        case tree: DefDef if (name == tree.name) && (tparams eqLst tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
+      def DefDef(tree: Tree)(name: TermName, tparams: Lst[TypeDef], vparamss: Lst[Lst[ValDef]], tpt: Tree, rhs: LazyTree)(using Context): DefDef = tree match {
+        case tree: DefDef if (name == tree.name) && (tparams eqLst tree.tparams) && (vparamss eqLst tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs)(sourceFile(tree)))
       }
       def TypeDef(tree: Tree)(name: TypeName, rhs: Tree)(using Context): TypeDef = tree match {
@@ -1255,7 +1255,7 @@ object Trees {
         UnApply(tree: Tree)(fun, implicits, patterns)
       def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(using Context): ValDef =
         ValDef(tree: Tree)(name, tpt, rhs)
-      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: Lst[TypeDef] = tree.tparams, vparamss: List[Lst[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(using Context): DefDef =
+      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: Lst[TypeDef] = tree.tparams, vparamss: Lst[Lst[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(using Context): DefDef =
         DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
       def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs)(using Context): TypeDef =
         TypeDef(tree: Tree)(name, rhs)
@@ -1368,7 +1368,7 @@ object Trees {
               }
             case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
               inContext(localCtx) {
-                cpy.DefDef(tree)(name, transformSub(tparams), vparamss.mapconserve(vs => transformSub2(vs)), transform(tpt), transform(tree.rhs))
+                cpy.DefDef(tree)(name, transformSub(tparams), vparamss.mapConserve(vs => transformSub2(vs)), transform(tpt), transform(tree.rhs))
               }
             case tree @ TypeDef(name, rhs) =>
               inContext(localCtx) {

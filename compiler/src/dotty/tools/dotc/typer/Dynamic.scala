@@ -177,7 +177,7 @@ trait Dynamic {
 
       val scall =
         if (vargss.isEmpty) base
-        else untpd.Apply(base, vargss.flattenLst.map(untpd.TypedSplice(_)))
+        else untpd.Apply(base, vargss.flatten.map(untpd.TypedSplice(_)))
 
       // If function is an `applyDynamic` that takes a ClassTag* parameter,
       // add `ctags`.

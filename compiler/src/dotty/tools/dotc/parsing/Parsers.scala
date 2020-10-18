@@ -1520,8 +1520,8 @@ object Parsers {
     def funParamClause(): Lst[ValDef] =
       inParens(commaSeparatedLst(() => typedFunParam(in.offset, ident())))
 
-    def funParamClauses(): List[Lst[ValDef]] =
-      if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
+    def funParamClauses(): Lst[Lst[ValDef]] =
+      if in.token == LPAREN then funParamClause() :: funParamClauses() else NIL
 
     /** InfixType ::= RefinedType {id [nl] RefinedType}
      */
@@ -3039,9 +3039,9 @@ object Parsers {
      */
     def paramClauses(ofClass: Boolean = false,
                      ofCaseClass: Boolean = false,
-                     givenOnly: Boolean = false): List[Lst[ValDef]] =
+                     givenOnly: Boolean = false): Lst[Lst[ValDef]] =
 
-      def recur(firstClause: Boolean, nparams: Int): List[Lst[ValDef]] =
+      def recur(firstClause: Boolean, nparams: Int): Lst[Lst[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
         if in.token == LPAREN then
           val paramsStart = in.offset
@@ -3053,9 +3053,9 @@ object Parsers {
               firstClause = firstClause)
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
           params :: (
-            if lastClause then Nil
+            if lastClause then NIL
             else recur(firstClause = false, nparams + params.length))
-        else Nil
+        else NIL
       end recur
 
       recur(firstClause = true, 0)
@@ -3551,7 +3551,7 @@ object Parsers {
         val vparamss =
           if in.token == LPAREN && in.lookahead.isIdent(nme.using)
           then paramClauses(givenOnly = true)
-          else Nil
+          else NIL
         newLinesOpt()
         if isIdent(nme.as) || !name.isEmpty || !tparams.isEmpty || !vparamss.isEmpty then
           accept(nme.as)
@@ -3833,7 +3833,7 @@ object Parsers {
         val problem = tree match
           case tree: MemberDef if !(tree.mods.flags & ModifierFlags).isEmpty =>
             i"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}"
-          case tree: DefDef if tree.vparamss.nestedExistsLst(!_.rhs.isEmpty) =>
+          case tree: DefDef if tree.vparamss.nestedExists(!_.rhs.isEmpty) =>
             i"refinement cannot have default arguments"
           case tree: ValOrDefDef =>
             if tree.rhs.isEmpty then ""

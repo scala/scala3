@@ -972,7 +972,7 @@ object RefChecks {
           annotation <- param.getAnnotation(defn.ImplicitNotFoundAnnot)
           l@Literal(c: Constant) <- annotation.argument(0)
         do forEachTypeVariableReferenceIn(c.stringValue) { case (ref, start) =>
-          if !sd.paramSymss.nestedExistsLst(_.name.show == ref) then
+          if !sd.paramSymss.nestedExists(_.name.show == ref) then
             reportInvalidReferences(l, ref, start, sd)
         }
 

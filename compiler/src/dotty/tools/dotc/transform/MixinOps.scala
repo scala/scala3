@@ -72,11 +72,11 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
-  def forwarderRhsFn(target: Symbol): Lst[Type] => List[Lst[Tree]] => Tree = {
+  def forwarderRhsFn(target: Symbol): Lst[Type] => Lst[Lst[Tree]] => Tree = {
     targs => vrefss =>
       val tapp = superRef(target).appliedToTypes(targs)
       vrefss match {
-        case Nil | List(NIL) =>
+        case NIL | Lst(NIL) =>
           // Overriding is somewhat loose about `()T` vs `=> T`, so just pick
           // whichever makes sense for `target`
           tapp.ensureApplied

@@ -690,14 +690,15 @@ object Lst:
         (single[T](x._1), single[U](x._2))
   end extension
 
-  extension [T](xs: Lst[Iterable[T]])
+
+  extension [T](xs: Lst[Lst[T]])
     def flatten: Lst[T] =
       val buf = Buffer[T]()
       xs.foreach(buf ++= _)
       buf.toLst
 
-  extension [T](xs: Iterable[Lst[T]])
-    def flattenLst: Lst[T] =
+  extension [T](xs: Lst[Iterable[T]])
+    def flattenIterable: Lst[T] =
       val buf = Buffer[T]()
       xs.foreach(buf ++= _)
       buf.toLst

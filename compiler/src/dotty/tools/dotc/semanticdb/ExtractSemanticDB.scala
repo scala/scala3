@@ -495,9 +495,9 @@ class ExtractSemanticDB extends Phase:
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 
-    extension (list: List[Lst[ValDef]]):
+    extension (list: Lst[Lst[ValDef]]):
       private  inline def isSingleArg = list match
-        case (_+:NIL)::Nil => true
+        case (_ +: NIL) +: NIL => true
         case _             => false
 
     extension (tree: DefDef):
@@ -574,8 +574,8 @@ class ExtractSemanticDB extends Phase:
         symkinds.toSet
 
     private def ctorParams(
-      vparamss: List[Lst[ValDef]], body: List[Tree])(using Context): Unit =
-      @tu lazy val getters = findGetters(vparamss.flatMap(_.toList.map(_.name)).toSet, body)
+      vparamss: Lst[Lst[ValDef]], body: List[Tree])(using Context): Unit =
+      @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
       for
         vparams <- vparamss
         vparam  <- vparams

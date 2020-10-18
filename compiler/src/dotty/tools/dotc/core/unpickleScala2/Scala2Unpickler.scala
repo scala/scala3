@@ -543,13 +543,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   class LocalUnpickler extends LazyType {
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
 
-    def paramssOfType(tp: Type): List[Lst[Symbol]] = tp match
+    def paramssOfType(tp: Type): Lst[Lst[Symbol]] = tp match
       case TempPolyType(tparams, restpe) => tparams.toLst :: paramssOfType(restpe)
       case mt: MethodType =>
         val params = paramsOfMethodType.remove(mt)
         val rest = paramssOfType(mt.resType)
         if params == null then rest else params.toLst :: rest
-      case _ => Nil
+      case _ => NIL
 
     def complete(denot: SymDenotation)(using Context): Unit = try {
       def parseToCompletion(denot: SymDenotation)(using Context) = {

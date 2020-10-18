@@ -56,7 +56,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
    *  @param mArgss Arguments for the method call not present in `tree`
    *  @return       A tree for the extension method call
    */
-  private def rewire(tree: Tree, mtArgs: Lst[Tree] = NIL, mArgss: List[Lst[Tree]] = Nil)
+  private def rewire(tree: Tree, mtArgs: Lst[Tree] = NIL, mArgss: Lst[Lst[Tree]] = NIL)
     (using Context): Tree =
     tree match {
       case Apply(qual, mArgs) =>

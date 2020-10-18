@@ -133,19 +133,19 @@ object DesugarEnums {
         .withFlags(Private | Synthetic)
 
     val valuesDef =
-      DefDef(nme.values, NIL, Nil, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
+      DefDef(nme.values, NIL, NIL, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
         .withFlags(Synthetic)
 
     val valuesOfBody: Tree =
       val defaultCase =
         val msg = Apply(Select(Literal(Constant("enum case not found: ")), nme.PLUS), Ident(nme.nameDollar))
         CaseDef(Ident(nme.WILDCARD), EmptyTree,
-          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(Lst(msg)))))
+          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), Lst(Lst(msg)))))
       val stringCases = enumValues.map(enumValue =>
         CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, enumValue)
       ) ::: defaultCase :: Nil
       Match(Ident(nme.nameDollar), stringCases.toLst)
-    val valueOfDef = DefDef(nme.valueOf, NIL, List(Lst(param(nme.nameDollar, defn.StringType))),
+    val valueOfDef = DefDef(nme.valueOf, NIL, Lst(Lst(param(nme.nameDollar, defn.StringType))),
       TypeTree(), valuesOfBody)
         .withFlags(Synthetic)
 
@@ -160,7 +160,7 @@ object DesugarEnums {
     def valueCtor: List[Tree] = if constraints.requiresCreator then enumValueCreator :: Nil else Nil
     def fromOrdinal: Tree =
       def throwArg(ordinal: Tree) =
-        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(Lst(Select(ordinal, nme.toString_)))))
+        Throw(New(TypeTree(defn.NoSuchElementExceptionType), Lst(Lst(Select(ordinal, nme.toString_)))))
       if !constraints.cached then
         fromOrdinalMeth(throwArg)
       else
@@ -199,7 +199,7 @@ object DesugarEnums {
       body = fieldMethods.toLst
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW, NIL,
-        List(Lst(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
+        Lst(Lst(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
   }
 
@@ -213,7 +213,7 @@ object DesugarEnums {
   def typeParamIsReferenced(
     enumTypeParams: List[TypeSymbol],
     caseTypeParams: Lst[TypeDef],
-    vparamss: List[Lst[ValDef]],
+    vparamss: Lst[Lst[ValDef]],
     parents: List[Tree])(using Context): Boolean = {
 
     object searchRef extends UntypedTreeAccumulator[Boolean] {
@@ -253,7 +253,7 @@ object DesugarEnums {
       case parent => parent.isType && typeHasRef(parent)
     }
 
-    vparamss.nestedExistsLst(valDefHasRef) || parents.exists(parentHasRef)
+    vparamss.nestedExists(valDefHasRef) || parents.exists(parentHasRef)
   }
 
   /** A pair consisting of
@@ -284,13 +284,13 @@ object DesugarEnums {
   private def isJavaEnum(using Context): Boolean = enumClass.derivesFrom(defn.JavaEnumClass)
 
   def ordinalMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.ordinal, NIL, Nil, TypeTree(defn.IntType), body).withAddedFlags(Synthetic)
+    DefDef(nme.ordinal, NIL, NIL, TypeTree(defn.IntType), body).withAddedFlags(Synthetic)
 
   def ordinalMethLit(ord: Int)(using Context): DefDef =
     ordinalMeth(Literal(Constant(ord)))
 
   def fromOrdinalMeth(body: Tree => Tree)(using Context): DefDef =
-    DefDef(nme.fromOrdinal, NIL, Lst(param(nme.ordinal, defn.IntType)) :: Nil,
+    DefDef(nme.fromOrdinal, NIL, Lst(Lst(param(nme.ordinal, defn.IntType))),
       rawRef(enumClass.typeRef), body(Ident(nme.ordinal))).withFlags(Synthetic)
 
   /** Expand a module definition representing a parameterless enum case */

@@ -132,7 +132,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         case _ if arg.existsSubTree(needsHoist) =>
           val superMeth = newSuperArgMethod(arg.tpe)
           val superArgDef = polyDefDef(superMeth, trefs => vrefss => {
-            val paramSyms = trefs.map(_.typeSymbol) ::: vrefss.flattenLst.map(_.symbol)
+            val paramSyms = trefs.map(_.typeSymbol) ::: vrefss.flatten.map(_.symbol)
             val tmap = new TreeTypeMap(
               typeMap = new TypeMap {
                 lazy val origToParam = origParams.zip(paramSyms).toMap
@@ -155,14 +155,14 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
             tmap(arg).changeOwnerAfter(constr, superMeth, thisPhase)
           })
           superArgDefs += superArgDef
-          def termParamRefs(tp: Type, params: Lst[Symbol]): List[Lst[Tree]] = tp match {
+          def termParamRefs(tp: Type, params: Lst[Symbol]): Lst[Lst[Tree]] = tp match {
             case tp: PolyType =>
               termParamRefs(tp.resultType, params)
             case tp: MethodType =>
               val (thisParams, otherParams) = params.splitAt(tp.paramNames.length)
               thisParams.map(ref) :: termParamRefs(tp.resultType, otherParams)
             case _ =>
-              Nil
+              NIL
           }
           val (typeParams, termParams) = origParams.span(_.isType)
           val res = ref(superMeth)

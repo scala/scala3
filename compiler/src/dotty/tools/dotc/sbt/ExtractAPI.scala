@@ -339,7 +339,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
   }
 
   def apiDef(sym: TermSymbol): api.Def = {
-    def paramLists(t: Type, paramss: List[Lst[Symbol]]): List[api.ParameterList] = t match {
+    def paramLists(t: Type, paramss: Lst[Lst[Symbol]]): List[api.ParameterList] = t match {
       case pt: TypeLambda =>
         paramLists(pt.resultType, paramss.drop(1))
       case mt @ MethodTpe(pnames, ptypes, restpe) =>

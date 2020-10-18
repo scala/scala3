@@ -217,9 +217,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object DefDef extends DefDefModule:
       def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]): DefDef =
-        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => rhsFn(tparams.toList)(vparamss.map(_.toList)).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => rhsFn(tparams.toList)(vparamss.toList.map(_.toList)).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, typeParams.toLst, paramss.map(_.toLst), tpt, rhs.getOrElse(tpd.EmptyTree))
+        tpd.cpy.DefDef(original)(name.toTermName, typeParams.toLst, paramss.toLst.map(_.toLst), tpt, rhs.getOrElse(tpd.EmptyTree))
       def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
         Some((ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs)))
     end DefDef
@@ -227,7 +227,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object DefDefMethodsImpl extends DefDefMethods:
       extension (self: DefDef):
         def typeParams: List[TypeDef] = self.tparams.toList
-        def paramss: List[List[ValDef]] = self.vparamss.map(_.toList)
+        def paramss: List[List[ValDef]] = self.vparamss.toList.map(_.toList)
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -2372,7 +2372,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
             case sym if isMethod(sym) => sym.asTerm
           }.toList
 
-        def paramSymss: List[List[Symbol]] = self.denot.paramSymss.map(_.toList)
+        def paramSymss: List[List[Symbol]] = self.denot.paramSymss.toList.map(_.toList)
         def primaryConstructor: Symbol = self.denot.primaryConstructor
 
         def caseFields: List[Symbol] =

@@ -454,7 +454,7 @@ object Erasure {
               val bridge = newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
               Closure(bridge, bridgeParamss =>
                 inContext(ctx.withOwner(bridge)) {
-                  val List(bridgeParams) = bridgeParamss
+                  val Lst(bridgeParams) = bridgeParamss
                   assert(ctx.typer.isInstanceOf[Erasure.Typer])
                   val rhs = Apply(meth, bridgeParams.zipped(implParamTypes).map(ctx.typer.adapt(_, _)))
                   ctx.typer.adapt(rhs, bridgeType.resultType)
@@ -496,8 +496,8 @@ object Erasure {
                 ctx.owner, nme.ANON_FUN, Flags.Synthetic | Flags.Method,
                 MethodType(argTpes, resTpe), coord = tree.span.endPos)
               anonFun.info = transformInfo(anonFun, anonFun.info)
-              def lambdaBody(refss: List[Lst[Tree]]) =
-                val refs :: Nil : @unchecked = refss
+              def lambdaBody(refss: Lst[Lst[Tree]]) =
+                val Lst(refs) : @unchecked = refss
                 val expandedRefs = refs.map(_.withSpan(tree.span.endPos)) match
                   case Lst(bunchedParam @ Ident(nme.ALLARGS)) =>
                     argTpes.toLst.indices.map(n =>
@@ -858,7 +858,7 @@ object Erasure {
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
         var vparams = outerParamDefs(sym)
-            ::: ddef.vparamss.flattenLst.filter(!_.symbol.is(Flags.Erased))
+            ::: ddef.vparamss.flatten.filter(!_.symbol.is(Flags.Erased))
 
         def skipContextClosures(rhs: Tree, crCount: Int)(using Context): Tree =
           if crCount == 0 then rhs
@@ -887,7 +887,7 @@ object Erasure {
 
         val ddef1 = untpd.cpy.DefDef(ddef)(
           tparams = NIL,
-          vparamss = vparams :: Nil,
+          vparamss = Lst(vparams),
           tpt = untpd.TypedSplice(TypeTree(restpe).withSpan(ddef.tpt.span)),
           rhs = rhs1)
         super.typedDefDef(ddef1, sym)

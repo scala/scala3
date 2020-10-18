@@ -85,7 +85,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     else NoSymbol
   }
 
-  private def synthesizeDef(sym: TermSymbol, rhsFn: List[Lst[Tree]] => Context ?=> Tree)(using Context): Tree =
+  private def synthesizeDef(sym: TermSymbol, rhsFn: Lst[Lst[Tree]] => Context ?=> Tree)(using Context): Tree =
     DefDef(sym, rhsFn(_)(using ctx.withOwner(sym))).withSpan(ctx.owner.span.focus)
 
   /** If this is a case or value class, return the appropriate additional methods,
@@ -138,12 +138,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         else // assume owner is `val Foo = new MyEnum { def ordinal = 0 }`
           Literal(Constant(clazz.owner.name.toString))
 
-      def toStringBody(vrefss: List[Lst[Tree]]): Tree =
+      def toStringBody(vrefss: Lst[Lst[Tree]]): Tree =
         if (clazz.is(ModuleClass)) ownName
         else if (isNonJavaEnumValue) identifierRef
         else forwardToRuntime(vrefss.head)
 
-      def syntheticRHS(vrefss: List[Lst[Tree]])(using Context): Tree = synthetic.name match {
+      def syntheticRHS(vrefss: Lst[Lst[Tree]])(using Context): Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => valueHashCodeBody
         case nme.hashCode_ => chooseHashcode
         case nme.toString_ => toStringBody(vrefss)

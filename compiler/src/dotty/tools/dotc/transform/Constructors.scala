@@ -129,7 +129,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def transformTemplate(tree: Template)(using Context): Tree = {
     val cls = ctx.owner.asClass
 
-    val constr @ DefDef(nme.CONSTRUCTOR, NIL, vparams :: Nil, _, EmptyTree) = tree.constr
+    val constr @ DefDef(nme.CONSTRUCTOR, NIL, vparams +: NIL, _, EmptyTree) = tree.constr
 
     // Produce aligned accessors and constructor parameters. We have to adjust
     // for any outer parameters, which are last in the sequence of original
@@ -234,7 +234,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
                 else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
               constrStats += Apply(ref(setter), Lst(intoConstr(stat.rhs, sym).withSpan(stat.span)))
             clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
-          case stat @ DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) +: _) :: Nil, _, _) =>
+          case stat @ DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) +: _) +: NIL, _, _) =>
             clsStats += mapOuter(outerParam.symbol).transform(stat)
           case stat: DefTree =>
             clsStats += stat

@@ -224,8 +224,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .get
         .symbol.asTerm
       // Generate the method
-      val forwarderDef = polyDefDef(forwarderSym, trefs => vrefss => {
-        val init :+ lasts = vrefss
+      val forwarderDef = polyDefDef(forwarderSym, trefs => (vrefss: Lst[Lst[Tree]]) => {
+        val lasts = vrefss.last
+        val init = vrefss.init
         val last = lasts.init
         val vararg = lasts.last
         // Can't call `.argTypes` here because the underlying array type is of the
@@ -242,7 +243,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Is there a repeated parameter in some parameter list? */
   private def hasRepeatedParams(sym: Symbol)(using Context): Boolean =
-    sym.info.paramInfoss.nestedExists(_.isRepeatedParam)
+    sym.info.paramInfoss.exists(_.exists(_.isRepeatedParam))
 
   /** Is this the type of a method that has a repeated parameter type as
    *  its last parameter in the last parameter list?

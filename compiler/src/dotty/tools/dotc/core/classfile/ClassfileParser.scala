@@ -561,7 +561,7 @@ class ClassfileParser(
       (using ctx: Context) => untpd.resolveConstructor(annotType, args)
 
     def untpdTree(using Context): untpd.Tree =
-      untpd.New(untpd.TypeTree(annotType), List(args))
+      untpd.New(untpd.TypeTree(annotType), Lst(args))
   }
 
   /** Parse and return a single annotation.  If it is malformed,

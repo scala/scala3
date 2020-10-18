@@ -636,7 +636,7 @@ object Checking {
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
     for sym2 <- sym.allOverriddenSymbols do
-      sym.paramSymss.lazyZip(sym2.paramSymss).foreach { (ps1, ps2) =>
+      sym.paramSymss.zipped(sym2.paramSymss).foreach { (ps1, ps2) =>
         ps1.zipped(ps2).foreach { (p1, p2) =>
           if p1.is(Inline) != p2.is(Inline) then
             report.error(

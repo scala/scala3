@@ -779,7 +779,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   def tparamsText[T >: Untyped](params: Lst[Tree[T]]): Text =
     "[" ~ toText(params, ", ") ~ "]" provided params.nonEmpty
 
-  def addVparamssText[T >: Untyped](leading: Text, vparamss: List[Lst[ValDef[T]]]): Text =
+  def addVparamssText[T >: Untyped](leading: Text, vparamss: Lst[Lst[ValDef[T]]]): Text =
     vparamss.foldLeft(leading)((txt, params) => txt ~ paramsText(params))
 
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
@@ -805,9 +805,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val (prefix, vparamss) =
           if isExtension then
             val (leadingParams, otherParamss) = (tree.vparamss: @unchecked) match
-              case vparams1 :: vparams2 :: rest if tree.name.isRightAssocOperatorName =>
+              case vparams1 +: vparams2 +: rest if tree.name.isRightAssocOperatorName =>
                 (vparams2, vparams1 :: rest)
-              case vparams1 :: rest =>
+              case vparams1 +: rest =>
                 (vparams1, rest)
             (keywordStr("extension") ~~ paramsText(leadingParams)
              ~~ (defKeyword ~~ valDefText(nameIdText(tree, dropExtension = true))).close,

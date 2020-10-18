@@ -679,7 +679,7 @@ class Namer { typer: Typer =>
     protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, NIL, Nil, identity)(using localContext(sym).setNewScope)
+        else valOrDefDefSig(original, sym, NIL, NIL, identity)(using localContext(sym).setNewScope)
       case original: DefDef =>
         val typer1 = ctx.typer.newLikeThis
         nestedTyper(sym) = typer1
@@ -1267,7 +1267,7 @@ class Namer { typer: Typer =>
    *  @param paramFn  A wrapping function that produces the type of the
    *                  defined symbol, given its final return type
    */
-  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: Lst[Symbol], paramss: List[Lst[Symbol]], paramFn: Type => Type)(using Context): Type = {
+  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: Lst[Symbol], paramss: Lst[Lst[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
     def inferredType = {
       /** A type for this definition that might be inherited from elsewhere:
@@ -1283,14 +1283,14 @@ class Namer { typer: Typer =>
           lazy val schema = paramFn(WildcardType)
           val site = sym.owner.thisType
           sym.owner.info.baseClasses.tail.foldLeft(NoType: Type) { (tp, cls) =>
-            def instantiatedResType(info: Type, tparams: Lst[Symbol], paramss: List[Lst[Symbol]]): Type = info match {
+            def instantiatedResType(info: Type, tparams: Lst[Symbol], paramss: Lst[Lst[Symbol]]): Type = info match {
               case info: PolyType =>
                 if (info.paramNames.length == typeParams.length)
                   instantiatedResType(info.instantiate(tparams.typeRefs), NIL, paramss)
                 else NoType
               case info: MethodType =>
                 paramss match
-                  case params :: paramss1 if info.paramNames.length == params.length =>
+                  case params +: paramss1 if info.paramNames.length == params.length =>
                     instantiatedResType(info.instantiate(params.termRefs), tparams, paramss1)
                   case _ =>
                     NoType
@@ -1415,7 +1415,7 @@ class Namer { typer: Typer =>
             // are better ways to achieve this. It would be good if we could get rid of this code.
             // It seems at least partially redundant with the nesting level checking on TypeVar
             // instantiation.
-            val hygienicType = TypeOps.avoid(rhsType, paramss.flattenLst)
+            val hygienicType = TypeOps.avoid(rhsType, paramss.flatten)
             if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
               report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
                 i"it is not a supertype of the hygienic type $hygienicType", mdef.srcPos)
@@ -1468,7 +1468,7 @@ class Namer { typer: Typer =>
 
     vparamss foreach completeParams
     def typeParams = tparams.map(symbolOfTree)
-    val termParamss = normalizeIfConstructor(vparamss.nestedMapLst(symbolOfTree), isConstructor)
+    val termParamss = normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
     sym.setParamss(typeParams, termParamss)
     def wrapMethType(restpe: Type): Type = {
       instantiateDependent(restpe, typeParams, termParamss)

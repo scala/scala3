@@ -295,15 +295,15 @@ object Summarization {
         effs ++ (parent match {
           case tree @ Block(stats, parent) =>
             val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffsWithInit(qual :: (stats ++ argss.flattenLst).toList, ctor.symbol, tree)
+            parentArgEffsWithInit(qual :: (stats ++ argss.flatten).toList, ctor.symbol, tree)
 
           case tree @ Apply(Block(stats, parent), args) =>
             val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffsWithInit(qual :: (stats ++ args ++ argss.flattenLst).toList, ctor.symbol, tree)
+            parentArgEffsWithInit(qual :: (stats ++ args ++ argss.flatten).toList, ctor.symbol, tree)
 
           case parent : Apply =>
             val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffsWithInit(qual :: argss.flattenLst.toList, ctor.symbol, parent)
+            parentArgEffsWithInit(qual :: argss.flatten.toList, ctor.symbol, parent)
 
           case ref =>
             val tref: TypeRef = ref.tpe.typeConstructor.asInstanceOf

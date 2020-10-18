@@ -270,8 +270,8 @@ trait Deriving {
       import tpd._
 
       /** The type class instance definition with symbol `sym` */
-      def typeclassInstance(sym: Symbol)(using Context): Lst[Type] => (List[Lst[tpd.Tree]] => tpd.Tree) = {
-        (tparamRefs: Lst[Type]) => (paramRefss: List[Lst[tpd.Tree]]) =>
+      def typeclassInstance(sym: Symbol)(using Context): Lst[Type] => (Lst[Lst[tpd.Tree]] => tpd.Tree) = {
+        (tparamRefs: Lst[Type]) => (paramRefss: Lst[Lst[tpd.Tree]]) =>
           val tparams = tparamRefs.map(_.typeSymbol.asType)
           val params = if (paramRefss.isEmpty) NIL else paramRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter(_))

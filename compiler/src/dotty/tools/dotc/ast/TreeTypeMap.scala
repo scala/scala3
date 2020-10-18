@@ -144,8 +144,8 @@ class TreeTypeMap(
     (tmap, tmap.transformSub(trees))
   }
 
-  private def transformVParamss(vparamss: List[Lst[ValDef]]): (TreeTypeMap, List[Lst[ValDef]]) = vparamss match {
-    case vparams :: rest =>
+  private def transformVParamss(vparamss: Lst[Lst[ValDef]]): (TreeTypeMap, Lst[Lst[ValDef]]) = vparamss match {
+    case vparams +: rest =>
       val (tmap1, vparams1) = transformDefs(vparams)
       val (tmap2, vparamss2) = tmap1.transformVParamss(rest)
       (tmap2, vparams1 :: vparamss2)

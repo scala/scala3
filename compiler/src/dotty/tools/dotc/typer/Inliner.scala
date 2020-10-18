@@ -430,7 +430,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    *  corresponding arguments. `bindingbuf` will be further extended later by
    *  proxies to this-references. Issue an error if some arguments are missing.
    */
-  private def computeParamBindings(tp: Type, targs: Lst[Tree], argss: List[Lst[Tree]]): Boolean = tp match
+  private def computeParamBindings(tp: Type, targs: Lst[Tree], argss: Lst[Lst[Tree]]): Boolean = tp match
     case tp: PolyType =>
       tp.paramNames.lazyZip(targs.toList).foreach { (name, arg) =>
         paramSpan(name) = arg.span
@@ -618,7 +618,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
     // Special handling of `requireConst`
     callValueArgss match
-      case Lst(arg) :: Nil if inlinedMethod == defn.Compiletime_requireConst =>
+      case Lst(Lst(arg)) if inlinedMethod == defn.Compiletime_requireConst =>
         arg match
           case ConstantValue(_) | Inlined(_, NIL, Typed(ConstantValue(_), _)) => // ok
           case _ => report.error(em"expected a constant value but found: $arg", arg.srcPos)
@@ -714,7 +714,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     val expansion = inliner.transform(rhsToInline)
 
     def issueError() = callValueArgss match {
-      case Lst(msgArg) :: Nil =>
+      case Lst(Lst(msgArg)) =>
         val message = msgArg.tpe match {
           case ConstantType(Constant(msg: String)) => msg
           case _ => s"A literal string is expected as an argument to `compiletime.error`. Got ${msgArg.show}"
@@ -1346,7 +1346,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       val bindingOfSym = MutableSymbolMap[MemberDef]()
 
       def isInlineable(binding: MemberDef) = binding match {
-        case ddef @ DefDef(_, NIL, Nil, _, _) => isElideableExpr(ddef.rhs)
+        case ddef @ DefDef(_, NIL, NIL, _, _) => isElideableExpr(ddef.rhs)
         case vdef @ ValDef(_, _, _) => isElideableExpr(vdef.rhs)
         case _ => false
       }

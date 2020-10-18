@@ -66,7 +66,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
   import xmlterms.{_Null, __Elem, __Text, _buf, _md, _plus, _scope, _tmpscope, _xml}
 
   // convenience methods
-  private def LL[A](x: A*): List[Lst[A]] = List(Lst.fromSeq(x))
+  private def LL[A](x: A*): Lst[Lst[A]] = Lst(Lst.fromSeq(x))
   private def const(x: Any) = Literal(Constant(x))
   private def wild                          = Ident(nme.WILDCARD)
   private def wildStar                      = Ident(tpnme.WILDCARD_STAR)
@@ -105,7 +105,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
       else Lst(Typed(makeXMLseq(span, children), wildStar))
 
     def pat    = Apply(_scala_xml__Elem, Lst(pre, label, wild, wild) ++ convertToTextPat(children))
-    def nonpat = New(_scala_xml_Elem, List(List(pre, label, attrs, scope, if (empty) Literal(Constant(true)) else Literal(Constant(false))) ::: starArgs))
+    def nonpat = New(_scala_xml_Elem, Lst(Lst(pre, label, attrs, scope, if (empty) Literal(Constant(true)) else Literal(Constant(false))) ::: starArgs))
 
     atSpan(span) { if (isPattern) pat else nonpat }
   }
@@ -162,7 +162,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
   def makeXMLseq(span: Span, args: collection.Seq[Tree]): Block = {
-    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, NIL :: Nil))
+    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, NIL :: NIL))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), Lst(t)))
 
     atSpan(span)(new XMLBlock((buffer :: applies.toList).toLst, Ident(_buf)) )

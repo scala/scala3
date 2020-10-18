@@ -153,8 +153,8 @@ trait FullParameterization {
       val origMeth = originalDef.symbol
       val origClass = origMeth.enclosingClass.asClass
       val origTParams = allInstanceTypeParams(originalDef, abstractOverClass)
-      val origVParams = originalDef.vparamss.flattenLst.symbols
-      val thisRef +: argRefs = vrefss.flattenLst
+      val origVParams = originalDef.vparamss.flatten.symbols
+      val thisRef +: argRefs = vrefss.flatten
 
       /** If tree should be rewired, the rewired tree, otherwise EmptyTree.
        *  @param   targs  Any type arguments passed to the rewired tree.
@@ -229,7 +229,7 @@ trait FullParameterization {
         .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
 
     (if (!liftThisType)
-      fun.appliedToArgss(originalDef.vparamss.nestedMapLst(vparam => ref(vparam.symbol)))
+      fun.appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
     else {
       // this type could have changed on forwarding. Need to insert a cast.
       originalDef.vparamss.foldLeft(fun)((acc, vparams) => {

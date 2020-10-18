@@ -181,7 +181,7 @@ object Splicer {
       }
 
       def checkIfValidStaticCall(tree: Tree)(using Env): Unit = tree match {
-        case closureDef(ddef @ DefDef(_, NIL, (ev +: NIL) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
+        case closureDef(ddef @ DefDef(_, NIL, (ev +: NIL) +: NIL, _, _)) if ddef.symbol.info.isContextualMethod =>
           checkIfValidStaticCall(ddef.rhs)(using summon[Env] + ev.symbol)
 
         case Block(stats, expr) =>
@@ -271,7 +271,7 @@ object Splicer {
         else
           unexpectedTree(tree)
 
-      case closureDef((ddef @ DefDef(_, _, (arg +: NIL) :: Nil, _, _))) =>
+      case closureDef((ddef @ DefDef(_, _, (arg +: NIL) +: NIL, _, _))) =>
         (obj: AnyRef) => interpretTree(ddef.rhs)(using env.updated(arg.symbol, obj))
 
       // Interpret `foo(j = x, i = y)` which it is expanded to

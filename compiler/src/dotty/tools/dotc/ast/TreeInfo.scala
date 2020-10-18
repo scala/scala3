@@ -175,7 +175,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** The arguments to the first constructor in `stats`. */
   def firstConstructorArgs(stats: Lst[Tree]): Lst[Tree] = firstConstructor(stats) match {
-    case DefDef(_, _, args :: _, _, _) => args
+    case DefDef(_, _, args +: _, _, _) => args
     case _                             => NIL
   }
 
@@ -200,7 +200,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** All type and value parameter symbols of this DefDef */
   def allParamSyms(ddef: DefDef)(using Context): Lst[Symbol] =
-    (ddef.tparams ++ ddef.vparamss.flattenLst).map(_.symbol)
+    (ddef.tparams ++ ddef.vparamss.flatten).map(_.symbol)
 
   /** Does this argument list end with an argument of the form <expr> : _* ? */
   def isWildcardStarArgList(trees: Lst[Tree])(using Context): Boolean =
@@ -308,7 +308,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case Function((param: untpd.ValDef) +: _, _) => param.mods.is(Given)
     case Closure(_, meth, _) => true
     case Block(NIL, expr) => isContextualClosure(expr)
-    case Block(Lst(DefDef(nme.ANON_FUN, _, params :: _, _, _)), cl: Closure) =>
+    case Block(Lst(DefDef(nme.ANON_FUN, _, params +: _, _, _)), cl: Closure) =>
       params match {
         case param +: _ => param.mods.is(Given)
         case nil => cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isContextFunctionType(cl.tpt.typeOpt)
@@ -616,9 +616,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *
    *  Note: targ and vargss may be empty
    */
-  def decomposeCall(tree: Tree): (Tree, Lst[Tree], List[Lst[Tree]]) = {
+  def decomposeCall(tree: Tree): (Tree, Lst[Tree], Lst[Lst[Tree]]) = {
     @tailrec
-    def loop(tree: Tree, targss: Lst[Tree], argss: List[Lst[Tree]]): (Tree, Lst[Tree], List[Lst[Tree]]) =
+    def loop(tree: Tree, targss: Lst[Tree], argss: Lst[Lst[Tree]]): (Tree, Lst[Tree], Lst[Lst[Tree]]) =
       tree match {
         case Apply(fn, args) =>
           loop(fn, targss, args :: argss)
@@ -627,7 +627,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         case _ =>
           (tree, targss, argss)
       }
-    loop(tree, NIL, Nil)
+    loop(tree, NIL, NIL)
   }
 
   /** Decompose a template body into parameters and other statements */

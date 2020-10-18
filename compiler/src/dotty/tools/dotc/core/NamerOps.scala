@@ -19,7 +19,7 @@ object NamerOps:
     else givenTp
 
   /** if isConstructor, make sure it has one non-implicit parameter list */
-  def normalizeIfConstructor(termParamss: List[Lst[Symbol]], isConstructor: Boolean)(using Context): List[Lst[Symbol]] =
+  def normalizeIfConstructor(termParamss: Lst[Lst[Symbol]], isConstructor: Boolean)(using Context): Lst[Lst[Symbol]] =
     if (isConstructor &&
       (termParamss.isEmpty || termParamss.head.nonEmpty && termParamss.head.head.isOneOf(GivenOrImplicit)))
       NIL :: termParamss
@@ -27,7 +27,7 @@ object NamerOps:
       termParamss
 
   /** The method type corresponding to given parameters and result type */
-  def methodType(typeParams: Lst[Symbol], valueParamss: List[Lst[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
+  def methodType(typeParams: Lst[Symbol], valueParamss: Lst[Lst[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
     val monotpe =
       valueParamss.foldRight(resultType) { (params, resultType) =>
         val (isContextual, isImplicit, isErased) =

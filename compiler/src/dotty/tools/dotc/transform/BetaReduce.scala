@@ -63,7 +63,7 @@ object BetaReduce:
   /** Beta-reduces a call to `ddef` with arguments `argSyms` */
   def apply(ddef: DefDef, args: Lst[Tree])(using Context) =
     val bindings = List.newBuilder[ValDef]
-    val vparams = ddef.vparamss.flattenLst
+    val vparams = ddef.vparamss.flatten
     assert(args.length == vparams.length)
     val argSyms =
       for (arg, param) <- args.zip(vparams) yield

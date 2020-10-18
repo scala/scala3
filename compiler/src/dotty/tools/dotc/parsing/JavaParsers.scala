@@ -136,7 +136,7 @@ object JavaParsers {
 
     def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined): DefDef = {
       val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p) }
-      DefDef(nme.CONSTRUCTOR, tparams.toLst, List(vparams.toLst), TypeTree(), EmptyTree).withMods(Modifiers(flags))
+      DefDef(nme.CONSTRUCTOR, tparams.toLst, Lst(vparams.toLst), TypeTree(), EmptyTree).withMods(Modifiers(flags))
     }
 
     // ------------- general parsing ---------------------------
@@ -512,7 +512,7 @@ object JavaParsers {
         List {
           atSpan(start) {
             DefDef(nme.CONSTRUCTOR, tparams.toLst,
-                List(vparams.toLst), TypeTree(), methodBody()).withMods(mods)
+                Lst(vparams.toLst), TypeTree(), methodBody()).withMods(mods)
           }
         }
       }
@@ -534,7 +534,7 @@ object JavaParsers {
               if (parentToken == AT && in.token == DEFAULT) {
                 val annot =
                   atSpan(nameOffset) {
-                    New(Select(Select(scalaDot(nme.annotation), nme.internal), tpnme.AnnotationDefaultATTR), Nil)
+                    New(Select(Select(scalaDot(nme.annotation), nme.internal), tpnme.AnnotationDefaultATTR), NIL)
                   }
                 mods1 = mods1 withAddedAnnotation annot
                 val unimplemented = unimplementedExpr
@@ -549,7 +549,7 @@ object JavaParsers {
           //if (inInterface) mods1 |= Flags.Deferred
           List {
             atSpan(start, nameOffset) {
-              DefDef(name.toTermName, tparams.toLst, List(vparams.toLst), rtpt, body).withMods(mods1 | Flags.Method)
+              DefDef(name.toTermName, tparams.toLst, Lst(vparams.toLst), rtpt, body).withMods(mods1 | Flags.Method)
             }
           }
         }
@@ -846,7 +846,7 @@ object JavaParsers {
           makeParam(dd.name, dd.tpt)
       }
       val constr = DefDef(nme.CONSTRUCTOR,
-        Lst(), List(constructorParams.toLst), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
+        Lst(), Lst(constructorParams.toLst), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
       val templ = makeTemplate(annotationParents, constr :: body, List(), true)
       val annot = atSpan(start, nameOffset) {
         TypeDef(name, templ).withMods(mods | Flags.Abstract)
@@ -882,12 +882,12 @@ object JavaParsers {
       val predefs = List(
         DefDef(
           nme.values, Lst(),
-          List(NIL),
+          Lst(NIL),
           arrayOf(enumType),
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)),
         DefDef(
           nme.valueOf, Lst(),
-          List(Lst(makeParam("x".toTermName, TypeTree(StringType)))),
+          Lst(Lst(makeParam("x".toTermName, TypeTree(StringType)))),
           enumType,
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)))
       accept(RBRACE)

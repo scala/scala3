@@ -196,30 +196,13 @@ object Decorators {
     def & (ys: List[T]): List[T] = xs filter (ys contains _)
   }
 
-  extension [T, U](xss: List[List[T]])
-    def nestedMap(f: T => U): List[List[U]] = xss match
-      case xs :: xss1 => xs.map(f) :: xss1.nestedMap(f)
-      case nil => Nil
-    def nestedMapConserve(f: T => U): List[List[U]] =
-      xss.mapconserve(_.mapconserve(f))
-    def nestedZipWithConserve(yss: List[List[U]])(f: (T, U) => T): List[List[T]] =
-      xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
-    def nestedExists(p: T => Boolean): Boolean = xss match
-      case xs :: xss1 => xs.exists(p) || xss1.nestedExists(p)
-      case nil => false
-  end extension
-
-  extension [T, U](xss: List[Lst[T]])
-    def nestedMapLst(f: T => U): List[Lst[U]] = xss match
-      case xs :: xss1 => xs.map(f) :: xss1.nestedMapLst(f)
-      case Nil => Nil
-    def nestedMapConserveLst(f: T => U): List[Lst[U]] =
-      xss.mapconserve(_.mapConserve(f))
-    def nestedZipWith(yss: List[Lst[U]])(f: (T, U) => T): List[Lst[T]] =
-      xss.zipWithConserve(yss)((xs, ys) => xs.zipWith(ys)(f))
-    def nestedExistsLst(p: T => Boolean): Boolean = xss match
-      case xs :: xss1 => xs.exists(p) || xss1.nestedExistsLst(p)
-      case nil => false
+  extension [T, U](xss: Lst[Lst[T]])
+    def nestedMap(f: T => U): Lst[Lst[U]] =
+      xss.map(_.map(f))
+    def nestedZipWith(yss: Lst[Lst[U]])(f: (T, U) => T): Lst[Lst[T]] =
+      xss.zipWith(yss)((xs, ys) => xs.zipWith(ys)(f))
+    def nestedExists(p: T => Boolean): Boolean =
+      xss.exists(_.exists(p))
   end extension
 
   extension (text: Text)

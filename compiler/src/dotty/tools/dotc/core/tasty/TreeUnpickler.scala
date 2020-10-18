@@ -779,12 +779,12 @@ class TreeUnpickler(reader: TastyReader,
       val tag = readByte()
       val end = readEnd()
 
-      def readParamss(using Context): List[Lst[ValDef]] = nextByte match
+      def readParamss(using Context): Lst[Lst[ValDef]] = nextByte match
         case PARAM | PARAMEND =>
           readParams[ValDef](PARAM) ::
-            (if nextByte == PARAMEND then { readByte(); readParamss } else Nil)
+            (if nextByte == PARAMEND then { readByte(); readParamss } else NIL)
         case _ =>
-          Nil
+          NIL
 
       val localCtx = localContext(sym)
 
@@ -802,7 +802,7 @@ class TreeUnpickler(reader: TastyReader,
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(using localCtx)), sym)
 
-      def DefDef(tparams: Lst[TypeDef], vparamss: List[Lst[ValDef]], tpt: Tree) =
+      def DefDef(tparams: Lst[TypeDef], vparamss: Lst[Lst[ValDef]], tpt: Tree) =
         sym.setParamssFromDefs(tparams, vparamss)
         ta.assignType(
           untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(using localCtx)),
@@ -822,7 +822,7 @@ class TreeUnpickler(reader: TastyReader,
           val tpt = readTpt()(using localCtx)
           val typeParams = tparams.map(_.symbol)
           val valueParamss = normalizeIfConstructor(
-              vparamss.nestedMapLst(_.symbol), name == nme.CONSTRUCTOR)
+              vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
           val resType = effectiveResultType(sym, typeParams, tpt.tpe)
           sym.info = methodType(typeParams, valueParamss, resType)
           DefDef(tparams, vparamss, tpt)
@@ -871,7 +871,7 @@ class TreeUnpickler(reader: TastyReader,
           else {
             sym.info = ExprType(tpt.tpe)
             pickling.println(i"reading param alias $name -> $currentAddr")
-            DefDef(NIL, Nil, tpt)
+            DefDef(NIL, NIL, tpt)
           }
       }
       goto(end)
