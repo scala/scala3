@@ -1,4 +1,5 @@
-package dotty.tools.dotc.interactive
+package dotty.tools
+package dotc.interactive
 
 import java.nio.charset.Charset
 

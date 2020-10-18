@@ -1,4 +1,5 @@
-package dotty.tools.repl
+package dotty.tools
+package repl
 
 /** Main entry point to the REPL */
 object Main {

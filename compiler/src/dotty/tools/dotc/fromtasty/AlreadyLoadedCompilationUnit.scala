@@ -1,4 +1,5 @@
-package dotty.tools.dotc.fromtasty
+package dotty.tools
+package dotc.fromtasty
 
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.util.NoSource

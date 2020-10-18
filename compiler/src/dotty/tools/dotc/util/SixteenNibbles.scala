@@ -1,4 +1,5 @@
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 /** An efficient implementation of sequences of 16 indexed elements with
  *  values 0..15 in a single Long.

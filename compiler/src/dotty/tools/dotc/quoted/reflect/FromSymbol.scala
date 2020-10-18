@@ -1,4 +1,5 @@
-package dotty.tools.dotc.quoted
+package dotty.tools
+package dotc.quoted
 package reflect
 
 import dotty.tools.dotc.ast.tpd

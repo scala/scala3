@@ -1,4 +1,5 @@
-package dotty.tools.dotc.semanticdb
+package dotty.tools
+package dotc.semanticdb
 
 import dotty.tools.dotc.core
 import core.Symbols.{ Symbol , defn }

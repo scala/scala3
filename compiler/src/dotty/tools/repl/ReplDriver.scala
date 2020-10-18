@@ -1,4 +1,5 @@
-package dotty.tools.repl
+package dotty.tools
+package repl
 
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets

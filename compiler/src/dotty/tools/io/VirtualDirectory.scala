@@ -2,7 +2,8 @@
  * Copyright 2005-2013 LAMP/EPFL
  */
 
-package dotty.tools.io
+package dotty.tools
+package io
 
 import scala.collection.mutable
 import java.io.{InputStream, OutputStream}

@@ -3,7 +3,8 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools.io
+package dotty.tools
+package io
 
 import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream }
 

@@ -1,4 +1,5 @@
-package dotty.tools.dotc.semanticdb
+package dotty.tools
+package dotc.semanticdb
 
 import java.nio.file._
 import java.nio.charset.StandardCharsets

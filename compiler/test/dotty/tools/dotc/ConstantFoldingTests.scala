@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 
 import org.junit.Assert._
 import org.junit.Test

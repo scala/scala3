@@ -1,4 +1,5 @@
-package dotty.tools.vulpix
+package dotty.tools
+package vulpix
 
 sealed trait FileFilter {
   def accept(file: String): Boolean

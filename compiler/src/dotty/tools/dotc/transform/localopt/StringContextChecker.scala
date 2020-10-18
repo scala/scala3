@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform.localopt
 
 import dotty.tools.dotc.ast.Trees._

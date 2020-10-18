@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package printing
 
 import dotty.tools.dotc.ast.untpd

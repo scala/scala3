@@ -6,7 +6,8 @@
 /* sbt -- Simple Build Tool
  * Copyright 2010 Mark Harrah
  */
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package sbt
 
 import xsbti.api._

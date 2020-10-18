@@ -1,6 +1,7 @@
 /** Taken from the original implementation of WeakHashSet in scala-reflect
  */
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 import java.lang.ref.{ReferenceQueue, WeakReference}
 

@@ -3,7 +3,8 @@
  * @author Paul Phillips
  */
 
-package dotty.tools.io
+package dotty.tools
+package io
 
 import java.io.RandomAccessFile
 import java.nio.file._

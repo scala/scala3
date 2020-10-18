@@ -1,4 +1,5 @@
-package dotty.tools.dotc.plugins
+package dotty.tools
+package dotc.plugins
 
 import org.junit.Test
 

@@ -1,4 +1,5 @@
-package dotty.tools.dotc.quoted
+package dotty.tools
+package dotc.quoted
 
 import scala.annotation.internal.sharable
 import scala.annotation.{Annotation, compileTimeOnly}

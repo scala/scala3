@@ -2,7 +2,8 @@
  * Copyright 2005-2013 LAMP/EPFL
  * @author Martin Odersky
  */
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import dotty.tools.dotc.transform.MegaPhase._

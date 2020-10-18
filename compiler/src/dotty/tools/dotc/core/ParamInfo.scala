@@ -1,4 +1,5 @@
-package dotty.tools.dotc.core
+package dotty.tools
+package dotc.core
 
 import Names.Name
 import Contexts._

@@ -1,4 +1,5 @@
-package dotty.tools.repl
+package dotty.tools
+package repl
 
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.parsing.Scanners.Scanner

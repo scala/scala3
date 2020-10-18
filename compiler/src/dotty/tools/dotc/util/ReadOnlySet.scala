@@ -1,4 +1,5 @@
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 /** A class for the readonly part of mutable sets.
  */

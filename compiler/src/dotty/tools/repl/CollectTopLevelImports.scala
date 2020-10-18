@@ -1,4 +1,5 @@
-package dotty.tools.repl
+package dotty.tools
+package repl
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.tpd

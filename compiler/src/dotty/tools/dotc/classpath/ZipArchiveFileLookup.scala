@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2014 Contributor. All rights reserved.
  */
-package dotty.tools.dotc.classpath
+package dotty.tools
+package dotc.classpath
 
 import java.io.File
 import java.net.URL

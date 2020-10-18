@@ -1,4 +1,5 @@
-package dotty.tools.vulpix
+package dotty.tools
+package vulpix
 
 /** Test groups are used to ensure that the output of tests do not overlap.
  *

@@ -1,4 +1,5 @@
-package dotty.tools.dotc.classpath
+package dotty.tools
+package dotc.classpath
 
 import dotty.tools.io.ClassRepresentation
 import dotty.tools.io.{AbstractFile, VirtualDirectory}

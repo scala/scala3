@@ -1,4 +1,5 @@
-package dotty.tools.dotc.parsing
+package dotty.tools
+package dotc.parsing
 
 object parseFile extends ParserTest {
 

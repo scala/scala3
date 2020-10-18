@@ -1,4 +1,5 @@
-package dotty.tools.backend.jvm
+package dotty.tools
+package backend.jvm
 
 import org.junit.Assert._
 import org.junit.Test

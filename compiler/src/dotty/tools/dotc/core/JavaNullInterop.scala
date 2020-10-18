@@ -1,4 +1,5 @@
-package dotty.tools.dotc.core
+package dotty.tools
+package dotc.core
 
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Flags.JavaDefined

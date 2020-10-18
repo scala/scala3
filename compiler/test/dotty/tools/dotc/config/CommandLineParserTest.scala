@@ -1,5 +1,6 @@
 
-package dotty.tools.dotc.config
+package dotty.tools
+package dotc.config
 
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test

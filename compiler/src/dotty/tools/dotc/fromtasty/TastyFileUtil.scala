@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package fromtasty
 
 import java.nio.file.{Files, Path, Paths}

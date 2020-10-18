@@ -1,4 +1,5 @@
-package dotty.tools.dotc.semanticdb.internal
+package dotty.tools
+package dotc.semanticdb.internal
 
 import java.io.IOException
 import java.io.OutputStream

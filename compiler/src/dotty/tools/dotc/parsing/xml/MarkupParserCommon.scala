@@ -5,7 +5,8 @@
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package parsing
 package xml
 

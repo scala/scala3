@@ -1,4 +1,5 @@
-package dotty.tools.dotc.core.tasty
+package dotty.tools
+package dotc.core.tasty
 
 import dotty.tools.dotc.ast.{tpd, untpd}
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext, ContextDocstrings}

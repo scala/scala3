@@ -1,4 +1,5 @@
-package dotty.tools.dotc.config
+package dotty.tools
+package dotc.config
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer

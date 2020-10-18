@@ -1,4 +1,5 @@
-package dotty.tools.backend.jvm
+package dotty.tools
+package backend.jvm
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._

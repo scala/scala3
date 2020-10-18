@@ -1,4 +1,5 @@
-package dotty.tools.dotc.config
+package dotty.tools
+package dotc.config
 
 object Printers {
 

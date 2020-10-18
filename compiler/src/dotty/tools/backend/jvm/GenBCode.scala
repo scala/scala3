@@ -1,4 +1,5 @@
-package dotty.tools.backend.jvm
+package dotty.tools
+package backend.jvm
 
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}

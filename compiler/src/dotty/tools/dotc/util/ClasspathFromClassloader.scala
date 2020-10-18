@@ -1,4 +1,5 @@
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 import java.net.URLClassLoader
 import java.nio.file.Paths

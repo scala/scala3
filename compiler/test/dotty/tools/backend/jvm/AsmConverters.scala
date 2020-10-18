@@ -1,4 +1,5 @@
-package dotty.tools.backend.jvm
+package dotty.tools
+package backend.jvm
 
 import scala.tools.asm
 import asm._

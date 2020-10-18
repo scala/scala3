@@ -1,4 +1,5 @@
-package dotty.tools.dotc.quoted
+package dotty.tools
+package dotc.quoted
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}

@@ -5,7 +5,8 @@
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-package dotty.tools.dotc.core.classfile
+package dotty.tools
+package dotc.core.classfile
 
 object ByteCodecs {
 

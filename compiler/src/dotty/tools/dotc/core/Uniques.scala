@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Types._, Contexts._, util.Stats._, Hashable._, Names._

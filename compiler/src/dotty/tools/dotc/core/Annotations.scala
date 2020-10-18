@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Symbols._, Types._, Contexts._, Constants._, ast.tpd._, Phases._

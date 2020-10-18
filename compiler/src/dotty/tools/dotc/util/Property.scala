@@ -1,4 +1,5 @@
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 /** Defines a key type with which to tag properties, such as attachments
  *  or context properties

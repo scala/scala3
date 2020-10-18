@@ -1,4 +1,5 @@
-package dotty.tools.dotc.transform
+package dotty.tools
+package dotc.transform
 
 import dotty.tools.dotc.ast.{Trees, tpd}
 import dotty.tools.dotc.core.Annotations.Annotation

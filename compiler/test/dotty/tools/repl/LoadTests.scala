@@ -1,4 +1,5 @@
-package dotty.tools.repl
+package dotty.tools
+package repl
 
 import java.nio.file.{Path, Files}
 import java.util.Comparator

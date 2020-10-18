@@ -1,4 +1,5 @@
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 /** A specialized implementation of GenericHashMap with standard hashCode and equals
  *  as comparison

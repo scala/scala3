@@ -1,4 +1,5 @@
-package dotty.tools.dotc.core
+package dotty.tools
+package dotc.core
 
 /** A collection of mode bits that are part of a context */
 case class Mode(val bits: Int) extends AnyVal {

@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package config
 
 import dotty.tools.dotc.core.Contexts._

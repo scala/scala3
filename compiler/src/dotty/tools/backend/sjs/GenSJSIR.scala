@@ -1,4 +1,5 @@
-package dotty.tools.backend.sjs
+package dotty.tools
+package backend.sjs
 
 import dotty.tools.dotc.core._
 import Contexts._

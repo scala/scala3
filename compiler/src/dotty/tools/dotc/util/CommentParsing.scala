@@ -3,7 +3,8 @@
  * @author Martin Odersky
  * @author Felix Mulder
  */
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 import scala.collection.mutable
 

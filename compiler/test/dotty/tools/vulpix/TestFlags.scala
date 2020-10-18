@@ -1,4 +1,5 @@
-package dotty.tools.vulpix
+package dotty.tools
+package vulpix
 
 import java.io.{File => JFile}
 

@@ -1,4 +1,5 @@
-package dotty.tools.backend.jvm
+package dotty.tools
+package backend.jvm
 
 import java.lang.reflect.Modifier
 import scala.tools.asm

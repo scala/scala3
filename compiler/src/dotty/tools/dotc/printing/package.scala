@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 
 import core.StdNames.{nme,tpnme}
 import util.Property.Key

@@ -1,4 +1,5 @@
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 /** A dense map from some `Key` type to `Int. Dense means: All keys and values
  *  are stored in arrays from 0 up to the size of the map. Keys and values

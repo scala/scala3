@@ -1,4 +1,5 @@
-package dotty.tools.dotc.profile
+package dotty.tools
+package dotc.profile
 
 import java.io.{FileWriter, PrintWriter}
 import java.lang.management.{ManagementFactory, GarbageCollectorMXBean, RuntimeMXBean, MemoryMXBean, ClassLoadingMXBean, CompilationMXBean}

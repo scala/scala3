@@ -1,4 +1,5 @@
-package dotty.tools.dotc.ast
+package dotty.tools
+package dotc.ast
 
 import dotty.tools.DottyTest
 import dotty.tools.dotc.ast.Trees._

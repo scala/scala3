@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, NameOps._

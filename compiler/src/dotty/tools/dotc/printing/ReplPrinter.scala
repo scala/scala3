@@ -1,4 +1,5 @@
-package dotty.tools.dotc.printing
+package dotty.tools
+package dotc.printing
 
 import dotty.tools.dotc.core.Constants
 import dotty.tools.dotc.core.Constants.Constant

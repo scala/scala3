@@ -1,4 +1,5 @@
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext}
 import dotty.tools.dotc.core.Contexts._

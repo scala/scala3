@@ -1,4 +1,5 @@
-package dotty.tools.backend.sjs
+package dotty.tools
+package backend.sjs
 
 import scala.annotation.switch
 

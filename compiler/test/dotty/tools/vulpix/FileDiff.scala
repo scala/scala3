@@ -1,4 +1,5 @@
-package dotty.tools.vulpix
+package dotty.tools
+package vulpix
 
 import scala.io.Source
 import scala.util.Using

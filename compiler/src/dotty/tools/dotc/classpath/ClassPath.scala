@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2014 Contributor. All rights reserved.
  */
-package dotty.tools.dotc.classpath
+package dotty.tools
+package dotc.classpath
 
 import dotty.tools.io.AbstractFile
 import dotty.tools.io.ClassRepresentation

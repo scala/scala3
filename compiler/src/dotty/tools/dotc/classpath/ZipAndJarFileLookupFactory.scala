@@ -1,7 +1,8 @@
 /*
  * Copyright (c) 2014 Contributor. All rights reserved.
  */
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package classpath
 
 import java.io.File

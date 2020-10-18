@@ -1,4 +1,5 @@
-package dotty.tools.dotc.profile
+package dotty.tools
+package dotc.profile
 
 import java.util.concurrent.ThreadPoolExecutor.AbortPolicy
 import java.util.concurrent._

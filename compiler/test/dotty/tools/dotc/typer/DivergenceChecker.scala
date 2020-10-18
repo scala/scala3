@@ -1,4 +1,5 @@
-package dotty.tools.dotc.typer
+package dotty.tools
+package dotc.typer
 
 import dotty.tools.DottyTest
 import dotty.tools.dotc.ast.Trees._

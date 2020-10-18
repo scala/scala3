@@ -1,4 +1,5 @@
-package dotty.tools.backend.sjs
+package dotty.tools
+package backend.sjs
 
 import org.scalajs.ir
 import org.scalajs.ir.{Position, Trees => js, Types => jstpe}

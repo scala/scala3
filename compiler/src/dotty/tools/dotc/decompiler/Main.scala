@@ -1,4 +1,5 @@
-package dotty.tools.dotc.decompiler
+package dotty.tools
+package dotc.decompiler
 
 import java.nio.file.Files
 

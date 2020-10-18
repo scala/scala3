@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package decompiler
 
 import java.io.{OutputStream, PrintStream}

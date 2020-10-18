@@ -1,4 +1,5 @@
-package dotty.tools.io
+package dotty.tools
+package io
 
 import org.junit.Test
 

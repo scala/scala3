@@ -1,4 +1,5 @@
-package dotty.tools.dotc.printing
+package dotty.tools
+package dotc.printing
 
 import dotty.tools.DottyTest
 import dotty.tools.dotc.ast.{Trees,tpd}

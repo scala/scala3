@@ -1,4 +1,5 @@
-package dotty.tools.dotc.printing
+package dotty.tools
+package dotc.printing
 
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.untpd.{Tree, PackageDef, Template, TypeDef}

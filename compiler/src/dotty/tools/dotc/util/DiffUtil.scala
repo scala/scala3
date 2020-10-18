@@ -1,4 +1,5 @@
-package dotty.tools.dotc.util
+package dotty.tools
+package dotc.util
 
 import scala.annotation.tailrec
 import scala.collection.mutable

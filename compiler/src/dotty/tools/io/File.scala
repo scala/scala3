@@ -6,7 +6,8 @@
 **                          |/                                          **
 \*                                                                      */
 
-package dotty.tools.io
+package dotty.tools
+package io
 
 import java.io.{File => JavaIoFile, _}
 import java.nio.file.{Files, Paths}
@@ -36,7 +37,7 @@ object File {
  *  ''Note:  This is library is considered experimental and should not be used unless you know what you are doing.''
  */
 class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) with Streamable.Chars {
-  override val creationCodec: io.Codec = constructorCodec
+  override val creationCodec: Codec = constructorCodec
 
   override def addExtension(ext: String): File = super.addExtension(ext).toFile
   override def toAbsolute: File = if (isAbsolute) this else super.toAbsolute.toFile

@@ -1,4 +1,5 @@
-package dotty.tools.dotc.classpath
+package dotty.tools
+package dotc.classpath
 
 import org.junit.Test
 import java.nio.file._

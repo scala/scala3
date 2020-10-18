@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 
 import scala.internal.Chars._
 import core.Names.Name
