@@ -20,6 +20,8 @@ object TastyBuffer {
 
     def ==(that: Addr): Boolean = this.index == that.index
     def !=(that: Addr): Boolean = this.index != that.index
+
+    def < (that: Addr): Boolean = this.index < that.index
   }
 
   val NoAddr: Addr = Addr(-1)

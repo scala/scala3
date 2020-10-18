@@ -210,6 +210,27 @@ class TreeUnpickler(reader: TastyReader,
 
     def readName(): TermName = nameAtRef(readNameRef())
 
+// ------ Basic operations --------------------------------------------------
+
+    /** Perform `op` until `end` address is reached and collect results in a list. */
+    def until[T](end: Addr)(op: => T): List[T] = {
+      val buf = new mutable.ListBuffer[T]
+      while (currentAddr < end) buf += op
+      assert(currentAddr == end)
+      buf.toList
+    }
+
+    /** If before given `end` address, the result of `op`, otherwise `default` */
+    def ifBefore[T](end: Addr)(op: => T, default: T): T =
+      if (currentAddr < end) op else default
+
+    /** Perform `op` while cindition `cond` holds and collect results in a list. */
+    def collectWhile[T](cond: => Boolean)(op: => T): List[T] = {
+      val buf = new mutable.ListBuffer[T]
+      while (cond) buf += op
+      buf.toList
+    }
+
 // ------ Reading types -----------------------------------------------------
 
     /** Read names in an interleaved sequence of types/bounds and (parameter) names,
