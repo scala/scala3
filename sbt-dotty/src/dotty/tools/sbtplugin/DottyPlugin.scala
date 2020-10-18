@@ -49,7 +49,7 @@ object DottyPlugin extends AutoPlugin {
             else fetchSource(s"$major.${minor.toInt - 1}")
           }
         val (source1, majorVersion) = fetchSource(majorVersionFromWebsite)
-        val Version = s"      <version>($majorVersion\\..*-bin.*)</version>".r
+        val Version = s"      <version>($majorVersion.*-bin.*)</version>".r
         val nightly = source1
           .getLines()
           .collect { case Version(version) => version }
