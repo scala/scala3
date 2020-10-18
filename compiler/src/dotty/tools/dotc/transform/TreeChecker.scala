@@ -169,7 +169,7 @@ class TreeChecker extends Phase with SymTransformer {
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
     override def checkDerivedValueClass(clazz: Symbol, stats: Lst[Tree])(using Context): Unit = ()
 
-    def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(using Context): T = {
+    def withDefinedSyms[T](trees: Lst[untpd.Tree])(op: => T)(using Context): T = {
       var locally = List.empty[Symbol]
       for (tree <- trees) {
         val sym = tree.symbol
@@ -457,15 +457,15 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
       def defParamss =
-        (ddef.tparams :: ddef.vparamss).filter(!_.isEmpty).map(_.map(_.symbol))
-      def layout(symss: List[List[Symbol]]): String =
-        symss.map(syms => i"($syms%, %)").mkString
-      assert(ctx.erasedTypes || sym.rawParamss == defParamss,
+        ((ddef.tparams :: ddef.vparamss): List[Lst[untpd.MemberDef]]).filter(!_.isEmpty).map(_.map(_.symbol))
+      def layout(symss: List[Lst[Symbol]]): String =
+        symss.map(syms => i"(${syms.toList}%, %)").mkString
+      assert(ctx.erasedTypes || sym.rawParamss.corresponds(defParamss)(_ === _),
         i"""param mismatch for ${sym.showLocated}:
            |defined in tree  = ${layout(defParamss)}
            |stored in symbol = ${layout(sym.rawParamss)}""")
       withDefinedSyms(ddef.tparams) {
-        withDefinedSyms(ddef.vparamss.flatten) {
+        withDefinedSyms(ddef.vparamss.flattenLst) {
           if (!sym.isClassConstructor && !(sym.name eq nme.STATIC_CONSTRUCTOR))
             assert(isValidJVMMethodName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
 
@@ -502,10 +502,10 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree =
-      withBlock(tree) { withDefinedSyms(tree.stats.toList) { super.typedBlock(tree, pt) } }
+      withBlock(tree) { withDefinedSyms(tree.stats) { super.typedBlock(tree, pt) } }
 
     override def typedInlined(tree: untpd.Inlined, pt: Type)(using Context): Tree =
-      withDefinedSyms(tree.bindings.toList) { super.typedInlined(tree, pt) }
+      withDefinedSyms(tree.bindings) { super.typedInlined(tree, pt) }
 
     /** Check that all defined symbols have legal owners.
      *  An owner is legal if it is either the same as the context's owner
@@ -525,7 +525,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedLabeled(tree: untpd.Labeled)(using Context): Labeled = {
       checkOwner(tree.bind)
-      withDefinedSyms(tree.bind :: Nil) { super.typedLabeled(tree) }
+      withDefinedSyms(Lst(tree.bind)) { super.typedLabeled(tree) }
     }
 
     override def typedReturn(tree: untpd.Return)(using Context): Return = {
@@ -542,7 +542,7 @@ class TreeChecker extends Phase with SymTransformer {
       super.typedWhileDo(tree)
     }
 
-    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
+    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => Lst[Symbol])(using Context): Tree =
       tree
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree = {

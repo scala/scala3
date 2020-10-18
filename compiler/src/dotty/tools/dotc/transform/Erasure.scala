@@ -456,7 +456,7 @@ object Erasure {
                 inContext(ctx.withOwner(bridge)) {
                   val List(bridgeParams) = bridgeParamss
                   assert(ctx.typer.isInstanceOf[Erasure.Typer])
-                  val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)).toLst)
+                  val rhs = Apply(meth, bridgeParams.zipped(implParamTypes).map(ctx.typer.adapt(_, _)))
                   ctx.typer.adapt(rhs, bridgeType.resultType)
                 },
                 targetType = implClosure.tpt.tpe)
@@ -496,11 +496,11 @@ object Erasure {
                 ctx.owner, nme.ANON_FUN, Flags.Synthetic | Flags.Method,
                 MethodType(argTpes, resTpe), coord = tree.span.endPos)
               anonFun.info = transformInfo(anonFun, anonFun.info)
-              def lambdaBody(refss: List[List[Tree]]) =
+              def lambdaBody(refss: List[Lst[Tree]]) =
                 val refs :: Nil : @unchecked = refss
                 val expandedRefs = refs.map(_.withSpan(tree.span.endPos)) match
-                  case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
-                    argTpes.indices.toList.map(n =>
+                  case Lst(bunchedParam @ Ident(nme.ALLARGS)) =>
+                    argTpes.toLst.indices.map(n =>
                       bunchedParam
                         .select(nme.primitive.arrayApply)
                         .appliedTo(Literal(Constant(n))))
@@ -858,7 +858,7 @@ object Erasure {
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
         var vparams = outerParamDefs(sym)
-            ::: ddef.vparamss.flatten.filterConserve(!_.symbol.is(Flags.Erased))
+            ::: ddef.vparamss.flattenLst.filter(!_.symbol.is(Flags.Erased))
 
         def skipContextClosures(rhs: Tree, crCount: Int)(using Context): Tree =
           if crCount == 0 then rhs
@@ -882,11 +882,11 @@ object Erasure {
             case (paramDef, idx) =>
               assignType(untpd.cpy.ValDef(paramDef)(rhs = selector(idx)), paramDef.symbol)
           }
-          vparams = ValDef(bunchedParam) :: Nil
-          rhs1 = Block(paramDefs.toLst, rhs1)
+          vparams = Lst(ValDef(bunchedParam))
+          rhs1 = Block(paramDefs, rhs1)
 
         val ddef1 = untpd.cpy.DefDef(ddef)(
-          tparams = Nil,
+          tparams = NIL,
           vparamss = vparams :: Nil,
           tpt = untpd.TypedSplice(TypeTree(restpe).withSpan(ddef.tpt.span)),
           rhs = rhs1)
@@ -947,8 +947,8 @@ object Erasure {
       stats.mapConserve {
         case stat: DefDef @unchecked if stat.symbol.isRetainedInlineMethod =>
           val rdef = retainerDef(stat.symbol)
-          val fromParams = untpd.allParamSyms(rdef)
-          val toParams = untpd.allParamSyms(stat)
+          val fromParams = untpd.allParamSyms(rdef).toList
+          val toParams = untpd.allParamSyms(stat).toList
           assert(fromParams.hasSameLengthAs(toParams))
           val mapBody = TreeTypeMap(
             oldOwners = rdef.symbol :: Nil,

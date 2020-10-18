@@ -1454,7 +1454,7 @@ object Parsers {
         }
         else if (in.token == LBRACKET) {
           val start = in.offset
-          val tparams = typeParamClause(ParamOwner.TypeParam).toLst
+          val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == TLARROW)
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
           else if (in.token == ARROW) {
@@ -2019,7 +2019,7 @@ object Parsers {
         forExpr()
       case LBRACKET =>
         val start = in.offset
-        val tparams = typeParamClause(ParamOwner.TypeParam).toLst
+        val tparams = typeParamClause(ParamOwner.TypeParam)
         val arrowOffset = accept(ARROW)
         val body = expr()
         atSpan(start, arrowOffset) {
@@ -2883,7 +2883,7 @@ object Parsers {
      *  HkTypeParamClause ::=  ‘[’ HkTypeParam {‘,’ HkTypeParam} ‘]’
      *  HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypePamClause] | ‘_’) TypeBounds
      */
-    def typeParamClause(ownerKind: ParamOwner.Value): List[TypeDef] = inBrackets {
+    def typeParamClause(ownerKind: ParamOwner.Value): Lst[TypeDef] = inBrackets {
 
       def variance(vflag: FlagSet): FlagSet =
         if ownerKind == ParamOwner.Def || ownerKind == ParamOwner.TypeParam then
@@ -2910,21 +2910,21 @@ object Parsers {
               WildcardParamName.fresh().toTypeName
             }
             else ident().toTypeName
-          val hkparams = typeParamClauseOpt(ParamOwner.Type).toLst
+          val hkparams = typeParamClauseOpt(ParamOwner.Type)
           val bounds = if (isAbstractOwner) typeBounds() else typeParamBounds(name)
           TypeDef(name, lambdaAbstract(hkparams, bounds)).withMods(mods)
         }
       }
-      commaSeparated(() => typeParam())
+      commaSeparatedLst(() => typeParam())
     }
 
-    def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
-      if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
+    def typeParamClauseOpt(ownerKind: ParamOwner.Value): Lst[TypeDef] =
+      if (in.token == LBRACKET) typeParamClause(ownerKind) else NIL
 
     /** ContextTypes   ::=  Type {‘,’ Type}
      */
-    def contextTypes(ofClass: Boolean, nparams: Int): List[ValDef] =
-      val tps = commaSeparated(typ)
+    def contextTypes(ofClass: Boolean, nparams: Int): Lst[ValDef] =
+      val tps = commaSeparatedLst(typ)
       var counter = nparams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
@@ -2950,7 +2950,7 @@ object Parsers {
                     prefix: Boolean = false,                 // clause precedes name of an extension method
                     givenOnly: Boolean = false,              // only given parameters allowed
                     firstClause: Boolean = false             // clause is the first in regular list of clauses
-                   ): List[ValDef] = {
+                   ): Lst[ValDef] = {
       var impliedMods: Modifiers = EmptyModifiers
 
       def addParamMod(mod: () => Mod) = impliedMods = addMod(impliedMods, atSpan(in.skipToken()) { mod() })
@@ -2999,10 +2999,10 @@ object Parsers {
         }
       }
 
-      def checkVarArgsRules(vparams: List[ValDef]): Unit = vparams match {
-        case Nil =>
-        case _ :: Nil if !prefix =>
-        case vparam :: rest =>
+      def checkVarArgsRules(vparams: Lst[ValDef]): Unit = vparams match {
+        case NIL =>
+        case Lst(_) if !prefix =>
+        case vparam +: rest =>
           vparam.tpt match {
             case PostfixOp(_, op) if op.name == tpnme.raw.STAR =>
               syntaxError(VarArgsParamMustComeLast(), vparam.tpt.span)
@@ -3013,10 +3013,10 @@ object Parsers {
 
       // begin paramClause
       inParens {
-        if in.token == RPAREN && !prefix && !impliedMods.is(Given) then Nil
+        if in.token == RPAREN && !prefix && !impliedMods.is(Given) then NIL
         else
           val clause =
-            if prefix then param() :: Nil
+            if prefix then Lst(param())
             else
               paramMods()
               if givenOnly && !impliedMods.is(Given) then
@@ -3025,7 +3025,7 @@ object Parsers {
                 !impliedMods.is(Given)
                 || startParamTokens.contains(in.token)
                 || isIdent && (in.name == nme.inline || in.lookahead.token == COLON)
-              if isParams then commaSeparated(() => param())
+              if isParams then commaSeparatedLst(() => param())
               else contextTypes(ofClass, nparams)
           checkVarArgsRules(clause)
           clause
@@ -3039,9 +3039,9 @@ object Parsers {
      */
     def paramClauses(ofClass: Boolean = false,
                      ofCaseClass: Boolean = false,
-                     givenOnly: Boolean = false): List[List[ValDef]] =
+                     givenOnly: Boolean = false): List[Lst[ValDef]] =
 
-      def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] =
+      def recur(firstClause: Boolean, nparams: Int): List[Lst[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
         if in.token == LPAREN then
           val paramsStart = in.offset
@@ -3289,7 +3289,7 @@ object Parsers {
           if (!(in.token == LBRACE && scala2ProcedureSyntax(""))) accept(EQUALS)
           atSpan(in.offset) { subPart(constrExpr) }
         }
-        makeConstructor(Nil, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
+        makeConstructor(NIL, vparamss, rhs).withMods(mods).setComment(in.getDocComment(start))
       }
       else {
         val mods1 = addFlag(mods, Method)
@@ -3357,7 +3357,7 @@ object Parsers {
       newLinesOpt()
       atSpan(start, nameStart) {
         val nameIdent = typeIdent()
-        val tparams = typeParamClauseOpt(ParamOwner.Type).toLst
+        val tparams = typeParamClauseOpt(ParamOwner.Type)
         val vparamss = funParamClauses()
         def makeTypeDef(rhs: Tree): Tree = {
           val rhs1 = lambdaAbstractAll(tparams :: vparamss, rhs)
@@ -3833,7 +3833,7 @@ object Parsers {
         val problem = tree match
           case tree: MemberDef if !(tree.mods.flags & ModifierFlags).isEmpty =>
             i"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}"
-          case tree: DefDef if tree.vparamss.nestedExists(!_.rhs.isEmpty) =>
+          case tree: DefDef if tree.vparamss.nestedExistsLst(!_.rhs.isEmpty) =>
             i"refinement cannot have default arguments"
           case tree: ValOrDefDef =>
             if tree.rhs.isEmpty then ""

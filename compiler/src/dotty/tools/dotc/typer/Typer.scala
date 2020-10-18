@@ -906,10 +906,10 @@ class Typer extends Namer
       cpy.Block(tree)(stats1, expr1)
         .withType(expr1.tpe)
         .withNotNullInfo(stats1.foldRight(expr1.notNullInfo)(_.notNullInfo.seq(_))),
-      pt, localSyms(stats1.toList))
+      pt, localSyms(stats1))
   }
 
-  def escapingRefs(block: Tree, localSyms: => List[Symbol])(using Context): List[NamedType] = {
+  def escapingRefs(block: Tree, localSyms: => Lst[Symbol])(using Context): List[NamedType] = {
     lazy val locals = localSyms.toSet
     block.tpe.namedPartsWith(tp => locals.contains(tp.symbol) && !tp.isErroneous)
   }
@@ -924,7 +924,7 @@ class Typer extends Namer
    *  expected type of a block is the anonymous class defined inside it. In that
    *  case there's technically a leak which is not removed by the ascription.
    */
-  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree = {
+  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => Lst[Symbol])(using Context): Tree = {
     def ascribeType(tree: Tree, pt: Type): Tree = tree match {
       case block @ Block(stats, expr) if !expr.isInstanceOf[Closure] =>
         val expr1 = ascribeType(expr, pt)
@@ -1010,7 +1010,7 @@ class Typer extends Namer
       case SAMType(sam @ MethodTpe(_, formals, restpe)) =>
         (formals,
          if (sam.isResultDependent)
-           untpd.DependentTypeTree(syms => restpe.substParams(sam, syms.map(_.termRef)))
+           untpd.DependentTypeTree(syms => restpe.substParams(sam, syms.termRefs))
          else
            typeTree(restpe))
       case tp: TypeParamRef =>
@@ -1049,7 +1049,7 @@ class Typer extends Namer
         if funFlags.is(Given) then params.map(_.withAddedFlags(Given))
         else params
       val params2 = params1.map(fixThis.transformSub)
-      val appDef0 = untpd.DefDef(nme.apply, Nil, List(params2.toList), body, EmptyTree).withSpan(tree.span)
+      val appDef0 = untpd.DefDef(nme.apply, NIL, List(params2), body, EmptyTree).withSpan(tree.span)
       index(Lst(appDef0))
       val appDef = typed(appDef0).asInstanceOf[DefDef]
       val mt = appDef.symbol.info.asInstanceOf[MethodType]
@@ -1058,7 +1058,7 @@ class Typer extends Namer
       val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
       val typeArgs = appDef.vparamss.head.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
-      val core = AppliedTypeTree(tycon, typeArgs.toLst)
+      val core = AppliedTypeTree(tycon, typeArgs)
       RefinedTypeTree(core, Lst(appDef), ctx.owner.asClass)
     end typedDependent
 
@@ -1237,7 +1237,7 @@ class Typer extends Namer
             else cpy.ValDef(param)(
               tpt = untpd.TypeTree(
                 inferredParamType(param, protoFormal(i)).translateFromRepeated(toArray = false)))
-        desugar.makeClosure(inferredParams.toList, fnBody, resultTpt, isContextual)
+        desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual)
       }
     typed(desugared, pt)
   }
@@ -1455,7 +1455,7 @@ class Typer extends Namer
       }
       val pat1 = indexPattern(tree).transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
-      var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toLst.toList)
+      var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toLst)
       if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
@@ -1495,12 +1495,12 @@ class Typer extends Namer
      * @param  paramss  the parameters of the anonymous functions
      *                  enclosing the return expression
      */
-    def instantiateCFT(pt: Type, paramss: => List[List[Symbol]]): Type =
+    def instantiateCFT(pt: Type, paramss: => List[Lst[Symbol]]): Type =
       val ift = defn.asContextFunctionType(pt)
       if ift.exists then
         ift.nonPrivateMember(nme.apply).info match
           case appType: MethodType =>
-            instantiateCFT(appType.instantiate(paramss.head.map(_.termRef)), paramss.tail)
+            instantiateCFT(appType.instantiate(paramss.head.termRefs), paramss.tail)
       else pt
 
     def returnProto(owner: Symbol): Type =
@@ -1510,11 +1510,11 @@ class Typer extends Namer
         // by the local type and value parameters. It would be nice if we could look up that
         // type simply in the tpt field of the enclosing function. But the tree argument in
         // a context is an untyped tree, so we cannot extract its type.
-        def instantiateRT(info: Type, psymss: List[List[Symbol]]): Type = info match
+        def instantiateRT(info: Type, psymss: List[Lst[Symbol]]): Type = info match
           case info: PolyType =>
-            instantiateRT(info.instantiate(psymss.head.map(_.typeRef)), psymss.tail)
+            instantiateRT(info.instantiate(psymss.head.typeRefs), psymss.tail)
           case info: MethodType =>
-            instantiateRT(info.instantiate(psymss.head.map(_.termRef)), psymss.tail)
+            instantiateRT(info.instantiate(psymss.head.termRefs), psymss.tail)
           case info =>
             info.widenExpr
         val rt = instantiateRT(owner.info, owner.paramSymss)
@@ -1947,8 +1947,8 @@ class Typer extends Namer
     }
     val DefDef(name, tparams, vparamss, tpt, _) = ddef
     completeAnnotations(ddef, sym)
-    val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
-    val vparamss1 = vparamss.nestedMapConserve(typed(_).asInstanceOf[ValDef])
+    val tparams1 = tparams.mapConserve(typed(_).asInstanceOf[TypeDef])
+    val vparamss1 = vparamss.nestedMapConserveLst(typed(_).asInstanceOf[ValDef])
     vparamss1.foreach(checkNoForwardDependencies)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
@@ -1960,13 +1960,13 @@ class Typer extends Namer
         // we're typing a polymorphic definition's body,
         // so we allow constraining all of its type parameters
         // constructors are an exception as we don't allow constraining type params of classes
-        rhsCtx.gadt.addToConstraint(tparams1.map(_.symbol))
+        rhsCtx.gadt.addToConstraint(tparams1.symbols)
       else if (!sym.isPrimaryConstructor) {
         // otherwise, for secondary constructors we need a context that "knows"
         // that their type parameters are aliases of the class type parameters.
         // See pos/i941.scala
-        rhsCtx.gadt.addToConstraint(tparams1.map(_.symbol))
-        tparams1.lazyZip(sym.owner.typeParams).foreach { (tdef, tparam) =>
+        rhsCtx.gadt.addToConstraint(tparams1.symbols)
+        tparams1.zipped(sym.owner.typeParams).foreach { (tdef, tparam) =>
           val tr = tparam.typeRef
           rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = false)
           rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = true)
@@ -1988,8 +1988,10 @@ class Typer extends Namer
       if (ename != sym.name)
         report.error(em"@alpha annotation ${'"'}$ename${'"'} may not be used on a constructor", ddef.srcPos)
 
-      for (param <- tparams1 ::: vparamss1.flatten)
+      def check(param: MemberDef) =
         checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
+      tparams1.foreach(check)
+      vparamss1.foreach(_.foreach(check(_)))
 
       def checkThisConstrCall(tree: Tree): Unit = tree match {
         case app: Apply if untpd.isSelfConstrCall(app) =>

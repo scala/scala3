@@ -65,14 +65,15 @@ object Inferencing {
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
    *  one of the parameters in `tparams` or `vparamss`.
    */
-  def instantiateDependent(tp: Type, tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit = {
+  def instantiateDependent(tp: Type, tparams: Lst[Symbol], vparamss: List[Lst[Symbol]])(using Context): Unit = {
     val dependentVars = new TypeAccumulator[Set[TypeVar]] {
-      @threadUnsafe lazy val params = (tparams :: vparamss).flatten
+      def isParam(sym: Symbol) =
+        tparams.contains(sym) || vparamss.exists(_.contains(sym))
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
         if !tp.isInstantiated &&
             TypeComparer.bounds(tp.origin)
-              .namedPartsWith(ref => params.contains(ref.symbol))
+              .namedPartsWith(ref => isParam(ref.symbol))
               .nonEmpty =>
           tvars + tp
         case _ =>

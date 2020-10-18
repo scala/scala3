@@ -17,7 +17,7 @@ import scala.jdk.CollectionConverters._
 import collection.mutable
 import java.nio.file.Paths
 import util.Lst
-import Lst.+:
+import util.Lst.{NIL, +:, toLst}
 
 import dotty.tools.dotc.transform.SymUtils._
 
@@ -495,9 +495,9 @@ class ExtractSemanticDB extends Phase:
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 
-    extension (list: List[List[ValDef]]):
+    extension (list: List[Lst[ValDef]]):
       private  inline def isSingleArg = list match
-        case (_::Nil)::Nil => true
+        case (_+:NIL)::Nil => true
         case _             => false
 
     extension (tree: DefDef):
@@ -574,8 +574,8 @@ class ExtractSemanticDB extends Phase:
         symkinds.toSet
 
     private def ctorParams(
-      vparamss: List[List[ValDef]], body: List[Tree])(using Context): Unit =
-      @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
+      vparamss: List[Lst[ValDef]], body: List[Tree])(using Context): Unit =
+      @tu lazy val getters = findGetters(vparamss.flatMap(_.toList.map(_.name)).toSet, body)
       for
         vparams <- vparamss
         vparam  <- vparams

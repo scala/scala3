@@ -135,7 +135,7 @@ class TreeTypeMap(
     transformDefs(trees)._2
 
   def transformDefs[TT <: tpd.Tree](trees: Lst[TT])(using Context): (TreeTypeMap, Lst[TT]) = {
-    val tmap = withMappedSyms(tpd.localSyms(trees))
+    val tmap = withMappedSyms(tpd.localSyms(trees.toList))
     (tmap, tmap.transformSub(trees))
   }
 
@@ -144,7 +144,7 @@ class TreeTypeMap(
     (tmap, tmap.transformSub(trees))
   }
 
-  private def transformVParamss(vparamss: List[List[ValDef]]): (TreeTypeMap, List[List[ValDef]]) = vparamss match {
+  private def transformVParamss(vparamss: List[Lst[ValDef]]): (TreeTypeMap, List[Lst[ValDef]]) = vparamss match {
     case vparams :: rest =>
       val (tmap1, vparams1) = transformDefs(vparams)
       val (tmap2, vparamss2) = tmap1.transformVParamss(rest)

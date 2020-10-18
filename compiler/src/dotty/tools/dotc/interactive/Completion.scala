@@ -268,7 +268,7 @@ object Completion {
 
         val packageDecls = site.accessibleSymbols
         val packageObjectsDecls = packageDecls.filter(_.isPackageObject).flatMap(_.thisType.accessibleSymbols)
-        packageDecls ++ packageObjectsDecls
+        (packageDecls ++ packageObjectsDecls).toSeq
       case _ =>
         def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
           try buf ++= site.member(name).alternatives

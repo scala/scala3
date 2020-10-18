@@ -157,7 +157,7 @@ class StringInterpolatorOpt extends MiniPhase {
           val stringToString = defn.StringContextModule_processEscapes.info.asInstanceOf[MethodType]
 
           val process = tpd.Lambda(stringToString, args =>
-            if (isRaw) args.head else ref(defn.StringContextModule_processEscapes).appliedToArgs(args.toLst))
+            if (isRaw) args.head else ref(defn.StringContextModule_processEscapes).appliedToArgs(args))
 
           evalOnce(pre) { sc =>
             val parts = sc.select(defn.StringContext_parts)

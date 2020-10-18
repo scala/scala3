@@ -15,6 +15,8 @@ import NameOps._
 import NameKinds._
 import ResolveSuper._
 import reporting.IllegalSuperAccessor
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 /** This phase implements super accessors in classes that need them.
  *
@@ -45,14 +47,14 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val ops = new MixinOps(cls, thisPhase)
     import ops._
 
-    def superAccessors(mixin: ClassSymbol): List[Tree] =
-      for (superAcc <- mixin.info.decls.filter(_.isSuperAccessor))
+    def superAccessors(mixin: ClassSymbol): Lst[Tree] =
+      for (superAcc <- mixin.info.decls.filter(_.isSuperAccessor).toLst)
         yield {
           util.Stats.record("super accessors")
           polyDefDef(mkForwarderSym(superAcc.asTerm), forwarderRhsFn(rebindSuper(cls, superAcc)))
       }
 
-    val overrides = mixins.flatMap(superAccessors)
+    val overrides = mixins.toLst.flatMap(superAccessors)
 
     cpy.Template(impl)(body = overrides ::: impl.body)
   }

@@ -58,6 +58,7 @@ object Scala2Unpickler {
 
   def addConstructorTypeParams(denot: SymDenotation)(using Context): Unit = {
     assert(denot.isConstructor)
+    assert(denot.owner.typeParams != null, denot.owner)
     denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
 
@@ -542,12 +543,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   class LocalUnpickler extends LazyType {
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
 
-    def paramssOfType(tp: Type): List[List[Symbol]] = tp match
-      case TempPolyType(tparams, restpe) => tparams :: paramssOfType(restpe)
+    def paramssOfType(tp: Type): List[Lst[Symbol]] = tp match
+      case TempPolyType(tparams, restpe) => tparams.toLst :: paramssOfType(restpe)
       case mt: MethodType =>
         val params = paramsOfMethodType.remove(mt)
         val rest = paramssOfType(mt.resType)
-        if params == null then rest else params :: rest
+        if params == null then rest else params.toLst :: rest
       case _ => Nil
 
     def complete(denot: SymDenotation)(using Context): Unit = try {
@@ -567,7 +568,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if denot.is(Method) then
           var params = paramssOfType(tp)
           if denot.isConstructor && denot.owner.typeParams.nonEmpty then
-            params = denot.owner.typeParams :: params
+            params = denot.owner.typeParams.toLst :: params
           denot.rawParamss = params
 
         denot match {

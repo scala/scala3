@@ -465,7 +465,7 @@ trait Applications extends Compatibility {
         // it's crucial that the type tree is not copied directly as argument to
         // `cpy$default$1`. If it was, the variable `X'` would already be interpolated
         // when typing the default argument, which is too early.
-        spliceMeth(meth, fn).appliedToTypes(targs.tpes)
+        spliceMeth(meth, fn).appliedToTypes(targs.map(_.tpe))
       case _ => meth
     }
 
@@ -1507,7 +1507,7 @@ trait Applications extends Compatibility {
             fullyDefinedType(tp1Params, "type parameters of alternative", alt1.symbol.span)
 
             val tparams = newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateParamInfos(_))
-            isAsSpecific(alt1, tp1.instantiate(tparams.map(_.typeRef)), alt2, tp2)
+            isAsSpecific(alt1, tp1.instantiate(tparams.typeRefs), alt2, tp2)
           }
         case _ => // (3)
           tp2 match

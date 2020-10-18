@@ -17,6 +17,9 @@ import Decorators._
 
 import language.implicitConversions
 import scala.annotation.tailrec
+import scala.collection.mutable
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 object SymUtils {
 
@@ -139,11 +142,18 @@ object SymUtils {
     loop(from, to)
   }
 
+  def subst(from: Lst[Symbol], to: Lst[Symbol]): Symbol =
+    var i = 0
+    while i < from.length do
+      if from(i) eq self then return to(i)
+      i += 1
+    self
+
   def accessorNamed(name: TermName)(using Context): Symbol =
     self.owner.info.decl(name).suchThat(_.is(Accessor)).symbol
 
-  def caseAccessors(using Context): List[Symbol] =
-    self.info.decls.filter(_.is(CaseAccessor))
+  def caseAccessors(using Context): Lst[Symbol] =
+    self.info.decls.filter(_.is(CaseAccessor)).toLst
 
   def getter(using Context): Symbol =
     if (self.isGetter) self else accessorNamed(self.asTerm.name.getterName)
@@ -257,4 +267,28 @@ object SymUtils {
     self.asClass.givenSelfType.stripOpaques.asSeenFrom(site, self)
 
   }
+
+  extension [T](syms: Lst[Symbol])(using Context)
+    def termRefs: List[TermRef] =
+      syms.length match
+        case 0 => Nil
+        case 1 => syms(0).termRef :: Nil
+        case 2 => syms(0).termRef :: syms(1).termRef :: Nil
+        case 3 => syms(0).termRef :: syms(1).termRef :: syms(2).termRef :: Nil
+        case _ =>
+          val buf = new mutable.ListBuffer[TermRef]
+          syms.foreachInlined(sym => buf += sym.termRef)
+          buf.toList
+
+    def typeRefs: List[TypeRef] =
+      syms.length match
+        case 0 => Nil
+        case 1 => syms(0).typeRef :: Nil
+        case 2 => syms(0).typeRef :: syms(1).typeRef :: Nil
+        case 3 => syms(0).typeRef :: syms(1).typeRef :: syms(2).typeRef :: Nil
+        case _ =>
+          val buf = new mutable.ListBuffer[TypeRef]
+          syms.foreachInlined(sym => buf += sym.typeRef)
+          buf.toList
+  end extension
 }

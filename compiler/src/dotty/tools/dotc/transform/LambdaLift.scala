@@ -456,7 +456,7 @@ object LambdaLift {
         tree match {
           case tree: DefDef =>
             cpy.DefDef(tree)(
-                vparamss = tree.vparamss.map(freeParamDefs ++ _),
+                vparamss = tree.vparamss.map(freeParamDefs ::: _),
                 rhs =
                   if (sym.isPrimaryConstructor && !sym.owner.is(Trait)) copyParams(tree.rhs)
                   else tree.rhs)

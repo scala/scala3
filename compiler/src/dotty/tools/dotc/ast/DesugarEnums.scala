@@ -133,7 +133,7 @@ object DesugarEnums {
         .withFlags(Private | Synthetic)
 
     val valuesDef =
-      DefDef(nme.values, Nil, Nil, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
+      DefDef(nme.values, NIL, Nil, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
         .withFlags(Synthetic)
 
     val valuesOfBody: Tree =
@@ -145,7 +145,7 @@ object DesugarEnums {
         CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, enumValue)
       ) ::: defaultCase :: Nil
       Match(Ident(nme.nameDollar), stringCases.toLst)
-    val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.nameDollar, defn.StringType) :: Nil),
+    val valueOfDef = DefDef(nme.valueOf, NIL, List(Lst(param(nme.nameDollar, defn.StringType))),
       TypeTree(), valuesOfBody)
         .withFlags(Synthetic)
 
@@ -198,8 +198,8 @@ object DesugarEnums {
       self = EmptyValDef,
       body = fieldMethods.toLst
     ).withAttachment(ExtendsSingletonMirror, ()))
-    DefDef(nme.DOLLAR_NEW, Nil,
-        List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
+    DefDef(nme.DOLLAR_NEW, NIL,
+        List(Lst(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
   }
 
@@ -212,8 +212,8 @@ object DesugarEnums {
    */
   def typeParamIsReferenced(
     enumTypeParams: List[TypeSymbol],
-    caseTypeParams: List[TypeDef],
-    vparamss: List[List[ValDef]],
+    caseTypeParams: Lst[TypeDef],
+    vparamss: List[Lst[ValDef]],
     parents: List[Tree])(using Context): Boolean = {
 
     object searchRef extends UntypedTreeAccumulator[Boolean] {
@@ -240,7 +240,7 @@ object DesugarEnums {
         }
       }
       def apply(tree: Tree)(using Context): Boolean =
-        underBinders(caseTypeParams.toLst, apply(false, tree))
+        underBinders(caseTypeParams, apply(false, tree))
     }
 
     def typeHasRef(tpt: Tree) = searchRef(tpt)
@@ -253,7 +253,7 @@ object DesugarEnums {
       case parent => parent.isType && typeHasRef(parent)
     }
 
-    vparamss.nestedExists(valDefHasRef) || parents.exists(parentHasRef)
+    vparamss.nestedExistsLst(valDefHasRef) || parents.exists(parentHasRef)
   }
 
   /** A pair consisting of
@@ -284,13 +284,13 @@ object DesugarEnums {
   private def isJavaEnum(using Context): Boolean = enumClass.derivesFrom(defn.JavaEnumClass)
 
   def ordinalMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body).withAddedFlags(Synthetic)
+    DefDef(nme.ordinal, NIL, Nil, TypeTree(defn.IntType), body).withAddedFlags(Synthetic)
 
   def ordinalMethLit(ord: Int)(using Context): DefDef =
     ordinalMeth(Literal(Constant(ord)))
 
   def fromOrdinalMeth(body: Tree => Tree)(using Context): DefDef =
-    DefDef(nme.fromOrdinal, Nil, (param(nme.ordinal, defn.IntType) :: Nil) :: Nil,
+    DefDef(nme.fromOrdinal, NIL, Lst(param(nme.ordinal, defn.IntType)) :: Nil,
       rawRef(enumClass.typeRef), body(Ident(nme.ordinal))).withFlags(Synthetic)
 
   /** Expand a module definition representing a parameterless enum case */

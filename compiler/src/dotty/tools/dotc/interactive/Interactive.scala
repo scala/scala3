@@ -114,7 +114,7 @@ object Interactive {
           val paramSymbol =
             for {
               DefDef(_, _, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
-              param <- paramss.flatten.find(_.name == name)
+              param <- paramss.flattenLst.find(_.name == name)
             }
             yield param.symbol
           List(paramSymbol.getOrElse(fn.symbol))

@@ -111,7 +111,7 @@ object Instances extends Common:
         println(summon[Context].value)
       }
       locally {
-        given d[T] as D[T]
+        given dd[T] as D[T]
         println(summon[D[Int]])
       }
       locally {

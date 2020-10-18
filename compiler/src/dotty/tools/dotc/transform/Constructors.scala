@@ -129,17 +129,17 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def transformTemplate(tree: Template)(using Context): Tree = {
     val cls = ctx.owner.asClass
 
-    val constr @ DefDef(nme.CONSTRUCTOR, Nil, vparams :: Nil, _, EmptyTree) = tree.constr
+    val constr @ DefDef(nme.CONSTRUCTOR, NIL, vparams :: Nil, _, EmptyTree) = tree.constr
 
     // Produce aligned accessors and constructor parameters. We have to adjust
     // for any outer parameters, which are last in the sequence of original
     // parameter accessors but come first in the constructor parameter list.
     val accessors = cls.paramAccessors.filterNot(x => x.isSetter)
     val vparamsWithOuterLast = vparams match {
-      case vparam :: rest if vparam.name == nme.OUTER => rest ::: vparam :: Nil
+      case vparam +: rest if vparam.name == nme.OUTER => rest :+ vparam
       case _ => vparams
     }
-    val paramSyms = vparamsWithOuterLast map (_.symbol)
+    val paramSyms: Lst[Symbol] = vparamsWithOuterLast map (_.symbol)
 
     // Adjustments performed when moving code into the constructor:
     //  (1) Replace references to param accessors by constructor parameters
@@ -234,7 +234,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
                 else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
               constrStats += Apply(ref(setter), Lst(intoConstr(stat.rhs, sym).withSpan(stat.span)))
             clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
-          case stat @ DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
+          case stat @ DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) +: _) :: Nil, _, _) =>
             clsStats += mapOuter(outerParam.symbol).transform(stat)
           case stat: DefTree =>
             clsStats += stat
@@ -247,20 +247,20 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val copyParams = accessors flatMap { acc =>
       if (!isRetained(acc)) {
         dropped += acc
-        Nil
+        NIL
       }
       else if (!isRetained(acc.field)) { // It may happen for unit fields, tests/run/i6987.scala
         dropped += acc.field
-        Nil
+        NIL
       }
       else {
         val param = acc.subst(accessors, paramSyms)
         if (param.hasAnnotation(defn.ConstructorOnlyAnnot))
           report.error(em"${acc.name} is marked `@constructorOnly` but it is retained as a field in ${acc.owner}", acc.srcPos)
         val target = if (acc.is(Method)) acc.field else acc
-        if (!target.exists) Nil // this case arises when the parameter accessor is an alias
+        if (!target.exists) NIL // this case arises when the parameter accessor is an alias
         else {
-          val assigns = Assign(ref(target), ref(param)).withSpan(tree.span) :: Nil
+          val assigns = Lst(Assign(ref(target), ref(param)).withSpan(tree.span))
           if (acc.name != nme.OUTER) assigns
           else {
             // insert test: if ($outer eq null) throw new NullPointerException
@@ -268,7 +268,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
               If(ref(param).select(defn.Object_eq).appliedTo(nullLiteral),
                  Throw(New(defn.NullPointerExceptionClass.typeRef, NIL)),
                  unitLiteral)
-            nullTest :: assigns
+            nullTest +: assigns
           }
         }
       }
@@ -286,7 +286,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val (superCalls, followConstrStats) = splitAtSuper(constrStats.toLst)
 
     val mappedSuperCalls = vparams match {
-      case (outerParam @ ValDef(nme.OUTER, _, _)) :: _ =>
+      case (outerParam @ ValDef(nme.OUTER, _, _)) +: _ =>
         superCalls.map(mapOuter(outerParam.symbol).transform)
       case _ => superCalls
     }

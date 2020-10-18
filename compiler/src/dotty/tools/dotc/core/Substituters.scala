@@ -1,6 +1,9 @@
-package dotty.tools.dotc.core
+package dotty.tools.dotc
+package core
 
 import Types._, Symbols._, Contexts._, Decorators._
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
@@ -52,6 +55,24 @@ object Substituters:
           .mapOver(tp)
     }
 
+  final def subst(tp: Type, from: Lst[Symbol], to: Lst[Type], theMap: SubstLstMap)(using Context): Type =
+    tp match {
+      case tp: NamedType =>
+        val sym = tp.symbol
+        val len = from.length min to.length
+        var i = 0
+        while i < len do
+          if (from(i) eq sym) return to(i)
+          i += 1
+        if (tp.prefix `eq` NoPrefix) tp
+        else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
+      case _: ThisType | _: BoundType =>
+        tp
+      case _ =>
+        (if (theMap != null) theMap else new SubstLstMap(from, to))
+          .mapOver(tp)
+    }
+
   final def subst(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstMap)(using Context): Type =
     tp match {
       case tp: NamedType =>
@@ -69,6 +90,32 @@ object Substituters:
         tp
       case _ =>
         (if (theMap != null) theMap else new SubstMap(from, to))
+          .mapOver(tp)
+    }
+
+  final def substSym(tp: Type, from: Lst[Symbol], to: Lst[Symbol], theMap: SubstSymLstMap)(using Context): Type =
+    tp match {
+      case tp: NamedType =>
+        val sym = tp.symbol
+        val len = from.length
+        var i = 0
+        while i < len do
+          if from(i) eq sym then return substSym(tp.prefix, from, to, theMap).select(to(i))
+          i += 1
+        if (tp.prefix `eq` NoPrefix) tp
+        else tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
+      case tp: ThisType =>
+        val sym = tp.cls
+        val len = from.length
+        var i = 0
+        while i < len do
+          if from(i) eq sym then return to(i).asClass.thisType
+          i += 1
+        tp
+      case _: BoundType =>
+        tp
+      case _ =>
+        (if (theMap != null) theMap else new SubstSymLstMap(from, to))
           .mapOver(tp)
     }
 
@@ -177,7 +224,15 @@ object Substituters:
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
+  final class SubstLstMap(from: Lst[Symbol], to: Lst[Type])(using Context) extends DeepTypeMap {
+    def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
+  }
+
   final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap {
+    def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
+  }
+
+  final class SubstSymLstMap(from: Lst[Symbol], to: Lst[Symbol])(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
   }
 

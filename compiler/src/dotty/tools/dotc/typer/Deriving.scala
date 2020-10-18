@@ -17,6 +17,8 @@ import Inferencing._
 import transform.TypeUtils._
 import transform.SymUtils._
 import ErrorReporting.errorTree
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 /** A typer mixin that implements type class derivation functionality */
 trait Deriving {
@@ -268,15 +270,15 @@ trait Deriving {
       import tpd._
 
       /** The type class instance definition with symbol `sym` */
-      def typeclassInstance(sym: Symbol)(using Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) = {
-        (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) =>
+      def typeclassInstance(sym: Symbol)(using Context): Lst[Type] => (List[Lst[tpd.Tree]] => tpd.Tree) = {
+        (tparamRefs: Lst[Type]) => (paramRefss: List[Lst[tpd.Tree]]) =>
           val tparams = tparamRefs.map(_.typeSymbol.asType)
-          val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)
+          val params = if (paramRefss.isEmpty) NIL else paramRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter(_))
           params.foreach(ctx.enter(_))
           def instantiated(info: Type): Type = info match {
-            case info: PolyType => instantiated(info.instantiate(tparamRefs))
-            case info: MethodType => info.instantiate(params.map(_.termRef))
+            case info: PolyType => instantiated(info.instantiate(tparamRefs.toList))
+            case info: MethodType => info.instantiate(params.termRefs)
             case info => info.widenExpr
           }
           def companionRef(tp: Type): TermRef = tp match {

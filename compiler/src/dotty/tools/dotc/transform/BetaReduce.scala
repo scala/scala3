@@ -63,7 +63,7 @@ object BetaReduce:
   /** Beta-reduces a call to `ddef` with arguments `argSyms` */
   def apply(ddef: DefDef, args: Lst[Tree])(using Context) =
     val bindings = List.newBuilder[ValDef]
-    val vparams = ddef.vparamss.iterator.flatten.toList
+    val vparams = ddef.vparamss.flattenLst
     assert(args.length == vparams.length)
     val argSyms =
       for (arg, param) <- args.zip(vparams) yield
@@ -80,7 +80,7 @@ object BetaReduce:
     val expansion = TreeTypeMap(
       oldOwners = ddef.symbol :: Nil,
       newOwners = ctx.owner :: Nil,
-      substFrom = vparams.map(_.symbol),
+      substFrom = vparams.symbols,
       substTo = argSyms.toList
     ).transform(ddef.rhs)
 

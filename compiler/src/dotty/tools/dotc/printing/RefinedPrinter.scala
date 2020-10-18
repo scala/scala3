@@ -494,11 +494,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             toTextLocal(tpt) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
       case LambdaTypeTree(tparams, body) =>
         changePrec(GlobalPrec) {
-          tparamsText(tparams.toList) ~ " =>> " ~ toText(body)
+          tparamsText(tparams) ~ " =>> " ~ toText(body)
         }
       case TermLambdaTypeTree(params, body) =>
         changePrec(GlobalPrec) {
-          paramsText(params.toList) ~ " =>> " ~ toText(body)
+          paramsText(params) ~ " =>> " ~ toText(body)
         }
       case MatchTypeTree(bound, sel, cases) =>
         changePrec(GlobalPrec) {
@@ -540,7 +540,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case rhs: TypeBoundsTree =>
             typeDefText(tparamsTxt, toText(rhs))
           case LambdaTypeTree(tparams, body) if printMemberArgs =>
-            recur(body, tparamsText(tparams.toList), false)
+            recur(body, tparamsText(tparams), false)
           case rhs: TypeTree if isBounds(rhs.typeOpt) =>
             typeDefText(tparamsTxt, toText(rhs))
           case rhs =>
@@ -776,10 +776,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else treeText
     }
 
-  def tparamsText[T >: Untyped](params: List[Tree[T]]): Text =
+  def tparamsText[T >: Untyped](params: Lst[Tree[T]]): Text =
     "[" ~ toText(params, ", ") ~ "]" provided params.nonEmpty
 
-  def addVparamssText[T >: Untyped](leading: Text, vparamss: List[List[ValDef[T]]]): Text =
+  def addVparamssText[T >: Untyped](leading: Text, vparamss: List[Lst[ValDef[T]]]): Text =
     vparamss.foldLeft(leading)((txt, params) => txt ~ paramsText(params))
 
   protected def valDefToText[T >: Untyped](tree: ValDef[T]): Text = {
@@ -791,7 +791,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
   }
 
-  private def paramsText[T>: Untyped](params: List[ValDef[T]]) =
+  private def paramsText[T>: Untyped](params: Lst[ValDef[T]]) =
     "(" ~ keywordText("using ").provided(params.nonEmpty && params.head.mods.is(Given))
         ~ keywordText("erased ").provided(params.nonEmpty && params.head.mods.is(Erased))
         ~ toText(params, ", ") ~ ")"

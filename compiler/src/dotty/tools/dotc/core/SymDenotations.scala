@@ -25,6 +25,7 @@ import reporting._
 import collection.mutable
 import transform.TypeUtils._
 import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 import scala.annotation.internal.sharable
 
@@ -57,7 +58,7 @@ object SymDenotations {
     private var myFlags: FlagSet = adaptFlags(initFlags)
     private var myPrivateWithin: Symbol = initPrivateWithin
     private var myAnnotations: List[Annotation] = Nil
-    private var myParamss: List[List[Symbol]] = Nil
+    private var myParamss: List[Lst[Symbol]] = Nil
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
@@ -287,15 +288,15 @@ object SymDenotations {
     /** If this is a method, the parameter symbols, by section.
      *  Both type and value parameters are included. Empty sections are skipped.
      */
-    final def rawParamss: List[List[Symbol]] = myParamss
-    final def rawParamss_=(pss: List[List[Symbol]]): Unit =
+    final def rawParamss: List[Lst[Symbol]] = myParamss
+    final def rawParamss_=(pss: List[Lst[Symbol]]): Unit =
       myParamss = pss
 
-    final def setParamss(tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit =
+    final def setParamss(tparams: Lst[Symbol], vparamss: List[Lst[Symbol]])(using Context): Unit =
       rawParamss = (tparams :: vparamss).filterConserve(!_.isEmpty)
 
-    final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
-      setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))
+    final def setParamssFromDefs(tparams: Lst[TypeDef[?]], vparamss: List[Lst[ValDef[?]]])(using Context): Unit =
+      setParamss(tparams.map(_.symbol), vparamss.nestedMapLst(_.symbol))
 
 
     /** The symbols of each type parameter list and value parameter list of this
@@ -305,24 +306,24 @@ object SymDenotations {
      *  Makes use of `rawParamss` when present, or constructs fresh parameter symbols otherwise.
      *  This method can be allocation-heavy.
      */
-    final def paramSymss(using Context): List[List[Symbol]] =
+    final def paramSymss(using Context): List[Lst[Symbol]] =
 
-      def recurWithParamss(info: Type, paramss: List[List[Symbol]]): List[List[Symbol]] =
+      def recurWithParamss(info: Type, paramss: List[Lst[Symbol]]): List[Lst[Symbol]] =
         info match
           case info: LambdaType =>
-            if info.paramNames.isEmpty then Nil :: recurWithParamss(info.resType, paramss)
+            if info.paramNames.isEmpty then NIL :: recurWithParamss(info.resType, paramss)
             else paramss.head :: recurWithParamss(info.resType, paramss.tail)
           case _ =>
             Nil
 
-      def recurWithoutParamss(info: Type): List[List[Symbol]] = info match
+      def recurWithoutParamss(info: Type): List[Lst[Symbol]] = info match
         case info: LambdaType =>
           val params = info.paramNames.lazyZip(info.paramInfos).map((pname, ptype) =>
             newSymbol(symbol, pname, SyntheticParam, ptype))
           val prefs = params.map(_.namedType)
           for param <- params do
             param.info = param.info.substParams(info, prefs)
-          params :: recurWithoutParamss(info.instantiate(prefs))
+          params.toLst :: recurWithoutParamss(info.instantiate(prefs))
         case _ =>
           Nil
 
@@ -334,10 +335,10 @@ object SymDenotations {
      *  @pre this symbol is an extension method
      */
     final def extensionParam(using Context): Symbol =
-      def leadParam(paramss: List[List[Symbol]]): Symbol = paramss match
-        case (param :: _) :: paramss1 if param.isType => leadParam(paramss1)
-        case _ :: (snd :: Nil) :: _ if name.isRightAssocOperatorName => snd
-        case (fst :: Nil) :: _ => fst
+      def leadParam(paramss: List[Lst[Symbol]]): Symbol = paramss match
+        case (param +: _) :: paramss1 if param.isType => leadParam(paramss1)
+        case _ :: Lst(snd) :: _ if name.isRightAssocOperatorName => snd
+        case Lst(fst) :: _ => fst
         case _ => NoSymbol
       assert(isAllOf(ExtensionMethod))
       leadParam(rawParamss)
@@ -900,7 +901,7 @@ object SymDenotations {
       else if is(NoDefaultParams) then false
       else
         val result =
-          rawParamss.nestedExists(_.is(HasDefault))
+          rawParamss.nestedExistsLst(_.is(HasDefault))
           || allOverriddenSymbols.exists(_.hasDefaultParams)
         setFlag(if result then HasDefaultParams else NoDefaultParams)
         result
@@ -1469,7 +1470,7 @@ object SymDenotations {
       info: Type = null,
       privateWithin: Symbol = null,
       annotations: List[Annotation] = null,
-      rawParamss: List[List[Symbol]] = null)(
+      rawParamss: List[Lst[Symbol]] = null)(
         using Context): SymDenotation = {
       // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
@@ -2118,8 +2119,8 @@ object SymDenotations {
     /** The term parameter accessors of this class.
      *  Both getters and setters are returned in this list.
      */
-    def paramAccessors(using Context): List[Symbol] =
-      unforcedDecls.filter(_.is(ParamAccessor))
+    def paramAccessors(using Context): Lst[Symbol] =
+      unforcedDecls.filter(_.is(ParamAccessor)).toLst
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.

@@ -301,7 +301,7 @@ import util.Lst.{NIL, +:, toLst}
           sym <- bc.info.decls.filter(sym =>
             sym.isType == name.isTypeName
             && !sym.isConstructor
-            && !sym.flagsUNSAFE.isOneOf(Synthetic | Private))
+            && !sym.flagsUNSAFE.isOneOf(Synthetic | Private)).iterator
         yield sym.name.show
 
       // Calculate Levenshtein distance

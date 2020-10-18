@@ -75,7 +75,7 @@ trait ImportSuggestions:
           lookInside(dcl)
           && !seenNames.contains(dcl.name)
           && { seenNames += dcl.name; true }
-        }
+        }.toList
       }
 
     def rootsStrictlyIn(ref: Type)(using Context): List[TermRef] =
@@ -87,7 +87,7 @@ trait ImportSuggestions:
               || refSym == defn.JavaPackageClass     // As an optimization, don't search java...
               || refSym == defn.JavaLangPackageClass // ... or java.lang.
           then Nil
-          else refSym.info.decls.filter(lookInside)
+          else refSym.info.decls.filter(lookInside).toList
         else if refSym.infoOrCompleter.isInstanceOf[StubInfo] then
           Nil // Don't chase roots that do not exist
         else
@@ -120,7 +120,7 @@ trait ImportSuggestions:
           else
             if ctx.scope eq ctx.outer.scope then Nil
             else ctx.scope
-              .filter(lookInside(_))
+              .filter(lookInside(_)).toList
               .flatMap(sym => rootsIn(sym.termRef))
         val imported =
           if ctx.importInfo eq ctx.outer.importInfo then Nil

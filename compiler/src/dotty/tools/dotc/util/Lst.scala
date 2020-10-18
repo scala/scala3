@@ -436,6 +436,9 @@ object Lst:
       case elem =>
         single[Int](0)
 
+  extension [T: ClassTag, U: math.Ordering](xs: Lst[T])
+    def sortBy(f: T => U): Lst[T] = fromArray(xs.toArray.sortBy(f))
+
   extension [T: ClassTag](xs: Lst[T]):
     def toArray: Array[T] =
       val result = new Array[T](xs.length)
@@ -539,14 +542,11 @@ object Lst:
         case x: T @unchecked =>
           op(x, z)
 
-    def lazyZip(ys: IterableOnce[U]) = LazyZip2(xs, ys)
+    def zipped(ys: Lst[U]) = LazyZip2(xs, ys.iterator)
+    def zipped(ys: IterableOnce[U]) = LazyZip2(xs, ys)
 
     def zip(ys: Lst[U]): Lst[(T, U)] = xs.zipWith(ys)((_, _))
-    def zip(ys: IterableOnce[U]): Lst[(T, U)] = xs.lazyZip(ys).map((_, _))
-
-    def zipForeach(ys: IterableOnce[U])(op: (T, U) => Unit): Unit =
-      val yit = ys.iterator
-      xs.foreach(x => if yit.hasNext then op(x, yit.next))
+    def zip(ys: IterableOnce[U]): Lst[(T, U)] = xs.zipWith(ys)((_, _))
 
     @infix def eqLst(ys: Lst[U]) = eq(xs, ys)
 
@@ -840,7 +840,8 @@ object Lst:
   end Buffer
 
   class WithFilter[T](xs: Lst[T], p: T => Boolean):
-    def lazyZip[U](ys: IterableOnce[U]) =
+    def zipped[U](ys: Lst[U]): LazyZip2[T, U] = zipped(ys.iterator)
+    def zipped[U](ys: IterableOnce[U]): LazyZip2[T, U] =
       LazyZip2(xs, ys).withFilter((x, y) => p(x))
 
     def map[U](f: T => U): Lst[U] =
@@ -862,7 +863,8 @@ object Lst:
   class LazyZip2[T, U](xs: Lst[T], ys: IterableOnce[U]):
     self =>
 
-    def lazyZip[V](zs: IterableOnce[V]): LazyZip3[T, U, V] = new LazyZip3(xs, ys, zs):
+    def zipped[V](zs: Lst[V]): LazyZip3[T, U, V] = zipped(zs.iterator)
+    def zipped[V](zs: IterableOnce[V]): LazyZip3[T, U, V] = new LazyZip3(xs, ys, zs):
       override def include(x: T, y: U, z: V) = self.include(x, y)
 
     def map[V](f: (T, U) => V): Lst[V] =
@@ -918,7 +920,7 @@ object Lst:
       override def include(x: T, y: U, z: V) = self.include(x, y, z) && p(x, y, z)
   end LazyZip3
 
-  final class UnapplyWrapper[T](val xs: Lst[T]) extends AnyVal with Product:
+  final class UnapplyLeftWrapper[T](val xs: Lst[T]) extends AnyVal with Product:
     def canEqual(that: Any) = true
     def isEmpty = xs.isEmpty
     def productArity = 2
@@ -926,9 +928,19 @@ object Lst:
     def _1: T = xs.head
     def _2: Lst[T] = xs.tail
 
+  final class UnapplyRightWrapper[T](val xs: Lst[T]) extends AnyVal with Product:
+    def canEqual(that: Any) = true
+    def isEmpty = xs.isEmpty
+    def productArity = 2
+    def productElement(n: Int): Any = if n == 0 then _1 else _2
+    def _1: Lst[T] = xs.init
+    def _2: T = xs.last
+
   object +: :
-    def unapply[T](xs: Lst[T]): UnapplyWrapper[T] = UnapplyWrapper(xs)
-  end +:
+    def unapply[T](xs: Lst[T]): UnapplyLeftWrapper[T] = UnapplyLeftWrapper(xs)
+
+  object :+ :
+    def unapply[T](xs: Lst[T]): UnapplyRightWrapper[T] = UnapplyRightWrapper(xs)
 
   trait Show[T]:
     extension (x: T) def show: String

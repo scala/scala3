@@ -100,11 +100,11 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       toBeRemoved += other
     }
 
-    def bridgeRhs(argss: List[List[Tree]]) = {
+    def bridgeRhs(argss: List[Lst[Tree]]) = {
       assert(argss.tail.isEmpty)
       val ref = This(root).select(member)
       if (member.info.isParameterless) ref // can happen if `member` is a module
-      else Erasure.partialApply(ref, argss.head.toLst)
+      else Erasure.partialApply(ref, argss.head)
     }
 
     bridges += DefDef(bridge, bridgeRhs(_).withSpan(bridge.span))

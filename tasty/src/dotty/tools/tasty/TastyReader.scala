@@ -1,6 +1,8 @@
 package dotty.tools.tasty
 
 import collection.mutable
+//import dotty.tools.dotc.util.Lst
+//import Lst.{NIL, +:, toLst}
 
 import TastyBuffer._
 
@@ -126,7 +128,14 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     assert(bp == index(end))
     buf.toList
   }
-
+/*
+  def untilLst[T](end: Addr)(op: => T): Lst[T] = {
+    val buf = Lst.Buffer[T]()
+    while (bp < index(end)) buf += op
+    assert(bp == index(end))
+    buf.toLst
+  }
+*/
   /** If before given `end` address, the result of `op`, otherwise `default` */
   def ifBefore[T](end: Addr)(op: => T, default: T): T =
     if (bp < index(end)) op else default
@@ -137,4 +146,12 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     while (cond) buf += op
     buf.toList
   }
+/*
+  /** Perform `op` while cindition `cond` holds and collect results in a list. */
+  def collectWhileLst[T](cond: => Boolean)(op: => T): Lst[T] = {
+    val buf = Lst.Buffer[T]()
+    while cond do buf += op
+    buf.toLst
+  }
+*/
 }

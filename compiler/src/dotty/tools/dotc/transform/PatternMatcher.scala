@@ -314,7 +314,7 @@ object PatternMatcher {
       /** Plan for matching the result of an unapply against argument patterns `args` */
       def unapplyPlan(unapp: Tree, args: Lst[Tree]): Plan = {
         def caseClass = unapp.symbol.owner.linkedClass
-        lazy val caseAccessors = caseClass.caseAccessors.toLst.filter(_.is(Method))
+        lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
 
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)

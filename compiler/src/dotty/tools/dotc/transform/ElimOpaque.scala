@@ -15,6 +15,8 @@ import DenotTransformers._
 import TypeUtils._
 import Names._
 import ast.Trees._
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 object ElimOpaque {
   val name: String = "elimOpaque"
@@ -67,7 +69,7 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
       tree match
         case Apply(Select(receiver, name: TermName), args)
         if atPhase(thisPhase)(receiver.tpe.widenDealias.typeSymbol.isOpaqueAlias) =>
-          applyOverloaded(receiver, name, args, Nil, defn.BooleanType)
+          applyOverloaded(receiver, name, args, NIL, defn.BooleanType)
         case _ =>
           tree
     else

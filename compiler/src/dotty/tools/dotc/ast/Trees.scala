@@ -763,8 +763,8 @@ object Trees {
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
-  case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
-      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
+  case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: Lst[TypeDef[T]],
+      vparamss: List[Lst[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
     assert(tpt != genericEmptyTree)
@@ -1212,8 +1212,8 @@ object Trees {
         case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs)(sourceFile(tree)))
       }
-      def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(using Context): DefDef = tree match {
-        case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
+      def DefDef(tree: Tree)(name: TermName, tparams: Lst[TypeDef], vparamss: List[Lst[ValDef]], tpt: Tree, rhs: LazyTree)(using Context): DefDef = tree match {
+        case tree: DefDef if (name == tree.name) && (tparams eqLst tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs)(sourceFile(tree)))
       }
       def TypeDef(tree: Tree)(name: TypeName, rhs: Tree)(using Context): TypeDef = tree match {
@@ -1255,7 +1255,7 @@ object Trees {
         UnApply(tree: Tree)(fun, implicits, patterns)
       def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(using Context): ValDef =
         ValDef(tree: Tree)(name, tpt, rhs)
-      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(using Context): DefDef =
+      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: Lst[TypeDef] = tree.tparams, vparamss: List[Lst[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(using Context): DefDef =
         DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
       def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs)(using Context): TypeDef =
         TypeDef(tree: Tree)(name, rhs)
@@ -1368,7 +1368,7 @@ object Trees {
               }
             case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
               inContext(localCtx) {
-                cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(tree.rhs))
+                cpy.DefDef(tree)(name, transformSub(tparams), vparamss.mapconserve(vs => transformSub2(vs)), transform(tpt), transform(tree.rhs))
               }
             case tree @ TypeDef(name, rhs) =>
               inContext(localCtx) {
@@ -1402,6 +1402,8 @@ object Trees {
       def transformSub[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
         transform(trees).asInstanceOf[List[Tr]]
       def transformSub[Tr <: Tree](trees: Lst[Tr])(using Context): Lst[Tr] =
+        transform(trees).asInstanceOf[Lst[Tr]]
+      def transformSub2[Tr <: Tree](trees: Lst[Tr])(using Context): Lst[Tr] =
         transform(trees).asInstanceOf[Lst[Tr]]
 
       protected def transformMoreCases(tree: Tree)(using Context): Tree = {
@@ -1585,7 +1587,7 @@ object Trees {
      *  @param expectedType  An expected type of the application used to guide overloading resolution
      */
     def applyOverloaded(
-        receiver: tpd.Tree, method: TermName, args: Lst[Tree], targs: List[Type],
+        receiver: tpd.Tree, method: TermName, args: Lst[Tree], targs: Lst[Type],
         expectedType: Type)(using parentCtx: Context): tpd.Tree = {
       given ctx as Context = parentCtx.retractMode(Mode.ImplicitsEnabled)
       import dotty.tools.dotc.ast.tpd.TreeOps
@@ -1624,7 +1626,7 @@ object Trees {
 
 
     def resolveConstructor(atp: Type, args: Lst[Tree])(using Context): tpd.Tree = {
-      val targs = atp.argTypes
+      val targs = atp.argTypes.toLst
       withoutMode(Mode.PatternOrTypeBits) {
         applyOverloaded(tpd.New(atp.typeConstructor), nme.CONSTRUCTOR, args, targs, atp)
       }

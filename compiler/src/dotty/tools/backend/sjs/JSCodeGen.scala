@@ -1033,7 +1033,7 @@ class JSCodeGen()(using genCtx: Context) {
     ) {
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
-      val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
+      val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol).toList
 
       val isJSClassConstructor =
         sym.isClassConstructor && currentClassSym.isNonNativeJSClass

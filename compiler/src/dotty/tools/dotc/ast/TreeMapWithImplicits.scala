@@ -9,6 +9,7 @@ import core.Symbols._
 import core.TypeError
 import util.Lst
 import util.Lst.{NIL, +:, toLst}
+import core.Decorators._
 
 
 import scala.annotation.tailrec
@@ -85,9 +86,9 @@ class TreeMapWithImplicits extends tpd.TreeMap {
           cpy.DefDef(tree)(
             tree.name,
             transformSub(tree.tparams),
-            tree.vparamss mapConserve (transformSub(_)),
+            tree.vparamss mapconserve (transformSub(_)),
             transform(tree.tpt),
-            transform(tree.rhs)(using nestedScopeCtx(tree.vparamss.flatten.toLst)))
+            transform(tree.rhs)(using nestedScopeCtx(tree.vparamss.flattenLst)))
         }
       case EmptyValDef =>
         tree

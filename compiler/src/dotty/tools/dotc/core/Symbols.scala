@@ -34,6 +34,8 @@ import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 object Symbols {
 
@@ -752,9 +754,9 @@ object Symbols {
     owner: Symbol,
     names: List[TypeName],
     flags: FlagSet,
-    boundsFn: List[TypeRef] => List[Type])(using Context): List[TypeSymbol] = {
+    boundsFn: List[TypeRef] => List[Type])(using Context): Lst[TypeSymbol] = {
 
-    val tparamBuf = new mutable.ListBuffer[TypeSymbol]
+    val tparamBuf = Lst.Buffer[TypeSymbol]()
     val trefBuf = new mutable.ListBuffer[TypeRef]
     for (name <- names) {
       val tparam = newSymbol(
@@ -762,10 +764,9 @@ object Symbols {
       tparamBuf += tparam
       trefBuf += TypeRef(owner.thisType, tparam)
     }
-    val tparams = tparamBuf.toList
+    val tparams = tparamBuf.toLst
     val bounds = boundsFn(trefBuf.toList)
-    for (tparam, bound) <- tparams.lazyZip(bounds) do
-      tparam.info = bound
+    tparams.zipped(bounds).foreach (_.info = _)
     tparams
   }
 

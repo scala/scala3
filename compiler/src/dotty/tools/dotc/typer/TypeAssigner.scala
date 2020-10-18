@@ -42,7 +42,7 @@ trait TypeAssigner {
   }
 
   def avoidingType(expr: Tree, bindings: Lst[Tree])(using Context): Type =
-    TypeOps.avoid(expr.tpe, localSyms(bindings.toList).filterConserve(_.isTerm))
+    TypeOps.avoid(expr.tpe, localSyms(bindings).filter(_.isTerm))
 
   def avoidPrivateLeaks(sym: Symbol)(using Context): Type =
     if sym.owner.isClass && !sym.isOneOf(JavaOrPrivateOrSynthetic)

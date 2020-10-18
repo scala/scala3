@@ -111,7 +111,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
    */
-  def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: Lst[Tree] = NIL, targetType: Type = NoType)(using Context): Block = {
+  def Closure(meth: TermSymbol, rhsFn: List[Lst[Tree]] => Tree, targs: Lst[Tree] = NIL, targetType: Type = NoType)(using Context): Block = {
     val targetTpt = if (targetType.exists) TypeTree(targetType) else EmptyTree
     val call =
       if (targs.isEmpty) Ident(TermRef(NoPrefix, meth))
@@ -122,7 +122,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** A closure whole anonymous function has the given method type */
-  def Lambda(tpe: MethodType, rhsFn: List[Tree] => Tree)(using Context): Block = {
+  def Lambda(tpe: MethodType, rhsFn: Lst[Tree] => Tree)(using Context): Block = {
     val meth = newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, tpe)
     Closure(meth, tss => rhsFn(tss.head).changeOwner(ctx.owner, meth))
   }
@@ -208,14 +208,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def SyntheticValDef(name: TermName, rhs: Tree)(using Context): ValDef =
     ValDef(newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.span), rhs)
 
-  def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
+  def DefDef(sym: TermSymbol, tparams: Lst[TypeSymbol], vparamss: List[Lst[TermSymbol]],
              resultType: Type, rhs: Tree)(using Context): DefDef =
     sym.setParamss(tparams, vparamss)
     ta.assignType(
       untpd.DefDef(
         sym.name,
         tparams.map(tparam => TypeDef(tparam).withSpan(tparam.span)),
-        vparamss.nestedMap(vparam => ValDef(vparam).withSpan(vparam.span)),
+        vparamss.nestedMapLst(vparam => ValDef(vparam).withSpan(vparam.span)),
         TypeTree(resultType),
         rhs),
       sym)
@@ -223,7 +223,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(using Context): DefDef =
     ta.assignType(DefDef(sym, Function.const(rhs) _), sym)
 
-  def DefDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Tree)(using Context): DefDef =
+  def DefDef(sym: TermSymbol, rhsFn: List[Lst[Tree]] => Tree)(using Context): DefDef =
     polyDefDef(sym, Function.const(rhsFn))
 
   /** A DefDef with given method symbol `sym`.
@@ -232,21 +232,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  Parameter symbols are taken from the `rawParamss` field of `sym`, or
    *  are freshly generated if `rawParamss` is empty.
    */
-  def polyDefDef(sym: TermSymbol, rhsFn: List[Type] => List[List[Tree]] => Tree)(using Context): DefDef = {
+  def polyDefDef(sym: TermSymbol, rhsFn: Lst[Type] => List[Lst[Tree]] => Tree)(using Context): DefDef = {
 
     val (tparams, existingParamss, mtp) = sym.info match {
       case tp: PolyType =>
         val (tparams, existingParamss) = sym.rawParamss match
           case tparams :: vparamss =>
-            assert(tparams.hasSameLengthAs(tp.paramNames) && tparams.head.isType)
-            (tparams.asInstanceOf[List[TypeSymbol]], vparamss)
+            assert(tparams.length == tp.paramNames.length && tparams.head.isType)
+            (tparams.asInstanceOf[Lst[TypeSymbol]], vparamss)
           case _ =>
             (newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)), Nil)
-        (tparams, existingParamss, tp.instantiate(tparams map (_.typeRef)))
-      case tp => (Nil, sym.rawParamss, tp)
+        (tparams, existingParamss, tp.instantiate(tparams.typeRefs))
+      case tp => (NIL, sym.rawParamss, tp)
     }
 
-    def valueParamss(tp: Type, existingParamss: List[List[Symbol]]): (List[List[TermSymbol]], Type) = tp match {
+    def valueParamss(tp: Type, existingParamss: List[Lst[Symbol]]): (List[Lst[TermSymbol]], Type) = tp match {
       case tp: MethodType =>
         val isParamDependent = tp.isParamDependent
         val previousParamRefs = if (isParamDependent) mutable.ListBuffer[TermRef]() else null
@@ -270,21 +270,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         }
 
         val (params, existingParamss1) =
-          if tp.paramInfos.isEmpty then (Nil, existingParamss)
+          if tp.paramInfos.isEmpty then (NIL, existingParamss)
           else existingParamss match
             case vparams :: existingParamss1 =>
-              assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
-              (vparams.asInstanceOf[List[TermSymbol]], existingParamss1)
+              assert(vparams.length == tp.paramNames.length && vparams.head.isTerm)
+              (vparams.asInstanceOf[Lst[TermSymbol]], existingParamss1)
             case _ =>
-              (tp.paramNames.lazyZip(tp.paramInfos).map(valueParam), Nil)
+              (tp.paramNames.lazyZip(tp.paramInfos).map(valueParam).toLst, Nil)
         val (paramss, rtp) =
-          valueParamss(tp.instantiate(params map (_.termRef)), existingParamss1)
+          valueParamss(tp.instantiate(params.termRefs), existingParamss1)
         (params :: paramss, rtp)
       case tp => (Nil, tp.widenExpr)
     }
     val (vparamss, rtp) = valueParamss(mtp, existingParamss)
-    val targs = tparams map (_.typeRef)
-    val argss = vparamss.nestedMap(vparam => Ident(vparam.termRef))
+    val targs = tparams.map(_.typeRef)
+    val argss = vparamss.nestedMapLst(vparam => Ident(vparam.termRef))
     sym.setParamss(tparams, vparamss)
     DefDef(sym, tparams, vparamss, rtp, rhsFn(targs)(argss))
   }
@@ -482,7 +482,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def wrapArray(tree: Tree, elemtp: Type)(using Context): Tree =
     val wrapper = ref(defn.getWrapVarargsArrayModule)
       .select(wrapArrayMethodName(elemtp))
-      .appliedToTypes(if (elemtp.isPrimitiveValueType) Nil else elemtp :: Nil)
+      .appliedToTypes(if (elemtp.isPrimitiveValueType) NIL else Lst(elemtp))
     val actualElem = wrapper.tpe.widen.firstParamTypes.head
     wrapper.appliedTo(tree.ensureConforms(actualElem))
 
@@ -498,7 +498,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val tycon = tp.typeConstructor
     New(tycon)
       .select(TermRef(tycon, constr))
-      .appliedToTypes(targs)
+      .appliedToTypes(targs.toLst)
       .appliedToArgs(args)
   }
 
@@ -797,6 +797,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def subst(from: List[Symbol], to: List[Symbol])(using Context): ThisTree =
       TreeTypeMap(substFrom = from, substTo = to).apply(tree)
 
+    def subst(from: Lst[Symbol], to: Lst[Symbol])(using Context): ThisTree =
+      TreeTypeMap(substFrom = from.toList, substTo = to.toList).apply(tree)
+
     /** Change owner from `from` to `to`. If `from` is a weak owner, also change its
      *  owner to `to`, and continue until a non-weak owner is reached.
      */
@@ -914,8 +917,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** The current tree applied to given argument lists:
      *  `tree (argss(0)) ... (argss(argss.length -1))`
      */
-    def appliedToArgss(argss: List[List[Tree]])(using Context): Tree =
-      argss.foldLeft(tree: Tree)((fn, args) => Apply(fn, args.toLst))
+    def appliedToArgss(argss: List[Lst[Tree]])(using Context): Tree =
+      argss.foldLeft(tree: Tree)((fn, args) => Apply(fn, args))
 
     /** The current tree applied to given argument lists:
      *  `tree (argss(0)) ... (argss(argss.length -1))`
@@ -928,11 +931,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToType(targ: Type)(using Context): Tree =
-      appliedToTypes(targ :: Nil)
+      appliedToTypes(Lst(targ))
 
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
-    def appliedToTypes(targs: List[Type])(using Context): Tree =
-      appliedToTypeTrees(targs.toLst.map(TypeTree(_)))
+    def appliedToTypes(targs: Lst[Type])(using Context): Tree =
+      appliedToTypeTrees(targs.map(TypeTree(_)))
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToTypeTree(targ: Tree)(using Context): Tree =
@@ -951,7 +954,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (that.tpe.widen.isRef(defn.NothingClass))
         Literal(Constant(false))
       else
-        applyOverloaded(tree, nme.EQ, Lst(that), Nil, defn.BooleanType)
+        applyOverloaded(tree, nme.EQ, Lst(that), NIL, defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(using Context): Tree = tp.dealias match {
@@ -1140,13 +1143,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       !(sym.is(Method) && sym.info.isInstanceOf[MethodOrPoly]) // if is a method it is parameterless
   }
 
-  extension (xs: List[tpd.Tree]):
+  extension (xs: List[tpd.Tree])(using Context):
     def tpes: List[Type] = xs match {
       case x :: xs1 => x.tpe :: xs1.tpes
       case nil => Nil
     }
+    def symbols: List[Symbol] = xs match {
+      case x :: xs1 => x.symbol :: xs1.symbols
+      case nil => Nil
+    }
 
-  extension (xs: Lst[tpd.Tree]):
+  extension (xs: Lst[tpd.Tree])(using Context):
     def tpes: List[Type] = xs.length match
       case 0 => Nil
       case 1 => xs(0).tpe :: Nil
@@ -1155,6 +1162,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case _ =>
         val buf = new mutable.ListBuffer[Type]()
         xs.foreachInlined(x => buf += x.tpe)
+        buf.toList
+    def symbols: List[Symbol] = xs.length match
+      case 0 => Nil
+      case 1 => xs(0).symbol :: Nil
+      case 2 => xs(0).symbol :: xs(1).symbol :: Nil
+      case 3 => xs(0).symbol :: xs(1).symbol :: xs(2).symbol :: Nil
+      case _ =>
+        val buf = new mutable.ListBuffer[Symbol]()
+        xs.foreachInlined(x => buf += x.symbol)
         buf.toList
 
   /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */

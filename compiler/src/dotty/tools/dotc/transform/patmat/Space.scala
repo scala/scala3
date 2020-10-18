@@ -567,7 +567,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
     val sig =
       if (isSyntheticScala2Unapply(unappSym) && caseAccessors.length == argLen)
-        caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widenExpr)
+        caseAccessors.toList.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widenExpr)
       else if (resTp.isRef(defn.BooleanClass))
         List()
       else {

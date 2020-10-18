@@ -13,6 +13,7 @@ import core.Mode
 import Contexts.Context
 import util.Lst
 import util.Lst.{NIL, +:, toLst}
+import core.Decorators._
 
 import scala.collection.mutable.ListBuffer
 
@@ -63,7 +64,7 @@ class DeSugarTest extends ParserTest {
         case tree1 @ ValDef(name, tpt, _) =>
           cpy.ValDef(tree1)(name, transform(tpt, Type), transform(tree1.rhs))
         case tree1 @ DefDef(name, tparams, vparamss, tpt, _) =>
-          cpy.DefDef(tree1)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt, Type), transform(tree1.rhs))
+          cpy.DefDef(tree1)(name, transformSub(tparams), vparamss mapconserve (transformSub2(_)), transform(tpt, Type), transform(tree1.rhs))
         case tree1 @ TypeDef(name, rhs) =>
           cpy.TypeDef(tree1)(name, transform(rhs, Type))
         case impl @ Template(constr, parents, self, _) =>

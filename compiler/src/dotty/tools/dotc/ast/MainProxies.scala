@@ -96,7 +96,7 @@ object MainProxies {
       val body = Try(call, Lst(handler), EmptyTree)
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
-      val mainMeth = DefDef(nme.main, Nil, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
+      val mainMeth = DefDef(nme.main, NIL, Lst(mainArg) :: Nil, TypeTree(defn.UnitType), body)
         .withFlags(JavaStatic)
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, Lst(mainMeth))
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)

@@ -167,16 +167,16 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /** The first constructor definition in `stats` */
-  def firstConstructor(stats: List[Tree]): Tree = stats match {
-    case (meth: DefDef) :: _ if meth.name.isConstructorName => meth
-    case stat :: stats => firstConstructor(stats)
+  def firstConstructor(stats: Lst[Tree]): Tree = stats match {
+    case (meth: DefDef) +: _ if meth.name.isConstructorName => meth
+    case stat +: stats => firstConstructor(stats)
     case nil => EmptyTree
   }
 
   /** The arguments to the first constructor in `stats`. */
-  def firstConstructorArgs(stats: List[Tree]): List[Tree] = firstConstructor(stats) match {
+  def firstConstructorArgs(stats: Lst[Tree]): Lst[Tree] = firstConstructor(stats) match {
     case DefDef(_, _, args :: _, _, _) => args
-    case _                                => Nil
+    case _                             => NIL
   }
 
   /** Is tpt a vararg type of the form T* or => T*? */
@@ -199,8 +199,8 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /** All type and value parameter symbols of this DefDef */
-  def allParamSyms(ddef: DefDef)(using Context): List[Symbol] =
-    (ddef.tparams ::: ddef.vparamss.flatten).map(_.symbol)
+  def allParamSyms(ddef: DefDef)(using Context): Lst[Symbol] =
+    (ddef.tparams ++ ddef.vparamss.flattenLst).map(_.symbol)
 
   /** Does this argument list end with an argument of the form <expr> : _* ? */
   def isWildcardStarArgList(trees: Lst[Tree])(using Context): Boolean =
@@ -310,8 +310,8 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case Block(NIL, expr) => isContextualClosure(expr)
     case Block(Lst(DefDef(nme.ANON_FUN, _, params :: _, _, _)), cl: Closure) =>
       params match {
-        case param :: _ => param.mods.is(Given)
-        case Nil => cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isContextFunctionType(cl.tpt.typeOpt)
+        case param +: _ => param.mods.is(Given)
+        case nil => cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isContextFunctionType(cl.tpt.typeOpt)
       }
     case _ => false
   }
@@ -700,11 +700,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       false
   }
 
-  def localSyms(stats: Lst[Tree])(using Context): List[Symbol] =
-    val locals = new mutable.ListBuffer[Symbol]
+  def localSyms(stats: Lst[Tree])(using Context): Lst[Symbol] =
+    val locals = Lst.Buffer[Symbol]()
     for stat <- stats do
       if stat.isDef && stat.symbol.exists then locals += stat.symbol
-    locals.toList
+    locals.toLst
 
   /** The symbols defined locally in a statement list */
   def localSyms(stats: List[Tree])(using Context): List[Symbol] =

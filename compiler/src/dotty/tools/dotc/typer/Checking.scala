@@ -615,7 +615,7 @@ object Checking {
           param.isTerm && !param.is(Flags.Accessor)
         }
         clParamAccessors match {
-          case param :: params =>
+          case param +: params =>
             if (param.is(Mutable))
               report.error(ValueClassParameterMayNotBeAVar(clazz, param), param.srcPos)
             if (param.info.isInstanceOf[ExprType])
@@ -625,7 +625,7 @@ object Checking {
             else
               for (p <- params if !p.is(Erased))
                 report.error("value class can only have one non `erased` parameter", p.srcPos)
-          case Nil =>
+          case nil =>
             report.error(ValueClassNeedsOneValParam(clazz), clazz.srcPos)
         }
       }
@@ -635,17 +635,16 @@ object Checking {
 
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
-    lazy val params = sym.paramSymss.flatten
-    for
-      sym2 <- sym.allOverriddenSymbols
-      (p1, p2) <- sym.paramSymss.flatten.lazyZip(sym2.paramSymss.flatten)
-      if p1.is(Inline) != p2.is(Inline)
-    do
-      report.error(
-          if p2.is(Inline) then "Cannot override inline parameter with a non-inline parameter"
-          else "Cannot override non-inline parameter with an inline parameter",
-          p1.srcPos)
-
+    for sym2 <- sym.allOverriddenSymbols do
+      sym.paramSymss.lazyZip(sym2.paramSymss).foreach { (ps1, ps2) =>
+        ps1.zipped(ps2).foreach { (p1, p2) =>
+          if p1.is(Inline) != p2.is(Inline) then
+            report.error(
+              if p2.is(Inline) then "Cannot override inline parameter with a non-inline parameter"
+              else "Cannot override non-inline parameter with an inline parameter",
+              p1.srcPos)
+        }
+      }
 }
 
 trait Checking {
@@ -993,8 +992,8 @@ trait Checking {
   /** Check that method parameter types do not reference their own parameter
    *  or later parameters in the same parameter section.
    */
-  def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = vparams match {
-    case vparam :: vparams1 =>
+  def checkNoForwardDependencies(vparams: Lst[ValDef])(using Context): Unit = vparams match {
+    case vparam +: vparams1 =>
       val check = new TreeTraverser {
         def traverse(tree: Tree)(using Context) = tree match {
           case id: Ident if vparams.exists(_.symbol == id.symbol) =>
@@ -1005,7 +1004,7 @@ trait Checking {
       }
       check.traverse(vparam.tpt)
       checkNoForwardDependencies(vparams1)
-    case Nil =>
+    case nil =>
   }
 
   /** Check that all named types that form part of this type have a denotation.
@@ -1247,7 +1246,7 @@ trait NoChecking extends ReChecking {
   override def checkDerivedValueClass(clazz: Symbol, stats: Lst[Tree])(using Context): Unit = ()
   override def checkTraitInheritance(parentSym: Symbol, cls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
-  override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()
+  override def checkNoForwardDependencies(vparams: Lst[ValDef])(using Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp
   override def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit = ()
   override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = ()

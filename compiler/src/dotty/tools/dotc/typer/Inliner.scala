@@ -953,7 +953,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             val expander = new TreeTypeMap(
               oldOwners = ddef.symbol :: Nil,
               newOwners = ctx.owner :: Nil,
-              substFrom = ddef.vparamss.head.map(_.symbol),
+              substFrom = ddef.vparamss.head.symbols,
               substTo = argSyms)
             Block(bindingsBuf.toLst, expander.transform(ddef.rhs))
           case _ => tree
@@ -1109,9 +1109,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             unapp.tpe.widen match {
               case mt: MethodType if mt.paramInfos.length == 1 =>
 
-                def reduceSubPatterns(pats: Lst[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
-                  case (NIL, Nil) => true
-                  case (pat +: pats1, selector :: selectors1) =>
+                def reduceSubPatterns(pats: Lst[Tree], selectors: Lst[Tree]): Boolean = (pats, selectors) match {
+                  case (NIL, NIL) => true
+                  case (pat +: pats1, selector +: selectors1) =>
                     val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenTermRefExpr).asTerm
                     val rhs = constToLiteral(selector)
                     elem.defTree = rhs
@@ -1346,7 +1346,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       val bindingOfSym = MutableSymbolMap[MemberDef]()
 
       def isInlineable(binding: MemberDef) = binding match {
-        case ddef @ DefDef(_, Nil, Nil, _, _) => isElideableExpr(ddef.rhs)
+        case ddef @ DefDef(_, NIL, Nil, _, _) => isElideableExpr(ddef.rhs)
         case vdef @ ValDef(_, _, _) => isElideableExpr(vdef.rhs)
         case _ => false
       }

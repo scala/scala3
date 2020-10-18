@@ -11,6 +11,8 @@ import dotty.tools.dotc.transform.MegaPhase
 import ast.tpd._
 import scala.language.implicitConversions
 import printing.Formatting._
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
@@ -204,6 +206,19 @@ object Decorators {
       xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
     def nestedExists(p: T => Boolean): Boolean = xss match
       case xs :: xss1 => xs.exists(p) || xss1.nestedExists(p)
+      case nil => false
+  end extension
+
+  extension [T, U](xss: List[Lst[T]])
+    def nestedMapLst(f: T => U): List[Lst[U]] = xss match
+      case xs :: xss1 => xs.map(f) :: xss1.nestedMapLst(f)
+      case Nil => Nil
+    def nestedMapConserveLst(f: T => U): List[Lst[U]] =
+      xss.mapconserve(_.mapConserve(f))
+    def nestedZipWith(yss: List[Lst[U]])(f: (T, U) => T): List[Lst[T]] =
+      xss.zipWithConserve(yss)((xs, ys) => xs.zipWith(ys)(f))
+    def nestedExistsLst(p: T => Boolean): Boolean = xss match
+      case xs :: xss1 => xs.exists(p) || xss1.nestedExistsLst(p)
       case nil => false
   end extension
 

@@ -4,6 +4,9 @@ package core
 import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, NameOps._
 import Denotations._
 import SymDenotations.LazyType, Names.Name, StdNames.nme
+import transform.SymUtils._
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -11,20 +14,20 @@ object NamerOps:
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
    */
-  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], givenTp: Type)(using Context): Type =
-    if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams.map(_.typeRef))
+  def effectiveResultType(sym: Symbol, typeParams: Lst[Symbol], givenTp: Type)(using Context): Type =
+    if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams.typeRefs)
     else givenTp
 
   /** if isConstructor, make sure it has one non-implicit parameter list */
-  def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean)(using Context): List[List[Symbol]] =
+  def normalizeIfConstructor(termParamss: List[Lst[Symbol]], isConstructor: Boolean)(using Context): List[Lst[Symbol]] =
     if (isConstructor &&
       (termParamss.isEmpty || termParamss.head.nonEmpty && termParamss.head.head.isOneOf(GivenOrImplicit)))
-      Nil :: termParamss
+      NIL :: termParamss
     else
       termParamss
 
   /** The method type corresponding to given parameters and result type */
-  def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
+  def methodType(typeParams: Lst[Symbol], valueParamss: List[Lst[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
     val monotpe =
       valueParamss.foldRight(resultType) { (params, resultType) =>
         val (isContextual, isImplicit, isErased) =
@@ -36,7 +39,7 @@ object NamerOps:
             if param.info.isDirectRef(defn.ObjectClass) then param.info = defn.AnyType
         make.fromSymbols(params, resultType)
       }
-    if typeParams.nonEmpty then PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
+    if typeParams.nonEmpty then PolyType.fromParams(typeParams.toList.asInstanceOf[List[TypeSymbol]], monotpe)
     else if valueParamss.isEmpty then ExprType(monotpe)
     else monotpe
 

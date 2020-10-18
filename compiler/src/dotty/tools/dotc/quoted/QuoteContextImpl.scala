@@ -217,17 +217,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object DefDef extends DefDefModule:
       def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]): DefDef =
-        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => rhsFn(tparams)(vparamss).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => rhsFn(tparams.toList)(vparamss.map(_.toList)).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, rhs.getOrElse(tpd.EmptyTree))
+        tpd.cpy.DefDef(original)(name.toTermName, typeParams.toLst, paramss.map(_.toLst), tpt, rhs.getOrElse(tpd.EmptyTree))
       def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
         Some((ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs)))
     end DefDef
 
     object DefDefMethodsImpl extends DefDefMethods:
       extension (self: DefDef):
-        def typeParams: List[TypeDef] = self.tparams
-        def paramss: List[List[ValDef]] = self.vparamss
+        def typeParams: List[TypeDef] = self.tparams.toList
+        def paramss: List[List[ValDef]] = self.vparamss.map(_.toList)
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -332,7 +332,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head.toLst).etaExpand)
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand)
           case _ => self
         }
 
@@ -415,7 +415,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
         withDefaultPos(tpd.Select(qualifier, name.toTermName))
       def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args.toLst, targs, Types.WildcardType).asInstanceOf[Apply])
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args.toLst, targs.toLst, Types.WildcardType).asInstanceOf[Apply])
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         tpd.cpy.Select(original)(qualifier, name.toTermName)
       def unapply(x: Select): Option[(Term, String)] =
@@ -740,7 +740,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Lambda extends LambdaModule:
       def apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block =
-        tpd.Lambda(tpe, rhsFn)
+        tpd.Lambda(tpe, (params: Lst[Tree]) => rhsFn(params.toList))
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
         case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
@@ -2337,7 +2337,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           self.is(dotc.core.Flags.Case, butNot = Enum | Module) && !self.isClass
         def isNoSymbol: Boolean = self == Symbol.noSymbol
         def exists: Boolean = self != Symbol.noSymbol
-        def fields: List[Symbol] = self.unforcedDecls.filter(isField)
+        def fields: List[Symbol] = self.unforcedDecls.filter(isField).toList
 
         def field(name: String): Symbol =
           val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
@@ -2357,7 +2357,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           self.typeRef.info.decls.toLst.toList
 
         def typeMembers: List[Symbol] =
-          self.unforcedDecls.filter(_.isType)
+          self.unforcedDecls.filter(_.isType).toList
 
         def typeMember(name: String): Symbol =
           self.unforcedDecls.find(sym => sym.name == name.toTypeName)
@@ -2372,12 +2372,12 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
             case sym if isMethod(sym) => sym.asTerm
           }.toList
 
-        def paramSymss: List[List[Symbol]] = self.denot.paramSymss
+        def paramSymss: List[List[Symbol]] = self.denot.paramSymss.map(_.toList)
         def primaryConstructor: Symbol = self.denot.primaryConstructor
 
         def caseFields: List[Symbol] =
           if !self.isClass then Nil
-          else self.asClass.paramAccessors.collect {
+          else self.asClass.paramAccessors.toList.collect {
             case sym if sym.is(dotc.core.Flags.CaseAccessor) => sym.asTerm
           }
 

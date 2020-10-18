@@ -18,6 +18,8 @@ import transform.ValueClasses
 import transform.SymUtils._
 import dotty.tools.io.File
 import java.io.PrintWriter
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 import xsbti.api.DefinitionType
 
@@ -267,14 +269,14 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     // and can therefore be ignored.
     def alwaysPresent(s: Symbol) = csym.is(ModuleClass) && s.isConstructor
     val decls = cinfo.decls.filter(!alwaysPresent(_))
-    val apiDecls = apiDefinitions(decls)
+    val apiDecls = apiDefinitions(decls.toList)
 
     val declSet = decls.toSet
     // TODO: We shouldn't have to compute inherited members. Instead, `Structure`
     // should have a lazy `parentStructures` field.
     val inherited = cinfo.baseClasses
       .filter(bc => !bc.is(Scala2x))
-      .flatMap(_.classInfo.decls.filter(s => !(s.is(Private) || declSet.contains(s))))
+      .flatMap(_.classInfo.decls.filter(s => !(s.is(Private) || declSet.contains(s))).toList)
     // Inherited members need to be computed lazily because a class might contain
     // itself as an inherited member, like in `class A { class B extends A }`,
     // this works because of `classLikeCache`
@@ -337,13 +339,13 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
   }
 
   def apiDef(sym: TermSymbol): api.Def = {
-    def paramLists(t: Type, paramss: List[List[Symbol]]): List[api.ParameterList] = t match {
+    def paramLists(t: Type, paramss: List[Lst[Symbol]]): List[api.ParameterList] = t match {
       case pt: TypeLambda =>
         paramLists(pt.resultType, paramss.drop(1))
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
-        assert(paramss.nonEmpty && paramss.head.hasSameLengthAs(pnames),
+        assert(paramss.nonEmpty && paramss.head.length == pnames.length,
           i"mismatch for $sym, ${sym.info}, ${sym.paramSymss}")
-        val apiParams = paramss.head.lazyZip(ptypes).map((param, ptype) =>
+        val apiParams = paramss.head.toList.lazyZip(ptypes).map((param, ptype) =>
           api.MethodParameter.of(param.name.toString, apiType(ptype),
           param.is(HasDefault), api.ParameterModifier.Plain))
         api.ParameterList.of(apiParams.toArray, mt.isImplicitMethod)

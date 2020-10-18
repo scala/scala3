@@ -23,6 +23,8 @@ import reporting.TestingReporter
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 object TypeOps:
 
@@ -392,7 +394,7 @@ object TypeOps:
    *  Type variables that would be interpolated to a type that
    *  needs to be widened are replaced by the widened interpolation instance.
    */
-  def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
+  def avoid(tp: Type, symsToAvoid: => Lst[Symbol])(using Context): Type = {
     val widenMap = new ApproximatingTypeMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)

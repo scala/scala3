@@ -33,8 +33,8 @@ object FromSymbol {
       )
       val constr = tpd.DefDef(constrSym.asTerm)
       val parents = cls.classParents.map(tpd.TypeTree(_))
-      val body = cls.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definitionFromSym(s))
-      tpd.ClassDefWithParents(cls, constr, parents, body.toLst)
+      val body = cls.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definitionFromSym(s)).toLst
+      tpd.ClassDefWithParents(cls, constr, parents, body)
   }
 
   def typeDefFromSym(sym: TypeSymbol)(using Context): tpd.TypeDef = sym.defTree match {

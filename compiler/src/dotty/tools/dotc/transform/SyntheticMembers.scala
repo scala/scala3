@@ -85,7 +85,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     else NoSymbol
   }
 
-  private def synthesizeDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Context ?=> Tree)(using Context): Tree =
+  private def synthesizeDef(sym: TermSymbol, rhsFn: List[Lst[Tree]] => Context ?=> Tree)(using Context): Tree =
     DefDef(sym, rhsFn(_)(using ctx.withOwner(sym))).withSpan(ctx.owner.span.focus)
 
   /** If this is a case or value class, return the appropriate additional methods,
@@ -120,8 +120,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         info = clazz.thisType.memberInfo(sym),
         coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
-      def forwardToRuntime(vrefs: List[Tree]): Tree =
-        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs((This(clazz) :: vrefs).toLst)
+      def forwardToRuntime(vrefs: Lst[Tree]): Tree =
+        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) +: vrefs)
 
       def ownName: Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
@@ -138,12 +138,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         else // assume owner is `val Foo = new MyEnum { def ordinal = 0 }`
           Literal(Constant(clazz.owner.name.toString))
 
-      def toStringBody(vrefss: List[List[Tree]]): Tree =
+      def toStringBody(vrefss: List[Lst[Tree]]): Tree =
         if (clazz.is(ModuleClass)) ownName
         else if (isNonJavaEnumValue) identifierRef
         else forwardToRuntime(vrefss.head)
 
-      def syntheticRHS(vrefss: List[List[Tree]])(using Context): Tree = synthetic.name match {
+      def syntheticRHS(vrefss: List[Lst[Tree]])(using Context): Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => valueHashCodeBody
         case nme.hashCode_ => chooseHashcode
         case nme.toString_ => toStringBody(vrefss)
@@ -344,7 +344,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val mixes = for (accessor <- accessors) yield
         Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
-      Block(Lst(accDef, mixPrefix) ::: mixes.toLst, finish)
+      Block(Lst(accDef, mixPrefix) ::: mixes, finish)
     }
 
     /** The `hashCode` implementation for given symbol `sym`. */

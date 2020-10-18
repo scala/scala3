@@ -7,6 +7,8 @@ import util.Spans._
 import SymUtils._
 import StdNames._, NameOps._
 import Decorators._
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 
 class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd._
@@ -70,11 +72,11 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
-  def forwarderRhsFn(target: Symbol): List[Type] => List[List[Tree]] => Tree = {
+  def forwarderRhsFn(target: Symbol): Lst[Type] => List[Lst[Tree]] => Tree = {
     targs => vrefss =>
       val tapp = superRef(target).appliedToTypes(targs)
       vrefss match {
-        case Nil | List(Nil) =>
+        case Nil | List(NIL) =>
           // Overriding is somewhat loose about `()T` vs `=> T`, so just pick
           // whichever makes sense for `target`
           tapp.ensureApplied

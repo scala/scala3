@@ -69,14 +69,14 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       val constr = cdef.symbol
       lazy val origParams = // The parameters that can be accessed in the supercall
         if (constr == cls.primaryConstructor)
-          cls.info.decls.filter(d => d.is(TypeParam) || d.is(ParamAccessor))
+          cls.info.decls.filter(d => d.is(TypeParam) || d.is(ParamAccessor)).toLst
         else
           allParamSyms(cdef)
 
       /** The parameter references defined by the constructor info */
-      def allParamRefs(tp: Type): List[ParamRef] = tp match {
-        case tp: LambdaType => tp.paramRefs ++ allParamRefs(tp.resultType)
-        case _              => Nil
+      def allParamRefs(tp: Type): Lst[ParamRef] = tp match {
+        case tp: LambdaType => tp.paramRefs ::: allParamRefs(tp.resultType)
+        case _              => NIL
       }
 
       /** Splice `restpe` in final result type position of `tp` */
@@ -132,7 +132,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         case _ if arg.existsSubTree(needsHoist) =>
           val superMeth = newSuperArgMethod(arg.tpe)
           val superArgDef = polyDefDef(superMeth, trefs => vrefss => {
-            val paramSyms = trefs.map(_.typeSymbol) ::: vrefss.flatten.map(_.symbol)
+            val paramSyms = trefs.map(_.typeSymbol) ::: vrefss.flattenLst.map(_.symbol)
             val tmap = new TreeTypeMap(
               typeMap = new TypeMap {
                 lazy val origToParam = origParams.zip(paramSyms).toMap
@@ -155,7 +155,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
             tmap(arg).changeOwnerAfter(constr, superMeth, thisPhase)
           })
           superArgDefs += superArgDef
-          def termParamRefs(tp: Type, params: List[Symbol]): List[List[Tree]] = tp match {
+          def termParamRefs(tp: Type, params: Lst[Symbol]): List[Lst[Tree]] = tp match {
             case tp: PolyType =>
               termParamRefs(tp.resultType, params)
             case tp: MethodType =>

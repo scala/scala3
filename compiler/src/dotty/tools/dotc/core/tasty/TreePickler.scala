@@ -361,7 +361,7 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  def pickleParams(trees: List[Tree])(using Context): Unit = {
+  def pickleParams(trees: Lst[Tree])(using Context): Unit = {
     trees.foreach(preRegister)
     trees.foreach(pickleParam)
   }
@@ -549,7 +549,7 @@ class TreePickler(pickler: TastyPickler) {
         case tree: ValDef =>
           pickleDef(VALDEF, tree, tree.tpt, tree.rhs)
         case tree: DefDef =>
-          def pickleParamss(paramss: List[List[ValDef]]): Unit = paramss match
+          def pickleParamss(paramss: List[Lst[ValDef]]): Unit = paramss match
             case Nil =>
             case params :: rest =>
               pickleParams(params)
@@ -566,7 +566,7 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(TEMPLATE)
           val (params, rest) = decomposeTemplateBody(tree.body)
           withLength {
-            pickleParams(params.toList)
+            pickleParams(params)
             tree.parents.foreach(pickleTree)
             val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info
             if (!tree.self.isEmpty) {
@@ -628,7 +628,7 @@ class TreePickler(pickler: TastyPickler) {
           withLength { pickleTree(tree); pickleTree(annot) }
         case LambdaTypeTree(tparams, body) =>
           writeByte(LAMBDAtpt)
-          withLength { pickleParams(tparams.toList); pickleTree(body) }
+          withLength { pickleParams(tparams); pickleTree(body) }
         case TypeBoundsTree(lo, hi, alias) =>
           writeByte(TYPEBOUNDStpt)
           withLength {

@@ -22,6 +22,8 @@ import CheckRealizable._
 import Variances.{Variance, varianceFromInt, varianceToInt, setStructuralVariances, Invariant}
 import util.Stats._
 import util.SimpleIdentitySet
+import util.Lst
+import util.Lst.{NIL, +:, toLst}
 import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
@@ -1591,6 +1593,9 @@ object Types {
         }
       }
 
+    final def subst(from: Lst[Symbol], to: Lst[Type])(using Context): Type =
+      Substituters.subst(this, from, to, null)
+
     /** Substitute all types of the form `TypeParamRef(from, N)` by
      *  `TypeParamRef(to, N)`.
      */
@@ -1620,6 +1625,9 @@ object Types {
     /** Substitute all occurrences of symbols in `from` by references to corresponding symbols in `to`
      */
     final def substSym(from: List[Symbol], to: List[Symbol])(using Context): Type =
+      Substituters.substSym(this, from, to, null)
+
+    final def substSym(from: Lst[Symbol], to: Lst[Symbol])(using Context): Type =
       Substituters.substSym(this, from, to, null)
 
     /** Substitute all occurrences of symbols in `from` by corresponding types in `to`.
@@ -3492,6 +3500,8 @@ object Types {
          tl => params.map(p => tl.integrate(params, paramInfo(p))),
          tl => tl.integrate(params, resultType))
     }
+    def fromSymbols(params: Lst[Symbol], resultType: Type)(using Context): MethodType =
+      fromSymbols(params.toList, resultType)
 
     final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
       checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
@@ -4252,7 +4262,7 @@ object Types {
       val problems = problemSyms(Set.empty, tp)
       if problems.isEmpty then tp
       else
-        val atp = TypeOps.avoid(tp, problems.toList)
+        val atp = TypeOps.avoid(tp, Lst.fromIterable(problems))
         def msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
         typr.println(msg)
         val bound = TypeComparer.fullUpperBound(origin)

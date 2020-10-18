@@ -105,7 +105,7 @@ class ExpandSAMs extends MiniPhase {
       }
     }
 
-    val closureDef(anon @ DefDef(_, _, List(List(param)), _, _)) = tree
+    val closureDef(anon @ DefDef(_, _, List(Lst(param)), _, _)) = tree
     anon.rhs match {
       case PartialFunctionRHS(pf) =>
         val anonSym = anon.symbol
@@ -140,7 +140,7 @@ class ExpandSAMs extends MiniPhase {
               // And we need to update all references to 'param'
         }
 
-        def isDefinedAtRhs(paramRefss: List[List[Tree]])(using Context) = {
+        def isDefinedAtRhs(paramRefss: List[Lst[Tree]])(using Context) = {
           val tru = Literal(Constant(true))
           def translateCase(cdef: CaseDef) =
             cpy.CaseDef(cdef)(body = tru).changeOwner(anonSym, isDefinedAtFn)
@@ -149,8 +149,8 @@ class ExpandSAMs extends MiniPhase {
           translateMatch(pf, paramRef.symbol, pf.cases.map(translateCase), defaultValue)
         }
 
-        def applyOrElseRhs(paramRefss: List[List[Tree]])(using Context) = {
-          val List(paramRef, defaultRef) = paramRefss.head
+        def applyOrElseRhs(paramRefss: List[Lst[Tree]])(using Context) = {
+          val Lst(paramRef, defaultRef) = paramRefss.head
           def translateCase(cdef: CaseDef) =
             cdef.changeOwner(anonSym, applyOrElseFn)
           val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)

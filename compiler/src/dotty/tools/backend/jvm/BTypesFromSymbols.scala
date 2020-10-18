@@ -214,7 +214,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   private def definedClasses(sym: Symbol, phase: Phase) =
     if (sym.isDefinedInCurrentRun)
       atPhase(phase) {
-        toDenot(sym).info.decls.filter(_.isClass)
+        toDenot(sym).info.decls.filter(_.isClass).toList
       }
     else Nil
 

@@ -82,11 +82,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         else if arity <= Definitions.MaxImplementedFunctionArity then
           ref(defn.InternalTupleFunctionModule)
             .select(s"tupledFunction$arity".toTermName)
-            .appliedToTypes(funArgs)
+            .appliedToTypes(funArgs.toLst)
         else
           ref(defn.InternalTupleFunctionModule)
             .select("tupledFunctionXXL".toTermName)
-            .appliedToTypes(funArgs)
+            .appliedToTypes(funArgs.toLst)
       case _ =>
         EmptyTree
   end synthesizedTupleFunction
@@ -157,7 +157,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", span))
         if canComparePredefined(arg1, arg2)
             || !Implicits.strictEquality && explore(validEqAnyArgs(arg1, arg2))
-        then ref(defn.Eql_eqlAny).appliedToTypes(args).withSpan(span)
+        then ref(defn.Eql_eqlAny).appliedToTypes(args.toLst).withSpan(span)
         else EmptyTree
       case _ => EmptyTree
   end synthesizedEql
@@ -262,16 +262,16 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   acc.info
               val elems =
                 mirroredType.derivedLambdaType(
-                  resType = TypeOps.nestedPairs(accessors.map(accessorType))
+                  resType = TypeOps.nestedPairs(accessors.map(accessorType).toList)
                 )
               (mkMirroredMonoType(mirroredType), elems)
             case _ =>
-              val elems = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr))
+              val elems = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr).toList)
               (mirroredType, elems)
           val mirrorType =
             mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name, formal)
               .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-              .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
+              .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels.toList)))
           val mirrorRef =
             if (cls.is(Scala2x)) anonymousMirror(monoType, ExtendsProductMirror, span)
             else companionPath(mirroredType, span)

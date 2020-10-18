@@ -660,7 +660,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       )
       tpd.DefDef(sym.asTerm, { paramss =>
         val params = paramss.head
-        tpd.Apply(params.head.select(origSym), params.tail.toLst)
+        tpd.Apply(params.head.select(origSym), params.tail)
           .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
       })
 
@@ -681,7 +681,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // add method-local vars for params
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty, s"Malformed parameter list: $vparamss")
-      val params = if (vparamss.isEmpty) Nil else vparamss.head
+      val params = if (vparamss.isEmpty) NIL else vparamss.head
       for (p <- params) { locals.makeLocal(p.symbol) }
       // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.toList, "debug")
 
@@ -701,7 +701,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           .addFlagIf(isNative, asm.Opcodes.ACC_NATIVE) // native methods of objects are generated in mirror classes
 
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
-      initJMethod(flags, params.map(p => p.symbol.annotations))
+      initJMethod(flags, params.map(p => p.symbol.annotations).toList)
 
 
       if (!isAbstractMethod && !isNative) {

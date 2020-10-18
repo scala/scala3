@@ -190,11 +190,11 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   }
 
   /** Create a TupleN (1 <= N < 23) from the elements */
-  private def knownTupleFromElements(tpes: List[Type], elements: List[Tree])(using Context) = {
+  private def knownTupleFromElements(tpes: List[Type], elements: Lst[Tree])(using Context) = {
     val size = elements.size
     assert(0 < size && size <= MaxTupleArity)
     val tupleModule = defn.TupleType(size).classSymbol.companionModule
-    ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToArgs(elements.toLst)
+    ref(tupleModule).select(nme.apply).appliedToTypes(tpes.toLst).appliedToArgs(elements)
   }
 
   private def knownTupleFromIterator(size: Int, it: Tree)(using Context): Tree =
@@ -208,7 +208,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
       // This would yield smaller bytecode at the cost of an extra (easily JIT inlinable) call.
       // def tupleN(it: Iterator[Any]): TupleN[Any, ..., Any] = Tuple(it.next(), ..., it.next())
       val tpes = List.fill(size)(defn.AnyType)
-      val elements = (0 until size).map(_ => it.select(nme.next)).toList
+      val elements = Lst.range(0, size).map(_ => it.select(nme.next))
       knownTupleFromElements(tpes, elements)
     }
     else
@@ -216,7 +216,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
       // TupleXXL.fromIterator(it)
       ref(defn.TupleXXL_fromIterator).appliedTo(it)
 
-  private def tupleSelectors(tup: Tree, size: Int)(using Context): List[Tree] =
-    (0 until size).map(i => tup.select(nme.selectorName(i))).toList
+  private def tupleSelectors(tup: Tree, size: Int)(using Context): Lst[Tree] =
+    Lst.range(0, size).map(i => tup.select(nme.selectorName(i)))
 }
 
