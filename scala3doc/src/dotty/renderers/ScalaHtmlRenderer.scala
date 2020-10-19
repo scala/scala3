@@ -15,7 +15,7 @@ import kotlinx.html.stream.StreamKt
 import kotlinx.html.Gen_consumer_tagsKt
 import org.jetbrains.dokka.links.DRI
 import dotty.dokka.model.api.Link
-import dotty.dokka.model.api.HierarchyDiagram
+import dotty.dokka.model.api.HierarchyGraph
 import org.jetbrains.dokka.base.resolvers.local.LocationProvider
 
 
@@ -25,10 +25,8 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
     def renderLink(name: String, dri: DRI, modifiers: AppliedAttr*) =
         link(dri) match
             case Some(link) => a(href := link, modifiers)(name)
-            case None if modifiers.isEmpty => raw(name)
-            case _ => span(modifiers)(name)
-
-
+            case _ => span(attr("data-unresolved-link") := dri.toString, modifiers)(name)
+ 
     def renderElementWith(e: String | (String, DRI) | Link, modifiers: AppliedAttr*) = e match
         case (name, dri) => renderLink(name, dri, modifiers:_*)
         case name: String => raw(name)
@@ -64,8 +62,8 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
     override def buildContentNode(f: FlowContent, node: ContentNode, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {
         node match {
             case n: HtmlContentNode => withHtml(f, raw(n.body).toString)
-            case n: HierarchyDiagramContentNode => buildDiagram(f, n.diagram, pageContext)
-            case n: DocumentableList =>
+            case n: HierarchyGraphContentNode => buildDiagram(f, n.diagram, pageContext)
+            case n: DocumentableList => 
                 val ss = if sourceSetRestriciton == null then Set.empty.asJava else sourceSetRestriciton
                 withHtml(f, buildDocumentableList(n, pageContext, ss).toString())
             case n: DocumentableFilter => withHtml(f, buildDocumentableFilter.toString)
@@ -184,9 +182,9 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         })
     }
 
-    def buildDiagram(f: FlowContent, diagram: HierarchyDiagram, pageContext: ContentPage) =
+    def buildDiagram(f: FlowContent, diagram: HierarchyGraph, pageContext: ContentPage) = 
         val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
-        withHtml(f, div( id := "inheritance-diagram")(
+        withHtml(f, div( id := "inheritance-diagram", cls := "diagram-class",
                 svg(id := "graph"),
                 script(`type` := "text/dot", id := "dot")(raw(DotDiagramBuilder.build(diagram, renderer))),
             ).toString()

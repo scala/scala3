@@ -11,10 +11,19 @@
 .edgePath {
     stroke: #333;
     stroke-width: 1.5px;
-    fill: none;
+    fill: #333;
 }
 
 #graph {
     width: 100%;
     height: 80%;
+}
+
+.diagram-class a[href] {
+    text-decoration: underline;
+    color: #FFFFFF;
+}
+
+.diagram-class span[data-unresolved-link] {
+    color: #FFFFFF;
 }

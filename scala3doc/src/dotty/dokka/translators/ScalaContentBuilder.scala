@@ -300,12 +300,12 @@ class ScalaPageContentBuilder(
 
 
         def dotDiagram(
-            diagram: HierarchyDiagram,
+            diagram: HierarchyGraph,
             kind: Kind = ContentKind.Main,
             sourceSets: Set[DokkaConfiguration$DokkaSourceSet] = mainSourcesetData,
             styles: Set[Style] = mainStyles,
             extra: PropertyContainer[ContentNode] = mainExtra
-        ) = addChild(HierarchyDiagramContentNode(diagram, DCI(mainDRI.asJava, kind), sourceSets.toDisplay.asScala.toSet, styles, extra))
+        ) = addChild(HierarchyGraphContentNode(diagram, DCI(mainDRI.asJava, kind), sourceSets.toDisplay.asScala.toSet, styles, extra))
 
         def groupingBlock[A, T <: Documentable, G <: List[(A, List[T])]](
             name: String,
