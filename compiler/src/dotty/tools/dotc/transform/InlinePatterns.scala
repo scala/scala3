@@ -51,7 +51,7 @@ class InlinePatterns extends MiniPhase:
   private object App:
     def unapply(app: Tree): (Tree, List[List[Tree]]) =
       app match
-        case Apply(App(fn, argss), args) => (fn, argss :+ args.toList)
+        case Apply(App(fn, argss), args) => (fn, argss :+ args.toScalaList)
         case _ => (app, Nil)
 
   private def betaReduce(tree: Apply, fn: Tree, name: Name, args: List[Tree])(using Context): Tree =

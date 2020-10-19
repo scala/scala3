@@ -417,7 +417,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Block(stats, expr) =>
       minOf(exprPurity(expr), stats.map(statPurity))
     case Inlined(_, bindings, expr) =>
-      minOf(exprPurity(expr), bindings.toList.map(statPurity))
+      minOf(exprPurity(expr), bindings.toScalaList.map(statPurity))
     case NamedArg(_, expr) =>
       exprPurity(expr)
     case _ =>
@@ -741,7 +741,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  are not a linked class of some other class in the result.
    */
   def topLevelClasses(tree: Tree)(using Context): List[ClassSymbol] = tree match {
-    case PackageDef(_, stats) => stats.flatMapIterable(topLevelClasses).toList
+    case PackageDef(_, stats) => stats.flatMapIterable(topLevelClasses).toScalaList
     case tdef: TypeDef if tdef.symbol.isClass => tdef.symbol.asClass :: Nil
     case _ => Nil
   }

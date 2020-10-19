@@ -126,7 +126,7 @@ trait QuotesAndSplices {
       tree.withType(UnspecifiedErrorType)
     else if splice.isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
-      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr).toList
+      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr).toScalaList
       val splice1 = typedSplice(splice, defn.FunctionOf(argTypes, pt))
       Apply(splice1.select(nme.apply), typedArgs).withType(pt).withSpan(tree.span)
     else // $x(...) higher-order quasipattern
@@ -139,7 +139,7 @@ trait QuotesAndSplices {
       }
       if args.isEmpty then
         report.error("Missing arguments for open pattern", tree.srcPos)
-      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr).toList
+      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr).toScalaList
       val typedPat = typedSplice(splice, defn.FunctionOf(argTypes, pt))
       ref(defn.InternalQuotedPatterns_patternHigherOrderHole).appliedToType(pt).appliedTo(typedPat, SeqLiteral(typedArgs, TypeTree(defn.AnyType)))
   }

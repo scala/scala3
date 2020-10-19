@@ -38,7 +38,7 @@ class DocASTPhase extends Phase {
 
     def collectMembers(tree: Tree)(using Context): List[Entity] = {
       val defs = tree match {
-        case t: Template => collectList(t.body.toList)
+        case t: Template => collectList(t.body.toScalaList)
         case _ => Nil
       }
 
@@ -87,7 +87,7 @@ class DocASTPhase extends Phase {
     else tree match {
       /** package */
       case pd @ PackageDef(pid, st) =>
-        addPackage(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st.toList), path(pd.symbol))) :: Nil
+        addPackage(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st.toScalaList), path(pd.symbol))) :: Nil
 
       /** type alias */
       case t: TypeDef if !t.isClassDef =>

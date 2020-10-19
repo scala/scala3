@@ -269,14 +269,14 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     // and can therefore be ignored.
     def alwaysPresent(s: Symbol) = csym.is(ModuleClass) && s.isConstructor
     val decls = cinfo.decls.filter(!alwaysPresent(_))
-    val apiDecls = apiDefinitions(decls.toList)
+    val apiDecls = apiDefinitions(decls.toScalaList)
 
     val declSet = decls.toSet
     // TODO: We shouldn't have to compute inherited members. Instead, `Structure`
     // should have a lazy `parentStructures` field.
     val inherited = cinfo.baseClasses
       .filter(bc => !bc.is(Scala2x))
-      .flatMap(_.classInfo.decls.filter(s => !(s.is(Private) || declSet.contains(s))).toList)
+      .flatMap(_.classInfo.decls.filter(s => !(s.is(Private) || declSet.contains(s))).toScalaList)
     // Inherited members need to be computed lazily because a class might contain
     // itself as an inherited member, like in `class A { class B extends A }`,
     // this works because of `classLikeCache`
@@ -345,7 +345,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
         assert(paramss.nonEmpty && paramss.head.length == pnames.length,
           i"mismatch for $sym, ${sym.info}, ${sym.paramSymss}")
-        val apiParams = paramss.head.toList.lazyZip(ptypes).map((param, ptype) =>
+        val apiParams = paramss.head.toScalaList.lazyZip(ptypes).map((param, ptype) =>
           api.MethodParameter.of(param.name.toString, apiType(ptype),
           param.is(HasDefault), api.ParameterModifier.Plain))
         api.ParameterList.of(apiParams.toArray, mt.isImplicitMethod)

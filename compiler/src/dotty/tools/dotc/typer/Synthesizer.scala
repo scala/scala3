@@ -262,16 +262,16 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   acc.info
               val elems =
                 mirroredType.derivedLambdaType(
-                  resType = TypeOps.nestedPairs(accessors.map(accessorType).toList)
+                  resType = TypeOps.nestedPairs(accessors.map(accessorType).toScalaList)
                 )
               (mkMirroredMonoType(mirroredType), elems)
             case _ =>
-              val elems = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr).toList)
+              val elems = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr).toScalaList)
               (mirroredType, elems)
           val mirrorType =
             mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name, formal)
               .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-              .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels.toList)))
+              .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels.toScalaList)))
           val mirrorRef =
             if (cls.is(Scala2x)) anonymousMirror(monoType, ExtendsProductMirror, span)
             else companionPath(mirroredType, span)

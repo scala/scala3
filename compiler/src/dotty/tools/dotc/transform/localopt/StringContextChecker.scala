@@ -66,14 +66,14 @@ object StringContextChecker {
 
     val (partsExpr, parts) = strContext_f match {
       case TypeApply(Select(Apply(_, Lst(parts: SeqLiteral)), _), _) =>
-        (parts.elems, parts.elems.toList.map { case Literal(Constant(str: String)) => str } )
+        (parts.elems, parts.elems.toScalaList.map { case Literal(Constant(str: String)) => str } )
       case _ =>
         report.error("Expected statically known String Context", strContext_f.srcPos)
         return ""
     }
 
     val args = args0 match {
-      case args: SeqLiteral => args.elems.toList
+      case args: SeqLiteral => args.elems.toScalaList
       case _ =>
         report.error("Expected statically known argument list", args0.srcPos)
         return ""

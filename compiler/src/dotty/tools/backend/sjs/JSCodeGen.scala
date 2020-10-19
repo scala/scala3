@@ -183,7 +183,7 @@ class JSCodeGen()(using genCtx: Context) {
     def collectTypeDefs(tree: Tree): List[TypeDef] = {
       tree match {
         case EmptyTree            => Nil
-        case PackageDef(_, stats) => stats.flatMapIterable(collectTypeDefs).toList
+        case PackageDef(_, stats) => stats.flatMapIterable(collectTypeDefs).toScalaList
         case cd: TypeDef          => cd :: Nil
         case _: ValDef            => Nil // module instance
       }
@@ -825,7 +825,7 @@ class JSCodeGen()(using genCtx: Context) {
           else
             Nil
         fieldDef :: optionalStaticFieldGetter
-    }).toList
+    }).toScalaList
   }
 
   private def genExposedFieldIRType(f: Symbol): jstpe.Type = {
@@ -1033,7 +1033,7 @@ class JSCodeGen()(using genCtx: Context) {
     ) {
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
-      val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol).toList
+      val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol).toScalaList
 
       val isJSClassConstructor =
         sym.isClassConstructor && currentClassSym.isNonNativeJSClass
@@ -1450,7 +1450,7 @@ class JSCodeGen()(using genCtx: Context) {
         }
 
       case Block(stats, expr) =>
-        js.Block(stats.map(genStat).toList :+ genStatOrExpr(expr, isStat))
+        js.Block(stats.map(genStat).toScalaList :+ genStatOrExpr(expr, isStat))
 
       case Typed(expr, _) =>
         expr match {
@@ -1721,7 +1721,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
     implicit val pos = tree.span
     val Apply(fun @ Select(sup @ Super(qual, _), _), args0) = tree
-    val args = args0.toList
+    val args = args0.toScalaList
     val sym = fun.symbol
 
     if (sym == defn.Any_getClass) {
@@ -1763,7 +1763,7 @@ class JSCodeGen()(using genCtx: Context) {
     implicit val pos: SourcePosition = tree.sourcePos
 
     val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args0) = tree
-    val args = args0.toList
+    val args = args0.toScalaList
     val ctor = fun.symbol
     val tpe = tpt.tpe
 
@@ -1813,7 +1813,7 @@ class JSCodeGen()(using genCtx: Context) {
       implicit val pos: Position = tree.span
 
       val Apply(fun @ Select(New(tpt), _), args0) = tree
-      val args = args0.toList
+      val args = args0.toScalaList
       val cls = tpt.tpe.typeSymbol
       val ctor = fun.symbol
 
@@ -2074,7 +2074,7 @@ class JSCodeGen()(using genCtx: Context) {
     implicit val pos = tree.span
 
     val Apply(fun, args0) = tree
-    val args = args0.toList
+    val args = args0.toScalaList
     val receiver = qualifierOf(fun)
 
     val code = primitives.getPrimitive(tree, receiver.tpe)
@@ -2601,7 +2601,7 @@ class JSCodeGen()(using genCtx: Context) {
       case fun: Select => fun
     }
     val receiver = fun.qualifier
-    val args = tree.args.toList
+    val args = tree.args.toScalaList
     val sym = fun.symbol
 
     def isStringMethodFromObject: Boolean = sym.name match {
@@ -2797,7 +2797,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     val boxedResult =
       if (sym.isJSGetter) jsNativeMemberValue
-      else js.JSFunctionApply(jsNativeMemberValue, genActualJSArgs(sym, args.toList))
+      else js.JSFunctionApply(jsNativeMemberValue, genActualJSArgs(sym, args.toScalaList))
 
     unbox(boxedResult, atPhase(elimErasedValueTypePhase) {
       sym.info.resultType
@@ -2808,7 +2808,7 @@ class JSCodeGen()(using genCtx: Context) {
     acquireContextualJSClassValue { explicitJSSuperClassValue =>
       implicit val pos = tree.span
       val Apply(fun @ Select(sup @ Super(qual, _), _), args0) = tree
-      val args = args0.toList
+      val args = args0.toScalaList
       val sym = fun.symbol
 
       val genReceiver = genExpr(qual)
@@ -2876,7 +2876,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genJavaSeqLiteral(tree: JavaSeqLiteral): js.Tree = {
     implicit val pos = tree.span
 
-    val genElems = tree.elems.toList.map(genExpr)
+    val genElems = tree.elems.toScalaList.map(genExpr)
     val arrayTypeRef = toTypeRef(tree.tpe).asInstanceOf[jstpe.ArrayTypeRef]
     js.ArrayValue(arrayTypeRef, genElems)
   }
@@ -2926,7 +2926,7 @@ class JSCodeGen()(using genCtx: Context) {
         case Ident(nme.WILDCARD) =>
           optDefaultClause = Some(genBody)
         case Alternative(alts) =>
-          val genAlts = alts.toList.map {
+          val genAlts = alts.toScalaList.map {
             case lit: Literal => genExpr(lit)
             case _            => abortMatch("Invalid case in alternative")
           }
@@ -3076,7 +3076,7 @@ class JSCodeGen()(using genCtx: Context) {
       val actualCapture = genExpr(value)
       (formalCapture, actualCapture)
     }
-    val (formalCaptures, actualCaptures) = formalAndActualCaptures.toList.unzip
+    val (formalCaptures, actualCaptures) = formalAndActualCaptures.toScalaList.unzip
 
     val formalParamNames = sym.info.paramNamess.flatten.drop(envSize)
     val formalParamTypes = sym.info.paramInfoss.flatten.drop(envSize)
@@ -3396,7 +3396,7 @@ class JSCodeGen()(using genCtx: Context) {
               val outer = genThis()
               List.fill(classSym.info.decls.lookupAll(nme.CONSTRUCTOR).size)(outer)
             } else {
-              val fakeNewInstances = args(2).asInstanceOf[JavaSeqLiteral].elems.toList
+              val fakeNewInstances = args(2).asInstanceOf[JavaSeqLiteral].elems.toScalaList
               fakeNewInstances.flatMap(genCaptureValuesFromFakeNewInstance(_))
             }
           }
@@ -3595,7 +3595,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genReflectiveCall(tree: Apply, isSelectDynamic: Boolean): js.Tree = {
     implicit val pos = tree.span
     val Apply(fun @ Select(receiver0, _), args0) = tree
-    val args = args0.toList
+    val args = args0.toScalaList
 
     /* Extract the real receiver, which is the first argument to one of the
      * implicit conversions scala.reflect.Selectable.reflectiveSelectable or
@@ -3636,7 +3636,7 @@ class JSCodeGen()(using genCtx: Context) {
       args.tail match {
         case WrapArray(classTagsArray: JavaSeqLiteral) :: WrapArray(actualArgsAnyArray: JavaSeqLiteral) :: Nil =>
           // Extract jstpe.Type's and jstpe.TypeRef's from the ClassTag.apply(_) trees
-          val formalParamTypesAndTypeRefs = classTagsArray.elems.toList.map {
+          val formalParamTypesAndTypeRefs = classTagsArray.elems.toScalaList.map {
             // ClassTag.apply(classOf[tp]) -> tp
             case Apply(fun, Lst(Literal(const)))
                 if fun.symbol == defn.ClassTagModule_apply && const.tag == Constants.ClazzTag =>
@@ -3659,7 +3659,7 @@ class JSCodeGen()(using genCtx: Context) {
           }
 
           // Gen the actual args, downcasting them to the formal param types
-          val actualArgs = actualArgsAnyArray.elems.toList.zip(formalParamTypesAndTypeRefs).map {
+          val actualArgs = actualArgsAnyArray.elems.toScalaList.zip(formalParamTypesAndTypeRefs).map {
             (actualArgAny, formalParamTypeAndTypeRef) =>
               val genActualArgAny = genExpr(actualArgAny)
               js.AsInstanceOf(genActualArgAny, formalParamTypeAndTypeRef._1)(genActualArgAny.pos)
@@ -3837,7 +3837,7 @@ class JSCodeGen()(using genCtx: Context) {
          * the type before erasure.
          * TODO Is this true in dotty?
          */
-        Some(array.elems.map(e => box(genExpr(e), e.tpe)).toList)
+        Some(array.elems.map(e => box(genExpr(e), e.tpe)).toScalaList)
 
       // foo()
       case Ident(_) if handleNil && arg.symbol == defn.NilModule =>
@@ -3896,7 +3896,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     for {
-      (arg, paramName) <- args.zip(sym.info.paramNamess.flatten).toList
+      (arg, paramName) <- args.zip(sym.info.paramNamess.flatten).toScalaList
       if !existedBeforeUncurry(paramName)
     } yield {
       genExpr(arg)

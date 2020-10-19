@@ -206,7 +206,7 @@ trait FullParameterization {
 
       new TreeTypeMap(
         typeMap = rewireType(_)
-          .subst(origTParams ++ origVParams, trefs.toList ::: argRefs.tpes)
+          .subst(origTParams ++ origVParams, trefs.toScalaList ::: argRefs.tpes)
           .substThisUnlessStatic(origClass, thisRef.tpe),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef

@@ -81,7 +81,7 @@ object BetaReduce:
       oldOwners = ddef.symbol :: Nil,
       newOwners = ctx.owner :: Nil,
       substFrom = vparams.symbols,
-      substTo = argSyms.toList
+      substTo = argSyms.toScalaList
     ).transform(ddef.rhs)
 
     val expansion1 = new TreeMap {

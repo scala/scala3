@@ -705,7 +705,7 @@ class ClassfileParser(
 
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
-      val attrs = classInfo.decls.filter(sym => sym.isTerm && sym != denot.symbol).toList
+      val attrs = classInfo.decls.filter(sym => sym.isTerm && sym != denot.symbol).toScalaList
       val paramNames = attrs.map(_.name.asTermName)
       val paramTypes = attrs.map(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)

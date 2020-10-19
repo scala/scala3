@@ -3590,7 +3590,7 @@ object Parsers {
           newLineOptWhenFollowedBy(LBRACE)
           if in.isNestedStart then inDefScopeBraces(extMethods())
           else { syntaxError("Extension without extension methods"); NIL }
-      val result = atSpan(start)(ExtMethods(tparams, extParams :: givenParamss, methods.toList))
+      val result = atSpan(start)(ExtMethods(tparams, extParams :: givenParamss, methods.toScalaList))
       val comment = in.getDocComment(start)
       if comment.isDefined then
         for meth <- methods do

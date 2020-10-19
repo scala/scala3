@@ -169,7 +169,7 @@ object Texts {
           else ys reduce (_ ~ sep ~ _)
         }
       case xs: Lst[Text] =>
-        apply(xs.toList, sep)
+        apply(xs.toScalaList, sep)
 
     /** The given texts `xs`, each on a separate line */
     def lines(xs: Traversable[Text]): Vertical = Vertical(xs.toList.reverse)

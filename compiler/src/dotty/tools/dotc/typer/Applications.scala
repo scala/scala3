@@ -1300,7 +1300,7 @@ trait Applications extends Compatibility {
           res.toLst
         }
 
-        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args.toList, tree.srcPos)
+        var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args.toScalaList, tree.srcPos)
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil =>
@@ -1315,7 +1315,7 @@ trait Applications extends Compatibility {
         }
         val unapplyPatterns = bunchedArgs.zipWith(argTypes)(typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
-        unapp.println(s"unapply patterns = ${unapplyPatterns.toList}")
+        unapp.println(s"unapply patterns = ${unapplyPatterns.toScalaList}")
         if ((ownType eq selType) || ownType.isError) result
         else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)
       case tp =>
@@ -1780,7 +1780,7 @@ trait Applications extends Compatibility {
     /** The shape of given tree as a type; cannot handle named arguments. */
     def typeShape(tree: untpd.Tree): Type = tree match {
       case untpd.Function(args, body) =>
-        defn.FunctionOf(args.toList map Function.const(defn.AnyType), typeShape(body))
+        defn.FunctionOf(args.toScalaList map Function.const(defn.AnyType), typeShape(body))
       case Match(EmptyTree, _) =>
         defn.PartialFunctionClass.typeRef.appliedTo(defn.AnyType :: defn.NothingType :: Nil)
       case _ =>

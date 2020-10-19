@@ -340,7 +340,7 @@ object Splicer {
       value.asInstanceOf[Object]
 
     private def interpretVarargs(args: Lst[Object])(implicit env: Env): Object =
-      args.toList.toSeq
+      args.toScalaList.toSeq
 
     private def interpretedStaticMethodCall(moduleClass: Symbol, fn: Symbol)(implicit env: Env): List[Object] => Object = {
       val (inst, clazz) =
@@ -535,7 +535,7 @@ object Splicer {
         case fn: Select => Some((fn, Nil))
         case Apply(f @ Call0(fn, args1), args2) =>
           if (f.tpe.widenDealias.isErasedMethod) Some((fn, args1))
-          else Some((fn, args2.toList :: args1))
+          else Some((fn, args2.toScalaList :: args1))
         case TypeApply(Call0(fn, args), _) => Some((fn, args))
         case _ => None
       }

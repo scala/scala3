@@ -135,7 +135,7 @@ class TreeTypeMap(
     transformDefs(trees)._2
 
   def transformDefs[TT <: tpd.Tree](trees: Lst[TT])(using Context): (TreeTypeMap, Lst[TT]) = {
-    val tmap = withMappedSyms(tpd.localSyms(trees.toList))
+    val tmap = withMappedSyms(tpd.localSyms(trees.toScalaList))
     (tmap, tmap.transformSub(trees))
   }
 
@@ -194,7 +194,7 @@ class TreeTypeMap(
     val symsChanged = syms ne mapped
     val substMap = withSubstitution(syms, mapped)
     val fullMap = mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
-      val origDcls = cls.info.decls.toLst.toList
+      val origDcls = cls.info.decls.toLst.toScalaList
       val mappedDcls = mapSymbols(origDcls, tmap)
       val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
       if (symsChanged)

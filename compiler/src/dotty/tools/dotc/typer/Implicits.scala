@@ -878,7 +878,7 @@ trait Implicits:
 
           val call = closureBody(alt.tree) // the tree itself if not a closure
           val (_, targs, _) = decomposeCall(call)
-          val args = resolveTypes(targs.toList)(using ctx.fresh.setTyperState(alt.tstate))
+          val args = resolveTypes(targs.toScalaList)(using ctx.fresh.setTyperState(alt.tstate))
           err.userDefinedErrorString(raw, params, args)
         }
 

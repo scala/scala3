@@ -122,7 +122,7 @@ object SyntaxHighlighting {
 
       val parser = new Parser(source)
       val trees = parser.blockStatSeq()
-      TreeHighlighter.highlight(trees.toList)
+      TreeHighlighter.highlight(trees.toScalaList)
 
       val highlighted = new StringBuilder()
 

@@ -383,7 +383,7 @@ object desugar {
     def decompose(ddef: Tree): DefDef = ddef match {
       case meth: DefDef => meth
       case Thicket((meth: DefDef) +: defaults) =>
-        defaultGetters = defaults.toList
+        defaultGetters = defaults.toScalaList
         meth
     }
 
@@ -494,7 +494,7 @@ object desugar {
         val enumCompanionRef = TermRefTree()
         val enumImport =
           Import(enumCompanionRef, enumCases.flatMapIterable(caseIds).map(ImportSelector(_)))
-        (enumImport :: enumStats, enumCases.toList, enumCompanionRef)
+        (enumImport :: enumStats, enumCases.toScalaList, enumCompanionRef)
       }
       else (stats, Nil, EmptyTree)
     }
@@ -1562,7 +1562,7 @@ object desugar {
           val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = gen.pat :: pats
           val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
-          makeFor(mapName, flatMapName, (vfrom1 :: rest1).toList, body)
+          makeFor(mapName, flatMapName, (vfrom1 :: rest1).toScalaList, body)
         case (gen: GenFrom) :: test :: rest =>
           val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen, test))
           val genFrom = GenFrom(gen.pat, filtered, GenCheckMode.Ignore)

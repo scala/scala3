@@ -277,7 +277,7 @@ trait Deriving {
           tparams.foreach(ctx.enter(_))
           params.foreach(ctx.enter(_))
           def instantiated(info: Type): Type = info match {
-            case info: PolyType => instantiated(info.instantiate(tparamRefs.toList))
+            case info: PolyType => instantiated(info.instantiate(tparamRefs.toScalaList))
             case info: MethodType => info.instantiate(params.termRefs)
             case info => info.widenExpr
           }

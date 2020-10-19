@@ -109,7 +109,7 @@ object Checking {
        && tycon.symbol != defn.TypeBoxClass // TypeBox types are generated for capture
                                             // conversion, may contain AnyKind as arguments
     then
-      checkBounds(args.toList, bounds, instantiate, tree.tpe, tpt)
+      checkBounds(args.toScalaList, bounds, instantiate, tree.tpe, tpt)
 
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
@@ -699,7 +699,7 @@ trait Checking {
           case UnApply(fn, _, pats) =>
             check(pat, pt) &&
             (isIrrefutableUnapply(fn, pats.length) || fail(pat, pt)) && {
-              val patsList = pats.toList
+              val patsList = pats.toScalaList
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, patsList, pat.srcPos)
               patsList.corresponds(argPts)(recur)
             }

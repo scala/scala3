@@ -354,7 +354,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case Lst(sel @ untpd.ImportSelector(name, EmptyTree, EmptyTree)) =>
           selectorText(sel)
         case _ =>
-          "{" ~ Text(selectors.map(selectorText).toList, ", ") ~ "}"
+          "{" ~ Text(selectors.map(selectorText).toScalaList, ", ") ~ "}"
 
       toTextLocal(expr) ~ "." ~ selectorsText
 

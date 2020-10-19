@@ -68,7 +68,7 @@ object SourceTree {
       }
 
       def sourceImports(tree: tpd.Tree, sourceFile: SourceFile): List[SourceTree] = tree match {
-        case PackageDef(_, stats) => stats.flatMapIterable(sourceImports(_, sourceFile)).toList
+        case PackageDef(_, stats) => stats.flatMapIterable(sourceImports(_, sourceFile)).toScalaList
         case imp: tpd.Import => SourceTree(imp, sourceFile) :: Nil
         case _ => Nil
       }

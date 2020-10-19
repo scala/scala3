@@ -187,7 +187,7 @@ object Lst:
       foreachInlined(xs += _)
       xs
 
-    def toList: List[T] =
+    def toScalaList: List[T] =
       if length == 0 then Nil
       else
         val buf = new collection.mutable.ListBuffer[T]

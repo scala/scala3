@@ -460,7 +460,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         case Apply(fun, args) =>
           fun.tpe.widen match {
             case MethodType(names) =>
-              (names zip args.toList).filter {
+              (names zip args.toScalaList).filter {
                 case (_, t: tpd.Ident) if (t.tpe.normalizedPrefix eq NoPrefix) => false
                 case _ => true
               }

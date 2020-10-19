@@ -39,7 +39,7 @@ object NamerOps:
             if param.info.isDirectRef(defn.ObjectClass) then param.info = defn.AnyType
         make.fromSymbols(params, resultType)
       }
-    if typeParams.nonEmpty then PolyType.fromParams(typeParams.toList.asInstanceOf[List[TypeSymbol]], monotpe)
+    if typeParams.nonEmpty then PolyType.fromParams(typeParams.toScalaList.asInstanceOf[List[TypeSymbol]], monotpe)
     else if valueParamss.isEmpty then ExprType(monotpe)
     else monotpe
 

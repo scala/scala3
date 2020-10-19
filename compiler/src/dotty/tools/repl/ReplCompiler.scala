@@ -78,8 +78,8 @@ class ReplCompiler extends Compiler {
     // If trees is of the form `{ def1; def2; def3 }` then `List(def1, def2, def3)`
     val flattened = trees match {
       case List(Block(stats, expr)) =>
-        if (expr eq EmptyTree) stats.toList // happens when expr is not an expression
-        else stats.toList :+ expr
+        if (expr eq EmptyTree) stats.toScalaList // happens when expr is not an expression
+        else stats.toScalaList :+ expr
       case _ =>
         trees
     }
@@ -261,7 +261,7 @@ class ReplCompiler extends Compiler {
       import tpd._
       tree match {
         case PackageDef(_, Lst(TypeDef(_, tmpl: Template))) =>
-          tmpl.body.toList
+          tmpl.body.toScalaList
               .collectFirst { case dd: ValDef if dd.name.show == "expr" => dd.result }
               .getOrElse(error)
         case _ =>

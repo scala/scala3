@@ -540,7 +540,7 @@ object Nullables:
                 else arg1 :: argsRest1
               case _ => args
 
-              tpd.cpy.Apply(app)(fn, recur(mt.paramInfos, args.toList).toLst)
+              tpd.cpy.Apply(app)(fn, recur(mt.paramInfos, args.toScalaList).toLst)
           case _ => app
       case _ => app
   end postProcessByNameArgs

@@ -1661,7 +1661,7 @@ object SymDenotations {
      */
     private def typeParamsFromDecls(using Context) =
       unforcedDecls.filter(sym =>
-        sym.is(TypeParam) && sym.owner == symbol).toList.asInstanceOf[List[TypeSymbol]]
+        sym.is(TypeParam) && sym.owner == symbol).toScalaList.asInstanceOf[List[TypeSymbol]]
 
     /** The type parameters of this class */
     override final def typeParams(using Context): List[TypeSymbol] = {

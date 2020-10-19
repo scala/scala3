@@ -148,7 +148,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         val (clinits, body) = impl.body.partition(stat => stat.isInstanceOf[DefDef] && stat.symbol.isStaticConstructor)
 
-        val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats.toList)
+        val (uptoSuperStats, remainingConstrStats) = splitAtSuper(impl.constr.rhs.asInstanceOf[Block].stats.toScalaList)
         val clInitSymbol: TermSymbol =
           if (clinits.nonEmpty) clinits.head.symbol.asTerm
           else newSymbol(
@@ -701,7 +701,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           .addFlagIf(isNative, asm.Opcodes.ACC_NATIVE) // native methods of objects are generated in mirror classes
 
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
-      initJMethod(flags, params.map(p => p.symbol.annotations).toList)
+      initJMethod(flags, params.map(p => p.symbol.annotations).toScalaList)
 
 
       if (!isAbstractMethod && !isNative) {

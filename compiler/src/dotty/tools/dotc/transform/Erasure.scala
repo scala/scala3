@@ -947,8 +947,8 @@ object Erasure {
       stats.mapConserve {
         case stat: DefDef @unchecked if stat.symbol.isRetainedInlineMethod =>
           val rdef = retainerDef(stat.symbol)
-          val fromParams = untpd.allParamSyms(rdef).toList
-          val toParams = untpd.allParamSyms(stat).toList
+          val fromParams = untpd.allParamSyms(rdef).toScalaList
+          val toParams = untpd.allParamSyms(stat).toScalaList
           assert(fromParams.hasSameLengthAs(toParams))
           val mapBody = TreeTypeMap(
             oldOwners = rdef.symbol :: Nil,

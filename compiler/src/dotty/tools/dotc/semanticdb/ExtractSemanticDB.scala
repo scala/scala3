@@ -189,14 +189,14 @@ class ExtractSemanticDB extends Phase:
           if !excludeDef(ctorSym) then
             traverseAnnotsOfDefinition(ctorSym)
             registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
-            ctorParams(tree.constr.vparamss, tree.body.toList)
+            ctorParams(tree.constr.vparamss, tree.body.toScalaList)
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
             traverse(parent)
           val selfSpan = tree.self.span
           if selfSpan.exists && selfSpan.hasLength then
             traverse(tree.self)
           if tree.symbol.owner.isEnumClass then
-            tree.body.toList.foreachUntilImport(traverse).foreach(traverse) // the first import statement
+            tree.body.toScalaList.foreachUntilImport(traverse).foreach(traverse) // the first import statement
           else
             tree.body.foreach(traverse)
         case tree: Apply =>
@@ -275,9 +275,9 @@ class ExtractSemanticDB extends Phase:
         def impl(acc: List[Tree], pats: List[Tree]): List[Tree] = pats match
 
           case pat::pats => pat match
-            case Typed(UnApply(fun: Tree, _, args), tpt: Tree) => impl(fun::tpt::acc, args.toList:::pats)
+            case Typed(UnApply(fun: Tree, _, args), tpt: Tree) => impl(fun::tpt::acc, args.toScalaList:::pats)
             case Typed(obj: Ident, tpt: Tree)                  => impl(obj::tpt::acc, pats)
-            case UnApply(fun: Tree, _, args)                   => impl(fun::acc,      args.toList:::pats)
+            case UnApply(fun: Tree, _, args)                   => impl(fun::acc,      args.toScalaList:::pats)
             case obj: Ident                                    => impl(obj::acc,      pats)
             case _                                             => impl(acc,           pats)
 

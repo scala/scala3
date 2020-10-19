@@ -39,7 +39,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
   override def transformStats(trees: Lst[Tree])(using Context): Lst[Tree] =
     if (ctx.owner.is(Flags.Package)) {
       val (classes, others) = trees.partition(x => x.isInstanceOf[TypeDef] && x.symbol.isClass)
-      val pairs = classes.toList.groupBy(_.symbol.name.stripModuleClassSuffix).asInstanceOf[Map[Name, List[TypeDef]]]
+      val pairs = classes.toScalaList.groupBy(_.symbol.name.stripModuleClassSuffix).asInstanceOf[Map[Name, List[TypeDef]]]
 
       def rebuild(orig: TypeDef, newBody: List[Tree]): Tree = {
         if (orig eq null) return EmptyTree
@@ -66,8 +66,8 @@ class MoveStatics extends MiniPhase with SymTransformer {
         if (!module.symbol.is(Flags.Module)) move(companion, module)
         else {
           val allMembers: List[Tree] =
-            (if (companion != null) {companion.rhs.asInstanceOf[Template].body.toList} else Nil) ++
-            module.rhs.asInstanceOf[Template].body.toList
+            (if (companion != null) {companion.rhs.asInstanceOf[Template].body.toScalaList} else Nil) ++
+            module.rhs.asInstanceOf[Template].body.toScalaList
           val (newModuleBody, newCompanionBody) = allMembers.partition { x =>
             assert(x.symbol.exists, i"missing symbol for $x in $allMembers%, % for $module")
             x.symbol.owner == module.symbol
@@ -80,7 +80,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
           yield
             if (classes.tail.isEmpty)
               if (classes.head.symbol.is(Flags.Module)) move(classes.head, null)
-              else List(rebuild(classes.head, classes.head.rhs.asInstanceOf[Template].body.toList))
+              else List(rebuild(classes.head, classes.head.rhs.asInstanceOf[Template].body.toScalaList))
             else move(classes.head, classes.tail.head)
       Trees.flatten(newPairs.toList.flatten ::: others)
     }

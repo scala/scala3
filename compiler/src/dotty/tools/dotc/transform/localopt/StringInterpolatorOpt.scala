@@ -42,7 +42,7 @@ class StringInterpolatorOpt extends MiniPhase {
     def unapply(tree: SeqLiteral)(using Context): Option[List[Literal]] = {
       tree.elems match {
         case literals if literals.forall(_.isInstanceOf[Literal]) =>
-          Some(literals.toList.map(_.asInstanceOf[Literal]))
+          Some(literals.toScalaList.map(_.asInstanceOf[Literal]))
         case _ => None
       }
     }
@@ -64,7 +64,7 @@ class StringInterpolatorOpt extends MiniPhase {
             Apply(StringContextApply(),
             Lst(Literals(strs))), _),
           Lst(SeqLiteral(elems, _))) if elems.length == strs.length - 1 =>
-          Some(strs, elems.toList)
+          Some(strs, elems.toScalaList)
         case _ => None
       }
     }

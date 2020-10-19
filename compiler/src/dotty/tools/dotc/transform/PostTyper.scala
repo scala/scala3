@@ -214,7 +214,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         tycon.tpe.widen match {
           case tp: PolyType if args.exists(isNamedArg) =>
             val (namedArgs, otherArgs) = args.partition(isNamedArg)
-            val args1 = reorderArgs(tp.paramNames, namedArgs.toList.asInstanceOf[List[NamedArg]], otherArgs.toList).toLst
+            val args1 = reorderArgs(tp.paramNames, namedArgs.toScalaList.asInstanceOf[List[NamedArg]], otherArgs.toScalaList).toLst
             TypeApply(tycon, args1).withSpan(tree.span).withType(tree.tpe)
           case _ =>
             tree
@@ -281,7 +281,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           args.foreach(checkInferredWellFormed)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)
             // Make an exception for ChildAnnot, which should really have AnyKind bounds
-            Checking.checkBounds(args.toList, fn.tpe.widen.asInstanceOf[PolyType])
+            Checking.checkBounds(args.toScalaList, fn.tpe.widen.asInstanceOf[PolyType])
           fn match {
             case sel: Select =>
               val args1 = transform(args)

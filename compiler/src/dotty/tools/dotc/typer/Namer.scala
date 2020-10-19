@@ -829,7 +829,7 @@ class Namer { typer: Typer =>
 
         val tparams = typeParamTrees(original)
         index(tparams)
-        myTypeParams = tparams.toList.map(symbolOfTree(_).asType)
+        myTypeParams = tparams.toScalaList.map(symbolOfTree(_).asType)
         for param <- tparams do typedAheadExpr(param)
       end if
       myTypeParams
@@ -1198,7 +1198,7 @@ class Namer { typer: Typer =>
       if (isDerivedValueClass(cls)) cls.setFlag(Final)
       cls.info = avoidPrivateLeaks(cls)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
-      cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest.toList))
+      cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest.toScalaList))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
       processExports(using localCtx)
     }
@@ -1360,7 +1360,7 @@ class Namer { typer: Typer =>
         // so we must allow constraining its type parameters
         // compare with typedDefDef, see tests/pos/gadt-inference.scala
         rhsCtx.setFreshGADTBounds
-        rhsCtx.gadt.addToConstraint(typeParams.toList)
+        rhsCtx.gadt.addToConstraint(typeParams.toScalaList)
       }
       def rhsType = PrepareInlineable.dropInlineIfError(sym,
         typedAheadExpr(mdef.rhs, (inherited orElse rhsProto).widenExpr)(using rhsCtx)).tpe

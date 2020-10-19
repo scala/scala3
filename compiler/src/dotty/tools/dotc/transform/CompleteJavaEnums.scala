@@ -104,7 +104,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     val moduleCls = clazz.companionClass
     val moduleRef = ref(clazz.companionModule)
 
-    val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue)).toList
+    val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue)).toScalaList
     for { enumValue <- enums }
     yield {
       def forwarderSym(flags: FlagSet, info: Type): Symbol { type ThisName = TermName } =

@@ -418,7 +418,7 @@ object MarkupParsers {
 
     /** xScalaPatterns  ::= patterns
      */
-    def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns().toList, "pattern")
+    def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns().toScalaList, "pattern")
 
     def reportSyntaxError(offset: Int, str: String): Unit = parser.syntaxError(str, offset)
     def reportSyntaxError(str: String): Unit = {

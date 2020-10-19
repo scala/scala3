@@ -857,7 +857,7 @@ object Trees {
       trees.foreach(_.foreachInThicket(op))
 
     override def isEmpty: Boolean = trees.isEmpty
-    override def toList: List[Tree[T]] = flatten(trees.toList)
+    override def toList: List[Tree[T]] = flatten(trees.toScalaList)
     override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
     override def span: Span = trees.foldLeft(NoSpan)((s, t) => s.union(t.span))
 
@@ -897,7 +897,7 @@ object Trees {
               scanned = scanned.tail
             }
           }
-          recur(recur(buf1, elems.toList), remaining1)
+          recur(recur(buf1, elems.toScalaList), remaining1)
         case tree :: remaining1 =>
           if (buf != null) buf += tree
           recur(buf, remaining1)

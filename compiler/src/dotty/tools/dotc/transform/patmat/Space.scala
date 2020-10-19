@@ -378,7 +378,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       Typ(erase(pat.tpe.stripAnnots), false)
 
     case Alternative(trees) =>
-      Or(trees.map(project(_)).toList)
+      Or(trees.map(project(_)).toScalaList)
 
     case Bind(_, pat) =>
       project(pat)
@@ -567,7 +567,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
     val sig =
       if (isSyntheticScala2Unapply(unappSym) && caseAccessors.length == argLen)
-        caseAccessors.toList.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widenExpr)
+        caseAccessors.toScalaList.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widenExpr)
       else if (resTp.isRef(defn.BooleanClass))
         List()
       else {

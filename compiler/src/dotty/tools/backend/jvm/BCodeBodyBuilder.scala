@@ -351,7 +351,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genLoad(prefix)
           }
 
-          genLoadArguments(env.toList, fun.symbol.info.firstParamTypes map toTypeKind)
+          genLoadArguments(env.toScalaList, fun.symbol.info.firstParamTypes map toTypeKind)
           generatedType = genInvokeDynamicLambda(NoSymbol, fun.symbol, env.size, functionalInterface)
 
         case app @ Apply(_, _) =>
@@ -710,7 +710,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
           // scala/bug#10290: qual can be `this.$outer()` (not just `this`), so we call genLoad (not just ALOAD_0)
           genLoad(superQual)
-          genLoadArguments(args.toList, paramTKs(app))
+          genLoadArguments(args.toScalaList, paramTKs(app))
           generatedType = genCallMethod(fun.symbol, InvokeStyle.Super, app.span)
 
         // 'new' constructor call: Note: since constructors are
@@ -726,13 +726,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
           generatedType match {
             case arr: ArrayBType =>
-              mkArrayConstructorCall(arr, app, args.toList)
+              mkArrayConstructorCall(arr, app, args.toScalaList)
 
             case rt: ClassBType =>
               assert(classBTypeFromSymbol(ctor.owner) == rt, s"Symbol ${ctor.owner.showFullName} is different from $rt")
               mnode.visitTypeInsn(asm.Opcodes.NEW, rt.internalName)
               bc dup generatedType
-              genLoadArguments(args.toList, paramTKs(app))
+              genLoadArguments(args.toScalaList, paramTKs(app))
               genCallMethod(ctor, InvokeStyle.Special, app.span)
 
             case _ =>
@@ -766,7 +766,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               else InvokeStyle.Virtual
 
             if (invokeStyle.hasInstance) genLoadQualifier(fun)
-            genLoadArguments(args.toList, paramTKs(app))
+            genLoadArguments(args.toScalaList, paramTKs(app))
 
             val DesugaredSelect(qual, name) = fun // fun is a Select, also checked in genLoadQualifier
             val isArrayClone = name == nme.clone_ && qual.tpe.widen.isInstanceOf[JavaArrayType]
@@ -1190,7 +1190,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       case tree @ Apply(fun @ DesugaredSelect(larg, method), rarg) =>
         if (isPrimitive(fun) &&
             primitives.getPrimitive(tree, larg.tpe) == ScalaPrimitivesOps.CONCAT)
-          liftStringConcat(larg) ::: rarg.toList
+          liftStringConcat(larg) ::: rarg.toScalaList
         else
           tree :: Nil
       case _ =>

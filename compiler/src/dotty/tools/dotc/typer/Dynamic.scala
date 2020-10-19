@@ -30,7 +30,7 @@ object DynamicUnapply {
       unapply(qual)
     case Apply(Apply(Select(selectable, fname), Lst(Literal(Constant(name)), ctag)), _ +: implicits)
     if fname == nme.applyDynamic && (name == "unapply" || name == "unapplySeq") =>
-      Some(selectable :: ctag :: implicits.toList)
+      Some(selectable :: ctag :: implicits.toScalaList)
     case _ =>
       None
 }

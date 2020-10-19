@@ -439,12 +439,12 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def prepareForBlock(tree: Block)(using Context): Context = {
-    populateNestedObject2superClassTpe(tree.stats.toList)
+    populateNestedObject2superClassTpe(tree.stats.toScalaList)
     ctx
   }
 
   override def prepareForTemplate(tree: Template)(using Context): Context = {
-    populateNestedObject2superClassTpe(tree.body.toList)
+    populateNestedObject2superClassTpe(tree.body.toScalaList)
     ctx
   }
 

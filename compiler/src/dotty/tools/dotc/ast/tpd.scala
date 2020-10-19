@@ -798,7 +798,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       TreeTypeMap(substFrom = from, substTo = to).apply(tree)
 
     def subst(from: Lst[Symbol], to: Lst[Symbol])(using Context): ThisTree =
-      TreeTypeMap(substFrom = from.toList, substTo = to.toList).apply(tree)
+      TreeTypeMap(substFrom = from.toScalaList, substTo = to.toScalaList).apply(tree)
 
     /** Change owner from `from` to `to`. If `from` is a weak owner, also change its
      *  owner to `to`, and continue until a non-weak owner is reached.

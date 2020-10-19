@@ -3501,7 +3501,7 @@ object Types {
          tl => tl.integrate(params, resultType))
     }
     def fromSymbols(params: Lst[Symbol], resultType: Type)(using Context): MethodType =
-      fromSymbols(params.toList, resultType)
+      fromSymbols(params.toScalaList, resultType)
 
     final def apply(paramNames: List[TermName])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type)(using Context): MethodType =
       checkValid(unique(new CachedMethodType(paramNames)(paramInfosExp, resultTypeExp, self)))
@@ -5150,7 +5150,7 @@ object Types {
     def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
 
     def mapOver(scope: Scope): Scope = {
-      val elems = scope.toLst.toList
+      val elems = scope.toLst.toScalaList
       val elems1 = mapOver(elems)
       if (elems1 eq elems) scope
       else newScopeWith(elems1: _*)

@@ -104,7 +104,7 @@ object Inliner {
         bindings ++= stats.map(liftPos).iterator
         liftBindings(expr, liftPos)
       case Inlined(call, stats, expr) =>
-        bindings ++= stats.map(liftPos).toList
+        bindings ++= stats.map(liftPos).toScalaList
         val lifter = liftFromInlined(call)
         cpy.Inlined(tree)(call, NIL, liftBindings(expr, liftFromInlined(call).transform(_)))
       case Apply(fn, args) =>
@@ -432,7 +432,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    */
   private def computeParamBindings(tp: Type, targs: Lst[Tree], argss: Lst[Lst[Tree]]): Boolean = tp match
     case tp: PolyType =>
-      tp.paramNames.lazyZip(targs.toList).foreach { (name, arg) =>
+      tp.paramNames.lazyZip(targs.toScalaList).foreach { (name, arg) =>
         paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.stripTypeVar
       }
@@ -442,7 +442,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
         false
       else
-        tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head.toList).foreach { (name, paramtp, arg) =>
+        tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head.toScalaList).foreach { (name, paramtp, arg) =>
           paramSpan(name) = arg.span
           paramBinding(name) = arg.tpe.dealias match {
             case _: SingletonType if isIdempotentPath(arg) => arg.tpe
@@ -765,7 +765,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
       if (ctx.settings.verbose.value) {
         inlining.println(i"to inline = $rhsToInline")
-        inlining.println(i"original bindings = ${bindingsBuf.toLst.toList}%\n%")
+        inlining.println(i"original bindings = ${bindingsBuf.toLst.toScalaList}%\n%")
         inlining.println(i"original expansion = $expansion1")
       }
 
@@ -941,7 +941,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         ddef.tpe.widen match {
           case mt: MethodType if ddef.vparamss.head.length == args.length =>
             val bindingsBuf = new Lst.Buffer[ValOrDefDef]
-            val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args.toList).map { (name, paramtp, arg) =>
+            val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args.toScalaList).map { (name, paramtp, arg) =>
               arg.tpe.dealias match {
                 case ref @ TermRef(NoPrefix, _) => ref.symbol
                 case _ =>

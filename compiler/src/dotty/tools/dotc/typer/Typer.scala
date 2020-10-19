@@ -1098,7 +1098,7 @@ class Typer extends Namer
           if (refersTo(arg, param)) start :: others else others
         case _ => Nil
       }
-      val allIndices = loop(args.toList, 0)
+      val allIndices = loop(args.toScalaList, 0)
       if (allIndices.length == 1) allIndices else Nil
     }
 
@@ -2387,7 +2387,7 @@ class Typer extends Namer
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
           val elemTpes = elems.zipWith(pts)((elem, pt) =>
-            TypeComparer.widenInferred(elem.tpe, pt)).toList
+            TypeComparer.widenInferred(elem.tpe, pt)).toScalaList
           val resTpe = TypeOps.nestedPairs(elemTpes)
           app1.cast(resTpe)
         }
@@ -3113,7 +3113,7 @@ class Typer extends Namer
         val propFail = propagatedFailure(args)
 
         def issueErrors(): Tree = {
-          wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args.toList).foreach { (paramName, formal, arg) =>
+          wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args.toScalaList).foreach { (paramName, formal, arg) =>
             arg.tpe match {
               case failure: SearchFailureType =>
                 report.error(
@@ -3134,7 +3134,7 @@ class Typer extends Namer
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
           if hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits] then
-            val namedArgs = wtp.paramNames.lazyZip(args.toList).flatMap { (pname, arg) =>
+            val namedArgs = wtp.paramNames.lazyZip(args.toScalaList).flatMap { (pname, arg) =>
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }.toLst
             tryEither {
