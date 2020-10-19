@@ -72,7 +72,18 @@ final case class SbtCommunityProject(
     dependencies: List[CommunityProject] = Nil,
     sbtPublishCommand: String = null) extends CommunityProject:
   override val binaryName: String = "sbt"
-  private val baseCommand = s";clean ;set logLevel in Global := Level.Error ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! "
+
+  val dependencyOverrides = List(
+    // dependencyOverrides doesn't seem to understand `%%%`
+    """"org.scalacheck" %% "scalacheck" % "1.15.2-SNAPSHOT"""",
+    """"org.scalacheck" %% "scalacheck_sjs1" % "1.15.2-SNAPSHOT""""
+  )
+
+  private val baseCommand =
+    "clean; set logLevel in Global := Level.Error; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
+    ++ s"""set dependencyOverrides in ThisBuild ++= ${dependencyOverrides.mkString("Seq(", ", ", ")")}; """
+    ++ s"++$compilerVersion!; "
+
   override val testCommand = s"$baseCommand$sbtTestCommand"
   override val publishCommand = s"$baseCommand$sbtPublishCommand"
 
@@ -85,7 +96,7 @@ final case class SbtCommunityProject(
       if (forceUpgradeSbtScalajsPlugin) List(s"--addPluginSbtFile=$sbtScalaJSPluginFilePath")
       else Nil
     extraSbtArgs ++ sbtProps ++ List(
-      "-sbt-version", "1.3.8",
+      "-sbt-version", "1.4.4",
        "-Dsbt.supershell=false",
       s"--addPluginSbtFile=$sbtPluginFilePath"
     ) ++ scalaJSPluginArgs
@@ -172,14 +183,14 @@ object projects:
 
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
-    sbtTestCommand   = "jvm/test",
-    sbtPublishCommand = ";set jvm/publishArtifact in (Compile, packageDoc) := false ;jvm/publishLocal"
+    sbtTestCommand   = "jvm/test;js/test",
+    sbtPublishCommand = "jvm/publishLocal;js/publishLocal"
   )
 
   lazy val scalatest = SbtCommunityProject(
     project       = "scalatest",
-    sbtTestCommand   = ";scalacticDotty/clean;scalacticTestDotty/test;scalatestTestDotty/test",
-    sbtPublishCommand = ";scalacticDotty/publishLocal; scalatestDotty/publishLocal"
+    sbtTestCommand   = "scalacticDotty/clean;scalacticTestDotty/test; scalatestTestDotty/test",
+    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal"
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
@@ -194,19 +205,9 @@ object projects:
     sbtTestCommand   = "xml/test",
   )
 
-  lazy val scopt = SbtCommunityProject(
-    project       = "scopt",
-    sbtTestCommand   = "scoptJVM/compile",
-  )
-
   lazy val scalap = SbtCommunityProject(
     project       = "scalap",
     sbtTestCommand   = "scalap/compile",
-  )
-
-  lazy val squants = SbtCommunityProject(
-    project       = "squants",
-    sbtTestCommand   = "squantsJVM/compile",
   )
 
   lazy val betterfiles = SbtCommunityProject(
@@ -221,7 +222,8 @@ object projects:
 
   lazy val minitest = SbtCommunityProject(
     project       = "minitest",
-    sbtTestCommand   = "dotty-community-build/compile",
+    sbtTestCommand   = "test",
+    dependencies = List(scalacheck)
   )
 
   lazy val fastparse = SbtCommunityProject(
@@ -233,7 +235,7 @@ object projects:
     project       = "stdLib213",
     extraSbtArgs  = List("-Dscala.build.compileWithDotty=true"),
     sbtTestCommand   = """library/compile""",
-    sbtPublishCommand = """;set publishArtifact in (library, Compile, packageDoc) := false ;library/publishLocal""",
+    sbtPublishCommand = """set publishArtifact in (library, Compile, packageDoc) := false ;library/publishLocal""",
   )
 
   lazy val shapeless = SbtCommunityProject(
@@ -256,9 +258,9 @@ object projects:
     // has not been updated since 2018, so no 2.13 compat. Some akka tests are dropped due to MutableBehaviour being
     // dropped in the 2.13 compatible release
 
-    // sbtTestCommand   = ";set ThisBuild / useEffpiPlugin := false; effpi/test:compile; plugin/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
+    // sbtTestCommand   = "set ThisBuild / useEffpiPlugin := false; effpi/test:compile; plugin/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
 
-    sbtTestCommand   = ";set ThisBuild / useEffpiPlugin := false; effpi/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
+    sbtTestCommand   = "set ThisBuild / useEffpiPlugin := false; effpi/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
   )
 
   // TODO @odersky? It got broken by #5458
@@ -313,7 +315,7 @@ object projects:
 
   lazy val endpoints4s = SbtCommunityProject(
     project        = "endpoints4s",
-    sbtTestCommand = ";json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile"
+    sbtTestCommand = "json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile"
   )
 
   lazy val catsEffect2 = SbtCommunityProject(

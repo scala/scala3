@@ -13,12 +13,6 @@
 [submodule "community-build/community-projects/scalatest"]
 	path = community-build/community-projects/scalatest
 	url = https://github.com/dotty-staging/scalatest
-[submodule "community-build/community-projects/scopt"]
-	path = community-build/community-projects/scopt
-	url = https://github.com/dotty-staging/scopt
-[submodule "community-build/community-projects/squants"]
-	path = community-build/community-projects/squants
-	url = https://github.com/dotty-staging/squants
 [submodule "community-build/community-projects/scalap"]
 	path = community-build/community-projects/scalap
 	url = https://github.com/dotty-staging/scala
