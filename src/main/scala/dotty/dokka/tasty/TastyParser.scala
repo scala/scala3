@@ -19,6 +19,7 @@ import java.util.{List => JList}
 
 import scala.tasty.Reflection
 import scala.tasty.inspector.TastyInspector
+import dotty.dokka.model.api.withNewMembers
 
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
   *
@@ -122,13 +123,13 @@ trait DokkaBaseTastyInspector:
             f.getDri,
             f.getFunctions,
             f.getProperties,
-            entries.collect{ case d: DClasslike => d }.toList.asJava, // TODO add support for other things like type or package object entries
+            Nil.asJava, // TODO add support for other things like type or package object entries
             Nil.asJava,
             f.getDocumentation,
             null,
             sourceSet.toSet,
             f.getExtra
-          )
+          ).withNewMembers(entries.filterNot(_.isInstanceOf[DPackage]).toList).asInstanceOf[DPackage]
         )
         found.getOrElse(throw IllegalStateException("No package for entries found"))
       }
@@ -167,6 +168,7 @@ case class TastyParser(reflect: Reflection, inspector: DokkaBaseTastyInspector, 
   def sourceSet = inspector.sourceSet
 
   def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch case e: Throwable => errorMsg(tree, tree.symbol.show, e)
+  def processTreeOpt[T](tree: Tree)(op: => Option[T]): Option[T] = try op catch case e: Throwable => errorMsg(tree, tree.symbol.show, e)
   def processSymbol[T](sym: Symbol)(op: => T): Option[T] = try Option(op) catch case e: Throwable => errorMsg(sym, sym.show, e)
 
   private def errorMsg[T](a: Any, m: => String, e: Throwable): Option[T] =

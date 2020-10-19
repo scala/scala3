@@ -19,8 +19,13 @@ import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.plugability._
 import kotlin.jvm.JvmClassMappingKt.getKotlinClass
 
-extension [T, V] (a: WithExtraProperties[T]):
-  def get(key: ExtraProperty.Key[_ >: T, V]): V = a.getExtra().getMap().get(key).asInstanceOf[V]
+
+extension [V] (a: WithExtraProperties[_]):
+  def get(key: ExtraProperty.Key[_, V]): V = a.getExtra().getMap().get(key).asInstanceOf[V]
+
+extension [E <: WithExtraProperties[E]] (a: E):
+  def put(value: ExtraProperty[_ >: E]): E = // TODO remove some of the InstanceOf
+    a.withNewExtras(a.getExtra plus value).asInstanceOf[E]
 
 extension [V] (map: JMap[DokkaConfiguration$DokkaSourceSet, V]):
     def defaultValue: V = map.values.asScala.toSeq(0)
@@ -32,11 +37,21 @@ class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
   override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] = 
     MergeStrategy.Remove.INSTANCE.asInstanceOf[MergeStrategy[T]]
 
+  def definedIn(e: T): Boolean = e match
+    case e: WithExtraProperties[_] => e.getExtra.getMap.containsKey(this)
+    case _ => false
+
+  
+  def getFrom(e: T): Option[V] = e match
+    case e: WithExtraProperties[_] => getFromExtra(e, this)
+    case _ => None    
+  
+def getFromExtra[V](e: WithExtraProperties[_], k: ExtraProperty.Key[_, V]): Option[V] =
+    Option(e.getExtra.getMap.get(k)).asInstanceOf[Option[V]]
+
+
 extension (f: DFunction):
   def isRightAssociative(): Boolean = f.getName.endsWith(":")
-  def getExtendedSymbol(): Option[DParameter] = Option.when(f.get(MethodExtension).extensionInfo.isDefined)(
-    f.getParameters.asScala(if f.isRightAssociative() then f.get(MethodExtension).parametersListSizes(0) else 0)
-  )
 
 object JList:
     def apply[T](elem: T): JList[T] = List(elem).asJava

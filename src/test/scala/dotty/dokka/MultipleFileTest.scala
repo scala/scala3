@@ -78,7 +78,15 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
             val unexpectedSignaturesMessage = Option.when(reportUnexpectedSignatures)
                 (s"Unexpectedly documented signatures:\n${unexpectedSignatures.mkString("\n")}")
 
-            val allSignaturesMessage = s"All documented signatures:\n${documentedSignatures.mkString("\n")}\n\nAll expected signatures from source:\n${expectedFromSource.mkString("\n")}"
+            val allSignaturesMessage = 
+                s"""
+                |All documented signatures:
+                |${documentedSignatures.mkString("\n")}
+                |
+                |All expected signatures from source:
+                |${expectedFromSource.mkString("\n")}
+                """.stripMargin
+             
             val errorMessages = missingSignaturesMessage ++ unexpectedSignaturesMessage ++ Some(allSignaturesMessage)
             
-            reportError(errorMessages.mkString("\n\n"))
+            reportError(errorMessages.mkString("\n", "\n\n", "\n"))

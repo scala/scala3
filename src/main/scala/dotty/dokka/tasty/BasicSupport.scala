@@ -4,6 +4,11 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model._
 import collection.JavaConverters._
 import dotty.dokka._
+import dotty.dokka.model.api.Visibility
+import dotty.dokka.model.api.VisibilityScope
+import dotty.dokka.model.api.Modifier
+import dotty.dokka.model.api.Annotation
+
 
 import scala.tasty.Reflection
 
@@ -14,26 +19,25 @@ trait BasicSupport:
   object SymOps extends SymOps[reflect.type](reflect)
   export SymOps._
 
-  def parseAnnotation(annotTerm: Term): AnnotationsInfo.Annotation = {
+  def parseAnnotation(annotTerm: Term): Annotation = 
     val dri = annotTerm.tpe.typeSymbol.dri
-    val params = annotTerm match {
+    val params = annotTerm match 
       case Apply(target, appliedWith) => {
         appliedWith.map {
-          case Literal(Constant(value)) => AnnotationsInfo.PrimitiveParameter(None, value match {
+          case Literal(Constant(value)) => Annotation.PrimitiveParameter(None, value match {
             case s: String => "\"" + s"$s" + "\""
             case other => other.toString()
           })
           case Select(qual, name) =>
             val dri = qual.tpe.termSymbol.companionClass.dri
-            AnnotationsInfo.LinkParameter(None, dri, s"${dri.getClassNames}.$name")
+            Annotation.LinkParameter(None, dri, s"${dri.getClassNames}.$name") // TODO this is a nasty hack!
 
-          case other => AnnotationsInfo.UnresolvedParameter(None, other.show)
+          case other => Annotation.UnresolvedParameter(None, other.show)
         }
       }
-  }
-
-    AnnotationsInfo.Annotation(dri, params)
-  }
+  
+    Annotation(dri, params)
+  
 
   extension (sym: reflect.Symbol):
     def documentation(using cxt: reflect.Context) = sym.comment match
@@ -49,7 +53,8 @@ trait BasicSupport:
         case None => Map.empty
       }
 
-    def getAnnotations(): List[AnnotationsInfo.Annotation] = sym.annots.map(parseAnnotation).reverse
+    def getAnnotations(): List[Annotation] = 
+    sym.annots.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse
 
   private val emptyDRI = DRI.Companion.getTopLevel
 
@@ -66,7 +71,7 @@ class SymOps[R <: Reflection](val r: R):
     def topLevelEntryName(using ctx: Context): Option[String] = if (sym.isPackageDef) None else
       if (sym.owner.isPackageDef) Some(sym.name) else sym.owner.topLevelEntryName
 
-    def getVisibility(): ScalaVisibility =
+    def getVisibility(): Visibility =
       import VisibilityScope._
 
       def explicitScope(ownerType: Type): VisibilityScope =
@@ -83,18 +88,13 @@ class SymOps[R <: Reflection](val r: R):
 
       val visibilityFlags = (sym.flags.is(Flags.Private), sym.flags.is(Flags.Protected), sym.flags.is(Flags.Local))
       (sym.privateWithin, sym.protectedWithin, visibilityFlags) match
-        case (Some(owner), None, _) => ScalaVisibility.Private(explicitScope(owner))
-        case (None, Some(owner), _) => ScalaVisibility.Protected(explicitScope(owner))
-        case (None, None, (true, false, _)) => ScalaVisibility.Private(implicitScope(sym.owner))
-        case (None, None, (false, true, true)) => ScalaVisibility.Protected(ThisScope)
-        case (None, None, (false, true, false)) => ScalaVisibility.Protected(implicitScope(sym.owner))
-        case (None, None, (false, false, false)) => ScalaVisibility.Unrestricted
+        case (Some(owner), None, _) => Visibility.Private(explicitScope(owner))
+        case (None, Some(owner), _) => Visibility.Protected(explicitScope(owner))
+        case (None, None, (true, false, _)) => Visibility.Private(implicitScope(sym.owner))
+        case (None, None, (false, true, true)) => Visibility.Protected(ThisScope)
+        case (None, None, (false, true, false)) => Visibility.Protected(implicitScope(sym.owner))
+        case (None, None, (false, false, false)) => Visibility.Unrestricted
         case _ => throw new Exception(s"Visibility for symbol $sym cannot be determined")
-
-    def getModifier(): ScalaModifier =
-      if (sym.flags.is(Flags.Abstract)) ScalaModifier.Abstract
-      else if (sym.flags.is(Flags.Final)) ScalaModifier.Final
-      else ScalaModifier.Empty
 
     // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
     def hackIsOpen: Boolean = {
@@ -104,24 +104,26 @@ class SymOps[R <: Reflection](val r: R):
       symbol.is(dotc.core.Flags.Open)
     }
 
-    def getExtraModifiers(): Set[ScalaOnlyModifiers] =
-      Set(
-        Option.when(sym.flags.is(Flags.Sealed))(ScalaOnlyModifiers.Sealed),
-        Option.when(sym.flags.is(Flags.Erased))(ScalaOnlyModifiers.Erased),
-        Option.when(sym.flags.is(Flags.Implicit))(ScalaOnlyModifiers.Implicit),
-        Option.when(sym.flags.is(Flags.Inline))(ScalaOnlyModifiers.Inline),
-        Option.when(sym.flags.is(Flags.Lazy))(ScalaOnlyModifiers.Lazy),
-        Option.when(sym.flags.is(Flags.Override))(ScalaOnlyModifiers.Override),
-        Option.when(sym.flags.is(Flags.Case))(ScalaOnlyModifiers.Case),
-        Option.when(sym.hackIsOpen)(ScalaOnlyModifiers.Open)
-      ).flatten
+    // Order here determines order in documenation
+    def getExtraModifiers(): Seq[Modifier] = Seq(
+        Flags.Final -> Modifier.Final,
+        Flags.Sealed -> Modifier.Sealed,
+        Flags.Erased -> Modifier.Erased,
+        Flags.Abstract -> Modifier.Abstract,
+        Flags.Implicit -> Modifier.Implicit,
+        Flags.Inline -> Modifier.Inline,
+        Flags.Lazy -> Modifier.Lazy,
+        Flags.Override -> Modifier.Override,
+        Flags.Case -> Modifier.Case,
+        ).collect { case (flag, mod) if sym.flags.is(flag) => mod }
+          ++ (if(sym.hackIsOpen) Seq(Modifier.Open) else Nil)
 
     def isHiddenByVisibility: Boolean =
       import VisibilityScope._
 
       getVisibility() match
-        case ScalaVisibility.Private(_) => true
-        case ScalaVisibility.Protected(ThisScope | ImplicitModuleScope | _: ExplicitModuleScope) => true
+        case Visibility.Private(_) => true
+        case Visibility.Protected(ThisScope | ImplicitModuleScope | _: ExplicitModuleScope) => true
         case _ => false
 
     def shouldDocumentClasslike: Boolean = !isHiddenByVisibility

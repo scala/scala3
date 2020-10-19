@@ -17,6 +17,7 @@ import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentCon
 import org.jetbrains.dokka.utilities.DokkaLogger
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.pages._
+import dotty.dokka.model.api._
 
 
 /** Main Dokka plugin for the doctool.
@@ -45,6 +46,8 @@ class DottyDokkaPlugin extends JavaDokkaPlugin:
             )
           inspector.run()
       }
+
+      def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.allMembers.flatMap(flattenMember)
     
       new DModule(
         sourceSet.getSourceSet.getModuleDisplayName,
@@ -52,7 +55,7 @@ class DottyDokkaPlugin extends JavaDokkaPlugin:
         Map().asJava,
         null,
         sourceSet.toSet,
-        PropertyContainer.Companion.empty()
+        PropertyContainer.Companion.empty() plus ModuleExtension(result.flatMap(flattenMember).toMap)
       )
     case _ =>
       ???

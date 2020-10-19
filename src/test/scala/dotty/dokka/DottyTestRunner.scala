@@ -18,6 +18,7 @@ import org.jetbrains.dokka._
 import collection.JavaConverters._
 import scala.math.max
 import org.jetbrains.dokka.pages.ContentNodesKt
+import dotty.dokka.model.api.Link
 
 abstract class DottyAbstractCoreTest extends AbstractCoreTest:
     private def getTempDir() : TemporaryFolder =
@@ -70,10 +71,16 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
         signatures
 
     def signaturesFromDocumentation(tastyDir: String): Seq[String] = 
-        def flattenToText(node: ContentNode) : Seq[ContentText] = node match
-            case t: ContentText => Seq(t)
+        def flattenToText(node: ContentNode) : Seq[String] = node match
+            case t: ContentText => Seq(t.getText)
             case c: ContentComposite => 
                 c.getChildren.asScala.flatMap(flattenToText).toSeq
+            case l: DocumentableElement => 
+                (l.annotations ++ Seq(" ") ++ l.modifiers ++ Seq(l.name) ++ l.signature).map {
+                    case s: String => s
+                    case (s: String, _) => s
+                    case Link(s: String, _) => s
+                }        
             case _ => Seq()
     
         def all(p: ContentNode => Boolean)(n: ContentNode): Seq[ContentNode] =
@@ -81,8 +88,8 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
             
 
         val pages = listPages(tastyDir)
-        val nodes = pages.flatMap(p => all(_.getDci.getKind == ContentKind.Symbol)(p.getContent))
-        nodes.map(flattenToText(_).map(_.getText).mkString)
+        val nodes = pages.flatMap(p => all(_.isInstanceOf[DocumentableElement])(p.getContent))
+        nodes.map(flattenToText(_).mkString.trim)
 
     def signaturesFromSource(s: Source): SignaturesFromSource =
         val ExpectedRegex = ".+//expected: (.+)".r

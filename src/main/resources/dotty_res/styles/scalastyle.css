@@ -460,6 +460,44 @@ footer .pull-right {
   margin-left: auto;
 }
 
+.modifiers {
+  width: 12em;
+  display: table-cell;
+  text-align: right;
+  padding-right: 0.5em;
+}
+
+.documentableElement {
+  width: 100%;
+  color: var(--symbol-fg);
+	white-space: normal;
+  position: relative;
+  margin: 0;
+  padding: 5px 4px 5px 4px;
+  font-weight: 500;
+  font-size: 12px;
+  background: var(--code-bg);
+}
+
+.documentableElement>div {
+  display: table;
+}
+
+.annotations {
+  margin-left: 9em;
+}
+.documentableAnchor {
+  position: absolute;
+}
+
+.documentableBrief {
+  font-size: 14px;
+}
+
+.documentableBrief>p{
+  margin: .5em 0 0 0;
+}
+
 /* Large Screens */
 @media(min-width: 1100px) {
   :root {
@@ -546,3 +584,4 @@ footer .pull-right {
     display: none;
   }
 }
+
