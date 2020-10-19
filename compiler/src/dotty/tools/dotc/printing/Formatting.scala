@@ -37,18 +37,22 @@ object Formatting {
               case _ => ex.getMessage
             s"[cannot display due to $msg, raw string = ${arg.toString}]"
         }
+      case arg: Array[_] => arg.mkString("Array(", ", ", ")")
       case _ => arg.toString
     }
 
-    private def treatArg(arg: Any, suffix: String)(using Context): (Any, String) = arg match {
-      case arg: Seq[?] if suffix.nonEmpty && suffix.head == '%' =>
+    private def treatArg(arg: Any, suffix: String)(using Context): (Any, String) =
+      def default = (showArg(arg), suffix)
+      if suffix.nonEmpty && suffix.head == '%' then
         val (rawsep, rest) = suffix.tail.span(_ != '%')
-        val sep = StringContext.processEscapes(rawsep)
-        if (rest.nonEmpty) (arg.map(showArg).mkString(sep), rest.tail)
-        else (arg, suffix)
-      case _ =>
-        (showArg(arg), suffix)
-    }
+        if rest.nonEmpty then
+          val sep = StringContext.processEscapes(rawsep)
+          arg match
+            case arg: Seq[?] => (arg.map(showArg).mkString(sep), rest.tail)
+            case arg: Array[?] => (arg.map(showArg).mkString(sep), rest.tail)
+            case _ => default
+        else default
+      else default
 
     def assemble(args: Seq[Any])(using Context): String = {
       def isLineBreak(c: Char) = c == '\n' || c == '\f' // compatible with StringLike#isLineBreak
