@@ -556,6 +556,7 @@ class Typer extends Namer
 
     def typeSelectOnTerm(using Context): Tree =
       typedSelect(tree, pt, typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)))
+        .withSpan(tree.span)
         .computeNullable()
 
     def typeSelectOnType(qual: untpd.Tree)(using Context) =

@@ -3,9 +3,9 @@
   |                           ^^^^^^^^^^^^^^^^^^^^^^^^
   |                           Found:    F[T]
   |                           Required: F[G[T]]
--- [E007] Type Mismatch Error: tests/neg/i6779.scala:11:27 -------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i6779.scala:11:29 -------------------------------------------------------------
 11 |def g2[T](x: T): F[G[T]] = x.f // error
-   |                           ^
+   |                           ^^^
    |                           Found:    F[T]
    |                           Required: F[G[T]]
 -- [E007] Type Mismatch Error: tests/neg/i6779.scala:13:41 -------------------------------------------------------------
