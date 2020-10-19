@@ -109,25 +109,26 @@ object RefChecks {
       for (reqd <- cinfo.cls.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
 
-      def illegalEnumFlags = !cls.isOneOf(Enum | Trait)
-      def isJavaEnum = parents.exists(_.classSymbol == defn.JavaEnumClass)
+      def isClassExtendingJavaEnum =
+        !cls.isOneOf(Enum | Trait) && parents.exists(_.classSymbol == defn.JavaEnumClass)
 
       // Prevent wrong `extends` of java.lang.Enum
-      if !migrateTo3 && illegalEnumFlags && isJavaEnum then
-        report.error(CannotExtendJavaEnum(cls), cls.sourcePos)
-      else if illegalEnumFlags && isJavaEnum then
-        val javaEnumCtor = defn.JavaEnumClass.primaryConstructor
-        parentTrees.exists(parent =>
-          parent.tpe.typeSymbol == defn.JavaEnumClass
-          && (
-            parent match
-              case tpd.Apply(tpd.TypeApply(fn, _), _) if fn.tpe.termSymbol eq javaEnumCtor =>
-                // here we are simulating the error for missing arguments to a constructor.
-                report.error(JavaEnumParentArgs(parent.tpe), cls.sourcePos)
-                true
-              case _ =>
-                false
-          ))
+      if isClassExtendingJavaEnum then
+        if !migrateTo3 then // always error, only traits or enum-syntax is possible under scala 3.x
+          report.error(CannotExtendJavaEnum(cls), cls.sourcePos)
+        else
+          // conditionally error, we allow classes to extend java.lang.Enum in scala 2 migration mode,
+          // however the no-arg constructor is forbidden, we must look at the parent trees to see
+          // which overload is called.
+          val javaEnumCtor = defn.JavaEnumClass.primaryConstructor
+          parentTrees.exists {
+            case parent @ tpd.Apply(tpd.TypeApply(fn, _), _) if fn.tpe.termSymbol eq javaEnumCtor =>
+              // here we are simulating the error for missing arguments to a constructor.
+              report.error(JavaEnumParentArgs(parent.tpe), cls.sourcePos)
+              true
+            case _ =>
+              false
+          }
 
     case _ =>
   }

@@ -12,3 +12,6 @@ object O extends jl.Enum[O.type] // error
 
 trait T extends jl.Enum[T] // ok
 class Sub extends T // error
+
+abstract class Color(name: String, ordinal: Int) extends java.lang.Enum[Color](name, ordinal) // ok
+val foo = new java.lang.Enum[Color] {} // error

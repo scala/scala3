@@ -10,3 +10,7 @@
 14 |class Sub extends T // error
    |      ^
    |      not enough arguments for constructor Enum: (name: String, ordinal: Int): Enum[T]
+-- [E160] Type Error: tests/neg/extend-java-enum-migration.scala:17:10 -------------------------------------------------
+17 |val foo = new java.lang.Enum[Color] {} // error
+   |          ^
+   |          not enough arguments for constructor Enum: (name: String, ordinal: Int): Enum[Color]
