@@ -250,6 +250,8 @@ object Symbols {
 
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
+     *  Note that this the returned classfile might be the top-level class
+     *  containing this symbol instead of the directly enclosing class.
      *  Overridden in ClassSymbol
      */
     def associatedFile(using Context): AbstractFile =

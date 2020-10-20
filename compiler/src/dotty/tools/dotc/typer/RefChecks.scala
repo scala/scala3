@@ -95,7 +95,7 @@ object RefChecks {
    *  and required classes. Also check that only `enum` constructs extend
    *  `java.lang.Enum`.
    */
-  private def checkParents(cls: Symbol)(using Context): Unit = cls.info match {
+  private def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
       def checkSelfConforms(other: ClassSymbol, category: String, relation: String) = {
         val otherSelf = other.declaredSelfTypeAsSeenFrom(cls.thisType)
@@ -109,12 +109,26 @@ object RefChecks {
       for (reqd <- cinfo.cls.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
 
+      def isClassExtendingJavaEnum =
+        !cls.isOneOf(Enum | Trait) && parents.exists(_.classSymbol == defn.JavaEnumClass)
+
       // Prevent wrong `extends` of java.lang.Enum
-      if !migrateTo3 &&
-         !cls.isOneOf(Enum | Trait) &&
-         parents.exists(_.classSymbol == defn.JavaEnumClass)
-      then
-        report.error(CannotExtendJavaEnum(cls), cls.sourcePos)
+      if isClassExtendingJavaEnum then
+        if !migrateTo3 then // always error, only traits or enum-syntax is possible under scala 3.x
+          report.error(CannotExtendJavaEnum(cls), cls.sourcePos)
+        else
+          // conditionally error, we allow classes to extend java.lang.Enum in scala 2 migration mode,
+          // however the no-arg constructor is forbidden, we must look at the parent trees to see
+          // which overload is called.
+          val javaEnumCtor = defn.JavaEnumClass.primaryConstructor
+          parentTrees.exists {
+            case parent @ tpd.Apply(tpd.TypeApply(fn, _), _) if fn.tpe.termSymbol eq javaEnumCtor =>
+              // here we are simulating the error for missing arguments to a constructor.
+              report.error(JavaEnumParentArgs(parent.tpe), cls.sourcePos)
+              true
+            case _ =>
+              false
+          }
 
     case _ =>
   }
@@ -1089,7 +1103,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformTemplate(tree: Template)(using Context): Tree = try {
     val cls = ctx.owner.asClass
     checkOverloadedRestrictions(cls)
-    checkParents(cls)
+    checkParents(cls, tree.parents)
     if (cls.is(Trait)) tree.parents.foreach(checkParentPrefix(cls, _))
     checkCompanionNameClashes(cls)
     checkAllOverrides(cls)

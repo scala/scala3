@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
 import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive}
 import xsbti.UseScope
@@ -112,34 +113,24 @@ class ExtractDependencies extends Phase {
     def binaryDependency(file: File, binaryClassName: String) =
       ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context)
 
-    def processExternalDependency(depFile: AbstractFile) = {
-      def binaryClassName(classSegments: List[String]) =
-        classSegments.mkString(".").stripSuffix(".class")
-
+    def processExternalDependency(depFile: AbstractFile, binaryClassName: String) = {
       depFile match {
         case ze: ZipArchive#Entry => // The dependency comes from a JAR
-          for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) {
-            val classSegments = io.File(ze.path).segments
-            binaryDependency(zipFile, binaryClassName(classSegments))
-          }
-
+          ze.underlyingSource match
+            case Some(zip) if zip.file != null =>
+              binaryDependency(zip.file, binaryClassName)
+            case _ =>
         case pf: PlainFile => // The dependency comes from a class file
-          val packages = dep.to.ownersIterator
-            .count(x => x.is(PackageClass) && !x.isEffectiveRoot)
-          // We can recover the fully qualified name of a classfile from
-          // its path
-          val classSegments = pf.givenPath.segments.takeRight(packages + 1)
           // FIXME: pf.file is null for classfiles coming from the modulepath
           // (handled by JrtClassPath) because they cannot be represented as
           // java.io.File, since the `binaryDependency` callback must take a
           // java.io.File, this means that we cannot record dependencies coming
           // from the modulepath. For now this isn't a big deal since we only
           // support having the standard Java library on the modulepath.
-          if (pf.file != null)
-            binaryDependency(pf.file, binaryClassName(classSegments))
-
+          if pf.file != null then
+            binaryDependency(pf.file, binaryClassName)
         case _ =>
-          report.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}}")
+          internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.from.srcPos)
       }
     }
 
@@ -149,7 +140,25 @@ class ExtractDependencies extends Phase {
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
       if (depFile.extension == "class") {
         // Dependency is external -- source is undefined
-        processExternalDependency(depFile)
+
+        // The fully qualified name on the JVM of the class corresponding to `dep.to`
+        val binaryClassName = {
+          val builder = new StringBuilder
+          val pkg = dep.to.enclosingPackageClass
+          if (!pkg.isEffectiveRoot) {
+            builder.append(pkg.fullName.mangledString)
+            builder.append(".")
+          }
+          val flatName = dep.to.flatName
+          // We create fake companion object symbols to hold the static members
+          // of Java classes, make sure to use the name of the actual Java class
+          // here.
+          val clsFlatName = if (dep.to.is(JavaDefined)) flatName.stripModuleClassSuffix else flatName
+          builder.append(clsFlatName.mangledString)
+          builder.toString
+        }
+
+        processExternalDependency(depFile, binaryClassName)
       } else if (allowLocal || depFile.file != sourceFile) {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
@@ -163,6 +172,10 @@ class ExtractDependencies extends Phase {
 object ExtractDependencies {
   def classNameAsString(sym: Symbol)(using Context): String =
     sym.fullName.stripModuleClassSuffix.toString
+
+  /** Report an internal error in incremental compilation. */
+  def internalError(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+    report.error(s"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
 }
 
 private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)
