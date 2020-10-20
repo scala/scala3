@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds.UniqueName
+import dotty.tools.dotc.core.NameKinds.{UniqueName, PatMatQuoteTypeEv}
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
@@ -156,11 +156,13 @@ trait QuotesAndSplices {
     if ctx.mode.is(Mode.QuotedPattern) && level == 1 then
       def spliceOwner(ctx: Context): Symbol =
       if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-      val name = tree.expr match {
-        case Ident(name) => ("$" + name).toTypeName
+      val (name, expr) = tree.expr match {
+        case Ident(name) =>
+          val nameOfSyntheticGiven = PatMatQuoteTypeEv.fresh()
+          (name.toTypeName, untpd.cpy.Ident(tree.expr)(nameOfSyntheticGiven))
         case expr =>
           report.error("expected a name binding", expr.srcPos)
-          "$error".toTypeName
+          ("$error".toTypeName, expr)
       }
 
       val typeSymInfo = pt match
@@ -168,7 +170,7 @@ trait QuotesAndSplices {
         case _ => TypeBounds.empty
       val typeSym = newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.expr.span)
       typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuotedPatterns_patternTypeAnnot.typeRef)).withSpan(tree.expr.span)))
-      val pat = typedPattern(tree.expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
+      val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
           using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
       pat.select(tpnme.spliceType)
     else
@@ -214,7 +216,7 @@ trait QuotesAndSplices {
     def getBinding(sym: Symbol): Bind =
       typeBindings.getOrElseUpdate(sym, {
         val bindingBounds = sym.info
-        val bsym = newPatternBoundSymbol(sym.name.toTypeName, bindingBounds, quoted.span)
+        val bsym = newPatternBoundSymbol(sym.name.toString.stripPrefix("$").toTypeName, bindingBounds, quoted.span)
         Bind(bsym, untpd.Ident(nme.WILDCARD).withType(bindingBounds)).withSpan(quoted.span)
       })
 
@@ -263,13 +265,14 @@ trait QuotesAndSplices {
           val sym = tree.tpe.dealias.typeSymbol
           if sym.exists then
             val tdef = TypeDef(sym.asType).withSpan(sym.span)
-            freshTypeBindingsBuff += transformTypeBindingTypeDef(tdef, freshTypePatBuf)
+            val nameOfSyntheticGiven = pat.symbol.name.toTermName
+            freshTypeBindingsBuff += transformTypeBindingTypeDef(nameOfSyntheticGiven, tdef, freshTypePatBuf)
             TypeTree(tree.tpe.dealias).withSpan(tree.span)
           else
             tree
         case tdef: TypeDef  =>
           if tdef.symbol.hasAnnotation(defn.InternalQuotedPatterns_patternTypeAnnot) then
-            transformTypeBindingTypeDef(tdef, typePatBuf)
+            transformTypeBindingTypeDef(PatMatQuoteTypeEv.fresh(), tdef, typePatBuf)
           else if tdef.symbol.isClass then
             val kind = if tdef.symbol.is(Module) then "objects" else "classes"
             report.error("Implementation restriction: cannot match " + kind, tree.srcPos)
@@ -305,13 +308,12 @@ trait QuotesAndSplices {
           super.transform(tree)
       }
 
-      private def transformTypeBindingTypeDef(tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]])(using Context): Tree = {
+      private def transformTypeBindingTypeDef(nameOfSyntheticGiven: TermName, tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]])(using Context): Tree = {
         if (variance == -1)
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.InternalQuotedPatterns_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
         val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
-        val bindName = tdef.name.toString.stripPrefix("$").toTermName
-        val sym = newPatternBoundSymbol(bindName, bindingTypeTpe, tdef.span, flags = ImplicitTerm)(using ctx0)
+        val sym = newPatternBoundSymbol(nameOfSyntheticGiven, bindingTypeTpe, tdef.span, flags = ImplicitTerm)(using ctx0)
         buff += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingTypeTpe)).withSpan(tdef.span)
         super.transform(tdef)
       }

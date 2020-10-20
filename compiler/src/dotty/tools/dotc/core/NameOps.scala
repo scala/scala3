@@ -80,15 +80,16 @@ object NameOps {
       case _ => false
 
     /** Is name a variable name? */
-    def isVariableName: Boolean = testSimple { n =>
-      n.length > 0 && {
-        val first = n.head
-        (((first.isLower && first.isLetter) || first == '_')
-          && (n != false_)
-          && (n != true_)
-          && (n != null_))
-      }
-    }
+    def isVariableName: Boolean =
+      testSimple { n =>
+        n.length > 0 && {
+          val first = n.head
+          (((first.isLower && first.isLetter) || first == '_')
+            && (n != false_)
+            && (n != true_)
+            && (n != null_))
+        }
+      } || name.is(PatMatQuoteTypeEv)
 
     def isOpAssignmentName: Boolean = name match {
       case raw.NE | raw.LE | raw.GE | EMPTY =>
