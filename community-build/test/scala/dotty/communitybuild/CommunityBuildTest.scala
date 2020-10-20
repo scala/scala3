@@ -103,6 +103,7 @@ class CommunityBuildTest:
   @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
   @Test def scalaXml = projects.scalaXml.run()
   @Test def scalaz = projects.scalaz.run()
+  @Test def scas = projects.scas.run()
   @Test def scodec = projects.scodec.run()
   @Test def scodecBits = projects.scodecBits.run()
   @Test def sconfig = projects.sconfig.run()
