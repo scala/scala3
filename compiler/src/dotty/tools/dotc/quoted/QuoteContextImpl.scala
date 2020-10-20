@@ -412,8 +412,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         val denot = qualifier.tpe.member(name.toTermName)
         assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
         withDefaultPos(tpd.Select(qualifier, name.toTermName))
-      def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
+      def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term], returnType: Type): Apply =
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType).asInstanceOf[Apply])
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         tpd.cpy.Select(original)(qualifier, name.toTermName)
       def unapply(x: Select): Option[(Term, String)] =
