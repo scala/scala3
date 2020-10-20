@@ -7,7 +7,6 @@ import Types._, Names._, NameOps._, Flags._, util.Spans._, Contexts._, Constants
 import typer.ProtoTypes
 import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
 import language.higherKinds
-import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
 import util.{Stats, Attachment, Property, SourceFile, NoSource, SrcPos, SourcePosition}
@@ -171,7 +170,7 @@ object Trees {
     /** Convert tree to a list. Gives a singleton list, except
      *  for thickets which return their element trees.
      */
-    def toList: List[Tree[T]] = this :: Nil
+    def tolist: List[Tree[T]] = this :: Nil
 
     /** if this tree is the empty tree, the alternative, else this tree */
     inline def orElse[U >: Untyped <: T](inline that: Tree[U]): Tree[U] =
@@ -231,6 +230,10 @@ object Trees {
 
   type LazyTree[-T >: Untyped] = Tree[T] | Lazy[Tree[T]]
   type LazyTreeList[-T >: Untyped] = List[Tree[T]] | Lazy[List[Tree[T]]]
+
+  extension [T >: Untyped](xs: LazyTreeList[T])
+    def eqLst(ys: LazyTreeList[T]): Boolean =
+      xs.asInstanceOf[AnyRef] eq ys.asInstanceOf[AnyRef]
 
   // ------ Categories of trees -----------------------------------
 
@@ -838,7 +841,7 @@ object Trees {
 
     def mapElems(op: Tree[T] => Tree[T] @uncheckedVariance): Thicket[T] = {
       val newTrees = trees.mapConserve(op)
-      if (trees eq newTrees)
+      if (trees eqLst newTrees)
         this
       else
         Thicket[T](newTrees)(source).asInstanceOf[this.type]
@@ -848,7 +851,7 @@ object Trees {
       trees foreach (_.foreachInThicket(op))
 
     override def isEmpty: Boolean = trees.isEmpty
-    override def toList: List[Tree[T]] = flatten(trees)
+    override def tolist: List[Tree[T]] = flatten(trees)
     override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
     override def span: Span =
       def combine(s: Span, ts: List[Tree[T]]): Span = ts match
@@ -880,14 +883,14 @@ object Trees {
   def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
 
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
-    def recur(buf: ListBuffer[Tree[T]], remaining: List[Tree[T]]): ListBuffer[Tree[T]] =
+    def recur(buf: List.Buffer[Tree[T]], remaining: List[Tree[T]]): List.Buffer[Tree[T]] =
       remaining match {
         case Thicket(elems) :: remaining1 =>
           var buf1 = buf
           if (buf1 == null) {
-            buf1 = new ListBuffer[Tree[T]]
+            buf1 = List.Buffer[Tree[T]]()
             var scanned = trees
-            while (scanned `ne` remaining) {
+            while (scanned neLst remaining) {
               buf1 += scanned.head
               scanned = scanned.tail
             }
@@ -900,7 +903,7 @@ object Trees {
           buf
       }
     val buf = recur(null, trees)
-    if (buf != null) buf.toList else trees
+    if (buf != null) buf.tolist else trees
   }
 
   // ----- Lazy trees and tree sequences
@@ -910,7 +913,7 @@ object Trees {
    *  accessed by `unforced` and `force`. Forcing the field will
    *  set the `var` to the underlying value.
    */
-  trait WithLazyField[+T <: AnyRef] {
+  trait WithLazyField[+T] {
     def unforced: T | Lazy[T]
     protected def force(x: T @uncheckedVariance): Unit
     def forceIfLazy(using Context): T = unforced match {
@@ -926,7 +929,7 @@ object Trees {
    *  These can be instantiated with Lazy instances which
    *  can delay tree construction until the field is first demanded.
    */
-  trait Lazy[+T <: AnyRef] {
+  trait Lazy[+T] {
     def complete(using Context): T
   }
 
@@ -1062,12 +1065,12 @@ object Trees {
         case _ => finalize(tree, untpd.Super(qual, mix)(sourceFile(tree)))
       }
       def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply = tree match {
-        case tree: Apply if (fun eq tree.fun) && (args eq tree.args) => tree
+        case tree: Apply if (fun eq tree.fun) && (args eqLst tree.args) => tree
         case _ => finalize(tree, untpd.Apply(fun, args)(sourceFile(tree)))
             //.ensuring(res => res.uniqueId != 2213, s"source = $tree, ${tree.uniqueId}, ${tree.span}")
       }
       def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply = tree match {
-        case tree: TypeApply if (fun eq tree.fun) && (args eq tree.args) => tree
+        case tree: TypeApply if (fun eq tree.fun) && (args eqLst tree.args) => tree
         case _ => finalize(tree, untpd.TypeApply(fun, args)(sourceFile(tree)))
       }
       def Literal(tree: Tree)(const: Constant)(using Context): Literal = tree match {
@@ -1091,7 +1094,7 @@ object Trees {
         case _ => finalize(tree, untpd.Assign(lhs, rhs)(sourceFile(tree)))
       }
       def Block(tree: Tree)(stats: List[Tree], expr: Tree)(using Context): Block = tree match {
-        case tree: Block if (stats eq tree.stats) && (expr eq tree.expr) => tree
+        case tree: Block if (stats eqLst tree.stats) && (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Block(stats, expr)(sourceFile(tree)))
       }
       def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If = tree match {
@@ -1100,11 +1103,11 @@ object Trees {
         case _ => finalize(tree, untpd.If(cond, thenp, elsep)(sourceFile(tree)))
       }
       def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure = tree match {
-        case tree: Closure if (env eq tree.env) && (meth eq tree.meth) && (tpt eq tree.tpt) => tree
+        case tree: Closure if (env eqLst tree.env) && (meth eq tree.meth) && (tpt eq tree.tpt) => tree
         case _ => finalize(tree, untpd.Closure(env, meth, tpt)(sourceFile(tree)))
       }
       def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(using Context): Match = tree match {
-        case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
+        case tree: Match if (selector eq tree.selector) && (cases eqLst tree.cases) => tree
         case tree: InlineMatch => finalize(tree, untpd.InlineMatch(selector, cases)(sourceFile(tree)))
         case _ => finalize(tree, untpd.Match(selector, cases)(sourceFile(tree)))
       }
@@ -1125,18 +1128,18 @@ object Trees {
         case _ => finalize(tree, untpd.WhileDo(cond, body)(sourceFile(tree)))
       }
       def Try(tree: Tree)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(using Context): Try = tree match {
-        case tree: Try if (expr eq tree.expr) && (cases eq tree.cases) && (finalizer eq tree.finalizer) => tree
+        case tree: Try if (expr eq tree.expr) && (cases eqLst tree.cases) && (finalizer eq tree.finalizer) => tree
         case _ => finalize(tree, untpd.Try(expr, cases, finalizer)(sourceFile(tree)))
       }
       def SeqLiteral(tree: Tree)(elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral = tree match {
         case tree: JavaSeqLiteral =>
-          if ((elems eq tree.elems) && (elemtpt eq tree.elemtpt)) tree
+          if ((elems eqLst tree.elems) && (elemtpt eq tree.elemtpt)) tree
           else finalize(tree, untpd.JavaSeqLiteral(elems, elemtpt))
-        case tree: SeqLiteral if (elems eq tree.elems) && (elemtpt eq tree.elemtpt) => tree
+        case tree: SeqLiteral if (elems eqLst tree.elems) && (elemtpt eq tree.elemtpt) => tree
         case _ => finalize(tree, untpd.SeqLiteral(elems, elemtpt)(sourceFile(tree)))
       }
       def Inlined(tree: Tree)(call: tpd.Tree, bindings: List[MemberDef], expansion: Tree)(using Context): Inlined = tree match {
-        case tree: Inlined if (call eq tree.call) && (bindings eq tree.bindings) && (expansion eq tree.expansion) => tree
+        case tree: Inlined if (call eq tree.call) && (bindings eqLst tree.bindings) && (expansion eq tree.expansion) => tree
         case _ => finalize(tree, untpd.Inlined(call, bindings, expansion)(sourceFile(tree)))
       }
       def SingletonTypeTree(tree: Tree)(ref: Tree)(using Context): SingletonTypeTree = tree match {
@@ -1144,23 +1147,23 @@ object Trees {
         case _ => finalize(tree, untpd.SingletonTypeTree(ref)(sourceFile(tree)))
       }
       def RefinedTypeTree(tree: Tree)(tpt: Tree, refinements: List[Tree])(using Context): RefinedTypeTree = tree match {
-        case tree: RefinedTypeTree if (tpt eq tree.tpt) && (refinements eq tree.refinements) => tree
+        case tree: RefinedTypeTree if (tpt eq tree.tpt) && (refinements eqLst tree.refinements) => tree
         case _ => finalize(tree, untpd.RefinedTypeTree(tpt, refinements)(sourceFile(tree)))
       }
       def AppliedTypeTree(tree: Tree)(tpt: Tree, args: List[Tree])(using Context): AppliedTypeTree = tree match {
-        case tree: AppliedTypeTree if (tpt eq tree.tpt) && (args eq tree.args) => tree
+        case tree: AppliedTypeTree if (tpt eq tree.tpt) && (args eqLst tree.args) => tree
         case _ => finalize(tree, untpd.AppliedTypeTree(tpt, args)(sourceFile(tree)))
       }
       def LambdaTypeTree(tree: Tree)(tparams: List[TypeDef], body: Tree)(using Context): LambdaTypeTree = tree match {
-        case tree: LambdaTypeTree if (tparams eq tree.tparams) && (body eq tree.body) => tree
+        case tree: LambdaTypeTree if (tparams eqLst tree.tparams) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.LambdaTypeTree(tparams, body)(sourceFile(tree)))
       }
       def TermLambdaTypeTree(tree: Tree)(params: List[ValDef], body: Tree)(using Context): TermLambdaTypeTree = tree match {
-        case tree: TermLambdaTypeTree if (params eq tree.params) && (body eq tree.body) => tree
+        case tree: TermLambdaTypeTree if (params eqLst tree.params) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.TermLambdaTypeTree(params, body)(sourceFile(tree)))
       }
       def MatchTypeTree(tree: Tree)(bound: Tree, selector: Tree, cases: List[CaseDef])(using Context): MatchTypeTree = tree match {
-        case tree: MatchTypeTree if (bound eq tree.bound) && (selector eq tree.selector) && (cases eq tree.cases) => tree
+        case tree: MatchTypeTree if (bound eq tree.bound) && (selector eq tree.selector) && (cases eqLst tree.cases) => tree
         case _ => finalize(tree, untpd.MatchTypeTree(bound, selector, cases)(sourceFile(tree)))
       }
       def ByNameTypeTree(tree: Tree)(result: Tree)(using Context): ByNameTypeTree = tree match {
@@ -1176,11 +1179,11 @@ object Trees {
         case _ => finalize(tree, untpd.Bind(name, body)(sourceFile(tree)))
       }
       def Alternative(tree: Tree)(trees: List[Tree])(using Context): Alternative = tree match {
-        case tree: Alternative if (trees eq tree.trees) => tree
+        case tree: Alternative if (trees eqLst tree.trees) => tree
         case _ => finalize(tree, untpd.Alternative(trees)(sourceFile(tree)))
       }
       def UnApply(tree: Tree)(fun: Tree, implicits: List[Tree], patterns: List[Tree])(using Context): UnApply = tree match {
-        case tree: UnApply if (fun eq tree.fun) && (implicits eq tree.implicits) && (patterns eq tree.patterns) => tree
+        case tree: UnApply if (fun eq tree.fun) && (implicits eqLst tree.implicits) && (patterns eqLst tree.patterns) => tree
         case _ => finalize(tree, untpd.UnApply(fun, implicits, patterns)(sourceFile(tree)))
       }
       def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: LazyTree)(using Context): ValDef = tree match {
@@ -1188,7 +1191,7 @@ object Trees {
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs)(sourceFile(tree)))
       }
       def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(using Context): DefDef = tree match {
-        case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
+        case tree: DefDef if (name == tree.name) && (tparams eqLst tree.tparams) && (vparamss eqLst tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs)(sourceFile(tree)))
       }
       def TypeDef(tree: Tree)(name: TypeName, rhs: Tree)(using Context): TypeDef = tree match {
@@ -1196,15 +1199,15 @@ object Trees {
         case _ => finalize(tree, untpd.TypeDef(name, rhs)(sourceFile(tree)))
       }
       def Template(tree: Tree)(constr: DefDef, parents: List[Tree], derived: List[untpd.Tree], self: ValDef, body: LazyTreeList)(using Context): Template = tree match {
-        case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (derived eq tree.derived) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
+        case tree: Template if (constr eq tree.constr) && (parents eqLst tree.parents) && (derived eqLst tree.derived) && (self eq tree.self) && (body eqLst tree.unforcedBody) => tree
         case tree => finalize(tree, untpd.Template(constr, parents, derived, self, body)(sourceFile(tree)))
       }
       def Import(tree: Tree)(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import = tree match {
-        case tree: Import if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+        case tree: Import if (expr eq tree.expr) && (selectors eqLst tree.selectors) => tree
         case _ => finalize(tree, untpd.Import(expr, selectors)(sourceFile(tree)))
       }
       def PackageDef(tree: Tree)(pid: RefTree, stats: List[Tree])(using Context): PackageDef = tree match {
-        case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
+        case tree: PackageDef if (pid eq tree.pid) && (stats eqLst tree.stats) => tree
         case _ => finalize(tree, untpd.PackageDef(pid, stats)(sourceFile(tree)))
       }
       def Annotated(tree: Tree)(arg: Tree, annot: Tree)(using Context): Annotated = tree match {
@@ -1212,7 +1215,7 @@ object Trees {
         case _ => finalize(tree, untpd.Annotated(arg, annot)(sourceFile(tree)))
       }
       def Thicket(tree: Tree)(trees: List[Tree])(using Context): Thicket = tree match {
-        case tree: Thicket if (trees eq tree.trees) => tree
+        case tree: Thicket if (trees eqLst tree.trees) => tree
         case _ => finalize(tree, untpd.Thicket(trees)(sourceFile(tree)))
       }
 
@@ -1359,7 +1362,7 @@ object Trees {
               cpy.Annotated(tree)(transform(arg), transform(annot))
             case Thicket(trees) =>
               val trees1 = transform(trees)
-              if (trees1 eq trees) tree else Thicket(trees1)
+              if (trees1 eqLst trees) tree else Thicket(trees1)
             case _ =>
               transformMoreCases(tree)
           }

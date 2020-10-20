@@ -125,16 +125,16 @@ trait SpaceLogic {
       else if (canDecompose(tp) && decompose(tp).isEmpty) Empty
       else sp
     case Or(spaces) =>
-      val buf = new mutable.ListBuffer[Space]
+      val buf = List.Buffer[Space]()
       def include(s: Space) = if s != Empty then buf += s
       for space <- spaces do
         simplify(space) match
           case Or(ss) => ss.foreach(include)
           case s => include(s)
-      val set = buf.toList
+      val set = buf.tolist
 
       if (set.isEmpty) Empty
-      else if (set.size == 1) set.toList(0)
+      else if (set.size == 1) set(0)
       else if (aggressive && spaces.size < 5) {
         val res = set.map(sp => (sp, set.filter(_ ne sp))).find {
           case (sp, sps) =>
@@ -268,7 +268,7 @@ trait SpaceLogic {
       case (Prod(tp1, fun1, ss1, full), Prod(tp2, fun2, ss2, _)) =>
         if (!isSameUnapply(fun1, fun2)) return a
 
-        val range = (0 until ss1.size).toList
+        val range = (0 until ss1.size).tolist
         val cache = Array.fill[Space](ss2.length)(null)
         def sub(i: Int) =
           if cache(i) == null then
@@ -505,7 +505,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       (pats, Typ(scalaNilType, false))
 
     val unapplyTp = scalaConsType.classSymbol.companionModule.termRef.select(nme.unapply)
-    items.foldRight[Space](zero) { (pat, acc) =>
+    items.foldRight(zero: Space) { (pat, acc) =>
       val consTp = scalaConsType.appliedTo(pats.head.tpe.widen)
       Prod(consTp, unapplyTp, project(pat) :: acc :: Nil, true)
     }
@@ -848,7 +848,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       }
 
     if (uncovered.nonEmpty)
-      report.warning(PatternMatchExhaustivity(show(uncovered)), sel.srcPos)
+      report.warning(PatternMatchExhaustivity(show(uncovered.toSeq)), sel.srcPos)
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =

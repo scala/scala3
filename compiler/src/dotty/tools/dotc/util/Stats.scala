@@ -61,7 +61,7 @@ import collection.mutable
       finally {
         aggregate()
         println()
-        println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
+        println(hits.tolist.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
       }
     }
     else op

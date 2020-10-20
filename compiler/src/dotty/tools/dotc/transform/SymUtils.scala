@@ -175,7 +175,7 @@ object SymUtils {
     self.annotations.filter(_.symbol.hasAnnotation(meta))
 
   def withAnnotationsCarrying(from: Symbol, meta: ClassSymbol)(using Context): self.type = {
-    self.addAnnotations(from.annotationsCarrying(meta))
+    self.addAnnotations(from.annotationsCarrying(meta).iterator)
     self
   }
 

@@ -23,11 +23,9 @@ class ClassPathFactory {
     * Creators for sub classpaths which preserve this context.
     */
   def sourcesInPath(path: String)(using Context): List[ClassPath] =
-    for {
-      file <- expandPath(path, expandStar = false)
-      dir <- Option(AbstractFile getDirectory file)
-    }
-    yield createSourcePath(dir)
+    expandPath(path, expandStar = false).flatMapIterable(file =>
+      Option(AbstractFile getDirectory file).map(dir =>
+        createSourcePath(dir)))
 
 
   def expandPath(path: String, expandStar: Boolean = true): List[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
@@ -35,12 +33,10 @@ class ClassPathFactory {
   def expandDir(extdir: String): List[String] = dotty.tools.io.ClassPath.expandDir(extdir)
 
   def contentsOfDirsInPath(path: String)(using Context): List[ClassPath] =
-    for {
-      dir <- expandPath(path, expandStar = false)
-      name <- expandDir(dir)
-      entry <- Option(AbstractFile.getDirectory(name))
-    }
-    yield newClassPath(entry)
+    expandPath(path, expandStar = false).flatMap(dir =>
+      expandDir(dir).flatMapIterable(name =>
+        Option(AbstractFile.getDirectory(name)).map(entry =>
+          newClassPath(entry))))
 
   def classesInExpandedPath(path: String)(using Context): IndexedSeq[ClassPath] =
     classesInPathImpl(path, expand = true).toIndexedSeq
@@ -53,14 +49,11 @@ class ClassPathFactory {
 
   // Internal
   protected def classesInPathImpl(path: String, expand: Boolean)(using Context): List[ClassPath] =
-    for {
-      file <- expandPath(path, expand)
-      dir <- {
+    expandPath(path, expand).flatMapIterable(file =>
+      {
         def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file)) else None
         Option(AbstractFile.getDirectory(file)).orElse(asImage)
-      }
-    }
-    yield newClassPath(dir)
+      }.map(dir => newClassPath(dir)))
 
   private def createSourcePath(file: AbstractFile)(using Context): ClassPath =
     if (file.isJarOrZip)

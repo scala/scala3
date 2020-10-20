@@ -160,14 +160,14 @@ class CheckRealizable(using Context) {
       for {
         name <- refinedNames(tp)
         if (name.isTypeName)
-        mbr <- tp.member(name).alternatives
+        mbr <- tp.member(name).alternatives.toSeq
         if !(mbr.info.loBound <:< mbr.info.hiBound)
       }
       yield
         new HasProblemBounds(name, mbr.info)
     }
 
-    def baseTypeProblems(base: Type) = base match {
+    def baseTypeProblems(base: Type): List[Realizability] = base match {
       case AndType(base1, base2) =>
         new HasProblemBase(base1, base2) :: Nil
       case base =>

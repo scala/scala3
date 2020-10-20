@@ -83,7 +83,7 @@ class ReplCompiler extends Compiler {
     }
 
     var valIdx = state.valIndex
-    val defs = new mutable.ListBuffer[Tree]
+    val defs = List.Buffer[Tree]()
 
     flattened.foreach {
       case expr @ Assign(id: Ident, _) =>
@@ -102,7 +102,7 @@ class ReplCompiler extends Compiler {
     }
 
     Definitions(
-      defs.toList,
+      defs.tolist,
       state.copy(
         objectIndex = state.objectIndex + 1,
         valIndex = valIdx

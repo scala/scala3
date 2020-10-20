@@ -43,7 +43,7 @@ abstract class Lifter {
   /** Is lifting performed on erased terms? */
   protected def isErased = false
 
-  private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
+  private def lift(defs: List.Buffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
       val name = UniqueName.fresh(prefix)
@@ -62,7 +62,7 @@ abstract class Lifter {
    *
    *     lhs += expr
    */
-  def liftAssigned(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree = tree match {
+  def liftAssigned(defs: List.Buffer[Tree], tree: Tree)(using Context): Tree = tree match {
     case Apply(MaybePoly(fn @ Select(pre, name), targs), args) =>
       cpy.Apply(tree)(
         cpy.Select(fn)(
@@ -75,7 +75,7 @@ abstract class Lifter {
   }
 
   /** Lift a function argument, stripping any NamedArg wrapper */
-  private def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
+  private def liftArg(defs: List.Buffer[Tree], arg: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     arg match {
       case arg @ NamedArg(name, arg1) => cpy.NamedArg(arg)(name, lift(defs, arg1, prefix))
       case arg => lift(defs, arg, prefix)
@@ -84,10 +84,10 @@ abstract class Lifter {
   /** Lift arguments that are not-idempotent into ValDefs in buffer `defs`
    *  and replace by the idents of so created ValDefs.
    */
-  def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(using Context): List[Tree] =
+  def liftArgs(defs: List.Buffer[Tree], methRef: Type, args: List[Tree])(using Context): List[Tree] =
     methRef.widen match {
       case mt: MethodType =>
-        args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map { (arg, name, tp) =>
+        args.zipped(mt.paramNames).zipped(mt.paramInfos).map { (arg, name, tp) =>
           val lifter = if (tp.isInstanceOf[ExprType]) exprLifter else this
           lifter.liftArg(defs, arg, if (name.firstPart contains '$') EmptyTermName else name)
         }
@@ -108,7 +108,7 @@ abstract class Lifter {
    *  But leave pure expressions alone.
    *
    */
-  def liftApp(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree = tree match {
+  def liftApp(defs: List.Buffer[Tree], tree: Tree)(using Context): Tree = tree match {
     case Apply(fn, args) =>
       val fn1 = liftApp(defs, fn)
       val args1 = liftArgs(defs, fn.tpe, args)
@@ -133,7 +133,7 @@ abstract class Lifter {
    *
    *  unless `pre` is idempotent.
    */
-  def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
+  def liftPrefix(defs: List.Buffer[Tree], tree: Tree)(using Context): Tree =
     if (isIdempotentExpr(tree)) tree else lift(defs, tree)
 }
 
@@ -224,7 +224,7 @@ object EtaExpansion extends LiftImpure {
   def etaExpand(tree: Tree, mt: MethodType, xarity: Int)(using Context): untpd.Tree = {
     import untpd._
     assert(!ctx.isAfterTyper)
-    val defs = new mutable.ListBuffer[tpd.Tree]
+    val defs = List.Buffer[tpd.Tree]()
     val lifted: Tree = TypedSplice(liftApp(defs, tree))
     val isLastApplication = mt.resultType match {
       case rt: MethodType => rt.isImplicitMethod
@@ -236,7 +236,7 @@ object EtaExpansion extends LiftImpure {
     var paramFlag = Synthetic | Param
     if (mt.isContextualMethod) paramFlag |= Given
     else if (mt.isImplicitMethod) paramFlag |= Implicit
-    val params = mt.paramNames.lazyZip(paramTypes).map((name, tpe) =>
+    val params = mt.paramNames.zipped(paramTypes).map((name, tpe) =>
       ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
     var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
@@ -248,6 +248,6 @@ object EtaExpansion extends LiftImpure {
       if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given))
       else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
       else untpd.Function(params, body)
-    if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
+    if (defs.nonEmpty) untpd.Block(defs.tolist map (untpd.TypedSplice(_)), fn) else fn
   }
 }

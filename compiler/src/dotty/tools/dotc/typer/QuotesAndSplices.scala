@@ -238,10 +238,10 @@ trait QuotesAndSplices {
         res
       }
 
-      val patBuf = new mutable.ListBuffer[Tree]
-      val freshTypePatBuf = new mutable.ListBuffer[Tree]
-      val freshTypeBindingsBuff = new mutable.ListBuffer[Tree]
-      val typePatBuf = new mutable.ListBuffer[Tree]
+      val patBuf = List.Buffer[Tree]()
+      val freshTypePatBuf = List.Buffer[Tree]()
+      val freshTypeBindingsBuff = List.Buffer[Tree]()
+      val typePatBuf = List.Buffer[Tree]()
       override def transform(tree: Tree)(using Context) = tree match {
         case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol.isExprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
@@ -315,7 +315,7 @@ trait QuotesAndSplices {
           super.transform(tree)
       }
 
-      private def transformTypeBindingTypeDef(nameOfSyntheticGiven: TermName, tdef: TypeDef, buff: mutable.Builder[Tree, List[Tree]])(using Context): Tree = {
+      private def transformTypeBindingTypeDef(nameOfSyntheticGiven: TermName, tdef: TypeDef, buff: List.Buffer[Tree])(using Context): Tree = {
         if (variance == -1)
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.InternalQuotedPatterns_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
@@ -326,8 +326,8 @@ trait QuotesAndSplices {
       }
     }
     val shape0 = splitter.transform(quoted)
-    val patterns = (splitter.freshTypePatBuf.iterator ++ splitter.typePatBuf.iterator ++ splitter.patBuf.iterator).toList
-    val freshTypeBindings = splitter.freshTypeBindingsBuff.result()
+    val patterns = (splitter.freshTypePatBuf.iterator ++ splitter.typePatBuf.iterator ++ splitter.patBuf.iterator).tolist
+    val freshTypeBindings = splitter.freshTypeBindingsBuff.tolist
 
     val shape1 = seq(
       freshTypeBindings,
@@ -428,7 +428,7 @@ trait QuotesAndSplices {
     val replaceBindings = new ReplaceBindings
     val patType = defn.tupleType(splices.tpes.map(tpe => replaceBindings(tpe.widen)))
 
-    val typeBindingsTuple = tpd.tupleTypeTree(typeBindings.values.toList)
+    val typeBindingsTuple = tpd.tupleTypeTree(typeBindings.values.tolist)
 
     val replaceBindingsInTree = new TreeMap {
       private var bindMap = Map.empty[Symbol, Symbol]

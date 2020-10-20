@@ -32,7 +32,7 @@ class PositionPickler(
     (addrDelta << 3) | (toInt(hasStartDelta) << 2) | (toInt(hasEndDelta) << 1) | toInt(hasPoint)
   }
 
-  def picklePositions(roots: List[Tree], warnings: mutable.ListBuffer[String]): Unit = {
+  def picklePositions(roots: List[Tree], warnings: List.Buffer[String]): Unit = {
     var lastIndex = 0
     var lastSpan = Span(0, 0)
     def pickleDeltas(index: Int, span: Span) = {

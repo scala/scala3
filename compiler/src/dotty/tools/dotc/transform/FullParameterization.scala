@@ -111,7 +111,7 @@ trait FullParameterization {
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
     def mapClassParams(tp: Type, pt: PolyType): Type = {
-      val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).toList
+      val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).tolist
       tp.subst(ctparams, classParamsRange map (pt.paramRefs(_)))
     }
 
@@ -235,7 +235,7 @@ trait FullParameterization {
         val meth = acc.tpe.asInstanceOf[MethodType]
         val paramTypes = meth.instantiateParamInfos(vparams.map(_.tpe))
         acc.appliedToArgs(
-          vparams.lazyZip(paramTypes).map((vparam, paramType) => {
+          vparams.zipped(paramTypes).map((vparam, paramType) => {
             assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
             ref(vparam.symbol).ensureConforms(paramType)
           }))

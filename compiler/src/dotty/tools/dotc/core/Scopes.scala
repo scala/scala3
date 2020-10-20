@@ -81,17 +81,17 @@ object Scopes {
     /** The symbols in this scope in the order they were entered;
      *  inherited from outer ones first.
      */
-    def toList(using Context): List[Symbol]
+    def tolist(using Context): List[Symbol]
 
     /** Return all symbols as an iterator in the order they were entered in this scope.
      */
-    def iterator(using Context): Iterator[Symbol] = toList.iterator
+    def iterator(using Context): Iterator[Symbol] = tolist.iterator
 
     /** Is the scope empty? */
     def isEmpty: Boolean = lastEntry eq null
 
     /** Applies a function f to all Symbols of this Scope. */
-    def foreach[U](f: Symbol => U)(using Context): Unit = toList.foreach(f)
+    def foreach(f: Symbol => Unit)(using Context): Unit = tolist.foreach(f)
 
     /** Selects all Symbols of this Scope which satisfy a predicate. */
     def filter(p: Symbol => Boolean)(using Context): List[Symbol] = {
@@ -146,7 +146,7 @@ object Scopes {
 
     /** The denotation set of all the symbols with given name in this scope
      *  Symbols occur in the result in reverse order relative to their occurrence
-     *  in `this.toList`.
+     *  in `this.tolist`.
      */
     final def denotsNamed(name: Name)(using Context): PreDenotation = {
       var syms: PreDenotation = NoDenotation
@@ -217,7 +217,7 @@ object Scopes {
 
     /** a cache for all elements, to be used by symbol iterator.
      */
-    private var elemsCache: List[Symbol] = null
+    private var elemsCache: List[Symbol] = nullList
 
     /** The synthesizer to be used, or `null` if no synthesis is done on this scope */
     private var synthesize: SymbolSynthesizer = null
@@ -253,7 +253,7 @@ object Scopes {
       lastEntry = e
       if (hashTable ne null) enterInHash(e)
       size += 1
-      elemsCache = null
+      elemsCache = nullList
       e
     }
 
@@ -329,7 +329,7 @@ object Scopes {
           e1.tail = e.tail
         }
       }
-      elemsCache = null
+      elemsCache = nullList
       size -= 1
     }
 
@@ -356,7 +356,7 @@ object Scopes {
         if (e.sym == prev) e.sym = replacement
         e = lookupNextEntry(e)
       }
-      elemsCache = null
+      elemsCache = nullList
     }
 
     /** Lookup a symbol entry matching given name.
@@ -393,8 +393,8 @@ object Scopes {
     /** Returns all symbols as a list in the order they were entered in this scope.
      *  Does _not_ include the elements of inherited scopes.
      */
-    override final def toList(using Context): List[Symbol] = {
-      if (elemsCache eq null) {
+    override final def tolist(using Context): List[Symbol] = {
+      if (elemsCache eqLst nullList) {
         ensureComplete()
         elemsCache = Nil
         var e = lastEntry
@@ -408,7 +408,7 @@ object Scopes {
 
     override def implicitDecls(using Context): List[TermRef] = {
       ensureComplete()
-      var irefs = new mutable.ListBuffer[TermRef]
+      var irefs = List.Buffer[TermRef]()
       var e = lastEntry
       while (e ne null) {
         if (e.sym.isOneOf(GivenOrImplicit)) {
@@ -417,12 +417,12 @@ object Scopes {
         }
         e = e.prev
       }
-      irefs.toList
+      irefs.tolist
     }
 
     /** Vanilla scope - symbols are stored in declaration order.
      */
-    final def sorted(using Context): List[Symbol] = toList
+    final def sorted(using Context): List[Symbol] = tolist
 
     override def openForMutations: MutableScope = this
 
@@ -463,7 +463,7 @@ object Scopes {
     override private[dotc] def lastEntry: ScopeEntry = null
     override def size: Int = 0
     override def nestingLevel: Int = 0
-    override def toList(using Context): List[Symbol] = Nil
+    override def tolist(using Context): List[Symbol] = Nil
     override def cloneScope(using Context): MutableScope = unsupported("cloneScope")
     override def lookupEntry(name: Name)(using Context): ScopeEntry = null
     override def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry = null

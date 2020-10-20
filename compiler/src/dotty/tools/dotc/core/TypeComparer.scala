@@ -2145,10 +2145,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         paramNames = HKTypeLambda.syntheticParamNames(tparams1.length),
         variances =
           if tp1.isDeclaredVarianceLambda && tp2.isDeclaredVarianceLambda then
-            tparams1.lazyZip(tparams2).map((p1, p2) => combineVariance(p1.paramVariance, p2.paramVariance))
+            tparams1.zipped(tparams2).map((p1, p2) => combineVariance(p1.paramVariance, p2.paramVariance))
           else Nil
       )(
-        paramInfosExp = tl => tparams1.lazyZip(tparams2).map((tparam1, tparam2) =>
+        paramInfosExp = tl => tparams1.zipped(tparams2).map((tparam1, tparam2) =>
           tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
           tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
         resultTypeExp = tl =>
@@ -2329,7 +2329,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case AndType(tp1, tp2) => provablyDisjoint(tp1, tp2)
       case OrType(tp1, tp2) => provablyEmpty(tp1) && provablyEmpty(tp2)
       case at @ AppliedType(tycon, args) =>
-        args.lazyZip(tycon.typeParams).exists { (arg, tparam) =>
+        args.zipped(tycon.typeParams).exists { (arg, tparam) =>
           tparam.paramVarianceSign >= 0
           && provablyEmpty(arg)
           && typeparamCorrespondsToField(tycon, tparam)
@@ -2429,7 +2429,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             fullyInstantiated(tp1) && fullyInstantiated(tp2)
           }
 
-        args1.lazyZip(args2).lazyZip(tycon1.typeParams).exists {
+        args1.zipped(args2).zipped(tycon1.typeParams).exists {
           (arg1, arg2, tparam) =>
             val v = tparam.paramVarianceSign
             if (v > 0)
@@ -2728,7 +2728,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
             }
           case tp: TypeLambda =>
             val saved = seen
-            seen ++= tp.paramRefs
+            seen ++= tp.paramRefs.toSeq
             try mapOver(tp)
             finally seen = saved
           case tp: TypeVar if !tp.isInstantiated => WildcardType

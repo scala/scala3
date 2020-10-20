@@ -132,7 +132,7 @@ object Applications {
   def productSelectors(tp: Type)(using Context): List[Symbol] = {
     val sels = for (n <- Iterator.from(0)) yield
       tp.member(nme.selectorName(n)).suchThat(_.info.isParameterless).symbol
-    sels.takeWhile(_.exists).toList
+    sels.takeWhile(_.exists).tolist
   }
 
   def getUnapplySelectors(tp: Type, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] =
@@ -147,7 +147,7 @@ object Applications {
     val selTps = productSelectorTypes(tp, pos)
     val arity = selTps.length
     val elemTp = unapplySeqTypeElemTp(selTps.last)
-    (0 until argsNum).map(i => if (i < arity - 1) selTps(i) else elemTp).toList
+    (0 until argsNum).map(i => if (i < arity - 1) selTps(i) else elemTp).tolist
   }
 
   def unapplyArgs(unapplyResult: Type, unapplyFn: Tree, args: List[untpd.Tree], pos: SrcPos)(using Context): List[Type] = {
@@ -193,8 +193,8 @@ object Applications {
     }
   }
 
-  def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
-    if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
+  def wrapDefs(defs: List.Buffer[Tree], tree: Tree)(using Context): Tree =
+    if (defs != null && defs.nonEmpty) tpd.Block(defs.tolist, tree) else tree
 
   /** A wrapper indicating that its `app` argument has already integrated the type arguments
    *  of the expected type, provided that type is a (possibly ignored) PolyProto.
@@ -712,8 +712,8 @@ trait Applications extends Compatibility {
   extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
-    private var typedArgBuf = new mutable.ListBuffer[Tree]
-    private var liftedDefs: mutable.ListBuffer[Tree] = null
+    private var typedArgBuf = List.Buffer[Tree]()
+    private var liftedDefs: List.Buffer[Tree] = null
     private var myNormalizedFun: Tree = fun
     init()
 
@@ -721,7 +721,7 @@ trait Applications extends Compatibility {
       typedArgBuf += adapt(arg, formal.widenExpr)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
-      val args = typedArgBuf.takeRight(n).toList
+      val args = typedArgBuf.tolist.takeRight(n)
       typedArgBuf.trimEnd(n)
       val elemtpt = TypeTree(elemFormal)
       typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
@@ -748,7 +748,7 @@ trait Applications extends Compatibility {
 
     override def liftFun(): Unit =
       if (liftedDefs == null) {
-        liftedDefs = new mutable.ListBuffer[Tree]
+        liftedDefs = List.Buffer[Tree]()
         myNormalizedFun = lifter.liftApp(liftedDefs, myNormalizedFun)
       }
 
@@ -770,7 +770,7 @@ trait Applications extends Compatibility {
     private def sameSeq[T <: Trees.Tree[?]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
 
     val result:   Tree = {
-      var typedArgs = typedArgBuf.toList
+      var typedArgs = typedArgBuf.tolist
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
@@ -782,13 +782,13 @@ trait Applications extends Compatibility {
             liftFun()
 
             // lift arguments in the definition order
-            val argDefBuf = mutable.ListBuffer.empty[Tree]
+            val argDefBuf = List.Buffer[Tree]()
             typedArgs = lifter.liftArgs(argDefBuf, methType, typedArgs)
             // Lifted arguments ordered based on the original order of typedArgBuf and
             // with all non-explicit default parameters at the end in declaration order.
             val orderedArgDefs = {
               // Indices of original typed arguments that are lifted by liftArgs
-              val impureArgIndices = typedArgBuf.zipWithIndex.collect {
+              val impureArgIndices = typedArgBuf.tolist.zipWithIndex.collect {
                 case (arg, idx) if !lifter.noLift(arg) => idx
               }
               def position(arg: Trees.Tree[T]) = {
@@ -803,7 +803,8 @@ trait Applications extends Compatibility {
               def originalIndex(n: Int) =
                 if (n < originalIndices.length) originalIndices(n) else orderedArgs.length
               scala.util.Sorting.stableSort[(Tree, Int), Int](
-                argDefBuf.zip(impureArgIndices), (arg, idx) => originalIndex(idx)).map(_._1)
+                argDefBuf.tolist.zip(impureArgIndices).toSeq, (arg, idx) => originalIndex(idx)
+              ).tolist.map(_._1)
             }
             liftedDefs ++= orderedArgDefs
           }
@@ -999,7 +1000,7 @@ trait Applications extends Compatibility {
       val (lhs1, name, rhss) = tree match
         case Apply(Select(lhs, name), rhss) => (typedExpr(lhs), name, rhss)
         case Apply(untpd.TypedSplice(Select(lhs1, name)), rhss) => (lhs1, name, rhss)
-      val liftedDefs = new mutable.ListBuffer[Tree]
+      val liftedDefs = List.Buffer[Tree]()
       val lhs2 = untpd.TypedSplice(LiftComplex.liftAssigned(liftedDefs, lhs1))
       val assign = untpd.Assign(lhs2,
           untpd.Apply(untpd.Select(lhs2, name.asSimpleName.dropRight(1)), rhss))
@@ -1296,7 +1297,7 @@ trait Applications extends Compatibility {
         val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
         def unapplyImplicits(unapp: Tree): List[Tree] = {
-          val res = List.newBuilder[Tree]
+          val res = List.Buffer[Tree]()
           def loop(unapp: Tree): Unit = unapp match {
             case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
             case Apply(unapply, `dummyArg` :: Nil) =>
@@ -1306,14 +1307,14 @@ trait Applications extends Compatibility {
             case _ => ().assertingErrorsReported
           }
           loop(unapp)
-          res.result()
+          res.tolist
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil =>
-            if (args.lengthCompare(1) > 0 && Feature.autoTuplingEnabled) untpd.Tuple(args) :: Nil
+            if (args.length > 1 && Feature.autoTuplingEnabled) untpd.Tuple(args) :: Nil
             else args
           case _ => args
         }
@@ -1322,7 +1323,7 @@ trait Applications extends Compatibility {
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
-        val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
+        val unapplyPatterns = bunchedArgs.zipped(argTypes) map (typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq selType) || ownType.isError) result
@@ -1726,7 +1727,7 @@ trait Applications extends Compatibility {
         case pt: FunProto =>
           if pt.applyKind == ApplyKind.Using then
             val alts0 = alts.filterConserve(_.widen.stripPoly.isImplicitMethod)
-            if alts0 ne alts then return resolve(alts0)
+            if alts0 neLst alts then return resolve(alts0)
           else if alts.exists(_.widen.stripPoly.isContextualMethod) then
             return resolveMapped(alts, alt => stripImplicit(alt.widen), pt)
         case _ =>
@@ -1984,7 +1985,7 @@ trait Applications extends Compatibility {
    *  expected type is `pt`. Map the results back to the original alternatives.
    */
   def resolveMapped(alts: List[TermRef], f: TermRef => Type, pt: Type)(using Context): List[TermRef] =
-    val reverseMapping = alts.flatMap { alt =>
+    val reverseMapping = alts.flatMapIterable { alt =>
       val t = f(alt)
       if t.exists then
         val mappedSym = alt.symbol.asTerm.copy(info = t)
@@ -2119,7 +2120,7 @@ trait Applications extends Compatibility {
       val origConstraint = ctx.typerState.constraint
       val origElems = op
       val harmonizedElems = harmonize(origElems)
-      if (harmonizedElems ne origElems) ctx.typerState.constraint = origConstraint
+      if (harmonizedElems neLst origElems) ctx.typerState.constraint = origConstraint
       harmonizedElems
     }
     else op

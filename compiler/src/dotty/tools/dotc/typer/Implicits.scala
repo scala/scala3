@@ -245,7 +245,7 @@ object Implicits:
       if refs.isEmpty && (!considerExtension || companionRefs.isEmpty) then
         Nil
       else
-        val candidates = new mutable.ListBuffer[Candidate]
+        val candidates = List.Buffer[Candidate]()
         def tryCandidate(extensionOnly: Boolean)(ref: ImplicitRef) =
           var ckind = exploreInFreshCtx { (using ctx: FreshContext) =>
             ctx.setMode(ctx.mode | Mode.TypevarsMissContext)
@@ -259,7 +259,7 @@ object Implicits:
           companionRefs.foreach(tryCandidate(extensionOnly = true))
         if refs.nonEmpty then
           refs.foreach(tryCandidate(extensionOnly = false))
-        candidates.toList
+        candidates.tolist
     }
   }
 
@@ -271,9 +271,9 @@ object Implicits:
     assert(initctx.typer != null)
     implicits.println(i"implicit scope of type $tp = ${companionRefs.showAsList}%, %")
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
-      val buf = new mutable.ListBuffer[TermRef]
+      val buf = List.Buffer[TermRef]()
       for (companion <- companionRefs) buf ++= companion.implicitMembers
-      buf.toList
+      buf.tolist
     }
 
     /** The candidates that are eligible for expected type `tp` */
@@ -301,7 +301,7 @@ object Implicits:
       val refs: List[ImplicitRef],
       val outerImplicits: ContextualImplicits,
       isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
-    private val eligibleCache = EqHashMap[Type, List[Candidate]]()
+    private val eligibleCache = mutable.HashMap[Type, List[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
      *  the context of the next-outer ImplicitRefs. This is however disabled under
@@ -333,20 +333,18 @@ object Implicits:
         Stats.record(i"compute eligible not cached ${tp.getClass}")
         Stats.record(i"compute eligible not cached")
         computeEligible(tp)
-      else {
-        val eligibles = eligibleCache.lookup(tp)
-        if (eligibles != null) {
-          Stats.record("cached eligible")
-          eligibles
-        }
-        else if (irefCtx eq NoContext) Nil
-        else {
-          Stats.record(i"compute eligible cached")
-          val result = computeEligible(tp)
-          eligibleCache(tp) = result
-          result
-        }
-      }
+      else
+        eligibleCache.get(tp) match
+          case Some(eligibles) =>
+            Stats.record("cached eligible")
+            eligibles
+          case _ =>
+            if irefCtx eq NoContext then Nil
+            else
+              Stats.record(i"compute eligible cached")
+              val result = computeEligible(tp)
+              eligibleCache(tp) = result
+              result
 
     private def computeEligible(tp: Type): List[Candidate] = /*>|>*/ trace(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in irefCtx", refs.length)
@@ -1384,7 +1382,7 @@ trait Implicits:
     def allImplicits: Set[TermRef] = {
       val contextuals = ctx.implicits.eligible(wildProto).map(tryImplicit(_, contextual = true))
       val inscope = implicitScope(wildProto).eligible.map(tryImplicit(_, contextual = false))
-      (contextuals.toSet ++ inscope).collect {
+      (contextuals.toSet ++ inscope.iterator).collect {
         case success: SearchSuccess => success.ref
       }
     }
@@ -1640,7 +1638,7 @@ final class SearchRoot extends SearchHistory:
               else prune(in.map(_._2) ++ trees, out, in ++ acc)
           }
 
-          val pruned = prune(List(tree), implicitDictionary.map(_._2).toList, Nil)
+          val pruned = prune(List(tree), implicitDictionary.map(_._2).tolist, Nil)
           myImplicitDictionary = null
           if (pruned.isEmpty) result
           else if (pruned.exists(_._2 == EmptyTree)) NoMatchingImplicitsFailure
@@ -1734,9 +1732,9 @@ sealed class TermRefSet(using Context):
 
   // used only for debugging
   def showAsList: List[TermRef] = {
-    val buffer = new mutable.ListBuffer[TermRef]
+    val buffer = List.Buffer[TermRef]()
     foreach(tr => buffer += tr)
-    buffer.toList
+    buffer.tolist
   }
 
   override def toString = showAsList.toString

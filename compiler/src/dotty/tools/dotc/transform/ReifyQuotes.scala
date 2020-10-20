@@ -165,7 +165,7 @@ class ReifyQuotes extends MacroTransform {
 
       def pickleAsTasty() = {
         val unpickleMeth = if isType then defn.PickledQuote_unpickleType else defn.PickledQuote_unpickleExpr
-        val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType)
+        val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))).tolist, defn.StringType)
         // TODO: generate an instance of PickledSplices directly instead of passing through a List
         val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), defn.AnyType))
         val pickledQuote = ref(defn.PickledQuote_make).appliedTo(pickledQuoteStrings, splicesList)
@@ -294,9 +294,9 @@ class ReifyQuotes extends MacroTransform {
       outer.localSymbols.foreach(sym => if (!sym.isInlineMethod) capturers.put(sym, captured2))
 
       val tree2 = transform(tree)
-      capturers --= outer.localSymbols
+      capturers --= outer.localSymbols.iterator
 
-      val captures = captured.result().valuesIterator.toList
+      val captures = captured.result().valuesIterator.tolist
       if (captures.isEmpty) tree2
       else Block(captures, tree2)
     }
@@ -395,7 +395,7 @@ class ReifyQuotes extends MacroTransform {
       }
 
     private def liftList(list: List[Tree], tpe: Type)(using Context): Tree =
-      list.foldRight[Tree](ref(defn.NilModule)) { (x, acc) =>
+      list.foldRight(ref(defn.NilModule): Tree) { (x, acc) =>
         acc.select("::".toTermName).appliedToType(tpe).appliedTo(x)
       }
   }
@@ -414,7 +414,7 @@ object ReifyQuotes {
     case _ => None
   }
 
-  class Embedded(trees: mutable.ListBuffer[tpd.Tree] = mutable.ListBuffer.empty, map: mutable.Map[Symbol, tpd.Tree] = mutable.Map.empty) {
+  class Embedded(trees: List.Buffer[tpd.Tree] = List.Buffer(), map: mutable.Map[Symbol, tpd.Tree] = mutable.Map.empty) {
     /** Adds the tree and returns it's index */
     def addTree(tree: tpd.Tree, liftedSym: Symbol): Int = {
       trees += tree
@@ -433,7 +433,7 @@ object ReifyQuotes {
     def isLiftedSymbol(sym: Symbol)(using Context): Boolean = map.contains(sym)
 
     /** Get the list of embedded trees */
-    def getTrees: List[tpd.Tree] = trees.toList
+    def getTrees: List[tpd.Tree] = trees.tolist
 
     override def toString: String = s"Embedded($trees, $map)"
   }

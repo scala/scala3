@@ -22,7 +22,6 @@ import StdNames._
 import reporting._
 import dotty.tools.dotc.util.SourceFile
 import util.Spans._
-import scala.collection.mutable.ListBuffer
 
 object JavaParsers {
 
@@ -214,12 +213,12 @@ object JavaParsers {
       }
 
     def repsep[T <: Tree](p: () => T, sep: Int): List[T] = {
-      val buf = ListBuffer[T](p())
+      val buf = List.Buffer[T]() += p()
       while (in.token == sep) {
         in.nextToken()
         buf += p()
       }
-      buf.toList
+      buf.tolist
     }
 
     /** Convert (qual)ident to type identifier
@@ -332,7 +331,7 @@ object JavaParsers {
     }
 
     def annotations(): List[Tree] = {
-      var annots = new ListBuffer[Tree]
+      var annots = List.Buffer[Tree]()
       while (in.token == AT) {
         in.nextToken()
         annotation() match {
@@ -340,7 +339,7 @@ object JavaParsers {
           case _ =>
         }
       }
-      annots.toList
+      annots.tolist
     }
 
     /** Annotation ::= TypeName [`(` AnnotationArgument {`,` AnnotationArgument} `)`]
@@ -366,7 +365,7 @@ object JavaParsers {
       var flags: FlagSet = Flags.JavaDefined
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
-      var annots = new ListBuffer[Tree]
+      var annots = List.Buffer[Tree]()
       def addAnnot(tpt: Tree) =
         annots += atSpan(in.offset) {
           in.nextToken()
@@ -416,7 +415,7 @@ object JavaParsers {
               if (isPackageAccess && !inInterface) thisPackageName
               else tpnme.EMPTY
 
-            return Modifiers(flags, privateWithin) withAnnotations annots.toList
+            return Modifiers(flags, privateWithin) withAnnotations annots.tolist
         }
       assert(false, "should not be here")
       throw new RuntimeException
@@ -440,12 +439,12 @@ object JavaParsers {
 
     def bound(): Tree =
       atSpan(in.offset) {
-        val buf = ListBuffer[Tree](typ())
+        val buf = List.Buffer[Tree]() += typ()
         while (in.token == AMP) {
           in.nextToken()
           buf += typ()
         }
-        val ts = buf.toList
+        val ts = buf.tolist
         if (ts.tail.isEmpty) ts.head
         else ts.reduce(makeAndType(_,_))
       }
@@ -570,9 +569,9 @@ object JavaParsers {
       *  these potential definitions are real or not.
       */
     def fieldDecls(start: Offset, firstNameOffset: Offset, mods: Modifiers, tpt: Tree, name: Name): List[Tree] = {
-      val buf = ListBuffer[Tree](
-          atSpan(start, firstNameOffset) { varDecl(mods, tpt, name.toTermName) })
-      val maybe = new ListBuffer[Tree] // potential variable definitions.
+      val buf = List.Buffer[Tree]() +=
+          atSpan(start, firstNameOffset) { varDecl(mods, tpt, name.toTermName) }
+      val maybe = List.Buffer[Tree]() // potential variable definitions.
       while (in.token == COMMA) {
         in.nextToken()
         if (in.token == IDENTIFIER) { // if there's an ident after the comma ...
@@ -599,7 +598,7 @@ object JavaParsers {
       }
       if (in.token == SEMI)
         buf ++= maybe // every potential vardef that survived until here is real.
-      buf.toList
+      buf.tolist
     }
 
     def varDecl(mods: Modifiers, tpt: Tree, name: TermName): ValDef = {
@@ -700,7 +699,7 @@ object JavaParsers {
     def importDecl(): List[Tree] = {
       val start = in.offset
       accept(IMPORT)
-      val buf = new ListBuffer[Name]
+      val buf = List.Buffer[Name]()
       def collectIdents() : Int =
         if (in.token == ASTERISK) {
           val starOffset = in.offset
@@ -721,7 +720,7 @@ object JavaParsers {
       else buf += nme.ROOTPKG
       val lastnameOffset = collectIdents()
       accept(SEMI)
-      val names = buf.toList
+      val names = buf.tolist
       if (names.length < 2) {
         syntaxError(start, "illegal import", skipIt = false)
         List()
@@ -797,8 +796,8 @@ object JavaParsers {
 
     def typeBodyDecls(parentToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
       val inInterface = definesInterface(parentToken)
-      val statics = new ListBuffer[Tree]
-      val members = new ListBuffer[Tree]
+      val statics = List.Buffer[Tree]()
+      val members = List.Buffer[Tree]()
       while (in.token != RBRACE && in.token != EOF) {
         val start = in.offset
         var mods = modifiers(inInterface)
@@ -824,8 +823,8 @@ object JavaParsers {
         case _ =>
           List()
       }
-      val sdefs = statics.toList
-      val idefs = members.toList ::: (sdefs flatMap forwarders)
+      val sdefs = statics.tolist
+      val idefs = members.tolist ::: (sdefs flatMap forwarders)
       (sdefs, idefs)
     }
     def annotationParents: List[Select] = List(
@@ -859,7 +858,7 @@ object JavaParsers {
       def enumType = Ident(name)
       val interfaces = interfacesOpt()
       accept(LBRACE)
-      val buf = new ListBuffer[Tree]
+      val buf = List.Buffer[Tree]()
       def parseEnumConsts(): Unit =
         if (in.token != RBRACE && in.token != SEMI && in.token != EOF) {
           buf += enumConst(enumType)
@@ -869,7 +868,7 @@ object JavaParsers {
           }
         }
       parseEnumConsts()
-      val consts = buf.toList
+      val consts = buf.tolist
       val (statics, body) =
         if (in.token == SEMI) {
           in.nextToken()
@@ -965,7 +964,7 @@ object JavaParsers {
         case Some(t)  => t.name.toTypeName
         case _        => tpnme.EMPTY
       }
-      val buf = new ListBuffer[Tree]
+      val buf = List.Buffer[Tree]()
       while (in.token == IMPORT)
         buf ++= importDecl()
       while (in.token != EOF && in.token != RBRACE) {
@@ -976,7 +975,7 @@ object JavaParsers {
           buf ++= typeDecl(start, mods)
         }
       }
-      val unit = atSpan(start) { PackageDef(pkg, buf.toList) }
+      val unit = atSpan(start) { PackageDef(pkg, buf.tolist) }
       accept(EOF)
       unit
     }

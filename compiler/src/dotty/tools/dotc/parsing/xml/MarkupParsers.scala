@@ -4,7 +4,7 @@ package parsing
 package xml
 
 import scala.collection.mutable
-import mutable.{ Buffer, ArrayBuffer, ListBuffer }
+import mutable.{ Buffer, ArrayBuffer }
 import scala.util.control.ControlThrowable
 import scala.internal.Chars.SU
 import Parsers._
@@ -275,7 +275,7 @@ object MarkupParsers {
       val (qname, attrMap) = xTag(())
       if (ch == '/') { // empty element
         xToken("/>")
-        handle.element(Span(start, curOffset, start), qname, attrMap, true, new ListBuffer[Tree])
+        handle.element(Span(start, curOffset, start), qname, attrMap, true, List.Buffer[Tree]().toSeq)
       }
       else { // handle content
         xToken('>')
@@ -444,7 +444,7 @@ object MarkupParsers {
         // recurses until it hits a termination condition, then returns
         def doPattern: Boolean = {
           val start1 = curOffset
-          if (xEmbeddedBlock) ts ++= xScalaPatterns
+          if (xEmbeddedBlock) ts ++= xScalaPatterns.iterator
           else ch match {
             case '<'  => // tag
               nextch()
@@ -454,7 +454,7 @@ object MarkupParsers {
             case '{'  => // embedded Scala patterns
               while (ch == '{') {
                 nextch()
-                ts ++= xScalaPatterns
+                ts ++= xScalaPatterns.iterator
               }
               assert(!xEmbeddedBlock, "problem with embedded block")
 

@@ -15,6 +15,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags.{Label => LabelFlag, _}
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.StdNames.{nme, str}
+import dotty.tools.dotc.core.Denotations._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.transform.SymUtils._
@@ -1135,7 +1136,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             style.isVirtual &&
             isEmittedInterface(receiver) &&
             defn.ObjectType.decl(method.name).symbol.exists && { // fast path - compute overrideChain on the next line only if necessary
-              val syms = method.allOverriddenSymbols.toList
+              val syms = method.allOverriddenSymbols.tolist
               !syms.isEmpty && syms.last.owner == defn.ObjectClass
             }
         }
@@ -1458,9 +1459,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
 
       val abstractMethod = atPhase(erasurePhase) {
-        val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
+        val samMethods: List[SingleDenotation] = toDenot(functionalInterface).info.possibleSamMethods
         samMethods match {
-          case x :: Nil => x.symbol
+          case dotty.tools.List.+:(x, dotty.tools.Nil) => x.symbol
           case Nil => abort(s"${functionalInterface.show} is not a functional interface. It doesn't have abstract methods")
           case xs => abort(s"${functionalInterface.show} is not a functional interface. " +
             s"It has the following abstract methods: ${xs.map(_.name).mkString(", ")}")

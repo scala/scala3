@@ -217,7 +217,7 @@ object DesugarEnums {
       var tparamNames = enumTypeParams.map(_.name).toSet[Name]
       def underBinders(binders: List[MemberDef], op: => Boolean): Boolean = {
         val saved = tparamNames
-        tparamNames = tparamNames -- binders.map(_.name)
+        tparamNames = tparamNames -- binders.map(_.name).toSeq
         try op
         finally tparamNames = saved
       }

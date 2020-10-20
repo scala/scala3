@@ -263,7 +263,7 @@ object PatternMatcher {
        *  If `exact` is true, the sequence is not permitted to have any elements following `args`.
        */
       def matchElemsPlan(seqSym: Symbol, args: List[Tree], exact: Boolean, onSuccess: Plan) = {
-        val selectors = args.indices.toList.map(idx =>
+        val selectors = args.indices.tolist.map(idx =>
           ref(seqSym).select(defn.Seq_apply.matchingMember(seqSym.info)).appliedTo(Literal(Constant(idx))))
         TestPlan(LengthTest(args.length, exact), seqSym, seqSym.span,
           matchArgsPlan(selectors, args, onSuccess))
@@ -778,7 +778,7 @@ object PatternMatcher {
           plan.expr match {
             case SeqPlan(LabeledPlan(innerLabel, innerPlan), ons) if !canFallThrough(ons) =>
               val outerLabel = plan.sym
-              val alts = List.newBuilder[Tree]
+              val alts = List.Buffer[Tree]()
               def rec(innerPlan: Plan): Boolean = innerPlan match {
                 case SeqPlan(TestPlan(EqualTest(tree), scrut, _, ReturnPlan(`innerLabel`)), tail)
                 if scrut === scrutinee && isNewIntConst(tree) =>
@@ -790,7 +790,7 @@ object PatternMatcher {
                   false
               }
               if (rec(innerPlan))
-                Some((alts.result(), ons))
+                Some((alts.tolist, ons))
               else
                 None
 
@@ -888,7 +888,7 @@ object PatternMatcher {
               case _ =>
                 def emitCondWithPos(plan: TestPlan) = emitCondition(plan).withSpan(plan.span)
                 val conditions =
-                  plans.foldRight[Tree](EmptyTree) { (otherPlan, acc) =>
+                  plans.foldRight(EmptyTree: Tree) { (otherPlan, acc) =>
                     if (acc.isEmpty) emitCondWithPos(otherPlan)
                     else acc.select(nme.ZAND).appliedTo(emitCondWithPos(otherPlan))
                   }

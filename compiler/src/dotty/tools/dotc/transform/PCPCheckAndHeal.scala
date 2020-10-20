@@ -151,7 +151,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       case tree: DefTree =>
         lazy val annotCtx = ctx.fresh.setProperty(InAnnotation, true).withOwner(tree.symbol)
         for (annot <- tree.symbol.annotations) annot match
-          case annot: BodyAnnotation => annot // already checked in PrepareInlineable before the creation of the BodyAnnotation
+          case annot: BodyAnnotation => // already checked in PrepareInlineable before the creation of the BodyAnnotation
           case annot => transform(annot.tree)(using annotCtx)
       case _ =>
 
@@ -268,7 +268,7 @@ object PCPCheckAndHeal {
       typeDef.symbol.typeRef
     }
 
-    def getTypeTags: List[TypeDef] = tags.valuesIterator.toList
+    def getTypeTags: List[TypeDef] = tags.valuesIterator.tolist
 
     private def mkTagSymbolAndAssignType(spliced: TermRef): TypeDef = {
       val splicedTree = tpd.ref(spliced).withSpan(span)

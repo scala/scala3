@@ -168,7 +168,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     def isRetained(acc: Symbol) =
       !mightBeDropped(acc) || retainedPrivateVals(acc)
 
-    val constrStats, clsStats = new mutable.ListBuffer[Tree]
+    val constrStats, clsStats = List.Buffer[Tree]()
 
     /** Map outer getters $outer and outer accessors $A$B$$$outer to the given outer parameter. */
     def mapOuter(outerParam: Symbol) = new TreeMap {
@@ -285,7 +285,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       // TODO: this happens to work only because Constructors is the last phase in group
     }
 
-    val (superCalls, followConstrStats) = splitAtSuper(constrStats.toList)
+    val (superCalls, followConstrStats) = splitAtSuper(constrStats.tolist)
 
     val mappedSuperCalls = vparams match {
       case (outerParam @ ValDef(nme.OUTER, _, _)) :: _ =>
@@ -312,6 +312,6 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       }
       else cpy.DefDef(constr)(rhs = Block(finalConstrStats, unitLiteral))
 
-    cpy.Template(tree)(constr = expandedConstr, body = clsStats.toList)
+    cpy.Template(tree)(constr = expandedConstr, body = clsStats.tolist)
   }
 }

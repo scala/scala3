@@ -25,7 +25,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       name = member.name.stripScala2LocalSuffix,
       flags = member.flags &~ Deferred &~ Module | Synthetic | extraFlags,
       info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
-    res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
+    res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot).toSeq)
     res
   }
 
@@ -54,7 +54,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
    *   - there are multiple traits defining method with same signature
    */
   def needsMixinForwarder(meth: Symbol): Boolean = {
-    lazy val competingMethods = competingMethodsIterator(meth).toList
+    lazy val competingMethods = competingMethodsIterator(meth).tolist
 
     def needsDisambiguation = competingMethods.exists(x=> !x.is(Deferred)) // multiple implementations are available
     def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class

@@ -79,8 +79,8 @@ object NavigateAST {
           case xs: List[?] => childPath(xs.iterator, path)
           case _ => path
         }
-        if ((path1 ne path) &&
-            ((bestFit eq path) ||
+        if (!(path1 eqLst path) &&
+            ((bestFit eqLst path) ||
              bestFit.head.span != path1.head.span &&
              bestFit.head.span.contains(path1.head.span)))
           bestFit = path1

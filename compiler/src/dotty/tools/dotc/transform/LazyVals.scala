@@ -43,12 +43,12 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   val containerFlagsMask: FlagSet = Method | Lazy | Accessor | Module
 
   /** A map of lazy values to the fields they should null after initialization. */
-  private var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = _
+  private var lazyValNullables: IdentityHashMap[Symbol, List.Buffer[Symbol]] = _
   private def nullableFor(sym: Symbol)(using Context) = {
     // optimisation: value only used once, we can remove the value from the map
     val nullables = lazyValNullables.remove(sym)
     if (nullables == null) Nil
-    else nullables.toList
+    else nullables.tolist
   }
 
 

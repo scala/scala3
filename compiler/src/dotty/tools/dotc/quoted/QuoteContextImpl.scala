@@ -1,5 +1,4 @@
-package dotty.tools
-package dotc.quoted
+package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
@@ -49,6 +48,11 @@ object QuoteContextImpl {
 }
 
 class QuoteContextImpl private (ctx: Context) extends QuoteContext:
+
+  import dotty.tools.List.toScalaList
+
+  extension [T](xs: List[T])
+    def tolist: dotty.tools.List[T] = dotty.tools.List.fromIterable(xs)
 
   object reflect extends scala.tasty.Reflection, scala.internal.tasty.CompilerInterface:
 
@@ -103,17 +107,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object PackageClause extends PackageClauseModule:
       def apply(pid: Ref, stats: List[Tree]): PackageClause =
-        withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats))
+        withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats.tolist))
       def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause =
-        tpd.cpy.PackageDef(original)(pid, stats)
+        tpd.cpy.PackageDef(original)(pid, stats.tolist)
       def unapply(tree: PackageClause): Some[(Ref, List[Tree])] =
-        Some((tree.pid, tree.stats))
+        Some((tree.pid, tree.stats.toScalaList))
     end PackageClause
 
     object PackageClauseMethodsImpl extends PackageClauseMethods:
       extension (self: PackageClause):
         def pid: Ref = self.pid
-        def stats: List[Tree] = self.stats
+        def stats: List[Tree] = self.stats.toScalaList
       end extension
     end PackageClauseMethodsImpl
 
@@ -128,17 +132,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Import extends ImportModule:
       def apply(expr: Term, selectors: List[ImportSelector]): Import =
-        withDefaultPos(tpd.Import(expr, selectors))
+        withDefaultPos(tpd.Import(expr, selectors.tolist))
       def copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import =
-        tpd.cpy.Import(original)(expr, selectors)
+        tpd.cpy.Import(original)(expr, selectors.tolist)
       def unapply(tree: Import): Option[(Term, List[ImportSelector])] =
-        Some((tree.expr, tree.selectors))
+        Some((tree.expr, tree.selectors.toScalaList))
     end Import
 
     object ImportMethodsImpl extends ImportMethods:
       extension (self: Import):
         def expr: Term = self.expr
-        def selectors: List[ImportSelector] = self.selectors
+        def selectors: List[ImportSelector] = self.selectors.toScalaList
       end extension
     end ImportMethodsImpl
 
@@ -183,11 +187,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object ClassDef extends ClassDefModule:
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original
-        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
+        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents.tolist, derived.tolist, selfOpt.getOrElse(tpd.EmptyValDef), body.tolist))
       }
       def unapply(cdef: ClassDef): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
-        Some((cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body))
+        Some((cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body.toScalaList))
     end ClassDef
 
     object ClassDefMethodsImpl extends ClassDefMethods:
@@ -195,13 +199,13 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def constructor: DefDef =
           self.rhs.asInstanceOf[tpd.Template].constr
         def parents: List[Tree] =
-          self.rhs.asInstanceOf[tpd.Template].parents
+          self.rhs.asInstanceOf[tpd.Template].parents.toScalaList
         def derived: List[TypeTree] =
-          self.rhs.asInstanceOf[tpd.Template].derived.asInstanceOf[List[TypeTree]]
+          self.rhs.asInstanceOf[tpd.Template].derived.toScalaList.asInstanceOf[List[TypeTree]]
         def self: Option[ValDef] =
           optional(self.rhs.asInstanceOf[tpd.Template].self)
         def body: List[Statement] =
-          self.rhs.asInstanceOf[tpd.Template].body
+          self.rhs.asInstanceOf[tpd.Template].body.toScalaList
       end extension
     end ClassDefMethodsImpl
 
@@ -216,17 +220,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object DefDef extends DefDefModule:
       def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef =
-        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => rhsFn(tparams)(vparamss).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => rhsFn(tparams.toScalaList)(vparamss.toScalaList.map(_.toScalaList)).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, rhs.getOrElse(tpd.EmptyTree))
+        tpd.cpy.DefDef(original)(name.toTermName, typeParams.tolist, paramss.tolist.map(_.tolist), tpt, rhs.getOrElse(tpd.EmptyTree))
       def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
         Some((ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs)))
     end DefDef
 
     object DefDefMethodsImpl extends DefDefMethods:
       extension (self: DefDef):
-        def typeParams: List[TypeDef] = self.tparams
-        def paramss: List[List[ValDef]] = self.vparamss
+        def typeParams: List[TypeDef] = self.tparams.toScalaList
+        def paramss: List[List[ValDef]] = self.vparamss.toScalaList.map(_.toScalaList)
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -303,7 +307,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
             if app1 eq app then None
             else Some(app1.withSpan(tree.span))
           case tpd.Block(Nil, expr) =>
-            for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(Nil, e)
+            for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(Nil.tolist, e)
           case tpd.Inlined(_, Nil, expr) =>
             betaReduce(expr)
           case _ =>
@@ -414,10 +418,10 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
         withDefaultPos(tpd.Select(qualifier, name.toTermName))
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Apply =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args.tolist, targs.tolist, Types.WildcardType).asInstanceOf[Apply])
 
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Apply =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType).asInstanceOf[Apply])
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args.tolist, targs.tolist, returnType).asInstanceOf[Apply])
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         tpd.cpy.Select(original)(qualifier, name.toTermName)
       def unapply(x: Select): Option[(Term, String)] =
@@ -541,17 +545,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Apply extends ApplyModule:
       def apply(fun: Term, args: List[Term]): Apply =
-        withDefaultPos(tpd.Apply(fun, args))
+        withDefaultPos(tpd.Apply(fun, args.tolist))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
-        tpd.cpy.Apply(original)(fun, args)
+        tpd.cpy.Apply(original)(fun, args.tolist)
       def unapply(x: Apply): Option[(Term, List[Term])] =
-        Some((x.fun, x.args))
+        Some((x.fun, x.args.toScalaList))
     end Apply
 
     object ApplyMethodsImpl extends ApplyMethods:
       extension (self: Apply):
         def fun: Term = self.fun
-        def args: List[Term] = self.args
+        def args: List[Term] = self.args.toScalaList
       end extension
     end ApplyMethodsImpl
 
@@ -566,17 +570,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object TypeApply extends TypeApplyModule:
       def apply(fun: Term, args: List[TypeTree]): TypeApply =
-        withDefaultPos(tpd.TypeApply(fun, args))
+        withDefaultPos(tpd.TypeApply(fun, args.tolist))
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
-        tpd.cpy.TypeApply(original)(fun, args)
+        tpd.cpy.TypeApply(original)(fun, args.tolist)
       def unapply(x: TypeApply): Option[(Term, List[TypeTree])] =
-        Some((x.fun, x.args))
+        Some((x.fun, x.args.toScalaList))
     end TypeApply
 
     object TypeApplyMethodsImpl extends TypeApplyMethods:
       extension (self: TypeApply):
         def fun: Term = self.fun
-        def args: List[TypeTree] = self.args
+        def args: List[TypeTree] = self.args.toScalaList
       end extension
     end TypeApplyMethodsImpl
 
@@ -676,18 +680,18 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         case block: tpd.Block if block.stats.size > 1 =>
           def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
             case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
-              tpd.Block(x :: Nil, y) :: normalizeInnerLoops(xs)
+              tpd.Block((x :: Nil).tolist, y) :: normalizeInnerLoops(xs)
             case x :: xs => x :: normalizeInnerLoops(xs)
             case Nil => Nil
           }
           if (needsNormalization(block.expr)) {
-            val stats1 = normalizeInnerLoops(block.stats.init)
-            val normalLoop = tpd.Block(block.stats.last :: Nil, block.expr)
-            tpd.Block(stats1, normalLoop)
+            val stats1 = normalizeInnerLoops(block.stats.init.toScalaList)
+            val normalLoop = tpd.Block((block.stats.last :: Nil).tolist, block.expr)
+            tpd.Block(stats1.tolist, normalLoop)
           }
           else {
-            val stats1 = normalizeInnerLoops(block.stats)
-            tpd.cpy.Block(block)(stats1, block.expr)
+            val stats1 = normalizeInnerLoops(block.stats.toScalaList)
+            tpd.cpy.Block(block)(stats1.tolist, block.expr)
           }
         case _ => tree
       }
@@ -701,16 +705,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Block extends BlockModule:
       def apply(stats: List[Statement], expr: Term): Block =
-        withDefaultPos(tpd.Block(stats, expr))
+        withDefaultPos(tpd.Block(stats.tolist, expr))
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block =
-        tpd.cpy.Block(original)(stats, expr)
+        tpd.cpy.Block(original)(stats.tolist, expr)
       def unapply(x: Block): Option[(List[Statement], Term)] =
         Some((x.statements, x.expr))
     end Block
 
     object BlockMethodsImpl extends BlockMethods:
       extension (self: Block):
-        def statements: List[Statement] = self.stats
+        def statements: List[Statement] = self.stats.toScalaList
         def expr: Term = self.expr
       end extension
     end BlockMethodsImpl
@@ -726,9 +730,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Closure extends ClosureModule:
       def apply(meth: Term, tpe: Option[TypeRepr]): Closure =
-        withDefaultPos(tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.Closure(Nil.tolist, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(meth: Tree, tpe: Option[TypeRepr]): Closure =
-        tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
+        tpd.cpy.Closure(original)(Nil.tolist, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
       def unapply(x: Closure): Option[(Term, Option[TypeRepr])] =
         Some((x.meth, x.tpeOpt))
     end Closure
@@ -742,7 +746,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Lambda extends LambdaModule:
       def apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block =
-        tpd.Lambda(tpe, rhsFn)
+        tpd.Lambda(tpe, xs => rhsFn(xs.toScalaList))
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
         case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
@@ -788,19 +792,19 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Match extends MatchModule:
       def apply(selector: Term, cases: List[CaseDef]): Match =
-        withDefaultPos(tpd.Match(selector, cases))
+        withDefaultPos(tpd.Match(selector, cases.tolist))
 
       def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match =
-        tpd.cpy.Match(original)(selector, cases)
+        tpd.cpy.Match(original)(selector, cases.tolist)
 
       def unapply(x: Match): Option[(Term, List[CaseDef])] =
-        Some((x.scrutinee, x.cases))
+        Some((x.scrutinee, x.cases.toScalaList))
     end Match
 
     object MatchMethodsImpl extends MatchMethods:
       extension (self: Match):
         def scrutinee: Term = self.selector
-        def cases: List[CaseDef] = self.cases
+        def cases: List[CaseDef] = self.cases.toScalaList
       end extension
     end MatchMethodsImpl
 
@@ -815,16 +819,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object GivenMatch extends GivenMatchModule:
       def apply(cases: List[CaseDef]): GivenMatch =
-        withDefaultPos(tpd.Match(tpd.EmptyTree, cases))
+        withDefaultPos(tpd.Match(tpd.EmptyTree, cases.tolist))
       def copy(original: Tree)(cases: List[CaseDef]): GivenMatch =
-        tpd.cpy.Match(original)(tpd.EmptyTree, cases)
+        tpd.cpy.Match(original)(tpd.EmptyTree, cases.tolist)
       def unapply(x: GivenMatch): Option[List[CaseDef]] =
-        Some(x.cases)
+        Some(x.cases.toScalaList)
     end GivenMatch
 
     object GivenMatchMethodsImpl extends GivenMatchMethods:
       extension (self: GivenMatch):
-        def cases: List[CaseDef] = self.cases
+        def cases: List[CaseDef] = self.cases.toScalaList
       end extension
     end GivenMatchMethodsImpl
 
@@ -839,17 +843,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Try extends TryModule:
       def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        withDefaultPos(tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.Try(expr, cases.tolist, finalizer.getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        tpd.cpy.Try(original)(expr, cases, finalizer.getOrElse(tpd.EmptyTree))
+        tpd.cpy.Try(original)(expr, cases.tolist, finalizer.getOrElse(tpd.EmptyTree))
       def unapply(x: Try): Option[(Term, List[CaseDef], Option[Term])] =
-        Some((x.body, x.cases, optional(x.finalizer)))
+        Some((x.body, x.cases.toScalaList, optional(x.finalizer)))
     end Try
 
     object TryMethodsImpl extends TryMethods:
       extension (self: Try):
         def body: Term = self.expr
-        def cases: List[CaseDef] = self.cases
+        def cases: List[CaseDef] = self.cases.toScalaList
         def finalizer: Option[Term] = optional(self.finalizer)
       end extension
     end TryMethodsImpl
@@ -888,16 +892,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Repeated extends RepeatedModule:
       def apply(elems: List[Term], elemtpt: TypeTree): Repeated =
-        withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
+        withDefaultPos(tpd.SeqLiteral(elems.tolist, elemtpt))
       def copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated =
-        tpd.cpy.SeqLiteral(original)(elems, elemtpt)
+        tpd.cpy.SeqLiteral(original)(elems.tolist, elemtpt)
       def unapply(x: Repeated): Option[(List[Term], TypeTree)] =
-        Some((x.elems, x.elemtpt))
+        Some((x.elems.toScalaList, x.elemtpt))
     end Repeated
 
     object RepeatedMethodsImpl extends RepeatedMethods:
       extension (self: Repeated):
-        def elems: List[Term] = self.elems
+        def elems: List[Term] = self.elems.toScalaList
         def elemtpt: TypeTree = self.elemtpt
       end extension
     end RepeatedMethodsImpl
@@ -913,17 +917,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Inlined extends InlinedModule:
       def apply(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion))
+        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.tolist.map { case b: tpd.MemberDef => b }, expansion))
       def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
+        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]].tolist, expansion)
       def unapply(x: Inlined): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
-        Some((optional(x.call), x.bindings, x.body))
+        Some((optional(x.call), x.bindings.toScalaList, x.body))
     end Inlined
 
     object InlinedMethodsImpl extends InlinedMethods:
       extension (self: Inlined):
         def call: Option[Tree] = optional(self.call)
-        def bindings: List[Definition] = self.bindings
+        def bindings: List[Definition] = self.bindings.toScalaList
         def body: Term = self.expansion
       end extension
     end InlinedMethodsImpl
@@ -1125,7 +1129,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Refined extends RefinedModule:
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
-        tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
+        tpd.cpy.RefinedTypeTree(original)(tpt, refinements.tolist)
       def unapply(x: Refined): Option[(TypeTree, List[Definition])] =
         Some((x.tpt, x.refinements.asInstanceOf[List[Definition]]))
     end Refined
@@ -1148,17 +1152,17 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Applied extends AppliedModule:
       def apply(tpt: TypeTree, args: List[Tree]): Applied =
-        withDefaultPos(tpd.AppliedTypeTree(tpt, args))
+        withDefaultPos(tpd.AppliedTypeTree(tpt, args.tolist))
       def copy(original: Tree)(tpt: TypeTree, args: List[Tree]): Applied =
-        tpd.cpy.AppliedTypeTree(original)(tpt, args)
+        tpd.cpy.AppliedTypeTree(original)(tpt, args.tolist)
       def unapply(x: Applied): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
-        Some((x.tpt, x.args))
+        Some((x.tpt, x.args.toScalaList))
     end Applied
 
     object AppliedMethodsImpl extends AppliedMethods:
       extension (self: Applied):
         def tpt: TypeTree = self.tpt
-        def args: List[Tree] = self.args
+        def args: List[Tree] = self.args.toScalaList
       end extension
     end AppliedMethodsImpl
 
@@ -1198,18 +1202,18 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object MatchTypeTree extends MatchTypeTreeModule:
       def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
-        withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases))
+        withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases.tolist))
       def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
-        tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
+        tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases.tolist)
       def unapply(x: MatchTypeTree): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-        Some((optional(x.bound), x.selector, x.cases))
+        Some((optional(x.bound), x.selector, x.cases.toScalaList))
     end MatchTypeTree
 
     object MatchTypeTreeMethodsImpl extends MatchTypeTreeMethods:
       extension (self: MatchTypeTree):
         def bound: Option[TypeTree] = optional(self.bound)
         def selector: TypeTree = self.selector
-        def cases: List[TypeCaseDef] = self.cases
+        def cases: List[TypeCaseDef] = self.cases.toScalaList
       end extension
     end MatchTypeTreeMethodsImpl
 
@@ -1248,16 +1252,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object LambdaTypeTree extends LambdaTypeTreeModule:
       def apply(tparams: List[TypeDef], body: Tree): LambdaTypeTree =
-        withDefaultPos(tpd.LambdaTypeTree(tparams, body))
+        withDefaultPos(tpd.LambdaTypeTree(tparams.tolist, body))
       def copy(original: Tree)(tparams: List[TypeDef], body: Tree): LambdaTypeTree =
-        tpd.cpy.LambdaTypeTree(original)(tparams, body)
+        tpd.cpy.LambdaTypeTree(original)(tparams.tolist, body)
       def unapply(tree: LambdaTypeTree): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
-        Some((tree.tparams, tree.body))
+        Some((tree.tparams.toScalaList, tree.body))
     end LambdaTypeTree
 
     object LambdaTypeTreeMethodsImpl extends LambdaTypeTreeMethods:
       extension (self: LambdaTypeTree):
-        def tparams: List[TypeDef] = self.tparams
+        def tparams: List[TypeDef] = self.tparams.toScalaList
         def body: Tree = self.body
       end extension
     end LambdaTypeTreeMethodsImpl
@@ -1296,16 +1300,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object TypeBlock extends TypeBlockModule:
       def apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
-        withDefaultPos(tpd.Block(aliases, tpt))
+        withDefaultPos(tpd.Block(aliases.tolist, tpt))
       def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
-        tpd.cpy.Block(original)(aliases, tpt)
+        tpd.cpy.Block(original)(aliases.tolist, tpt)
       def unapply(x: TypeBlock): Option[(List[TypeDef], TypeTree)] =
         Some((x.aliases, x.tpt))
     end TypeBlock
 
     object TypeBlockMethodsImpl extends TypeBlockMethods:
       extension (self: TypeBlock):
-        def aliases: List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
+        def aliases: List[TypeDef] = self.stats.map { case alias: TypeDef => alias }.toScalaList
         def tpt: TypeTree = self.expr
       end extension
     end TypeBlockMethodsImpl
@@ -1446,20 +1450,20 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Unapply extends UnapplyModule:
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
-        withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
+        withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits.tolist, patterns.tolist))
       def unapply(x: Unapply): Option[(Term, List[Term], List[Tree])] =
-        Some((x.fun, x.implicits, x.patterns))
+        Some((x.fun, x.implicits.toScalaList, x.patterns.toScalaList))
     end Unapply
 
     object UnapplyMethodsImpl extends UnapplyMethods:
       extension (self: Unapply):
         def fun: Term = self.fun
-        def implicits: List[Term] = self.implicits
-        def patterns: List[Tree] = effectivePatterns(self.patterns)
+        def implicits: List[Term] = self.implicits.toScalaList
+        def patterns: List[Tree] = effectivePatterns(self.patterns.toScalaList)
       end extension
       private def effectivePatterns(patterns: List[Tree]): List[Tree] =
         patterns match
-          case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems
+          case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems.toScalaList
           case _ => patterns
     end UnapplyMethodsImpl
 
@@ -1474,16 +1478,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Alternatives extends AlternativesModule:
       def apply(patterns: List[Tree]): Alternatives =
-        withDefaultPos(tpd.Alternative(patterns))
+        withDefaultPos(tpd.Alternative(patterns.tolist))
       def copy(original: Tree)(patterns: List[Tree]): Alternatives =
-        tpd.cpy.Alternative(original)(patterns)
+        tpd.cpy.Alternative(original)(patterns.tolist)
       def unapply(x: Alternatives): Option[List[Tree]] =
         Some(x.patterns)
     end Alternatives
 
     object AlternativesMethodsImpl extends AlternativesMethods:
       extension (self: Alternatives):
-        def patterns: List[Tree] = self.trees
+        def patterns: List[Tree] = self.trees.toScalaList
       end extension
     end AlternativesMethodsImpl
 
@@ -1613,7 +1617,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def isSingleton: Boolean = self.isSingleton
         def memberType(member: Symbol): TypeRepr =
           member.info.asSeenFrom(self, member.owner)
-        def baseClasses: List[Symbol] = self.baseClasses
+        def baseClasses: List[Symbol] = self.baseClasses.toScalaList
         def baseType(cls: Symbol): TypeRepr = self.baseType(cls)
         def derivesFrom(cls: Symbol): Boolean = self.derivesFrom(cls)
         def isFunctionType: Boolean =
@@ -1630,7 +1634,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def appliedTo(targ: TypeRepr): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targ)
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
-          dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
+          dotc.core.Types.decorateTypeApplications(self).appliedTo(targs.tolist)
       end extension
     end TypeMethodsImpl
 
@@ -1760,13 +1764,13 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object AppliedType extends AppliedTypeModule:
       def unapply(x: AppliedType): Option[(TypeRepr, List[TypeRepr])] =
-        Some((x.tycon, x.args))
+        Some((x.tycon, x.args.toScalaList))
     end AppliedType
 
     object AppliedTypeMethodsImpl extends AppliedTypeMethods:
       extension (self: AppliedType):
         def tycon: TypeRepr = self.tycon
-        def args: List[TypeRepr] = self.args
+        def args: List[TypeRepr] = self.args.toScalaList
       end extension
     end AppliedTypeMethodsImpl
 
@@ -1846,16 +1850,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object MatchType extends MatchTypeModule:
       def apply(bound: TypeRepr, scrutinee: TypeRepr, cases: List[TypeRepr]): MatchType =
-        Types.MatchType(bound, scrutinee, cases)
+        Types.MatchType(bound, scrutinee, cases.tolist)
       def unapply(x: MatchType): Option[(TypeRepr, TypeRepr, List[TypeRepr])] =
-        Some((x.bound, x.scrutinee, x.cases))
+        Some((x.bound, x.scrutinee, x.cases.toScalaList))
     end MatchType
 
     object MatchTypeMethodsImpl extends MatchTypeMethods:
       extension (self: MatchType):
         def bound: TypeRepr = self.bound
         def scrutinee: TypeRepr = self.scrutinee
-        def cases: List[TypeRepr] = self.cases
+        def cases: List[TypeRepr] = self.cases.toScalaList
       end extension
     end MatchTypeMethodsImpl
 
@@ -1975,9 +1979,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object MethodType extends MethodTypeModule:
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
-        Types.MethodType(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
+        Types.MethodType(paramNames.map(_.toTermName).tolist)(paramInfosExp.andThen(_.tolist), resultTypeExp)
       def unapply(x: MethodType): Option[(List[String], List[TypeRepr], TypeRepr)] =
-        Some((x.paramNames.map(_.toString), x.paramTypes, x.resType))
+        Some((x.paramNames.map(_.toString).toScalaList, x.paramTypes, x.resType))
     end MethodType
 
     object MethodTypeMethodsImpl extends MethodTypeMethods:
@@ -1985,8 +1989,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def isErased: Boolean = self.isErasedMethod
         def isImplicit: Boolean = self.isImplicitMethod
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramNames: List[String] = self.paramNames.map(_.toString)
-        def paramTypes: List[TypeRepr] = self.paramInfos
+        def paramNames: List[String] = self.paramNames.map(_.toString).toScalaList
+        def paramTypes: List[TypeRepr] = self.paramInfos.toScalaList
         def resType: TypeRepr = self.resType
       end extension
     end MethodTypeMethodsImpl
@@ -2002,16 +2006,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object PolyType extends PolyTypeModule:
       def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType =
-        Types.PolyType(paramNames.map(_.toTypeName))(paramBoundsExp, resultTypeExp)
+        Types.PolyType(paramNames.map(_.toTypeName).tolist)(paramBoundsExp.andThen(_.tolist), resultTypeExp)
       def unapply(x: PolyType): Option[(List[String], List[TypeBounds], TypeRepr)] =
-        Some((x.paramNames.map(_.toString), x.paramBounds, x.resType))
+        Some((x.paramNames.map(_.toString).toScalaList, x.paramBounds, x.resType))
     end PolyType
 
     object PolyTypeMethodsImpl extends PolyTypeMethods:
       extension (self: PolyType):
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramNames: List[String] = self.paramNames.map(_.toString)
-        def paramBounds: List[TypeBounds] = self.paramInfos
+        def paramNames: List[String] = self.paramNames.map(_.toString).toScalaList
+        def paramBounds: List[TypeBounds] = self.paramInfos.toScalaList
         def resType: TypeRepr = self.resType
       end extension
     end PolyTypeMethodsImpl
@@ -2027,15 +2031,15 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object TypeLambda extends TypeLambdaModule:
       def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr): TypeLambda =
-        Types.HKTypeLambda(paramNames.map(_.toTypeName))(boundsFn, bodyFn)
+        Types.HKTypeLambda(paramNames.map(_.toTypeName).tolist)(boundsFn.andThen(_.tolist), bodyFn)
       def unapply(x: TypeLambda): Option[(List[String], List[TypeBounds], TypeRepr)] =
-        Some((x.paramNames.map(_.toString), x.paramBounds, x.resType))
+        Some((x.paramNames.map(_.toString).toScalaList, x.paramBounds, x.resType))
     end TypeLambda
 
     object TypeLambdaMethodsImpl extends TypeLambdaMethods:
       extension (self: TypeLambda):
-        def paramNames: List[String] = self.paramNames.map(_.toString)
-        def paramBounds: List[TypeBounds] = self.paramInfos
+        def paramNames: List[String] = self.paramNames.map(_.toString).toScalaList
+        def paramBounds: List[TypeBounds] = self.paramInfos.toScalaList
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
         def resType: TypeRepr = self.resType
       end extension
@@ -2315,7 +2319,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def tree: Tree = FromSymbol.definitionFromSym(self)
 
         def annots: List[Term] =
-          self.annotations.flatMap {
+          self.annotations.toScalaList.flatMap {
             case _: dotc.core.Annotations.BodyAnnotation => Nil
             case annot => annot.tree :: Nil
           }
@@ -2342,7 +2346,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           self.is(dotc.core.Flags.Case, butNot = Enum | Module) && !self.isClass
         def isNoSymbol: Boolean = self == Symbol.noSymbol
         def exists: Boolean = self != Symbol.noSymbol
-        def fields: List[Symbol] = self.unforcedDecls.filter(isField)
+        def fields: List[Symbol] = self.unforcedDecls.filter(isField).toScalaList
 
         def field(name: String): Symbol =
           val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
@@ -2359,10 +2363,10 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           }.toList
 
         def members: List[Symbol] =
-          self.typeRef.info.decls.toList
+          self.typeRef.info.decls.tolist.toScalaList
 
         def typeMembers: List[Symbol] =
-          self.unforcedDecls.filter(_.isType)
+          self.unforcedDecls.filter(_.isType).toScalaList
 
         def typeMember(name: String): Symbol =
           self.unforcedDecls.find(sym => sym.name == name.toTypeName)
@@ -2377,12 +2381,12 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
             case sym if isMethod(sym) => sym.asTerm
           }.toList
 
-        def paramSymss: List[List[Symbol]] = self.denot.paramSymss
+        def paramSymss: List[List[Symbol]] = self.denot.paramSymss.toScalaList.map(_.toScalaList)
         def primaryConstructor: Symbol = self.denot.primaryConstructor
 
         def caseFields: List[Symbol] =
           if !self.isClass then Nil
-          else self.asClass.paramAccessors.collect {
+          else self.asClass.paramAccessors.toScalaList.collect {
             case sym if sym.is(dotc.core.Flags.CaseAccessor) => sym.asTerm
           }
 
@@ -2391,7 +2395,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def moduleClass: Symbol = self.denot.moduleClass
         def companionClass: Symbol = self.denot.companionClass
         def companionModule: Symbol = self.denot.companionModule
-        def children: List[Symbol] = self.denot.children
+        def children: List[Symbol] = self.denot.children.toScalaList
 
         def showExtractors: String =
           new ExtractorsPrinter[reflect.type](reflect).showSymbol(self)
@@ -2422,7 +2426,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object SignatureMethodsImpl extends SignatureMethods:
       extension (self: Signature):
         def paramSigs: List[String | Int] =
-          self.paramsSig.map {
+          self.paramsSig.toScalaList.map {
             case paramSig: dotc.core.Names.TypeName =>
               paramSig.toString
             case paramSig: Int =>
@@ -2604,7 +2608,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def raw: String = self.raw
         def expanded: Option[String] = self.expanded
         def usecases: List[(String, Option[DefDef])] =
-          self.usecases.map { uc => (uc.code, uc.tpdCode) }
+          self.usecases.toScalaList.map { uc => (uc.code, uc.tpdCode) }
       end extension
     end DocumentationMethodsImpl
 
@@ -2639,7 +2643,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
             val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol)
             val otherStats = stats.dropWhile(isTypeHoleDef)
-            (tpd.cpy.Block(pat)(otherStats, expr), holes)
+            (tpd.cpy.Block(pat)(otherStats, expr), holes.toScalaList)
           case _ =>
             (pat, Nil)
 
@@ -2649,7 +2653,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         if typeHoles.isEmpty then ctx
         else
           val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(dotc.core.Mode.GadtConstraintInference)
-          ctx1.gadt.addToConstraint(typeHoles)
+          ctx1.gadt.addToConstraint(typeHoles.tolist)
           ctx1
 
       val qctx1 = dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)

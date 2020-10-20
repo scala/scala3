@@ -421,7 +421,7 @@ object Contexts {
      *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context = {
-      val locals = newScopeWith(owner.typeParams ++ owner.asClass.paramAccessors: _*)
+      val locals = newScopeWith((owner.typeParams ++ owner.asClass.paramAccessors).toSeq: _*)
       superOrThisCallContext(owner.primaryConstructor, locals)
     }
 
@@ -657,7 +657,7 @@ object Contexts {
         c.addNotNullInfo(NotNullInfo(refs, Set()))
 
       def withNotNullInfos(infos: List[NotNullInfo]): Context =
-        if c.notNullInfos eq infos then c else c.fresh.setNotNullInfos(infos)
+        if c.notNullInfos eqLst infos then c else c.fresh.setNotNullInfos(infos)
   end ops
 
   // TODO: Fix issue when converting ModeChanges and FreshModeChanges to extension givens
@@ -809,8 +809,9 @@ object Contexts {
     }
 
     protected def newPlatform(using Context): Platform =
-      if (settings.scalajs.value) new SJSPlatform
-      else new JavaPlatform
+      //if (settings.scalajs.value) new SJSPlatform
+      //else
+        new JavaPlatform
 
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(using Context): SymbolLoader = platform.rootLoader(root)

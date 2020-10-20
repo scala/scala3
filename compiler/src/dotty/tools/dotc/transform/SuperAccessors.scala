@@ -60,7 +60,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     ctx.owner.enclosingClass != invalidEnclClass
 
   /** List buffers for new accessor definitions, indexed by class */
-  private val accDefs = MutableSymbolMap[mutable.ListBuffer[Tree]]()
+  private val accDefs = MutableSymbolMap[List.Buffer[Tree]]()
 
   /** A super accessor call corresponding to `sel` */
   private def superAccessorCall(sel: Select, mixName: Name = nme.EMPTY)(using Context) = {
@@ -204,7 +204,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
   /** Wrap template to template transform `op` with needed initialization and finalization */
   def wrapTemplate(tree: Template)(op: Template => Template)(using Context): Template = {
-    accDefs(currentClass) = new mutable.ListBuffer[Tree]
+    accDefs(currentClass) = List.Buffer[Tree]()
     val impl = op(tree)
     val accessors = accDefs.remove(currentClass).nn
     if (accessors.isEmpty) impl

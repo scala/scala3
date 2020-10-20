@@ -461,10 +461,10 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
       else tree.parents.mapConserve(unwrapWithContextualJSClassValue(_))
 
     if (!mayNeedJSClassOrJSObjectFields(cls)) {
-      if (fixedParents eq tree.parents) tree
+      if (fixedParents eqLst tree.parents) tree
       else cpy.Template(tree)(parents = fixedParents)
     } else {
-      val newStats = List.newBuilder[Tree]
+      val newStats = List.Buffer[Tree]()
       for (stat <- tree.body) {
         stat match {
           case stat: TypeDef if stat.isClassDef && isJSClass(stat.symbol) =>
@@ -500,7 +500,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
         newStats += stat
       }
 
-      cpy.Template(tree)(tree.constr, fixedParents, Nil, tree.self, newStats.result())
+      cpy.Template(tree)(tree.constr, fixedParents, Nil, tree.self, newStats.tolist)
     }
   }
 

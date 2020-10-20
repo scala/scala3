@@ -16,7 +16,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
 
   def this(bytes: Array[Byte]) = this(bytes, 0, bytes.length)
 
-  private var bp: Int = start
+  protected var bp: Int = start
 
   def addr(idx: Int): Addr = Addr(idx - base)
   def index(addr: Addr): Int = addr.index + base
@@ -36,8 +36,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   /** A new reader over the same array with the same address base, but with
    *  specified start and end positions
    */
-  def subReader(start: Addr, end: Addr): TastyReader =
-    new TastyReader(bytes, index(start), index(end), base)
+  //def subReader(start: Addr, end: Addr): TastyReader
 
   /** Read a byte of data. */
   def readByte(): Int = {
@@ -119,22 +118,22 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   def goto(addr: Addr): Unit =
     bp = index(addr)
 
-  /** Perform `op` until `end` address is reached and collect results in a list. */
-  def until[T](end: Addr)(op: => T): List[T] = {
-    val buf = new mutable.ListBuffer[T]
-    while (bp < index(end)) buf += op
-    assert(bp == index(end))
-    buf.toList
-  }
-
   /** If before given `end` address, the result of `op`, otherwise `default` */
   def ifBefore[T](end: Addr)(op: => T, default: T): T =
     if (bp < index(end)) op else default
+/*
+  /** Perform `op` until `end` address is reached and collect results in a list. */
+  def until[T](end: Addr)(op: => T): Coll[T] =
+    val buf = new mutable.ListBuffer[T]
+    while bp < index(end) do buf += op
+    assert(bp == index(end))
+    buf.toList
 
-  /** Perform `op` while cindition `cond` holds and collect results in a list. */
+  /** Perform `op` while condition `cond` holds and collect results in a list. */
   def collectWhile[T](cond: => Boolean)(op: => T): List[T] = {
     val buf = new mutable.ListBuffer[T]
     while (cond) buf += op
     buf.toList
   }
+  */
 }

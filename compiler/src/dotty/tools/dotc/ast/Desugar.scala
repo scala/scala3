@@ -11,7 +11,6 @@ import typer.{FrontEnd, Namer}
 import util.{Property, SourceFile, SourcePosition}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
-import collection.mutable.ListBuffer
 import reporting._
 import annotation.constructorOnly
 import printing.Formatting.hl
@@ -118,7 +117,7 @@ object desugar {
             if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
               def msg =
-                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
+                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.tolist}"
               ErrorType(msg).assertingErrorsReported(msg)
             }
           case _ =>
@@ -217,7 +216,7 @@ object desugar {
     val meth @ DefDef(_, tparams, vparamss, tpt, rhs) = meth0
     val methName = normalizeName(meth, tpt).asTermName
     val mods = meth.mods
-    val epbuf = ListBuffer[ValDef]()
+    val epbuf = List.Buffer[ValDef]()
     def desugarContextBounds(rhs: Tree): Tree = rhs match {
       case ContextBounds(tbounds, cxbounds) =>
         val iflag = if sourceVersion.isAtLeast(`3.1`) then Given else Implicit
@@ -248,7 +247,7 @@ object desugar {
     val meth1 =
       rhs match
         case MacroTree(call) => cpy.DefDef(meth)(rhs = call).withMods(mods | Macro | Erased)
-        case _ => addEvidenceParams(cpy.DefDef(meth)(name = methName, tparams = tparams1), epbuf.toList)
+        case _ => addEvidenceParams(cpy.DefDef(meth)(name = methName, tparams = tparams1), epbuf.tolist)
 
     /** The longest prefix of parameter lists in vparamss whose total length does not exceed `n` */
     def takeUpTo(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
@@ -646,7 +645,7 @@ object desugar {
         ModuleDef(
           className.toTermName, Template(emptyConstructor, parentTpt :: Nil, companionDerived, EmptyValDef, defs))
             .withMods(companionMods | Synthetic))
-        .withSpan(cdef.span).toList
+        .withSpan(cdef.span).tolist
       if (companionDerived.nonEmpty)
         for (modClsDef @ TypeDef(_, _) <- mdefs)
           modClsDef.putAttachment(DerivingCompanion, impl.srcPos.startPos)
@@ -790,7 +789,7 @@ object desugar {
       }
       val caseAccessor = if (isCaseClass) CaseAccessor else EmptyFlags
       val vparamAccessors = {
-        val originalVparamsIt = originalVparamss.iterator.flatten
+        val originalVparamsIt = originalVparamss.iterator.flatMap(_.iterator)
         derivedVparamss match {
           case first :: rest =>
             // Annotations on the class _value_ parameters are not set on the parameter accessors
@@ -1302,7 +1301,7 @@ object desugar {
    *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked?) match { cases }
    */
   def makeCaseLambda(cases: List[CaseDef], checkMode: MatchCheck, nparams: Int = 1)(using Context): Function = {
-    val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
+    val params = (1 to nparams).tolist.map(makeSyntheticParameter(_))
     val selector = makeTuple(params.map(p => Ident(p.name)))
     Function(params, Match(makeSelector(selector, checkMode), cases))
   }
@@ -1556,7 +1555,7 @@ object desugar {
           val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
           val (defpat0, id0) = makeIdPat(gen.pat)
           val (defpats, ids) = (pats map makeIdPat).unzip
-          val pdefs = valeqs.lazyZip(defpats).lazyZip(rhss).map(makePatDef(_, Modifiers(), _, _))
+          val pdefs = valeqs.zipped(defpats).zipped(rhss).map(makePatDef(_, Modifiers(), _, _))
           val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = gen.pat :: pats
           val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
@@ -1756,7 +1755,7 @@ object desugar {
    *  without duplicates
    */
   private def getVariables(tree: Tree)(using Context): List[VarInfo] = {
-    val buf = ListBuffer[VarInfo]()
+    val buf = List.Buffer[VarInfo]()
     def seenName(name: Name) = buf exists (_._1.name == name)
     def add(named: NameTree, t: Tree): Unit =
       if (!seenName(named.name) && named.name.isTermName) buf += ((named, t))
@@ -1813,6 +1812,6 @@ object desugar {
       case _ =>
     }
     collect(tree)
-    buf.toList
+    buf.tolist
   }
 }

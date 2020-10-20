@@ -136,7 +136,7 @@ object Flags {
 
     /** The list of non-empty names of flags that are set in the given flag set */
     def flagStrings(privateWithin: String = ""): Seq[String] = {
-      var rawStrings = (2 to MaxFlag).flatMap(x.flagString(_)) // DOTTY problem: cannot drop with (_)
+      var rawStrings = (2 to MaxFlag).flatMap(x.flagString(_).toSeq) // DOTTY problem: cannot drop with (_)
       if (!privateWithin.isEmpty && !x.is(Protected))
       	rawStrings = rawStrings :+ "private"
       val scopeStr = if (x.is(Local)) "this" else privateWithin

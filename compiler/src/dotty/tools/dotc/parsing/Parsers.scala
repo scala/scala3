@@ -3,7 +3,6 @@ package dotc
 package parsing
 
 import scala.annotation.internal.sharable
-import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
 import util.{ SourceFile, SourcePosition, NoSourcePosition }
 import Tokens._
@@ -64,7 +63,7 @@ object Parsers {
     val Spliced = 2
   }
 
-  extension (buf: ListBuffer[Tree]):
+  extension (buf: List.Buffer[Tree]):
     def +++=(x: Tree) = x match {
       case x: Thicket => buf ++= x.trees
       case x => buf += x
@@ -363,7 +362,7 @@ object Parsers {
     def acceptStatSep(): Unit =
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
-    def acceptStatSepUnlessAtEnd[T <: Tree](stats: ListBuffer[T], altEnd: Token = EOF): Unit =
+    def acceptStatSepUnlessAtEnd[T <: Tree](stats: List.Buffer[T], altEnd: Token = EOF): Unit =
       in.observeOutdented()
       in.token match
         case SEMI | NEWLINE | NEWLINES =>
@@ -588,12 +587,12 @@ object Parsers {
     /** part { `separator` part }
      */
     def tokenSeparated[T](separator: Int, part: () => T): List[T] = {
-      val ts = new ListBuffer[T] += part()
+      val ts = List.Buffer[T]() += part()
       while (in.token == separator) {
         in.nextToken()
         ts += part()
       }
-      ts.toList
+      ts.tolist
     }
 
     def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
@@ -1199,7 +1198,7 @@ object Parsers {
     }
 
     private def interpolatedString(inPattern: Boolean = false): Tree = atSpan(in.offset) {
-      val segmentBuf = new ListBuffer[Tree]
+      val segmentBuf = List.Buffer[Tree]()
       val interpolator = in.name
       val isTripleQuoted =
         in.charOffset + 1 < in.buf.length &&
@@ -1236,7 +1235,7 @@ object Parsers {
       if (in.token == STRINGLIT)
         segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
 
-      InterpolatedString(interpolator, segmentBuf.toList)
+      InterpolatedString(interpolator, segmentBuf.tolist)
     }
 
 /* ------------- NEW LINES ------------------------------------------------- */
@@ -1288,7 +1287,7 @@ object Parsers {
       else
         newLineOptWhenFollowedBy(LBRACE)
 
-    def checkEndMarker[T <: Tree](stats: ListBuffer[T]): Unit =
+    def checkEndMarker[T <: Tree](stats: List.Buffer[T]): Unit =
 
       def matches(stat: Tree): Boolean = stat match
         case stat: MemberDef if !stat.name.isEmpty =>
@@ -1388,12 +1387,12 @@ object Parsers {
           }
         }
       def funArgTypesRest(first: Tree, following: () => Tree) = {
-        val buf = new ListBuffer[Tree] += first
+        val buf = List.Buffer[Tree]() += first
         while (in.token == COMMA) {
           in.nextToken()
           buf += following()
         }
-        buf.toList
+        buf.tolist
       }
       var isValParamList = false
 
@@ -1480,7 +1479,7 @@ object Parsers {
      *  returning the new argument list and the synthetic type definitions.
      */
     private def replaceKindProjectorPlaceholders(params: List[Tree]): (List[Tree], List[TypeDef]) = {
-      val tparams = new ListBuffer[TypeDef]
+      val tparams = List.Buffer[TypeDef]()
 
       val newParams = params.mapConserve {
         case param @ Ident(tpnme.raw.STAR) =>
@@ -1490,7 +1489,7 @@ object Parsers {
         case other => other
       }
 
-      (newParams, tparams.toList)
+      (newParams, tparams.tolist)
     }
 
     private def implicitKwPos(start: Int): Span =
@@ -2539,10 +2538,10 @@ object Parsers {
      *  TypeCaseClauses     ::= TypeCaseClause {TypeCaseClause}
      */
     def caseClauses(clause: () => CaseDef): List[CaseDef] = {
-      val buf = new ListBuffer[CaseDef]
+      val buf = List.Buffer[CaseDef]()
       buf += clause()
       while (in.token == CASE) buf += clause()
-      buf.toList
+      buf.tolist
     }
 
     /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block
@@ -3600,14 +3599,14 @@ object Parsers {
     /** ExtMethods ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’
      */
     def extMethods(): List[DefDef] = checkNoEscapingPlaceholders {
-      val meths = new ListBuffer[DefDef]
+      val meths = List.Buffer[DefDef]()
       val exitOnError = false
       while !isStatSeqEnd && !exitOnError do
         setLastStatOffset()
         meths += extMethod()
         acceptStatSepUnlessAtEnd(meths)
       if meths.isEmpty then syntaxError("`def` expected")
-      meths.toList
+      meths.tolist
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
@@ -3728,7 +3727,7 @@ object Parsers {
      *            |
      */
     def topStatSeq(outermost: Boolean = false): List[Tree] = {
-      val stats = new ListBuffer[Tree]
+      val stats = List.Buffer[Tree]()
       while (!isStatSeqEnd) {
         setLastStatOffset()
         if (in.token == PACKAGE) {
@@ -3754,7 +3753,7 @@ object Parsers {
             syntaxErrorOrIncomplete(ExpectedToplevelDef())
         acceptStatSepUnlessAtEnd(stats)
       }
-      stats.toList
+      stats.tolist
     }
 
     /** TemplateStatSeq  ::= [id [`:' Type] `=>'] TemplateStat {semi TemplateStat}
@@ -3770,7 +3769,7 @@ object Parsers {
      */
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
       var self: ValDef = EmptyValDef
-      val stats = new ListBuffer[Tree]
+      val stats = List.Buffer[Tree]()
       if (isExprIntro && !isDefIntro(modifierTokens)) {
         val first = expr1()
         if (in.token == ARROW) {
@@ -3809,7 +3808,7 @@ object Parsers {
         }
         acceptStatSepUnlessAtEnd(stats)
       }
-      (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
+      (self, if (stats.isEmpty) List(EmptyTree) else stats.tolist)
     }
 
     /** RefineStatSeq    ::=  RefineStat {semi RefineStat}
@@ -3819,7 +3818,7 @@ object Parsers {
      *  (in reality we admit Defs and vars and filter them out afterwards in `checkLegal`)
      */
     def refineStatSeq(): List[Tree] = {
-      val stats = new ListBuffer[Tree]
+      val stats = List.Buffer[Tree]()
       def checkLegal(tree: Tree): List[Tree] =
         val problem = tree match
           case tree: MemberDef if !(tree.mods.flags & ModifierFlags).isEmpty =>
@@ -3847,7 +3846,7 @@ object Parsers {
              else ""))
         acceptStatSepUnlessAtEnd(stats)
       }
-      stats.toList
+      stats.tolist
     }
 
     def localDef(start: Int, implicitMods: Modifiers = EmptyModifiers): Tree = {
@@ -3869,7 +3868,7 @@ object Parsers {
      *                 |
      */
     def blockStatSeq(): List[Tree] = checkNoEscapingPlaceholders {
-      val stats = new ListBuffer[Tree]
+      val stats = List.Buffer[Tree]()
       var exitOnError = false
       while (!isStatSeqEnd && in.token != CASE && !exitOnError) {
         setLastStatOffset()
@@ -3889,14 +3888,14 @@ object Parsers {
         }
         acceptStatSepUnlessAtEnd(stats, CASE)
       }
-      stats.toList
+      stats.tolist
     }
 
     /** CompilationUnit ::= {package QualId semi} TopStatSeq
      */
     def compilationUnit(): Tree = checkNoEscapingPlaceholders {
       def topstats(): List[Tree] = {
-        val ts = new ListBuffer[Tree]
+        val ts = List.Buffer[Tree]()
         while (in.token == SEMI) in.nextToken()
         val start = in.offset
         if (in.token == PACKAGE) {
@@ -3928,7 +3927,7 @@ object Parsers {
         else
           ts ++= topStatSeq(outermost = true)
 
-        ts.toList
+        ts.tolist
       }
 
       topstats() match {

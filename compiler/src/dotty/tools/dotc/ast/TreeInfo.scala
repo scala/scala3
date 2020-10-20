@@ -57,9 +57,9 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     }
     def zipped: List[(Symbol, Tree)] = map((_, _))
     def map[R](f: (Symbol, Tree) => R): List[R] = {
-      val b = List.newBuilder[R]
+      val b = List.Buffer[R]()
       foreach(b += f(_, _))
-      b.result()
+      b.tolist
     }
   }
 
@@ -698,10 +698,10 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** The symbols defined locally in a statement list */
   def localSyms(stats: List[Tree])(using Context): List[Symbol] =
-    val locals = new mutable.ListBuffer[Symbol]
+    val locals = List.Buffer[Symbol]()
     for stat <- stats do
       if stat.isDef && stat.symbol.exists then locals += stat.symbol
-    locals.toList
+    locals.tolist
 
   /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */
   def definedSym(tree: Tree)(using Context): Symbol =
@@ -720,7 +720,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           if (definedSym(tree) == sym) tree :: x
           else {
             val x1 = foldOver(x, tree)
-            if (x1 ne x) tree :: x1 else x1
+            if (x1 neLst x) tree :: x1 else x1
           }
         else x
     }
@@ -837,7 +837,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  The supercall is always the first statement (if it exists)
    */
   final def splitAtSuper(constrStats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
-    constrStats.toList match {
+    constrStats match {
       case (sc: Apply) :: rest if sc.symbol.isConstructor => (sc :: Nil, rest)
       case (block @ Block(_, sc: Apply)) :: rest if sc.symbol.isConstructor => (block :: Nil, rest)
       case stats => (Nil, stats)

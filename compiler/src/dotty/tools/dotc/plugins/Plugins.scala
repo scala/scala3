@@ -42,9 +42,9 @@ trait Plugins {
     goods map (_.get)
   }
 
-  private var _roughPluginsList: List[Plugin] = _
+  private var _roughPluginsList: List[Plugin] = nullList
   protected def roughPluginsList(using Context): List[Plugin] =
-    if (_roughPluginsList == null) {
+    if (_roughPluginsList eqLst nullList) {
       _roughPluginsList = loadRoughPluginsList
       _roughPluginsList
     }
@@ -94,9 +94,9 @@ trait Plugins {
     plugs
   }
 
-  private var _plugins: List[Plugin] = _
+  private var _plugins: List[Plugin] = nullList
   def plugins(using Context): List[Plugin] =
-    if (_plugins == null) {
+    if (_plugins eqLst nullList) {
       _plugins = loadPlugins
       _plugins
     }
@@ -108,7 +108,7 @@ trait Plugins {
 
   /** Summary of the options for all loaded plugins */
   def pluginOptionsHelp(using Context): String =
-    (for (plug <- roughPluginsList ; help <- plug.optionsHelp) yield {
+    (for (plug <- roughPluginsList.iterator ; help <- plug.optionsHelp) yield {
       "\nOptions for plugin '%s':\n%s\n".format(plug.name, help)
     }).mkString
 
@@ -250,7 +250,7 @@ object Plugins {
       val (before, after) = updatedPlan.span { ps =>
         val phases = ps.map(_.phaseName)
         val runsAfterSat = runsAfter.isEmpty
-        runsAfter = runsAfter -- phases
+        runsAfter = runsAfter -- phases.iterator
         // Prefer the point immediately before the first runsBefore.
         // If runsBefore not specified, insert at the point immediately
         // after the last afterPhases.

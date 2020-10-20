@@ -941,7 +941,7 @@ class Typer extends Namer
       val tree1 = ascribeType(tree, avoidingType)
       assert(ptDefined || noLeaks(tree1) || tree1.tpe.isErroneous,
           // `ptDefined` needed because of special case of anonymous classes
-          i"leak: ${escapingRefs(tree1, localSyms).toList}%, % in $tree1")
+          i"leak: ${escapingRefs(tree1, localSyms)}%, % in $tree1")
       tree1
     }
   }
@@ -1457,7 +1457,7 @@ class Typer extends Namer
       }
       val pat1 = indexPattern(tree).transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
-      var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toList)
+      var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.tolist)
       if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
@@ -1523,7 +1523,7 @@ class Typer extends Namer
         def iftParamss = ctx.owner.ownersIterator
           .filter(_.is(Method, butNot = Accessor))
           .takeWhile(_.isAnonymousFunction)
-          .toList
+          .tolist
           .reverse
           .map(_.paramSymss.head)
         instantiateCFT(rt, iftParamss)
@@ -1742,7 +1742,7 @@ class Typer extends Namer
         }
         args.zipWithConserve(tparams)(typedArg(_, _)).asInstanceOf[List[Tree]]
       }
-      val paramBounds = tparams.lazyZip(args).map {
+      val paramBounds = tparams.zipped(args).map {
         case (tparam, untpd.WildcardTypeBoundsTree()) =>
           // if type argument is a wildcard, suppress kind checking since
           // there is no real argument.
@@ -1968,7 +1968,7 @@ class Typer extends Namer
         // that their type parameters are aliases of the class type parameters.
         // See pos/i941.scala
         rhsCtx.gadt.addToConstraint(tparams1.map(_.symbol))
-        tparams1.lazyZip(sym.owner.typeParams).foreach { (tdef, tparam) =>
+        tparams1.zipped(sym.owner.typeParams).foreach { (tdef, tparam) =>
           val tr = tparam.typeRef
           rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = false)
           rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = true)
@@ -2349,7 +2349,7 @@ class Typer extends Namer
       else {
         val app = typedApply(desugar.binop(l, op, r), pt)
         if op.name.isRightAssocOperatorName then
-          val defs = new mutable.ListBuffer[Tree]
+          val defs = List.Buffer[Tree]()
           def lift(app: Tree): Tree = (app: @unchecked) match
             case Apply(fn, args) =>
               if (app.tpe.isError) app
@@ -2374,7 +2374,7 @@ class Typer extends Namer
       val pts =
         if (arity == pt.tupleArity) pt.tupleElementTypes
         else List.fill(arity)(defn.AnyType)
-      val elems = tree.trees.lazyZip(pts).map(typed(_, _))
+      val elems = tree.trees.zipped(pts).map(typed(_, _))
       if (ctx.mode.is(Mode.Type))
         elems.foldRight(TypeTree(defn.EmptyTupleModule.termRef): Tree)((elemTpt, elemTpts) =>
           AppliedTypeTree(TypeTree(defn.PairClass.typeRef), List(elemTpt, elemTpts)))
@@ -2386,7 +2386,7 @@ class Typer extends Namer
         val app1 = typed(app, defn.TupleXXLClass.typeRef)
         if (ctx.mode.is(Mode.Pattern)) app1
         else {
-          val elemTpes = elems.lazyZip(pts).map((elem, pt) =>
+          val elemTpes = elems.zipped(pts).map((elem, pt) =>
             TypeComparer.widenInferred(elem.tpe, pt))
           val resTpe = TypeOps.nestedPairs(elemTpes)
           app1.cast(resTpe)
@@ -2564,7 +2564,7 @@ class Typer extends Namer
     //
     // see tests/pos/i7778b.scala
 
-    val paramTypes = {
+    val paramTypes: List[untpd.Tree] = {
       val hasWildcard = formals.exists(_.isInstanceOf[WildcardType])
       if hasWildcard then formals.map(_ => untpd.TypeTree())
       else formals.map(untpd.TypeTree)
@@ -2596,7 +2596,7 @@ class Typer extends Namer
     trees mapconserve (typed(_))
 
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
-    val buf = new mutable.ListBuffer[Tree]
+    val buf = List.Buffer[Tree]()
     var enumContexts: SimpleIdentityMap[Symbol, Context] = SimpleIdentityMap.empty
     val initialNotNullInfos = ctx.notNullInfos
       // A map from `enum` symbols to the contexts enclosing their definitions
@@ -2643,7 +2643,7 @@ class Typer extends Namer
         buf += stat1
         traverse(rest)(using stat1.nullableContext)
       case nil =>
-        (buf.toList, ctx)
+        (buf.tolist, ctx)
     }
     val localCtx = {
       val exprOwnerOpt = if (exprOwner == ctx.owner) None else Some(exprOwner)
@@ -2679,7 +2679,7 @@ class Typer extends Namer
     mdef.getAttachment(SymOfTree) match {
       case Some(sym) => sym.infoOrCompleter match {
         case completer: Namer#Completer =>
-          if (completer.creationContext.notNullInfos ne ctx.notNullInfos)
+          if (completer.creationContext.notNullInfos neLst ctx.notNullInfos)
             // The RHS of a val def should know about not null facts established
             // in preceding statements (unless the DefTree is completed ahead of time,
             // then it is impossible).
@@ -3108,7 +3108,7 @@ class Typer extends Namer
         val propFail = propagatedFailure(args)
 
         def issueErrors(): Tree = {
-          wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach { (paramName, formal, arg) =>
+          wtp.paramNames.zipped(wtp.paramInfos).zipped(args).foreach { (paramName, formal, arg) =>
             arg.tpe match {
               case failure: SearchFailureType =>
                 report.error(
@@ -3129,7 +3129,7 @@ class Typer extends Namer
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
           if hasDefaultParams && !propFail.isInstanceOf[AmbiguousImplicits] then
-            val namedArgs = wtp.paramNames.lazyZip(args).flatMap { (pname, arg) =>
+            val namedArgs = wtp.paramNames.zipped(args).flatMap { (pname, arg) =>
               if (arg.tpe.isError) Nil else untpd.NamedArg(pname, untpd.TypedSplice(arg)) :: Nil
             }
             tryEither {

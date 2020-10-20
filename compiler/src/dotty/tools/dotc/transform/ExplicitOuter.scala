@@ -80,7 +80,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
 
     val clsHasOuter = hasOuter(cls)
     if (clsHasOuter || cls.mixins.exists(needsOuterIfReferenced)) {
-      val newDefs = new mutable.ListBuffer[Tree]
+      val newDefs = List.Buffer[Tree]()
 
       if (clsHasOuter)
         if (isTrait)
@@ -420,10 +420,10 @@ object ExplicitOuter {
                   outerAccessor(treeCls.asClass)
             }
             assert(outerAcc.exists,
-                i"failure to construct path from ${ctx.owner.ownersIterator.toList}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
+                i"failure to construct path from ${ctx.owner.ownersIterator.tolist}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
             loop(tree.select(outerAcc).ensureApplied, count - 1)
 
-        report.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
+        report.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).tolist}")
         loop(start, count)
       catch case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")

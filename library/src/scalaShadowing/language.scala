@@ -221,7 +221,9 @@ object language {
   /** Where imported, auto-tupling is disabled */
   object noAutoTupling
 
-  /** Where imported, loose equality using eqAny is disabled */
+  /** Where imported, loose equality using eqAny is disabled.
+   *
+   */
   object strictEquality
 
   /** Where imported, ad hoc extensions of non-open classes in other

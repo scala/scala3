@@ -40,7 +40,7 @@ extends SrcPos, interfaces.SourcePosition, Showable {
   }
 
   def lineOffsets: List[Int] =
-    lines.toList.map(source.lineToOffset(_))
+    lines.tolist.map(source.lineToOffset(_))
 
   def beforeAndAfterPoint: (List[Int], List[Int]) =
     lineOffsets.partition(_ <= point)

@@ -57,7 +57,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
          */
         sym.owner != defn.ObjectClass && sym.jsName == name
       }
-      .toList
+      .tolist
 
     assert(!alts.isEmpty, s"Ended up with no alternatives for ${classSym.fullName}::$name.")
 
@@ -209,7 +209,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     // Create a list of (argCount -> methods), sorted by argCount (methods may appear multiple times)
     val methodsByArgCount: List[(Int, List[Exported])] =
-      methodArgCounts.groupMap(_._1)(_._2).toList.sortBy(_._1) // sort for determinism
+      methodArgCounts.groupMap(_._1)(_._2).tolist.sortBy(_._1) // sort for determinism
 
     val altsWithVarArgs = alts.filter(_.hasRepeatedParam)
 
@@ -466,7 +466,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         if (param.hasDefault) {
           js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()), {
             genCallDefaultGetter(exported.sym, i, static) {
-              prevArgsCount => result.take(prevArgsCount).toList.map(_.ref)
+              prevArgsCount => result.take(prevArgsCount).tolist.map(_.ref)
             }
           }, {
             // Otherwise, unbox the argument
@@ -482,7 +482,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           verifiedOrDefault.tpe, mutable = false, verifiedOrDefault)
     }
 
-    result.toList
+    result.tolist
   }
 
   private def genCallDefaultGetter(sym: Symbol, paramIndex: Int, static: Boolean)(
@@ -783,7 +783,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         m(index) = (key, elem :: m(index)._2)
     }
 
-    m.toList
+    m.tolist
   }
 
   private class FormalArgsRegistry(val minArgc: Int, needsRestParam: Boolean) {
@@ -795,7 +795,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       else null
 
     def genFormalArgs()(implicit pos: Position): List[js.ParamDef] = {
-      val fixedParamDefs = fixedParamNames.toList.map { paramName =>
+      val fixedParamDefs = fixedParamNames.tolist.map { paramName =>
         js.ParamDef(js.LocalIdent(paramName), NoOriginalName, jstpe.AnyType, mutable = false, rest = false)
       }
 
@@ -830,7 +830,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     }
 
     def genAllArgsRefsForForwarder()(implicit pos: Position): List[js.Tree] = {
-      val fixedArgRefs = fixedParamNames.toList.map { paramName =>
+      val fixedArgRefs = fixedParamNames.tolist.map { paramName =>
         js.VarRef(js.LocalIdent(paramName))(jstpe.AnyType)
       }
 

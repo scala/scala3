@@ -165,14 +165,14 @@ abstract class Reporter extends interfaces.ReporterResult {
 
   /** Summary of warnings and errors */
   def summary: String = {
-    val b = new mutable.ListBuffer[String]
+    val b = List.Buffer[String]()
     if (warningCount > 0)
       b += countString(warningCount, "warning") + " found"
     if (errorCount > 0)
       b += countString(errorCount, "error") + " found"
     for ((settingName, count) <- unreportedWarnings)
       b += s"there were $count ${settingName.tail} warning(s); re-run with $settingName for details"
-    b.mkString("\n")
+    b.tolist.mkString("\n")
   }
 
   /** Print the summary of warnings and errors */

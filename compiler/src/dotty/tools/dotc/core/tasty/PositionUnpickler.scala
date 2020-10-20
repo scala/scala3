@@ -3,7 +3,7 @@ package dotc
 package core
 package tasty
 
-import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader}
+import dotty.tools.tasty.{TastyFormat, TastyBuffer}
 import TastyFormat.SOURCE
 import TastyBuffer.{Addr, NameRef}
 

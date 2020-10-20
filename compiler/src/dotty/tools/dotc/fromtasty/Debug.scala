@@ -41,12 +41,12 @@ object Debug {
       val source = x.toString
       // transform foo/bar/Baz.hasTasty into foo.bar.Baz
       source.substring(fromSourcesOut.toString.length + 1, source.length - x.extension.length - 1).replace('/', '.')
-    }.toList
+    }.tolist
 
     val fromTastyArgs =
       "-from-tasty" ::
       "-d" :: fromTastyOut.toString ::
-      insertClasspathInArgs(args.filterNot(_.endsWith(".scala")).toList, fromSourcesOut.toString) :::
+      insertClasspathInArgs(args.filterNot(_.endsWith(".scala")).tolist, fromSourcesOut.toString) :::
       classes
 
     println("Compiling TASTY from .class sources")

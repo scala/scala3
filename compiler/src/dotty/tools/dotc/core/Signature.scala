@@ -131,7 +131,9 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
 
 object Signature {
   /** A parameter signature, see the documentation of `Signature` for more information. */
-  type ParamSig = TypeName | Int
+  type ParamSig = Any
+    // really: TypeName | Int, but making this a union type messes up type inference
+
     // Erasure means that our Ints will be boxed, but Integer#valueOf caches
     // small values, so the performance hit should be minimal.
 
@@ -192,7 +194,7 @@ object Signature {
     }
     def compare(x: Signature, y: Signature): Int = {
       import scala.math.Ordering.Implicits.seqOrdering
-      val paramsOrdering = seqOrdering(paramSigOrdering).compare(x.paramsSig, y.paramsSig)
+      val paramsOrdering = seqOrdering(paramSigOrdering).compare(x.paramsSig.toSeq, y.paramsSig.toSeq)
       if (paramsOrdering != 0) paramsOrdering
       else summon[Ordering[Name]].compare(x.resSig, y.resSig)
     }

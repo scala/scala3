@@ -3,7 +3,7 @@ package dotc
 package core
 package tasty
 
-import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyReader, TastyHeaderUnpickler}
+import dotty.tools.tasty.{TastyFormat, TastyBuffer, TastyHeaderUnpickler}
 import TastyFormat.NameTags._
 import TastyBuffer.NameRef
 
@@ -25,7 +25,7 @@ object TastyUnpickler {
   }
 }
 
-import TastyUnpickler._
+import TastyUnpickler.{SectionUnpickler, NameTable}
 
 class TastyUnpickler(reader: TastyReader) {
   import reader._

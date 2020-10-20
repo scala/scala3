@@ -31,7 +31,7 @@ object Highlighting {
   }
 
   case class HighlightBuffer(hl: Highlight)(using Context) {
-    private val buffer = new mutable.ListBuffer[String]
+    private val buffer = List.Buffer[String]()
 
     buffer += hl.show
 
@@ -46,7 +46,7 @@ object Highlighting {
     }
 
     override def toString: String =
-      buffer.mkString
+      buffer.tolist.mkString
   }
 
   case class NoColor(text: String) extends Highlight(Console.RESET)

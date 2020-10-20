@@ -72,7 +72,7 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
       }
 
       val fakeNews = {
-        val ctors = cls.info.decls.lookupAll(nme.CONSTRUCTOR).toList.reverse
+        val ctors = cls.info.decls.lookupAll(nme.CONSTRUCTOR).tolist.reverse
         val elems = ctors.map(ctor => fakeNew(cls, ctor.asTerm))
         JavaSeqLiteral(elems, TypeTree(defn.ObjectType))
       }

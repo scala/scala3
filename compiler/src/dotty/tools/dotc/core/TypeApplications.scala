@@ -61,7 +61,7 @@ object TypeApplications {
       case tp @ HKTypeLambda(tparams, AppliedType(fn: Type, args))
       if fn.typeSymbol.isClass
          && tparams.hasSameLengthAs(args)
-         && args.lazyZip(tparams).forall((arg, tparam) => arg == tparam.paramRef)
+         && args.corresponds(tparams)((arg, tparam) => arg == tparam.paramRef)
          && weakerBounds(tp, fn.typeParams) => Some(fn)
       case _ => None
 

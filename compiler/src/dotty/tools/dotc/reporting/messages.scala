@@ -296,7 +296,7 @@ import transform.SymUtils._
       def candidates: Set[String] =
         for
           bc <- site.widen.baseClasses.toSet
-          sym <- bc.info.decls.filter(sym =>
+          sym <- bc.info.decls.iterator.filter(sym =>
             sym.isType == name.isTypeName
             && !sym.isConstructor
             && !sym.flagsUNSAFE.isOneOf(Synthetic | Private))
@@ -319,7 +319,7 @@ import transform.SymUtils._
       // A list of possible candidate strings with their Levenstein distances
       // to the name of the missing member
       def closest: List[(Int, String)] = candidates
-        .toList
+        .tolist
         .map(n => (distance(n, missing), n))
         .filter((d, n) => d <= maxDist && d < missing.length && d < n.length)
         .sorted  // sort by distance first, alphabetically second
@@ -1241,7 +1241,7 @@ import transform.SymUtils._
   extends ReferenceMsg(SuperQualMustBeParentID) {
     def msg = em"""|$qual does not name a parent of $cls"""
     def explain =
-      val parents: Seq[String] = (cls.info.parents map (_.typeSymbol.name.show)).sorted
+      val parents = (cls.info.parents map (_.typeSymbol.name.show)).sorted
       em"""|When a qualifier ${hl("T")} is used in a ${hl("super")} prefix of the form ${hl("C.super[T]")},
            |${hl("T")} must be a parent type of ${hl("C")}.
            |
@@ -1890,7 +1890,7 @@ import transform.SymUtils._
           |${Magenta("isEmpty: Boolean")} and ${Magenta("get: S")} where ${Magenta("S <: Seq[V]")} (usually an ${Green("Option[Seq[V]]")}):
           |
           |object CharList {
-          |  def unapplySeq(s: String): ${Green("Option[Seq[Char]")} = Some(s.toList)
+          |  def unapplySeq(s: String): ${Green("Option[Seq[Char]")} = Some(s.tolist)
           |
           |  "example" match {
           |    ${Magenta("case CharList(c1, c2, c3, c4, _, _, _)")} =>

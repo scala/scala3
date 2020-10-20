@@ -46,13 +46,12 @@ class RecursionOverflow(val op: String, details: => String, val previous: Throwa
   def explanation: String = s"$op $details"
 
   private def recursions: List[RecursionOverflow] = {
-    import scala.collection.mutable.ListBuffer
-    val result = ListBuffer.empty[RecursionOverflow]
+    val result = List.Buffer[RecursionOverflow]()
     @annotation.tailrec def loop(throwable: Throwable): List[RecursionOverflow] = throwable match {
       case ro: RecursionOverflow =>
         result += ro
         loop(ro.previous)
-      case _ => result.toList
+      case _ => result.tolist
     }
 
     loop(this)
@@ -60,7 +59,7 @@ class RecursionOverflow(val op: String, details: => String, val previous: Throwa
 
   def opsString(rs: List[RecursionOverflow])(using Context): String = {
     val maxShown = 20
-    if (rs.lengthCompare(maxShown) > 0)
+    if (rs.length > maxShown)
       i"""${opsString(rs.take(maxShown / 2))}
          |  ...
          |${opsString(rs.takeRight(maxShown / 2))}"""
@@ -69,7 +68,7 @@ class RecursionOverflow(val op: String, details: => String, val previous: Throwa
   }
 
   override def produceMessage(using Context): Message = NoExplanation {
-    val mostCommon = recursions.groupBy(_.op).toList.maxBy(_._2.map(_.weight).sum)._2.reverse
+    val mostCommon = recursions.groupBy(_.op).tolist.maxBy(_._2.map(_.weight).sum)._2.reverse
     s"""Recursion limit exceeded.
        |Maybe there is an illegal cyclic reference?
        |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.

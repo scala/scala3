@@ -112,7 +112,7 @@ class ReplDriver(settings: Array[String],
     def readLine(state: State): ParseResult = {
       val completer: Completer = { (_, line, candidates) =>
         val comps = completions(line.cursor, line.line, state)
-        candidates.addAll(comps.asJava)
+        candidates.addAll(comps.toSeq.asJava)
       }
       given Context = state.context
       try {
@@ -261,7 +261,7 @@ class ReplDriver(settings: Array[String],
               implicit val diagnosticOrdering: Ordering[Diagnostic] =
                 Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
 
-              (definitions ++ warnings)
+              (definitions ++ warnings.iterator)
                 .sorted
                 .map(_.msg)
                 .foreach(out.println)
@@ -308,9 +308,9 @@ class ReplDriver(settings: Array[String],
       val formattedMembers =
         typeAliases.map(rendering.renderTypeAlias) ++
         defs.map(rendering.renderMethod) ++
-        vals.flatMap(rendering.renderVal)
+        vals.flatMapIterable(rendering.renderVal)
 
-      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), formattedMembers)
+      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), formattedMembers.toSeq)
     }
     else (state, Seq.empty)
 
@@ -321,7 +321,7 @@ class ReplDriver(settings: Array[String],
       .collect {
         case x if !isSyntheticCompanion(x.symbol) && !x.symbol.name.isReplWrapperName =>
           rendering.renderTypeDef(x)
-      }
+      }.toSeq
 
     atPhase(typerPhase.next) {
       // Display members of wrapped module:
@@ -405,7 +405,7 @@ class ReplDriver(settings: Array[String],
   }
 
   /** shows all errors nicely formatted */
-  private def displayErrors(errs: Seq[Diagnostic])(implicit state: State): State = {
+  private def displayErrors(errs: results.Errors)(implicit state: State): State = {
     errs.map(rendering.formatError).map(_.msg).foreach(out.println)
     state
   }

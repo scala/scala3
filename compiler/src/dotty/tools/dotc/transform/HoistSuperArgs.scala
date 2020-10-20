@@ -56,7 +56,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
    *  Hoisted superarg methods are collected in `superArgDefs`
    */
   class Hoister(cls: Symbol)(using Context) {
-    val superArgDefs: mutable.ListBuffer[DefDef] = new mutable.ListBuffer
+    val superArgDefs: List.Buffer[DefDef] = List.Buffer()
 
     /** If argument is complex, hoist it out into its own method and refer to the
      *  method instead.
@@ -207,7 +207,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         if (hoist.superArgDefs.isEmpty) tdef
         else {
           val (staticSuperArgDefs, enclSuperArgDefs) =
-            hoist.superArgDefs.toList.partition(_.symbol.is(JavaStatic))
+            hoist.superArgDefs.tolist.partition(_.symbol.is(JavaStatic))
           flatTree(
               cpy.TypeDef(tdef)(
                   rhs = cpy.Template(impl)(

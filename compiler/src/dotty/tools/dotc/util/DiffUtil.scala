@@ -227,7 +227,7 @@ object DiffUtil {
         alignment = Inserted(y(j - 1)) :: alignment
         j = j - 1
       }
-    builder ++= alignment
+    builder ++= alignment.toSeq
   }
 }
 

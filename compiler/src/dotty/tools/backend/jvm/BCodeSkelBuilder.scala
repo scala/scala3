@@ -219,9 +219,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       addClassFields()
 
-      innerClassBufferASM ++= classBTypeFromSymbol(claszSymbol).info.memberClasses
+      innerClassBufferASM ++= classBTypeFromSymbol(claszSymbol).info.memberClasses.toSeq
       gen(cd.rhs)
-      addInnerClassesASM(cnode, innerClassBufferASM.toList)
+      addInnerClassesASM(cnode, innerClassBufferASM.tolist)
 
       if (AsmUtils.traceClassEnabled && cnode.name.contains(AsmUtils.traceClassPattern))
         AsmUtils.traceClass(cnode)
@@ -506,8 +506,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- Part 2 of program points, ie Labels in the ASM world ---------------- */
 
+    private val noVarsInScope = List((NoSymbol, null))
+
     // bookkeeping the scopes of non-synthetic local vars, to emit debug info (`emitVars`).
-    var varsInScope: List[(Symbol, asm.Label)] = null // (local-var-sym -> start-of-scope)
+    var varsInScope: List[(Symbol, asm.Label)] = noVarsInScope // (local-var-sym -> start-of-scope)
+
 
     // helpers around program-points.
     def lastInsn: asm.tree.AbstractInsnNode = mnode.instructions.getLast
@@ -555,7 +558,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       jumpDest = immutable.Map.empty[ /* LabelDef */ Symbol, asm.Label ]
 
       // check previous invocation of genDefDef exited as many varsInScope as it entered.
-      assert(varsInScope == null, "Unbalanced entering/exiting of GenBCode's genBlock().")
+      assert(varsInScope eqLst noVarsInScope, "Unbalanced entering/exiting of GenBCode's genBlock().")
       // check previous invocation of genDefDef unregistered as many cleanups as it registered.
       assert(cleanups == Nil, "Previous invocation of genDefDef didn't unregister as many cleanups as it registered.")
       earlyReturnVar      = null
@@ -680,7 +683,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(vparamss.isEmpty || vparamss.tail.isEmpty, s"Malformed parameter list: $vparamss")
       val params = if (vparamss.isEmpty) Nil else vparamss.head
       for (p <- params) { locals.makeLocal(p.symbol) }
-      // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.toList, "debug")
+      // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.tolist, "debug")
 
       if (params.size > MaximumJvmParameters) {
         // SI-7324
@@ -712,7 +715,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             case (_: Apply) | Block(_, (_: Apply)) if rhs.symbol eq defn.throwMethod => ()
             case tpd.EmptyTree =>
               report.error("Concrete method has no definition: " + dd + (
-                if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
+                if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.tolist.mkString(", ") + ")"
                 else ""),
                 ctx.source.atSpan(NoSpan)
               )

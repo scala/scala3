@@ -13,7 +13,7 @@ extends ClassLoader(parent)
 {
   override def findClass(name: String): Class[?] = {
     var file: AbstractFile = root
-    val pathParts = name.split("[./]").toList
+    val pathParts = name.split("[./]").tolist
     for (dirPart <- pathParts.init) {
       file = file.lookupName(dirPart, true)
       if (file == null) {

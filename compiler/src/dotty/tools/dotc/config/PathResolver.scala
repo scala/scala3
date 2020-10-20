@@ -28,7 +28,7 @@ object PathResolver {
    */
   def ppcp(s: String): String = split(s) match {
     case Nil      => ""
-    case Seq(x)   => x
+    case List(x)  => x
     case xs       => xs map ("\n" + _) mkString
   }
 
@@ -144,7 +144,7 @@ object PathResolver {
     }
     else inContext(ContextBase().initialCtx) {
       val ArgsSummary(sstate, rest, errors, warnings) =
-        ctx.settings.processArguments(args.toList, true)
+        ctx.settings.processArguments(args.tolist, true)
       errors.foreach(println)
       val pr = new PathResolver()(using ctx.fresh.setSettings(sstate))
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
@@ -212,16 +212,16 @@ class PathResolver(using c: Context) {
     def basis: List[Traversable[ClassPath]] = List(
       classesInExpandedPath(priorityClassPath),     // 0. The priority class path (for testing).
       JrtClassPath.apply(),                         // 1. The Java 9 classpath (backed by the jrt:/ virtual system, if available)
-      classesInPath(javaBootClassPath),             // 2. The Java bootstrap class path.
-      contentsOfDirsInPath(javaExtDirs),            // 3. The Java extension class path.
+      classesInPath(javaBootClassPath).toSeq,             // 2. The Java bootstrap class path.
+      contentsOfDirsInPath(javaExtDirs).toSeq,            // 3. The Java extension class path.
       classesInExpandedPath(javaUserClassPath),     // 4. The Java application class path.
-      classesInPath(scalaBootClassPath),            // 5. The Scala boot class path.
-      contentsOfDirsInPath(scalaExtDirs),           // 6. The Scala extension class path.
+      classesInPath(scalaBootClassPath).toSeq,            // 5. The Scala boot class path.
+      contentsOfDirsInPath(scalaExtDirs).toSeq,           // 6. The Scala extension class path.
       classesInExpandedPath(userClassPath),         // 7. The Scala application class path.
-      sourcesInPath(sourcePath)                     // 8. The Scala source path.
+      sourcesInPath(sourcePath).toSeq                     // 8. The Scala source path.
     )
 
-    lazy val containers: List[ClassPath] = basis.flatten.distinct
+    lazy val containers: List[ClassPath] = basis.flattenIterable.distinct
 
     override def toString: String = """
       |object Calculated {
@@ -254,7 +254,7 @@ class PathResolver(using c: Context) {
       Console.println("Defaults: " + PathResolver.Defaults)
       Console.println("Calculated: " + Calculated)
 
-      val xs = (Calculated.basis drop 2).flatten.distinct
+      val xs = (Calculated.basis drop 2).flattenIterable.distinct
       println("After java boot/extdirs classpath has %d entries:" format xs.size)
       xs foreach (x => println("  " + x))
     }

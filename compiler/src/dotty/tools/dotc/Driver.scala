@@ -41,7 +41,7 @@ class Driver {
         def finish(run: Run)(using Context): Unit =
           run.printSummary()
           if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
-            val suspendedUnits = run.suspendedUnits.toList
+            val suspendedUnits = run.suspendedUnits.tolist
             if (ctx.settings.XprintSuspension.value)
               report.echo(i"compiling suspended $suspendedUnits%, %")
             val run1 = compiler.newRun
@@ -96,7 +96,7 @@ class Driver {
           report.error(s"File does not exist: $name")
           Nil
         else if name.endsWith(".jar") then
-          new dotty.tools.io.Jar(File(name)).toList.collect {
+          new dotty.tools.io.Jar(File(name)).tolist.collect {
             case e if e.getName.endsWith(".tasty") =>
               (name, e.getName.stripSuffix(".tasty").replace("/", "."))
           }

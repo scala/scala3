@@ -11,7 +11,7 @@ object TextDocuments {
   def parseFrom(in: SemanticdbInputStream): TextDocuments = {
     defaultInstance.mergeFrom(in)
   }
-  val defaultInstance: TextDocuments = TextDocuments(Nil)
+  val defaultInstance: TextDocuments = TextDocuments(ScalaNil)
 }
 final case class TextDocuments(documents: Seq[TextDocument]) extends SemanticdbMessage[TextDocuments] derives Eql {
   @sharable

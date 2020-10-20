@@ -94,7 +94,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     def withNoCheckNews[T](ts: List[New])(op: => T): T = {
       val saved = noCheckNews
-      noCheckNews ++= ts
+      noCheckNews ++= ts.iterator
       try op finally noCheckNews = saved
     }
 
@@ -294,7 +294,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val callTrace = Inliner.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(call)))
         case templ: Template =>
-          withNoCheckNews(templ.parents.flatMap(newPart)) {
+          withNoCheckNews(templ.parents.flatMapIterable(newPart)) {
             forwardParamAccessors(templ)
             synthMbr.addSyntheticMembers(
                 superAcc.wrapTemplate(templ)(

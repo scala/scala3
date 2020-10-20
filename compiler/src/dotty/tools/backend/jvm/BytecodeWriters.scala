@@ -30,7 +30,7 @@ trait BytecodeWriters {
       if (dir.isDirectory) dir
       else throw new FileConflictException(s"${base.path}/$clsName$suffix: ${dir.path} is not a directory", dir)
     var dir = base
-    val pathParts = clsName.split("[./]").toList
+    val pathParts = clsName.split("[./]").tolist
     for (part <- pathParts.init) dir = ensureDirectory(dir) subdirectoryNamed part
     ensureDirectory(dir) fileNamed pathParts.last + suffix
   }

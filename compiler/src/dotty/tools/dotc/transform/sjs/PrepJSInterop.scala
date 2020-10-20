@@ -100,7 +100,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
     }
 
     /** DefDefs in class templates that export methods to JavaScript */
-    private val exporters = mutable.Map.empty[Symbol, mutable.ListBuffer[Tree]]
+    private val exporters = mutable.Map.empty[Symbol, List.Buffer[Tree]]
 
     override def transform(tree: Tree)(using Context): Tree = {
       tree match {
@@ -162,7 +162,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
            * messages for that are handled by genExportMember).
            */
           if (sym.is(Method) || sym.isLocalToBlock)
-            exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++= genExportMember(sym)
+            exporters.getOrElseUpdate(sym.owner, List.Buffer()) ++= genExportMember(sym)
 
           if (sym.isLocalToBlock)
             super.transform(tree)
@@ -237,7 +237,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           transformedTree.parents,
           Nil,
           transformedTree.self,
-          transformedTree.body ::: exports.toList
+          transformedTree.body ::: exports.tolist
         )
       }
     }

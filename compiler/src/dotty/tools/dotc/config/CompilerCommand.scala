@@ -53,7 +53,7 @@ object CompilerCommand {
     }
 
     // expand out @filename to the contents of that filename
-    def expandedArguments = args.toList flatMap {
+    def expandedArguments = args.tolist flatMap {
       case x if x startsWith "@"  => expandArg(x)
       case x                      => List(x)
     }
@@ -70,7 +70,7 @@ object CompilerCommand {
 
     /** Creates a help message for a subset of options based on cond */
     def availableOptionsMsg(cond: Setting[?] => Boolean): String = {
-      val ss                  = (ctx.settings.allSettings filter cond).toList sortBy (_.name)
+      val ss                  = (ctx.settings.allSettings filter cond).tolist sortBy (_.name)
       val width               = (ss map (_.name.length)).max
       def format(s: String)   = ("%-" + width + "s") format s
       def helpStr(s: Setting[?]) = {
@@ -97,7 +97,7 @@ object CompilerCommand {
         Some(shortUsage),
         Some(explainAdvanced) filter (_ => shouldExplain),
         Some(label + " options include:")
-      ).flatten mkString "\n"
+      ).flattenOption mkString "\n"
 
       prefix + "\n" + availableOptionsMsg(cond)
     }

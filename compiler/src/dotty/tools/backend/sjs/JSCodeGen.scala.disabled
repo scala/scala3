@@ -356,13 +356,13 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     // Generate fields and add to methods + ctors
-    val generatedMembers = genClassFields(td) ++ generatedNonFieldMembers.toList
+    val generatedMembers = genClassFields(td) ++ generatedNonFieldMembers.tolist
 
     // Generate the exported members, constructors and accessors
     val exports = {
       /*
       // Generate the exported members
-      val memberExports = genMemberExports(sym, exportedSymbols.toList)
+      val memberExports = genMemberExports(sym, exportedSymbols.tolist)
 
       // Generate exported constructors or accessors
       val exportedConstructorsOrAccessors =
@@ -389,7 +389,7 @@ class JSCodeGen()(using genCtx: Context) {
           None
       }
 
-      val staticInitializerStats = reflectInit.toList
+      val staticInitializerStats = reflectInit.tolist
       if (staticInitializerStats.nonEmpty)
         List(genStaticInitializerWithStats(js.Block(staticInitializerStats)))
       else
@@ -513,7 +513,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     val (jsClassCaptures, generatedConstructor) =
-      genJSClassCapturesAndConstructor(sym, constructorTrees.toList)
+      genJSClassCapturesAndConstructor(sym, constructorTrees.tolist)
 
     /* If there is one, the JS super class value is always the first JS class
      * capture. This is a JSCodeGen-specific invariant (the IR does not rely
@@ -526,7 +526,7 @@ class JSCodeGen()(using genCtx: Context) {
       genClassFields(td) :::
       generatedConstructor ::
       jsExportsGen.genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) :::
-      generatedMethods.toList
+      generatedMethods.tolist
     }
 
     // Hashed definitions of the class
@@ -609,7 +609,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     val superInterfaces = genClassInterfaces(sym, forJSClass = false)
 
-    val genMethodsList = generatedMethods.toList
+    val genMethodsList = generatedMethods.tolist
     val allMemberDefs =
       if (!isCandidateForForwarders(sym)) genMethodsList
       else genMethodsList ::: genStaticForwardersForClassOrInterface(genMethodsList, sym)
@@ -768,7 +768,7 @@ class JSCodeGen()(using genCtx: Context) {
       }
     }
 
-    forwarders.toList
+    forwarders.tolist
   }
 
   // Generate the fields of a class ------------------------------------------
@@ -822,7 +822,7 @@ class JSCodeGen()(using genCtx: Context) {
           else
             Nil
         fieldDef :: optionalStaticFieldGetter
-    }).toList
+    }).tolist
   }
 
   private def genExposedFieldIRType(f: Symbol): jstpe.Type = {
@@ -1908,7 +1908,7 @@ class JSCodeGen()(using genCtx: Context) {
       js.ClassDef(originalClassDef.name, originalClassDef.originalName,
           ClassKind.AbstractJSType, None, Some(parent), interfaces = Nil,
           jsSuperClass = None, jsNativeLoadSpec = None,
-          classDefMembers.toList, Nil)(
+          classDefMembers.tolist, Nil)(
           originalClassDef.optimizerHints)
     }
 
@@ -1942,7 +1942,7 @@ class JSCodeGen()(using genCtx: Context) {
     def memberLambda(params: List[js.ParamDef], body: js.Tree)(implicit pos: ir.Position): js.Closure =
       js.Closure(arrow = false, captureParams = Nil, params, body, captureValues = Nil)
 
-    val memberDefinitions0 = instanceMembers.toList.map {
+    val memberDefinitions0 = instanceMembers.tolist.map {
       case fdef: js.FieldDef =>
         throw new AssertionError("unexpected FieldDef")
 
@@ -1967,8 +1967,8 @@ class JSCodeGen()(using genCtx: Context) {
           js.StringLiteral("set") -> memberLambda(params = arg :: Nil, body)
         }
         val descriptor = js.JSObjectConstr(
-            optGetter.toList :::
-            optSetter.toList :::
+            optGetter.tolist :::
+            optSetter.tolist :::
             List(js.StringLiteral("configurable") -> js.BooleanLiteral(true))
         )
         js.JSMethodApply(js.JSGlobalRef("Object"),
@@ -1997,7 +1997,7 @@ class JSCodeGen()(using genCtx: Context) {
        *   FieldDefs (#3777).
        */
       val fieldsObjValue = {
-        js.JSObjectConstr(privateFieldDefs.toList.map { fdef =>
+        js.JSObjectConstr(privateFieldDefs.tolist.map { fdef =>
           implicit val pos = fdef.pos
           js.StringLiteral(fdef.name.name.nameString) -> jstpe.zeroOf(fdef.ftpe)
         })
@@ -4187,7 +4187,7 @@ class JSCodeGen()(using genCtx: Context) {
       }
     } else {
       def parsePath(pathName: String): List[String] =
-        pathName.split('.').toList
+        pathName.split('.').tolist
 
       def parseGlobalPath(pathName: String): Global = {
         val globalRef :: path = parsePath(pathName)

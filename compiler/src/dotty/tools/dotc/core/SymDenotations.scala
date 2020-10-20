@@ -316,7 +316,7 @@ object SymDenotations {
 
       def recurWithoutParamss(info: Type): List[List[Symbol]] = info match
         case info: LambdaType =>
-          val params = info.paramNames.lazyZip(info.paramInfos).map((pname, ptype) =>
+          val params = info.paramNames.zipped(info.paramInfos).map((pname, ptype) =>
             newSymbol(symbol, pname, SyntheticParam, ptype))
           val prefs = params.map(_.namedType)
           for param <- params do
@@ -1467,8 +1467,8 @@ object SymDenotations {
       initFlags: FlagSet = UndefinedFlags,
       info: Type = null,
       privateWithin: Symbol = null,
-      annotations: List[Annotation] = null,
-      rawParamss: List[List[Symbol]] = null)(
+      annotations: List[Annotation] = nullList,
+      rawParamss: List[List[Symbol]] = nullListList)(
         using Context): SymDenotation = {
       // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
@@ -1476,8 +1476,8 @@ object SymDenotations {
       if (ctx.isAfterTyper && changedClassParents(info, info1, completersMatter = false))
         assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
-      val annotations1 = if (annotations != null) annotations else this.annotations
-      val rawParamss1 = if rawParamss != null then rawParamss else this.rawParamss
+      val annotations1 = if (annotations != nullList) annotations else this.annotations
+      val rawParamss1 = if rawParamss != nullList then rawParamss else this.rawParamss
       val d = SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
       d.rawParamss = rawParamss1
@@ -1497,7 +1497,7 @@ object SymDenotations {
       info2 match {
         case info2: ClassInfo =>
           info1 match {
-            case info1: ClassInfo => info1.classParents ne info2.classParents
+            case info1: ClassInfo => info1.classParents neLst info2.classParents
             case _ => completersMatter
           }
         case _ => completersMatter
@@ -1543,7 +1543,7 @@ object SymDenotations {
                   case _ => false
 
         if owner.isClass then
-          for c <- owner.info.decls.toList if maybeChild(c) do
+          for c <- owner.info.decls.tolist if maybeChild(c) do
             c.ensureCompleted()
       end completeChildrenIn
 
@@ -1575,7 +1575,7 @@ object SymDenotations {
 
     // ----- caches -------------------------------------------------------
 
-    private var myTypeParams: List[TypeSymbol] = null
+    private var myTypeParams: List[TypeSymbol] = nullList
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
 
     private var myMemberCache: EqHashMap[Name, PreDenotation] = null
@@ -1662,7 +1662,7 @@ object SymDenotations {
 
     /** The type parameters of this class */
     override final def typeParams(using Context): List[TypeSymbol] = {
-      if (myTypeParams == null)
+      if (myTypeParams eqLst nullList)
         myTypeParams =
           if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
           else {
@@ -1680,7 +1680,7 @@ object SymDenotations {
       if (changedClassParents(infoOrCompleter, tp, completersMatter = true))
         invalidateBaseDataCache()
       invalidateMemberNamesCache()
-      myTypeParams = null // changing the info might change decls, and with it typeParams
+      myTypeParams = nullList // changing the info might change decls, and with it typeParams
       super.info_=(tp)
     }
 
@@ -1854,7 +1854,7 @@ object SymDenotations {
         for (tparam <- typeParams) decls1.enter(decls.lookup(tparam.name))
         for (sym <- decls) if (!tparams.contains(sym)) decls1.enter(sym)
         info = classInfo.derivedClassInfo(decls = decls1)
-        myTypeParams = null
+        myTypeParams = nullList
       }
     }
 
@@ -2177,13 +2177,13 @@ object SymDenotations {
         packageObjsRunId = ctx.runId
         packageObjsCache = Nil // break cycle in case we are looking for package object itself
         packageObjsCache = {
-          val pkgObjBuf = new mutable.ListBuffer[ClassDenotation]
+          val pkgObjBuf = List.Buffer[ClassDenotation]()
           for (sym <- info.decls) { // don't use filter, since that loads classes with `$`s in their name
             val denot = sym.lastKnownDenotation  // don't use `sym.denot`, as this brings forward classes too early
             if (denot.isType && denot.name.isPackageObjectName)
               pkgObjBuf += sym.asClass.classDenot
           }
-          pkgObjBuf.toList
+          pkgObjBuf.tolist
         }
       }
       packageObjsCache
@@ -2310,7 +2310,7 @@ object SymDenotations {
     /** Unlink all package members defined in `file` in a previous run. */
     def unlinkFromFile(file: AbstractFile)(using Context): Unit = {
       val scope = unforcedDecls.openForMutations
-      for (sym <- scope.toList.iterator)
+      for (sym <- scope.tolist.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
         if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
@@ -2413,7 +2413,7 @@ object SymDenotations {
             if (!traceInvalid(owner)) explainSym("owner is invalid")
             else if (!owner.isClass || owner.isRefinementClass || denot.isSelfSym) true
             else if (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol) true
-            else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).toList}, do not contain ${denot.symbol}")
+            else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).tolist}, do not contain ${denot.symbol}")
           }
           catch {
             case ex: StaleSymbol => explainSym(s"$ex was thrown")

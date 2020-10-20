@@ -49,7 +49,7 @@ class TreePickler(pickler: TastyPickler) {
   /** A list of annotation trees for every member definition, so that later
    *  parallel position pickling does not need to access and force symbols.
    */
-  private val annotTrees = util.EqHashMap[untpd.MemberDef, mutable.ListBuffer[Tree]]()
+  private val annotTrees = util.EqHashMap[untpd.MemberDef, List.Buffer[Tree]]()
 
   /** A map from member definitions to their doc comments, so that later
    *  parallel comment pickling does not need to access symbols of trees (which
@@ -60,7 +60,7 @@ class TreePickler(pickler: TastyPickler) {
 
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
-    if ts == null then Nil else ts.toList
+    if ts == null then Nil else ts.tolist
 
   def docString(tree: untpd.MemberDef): Option[Comment] =
     Option(docStrings.lookup(tree))
@@ -303,7 +303,7 @@ class TreePickler(pickler: TastyPickler) {
     writeByte(tag)
     withLength {
       pickleType(tpe.resultType, richTypes = true)
-      tpe.paramNames.lazyZip(tpe.paramInfos).foreach { (name, tpe) =>
+      tpe.paramNames.zipped(tpe.paramInfos).foreach { (name, tpe) =>
         pickleType(tpe); pickleName(name)
       }
       if (mods != EmptyFlags) pickleFlags(mods, tpe.isTermLambda)
@@ -753,7 +753,7 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
       var treeBuf = annotTrees.lookup(mdef)
       if treeBuf == null then
-        treeBuf = new mutable.ListBuffer[Tree]
+        treeBuf = List.Buffer[Tree]()
         annotTrees(mdef) = treeBuf
       treeBuf += ann.tree
 
@@ -761,7 +761,7 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickle(trees: List[Tree])(using Context): Unit = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
-    def missing = forwardSymRefs.keysIterator.map(sym => sym.showLocated + "(line " + sym.srcPos.line + ")").toList
+    def missing = forwardSymRefs.keysIterator.map(sym => sym.showLocated + "(line " + sym.srcPos.line + ")").tolist
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
   }
 

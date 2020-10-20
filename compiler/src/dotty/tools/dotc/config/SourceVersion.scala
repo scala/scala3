@@ -21,5 +21,5 @@ enum SourceVersion:
 object SourceVersion extends Property.Key[SourceVersion]:
   def defaultSourceVersion = `3.0`
 
-  val allSourceVersionNames = values.toList.map(_.toString.toTermName)
+  val allSourceVersionNames = values.tolist.map(_.toString.toTermName)
 end SourceVersion

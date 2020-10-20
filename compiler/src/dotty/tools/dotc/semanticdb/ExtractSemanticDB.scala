@@ -47,7 +47,7 @@ class ExtractSemanticDB extends Phase:
     val unit = ctx.compilationUnit
     val extract = Extractor()
     extract.traverse(unit.tpdTree)
-    ExtractSemanticDB.write(unit.source, extract.occurrences.toList, extract.symbolInfos.toList)
+    ExtractSemanticDB.write(unit.source, extract.occurrences.tolist, extract.symbolInfos.tolist)
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:
@@ -65,10 +65,10 @@ class ExtractSemanticDB extends Phase:
       override def default(key: Int) = Set[Symbol]()
 
     /** The extracted symbol occurrences */
-    val occurrences = new mutable.ListBuffer[SymbolOccurrence]()
+    val occurrences = List.Buffer[SymbolOccurrence]()
 
     /** The extracted symbol infos */
-    val symbolInfos = new mutable.ListBuffer[SymbolInformation]()
+    val symbolInfos = List.Buffer[SymbolInformation]()
 
     /** A cache of localN names */
     val localNames = new mutable.HashSet[String]()
@@ -304,7 +304,7 @@ class ExtractSemanticDB extends Phase:
           else
             decls0
         end decls
-        val alts = decls.filter(_.isOneOf(Method | Mutable)).toList.reverse
+        val alts = decls.filter(_.isOneOf(Method | Mutable)).tolist.reverse
         def find(filter: Symbol => Boolean) = alts match
           case notSym :: rest if !filter(notSym) =>
             val idx = rest.indexWhere(filter).ensuring(_ >= 0)
@@ -596,7 +596,7 @@ object ExtractSemanticDB:
   def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
     def commonPrefix[T](z: T)(i1: Iterable[T], i2: Iterable[T])(app: (T, T) => T): T =
-      (i1 lazyZip i2).takeWhile(p => p(0) == p(1)).map(_(0)).foldLeft(z)(app)
+      (i1.toSeq lazyZip i2.toSeq).takeWhile(p => p(0) == p(1)).map(_(0)).foldLeft(z)(app)
     val sourcePath = absolutePath(source.file.jpath)
     val sourceRoot =
       // Here if `sourceRoot` and `sourcePath` do not share a common prefix then `relPath` will not be normalised,
@@ -623,10 +623,10 @@ object ExtractSemanticDB:
       uri = Tools.mkURIstring(relPath),
       text = "",
       md5 = internal.MD5.compute(String(source.content)),
-      symbols = symbolInfos,
-      occurrences = occurrences
+      symbols = symbolInfos.toSeq,
+      occurrences = occurrences.toSeq
     )
-    val docs = TextDocuments(List(doc))
+    val docs = TextDocuments(List(doc).toSeq)
     val out = Files.newOutputStream(outpath)
     try
       val stream = internal.SemanticdbOutputStream.newInstance(out)

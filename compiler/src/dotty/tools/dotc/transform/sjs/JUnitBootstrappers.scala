@@ -228,7 +228,7 @@ class JUnitBootstrappers extends MiniPhase {
         val ignored = Literal(Constant(test.hasAnnotation(junitdefn.IgnoreAnnotClass)))
         val testAnnot = test.getAnnotation(junitdefn.TestAnnotClass).get
 
-        val mappedArguments = testAnnot.arguments.flatMap{
+        val mappedArguments = testAnnot.arguments.flatMapIterable{
           // Since classOf[...] in annotations would not be transformed, grab the resulting class constant here
           case NamedArg(expectedName: SimpleName, TypeApply(Ident(nme.classOf), fstArg :: _))
             if expectedName.toString == "expected" => Some(clsOf(fstArg.tpe))
@@ -263,9 +263,9 @@ class JUnitBootstrappers extends MiniPhase {
       val castInstanceSym = newSymbol(sym, junitNme.castInstance, Synthetic, testClass.typeRef, coord = owner.span)
       Block(
         ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef)) :: Nil,
-        tests.foldRight[Tree] {
+        tests.foldRight {
           val tp = junitdefn.NoSuchMethodExceptionType
-          Throw(resolveConstructor(tp, nameParamRef :: Nil))
+          Throw(resolveConstructor(tp, nameParamRef :: Nil)): Tree
         } { (test, next) =>
           If(Literal(Constant(test.name.toString)).select(defn.Any_equals).appliedTo(nameParamRef),
             genTestInvocation(testClass, test, ref(castInstanceSym)),

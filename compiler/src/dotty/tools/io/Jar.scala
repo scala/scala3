@@ -51,7 +51,7 @@ class Jar(file: File) {
   def classPathString: Option[String] =
     for (m <- manifest ; cp <- m.attrs.get(Name.CLASS_PATH)) yield cp
   def classPathElements: List[String] = classPathString match {
-    case Some(s)  => s.split("\\s+").toList
+    case Some(s)  => s.split("\\s+").tolist
     case _        => Nil
   }
 
@@ -64,8 +64,8 @@ class Jar(file: File) {
     new JarWriter(file, Jar.WManifest.apply(mainAttrs: _*).underlying)
   }
 
-  def toList: List[JarEntry] = withJarInput { in =>
-    Iterator.continually(in.getNextJarEntry()).takeWhile(_ != null).toList
+  def tolist: List[JarEntry] = withJarInput { in =>
+    Iterator.continually(in.getNextJarEntry()).takeWhile(_ != null).tolist
   }
 
   def getEntryStream(entry: JarEntry): java.io.InputStream = jarFile getInputStream entry match {
@@ -159,7 +159,7 @@ object Jar {
   // See http://download.java.net/jdk7/docs/api/java/nio/file/Path.html
   // for some ideas.
   private val ZipMagicNumber = List[Byte](80, 75, 3, 4)
-  private def magicNumberIsZip(f: Path) = f.isFile && (f.toFile.bytes().take(4).toList == ZipMagicNumber)
+  private def magicNumberIsZip(f: Path) = f.isFile && (f.toFile.bytes().take(4).tolist == ZipMagicNumber)
 
   def isJarOrZip(f: Path): Boolean = isJarOrZip(f, true)
   def isJarOrZip(f: Path, examineFile: Boolean): Boolean =

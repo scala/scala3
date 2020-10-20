@@ -289,7 +289,7 @@ object ProtoTypes {
     }
 
     def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
-      if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
+      if ((args eqLst this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
       else new FunProto(args, resultType)(typer, applyKind)
 
     /** @return True if all arguments have types.
@@ -496,7 +496,7 @@ object ProtoTypes {
       canInstantiate(tp) || tp.member(nme.apply).hasAltWith(d => canInstantiate(d.info))
 
     def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
-      if ((targs eq this.targs) && (resType eq this.resType)) this
+      if ((targs eqLst this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
 
     def map(tm: TypeMap)(using Context): PolyProto =

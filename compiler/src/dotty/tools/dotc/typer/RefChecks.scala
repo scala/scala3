@@ -203,10 +203,10 @@ object RefChecks {
 
     case class MixinOverrideError(member: Symbol, msg: String)
 
-    val mixinOverrideErrors = new mutable.ListBuffer[MixinOverrideError]()
+    val mixinOverrideErrors = List.Buffer[MixinOverrideError]()
 
     def printMixinOverrideErrors(): Unit =
-      mixinOverrideErrors.toList match {
+      mixinOverrideErrors.tolist match {
         case Nil =>
         case List(MixinOverrideError(_, msg)) =>
           report.error(msg, clazz.srcPos)
@@ -460,11 +460,11 @@ object RefChecks {
 
     // Verifying a concrete class has nothing unimplemented.
     if (!clazz.isOneOf(AbstractOrTrait)) {
-      val abstractErrors = new mutable.ListBuffer[String]
+      val abstractErrors = List.Buffer[String]()
       def abstractErrorMessage =
         // a little formatting polish
-        if (abstractErrors.size <= 2) abstractErrors mkString " "
-        else abstractErrors.tail.mkString(abstractErrors.head + ":\n", "\n", "")
+        if (abstractErrors.size <= 2) abstractErrors.tolist mkString " "
+        else abstractErrors.tolist.tail.mkString(abstractErrors.head + ":\n", "\n", "")
 
       def abstractClassError(mustBeMixin: Boolean, msg: String): Unit = {
         def prelude = (
@@ -505,11 +505,11 @@ object RefChecks {
        *  member in a base class, yet might not override it.
        */
       def missingTermSymbols: List[Symbol] =
-        val buf = new mutable.ListBuffer[Symbol]
-        for bc <- clazz.baseClasses; sym <- bc.info.decls.toList do
+        val buf = List.Buffer[Symbol]()
+        for bc <- clazz.baseClasses; sym <- bc.info.decls.tolist do
           if sym.is(DeferredTerm) && !isImplemented(sym) && !ignoreDeferred(sym) then
             buf += sym
-        buf.toList
+        buf.tolist
 
       // 2. Check that only abstract classes have deferred members
       def checkNoAbstractMembers(): Unit = {
@@ -519,7 +519,7 @@ object RefChecks {
         // to consolidate getters and setters.
         val grouped = missing.groupBy(_.underlyingSymbol.name)
 
-        val missingMethods = grouped.toList flatMap {
+        val missingMethods = grouped.tolist flatMap {
           case (name, syms) =>
             val withoutSetters = syms filterNot (_.isSetter)
             if (withoutSetters.nonEmpty) withoutSetters else syms
@@ -527,7 +527,7 @@ object RefChecks {
 
         def stubImplementations: List[String] = {
           // Grouping missing methods by the declaring class
-          val regrouped = missingMethods.groupBy(_.owner).toList
+          val regrouped = missingMethods.groupBy(_.owner).tolist
           def membersStrings(members: List[Symbol]) =
             members.sortBy(_.name.toString).map(_.showDcl + " = ???")
 

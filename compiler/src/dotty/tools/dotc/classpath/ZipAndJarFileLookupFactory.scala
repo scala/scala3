@@ -96,7 +96,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
       val packages = util.HashMap[String, PackageFileInfo]()
 
       def getSubpackages(dir: AbstractFile): List[AbstractFile] =
-        (for (file <- dir if file.isPackage) yield file).toList
+        (for (file <- dir if file.isPackage) yield file).tolist
 
       @tailrec
       def traverse(packagePrefix: String,
@@ -105,7 +105,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
         case pkgFile :: remainingFiles =>
           val subpackages = getSubpackages(pkgFile)
           val fullPkgName = packagePrefix + pkgFile.name
-          packages(fullPkgName) = PackageFileInfo(pkgFile, subpackages)
+          packages(fullPkgName) = PackageFileInfo(pkgFile, subpackages.toSeq)
           val newPackagePrefix = fullPkgName + "."
           subpackagesQueue.enqueue(PackageInfo(newPackagePrefix, subpackages))
           traverse(packagePrefix, remainingFiles, subpackagesQueue)
@@ -116,7 +116,7 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
       }
 
       val subpackages = getSubpackages(file)
-      packages(ClassPath.RootPackage) = PackageFileInfo(file, subpackages)
+      packages(ClassPath.RootPackage) = PackageFileInfo(file, subpackages.toSeq)
       traverse(ClassPath.RootPackage, subpackages, collection.mutable.Queue())
       packages
     }

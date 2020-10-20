@@ -347,7 +347,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
         assert(paramss.nonEmpty && paramss.head.hasSameLengthAs(pnames),
           i"mismatch for $sym, ${sym.info}, ${sym.paramSymss}")
-        val apiParams = paramss.head.lazyZip(ptypes).map((param, ptype) =>
+        val apiParams = paramss.head.zipped(ptypes).map((param, ptype) =>
           api.MethodParameter.of(param.name.toString, apiType(ptype),
           param.is(HasDefault), api.ParameterModifier.Plain))
         api.ParameterList.of(apiParams.toArray, mt.isImplicitMethod)
@@ -358,7 +358,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
 
     val tparams = sym.info match {
       case pt: TypeLambda =>
-        pt.paramNames.lazyZip(pt.paramInfos).map((pname, pbounds) =>
+        pt.paramNames.zipped(pt.paramInfos).map((pname, pbounds) =>
           apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi))
       case _ =>
         Nil
@@ -501,7 +501,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       case ExprType(resultType) =>
         withMarker(apiType(resultType), byNameMarker)
       case MatchType(bound, scrut, cases) =>
-        val s = combineApiTypes(apiType(bound) :: apiType(scrut) :: cases.map(apiType): _*)
+        val s = combineApiTypes((apiType(bound) :: apiType(scrut) :: cases.map(apiType)).toSeq: _*)
         withMarker(s, matchMarker)
       case ConstantType(constant) =>
         api.Constant.of(apiType(constant.tpe), constant.stringValue)
@@ -586,7 +586,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
   }
 
   def apiAnnotations(s: Symbol): List[api.Annotation] = {
-    val annots = new mutable.ListBuffer[api.Annotation]
+    val annots = List.Buffer[api.Annotation]()
     val inlineBody = Inliner.bodyToInline(s)
     if (!inlineBody.isEmpty) {
       // If the body of an inline def changes, all the reverse dependencies of
@@ -611,7 +611,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       annots += apiAnnotation(annot)
     }
 
-    annots.toList
+    annots.tolist
   }
 
   /** Produce a hash for a tree that is as stable as possible:

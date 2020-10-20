@@ -59,11 +59,11 @@ object BetaReduce:
 
   /** Beta-reduces a call to `ddef` with arguments `argSyms` */
   def apply(ddef: DefDef, args: List[Tree])(using Context) =
-    val bindings = List.newBuilder[ValDef]
-    val vparams = ddef.vparamss.iterator.flatten.toList
+    val bindings = List.Buffer[ValDef]()
+    val vparams = ddef.vparamss.flatten
     assert(args.hasSameLengthAs(vparams))
     val argSyms =
-      for (arg, param) <- args.zip(vparams) yield
+      args.zipped(vparams).map ((arg, param) =>
         arg.tpe.dealias match
           case ref @ TermRef(NoPrefix, _) if isPurePath(arg) =>
             ref.symbol
@@ -73,6 +73,7 @@ object BetaReduce:
             val binding = ValDef(newSymbol(ctx.owner, param.name, flags, tpe, coord = arg.span), arg).withSpan(arg.span)
             bindings += binding
             binding.symbol
+      )
 
     val expansion = TreeTypeMap(
       oldOwners = ddef.symbol :: Nil,
@@ -87,7 +88,7 @@ object BetaReduce:
         case _ => super.transform(tree)
     }.transform(expansion)
     val bindings1 =
-      bindings.result().filterNot(vdef => vdef.tpt.tpe.isInstanceOf[ConstantType] && isPureExpr(vdef.rhs))
+      bindings.tolist.filterNot(vdef => vdef.tpt.tpe.isInstanceOf[ConstantType] && isPureExpr(vdef.rhs))
 
     seq(bindings1, expansion1)
   end apply

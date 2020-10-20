@@ -1,8 +1,6 @@
 package dotty.tools
 package dotc.util
 
-import collection.mutable.ListBuffer
-
 /** A simple linked map with `eq` as the key comparison, optimized for small maps.
  *  It has linear complexity for `apply`, `updated`, and `remove`.
  */
@@ -16,15 +14,15 @@ abstract class SimpleIdentityMap[K <: AnyRef, +V >: Null <: AnyRef] extends (K =
   def foreachBinding(f: (K, V) => Unit): Unit
   def forallBinding(f: (K, V) => Boolean): Boolean
   def map2[T](f: (K, V) => T): List[T] = {
-    val buf = new ListBuffer[T]
+    val buf = List.Buffer[T]()
     foreachBinding((k, v) => buf += f(k, v))
-    buf.toList
+    buf.tolist
   }
   def keys: List[K] = map2((k, v) => k)
-  def toList: List[(K, V)] = map2((k, v) => (k, v))
+  def tolist: List[(K, V)] = map2((k, v) => (k, v))
   override def toString: String = {
     def assocToString(key: K, value: V) = s"$key -> $value"
-    map2(assocToString) mkString ("(", ", ", ")")
+    map2(assocToString).mkString("(", ", ", ")")
   }
 }
 

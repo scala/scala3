@@ -9,7 +9,6 @@ import DenotTransformers._
 import Denotations._
 import Decorators._
 import config.Printers.config
-import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform._
 import Periods._
@@ -61,7 +60,7 @@ object Phases {
                            stopBeforePhases: List[String],
                            stopAfterPhases: List[String],
                            YCheckAfter: List[String])(using Context): List[Phase] = {
-      val fusedPhases = ListBuffer[Phase]()
+      val fusedPhases = List.Buffer[Phase]()
       var prevPhases: Set[String] = Set.empty
       val YCheckAll = YCheckAfter.contains("all")
 
@@ -96,7 +95,7 @@ object Phases {
                     assert(false, s"Only tree transforms can be fused, ${phase.phaseName} can not be fused")
                 }
               val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
-              prevPhases ++= filteredPhaseBlock.map(_.phaseName)
+              prevPhases ++= filteredPhaseBlock.map(_.phaseName).toSeq
               superPhase
             }
             else { // block of a single phase, no fusion
@@ -114,7 +113,7 @@ object Phases {
 
         i += 1
       }
-      fusedPhases.toList
+      fusedPhases.tolist
     }
 
     /** Use the following phases in the order they are given.
@@ -123,14 +122,14 @@ object Phases {
      */
     final def usePhases(phasess: List[Phase], fuse: Boolean = true): Unit = {
 
-      val flatPhases = collection.mutable.ListBuffer[Phase]()
+      val flatPhases = List.Buffer[Phase]()
 
       phasess.foreach(p => p match {
-        case p: MegaPhase => flatPhases ++= p.miniPhases
+        case p: MegaPhase => flatPhases ++= p.miniPhases.asInstanceOf[Array[Phase]]
         case _ => flatPhases += p
       })
 
-      phases = (NoPhase :: flatPhases.toList ::: new TerminalPhase :: Nil).toArray
+      phases = (NoPhase :: flatPhases.tolist ::: new TerminalPhase :: Nil).toArray
       setSpecificPhases()
       var phasesAfter: Set[String] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)
@@ -189,8 +188,8 @@ object Phases {
       else
         this.fusedPhases = this.phases
 
-      config.println(s"Phases = ${phases.toList}")
-      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
+      config.println(s"Phases = ${phases.tolist}")
+      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.tolist}")
     }
 
     private var myTyperPhase: Phase = _

@@ -179,7 +179,7 @@ object Interactive {
                  include: Include.Set,
                  treePredicate: NameTree => Boolean = util.common.alwaysTrue
                 )(using Context): List[SourceTree] = safely {
-    val buf = new mutable.ListBuffer[SourceTree]
+    val buf = List.Buffer[SourceTree]()
 
     def traverser(source: SourceFile) =
       new untpd.TreeTraverser {
@@ -217,7 +217,7 @@ object Interactive {
 
     trees.foreach(t => traverser(t.source).traverse(t.tree))
 
-    buf.toList
+    buf.tolist
   }
 
   /**
@@ -386,7 +386,7 @@ object Interactive {
     if (sourceDriver == targetDriver) symbol
     else {
       val owners = in(sourceDriver) {
-        symbol.ownersIterator.toList.reverse.map(_.name)
+        symbol.ownersIterator.tolist.reverse.map(_.name)
       }
       in(targetDriver) {
         val base: Symbol = defn.RootClass

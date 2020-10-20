@@ -97,7 +97,7 @@ class Erasure extends Phase with DenotTransformer {
               && (oldName eq newName)
               && (oldInfo eq newInfo)
               && (oldFlags == newFlags)
-              && (oldAnnotations eq newAnnotations)
+              && (oldAnnotations eqLst newAnnotations)
         then
           ref
         else
@@ -185,7 +185,7 @@ object Erasure {
 
   /** An Apply node which might still be missing some arguments */
   def partialApply(fn: Tree, args: List[Tree])(using Context): Tree =
-    untpd.Apply(fn, args.toList)
+    untpd.Apply(fn, args)
       .withType(applyResultType(fn.tpe.widen.asInstanceOf[MethodType], args))
 
   /** The type of an Apply node which might still be missing some arguments */
@@ -438,7 +438,7 @@ object Erasure {
             def sameSymbol(tp1: Type, tp2: Type) = tp1.typeSymbol == tp2.typeSymbol
 
             val paramAdaptationNeeded =
-              implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
+              implParamTypes.zipped(samParamTypes).exists((implType, samType) =>
                 !sameSymbol(implType, samType) && !autoAdaptedParam(implType))
             val resultAdaptationNeeded =
               !sameSymbol(implResultType, samResultType) && !autoAdaptedResult(implResultType)
@@ -454,7 +454,7 @@ object Erasure {
                 inContext(ctx.withOwner(bridge)) {
                   val List(bridgeParams) = bridgeParamss
                   assert(ctx.typer.isInstanceOf[Erasure.Typer])
-                  val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)))
+                  val rhs = Apply(meth, bridgeParams.zipped(implParamTypes).map(ctx.typer.adapt(_, _)))
                   ctx.typer.adapt(rhs, bridgeType.resultType)
                 },
                 targetType = implClosure.tpt.tpe)
@@ -475,7 +475,7 @@ object Erasure {
      */
     def etaExpand(tree: Tree, mt: MethodType, pt: Type)(using Context): Tree =
       report.log(i"eta expanding $tree")
-      val defs = new mutable.ListBuffer[Tree]
+      val defs = List.Buffer[Tree]()
       val tree1 = LiftErased.liftApp(defs, tree)
       val xmt = if tree.isInstanceOf[Apply] then mt else expandedMethodType(mt, tree)
       val targetLength = xmt.paramInfos.length
@@ -498,7 +498,7 @@ object Erasure {
                 val refs :: Nil : @unchecked = refss
                 val expandedRefs = refs.map(_.withSpan(tree.span.endPos)) match
                   case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
-                    argTpes.indices.toList.map(n =>
+                    argTpes.indices.tolist.map(n =>
                       bunchedParam
                         .select(nme.primitive.arrayApply)
                         .appliedTo(Literal(Constant(n))))
@@ -518,7 +518,7 @@ object Erasure {
           ctx.typer.typed(app, pt)
             .changeOwnerAfter(origOwner, ctx.owner, erasurePhase.asInstanceOf[Erasure])
 
-      seq(defs.toList, abstracted(Nil, origType, pt))
+      seq(defs.tolist, abstracted(Nil, origType, pt))
     end etaExpand
 
   end Boxing
@@ -742,7 +742,7 @@ object Erasure {
     override def typedThis(tree: untpd.This)(using Context): Tree =
       if (tree.symbol == ctx.owner.lexicallyEnclosingClass || tree.symbol.isStaticOwner) promote(tree)
       else {
-        report.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")
+        report.log(i"computing outer path from ${ctx.owner.ownersIterator.tolist}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")
         outer.path(toCls = tree.symbol)
       }
 

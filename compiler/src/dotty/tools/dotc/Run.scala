@@ -97,7 +97,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   def units: List[CompilationUnit] = myUnits
 
-  var suspendedUnits: mutable.ListBuffer[CompilationUnit] = mutable.ListBuffer()
+  var suspendedUnits: List.Buffer[CompilationUnit] = List.Buffer()
 
   private def units_=(us: List[CompilationUnit]): Unit =
     myUnits = us
@@ -108,10 +108,9 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  from TASTY.
    */
   def files: Set[AbstractFile] = {
-    if (myUnits ne myUnitsCached) {
+    if !(myUnits eqLst myUnitsCached) then
       myUnitsCached = myUnits
-      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).toSet
-    }
+      myFiles = (myUnits ++ suspendedUnits.tolist).map(_.source.file).toSet
     myFiles
   }
 
@@ -122,7 +121,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
 
   /** Actions that need to be performed at the end of the current compilation run */
-  private var finalizeActions = mutable.ListBuffer[() => Unit]()
+  private var finalizeActions = List.Buffer[() => Unit]()
 
   def compile(fileNames: List[String]): Unit = try {
     val sources = fileNames.map(runContext.getSource(_))
@@ -130,7 +129,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   }
   catch {
     case NonFatal(ex) =>
-      if units != null then report.echo(i"exception occurred while compiling $units%, %")
+      if units.asInstanceOf[AnyRef] != null then report.echo(i"exception occurred while compiling $units%, %")
       else report.echo(s"exception occurred while compiling ${fileNames.mkString(", ")}")
       throw ex
   }
@@ -297,7 +296,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     super[ImplicitRunInfo].reset()
     super[ConstraintRunInfo].reset()
     myCtx = null
-    myUnits = null
-    myUnitsCached = null
+    myUnits = null.asInstanceOf[List[CompilationUnit]]
+    myUnitsCached = null.asInstanceOf[List[CompilationUnit]]
   }
 }

@@ -60,12 +60,12 @@ object Formatting {
         val (pre, post) = s.span(c => !isLineBreak(c))
         pre ++ post.stripMargin
       }
-      val (prefix, suffixes) = sc.parts.toList match {
+      val (prefix, suffixes) = sc.parts.tolist match {
         case head :: tail => (head.stripMargin, tail map stripTrailingPart)
         case Nil => ("", Nil)
       }
-      val (args1, suffixes1) = args.lazyZip(suffixes).map(treatArg(_, _)).unzip
-      new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
+      val (args1, suffixes1) = args.tolist.zipped(suffixes).map(treatArg(_, _)).unzip
+      new StringContext((prefix :: suffixes1).toSeq: _*).s(args1.toSeq: _*)
     }
   }
 
@@ -109,7 +109,7 @@ object Formatting {
     else nonSensicalStartTag + str + nonSensicalEndTag
   }
 
-  private type Recorded = Symbol | ParamRef | SkolemType
+  private type Recorded = AnyRef // should be : Symbol | ParamRef | SkolemType but this messes up type inference
 
   private case class SeenKey(str: String, isType: Boolean)
   private class Seen extends mutable.HashMap[SeenKey, List[Recorded]] {
@@ -129,7 +129,7 @@ object Formatting {
         case _ => e1
       }
       val key = SeenKey(str, isType)
-      val existing = apply(key)
+      val existing: List[Recorded] = apply(key)
       lazy val dealiased = followAlias(entry)
 
       // alts: The alternatives in `existing` that are equal, or follow (an alias of) `entry`
@@ -233,7 +233,7 @@ object Formatting {
         ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
     }
 
-    val toExplain: List[(String, Recorded)] = seen.toList.flatMap { kvs =>
+    val toExplain: List[(String, Recorded)] = seen.tolist.flatMap { kvs =>
       val res: List[(String, Recorded)] = kvs match {
         case (key, entry :: Nil) =>
           if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil

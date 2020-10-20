@@ -31,7 +31,7 @@ object OrderingConstraint {
   }
 
   /** A lens for updating a single entry array in one of the three constraint maps */
-  abstract class ConstraintLens[T <: AnyRef: ClassTag] {
+  abstract class ConstraintLens[T: ClassTag] {
     def entries(c: OrderingConstraint, poly: TypeLambda): Array[T]
     def updateEntries(c: OrderingConstraint, poly: TypeLambda, entries: Array[T])(using Context): OrderingConstraint
     def initial: T
@@ -49,7 +49,7 @@ object OrderingConstraint {
     def update(prev: OrderingConstraint, current: OrderingConstraint,
         poly: TypeLambda, idx: Int, entry: T)(using Context): OrderingConstraint = {
       var es = entries(current, poly)
-      if (es != null && (es(idx) eq entry)) current
+      if (es != null && (es(idx).asInstanceOf[AnyRef] eq entry.asInstanceOf[AnyRef])) current
       else {
         val result =
           if (es == null) {
@@ -236,7 +236,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    */
   private def stripParams(
       tp: Type,
-      todos: mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint],
+      todos: List.Buffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint],
       isUpper: Boolean)(using Context): Type = tp match {
     case param: TypeParamRef if contains(param) =>
       todos += (if isUpper then order(_, _, param) else order(_, param, _))
@@ -278,7 +278,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    */
   private def init(poly: TypeLambda)(using Context): This = {
     var current = this
-    val todos = new mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint]
+    val todos = List.Buffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint]()
     var i = 0
     while (i < poly.paramNames.length) {
       val param = poly.paramRefs(i)
@@ -428,7 +428,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     def removeFromOrdering(po: ParamOrdering) = {
       def removeFromBoundss(key: TypeLambda, bndss: Array[List[TypeParamRef]]): Array[List[TypeParamRef]] = {
         val bndss1 = bndss.map(_.filterConserve(_.binder ne pt))
-        if (bndss.corresponds(bndss1)(_ eq _)) bndss else bndss1
+        if (bndss.corresponds(bndss1)(_ eqLst _)) bndss else bndss1
       }
       po.remove(pt).mapValuesNow(removeFromBoundss)
     }
@@ -551,8 +551,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   def domainParams: List[TypeParamRef] =
     for {
-      (poly, entries) <- boundsMap.toList
-      n <- 0 until paramCount(entries)
+      (poly, entries) <- boundsMap.tolist
+      n <- List.range(0, paramCount(entries))
       if entries(n).exists
     }
     yield poly.paramRefs(n)
@@ -656,18 +656,18 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     }
     val indent = 3
     val header: Text = "Constraint("
-    val uninstVarsText = " uninstVars = " ~
+    val uninstVarsText: Text = " uninstVars = " ~
       Text(uninstVars map (_.toText(printer)), ", ") ~ ";"
-    val constrainedText =
+    val constrainedText: Text =
       " constrained types = " ~ Text(domainLambdas map (_.toText(printer)), ", ")
-    val boundsText =
+    val boundsText: Text =
       " bounds = " ~ {
         val assocs =
           for (param <- domainParams)
           yield (" " * indent) ~ param.toText(printer) ~ entryText(entry(param))
         Text(assocs, "\n")
       }
-    val orderingText =
+    val orderingText: Text =
       " ordering = " ~ {
         val deps =
           for {
@@ -681,7 +681,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         Text(deps, "\n")
       }
     //Printer.debugPrintUnique = false
-    Text.lines(List(header, uninstVarsText, constrainedText, boundsText, orderingText, ")"))
+    Text.lines(List(header, uninstVarsText, constrainedText, boundsText, orderingText, Str(")")))
   }
 
   override def toString: String = {

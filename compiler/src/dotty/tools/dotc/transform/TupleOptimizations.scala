@@ -207,7 +207,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
       // This would yield smaller bytecode at the cost of an extra (easily JIT inlinable) call.
       // def tupleN(it: Iterator[Any]): TupleN[Any, ..., Any] = Tuple(it.next(), ..., it.next())
       val tpes = List.fill(size)(defn.AnyType)
-      val elements = (0 until size).map(_ => it.select(nme.next)).toList
+      val elements = (0 until size).map(_ => it.select(nme.next)).tolist
       knownTupleFromElements(tpes, elements)
     }
     else
@@ -216,6 +216,6 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
       ref(defn.TupleXXL_fromIterator).appliedTo(it)
 
   private def tupleSelectors(tup: Tree, size: Int)(using Context): List[Tree] =
-    (0 until size).map(i => tup.select(nme.selectorName(i))).toList
+    (0 until size).map(i => tup.select(nme.selectorName(i))).tolist
 }
 

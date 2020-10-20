@@ -31,11 +31,10 @@ import Trees._
 import Decorators._
 import transform.SymUtils._
 
-import dotty.tools.tasty.{TastyBuffer, TastyReader}
+import dotty.tools.tasty.TastyBuffer
 import TastyBuffer._
 
 import scala.annotation.{switch, tailrec}
-import scala.collection.mutable.ListBuffer
 import scala.collection.mutable
 import config.Printers.pickling
 import quoted.PickledQuotes
@@ -56,6 +55,7 @@ class TreeUnpickler(reader: TastyReader,
                     posUnpicklerOpt: Option[PositionUnpickler],
                     commentUnpicklerOpt: Option[CommentUnpickler]) {
   import TreeUnpickler._
+  import reader._
   import tpd._
 
   /** A map from addresses of definition entries to the symbols they define */
@@ -112,7 +112,6 @@ class TreeUnpickler(reader: TastyReader,
   }
 
   class Completer(reader: TastyReader)(using @constructorOnly _ctx: Context) extends LazyType {
-    import reader._
     val owner = ctx.owner
     val source = ctx.source
     def complete(denot: SymDenotation)(using Context): Unit =
@@ -123,7 +122,6 @@ class TreeUnpickler(reader: TastyReader,
   }
 
   class TreeReader(val reader: TastyReader) {
-    import reader._
 
     def forkAt(start: Addr): TreeReader = new TreeReader(subReader(start, endAddr))
     def fork: TreeReader = forkAt(currentAddr)
@@ -148,7 +146,7 @@ class TreeUnpickler(reader: TastyReader,
      *  Template node, but need to be listed separately in the OwnerTree of the enclosing class
      *  in order not to confuse owner chains.
      */
-    def scanTree(buf: ListBuffer[OwnerTree], mode: MemberDefMode = AllDefs): Unit = {
+    def scanTree(buf: List.Buffer[OwnerTree], mode: MemberDefMode = AllDefs): Unit = {
       val start = currentAddr
       val tag = readByte()
       tag match {
@@ -192,7 +190,7 @@ class TreeUnpickler(reader: TastyReader,
     /** Record all directly nested definitions and templates between current address and `end`
      *  as `OwnerTree`s in `buf`
      */
-    def scanTrees(buf: ListBuffer[OwnerTree], end: Addr, mode: MemberDefMode = AllDefs): Unit = {
+    def scanTrees(buf: List.Buffer[OwnerTree], end: Addr, mode: MemberDefMode = AllDefs): Unit = {
       while (currentAddr.index < end.index) scanTree(buf, mode)
       assert(currentAddr.index == end.index)
     }
@@ -209,27 +207,6 @@ class TreeUnpickler(reader: TastyReader,
     }
 
     def readName(): TermName = nameAtRef(readNameRef())
-
-// ------ Basic operations --------------------------------------------------
-
-    /** Perform `op` until `end` address is reached and collect results in a list. */
-    def until[T](end: Addr)(op: => T): List[T] = {
-      val buf = new mutable.ListBuffer[T]
-      while (currentAddr < end) buf += op
-      assert(currentAddr == end)
-      buf.toList
-    }
-
-    /** If before given `end` address, the result of `op`, otherwise `default` */
-    def ifBefore[T](end: Addr)(op: => T, default: T): T =
-      if (currentAddr < end) op else default
-
-    /** Perform `op` while cindition `cond` holds and collect results in a list. */
-    def collectWhile[T](cond: => Boolean)(op: => T): List[T] = {
-      val buf = new mutable.ListBuffer[T]
-      while (cond) buf += op
-      buf.toList
-    }
 
 // ------ Reading types -----------------------------------------------------
 
@@ -973,14 +950,14 @@ class TreeUnpickler(reader: TastyReader,
       nextByte == IMPORT || nextByte == PACKAGE
 
     def readTopLevel()(using Context): List[Tree] = {
-      @tailrec def read(acc: ListBuffer[Tree]): List[Tree] =
+      @tailrec def read(acc: List.Buffer[Tree]): List[Tree] =
         if (isTopLevel) {
           acc += readIndexedStat(NoSymbol)
-          if (!isAtEnd) read(acc) else acc.toList
+          if (!isAtEnd) read(acc) else acc.tolist
         }
         else // top-level trees which are not imports or packages are not part of tree
-          acc.toList
-      read(new ListBuffer[tpd.Tree])
+          acc.tolist
+      read(List.Buffer[tpd.Tree]())
     }
 
     def readIndexedStat(exprOwner: Symbol)(using Context): Tree = nextByte match {
@@ -1335,10 +1312,10 @@ class TreeUnpickler(reader: TastyReader,
       setSpan(start, CaseDef(pat, guard, rhs))
     }
 
-    def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Trees.Lazy[T] =
+    def readLater[T](end: Addr, op: TreeReader => Context ?=> T)(using Context): Trees.Lazy[T] =
       readLaterWithOwner(end, op)(ctx.owner)
 
-    def readLaterWithOwner[T <: AnyRef](end: Addr, op: TreeReader => Context ?=> T)(using Context): Symbol => Trees.Lazy[T] = {
+    def readLaterWithOwner[T](end: Addr, op: TreeReader => Context ?=> T)(using Context): Symbol => Trees.Lazy[T] = {
       val localReader = fork
       goto(end)
       owner => new LazyReader(localReader, owner, ctx.mode, ctx.source, op)
@@ -1397,7 +1374,7 @@ class TreeUnpickler(reader: TastyReader,
     }
   }
 
-  class LazyReader[T <: AnyRef](
+  class LazyReader[T](
       reader: TreeReader, owner: Symbol, mode: Mode, source: SourceFile,
       op: TreeReader => Context ?=> T) extends Trees.Lazy[T] {
     def complete(using Context): T = {
@@ -1425,14 +1402,14 @@ class TreeUnpickler(reader: TastyReader,
    */
   class OwnerTree(val addr: Addr, tag: Int, reader: TreeReader, val end: Addr) {
 
-    private var myChildren: List[OwnerTree] = null
+    private var myChildren: List[OwnerTree] = nullList
 
     /** All definitions that have the definition at `addr` as closest enclosing definition */
     def children: List[OwnerTree] = {
-      if (myChildren == null) myChildren = {
-        val buf = new ListBuffer[OwnerTree]
+      if (myChildren eqLst nullList) myChildren = {
+        val buf = List.Buffer[OwnerTree]()
         reader.scanTrees(buf, end, if (tag == TEMPLATE) NoMemberDefs else AllDefs)
-        buf.toList
+        buf.tolist
       }
       myChildren
     }
@@ -1467,7 +1444,7 @@ class TreeUnpickler(reader: TastyReader,
     }
 
     override def toString: String =
-      s"OwnerTree(${addr.index}, ${end.index}, ${if (myChildren == null) "?" else myChildren.mkString(" ")})"
+      s"OwnerTree(${addr.index}, ${end.index}, ${if (myChildren eqLst nullList) "?" else myChildren.mkString(" ")})"
   }
 }
 

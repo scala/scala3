@@ -19,11 +19,11 @@ import Diagnostic._
   */
 class StoreReporter(outer: Reporter = Reporter.NoReporter) extends Reporter {
 
-  protected var infos: mutable.ListBuffer[Diagnostic] = null
+  protected var infos: List.Buffer[Diagnostic] = null
 
   def doReport(dia: Diagnostic)(using Context): Unit = {
     typr.println(s">>>> StoredError: ${dia.message}") // !!! DEBUG
-    if (infos == null) infos = new mutable.ListBuffer
+    if (infos == null) infos = List.Buffer()
     infos += dia
   }
 
@@ -34,10 +34,10 @@ class StoreReporter(outer: Reporter = Reporter.NoReporter) extends Reporter {
     infos != null && infos.exists(_.isInstanceOf[StickyError])
 
   override def removeBufferedMessages(using Context): List[Diagnostic] =
-    if (infos != null) try infos.toList finally infos = null
+    if (infos != null) try infos.tolist finally infos = null
     else Nil
 
-  override def pendingMessages(using Context): List[Diagnostic] = infos.toList
+  override def pendingMessages(using Context): List[Diagnostic] = infos.tolist
 
   override def errorsReported: Boolean = hasErrors || (outer != null && outer.errorsReported)
 }

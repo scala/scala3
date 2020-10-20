@@ -146,7 +146,7 @@ object CommentParsing {
         val start = skipWhitespace(str, section._1 + tag.length)
         str.substring(start, skipIdent(str, start)) -> section
       }
-    }
+    }.iterator
 
   /** Optionally start and end index of return section in `str`, or `None`
    *  if `str` does not have a @group. */
@@ -191,7 +191,7 @@ object CommentParsing {
     Map() ++ {
       for (section <- sections) yield
         extractSectionTag(str, section) -> section
-    }
+    }.iterator
 
   /** Extract the section tag, treating the section tag as an identifier */
   def extractSectionTag(str: String, section: (Int, Int)): String =
@@ -243,12 +243,12 @@ object CommentParsing {
     val sections = tagIndex(raw)
 
     val toBeRemoved = for {
-      section <- xs
+      section <- xs.tolist
       lines = sections filter { startsWithTag(raw, _, section) }
     }
     yield lines
 
-    val end = startTag(raw, toBeRemoved.flatten.sortBy(_._1).toList)
+    val end = startTag(raw, toBeRemoved.flatten.sortBy(_._1))
 
     if (end == raw.length - 2) raw else raw.substring(0, end) + "*/"
   }

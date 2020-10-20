@@ -129,7 +129,7 @@ object ClassPath {
 
     /* Get all subdirectories, jars, zips out of a directory. */
     def lsDir(dir: Directory, filt: String => Boolean = _ => true) =
-      dir.list.filter(x => filt(x.name) && (x.isDirectory || isJarOrZip(x))).map(_.path).toList
+      dir.list.filter(x => filt(x.name) && (x.isDirectory || isJarOrZip(x))).map(_.path).tolist
 
     if (pattern == "*") lsDir(Directory("."))
     else if (pattern.endsWith(wildSuffix)) lsDir(Directory(pattern dropRight 2))
@@ -144,13 +144,13 @@ object ClassPath {
   }
 
   /** Split classpath using platform-dependent path separator */
-  def split(path: String): List[String] = path.split(pathSeparator).toList.filterNot(_ == "").distinct
+  def split(path: String): List[String] = path.split(pathSeparator).tolist.filterNot(_ == "").distinct
 
   /** Join classpath using platform-dependent path separator */
   def join(paths: String*): String  = paths.filterNot(_ == "").mkString(pathSeparator)
 
   /** Split the classpath, apply a transformation function, and reassemble it. */
-  def map(cp: String, f: String => String): String = join(split(cp) map f: _*)
+  def map(cp: String, f: String => String): String = join((split(cp) map f).toSeq: _*)
 
   /** Expand path and possibly expanding stars */
   def expandPath(path: String, expandStar: Boolean = true): List[String] =
@@ -161,7 +161,7 @@ object ClassPath {
   def expandDir(extdir: String): List[String] = {
     AbstractFile getDirectory extdir match {
       case null => Nil
-      case dir  => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
+      case dir  => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).tolist
     }
   }
 
@@ -185,7 +185,7 @@ object ClassPath {
   def manifests: List[java.net.URL] = {
     import scala.jdk.CollectionConverters.EnumerationHasAsScala
     val resources = Thread.currentThread().getContextClassLoader().getResources("META-INF/MANIFEST.MF")
-    resources.asScala.filter(_.getProtocol == "jar").toList
+    resources.asScala.filter(_.getProtocol == "jar").tolist
   }
 
   @deprecated("shim for sbt's compiler interface", since = "2.12.0")

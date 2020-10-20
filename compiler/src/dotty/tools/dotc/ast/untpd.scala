@@ -274,7 +274,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
      *  all modifiers are already accounted for in `flags` and `privateWithin`.
      */
     def withMods(ms: List[Mod]): Modifiers =
-      if (mods eq ms) this
+      if (mods eqLst ms) this
       else {
         if (ms.nonEmpty)
           for (m <- ms)
@@ -289,7 +289,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       else withAnnotations(annotations :+ annot)
 
     def withAnnotations(annots: List[Tree]): Modifiers =
-      if (annots eq annotations) this
+      if (annots eqLst annotations) this
       else copy(annotations = annots)
 
     def withPrivateWithin(pw: TypeName): Modifiers =
@@ -557,15 +557,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ => finalize(tree, untpd.SymbolLit(str)(tree.source))
     }
     def InterpolatedString(tree: Tree)(id: TermName, segments: List[Tree])(using Context): TermTree = tree match {
-      case tree: InterpolatedString if (id eq tree.id) && (segments eq tree.segments) => tree
+      case tree: InterpolatedString if (id eq tree.id) && (segments eqLst tree.segments) => tree
       case _ => finalize(tree, untpd.InterpolatedString(id, segments)(tree.source))
     }
     def Function(tree: Tree)(args: List[Tree], body: Tree)(using Context): Tree = tree match {
-      case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
+      case tree: Function if (args eqLst tree.args) && (body eq tree.body) => tree
       case _ => finalize(tree, untpd.Function(args, body)(tree.source))
     }
     def PolyFunction(tree: Tree)(targs: List[Tree], body: Tree)(using Context): Tree = tree match {
-      case tree: PolyFunction if (targs eq tree.targs) && (body eq tree.body) => tree
+      case tree: PolyFunction if (targs eqLst tree.targs) && (body eq tree.body) => tree
       case _ => finalize(tree, untpd.PolyFunction(targs, body)(tree.source))
     }
     def InfixOp(tree: Tree)(left: Tree, op: Ident, right: Tree)(using Context): Tree = tree match {
@@ -585,7 +585,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ => finalize(tree, untpd.Parens(t)(tree.source))
     }
     def Tuple(tree: Tree)(trees: List[Tree])(using Context): Tree = tree match {
-      case tree: Tuple if trees eq tree.trees => tree
+      case tree: Tuple if trees eqLst tree.trees => tree
       case _ => finalize(tree, untpd.Tuple(trees)(tree.source))
     }
     def Throw(tree: Tree)(expr: Tree)(using Context): TermTree = tree match {
@@ -605,11 +605,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ => finalize(tree, untpd.TypSplice(expr)(tree.source))
     }
     def ForYield(tree: Tree)(enums: List[Tree], expr: Tree)(using Context): TermTree = tree match {
-      case tree: ForYield if (enums eq tree.enums) && (expr eq tree.expr) => tree
+      case tree: ForYield if (enums eqLst tree.enums) && (expr eq tree.expr) => tree
       case _ => finalize(tree, untpd.ForYield(enums, expr)(tree.source))
     }
     def ForDo(tree: Tree)(enums: List[Tree], body: Tree)(using Context): TermTree = tree match {
-      case tree: ForDo if (enums eq tree.enums) && (body eq tree.body) => tree
+      case tree: ForDo if (enums eqLst tree.enums) && (body eq tree.body) => tree
       case _ => finalize(tree, untpd.ForDo(enums, body)(tree.source))
     }
     def GenFrom(tree: Tree)(pat: Tree, expr: Tree, checkMode: GenCheckMode)(using Context): Tree = tree match {
@@ -621,19 +621,19 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ => finalize(tree, untpd.GenAlias(pat, expr)(tree.source))
     }
     def ContextBounds(tree: Tree)(bounds: TypeBoundsTree, cxBounds: List[Tree])(using Context): TypTree = tree match {
-      case tree: ContextBounds if (bounds eq tree.bounds) && (cxBounds eq tree.cxBounds) => tree
+      case tree: ContextBounds if (bounds eq tree.bounds) && (cxBounds eqLst tree.cxBounds) => tree
       case _ => finalize(tree, untpd.ContextBounds(bounds, cxBounds)(tree.source))
     }
     def PatDef(tree: Tree)(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(using Context): Tree = tree match {
-      case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
+      case tree: PatDef if (mods eq tree.mods) && (pats eqLst tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs)(tree.source))
     }
     def Export(tree: Tree)(expr: Tree, selectors: List[ImportSelector])(using Context): Tree = tree match {
-      case tree: Export if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+      case tree: Export if (expr eq tree.expr) && (selectors eqLst tree.selectors) => tree
       case _ => finalize(tree, untpd.Export(expr, selectors)(tree.source))
     }
     def ExtMethods(tree: Tree)(tparams: List[TypeDef], vparamss: List[List[ValDef]], methods: List[DefDef])(using Context): Tree = tree match
-      case tree: ExtMethods if (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (methods == tree.methods) => tree
+      case tree: ExtMethods if (tparams eqLst tree.tparams) && (vparamss eqLst tree.vparamss) && (methods == tree.methods) => tree
       case _ => finalize(tree, untpd.ExtMethods(tparams, vparamss, methods)(tree.source))
     def ImportSelector(tree: Tree)(imported: Ident, renamed: Tree, bound: Tree)(using Context): Tree = tree match {
       case tree: ImportSelector if (imported eq tree.imported) && (renamed eq tree.renamed) && (bound eq tree.bound) => tree

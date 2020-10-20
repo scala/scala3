@@ -251,7 +251,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               cls.srcPos)
           EmptyTree
 
-      for (getter <- mixin.info.decls.toList if getter.isGetter && !wasOneOf(getter, Deferred)) yield {
+      for (getter <- mixin.info.decls.tolist if getter.isGetter && !wasOneOf(getter, Deferred)) yield {
         if (isCurrent(getter) || getter.name.is(ExpandedName)) {
           val rhs =
             if (wasOneOf(getter, ParamAccessor))
@@ -277,7 +277,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       yield transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
 
     def mixinForwarders(mixin: ClassSymbol): List[Tree] =
-      for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
+      for (meth <- mixin.info.decls.tolist if needsMixinForwarder(meth))
       yield {
         util.Stats.record("mixin forwarders")
         transformFollowing(polyDefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))

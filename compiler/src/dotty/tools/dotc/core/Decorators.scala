@@ -6,7 +6,6 @@ import annotation.tailrec
 import Symbols._
 import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
 import util.Spans.Span
-import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase
 import ast.tpd._
 import scala.language.implicitConversions
@@ -76,13 +75,13 @@ object Decorators {
    *  on lists that avoid duplication of list nodes where feasible.
    */
   implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
-
+/*
     final def mapconserve[U](f: T => U): List[U] = {
       @tailrec
-      def loop(mapped: ListBuffer[U], unchanged: List[U], pending: List[T]): List[U] =
+      def loop(mapped: List.Buffer[U], unchanged: List[U], pending: List[T]): List[U] =
         if (pending.isEmpty)
           if (mapped eq null) unchanged
-          else mapped.prependToList(unchanged)
+          else mapped.tolist ++ unchanged
         else {
           val head0 = pending.head
           val head1 = f(head0)
@@ -90,7 +89,7 @@ object Decorators {
           if (head1.asInstanceOf[AnyRef] eq head0.asInstanceOf[AnyRef])
             loop(mapped, unchanged, pending.tail)
           else {
-            val b = if (mapped eq null) new ListBuffer[U] else mapped
+            val b = if (mapped eq null) List.Buffer[U]() else mapped
             var xc = unchanged
             while (xc ne pending) {
               b += xc.head
@@ -103,20 +102,20 @@ object Decorators {
         }
       loop(null, xs.asInstanceOf[List[U]], xs)
     }
-
+  */
     /** Like `xs filter p` but returns list `xs` itself  - instead of a copy -
      *  if `p` is true for all elements.
      */
     def filterConserve(p: T => Boolean): List[T] =
 
-      def addAll(buf: ListBuffer[T], from: List[T], until: List[T]): ListBuffer[T] =
-        if from eq until then buf else addAll(buf += from.head, from.tail, until)
+      def addAll(buf: List.Buffer[T], from: List[T], until: List[T]): List.Buffer[T] =
+        if from eqLst until then buf else addAll(buf += from.head, from.tail, until)
 
-      def loopWithBuffer(buf: ListBuffer[T], xs: List[T]): List[T] = xs match
+      def loopWithBuffer(buf: List.Buffer[T], xs: List[T]): List[T] = xs match
         case x :: xs1 =>
           if p(x) then buf += x
           loopWithBuffer(buf, xs1)
-        case nil => buf.toList
+        case nil => buf.tolist
 
       def loop(keep: List[T], explore: List[T], keepCount: Int, recCount: Int): List[T] =
         explore match
@@ -131,14 +130,14 @@ object Decorators {
                 case 2 => keep.head :: keep.tail.head :: rest1
                 case 3 => val tl = keep.tail; keep.head :: tl.head :: tl.tail.head :: rest1
             else
-              loopWithBuffer(addAll(new ListBuffer[T], keep, explore), rest)
+              loopWithBuffer(addAll(List.Buffer[T](), keep, explore), rest)
           case nil =>
             keep
 
       loop(xs, xs, 0, 0)
     end filterConserve
 
-    /** Like `xs.lazyZip(ys).map(f)`, but returns list `xs` itself
+    /** Like `xs.zipped(ys).map(f)`, but returns list `xs` itself
      *  - instead of a copy - if function `f` maps all elements of
      *  `xs` to themselves. Also, it is required that `ys` is at least
      *  as long as `xs`.
@@ -149,11 +148,11 @@ object Decorators {
         val x1 = f(xs.head, ys.head)
         val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
         if ((x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) &&
-            (xs1 eq xs.tail)) xs
+            (xs1 eqLst xs.tail)) xs
         else x1 :: xs1
       }
 
-    /** Like `xs.lazyZip(xs.indices).map(f)`, but returns list `xs` itself
+    /** Like `xs.zipped(xs.indices).map(f)`, but returns list `xs` itself
      *  - instead of a copy - if function `f` maps all elements of
      *  `xs` to themselves.
      */
@@ -164,7 +163,7 @@ object Decorators {
           val x1 = f(xs.head, idx)
           val xs1 = recur(xs.tail, idx + 1)
           if (x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef])
-             && (xs1 eq xs.tail)
+             && (xs1 eqLst xs.tail)
           then xs.asInstanceOf[List[U]]
           else x1 :: xs1
       recur(xs, 0)
@@ -249,9 +248,9 @@ object Decorators {
       x
     }
 
-  extension [T <: AnyRef](xs: ::[T])
+  extension [T <: AnyRef](xs: List[T])
     def derivedCons(x1: T, xs1: List[T]) =
-      if (xs.head eq x1) && (xs.tail eq xs1) then xs else x1 :: xs1
+      if (xs.head eq x1) && (xs.tail eqLst xs1) then xs else x1 :: xs1
 
   extension (sc: StringContext)
     /** General purpose string formatting */

@@ -182,10 +182,10 @@ object Scanners {
     private var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
     /* A Buffer for comment positions */
-    private val commentPosBuf = new mutable.ListBuffer[Span]
+    private val commentPosBuf = List.Buffer[Span]()
 
     /** Return a list of all the comment positions */
-    def commentSpans: List[Span] = commentPosBuf.toList
+    def commentSpans: List[Span] = commentPosBuf.tolist
 
     private def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()

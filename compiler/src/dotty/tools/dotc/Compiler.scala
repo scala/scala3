@@ -38,6 +38,8 @@ class Compiler {
   protected def frontendPhases: List[List[Phase]] =
     List(new FrontEnd) ::           // Compiler frontend: scanner, parser, namer, typer
     List(new YCheckPositions) ::    // YCheck positions
+    Nil
+/*
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
@@ -45,7 +47,7 @@ class Compiler {
     List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
-    Nil
+    Nil*/
 
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
@@ -54,8 +56,8 @@ class Compiler {
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
-  protected def transformPhases: List[List[Phase]] =
-    List(new FirstTransform,         // Some transformations to put trees into a canonical form
+  protected def transformPhases: List[List[Phase]] = ???
+/*  List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
          new CookComments,           // Cook the comments: expand variables, doc, etc.
@@ -127,10 +129,10 @@ class Compiler {
          new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
          new CollectSuperCalls) ::   // Find classes that are called with super
     Nil
-
+*/
   /** Generate the output of the compilation */
   protected def backendPhases: List[List[Phase]] =
-    List(new backend.sjs.GenSJSIR) :: // Generate .sjsir files for Scala.js (not enabled by default)
+    //List(new backend.sjs.GenSJSIR) :: // Generate .sjsir files for Scala.js (not enabled by default)
     List(new GenBCode) ::             // Generate JVM bytecode
     Nil
 

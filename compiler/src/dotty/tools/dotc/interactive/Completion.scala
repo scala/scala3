@@ -146,7 +146,7 @@ object Completion {
      * the same `Completion`.
      */
     def getCompletions(using Context): List[Completion] = {
-      val nameToSymbols = completions.mappings.toList
+      val nameToSymbols = completions.mappings.tolist
       nameToSymbols.map { case (name, symbols) =>
         val typesFirst = symbols.sortWith((s1, s2) => s1.isType && !s2.isType)
         val desc = description(typesFirst)
@@ -265,19 +265,19 @@ object Completion {
     private def accessibleMembers(site: Type)(using Context): Seq[Symbol] = site match {
       case site: NamedType if site.symbol.is(Package) =>
         extension (tpe: Type)
-          def accessibleSymbols = tpe.decls.toList.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
+          def accessibleSymbols = tpe.decls.tolist.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
 
         val packageDecls = site.accessibleSymbols
         val packageObjectsDecls = packageDecls.filter(_.isPackageObject).flatMap(_.thisType.accessibleSymbols)
-        packageDecls ++ packageObjectsDecls
+        (packageDecls ++ packageObjectsDecls).toSeq
       case _ =>
-        def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
+        def appendMemberSyms(name: Name, buf: List.Buffer[SingleDenotation]): Unit =
           try buf ++= site.member(name).alternatives
           catch { case ex: TypeError => }
         site.memberDenots(completionsFilter, appendMemberSyms).collect {
           case mbr if include(mbr.symbol, mbr.symbol.name) => mbr.accessibleFrom(site, superAccess = true).symbol
           case _ => NoSymbol
-        }.filter(_.exists)
+        }.filter(_.exists).toSeq
     }
 
     /** Add all the accessible members of `site` in `info`. */
@@ -316,7 +316,7 @@ object Completion {
       val typer = ctx.typer
       val conversions = new typer.ImplicitSearch(defn.AnyType, qual, pos.span).allImplicits
       val targets = conversions.map(_.widen.finalResultType)
-      interactiv.println(i"implicit conversion targets considered: ${targets.toList}%, %")
+      interactiv.println(i"implicit conversion targets considered: ${targets.tolist}%, %")
       targets
     }
 

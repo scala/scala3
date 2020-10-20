@@ -14,7 +14,7 @@ object ClasspathFromClassloader {
    *  the wrong thing.
    */
   def apply(cl: ClassLoader): String = {
-    val classpathBuff = List.newBuilder[String]
+    val classpathBuff = List.Buffer[String]()
     def collectClassLoaderPaths(cl: ClassLoader): Unit = {
       if (cl != null) {
         cl match {
@@ -47,6 +47,6 @@ object ClasspathFromClassloader {
       }
     }
     collectClassLoaderPaths(cl)
-    classpathBuff.result().mkString(java.io.File.pathSeparator)
+    classpathBuff.tolist.mkString(java.io.File.pathSeparator)
   }
 }

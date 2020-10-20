@@ -141,7 +141,7 @@ class TyperState() {
   def gc()(using Context): Unit =
     if !ownedVars.isEmpty then
       Stats.record("typerState.gc")
-      val toCollect = new mutable.ListBuffer[TypeLambda]
+      val toCollect = List.Buffer[TypeLambda]()
       for tvar <- ownedVars do
         if !tvar.inst.exists then
           val inst = constraint.instType(tvar)

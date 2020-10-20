@@ -28,8 +28,8 @@ object PickledQuotes {
   import tpd._
 
   /** Pickle the tree of the quote into strings */
-  def pickleQuote(tree: Tree)(using Context): List[String] =
-    if (ctx.reporter.hasErrors) Nil
+  def pickleQuote(tree: Tree)(using Context): scala.List[String] =
+    if (ctx.reporter.hasErrors) scala.Nil
     else {
       assert(!tree.isInstanceOf[Hole]) // Should not be pickled as it represents `'{$x}` which should be optimized to `x`
       val pickled = pickle(tree)
@@ -76,7 +76,7 @@ object PickledQuotes {
           val reifiedArgs = args.map { arg =>
             if (arg.isTerm) (using qctx: QuoteContext) => new scala.internal.quoted.Expr(arg, QuoteContextImpl.scopeId)
             else new scala.internal.quoted.Type(arg, QuoteContextImpl.scopeId)
-          }
+          }.toSeq
           if isTerm then
             val quotedExpr = pickledQuote.exprSplice(idx)(reifiedArgs)(dotty.tools.dotc.quoted.QuoteContextImpl())
             val filled = PickledQuotes.quotedExprToTree(quotedExpr)
@@ -131,7 +131,7 @@ object PickledQuotes {
             assert(tdef.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot))
             val tree = tdef.rhs match
               case TypeBoundsTree(_, Hole(_, idx, args), _) =>
-                val quotedType = pickledQuote.typeSplice(idx)(args)
+                val quotedType = pickledQuote.typeSplice(idx)(args.toSeq)
                 PickledQuotes.quotedTypeToTree(quotedType)
               case TypeBoundsTree(_, tpt, _) =>
                 tpt
@@ -166,7 +166,7 @@ object PickledQuotes {
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then
-      val positionWarnings = new mutable.ListBuffer[String]()
+      val positionWarnings = List.Buffer[String]()
       new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots)
         .picklePositions(tree :: Nil, positionWarnings)
       positionWarnings.foreach(report.warning(_))

@@ -31,7 +31,7 @@ trait Deriving {
   class Deriver(cls: ClassSymbol, codePos: SrcPos)(using Context) {
 
     /** A buffer for synthesized symbols for type class instances */
-    private var synthetics = new mutable.ListBuffer[Symbol]
+    private var synthetics = List.Buffer[Symbol]()
 
     /** A version of Type#underlyingClassRef that works also for higher-kinded types */
     private def underlyingClassRef(tp: Type): Type = tp match {
@@ -295,7 +295,7 @@ trait Deriving {
         tpd.polyDefDef(sym.asTerm, typeclassInstance(sym))
       }
 
-      synthetics.map(syntheticDef).toList
+      synthetics.tolist.map(syntheticDef)
     }
 
     def finalize(stat: tpd.TypeDef): tpd.Tree = {

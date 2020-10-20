@@ -46,9 +46,9 @@ extends AbstractFile {
 
   private val files = mutable.Map.empty[String, AbstractFile]
 
-  // the toList is so that the directory may continue to be
+  // the tolist is so that the directory may continue to be
   // modified while its elements are iterated
-  def iterator(): Iterator[AbstractFile] = files.values.toList.iterator
+  def iterator(): Iterator[AbstractFile] = files.values.tolist.iterator
 
   override def lookupName(name: String, directory: Boolean): AbstractFile =
     (files get name filter (_.isDirectory == directory)).orNull

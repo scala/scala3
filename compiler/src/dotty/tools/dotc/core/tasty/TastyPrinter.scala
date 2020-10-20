@@ -3,7 +3,7 @@ package dotc
 package core
 package tasty
 
-import dotty.tools.tasty.{TastyBuffer, TastyReader}
+import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.{Addr, NameRef}
 
 import Contexts._, Decorators._
@@ -117,7 +117,7 @@ class TastyPrinter(bytes: Array[Byte])(using Context) {
           }
         indent -= 2
       }
-      sb.append(i"start = ${reader.startAddr}, base = $base, current = $currentAddr, end = $endAddr\n")
+      sb.append(i"start = ${reader.startAddr}, base = ${reader.base}, current = $currentAddr, end = $endAddr\n")
       sb.append(s"${endAddr.index - startAddr.index} bytes of AST, base = $currentAddr\n")
       while (!isAtEnd) {
         printTree()

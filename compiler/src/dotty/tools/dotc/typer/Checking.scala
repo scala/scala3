@@ -64,7 +64,7 @@ object Checking {
    */
   def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds],
     instantiate: (Type, List[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
-    args.lazyZip(boundss).foreach { (arg, bound) =>
+    args.zipped(boundss).foreach { (arg, bound) =>
       if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
         errorTree(arg,
           showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
@@ -413,13 +413,11 @@ object Checking {
           case bounds: TypeBounds =>
             !checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
           case _ =>
-            true
         }
       }
       catch {
         case ex: RecursionOverflow =>
           report.error(em"cyclic reference involving type $name", pos)
-          false
       }
   }
 
@@ -554,12 +552,12 @@ object Checking {
               tp
             }
             else mapOver(tp)
-          if ((errors ne prevErrors) && tp.info.isTypeAlias) {
+          if ((errors neLst prevErrors) && tp.info.isTypeAlias) {
             // try to dealias to avoid a leak error
             val savedErrors = errors
             errors = prevErrors
             val tp2 = apply(tp.superType)
-            if (errors eq prevErrors) tp1 = tp2
+            if (errors eqLst prevErrors) tp1 = tp2
             else errors = savedErrors
           }
           tp1
@@ -635,15 +633,13 @@ object Checking {
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
     lazy val params = sym.paramSymss.flatten
-    for
-      sym2 <- sym.allOverriddenSymbols
-      (p1, p2) <- sym.paramSymss.flatten.lazyZip(sym2.paramSymss.flatten)
-      if p1.is(Inline) != p2.is(Inline)
-    do
-      report.error(
+    for sym2 <- sym.allOverriddenSymbols do
+      sym.paramSymss.flatten.zipped(sym2.paramSymss.flatten).foreach((p1, p2) =>
+      if p1.is(Inline) != p2.is(Inline) then
+        report.error(
           if p2.is(Inline) then "Cannot override inline parameter with a non-inline parameter"
           else "Cannot override non-inline parameter with an inline parameter",
-          p1.srcPos)
+          p1.srcPos))
 
 }
 

@@ -83,7 +83,7 @@ private [profile] object RealProfiler {
   import scala.collection.JavaConverters._
   val runtimeMx: RuntimeMXBean = ManagementFactory.getRuntimeMXBean
   val memoryMx: MemoryMXBean = ManagementFactory.getMemoryMXBean
-  val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.toList
+  val gcMx: List[GarbageCollectorMXBean] = ManagementFactory.getGarbageCollectorMXBeans.asScala.tolist
   val classLoaderMx: ClassLoadingMXBean = ManagementFactory.getClassLoadingMXBean
   val compileMx: CompilationMXBean = ManagementFactory.getCompilationMXBean
   val threadMx: ExtendedThreadMxBean = ExtendedThreadMxBean.proxy

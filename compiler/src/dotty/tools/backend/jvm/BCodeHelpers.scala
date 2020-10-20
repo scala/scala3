@@ -597,12 +597,12 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet): List[Symbol] = {
       // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
       val names = tp.memberNames(takeAllFilter).toSeq.sorted
-      val buffer = mutable.ListBuffer[Symbol]()
+      val buffer = List.Buffer[Symbol]()
       names.foreach { name =>
         buffer ++= tp.memberBasedOnFlags(name, required, excluded)
-          .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol)
+          .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol).toSeq
       }
-      buffer.toList
+      buffer.tolist
     }
 
     /*
@@ -616,7 +616,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * must-single-thread
      */
     def getExceptions(excs: List[Annotation]): List[String] = {
-      for (case ThrownException(exc) <- excs.distinct)
+      for (case ThrownException(exc) <- excs.distinct: dotty.tools.List[Annotation])
       yield internalName(TypeErasure.erasure(exc).classSymbol)
     }
   } // end of trait BCForwardersGen
@@ -696,8 +696,8 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
       addForwarders(mirrorClass, mirrorName, moduleClass)
 
-      innerClassBufferASM ++= classBTypeFromSymbol(moduleClass).info.memberClasses
-      addInnerClassesASM(mirrorClass, innerClassBufferASM.toList)
+      innerClassBufferASM ++= classBTypeFromSymbol(moduleClass).info.memberClasses.toSeq
+      addInnerClassesASM(mirrorClass, innerClassBufferASM.tolist)
 
       mirrorClass.visitEnd()
 

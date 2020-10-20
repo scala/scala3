@@ -80,10 +80,10 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   // Like in `ZipArchiveFileLookup` we assume that zips are immutable
   private val zipClassPathClasses: Seq[TypeName] = {
-    val names = new mutable.ListBuffer[TypeName]
+    val names = List.Buffer[TypeName]()
     for (cp <- zipClassPaths)
       classesFromZip(cp.zipFile, names)
-    names
+    names.toSeq
   }
 
   initialize()
@@ -103,15 +103,15 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * from the target directory.
    */
   def sourceTreesContaining(id: String)(using Context): List[SourceTree] = {
-    val fromBuffers = openedTrees.values.flatten.toList
+    val fromBuffers = openedTrees.values.tolist.flatten
     val fromCompilationOutput = {
-      val classNames = new mutable.ListBuffer[TypeName]
+      val classNames = List.Buffer[TypeName]()
       val output = ctx.settings.outputDir.value
       if (output.isDirectory)
         classesFromDir(output.jpath, classNames)
       else
         classesFromZip(output.file, classNames)
-      classNames.flatMap { cls =>
+      classNames.tolist.flatMap { cls =>
         treesFromClassName(cls, id)
       }
     }
@@ -133,9 +133,9 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * on this project's classpath.
    */
   def allTreesContaining(id: String)(using Context): List[SourceTree] = {
-    val fromSource = openedTrees.values.flatten.toList
+    val fromSource = openedTrees.values.tolist.flatten
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
-      treesFromClassName(cls, id)
+      treesFromClassName(cls, id).iterator
     }
     (fromSource ++ fromClassPath).distinct
   }
@@ -204,16 +204,16 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   // the directories each time, if we knew when classfiles changed (sbt
   // server-mode might help here), we could do cache invalidation instead.
   private def dirClassPathClasses: Seq[TypeName] = {
-    val names = new mutable.ListBuffer[TypeName]
+    val names = List.Buffer[TypeName]()
     dirClassPaths.foreach { dirCp =>
       val root = dirCp.dir.toPath
       classesFromDir(root, names)
     }
-    names
+    names.toSeq
   }
 
   /** Adds the names of the classes that are defined in `file` to `buffer`. */
-  private def classesFromZip(file: File, buffer: mutable.ListBuffer[TypeName]): Unit = {
+  private def classesFromZip(file: File, buffer: List.Buffer[TypeName]): Unit = {
     val zipFile = new ZipFile(file)
     try {
       val entries = zipFile.entries()
@@ -231,7 +231,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   }
 
   /** Adds the names of the classes that are defined in `dir` to `buffer`. */
-  private def classesFromDir(dir: Path, buffer: mutable.ListBuffer[TypeName]): Unit =
+  private def classesFromDir(dir: Path, buffer: List.Buffer[TypeName]): Unit =
     try
       Files.walkFileTree(dir, new SimpleFileVisitor[Path] {
         override def visitFile(path: Path, attrs: BasicFileAttributes) = {
@@ -253,7 +253,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     }
 
   private def topLevelTrees(topTree: Tree, source: SourceFile): List[SourceTree] = {
-    val trees = new mutable.ListBuffer[SourceTree]
+    val trees = List.Buffer[SourceTree]()
 
     def addTrees(tree: Tree): Unit = tree match {
       case PackageDef(_, stats) =>
@@ -266,7 +266,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     }
     addTrees(topTree)
 
-    trees.toList
+    trees.tolist
   }
 
   /** Remove attachments and error out completers. The goal is to avoid

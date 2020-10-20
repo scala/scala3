@@ -116,7 +116,7 @@ final class ProperGadtConstraint private(
       pt => defn.AnyType
     )
 
-    val tvars = params.lazyZip(poly1.paramRefs).map { (sym, paramRef) =>
+    val tvars = params.zipped(poly1.paramRefs).map { (sym, paramRef) =>
       val tv = TypeVar(paramRef, creatorState = null)
       mapping = mapping.updated(sym, tv)
       reverseMapping = reverseMapping.updated(tv.origin, sym)

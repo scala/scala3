@@ -98,12 +98,12 @@ class CollectNullableFields extends MiniPhase {
     recordUse(tree)
 
   /** Map lazy values to the fields they should null after initialization. */
-  def lazyValNullables(using Context): IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = {
-    val result = new IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]]
+  def lazyValNullables(using Context): IdentityHashMap[Symbol, List.Buffer[Symbol]] = {
+    val result = new IdentityHashMap[Symbol, List.Buffer[Symbol]]
 
     nullability.forEach {
       case (sym, Nullable(from)) =>
-        val bldr = result.computeIfAbsent(from, _ => new mutable.ListBuffer)
+        val bldr = result.computeIfAbsent(from, _ => List.Buffer())
         bldr += sym
       case _ =>
     }

@@ -423,7 +423,7 @@ trait ConstraintHandling {
     if (e.exists) e.bounds
     else {
       val pinfos = param.binder.paramInfos
-      if (pinfos != null) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
+      if (pinfos != nullList) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
       else TypeBounds.empty
     }
   }

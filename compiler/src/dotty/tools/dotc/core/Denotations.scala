@@ -23,7 +23,6 @@ import config.Config
 import config.Printers.overload
 import util.common._
 import typer.ProtoTypes.NoViewsAllowed
-import collection.mutable.ListBuffer
 
 /** Denotations represent the meaning of symbols and named types.
  *  The following diagram shows how the principal types of denotations
@@ -512,8 +511,8 @@ object Denotations {
     *  otherwise generate new synthetic names.
     */
   private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): List[tp1.ThisName] =
-    (for ((name1, name2, idx) <- tp1.paramNames.lazyZip(tp2.paramNames).lazyZip(tp1.paramNames.indices))
-      yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
+    tp1.paramNames.zipped(tp2.paramNames).zipped(tp1.paramNames.indices).map((name1, name2, idx) =>
+      if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx))
 
   /** Normally, `tp1 & tp2`, with extra care taken to return `tp1` or `tp2` directly if that's
    *  a valid answer. Special cases for matching methods and classes, with
@@ -667,7 +666,7 @@ object Denotations {
       }
 
     def history: List[SingleDenotation] = {
-      val b = new ListBuffer[SingleDenotation]
+      val b = List.Buffer[SingleDenotation]()
       var current = initial
       while ({
         b += (current)
@@ -675,7 +674,7 @@ object Denotations {
         current ne initial
       })
       ()
-      b.toList
+      b.tolist
     }
 
     /** Invalidate all caches and fields that depend on base classes and their contents */

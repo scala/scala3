@@ -76,7 +76,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
               if (classes.head.symbol.is(Flags.Module)) move(classes.head, null)
               else List(rebuild(classes.head, classes.head.rhs.asInstanceOf[Template].body))
             else move(classes.head, classes.tail.head)
-      Trees.flatten(newPairs.toList.flatten ++ others)
+      Trees.flatten(newPairs.tolist.flatten ++ others)
     }
     else trees
 }

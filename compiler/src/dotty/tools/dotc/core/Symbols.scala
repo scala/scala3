@@ -691,7 +691,7 @@ object Symbols {
     def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
     typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
-    typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    typr.println(s"decls = ${normalizedOwner.unforcedDecls.tolist.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>
@@ -756,18 +756,19 @@ object Symbols {
     flags: FlagSet,
     boundsFn: List[TypeRef] => List[Type])(using Context): List[TypeSymbol] = {
 
-    val tparamBuf = new mutable.ListBuffer[TypeSymbol]
-    val trefBuf = new mutable.ListBuffer[TypeRef]
+    val tparamBuf = List.Buffer[TypeSymbol]()
+    val trefBuf = List.Buffer[TypeRef]()
     for (name <- names) {
       val tparam = newSymbol(
         owner, name, flags | owner.typeParamCreationFlags, NoType, coord = owner.coord)
       tparamBuf += tparam
       trefBuf += TypeRef(owner.thisType, tparam)
     }
-    val tparams = tparamBuf.toList
-    val bounds = boundsFn(trefBuf.toList)
-    for (tparam, bound) <- tparams.lazyZip(bounds) do
+    val tparams = tparamBuf.tolist
+    val bounds = boundsFn(trefBuf.tolist)
+    tparams.zipped(bounds).foreach((tparam, bound) =>
       tparam.info = bound
+    )
     tparams
   }
 
@@ -802,7 +803,7 @@ object Symbols {
             newNakedSymbol[original.ThisName](original.coord)
         }
       val ttmap1 = ttmap.withSubstitution(originals, copies)
-      originals.lazyZip(copies) foreach { (original, copy) =>
+      originals.zipped(copies) foreach { (original, copy) =>
         val odenot = original.denot
         val oinfo = original.info match {
           case ClassInfo(pre, _, parents, decls, selfInfo) =>

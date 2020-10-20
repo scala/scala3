@@ -134,7 +134,7 @@ object Plugin {
 
     // List[(jar, Try(descriptor))] in dir
     def scan(d: Directory) =
-      d.files.toList sortBy (_.name) filter (Jar isJarOrZip _) map (j => (j, loadDescriptionFromJar(j)))
+      d.files.tolist sortBy (_.name) filter (Jar isJarOrZip _) map (j => (j, loadDescriptionFromJar(j)))
 
     type PDResults = List[Try[(String, ClassLoader)]]
 
@@ -159,7 +159,7 @@ object Plugin {
     }
 
     val fromPaths: PDResults = paths map (p => findDescriptor(p) match {
-      case Success(classname) => Success((classname, loaderFor(p)))
+      case Success(classname) => Success((classname, loaderFor(p.toSeq)))
       case Failure(e)  => Failure(e)
     })
 

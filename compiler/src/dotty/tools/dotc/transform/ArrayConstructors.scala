@@ -12,9 +12,6 @@ import ast.Trees._
 import dotty.tools.dotc.ast.tpd
 
 
-import scala.collection.immutable.::
-
-
 /** This phase rewrites calls to array constructors to newArray method in Dotty.runtime.Arrays module.
  *
  * It assummes that generic arrays have already been handled by typer(see Applications.convertNewGenericArray).

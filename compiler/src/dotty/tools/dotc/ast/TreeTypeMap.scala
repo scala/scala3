@@ -152,7 +152,7 @@ class TreeTypeMap(
 
   /** The current tree map composed with a substitution [from -> to] */
   def withSubstitution(from: List[Symbol], to: List[Symbol]): TreeTypeMap =
-    if (from eq to) this
+    if (from eqLst to) this
     else {
       // assert that substitution stays idempotent, assuming its parts are
       // TODO: It might be better to cater for the asserted-away conditions, by
@@ -184,14 +184,14 @@ class TreeTypeMap(
    *  and substitutes their declarations.
    */
   def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap = {
-    val symsChanged = syms ne mapped
+    val symsChanged = syms neLst mapped
     val substMap = withSubstitution(syms, mapped)
     val fullMap = mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
-      val origDcls = cls.info.decls.toList
+      val origDcls = cls.info.decls.tolist
       val mappedDcls = mapSymbols(origDcls, tmap)
       val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
       if (symsChanged)
-        origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
+        origDcls.zipped(mappedDcls).foreach(cls.asClass.replace)
       tmap1
     }
     if (symsChanged || (fullMap eq substMap)) fullMap

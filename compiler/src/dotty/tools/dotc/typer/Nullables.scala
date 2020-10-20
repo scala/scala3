@@ -466,7 +466,7 @@ object Nullables:
       && assignmentSpans.getOrElse(sym.span.start, Nil).exists(whileSpan.contains(_))
       && ctx.notNullInfos.impliesNotNull(ref)
 
-    val retractedVars = ctx.notNullInfos.flatMap(_.asserted.filter(isRetracted)).toSet
+    val retractedVars = ctx.notNullInfos.flatMapIterable(_.asserted.filter(isRetracted)).toSet
     ctx.addNotNullInfo(NotNullInfo(Set(), retractedVars))
   end whileContext
 
@@ -534,7 +534,7 @@ object Nullables:
                 val argsRest1 = recur(
                   if formal.isRepeatedParam then formals else formalsRest,
                   argsRest)
-                if (arg1 eq arg) && (argsRest1 eq argsRest) then args
+                if (arg1 eq arg) && (argsRest1.asInstanceOf[AnyRef] eq argsRest.asInstanceOf[AnyRef]) then args
                 else arg1 :: argsRest1
               case _ => args
 

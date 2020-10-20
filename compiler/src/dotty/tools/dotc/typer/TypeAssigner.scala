@@ -324,7 +324,7 @@ trait TypeAssigner {
                 namedArgMap(name) = arg.tpe
 
             // Holds indexes of non-named typed arguments in paramNames
-            val gapBuf = new mutable.ListBuffer[Int]
+            val gapBuf = List.Buffer[Int]()
             def nextPoly(idx: Int) = {
               val newIndex = gapBuf.length
               gapBuf += idx
@@ -346,9 +346,9 @@ trait TypeAssigner {
             val resultType1 = transform(pt.resultType)
             if (gapBuf.isEmpty) resultType1
             else {
-              val gaps = gapBuf.toList
+              val gaps = gapBuf.tolist
               pt.derivedLambdaType(
-                gaps.map(paramNames),
+                gaps.map(paramNames(_)),
                 gaps.map(idx => transform(pt.paramInfos(idx)).bounds),
                 resultType1)
             }
@@ -401,14 +401,14 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
     val ownType =
       if (body.isType) {
-        val params = new TreeAccumulator[mutable.ListBuffer[TypeSymbol]] {
-          def apply(ps: mutable.ListBuffer[TypeSymbol], t: Tree)(using Context) = t match {
+        val params = new TreeAccumulator[List.Buffer[TypeSymbol]] {
+          def apply(ps: List.Buffer[TypeSymbol], t: Tree)(using Context) = t match {
             case t: Bind if t.symbol.isType => foldOver(ps += t.symbol.asType, t)
             case _ => foldOver(ps, t)
           }
         }
         HKTypeLambda.fromParams(
-          params(new mutable.ListBuffer[TypeSymbol](), pat).toList,
+          params(List.Buffer[TypeSymbol](), pat).tolist,
           defn.MatchCase(pat.tpe, body.tpe))
       }
       else body.tpe

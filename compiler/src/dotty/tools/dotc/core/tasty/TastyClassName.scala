@@ -3,7 +3,7 @@ package dotc
 package core
 package tasty
 
-import dotty.tools.tasty.{TastyBuffer, TastyReader}
+import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.NameRef
 
 import Contexts._, Decorators._

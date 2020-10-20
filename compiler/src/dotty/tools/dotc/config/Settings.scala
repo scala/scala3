@@ -17,7 +17,7 @@ object Settings {
   val BooleanTag: ClassTag[Boolean]      = ClassTag.Boolean
   val IntTag: ClassTag[Int]              = ClassTag.Int
   val StringTag: ClassTag[String]        = ClassTag(classOf[String])
-  val ListTag: ClassTag[List[?]]         = ClassTag(classOf[List[?]])
+  val ListTag: ClassTag[scala.List[?]]   = ClassTag(classOf[scala.List[?]]) // !!! needs to be adapted to new list types
   val VersionTag: ClassTag[ScalaVersion] = ClassTag(classOf[ScalaVersion])
   val OptionTag: ClassTag[Option[?]]     = ClassTag(classOf[Option[?]])
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
@@ -26,7 +26,7 @@ object Settings {
     private val values = ArrayBuffer(initialValues: _*)
     private var _wasRead: Boolean = false
 
-    override def toString: String = s"SettingsState(values: ${values.toList})"
+    override def toString: String = s"SettingsState(values: ${values.tolist})"
 
     def value(idx: Int): Any = {
       _wasRead = true
@@ -60,7 +60,7 @@ object Settings {
     description: String,
     default: T,
     helpArg: String = "",
-    choices: Seq[T] = Nil,
+    choices: Seq[T] = ScalaNil,
     prefix: String = "",
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
@@ -122,7 +122,7 @@ object Settings {
           if changed && isMultivalue then
             val value0  = value.asInstanceOf[List[String]]
             val current = valueIn(sstate).asInstanceOf[List[String]]
-            value0.filter(current.contains).foreach(s => dangers :+= s"Setting $name set to $s redundantly")
+            value0.filter(current.contains(_)).foreach(s => dangers :+= s"Setting $name set to $s redundantly")
             current ++ value0
           else
             if changed then dangers :+= s"Flag $name set repeatedly"
@@ -140,7 +140,7 @@ object Settings {
           update(Some(propertyClass.get.getConstructor().newInstance()), args)
         case (ListTag, _) =>
           if (argRest.isEmpty) missingArg
-          else update((argRest split ",").toList, args)
+          else update((argRest split ",").tolist, args)
         case (StringTag, _) if choices.nonEmpty && argRest.nonEmpty =>
           if (!choices.contains(argRest))
             fail(s"$arg is not a valid choice for $name", args)
@@ -251,7 +251,7 @@ object Settings {
             case Nil =>
               processArguments(state.warn(s"bad option '$x' was ignored"), processAll, skipped)
           }
-          loop(allSettings.toList)
+          loop(allSettings.tolist)
         case arg :: args =>
           if (processAll) processArguments(stateWithArgs(args), processAll, skipped :+ arg)
           else state
@@ -274,9 +274,9 @@ object Settings {
       publish(Setting(name, descr, default, helpArg))
 
     def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String): Setting[String] =
-      publish(Setting(name, descr, default, helpArg, choices))
+      publish(Setting(name, descr, default, helpArg, choices.toSeq))
 
-    def IntSetting(name: String, descr: String, default: Int, range: Seq[Int] = Nil): Setting[Int] =
+    def IntSetting(name: String, descr: String, default: Int, range: Seq[Int] = ScalaNil): Setting[Int] =
       publish(Setting(name, descr, default, choices = range))
 
     def MultiStringSetting(name: String, helpArg: String, descr: String): Setting[List[String]] =

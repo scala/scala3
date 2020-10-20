@@ -293,7 +293,7 @@ object GenericSignatures {
           else jsig(etp, toplevel, primitiveOK)
       }
     }
-    val throwsArgs = sym0.annotations flatMap ThrownException.unapply
+    val throwsArgs = sym0.annotations flatMapIterable ThrownException.unapply
     if (needsJavaSig(info, throwsArgs))
       try {
         jsig(info, toplevel = true)
@@ -347,23 +347,22 @@ object GenericSignatures {
   private def minimizeParents(cls: Symbol, parents: List[Type])(using Context): List[Type] = if (parents.isEmpty) parents else {
     // val requiredDirect: Symbol => Boolean = requiredDirectInterfaces.getOrElse(cls, Set.empty)
     var rest   = parents.tail
-    var leaves = collection.mutable.ListBuffer.empty[Type] += parents.head
+    var leaves: List[Type] = List(parents.head)
     while (rest.nonEmpty) {
       val candidate = rest.head
       val candidateSym = candidate.typeSymbol
       // val required = requiredDirect(candidateSym) || !leaves.exists(t => t.typeSymbol isSubClass candidateSym)
       val required = !leaves.exists(t => t.typeSymbol.isSubClass(candidateSym))
       if (required) {
-        leaves = leaves filter { t =>
+        leaves = candidate :: leaves.filter { t =>
           val ts = t.typeSymbol
           !(ts.is(Trait) || ts.is(PureInterface)) || !candidateSym.isSubClass(ts)
           // requiredDirect(ts) || !ts.isTraitOrInterface || !candidateSym.isSubClass(ts)
         }
-        leaves += candidate
       }
       rest = rest.tail
     }
-    leaves.toList
+    leaves.reverse
   }
 
   private def hiBounds(bounds: TypeBounds)(using Context): List[Type] = bounds.hi.widenDealias match {

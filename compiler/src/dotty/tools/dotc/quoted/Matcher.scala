@@ -176,7 +176,7 @@ object Matcher {
           val pFlags = pattern.symbol.flags
           sFlags.is(Lazy) == pFlags.is(Lazy) && sFlags.is(Mutable) == pFlags.is(Mutable)
         }
-
+        import scala.collection.immutable.::
         (scrutinee, pattern) match {
 
           /* Term hole */
@@ -199,8 +199,8 @@ object Matcher {
           case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
               if pattern.symbol == higherOrderHoleSymbol =>
 
-            def bodyFn(lambdaArgs: List[Tree]): Tree = {
-              val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
+            def bodyFn(lambdaArgs: scala.List[Tree]): Tree = {
+              val argsMap = args.map(_.symbol).zip(lambdaArgs.iterator.asInstanceOf[Iterator[Term]]).toMap
               new TreeMap {
                 override def transformTerm(tree: Term)(using ctx: Context): Term =
                   tree match
@@ -248,11 +248,11 @@ object Matcher {
 
           /* Match application */
           case (Apply(fn1, args1), Apply(fn2, args2)) =>
-            fn1 =?= fn2 &&& args1 =?= args2
+            fn1 =?= fn2 &&& args1.tolist =?= args2.tolist
 
           /* Match type application */
           case (TypeApply(fn1, args1), TypeApply(fn2, args2)) =>
-            fn1 =?= fn2 &&& args1 =?= args2
+            fn1 =?= fn2 &&& args1.tolist =?= args2.tolist
 
           /* Match block */
           case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
@@ -292,7 +292,7 @@ object Matcher {
 
           /* Match varargs */
           case (Repeated(elems1, _), Repeated(elems2, _)) if elems1.size == elems2.size =>
-            elems1 =?= elems2
+            elems1.tolist =?= elems2.tolist
 
           /* Match type */
           // TODO remove this?
@@ -309,12 +309,12 @@ object Matcher {
             def rhsEnv =
               val oldEnv: Env = summon[Env]
               val newEnv: List[(Symbol, Symbol)] =
-                (scrutinee.symbol -> pattern.symbol) :: typeParams1.zip(typeParams2).map((tparam1, tparam2) => tparam1.symbol -> tparam2.symbol) :::
-                paramss1.flatten.zip(paramss2.flatten).map((param1, param2) => param1.symbol -> param2.symbol)
-              oldEnv ++ newEnv
+                (scrutinee.symbol -> pattern.symbol) :: typeParams1.tolist.zip(typeParams2.tolist).map((tparam1, tparam2) => tparam1.symbol -> tparam2.symbol) :::
+                paramss1.flatten.tolist.zip(paramss2.flatten.tolist).map((param1, param2) => param1.symbol -> param2.symbol)
+              oldEnv ++ newEnv.iterator
 
-            typeParams1 =?= typeParams2
-              &&& matchLists(paramss1, paramss2)(_ =?= _)
+            typeParams1.tolist =?= typeParams2.tolist
+              &&& matchLists(paramss1.tolist.map(_.tolist), paramss2.tolist.map(_.tolist))(_ =?= _)
               &&& tpt1 =?= tpt2
               &&& withEnv(rhsEnv)(rhs1 =?= rhs2)
 
@@ -367,9 +367,10 @@ object Matcher {
 
     private object IdentArgs {
       def unapply(args: List[Term])(using Context): Option[List[Ident]] =
+        import scala.collection.immutable.::
         args.foldRight(Option(List.empty[Ident])) {
           case (id: Ident, Some(acc)) => Some(id :: acc)
-          case (Block(List(DefDef("$anonfun", Nil, List(params), Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
+          case (Block(List(DefDef("$anonfun", Nil, params :: Nil, Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
               if params.zip(args).forall(_.symbol == _.symbol) =>
             Some(id :: acc)
           case _ => None

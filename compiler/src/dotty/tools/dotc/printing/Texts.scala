@@ -165,9 +165,12 @@ object Texts {
         if (ys.isEmpty) Str("")
         else ys reduce (_ ~ sep ~ _)
       }
+    def apply(xs: List[Text], sep: String): Text = apply(xs.toSeq, sep)
+    def apply(xs: List[Text]): Text = apply(xs.toSeq)
 
     /** The given texts `xs`, each on a separate line */
-    def lines(xs: Traversable[Text]): Vertical = Vertical(xs.toList.reverse)
+    def lines(xs: Traversable[Text]): Vertical = Vertical(xs.tolist.reverse)
+    def lines(xs: List[Text]): Vertical = lines(xs.toSeq)
 
     extension (text: => Text):
       def provided(cond: Boolean): Text = if (cond) text else Str("")

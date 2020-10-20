@@ -123,7 +123,7 @@ object SymbolLoaders {
       scope: Scope = EmptyScope)(using Context): Unit =
     if src.exists && !src.isDirectory then
       val completer = new SourcefileLoader(src)
-      val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).toList
+      val filePath = owner.ownersIterator.takeWhile(!_.isRoot).map(_.name.toTermName).tolist
 
       def addPrefix(pid: RefTree, path: List[TermName]): List[TermName] = pid match {
         case Ident(name: TermName) => name :: path

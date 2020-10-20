@@ -253,7 +253,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def paramsText(lam: LambdaType): Text = {
     def paramText(name: Name, tp: Type) =
       toText(name) ~ lambdaHash(lam) ~ toTextRHS(tp)
-    Text(lam.paramNames.lazyZip(lam.paramInfos).map(paramText), ", ")
+    Text(lam.paramNames.zipped(lam.paramInfos).map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = name.toString
@@ -351,11 +351,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def decomposeLambdas(bounds: TypeBounds): (String, TypeBounds) =
     def decompose(tp: Type) = tp.stripTypeVar match
       case lam: HKTypeLambda =>
-        val names =
+        val names: List[String] =
           if lam.isDeclaredVarianceLambda then
-            lam.paramNames.lazyZip(lam.declaredVariances).map((name, v) =>
+            lam.paramNames.zipped(lam.declaredVariances).map((name, v) =>
               varianceSign(v) + name)
-          else lam.paramNames
+          else lam.paramNames.map(_.toString)
         (names.mkString("[", ", ", "]"), lam.resType)
       case _ =>
         ("", tp)
@@ -383,7 +383,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         tparamStr ~ binder
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)
-        val (tparams, otherDecls) = decls.toList partition treatAsTypeParam
+        val (tparams, otherDecls) = decls.tolist partition treatAsTypeParam
         val tparamsText =
           if (tparams.isEmpty) Text() else ("[" ~ dclsText(tparams) ~ "]").close
         val selfText: Text = selfInfo match {
@@ -539,7 +539,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def dclsText(syms: List[Symbol], sep: String): Text = Text(syms map dclText, sep)
 
   def toText(sc: Scope): Text =
-    ("Scope{" ~ dclsText(sc.toList) ~ "}").close
+    ("Scope{" ~ dclsText(sc.tolist) ~ "}").close
 
   def toText[T >: Untyped](tree: Tree[T]): Text = {
     def toTextElem(elem: Any): Text = elem match {
@@ -549,7 +549,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
     val nodeName = tree.productPrefix
     val elems =
-      Text(tree.productIterator.map(toTextElem).toList, ", ")
+      Text(tree.productIterator.map(toTextElem).tolist, ", ")
     val tpSuffix =
       if (ctx.settings.XprintTypes.value && tree.hasType)
         " | " ~ toText(tree.typeOpt)

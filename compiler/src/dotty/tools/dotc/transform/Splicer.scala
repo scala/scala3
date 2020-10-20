@@ -293,12 +293,12 @@ object Splicer {
     private def interpretArgs(argss: List[List[Tree]], fnType: Type)(using Env): List[Object] = {
       def interpretArgsGroup(args: List[Tree], argTypes: List[Type]): List[Object] =
         assert(args.size == argTypes.size)
-        val view =
-          for (arg, info) <- args.lazyZip(argTypes) yield
-            info match
-              case _: ExprType => () => interpretTree(arg) // by-name argument
-              case _ => interpretTree(arg) // by-value argument
-        view.toList
+        val view = args.zipped(argTypes).map((arg, info) =>
+          info match
+            case _: ExprType => () => interpretTree(arg) // by-name argument
+            case _ => interpretTree(arg) // by-value argument
+        )
+        view
 
       fnType.dealias match
         case fnType: MethodType if fnType.isErasedMethod => interpretArgs(argss, fnType.resType)
@@ -352,7 +352,7 @@ object Splicer {
 
       val name = fn.name.asTermName
       val method = getMethod(clazz, name, paramsSig(fn))
-      (args: List[Object]) => stopIfRuntimeException(method.invoke(inst, args: _*), method)
+      (args: List[Object]) => stopIfRuntimeException(method.invoke(inst, args.toSeq: _*), method)
     }
 
     private def interpretedStaticFieldAccess(sym: Symbol)(implicit env: Env): Object = {
@@ -366,8 +366,8 @@ object Splicer {
 
     private def interpretNew(fn: Symbol, args: => List[Object])(implicit env: Env): Object = {
       val clazz = loadClass(fn.owner.fullName.toString)
-      val constr = clazz.getConstructor(paramsSig(fn): _*)
-      constr.newInstance(args: _*).asInstanceOf[Object]
+      val constr = clazz.getConstructor(paramsSig(fn).toSeq: _*)
+      constr.newInstance(args.toSeq: _*).asInstanceOf[Object]
     }
 
     private def unexpectedTree(tree: Tree)(implicit env: Env): Object =
@@ -404,7 +404,7 @@ object Splicer {
       }
 
     private def getMethod(clazz: Class[?], name: Name, paramClasses: List[Class[?]]): JLRMethod =
-      try clazz.getMethod(name.toString, paramClasses: _*)
+      try clazz.getMethod(name.toString, paramClasses.toSeq: _*)
       catch {
         case _: NoSuchMethodException =>
           val msg = em"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)"

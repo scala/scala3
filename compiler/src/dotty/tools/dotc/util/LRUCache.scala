@@ -83,7 +83,7 @@ class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
 
   override def toString: String = {
     val assocs = keysIterator
-      .toList  // double reverse so that lookups do not perturb order
+      .tolist  // double reverse so that lookups do not perturb order
       .reverse
       .map(key => s"$key -> ${lookup(key)}")
       .reverse

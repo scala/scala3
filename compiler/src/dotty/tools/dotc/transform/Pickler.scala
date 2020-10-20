@@ -51,7 +51,7 @@ class Pickler extends Phase {
   private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] = {
     val companionModuleClasses =
       clss.filterNot(_.is(Module)).map(_.linkedClass).filterNot(_.isAbsent())
-    clss.filterNot(companionModuleClasses.contains)
+    clss.filterNot(companionModuleClasses.contains(_))
   }
 
   override def run(using Context): Unit = {
@@ -68,7 +68,7 @@ class Pickler extends Phase {
         picklers(cls) = pickler
       val treePkl = pickler.treePkl
       treePkl.pickle(tree :: Nil)
-      val positionWarnings = new mutable.ListBuffer[String]()
+      val positionWarnings = List.Buffer[String]()
       val pickledF = inContext(ctx.fresh) {
         Future {
           treePkl.compactify()
@@ -83,7 +83,7 @@ class Pickler extends Phase {
           val pickled = pickler.assembleParts()
 
           def rawBytes = // not needed right now, but useful to print raw format.
-            pickled.iterator.grouped(10).toList.zipWithIndex.map {
+            pickled.iterator.grouped(10).tolist.zipWithIndex.map {
               case (row, i) => s"${i}0: ${row.mkString(" ")}"
             }
 

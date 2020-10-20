@@ -57,7 +57,7 @@ object Inferencing {
   def instantiateSelected(tp: Type, tvars: List[Type])(using Context): Unit =
     if (tvars.nonEmpty)
       IsFullyDefinedAccumulator(
-        ForceDegree.Value(tvars.contains, IfBottom.flip), minimizeSelected = true
+        ForceDegree.Value(tvars.contains(_), IfBottom.flip), minimizeSelected = true
       ).process(tp)
 
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
@@ -78,7 +78,7 @@ object Inferencing {
       }
     }
     val depVars = dependentVars(Set(), tp)
-    if (depVars.nonEmpty) instantiateSelected(tp, depVars.toList)
+    if (depVars.nonEmpty) instantiateSelected(tp, depVars.tolist)
   }
 
   /** The accumulator which forces type variables using the policy encoded in `force`
@@ -350,7 +350,7 @@ object Inferencing {
   def maximizeType(tp: Type, span: Span, fromScala2x: Boolean)(using Context): List[Symbol] = {
     Stats.record("maximizeType")
     val vs = variances(tp)
-    val patternBound = new mutable.ListBuffer[Symbol]
+    val patternBound = List.Buffer[Symbol]()
     vs foreachBinding { (tvar, v) =>
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
@@ -367,7 +367,7 @@ object Inferencing {
         }
       }
     }
-    val res = patternBound.toList
+    val res = patternBound.tolist
     // We add the created symbols to GADT constraint here.
     if (res.nonEmpty) ctx.gadt.addToConstraint(res)
     res
@@ -478,7 +478,7 @@ trait Inferencing { this: Typer =>
     if ((ownedVars ne locked) && !ownedVars.isEmpty) {
       val qualifying = ownedVars -- locked
       if (!qualifying.isEmpty) {
-        typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
+        typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.tolist}%, %, qualifying = ${qualifying.tolist}%, %, previous = ${locked.tolist}%, % / ${state.constraint}")
         val resultAlreadyConstrained =
           tree.isInstanceOf[Apply] || tree.tpe.isInstanceOf[MethodOrPoly]
         if (!resultAlreadyConstrained)
@@ -510,8 +510,8 @@ trait Inferencing { this: Typer =>
         //     val y: List[List[String]] = List(List(1))
         val hasUnreportedErrors = state.reporter.hasUnreportedErrors
         def constraint = state.constraint
-        type InstantiateQueue = mutable.ListBuffer[(TypeVar, Boolean)]
-        val toInstantiate = new InstantiateQueue
+        type InstantiateQueue = List.Buffer[(TypeVar, Boolean)]
+        val toInstantiate = List.Buffer[(TypeVar, Boolean)]()
         for (tvar <- qualifying)
           if (!tvar.isInstantiated && constraint.contains(tvar)) {
             // Needs to be checked again, since previous interpolations could already have
@@ -560,7 +560,7 @@ trait Inferencing { this: Typer =>
          */
         def doInstantiate(buf: InstantiateQueue): Unit =
           if buf.nonEmpty then
-            val suspended = new InstantiateQueue
+            val suspended = List.Buffer[(TypeVar, Boolean)]()
             while buf.nonEmpty do
               val first @ (tvar, fromBelow) = buf.head
               buf.dropInPlace(1)

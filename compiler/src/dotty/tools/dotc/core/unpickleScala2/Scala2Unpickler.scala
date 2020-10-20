@@ -25,7 +25,6 @@ import Decorators._
 import TypeApplications._
 import classfile.ClassfileParser
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
 import reporting._
 
@@ -149,7 +148,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
 
   /** A mapping from method types to the parameters used in constructing them */
-  private val paramsOfMethodType = new java.util.IdentityHashMap[MethodType, List[Symbol]]
+  private val paramsOfMethodType = new mutable.HashMap[MethodType, List[Symbol]]
 
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(using Context): Nothing = {
     val ex = new BadSignature(
@@ -346,7 +345,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (denot.exists && !denot1.exists) { // !!!DEBUG
           val alts = denot.alternatives map (d => s"$d:${d.info}/${d.signature}")
           System.err.println(s"!!! disambiguation failure: $alts")
-          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => s"$d:${d.info}/${d.signature}")
+          val members = denot.alternatives.head.symbol.owner.info.decls.tolist map (d => s"$d:${d.info}/${d.signature}")
           System.err.println(s"!!! all members: $members")
         }
         if (tag == EXTref) sym else sym.moduleClass
@@ -397,7 +396,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           nestedObjectSymbol orElse {
             // (4) Call the mirror's "missing" hook.
             adjust(missingHook(owner, name)) orElse {
-              // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
+              // println(owner.info.decls.tolist.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
               System.err.println(i"***** missing reference, looking for ${name.debugString} in $owner")
@@ -543,9 +542,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def paramssOfType(tp: Type): List[List[Symbol]] = tp match
       case TempPolyType(tparams, restpe) => tparams :: paramssOfType(restpe)
       case mt: MethodType =>
-        val params = paramsOfMethodType.remove(mt)
+        val paramsOpt = paramsOfMethodType.remove(mt)
         val rest = paramssOfType(mt.resType)
-        if params == null then rest else params :: rest
+        paramsOpt match
+          case Some(params) => params :: rest
+          case None => rest
       case _ => Nil
 
     def complete(denot: SymDenotation)(using Context): Unit = try {
@@ -778,7 +779,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         else {
           def subst(info: Type, rt: RecType) = info.substThis(clazz.asClass, rt.recThis)
           def addRefinement(tp: Type, sym: Symbol) = RefinedType(tp, sym.name, sym.info)
-          val refined = decls.toList.foldLeft(parent)(addRefinement)
+          val refined = decls.tolist.foldLeft(parent)(addRefinement)
           RecType.closeOver(rt => refined.substThis(clazz, rt.recThis))
         }
       case CLASSINFOtpe =>
@@ -934,7 +935,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   protected def readAnnotationContents(end: Int)(using Context): Tree = {
     val atp = readTypeRef()
     val args = {
-      val t = new ListBuffer[Tree]
+      val t = List.Buffer[Tree]()
 
       while (readIndex != end) {
         val argref = readNat()
@@ -947,7 +948,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           else readAnnotArg(argref)
         }
       }
-      t.toList
+      t.tolist
     }
     resolveConstructor(atp, args)
   }

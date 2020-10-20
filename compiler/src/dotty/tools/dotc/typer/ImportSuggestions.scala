@@ -96,7 +96,6 @@ trait ImportSuggestions:
       nested
         .map(mbr => TermRef(ref, mbr.asTerm))
         .flatMap(rootsIn)
-        .toList
 
     def rootsIn(ref: TermRef)(using Context): List[TermRef] =
       if seen.contains(ref) then Nil
@@ -234,7 +233,7 @@ trait ImportSuggestions:
 
       def extensionImports = pt match
         case ViewProto(argType, SelectionProto(name: TermName, _, _, _)) =>
-          roots.flatMap(extensionMethod(_, name, argType))
+          roots.flatMapIterable(extensionMethod(_, name, argType))
         case _ =>
           Nil
 
@@ -281,7 +280,7 @@ trait ImportSuggestions:
   extension (refs: List[TermRef]) def best(n: Int)(using Context): List[TermRef] =
     val top = new Array[TermRef](n)
     var filled = 0
-    val rest = new mutable.ListBuffer[TermRef]
+    val rest = List.Buffer[TermRef]()
     val noImplicitsCtx = ctx.retractMode(Mode.ImplicitsEnabled)
     for ref <- refs do
       var i = 0
@@ -300,9 +299,9 @@ trait ImportSuggestions:
         rest += ref
     end for
     val remaining =
-      if filled < n && rest.nonEmpty then rest.toList.best(n - filled)
+      if filled < n && rest.nonEmpty then rest.tolist.best(n - filled)
       else Nil
-    top.take(filled).toList ++ remaining
+    top.take(filled).tolist ++ remaining
   //end best  TODO: re-enable with new syntax
 
   /** An addendum to an error message where the error might be fixed

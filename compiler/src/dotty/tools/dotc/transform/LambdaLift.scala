@@ -59,7 +59,7 @@ object LambdaLift {
     private val outerParam = new HashMap[Symbol, Symbol]
 
     /** Buffers for lifted out classes and methods, indexed by owner */
-    val liftedDefs: mutable.HashMap[Symbol, mutable.ListBuffer[Tree]] = new HashMap
+    val liftedDefs: mutable.HashMap[Symbol, List.Buffer[Tree]] = new HashMap
 
     /** A flag to indicate whether new free variables have been found */
     private var changedFreeVars: Boolean = _
@@ -74,7 +74,7 @@ object LambdaLift {
       f.getOrElseUpdate(sym, newSymSet)
 
     def freeVars(sym: Symbol): List[Symbol] = free get sym match {
-      case Some(set) => set.toList
+      case Some(set) => set.tolist
       case None => Nil
     }
 
@@ -245,7 +245,7 @@ object LambdaLift {
           case tree: TypeDef =>
             if (sym.owner.isTerm) liftedOwner(sym) = sym.topLevelClass.owner
           case tree: Template =>
-            liftedDefs(tree.symbol.owner) = new mutable.ListBuffer
+            liftedDefs(tree.symbol.owner) = List.Buffer()
           case _ =>
         }
         traverseChildren(tree)
@@ -307,9 +307,9 @@ object LambdaLift {
     private def generateProxies()(using Context): Unit =
       for ((owner, freeValues) <- free.iterator) {
         val newFlags = Synthetic | (if (owner.isClass) ParamAccessor | Private else Param)
-        report.debuglog(i"free var proxy of ${owner.showLocated}: ${freeValues.toList}%, %")
+        report.debuglog(i"free var proxy of ${owner.showLocated}: ${freeValues.tolist}%, %")
         proxyMap(owner) = {
-          for (fv <- freeValues.toList) yield {
+          for (fv <- freeValues.tolist) yield {
             val proxyName = newName(fv)
             val proxy =
               newSymbol(owner, proxyName.asTermName, newFlags, fv.info, coord = fv.coord)
@@ -393,7 +393,7 @@ object LambdaLift {
         if (!enclosure.exists) {
           def enclosures(encl: Symbol): List[Symbol] =
             if (encl.exists) encl :: enclosures(liftedEnclosure(encl)) else Nil
-          throw new IllegalArgumentException(i"Could not find proxy for ${sym.showDcl} in ${sym.ownersIterator.toList}, encl = $currentEnclosure, owners = ${currentEnclosure.ownersIterator.toList}%, %; enclosures = ${enclosures(currentEnclosure)}%, %")
+          throw new IllegalArgumentException(i"Could not find proxy for ${sym.showDcl} in ${sym.ownersIterator.tolist}, encl = $currentEnclosure, owners = ${currentEnclosure.ownersIterator.tolist}%, %; enclosures = ${enclosures(currentEnclosure)}%, %")
         }
         report.debuglog(i"searching for $sym(${sym.owner}) in $enclosure")
         proxyMap get enclosure match {
@@ -430,7 +430,7 @@ object LambdaLift {
 
     def addFreeArgs(sym: Symbol, args: List[Tree])(using Context): List[Tree] =
       free get sym match {
-        case Some(fvs) => fvs.toList.map(proxyRef(_)) ++ args
+        case Some(fvs) => fvs.tolist.map(proxyRef(_)) ++ args
         case _ => args
       }
 
@@ -449,7 +449,7 @@ object LambdaLift {
           val classProxies = fvs.map(proxyOf(sym.owner, _))
           val constrProxies = fvs.map(proxyOf(sym, _))
           report.debuglog(i"copy params ${constrProxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")
-          seq(classProxies.lazyZip(constrProxies).map(proxyInit), rhs)
+          seq(classProxies.zipped(constrProxies).map(proxyInit), rhs)
         }
 
         tree match {

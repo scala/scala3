@@ -5,7 +5,7 @@ import dotty.tools.dotc.semanticdb.internal._
 import scala.annotation.internal.sharable
 
 object TextDocument {
-  val defaultInstance: TextDocument = TextDocument(Schema.LEGACY, Language.UNKNOWN_LANGUAGE, "", "", "", Nil, Nil)
+  val defaultInstance: TextDocument = TextDocument(Schema.LEGACY, Language.UNKNOWN_LANGUAGE, "", "", "", ScalaNil, ScalaNil)
 }
 
 final case class TextDocument(

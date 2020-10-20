@@ -8,13 +8,13 @@ import Diagnostic._
 
 /** A re-usable Reporter used in Contexts#test */
 class ExploringReporter extends StoreReporter(null):
-  infos = new mutable.ListBuffer[Diagnostic]
+  infos = List.Buffer[Diagnostic]()
 
   override def hasUnreportedErrors: Boolean =
     infos.exists(_.isInstanceOf[Error])
 
   override def removeBufferedMessages(using Context): List[Diagnostic] =
-    try infos.toList finally reset()
+    try infos.tolist finally reset()
 
   def reset(): Unit = infos.clear()
 

@@ -180,7 +180,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
       }
 
-      Match(index, (cases :+ generateIOBECase(index)).toList)
+      Match(index, (cases :+ generateIOBECase(index)).tolist)
     }
 
     /** The class
@@ -205,7 +205,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         CaseDef(Literal(Constant(i)), EmptyTree, Literal(Constant(accessors(i).name.toString)))
       }
 
-      Match(index, (cases :+ generateIOBECase(index)).toList)
+      Match(index, (cases :+ generateIOBECase(index)).tolist)
     }
 
     def generateIOBECase(index: Tree): CaseDef = {

@@ -18,7 +18,7 @@ import java.net.URLClassLoader
 import java.util.UUID
 
 import scala.collection.immutable
-import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
+import scala.collection.mutable.ArrayBuffer
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.{AbstractFile, PlainFile, ZipArchive}
@@ -45,7 +45,7 @@ object ClassfileParser {
         if (tpe1 eq tpe) tp else tp.copy(tpe = tpe1)
       case tp @ TempClassInfoType(parents, _, _) =>
         val parents1 = parents.mapConserve(this)
-        if (parents eq parents1) tp else tp.copy(parentTypes = parents1)
+        if (parents eqLst parents1) tp else tp.copy(parentTypes = parents1)
       case _ =>
         mapOver(tp)
     }
@@ -151,7 +151,7 @@ class ClassfileParser(
         else
           pool.getSuperClass(in.nextChar).typeRef
       val ifaceCount = in.nextChar
-      var ifaces = for (i <- (0 until ifaceCount).toList) yield pool.getSuperClass(in.nextChar).typeRef
+      var ifaces = for (i <- (0 until ifaceCount).tolist) yield pool.getSuperClass(in.nextChar).typeRef
         // Dotty deviation: was
         //    var ifaces = for (i <- List.range(0, ifaceCount)) ...
         // This does not typecheck because the type parameter of List is now lower-bounded by Int | Char.
@@ -345,7 +345,7 @@ class ClassfileParser(
             case tp: TypeRef =>
               if (sig(index) == '<') {
                 accept('<')
-                val argsBuf = if (skiptvs) null else new ListBuffer[Type]
+                val argsBuf = if (skiptvs) null else List.Buffer[Type]()
                 while (sig(index) != '>') {
                   val arg = sig(index) match {
                     case variance @ ('+' | '-' | '*') =>
@@ -365,7 +365,7 @@ class ClassfileParser(
                   if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                if (skiptvs) tp else tp.appliedTo(argsBuf.toList)
+                if (skiptvs) tp else tp.appliedTo(argsBuf.tolist)
               }
               else tp
             case tp =>
@@ -411,10 +411,10 @@ class ClassfileParser(
             true
           end isRepeatedParam
 
-          val paramtypes = new ListBuffer[Type]()
-          var paramnames = new ListBuffer[TermName]()
+          val paramtypes = List.Buffer[Type]()
+          var paramnames = List.Buffer[TermName]()
           while !isMethodEnd(index) do
-            paramnames += nme.syntheticParamName(paramtypes.length)
+            paramnames += nme.syntheticParamName(paramtypes.size)
             paramtypes += {
               if isRepeatedParam(index) then
                 index += 1
@@ -427,7 +427,7 @@ class ClassfileParser(
 
           index += 1
           val restype = sig2type(tparams, skiptvs)
-          JavaMethodType(paramnames.toList, paramtypes.toList, restype)
+          JavaMethodType(paramnames.tolist, paramtypes.tolist, restype)
         case 'T' =>
           val n = subName(';'.==).toTypeName
           index += 1
@@ -440,7 +440,7 @@ class ClassfileParser(
     // sig2type(tparams, skiptvs)
 
     def sig2typeBounds(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean)(using Context): Type = {
-      val ts = new ListBuffer[Type]
+      val ts = List.Buffer[Type]()
       while (sig(index) == ':') {
         index += 1
         if (sig(index) != ':') // guard against empty class bound
@@ -468,7 +468,7 @@ class ClassfileParser(
       }
     }
 
-    val newTParams = new ListBuffer[Symbol]()
+    val newTParams = List.Buffer[Symbol]()
     if (sig(index) == '<') {
       assert(owner != null)
       index += 1
@@ -485,16 +485,16 @@ class ClassfileParser(
       }
       index += 1
     }
-    val ownTypeParams = newTParams.toList.asInstanceOf[List[TypeSymbol]]
+    val ownTypeParams = newTParams.tolist.asInstanceOf[List[TypeSymbol]]
     val tpe =
       if ((owner == null) || !owner.isClass)
         sig2type(tparams, skiptvs = false)
       else {
         classTParams = tparams
-        val parents = new ListBuffer[Type]()
+        val parents = List.Buffer[Type]()
         while (index < end)
           parents += sig2type(tparams, skiptvs = false) // here the variance doesn't matter
-        TempClassInfoType(parents.toList, instanceScope, owner)
+        TempClassInfoType(parents.tolist, instanceScope, owner)
       }
     if (ownTypeParams.isEmpty) tpe else TempPolyType(ownTypeParams, tpe)
   }
@@ -543,7 +543,7 @@ class ClassfileParser(
         if (hasError) None
         else if (skip) None
         else {
-          val elems = arr.toList
+          val elems = arr.tolist
           Some(untpd.JavaSeqLiteral(elems, TypeTree()))
         }
       case ANNOTATION_TAG =>
@@ -577,7 +577,7 @@ class ClassfileParser(
       case _ =>
 
     val nargs = in.nextChar
-    val argbuf = new ListBuffer[untpd.Tree]
+    val argbuf = List.Buffer[untpd.Tree]()
     var hasError = false
     for (i <- 0 until nargs) {
       val name = pool.getName(in.nextChar)
@@ -587,7 +587,7 @@ class ClassfileParser(
       }
     }
     if (hasError || skip) None
-    else Some(ClassfileAnnotation(attrType, argbuf.toList))
+    else Some(ClassfileAnnotation(attrType, argbuf.tolist))
   }
   catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
@@ -703,7 +703,7 @@ class ClassfileParser(
 
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
-      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol)
+      val attrs = classInfo.decls.tolist.filter(sym => sym.isTerm && sym != denot.symbol)
       val paramNames = attrs.map(_.name.asTermName)
       val paramTypes = attrs.map(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)
@@ -773,7 +773,7 @@ class ClassfileParser(
 
         if (allowed != "always") {
           failUnless(allowed != "never")
-          val allowedList = allowed.split(java.io.File.pathSeparator).toList
+          val allowedList = allowed.split(java.io.File.pathSeparator).tolist
           val file = classRoot.symbol.associatedFile
           // Using `.toString.contains` isn't great, but it's good enough for a debug flag.
           failUnless(file == null || allowedList.exists(path => file.toString.contains(path)))
@@ -806,7 +806,7 @@ class ClassfileParser(
             assert(stag == STRING_TAG, stag)
             in.nextChar.toInt
           }
-        pool.getBytes(entries.toList)
+        pool.getBytes(entries.tolist)
       }
 
       if (scan(tpnme.TASTYATTR)) {

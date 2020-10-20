@@ -62,7 +62,7 @@ class CheckStatic extends MiniPhase {
 
   override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree =
     if (tree.symbol.hasAnnotation(defn.ScalaStaticAnnot)) {
-      val symbolWhitelist = tree.symbol.ownersIterator.flatMap(x => if (x.is(Flags.Module)) List(x, x.companionModule) else List(x)).toSet
+      val symbolWhitelist = tree.symbol.ownersIterator.flatMap(x => if (x.is(Flags.Module)) Seq(x, x.companionModule) else Seq(x)).toSet
       def isSafeQual(t: Tree): Boolean = // follow the desugared paths created by typer
         t match {
           case t: This => true

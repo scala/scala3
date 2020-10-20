@@ -398,7 +398,7 @@ object Comments {
       val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
 
       val raw = ctx.docCtx.flatMap(_.docstring(sym).map(_.raw)).getOrElse("")
-      defs(sym) ++= defines(raw).map {
+      defs(sym) ++= defines(raw).toSeq.map {
         str => {
           val start = skipWhitespace(str, "@define".length)
           val (key, value) = str.splitAt(skipVariable(str, start))
@@ -427,7 +427,7 @@ object Comments {
           if (site.flags.is(Flags.Module)) site :: site.info.baseClasses
           else site.info.baseClasses
 
-        searchList collectFirst { case x if defs(x) contains vble => defs(x)(vble) } match {
+        searchList.toSeq collectFirst { case x if defs(x) contains vble => defs(x)(vble) } match {
           case Some(str) if str startsWith "$" => lookupVariable(str.tail, site)
           case res                             => res orElse lookupVariable(vble, site.owner)
         }
@@ -446,7 +446,7 @@ object Comments {
      */
     private def allInheritedOverriddenSymbols(sym: Symbol)(using Context): List[Symbol] =
       if (!sym.owner.isClass) Nil
-      else sym.allOverriddenSymbols.toList.filter(_ != NoSymbol) //TODO: could also be `sym.owner.allOverrid..`
+      else sym.allOverriddenSymbols.tolist.filter(_ != NoSymbol) //TODO: could also be `sym.owner.allOverrid..`
       //else sym.owner.ancestors map (sym overriddenSymbol _) filter (_ != NoSymbol)
 
     class ExpansionLimitExceeded(str: String) extends Exception

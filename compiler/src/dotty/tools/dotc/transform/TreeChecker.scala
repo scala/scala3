@@ -123,7 +123,7 @@ class TreeChecker extends Phase with SymTransformer {
   private def previousPhases(phases: List[Phase])(using Context): List[Phase] = phases match {
     case (phase: MegaPhase) :: phases1 =>
       val subPhases = phase.miniPhases
-      val previousSubPhases = previousPhases(subPhases.toList)
+      val previousSubPhases = previousPhases(subPhases.tolist)
       if (previousSubPhases.length == subPhases.length) previousSubPhases ::: previousPhases(phases1)
       else previousSubPhases
     case phase :: phases1 if phase ne ctx.phase =>
@@ -147,7 +147,7 @@ class TreeChecker extends Phase with SymTransformer {
         .setReporter(new ThrowingReporter(ctx.reporter))
 
     val checker = inContext(ctx) {
-      new Checker(previousPhases(phasesToRun.toList))
+      new Checker(previousPhases(phasesToRun.tolist).toSeq)
     }
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(using checkingCtx)
     catch {
@@ -198,7 +198,7 @@ class TreeChecker extends Phase with SymTransformer {
         }
       }
       val res = op
-      nowDefinedSyms --= locally
+      nowDefinedSyms --= locally.iterator
       res
     }
 
@@ -214,9 +214,9 @@ class TreeChecker extends Phase with SymTransformer {
           i" Pattern bound symbol $sym has incorrect flags: " + sym.flagsString + ", line " + sym.srcPos.line
         )
       }
-      patBoundSyms ++= syms
+      patBoundSyms ++= syms.iterator
       val res = op
-      patBoundSyms --= syms
+      patBoundSyms --= syms.iterator
       res
     }
 
@@ -424,7 +424,7 @@ class TreeChecker extends Phase with SymTransformer {
         ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner)
       assert(ownerMatches(tree.symbol.owner, ctx.owner),
         i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
-        i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
+        i"owner chain = ${tree.symbol.ownersIterator.tolist}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).tolist}%, %")
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
@@ -441,14 +441,14 @@ class TreeChecker extends Phase with SymTransformer {
         !x.name.is(DocArtifactName) &&
         !(ctx.phase.id >= genBCodePhase.id && x.name == str.MODULE_INSTANCE_FIELD.toTermName)
 
-      val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
+      val decls   = cls.classInfo.decls.tolist.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
 
-      val symbolsNotDefined = decls -- defined - constr.symbol
+      val symbolsNotDefined = decls -- defined.iterator - constr.symbol
 
       assert(symbolsNotDefined.isEmpty,
-          i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
-          i"expected: ${decls.toList}%, %\n" +
+          i" $cls tree does not define members: ${symbolsNotDefined.tolist}%, %\n" +
+          i"expected: ${decls.tolist}%, %\n" +
           i"defined: ${defined}%, %")
 
       super.typedClassDef(cdef, cls)
@@ -456,7 +456,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
       def defParamss =
-        (ddef.tparams :: ddef.vparamss).filter(!_.isEmpty).map(_.map(_.symbol))
+        (ddef.tparams :: (ddef.vparamss: List[List[untpd.MemberDef]])).filter(!_.isEmpty).map(_.map(_.symbol))
       def layout(symss: List[List[Symbol]]): String =
         symss.map(syms => i"($syms%, %)").mkString
       assert(ctx.erasedTypes || sym.rawParamss == defParamss,
@@ -550,7 +550,7 @@ class TreeChecker extends Phase with SymTransformer {
       def infoStr(tp: Type) = tp match {
         case tp: TypeRef =>
           val sym = tp.symbol
-          i"${sym.showLocated} with ${tp.designator}, flags = ${sym.flagsString}, underlying = ${tp.underlyingIterator.toList}%, %"
+          i"${sym.showLocated} with ${tp.designator}, flags = ${sym.flagsString}, underlying = ${tp.underlyingIterator.tolist}%, %"
         case _ =>
           "??"
       }

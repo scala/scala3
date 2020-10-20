@@ -15,7 +15,7 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
   def foreach(f: Elem => Unit): Unit
   def exists[E >: Elem <: AnyRef](p: E => Boolean): Boolean
   def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A
-  def toList: List[Elem]
+  def tolist: List[Elem]
   def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
     if (this.size == 0) that
     else if (that.size == 0) this
@@ -26,7 +26,7 @@ abstract class SimpleIdentitySet[+Elem <: AnyRef] {
       ((SimpleIdentitySet.empty: SimpleIdentitySet[E]) /: this) { (s, x) =>
         if (that.contains(x)) s else s + x
       }
-  override def toString: String = toList.mkString("(", ", ", ")")
+  override def toString: String = tolist.mkString("(", ", ", ")")
 }
 
 object SimpleIdentitySet {
@@ -40,7 +40,7 @@ object SimpleIdentitySet {
     def foreach(f: Nothing => Unit): Unit = ()
     def exists[E <: AnyRef](p: E => Boolean): Boolean = false
     def /: [A, E <: AnyRef](z: A)(f: (A, E) => A): A = z
-    def toList = Nil
+    def tolist = Nil
   }
 
   private class Set1[+Elem <: AnyRef](x0: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -55,7 +55,7 @@ object SimpleIdentitySet {
       p(x0.asInstanceOf[E])
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(z, x0.asInstanceOf[E])
-    def toList = x0.asInstanceOf[Elem] :: Nil
+    def tolist = x0.asInstanceOf[Elem] :: Nil
   }
 
   private class Set2[+Elem <: AnyRef](x0: AnyRef, x1: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -72,7 +72,7 @@ object SimpleIdentitySet {
       p(x0.asInstanceOf[E]) || p(x1.asInstanceOf[E])
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E])
-    def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: Nil
+    def tolist = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: Nil
   }
 
   private class Set3[+Elem <: AnyRef](x0: AnyRef, x1: AnyRef, x2: AnyRef) extends SimpleIdentitySet[Elem] {
@@ -100,7 +100,7 @@ object SimpleIdentitySet {
       p(x0.asInstanceOf[E]) || p(x1.asInstanceOf[E]) || p(x2.asInstanceOf[E])
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       f(f(f(z, x0.asInstanceOf[E]), x1.asInstanceOf[E]), x2.asInstanceOf[E])
-    def toList = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: x2.asInstanceOf[Elem] :: Nil
+    def tolist = x0.asInstanceOf[Elem] :: x1.asInstanceOf[Elem] :: x2.asInstanceOf[Elem] :: Nil
   }
 
   private class SetN[+Elem <: AnyRef](val xs: Array[AnyRef]) extends SimpleIdentitySet[Elem] {
@@ -142,10 +142,10 @@ object SimpleIdentitySet {
       xs.asInstanceOf[Array[E]].exists(p)
     def /: [A, E >: Elem <: AnyRef](z: A)(f: (A, E) => A): A =
       xs.asInstanceOf[Array[E]].foldLeft(z)(f)
-    def toList: List[Elem] = {
-      val buf = new mutable.ListBuffer[Elem]
+    def tolist: List[Elem] = {
+      val buf = List.Buffer[Elem]()
       foreach(buf += _)
-      buf.toList
+      buf.tolist
     }
     override def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
       that match {

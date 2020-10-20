@@ -136,12 +136,12 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       (imeth.flags | Final) &~ (Override | Protected | AbsOverride),
       fullyParameterizedType(imeth.info, imeth.owner.asClass),
       privateWithin = imeth.privateWithin, coord = imeth.coord)
-    atPhase(thisPhase)(extensionMeth.addAnnotations(imeth.annotations))
+    atPhase(thisPhase)(extensionMeth.addAnnotations(imeth.annotations.toSeq))
       // need to change phase to add tailrec annotation which gets removed from original method in the same phase.
     extensionMeth
   }
 
-  private val extensionDefs = MutableSymbolMap[mutable.ListBuffer[Tree]]()
+  private val extensionDefs = MutableSymbolMap[List.Buffer[Tree]]()
   // todo: check that when transformation finished map is empty
 
   override def transformTemplate(tree: tpd.Template)(using Context): tpd.Tree =
@@ -152,8 +152,8 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       tree
     else if ctx.owner.isStaticOwner then
       extensionDefs.remove(tree.symbol.owner) match
-        case defns: mutable.ListBuffer[Tree] if defns.nonEmpty =>
-          cpy.Template(tree)(body = tree.body ++ defns.map(transformFollowing(_)))
+        case defns: List.Buffer[Tree] if defns.nonEmpty =>
+          cpy.Template(tree)(body = tree.body ++ defns.tolist.map(transformFollowing(_)))
         case _ =>
           tree
     else tree
@@ -166,7 +166,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
       val extensionMeth = extensionMethod(origMeth)
       report.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
-      val store = extensionDefs.getOrElseUpdate(staticClass, new mutable.ListBuffer[Tree])
+      val store = extensionDefs.getOrElseUpdate(staticClass, List.Buffer[Tree]())
       store += fullyParameterizedDef(extensionMeth, tree)
       cpy.DefDef(tree)(rhs = forwarder(extensionMeth, tree))
     }

@@ -151,7 +151,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
   private val packageToModuleBases: Map[String, Seq[Path]] = {
     val ps = Files.newDirectoryStream(dir).iterator().asScala
     def lookup(pack: Path): Seq[Path] =
-      Files.list(pack).iterator().asScala.map(l => if (Files.isSymbolicLink(l)) Files.readSymbolicLink(l) else l).toList
+      Files.list(pack).iterator().asScala.map(l => if (Files.isSymbolicLink(l)) Files.readSymbolicLink(l) else l).toSeq
     ps.map(p => (p.toString.stripPrefix("/packages/"), lookup(p))).toMap
   }
 
@@ -167,29 +167,29 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath with No
   }
 
   private[dotty] def classes(inPackage: PackageName): Seq[ClassFileEntry] =
-    if (inPackage.isRoot) Nil
+    if (inPackage.isRoot) ScalaNil
     else
-      packageToModuleBases.getOrElse(inPackage.dottedString, Nil).flatMap(x =>
+      packageToModuleBases.getOrElse(inPackage.dottedString, ScalaNil).flatMap(x =>
         Files.list(x.resolve(inPackage.dirPathTrailingSlash)).iterator().asScala.filter(_.getFileName.toString.endsWith(".class"))).map(x =>
         ClassFileEntryImpl(new PlainFile(new dotty.tools.io.File(x)))).toVector
 
   override private[dotty] def list(inPackage: PackageName): ClassPathEntries =
-    if (inPackage.isRoot) ClassPathEntries(packages(inPackage), Nil)
+    if (inPackage.isRoot) ClassPathEntries(packages(inPackage), ScalaNil)
     else ClassPathEntries(packages(inPackage), classes(inPackage))
 
   def asURLs: Seq[URL] = Seq(new URL("jrt:/"))
   // We don't yet have a scheme to represent the JDK modules in our `-classpath`.
   // java models them as entries in the new "module path", we'll probably need to follow this.
-  def asClassPathStrings: Seq[String] = Nil
+  def asClassPathStrings: Seq[String] = ScalaNil
 
   def findClassFile(className: String): Option[AbstractFile] =
     if (!className.contains(".")) None
     else {
       val inPackage = packageOf(className)
-      packageToModuleBases.getOrElse(inPackage, Nil).iterator.flatMap{x =>
+      packageToModuleBases.getOrElse(inPackage, ScalaNil).iterator.flatMap{x =>
         val file = x.resolve(FileUtils.dirPath(className) + ".class")
-        if (Files.exists(file)) new PlainFile(new dotty.tools.io.File(file)) :: Nil else Nil
-      }.take(1).toList.headOption
+        (if (Files.exists(file)) new PlainFile(new dotty.tools.io.File(file)) :: Nil else Nil).toSeq
+      }.take(1).tolist.headOption
     }
   private def packageOf(dottedClassName: String): String =
     dottedClassName.substring(0, dottedClassName.lastIndexOf("."))

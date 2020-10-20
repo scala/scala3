@@ -128,7 +128,7 @@ class FrontEnd extends Phase {
         if suspendedUnits.size == 1 then i"in ${suspendedUnits.head}."
         else i"""among
                 |
-                |  ${suspendedUnits.toList}%, %
+                |  ${suspendedUnits.tolist}%, %
                 |"""
       val enableXprintSuspensionHint =
         if ctx.settings.XprintSuspension.value then ""

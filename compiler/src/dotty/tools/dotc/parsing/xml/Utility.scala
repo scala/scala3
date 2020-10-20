@@ -35,7 +35,7 @@ object Utility {
   def parseAttributeValue[T](value: String, text: String => T, entityRef: String => T): List[T] = {
     val sb  = new StringBuilder
     var rfb: StringBuilder = null
-    val nb = new mutable.ListBuffer[T]()
+    val nb = List.Buffer[T]()
 
     val it = value.iterator
     while (it.hasNext) {
@@ -75,7 +75,7 @@ object Utility {
     if (!sb.isEmpty) // flush buffer
       nb += text(sb.toString())
 
-    nb.toList
+    nb.tolist
   }
 
   /**

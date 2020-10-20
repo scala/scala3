@@ -34,7 +34,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   //val site = root.thisType
 
   private var toBeRemoved = immutable.Set[Symbol]()
-  private val bridges = mutable.ListBuffer[Tree]()
+  private val bridges = List.Buffer[Tree]()
   private val bridgesScope = newScope
   private val bridgeTarget = MutableSymbolMap[Symbol]()
 
@@ -118,5 +118,5 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
         addBridgeIfNeeded(opc.overriding, opc.overridden)
       opc.next()
     if bridges.isEmpty then stats
-    else stats.filterNot(stat => toBeRemoved contains stat.symbol) ::: bridges.toList
+    else stats.filterNot(stat => toBeRemoved contains stat.symbol) ::: bridges.tolist
 }

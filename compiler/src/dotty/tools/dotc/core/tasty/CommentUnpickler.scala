@@ -6,7 +6,7 @@ import core.Comments.Comment
 import util.Spans.Span
 import util.HashMap
 
-import dotty.tools.tasty.{TastyReader, TastyBuffer}
+import dotty.tools.tasty.TastyBuffer
 import TastyBuffer.Addr
 
 import java.nio.charset.StandardCharsets

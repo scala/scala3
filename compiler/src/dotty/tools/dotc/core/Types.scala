@@ -812,14 +812,14 @@ object Types {
         Set()
     }
 
-    def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(using Context): Seq[SingleDenotation] = {
-      val buf = mutable.ListBuffer[SingleDenotation]()
+    def memberDenots(keepOnly: NameFilter, f: (Name, List.Buffer[SingleDenotation]) => Unit)(using Context): List[SingleDenotation] = {
+      val buf = List.Buffer[SingleDenotation]()
       for (name <- memberNames(keepOnly)) f(name, buf)
-      buf.toList
+      buf.tolist
     }
 
     /** The set of abstract term members of this type. */
-    final def abstractTermMembers(using Context): Seq[SingleDenotation] = {
+    final def abstractTermMembers(using Context): List[SingleDenotation] = {
       record("abstractTermMembers")
       memberDenots(abstractTermNameFilter,
           (name, buf) => buf ++= nonPrivateMember(name).altsWith(_.is(Deferred)))
@@ -839,35 +839,35 @@ object Types {
      * @return the set of methods that are abstract and do not match any of [[java.lang.Object]]
      *
      */
-    final def possibleSamMethods(using Context): Seq[SingleDenotation] = {
+    final def possibleSamMethods(using Context): List[SingleDenotation] = {
       record("possibleSamMethods")
-      abstractTermMembers.toList.filterConserve(m =>
+      abstractTermMembers.filterConserve(m =>
         !m.symbol.matchingMember(defn.ObjectType).exists && !m.symbol.isSuperAccessor)
     }
 
     /** The set of abstract type members of this type. */
-    final def abstractTypeMembers(using Context): Seq[SingleDenotation] = {
+    final def abstractTypeMembers(using Context): List[SingleDenotation] = {
       record("abstractTypeMembers")
       memberDenots(abstractTypeNameFilter,
           (name, buf) => buf += nonPrivateMember(name).asSingleDenotation)
     }
 
     /** The set of abstract type members of this type. */
-    final def nonClassTypeMembers(using Context): Seq[SingleDenotation] = {
+    final def nonClassTypeMembers(using Context): List[SingleDenotation] = {
       record("nonClassTypeMembers")
       memberDenots(nonClassTypeNameFilter,
           (name, buf) => buf += member(name).asSingleDenotation)
     }
 
     /** The set of type alias members of this type */
-    final def typeAliasMembers(using Context): Seq[SingleDenotation] = {
+    final def typeAliasMembers(using Context): List[SingleDenotation] = {
       record("typeAliasMembers")
       memberDenots(typeAliasNameFilter,
           (name, buf) => buf += member(name).asSingleDenotation)
     }
 
     /** The set of type members of this type */
-    final def typeMembers(using Context): Seq[SingleDenotation] = {
+    final def typeMembers(using Context): List[SingleDenotation] = {
       record("typeMembers")
       memberDenots(typeNameFilter,
           (name, buf) => buf += member(name).asSingleDenotation)
@@ -881,31 +881,31 @@ object Types {
       record("implicitMembers")
       memberDenots(implicitFilter,
           (name, buf) => buf ++= member(name).altsWith(_.isOneOf(GivenOrImplicitVal)))
-        .toList.map(d => TermRef(this, d.symbol.asTerm))
+        .map(d => TermRef(this, d.symbol.asTerm))
     }
 
     /** The set of member classes of this type */
-    final def memberClasses(using Context): Seq[SingleDenotation] = {
+    final def memberClasses(using Context): List[SingleDenotation] = {
       record("memberClasses")
       memberDenots(typeNameFilter,
         (name, buf) => buf ++= member(name).altsWith(x => x.isClass))
     }
 
-    final def fields(using Context): Seq[SingleDenotation] = {
+    final def fields(using Context): List[SingleDenotation] = {
       record("fields")
       memberDenots(fieldFilter,
         (name, buf) => buf ++= member(name).altsWith(x => !x.is(Method)))
     }
 
     /** The set of members of this type that have all of `required` flags but none of `excluded` flags set. */
-    final def membersBasedOnFlags(required: FlagSet, excluded: FlagSet)(using Context): Seq[SingleDenotation] = {
+    final def membersBasedOnFlags(required: FlagSet, excluded: FlagSet)(using Context): List[SingleDenotation] = {
       record("membersBasedOnFlags")
       memberDenots(takeAllFilter,
         (name, buf) => buf ++= memberBasedOnFlags(name, required, excluded).alternatives)
     }
 
     /** All members of this type. Warning: this can be expensive to compute! */
-    final def allMembers(using Context): Seq[SingleDenotation] = {
+    final def allMembers(using Context): List[SingleDenotation] = {
       record("allMembers")
       memberDenots(takeAllFilter, (name, buf) => buf ++= member(name).alternatives)
     }
@@ -3189,7 +3189,7 @@ object Types {
     type ThisName <: Name
     type PInfo <: Type
     type This <: LambdaType{type PInfo = self.PInfo}
-    type ParamRefType <: ParamRef
+    type ParamRefType >: Null <: ParamRef
 
     def paramNames: List[ThisName]
     def paramInfos: List[PInfo]
@@ -3205,10 +3205,10 @@ object Types {
     final def isTypeLambda: Boolean = isInstanceOf[TypeLambda]
     final def isHigherKinded: Boolean = isInstanceOf[TypeProxy]
 
-    private var myParamRefs: List[ParamRefType] = null
+    private var myParamRefs: List[ParamRefType] = nullList
 
     def paramRefs: List[ParamRefType] = {
-      if myParamRefs == null then
+      if myParamRefs eqLst nullList then
         def recur(paramNames: List[ThisName], i: Int): List[ParamRefType] =
           paramNames match
             case _ :: rest => newParamRef(i) :: recur(rest, i + 1)
@@ -3241,7 +3241,7 @@ object Types {
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,
                           paramInfos: List[PInfo] = this.paramInfos,
                           resType: Type = this.resType)(using Context): LambdaType =
-      if ((paramNames eq this.paramNames) && (paramInfos eq this.paramInfos) && (resType eq this.resType)) this
+      if ((paramNames eqLst this.paramNames) && (paramInfos eqLst this.paramInfos) && (resType eq this.resType)) this
       else newLikeThis(paramNames, paramInfos, resType)
 
     def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(using Context): This =
@@ -3440,7 +3440,7 @@ object Types {
 
     @sharable private val memoizedNames = util.HashMap[Int, List[N]]()
     def syntheticParamNames(n: Int): List[N] = synchronized {
-      memoizedNames.getOrElseUpdate(n, (0 until n).map(syntheticParamName).toList)
+      memoizedNames.getOrElseUpdate(n, (0 until n).map(syntheticParamName).tolist)
     }
 
     def apply(paramNames: List[N])(paramInfosExp: LT => List[PInfo], resultTypeExp: LT => Type)(using Context): LT
@@ -3551,7 +3551,7 @@ object Types {
     def newParamRef(n: Int): TypeParamRef = new TypeParamRefImpl(this, n)
 
     @threadUnsafe lazy val typeParams: List[LambdaParam] =
-      paramNames.indices.toList.map(new LambdaParam(this, _))
+      paramNames.indices.tolist.map(new LambdaParam(this, _))
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramInfos: List[TypeBounds], resType: Type)(using Context): Type =
       resType match {
@@ -4010,7 +4010,7 @@ object Types {
     def hasWildcardArg(using Context): Boolean = args.exists(isBounds)
 
     def derivedAppliedType(tycon: Type, args: List[Type])(using Context): Type =
-      if ((tycon eq this.tycon) && (args eq this.args)) this
+      if ((tycon eq this.tycon) && (args eqLst this.args)) this
       else tycon.appliedTo(args)
 
     override def computeHash(bs: Binders): Int = doHash(bs, tycon, args)
@@ -4057,7 +4057,7 @@ object Types {
 
     override def underlying(using Context): Type = {
       val infos = binder.paramInfos
-      if (infos == null) NoType // this can happen if the referenced generic type is not initialized yet
+      if (infos.asInstanceOf[AnyRef] == null) NoType // this can happen if the referenced generic type is not initialized yet
       else infos(paramNum)
     }
 
@@ -4256,7 +4256,7 @@ object Types {
       val problems = problemSyms(Set.empty, tp)
       if problems.isEmpty then tp
       else
-        val atp = TypeOps.avoid(tp, problems.toList)
+        val atp = TypeOps.avoid(tp, problems.tolist)
         def msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
         typr.println(msg)
         val bound = TypeComparer.fullUpperBound(origin)
@@ -4374,7 +4374,7 @@ object Types {
         reductionContext = util.HashMap()
         for (tp <- footprint)
           reductionContext(tp) = contextInfo(tp)
-        typr.println(i"footprint for $this $hashCode: ${footprint.toList.map(x => (x, contextInfo(x)))}%, %")
+        typr.println(i"footprint for $this $hashCode: ${footprint.tolist.map(x => (x, contextInfo(x)))}%, %")
 
       def isUpToDate: Boolean =
         reductionContext.keysIterator.forall { tp =>
@@ -4464,10 +4464,10 @@ object Types {
     }
 
     // cached because baseType needs parents
-    private var parentsCache: List[Type] = null
+    private var parentsCache: List[Type] = nullList
 
     override def parents(using Context): List[Type] = {
-      if (parentsCache == null)
+      if (parentsCache eqLst nullList)
         parentsCache = classParents.mapConserve(_.asSeenFrom(prefix, cls.owner))
       parentsCache
     }
@@ -4480,7 +4480,7 @@ object Types {
       else newLikeThis(prefix, classParents, decls, selfInfo)
 
     def derivedClassInfo(prefix: Type = this.prefix, classParents: List[Type] = this.classParents, decls: Scope = this.decls, selfInfo: TypeOrSymbol = this.selfInfo)(using Context): ClassInfo =
-      if ((prefix eq this.prefix) && (classParents eq this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
+      if ((prefix eq this.prefix) && (classParents eqLst this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
       else newLikeThis(prefix, classParents, decls, selfInfo)
 
     /** If this class has opaque type alias members, a new class info
@@ -4489,7 +4489,7 @@ object Types {
      *  If there are opaque alias members, updates `cls` to have `Opaque` flag as a side effect.
      */
     def integrateOpaqueMembers(using Context): ClassInfo =
-      decls.toList.foldLeft(this) { (cinfo, sym) =>
+      decls.tolist.foldLeft(this) { (cinfo, sym) =>
         if sym.isOpaqueAlias then
           cls.setFlag(Opaque)
           def force(using Context) =
@@ -5022,7 +5022,7 @@ object Types {
           case arg: TypeBounds => this(arg)
           case arg => atVariance(variance * tparams.head.paramVarianceSign)(this(arg))
         val otherArgs1 = mapArgs(otherArgs, tparams.tail)
-        if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
+        if ((arg1 eq arg) && (otherArgs1 eqLst otherArgs)) args
         else arg1 :: otherArgs1
       case nil =>
         nil
@@ -5144,10 +5144,10 @@ object Types {
     def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
 
     def mapOver(scope: Scope): Scope = {
-      val elems = scope.toList
+      val elems = scope.tolist
       val elems1 = mapOver(elems)
-      if (elems1 eq elems) scope
-      else newScopeWith(elems1: _*)
+      if (elems1 eqLst elems) scope
+      else newScopeWith(elems1.toSeq: _*)
     }
 
     def mapOver(annot: Annotation): Annotation =
@@ -5345,7 +5345,7 @@ object Types {
           if (args.exists(isRange))
             if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
             else {
-              val loBuf, hiBuf = new mutable.ListBuffer[Type]
+              val loBuf, hiBuf = List.Buffer[Type]()
               // Given `C[A1, ..., An]` where sone A's are ranges, try to find
               // non-range arguments L1, ..., Ln and H1, ..., Hn such that
               // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
@@ -5369,8 +5369,8 @@ object Types {
                   true
               }
               if (distributeArgs(args, tp.tyconTypeParams))
-                range(tp.derivedAppliedType(tycon, loBuf.toList),
-                      tp.derivedAppliedType(tycon, hiBuf.toList))
+                range(tp.derivedAppliedType(tycon, loBuf.tolist),
+                      tp.derivedAppliedType(tycon, hiBuf.tolist))
               else range(defn.NothingType, defn.AnyType)
                 // TODO: can we give a better bound than `topType`?
             }
@@ -5759,7 +5759,7 @@ object Types {
     @tailrec def hashIsStable: Boolean =
       tps1.isEmpty || tps1.head.hashIsStable && tps1.tail.hashIsStable
     @tailrec def equalElements(tps2: List[Type], bs: BinderPairs): Boolean =
-      (tps1 `eq` tps2) || {
+      (tps1 `eqLst` tps2) || {
         if (tps1.isEmpty) tps2.isEmpty
         else tps2.nonEmpty && tps1.head.equals(tps2.head, bs) && tps1.tail.equalElements(tps2.tail, bs)
       }

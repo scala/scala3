@@ -400,7 +400,7 @@ class Namer { typer: Typer =>
         addEnumConstants(mdef, sym)
         ctx
       case stats: Thicket =>
-        stats.toList.foreach(recur)
+        stats.tolist.foreach(recur)
         ctx
       case _ =>
         ctx
@@ -807,12 +807,12 @@ class Namer { typer: Typer =>
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context)
   extends Completer(original)(ictx) with TypeParamsCompleter {
-    private var myTypeParams: List[TypeSymbol] = null
+    private var myTypeParams: List[TypeSymbol] = nullList
     private var nestedCtx: Context = null
     assert(!original.isClassDef)
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      if myTypeParams == null then
+      if myTypeParams eqLst nullList then
         //println(i"completing type params of $sym in ${sym.owner}")
         nestedCtx = localContext(sym).setNewScope
         given Context = nestedCtx
@@ -942,7 +942,7 @@ class Namer { typer: Typer =>
       /** The forwarders defined by export `exp`.
        */
       def exportForwarders(exp: Export): List[tpd.MemberDef] = {
-        val buf = new mutable.ListBuffer[tpd.MemberDef]
+        val buf = List.Buffer[tpd.MemberDef]()
         val Export(expr, selectors) = exp
         val path = typedAheadExpr(expr, AnySelectionProto)
         checkLegalImportPath(path)
@@ -997,7 +997,7 @@ class Namer { typer: Typer =>
                 newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
               }
             forwarder.info = avoidPrivateLeaks(forwarder)
-            forwarder.addAnnotations(sym.annotations)
+            forwarder.addAnnotations(sym.annotations.iterator)
             val forwarderDef =
               if (forwarder.isType) tpd.TypeDef(forwarder.asType)
               else {
@@ -1048,7 +1048,7 @@ class Namer { typer: Typer =>
           case _ =>
 
         addForwarders(selectors, Nil)
-        val forwarders = buf.toList
+        val forwarders = buf.tolist
         exp.pushAttachment(ExportForwarders, forwarders)
         forwarders
       }

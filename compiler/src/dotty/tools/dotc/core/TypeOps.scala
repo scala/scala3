@@ -535,13 +535,13 @@ object TypeOps:
 
     // Skolemized argument types are used to substitute in F-bounds.
     val skolemizedArgTypes = skolemizeWildcardArgs(argTypes, app)
-    val violations = new mutable.ListBuffer[BoundsViolation]
+    val violations = List.Buffer[BoundsViolation]()
 
     def checkOverlapsBounds(lo: Type, hi: Type, arg: Tree, bounds: TypeBounds): Unit = {
       //println(i" = ${instantiate(bounds.hi, argTypes)}")
 
       var checkCtx = ctx  // the context to be used for bounds checking
-      if (argTypes ne skolemizedArgTypes) { // some of the arguments are wildcards
+      if (argTypes neLst skolemizedArgTypes) { // some of the arguments are wildcards
 
         /** Is there a `LazyRef(TypeRef(_, sym))` reference in `tp`? */
         def isLazyIn(sym: Symbol, tp: Type): Boolean = {
@@ -610,7 +610,7 @@ object TypeOps:
       case _ =>
 
     loop(args, boundss)
-    violations.toList
+    violations.tolist
   }
 
   /** Refine child based on parent

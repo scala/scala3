@@ -161,14 +161,20 @@ abstract class Printer {
   /** Render elements alternating with `sep` string */
   def toText(elems: Traversable[Showable], sep: String): Text =
     Text(elems map (_ toText this), sep)
+  def toText(elems: List[Showable], sep: String): Text =
+    Text(elems map (_ toText this), sep)
 
   /** Render elements within highest precedence */
   def toTextLocal(elems: Traversable[Showable], sep: String): Text =
     atPrec(DotPrec) { toText(elems, sep) }
+  def toTextLocal(elems: List[Showable], sep: String): Text =
+    toTextLocal(elems.toSeq, sep)
 
   /** Render elements within lowest precedence */
   def toTextGlobal(elems: Traversable[Showable], sep: String): Text =
     atPrec(GlobalPrec) { toText(elems, sep) }
+  def toTextGlobal(elems: List[Showable], sep: String): Text =
+    toTextGlobal(elems.toSeq, sep)
 
   /** A plain printer without any embellishments */
   def plain: Printer

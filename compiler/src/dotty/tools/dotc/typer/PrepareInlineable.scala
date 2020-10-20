@@ -136,7 +136,7 @@ object PrepareInlineable {
           // The types that are local to the inline method, and that therefore have
           // to be abstracted out in the accessor, which is external to the inline method
           val localRefs = qualType.namedPartsWith(ref =>
-            ref.isType && ref.symbol.isContainedIn(inlineSym)).toList
+            ref.isType && ref.symbol.isContainedIn(inlineSym))
 
           // Add qualifier type as leading method argument to argument `tp`
           def addQualType(tp: Type): Type = tp match {

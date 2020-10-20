@@ -19,6 +19,8 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
     val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
     (if j==0 then 0x41081989 else j) << 1
 
+  protected def missingValue = null
+
   final def isEqual(x: Key, y: Key): Boolean = x.equals(y)
 
   // The following methods are duplicated from GenericHashMap

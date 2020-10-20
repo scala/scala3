@@ -23,11 +23,11 @@ class Flatten extends MiniPhase with SymTransformer {
 
   override def changesMembers: Boolean = true // the phase removes inner classes
 
-  private var LiftedDefs: Store.Location[mutable.ListBuffer[Tree]] = _
+  private var LiftedDefs: Store.Location[List.Buffer[Tree]] = _
   private def liftedDefs(using Context) = ctx.store(LiftedDefs)
 
   override def initContext(ctx: FreshContext): Unit =
-    LiftedDefs = ctx.addLocation[mutable.ListBuffer[Tree]](null)
+    LiftedDefs = ctx.addLocation[List.Buffer[Tree]](null)
 
   def transformSym(ref: SymDenotation)(using Context): SymDenotation =
     if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package))
@@ -37,7 +37,7 @@ class Flatten extends MiniPhase with SymTransformer {
     else ref
 
   override def prepareForPackageDef(tree: PackageDef)(using Context): FreshContext =
-    ctx.fresh.updateStore(LiftedDefs, new mutable.ListBuffer[Tree])
+    ctx.fresh.updateStore(LiftedDefs, List.Buffer[Tree]())
 
   private def liftIfNested(tree: Tree)(using Context) =
     if (ctx.owner.is(Package)) tree

@@ -49,7 +49,7 @@ object Path {
   def onlyDirs(xs: List[Path]): List[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
   def onlyFiles(xs: Iterator[Path]): Iterator[File] = xs.filter(_.isFile).map(_.toFile)
 
-  def roots: List[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).toList
+  def roots: List[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).tolist
 
   def apply(path: String): Path = apply(Paths.get(path))
   def apply(jpath: JPath): Path = try {
@@ -122,7 +122,7 @@ class Path private[io] (val jpath: JPath) {
   def resolve(other: Path): Path = new Path(jpath.resolve(other.jpath))
   def relativize(other: Path): Path = new Path(jpath.relativize(other.jpath))
 
-  def segments: List[String] = (path split separator).toList filterNot (_.length == 0)
+  def segments: List[String] = (path split separator).tolist filterNot (_.length == 0)
 
   /**
    * @return The path of the parent directory, or root if path is already root

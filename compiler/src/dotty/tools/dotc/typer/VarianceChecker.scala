@@ -121,7 +121,7 @@ class VarianceChecker(using Context) {
         report.log(s"verifying $tvar_s is ${varianceLabel(required)} at $base_s")
         report.log(s"relative variance: ${varianceLabel(relative)}")
         report.log(s"current variance: ${this.variance}")
-        report.log(s"owner chain: ${base.ownersIterator.toList}")
+        report.log(s"owner chain: ${base.ownersIterator.tolist}")
         if (tvar.isOneOf(required)) None
         else Some(VarianceError(tvar, required))
       }
