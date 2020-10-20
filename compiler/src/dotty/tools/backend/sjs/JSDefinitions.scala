@@ -255,7 +255,7 @@ final class JSDefinitions()(using Context) {
   def isJSThisFunctionClass(cls: Symbol): Boolean =
     isScalaJSVarArityClass(cls, "ThisFunction")
 
-  /** Definitions related to the treatment of JUnit boostrappers. */
+  /** Definitions related to the treatment of JUnit bootstrappers. */
   object junit {
     @threadUnsafe lazy val TestAnnotType: TypeRef = requiredClassRef("org.junit.Test")
     def TestAnnotClass(using Context): ClassSymbol = TestAnnotType.symbol.asClass

@@ -247,7 +247,7 @@ object Build {
     excludeFromIDE := true
   )
 
-  // Settings used when compiling dotty (both non-boostrapped and bootstrapped)
+  // Settings used when compiling dotty (both non-bootstrapped and bootstrapped)
   lazy val commonDottySettings = commonSettings ++ Seq(
     // Manually set the standard library to use
     autoScalaLibrary := false

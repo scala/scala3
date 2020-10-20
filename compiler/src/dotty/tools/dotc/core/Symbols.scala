@@ -470,8 +470,8 @@ object Symbols {
         flags: FlagSet = sym.flags,
         info: Type = sym.info,
         privateWithin: Symbol = sym.privateWithin,
-        coord: Coord = NoCoord, // Can be `= owner.coord` once we boostrap
-        associatedFile: AbstractFile = null // Can be `= owner.associatedFile` once we boostrap
+        coord: Coord = NoCoord, // Can be `= owner.coord` once we bootstrap
+        associatedFile: AbstractFile = null // Can be `= owner.associatedFile` once we bootstrap
     ): Symbol = {
       val coord1 = if (coord == NoCoord) owner.coord else coord
       val associatedFile1 = if (associatedFile == null) owner.associatedFile else associatedFile

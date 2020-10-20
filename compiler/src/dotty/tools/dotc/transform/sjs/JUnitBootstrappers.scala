@@ -98,7 +98,7 @@ import dotty.tools.backend.sjs.JSDefinitions.jsdefn
  *  framework with official asynchronous support instead.
  *
  *  Because `Booststrapper` is annotated with `@EnableReflectiveInstantiation`,
- *  the run-time implementation of JUnit for Scala.js can load the boostrapper
+ *  the run-time implementation of JUnit for Scala.js can load the bootstrapper
  *  module using `scala.scalajs.reflect.Reflect`, and then use the methods of
  *  Bootstrapper, which are implemented in the bootstrapper object, to perform
  *  test discovery and invocation.
@@ -145,7 +145,7 @@ class JUnitBootstrappers extends MiniPhase {
   private def genBootstrapper(testClass: ClassSymbol)(using Context): TypeDef = {
     val junitdefn = jsdefn.junit
 
-    /* The name of the boostrapper module. It is derived from the test class name by
+    /* The name of the bootstrapper module. It is derived from the test class name by
      * appending a specific suffix string mandated "by spec". It will indeed also be
      * computed as such at run-time by the Scala.js JUnit Runtime support. Therefore,
      * it must *not* be a dotc semantic name.
