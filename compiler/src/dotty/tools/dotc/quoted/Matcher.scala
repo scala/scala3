@@ -157,12 +157,12 @@ object Matcher {
         /* Match block flattening */ // TODO move to cases
         /** Normalize the tree */
         def normalize(tree: Tree): Tree = tree match {
-          case Block(Nil, expr) => normalize(expr)
+          case Block(ScalaNil, expr) => normalize(expr)
           case Block(stats1, Block(stats2, expr)) =>
             expr match
               case _: Closure => tree
               case _ => normalize(Block(stats1 ::: stats2, expr))
-          case Inlined(_, Nil, expr) => normalize(expr)
+          case Inlined(_, ScalaNil, expr) => normalize(expr)
           case _ => tree
         }
 
@@ -181,7 +181,7 @@ object Matcher {
 
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
-          case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
+          case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: ScalaNil), tpt2))
               if patternHole.symbol == patternHoleSymbol &&
                  s.tpe <:< tpt.tpe &&
                  tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
@@ -189,14 +189,14 @@ object Matcher {
 
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
-          case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
+          case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: ScalaNil))
               if patternHole.symbol == patternHoleSymbol &&
                  scrutinee.tpe <:< tpt.tpe =>
             matched(scrutinee.seal)
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
-          case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
+          case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: ScalaNil))
               if pattern.symbol == higherOrderHoleSymbol =>
 
             def bodyFn(lambdaArgs: scala.List[Tree]): Tree = {
@@ -370,7 +370,7 @@ object Matcher {
         import scala.collection.immutable.::
         args.foldRight(Option(List.empty[Ident])) {
           case (id: Ident, Some(acc)) => Some(id :: acc)
-          case (Block(List(DefDef("$anonfun", Nil, params :: Nil, Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
+          case (Block(List(DefDef("$anonfun", ScalaNil, params :: ScalaNil, Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
               if params.zip(args).forall(_.symbol == _.symbol) =>
             Some(id :: acc)
           case _ => None

@@ -306,9 +306,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
             val app1 = dotc.transform.BetaReduce(app, fn, args)
             if app1 eq app then None
             else Some(app1.withSpan(tree.span))
-          case tpd.Block(Nil, expr) =>
+          case tpd.Block(dotty.tools.Nil, expr) =>
             for e <- betaReduce(expr) yield tpd.cpy.Block(tree)(Nil.tolist, e)
-          case tpd.Inlined(_, Nil, expr) =>
+          case tpd.Inlined(_, dotty.tools.Nil, expr) =>
             betaReduce(expr)
           case _ =>
             None
@@ -2639,8 +2639,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
       def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
         pat match
-          case tpd.Inlined(_, Nil, pat2) => extractTypeHoles(pat2)
-          case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
+          case tpd.Inlined(_, dotty.tools.Nil, pat2) => extractTypeHoles(pat2)
+          case tpd.Block(stats @ dotty.tools.::(typeHole: TypeDef, _), expr) if isTypeHoleDef(typeHole) =>
             val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol)
             val otherStats = stats.dropWhile(isTypeHoleDef)
             (tpd.cpy.Block(pat)(otherStats, expr), holes.toScalaList)
