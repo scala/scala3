@@ -12,7 +12,7 @@ object scalatest {
       case t @ Apply(TypeApply(Select(lhs, op), targs), rhs) =>
         let(lhs) { left =>
           lets(rhs) { rs =>
-            val app = Select.overloaded(left, op, targs.map(_.tpe), rs, TypeBounds.minmax)
+            val app = Select.overloaded(left, op, targs.map(_.tpe), rs)
             val b = app.seal.cast[Boolean]
             '{ scala.Predef.assert($b) }.unseal
           }
