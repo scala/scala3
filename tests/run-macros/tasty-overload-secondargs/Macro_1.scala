@@ -1,4 +1,3 @@
-
 import scala.quoted._
 
 object X:
@@ -12,8 +11,7 @@ object X:
      f.lift.apply(a)
 
 
-
-object Macro {
+object Macro:
 
     inline def mThen[A,B](inline x:A=>B):B = ${
        mThenImpl[A,B,A=>B,B]('x)
@@ -23,7 +21,6 @@ object Macro {
        mThenImpl[A,B,PartialFunction[A,B],Option[B]]('x)
     }
     
-
     def mThenImpl[A:Type, B:Type, S<:(A=>B) :Type, R:Type](x:Expr[S])(using qctx: QuoteContext):Expr[R]=
        import qctx.reflect._
        val fun = '{X}.unseal
@@ -36,7 +33,3 @@ object Macro {
                        )
        val r = Apply(firstPart,List(x.unseal))
        r.seal.cast[R]
-       
-      
-
-}
