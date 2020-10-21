@@ -41,6 +41,8 @@ import annotation.{constructorOnly, threadUnsafe}
 object Applications {
   import tpd._
 
+  inline val checkListUnapplies = true
+
   def extractorMember(tp: Type, name: Name)(using Context): SingleDenotation =
     tp.member(name).suchThat(sym => sym.info.isParameterless && sym.info.widenExpr.isValueType)
 
@@ -1274,6 +1276,16 @@ trait Applications extends Compatibility {
 
     def fromScala2x = unapplyFn.symbol.exists && (unapplyFn.symbol.owner is Scala2x)
 
+    def checkListUnapply(extractor: Symbol, selType: Type) =
+      def isDotty(sym: Symbol): Boolean =
+        sym.topLevelClass.owner.name.toString == "tools"
+      if selType.derivesFrom(defn.ListClass) && isDotty(extractor.maybeOwner) then
+        report.error("bad pattern match of scala.List selector against dotty.tools.List pattern", tree.srcPos)
+      else if selType.typeSymbol.isOpaqueAlias && selType.typeSymbol.name.toString == "List"
+        && extractor.maybeOwner.fullName.toString.startsWith("scala.collection")
+      then
+        report.error("bad pattern match of dotty.tools.List selector against scala.List pattern", tree.srcPos)
+
     unapplyFn.tpe.widen match {
       case mt: MethodType if mt.paramInfos.length == 1 =>
         val unapplyArgType = mt.paramInfos.head
@@ -1326,6 +1338,8 @@ trait Applications extends Compatibility {
         val unapplyPatterns = bunchedArgs.zipped(argTypes) map (typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
+        if checkListUnapplies then
+          checkListUnapply(unapplyFn.symbol, selType)
         if ((ownType eq selType) || ownType.isError) result
         else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)
       case tp =>
