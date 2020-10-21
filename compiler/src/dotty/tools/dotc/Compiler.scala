@@ -41,7 +41,7 @@ class Compiler {
     List(new sbt.ExtractDependencies: Phase) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
     List(new PostTyper: Phase) ::          // Additional checks and cleanups after type checking
-    List(new sjs.PrepJSInterop: Phase) ::  // Additional checks and transformations for Scala.js (Scala.js only)
+//    List(new sjs.PrepJSInterop: Phase) ::  // Additional checks and transformations for Scala.js (Scala.js only)
     List(new Staging: Phase) ::            // Check PCP, heal quoted types and expand macros
     List(new sbt.ExtractAPI: Phase) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new SetRootTree: Phase) ::        // Set the `rootTreeOrProvider` on class symbols
@@ -73,7 +73,7 @@ class Compiler {
     (List(new ElimOpaque,             // Turn opaque into normal aliases
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
-         new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
+//         new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
          new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
@@ -99,7 +99,7 @@ class Compiler {
          new PureStats,              // Remove pure stats from blocks
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
          new ArrayApply,             // Optimize `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
-         new sjs.AddLocalJSFakeNews, // Adds fake new invocations to local JS classes in calls to `createLocalJSClass`
+//         new sjs.AddLocalJSFakeNews, // Adds fake new invocations to local JS classes in calls to `createLocalJSClass`
          new ElimPolyFunction,       // Rewrite PolyFunction subclasses to FunctionN subclasses
          new TailRec,                // Rewrite tail recursion to loops
          new CompleteJavaEnums,      // Fill in constructors for Java enums
@@ -124,7 +124,7 @@ class Compiler {
          new ExpandPrivate,          // Widen private definitions accessed from nested classes
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
-         new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
+//         new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
          new CollectSuperCalls): List[Phase]) ::   // Find classes that are called with super
     Nil
 
