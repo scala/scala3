@@ -2297,6 +2297,7 @@ trait Reflection { reflection =>
   trait TypeBoundsModule { this: TypeBounds.type =>
     def apply(low: Type, hi: Type): TypeBounds
     def unapply(x: TypeBounds): Option[(Type, Type)]
+    def minmax: TypeBounds
   }
 
   given TypeBoundsMethods as TypeBoundsMethods = TypeBoundsMethodsImpl

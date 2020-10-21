@@ -16,7 +16,7 @@ object scalatest {
       case t @ Apply(Select(lhs, op), rhs :: Nil) =>
         let(lhs) { left =>
           let(rhs) { right =>
-            val app = Select.overloaded(left, op, Nil, right :: Nil)
+            val app = Select.overloaded(left, op, Nil, right :: Nil, TypeBounds.minmax)
             let(app) { result =>
               val l = left.seal
               val r = right.seal
@@ -30,7 +30,7 @@ object scalatest {
         if isImplicitMethodType(f.tpe) =>
         let(lhs) { left =>
           let(rhs) { right =>
-            val app = Select.overloaded(Apply(qual, left :: Nil), op, Nil, right :: Nil)
+            val app = Select.overloaded(Apply(qual, left :: Nil), op, Nil, right :: Nil, TypeBounds.minmax)
             let(Apply(app, implicits)) { result =>
               val l = left.seal
               val r = right.seal

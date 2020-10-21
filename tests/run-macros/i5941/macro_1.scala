@@ -19,7 +19,7 @@ object Lens {
     def setterBody(obj: Term, value: Term, parts: List[String]): Term = {
       // o.copy(field = value)
       def helper(obj: Term, value: Term, field: String): Term =
-        Select.overloaded(obj, "copy", Nil, NamedArg(field, value) :: Nil)
+        Select.overloaded(obj, "copy", Nil, NamedArg(field, value) :: Nil, TypeBounds.minmax)
 
       parts match {
         case field :: Nil => helper(obj, value, field)
@@ -118,7 +118,7 @@ object Iso {
       // (p: S) => p._1
       val to = (p: S) =>  ${ Select.unique(('p).unseal, "_1").seal.cast[A] }
       // (p: A) => S(p)
-      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, ('p).unseal :: Nil).seal.cast[S] }
+      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, ('p).unseal :: Nil, TypeBounds.minmax).seal.cast[S] }
       apply(from)(to)
     }
   }
@@ -147,7 +147,7 @@ object Iso {
         case TypeRef(prefix, name) => TermRef(prefix, name)
       }
 
-      val obj = Select.overloaded(Ident(companion), "apply", Nil, Nil).seal.cast[S]
+      val obj = Select.overloaded(Ident(companion), "apply", Nil, Nil, TypeBounds.minmax).seal.cast[S]
 
       '{
         Iso[S, 1](Function.const($obj))(Function.const(1))
