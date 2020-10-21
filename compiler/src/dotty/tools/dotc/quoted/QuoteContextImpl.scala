@@ -2054,7 +2054,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       def unapply(x: TypeBounds): Option[(Type, Type)] = Some((x.low, x.hi))
       def empty: TypeBounds = Types .TypeBounds.empty
       def upper(hi: Type): TypeBounds = Types .TypeBounds.upper(hi)
-      def lower(lo: Type): TypeBounds = Types .TypeBounds.lower(hi)
+      def lower(lo: Type): TypeBounds = Types .TypeBounds.lower(lo)
     end TypeBounds
 
     object TypeBoundsMethodsImpl extends TypeBoundsMethods:
