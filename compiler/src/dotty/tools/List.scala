@@ -25,10 +25,10 @@ val nullListList: List[List[Null]] = List(List(null))
 
 extension [T](xs: IterableOnce[T])
   def tolist: List[T] = List.fromIterable(xs)
-  def ::: (ys: List[T]): List[T] = List.extension_:::[T](List.fromIterable(xs))(ys)
+  def ::: (ys: List[T]): List[T] = List.extension_:::[T](ys)(List.fromIterable(xs))
 
 extension [T](xs: List[T])
-  def ::: (ys: List[T]): List[T] = List.extension_:::[T](xs)(ys)
+  def ::: (ys: List[T]): List[T] = List.extension_:::[T](ys)(xs)
 
 object List:
 
@@ -202,10 +202,6 @@ object List:
   extension [T, U](z: T)
     def /: (xs: List[U])(f: (T, U) => T): T = xs.foldLeft(z)(f)
 
-  extension [T, U, V](xs: List[T]):
-    def zipWith(ys: IterableOnce[U])(op: (T, U) => V): List[V] = xs.zipWith(ys)(op)
-    def zipWith(ys: List[U])(op: (T, U) => V): List[V] = xs.zipWith(ys)(op)
-
   extension [T, U] (xs: List[(T, U)])
     def toMap: Map[T, U] = xs.toMap
     def unzip: (List[T], List[U]) = xs.unzip
@@ -261,17 +257,23 @@ object List:
     def reduceLeft(f: (T, T) => T): T = buf.reduceLeft(f)
     def iterator: Iterator[T] = buf.iterator
 
-  final class UnapplyLeftWrapper[+T](val xs: List[T]) extends AnyVal with Product:
-    def canEqual(that: Any) = true
+  final class UnapplyLeftWrapper[+T](val xs: List[T]) extends AnyVal:
     def isEmpty = xs.isEmpty
+    def get = UnapplyLeftResultWrapper(xs)
+
+  final class UnapplyLeftResultWrapper[+T](xs: List[T]) extends AnyVal with Product:
+    def canEqual(that: Any) = true
     def productArity = 2
     def productElement(n: Int): Any = if n == 0 then _1 else _2
     def _1: T = xs.head
     def _2: List[T] = xs.tail
 
-  final class UnapplyRightWrapper[+T](val xs: List[T]) extends AnyVal with Product:
-    def canEqual(that: Any) = true
+  final class UnapplyRightWrapper[+T](val xs: List[T]) extends AnyVal:
     def isEmpty = xs.isEmpty
+    def get = UnapplyRightResultWrapper(xs)
+
+  final class UnapplyRightResultWrapper[+T](val xs: List[T]) extends AnyVal with Product:
+    def canEqual(that: Any) = true
     def productArity = 2
     def productElement(n: Int): Any = if n == 0 then _1 else _2
     def _1: List[T] = xs.init
