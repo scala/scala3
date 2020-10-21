@@ -2052,7 +2052,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object TypeBounds extends TypeBoundsModule:
       def apply(low: Type, hi: Type): TypeBounds = Types.TypeBounds(low, hi)
       def unapply(x: TypeBounds): Option[(Type, Type)] = Some((x.low, x.hi))
-      def minmax = TypeBounds(defn.NothingClass.tree.tpe, defn.AnyClass.tree.tpe)
+      def empty: TypeBounds = Types .TypeBounds.empty
+      def upper(hi: Type): TypeBounds = Types .TypeBounds.upper(hi)
+      def lower(lo: Type): TypeBounds = Types .TypeBounds.lower(hi)
     end TypeBounds
 
     object TypeBoundsMethodsImpl extends TypeBoundsMethods:
