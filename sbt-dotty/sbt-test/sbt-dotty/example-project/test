@@ -1,5 +1,8 @@
 > run
 > doc
+> clean
+> 'set useScala3doc := true'
+> doc
 > 'set initialCommands := "1 + 1" '
 # FIXME: does not work on the CI
 #> console
