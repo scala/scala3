@@ -24,7 +24,6 @@ object Macro:
     def mThenImpl[A:Type, B:Type, S<:(A=>B) :Type, R:Type](x:Expr[S])(using qctx: QuoteContext):Expr[R]=
        import qctx.reflect._
        val fun = '{X}.unseal
-       val wildcard = TypeBounds(quoted.Type[Nothing].unseal.tpe, quoted.Type[Any].unseal.tpe)
        val returnType = quoted.Type[(S) => ?].unseal.tpe
        val firstPart = Select.overloaded(fun,"andThen",
                                  List(TypeIdent(defn.IntClass).tpe, TypeIdent(defn.IntClass).tpe),
