@@ -34,6 +34,9 @@ class Compiler {
   def phases: List[List[Phase]] =
     frontendPhases ::: picklerPhases ::: transformPhases ::: backendPhases
 
+  // FOLLOW-UP: Type inference does not work without the `: Phase`, `: List[Phase]` annotations
+  // if `::` is an extension method.
+
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =
     List(new FrontEnd: Phase) ::           // Compiler frontend: scanner, parser, namer, typer
