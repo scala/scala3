@@ -196,7 +196,7 @@ object Matcher {
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
-          case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: ScalaNil))
+          case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), scala.List(Inferred)), Repeated(args, _) :: ScalaNil))
               if pattern.symbol == higherOrderHoleSymbol =>
 
             def bodyFn(lambdaArgs: scala.List[Tree]): Tree = {
@@ -209,7 +209,7 @@ object Matcher {
               }.transformTree(scrutinee)
             }
             val names = args.map {
-              case Block(List(DefDef("$anonfun", _, _, _, Some(Apply(Ident(name), _)))), _) => name
+              case Block(scala.List(DefDef("$anonfun", _, _, _, Some(Apply(Ident(name), _)))), _) => name
               case arg => arg.symbol.name
             }
             val argTypes = args.map(x => x.tpe.widenTermRefExpr)
@@ -370,7 +370,7 @@ object Matcher {
         import scala.collection.immutable.::
         args.foldRight(Option(List.empty[Ident])) {
           case (id: Ident, Some(acc)) => Some(id :: acc)
-          case (Block(List(DefDef("$anonfun", ScalaNil, params :: ScalaNil, Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
+          case (Block(scala.List(DefDef("$anonfun", ScalaNil, params :: ScalaNil, Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
               if params.zip(args).forall(_.symbol == _.symbol) =>
             Some(id :: acc)
           case _ => None

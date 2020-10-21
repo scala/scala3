@@ -11,7 +11,7 @@ import model._
 class LinkCompanions extends DocMiniPhase {
   private def linkCompanions(ent: Entity)(using Context): ent.type = {
     ent.children.groupBy(_.name).foreach {
-      case (_, List(x1: Companion, x2: Companion)) =>
+      case (_, scala.List(x1: Companion, x2: Companion)) =>
         x1.companionPath = x2.path
         x2.companionPath = x1.path
 
