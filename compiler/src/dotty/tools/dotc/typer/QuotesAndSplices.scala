@@ -3,6 +3,8 @@ package typer
 
 import dotty.tools.dotc.ast._
 import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.config.Feature._
+import dotty.tools.dotc.config.SourceVersion._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Constants._
@@ -58,7 +60,9 @@ trait QuotesAndSplices {
       if ctx.mode.is(Mode.Pattern) then
         typedQuotePattern(tree, pt, qctx)
       else if tree.quoted.isType then
-        report.warning(em"Consider using canonical type constructor scala.quoted.Type[${tree.quoted}] instead", tree.srcPos)
+        val msg = em"Consider using canonical type constructor scala.quoted.Type[${tree.quoted}] instead"
+        if sourceVersion.isAtLeast(`3.1-migration`) then report.error(msg, tree.srcPos)
+        else report.warning(msg, tree.srcPos)
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_apply.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
       else
         typedApply(untpd.Apply(untpd.ref(defn.InternalQuoted_exprQuote.termRef), tree.quoted), pt)(using pushQuoteContext(qctx)).select(nme.apply).appliedTo(qctx)
@@ -173,7 +177,9 @@ trait QuotesAndSplices {
       pat.select(tpnme.spliceType)
     else
       val tree1 = typedSelect(untpd.Select(tree.expr, tpnme.spliceType), pt)(using spliceContext).withSpan(tree.span)
-      report.warning(em"Consider using canonical type reference ${tree1.tpe.show} instead", tree.srcPos)
+      val msg = em"Consider using canonical type reference ${tree1.tpe} instead"
+      if sourceVersion.isAtLeast(`3.1-migration`) then report.error(msg, tree.srcPos)
+      else report.warning(msg, tree.srcPos)
       tree1
   }
 
