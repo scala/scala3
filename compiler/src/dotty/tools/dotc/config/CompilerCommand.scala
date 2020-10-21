@@ -12,7 +12,7 @@ import scala.collection.JavaConverters._
 object CompilerCommand {
 
   /** The name of the command */
-  def cmdName: String = "dotc"
+  def cmdName: String = "scalac"
 
   private def explainAdvanced = """
     |-- Notes on option parsing --
@@ -137,7 +137,7 @@ object CompilerCommand {
 
     if (summary.errors.nonEmpty) {
       summary.errors foreach (report.error(_))
-      report.echo("  dotc -help  gives more information")
+      report.echo("  scalac -help  gives more information")
       Nil
     }
     else if (settings.version.value) {
