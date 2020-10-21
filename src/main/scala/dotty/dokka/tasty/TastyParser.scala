@@ -10,7 +10,6 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.base.parsers._
 import org.jetbrains.dokka.plugability.DokkaContext
-import dokka.java.api._
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.properties.PropertyContainerKt._
@@ -20,6 +19,7 @@ import java.util.{List => JList}
 import scala.tasty.Reflection
 import scala.tasty.inspector.TastyInspector
 import dotty.dokka.model.api.withNewMembers
+import com.virtuslab.dokka.site.SourceSetWrapper
 
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
   *

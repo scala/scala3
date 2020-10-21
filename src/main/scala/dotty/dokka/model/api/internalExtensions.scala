@@ -23,7 +23,7 @@ import org.jetbrains.dokka.model.doc.DocumentationNode
 import org.jetbrains.dokka.model.properties._  
 import java.util.{List => JList, Set => JSet}
 
-import dokka.java.api.SourceSetWrapper
+import com.virtuslab.dokka.site.SourceSetWrapper
 
 private [model] case class MemberExtension(
   visibility: Visibility,

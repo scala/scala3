@@ -43,7 +43,7 @@ trait TypesSupport:
                     case tpeTree: TypeTree =>  inner(tpeTree.tpe)
                     case term:  Term => inner(term.tpe)
 
-                new TypeConstructor(tpeTree.symbol.dri, data.asJava, FunctionModifiers.NONE)
+                new GenericTypeConstructor(tpeTree.symbol.dri, data.asJava, null)
 
     given TypeOrBoundsSyntax as AnyRef:
         extension (tpe: TypeOrBounds):
@@ -52,7 +52,7 @@ trait TypesSupport:
                 val dri = data.collect{
                     case o: TypeParameter => o
                 }.headOption.map(_.getDri).getOrElse(defn.AnyClass.dri)
-                new TypeConstructor(dri, data.asJava, FunctionModifiers.NONE)
+                new GenericTypeConstructor(dri, data.asJava, null)
 
     private def text(str: String): JProjection = new UnresolvedBound(str)
     
@@ -61,7 +61,7 @@ trait TypesSupport:
     
     private def link(symbol: reflect.Symbol)(using cxt: reflect.Context): List[JProjection] = {
         val suffix = if symbol.isValDef then texts(".type") else Nil
-        (new TypeParameter(symbol.dri, symbol.name)) :: suffix
+        (new TypeParameter(symbol.dri, symbol.name, null)) :: suffix
     }
     
     private def commas(lists: List[List[JProjection]]) = lists match

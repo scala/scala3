@@ -34,13 +34,13 @@ class ScalaSourceLinksTransformer(
 
     override def invoke(input: DModule, context: DokkaContext): DModule = 
         input.updateMembers { 
-            case c: Member with WithExpectActual with WithExtraProperties[Member] => 
+            case c: Member with WithSources with WithExtraProperties[Member] => 
                 c.withNewExtras(c.getExtra plus getSourceLinks(c))
             case c => c
         }
     
 
-    private def getSourceLinks(doc: WithExpectActual): ExtraProperty[Member] = {
+    private def getSourceLinks(doc: WithSources): ExtraProperty[Member] = {
         val urls = doc.getSources.asScala.toMap.flatMap{
             case (key,value) => sourceLinks.find(s => value.getPath.contains(s.path) && key == s.sourceSetData).map(
                     link => (key, createLink(value, link))

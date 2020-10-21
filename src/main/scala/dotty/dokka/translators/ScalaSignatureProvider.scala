@@ -10,7 +10,6 @@ import org.jetbrains.dokka.utilities.DokkaLogger
 import collection.JavaConverters._
 import org.jetbrains.dokka.base.translators.documentables._
 import org.jetbrains.dokka.model.properties.PropertyContainer
-import dokka.java.api._
 import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
 import org.jetbrains.dokka.links.DRI
@@ -76,13 +75,13 @@ object ScalaSignatureProvider:
 
     private def enumPropertySignature(entry: DProperty, builder: SignatureBuilder): SignatureBuilder = 
         val modifiedType = entry.getType match
-            case t: TypeConstructor => TypeConstructor(
+            case t: TypeConstructor => GenericTypeConstructor(
                 t.getDri,
                 t.getProjections.asScala.map{ 
                     case t: UnresolvedBound if t.getName == " & " => UnresolvedBound(" with "); 
                     case other => other
                 }.asJava,
-                t.getModifier
+                null
             )
             case other => other
         

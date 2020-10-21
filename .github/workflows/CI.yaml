@@ -32,11 +32,6 @@ jobs:
       - name: Compile and test
         run: sbt compile test
 
-      - name: Locally publish Dokka Java API
-        run: |
-          cd dokkaJavaApi
-          ./gradlew publishToMavenLocal
-
       - name: Locally publish self
         run: sbt publishLocal
 

@@ -67,26 +67,13 @@ object Protoplugin {
     val allJars =
       getJars(updateReport, AllPassFilter, AllPassFilter, AllPassFilter)
 
-    val remainingJars =
-      getJars(
-        fetchArtifactsOf(
-          "scala3doc" % "dokka-java-api" % "0.1.1-SNAPSHOT",
-          dependencyResolution.value,
-          scalaModuleInfo.value,
-          updateConfiguration.value,
-          (unresolvedWarningConfiguration in update).value,
-          streams.value.log,
-        ),
-        AllPassFilter, AllPassFilter, AllPassFilter
-      )
-
     makeScalaInstance(
       state.value,
       scalaVersion.value,
       scalaLibraryJar,
       dottyLibraryJar,
       compilerJar,
-      allJars ++ remainingJars,
+      allJars,
     )
   }
 

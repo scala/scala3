@@ -14,16 +14,19 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
   override def getSourceSets: JList[DokkaConfiguration.DokkaSourceSet] = List(mkSourceSet).asJava
   override def getModules: JList[DokkaConfiguration.DokkaModuleDescription] = List().asJava
   override def getPluginsClasspath: JList[File] = Nil.asJava
+  override def getModuleName(): String = "ModuleName"
+  override def getModuleVersion(): String = ""
 
-  override def getPluginsConfiguration: JMap[String, String] = Map(
-    "dotty.dokka.DottyDokkaPlugin" -> "dottydoc",
-    "ExternalDocsTooKey" -> docConfiguration.args.docsRoot.orNull
-    ).asJava
+  private object OurConfig extends DokkaConfiguration.PluginConfiguration:
+    override def getFqPluginName = "ExternalDocsTooKey"
+    override def getSerializationFormat: DokkaConfiguration$SerializationFormat = DokkaConfiguration$SerializationFormat.JSON
+    override def getValues: String = docConfiguration.args.docsRoot.getOrElse("")
+
+  override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] = List(OurConfig).asJava
 
   def mkSourceSet: DokkaConfiguration.DokkaSourceSet = 
     val sourceLinks:Set[SourceLinkDefinitionImpl] = docConfiguration.args.sourceLinks.map(SourceLinkDefinitionImpl.Companion.parseSourceLinkDefinition(_)).toSet
     new DokkaSourceSetImpl(
-      /*moduleDisplayName=*/ docConfiguration.args.name,
       /*displayName=*/ docConfiguration.args.name,
       /*sourceSetID=*/ new DokkaSourceSetID(docConfiguration.args.name, "main"),
       /*classpath=*/ Nil.asJava,
@@ -47,8 +50,3 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
       /*suppressedFiles=*/  Platform.jvm
     ).asInstanceOf[DokkaConfiguration.DokkaSourceSet] // Why I do need to cast here? Kotlin magic?
 
-
-object FakeDottyDokkaModule extends DokkaConfiguration.DokkaModuleDescription:
-  override def getDocFile(): File = new File("docs.doc")
-  override def getName() = "main"
-  override def getPath() = new File(".")

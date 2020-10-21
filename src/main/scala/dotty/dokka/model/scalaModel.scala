@@ -37,17 +37,23 @@ case class HtmlContentNode(
   override def getExtra = extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
 
+class ScalaTagWrapper(root: DocTag) extends TagWrapper(null):
+  override def getRoot = root
+
 object ScalaTagWrapper {
-  case class See(root: DocTag) extends TagWrapper(root, null)
-  case class Todo(root: DocTag) extends TagWrapper(root, null)
-  case class Note(root: DocTag) extends TagWrapper(root, null)
-  case class Example(root: DocTag) extends TagWrapper(root, null)
+
+  case class See(root: DocTag) extends ScalaTagWrapper(root)
+  case class Todo(root: DocTag) extends ScalaTagWrapper(root)
+  case class Note(root: DocTag) extends ScalaTagWrapper(root)
+  case class Example(root: DocTag) extends ScalaTagWrapper(root)
   case class NestedNamedTag(
     name: String,
     subname: String,
     identTag: DocTag,
     descTag: DocTag
-  ) extends NamedTagWrapper(descTag, name, null)
+  ) extends NamedTagWrapper(null):
+    override def getName = name
+    override def getRoot = descTag
 }
 
 case class ImplicitConversion(conversion: Documentable, from: DRI, to: DRI)

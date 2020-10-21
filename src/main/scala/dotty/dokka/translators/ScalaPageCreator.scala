@@ -319,7 +319,7 @@ class ScalaPageCreator(
                     }
 
                     d match{
-                        case d: (WithExpectActual & WithExtraProperties[Documentable]) if d.get(SourceLinks) != null && !d.get(SourceLinks).links.isEmpty => d.get(SourceLinks).links.foldLeft(withCompanion){
+                        case d: (WithSources & WithExtraProperties[Documentable]) if d.get(SourceLinks) != null && !d.get(SourceLinks).links.isEmpty => d.get(SourceLinks).links.foldLeft(withCompanion){
                             case (bdr, (sourceSet, link)) => bdr
                                     .cell(sourceSets = Set(sourceSet)){ b => b
                                         .text("Source")

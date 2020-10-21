@@ -73,6 +73,7 @@ trait ClassLikeSupport:
           null,
           placeholderModifier,
           inspector.sourceSet.toSet,
+          /*isExpectActual =*/ false,
           fullExtra.asInstanceOf[PropertyContainer[DClass]]
       )
     
@@ -231,6 +232,7 @@ trait ClassLikeSupport:
       /*receiver =*/ null, // Not used
       /*modifier =*/ placeholderModifier,
       sourceSet.toSet(),
+       /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty()
         plus MethodExtension(paramLists.map(_.size))
         plus(MemberExtension(
@@ -263,8 +265,7 @@ trait ClassLikeSupport:
       else ""
 
     new DTypeParameter(
-      argument.symbol.dri,
-      variancePrefix + argument.symbol.name,
+      Invariance(TypeParameter(argument.symbol.dri, variancePrefix + argument.symbol.name, null)),
       argument.symbol.documentation.asJava,
       null,
       List(argument.rhs.dokkaType).asJava,
@@ -299,6 +300,7 @@ trait ClassLikeSupport:
       /*modifier =*/ placeholderModifier,
       sourceSet.toSet(),
       /*generics =*/ generics.asJava, // TODO
+       /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty() plus MemberExtension(
         typeDef.symbol.getVisibility(),
         typeDef.symbol.getExtraModifiers(), 
@@ -336,6 +338,7 @@ trait ClassLikeSupport:
       /*modifier =*/ placeholderModifier,
       sourceSet.toSet(),
       /*generics =*/ Nil.asJava,
+       /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty().plus(MemberExtension(
           valDef.symbol.getVisibility(), 
           valDef.symbol.getExtraModifiers(), 

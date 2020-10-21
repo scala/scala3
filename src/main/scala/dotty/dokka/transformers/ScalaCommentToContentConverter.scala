@@ -10,7 +10,7 @@ import java.util.{Set => JSet, List => JList}
 
 
 object ScalaCommentToContentConverter extends CommentsToContentConverter:
-    val defaultConverter = DocTagToContentConverter.INSTANCE
+    val defaultConverter = DocTagToContentConverter()
     override def buildContent(
         docTag: DocTag,
         dci: DCI,

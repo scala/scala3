@@ -120,7 +120,7 @@ th {
 
 /* Left bar */
 #sideMenu {
-  overflow-y: scroll;
+  overflow-y: auto;
   scrollbar-width: thin;
   height: 100%;
   font-size: 15px;
@@ -144,7 +144,6 @@ th {
   padding-left: 1em;
 }
 .sideMenuPart a {
-	display: flex;
 	align-items: center;
 	flex: 1;
 	overflow-x: hidden;

@@ -43,6 +43,9 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
 
 class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
 
+    lazy val sourceSets = ctx.getConfiguration.getSourceSets.asScala
+        .map(s => DisplaySourceSetKt.toDisplaySourceSet(s.asInstanceOf[DokkaConfiguration$DokkaSourceSet])).toSet.asJava
+
     type FlowContentConsumer = kotlin.jvm.functions.Function1[? >: kotlinx.html.FlowContent, kotlin.Unit]
 
     override def buildTable(f: FlowContent, node: ContentTable, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {
@@ -88,7 +91,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
     private def buildDocumentableList(n: DocumentableList, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = 
         def render(n: ContentNode) = raw(buildWithKotlinx(n, pageContext, null)) 
 
-        val renderer = SignatureRenderer(pageContext, sourceSetRestriciton, getLocationProvider)
+        val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
         import renderer._
 
         def buildDocumentable(element: DocumentableElement) = 
@@ -189,8 +192,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
 
     
     def buildDiagram(f: FlowContent, diagram: HierarchyDiagram, pageContext: ContentPage) = 
-        val ss = DisplaySourceSetKt.toDisplaySourceSet(ctx.getConfiguration.getSourceSets.get(0).asInstanceOf[DokkaConfiguration$DokkaSourceSet])
-        val renderer = SignatureRenderer(pageContext, ss, getLocationProvider)
+        val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
         withHtml(f, div( id := "inheritance-diagram",
                 svg(id := "graph"),
                 script(`type` := "text/dot", id := "dot", raw(DotDiagramBuilder.build(diagram, renderer)))

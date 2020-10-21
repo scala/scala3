@@ -2,18 +2,14 @@
 val `example-project` = ExampleProject.`example-project`
 
 val dottyVersion = "0.27.0-RC1"
-val dokkaVersion = "1.4.0"
-val kotlinxVersion = "0.7.2" // upgrade when upgrading dokka
+val dokkaVersion = "1.4.10.2"
 val flexmarkVersion = "0.42.12"
 val jacksonVersion = "2.9.8"
 val scalaTagsVersion = "0.9.1"
-val dokkaSiteVersion = "0.1.7"
+val dokkaSiteVersion = "0.1.9"
 
 libraryDependencies ++= Seq(
-  "org.jetbrains.dokka" % "dokka-base" % dokkaVersion,
-  "org.jetbrains.dokka" % "dokka-core" % dokkaVersion,
-  "org.jetbrains.dokka" % "dokka-test-api" % dokkaVersion,
-  "org.jetbrains.kotlinx" % "kotlinx-html-jvm" % kotlinxVersion,
+  "org.jetbrains.dokka" % "dokka-test-api" % dokkaVersion % "test", // TODO move testing utils to dokka-site
   "com.virtuslab.dokka" % "dokka-site" % dokkaSiteVersion,
 
   "ch.epfl.lamp" %% "dotty-tasty-inspector" % dottyVersion,
@@ -41,29 +37,10 @@ lazy val root = project
     scalaVersion := dottyVersion
   )
 
-
-val dokkaJavaApiJar = file("libs") / "dokkaJavaApi-0.1.1-SNAPSHOT.jar"
-val gradleRootDir = file("dokkaJavaApi")
-
-val buildDokkaApi = taskKey[File]("Compile dokka wrapper and put jar in lib")
-buildDokkaApi := {
-  streams.value.log.info("Building Dokka API with Gradle...")
-  sys.process.Process(Seq("./gradlew", "build"), gradleRootDir).!
-
-  if (dokkaJavaApiJar.exists()) IO.delete(dokkaJavaApiJar)
-  IO.move(gradleRootDir / "build" / "libs" / "dokkaJavaApi-0.1.1-SNAPSHOT.jar", dokkaJavaApiJar)
-  streams.value.log.success(s"Dokka API copied to $dokkaJavaApiJar")
-  dokkaJavaApiJar
-}
-
-compile.in(Compile) := (compile.in(Compile).dependsOn(buildDokkaApi)).value
-
 val generateSelfDocumentation = inputKey[Unit]("Generate example documentation")
 generateSelfDocumentation := {
   run.in(Compile).fullInput(" -o output/self -t target/scala-0.27/classes -d documentation -n scala3doc -s src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L").evaluated // TODO #35 proper sbt integration
 }
-
-unmanagedJars in Compile += dokkaJavaApiJar
 
 // Uncomment to debug dokka processing (require to run debug in listen mode on 5005 port)
 // javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:5005,suspend=y"
