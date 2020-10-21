@@ -1,12 +1,12 @@
-package dotty.tools
-package dottydoc
+package dotty.tools.dottydoc
 package core
 
-import dotc.core.Contexts.{Context, ctx}
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 
 import transform.DocMiniPhase
 import model._
 import model.internal._
+import dotty.tools.List.fromIterable
 
 /** This DocMiniPhase adds the alternate constructors, currently defined as
  *  methods with the name `<init>`, to the Entity#constructors list
@@ -24,11 +24,11 @@ class AlternateConstructors extends DocMiniPhase {
 
   override def transformClass(using Context) = { case cls: ClassImpl =>
     val (constructors, members) = partitionMembers(cls)
-    cls.copy(members = members, constructors = constructors) :: Nil
+    fromIterable(cls.copy(members = members, constructors = constructors) :: Nil)
   }
 
   override def transformCaseClass(using Context) = { case cc: CaseClassImpl =>
     val (constructors, members) = partitionMembers(cc)
-    cc.copy(members = members, constructors = constructors) :: Nil
+    fromIterable(cc.copy(members = members, constructors = constructors) :: Nil)
   }
 }

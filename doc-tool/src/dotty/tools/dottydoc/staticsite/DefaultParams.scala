@@ -85,13 +85,13 @@ case class SiteInfo(
 case class Sidebar(titles: List[Title]) {
   import model.JavaConverters._
   def toMap: JMap[String, _] =
-    Map("titles" -> titles.map(_.toMap).asJava).asJava
+    Map("titles" -> titles.toScalaList.map(_.toMap).asJava).asJava
 }
 
 object Sidebar {
   def apply(map: HashMap[String, AnyRef]): Option[Sidebar] = Option(map.get("sidebar")).map {
     case list: JList[JMap[String, AnyRef]] @unchecked if !list.isEmpty =>
-      new Sidebar(list.asScala.map(Title.apply).flatten.toList)
+      new Sidebar(list.asScala.map(Title.apply).flatten.tolist)
     case _ => Sidebar.empty
   }
 
@@ -102,7 +102,7 @@ case class Title(title: String, url: Option[String], subsection: List[Title], de
   def toMap: JMap[String, _] = Map(
     "title" -> title,
     "url" -> url.orNull, // ugh, Java
-    "subsection" -> subsection.map(_.toMap).asJava,
+    "subsection" -> subsection.toScalaList.map(_.toMap).asJava,
     "description" -> description.orNull
   ).asJava
 }
@@ -123,7 +123,7 @@ object Title {
     val subsection = Option(map.get("subsection")).collect {
       case xs: JList[JMap[String, AnyRef]] @unchecked =>
         xs.asScala.map(Title.apply).toList.flatten
-    }.getOrElse(Nil)
+    }.getOrElse(ScalaNil).tolist
 
     title.map {
       case title: String  => Title(title, url, subsection, description)

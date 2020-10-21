@@ -163,7 +163,7 @@ extends MarkupConversion[Body] {
         case Body(List(Paragraph(Chain(content)))) =>
           val descr = Text(" ") +: content
           val link = makeEntityLink(ent, ctx.docbase.packages, Monospace(Text(targetStr)), targetStr)
-          Body(List(Paragraph(Chain(link +: descr))))
+          Body(List(Paragraph(Chain(link +: descr))).toSeq)
         case _ => body
       }
 

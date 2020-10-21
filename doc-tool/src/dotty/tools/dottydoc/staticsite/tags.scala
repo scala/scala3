@@ -234,7 +234,7 @@ object tags {
           case docs: Map[String, Package] @unchecked =>
             val search = query.split("\\.")
             if (search.isEmpty || !docs.contains(search.head)) null
-            else find(search.tail.toList, docs(search.head)).flatMap(_.comment.map(_.body)).getOrElse(null)
+            else find(search.tail.tolist, docs(search.head)).flatMap(_.comment.map(_.body)).getOrElse(null)
         }.getOrElse(null)
       case _ => null
     }

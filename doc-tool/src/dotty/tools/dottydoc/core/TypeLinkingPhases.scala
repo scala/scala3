@@ -38,7 +38,7 @@ class LinkParamListTypes extends DocMiniPhase with TypeLinker {
     val newParamLists = for {
       ParamListImpl(list, isImplicit) <- df.paramLists
       newList = list.map(linkReference(df, _, ctx.docbase.packages))
-    } yield ParamListImpl(newList.asInstanceOf[List[NamedReference]], isImplicit)
+    } yield ParamListImpl(newList.asInstanceOf[List[NamedReference]].toScalaList, isImplicit)
 
     df.copy(paramLists = newParamLists) :: Nil
   }
@@ -46,25 +46,25 @@ class LinkParamListTypes extends DocMiniPhase with TypeLinker {
 
 class LinkSuperTypes extends DocMiniPhase with TypeLinker {
   def linkSuperTypes(ent: Entity with SuperTypes)(using Context): List[MaterializableLink] =
-    ent.superTypes.collect {
+    ent.superTypes.tolist.collect {
       case UnsetLink(title, query) =>
         handleEntityLink(title, lookup(Some(ent), ctx.docbase.packages, query), ent)
     }
 
   override def transformClass(using Context) = { case cls: ClassImpl =>
-    cls.copy(superTypes = linkSuperTypes(cls)) :: Nil
+    cls.copy(superTypes = linkSuperTypes(cls).toScalaList) :: Nil
   }
 
   override def transformCaseClass(using Context) = { case cc: CaseClassImpl =>
-    cc.copy(superTypes = linkSuperTypes(cc)) :: Nil
+    cc.copy(superTypes = linkSuperTypes(cc).toScalaList) :: Nil
   }
 
   override def transformTrait(using Context) = { case trt: TraitImpl =>
-    trt.copy(superTypes = linkSuperTypes(trt)) :: Nil
+    trt.copy(superTypes = linkSuperTypes(trt).toScalaList) :: Nil
   }
 
   override def transformObject(using Context) = { case obj: ObjectImpl =>
-    obj.copy(superTypes = linkSuperTypes(obj)) :: Nil
+    obj.copy(superTypes = linkSuperTypes(obj).toScalaList) :: Nil
   }
 }
 

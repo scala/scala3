@@ -39,7 +39,7 @@ object factories {
   }
 
   def annotations(sym: Symbol)(using Context): List[String] =
-    sym.annotations.collect {
+    sym.annotations.toScalaList.collect {
       case ann if ann.symbol != ctx.definitions.SourceFileAnnot => ann.symbol.showFullName
     }
 
@@ -67,13 +67,13 @@ object factories {
         val cls = tycon.typeSymbol
 
         if (defn.isFunctionClass(cls))
-          FunctionReference(args.init.map(expandTpe(_, Nil)), expandTpe(args.last), defn.isContextFunctionClass(cls))
+          FunctionReference(args.init.toScalaList.map(expandTpe(_, Nil)), expandTpe(args.last), defn.isContextFunctionClass(cls))
         else if (defn.isTupleClass(cls))
-          TupleReference(args.map(expandTpe(_, Nil)))
+          TupleReference(args.map(expandTpe(_, Nil)).toScalaList)
         else {
           val query = cls.showFullName
           val name = cls.name.show
-          typeRef(name, query, params = args.map(expandTpe(_, Nil)))
+          typeRef(name, query, params = args.map(expandTpe(_, Nil)).toScalaList)
         }
       }
 
@@ -141,7 +141,7 @@ object factories {
   def typeParams(sym: Symbol)(using Context): List[String] =
     sym.info match {
       case pt: TypeLambda => // TODO: not sure if this case is needed anymore
-        pt.paramNames.map(_.show.split("\\$").last)
+        pt.paramNames.map(_.show.split("\\$").last).toScalaList
       case ClassInfo(_, _, _, decls, _) =>
         decls.iterator
           .filter(_.flags is TypeParam)
@@ -180,7 +180,7 @@ object factories {
           isByName = tpe.isInstanceOf[ExprType],
           isRepeated = tpe.isRepeatedParam
         )
-      }, mt.isImplicitMethod) :: paramLists(mt.resultType)
+      }.toScalaList, mt.isImplicitMethod) :: paramLists(mt.resultType)
 
     case mp: TermParamRef =>
       paramLists(mp.underlying)
@@ -209,7 +209,7 @@ object factories {
         case _ => false
       }
 
-      cd.classParents.map(_.typeConstructor).collect {
+      cd.classParents.toScalaList.map(_.typeConstructor).collect {
         case t: TypeRef if !isJavaLangObject(t) && !isProductWithArity(t) =>
           UnsetLink(t.name.toString, path(t.symbol).mkString("."))
       }

@@ -26,7 +26,7 @@ class DocASTPhase extends Phase {
 
   /** Build documentation hierarchy from existing tree */
   def collect(tree: Tree)(using Context): List[Entity] = {
-    val implicitConversions = ctx.docbase.defs(tree.symbol)
+    val implicitConversions = ctx.docbase.defs(tree.symbol).tolist
 
     def collectList(xs: List[Tree]): List[Entity] =
       xs.flatMap(collect)
@@ -52,14 +52,14 @@ class DocASTPhase extends Phase {
               meth.symbol,
               annotations(meth.symbol),
               meth.symbol.name.show,
-              Nil,
+              ScalaNil,
               path(meth.symbol),
               returnType(meth.info),
               typeParams(meth.symbol),
               paramLists(meth.info),
               implicitlyAddedFrom = Some(returnType(meth.symbol.owner.info))
             )
-          }.toList
+          }
 
         // don't add privates, synthetics or class parameters (i.e. value class constructor val)
         val vals = sym.info.fields.filterNot(_.symbol.isOneOf(Flags.ParamAccessor | Flags.Private | Flags.Synthetic)).map { value =>
@@ -68,7 +68,7 @@ class DocASTPhase extends Phase {
             value.symbol,
             annotations(value.symbol),
             value.symbol.name.show,
-            Nil, path(value.symbol),
+            ScalaNil, path(value.symbol),
             returnType(value.info),
             kind,
             implicitlyAddedFrom = Some(returnType(value.symbol.owner.info))
@@ -85,7 +85,7 @@ class DocASTPhase extends Phase {
     else tree match {
       /** package */
       case pd @ PackageDef(pid, st) =>
-        addPackage(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st), path(pd.symbol))) :: Nil
+        addPackage(PackageImpl(pd.symbol, annotations(pd.symbol), pd.symbol.showFullName, collectEntityMembers(st).toScalaList, path(pd.symbol))) :: Nil
 
       /** type alias */
       case t: TypeDef if !t.isClassDef =>
@@ -97,23 +97,34 @@ class DocASTPhase extends Phase {
             case tp: PolyType => tp.paramNames.map(_.show)
             case _ => Nil
           }
-          TypeAliasImpl(sym, annotations(sym), flags(t), t.name.show.split("\\$\\$").last, path(sym), alias(t.rhs.tpe), tparams) :: Nil
+          TypeAliasImpl(sym, annotations(sym), flags(t), t.name.show.split("\\$\\$").last, path(sym), alias(t.rhs.tpe), tparams.toScalaList) :: Nil
         }
 
       /** trait */
       case t @ TypeDef(n, rhs) if t.symbol.is(Flags.Trait) =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        TraitImpl(t.symbol, annotations(t.symbol), n.show, collectMembers(rhs), flags(t), path(t.symbol), typeParams(t.symbol), traitParameters(t.symbol), superTypes(t)) :: Nil
+        TraitImpl(t.symbol, annotations(t.symbol), n.show, collectMembers(rhs).toScalaList, flags(t), path(t.symbol), typeParams(t.symbol), traitParameters(t.symbol), superTypes(t)) :: Nil
 
       /** objects, on the format "Object$" so drop the last letter */
       case o @ TypeDef(n, rhs) if o.symbol.is(Flags.Module) =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        ObjectImpl(o.symbol, annotations(o.symbol), o.name.stripModuleClassSuffix.show, collectMembers(rhs),  flags(o), path(o.symbol), superTypes(o)) :: Nil
+        ObjectImpl(o.symbol, annotations(o.symbol), o.name.stripModuleClassSuffix.show, collectMembers(rhs).toScalaList,  flags(o), path(o.symbol), superTypes(o)) :: Nil
 
       /** class / case class */
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
-        val parameters = (c.symbol, annotations(c.symbol), n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), None, Nil, None)
+        val parameters: (
+          Symbol, scala.List[String], String,
+          scala.List[Entity],
+          scala.List[String], scala.List[String], scala.List[String],
+          scala.List[scala.List[ParamList]],
+          scala.List[dotty.tools.dottydoc.model.references.MaterializableLink],
+          scala.Option[dotty.tools.dottydoc.model.comment.Comment],
+          scala.List[String], Option[Entity])
+        = (c.symbol, annotations(c.symbol), n.show,
+           collectMembers(rhs).toScalaList,
+           flags(c), path(c.symbol), typeParams(c.symbol),
+           constructors(c.symbol), superTypes(c), None, ScalaNil, None)
         if (c.symbol.is(Flags.CaseClass)) {
           CaseClassImpl.tupled(parameters) :: Nil
         } else {
@@ -218,11 +229,11 @@ class DocASTPhase extends Phase {
         //
         // Which is the first element of `newPkg`'s path - thus we use the tail
         // to continue traversing down the tree.
-        createAndInsert(root.get, path.tail)
+        createAndInsert(root.get, path.tail.tolist)
       else {
-        val newEmpty = EmptyPackage(List(path.head), path.head)
+        val newEmpty = EmptyPackage(scala.List(path.head), path.head)
         packages = packages + (path.head -> newEmpty)
-        createAndInsert(newEmpty, path.tail)
+        createAndInsert(newEmpty, path.tail.tolist)
       }
     }
   }

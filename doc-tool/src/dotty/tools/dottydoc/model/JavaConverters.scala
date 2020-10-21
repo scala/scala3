@@ -18,6 +18,9 @@ object JavaConverters {
     def asJava = opt.getOrElse(Map.empty.asJava)
   }
 
+  extension [T](xs: dotty.tools.List[T])
+    def asJava = xs.toSeq.asJava
+
   implicit class JavaComment(val cmt: Comment) extends AnyVal {
     def asJava: JMap[String, _] = Map(
       "body" -> cmt.body,

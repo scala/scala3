@@ -13,7 +13,7 @@ trait MemberLookup {
    */
   def lookup(entity: Option[Entity], packages: Map[String, Package], query: String): Option[Entity] = {
     val notFound: Option[Entity] = None
-    val querys = query.split("\\.").toList
+    val querys = query.split("\\.").tolist
 
     /** Looks for the specified entity among `ent`'s members */
     def localLookup(ent: Entity with Members, searchStr: String): Option[Entity] =
@@ -46,7 +46,7 @@ trait MemberLookup {
      */
     def globalLookup: Option[Entity] = {
       def longestMatch(list: List[String]): List[String] =
-        if (list eq Nil) Nil
+        if (list.isEmpty) Nil
         else
           packages
           .get(list.mkString("."))
@@ -55,7 +55,7 @@ trait MemberLookup {
 
       longestMatch(querys) match {
         case Nil => notFound
-        case xs  => downwardLookup(packages(xs.mkString(".")), querys diff xs)
+        case xs  => downwardLookup(packages(xs.mkString(".")), querys.filterNot(xs.contains(_)))
       }
     }
 

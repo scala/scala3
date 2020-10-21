@@ -152,8 +152,9 @@ trait CommentParser extends util.MemberLookup {
         val bodyTags: mutable.Map[TagKey, List[String]] =
           mutable.Map((tagsWithoutDiagram).toSeq: _*)
 
-        def allTags(key: SimpleTagKey): List[String] =
-          (bodyTags remove key).getOrElse(Nil).reverse
+        def allTags(key: SimpleTagKey): dotty.tools.List[String] =
+          import dotty.tools._
+          (bodyTags remove key).getOrElse(ScalaNil).reverse.tolist
 
         def allSymsOneTag(key: TagKey, filterEmpty: Boolean = true): Map[String, String] = {
           val keys: Seq[SymbolTagKey] =

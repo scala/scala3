@@ -67,13 +67,15 @@ object transform {
         transformEntities.map(createNew)
       }
 
+      def traverseIt(ent: Entity): Iterator[Entity] = traverse(ent).iterator
+
       def traverse(ent: Entity): List[Entity] = ent match {
         case p: Package => transformEntity(p, _.packageTransformation) { p =>
           val newPackage = PackageImpl(
             p.symbol,
             p.annotations,
             p.name,
-            p.members.flatMap(traverse),
+            p.members.flatMap(traverseIt),
             p.path,
             p.superTypes,
             p.comment,
@@ -103,7 +105,7 @@ object transform {
             cls.symbol,
             cls.annotations,
             cls.name,
-            cls.members.flatMap(traverse),
+            cls.members.flatMap(traverseIt),
             cls.modifiers,
             cls.path,
             cls.typeParams,
@@ -119,7 +121,7 @@ object transform {
             cc.symbol,
             cc.annotations,
             cc.name,
-            cc.members.flatMap(traverse),
+            cc.members.flatMap(traverseIt),
             cc.modifiers,
             cc.path,
             cc.typeParams,
@@ -135,7 +137,7 @@ object transform {
             trt.symbol,
             trt.annotations,
             trt.name,
-            trt.members.flatMap(traverse),
+            trt.members.flatMap(traverseIt),
             trt.modifiers,
             trt.path,
             trt.typeParams,
@@ -151,7 +153,7 @@ object transform {
             obj.symbol,
             obj.annotations,
             obj.name,
-            obj.members.flatMap(traverse),
+            obj.members.flatMap(traverseIt),
             obj.modifiers,
             obj.path,
             obj.superTypes,
@@ -201,7 +203,7 @@ object transform {
     private var previousPhase = 0
     def apply(miniPhases: DocMiniPhase*) =
       new DocMiniTransformations {
-        val transformations = miniPhases.toList
+        val transformations = miniPhases.tolist
         val packages = Map.empty[String, Package]
 
         def phaseName = s"MiniTransformation${ previousPhase += 1 }"
