@@ -779,7 +779,27 @@ trait Implicits:
           SelectionProto(name, memberProto, compat, privateOK = false)
         case tp => tp
       }
-      try inferImplicit(adjust(to), from, from.span)
+
+      def isOldStyleFunctionConversion(tpe: Type): Boolean =
+        tpe match {
+          case PolyType(_, resType) => isOldStyleFunctionConversion(resType)
+          case _ => tpe.derivesFrom(defn.FunctionClass(1)) && !tpe.derivesFrom(defn.ConversionClass) && !tpe.derivesFrom(defn.SubTypeClass)
+        }
+
+      try
+        val inferred = inferImplicit(adjust(to), from, from.span)
+
+        inferred match {
+          case SearchSuccess(_, ref, _) =>
+            if isOldStyleFunctionConversion(ref.underlying) then
+              report.migrationWarning(
+                i"The conversion ${ref} will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.",
+                from
+              )
+          case _ =>
+        }
+
+        inferred
       catch {
         case ex: AssertionError =>
           implicits.println(s"view $from ==> $to")
