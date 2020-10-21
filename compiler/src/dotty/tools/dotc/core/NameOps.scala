@@ -89,7 +89,7 @@ object NameOps {
             && (n != true_)
             && (n != null_))
         }
-      } || name.is(PatMatQuoteTypeEv)
+      } || name.is(PatMatVarName)
 
     def isOpAssignmentName: Boolean = name match {
       case raw.NE | raw.LE | raw.GE | EMPTY =>

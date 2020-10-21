@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds.{UniqueName, PatMatQuoteTypeEv}
+import dotty.tools.dotc.core.NameKinds.{UniqueName, PatMatVarName}
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
@@ -158,7 +158,7 @@ trait QuotesAndSplices {
       if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
       val (name, expr) = tree.expr match {
         case Ident(name) =>
-          val nameOfSyntheticGiven = PatMatQuoteTypeEv.fresh()
+          val nameOfSyntheticGiven = PatMatVarName.fresh()
           (name.toTypeName, untpd.cpy.Ident(tree.expr)(nameOfSyntheticGiven))
         case expr =>
           report.error("expected a name binding", expr.srcPos)
@@ -272,7 +272,7 @@ trait QuotesAndSplices {
             tree
         case tdef: TypeDef  =>
           if tdef.symbol.hasAnnotation(defn.InternalQuotedPatterns_patternTypeAnnot) then
-            transformTypeBindingTypeDef(PatMatQuoteTypeEv.fresh(), tdef, typePatBuf)
+            transformTypeBindingTypeDef(PatMatVarName.fresh(), tdef, typePatBuf)
           else if tdef.symbol.isClass then
             val kind = if tdef.symbol.is(Module) then "objects" else "classes"
             report.error("Implementation restriction: cannot match " + kind, tree.srcPos)
