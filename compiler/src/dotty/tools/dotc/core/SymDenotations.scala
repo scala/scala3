@@ -1476,8 +1476,8 @@ object SymDenotations {
       if (ctx.isAfterTyper && changedClassParents(info, info1, completersMatter = false))
         assert(ctx.phase.changesParents, i"undeclared parent change at ${ctx.phase} for $this, was: $info, now: $info1")
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
-      val annotations1 = if (annotations != nullList) annotations else this.annotations
-      val rawParamss1 = if rawParamss != nullList then rawParamss else this.rawParamss
+      val annotations1 = if (annotations neLst nullList) annotations else this.annotations
+      val rawParamss1 = if rawParamss neLst nullListList then rawParamss else this.rawParamss
       val d = SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
       d.rawParamss = rawParamss1

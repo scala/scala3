@@ -122,6 +122,7 @@ class TreeUnpickler(reader: TastyReader,
   }
 
   class TreeReader(val reader: TastyReader) {
+    import reader._
 
     def forkAt(start: Addr): TreeReader = new TreeReader(subReader(start, endAddr))
     def fork: TreeReader = forkAt(currentAddr)

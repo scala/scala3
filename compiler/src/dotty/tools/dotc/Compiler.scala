@@ -36,18 +36,16 @@ class Compiler {
 
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =
-    List(new FrontEnd) ::           // Compiler frontend: scanner, parser, namer, typer
-    List(new YCheckPositions) ::    // YCheck positions
-    Nil
-/*
-    List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
+    List(new FrontEnd: Phase) ::           // Compiler frontend: scanner, parser, namer, typer
+    List(new YCheckPositions: Phase) ::    // YCheck positions
+    List(new sbt.ExtractDependencies: Phase) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
-    List(new PostTyper) ::          // Additional checks and cleanups after type checking
-    List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
-    List(new Staging) ::            // Check PCP, heal quoted types and expand macros
-    List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
-    List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
-    Nil*/
+    List(new PostTyper: Phase) ::          // Additional checks and cleanups after type checking
+    List(new sjs.PrepJSInterop: Phase) ::  // Additional checks and transformations for Scala.js (Scala.js only)
+    List(new Staging: Phase) ::            // Check PCP, heal quoted types and expand macros
+    List(new sbt.ExtractAPI: Phase) ::     // Sends a representation of the API of classes to sbt via callbacks
+    List(new SetRootTree: Phase) ::        // Set the `rootTreeOrProvider` on class symbols
+    Nil
 
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
@@ -56,31 +54,31 @@ class Compiler {
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
-  protected def transformPhases: List[List[Phase]] = ???
-/*  List(new FirstTransform,         // Some transformations to put trees into a canonical form
+  protected def transformPhases: List[List[Phase]] =
+    (List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
          new CookComments,           // Cook the comments: expand variables, doc, etc.
          new CheckStatic,            // Check restrictions that apply to @static members
          new BetaReduce,             // Reduce closure applications
-         new init.Checker) ::        // Check initialization of objects
-    List(new ElimRepeated,           // Rewrite vararg parameters and arguments
+         new init.Checker): List[Phase]) ::        // Check initialization of objects
+    (List(new ElimRepeated,           // Rewrite vararg parameters and arguments
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
          new CacheAliasImplicits,    // Cache RHS of parameterless alias implicits
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
-         new RefChecks) ::           // Various checks mostly related to abstract members and overriding
-    List(new ElimOpaque,             // Turn opaque into normal aliases
+         new RefChecks): List[Phase]) ::           // Various checks mostly related to abstract members and overriding
+    (List(new ElimOpaque,             // Turn opaque into normal aliases
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
          new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
-         new CrossCastAnd) ::        // Normalize selections involving intersection types.
-    List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
+         new CrossCastAnd): List[Phase]) ::        // Normalize selections involving intersection types.
+    (List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
          new InlinePatterns,         // Remove placeholders of inlined patterns
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
@@ -95,9 +93,9 @@ class Compiler {
          new ParamForwarding,        // Add forwarders for aliases of superclass parameters
          new TupleOptimizations,     // Optimize generic operations on tuples
          new LetOverApply,            // Lift blocks from receivers of applications
-         new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
-    List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
-    List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
+         new ArrayConstructors): List[Phase]) ::   // Intercept creation of (non-generic) arrays and intrinsify.
+    (List(new Erasure): List[Phase]) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
+    (List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new PureStats,              // Remove pure stats from blocks
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
          new ArrayApply,             // Optimize `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
@@ -109,16 +107,16 @@ class Compiler {
          new LazyVals,               // Expand lazy vals
          new Memoize,                // Add private fields to getters and setters
          new NonLocalReturns,        // Expand non-local returns
-         new CapturedVars) ::        // Represent vars captured by closures as heap objects
-    List(new Constructors,           // Collect initialization code in primary constructors
+         new CapturedVars): List[Phase]) ::        // Represent vars captured by closures as heap objects
+    (List(new Constructors,           // Collect initialization code in primary constructors
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
          new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
-         new Instrumentation) ::     // Count calls and allocations under -Yinstrument
-    List(new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
+         new Instrumentation): List[Phase]) ::     // Count calls and allocations under -Yinstrument
+    (List(new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                      // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
          new ElimStaticThis,         // Replace `this` references to static objects by global identifiers
-         new CountOuterAccesses) ::  // Identify outer accessors that can be dropped
-    List(new DropOuterAccessors,     // Drop unused outer accessors
+         new CountOuterAccesses): List[Phase]) ::  // Identify outer accessors that can be dropped
+    (List(new DropOuterAccessors,     // Drop unused outer accessors
          new Flatten,                // Lift all inner classes to package scope
          new RenameLifted,           // Renames lifted classes to local numbering scheme
          new TransformWildcards,     // Replace wildcards with default values
@@ -127,9 +125,9 @@ class Compiler {
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
-         new CollectSuperCalls) ::   // Find classes that are called with super
+         new CollectSuperCalls): List[Phase]) ::   // Find classes that are called with super
     Nil
-*/
+
   /** Generate the output of the compilation */
   protected def backendPhases: List[List[Phase]] =
     //List(new backend.sjs.GenSJSIR) :: // Generate .sjsir files for Scala.js (not enabled by default)
