@@ -2594,7 +2594,7 @@ object Parsers {
         val givenMod = atSpan(in.skipToken())(Mod.Given())
         atSpan(in.offset) {
           in.token match {
-            case IDENTIFIER | USCORE if in.name.isVariableName =>
+            case IDENTIFIER | USCORE if in.name.isVarPattern =>
               val name = in.name
               in.nextToken()
               accept(COLON)

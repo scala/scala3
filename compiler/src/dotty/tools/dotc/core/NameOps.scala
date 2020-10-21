@@ -79,8 +79,8 @@ object NameOps {
       case name: SimpleName => name.exists(isOperatorPart)
       case _ => false
 
-    /** Is name a variable name? */
-    def isVariableName: Boolean =
+    /** Is name of a variable pattern? */
+    def isVarPattern: Boolean =
       testSimple { n =>
         n.length > 0 && {
           val first = n.head

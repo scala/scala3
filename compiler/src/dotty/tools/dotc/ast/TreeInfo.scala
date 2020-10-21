@@ -160,7 +160,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** Is tree a variable pattern? */
   def isVarPattern(pat: Tree): Boolean = unsplice(pat) match {
-    case x: Ident => x.name.isVariableName && !isBackquoted(x)
+    case x: Ident => x.name.isVarPattern && !isBackquoted(x)
     case _  => false
   }
 
