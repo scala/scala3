@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: set right cwd
+        run: cd scala3doc
+
       - uses: actions/checkout@v2
       - run: git fetch --prune --unshallow --tags
 
