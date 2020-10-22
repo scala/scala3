@@ -119,6 +119,7 @@ object Trees {
               assert(x.hasType || ctx.reporter.errorsReported,
                      s"$this has untyped child $x")
             case xs: List[?] => checkChildrenTyped(xs.iterator)
+            case xs: Array[?] => checkChildrenTyped(xs.iterator)
             case _ =>
           }
 
@@ -182,6 +183,7 @@ object Trees {
       def addSize(elem: Any): Unit = elem match {
         case t: Tree[?] => s += t.treeSize
         case ts: List[?] => ts foreach addSize
+        case ts: Array[?] => ts foreach addSize
         case _ =>
       }
       productIterator foreach addSize
@@ -209,6 +211,11 @@ object Trees {
                 case y: List[?] => x.corresponds(y)(isSame)
                 case _ => false
               }
+            case x: Array[?] =>
+              y match {
+                case y: Array[?] => x.corresponds(y)(isSame)
+                case _ => false
+              }
             case _ =>
               false
           }
@@ -225,7 +232,7 @@ object Trees {
   }
 
   class UnAssignedTypeException[T >: Untyped](tree: Tree[T]) extends RuntimeException {
-    override def getMessage: String = s"type of $tree is not assigned"
+    override def getMessage: String = s"type of $tree # ${tree.uniqueId} is not assigned"
   }
 
   type LazyTree[-T >: Untyped] = Tree[T] | Lazy[Tree[T]]
@@ -848,16 +855,12 @@ object Trees {
     }
 
     override def foreachInThicket(op: Tree[T] => Unit): Unit =
-      trees foreach (_.foreachInThicket(op))
+      trees.foreach(_.foreachInThicket(op))
 
     override def isEmpty: Boolean = trees.isEmpty
     override def toList: List[Tree[T]] = flatten(trees)
     override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
-    override def span: Span =
-      def combine(s: Span, ts: List[Tree[T]]): Span = ts match
-        case t :: ts1 => combine(s.union(t.span), ts1)
-        case nil => s
-      combine(NoSpan, trees)
+    override def span: Span = trees.foldLeft(NoSpan)((s, t) => s.union(t.span))
 
     override def withSpan(span: Span): this.type =
       mapElems(_.withSpan(span)).asInstanceOf[this.type]
@@ -882,29 +885,15 @@ object Trees {
   def genericEmptyValDef[T >: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
 
-  def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
-    def recur(buf: List.Buffer[Tree[T]], remaining: List[Tree[T]]): List.Buffer[Tree[T]] =
-      remaining match {
-        case Thicket(elems) :: remaining1 =>
-          var buf1 = buf
-          if (buf1 == null) {
-            buf1 = List.Buffer[Tree[T]]()
-            var scanned = trees
-            while (scanned neLst remaining) {
-              buf1 += scanned.head
-              scanned = scanned.tail
-            }
-          }
-          recur(recur(buf1, elems), remaining1)
-        case tree :: remaining1 =>
-          if (buf != null) buf += tree
-          recur(buf, remaining1)
-        case nil =>
-          buf
+  def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] =
+    if trees.exists(_.isInstanceOf[Thicket[?]]) then
+      val buf = List.Buffer[Tree[T]]()
+      trees.foreach {
+        case Thicket(elems) =>  buf ++= flatten(elems)
+        case tree => buf += tree
       }
-    val buf = recur(null, trees)
-    if (buf != null) buf.toList else trees
-  }
+      buf.toList
+    else trees
 
   // ----- Lazy trees and tree sequences
 
@@ -1007,8 +996,8 @@ object Trees {
     // ----- Auxiliary creation methods ------------------
 
     def Thicket(): Thicket = EmptyTree
-    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = Thicket(x1 :: x2 :: Nil)
-    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = Thicket(x1 :: x2 :: x3 :: Nil)
+    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = Thicket(List(x1, x2))
+    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = Thicket(List(x1, x2, x3))
     def flatTree(xs: List[Tree])(implicit src: SourceFile): Tree = flatten(xs) match {
       case x :: Nil => x
       case ys => Thicket(ys)
