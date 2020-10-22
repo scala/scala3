@@ -59,7 +59,7 @@ class CheckedTransformation(transform: PartialFunction[Expr[Any], Expr[Any]]) ex
   def apply[T: Type](e: Expr[T])(using QuoteContext): Expr[T] = {
     transform.applyOrElse(e, identity) match {
       case '{ $e2: T } => e2
-      case '{ $e2: $t } =>
+      case '{ $e2: $T } =>
         throw new Exception(
           s"""Transformed
             |${e.show}
@@ -69,7 +69,7 @@ class CheckedTransformation(transform: PartialFunction[Expr[Any], Expr[Any]]) ex
             |Expected type to be
             |${summon[Type[T]].show}
             |but was
-            |${t.show}
+            |${Type[T].show}
           """.stripMargin)
     }
   }

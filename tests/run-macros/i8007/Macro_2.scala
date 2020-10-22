@@ -4,9 +4,9 @@ import scala.quoted._
 
 object Macro2 {
 
-  def mirrorFields[T](t: Type[T])(using qctx: QuoteContext): List[String] =
+  def mirrorFields[T](using t: Type[T])(using qctx: QuoteContext): List[String] =
     t match {
-      case '[$field *: $fields] => field.show.substring(1, field.show.length-1) :: mirrorFields(fields)
+      case '[$Field *: $Fields] => Type[Field].show.substring(1, Type[Field].show.length-1) :: mirrorFields[Fields]
       case '[EmptyTuple] => Nil
     }
 
@@ -24,8 +24,8 @@ object Macro2 {
       import qctx.reflect._
 
       val fields = ev match {
-        case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = $t } } =>
-          mirrorFields(t)
+        case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = $Labels } } =>
+          mirrorFields[Labels]
       }
 
       val body: Expr[T] => Expr[String] = elem =>

@@ -320,6 +320,7 @@ object NameKinds {
   val PatMatStdBinderName: UniqueNameKind    = new UniqueNameKind("x")
   val PatMatAltsName: UniqueNameKind         = new UniqueNameKind("matchAlts")
   val PatMatResultName: UniqueNameKind       = new UniqueNameKind("matchResult")
+  val PatMatVarName: UniqueNameKind          = new UniqueNameKind("ev$")
 
   val LocalOptInlineLocalObj: UniqueNameKind = new UniqueNameKind("ilo")
 

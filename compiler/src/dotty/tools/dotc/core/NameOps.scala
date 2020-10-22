@@ -79,16 +79,17 @@ object NameOps {
       case name: SimpleName => name.exists(isOperatorPart)
       case _ => false
 
-    /** Is name a variable name? */
-    def isVariableName: Boolean = testSimple { n =>
-      n.length > 0 && {
-        val first = n.head
-        (((first.isLower && first.isLetter) || first == '_')
-          && (n != false_)
-          && (n != true_)
-          && (n != null_))
-      }
-    }
+    /** Is name of a variable pattern? */
+    def isVarPattern: Boolean =
+      testSimple { n =>
+        n.length > 0 && {
+          val first = n.head
+          (((first.isLower && first.isLetter) || first == '_')
+            && (n != false_)
+            && (n != true_)
+            && (n != null_))
+        }
+      } || name.is(PatMatVarName)
 
     def isOpAssignmentName: Boolean = name match {
       case raw.NE | raw.LE | raw.GE | EMPTY =>
