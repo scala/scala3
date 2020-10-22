@@ -206,7 +206,7 @@ Cases such as `case C` expand to a `@static val` as opposed to a `val`. This all
 ### Other Rules
 
  - A normal case class which is not produced from an enum case is not allowed to extend
-`scala.Enum`. This ensures that the only cases of an enum are the ones that are
+`scala.reflect.Enum`. This ensures that the only cases of an enum are the ones that are
 explicitly declared in it.
 
  - If an enum case has an extends clause, the enum class must be one of the
