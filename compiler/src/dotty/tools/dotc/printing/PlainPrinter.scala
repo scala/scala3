@@ -544,7 +544,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toText[T >: Untyped](tree: Tree[T]): Text = {
     def toTextElem(elem: Any): Text = elem match {
       case elem: Showable => elem.toText(this)
-      case elem: List[?] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
+      case elem: Array[?] => "Array(" ~ Text(elem map toTextElem, ",") ~ ")"
       case elem => elem.toString
     }
     val nodeName = tree.productPrefix

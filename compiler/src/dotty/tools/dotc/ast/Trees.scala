@@ -182,7 +182,6 @@ object Trees {
       var s = 1
       def addSize(elem: Any): Unit = elem match {
         case t: Tree[?] => s += t.treeSize
-        case ts: List[?] => ts foreach addSize
         case ts: Array[?] => ts foreach addSize
         case _ =>
       }
@@ -204,11 +203,6 @@ object Trees {
             case x: Tree[?] =>
               y match {
                 case y: Tree[?] => x.sameTree(y)
-                case _ => false
-              }
-            case x: List[?] =>
-              y match {
-                case y: List[?] => x.corresponds(y)(isSame)
                 case _ => false
               }
             case x: Array[?] =>
@@ -910,7 +904,7 @@ object Trees {
         val x = lzy.complete
         force(x)
         x
-      case x: T @ unchecked => x
+      case x => x.asInstanceOf[T]
     }
   }
 
