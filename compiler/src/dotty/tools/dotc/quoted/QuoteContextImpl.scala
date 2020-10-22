@@ -414,6 +414,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         withDefaultPos(tpd.Select(qualifier, name.toTermName))
       def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply =
         withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
+        
+      def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term], returnType: Type): Apply =
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType).asInstanceOf[Apply])
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         tpd.cpy.Select(original)(qualifier, name.toTermName)
       def unapply(x: Select): Option[(Term, String)] =
@@ -2049,6 +2052,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object TypeBounds extends TypeBoundsModule:
       def apply(low: Type, hi: Type): TypeBounds = Types.TypeBounds(low, hi)
       def unapply(x: TypeBounds): Option[(Type, Type)] = Some((x.low, x.hi))
+      def empty: TypeBounds = Types .TypeBounds.empty
+      def upper(hi: Type): TypeBounds = Types .TypeBounds.upper(hi)
+      def lower(lo: Type): TypeBounds = Types .TypeBounds.lower(lo)
     end TypeBounds
 
     object TypeBoundsMethodsImpl extends TypeBoundsMethods:

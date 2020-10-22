@@ -515,6 +515,9 @@ trait Reflection { reflection =>
     // TODO rename, this returns an Apply and not a Select
     /** Call an overloaded method with the given type and term parameters */
     def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply
+      
+    /** Call an overloaded method with the given type and term parameters */
+    def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term], returnType: Type): Apply
 
     def copy(original: Tree)(qualifier: Term, name: String): Select
 
@@ -2297,6 +2300,9 @@ trait Reflection { reflection =>
   trait TypeBoundsModule { this: TypeBounds.type =>
     def apply(low: Type, hi: Type): TypeBounds
     def unapply(x: TypeBounds): Option[(Type, Type)]
+    def empty: TypeBounds
+    def upper(hi: Type): TypeBounds
+    def lower(lo: Type): TypeBounds
   }
 
   given TypeBoundsMethods as TypeBoundsMethods = TypeBoundsMethodsImpl
