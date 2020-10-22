@@ -47,7 +47,7 @@ class ExtractSemanticDB extends Phase:
     val unit = ctx.compilationUnit
     val extract = Extractor()
     extract.traverse(unit.tpdTree)
-    ExtractSemanticDB.write(unit.source, extract.occurrences.tolist, extract.symbolInfos.tolist)
+    ExtractSemanticDB.write(unit.source, extract.occurrences.toList, extract.symbolInfos.toList)
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:

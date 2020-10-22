@@ -441,14 +441,14 @@ class TreeChecker extends Phase with SymTransformer {
         !x.name.is(DocArtifactName) &&
         !(ctx.phase.id >= genBCodePhase.id && x.name == str.MODULE_INSTANCE_FIELD.toTermName)
 
-      val decls   = cls.classInfo.decls.tolist.toSet.filter(isNonMagicalMember)
+      val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
 
       val symbolsNotDefined = decls -- defined.iterator - constr.symbol
 
       assert(symbolsNotDefined.isEmpty,
           i" $cls tree does not define members: ${symbolsNotDefined.tolist}%, %\n" +
-          i"expected: ${decls.tolist}%, %\n" +
+          i"expected: ${decls.toList}%, %\n" +
           i"defined: ${defined}%, %")
 
       super.typedClassDef(cdef, cls)

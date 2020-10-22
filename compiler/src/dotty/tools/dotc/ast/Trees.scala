@@ -170,7 +170,7 @@ object Trees {
     /** Convert tree to a list. Gives a singleton list, except
      *  for thickets which return their element trees.
      */
-    def tolist: List[Tree[T]] = this :: Nil
+    def toList: List[Tree[T]] = this :: Nil
 
     /** if this tree is the empty tree, the alternative, else this tree */
     inline def orElse[U >: Untyped <: T](inline that: Tree[U]): Tree[U] =
@@ -851,7 +851,7 @@ object Trees {
       trees foreach (_.foreachInThicket(op))
 
     override def isEmpty: Boolean = trees.isEmpty
-    override def tolist: List[Tree[T]] = flatten(trees)
+    override def toList: List[Tree[T]] = flatten(trees)
     override def toString: String = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
     override def span: Span =
       def combine(s: Span, ts: List[Tree[T]]): Span = ts match
@@ -903,7 +903,7 @@ object Trees {
           buf
       }
     val buf = recur(null, trees)
-    if (buf != null) buf.tolist else trees
+    if (buf != null) buf.toList else trees
   }
 
   // ----- Lazy trees and tree sequences

@@ -610,7 +610,7 @@ object TypeOps:
       case _ =>
 
     loop(args, boundss)
-    violations.tolist
+    violations.toList
   }
 
   /** Refine child based on parent

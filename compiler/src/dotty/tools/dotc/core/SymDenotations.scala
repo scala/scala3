@@ -1543,7 +1543,7 @@ object SymDenotations {
                   case _ => false
 
         if owner.isClass then
-          for c <- owner.info.decls.tolist if maybeChild(c) do
+          for c <- owner.info.decls.toList if maybeChild(c) do
             c.ensureCompleted()
       end completeChildrenIn
 
@@ -2183,7 +2183,7 @@ object SymDenotations {
             if (denot.isType && denot.name.isPackageObjectName)
               pkgObjBuf += sym.asClass.classDenot
           }
-          pkgObjBuf.tolist
+          pkgObjBuf.toList
         }
       }
       packageObjsCache
@@ -2310,7 +2310,7 @@ object SymDenotations {
     /** Unlink all package members defined in `file` in a previous run. */
     def unlinkFromFile(file: AbstractFile)(using Context): Unit = {
       val scope = unforcedDecls.openForMutations
-      for (sym <- scope.tolist.iterator)
+      for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
         if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
@@ -2413,7 +2413,7 @@ object SymDenotations {
             if (!traceInvalid(owner)) explainSym("owner is invalid")
             else if (!owner.isClass || owner.isRefinementClass || denot.isSelfSym) true
             else if (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol) true
-            else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).tolist}, do not contain ${denot.symbol}")
+            else explainSym(s"decls of ${show(owner)} are ${owner.unforcedDecls.lookupAll(denot.name).toList}, do not contain ${denot.symbol}")
           }
           catch {
             case ex: StaleSymbol => explainSym(s"$ex was thrown")

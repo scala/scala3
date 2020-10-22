@@ -683,7 +683,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(vparamss.isEmpty || vparamss.tail.isEmpty, s"Malformed parameter list: $vparamss")
       val params = if (vparamss.isEmpty) Nil else vparamss.head
       for (p <- params) { locals.makeLocal(p.symbol) }
-      // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.tolist, "debug")
+      // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.toList, "debug")
 
       if (params.size > MaximumJvmParameters) {
         // SI-7324
@@ -715,7 +715,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             case (_: Apply) | Block(_, (_: Apply)) if rhs.symbol eq defn.throwMethod => ()
             case tpd.EmptyTree =>
               report.error("Concrete method has no definition: " + dd + (
-                if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.tolist.mkString(", ") + ")"
+                if (ctx.settings.Ydebug.value) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
                 else ""),
                 ctx.source.atSpan(NoSpan)
               )

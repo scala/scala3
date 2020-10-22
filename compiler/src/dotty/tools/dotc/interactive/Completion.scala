@@ -265,7 +265,7 @@ object Completion {
     private def accessibleMembers(site: Type)(using Context): Seq[Symbol] = site match {
       case site: NamedType if site.symbol.is(Package) =>
         extension (tpe: Type)
-          def accessibleSymbols = tpe.decls.tolist.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
+          def accessibleSymbols = tpe.decls.toList.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
 
         val packageDecls = site.accessibleSymbols
         val packageObjectsDecls = packageDecls.filter(_.isPackageObject).flatMap(_.thisType.accessibleSymbols)

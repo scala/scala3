@@ -41,7 +41,7 @@ class Driver {
         def finish(run: Run)(using Context): Unit =
           run.printSummary()
           if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
-            val suspendedUnits = run.suspendedUnits.tolist
+            val suspendedUnits = run.suspendedUnits.toList
             if (ctx.settings.XprintSuspension.value)
               report.echo(i"compiling suspended $suspendedUnits%, %")
             val run1 = compiler.newRun

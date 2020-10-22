@@ -790,7 +790,7 @@ object PatternMatcher {
                   false
               }
               if (rec(innerPlan))
-                Some((alts.tolist, ons))
+                Some((alts.toList, ons))
               else
                 None
 

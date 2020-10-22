@@ -346,7 +346,7 @@ trait TypeAssigner {
             val resultType1 = transform(pt.resultType)
             if (gapBuf.isEmpty) resultType1
             else {
-              val gaps = gapBuf.tolist
+              val gaps = gapBuf.toList
               pt.derivedLambdaType(
                 gaps.map(paramNames(_)),
                 gaps.map(idx => transform(pt.paramInfos(idx)).bounds),
@@ -408,7 +408,7 @@ trait TypeAssigner {
           }
         }
         HKTypeLambda.fromParams(
-          params(List.Buffer[TypeSymbol](), pat).tolist,
+          params(List.Buffer[TypeSymbol](), pat).toList,
           defn.MatchCase(pat.tpe, body.tpe))
       }
       else body.tpe

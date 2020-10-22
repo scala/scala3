@@ -119,7 +119,7 @@ object Inliner {
     val tree1 = liftBindings(tree, identity)
     val tree2 =
       if bindings.nonEmpty then
-        cpy.Block(tree)(bindings.tolist, inlineCall(tree1))
+        cpy.Block(tree)(bindings.toList, inlineCall(tree1))
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
         val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
         new Inliner(tree, body).inlined(tree.srcPos)
@@ -298,7 +298,7 @@ object Inliner {
             ctx2.typer.typed(tree2)(using ctx2)
             val typerErrors = ctx2.reporter.allErrors.filterNot(parseErrors.contains(_))
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
-          res.tolist
+          res.toList
         case t =>
           report.error("argument to compileError must be a statically known String", underlyingCodeArg.srcPos)
           Nil
@@ -763,12 +763,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
       if (ctx.settings.verbose.value) {
         inlining.println(i"to inline = $rhsToInline")
-        inlining.println(i"original bindings = ${bindingsBuf.tolist}%\n%")
+        inlining.println(i"original bindings = ${bindingsBuf.toList}%\n%")
         inlining.println(i"original expansion = $expansion1")
       }
 
       // Drop unused bindings
-      val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.tolist, expansion1)
+      val (finalBindings, finalExpansion) = dropUnusedDefs(bindingsBuf.toList, expansion1)
 
       if (inlinedMethod == defn.Compiletime_error) issueError()
 
@@ -954,7 +954,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               newOwners = ctx.owner :: Nil,
               substFrom = ddef.vparamss.head.map(_.symbol),
               substTo = argSyms)
-            Block(bindingsBuf.tolist, expander.transform(ddef.rhs))
+            Block(bindingsBuf.toList, expander.transform(ddef.rhs))
           case _ => tree
         }
       case _ => tree
@@ -1157,13 +1157,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               bbuf += binding.subst(from, to).asInstanceOf[MemberDef]
               if (sym.exists) substBindings(rest, bbuf, sym :: from, binding.symbol :: to)
               else substBindings(rest, bbuf, from, to)
-            case Nil => (bbuf.tolist, from, to)
+            case Nil => (bbuf.toList, from, to)
           }
 
         if (!isImplicit) caseBindingMap += ((NoSymbol, scrutineeBinding))
         val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
         if (reducePattern(caseBindingMap, scrutineeSym.termRef, cdef.pat)(using gadtCtx)) {
-          val (caseBindings, from, to) = substBindings(caseBindingMap.tolist, List.Buffer(), Nil, Nil)
+          val (caseBindings, from, to) = substBindings(caseBindingMap.toList, List.Buffer(), Nil, Nil)
           val guardOK = cdef.guard.isEmpty || {
             typer.typed(cdef.guard.subst(from, to), defn.BooleanType) match {
               case ConstantValue(true) => true

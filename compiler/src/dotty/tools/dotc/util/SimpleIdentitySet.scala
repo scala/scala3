@@ -145,7 +145,7 @@ object SimpleIdentitySet {
     def tolist: List[Elem] = {
       val buf = List.Buffer[Elem]()
       foreach(buf += _)
-      buf.tolist
+      buf.toList
     }
     override def ++ [E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): SimpleIdentitySet[E] =
       that match {

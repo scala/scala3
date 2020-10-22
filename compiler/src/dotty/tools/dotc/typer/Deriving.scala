@@ -295,7 +295,7 @@ trait Deriving {
         tpd.polyDefDef(sym.asTerm, typeclassInstance(sym))
       }
 
-      synthetics.tolist.map(syntheticDef)
+      synthetics.toList.map(syntheticDef)
     }
 
     def finalize(stat: tpd.TypeDef): tpd.Tree = {

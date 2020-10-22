@@ -611,7 +611,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       annots += apiAnnotation(annot)
     }
 
-    annots.tolist
+    annots.toList
   }
 
   /** Produce a hash for a tree that is as stable as possible:

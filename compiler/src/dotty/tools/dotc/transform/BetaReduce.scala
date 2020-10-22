@@ -88,7 +88,7 @@ object BetaReduce:
         case _ => super.transform(tree)
     }.transform(expansion)
     val bindings1 =
-      bindings.tolist.filterNot(vdef => vdef.tpt.tpe.isInstanceOf[ConstantType] && isPureExpr(vdef.rhs))
+      bindings.toList.filterNot(vdef => vdef.tpt.tpe.isInstanceOf[ConstantType] && isPureExpr(vdef.rhs))
 
     seq(bindings1, expansion1)
   end apply

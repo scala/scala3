@@ -187,7 +187,7 @@ class TreeTypeMap(
     val symsChanged = syms neLst mapped
     val substMap = withSubstitution(syms, mapped)
     val fullMap = mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
-      val origDcls = cls.info.decls.tolist
+      val origDcls = cls.info.decls.toList
       val mappedDcls = mapSymbols(origDcls, tmap)
       val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
       if (symsChanged)

@@ -118,5 +118,5 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
         addBridgeIfNeeded(opc.overriding, opc.overridden)
       opc.next()
     if bridges.isEmpty then stats
-    else stats.filterNot(stat => toBeRemoved contains stat.symbol) ::: bridges.tolist
+    else stats.filterNot(stat => toBeRemoved contains stat.symbol) ::: bridges.toList
 }

@@ -217,7 +217,7 @@ object Interactive {
 
     trees.foreach(t => traverser(t.source).traverse(t.tree))
 
-    buf.tolist
+    buf.toList
   }
 
   /**

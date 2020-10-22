@@ -674,7 +674,7 @@ object Denotations {
         current ne initial
       })
       ()
-      b.tolist
+      b.toList
     }
 
     /** Invalidate all caches and fields that depend on base classes and their contents */

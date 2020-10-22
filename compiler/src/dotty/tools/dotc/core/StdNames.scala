@@ -598,7 +598,7 @@ object StdNames {
     val throw_ : N              = "throw"
     val toArray: N              = "toArray"
     val toExpr: N               = "toExpr"
-    val tolist: N               = "tolist"
+    val toList: N               = "tolist"
     val toObjectArray : N       = "toObjectArray"
     val toSeq: N                = "toSeq"
     val toString_ : N           = "toString"

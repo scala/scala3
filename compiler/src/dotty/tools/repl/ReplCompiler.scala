@@ -102,7 +102,7 @@ class ReplCompiler extends Compiler {
     }
 
     Definitions(
-      defs.tolist,
+      defs.toList,
       state.copy(
         objectIndex = state.objectIndex + 1,
         valIndex = valIdx

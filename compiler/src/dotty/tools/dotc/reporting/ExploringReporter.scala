@@ -14,7 +14,7 @@ class ExploringReporter extends StoreReporter(null):
     infos.exists(_.isInstanceOf[Error])
 
   override def removeBufferedMessages(using Context): List[Diagnostic] =
-    try infos.tolist finally reset()
+    try infos.toList finally reset()
 
   def reset(): Unit = infos.clear()
 

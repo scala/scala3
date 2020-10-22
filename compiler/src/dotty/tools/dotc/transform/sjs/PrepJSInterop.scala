@@ -237,7 +237,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           transformedTree.parents,
           Nil,
           transformedTree.self,
-          transformedTree.body ::: exports.tolist
+          transformedTree.body ::: exports.toList
         )
       }
     }

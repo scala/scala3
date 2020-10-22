@@ -248,7 +248,7 @@ object List:
     def last = buf.last
     def mapInPlace(f: T => T): buf.type = buf.mapInPlace(f)
     def trimEnd(n: Int) = buf.trimEnd(n)
-    def tolist: List[T] = buf.toList
+    def toList: List[T] = buf.toList
     def toSeq: Seq[T] = buf.toSeq
     def remove(n: Int): T =  buf.remove(n)
     def dropInPlace(n: Int): buf.type = buf.dropInPlace(n)
@@ -316,12 +316,12 @@ object List:
     def map[U](f: T => U): List[U] =
       val buf = Buffer[U]()//(xs.length)
       foreach(x => buf += f(x))
-      buf.tolist
+      buf.toList
 
     def flatMap[U](f: T => List[U]): List[U] =
       val buf = Buffer[U]()
       foreach(x => buf ++= f(x))
-      buf.tolist
+      buf.toList
 
     def foreach(f: T => Unit) =
       xs.foreach(x => if p(x) then f(x))
@@ -339,12 +339,12 @@ object List:
     def map[V](f: (T, U) => V): List[V] =
       val buf = Buffer[V]()//(xs.length)
       foreach((x, y) => buf += f(x, y))
-      buf.tolist
+      buf.toList
 
     def flatMap[V](f: (T, U) => List[V]): List[V] =
       val buf = Buffer[V]()
       foreach((x, y) => buf ++= f(x, y))
-      buf.tolist
+      buf.toList
 
     def foreach(f: (T, U) => Unit): Unit =
       val yit = ys.iterator
@@ -373,12 +373,12 @@ object List:
     def map[W](f: (T, U, V) => W): List[W] =
       val buf = Buffer[W]()//(xs.length)
       foreach((x, y, z) => buf += f(x, y, z))
-      buf.tolist
+      buf.toList
 
     def flatMap[W](f: (T, U, V) => List[W]): List[W] =
       val buf = Buffer[W]()
       foreach((x, y, z) => buf ++= f(x, y, z))
-      buf.tolist
+      buf.toList
 
     def foreach(f: (T, U, V) => Unit): Unit =
       val yit = ys.iterator

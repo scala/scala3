@@ -110,7 +110,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   def files: Set[AbstractFile] = {
     if !(myUnits eqLst myUnitsCached) then
       myUnitsCached = myUnits
-      myFiles = (myUnits ++ suspendedUnits.tolist).map(_.source.file).toSet
+      myFiles = (myUnits ++ suspendedUnits.toList).map(_.source.file).toSet
     myFiles
   }
 

@@ -111,7 +111,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
         classesFromDir(output.jpath, classNames)
       else
         classesFromZip(output.file, classNames)
-      classNames.tolist.flatMap { cls =>
+      classNames.toList.flatMap { cls =>
         treesFromClassName(cls, id)
       }
     }
@@ -266,7 +266,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     }
     addTrees(topTree)
 
-    trees.tolist
+    trees.toList
   }
 
   /** Remove attachments and error out completers. The goal is to avoid

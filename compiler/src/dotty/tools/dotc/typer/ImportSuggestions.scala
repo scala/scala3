@@ -299,7 +299,7 @@ trait ImportSuggestions:
         rest += ref
     end for
     val remaining =
-      if filled < n && rest.nonEmpty then rest.tolist.best(n - filled)
+      if filled < n && rest.nonEmpty then rest.toList.best(n - filled)
       else Nil
     top.take(filled).tolist ++ remaining
   //end best  TODO: re-enable with new syntax

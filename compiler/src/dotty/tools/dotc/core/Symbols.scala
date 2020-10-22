@@ -691,7 +691,7 @@ object Symbols {
     def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner.is(ModuleVal)) owner.moduleClass else owner
     typr.println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
-    typr.println(s"decls = ${normalizedOwner.unforcedDecls.tolist.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    typr.println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>
@@ -764,8 +764,8 @@ object Symbols {
       tparamBuf += tparam
       trefBuf += TypeRef(owner.thisType, tparam)
     }
-    val tparams = tparamBuf.tolist
-    val bounds = boundsFn(trefBuf.tolist)
+    val tparams = tparamBuf.toList
+    val bounds = boundsFn(trefBuf.toList)
     tparams.zipped(bounds).foreach((tparam, bound) =>
       tparam.info = bound
     )

@@ -248,6 +248,6 @@ object EtaExpansion extends LiftImpure {
       if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given))
       else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
       else untpd.Function(params, body)
-    if (defs.nonEmpty) untpd.Block(defs.tolist map (untpd.TypedSplice(_)), fn) else fn
+    if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }
 }

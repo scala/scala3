@@ -592,7 +592,7 @@ object Parsers {
         in.nextToken()
         ts += part()
       }
-      ts.tolist
+      ts.toList
     }
 
     def commaSeparated[T](part: () => T): List[T] = tokenSeparated(COMMA, part)
@@ -1235,7 +1235,7 @@ object Parsers {
       if (in.token == STRINGLIT)
         segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
 
-      InterpolatedString(interpolator, segmentBuf.tolist)
+      InterpolatedString(interpolator, segmentBuf.toList)
     }
 
 /* ------------- NEW LINES ------------------------------------------------- */
@@ -1392,7 +1392,7 @@ object Parsers {
           in.nextToken()
           buf += following()
         }
-        buf.tolist
+        buf.toList
       }
       var isValParamList = false
 
@@ -1489,7 +1489,7 @@ object Parsers {
         case other => other
       }
 
-      (newParams, tparams.tolist)
+      (newParams, tparams.toList)
     }
 
     private def implicitKwPos(start: Int): Span =
@@ -2541,7 +2541,7 @@ object Parsers {
       val buf = List.Buffer[CaseDef]()
       buf += clause()
       while (in.token == CASE) buf += clause()
-      buf.tolist
+      buf.toList
     }
 
     /** CaseClause         ::= ‘case’ Pattern [Guard] `=>' Block
@@ -3606,7 +3606,7 @@ object Parsers {
         meths += extMethod()
         acceptStatSepUnlessAtEnd(meths)
       if meths.isEmpty then syntaxError("`def` expected")
-      meths.tolist
+      meths.toList
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
@@ -3753,7 +3753,7 @@ object Parsers {
             syntaxErrorOrIncomplete(ExpectedToplevelDef())
         acceptStatSepUnlessAtEnd(stats)
       }
-      stats.tolist
+      stats.toList
     }
 
     /** TemplateStatSeq  ::= [id [`:' Type] `=>'] TemplateStat {semi TemplateStat}
@@ -3808,7 +3808,7 @@ object Parsers {
         }
         acceptStatSepUnlessAtEnd(stats)
       }
-      (self, if (stats.isEmpty) List(EmptyTree) else stats.tolist)
+      (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
     }
 
     /** RefineStatSeq    ::=  RefineStat {semi RefineStat}
@@ -3846,7 +3846,7 @@ object Parsers {
              else ""))
         acceptStatSepUnlessAtEnd(stats)
       }
-      stats.tolist
+      stats.toList
     }
 
     def localDef(start: Int, implicitMods: Modifiers = EmptyModifiers): Tree = {
@@ -3888,7 +3888,7 @@ object Parsers {
         }
         acceptStatSepUnlessAtEnd(stats, CASE)
       }
-      stats.tolist
+      stats.toList
     }
 
     /** CompilationUnit ::= {package QualId semi} TopStatSeq
@@ -3927,7 +3927,7 @@ object Parsers {
         else
           ts ++= topStatSeq(outermost = true)
 
-        ts.tolist
+        ts.toList
       }
 
       topstats() match {

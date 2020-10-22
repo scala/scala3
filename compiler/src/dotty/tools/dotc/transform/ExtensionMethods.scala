@@ -153,7 +153,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
     else if ctx.owner.isStaticOwner then
       extensionDefs.remove(tree.symbol.owner) match
         case defns: List.Buffer[Tree] if defns.nonEmpty =>
-          cpy.Template(tree)(body = tree.body ++ defns.tolist.map(transformFollowing(_)))
+          cpy.Template(tree)(body = tree.body ++ defns.toList.map(transformFollowing(_)))
         case _ =>
           tree
     else tree

@@ -113,7 +113,7 @@ object Phases {
 
         i += 1
       }
-      fusedPhases.tolist
+      fusedPhases.toList
     }
 
     /** Use the following phases in the order they are given.
@@ -129,7 +129,7 @@ object Phases {
         case _ => flatPhases += p
       })
 
-      phases = (NoPhase :: flatPhases.tolist ::: new TerminalPhase :: Nil).toArray
+      phases = (NoPhase :: flatPhases.toList ::: new TerminalPhase :: Nil).toArray
       setSpecificPhases()
       var phasesAfter: Set[String] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)

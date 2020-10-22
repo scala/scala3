@@ -207,7 +207,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         if (hoist.superArgDefs.isEmpty) tdef
         else {
           val (staticSuperArgDefs, enclSuperArgDefs) =
-            hoist.superArgDefs.tolist.partition(_.symbol.is(JavaStatic))
+            hoist.superArgDefs.toList.partition(_.symbol.is(JavaStatic))
           flatTree(
               cpy.TypeDef(tdef)(
                   rhs = cpy.Template(impl)(

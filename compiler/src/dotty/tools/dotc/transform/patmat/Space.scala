@@ -131,7 +131,7 @@ trait SpaceLogic {
         simplify(space) match
           case Or(ss) => ss.foreach(include)
           case s => include(s)
-      val set = buf.tolist
+      val set = buf.toList
 
       if (set.isEmpty) Empty
       else if (set.size == 1) set(0)

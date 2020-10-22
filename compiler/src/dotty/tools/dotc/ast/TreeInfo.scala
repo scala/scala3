@@ -59,7 +59,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     def map[R](f: (Symbol, Tree) => R): List[R] = {
       val b = List.Buffer[R]()
       foreach(b += f(_, _))
-      b.tolist
+      b.toList
     }
   }
 
@@ -701,7 +701,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     val locals = List.Buffer[Symbol]()
     for stat <- stats do
       if stat.isDef && stat.symbol.exists then locals += stat.symbol
-    locals.tolist
+    locals.toList
 
   /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */
   def definedSym(tree: Tree)(using Context): Symbol =

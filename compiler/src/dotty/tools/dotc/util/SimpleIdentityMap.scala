@@ -16,7 +16,7 @@ abstract class SimpleIdentityMap[K <: AnyRef, +V >: Null <: AnyRef] extends (K =
   def map2[T](f: (K, V) => T): List[T] = {
     val buf = List.Buffer[T]()
     foreachBinding((k, v) => buf += f(k, v))
-    buf.tolist
+    buf.toList
   }
   def keys: List[K] = map2((k, v) => k)
   def tolist: List[(K, V)] = map2((k, v) => (k, v))

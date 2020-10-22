@@ -22,10 +22,10 @@ extends dotty.tools.tasty.TastyReader(bytes, start, end, base):
     val buf = List.Buffer[T]()
     while bp < index(end) do buf += op
     assert(bp == index(end))
-    buf.tolist
+    buf.toList
 
   /** Perform `op` while condition `cond` holds and collect results in a list. */
   def collectWhile[T](cond: => Boolean)(op: => T): List[T] =
     val buf = List.Buffer[T]()
     while cond do buf += op
-    buf.tolist
+    buf.toList

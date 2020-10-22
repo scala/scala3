@@ -48,7 +48,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     // optimisation: value only used once, we can remove the value from the map
     val nullables = lazyValNullables.remove(sym)
     if (nullables == null) Nil
-    else nullables.tolist
+    else nullables.toList
   }
 
 

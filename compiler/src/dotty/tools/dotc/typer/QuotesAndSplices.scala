@@ -327,7 +327,7 @@ trait QuotesAndSplices {
     }
     val shape0 = splitter.transform(quoted)
     val patterns = (splitter.freshTypePatBuf.iterator ++ splitter.typePatBuf.iterator ++ splitter.patBuf.iterator).tolist
-    val freshTypeBindings = splitter.freshTypeBindingsBuff.tolist
+    val freshTypeBindings = splitter.freshTypeBindingsBuff.toList
 
     val shape1 = seq(
       freshTypeBindings,

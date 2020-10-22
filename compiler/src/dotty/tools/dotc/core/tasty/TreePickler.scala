@@ -60,7 +60,7 @@ class TreePickler(pickler: TastyPickler) {
 
   def treeAnnots(tree: untpd.MemberDef): List[Tree] =
     val ts = annotTrees.lookup(tree)
-    if ts == null then Nil else ts.tolist
+    if ts == null then Nil else ts.toList
 
   def docString(tree: untpd.MemberDef): Option[Comment] =
     Option(docStrings.lookup(tree))

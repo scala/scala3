@@ -81,17 +81,17 @@ object Scopes {
     /** The symbols in this scope in the order they were entered;
      *  inherited from outer ones first.
      */
-    def tolist(using Context): List[Symbol]
+    def toList(using Context): List[Symbol]
 
     /** Return all symbols as an iterator in the order they were entered in this scope.
      */
-    def iterator(using Context): Iterator[Symbol] = tolist.iterator
+    def iterator(using Context): Iterator[Symbol] = toList.iterator
 
     /** Is the scope empty? */
     def isEmpty: Boolean = lastEntry eq null
 
     /** Applies a function f to all Symbols of this Scope. */
-    def foreach(f: Symbol => Unit)(using Context): Unit = tolist.foreach(f)
+    def foreach(f: Symbol => Unit)(using Context): Unit = toList.foreach(f)
 
     /** Selects all Symbols of this Scope which satisfy a predicate. */
     def filter(p: Symbol => Boolean)(using Context): List[Symbol] = {
@@ -146,7 +146,7 @@ object Scopes {
 
     /** The denotation set of all the symbols with given name in this scope
      *  Symbols occur in the result in reverse order relative to their occurrence
-     *  in `this.tolist`.
+     *  in `this.toList`.
      */
     final def denotsNamed(name: Name)(using Context): PreDenotation = {
       var syms: PreDenotation = NoDenotation
@@ -393,7 +393,7 @@ object Scopes {
     /** Returns all symbols as a list in the order they were entered in this scope.
      *  Does _not_ include the elements of inherited scopes.
      */
-    override final def tolist(using Context): List[Symbol] = {
+    override final def toList(using Context): List[Symbol] = {
       if (elemsCache eqLst nullList) {
         ensureComplete()
         elemsCache = Nil
@@ -417,12 +417,12 @@ object Scopes {
         }
         e = e.prev
       }
-      irefs.tolist
+      irefs.toList
     }
 
     /** Vanilla scope - symbols are stored in declaration order.
      */
-    final def sorted(using Context): List[Symbol] = tolist
+    final def sorted(using Context): List[Symbol] = toList
 
     override def openForMutations: MutableScope = this
 
@@ -463,7 +463,7 @@ object Scopes {
     override private[dotc] def lastEntry: ScopeEntry = null
     override def size: Int = 0
     override def nestingLevel: Int = 0
-    override def tolist(using Context): List[Symbol] = Nil
+    override def toList(using Context): List[Symbol] = Nil
     override def cloneScope(using Context): MutableScope = unsupported("cloneScope")
     override def lookupEntry(name: Name)(using Context): ScopeEntry = null
     override def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry = null

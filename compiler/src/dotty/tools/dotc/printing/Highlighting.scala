@@ -46,7 +46,7 @@ object Highlighting {
     }
 
     override def toString: String =
-      buffer.tolist.mkString
+      buffer.toList.mkString
   }
 
   case class NoColor(text: String) extends Highlight(Console.RESET)

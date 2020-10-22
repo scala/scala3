@@ -602,7 +602,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         buffer ++= tp.memberBasedOnFlags(name, required, excluded)
           .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol).toSeq
       }
-      buffer.tolist
+      buffer.toList
     }
 
     /*

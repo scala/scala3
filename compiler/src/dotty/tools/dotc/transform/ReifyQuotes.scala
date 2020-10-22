@@ -433,7 +433,7 @@ object ReifyQuotes {
     def isLiftedSymbol(sym: Symbol)(using Context): Boolean = map.contains(sym)
 
     /** Get the list of embedded trees */
-    def getTrees: List[tpd.Tree] = trees.tolist
+    def getTrees: List[tpd.Tree] = trees.toList
 
     override def toString: String = s"Embedded($trees, $map)"
   }

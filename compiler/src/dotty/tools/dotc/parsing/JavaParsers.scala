@@ -218,7 +218,7 @@ object JavaParsers {
         in.nextToken()
         buf += p()
       }
-      buf.tolist
+      buf.toList
     }
 
     /** Convert (qual)ident to type identifier
@@ -339,7 +339,7 @@ object JavaParsers {
           case _ =>
         }
       }
-      annots.tolist
+      annots.toList
     }
 
     /** Annotation ::= TypeName [`(` AnnotationArgument {`,` AnnotationArgument} `)`]
@@ -415,7 +415,7 @@ object JavaParsers {
               if (isPackageAccess && !inInterface) thisPackageName
               else tpnme.EMPTY
 
-            return Modifiers(flags, privateWithin) withAnnotations annots.tolist
+            return Modifiers(flags, privateWithin) withAnnotations annots.toList
         }
       assert(false, "should not be here")
       throw new RuntimeException
@@ -444,7 +444,7 @@ object JavaParsers {
           in.nextToken()
           buf += typ()
         }
-        val ts = buf.tolist
+        val ts = buf.toList
         if (ts.tail.isEmpty) ts.head
         else ts.reduce(makeAndType(_,_))
       }
@@ -598,7 +598,7 @@ object JavaParsers {
       }
       if (in.token == SEMI)
         buf ++= maybe // every potential vardef that survived until here is real.
-      buf.tolist
+      buf.toList
     }
 
     def varDecl(mods: Modifiers, tpt: Tree, name: TermName): ValDef = {
@@ -720,7 +720,7 @@ object JavaParsers {
       else buf += nme.ROOTPKG
       val lastnameOffset = collectIdents()
       accept(SEMI)
-      val names = buf.tolist
+      val names = buf.toList
       if (names.length < 2) {
         syntaxError(start, "illegal import", skipIt = false)
         List()
@@ -823,8 +823,8 @@ object JavaParsers {
         case _ =>
           List()
       }
-      val sdefs = statics.tolist
-      val idefs = members.tolist ::: (sdefs flatMap forwarders)
+      val sdefs = statics.toList
+      val idefs = members.toList ::: (sdefs flatMap forwarders)
       (sdefs, idefs)
     }
     def annotationParents: List[Select] = List(
@@ -868,7 +868,7 @@ object JavaParsers {
           }
         }
       parseEnumConsts()
-      val consts = buf.tolist
+      val consts = buf.toList
       val (statics, body) =
         if (in.token == SEMI) {
           in.nextToken()
@@ -975,7 +975,7 @@ object JavaParsers {
           buf ++= typeDecl(start, mods)
         }
       }
-      val unit = atSpan(start) { PackageDef(pkg, buf.tolist) }
+      val unit = atSpan(start) { PackageDef(pkg, buf.toList) }
       accept(EOF)
       unit
     }

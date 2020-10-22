@@ -367,7 +367,7 @@ object Inferencing {
         }
       }
     }
-    val res = patternBound.tolist
+    val res = patternBound.toList
     // We add the created symbols to GADT constraint here.
     if (res.nonEmpty) ctx.gadt.addToConstraint(res)
     res

@@ -13,7 +13,7 @@ private[sbt] trait ThunkHolder {
 
   /** Force all unevaluated thunks to prevent space leaks. */
   @tailrec protected final def forceThunks(): Unit = if (!thunks.isEmpty) {
-    val toForce = thunks.tolist
+    val toForce = thunks.toList
     thunks.clear()
     toForce.foreach(_.get())
     // Forcing thunks may create new thunks

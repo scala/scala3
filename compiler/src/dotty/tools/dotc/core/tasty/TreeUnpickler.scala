@@ -954,10 +954,10 @@ class TreeUnpickler(reader: TastyReader,
       @tailrec def read(acc: List.Buffer[Tree]): List[Tree] =
         if (isTopLevel) {
           acc += readIndexedStat(NoSymbol)
-          if (!isAtEnd) read(acc) else acc.tolist
+          if (!isAtEnd) read(acc) else acc.toList
         }
         else // top-level trees which are not imports or packages are not part of tree
-          acc.tolist
+          acc.toList
       read(List.Buffer[tpd.Tree]())
     }
 
@@ -1410,7 +1410,7 @@ class TreeUnpickler(reader: TastyReader,
       if (myChildren eqLst nullList) myChildren = {
         val buf = List.Buffer[OwnerTree]()
         reader.scanTrees(buf, end, if (tag == TEMPLATE) NoMemberDefs else AllDefs)
-        buf.tolist
+        buf.toList
       }
       myChildren
     }

@@ -51,7 +51,7 @@ class RecursionOverflow(val op: String, details: => String, val previous: Throwa
       case ro: RecursionOverflow =>
         result += ro
         loop(ro.previous)
-      case _ => result.tolist
+      case _ => result.toList
     }
 
     loop(this)

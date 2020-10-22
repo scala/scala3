@@ -365,7 +365,7 @@ class ClassfileParser(
                   if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                if (skiptvs) tp else tp.appliedTo(argsBuf.tolist)
+                if (skiptvs) tp else tp.appliedTo(argsBuf.toList)
               }
               else tp
             case tp =>
@@ -427,7 +427,7 @@ class ClassfileParser(
 
           index += 1
           val restype = sig2type(tparams, skiptvs)
-          JavaMethodType(paramnames.tolist, paramtypes.tolist, restype)
+          JavaMethodType(paramnames.toList, paramtypes.toList, restype)
         case 'T' =>
           val n = subName(';'.==).toTypeName
           index += 1
@@ -485,7 +485,7 @@ class ClassfileParser(
       }
       index += 1
     }
-    val ownTypeParams = newTParams.tolist.asInstanceOf[List[TypeSymbol]]
+    val ownTypeParams = newTParams.toList.asInstanceOf[List[TypeSymbol]]
     val tpe =
       if ((owner == null) || !owner.isClass)
         sig2type(tparams, skiptvs = false)
@@ -494,7 +494,7 @@ class ClassfileParser(
         val parents = List.Buffer[Type]()
         while (index < end)
           parents += sig2type(tparams, skiptvs = false) // here the variance doesn't matter
-        TempClassInfoType(parents.tolist, instanceScope, owner)
+        TempClassInfoType(parents.toList, instanceScope, owner)
       }
     if (ownTypeParams.isEmpty) tpe else TempPolyType(ownTypeParams, tpe)
   }
@@ -587,7 +587,7 @@ class ClassfileParser(
       }
     }
     if (hasError || skip) None
-    else Some(ClassfileAnnotation(attrType, argbuf.tolist))
+    else Some(ClassfileAnnotation(attrType, argbuf.toList))
   }
   catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
@@ -703,7 +703,7 @@ class ClassfileParser(
 
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
-      val attrs = classInfo.decls.tolist.filter(sym => sym.isTerm && sym != denot.symbol)
+      val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol)
       val paramNames = attrs.map(_.name.asTermName)
       val paramTypes = attrs.map(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)

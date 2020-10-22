@@ -259,7 +259,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
 
           if (isParamDependent) {
-            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.tolist))
+            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList))
             previousParamRefs += sym.termRef
             sym
           }
@@ -1075,7 +1075,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def filterSubTrees(f: Tree => Boolean)(using Context): List[Tree] = {
       val buf = List.Buffer[Tree]()
       foreachSubTree { tree => if (f(tree)) buf += tree }
-      buf.tolist
+      buf.toList
     }
 
     /** Set this tree as the `defTree` of its symbol and return this tree */

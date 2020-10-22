@@ -196,7 +196,7 @@ object Applications {
   }
 
   def wrapDefs(defs: List.Buffer[Tree], tree: Tree)(using Context): Tree =
-    if (defs != null && defs.nonEmpty) tpd.Block(defs.tolist, tree) else tree
+    if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
   /** A wrapper indicating that its `app` argument has already integrated the type arguments
    *  of the expected type, provided that type is a (possibly ignored) PolyProto.
@@ -723,7 +723,7 @@ trait Applications extends Compatibility {
       typedArgBuf += adapt(arg, formal.widenExpr)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
-      val args = typedArgBuf.tolist.takeRight(n)
+      val args = typedArgBuf.toList.takeRight(n)
       typedArgBuf.trimEnd(n)
       val elemtpt = TypeTree(elemFormal)
       typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
@@ -772,7 +772,7 @@ trait Applications extends Compatibility {
     private def sameSeq[T <: Trees.Tree[?]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
 
     val result:   Tree = {
-      var typedArgs = typedArgBuf.tolist
+      var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
@@ -790,7 +790,7 @@ trait Applications extends Compatibility {
             // with all non-explicit default parameters at the end in declaration order.
             val orderedArgDefs = {
               // Indices of original typed arguments that are lifted by liftArgs
-              val impureArgIndices = typedArgBuf.tolist.zipWithIndex.collect {
+              val impureArgIndices = typedArgBuf.toList.zipWithIndex.collect {
                 case (arg, idx) if !lifter.noLift(arg) => idx
               }
               def position(arg: Trees.Tree[T]) = {
@@ -805,7 +805,7 @@ trait Applications extends Compatibility {
               def originalIndex(n: Int) =
                 if (n < originalIndices.length) originalIndices(n) else orderedArgs.length
               scala.util.Sorting.stableSort[(Tree, Int), Int](
-                argDefBuf.tolist.zip(impureArgIndices).toSeq, (arg, idx) => originalIndex(idx)
+                argDefBuf.toList.zip(impureArgIndices).toSeq, (arg, idx) => originalIndex(idx)
               ).tolist.map(_._1)
             }
             liftedDefs ++= orderedArgDefs
@@ -1319,7 +1319,7 @@ trait Applications extends Compatibility {
             case _ => ().assertingErrorsReported
           }
           loop(unapp)
-          res.tolist
+          res.toList
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)

@@ -400,7 +400,7 @@ class Namer { typer: Typer =>
         addEnumConstants(mdef, sym)
         ctx
       case stats: Thicket =>
-        stats.tolist.foreach(recur)
+        stats.toList.foreach(recur)
         ctx
       case _ =>
         ctx
@@ -1048,7 +1048,7 @@ class Namer { typer: Typer =>
           case _ =>
 
         addForwarders(selectors, Nil)
-        val forwarders = buf.tolist
+        val forwarders = buf.toList
         exp.pushAttachment(ExportForwarders, forwarders)
         forwarders
       }

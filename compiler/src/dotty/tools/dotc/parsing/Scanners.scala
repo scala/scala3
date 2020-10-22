@@ -185,7 +185,7 @@ object Scanners {
     private val commentPosBuf = List.Buffer[Span]()
 
     /** Return a list of all the comment positions */
-    def commentSpans: List[Span] = commentPosBuf.tolist
+    def commentSpans: List[Span] = commentPosBuf.toList
 
     private def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()

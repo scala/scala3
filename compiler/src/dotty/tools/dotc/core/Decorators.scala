@@ -81,7 +81,7 @@ object Decorators {
       def loop(mapped: List.Buffer[U], unchanged: List[U], pending: List[T]): List[U] =
         if (pending.isEmpty)
           if (mapped eq null) unchanged
-          else mapped.tolist ++ unchanged
+          else mapped.toList ++ unchanged
         else {
           val head0 = pending.head
           val head1 = f(head0)
@@ -115,7 +115,7 @@ object Decorators {
         case x :: xs1 =>
           if p(x) then buf += x
           loopWithBuffer(buf, xs1)
-        case nil => buf.tolist
+        case nil => buf.toList
 
       def loop(keep: List[T], explore: List[T], keepCount: Int, recCount: Int): List[T] =
         explore match

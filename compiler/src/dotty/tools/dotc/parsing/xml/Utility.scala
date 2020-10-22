@@ -75,7 +75,7 @@ object Utility {
     if (!sb.isEmpty) // flush buffer
       nb += text(sb.toString())
 
-    nb.tolist
+    nb.toList
   }
 
   /**

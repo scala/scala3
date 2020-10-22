@@ -500,7 +500,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
         newStats += stat
       }
 
-      cpy.Template(tree)(tree.constr, fixedParents, Nil, tree.self, newStats.tolist)
+      cpy.Template(tree)(tree.constr, fixedParents, Nil, tree.self, newStats.toList)
     }
   }
 

@@ -285,7 +285,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       // TODO: this happens to work only because Constructors is the last phase in group
     }
 
-    val (superCalls, followConstrStats) = splitAtSuper(constrStats.tolist)
+    val (superCalls, followConstrStats) = splitAtSuper(constrStats.toList)
 
     val mappedSuperCalls = vparams match {
       case (outerParam @ ValDef(nme.OUTER, _, _)) :: _ =>
@@ -312,6 +312,6 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       }
       else cpy.DefDef(constr)(rhs = Block(finalConstrStats, unitLiteral))
 
-    cpy.Template(tree)(constr = expandedConstr, body = clsStats.tolist)
+    cpy.Template(tree)(constr = expandedConstr, body = clsStats.toList)
   }
 }

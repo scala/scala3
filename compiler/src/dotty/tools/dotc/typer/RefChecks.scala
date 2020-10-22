@@ -206,7 +206,7 @@ object RefChecks {
     val mixinOverrideErrors = List.Buffer[MixinOverrideError]()
 
     def printMixinOverrideErrors(): Unit =
-      mixinOverrideErrors.tolist match {
+      mixinOverrideErrors.toList match {
         case Nil =>
         case List(MixinOverrideError(_, msg)) =>
           report.error(msg, clazz.srcPos)
@@ -463,8 +463,8 @@ object RefChecks {
       val abstractErrors = List.Buffer[String]()
       def abstractErrorMessage =
         // a little formatting polish
-        if (abstractErrors.size <= 2) abstractErrors.tolist mkString " "
-        else abstractErrors.tolist.tail.mkString(abstractErrors.head + ":\n", "\n", "")
+        if (abstractErrors.size <= 2) abstractErrors.toList mkString " "
+        else abstractErrors.toList.tail.mkString(abstractErrors.head + ":\n", "\n", "")
 
       def abstractClassError(mustBeMixin: Boolean, msg: String): Unit = {
         def prelude = (
@@ -506,10 +506,10 @@ object RefChecks {
        */
       def missingTermSymbols: List[Symbol] =
         val buf = List.Buffer[Symbol]()
-        for bc <- clazz.baseClasses; sym <- bc.info.decls.tolist do
+        for bc <- clazz.baseClasses; sym <- bc.info.decls.toList do
           if sym.is(DeferredTerm) && !isImplemented(sym) && !ignoreDeferred(sym) then
             buf += sym
-        buf.tolist
+        buf.toList
 
       // 2. Check that only abstract classes have deferred members
       def checkNoAbstractMembers(): Unit = {

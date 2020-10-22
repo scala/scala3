@@ -815,7 +815,7 @@ object Types {
     def memberDenots(keepOnly: NameFilter, f: (Name, List.Buffer[SingleDenotation]) => Unit)(using Context): List[SingleDenotation] = {
       val buf = List.Buffer[SingleDenotation]()
       for (name <- memberNames(keepOnly)) f(name, buf)
-      buf.tolist
+      buf.toList
     }
 
     /** The set of abstract term members of this type. */
@@ -4489,7 +4489,7 @@ object Types {
      *  If there are opaque alias members, updates `cls` to have `Opaque` flag as a side effect.
      */
     def integrateOpaqueMembers(using Context): ClassInfo =
-      decls.tolist.foldLeft(this) { (cinfo, sym) =>
+      decls.toList.foldLeft(this) { (cinfo, sym) =>
         if sym.isOpaqueAlias then
           cls.setFlag(Opaque)
           def force(using Context) =
@@ -5144,7 +5144,7 @@ object Types {
     def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
 
     def mapOver(scope: Scope): Scope = {
-      val elems = scope.tolist
+      val elems = scope.toList
       val elems1 = mapOver(elems)
       if (elems1 eqLst elems) scope
       else newScopeWith(elems1.toSeq: _*)
@@ -5369,8 +5369,8 @@ object Types {
                   true
               }
               if (distributeArgs(args, tp.tyconTypeParams))
-                range(tp.derivedAppliedType(tycon, loBuf.tolist),
-                      tp.derivedAppliedType(tycon, hiBuf.tolist))
+                range(tp.derivedAppliedType(tycon, loBuf.toList),
+                      tp.derivedAppliedType(tycon, hiBuf.toList))
               else range(defn.NothingType, defn.AnyType)
                 // TODO: can we give a better bound than `topType`?
             }

@@ -47,6 +47,6 @@ object ClasspathFromClassloader {
       }
     }
     collectClassLoaderPaths(cl)
-    classpathBuff.tolist.mkString(java.io.File.pathSeparator)
+    classpathBuff.toList.mkString(java.io.File.pathSeparator)
   }
 }

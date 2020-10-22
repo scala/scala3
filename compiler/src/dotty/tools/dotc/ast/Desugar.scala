@@ -117,7 +117,7 @@ object desugar {
             if (local.exists) (defctx.owner.thisType select local).dealiasKeepAnnots
             else {
               def msg =
-                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.tolist}"
+                s"no matching symbol for ${tp.symbol.showLocated} in ${defctx.owner} / ${defctx.effectiveScope.toList}"
               ErrorType(msg).assertingErrorsReported(msg)
             }
           case _ =>
@@ -247,7 +247,7 @@ object desugar {
     val meth1 =
       rhs match
         case MacroTree(call) => cpy.DefDef(meth)(rhs = call).withMods(mods | Macro | Erased)
-        case _ => addEvidenceParams(cpy.DefDef(meth)(name = methName, tparams = tparams1), epbuf.tolist)
+        case _ => addEvidenceParams(cpy.DefDef(meth)(name = methName, tparams = tparams1), epbuf.toList)
 
     /** The longest prefix of parameter lists in vparamss whose total length does not exceed `n` */
     def takeUpTo(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
@@ -645,7 +645,7 @@ object desugar {
         ModuleDef(
           className.toTermName, Template(emptyConstructor, parentTpt :: Nil, companionDerived, EmptyValDef, defs))
             .withMods(companionMods | Synthetic))
-        .withSpan(cdef.span).tolist
+        .withSpan(cdef.span).toList
       if (companionDerived.nonEmpty)
         for (modClsDef @ TypeDef(_, _) <- mdefs)
           modClsDef.putAttachment(DerivingCompanion, impl.srcPos.startPos)
@@ -1812,6 +1812,6 @@ object desugar {
       case _ =>
     }
     collect(tree)
-    buf.tolist
+    buf.toList
   }
 }

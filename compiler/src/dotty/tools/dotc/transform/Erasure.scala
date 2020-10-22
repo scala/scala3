@@ -518,7 +518,7 @@ object Erasure {
           ctx.typer.typed(app, pt)
             .changeOwnerAfter(origOwner, ctx.owner, erasurePhase.asInstanceOf[Erasure])
 
-      seq(defs.tolist, abstracted(Nil, origType, pt))
+      seq(defs.toList, abstracted(Nil, origType, pt))
     end etaExpand
 
   end Boxing

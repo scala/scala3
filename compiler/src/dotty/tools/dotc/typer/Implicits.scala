@@ -259,7 +259,7 @@ object Implicits:
           companionRefs.foreach(tryCandidate(extensionOnly = true))
         if refs.nonEmpty then
           refs.foreach(tryCandidate(extensionOnly = false))
-        candidates.tolist
+        candidates.toList
     }
   }
 
@@ -273,7 +273,7 @@ object Implicits:
     @threadUnsafe lazy val refs: List[ImplicitRef] = {
       val buf = List.Buffer[TermRef]()
       for (companion <- companionRefs) buf ++= companion.implicitMembers
-      buf.tolist
+      buf.toList
     }
 
     /** The candidates that are eligible for expected type `tp` */
@@ -1734,7 +1734,7 @@ sealed class TermRefSet(using Context):
   def showAsList: List[TermRef] = {
     val buffer = List.Buffer[TermRef]()
     foreach(tr => buffer += tr)
-    buffer.tolist
+    buffer.toList
   }
 
   override def toString = showAsList.toString
