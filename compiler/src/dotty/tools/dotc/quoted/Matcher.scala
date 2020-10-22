@@ -138,9 +138,12 @@ object Matcher {
       case _ => notMatched
     }
 
+    private class Dummy
+    private given Dummy = Dummy()
+
     extension (scrutinees: List[Tree]):
       /** Check that all trees match with =?= and concatenate the results with &&& */
-      private def =?= (patterns: List[Tree])(using Context, Env): Matching =
+      private def =?= (patterns: List[Tree])(using Context, Env, Dummy): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
     extension (scrutinee0: Tree):

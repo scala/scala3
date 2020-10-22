@@ -498,7 +498,7 @@ object Erasure {
                 val refs :: Nil : @unchecked = refss
                 val expandedRefs = refs.map(_.withSpan(tree.span.endPos)) match
                   case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
-                    argTpes.indices.tolist.map(n =>
+                    argTpes.indices.map(n =>
                       bunchedParam
                         .select(nme.primitive.arrayApply)
                         .appliedTo(Literal(Constant(n))))

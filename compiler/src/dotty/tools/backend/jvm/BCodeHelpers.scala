@@ -600,7 +600,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       val buffer = List.Buffer[Symbol]()
       names.foreach { name =>
         buffer ++= tp.memberBasedOnFlags(name, required, excluded)
-          .alternatives.sortBy(_.signature)(Signature.lexicographicOrdering).map(_.symbol).toSeq
+          .alternatives.sortBy(_.signature)(using Signature.lexicographicOrdering).map(_.symbol).toSeq
       }
       buffer.toList
     }

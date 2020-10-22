@@ -202,7 +202,8 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     runPhases(using runCtx)
     if (!ctx.reporter.hasErrors) Rewrites.writeBack()
     while (finalizeActions.nonEmpty) {
-      val action = finalizeActions.remove(0)
+      val action = finalizeActions(0)
+      finalizeActions.dropInPlace(1)
       action()
     }
     compiling = false

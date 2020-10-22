@@ -293,7 +293,7 @@ object Inliner {
           val res = List.Buffer[(ErrorKind, Error)]()
 
           val parseErrors = ctx2.reporter.allErrors
-          List.extension_++=(res)(parseErrors.map(e => ErrorKind.Parser -> e))
+          res ++= parseErrors.map(e => ErrorKind.Parser -> e)
           if !stopAfterParser || res.isEmpty then
             ctx2.typer.typed(tree2)(using ctx2)
             val typerErrors = ctx2.reporter.allErrors.filterNot(parseErrors.contains(_))

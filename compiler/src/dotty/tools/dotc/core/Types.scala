@@ -3551,7 +3551,7 @@ object Types {
     def newParamRef(n: Int): TypeParamRef = new TypeParamRefImpl(this, n)
 
     @threadUnsafe lazy val typeParams: List[LambdaParam] =
-      paramNames.indices.tolist.map(new LambdaParam(this, _))
+      paramNames.indices.map(new LambdaParam(this, _))
 
     def derivedLambdaAbstraction(paramNames: List[TypeName], paramInfos: List[TypeBounds], resType: Type)(using Context): Type =
       resType match {

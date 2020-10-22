@@ -263,7 +263,7 @@ object PatternMatcher {
        *  If `exact` is true, the sequence is not permitted to have any elements following `args`.
        */
       def matchElemsPlan(seqSym: Symbol, args: List[Tree], exact: Boolean, onSuccess: Plan) = {
-        val selectors = args.indices.tolist.map(idx =>
+        val selectors = args.indices.map(idx =>
           ref(seqSym).select(defn.Seq_apply.matchingMember(seqSym.info)).appliedTo(Literal(Constant(idx))))
         TestPlan(LengthTest(args.length, exact), seqSym, seqSym.span,
           matchArgsPlan(selectors, args, onSuccess))
