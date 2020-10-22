@@ -104,7 +104,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             |the test can be reproduced by running from SBT (prefix it with ./bin/ if you
             |want to run from the command line):""".stripMargin
       )
-      sb.append("\n\ndotc ")
+      sb.append("\n\nscalac ")
       flags.all.foreach { arg =>
         if (lineLen > maxLen) {
           sb.append(delimiter)

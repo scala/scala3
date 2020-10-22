@@ -129,6 +129,6 @@ trait PropertiesTrait {
   def jdkHome: String               = envOrElse("JDK_HOME", envOrElse("JAVA_HOME", javaHome))
 
   def versionMsg: String            = "Scala %s %s -- %s".format(propCategory, versionString, copyrightString)
-  def scalaCmd: String              = if (isWin) "dotr.bat" else "dotr"
-  def scalacCmd: String             = if (isWin) "dotc.bat" else "dotc"
+  def scalaCmd: String              = if (isWin) "scala.bat" else "scala"
+  def scalacCmd: String             = if (isWin) "scalac.bat" else "scalac"
 }

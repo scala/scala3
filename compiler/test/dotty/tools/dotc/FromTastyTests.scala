@@ -16,7 +16,7 @@ class FromTastyTests {
   @Test def posTestFromTasty: Unit = {
     // Can be reproduced with
     // > sbt
-    // > dotc -Ythrough-tasty -Ycheck:all <source>
+    // > scalac -Ythrough-tasty -Ycheck:all <source>
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     compileTastyInDir(s"tests${JFile.separator}pos", defaultOptions,
@@ -27,8 +27,8 @@ class FromTastyTests {
   @Test def runTestFromTasty: Unit = {
     // Can be reproduced with
     // > sbt
-    // > dotc -Ythrough-tasty -Ycheck:all <source>
-    // > dotr Test
+    // > scalac -Ythrough-tasty -Ycheck:all <source>
+    // > scala Test
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     compileTastyInDir(s"tests${JFile.separator}run", defaultOptions,
