@@ -83,7 +83,7 @@ class ReTyper extends Typer with ReChecking {
       // retract PatternOrTypeBits like in typedExpr
       withoutMode(Mode.PatternOrTypeBits)(typedUnadapted(tree.fun, AnyFunctionProto))
     val implicits1 = tree.implicits.map(typedExpr(_))
-    val patterns1 = tree.patterns.mapconserve(pat => typed(pat, pat.tpe))
+    val patterns1 = tree.patterns.mapConserve(pat => typed(pat, pat.tpe))
     untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.tpe)
   }
 

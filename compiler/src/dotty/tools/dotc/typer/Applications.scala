@@ -547,7 +547,7 @@ trait Applications extends Compatibility {
             addArg(typedArg(arg, formal), formal)
             if methodType.isParamDependent && typeOfArg(arg).exists then
               // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-              formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
+              formals1.mapConserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
             else
               formals1
 
@@ -1069,7 +1069,7 @@ trait Applications extends Compatibility {
       return errorTree(tree, "invalid pattern")
 
     val isNamed = hasNamedArg(tree.args)
-    val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
+    val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapConserve(typedType(_))
     record("typedTypeApply")
     typedFunPart(tree.fun, PolyProto(typedArgs, pt)) match {
       case IntegratedTypeArgs(app) =>
@@ -1344,7 +1344,7 @@ trait Applications extends Compatibility {
         else tryWithClassTag(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
-        val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
+        val typedArgsErr = args mapConserve (typed(_, defn.AnyType))
         cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType unapplyErr.tpe
     }
   }

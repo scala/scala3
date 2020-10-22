@@ -756,7 +756,7 @@ object Erasure {
           val fun1 = typedExpr(fun, AnyFunctionProto)
           fun1.tpe.widen match {
             case funTpe: PolyType =>
-              val args1 = args.mapconserve(typedType(_))
+              val args1 = args.mapConserve(typedType(_))
               untpd.cpy.TypeApply(tree)(fun1, args1).withType(funTpe.instantiate(args1.tpes))
             case _ => fun1
           }

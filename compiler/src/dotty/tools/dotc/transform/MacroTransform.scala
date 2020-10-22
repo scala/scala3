@@ -43,7 +43,7 @@ abstract class MacroTransform extends Phase {
         case _: Import | _: DefTree => transform(stat)
         case _ => transform(stat)(using ctx.exprContext(stat, exprOwner))
       }
-      flatten(trees.mapconserve(transformStat(_)))
+      flatten(trees.mapConserve(transformStat(_)))
     }
 
     override def transform(tree: Tree)(using Context): Tree =

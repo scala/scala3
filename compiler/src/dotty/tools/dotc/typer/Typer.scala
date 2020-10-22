@@ -1243,7 +1243,7 @@ class Typer extends Namer
   }
 
   def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree = {
-    val env1 = tree.env mapconserve (typed(_))
+    val env1 = tree.env mapConserve (typed(_))
     val meth1 = typedUnadapted(tree.meth)
     val target =
       if (tree.tpt.isEmpty)
@@ -1295,7 +1295,7 @@ class Typer extends Namer
       case EmptyTree =>
         if (tree.isInline) {
           checkInInlineContext("summonFrom", tree.srcPos)
-          val cases1 = tree.cases.mapconserve {
+          val cases1 = tree.cases.mapConserve {
             case cdef @ CaseDef(pat @ Typed(Ident(nme.WILDCARD), _), _, _) =>
               // case _ : T  -->  case evidence$n : T
               cpy.CaseDef(cdef)(pat = untpd.Bind(EvidenceParamName.fresh(), pat))
@@ -1402,7 +1402,7 @@ class Typer extends Namer
 
   def typedCases(cases: List[untpd.CaseDef], sel: Tree, wideSelType: Type, pt: Type)(using Context): List[CaseDef] =
     var caseCtx = ctx
-    cases.mapconserve { cas =>
+    cases.mapConserve { cas =>
       val case1 = typedCase(cas, sel, wideSelType, pt)(using caseCtx)
       caseCtx = Nullables.afterPatternContext(sel, case1.pat)
       case1
@@ -1608,11 +1608,11 @@ class Typer extends Namer
 
     if (!tree.elemtpt.isEmpty) {
       val elemtpt1 = typed(tree.elemtpt, elemProto)
-      val elems1 = tree.elems.mapconserve(typed(_, elemtpt1.tpe))
+      val elems1 = tree.elems.mapConserve(typed(_, elemtpt1.tpe))
       assign(elems1, elemtpt1)
     }
     else {
-      val elems1 = tree.elems.mapconserve(typed(_, elemProto))
+      val elems1 = tree.elems.mapConserve(typed(_, elemProto))
       val elemtptType =
         if (isFullyDefined(elemProto, ForceDegree.none))
           elemProto
@@ -1753,10 +1753,10 @@ class Typer extends Namer
       var checkedArgs = preCheckKinds(args1, paramBounds)
         // check that arguments conform to bounds is done in phase PostTyper
       if (tpt1.symbol == defn.andType)
-        checkedArgs = checkedArgs.mapconserve(arg =>
+        checkedArgs = checkedArgs.mapConserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
       else if (tpt1.symbol == defn.orType)
-        checkedArgs = checkedArgs.mapconserve(arg =>
+        checkedArgs = checkedArgs.mapConserve(arg =>
           checkSimpleKinded(checkNoWildcard(arg)))
       else if (ctx.isJava)
         if (tpt1.symbol eq defn.ArrayClass) then
@@ -1794,7 +1794,7 @@ class Typer extends Namer
       else typed(tree.bound)
     val sel1 = typed(tree.selector)
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
-    val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1.tpe, pt1))
+    val cases1 = tree.cases.mapConserve(typedTypeCase(_, sel1.tpe, pt1))
     assignType(cpy.MatchTypeTree(tree)(bound1, sel1, cases1), bound1, sel1, cases1)
   }
 
@@ -1893,8 +1893,8 @@ class Typer extends Namer
       else
         assert(ctx.reporter.errorsReported)
         tree.withType(defn.AnyType)
-    val trees1 = tree.trees.mapconserve(typed(_, pt)(using nestedCtx))
-      .mapconserve(ensureValueTypeOrWildcard)
+    val trees1 = tree.trees.mapConserve(typed(_, pt)(using nestedCtx))
+      .mapConserve(ensureValueTypeOrWildcard)
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
@@ -1949,7 +1949,7 @@ class Typer extends Namer
     }
     val DefDef(name, tparams, vparamss, tpt, _) = ddef
     completeAnnotations(ddef, sym)
-    val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
+    val tparams1 = tparams.mapConserve(typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss.nestedMapConserve(typed(_).asInstanceOf[ValDef])
     vparamss1.foreach(checkNoForwardDependencies)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
@@ -2104,7 +2104,7 @@ class Typer extends Namer
 
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parentsWithClass = ensureFirstTreeIsClass(parents.mapconserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
+    val parentsWithClass = ensureFirstTreeIsClass(parents.mapConserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(using superCtx)
     val firstParentTpe = parents1.head.tpe.dealias
     val firstParent = firstParentTpe.typeSymbol
@@ -2593,7 +2593,7 @@ class Typer extends Namer
     typed(tree, pt, ctx.typerState.ownedVars)
 
   def typedTrees(trees: List[untpd.Tree])(using Context): List[Tree] =
-    trees mapconserve (typed(_))
+    trees mapConserve (typed(_))
 
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
     val buf = List.Buffer[Tree]()
@@ -3084,7 +3084,7 @@ class Typer extends Namer
                 // done for non-implicit parameter lists in Applications#matchArgs#addTyped.
                 val formals2 =
                   if (wtp.isParamDependent && arg.tpe.exists)
-                    formals1.mapconserve(f1 => safeSubstParam(f1, wtp.paramRefs(argIndex), arg.tpe))
+                    formals1.mapConserve(f1 => safeSubstParam(f1, wtp.paramRefs(argIndex), arg.tpe))
                   else formals1
                 arg :: implicitArgs(formals2, argIndex + 1, pt)
             }

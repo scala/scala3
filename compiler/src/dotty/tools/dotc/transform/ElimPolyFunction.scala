@@ -51,7 +51,7 @@ class ElimPolyFunction extends MiniPhase with DenotTransformer {
   }
 
   override def transformTemplate(tree: Template)(using Context): Tree = {
-    val newParents = tree.parents.mapconserve(parent =>
+    val newParents = tree.parents.mapConserve(parent =>
       if (parent.tpe.typeSymbol == defn.PolyFunctionClass) {
         val cinfo = tree.symbol.owner.asClass.classInfo
         tpd.TypeTree(functionTypeOfPoly(cinfo))

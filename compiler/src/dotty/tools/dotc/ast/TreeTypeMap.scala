@@ -81,9 +81,9 @@ class TreeTypeMap(
       val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
-          parents = parents.mapconserve(transform),
+          parents = parents.mapConserve(transform),
           self = tmap.transformSub(self),
-          body = impl.body mapconserve
+          body = impl.body mapConserve
             (tmap.transform(_)(using ctx.withOwner(mapOwner(impl.symbol.owner))))
         ).withType(tmap.mapType(impl.tpe))
     case tree1 =>

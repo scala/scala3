@@ -76,7 +76,7 @@ object Decorators {
    */
   implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
 /*
-    final def mapconserve[U](f: T => U): List[U] = {
+    final def mapConserve[U](f: T => U): List[U] = {
       @tailrec
       def loop(mapped: List.Buffer[U], unchanged: List[U], pending: List[T]): List[U] =
         if (pending.isEmpty)
@@ -198,7 +198,7 @@ object Decorators {
       case xs :: xss1 => xs.map(f) :: xss1.nestedMap(f)
       case nil => Nil
     def nestedMapConserve(f: T => U): List[List[U]] =
-      xss.mapconserve(_.mapconserve(f))
+      xss.mapConserve(_.mapConserve(f))
     def nestedZipWithConserve(yss: List[List[U]])(f: (T, U) => T): List[List[T]] =
       xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
     def nestedExists(p: T => Boolean): Boolean = xss match

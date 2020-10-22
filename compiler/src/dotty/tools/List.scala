@@ -152,7 +152,7 @@ object List:
     /** `f` is pulled out, not duplicated */
     def map(f: T => U): List[U] = xs.map(f)
 
-    def mapconserve(f: T => U): List[U] = {
+    def mapConserve(f: T => U): List[U] = {
       @tailrec
       def loop(mapped: Buffer[U], unchanged: List[U], pending: List[T]): List[U] =
         if (pending.isEmpty)
@@ -178,7 +178,6 @@ object List:
         }
       loop(null, xs.asInstanceOf[List[U]], xs)
     }
-    def mapConserve(f: T => U): List[U] = xs.mapconserve(f)
     def flatMap(f: T => List[U]): List[U] = xs.flatMap(f)
     def flatMapIterable(f: T => IterableOnce[U]): List[U] = xs.flatMap(f)
     def collect(pf: PartialFunction[T, U]): List[U] = xs.collect(pf)
