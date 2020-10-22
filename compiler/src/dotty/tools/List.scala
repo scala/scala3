@@ -1063,35 +1063,38 @@ object List:
 
   def unapplySeq[T](xs: List[T]): UnapplySeqWrapper[T] = new UnapplySeqWrapper(xs)
 
-  given lstShow[T: Show] as Show[List[T]]:
-    extension (xs: List[T]) def show: String =
-      val b = new StringBuilder("List(")
-      if xs.length != 0 then
-        var i = 0
-        while
-          b ++= xs(i).show
-          i += 1
-          i < xs.length
-        do
-          b ++= ", "
-      (b ++= ")").toString
-
-  given lstEq[T: Eq] as Eq[List[T]]:
-    extension (xs: List[T]) def === (ys: List[T]): Boolean =
-      (xs eqLst ys)
-      || {
-        var i = 0
-        while i < xs.length && i < ys.length && xs(i) === ys(i) do
-          i += 1
-        i == xs.length && i == ys.length
-      }
 end List
 
-trait Show[T]:
+trait Show[-T]:
   extension (x: T) def show: String
 
-trait Eq[T]:
-  extension (x: T) def === (y: T): Boolean
+trait Eq[-T]:
+  extension (x: T)
+    def === (y: T): Boolean
+    def =/= (y: T): Boolean = !(x === y)
+
+given lstShow[T: Show] as Show[List[T]]:
+  extension (xs: List[T]) def show: String =
+    val b = new StringBuilder("List(")
+    if xs.length != 0 then
+      var i = 0
+      while
+        b ++= xs(i).show
+        i += 1
+        i < xs.length
+      do
+        b ++= ", "
+    (b ++= ")").toString
+
+given lstEq[T: Eq] as Eq[List[T]]:
+  extension (xs: List[T]) def === (ys: List[T]): Boolean =
+    (xs eqLst ys)
+    || {
+      var i = 0
+      while i < xs.length && i < ys.length && xs(i) === ys(i) do
+        i += 1
+      i == xs.length && i == ys.length
+    }
 
 given anyShow[T] as Show[T]:
   extension (x: T) def show: String = String.valueOf(x)
