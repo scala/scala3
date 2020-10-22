@@ -1153,9 +1153,6 @@ object Build {
   lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
   lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
 
-  lazy val `scala3-tastydoc` = project.in(file("tastydoc")).asDottyTastydoc(Bootstrapped)
-  lazy val `scala3-tastydoc-input` = project.in(file("tastydoc/input")).asDottyTastydocInput(Bootstrapped)
-
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/scala3-example-project for usage.
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
@@ -1395,7 +1392,7 @@ object Build {
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, dottyDoc, `scala3-sbt-bridge`).
-      bootstrappedAggregate(`scala3-language-server`, `scala3-staging`, `scala3-tasty-inspector`, `scala3-tastydoc`,
+      bootstrappedAggregate(`scala3-language-server`, `scala3-staging`, `scala3-tasty-inspector`,
         `scala3-library-bootstrappedJS`).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
@@ -1442,15 +1439,6 @@ object Build {
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
-
-    def asDottyTastydoc(implicit mode: Mode): Project = project.withCommonSettings.
-      aggregate(`scala3-tastydoc-input`).
-      dependsOn(dottyCompiler).
-      dependsOn(`scala3-tasty-inspector`).
-      settings(commonDocSettings)
-
-    def asDottyTastydocInput(implicit mode: Mode): Project = project.withCommonSettings.
-      dependsOn(dottyCompiler)
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
