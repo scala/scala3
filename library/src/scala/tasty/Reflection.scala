@@ -114,7 +114,8 @@ import scala.tasty.reflect._
  *
  *  ```
  */
-trait Reflection { reflection =>
+trait Reflection:
+  reflection =>
 
   //////////////
   // CONTEXTS //
@@ -137,12 +138,14 @@ trait Reflection { reflection =>
 
   val Tree: TreeModule
 
-  trait TreeModule { this: Tree.type => }
+  trait TreeModule:
+    this: Tree.type =>
+  end TreeModule
 
   given TreeMethods as TreeMethods = TreeMethodsImpl
   protected val TreeMethodsImpl: TreeMethods
 
-  trait TreeMethods {
+  trait TreeMethods:
     extension (self: Tree):
       /** Position in the source code */
       def pos: Position
@@ -166,7 +169,7 @@ trait Reflection { reflection =>
     /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
     extension [T](self: Tree)
       def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T]
-  }
+  end TreeMethods
 
   /** Tree representing a pacakage clause in the source code */
   type PackageClause <: Tree
@@ -176,11 +179,12 @@ trait Reflection { reflection =>
 
   val PackageClause: PackageClauseModule
 
-  trait PackageClauseModule { this: PackageClause.type =>
+  trait PackageClauseModule:
+    this: PackageClause =>
     def apply(pid: Ref, stats: List[Tree]): PackageClause
     def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause
     def unapply(tree: PackageClause): Some[(Ref, List[Tree])]
-  }
+  end PackageClauseModule
 
   given PackageClauseMethods as PackageClauseMethods = PackageClauseMethodsImpl
   protected val PackageClauseMethodsImpl: PackageClauseMethods
@@ -200,11 +204,12 @@ trait Reflection { reflection =>
 
   val Import: ImportModule
 
-  trait ImportModule { this: Import.type =>
+  trait ImportModule:
+    this: Import =>
     def apply(expr: Term, selectors: List[ImportSelector]): Import
     def copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import
     def unapply(tree: Import): Option[(Term, List[ImportSelector])]
-  }
+  end ImportModule
 
   given ImportMethods as ImportMethods = ImportMethodsImpl
   protected val ImportMethodsImpl: ImportMethods
@@ -232,7 +237,9 @@ trait Reflection { reflection =>
 
   val Definition: DefinitionModule
 
-  trait DefinitionModule { this: Definition.type => }
+  trait DefinitionModule:
+    this: Definition.type =>
+  end DefinitionModule
 
   given DefinitionMethods as DefinitionMethods = DefinitionMethodsImpl
   protected val DefinitionMethodsImpl: DefinitionMethods
@@ -253,11 +260,12 @@ trait Reflection { reflection =>
 
   val ClassDef: ClassDefModule
 
-  trait ClassDefModule { this: ClassDef.type =>
+  trait ClassDefModule:
+    this: ClassDef =>
     // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
     def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
     def unapply(cdef: ClassDef): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])]
-  }
+  end ClassDefModule
 
   given ClassDefMethods as ClassDefMethods = ClassDefMethodsImpl
   protected val ClassDefMethodsImpl: ClassDefMethods
@@ -282,11 +290,12 @@ trait Reflection { reflection =>
 
   val DefDef: DefDefModule
 
-  trait DefDefModule { this: DefDef.type =>
+  trait DefDefModule:
+    this: DefDef =>
     def apply(symbol: Symbol, rhsFn: List[Type] => List[List[Term]] => Option[Term]): DefDef
     def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef
     def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])]
-  }
+  end DefDefModule
 
   given DefDefMethods as DefDefMethods = DefDefMethodsImpl
   protected val DefDefMethodsImpl: DefDefMethods
@@ -310,11 +319,12 @@ trait Reflection { reflection =>
 
   val ValDef: ValDefModule
 
-  trait ValDefModule { this: ValDef.type =>
+  trait ValDefModule:
+    this: ValDef =>
     def apply(symbol: Symbol, rhs: Option[Term]): ValDef
     def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
     def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])]
-  }
+  end ValDefModule
 
   given ValDefMethods as ValDefMethods = ValDefMethodsImpl
   protected val ValDefMethodsImpl: ValDefMethods
@@ -336,11 +346,12 @@ trait Reflection { reflection =>
 
   val TypeDef: TypeDefModule
 
-  trait TypeDefModule { this: TypeDef.type =>
+  trait TypeDefModule:
+    this: TypeDef =>
     def apply(symbol: Symbol): TypeDef
     def copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/): TypeDef
     def unapply(tdef: TypeDef): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)]
-  }
+  end TypeDefModule
 
   given TypeDefMethods as TypeDefMethods = TypeDefMethodsImpl
   protected val TypeDefMethodsImpl: TypeDefMethods
@@ -362,7 +373,8 @@ trait Reflection { reflection =>
 
   val Term: TermModule
 
-  trait TermModule { this: Term.type =>
+  trait TermModule:
+    this: Term.type =>
 
     /** Returns a term that is functionally equivalent to `t`,
      *  however if `t` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`
@@ -375,12 +387,12 @@ trait Reflection { reflection =>
      */
     def betaReduce(term: Term): Option[Term]
 
-  }
+  end TermModule
 
   given TermMethods as TermMethods = TermMethodsImpl
   protected val TermMethodsImpl: TermMethods
 
-  trait TermMethods {
+  trait TermMethods:
     extension (self: Term):
 
       /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
@@ -432,7 +444,7 @@ trait Reflection { reflection =>
 
     end extension
 
-  }
+  end TermMethods
 
   /** Tree representing a reference to definition */
   type Ref <: Term
@@ -442,7 +454,8 @@ trait Reflection { reflection =>
 
   val Ref: RefModule
 
-  trait RefModule { this: Ref.type =>
+  trait RefModule:
+    this: Ref.type =>
 
     /** A tree representing the same reference as the given type */
     def term(tp: TermRef): Ref
@@ -462,7 +475,7 @@ trait Reflection { reflection =>
      *  scope for the definition of `foo`.
      */
     def apply(sym: Symbol): Ref
-  }
+  end RefModule
 
   /** Tree representing a reference to definition with a given name */
   type Ident <: Ref
@@ -473,14 +486,16 @@ trait Reflection { reflection =>
   /** Scala term identifier */
   val Ident: IdentModule
 
-  trait IdentModule { this: Ident.type =>
+  trait IdentModule:
+    this: Ident.type =>
+
     def apply(tmref: TermRef): Term
 
     def copy(original: Tree)(name: String): Ident
 
     /** Matches a term identifier and returns its name */
     def unapply(tree: Ident): Option[String]
-  }
+  end IdentModule
 
   given IdentMethods as IdentMethods = IdentMethodsImpl
   protected val IdentMethodsImpl: IdentMethods
@@ -500,7 +515,9 @@ trait Reflection { reflection =>
   /** Scala term selection */
   val Select: SelectModule
 
-  trait SelectModule { this: Select.type =>
+  trait SelectModule:
+    this: Select.type =>
+
     /** Select a term member by symbol */
     def apply(qualifier: Term, symbol: Symbol): Select
 
@@ -515,7 +532,7 @@ trait Reflection { reflection =>
     // TODO rename, this returns an Apply and not a Select
     /** Call an overloaded method with the given type and term parameters */
     def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term]): Apply
-      
+
     /** Call an overloaded method with the given type and term parameters */
     def overloaded(qualifier: Term, name: String, targs: List[Type], args: List[Term], returnType: Type): Apply
 
@@ -523,7 +540,7 @@ trait Reflection { reflection =>
 
     /** Matches `<qualifier: Term>.<name: String>` */
     def unapply(x: Select): Option[(Term, String)]
-  }
+  end SelectModule
 
   given SelectMethods as SelectMethods = SelectMethodsImpl
   protected val SelectMethodsImpl: SelectMethods
@@ -545,7 +562,8 @@ trait Reflection { reflection =>
   /** Scala literal constant */
   val Literal: LiteralModule
 
-  trait LiteralModule { this: Literal.type =>
+  trait LiteralModule:
+    this: Literal.type =>
 
     /** Create a literal constant */
     def apply(constant: Constant): Literal
@@ -554,7 +572,7 @@ trait Reflection { reflection =>
 
     /** Matches a literal constant */
     def unapply(x: Literal): Option[Constant]
-  }
+  end LiteralModule
 
   given LiteralMethods as LiteralMethods = LiteralMethodsImpl
   protected val LiteralMethodsImpl: LiteralMethods
@@ -574,7 +592,8 @@ trait Reflection { reflection =>
   /** Scala `this` or `this[id]` */
   val This: ThisModule
 
-  trait ThisModule { this: This.type =>
+  trait ThisModule:
+    this: This.type =>
 
     /** Create a `this[<id: String]>` */
     def apply(cls: Symbol): This
@@ -583,7 +602,7 @@ trait Reflection { reflection =>
 
     /** Matches `this[<id: Option[String]>` */
     def unapply(x: This): Option[Option[String]]
-  }
+  end ThisModule
 
   given ThisMethods as ThisMethods = ThisMethodsImpl
   protected val ThisMethodsImpl: ThisMethods
@@ -603,7 +622,8 @@ trait Reflection { reflection =>
   /** Scala `new` */
   val New: NewModule
 
-  trait NewModule { this: New.type =>
+  trait NewModule:
+    this: New.type =>
 
     /** Create a `new <tpt: TypeTree>` */
     def apply(tpt: TypeTree): New
@@ -612,7 +632,7 @@ trait Reflection { reflection =>
 
     /** Matches a `new <tpt: TypeTree>` */
     def unapply(x: New): Option[TypeTree]
-  }
+  end NewModule
 
   given NewMethods as NewMethods = NewMethodsImpl
   protected val NewMethodsImpl: NewMethods
@@ -632,7 +652,8 @@ trait Reflection { reflection =>
   /** Scala named argument `x = y` in argument position */
   val NamedArg: NamedArgModule
 
-  trait NamedArgModule { this: NamedArg.type =>
+  trait NamedArgModule:
+    this: NamedArg.type =>
 
     /** Create a named argument `<name: String> = <value: Term>` */
     def apply(name: String, arg: Term): NamedArg
@@ -641,7 +662,7 @@ trait Reflection { reflection =>
 
     /** Matches a named argument `<name: String> = <value: Term>` */
     def unapply(x: NamedArg): Option[(String, Term)]
-  }
+  end NamedArgModule
 
   given NamedArgMethods as NamedArgMethods = NamedArgMethodsImpl
   protected val NamedArgMethodsImpl: NamedArgMethods
@@ -662,7 +683,8 @@ trait Reflection { reflection =>
   /** Scala parameter application */
   val Apply: ApplyModule
 
-  trait ApplyModule { this: Apply.type =>
+  trait ApplyModule:
+    this: Apply.type =>
 
     /** Create a function application `<fun: Term>(<args: List[Term]>)` */
     def apply(fun: Term, args: List[Term]): Apply
@@ -671,7 +693,7 @@ trait Reflection { reflection =>
 
     /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
     def unapply(x: Apply): Option[(Term, List[Term])]
-  }
+  end ApplyModule
 
   given ApplyMethods as ApplyMethods = ApplyMethodsImpl
   protected val ApplyMethodsImpl: ApplyMethods
@@ -692,7 +714,8 @@ trait Reflection { reflection =>
   /** Scala type parameter application */
   val TypeApply: TypeApplyModule
 
-  trait TypeApplyModule { this: TypeApply.type =>
+  trait TypeApplyModule:
+    this: TypeApply.type =>
 
     /** Create a function type application `<fun: Term>[<args: List[TypeTree]>]` */
     def apply(fun: Term, args: List[TypeTree]): TypeApply
@@ -701,7 +724,7 @@ trait Reflection { reflection =>
 
     /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
     def unapply(x: TypeApply): Option[(Term, List[TypeTree])]
-  }
+  end TypeApplyModule
 
   given TypeApplyMethods as TypeApplyMethods = TypeApplyMethodsImpl
   protected val TypeApplyMethodsImpl: TypeApplyMethods
@@ -722,7 +745,8 @@ trait Reflection { reflection =>
   /** Scala `x.super` or `x.super[id]` */
   val Super: SuperModule
 
-  trait SuperModule { this: Super.type =>
+  trait SuperModule:
+    this:Super.type =>
 
     /** Creates a `<qualifier: Term>.super[<id: Option[Id]>` */
     def apply(qual: Term, mix: Option[String]): Super
@@ -731,7 +755,7 @@ trait Reflection { reflection =>
 
     /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
     def unapply(x: Super): Option[(Term, Option[String])]
-  }
+  end SuperModule
 
   given SuperMethods as SuperMethods = SuperMethodsImpl
   protected val SuperMethodsImpl: SuperMethods
@@ -753,7 +777,8 @@ trait Reflection { reflection =>
   /** Scala ascription `x: T` */
   val Typed: TypedModule
 
-  trait TypedModule { this: Typed.type =>
+  trait TypedModule:
+    this:Typed.type =>
 
     /** Create a type ascription `<x: Term>: <tpt: TypeTree>` */
     def apply(expr: Term, tpt: TypeTree): Typed
@@ -762,7 +787,7 @@ trait Reflection { reflection =>
 
     /** Matches `<expr: Term>: <tpt: TypeTree>` */
     def unapply(x: Typed): Option[(Term, TypeTree)]
-  }
+  end TypedModule
 
   given TypedMethods as TypedMethods = TypedMethodsImpl
   protected val TypedMethodsImpl: TypedMethods
@@ -783,7 +808,8 @@ trait Reflection { reflection =>
   /** Scala assign `x = y` */
   val Assign: AssignModule
 
-  trait AssignModule { this: Assign.type =>
+   trait AssignModule:
+    this:Assign.type =>
 
     /** Create an assignment `<lhs: Term> = <rhs: Term>` */
     def apply(lhs: Term, rhs: Term): Assign
@@ -792,7 +818,7 @@ trait Reflection { reflection =>
 
     /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
     def unapply(x: Assign): Option[(Term, Term)]
-  }
+  end AssignModule
 
   given AssignMethods as AssignMethods = AssignMethodsImpl
   protected val AssignMethodsImpl: AssignMethods
@@ -813,7 +839,8 @@ trait Reflection { reflection =>
   /** Scala code block `{ stat0; ...; statN; expr }` term */
   val Block: BlockModule
 
-  trait BlockModule { this: Block.type =>
+   trait BlockModule:
+    this:Block.type =>
 
     /** Creates a block `{ <statements: List[Statement]>; <expr: Term> }` */
     def apply(stats: List[Statement], expr: Term): Block
@@ -822,7 +849,7 @@ trait Reflection { reflection =>
 
     /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
     def unapply(x: Block): Option[(List[Statement], Term)]
-  }
+  end BlockModule
 
   given BlockMethods as BlockMethods = BlockMethodsImpl
   protected val BlockMethodsImpl: BlockMethods
@@ -850,14 +877,15 @@ trait Reflection { reflection =>
 
   val Closure: ClosureModule
 
-  trait ClosureModule { this: Closure.type =>
+  trait ClosureModule:
+    this:Closure.type =>
 
     def apply(meth: Term, tpe: Option[Type]): Closure
 
     def copy(original: Tree)(meth: Tree, tpe: Option[Type]): Closure
 
     def unapply(x: Closure): Option[(Term, Option[Type])]
-  }
+  end ClosureModule
 
   given ClosureMethods as ClosureMethods = ClosureMethodsImpl
   protected val ClosureMethodsImpl: ClosureMethods
@@ -883,10 +911,12 @@ trait Reflection { reflection =>
    */
   val Lambda: LambdaModule
 
-  trait LambdaModule { this: Lambda.type =>
+  trait LambdaModule:
+    this: Lambda.type =>
+
     def unapply(tree: Block): Option[(List[ValDef], Term)]
     def apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block
-  }
+  end LambdaModule
 
   given TypeTest[Tree, If] = IfTypeTest
   protected val IfTypeTest: TypeTest[Tree, If]
@@ -897,7 +927,8 @@ trait Reflection { reflection =>
   /** Scala `if`/`else` term */
   val If: IfModule
 
-  trait IfModule { this: If.type =>
+  trait IfModule:
+    this:If.type =>
 
     /** Create an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
     def apply(cond: Term, thenp: Term, elsep: Term): If
@@ -906,7 +937,7 @@ trait Reflection { reflection =>
 
     /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
     def unapply(tree: If): Option[(Term, Term, Term)]
-  }
+  end IfModule
 
   given IfMethods as IfMethods = IfMethodsImpl
   protected val IfMethodsImpl: IfMethods
@@ -928,7 +959,8 @@ trait Reflection { reflection =>
   /** Scala `match` term */
   val Match: MatchModule
 
-  trait MatchModule { this: Match.type =>
+  trait MatchModule:
+    this:Match.type =>
 
     /** Creates a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
     def apply(selector: Term, cases: List[CaseDef]): Match
@@ -937,7 +969,7 @@ trait Reflection { reflection =>
 
     /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
     def unapply(x: Match): Option[(Term, List[CaseDef])]
-  }
+  end MatchModule
 
   given MatchMethods as MatchMethods = MatchMethodsImpl
   protected val MatchMethodsImpl: MatchMethods
@@ -958,7 +990,8 @@ trait Reflection { reflection =>
   /** Scala implicit `match` term */
   val GivenMatch: GivenMatchModule
 
-  trait GivenMatchModule { this: GivenMatch.type =>
+  trait GivenMatchModule:
+    this:GivenMatch.type =>
 
     /** Creates a pattern match `given match { <cases: List[CaseDef]> }` */
     def apply(cases: List[CaseDef]): GivenMatch
@@ -967,7 +1000,7 @@ trait Reflection { reflection =>
 
     /** Matches a pattern match `given match { <cases: List[CaseDef]> }` */
     def unapply(x: GivenMatch): Option[List[CaseDef]]
-  }
+  end GivenMatchModule
 
   given GivenMatchMethods as GivenMatchMethods = GivenMatchMethodsImpl
   protected val GivenMatchMethodsImpl: GivenMatchMethods
@@ -987,7 +1020,8 @@ trait Reflection { reflection =>
   /** Scala `try`/`catch`/`finally` term */
   val Try: TryModule
 
-  trait TryModule { this: Try.type =>
+  trait TryModule:
+    this:Try.type =>
 
     /** Create a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
     def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
@@ -996,7 +1030,7 @@ trait Reflection { reflection =>
 
     /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
     def unapply(x: Try): Option[(Term, List[CaseDef], Option[Term])]
-  }
+  end TryModule
 
   given TryMethods as TryMethods = TryMethodsImpl
   protected val TryMethodsImpl: TryMethods
@@ -1018,7 +1052,8 @@ trait Reflection { reflection =>
   /** Scala local `return` */
   val Return: ReturnModule
 
-  trait ReturnModule { this: Return.type =>
+  trait ReturnModule:
+    this:Return.type =>
 
     /** Creates `return <expr: Term>` */
     def apply(expr: Term): Return
@@ -1027,7 +1062,7 @@ trait Reflection { reflection =>
 
     /** Matches `return <expr: Term>` */
     def unapply(x: Return): Option[Term]
-  }
+  end ReturnModule
 
   given ReturnMethods as ReturnMethods = ReturnMethodsImpl
   protected val ReturnMethodsImpl: ReturnMethods
@@ -1046,11 +1081,12 @@ trait Reflection { reflection =>
 
   val Repeated: RepeatedModule
 
-  trait RepeatedModule { this: Repeated.type =>
+  trait RepeatedModule:
+    this: Repeated =>
     def apply(elems: List[Term], tpt: TypeTree): Repeated
     def copy(original: Tree)(elems: List[Term], tpt: TypeTree): Repeated
     def unapply(x: Repeated): Option[(List[Term], TypeTree)]
-  }
+  end RepeatedModule
 
   given RepeatedMethods as RepeatedMethods = RepeatedMethodsImpl
   protected val RepeatedMethodsImpl: RepeatedMethods
@@ -1070,11 +1106,12 @@ trait Reflection { reflection =>
 
   val Inlined: InlinedModule
 
-  trait InlinedModule { this: Inlined.type =>
+  trait InlinedModule:
+    this: Inlined =>
     def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
     def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
     def unapply(x: Inlined): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)]
-  }
+  end InlinedModule
 
   given InlinedMethods as InlinedMethods = InlinedMethodsImpl
   protected val InlinedMethodsImpl: InlinedMethods
@@ -1095,11 +1132,12 @@ trait Reflection { reflection =>
 
   val SelectOuter: SelectOuterModule
 
-  trait SelectOuterModule { this: SelectOuter.type =>
+  trait SelectOuterModule:
+    this: SelectOuter =>
     def apply(qualifier: Term, name: String, levels: Int): SelectOuter
     def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter
     def unapply(x: SelectOuter): Option[(Term, String, Int)]
-  }
+  end SelectOuterModule
 
   given SelectOuterMethods as SelectOuterMethods = SelectOuterMethodsImpl
   protected val SelectOuterMethodsImpl: SelectOuterMethods
@@ -1120,7 +1158,8 @@ trait Reflection { reflection =>
 
   val While: WhileModule
 
-  trait WhileModule { this: While.type =>
+  trait WhileModule:
+    this:While.type =>
 
     /** Creates a while loop `while (<cond>) <body>` and returns (<cond>, <body>) */
     def apply(cond: Term, body: Term): While
@@ -1129,7 +1168,7 @@ trait Reflection { reflection =>
 
     /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
     def unapply(x: While): Option[(Term, Term)]
-  }
+  end WhileModule
 
   given WhileMethods as WhileMethods = WhileMethodsImpl
   protected val WhileMethodsImpl: WhileMethods
@@ -1151,7 +1190,9 @@ trait Reflection { reflection =>
 
   val TypeTree: TypeTreeModule
 
-  trait TypeTreeModule { this: TypeTree.type => }
+  trait TypeTreeModule:
+    this: TypeTree.type =>
+  end TypeTreeModule
 
   given TypeTreeMethods as TypeTreeMethods = TypeTreeMethodsImpl
   protected val TypeTreeMethodsImpl: TypeTreeMethods
@@ -1172,11 +1213,12 @@ trait Reflection { reflection =>
   /** TypeTree containing an inferred type */
   val Inferred: InferredModule
 
-  trait InferredModule { this: Inferred.type =>
+  trait InferredModule:
+    this: Inferred =>
     def apply(tpe: Type): Inferred
     /** Matches a TypeTree containing an inferred type */
     def unapply(x: Inferred): Boolean
-  }
+  end InferredModule
 
   /** Type tree representing a reference to definition with a given name */
   type TypeIdent <: TypeTree
@@ -1186,11 +1228,12 @@ trait Reflection { reflection =>
 
   val TypeIdent: TypeIdentModule
 
-  trait TypeIdentModule { this: TypeIdent.type =>
+  trait TypeIdentModule:
+    this: TypeIdent =>
     def apply(sym: Symbol): TypeTree
     def copy(original: Tree)(name: String): TypeIdent
     def unapply(x: TypeIdent): Option[String]
-  }
+  end TypeIdentModule
 
   given TypeIdentMethods as TypeIdentMethods = TypeIdentMethodsImpl
   protected val TypeIdentMethodsImpl: TypeIdentMethods
@@ -1209,11 +1252,12 @@ trait Reflection { reflection =>
 
   val TypeSelect: TypeSelectModule
 
-  trait TypeSelectModule { this: TypeSelect.type =>
+  trait TypeSelectModule:
+    this: TypeSelect =>
     def apply(qualifier: Term, name: String): TypeSelect
     def copy(original: Tree)(qualifier: Term, name: String): TypeSelect
     def unapply(x: TypeSelect): Option[(Term, String)]
-  }
+  end TypeSelectModule
 
   given TypeSelectMethods as TypeSelectMethods = TypeSelectMethodsImpl
   protected val TypeSelectMethodsImpl: TypeSelectMethods
@@ -1233,11 +1277,12 @@ trait Reflection { reflection =>
 
   val Projection: ProjectionModule
 
-  trait ProjectionModule { this: Projection.type =>
+  trait ProjectionModule:
+    this: Projection =>
     // TODO def apply(qualifier: TypeTree, name: String): Project
     def copy(original: Tree)(qualifier: TypeTree, name: String): Projection
     def unapply(x: Projection): Option[(TypeTree, String)]
-  }
+  end ProjectionModule
 
   given ProjectionMethods as ProjectionMethods = ProjectionMethodsImpl
   protected val ProjectionMethodsImpl: ProjectionMethods
@@ -1257,11 +1302,12 @@ trait Reflection { reflection =>
 
   val Singleton: SingletonModule
 
-  trait SingletonModule { this: Singleton.type =>
+  trait SingletonModule:
+    this: Singleton =>
     def apply(ref: Term): Singleton
     def copy(original: Tree)(ref: Term): Singleton
     def unapply(x: Singleton): Option[Term]
-  }
+  end SingletonModule
 
   given SingletonMethods as SingletonMethods = SingletonMethodsImpl
   protected val SingletonMethodsImpl: SingletonMethods
@@ -1280,11 +1326,12 @@ trait Reflection { reflection =>
 
   val Refined: RefinedModule
 
-  trait RefinedModule { this: Refined.type =>
+  trait RefinedModule:
+    this: Refined =>
     // TODO def apply(tpt: TypeTree, refinements: List[Definition]): Refined
     def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined
     def unapply(x: Refined): Option[(TypeTree, List[Definition])]
-  }
+  end RefinedModule
 
   given RefinedMethods as RefinedMethods = RefinedMethodsImpl
   protected val RefinedMethodsImpl: RefinedMethods
@@ -1304,11 +1351,12 @@ trait Reflection { reflection =>
 
   val Applied: AppliedModule
 
-  trait AppliedModule { this: Applied.type =>
+  trait AppliedModule:
+    this: Applied =>
     def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
     def copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
     def unapply(x: Applied): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])]
-  }
+  end AppliedModule
 
   given AppliedMethods as AppliedMethods = AppliedMethodsImpl
   protected val AppliedMethodsImpl: AppliedMethods
@@ -1328,11 +1376,12 @@ trait Reflection { reflection =>
 
   val Annotated: AnnotatedModule
 
-  trait AnnotatedModule { this: Annotated.type =>
+  trait AnnotatedModule:
+    this: Annotated =>
     def apply(arg: TypeTree, annotation: Term): Annotated
     def copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated
     def unapply(x: Annotated): Option[(TypeTree, Term)]
-  }
+  end AnnotatedModule
 
   given AnnotatedMethods as AnnotatedMethods = AnnotatedMethodsImpl
   protected val AnnotatedMethodsImpl: AnnotatedMethods
@@ -1352,11 +1401,12 @@ trait Reflection { reflection =>
 
   val MatchTypeTree: MatchTypeTreeModule
 
-  trait MatchTypeTreeModule { this: MatchTypeTree.type =>
+  trait MatchTypeTreeModule:
+    this: MatchTypeTree =>
     def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
     def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
     def unapply(x: MatchTypeTree): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])]
-  }
+  end MatchTypeTreeModule
 
   given MatchTypeTreeMethods as MatchTypeTreeMethods = MatchTypeTreeMethodsImpl
   protected val MatchTypeTreeMethodsImpl: MatchTypeTreeMethods
@@ -1377,11 +1427,12 @@ trait Reflection { reflection =>
 
   val ByName: ByNameModule
 
-  trait ByNameModule { this: ByName.type =>
+  trait ByNameModule:
+    this: ByName =>
     def apply(result: TypeTree): ByName
     def copy(original: Tree)(result: TypeTree): ByName
     def unapply(x: ByName): Option[TypeTree]
-  }
+  end ByNameModule
 
   given ByNameMethods as ByNameMethods = ByNameMethodsImpl
   protected val ByNameMethodsImpl: ByNameMethods
@@ -1400,11 +1451,12 @@ trait Reflection { reflection =>
 
   val LambdaTypeTree: LambdaTypeTreeModule
 
-  trait LambdaTypeTreeModule { this: LambdaTypeTree.type =>
+  trait LambdaTypeTreeModule:
+    this: LambdaTypeTree =>
     def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
     def copy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
     def unapply(tree: LambdaTypeTree): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)]
-  }
+  end LambdaTypeTreeModule
 
   given LambdaTypeTreeMethods as LambdaTypeTreeMethods = LambdaTypeTreeMethodsImpl
   protected val LambdaTypeTreeMethodsImpl: LambdaTypeTreeMethods
@@ -1424,11 +1476,12 @@ trait Reflection { reflection =>
 
   val TypeBind: TypeBindModule
 
-  trait TypeBindModule { this: TypeBind.type =>
+  trait TypeBindModule:
+    this: TypeBind =>
     // TODO def apply(name: String, tree: Tree): TypeBind
     def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/): TypeBind
     def unapply(x: TypeBind): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)]
-  }
+  end TypeBindModule
 
   given TypeBindMethods as TypeBindMethods = TypeBindMethodsImpl
   protected val TypeBindMethodsImpl: TypeBindMethods
@@ -1448,11 +1501,12 @@ trait Reflection { reflection =>
 
   val TypeBlock: TypeBlockModule
 
-  trait TypeBlockModule { this: TypeBlock.type =>
+  trait TypeBlockModule:
+    this: TypeBlock =>
     def apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
     def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
     def unapply(x: TypeBlock): Option[(List[TypeDef], TypeTree)]
-  }
+  end TypeBlockModule
 
   given TypeBlockMethods as TypeBlockMethods = TypeBlockMethodsImpl
   protected val TypeBlockMethodsImpl: TypeBlockMethods
@@ -1474,9 +1528,10 @@ trait Reflection { reflection =>
 
   val TypeBoundsTree: TypeBoundsTreeModule
 
-  trait TypeBoundsTreeModule { this: TypeBoundsTree.type =>
+  trait TypeBoundsTreeModule:
+    this: TypeBoundsTree =>
     def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)]
-  }
+  end TypeBoundsTreeModule
 
   given TypeBoundsTreeMethods as TypeBoundsTreeMethods = TypeBoundsTreeMethodsImpl
   protected val TypeBoundsTreeMethodsImpl: TypeBoundsTreeMethods
@@ -1500,10 +1555,11 @@ trait Reflection { reflection =>
 
   val WildcardTypeTree: WildcardTypeTreeModule
 
-  trait WildcardTypeTreeModule { this: WildcardTypeTree.type =>
+  trait WildcardTypeTreeModule:
+    this: WildcardTypeTree =>
     /** Matches a TypeBoundsTree containing wildcard type bounds */
     def unapply(x: WildcardTypeTree): Boolean
-  }
+  end WildcardTypeTreeModule
 
   given WildcardTypeTreeMethods as WildcardTypeTreeMethods = WildcardTypeTreeMethodsImpl
   protected val WildcardTypeTreeMethodsImpl: WildcardTypeTreeMethods
@@ -1524,11 +1580,12 @@ trait Reflection { reflection =>
 
   val CaseDef: CaseDefModule
 
-  trait CaseDefModule { this: CaseDef.type =>
+  trait CaseDefModule:
+    this: CaseDef =>
     def apply(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
     def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
     def unapply(x: CaseDef): Option[(Tree, Option[Term], Term)]
-  }
+  end CaseDefModule
 
   given CaseDefMethods as CaseDefMethods = CaseDefMethodsImpl
   protected val CaseDefMethodsImpl: CaseDefMethods
@@ -1549,11 +1606,12 @@ trait Reflection { reflection =>
 
   val TypeCaseDef: TypeCaseDefModule
 
-  trait TypeCaseDefModule { this: TypeCaseDef.type =>
+  trait TypeCaseDefModule:
+    this: TypeCaseDef =>
     def apply(pattern: TypeTree, rhs: TypeTree): TypeCaseDef
     def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree): TypeCaseDef
     def unapply(tree: TypeCaseDef): Option[(TypeTree, TypeTree)]
-  }
+  end TypeCaseDefModule
 
   given TypeCaseDefMethods as TypeCaseDefMethods = TypeCaseDefMethodsImpl
   protected val TypeCaseDefMethodsImpl: TypeCaseDefMethods
@@ -1575,11 +1633,12 @@ trait Reflection { reflection =>
 
   val Bind: BindModule
 
-  trait BindModule { this: Bind.type =>
+  trait BindModule:
+    this: Bind =>
     def apply(sym: Symbol, pattern: Tree): Bind
     def copy(original: Tree)(name: String, pattern: Tree): Bind
     def unapply(pattern: Bind): Option[(String, Tree)]
-  }
+  end BindModule
 
   given BindMethods as BindMethods = BindMethodsImpl
   protected val BindMethodsImpl: BindMethods
@@ -1599,11 +1658,12 @@ trait Reflection { reflection =>
 
   val Unapply: UnapplyModule
 
-  trait UnapplyModule { this: Unapply.type =>
+  trait UnapplyModule:
+    this: Unapply =>
     // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
     def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
     def unapply(x: Unapply): Option[(Term, List[Term], List[Tree])]
-  }
+  end UnapplyModule
 
   given UnapplyMethods as UnapplyMethods = UnapplyMethodsImpl
   protected val UnapplyMethodsImpl: UnapplyMethods
@@ -1624,11 +1684,12 @@ trait Reflection { reflection =>
 
   val Alternatives: AlternativesModule
 
-  trait AlternativesModule { this: Alternatives.type =>
+  trait AlternativesModule:
+    this: Alternatives =>
     def apply(patterns: List[Tree]): Alternatives
     def copy(original: Tree)(patterns: List[Tree]): Alternatives
     def unapply(x: Alternatives): Option[List[Tree]]
-  }
+  end AlternativesModule
 
   given AlternativesMethods as AlternativesMethods = AlternativesMethodsImpl
   protected val AlternativesMethodsImpl: AlternativesMethods
@@ -1652,16 +1713,19 @@ trait Reflection { reflection =>
 
   val ImportSelector: ImportSelectorModule
 
-  trait ImportSelectorModule { this: ImportSelector.type => }
+  trait ImportSelectorModule:
+    this: ImportSelector.type =>
+  end ImportSelectorModule
 
   given TypeTest[ImportSelector, SimpleSelector] = SimpleSelectorTypeTest
   protected val SimpleSelectorTypeTest: TypeTest[ImportSelector, SimpleSelector]
 
   val SimpleSelector: SimpleSelectorModule
 
-  trait SimpleSelectorModule { this: SimpleSelector.type =>
+  trait SimpleSelectorModule:
+    this: SimpleSelector =>
     def unapply(x: SimpleSelector): Option[String]
-  }
+  end SimpleSelectorModule
 
   /** Simple import selector: `.bar` in `import foo.bar` */
   type SimpleSelector <: ImportSelector
@@ -1684,9 +1748,10 @@ trait Reflection { reflection =>
 
   val RenameSelector: RenameSelectorModule
 
-  trait RenameSelectorModule { this: RenameSelector.type =>
+  trait RenameSelectorModule:
+    this: RenameSelector =>
     def unapply(x: RenameSelector): Option[(String, String)]
-  }
+  end RenameSelectorModule
 
   /** Omit import selector: `.{bar => _}` in `import foo.{bar => _}` */
   type OmitSelector <: ImportSelector
@@ -1708,9 +1773,10 @@ trait Reflection { reflection =>
 
   val OmitSelector: OmitSelectorModule
 
-  trait OmitSelectorModule { this: OmitSelector.type =>
+  trait OmitSelectorModule:
+    this: OmitSelector =>
     def unapply(x: OmitSelector): Option[String]
-  }
+  end OmitSelectorModule
 
   given OmitSelectorMethods as OmitSelectorMethods = OmitSelectorMethodsImpl
   protected val OmitSelectorMethodsImpl: OmitSelectorMethods
@@ -1732,18 +1798,19 @@ trait Reflection { reflection =>
 
   val Type: TypeModule
 
-  trait TypeModule { this: Type.type =>
+  trait TypeModule:
+    this:Type.type =>
     /** Returns the type or kind (Type) of T */
     def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): Type
 
     /** Returns the type constructor of the runtime (erased) class */
     def typeConstructorOf(clazz: Class[?]): Type
-  }
+  end TypeModule
 
   given TypeMethods as TypeMethods = TypeMethodsImpl
   protected val TypeMethodsImpl: TypeMethods
 
-  trait TypeMethods {
+  trait TypeMethods:
     extension (self: Type):
 
       /** Shows the tree as extractors */
@@ -1854,7 +1921,7 @@ trait Reflection { reflection =>
       def appliedTo(targs: List[Type]): Type
 
     end extension
-  }
+  end TypeMethods
 
   /** A singleton type representing a known constant value */
   type ConstantType <: Type
@@ -1864,10 +1931,11 @@ trait Reflection { reflection =>
 
   val ConstantType: ConstantTypeModule
 
-  trait ConstantTypeModule { this: ConstantType.type =>
+  trait ConstantTypeModule:
+    this: ConstantType =>
     def apply(x : Constant): ConstantType
     def unapply(x: ConstantType): Option[Constant]
-  }
+  end ConstantTypeModule
 
   given ConstantTypeMethods as ConstantTypeMethods = ConstantTypeMethodsImpl
   protected val ConstantTypeMethodsImpl: ConstantTypeMethods
@@ -1886,10 +1954,11 @@ trait Reflection { reflection =>
 
   val TermRef: TermRefModule
 
-  trait TermRefModule { this: TermRef.type =>
+  trait TermRefModule:
+    this: TermRef =>
     def apply(qual: Type, name: String): TermRef
     def unapply(x: TermRef): Option[(Type, String)]
-  }
+  end TermRefModule
 
   given TermRefMethods as TermRefMethods = TermRefMethodsImpl
   protected val TermRefMethodsImpl: TermRefMethods
@@ -1909,9 +1978,10 @@ trait Reflection { reflection =>
 
   val TypeRef: TypeRefModule
 
-  trait TypeRefModule { this: TypeRef.type =>
+  trait TypeRefModule:
+    this: TypeRef =>
     def unapply(x: TypeRef): Option[(Type, String)]
-  }
+  end TypeRefModule
 
   given TypeRefMethods as TypeRefMethods = TypeRefMethodsImpl
   protected val TypeRefMethodsImpl: TypeRefMethods
@@ -1933,20 +2003,22 @@ trait Reflection { reflection =>
 
   val SuperType: SuperTypeModule
 
-  trait SuperTypeModule { this: SuperType.type =>
+  trait SuperTypeModule:
+    this: SuperType =>
     def apply(thistpe: Type, supertpe: Type): SuperType
     def unapply(x: SuperType): Option[(Type, Type)]
-  }
+  end SuperTypeModule
 
   given SuperTypeMethods as SuperTypeMethods = SuperTypeMethodsImpl
   protected val SuperTypeMethodsImpl: SuperTypeMethods
 
-  trait SuperTypeMethods { this: SuperTypeMethods =>
+  trait SuperTypeMethods:
+    this: SuperTypeMethods =>
     extension (self: SuperType):
       def thistpe: Type
       def supertpe: Type
     end extension
-  }
+  end SuperTypeMethods
 
   /** A type with a type refinement `T { type U }` */
   type Refinement <: Type
@@ -1956,10 +2028,11 @@ trait Reflection { reflection =>
 
   val Refinement: RefinementModule
 
-  trait RefinementModule { this: Refinement.type =>
+  trait RefinementModule:
+    this: Refinement =>
     def apply(parent: Type, name: String, info: Type): Refinement
     def unapply(x: Refinement): Option[(Type, String, Type)]
-  }
+  end RefinementModule
 
   given RefinementMethods as RefinementMethods = RefinementMethodsImpl
   protected val RefinementMethodsImpl: RefinementMethods
@@ -1980,9 +2053,10 @@ trait Reflection { reflection =>
 
   val AppliedType: AppliedTypeModule
 
-  trait AppliedTypeModule { this: AppliedType.type =>
+  trait AppliedTypeModule:
+    this: AppliedType =>
     def unapply(x: AppliedType): Option[(Type, List[Type])]
-  }
+  end AppliedTypeModule
 
   given AppliedTypeMethods as AppliedTypeMethods = AppliedTypeMethodsImpl
   protected val AppliedTypeMethodsImpl: AppliedTypeMethods
@@ -2002,10 +2076,11 @@ trait Reflection { reflection =>
 
   val AnnotatedType: AnnotatedTypeModule
 
-  trait AnnotatedTypeModule { this: AnnotatedType.type =>
+  trait AnnotatedTypeModule:
+    this: AnnotatedType =>
     def apply(underlying: Type, annot: Term): AnnotatedType
     def unapply(x: AnnotatedType): Option[(Type, Term)]
-  }
+  end AnnotatedTypeModule
 
   given AnnotatedTypeMethods as AnnotatedTypeMethods = AnnotatedTypeMethodsImpl
   protected val AnnotatedTypeMethodsImpl: AnnotatedTypeMethods
@@ -2025,10 +2100,11 @@ trait Reflection { reflection =>
 
   val AndType: AndTypeModule
 
-  trait AndTypeModule { this: AndType.type =>
+  trait AndTypeModule:
+    this: AndType =>
     def apply(lhs: Type, rhs: Type): AndType
     def unapply(x: AndType): Option[(Type, Type)]
-  }
+  end AndTypeModule
 
   given AndTypeMethods as AndTypeMethods = AndTypeMethodsImpl
   protected val AndTypeMethodsImpl: AndTypeMethods
@@ -2048,10 +2124,11 @@ trait Reflection { reflection =>
 
   val OrType: OrTypeModule
 
-  trait OrTypeModule { this: OrType.type =>
+  trait OrTypeModule:
+    this: OrType =>
     def apply(lhs: Type, rhs: Type): OrType
     def unapply(x: OrType): Option[(Type, Type)]
-  }
+  end OrTypeModule
 
   given OrTypeMethods as OrTypeMethods = OrTypeMethodsImpl
   protected val OrTypeMethodsImpl: OrTypeMethods
@@ -2071,10 +2148,11 @@ trait Reflection { reflection =>
 
   val MatchType: MatchTypeModule
 
-  trait MatchTypeModule { this: MatchType.type =>
+  trait MatchTypeModule:
+    this: MatchType =>
     def apply(bound: Type, scrutinee: Type, cases: List[Type]): MatchType
     def unapply(x: MatchType): Option[(Type, Type, List[Type])]
-  }
+  end MatchTypeModule
 
   given MatchTypeMethods as MatchTypeMethods = MatchTypeMethodsImpl
   protected val MatchTypeMethodsImpl: MatchTypeMethods
@@ -2095,10 +2173,11 @@ trait Reflection { reflection =>
 
   val ByNameType: ByNameTypeModule
 
-  trait ByNameTypeModule { this: ByNameType.type =>
+  trait ByNameTypeModule:
+    this: ByNameType =>
     def apply(underlying: Type): Type
     def unapply(x: ByNameType): Option[Type]
-  }
+  end ByNameTypeModule
 
   given ByNameTypeMethods as ByNameTypeMethods = ByNameTypeMethodsImpl
   protected val ByNameTypeMethodsImpl: ByNameTypeMethods
@@ -2117,9 +2196,10 @@ trait Reflection { reflection =>
 
   val ParamRef: ParamRefModule
 
-  trait ParamRefModule { this: ParamRef.type =>
+  trait ParamRefModule:
+    this: ParamRef =>
     def unapply(x: ParamRef): Option[(LambdaType, Int)]
-  }
+  end ParamRefModule
 
   given ParamRefMethods as ParamRefMethods = ParamRefMethodsImpl
   protected val ParamRefMethodsImpl: ParamRefMethods
@@ -2139,9 +2219,10 @@ trait Reflection { reflection =>
 
   val ThisType: ThisTypeModule
 
-  trait ThisTypeModule { this: ThisType.type =>
+  trait ThisTypeModule:
+    this: ThisType =>
     def unapply(x: ThisType): Option[Type]
-  }
+  end ThisTypeModule
 
   given ThisTypeMethods as ThisTypeMethods = ThisTypeMethodsImpl
   protected val ThisTypeMethodsImpl: ThisTypeMethods
@@ -2160,9 +2241,10 @@ trait Reflection { reflection =>
 
   val RecursiveThis: RecursiveThisModule
 
-  trait RecursiveThisModule { this: RecursiveThis.type =>
+  trait RecursiveThisModule:
+    this: RecursiveThis =>
     def unapply(x: RecursiveThis): Option[RecursiveType]
-  }
+  end RecursiveThisModule
 
   given RecursiveThisMethods as RecursiveThisMethods = RecursiveThisMethodsImpl
   protected val RecursiveThisMethodsImpl: RecursiveThisMethods
@@ -2181,7 +2263,8 @@ trait Reflection { reflection =>
 
   val RecursiveType: RecursiveTypeModule
 
-  trait RecursiveTypeModule { this: RecursiveType.type =>
+  trait RecursiveTypeModule:
+    this:RecursiveType.type =>
 
     /** Create a RecType, normalizing its contents. This means:
      *
@@ -2194,7 +2277,7 @@ trait Reflection { reflection =>
     def apply(parentExp: RecursiveType => Type): RecursiveType
 
     def unapply(x: RecursiveType): Option[Type]
-  }
+  end RecursiveTypeModule
 
   given RecursiveTypeMethods as RecursiveTypeMethods = RecursiveTypeMethodsImpl
   protected val RecursiveTypeMethodsImpl: RecursiveTypeMethods
@@ -2218,10 +2301,11 @@ trait Reflection { reflection =>
 
   val MethodType: MethodTypeModule
 
-  trait MethodTypeModule { this: MethodType.type =>
+  trait MethodTypeModule:
+    this: MethodType =>
     def apply(paramNames: List[String])(paramInfosExp: MethodType => List[Type], resultTypeExp: MethodType => Type): MethodType
     def unapply(x: MethodType): Option[(List[String], List[Type], Type)]
-  }
+  end MethodTypeModule
 
   given MethodTypeMethods as MethodTypeMethods = MethodTypeMethodsImpl
   protected val MethodTypeMethodsImpl: MethodTypeMethods
@@ -2245,10 +2329,11 @@ trait Reflection { reflection =>
 
   val PolyType: PolyTypeModule
 
-  trait PolyTypeModule { this: PolyType.type =>
+  trait PolyTypeModule:
+    this: PolyType =>
     def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type): PolyType
     def unapply(x: PolyType): Option[(List[String], List[TypeBounds], Type)]
-  }
+  end PolyTypeModule
 
   given PolyTypeMethods as PolyTypeMethods = PolyTypeMethodsImpl
   protected val PolyTypeMethodsImpl: PolyTypeMethods
@@ -2270,10 +2355,11 @@ trait Reflection { reflection =>
 
   val TypeLambda: TypeLambdaModule
 
-  trait TypeLambdaModule { this: TypeLambda.type =>
+  trait TypeLambdaModule:
+    this: TypeLambda =>
     def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => Type): TypeLambda
     def unapply(x: TypeLambda): Option[(List[String], List[TypeBounds], Type)]
-  }
+  end TypeLambdaModule
 
   given TypeLambdaMethods as TypeLambdaMethods = TypeLambdaMethodsImpl
   protected val TypeLambdaMethodsImpl: TypeLambdaMethods
@@ -2297,13 +2383,14 @@ trait Reflection { reflection =>
 
   val TypeBounds: TypeBoundsModule
 
-  trait TypeBoundsModule { this: TypeBounds.type =>
+  trait TypeBoundsModule:
+    this: TypeBounds =>
     def apply(low: Type, hi: Type): TypeBounds
     def unapply(x: TypeBounds): Option[(Type, Type)]
     def empty: TypeBounds
     def upper(hi: Type): TypeBounds
     def lower(lo: Type): TypeBounds
-  }
+  end TypeBoundsModule
 
   given TypeBoundsMethods as TypeBoundsMethods = TypeBoundsMethodsImpl
   protected val TypeBoundsMethodsImpl: TypeBoundsMethods
@@ -2325,9 +2412,10 @@ trait Reflection { reflection =>
 
   val NoPrefix: NoPrefixModule
 
-  trait NoPrefixModule { this: NoPrefix.type =>
+  trait NoPrefixModule:
+    this: NoPrefix =>
     def unapply(x: NoPrefix): Boolean
-  }
+  end NoPrefixModule
 
   ///////////////
   // CONSTANTS //
@@ -2340,146 +2428,159 @@ trait Reflection { reflection =>
   val Constant: ConstantModule
 
   /** Constant value represented as the constant itself */
-  trait ConstantModule { this: Constant.type =>
+  trait ConstantModule:
+    this:Constant.type =>
 
     /** Constant Boolean value */
     val Boolean: ConstantBooleanModule
 
     /** Constant Boolean value */
-    trait ConstantBooleanModule { this: Boolean.type =>
+    trait ConstantBooleanModule:
+      this: Boolean.type =>
       /** Create a constant Boolean value */
       def apply(x: Boolean): Constant
       /** Match Boolean value constant and extract its value */
       def unapply(constant: Constant): Option[Boolean]
-    }
+    end ConstantBooleanModule
 
     /** Constant Byte value */
     val Byte: ConstantByteModule
 
     /** Constant Byte value */
-    trait ConstantByteModule { this: Byte.type =>
+    trait ConstantByteModule:
+      this: Byte.type =>
       /** Create a constant Byte value */
       def apply(x: Byte): Constant
       /** Match Byte value constant and extract its value */
       def unapply(constant: Constant): Option[Byte]
-    }
+    end ConstantByteModule
 
     /** Constant Short value */
     val Short: ConstantShortModule
 
     /** Constant Short value */
-    trait ConstantShortModule { this: Short.type =>
+    trait ConstantShortModule:
+      this: Short.type =>
       /** Create a constant Short value */
       def apply(x: Short): Constant
       /** Match Short value constant and extract its value */
       def unapply(constant: Constant): Option[Short]
-    }
+    end ConstantShortModule
 
     /** Constant Int value */
     val Int: ConstantIntModule
 
     /** Constant Int value */
-    trait ConstantIntModule { this: Int.type =>
+    trait ConstantIntModule:
+      this: Int.type =>
       /** Create a constant Int value */
       def apply(x: Int): Constant
       /** Match Int value constant and extract its value */
       def unapply(constant: Constant): Option[Int]
-    }
+    end ConstantIntModule
 
     /** Constant Long value */
     val Long: ConstantLongModule
 
     /** Constant Long value */
-    trait ConstantLongModule { this: Long.type =>
+    trait ConstantLongModule:
+      this: Long.type =>
       /** Create a constant Long value */
       def apply(x: Long): Constant
       /** Match Long value constant and extract its value */
       def unapply(constant: Constant): Option[Long]
-    }
+    end ConstantLongModule
 
     /** Constant Float value */
     val Float: ConstantFloatModule
 
     /** Constant Float value */
-    trait ConstantFloatModule { this: Float.type =>
+    trait ConstantFloatModule:
+      this: Float.type =>
       /** Create a constant Float value */
       def apply(x: Float): Constant
       /** Match Float value constant and extract its value */
       def unapply(constant: Constant): Option[Float]
-    }
+    end ConstantFloatModule
 
     /** Constant Double value */
     val Double: ConstantDoubleModule
 
     /** Constant Double value */
-    trait ConstantDoubleModule { this: Double.type =>
+    trait ConstantDoubleModule:
+      this: Double.type =>
       /** Create a constant Double value */
       def apply(x: Double): Constant
       /** Match Double value constant and extract its value */
       def unapply(constant: Constant): Option[Double]
-    }
+    end ConstantDoubleModule
 
     /** Constant Char value */
     val Char: ConstantCharModule
 
     /** Constant Char value */
-    trait ConstantCharModule { this: Char.type =>
+    trait ConstantCharModule:
+      this: Char.type =>
       /** Create a constant Char value */
       def apply(x: Char): Constant
       /** Match Char value constant and extract its value */
       def unapply(constant: Constant): Option[Char]
-    }
+    end ConstantCharModule
 
     /** Constant String value */
     val String: ConstantStringModule
 
     /** Constant String value */
-    trait ConstantStringModule { this: String.type =>
+    trait ConstantStringModule:
+      this: String.type =>
       /** Create a constant String value */
       def apply(x: String): Constant
       /** Match String value constant and extract its value */
       def unapply(constant: Constant): Option[String]
-    }
+    end ConstantStringModule
 
     /** Constant Unit value */
     val Unit: ConstantUnitModule
 
     /** Constant Unit value */
-    trait ConstantUnitModule { this: Unit.type =>
+    trait ConstantUnitModule:
+      this: Unit.type =>
       /** Create a constant Unit value */
       def apply(): Constant
       /** Match Unit value constant */
       def unapply(constant: Constant): Boolean
-    }
+    end ConstantUnitModule
 
     /** Constant null value */
     val Null: ConstantNullModule
 
     /** Constant null value */
-    trait ConstantNullModule { this: Null.type =>
+    trait ConstantNullModule:
+      this: Null.type =>
       /** Create a constant null value */
       def apply(): Constant
       /** Match null value constant */
       def unapply(constant: Constant): Boolean
-    }
+    end ConstantNullModule
 
     /** Constant class value representing a `classOf[T]` */
     val ClassOf: ConstantClassOfModule
 
     /** Constant class value representing a `classOf[T]` */
-    trait ConstantClassOfModule { this: ClassOf.type =>
+    trait ConstantClassOfModule:
+      this: ClassOf.type =>
       /** Create a constant class value representing `classOf[<tpe>]` */
       def apply(tpe: Type): Constant
       /** Match a class value constant representing `classOf[<tpe>]` and extract its type */
       def unapply(constant: Constant): Option[Type]
-    }
+    end ConstantClassOfModule
 
-  }
+  end ConstantModule
 
   given ConstantMethods as ConstantMethods = ConstantMethodsImpl
   protected val ConstantMethodsImpl: ConstantMethods
 
-  trait ConstantMethods {
+  trait ConstantMethods:
     extension (self: Constant):
       /** Returns the value of the constant */
       def value: Any
@@ -2493,7 +2594,7 @@ trait Reflection { reflection =>
       /** Shows the tree as fully typed source code */
       def showWith(syntaxHighlight: SyntaxHighlight): String
     end extension
-  }
+  end ConstantMethods
 
   /////////////////////
   // IMPLICIT SEARCH //
@@ -2501,14 +2602,16 @@ trait Reflection { reflection =>
 
   val Implicits: ImplicitsModule
 
-  trait ImplicitsModule { self: Implicits.type =>
+  trait ImplicitsModule:
+    this: Implicits.type =>
+
     /** Find a given instance of type `T` in the current scope provided by the current enclosing splice.
      *  Return an `ImplicitSearchResult`.
      *
      *  @param tpe type of the implicit parameter
      */
     def search(tpe: Type): ImplicitSearchResult
-  }
+  end ImplicitsModule
 
   /** Result of a given instance search */
   type ImplicitSearchResult <: AnyRef
@@ -2567,7 +2670,8 @@ trait Reflection { reflection =>
 
   val Symbol: SymbolModule
 
-  trait SymbolModule { this: Symbol.type =>
+  trait SymbolModule:
+    this:Symbol.type =>
 
     /** Returns the symbol of the current enclosing definition */
     def currentOwner(using ctx: Context): Symbol
@@ -2634,12 +2738,12 @@ trait Reflection { reflection =>
 
     /** Definition not available */
     def noSymbol: Symbol
-  }
+  end SymbolModule
 
   given SymbolMethods as SymbolMethods = SymbolMethodsImpl
   protected val SymbolMethodsImpl: SymbolMethods
 
-  trait SymbolMethods {
+  trait SymbolMethods:
     extension (self: Symbol):
 
       /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
@@ -2805,7 +2909,7 @@ trait Reflection { reflection =>
       /** Case class or case object children of a sealed trait */
       def children: List[Symbol]
     end extension
-  }
+  end SymbolMethods
 
   ////////////////
   // SIGNATURES //
@@ -2817,15 +2921,16 @@ trait Reflection { reflection =>
   /** The signature of a method */
   val Signature: SignatureModule
 
-  trait SignatureModule { this: Signature.type =>
+  trait SignatureModule:
+    this: Signature =>
     /** Matches the method signature and returns its parameters and result type. */
     def unapply(sig: Signature): Option[(List[String | Int], String)]
-  }
+  end SignatureModule
 
   given SignatureMethods as SignatureMethods = SignatureMethodsImpl
   protected val SignatureMethodsImpl: SignatureMethods
 
-  trait SignatureMethods {
+  trait SignatureMethods:
     extension (self: Signature):
 
       /** The signatures of the method parameters.
@@ -2841,7 +2946,7 @@ trait Reflection { reflection =>
       def resultSig: String
 
     end extension
-  }
+  end SignatureMethods
 
   //////////////////////////
   // STANDARD DEFINITIONS //
@@ -2851,7 +2956,8 @@ trait Reflection { reflection =>
   val defn: DefnModule
 
   /** Defines standard symbols (and types via its base trait). */
-  trait DefnModule { self: defn.type =>
+  trait DefnModule:
+    this: defn.type =>
 
     /** The module symbol of root package `_root_`. */
     def RootPackage: Symbol
@@ -3012,7 +3118,7 @@ trait Reflection { reflection =>
      */
     def ScalaNumericValueClasses: List[Symbol]
 
-  }
+  end DefnModule
 
   ///////////////
   //   FLAGS   //
@@ -3023,7 +3129,8 @@ trait Reflection { reflection =>
 
   val Flags: FlagsModule
 
-  trait FlagsModule { this: Flags.type =>
+  trait FlagsModule:
+    this: Flags.type =>
 
     /** Is this symbol `abstract` */
     def Abstract: Flags
@@ -3132,12 +3239,12 @@ trait Reflection { reflection =>
 
     /** Is this symbol a trait */
     def Trait: Flags
-  }
+  end FlagsModule
 
   given FlagsMethods as FlagsMethods = FlagsMethodsImpl
   protected val FlagsMethodsImpl: FlagsMethods
 
-  trait FlagsMethods {
+  trait FlagsMethods:
     extension (self: Flags):
       /** Is the given flag set a subset of this flag sets */
       def is(that: Flags): Boolean
@@ -3158,7 +3265,7 @@ trait Reflection { reflection =>
       def showWith(syntaxHighlight: SyntaxHighlight): String
 
     end extension
-  }
+  end FlagsMethods
 
   ///////////////
   // POSITIONS //
@@ -3174,12 +3281,14 @@ trait Reflection { reflection =>
 
   val Position: PositionModule
 
-  trait PositionModule { this: Position.type => }
+  trait PositionModule:
+    this: Position.type =>
+  end PositionModule
 
   given PositionMethods as PositionMethods = PositionMethodsImpl
   protected val PositionMethodsImpl: PositionMethods
 
-  trait PositionMethods {
+  trait PositionMethods:
     extension (self: Position):
 
       /** The start offset in the source file */
@@ -3210,19 +3319,21 @@ trait Reflection { reflection =>
       def sourceCode: String
 
     end extension
-  }
+  end PositionMethods
 
   /** Scala source file */
   type SourceFile <: AnyRef
 
   val SourceFile: SourceFileModule
 
-  trait SourceFileModule { this: SourceFile.type => }
+  trait SourceFileModule:
+    this: SourceFile.type =>
+  end SourceFileModule
 
   given SourceFileMethods as SourceFileMethods = SourceFileMethodsImpl
   protected val SourceFileMethodsImpl: SourceFileMethods
 
-  trait SourceFileMethods {
+  trait SourceFileMethods:
     extension (self: SourceFile):
       /** Path to this source file */
       def jpath: java.nio.file.Path
@@ -3230,7 +3341,7 @@ trait Reflection { reflection =>
       /** Content of this source file */
       def content: String
     end extension
-  }
+  end SourceFileMethods
 
   ///////////////
   //   Source  //
@@ -3238,7 +3349,8 @@ trait Reflection { reflection =>
 
   val Source: SourceModule
 
-  trait SourceModule { this: Source.type =>
+  trait SourceModule:
+    this: Source.type =>
 
     /** Returns the source file being compiled. The path is relative to the current working directory. */
     def path: java.nio.file.Path
@@ -3254,7 +3366,7 @@ trait Reflection { reflection =>
 
     /** Class name of the current CompilationUnit */
     def compilationUnitClassname: String
-  }
+  end SourceModule
 
   ///////////////
   // REPORTING //
@@ -3266,7 +3378,9 @@ trait Reflection { reflection =>
    *
    *  Also see scala.quoted.report
    */
-  trait ReportingModule { self: Reporting.type =>
+  trait ReportingModule:
+    this: Reporting.type =>
+
     /** Emits an error message */
     def error(msg: => String, pos: Position): Unit
 
@@ -3278,7 +3392,7 @@ trait Reflection { reflection =>
 
     /** Emits a warning at a specific range of a file */
     def warning(msg: => String, source: SourceFile, start: Int, end: Int): Unit
-  }
+  end ReportingModule
 
 
   ///////////////////
@@ -3290,12 +3404,14 @@ trait Reflection { reflection =>
 
   val Documentation: DocumentationModule
 
-  trait DocumentationModule { this: Documentation.type => }
+  trait DocumentationModule:
+    this: Documentation.type =>
+  end DocumentationModule
 
   given DocumentationMethods as DocumentationMethods = DocumentationMethodsImpl
   protected val DocumentationMethodsImpl: DocumentationMethods
 
-  trait DocumentationMethods {
+  trait DocumentationMethods:
     extension (self: Documentation):
       /** Raw documentation string */
       def raw: String
@@ -3307,43 +3423,39 @@ trait Reflection { reflection =>
       def usecases: List[(String, Option[DefDef])]
 
     end extension
-  }
+  end DocumentationMethods
 
   ///////////////
   //   UTILS   //
   ///////////////
 
   /** TASTy Reflect tree accumulator */
-  trait TreeAccumulator[X] extends reflect.TreeAccumulator[X] {
+  trait TreeAccumulator[X] extends reflect.TreeAccumulator[X]:
     val reflect: reflection.type = reflection
-  }
+  end TreeAccumulator
 
   /** TASTy Reflect tree traverser */
-  trait TreeTraverser extends reflect.TreeTraverser {
+  trait TreeTraverser extends reflect.TreeTraverser:
     val reflect: reflection.type = reflection
-  }
+  end TreeTraverser
 
   /** TASTy Reflect tree map */
-  trait TreeMap extends reflect.TreeMap {
+  trait TreeMap extends reflect.TreeMap:
     val reflect: reflection.type = reflection
-  }
+  end TreeMap
 
   // TODO: extract from Reflection
 
   /** Bind the `rhs` to a `val` and use it in `body` */
-  def let(rhs: Term)(body: Ident => Term): Term = {
+  def let(rhs: Term)(body: Ident => Term): Term =
     val sym = Symbol.newVal(Symbol.currentOwner, "x", rhs.tpe.widen, Flags.EmptyFlags, Symbol.noSymbol)
     Block(List(ValDef(sym, Some(rhs))), body(Ref(sym).asInstanceOf[Ident]))
-  }
 
   /** Bind the given `terms` to names and use them in the `body` */
-  def lets(terms: List[Term])(body: List[Term] => Term): Term = {
-    def rec(xs: List[Term], acc: List[Term]): Term = xs match {
+  def lets(terms: List[Term])(body: List[Term] => Term): Term =
+    def rec(xs: List[Term], acc: List[Term]): Term = xs match
       case Nil => body(acc)
       case x :: xs => let(x) { (x: Term) => rec(xs, x :: acc) }
-    }
     rec(terms, Nil)
-  }
 
-
-}
+end Reflection
