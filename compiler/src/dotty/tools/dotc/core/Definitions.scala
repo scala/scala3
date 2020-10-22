@@ -837,8 +837,9 @@ class Definitions {
 
   @tu lazy val TastyReflectionClass: ClassSymbol = requiredClass("scala.tasty.Reflection")
 
-  @tu lazy val Unpickler_unpickleExpr: Symbol = requiredMethod("scala.internal.quoted.Unpickler.unpickleExpr")
-  @tu lazy val Unpickler_unpickleType: Symbol = requiredMethod("scala.internal.quoted.Unpickler.unpickleType")
+  @tu lazy val PickledQuote_make: Symbol = requiredMethod("scala.internal.quoted.PickledQuote.make")
+  @tu lazy val PickledQuote_unpickleExpr: Symbol = requiredMethod("scala.internal.quoted.PickledQuote.unpickleExpr")
+  @tu lazy val PickledQuote_unpickleType: Symbol = requiredMethod("scala.internal.quoted.PickledQuote.unpickleType")
 
   @tu lazy val EqlClass: ClassSymbol = requiredClass("scala.Eql")
     def Eql_eqlAny(using Context): TermSymbol = EqlClass.companionModule.requiredMethod(nme.eqlAny)
