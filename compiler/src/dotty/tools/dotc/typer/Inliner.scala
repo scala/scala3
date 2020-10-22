@@ -741,11 +741,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           while i < x.productArity do
             siz += treeSize(x.productElement(i))
             i += 1
-        case x: List[_] =>
-          var xs = x
-          while xs.nonEmpty do
-            siz += treeSize(xs.head)
-            xs = xs.tail
+        case x: Array[?] =>
+          x.foldLeft(0)((siz, elem) => siz + treeSize(elem))
         case _ =>
       siz
 

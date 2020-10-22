@@ -76,7 +76,7 @@ object NavigateAST {
         val path1 = it.next() match {
           case p: Positioned => singlePath(p, path)
           case m: untpd.Modifiers => childPath(m.productIterator, path)
-          case xs: List[?] => childPath(xs.iterator, path)
+          case xs: Array[?] => childPath(xs.iterator, path)
           case _ => path
         }
         if (!(path1 eqLst path) &&

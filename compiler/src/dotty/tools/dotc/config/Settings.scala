@@ -95,7 +95,7 @@ object Settings {
       choices match {
         case xs if xs.isEmpty => ""
         case r: Range         => s"${r.head}..${r.last}"
-        case xs: List[?]      => xs.toString
+        case xs               => xs.toString
       }
 
     def isLegal(arg: Any): Boolean =
@@ -110,7 +110,7 @@ object Settings {
             case x: Int => r.head <= x && x <= r.last
             case _ => false
           }
-        case xs: List[?] =>
+        case xs =>
           xs.contains(arg)
       }
 

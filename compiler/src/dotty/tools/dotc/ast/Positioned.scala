@@ -141,7 +141,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         x.contains(that)
       case m: untpd.Modifiers =>
         m.mods.exists(isParent) || m.annotations.exists(isParent)
-      case xs: List[?] =>
+      case xs: Array[?] =>
         xs.exists(isParent)
       case _ =>
         false
