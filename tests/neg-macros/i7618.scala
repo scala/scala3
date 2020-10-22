@@ -31,6 +31,6 @@ object Example {
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 
-    Compiler.compile(letExp, Map.empty)(using Quotes.macroContext) // error // error
+    Compiler.compile(letExp, Map.empty)(using Quotes.macroContext) // error
   }
 }

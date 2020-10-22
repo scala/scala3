@@ -408,8 +408,9 @@ object ToExpr {
   /** Default implemetation of `ToExpr[H *: T]` */
   given TupleConsToExpr [H: Type: ToExpr, T <: Tuple: Type: ToExpr]: ToExpr[H *: T] with {
     def apply(tup: H *: T)(using Quotes): Expr[H *: T] =
-      '{ ${summon[ToExpr[H]].apply(tup.head)} *: ${summon[ToExpr[T]].apply(tup.tail)} }
-      // '{ ${Expr(tup.head)} *: ${Expr(tup.tail)} } // TODO figure out why this fails during CI documentation
+      val head = Expr(tup.head)
+      val tail = Expr(tup.tail)
+      '{ $head *: $tail }
   }
 
   /** Default implemetation of `ToExpr[BigInt]` */

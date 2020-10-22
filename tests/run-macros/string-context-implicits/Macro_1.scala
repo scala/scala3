@@ -26,5 +26,6 @@ trait Show[-T] {
   def show(x: T): String
 }
 
-given Show[Int] = x => s"Int($x)"
-given Show[String] = x => s"Str($x)"
+object Show:
+  given Show[Int] = x => s"Int($x)"
+  given Show[String] = x => s"Str($x)"

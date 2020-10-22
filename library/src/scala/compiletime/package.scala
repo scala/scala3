@@ -74,14 +74,14 @@ package object compiletime {
    *  cannot be constructed from the provided type. Otherwise returns
    *  that value wrapped in `Some`.
    */
-  inline def constValueOpt[T]: Option[T] =
+  transparent inline def constValueOpt[T]: Option[T] =
     // implemented in dotty.tools.dotc.typer.Inliner
     error("Compiler bug: `constValueOpt` was not evaluated by the compiler")
 
   /** Given a constant, singleton type `T`, convert it to a value
    *  of the same singleton type. For example: `assert(constValue[1] == 1)`.
    */
-  inline def constValue[T]: T =
+  transparent inline def constValue[T]: T =
     // implemented in dotty.tools.dotc.typer.Inliner
     error("Compiler bug: `constValue` was not evaluated by the compiler")
 
@@ -141,7 +141,7 @@ package object compiletime {
    *  @tparam T the tuple containing the types of the values to be summoned
    *  @return the given values typed as elements of the tuple
    */
-  inline def summonAll[T <: Tuple]: Widen[T] =
+  transparent inline def summonAll[T <: Tuple]: Widen[T] =
     val res =
       inline erasedValue[T] match
         case _: EmptyTuple => EmptyTuple

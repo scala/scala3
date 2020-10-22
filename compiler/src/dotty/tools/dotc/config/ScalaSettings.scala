@@ -227,6 +227,8 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val Yinstrument: Setting[Boolean] = BooleanSetting("-Yinstrument", "Add instrumentation code that counts allocations and closure creations.")
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting("-Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
 
+  val YinlineBlackboxWhileTyping: Setting[Boolean] = BooleanSetting("-Yinline-blackbox-while-typing", "")
+
   /** Dottydoc specific settings that are not used in scaladoc */
   val docSnapshot: Setting[Boolean] = BooleanSetting("-doc-snapshot", "Generate a documentation snapshot for the current Dotty version")
 

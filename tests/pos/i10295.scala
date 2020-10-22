@@ -3,7 +3,7 @@ trait M:
   object X:
     def foo(): X = ???
 
-inline def m(using m: M): m.type = m
+transparent inline def m(using m: M): m.type = m
 
 def doSomething(body: M ?=> Unit) = body(using new M{})
 

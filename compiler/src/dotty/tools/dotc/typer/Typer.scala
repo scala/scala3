@@ -3407,13 +3407,17 @@ class Typer extends Namer
         val meth = methPart(tree).symbol
         if meth.isAllOf(DeferredInline) && !Inliner.inInlineMethod then
           errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
-        else if (Inliner.isInlineable(tree) && !suppressInline && StagingContext.level == 0) {
+        else if
+          Inliner.isInlineable(tree) &&
+          !suppressInline &&
+          StagingContext.level == 0 &&
+          (tree.symbol.is(Transparent) || ctx.settings.YinlineBlackboxWhileTyping.value)
+        then
           tree.tpe <:< wildApprox(pt)
           val errorCount = ctx.reporter.errorCount
           val inlined = Inliner.inlineCall(tree)
           if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
           else inlined
-        }
         else if (tree.symbol.isScala2Macro &&
                 // `raw`, `f` and `s` are eliminated by the StringInterpolatorOpt phase
                 tree.symbol != defn.StringContext_raw &&
@@ -3732,7 +3736,7 @@ class Typer extends Namer
   }
 
   // Overridden in InlineTyper
-  def suppressInline(using Context): Boolean = ctx.isAfterTyper
+  def suppressInline(using Context): Boolean = ctx.isAfterTyper && ctx.phase.phaseName != "inlining"
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if

@@ -35,11 +35,11 @@ object typeclasses {
     import compiletime._
     import scala.deriving._
 
-    inline def tryEql[TT](x: TT, y: TT): Boolean = summonFrom {
+    transparent inline def tryEql[TT](x: TT, y: TT): Boolean = summonFrom {
       case eq: Eq[TT] => eq.eql(x, y)
     }
 
-    inline def eqlElems[Elems <: Tuple](n: Int)(x: Product, y: Product): Boolean =
+    transparent inline def eqlElems[Elems <: Tuple](n: Int)(x: Product, y: Product): Boolean =
       inline erasedValue[Elems] match {
         case _: (elem *: elems1) =>
           tryEql[elem](x.productElement(n).asInstanceOf[elem], y.productElement(n).asInstanceOf[elem]) &&
@@ -48,7 +48,7 @@ object typeclasses {
           true
       }
 
-    inline def eqlCases[Alts](n: Int)(x: Any, y: Any, ord: Int): Boolean =
+    transparent inline def eqlCases[Alts](n: Int)(x: Any, y: Any, ord: Int): Boolean =
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
@@ -61,7 +61,7 @@ object typeclasses {
           false
       }
 
-    inline def derived[T](implicit ev: Mirror.Of[T]): Eq[T] = new Eq[T] {
+    transparent inline def derived[T](implicit ev: Mirror.Of[T]): Eq[T] = new Eq[T] {
       def eql(x: T, y: T): Boolean =
         inline ev match {
           case m: Mirror.SumOf[T] =>
@@ -90,11 +90,11 @@ object typeclasses {
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-    inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonFrom {
+    transparent inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonFrom {
       case pkl: Pickler[T] => pkl.pickle(buf, x)
     }
 
-    inline def pickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Product): Unit =
+    transparent inline def pickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Product): Unit =
       inline erasedValue[Elems] match {
         case _: (elem *: elems1) =>
           tryPickle[elem](buf, x.productElement(n).asInstanceOf[elem])
@@ -102,7 +102,7 @@ object typeclasses {
         case _: EmptyTuple =>
       }
 
-    inline def pickleCases[Alts <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Any, ord: Int): Unit =
+    transparent inline def pickleCases[Alts <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Any, ord: Int): Unit =
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
@@ -113,11 +113,11 @@ object typeclasses {
         case _: EmptyTuple =>
       }
 
-    inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonFrom {
+    transparent inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonFrom {
       case pkl: Pickler[T] => pkl.unpickle(buf)
     }
 
-    inline def unpickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], elems: Array[Any]): Unit =
+    transparent inline def unpickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], elems: Array[Any]): Unit =
       inline erasedValue[Elems] match {
         case _: (elem *: elems1) =>
           elems(n) = tryUnpickle[elem](buf)
@@ -125,7 +125,7 @@ object typeclasses {
         case _: EmptyTuple =>
       }
 
-    inline def unpickleCase[T, Elems <: Tuple](buf: mutable.ListBuffer[Int], m: Mirror.ProductOf[T]): T = {
+    transparent inline def unpickleCase[T, Elems <: Tuple](buf: mutable.ListBuffer[Int], m: Mirror.ProductOf[T]): T = {
       inline val size = constValue[Tuple.Size[Elems]]
       inline if (size == 0)
         m.fromProduct(EmptyTuple)
@@ -140,7 +140,7 @@ object typeclasses {
       }
     }
 
-    inline def unpickleCases[T, Alts <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], ord: Int): T =
+    transparent inline def unpickleCases[T, Alts <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], ord: Int): T =
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
@@ -153,7 +153,7 @@ object typeclasses {
           throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ord")
       }
 
-    inline def derived[T](implicit ev: Mirror.Of[T]): Pickler[T] = new {
+    transparent inline def derived[T](implicit ev: Mirror.Of[T]): Pickler[T] = new {
       def pickle(buf: mutable.ListBuffer[Int], x: T): Unit =
         inline ev match {
           case m: Mirror.SumOf[T] =>
@@ -188,9 +188,9 @@ object typeclasses {
     import compiletime._
     import deriving._
 
-    inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
+    transparent inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
-    inline def showElems[Elems <: Tuple, Labels <: Tuple](n: Int)(x: Product): List[String] =
+    transparent inline def showElems[Elems <: Tuple, Labels <: Tuple](n: Int)(x: Product): List[String] =
       inline erasedValue[Elems] match {
         case _: (elem *: elems1) =>
           inline erasedValue[Labels] match {
@@ -203,7 +203,7 @@ object typeclasses {
           Nil
     }
 
-    inline def showCase[T](x: Any, m: Mirror.ProductOf[T]): String = {
+    transparent inline def showCase[T](x: Any, m: Mirror.ProductOf[T]): String = {
       val label = constValue[m.MirroredLabel]
       inline m match {
         case m: Mirror.Singleton => label
@@ -211,7 +211,7 @@ object typeclasses {
       }
     }
 
-    inline def showCases[Alts <: Tuple](n: Int)(x: Any, ord: Int): String =
+    transparent inline def showCases[Alts <: Tuple](n: Int)(x: Any, ord: Int): String =
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n) showCase(x, summonInline[Mirror.ProductOf[`alt`]])
@@ -220,7 +220,7 @@ object typeclasses {
           throw new MatchError(x)
       }
 
-    inline def derived[T](implicit ev: Mirror.Of[T]): Show[T] = new {
+    transparent inline def derived[T](implicit ev: Mirror.Of[T]): Show[T] = new {
       def show(x: T): String =
         inline ev match {
           case m: Mirror.SumOf[T] =>

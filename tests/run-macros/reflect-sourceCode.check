@@ -1,0 +1,7 @@
+args(0)
+args( 0 )
+args( 0 /* ignore */)
+f
+f
+{ f }
+{ f; f }

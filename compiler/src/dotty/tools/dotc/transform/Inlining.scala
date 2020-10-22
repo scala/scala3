@@ -38,6 +38,16 @@ class Inlining extends MacroTransform {
 
   override def allowsImplicitSearch: Boolean = true
 
+  override def run(using Context): Unit =
+    // if (!ctx.settings.YinlineBlackboxWhileTyping.value) // phase not needed?
+    try super.run
+    catch case _: CompilationUnit.SuspendException => ()
+
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    val newUnits = super.runOn(units).filterNot(_.suspended)
+    ctx.run.checkSuspendedUnits(newUnits)
+    newUnits
+
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
       case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
@@ -71,9 +81,11 @@ class Inlining extends MacroTransform {
           super.transform(tree)
         case _ if Inliner.isInlineable(tree) && !tree.tpe.widen.isInstanceOf[MethodOrPoly] && StagingContext.level == 0 =>
           val tree1 = super.transform(tree)
-          val inlined = Inliner.inlineCall(tree1)
-          if tree1 eq inlined then inlined
-          else transform(inlined)
+          if tree1.tpe.isError then tree1
+          else
+            val inlined = Inliner.inlineCall(tree1)
+            if tree1 eq inlined then inlined
+            else transform(inlined) // TODO can this be removed if `needsStaging` is set in `Inliner`?
         case _: GenericApply if tree.symbol.isQuote =>
           ctx.compilationUnit.needsStaging = true
           super.transform(tree)(using StagingContext.quoteContext)
@@ -88,3 +100,9 @@ class Inlining extends MacroTransform {
 object Inlining {
   val name: String = "inlining"
 }
+
+////// FIXME
+
+////// Issue: dotty.tools.dotc.transform.YCheckPositions$$anon$1.traverse(YCheckPositions.scala:33)
+// tests/run/summonAll.scala
+// tests/run/lst

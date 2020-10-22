@@ -15,7 +15,7 @@ object Test {
     inline def bar: Int
   }
 
-  power(2.0, N) // ok, since it's a by-name parameter
+  power(2.0, N) // ok, since it's an inline parameter
   power(2.0, X) // error: cannot reduce inline if
 
   inline val M = X  // error: rhs must be constant expression
