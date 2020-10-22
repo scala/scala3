@@ -473,7 +473,7 @@ object desugar {
       val stats0 = impl.body.map(expandConstructor)
       val stats =
         if (ctx.owner eq defn.ScalaPackageClass) && defn.hasProblematicGetClass(className) then
-          stats0.filterConserve {
+          stats0.filter {
             case ddef: DefDef =>
               ddef.name ne nme.getClass_
             case _ =>

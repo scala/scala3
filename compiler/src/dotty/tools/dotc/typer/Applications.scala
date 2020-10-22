@@ -1740,7 +1740,7 @@ trait Applications extends Compatibility {
       pt match
         case pt: FunProto =>
           if pt.applyKind == ApplyKind.Using then
-            val alts0 = alts.filterConserve(_.widen.stripPoly.isImplicitMethod)
+            val alts0 = alts.filter(_.widen.stripPoly.isImplicitMethod)
             if alts0 neLst alts then return resolve(alts0)
           else if alts.exists(_.widen.stripPoly.isContextualMethod) then
             return resolveMapped(alts, alt => stripImplicit(alt.widen), pt)
@@ -1880,7 +1880,7 @@ trait Applications extends Compatibility {
         }
 
         def narrowBySize(alts: List[TermRef]): List[TermRef] =
-          alts.filterConserve(sizeFits(_))
+          alts.filter(sizeFits(_))
 
         def narrowByShapes(alts: List[TermRef]): List[TermRef] =
           if args.exists(untpd.isFunctionWithUnknownParamType) then
@@ -1891,11 +1891,11 @@ trait Applications extends Compatibility {
             alts
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] = {
-          val alts2 = alts.filterConserve(alt =>
+          val alts2 = alts.filter(alt =>
             isDirectlyApplicableMethodRef(alt, args, resultType)
           )
           if (alts2.isEmpty && !ctx.isAfterTyper)
-            alts.filterConserve(alt =>
+            alts.filter(alt =>
               isApplicableMethodRef(alt, args, resultType, keepConstraint = false)
             )
           else

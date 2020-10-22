@@ -199,8 +199,8 @@ trait SpaceLogic {
 
     (a, b) match {
       case (Empty, _) | (_, Empty) => Empty
-      case (_, Or(ss)) => Or(ss.map(intersect(a, _)).filterConserve(_ ne Empty))
-      case (Or(ss), _) => Or(ss.map(intersect(_, b)).filterConserve(_ ne Empty))
+      case (_, Or(ss)) => Or(ss.map(intersect(a, _)).filter(_ ne Empty))
+      case (Or(ss), _) => Or(ss.map(intersect(_, b)).filter(_ ne Empty))
       case (Typ(tp1, _), Typ(tp2, _)) =>
         if (isSubType(tp1, tp2)) a
         else if (isSubType(tp2, tp1)) b

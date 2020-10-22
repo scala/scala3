@@ -237,7 +237,7 @@ object SymDenotations {
 
     /** Keep only those annotations that satisfy `p` */
     final def filterAnnotations(p: Annotation => Boolean)(using Context): Unit =
-      annotations = annotations.filterConserve(p)
+      annotations = annotations.filter(p)
 
     /** Optionally, the annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(using Context): Option[Annotation] =
@@ -291,7 +291,7 @@ object SymDenotations {
       myParamss = pss
 
     final def setParamss(tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit =
-      rawParamss = (tparams :: vparamss).filterConserve(!_.isEmpty)
+      rawParamss = (tparams :: vparamss).filter(!_.isEmpty)
 
     final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
       setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))

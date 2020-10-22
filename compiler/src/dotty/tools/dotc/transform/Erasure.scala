@@ -88,7 +88,7 @@ class Erasure extends Phase with DenotTransformer {
         var newAnnotations = oldAnnotations
         if oldSymbol.isRetainedInlineMethod then
           newFlags = newFlags &~ Flags.Inline
-          newAnnotations = newAnnotations.filterConserve(!_.isInstanceOf[BodyAnnotation])
+          newAnnotations = newAnnotations.filter(!_.isInstanceOf[BodyAnnotation])
         // TODO: define derivedSymDenotation?
         if ref.is(Flags.PackageClass)
            || !ref.isClass  // non-package classes are always copied since their base types change
@@ -857,7 +857,7 @@ object Erasure {
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
         var vparams = outerParamDefs(sym)
-            ::: ddef.vparamss.flatten.filterConserve(!_.symbol.is(Flags.Erased))
+            ::: ddef.vparamss.flatten.filter(!_.symbol.is(Flags.Erased))
 
         def skipContextClosures(rhs: Tree, crCount: Int)(using Context): Tree =
           if crCount == 0 then rhs
@@ -977,7 +977,7 @@ object Erasure {
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats0)
         else stats0
       val (stats2, finalCtx) = super.typedStats(stats1, exprOwner)
-      (stats2.filterConserve(!_.isEmpty), finalCtx)
+      (stats2.filter(!_.isEmpty), finalCtx)
     }
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars, tryGadtHealing: Boolean)(using Context): Tree =

@@ -71,71 +71,10 @@ object Decorators {
 
   final val MaxFilterRecursions = 10
 
-  /** Implements filterConserve, zipWithConserve methods
+  /** Implements filter, zipWithConserve methods
    *  on lists that avoid duplication of list nodes where feasible.
    */
   implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
-/*
-    final def mapConserve[U](f: T => U): List[U] = {
-      @tailrec
-      def loop(mapped: List.Buffer[U], unchanged: List[U], pending: List[T]): List[U] =
-        if (pending.isEmpty)
-          if (mapped eq null) unchanged
-          else mapped.toList ++ unchanged
-        else {
-          val head0 = pending.head
-          val head1 = f(head0)
-
-          if (head1.asInstanceOf[AnyRef] eq head0.asInstanceOf[AnyRef])
-            loop(mapped, unchanged, pending.tail)
-          else {
-            val b = if (mapped eq null) List.Buffer[U]() else mapped
-            var xc = unchanged
-            while (xc ne pending) {
-              b += xc.head
-              xc = xc.tail
-            }
-            b += head1
-            val tail0 = pending.tail
-            loop(b, tail0.asInstanceOf[List[U]], tail0)
-          }
-        }
-      loop(null, xs.asInstanceOf[List[U]], xs)
-    }
-  */
-    /** Like `xs filter p` but returns list `xs` itself  - instead of a copy -
-     *  if `p` is true for all elements.
-     */
-    def filterConserve(p: T => Boolean): List[T] =
-
-      def addAll(buf: List.Buffer[T], from: List[T], until: List[T]): List.Buffer[T] =
-        if from eqLst until then buf else addAll(buf += from.head, from.tail, until)
-
-      def loopWithBuffer(buf: List.Buffer[T], xs: List[T]): List[T] = xs match
-        case x :: xs1 =>
-          if p(x) then buf += x
-          loopWithBuffer(buf, xs1)
-        case nil => buf.toList
-
-      def loop(keep: List[T], explore: List[T], keepCount: Int, recCount: Int): List[T] =
-        explore match
-          case x :: rest =>
-            if p(x) then
-              loop(keep, rest, keepCount + 1, recCount)
-            else if keepCount <= 3 && recCount <= MaxFilterRecursions then
-              val rest1 = loop(rest, rest, 0, recCount + 1)
-              keepCount match
-                case 0 => rest1
-                case 1 => keep.head :: rest1
-                case 2 => keep.head :: keep.tail.head :: rest1
-                case 3 => val tl = keep.tail; keep.head :: tl.head :: tl.tail.head :: rest1
-            else
-              loopWithBuffer(addAll(List.Buffer[T](), keep, explore), rest)
-          case nil =>
-            keep
-
-      loop(xs, xs, 0, 0)
-    end filterConserve
 
     /** Like `xs.zipped(ys).map(f)`, but returns list `xs` itself
      *  - instead of a copy - if function `f` maps all elements of

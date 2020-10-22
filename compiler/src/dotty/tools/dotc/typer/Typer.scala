@@ -2104,7 +2104,7 @@ class Typer extends Namer
 
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parentsWithClass = ensureFirstTreeIsClass(parents.mapConserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
+    val parentsWithClass = ensureFirstTreeIsClass(parents.mapConserve(typedParent).filter(!_.isEmpty), cdef.nameSpan)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(using superCtx)
     val firstParentTpe = parents1.head.tpe.dealias
     val firstParent = firstParentTpe.typeSymbol

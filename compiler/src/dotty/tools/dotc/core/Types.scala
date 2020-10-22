@@ -841,7 +841,7 @@ object Types {
      */
     final def possibleSamMethods(using Context): List[SingleDenotation] = {
       record("possibleSamMethods")
-      abstractTermMembers.filterConserve(m =>
+      abstractTermMembers.filter(m =>
         !m.symbol.matchingMember(defn.ObjectType).exists && !m.symbol.isSuperAccessor)
     }
 

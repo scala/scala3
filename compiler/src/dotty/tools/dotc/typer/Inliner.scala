@@ -1404,7 +1404,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         }
       }
 
-      val retained = bindings.filterConserve(binding => retain(binding.symbol))
+      val retained = bindings.filter(binding => retain(binding.symbol))
       if (retained `eqLst` bindings)
         (bindings, tree)
       else {

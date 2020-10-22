@@ -34,7 +34,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
     "interect", "mkString", "partition", "reverse_:::", "scanLeft", "scanRight",
     "sortBy", "sortWith", "sorted", "span", "splitAt", "takeWhile", "transpose", "unzip", "unzip3",
     "updated", "zipAll", "zipWithIndex",
-    "mapConserve", "mapConserve", "filterConserve", "zipWithConserve", "mapWithIndexConserve"
+    "mapConserve", "mapConserve", "filter", "zipWithConserve", "mapWithIndexConserve"
   )
 
   private val namesOfInterest = collectionNamesOfInterest ++ List(

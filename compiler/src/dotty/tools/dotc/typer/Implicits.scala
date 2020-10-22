@@ -356,7 +356,7 @@ object Implicits:
         if outerEligible.isEmpty then ownEligible
         else
           val shadowed = ownEligible.map(_.ref.implicitName).toSet
-          ownEligible ::: outerEligible.filterConserve(cand => !shadowed.contains(cand.ref.implicitName))
+          ownEligible ::: outerEligible.filter(cand => !shadowed.contains(cand.ref.implicitName))
     }
 
     override def isAccessible(ref: TermRef)(using Context): Boolean =
@@ -1245,7 +1245,7 @@ trait Implicits:
                   case retained: SearchSuccess =>
                     val newPending =
                       if (retained eq found) || remaining.isEmpty then remaining
-                      else remaining.filterConserve(cand =>
+                      else remaining.filter(cand =>
                         compareAlternatives(retained, cand) <= 0)
                     rank(newPending, retained, rfailures)
                   case fail: SearchFailure =>
