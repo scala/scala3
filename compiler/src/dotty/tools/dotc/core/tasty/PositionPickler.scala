@@ -91,6 +91,7 @@ class PositionPickler(
       case _ => false
     }
 
+    import scala.::
     def traverse(x: Any, current: SourceFile): Unit = x match {
       case x: untpd.Tree =>
         if (x.span.exists) {
@@ -120,6 +121,8 @@ class PositionPickler(
       case y :: ys =>
         traverse(y, current)
         traverse(ys, current)
+      case ys: List.Arr =>
+        ys.foreach(traverse(_, current))
       case _ =>
     }
     for (root <- roots)

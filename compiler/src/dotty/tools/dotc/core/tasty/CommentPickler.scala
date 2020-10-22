@@ -25,6 +25,7 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr, docStr
       buf.writeBytes(bytes, length)
       buf.writeLongInt(comment.span.coords)
 
+  import scala.::
   private def traverse(x: Any): Unit = x match
     case x: untpd.Tree @unchecked =>
       x match
@@ -39,6 +40,8 @@ class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr, docStr
     case y :: ys =>
       traverse(y)
       traverse(ys)
+    case ys: List.Arr =>
+      ys.foreach(traverse)
     case _ =>
 
 end CommentPickler

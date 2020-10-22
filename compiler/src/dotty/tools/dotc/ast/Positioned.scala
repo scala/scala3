@@ -88,6 +88,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     case Trees.Inlined(call, _, _) =>
       call.span
     case _ =>
+      import scala.::
       def include(span: Span, x: Any): Span = x match {
         case p: Positioned =>
           if (p.source != src) span
@@ -103,6 +104,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
           include(include(span, m.mods), m.annotations)
         case y :: ys =>
           include(include(span, y), ys)
+        case xs: List.Arr =>
+          xs.foldLeft(span)(include(_, _))
         case _ => span
       }
       val limit = productArity
@@ -199,7 +202,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
       case m: untpd.Modifiers =>
         m.annotations.foreach(check)
         m.mods.foreach(check)
-      case xs: List[?] =>
+      case xs: List.Arr =>
         xs.foreach(check)
       case _ =>
     }
