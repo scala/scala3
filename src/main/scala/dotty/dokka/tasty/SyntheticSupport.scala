@@ -37,10 +37,8 @@ trait SyntheticsSupport:
     
     def getAllMembers: List[Symbol] = hackGetAllMembers(self.reflect)(s)
 
-  def isSyntheticField(c: Symbol, classDef: ClassDef) =
+  def isSyntheticField(c: Symbol) =
     c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Object)
-
-  def isSyntheticField(c: Symbol) = c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Object)
 
   def isValidPos(pos: Position) =
     pos.exists && pos.start != pos.end
@@ -101,8 +99,6 @@ trait SyntheticsSupport:
     given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
     val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
     cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[r.Type]
-
-  def hackIsLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
 
   object MatchTypeCase:
     def unapply(tpe: Type): Option[(TypeOrBounds, TypeOrBounds)] =

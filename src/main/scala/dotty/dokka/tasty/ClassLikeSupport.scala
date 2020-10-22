@@ -178,7 +178,7 @@ trait ClassLikeSupport:
     val companion = classDef.symbol.getCompanionSymbol.map(_.tree.asInstanceOf[ClassDef]).get
 
     val enumVals = companion.membersToDocument.collect {
-      case vd: ValDef if !isSyntheticField(vd.symbol, classDef) && vd.symbol.flags.is(Flags.Enum) && vd.symbol.flags.is(Flags.Case) => vd
+      case vd: ValDef if !isSyntheticField(vd.symbol) && vd.symbol.flags.is(Flags.Enum) && vd.symbol.flags.is(Flags.Case) => vd
     }.toList.map(parseValDef(_))
 
     val enumTypes = companion.membersToDocument.collect {
