@@ -28,7 +28,7 @@ import dotty.tools.dotc.util.WeakHashSet
  * not have access to the compiler instance.
  */
 class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
-  import int.{_, given _}
+  import int.{_, given}
   import DottyBackendInterface.{symExtensions, _}
 
   lazy val TransientAttr = requiredClass[scala.transient]

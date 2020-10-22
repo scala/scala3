@@ -74,7 +74,7 @@ object ModifiersParsingTest {
 
 
 class ModifiersParsingTest {
-  import ModifiersParsingTest.{_, given _}
+  import ModifiersParsingTest.{_, given}
 
 
   @Test def valDef = {

@@ -9,7 +9,7 @@ object Magic:
 
 opaque type Foo = String
 object Foo:
-  import Magic.{given _}
+  import Magic.given
   def apply(s: String): Foo = s
 
   given Magic[Foo]:

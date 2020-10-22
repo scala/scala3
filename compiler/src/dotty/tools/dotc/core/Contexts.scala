@@ -16,7 +16,7 @@ import ast.untpd
 import Flags.GivenOrImplicit
 import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet}
 import typer.{Implicits, ImportInfo, Inliner, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
-import Nullables.{NotNullInfo, given _}
+import Nullables.{NotNullInfo, given}
 import Implicits.ContextualImplicits
 import config.Settings._
 import config.Config

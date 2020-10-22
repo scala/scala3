@@ -12,7 +12,7 @@ object test1:
 
   opaque type Foo = String
   object Foo extends LowPrio:
-    import Magic.{given _}
+    import Magic.given
     def apply(s: String): Foo = s
 
     given Magic[Foo]:
@@ -32,7 +32,7 @@ object test2:
 
   opaque type Foo = String
   object Foo extends LowPrio:
-    import Magic.{given _}
+    import Magic.given
     def apply(s: String): Foo = s
 
     def test: Unit =

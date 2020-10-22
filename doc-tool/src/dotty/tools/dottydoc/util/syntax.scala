@@ -3,7 +3,7 @@ package dottydoc
 package util
 
 import dotc.core.Contexts.{Context, ctx}
-import dotc.core.Comments.{_, given _}
+import dotc.core.Comments.{_, given}
 import model.Package
 import core.ContextDottydoc
 import dotc.core.Symbols._
