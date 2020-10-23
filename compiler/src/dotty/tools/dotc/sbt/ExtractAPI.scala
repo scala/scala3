@@ -646,6 +646,8 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
             h = positionedHash(p, h)
           case xs: Array[?] =>
             h = iteratorHash(xs.iterator, h)
+          case null =>
+            // it's an empty list
           case c: Constant =>
             h = MurmurHash3.mix(h, c.tag)
             c.tag match
