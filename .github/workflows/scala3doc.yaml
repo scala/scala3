@@ -35,16 +35,13 @@ jobs:
           key: sbt-${{ hashFiles('**/build.sbt') }}
 
       - name: Compile and test
-        run: sbt compile test
+        run: sbt scala3doc/test
 
       - name: Locally publish self
-        run: sbt publishLocal
+        run: sbt scala3doc/publishLocal
 
       - name: Generate test documentation
-        run: sbt generateSelfDocumentation
-
-      - name: Generate documentation for dotty library
-        run: sbt generateDottyLibDocumentation      
+        run: sbt scala3doc/generateSelfDocumentation
 
       - name: Generate documentation with SBT plugin
-        run: sbt example-project/doc
+        run: sbt scala3doc-example-project/doc
