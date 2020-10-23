@@ -39,7 +39,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   private[this] val levelOfMap: mutable.HashMap[Symbol, Int] = ictx.property(LevelOfKey).get
 
   /** A stack of entered symbols, to be unwound after scope exit */
-  private[this] var enteredSyms: List[Symbol] = Nil
+  private[this] var enteredSyms: scala.List[Symbol] = scala.Nil
 
   /** If we are inside a quote or a splice */
   private[this] var inQuoteOrSplice = false
@@ -48,7 +48,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   protected def levelOf(sym: Symbol): Int = levelOfMap.getOrElse(sym, 0)
 
   /** Localy defined symbols seen so far by `StagingTransformer.transform` */
-  protected def localSymbols: List[Symbol] = enteredSyms
+  protected def localSymbols: scala.List[Symbol] = enteredSyms
 
   /** If we are inside a quote or a splice */
   protected def isInQuoteOrSplice: Boolean = inQuoteOrSplice
@@ -82,10 +82,10 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
     else reporting.trace(i"StagingTransformer.transform $tree at $level", staging, show = true) {
-      def mapOverTree(lastEntered: List[Symbol]) =
+      def mapOverTree(lastEntered: scala.List[Symbol]) =
         try super.transform(tree)
         finally
-          while (enteredSyms neLst lastEntered) {
+          while (enteredSyms ne lastEntered) {
             levelOfMap -= enteredSyms.head
             enteredSyms = enteredSyms.tail
           }
