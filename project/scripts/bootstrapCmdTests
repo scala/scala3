@@ -34,7 +34,7 @@ clear_out "$OUT"
 # check that `scalac -from-tasty` compiles and `scala` runs it
 echo "testing ./bin/scalac -from-tasty and scala -classpath"
 clear_out "$OUT1"
-./bin/scalac -from-tasty -classpath "$OUT" -d "$OUT1" "$MAIN"
+./bin/scalac -from-tasty -d "$OUT1" "$OUT/$TASTY"
 ./bin/scala -classpath "$OUT1" "$MAIN" > "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
