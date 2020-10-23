@@ -1073,6 +1073,9 @@ trait Eq[-T]:
     def === (y: T): Boolean
     def =/= (y: T): Boolean = !(x === y)
 
+trait Hashed[-T]:
+  extension (x: T) def hashcode: Int
+
 given lstShow[T: Show] as Show[List[T]]:
   extension (xs: List[T]) def show: String =
     val b = new StringBuilder("List(")
@@ -1096,8 +1099,15 @@ given lstEq[T: Eq] as Eq[List[T]]:
       i == xs.length && i == ys.length
     }
 
+given lstHash[T: Hashed] as Hashed[List[T]]:
+  extension (xs: List[T]) def hashcode: Int =
+    xs.foldLeft(12345)((h, x) => h * 41 + x.hashcode) // should be improved
+
 given anyShow[T] as Show[T]:
   extension (x: T) def show: String = String.valueOf(x)
 
 given anyEq[T] as Eq[T]:
   extension (x: T) def === (y: T): Boolean = x == y
+
+given anyHashed[T] as Hashed[T]:
+  extension (x: T) def hashcode = x.hashCode

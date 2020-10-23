@@ -127,6 +127,16 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    */
   def isUnderDefined(using Context): Boolean =
     paramsSig.contains(tpnme.Uninstantiated) || resSig == tpnme.Uninstantiated
+
+  override def equals(that: Any) = that match
+    case that: Signature =>
+      this.paramsSig === that.paramsSig && this.resSig == that.resSig
+    case _ =>
+      false
+
+  override def hashCode: Int =
+    paramsSig.hashcode * 41 + resSig.hashCode
+
 }
 
 object Signature {
