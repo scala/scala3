@@ -876,6 +876,16 @@ object List:
       else if len == 1 then single(elem)
       else _fromArray(elems, 0, len)
 
+    def reversedToList: List[T] =
+      if len <= 1 then toList
+      else
+        val elems1 = new Arr(len)
+        var i = 0
+        while i < len do
+          elems1(len - 1 - i) = elems(i)
+          i += 1
+        fromArr(elems1)
+
     def clear() =
       len = 0
 
@@ -897,6 +907,15 @@ object List:
         while i < len do
           f(elems(i).asInstanceOf[T])
           i += 1
+
+    def foreachReversed(f: T => Unit): Unit =
+      if length == 1 then
+        f(elem)
+      else if length > 1 then
+        var i = len
+        while i > 0 do
+          i -= 1
+          f(elems(i).asInstanceOf[T])
 
     def head = apply(0)
     def last = apply(len - 1)

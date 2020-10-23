@@ -1,8 +1,3 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Martin Odersky
- */
-
 package dotty.tools
 package dotc
 package core
@@ -36,7 +31,7 @@ object Scopes {
   /** The maximal permissible number of recursions when creating
    *  a hashtable
    */
-  private final val MaxRecursions = 1000
+  private final val MaxRecursions = 32
 
   /** A function that optionally produces synthesized symbols with
    *  the given name in the given context. Returns `NoSymbol` if the
@@ -300,15 +295,13 @@ object Scopes {
           enterAllInHash(e.prev, n + 1)
           enterInHash(e)
         }
-        else {
-          var entries: List[ScopeEntry] = List()
+        else
+          val buf = List.Buffer[ScopeEntry]()
           var ee = e
-          while (ee ne null) {
-            entries = ee :: entries
+          while ee != null do
+            buf += ee
             ee = ee.prev
-          }
-          entries foreach enterInHash
-        }
+          buf.foreachReversed(enterInHash)
 
     /** Remove entry from this scope (which is required to be present) */
     final def unlink(e: ScopeEntry)(using Context): Unit = {
@@ -393,18 +386,16 @@ object Scopes {
     /** Returns all symbols as a list in the order they were entered in this scope.
      *  Does _not_ include the elements of inherited scopes.
      */
-    override final def toList(using Context): List[Symbol] = {
-      if (elemsCache eqLst nullList) {
+    override final def toList(using Context): List[Symbol] =
+      if elemsCache eqLst nullList then
         ensureComplete()
-        elemsCache = Nil
+        val buf = List.Buffer[Symbol]()
         var e = lastEntry
-        while ((e ne null) && e.owner == this) {
-          elemsCache = e.sym :: elemsCache
+        while e != null && e.owner == this do
+          buf += e.sym
           e = e.prev
-        }
-      }
+        elemsCache = buf.reversedToList
       elemsCache
-    }
 
     override def implicitDecls(using Context): List[TermRef] = {
       ensureComplete()
