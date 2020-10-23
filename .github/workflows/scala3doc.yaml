@@ -19,9 +19,6 @@ jobs:
       - uses: actions/checkout@v2
       - run: git fetch --prune --unshallow --tags
 
-      - name: set right cwd
-        run: cd scala3doc
-
       - name: Cache Coursier
         uses: actions/cache@v1
         with:
@@ -35,13 +32,13 @@ jobs:
           key: sbt-${{ hashFiles('**/build.sbt') }}
 
       - name: Compile and test
-        run: sbt scala3doc/test
+        run: cd scala3doc && sbt test
 
       - name: Locally publish self
-        run: sbt scala3doc/publishLocal
+        run: cd scala3doc && sbt publishLocal
 
       - name: Generate test documentation
-        run: sbt scala3doc/generateSelfDocumentation
+        run: cd scala3doc && sbt generateSelfDocumentation
 
       - name: Generate documentation with SBT plugin
-        run: sbt scala3doc-example-project/doc
+        run: cd scala3doc && sbt example-project/doc
