@@ -118,7 +118,6 @@ object Trees {
             case x: Tree[?] =>
               assert(x.hasType || ctx.reporter.errorsReported,
                      s"$this has untyped child $x")
-            case xs: List[?] => checkChildrenTyped(xs.iterator)
             case xs: Array[?] => checkChildrenTyped(xs.iterator)
             case _ =>
           }
