@@ -1,4 +1,5 @@
-package dotty.tools.benchmarks
+package dotty.tools
+package benchmarks
 
 import dotty.tools.dotc._
 import core.Contexts.Context
