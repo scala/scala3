@@ -50,11 +50,6 @@ object ClassfileParser {
         mapOver(tp)
     }
   }
-
-  def withReader[T](classfile: AbstractFile)(op: DataReader ?=> T)(using Context): T =
-    ctx.base.reusableDataReader.using { reader =>
-      op(using reader.reset(classfile))
-    }
 }
 
 class ClassfileParser(
@@ -86,11 +81,14 @@ class ClassfileParser(
   private def mismatchError(className: SimpleName) =
     throw new IOException(s"class file '${classfile.canonicalPath}' has location not matching its contents: contains class $className")
 
-  def run()(using Context): Option[Embedded] = try withReader(classfile) { (using in) =>
+  def run()(using Context): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
+    implicit val reader2 = reader.reset(classfile)
     report.debuglog("[class] >> " + classRoot.fullName)
     parseHeader()
     this.pool = new ConstantPool
-    parseClass()
+    val res = parseClass()
+    this.pool =  null
+    res
   }
   catch {
     case e: RuntimeException =>
@@ -114,7 +112,7 @@ class ClassfileParser(
   }
 
   /** Return the class symbol of the given name. */
-  def classNameToSymbol(name: Name)(using Context, DataReader): Symbol = innerClasses.get(name) match {
+  def classNameToSymbol(name: Name)(using Context): Symbol = innerClasses.get(name.toString) match {
     case Some(entry) => innerClasses.classSymbol(entry)
     case None => requiredClass(name)
   }
@@ -191,7 +189,7 @@ class ClassfileParser(
 
       setClassInfo(moduleRoot, staticInfo, fromScala2 = false)
 
-      classInfo = parseAttributes(classRoot.symbol, classInfo)
+      classInfo = parseAttributes(classRoot.symbol).complete(classInfo)
       if (isAnnotation)
         // classInfo must be a TempClassInfoType and not a TempPolyType,
         // because Java annotations cannot have type parameters.
@@ -227,32 +225,37 @@ class ClassfileParser(
     val sflags =
       if (method) Flags.Method | methodTranslation.flags(jflags)
       else fieldTranslation.flags(jflags)
-    val name = pool.getName(in.nextChar)
-    if (!sflags.isOneOf(Flags.PrivateOrArtifact) || name.name == nme.CONSTRUCTOR) {
+    val preName = pool.getName(in.nextChar)
+    if (!sflags.isOneOf(Flags.PrivateOrArtifact) || preName.name == nme.CONSTRUCTOR) {
+      val sig = pool.getExternalName(in.nextChar).value
+      val completer = MemberCompleter(preName.name, jflags, sig)
       val member = newSymbol(
-        getOwner(jflags), name.name, sflags, memberCompleter,
+        getOwner(jflags), preName.name, sflags, completer,
         getPrivateWithin(jflags), coord = start)
+
+      completer.attrCompleter = parseAttributes(member)
+
       getScope(jflags).enter(member)
+
     }
-    // skip rest of member for now
-    in.nextChar // info
-    skipAttributes()
+    else {
+      in.nextChar // info
+      skipAttributes()
+    }
   }
 
-  val memberCompleter: LazyType = new LazyType {
+  class MemberCompleter(name: SimpleName, jflags: Int, sig: String) extends LazyType {
+    var attrCompleter: AttributeCompleter = null
 
-    def complete(denot: SymDenotation)(using Context): Unit = withReader(classfile) { (using in) =>
-      in.bp = denot.symbol.coord.toIndex
+    def complete(denot: SymDenotation)(using Context): Unit = {
       val sym = denot.symbol
-      val jflags = in.nextChar
       val isEnum = (jflags & JAVA_ACC_ENUM) != 0
-      val name = pool.getName(in.nextChar).name
       val isConstructor = name eq nme.CONSTRUCTOR
 
       /** Strip leading outer param from constructor and trailing access tag for
         *  private inner constructors.
         */
-      def normalizeConstructorParams() = innerClasses.get(currentClassName) match {
+      def normalizeConstructorParams() = innerClasses.get(currentClassName.toString) match {
         case Some(entry) if !isStatic(entry.jflags) =>
           val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info
           var normalizedParamNames = paramNames.tail
@@ -283,9 +286,9 @@ class ClassfileParser(
       }
 
       val isVarargs = denot.is(Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0
-      denot.info = pool.getType(in.nextChar, isVarargs)
+      denot.info = sigToType(sig, isVarargs = isVarargs)
       if (isConstructor) normalizeConstructorParams()
-      denot.info = translateTempPoly(parseAttributes(sym, denot.info, isVarargs))
+      denot.info = translateTempPoly(attrCompleter.complete(denot.info, isVarargs))
       if (isConstructor) normalizeConstructorInfo()
 
       if (ctx.explicitNulls) denot.info = JavaNullInterop.nullifyMember(denot.symbol, denot.info, isEnum)
@@ -317,7 +320,22 @@ class ClassfileParser(
       case BOOL_TAG   => defn.BooleanType
     }
 
-  private def sigToType(sig: String, owner: Symbol = null, isVarargs: Boolean = false)(using Context, DataReader): Type = {
+  /** As specified in https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.16.1,
+   *  an annotation argument of type boolean, byte, char or short will
+   *  be represented as a CONSTANT_INTEGER, so we need to convert it to
+   *  produce a correctly-typed tree. We need to do this each time the
+   *  constant is accessed instead of storing the result of the
+   *  conversion in the `values` cache, because the same constant might
+   *  be used for annotation arguments of different type.
+   */
+  def convertTo(ct: Constant, pt: Type)(using Context): Constant = {
+    if (pt eq defn.BooleanType) && ct.tag == IntTag then
+      Constant(ct.value != 0)
+    else
+      ct.convertTo(pt)
+  }
+
+  private def sigToType(sig: String, owner: Symbol = null, isVarargs: Boolean = false)(using Context): Type = {
     var index = 0
     val end = sig.length
     def accept(ch: Char): Unit = {
@@ -518,7 +536,10 @@ class ClassfileParser(
       case STRING_TAG =>
         if (skip) None else Some(lit(Constant(pool.getName(index).value)))
       case BOOL_TAG | BYTE_TAG | CHAR_TAG | SHORT_TAG =>
-        if (skip) None else Some(lit(pool.getConstant(index, constantTagToType(tag))))
+        if (skip) None else {
+          val constant = convertTo(pool.getConstant(index), constantTagToType(tag))
+          Some(lit(constant))
+        }
       case INT_TAG | LONG_TAG | FLOAT_TAG | DOUBLE_TAG =>
         if (skip) None else Some(lit(pool.getConstant(index)))
       case CLASS_TAG =>
@@ -604,8 +625,48 @@ class ClassfileParser(
       None // ignore malformed annotations
   }
 
-  def parseAttributes(sym: Symbol, symtype: Type, isVarargs: Boolean = false)(using ctx: Context, in: DataReader): Type = {
-    var newType = symtype
+  /** A completer for attributes
+   *
+   *  Top-level classes complete attributes eagerly, while members complete lazily.
+   *
+   *  @note We cannot simply store the bytes of attributes, as the bytes may
+   *  contain references to the constant pool, where the constants are loaded
+   *  lazily.
+   */
+  class AttributeCompleter(sym: Symbol) {
+    var sig: String = null
+    var constant: Constant = null
+    var exceptions: List[NameOrString] = Nil
+    var annotations: List[Annotation] = Nil
+    def complete(tp: Type, isVarargs: Boolean = false)(using Context): Type = {
+      val updatedType =
+        if sig == null then tp
+        else {
+          val newType = sigToType(sig, sym, isVarargs)
+          if (ctx.debug && ctx.verbose)
+            println("" + sym + "; signature = " + sig + " type = " + newType)
+          newType
+        }
+
+      val newType =
+        if this.constant != null then
+          val ct = convertTo(this.constant, updatedType)
+          if ct != null then ConstantType(ct) else updatedType
+        else updatedType
+
+      annotations.foreach(annot => sym.addAnnotation(annot))
+
+      exceptions.foreach { ex =>
+        val cls = getClassSymbol(ex.name)
+        sym.addAnnotation(ThrowsAnnotation(cls.asClass))
+      }
+
+      cook.apply(newType)
+    }
+  }
+
+  def parseAttributes(sym: Symbol)(using ctx: Context, in: DataReader): AttributeCompleter = {
+    val res = new AttributeCompleter(sym)
 
     def parseAttribute(): Unit = {
       val attrName = pool.getName(in.nextChar).name.toTypeName
@@ -614,9 +675,7 @@ class ClassfileParser(
       attrName match {
         case tpnme.SignatureATTR =>
           val sig = pool.getExternalName(in.nextChar)
-          newType = sigToType(sig.value, sym, isVarargs)
-          if (ctx.debug && ctx.verbose)
-            println("" + sym + "; signature = " + sig + " type = " + newType)
+          res.sig = sig.value
 
         case tpnme.SyntheticATTR =>
           sym.setFlag(Flags.SyntheticArtifact)
@@ -627,11 +686,13 @@ class ClassfileParser(
         case tpnme.DeprecatedATTR =>
           val msg = Literal(Constant("see corresponding Javadoc for more information."))
           val since = Literal(Constant(""))
-          sym.addAnnotation(Annotation(defn.DeprecatedAnnot, msg, since))
+          res.annotations ::= Annotation.deferredSymAndTree(defn.DeprecatedAnnot) {
+            New(defn.DeprecatedAnnot.typeRef, msg :: since :: Nil)
+          }
 
         case tpnme.ConstantValueATTR =>
-          val c = pool.getConstant(in.nextChar, symtype)
-          if (c ne null) newType = ConstantType(c)
+          val c = pool.getConstant(in.nextChar)
+          if (c ne null) res.constant = c
           else report.warning(s"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
 
         case tpnme.AnnotationDefaultATTR =>
@@ -652,12 +713,13 @@ class ClassfileParser(
           parseExceptions(attrLen)
 
         case tpnme.CodeATTR =>
-          if (sym.owner.isAllOf(Flags.JavaInterface)) {
+          in.skip(attrLen)
+          // flag test will trigger completion and cycles, thus have to be lazy
+          if (sym.owner.flagsUNSAFE.isAllOf(Flags.JavaInterface)) {
             sym.resetFlag(Flags.Deferred)
             sym.owner.resetFlag(Flags.PureInterface)
-            report.log(s"$sym in ${sym.owner} is a java8+ default method.")
+            report.log(s"$sym in ${sym.owner} is a java 8+ default method.")
           }
-          in.skip(attrLen)
 
         case _ =>
       }
@@ -672,10 +734,11 @@ class ClassfileParser(
       val nClasses = in.nextChar
       for (n <- 0 until nClasses) {
         // FIXME: this performs an equivalent of getExceptionTypes instead of getGenericExceptionTypes (SI-7065)
-        val cls = pool.getClassSymbol(in.nextChar.toInt)
-        sym.addAnnotation(ThrowsAnnotation(cls.asClass))
+        val cls = pool.getClassName(in.nextChar.toInt)
+        res.exceptions ::= cls
       }
     }
+
 
     /** Parse a sequence of annotations and attaches them to the
      *  current symbol sym, except for the ScalaSignature annotation that it returns, if it is available. */
@@ -693,7 +756,7 @@ class ClassfileParser(
     for (i <- 0 until in.nextChar)
       parseAttribute()
 
-    cook.apply(newType)
+    res
   }
 
   /** Annotations in Scala are assumed to get all their arguments as constructor
@@ -730,7 +793,7 @@ class ClassfileParser(
 
     for entry <- innerClasses.valuesIterator do
       // create a new class member for immediate inner classes
-      if entry.outerName == currentClassName then
+      if entry.outer.name == currentClassName then
         val file = ctx.platform.classPath.findClassFile(entry.externalName.toString) getOrElse {
           throw new AssertionError(entry.externalName)
         }
@@ -911,8 +974,11 @@ class ClassfileParser(
           val nameIndex = in.nextChar
           val jflags = in.nextChar
           if (innerIndex != 0 && outerIndex != 0 && nameIndex != 0) {
-            val entry = InnerClassEntry(innerIndex, outerIndex, nameIndex, jflags)
-            innerClasses(pool.getClassName(innerIndex).name) = entry
+            val inner = pool.getClassName(innerIndex)
+            val outer = pool.getClassName(outerIndex)
+            val name  = pool.getName(nameIndex)
+            val entry = InnerClassEntry(inner, outer, name, jflags)
+            innerClasses(inner.value) = entry
           }
         }
       }
@@ -922,20 +988,20 @@ class ClassfileParser(
   }
 
   /** An entry in the InnerClasses attribute of this class file. */
-  private case class InnerClassEntry(external: Int, outer: Int, name: Int, jflags: Int) {
-    def externalName(using DataReader): SimpleName = pool.getClassName(external).name
-    def outerName(using DataReader): SimpleName    = pool.getClassName(outer).name
-    def originalName(using DataReader): SimpleName = pool.getName(name).name
+  case class InnerClassEntry(external: NameOrString, outer: NameOrString, name: NameOrString, jflags: Int) {
+    def externalName = external.value
+    def outerName    = outer.value
+    def originalName = name.name
 
-    def show(using DataReader): String =
-      s"$originalName in $outerName($externalName)"
+    // The name of the outer class, without its trailing $ if it has one.
+    def strippedOuter = outer.name.stripModuleClassSuffix
   }
 
-  private object innerClasses extends util.HashMap[Name, InnerClassEntry] {
+  private object innerClasses extends util.HashMap[String, InnerClassEntry] {
     /** Return the Symbol of the top level class enclosing `name`,
      *  or 'name's symbol if no entry found for `name`.
      */
-    def topLevelClass(name: Name)(using Context, DataReader): Symbol = {
+    def topLevelClass(name: String)(using Context): Symbol = {
       val tlName = if (contains(name)) {
         var entry = this(name)
         while (contains(entry.outerName))
@@ -944,13 +1010,13 @@ class ClassfileParser(
       }
       else
         name
-      classNameToSymbol(tlName)
+      classNameToSymbol(tlName.toTypeName)
     }
 
     /** Return the class symbol for `entry`. It looks it up in its outer class.
      *  This might force outer class symbols.
      */
-    def classSymbol(entry: InnerClassEntry)(using Context, DataReader): Symbol = {
+    def classSymbol(entry: InnerClassEntry)(using Context): Symbol = {
       def getMember(sym: Symbol, name: Name)(using Context): Symbol =
         if (isStatic(entry.jflags))
           if (sym == classRoot.symbol)
@@ -966,7 +1032,7 @@ class ClassfileParser(
         else
           sym.info.member(name).symbol
 
-      val outerName = entry.outerName.stripModuleClassSuffix
+      val outerName = entry.strippedOuter
       val innerName = entry.originalName
       val owner = classNameToSymbol(outerName)
       val result = atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
@@ -1025,7 +1091,7 @@ class ClassfileParser(
     }
   }
 
-  def getClassSymbol(name: SimpleName)(using Context, DataReader): Symbol =
+  def getClassSymbol(name: SimpleName)(using Context): Symbol =
     if (name.endsWith("$") && (name ne nme.nothingRuntimeClass) && (name ne nme.nullRuntimeClass))
       // Null$ and Nothing$ ARE classes
       requiredModule(name.dropRight(1))
@@ -1148,7 +1214,7 @@ class ClassfileParser(
       getClassSymbol(index)
     }
 
-    def getConstant(index: Int, pt: Type = WildcardType)(using ctx: Context, in: DataReader): Constant = {
+    def getConstant(index: Int)(using ctx: Context, in: DataReader): Constant = {
       if (index <= 0 || len <= index) errorBadIndex(index)
       var value = values(index)
       if (value eq null) {
@@ -1172,21 +1238,7 @@ class ClassfileParser(
         values(index) = value
       }
       value match {
-        case ct: Constant =>
-          if pt ne WildcardType then
-            // As specified in https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-4.7.16.1,
-            // an annotation argument of type boolean, byte, char or short will
-            // be represented as a CONSTANT_INTEGER, so we need to convert it to
-            // produce a correctly-typed tree. We need to do this each time the
-            // constant is accessed instead of storing the result of the
-            // conversion in the `values` cache, because the same constant might
-            // be used for annotation arguments of different type.
-            if (pt eq defn.BooleanType) && ct.tag == IntTag then
-              Constant(ct.value != 0)
-            else
-              ct.convertTo(pt)
-          else
-            ct
+        case ct: Constant  => ct
         case cls: Symbol   => Constant(cls.typeRef)
         case arr: Type     => Constant(arr)
       }

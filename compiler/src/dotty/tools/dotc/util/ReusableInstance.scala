@@ -14,24 +14,20 @@ import scala.util.chaining._
   *
   * Ported from scala.reflect.internal.util.ReusableInstance
   */
-final class ReusableInstance[T <: AnyRef] private (make: => T, enabled: Boolean) {
-  private[this] val cache = if (enabled) new ArrayBuffer[T](ReusableInstance.InitialSize).tap(_.addOne(make)) else null
+final class ReusableInstance[T <: AnyRef] private (make: => T) {
+  private[this] val cache = new ArrayBuffer[T](ReusableInstance.InitialSize).tap(_.addOne(make))
   private[this] var taken = 0
 
-  @inline def using[R](action: T => R): R =
-    if (!enabled)
-      action(make)
-    else {
-      if (taken == cache.size)
-        cache += make
-      taken += 1
-      try action(cache(taken-1)) finally taken -= 1
-    }
+  inline def withInstance[R](action: T => R): R ={
+    if (taken == cache.size)
+      cache += make
+    taken += 1
+    try action(cache(taken-1)) finally taken -= 1
+  }
 }
 
 object ReusableInstance {
   private final val InitialSize = 4
 
-  def apply[T <: AnyRef](make: => T): ReusableInstance[T]                   = new ReusableInstance[T](make, enabled = true)
-  def apply[T <: AnyRef](make: => T, enabled: Boolean): ReusableInstance[T] = new ReusableInstance[T](make, enabled = enabled)
+  def apply[T <: AnyRef](make: => T): ReusableInstance[T] = new ReusableInstance[T](make)
 }
