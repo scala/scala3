@@ -48,11 +48,16 @@ class TreeTypeMap(
    *  by the corresponding `This(newOwner)`.
    */
   private val mapOwnerThis = new TypeMap {
-    private def mapPrefix(from: List[Symbol], to: List[Symbol], tp: Type): Type = from match {
-      case Nil => tp
-      case (cls: ClassSymbol) :: from1 => mapPrefix(from1, to.tail, tp.substThis(cls, to.head.thisType))
-      case _ :: from1 => mapPrefix(from1, to.tail, tp)
-    }
+
+    private def mapPrefix(from: List[Symbol], to: List[Symbol], tp: Type): Type =
+      val len = from.length
+      def recur(i: Int, tp: Type): Type =
+        if i == len then tp
+        else from(i) match
+          case cls: ClassSymbol => recur(i + 1, tp.substThis(cls, to(i).thisType))
+          case _ => recur(i + 1, tp)
+      recur(0, tp)
+
     def apply(tp: Type): Type = tp match {
       case tp: NamedType => tp.derivedSelect(mapPrefix(oldOwners, newOwners, tp.prefix))
       case _ => mapOver(tp)
@@ -63,22 +68,18 @@ class TreeTypeMap(
     mapOwnerThis(typeMap(tp).substSym(substFrom, substTo))
 
   private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
-    if (prevStats.isEmpty) assert(newStats.isEmpty)
-    else {
-      prevStats.head match {
-        case pdef: MemberDef =>
-          val prevSym = pdef.symbol
-          val newSym = newStats.head.symbol
-          val newCls = newSym.owner.asClass
-          if (prevSym != newSym) newCls.replace(prevSym, newSym)
+    prevStats.zipped(newStats).foreach { (pstat, nstat) =>
+      pstat match
+        case pstat: MemberDef =>
+          val prevSym = pstat.symbol
+          val newSym = nstat.symbol
+          if prevSym != newSym then newSym.owner.asClass.replace(prevSym, newSym)
         case _ =>
-      }
-      updateDecls(prevStats.tail, newStats.tail)
     }
 
   override def transform(tree: tpd.Tree)(using Context): tpd.Tree = treeMap(tree) match {
     case impl @ Template(constr, parents, self, _) =>
-      val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
+      val tmap = withMappedSyms(localSyms(List(impl, self)))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
           parents = parents.mapConserve(transform),
@@ -118,7 +119,7 @@ class TreeTypeMap(
           val rhs1 = tmap.transform(rhs)
           cpy.CaseDef(cdef)(pat1, guard1, rhs1)
         case labeled @ Labeled(bind, expr) =>
-          val tmap = withMappedSyms(bind.symbol :: Nil)
+          val tmap = withMappedSyms(List(bind.symbol))
           val bind1 = tmap.transformSub(bind)
           val expr1 = tmap.transform(expr)
           cpy.Labeled(labeled)(bind1, expr1)
