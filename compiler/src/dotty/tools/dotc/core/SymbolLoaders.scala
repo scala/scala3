@@ -134,7 +134,7 @@ object SymbolLoaders {
       def enterScanned(unit: CompilationUnit)(using Context) = {
 
         def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
-          val ok = filePath == path
+          val ok = filePath === path
           if (!ok)
             report.warning(i"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
