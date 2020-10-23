@@ -32,6 +32,14 @@ import collection.mutable
     doRecord(fn, coll.size)
     coll
 
+  def doRecordListSize[T](fn: String, coll: List[T]): coll.type =
+    doRecord(fn, coll.size)
+    coll
+
+  def doRecordBufferSize(fn: String, coll: List.Buffer[_]): coll.type =
+    doRecord(fn, coll.size)
+    coll
+
   inline def trackTime[T](fn: String)(inline op: T): T =
     if (enabled) doTrackTime(fn)(op) else op
 

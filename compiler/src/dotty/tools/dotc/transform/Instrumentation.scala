@@ -29,31 +29,43 @@ class Instrumentation extends MiniPhase { thisPhase =>
     ctx.settings.Yinstrument.value
 
   private val collectionNamesOfInterest = List(
+    "toList", "reversedToList"
+    /*
     "map", "flatMap", "filter", "filterNot", "withFilter", "collect", "flatten", "foldLeft", "foldRight", "take",
     "reverse", "zip", "++", ":::", ":+", "distinct", "dropRight", "takeRight", "groupBy", "groupMap", "init", "inits",
     "interect", "mkString", "partition", "reverse_:::", "scanLeft", "scanRight",
     "sortBy", "sortWith", "sorted", "span", "splitAt", "takeWhile", "transpose", "unzip", "unzip3",
     "updated", "zipAll", "zipWithIndex",
-    "mapConserve", "mapConserve", "filter", "zipWithConserve", "mapWithIndexConserve"
+    "mapConserve", "mapConserve", "filter", "zipWithConserve", "mapWithIndexConserve"*/
   )
 
-  private val namesOfInterest = collectionNamesOfInterest ++ List(
+  private val listNamesOfInterest = List("::", "tail", "drop", "take")
+
+  private val namesOfInterest = List(
     "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",
     "slice", "staticRef", "requiredClass")
 
   private var namesToRecord: Set[Name] = _
   private var collectionNamesToRecord: Set[Name] = _
+  private var listNamesToRecord: Set[Name] = _
   private var Stats_doRecord: Symbol = _
   private var Stats_doRecordSize: Symbol = _
+  private var Stats_doRecordListSize: Symbol = _
+  private var Stats_doRecordBufferSize: Symbol = _
   private var CollectionIterableClass: ClassSymbol = _
+  private var ListBufferClass: ClassSymbol = _
 
   override def prepareForUnit(tree: Tree)(using Context): Context =
-    namesToRecord = namesOfInterest.map(_.toTermName).toSet
     collectionNamesToRecord = collectionNamesOfInterest.map(_.toTermName).toSet
+    listNamesToRecord = listNamesOfInterest.map(name => s"extension_$name".toTermName).toSet
+    namesToRecord = namesOfInterest.map(_.toTermName).toSet ++ listNamesToRecord ++ collectionNamesToRecord
     val StatsModule = requiredModule("dotty.tools.dotc.util.Stats")
     Stats_doRecord = StatsModule.requiredMethod("doRecord")
     Stats_doRecordSize = StatsModule.requiredMethod("doRecordSize")
+    Stats_doRecordListSize = StatsModule.requiredMethod("doRecordListSize")
+    Stats_doRecordBufferSize = StatsModule.requiredMethod("doRecordBufferSize")
     CollectionIterableClass = requiredClass("scala.collection.Iterable")
+    ListBufferClass = requiredClass("dotty.tools.List.Buffer")
     ctx
 
   private def record(category: String, tree: Tree)(using Context): Tree = {
@@ -63,11 +75,23 @@ class Instrumentation extends MiniPhase { thisPhase =>
 
   private def recordSize(tree: Apply)(using Context): Tree = tree.fun match
     case sel @ Select(qual, name)
-    if collectionNamesToRecord.contains(name)
-       && qual.tpe.widen.derivesFrom(CollectionIterableClass) =>
-      val key = Literal(Constant(s"totalSize/${name} in ${qual.tpe.widen.classSymbol.name}@${tree.sourcePos.show}"))
-      val qual1 = ref(Stats_doRecordSize).appliedTo(key, qual).cast(qual.tpe.widen)
-      cpy.Apply(tree)(cpy.Select(sel)(qual1, name), tree.args)
+    if collectionNamesToRecord.contains(name) =>
+      val qualType = qual.tpe.widen
+      def tryRecord(cls: ClassSymbol, recorder: Symbol): Tree =
+        if qualType.derivesFrom(cls) then
+          //println(i"record: $tree")
+          val key = Literal(Constant(s"totalSize/${name} in ${qualType.classSymbol.name}@${tree.sourcePos.show}"))
+          val qual1 = ref(recorder).appliedTo(key, qual).cast(qual.tpe.widen)
+          cpy.Apply(tree)(cpy.Select(sel)(qual1, name), tree.args)
+        else EmptyTree
+      tryRecord(CollectionIterableClass, Stats_doRecordSize)
+      .orElse(tryRecord(ListBufferClass, Stats_doRecordBufferSize))
+      .orElse(tree)
+    case id: RefTree
+    if listNamesToRecord.contains(id.name) && tree.args.nonEmpty =>
+      val key = Literal(Constant(s"totalSize/${id.name}@${tree.sourcePos.show}"))
+      val arg1 = ref(Stats_doRecordListSize).appliedTo(key, tree.args.head).cast(tree.args.head.tpe.widen)
+      cpy.Apply(tree)(id, arg1 :: tree.args.tail)
     case _ =>
       tree
 
