@@ -170,7 +170,7 @@ object Trees {
     /** Convert tree to a list. Gives a singleton list, except
      *  for thickets which return their element trees.
      */
-    def toList: List[Tree[T]] = this :: Nil
+    def toList: List[Tree[T]] = List(this)
 
     /** if this tree is the empty tree, the alternative, else this tree */
     inline def orElse[U >: Untyped <: T](inline that: Tree[U]): Tree[U] =
@@ -992,7 +992,7 @@ object Trees {
     def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = Thicket(List(x1, x2))
     def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = Thicket(List(x1, x2, x3))
     def flatTree(xs: List[Tree])(implicit src: SourceFile): Tree = flatten(xs) match {
-      case x :: Nil => x
+      case List(x) => x
       case ys => Thicket(ys)
     }
 
@@ -1371,10 +1371,7 @@ object Trees {
       def apply(x: X, tree: Tree)(using Context): X
 
       def apply(x: X, trees: List[Tree])(using Context): X =
-        def fold(x: X, trees: List[Tree]): X = trees match
-          case tree :: rest => fold(apply(x, tree), rest)
-          case Nil => x
-        fold(x, trees)
+        trees.foldLeft(x)(apply(_, _))
 
       def foldOver(x: X, tree: Tree)(using Context): X =
         if (tree.source != ctx.source && tree.source.exists)
