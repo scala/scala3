@@ -684,7 +684,7 @@ object List:
       val m = dotc.util.HashMap[U, Buffer[T]]()
       xs.foreach { x =>
         val key = f(x)
-        val buf = m.getOrElse(key, Buffer[T]())
+        val buf = m.getOrElseUpdate(key, Buffer[T]())
         buf += x
       }
       var result = Map.empty[U, List[T]]
