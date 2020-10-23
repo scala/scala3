@@ -271,7 +271,7 @@ class ReplCompiler extends Compiler {
     val src = SourceFile.virtual("<typecheck>", expr)
     inContext(state.context.fresh
       .setReporter(newStoreReporter)
-      .setSetting(state.context.settings.YstopAfter, List("typer"))
+      .setSetting(state.context.settings.YstopAfter, scala.List("typer"))
     ) {
       wrapped(expr, src, state).flatMap { pkg =>
         val unit = CompilationUnit(src)

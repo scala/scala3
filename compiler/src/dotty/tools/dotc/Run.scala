@@ -165,11 +165,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     // If testing pickler, make sure to stop after pickling phase:
     val stopAfter =
       if (ctx.settings.YtestPickler.value) List("pickler")
-      else ctx.settings.YstopAfter.value
+      else ctx.settings.YstopAfter.value.tolist
 
     val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
     val phases = ctx.base.fusePhases(pluginPlan,
-      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, stopAfter, ctx.settings.Ycheck.value)
+      ctx.settings.Yskip.value.tolist, ctx.settings.YstopBefore.value.tolist, stopAfter, ctx.settings.Ycheck.value.tolist)
     ctx.base.usePhases(phases)
 
     def runPhases(using Context) = {
@@ -183,7 +183,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
             val profileBefore = profiler.beforePhase(phase)
             units = phase.runOn(units)
             profiler.afterPhase(phase, profileBefore)
-            if (ctx.settings.Xprint.value.containsPhase(phase))
+            if (ctx.settings.Xprint.value.tolist.containsPhase(phase))
               for (unit <- units)
                 lastPrintedTree =
                   printTree(lastPrintedTree)(using ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))

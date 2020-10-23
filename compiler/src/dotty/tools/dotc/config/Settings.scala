@@ -17,7 +17,7 @@ object Settings {
   val BooleanTag: ClassTag[Boolean]      = ClassTag.Boolean
   val IntTag: ClassTag[Int]              = ClassTag.Int
   val StringTag: ClassTag[String]        = ClassTag(classOf[String])
-  val ListTag: ClassTag[scala.List[?]]   = ClassTag(classOf[scala.List[?]]) // !!! needs to be adapted to new list types
+  val ListTag: ClassTag[scala.List[?]]   = ClassTag(classOf[scala.List[?]])
   val VersionTag: ClassTag[ScalaVersion] = ClassTag(classOf[ScalaVersion])
   val OptionTag: ClassTag[Option[?]]     = ClassTag(classOf[Option[?]])
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
@@ -120,8 +120,8 @@ object Settings {
         var dangers = warnings
         val value1 =
           if changed && isMultivalue then
-            val value0  = value.asInstanceOf[List[String]]
-            val current = valueIn(sstate).asInstanceOf[List[String]]
+            val value0  = value.asInstanceOf[scala.List[String]]
+            val current = valueIn(sstate).asInstanceOf[scala.List[String]]
             value0.filter(current.contains(_)).foreach(s => dangers :+= s"Setting $name set to $s redundantly")
             current ++ value0
           else
@@ -140,7 +140,7 @@ object Settings {
           update(Some(propertyClass.get.getConstructor().newInstance()), args)
         case (ListTag, _) =>
           if (argRest.isEmpty) missingArg
-          else update((argRest split ",").tolist, args)
+          else update((argRest split ",").toList, args)
         case (StringTag, _) if choices.nonEmpty && argRest.nonEmpty =>
           if (!choices.contains(argRest))
             fail(s"$arg is not a valid choice for $name", args)
@@ -279,8 +279,8 @@ object Settings {
     def IntSetting(name: String, descr: String, default: Int, range: Seq[Int] = ScalaNil): Setting[Int] =
       publish(Setting(name, descr, default, choices = range))
 
-    def MultiStringSetting(name: String, helpArg: String, descr: String): Setting[List[String]] =
-      publish(Setting(name, descr, Nil, helpArg))
+    def MultiStringSetting(name: String, helpArg: String, descr: String): Setting[scala.List[String]] =
+      publish(Setting(name, descr, scala.Nil, helpArg))
 
     def OutputSetting(name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
       publish(Setting(name, descr, default, helpArg))
@@ -291,11 +291,11 @@ object Settings {
     def PathSetting(name: String, helpArg: String, descr: String, default: String): Setting[String] =
       publish(Setting(name, descr, default, helpArg))
 
-    def PhasesSetting(name: String, descr: String, default: String = ""): Setting[List[String]] =
-      publish(Setting(name, descr, if (default.isEmpty) Nil else List(default)))
+    def PhasesSetting(name: String, descr: String, default: String = ""): Setting[scala.List[String]] =
+      publish(Setting(name, descr, if (default.isEmpty) scala.Nil else scala.List(default)))
 
-    def PrefixSetting(name: String, pre: String, descr: String): Setting[List[String]] =
-      publish(Setting(name, descr, Nil, prefix = pre))
+    def PrefixSetting(name: String, pre: String, descr: String): Setting[scala.List[String]] =
+      publish(Setting(name, descr, scala.Nil, prefix = pre))
 
     def VersionSetting(name: String, descr: String, default: ScalaVersion = NoScalaVersion): Setting[ScalaVersion] =
       publish(Setting(name, descr, default))
