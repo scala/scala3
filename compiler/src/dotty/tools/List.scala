@@ -223,7 +223,7 @@ object List:
 
     def copyToArray(target: Array[T], from: Int = 0) = xs match
       case null =>
-      case xs: Arr => System.arraycopy(xs, 0, target, from, xs.length)
+      case xs: Arr => Array.copy(xs, 0, target, from, xs.length)
       case x: T @ unchecked => target(from) = x
 
     def toSet: collection.immutable.Set[T] =
