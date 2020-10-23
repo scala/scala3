@@ -506,10 +506,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- Part 2 of program points, ie Labels in the ASM world ---------------- */
 
-    private val noVarsInScope = List((NoSymbol, null))
-
     // bookkeeping the scopes of non-synthetic local vars, to emit debug info (`emitVars`).
-    var varsInScope: List[(Symbol, asm.Label)] = noVarsInScope // (local-var-sym -> start-of-scope)
+    var varsInScope: List[(Symbol, asm.Label)] = nullList // (local-var-sym -> start-of-scope)
 
 
     // helpers around program-points.
@@ -558,7 +556,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       jumpDest = immutable.Map.empty[ /* LabelDef */ Symbol, asm.Label ]
 
       // check previous invocation of genDefDef exited as many varsInScope as it entered.
-      assert(varsInScope eqLst noVarsInScope, "Unbalanced entering/exiting of GenBCode's genBlock().")
+      assert(varsInScope eqLst nullList, "Unbalanced entering/exiting of GenBCode's genBlock().")
       // check previous invocation of genDefDef unregistered as many cleanups as it registered.
       assert(cleanups == Nil, "Previous invocation of genDefDef didn't unregister as many cleanups as it registered.")
       earlyReturnVar      = null
