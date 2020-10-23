@@ -57,13 +57,11 @@ object Substituters:
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty && ts.nonEmpty) {
-          if (fs.head eq sym) return ts.head
-          fs = fs.tail
-          ts = ts.tail
-        }
+        val len = from.length min to.length
+        var i = 0
+        while i < len do
+          if from(i) eq sym then return to(i)
+          i += 1
         if (tp.prefix `eq` NoPrefix) tp
         else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType =>
@@ -77,25 +75,21 @@ object Substituters:
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty) {
-          if (fs.head eq sym)
-            return substSym(tp.prefix, from, to, theMap) select ts.head
-          fs = fs.tail
-          ts = ts.tail
-        }
+        val len = from.length
+        var i = 0
+        while i < len do
+          if from(i) eq sym then
+            return substSym(tp.prefix, from, to, theMap).select(to(i))
+          i += 1
         if (tp.prefix `eq` NoPrefix) tp
         else tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
       case tp: ThisType =>
         val sym = tp.cls
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty) {
-          if (fs.head eq sym) return ts.head.asClass.thisType
-          fs = fs.tail
-          ts = ts.tail
-        }
+        val len = from.length
+        var i = 0
+        while i < len do
+          if from(i) eq sym then return to(i).asClass.thisType
+          i += 1
         tp
       case _: BoundType =>
         tp
@@ -203,17 +197,14 @@ object Substituters:
     def apply(tp: Type): Type = tp match {
       case tp: NamedType =>
         val sym = tp.symbol
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty && ts.nonEmpty) {
-          if (fs.head eq sym)
-            return ts.head match {
+        val len = from.length min to.length
+        var i = 0
+        while i < len do
+          if from(i) eq sym then
+            return to(i) match
               case TypeBounds(lo, hi) => range(lo, hi)
               case tp1 => tp1
-            }
-          fs = fs.tail
-          ts = ts.tail
-        }
+          i += 1
         if (tp.prefix `eq` NoPrefix) tp else derivedSelect(tp, apply(tp.prefix))
       case _: ThisType | _: BoundType =>
         tp

@@ -1584,16 +1584,7 @@ object Types {
      *  one of the symbols in `from` by the corresponding types in `to`.
      */
     final def subst(from: List[Symbol], to: List[Type])(using Context): Type =
-      if (from.isEmpty) this
-      else {
-        val from1 = from.tail
-        if (from1.isEmpty) Substituters.subst1(this, from.head, to.head, null)
-        else {
-          val from2 = from1.tail
-          if (from2.isEmpty) Substituters.subst2(this, from.head, to.head, from1.head, to.tail.head, null)
-          else Substituters.subst(this, from, to, null)
-        }
-      }
+      Substituters.subst(this, from, to, null)
 
     /** Substitute all types of the form `TypeParamRef(from, N)` by
      *  `TypeParamRef(to, N)`.
