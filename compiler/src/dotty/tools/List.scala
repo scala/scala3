@@ -796,6 +796,16 @@ object List:
     def mkString(sep: String): String = mkString("", sep, "")
     def mkString: String = mkString(", ")
 
+  extension [T, U, V](xs: List[T])
+    inline def foldLeftWith(ys: List[U], z: V)(inline op: (V, T, U) => V): V =
+      var i = 0
+      val len = xs.length min ys.length
+      var acc = z
+      while i < len do
+        acc = op(acc, xs(i), ys(i))
+        i += 1
+      acc
+
   class Buffer[T]:
     thisBuffer =>
 
@@ -959,8 +969,6 @@ object List:
     def reduceLeft(f: (T, T) => T): T = toSeq.reduceLeft(f)
 
   end Buffer
-
-  class BufSet
 
   class ListSlice[T](xs: List[T], start: Int, end: Int) extends IndexedSeq[T]:
     val length = (end min xs.length) - (start max 0) max 0

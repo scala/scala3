@@ -3340,14 +3340,15 @@ object Types {
      *  but tracking dependencies in same parameter list.
      */
     private def paramDependencyStatus(using Context): DependencyStatus =
-      if (myParamDependencyStatus != Unknown) myParamDependencyStatus
-      else {
-        val result =
-          if (paramInfos.isEmpty) NoDeps
-          else paramInfos.tail.foldLeft(NoDeps)(depStatus(_, _))
-        if ((result & Provisional) == 0) myParamDependencyStatus = result
-        (result & StatusMask).toByte
-      }
+      if myParamDependencyStatus != Unknown then myParamDependencyStatus
+      else
+        var status = NoDeps
+        var i = 1
+        while i < paramInfos.length do
+          status = depStatus(status, paramInfos(i))
+          i += 1
+        if (status & Provisional) == 0 then myParamDependencyStatus = status
+        (status & StatusMask).toByte
 
     /** Does result type contain references to parameters of this method type,
      *  which cannot be eliminated by de-aliasing?
@@ -3571,9 +3572,7 @@ object Types {
     assert(paramNames.nonEmpty)
 
     private def setVariances(tparams: List[LambdaParam], vs: List[Variance]): Unit =
-      if tparams.nonEmpty then
-        tparams.head.declaredVariance = vs.head
-        setVariances(tparams.tail, vs.tail)
+      tparams.zipped(vs).foreach((tparam, v) => tparam.declaredVariance = v)
 
     override val isDeclaredVarianceLambda = variances.nonEmpty
     if isDeclaredVarianceLambda then setVariances(typeParams, variances)
@@ -3902,8 +3901,8 @@ object Types {
 
         def constantFold2[T](extractor: Type => Option[T], op: (T, T) => Any): Option[Type] =
           for {
-            a <- extractor(args.head.normalized)
-            b <- extractor(args.tail.head.normalized)
+            a <- extractor(args(0).normalized)
+            b <- extractor(args(1).normalized)
           } yield ConstantType(Constant(op(a, b)))
 
         trace(i"compiletime constant fold $this", typr, show = true) {
@@ -5317,6 +5316,7 @@ object Types {
             if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
             else {
               val loBuf, hiBuf = List.Buffer[Type]()
+              val tparams = tp.tyconTypeParams
               // Given `C[A1, ..., An]` where sone A's are ranges, try to find
               // non-range arguments L1, ..., Ln and H1, ..., Hn such that
               // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
@@ -5324,22 +5324,21 @@ object Types {
               // Fail for non-variant argument ranges.
               // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
               // @return  operation succeeded for all arguments.
-              def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
-                case Range(lo, hi) :: args1 =>
-                  val v = tparams.head.paramVarianceSign
-                  if (v == 0) false
-                  else {
-                    if (v > 0) { loBuf += lo; hiBuf += hi }
-                    else { loBuf += hi; hiBuf += lo }
-                    distributeArgs(args1, tparams.tail)
-                  }
-                case arg :: args1 =>
-                  loBuf += arg; hiBuf += arg
-                  distributeArgs(args1, tparams.tail)
-                case nil =>
-                  true
-              }
-              if (distributeArgs(args, tp.tyconTypeParams))
+              def distributeArgs(idx: Int): Boolean =
+                if idx == args.length then true
+                else args(idx) match
+                  case Range(lo, hi) =>
+                    val v = tparams(idx).paramVarianceSign
+                    if v == 0 then false
+                    else
+                      if v > 0 then { loBuf += lo; hiBuf += hi }
+                      else { loBuf += hi; hiBuf += lo }
+                      distributeArgs(idx + 1)
+                  case arg =>
+                    loBuf += arg; hiBuf += arg
+                    distributeArgs(idx + 1)
+
+              if distributeArgs(0) then
                 range(tp.derivedAppliedType(tycon, loBuf.toList),
                       tp.derivedAppliedType(tycon, hiBuf.toList))
               else range(defn.NothingType, defn.AnyType)
@@ -5435,17 +5434,11 @@ object Types {
           if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
 
       case tp @ AppliedType(tycon, args) =>
-        @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
-          if (args.isEmpty || tparams.isEmpty) x
-          else {
-            val tparam = tparams.head
-            val acc = args.head match {
-              case arg: TypeBounds => this(x, arg)
-              case arg => atVariance(variance * tparam.paramVarianceSign)(this(x, arg))
-            }
-            foldArgs(acc, tparams.tail, args.tail)
-          }
-        foldArgs(this(x, tycon), tp.tyconTypeParams, args)
+        args.foldLeftWith(tp.tyconTypeParams, this(x, tycon)) { (x, arg, tparam) =>
+          arg match
+            case arg: TypeBounds => this(x, arg)
+            case arg => atVariance(variance * tparam.paramVarianceSign)(this(x, arg))
+        }
 
       case _: BoundType | _: ThisType => x
 
