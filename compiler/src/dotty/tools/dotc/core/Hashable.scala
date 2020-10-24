@@ -63,16 +63,14 @@ trait Hashable {
 
   protected def finishHash(bs: Binders, seed: Int, arity: Int, tps: List[Type]): Int = {
     var h = seed
-    var xs = tps
-    var len = arity
-    while (!xs.isEmpty) {
-      val elemHash = typeHash(bs, xs.head)
-      if (elemHash == NotCached) return NotCached
+    var i = 0
+    val limit = tps.length
+    while i < limit do
+      val elemHash = typeHash(bs, tps(i))
+      if elemHash == NotCached then return NotCached
       h = hashing.mix(h, elemHash)
-      xs = xs.tail
-      len += 1
-    }
-    finishHash(h, len)
+      i += 1
+    finishHash(h, i + arity)
   }
 
   protected def finishHash(bs: Binders, seed: Int, arity: Int, tp: Type, tps: List[Type]): Int = {

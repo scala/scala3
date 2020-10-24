@@ -176,10 +176,6 @@ object Decorators {
       x
     }
 
-  extension [T <: AnyRef](xs: List[T])
-    def derivedCons(x1: T, xs1: List[T]) =
-      if (xs.head eq x1) && (xs.tail eqLst xs1) then xs else x1 :: xs1
-
   extension (sc: StringContext)
     /** General purpose string formatting */
     def i(args: Any*)(using Context): String =

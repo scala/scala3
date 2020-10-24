@@ -1893,18 +1893,15 @@ object SymDenotations {
       addInherited(name, ownDenots)
 
     private def addInherited(name: Name, ownDenots: PreDenotation)(using Context): PreDenotation =
-      def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match
-        case p :: ps =>
-          val denots1 = collect(denots, ps)
-          p.classSymbol.denot match
-            case parentd: ClassDenotation =>
-              val inherited = parentd.nonPrivateMembersNamed(name)
-              denots1.union(inherited.mapInherited(ownDenots, denots1, thisType))
-            case _ =>
-              denots1
-        case nil => denots
       if name.isConstructorName then ownDenots
-      else collect(ownDenots, classParents)
+      else classParents.foldRight(ownDenots) { (p, denots) =>
+        p.classSymbol.denot match
+          case parentd: ClassDenotation =>
+            val inherited = parentd.nonPrivateMembersNamed(name)
+            denots.union(inherited.mapInherited(ownDenots, denots, thisType))
+          case _ =>
+            denots
+      }
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)

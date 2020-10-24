@@ -3236,13 +3236,8 @@ object Types {
       else newLikeThis(paramNames, paramInfos, resType)
 
     def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(using Context): This =
-      def substParams(pinfos: List[PInfo], to: This): List[PInfo] = pinfos match
-        case pinfos @ (pinfo :: rest) =>
-          pinfos.derivedCons(pinfo.subst(this, to).asInstanceOf[PInfo], substParams(rest, to))
-        case nil =>
-          nil
       companion(paramNames)(
-          x => substParams(paramInfos, x),
+          x => paramInfos.map(_.subst(this, x).asInstanceOf[PInfo]),
           x => resType.subst(this, x))
 
     protected def prefixString: String
@@ -3861,10 +3856,7 @@ object Types {
     }
 
     inline def map(inline op: Type => Type)(using Context) =
-      def mapArgs(args: List[Type]): List[Type] = args match
-        case args @ (arg :: rest) => args.derivedCons(op(arg), mapArgs(rest))
-        case nil => nil
-      derivedAppliedType(op(tycon), mapArgs(args))
+      derivedAppliedType(op(tycon), args.map(op))
 
     inline def fold[T](x: T, inline op: (T, Type) => T)(using Context): T =
       def foldArgs(x: T, args: List[Type]): T = args match

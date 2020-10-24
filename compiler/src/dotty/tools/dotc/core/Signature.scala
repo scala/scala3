@@ -57,12 +57,8 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *  This is the case if all parameter signatures are _consistent_, i.e. they are either
    *  equal or on of them is tpnme.Uninstantiated.
    */
-  final def consistentParams(that: Signature)(using Context): Boolean = {
-    @tailrec def loop(names1: List[ParamSig], names2: List[ParamSig]): Boolean =
-      if (names1.isEmpty) names2.isEmpty
-      else !names2.isEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
-    loop(this.paramsSig, that.paramsSig)
-  }
+  final def consistentParams(that: Signature)(using Context): Boolean =
+    this.paramsSig.corresponds(that.paramsSig)(consistent(_, _))
 
   /** `that` signature, but keeping all corresponding parts of `this` signature. */
   final def updateWith(that: Signature): Signature = {
