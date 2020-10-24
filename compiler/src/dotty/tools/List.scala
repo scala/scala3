@@ -143,28 +143,37 @@ object List:
     multi[T](elems)
 
   def fill[T](n: Int)(elem: => T) =
-    val xs = new Arr(n)
-    var i = 0
-    while i < n do
-      xs(i) = elem
-      i += 1
-    multi[T](xs)
+    if n == 0 then Nil
+    else if n == 1 then single(elem)
+    else
+      val xs = new Arr(n)
+      var i = 0
+      while i < n do
+        xs(i) = elem
+        i += 1
+      multi[T](xs)
 
   def tabulate[T](n: Int)(elem: Int => T) =
-    val xs = new Arr(n)
-    var i = 0
-    while i < n do
-      xs(i) = elem(i)
-      i += 1
-    multi[T](xs)
+    if n == 0 then Nil
+    else if n == 1 then single(elem(0))
+    else
+      val xs = new Arr(n)
+      var i = 0
+      while i < n do
+        xs(i) = elem(i)
+        i += 1
+      multi[T](xs)
 
   def range(from: Int, until: Int): List[Int] =
-    val xs = new Arr(until - from)
-    var i = from
-    while i < until do
-      xs(i - from) = i
-      i += 1
-    multi[Int](xs)
+    if from >= until then Nil
+    else if from + 1 == until then single(from)
+    else
+      val xs = new Arr(until - from)
+      var i = from
+      while i < until do
+        xs(i - from) = i
+        i += 1
+      multi[Int](xs)
 
   extension [T](xs: List[T] & Arr)
     private def at(i: Int): T = (xs: Arr)(i).asInstanceOf[T]
@@ -660,6 +669,21 @@ object List:
         case x: T @unchecked =>
           op(x, z)
 
+    inline def onFirst(inline p: T => Boolean, inline alt: U)(inline f: T => U): U =
+      def cond(x: T) = p(x)
+      var found: T | Null = null
+      xs match
+        case null =>
+        case xs: Arr =>
+          var i = 0
+          while i < xs.length do
+            val x = xs.at(i)
+            if cond(x) then found = x
+            i += 1
+        case x: T @unchecked =>
+          if cond(x) then found = x
+      if found != null then f(found.asInstanceOf[T]) else alt
+
     def zipped(ys: List[U]) = LazyZip2(xs, ys.iterator)
     def zipped(ys: IterableOnce[U]) = LazyZip2(xs, ys)
 
@@ -937,22 +961,30 @@ object List:
         result
 
     def foreach(f: T => Unit): Unit =
-      if length == 1 then
+      if len == 1 then
         f(elem)
-      else if length > 1 then
+      else if len > 1 then
         var i = 0
         while i < len do
           f(elems(i).asInstanceOf[T])
           i += 1
 
     def foreachReversed(f: T => Unit): Unit =
-      if length == 1 then
+      if len == 1 then
         f(elem)
-      else if length > 1 then
+      else if len > 1 then
         var i = len
         while i > 0 do
           i -= 1
           f(elems(i).asInstanceOf[T])
+
+    def contains(x: T) =
+      if len == 0 then false
+      else if len == 1 then elem == x
+      else
+        var i = 0
+        while i < len && elems(i) != x do i += 1
+        i < len
 
     def head = apply(0)
     def last = apply(len - 1)
@@ -965,7 +997,6 @@ object List:
     def find(p: T => Boolean): Option[T] = toSeq.find(p)
     def exists(p: T => Boolean): Boolean = toSeq.exists(p)
     def forall(p: T => Boolean): Boolean = toSeq.forall(p)
-    def contains(x: T): Boolean = toSeq.contains(x)
     def reduceLeft(f: (T, T) => T): T = toSeq.reduceLeft(f)
 
   end Buffer
