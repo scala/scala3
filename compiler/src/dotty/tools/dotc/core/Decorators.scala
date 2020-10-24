@@ -76,21 +76,6 @@ object Decorators {
    */
   implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
 
-    /** Like `xs.zipped(ys).map(f)`, but returns list `xs` itself
-     *  - instead of a copy - if function `f` maps all elements of
-     *  `xs` to themselves. Also, it is required that `ys` is at least
-     *  as long as `xs`.
-     */
-    def zipWithConserve[U](ys: List[U])(f: (T, U) => T): List[T] =
-      if (xs.isEmpty || ys.isEmpty) Nil
-      else {
-        val x1 = f(xs.head, ys.head)
-        val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
-        if ((x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) &&
-            (xs1 eqLst xs.tail)) xs
-        else x1 :: xs1
-      }
-
     /** Like `xs.zipped(xs.indices).map(f)`, but returns list `xs` itself
      *  - instead of a copy - if function `f` maps all elements of
      *  `xs` to themselves.

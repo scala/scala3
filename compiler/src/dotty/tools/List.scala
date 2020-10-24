@@ -680,6 +680,19 @@ object List:
         i += 1
       buf.toList
 
+    def zipWithConserve(ys: List[U])(f: (T, U) => T): List[T] =
+      var buf: Buffer[T] = null
+      var i = 0
+      while i < xs.length && i < ys.length do
+        val x = xs(i)
+        val elem = f(x, ys(i))
+        if buf == null && !eq(x, elem) then
+          buf = Buffer().sizeHint(xs.length)
+          buf.appendSlice(xs, 0, i)
+        if buf != null then buf += elem
+        i += 1
+      if buf == null then xs else buf.toList
+
     @infix def eqLst(ys: List[U]) = eq(xs, ys)
     @infix def neLst(ys: List[U]) = !eq(xs, ys)
 
