@@ -396,7 +396,9 @@ object TypeOps:
     val widenMap = new ApproximatingTypeMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
-      def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
+      def hasPartToAvoid(tp: Type) =
+        val buf = NamedPartsAccumulator(tp => toAvoid(tp.symbol))(null, tp)
+        buf != null && buf.nonEmpty
 
       /** True iff all NamedTypes on this prefix are static */
       override def isStaticPrefix(pre: Type)(using Context): Boolean = pre match
@@ -407,7 +409,7 @@ object TypeOps:
 
       def apply(tp: Type): Type = tp match {
         case tp: TermRef
-        if toAvoid(tp.symbol) || partsToAvoid(Nil, tp.info).nonEmpty =>
+        if toAvoid(tp.symbol) || hasPartToAvoid(tp.info) =>
           tp.info.widenExpr.dealias match {
             case info: SingletonType => apply(info)
             case info => range(defn.NothingType, apply(info))
@@ -425,7 +427,7 @@ object TypeOps:
           }
         case tp: ThisType if toAvoid(tp.cls) =>
           range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
-        case tp: SkolemType if partsToAvoid(Nil, tp.info).nonEmpty =>
+        case tp: SkolemType if hasPartToAvoid(tp.info) =>
           range(defn.NothingType, apply(tp.info))
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
           val lo = TypeComparer.instanceType(

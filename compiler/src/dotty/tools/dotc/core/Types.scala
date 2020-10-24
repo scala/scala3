@@ -404,7 +404,8 @@ object Types {
      *  @param p                   The predicate to satisfy
      */
     def namedPartsWith(p: NamedType => Boolean)(using Context): List[NamedType] =
-      new NamedPartsAccumulator(p).apply(Nil, this)
+      val buf = NamedPartsAccumulator(p).apply(null, this)
+      if buf == null then Nil else buf.toList
 
     /** Map function `f` over elements of an AndType, rebuilding with function `g` */
     def mapReduceAnd[T](f: Type => T)(g: (T, T) => T)(using Context): T = stripTypeVar match {
@@ -460,11 +461,11 @@ object Types {
     final def parentSymbols(include: Symbol => Boolean)(using Context): List[Symbol] = this match {
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (include(sym)) sym :: Nil else tp.superType.parentSymbols(include)
+        if (include(sym)) List(sym) else tp.superType.parentSymbols(include)
       case tp: TypeProxy =>
         tp.underlying.parentSymbols(include)
       case tp: ClassInfo =>
-        tp.cls :: Nil
+        List(tp.cls)
       case AndType(l, r) =>
         l.parentSymbols(include) | r.parentSymbols(include)
       case OrType(l, r) =>
@@ -1487,10 +1488,7 @@ object Types {
     }
 
     /** The first parent of this type, AnyRef if list of parents is empty */
-    def firstParent(using Context): Type = parents match {
-      case p :: _ => p
-      case _ => defn.AnyType
-    }
+    def firstParent(using Context): Type = parents.headOr(defn.AnyType)
 
     /** The parameter types of a PolyType or MethodType, Empty list for others */
     final def paramInfoss(using Context): List[List[Type]] = stripPoly match {
@@ -2902,16 +2900,15 @@ object Types {
     override final def baseClasses(using Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
-        val bcs1set = BaseClassSet(bcs1)
-        def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
-          case bc2 :: bcs2rest =>
-            if (bcs1set contains bc2)
-              if (bc2.is(Trait)) recur(bcs2rest)
-              else bcs1 // common class, therefore rest is the same in both sequences
-            else bc2 :: recur(bcs2rest)
-          case nil => bcs1
-        }
-        myBaseClasses = recur(tp2.baseClasses)
+        val bcs2 = tp2.baseClasses
+        def recur(buf: List.Buffer[ClassSymbol], idx: Int): List.Buffer[ClassSymbol] =
+          if idx == bcs2.length then buf
+          else
+            val bc = bcs2(idx)
+            if !bcs1.contains(bc) then recur(buf += bc, idx + 1)
+            else if bc.is(Trait) then recur(buf, idx + 1)
+            else buf // common class, therefore rest is the same in both sequences
+        myBaseClasses = (recur(List.Buffer(), 0) ++= bcs1).toList
         myBaseClassesPeriod = ctx.period
       }
       myBaseClasses
@@ -2971,17 +2968,15 @@ object Types {
     override final def baseClasses(using Context): List[ClassSymbol] = {
       if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
-        val bcs1set = BaseClassSet(bcs1)
-        def recur(bcs2: List[ClassSymbol]): List[ClassSymbol] = bcs2 match {
-          case bc2 :: bcs2rest =>
-            if (bcs1set contains bc2)
-              if (bc2.is(Trait)) bc2 :: recur(bcs2rest)
-              else bcs2
-            else recur(bcs2rest)
-          case nil =>
-            bcs2
-        }
-        myBaseClasses = recur(tp2.baseClasses)
+        val bcs2 = tp2.baseClasses
+        def recur(buf: List.Buffer[ClassSymbol], idx: Int): List.Buffer[ClassSymbol] =
+          if idx == bcs2.length then buf
+          else
+            val bc = bcs2(idx)
+            if !bcs1.contains(bc) then recur(buf, idx + 1)
+            else if bc.is(Trait) then recur(buf += bc, idx + 1)
+            else buf.appendSlice(bcs2, idx, bcs2.length)
+        myBaseClasses = recur(List.Buffer(), 0).toList
         myBaseClassesPeriod = ctx.period
       }
       myBaseClasses
@@ -3190,15 +3185,10 @@ object Types {
 
     private var myParamRefs: List[ParamRefType] = nullList
 
-    def paramRefs: List[ParamRefType] = {
+    def paramRefs: List[ParamRefType] =
       if myParamRefs eqLst nullList then
-        def recur(paramNames: List[ThisName], i: Int): List[ParamRefType] =
-          paramNames match
-            case _ :: rest => newParamRef(i) :: recur(rest, i + 1)
-            case _ => Nil
-        myParamRefs = recur(paramNames, 0)
+        myParamRefs = List.tabulate(paramNames.length)(newParamRef)
       myParamRefs
-    }
 
     /** Like `paramInfos` but substitute parameter references with the given arguments */
     final def instantiateParamInfos(argTypes: => List[Type])(using Context): List[Type] =
@@ -3850,10 +3840,7 @@ object Types {
       derivedAppliedType(op(tycon), args.map(op))
 
     inline def fold[T](x: T, inline op: (T, Type) => T)(using Context): T =
-      def foldArgs(x: T, args: List[Type]): T = args match
-        case arg :: rest => foldArgs(op(x, arg), rest)
-        case nil => x
-      foldArgs(op(x, tycon), args)
+      args.foldLeft(op(x, tycon))(op)
 
     override def tryNormalize(using Context): Type = tycon match {
       case tycon: TypeRef =>
@@ -5512,10 +5499,8 @@ object Types {
       case _ => x
     }}
 
-    @tailrec final def foldOver(x: T, ts: List[Type]): T = ts match {
-      case t :: ts1 => foldOver(apply(x, t), ts1)
-      case nil => x
-    }
+    final def foldOver(x: T, ts: List[Type]): T =
+      ts.foldLeft(x)(this)
   }
 
   abstract class TypeTraverser(using Context) extends TypeAccumulator[Unit] {
@@ -5535,32 +5520,34 @@ object Types {
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean)(using Context)
-  extends TypeAccumulator[List[NamedType]]:
-    def maybeAdd(xs: List[NamedType], tp: NamedType): List[NamedType] = if p(tp) then tp :: xs else xs
+  extends TypeAccumulator[List.Buffer[NamedType]]:
+    def maybeAdd(buf: List.Buffer[NamedType], tp: NamedType): List.Buffer[NamedType] =
+      if p(tp) then (if buf == null then List.Buffer[NamedType]() else buf) += tp
+      else buf
     val seen = util.HashSet[Type]()
-    def apply(xs: List[NamedType], tp: Type): List[NamedType] =
-      if seen contains tp then xs
+    def apply(buf: List.Buffer[NamedType], tp: Type): List.Buffer[NamedType] =
+      if seen.contains(tp) then buf
       else
         seen += tp
         tp match
           case tp: TypeRef =>
-            foldOver(maybeAdd(xs, tp), tp)
+            foldOver(maybeAdd(buf, tp), tp)
           case tp: ThisType =>
-            apply(xs, tp.tref)
+            apply(buf, tp.tref)
           case NoPrefix =>
-            foldOver(xs, tp)
+            foldOver(buf, tp)
           case tp: TermRef =>
-            apply(foldOver(maybeAdd(xs, tp), tp), tp.underlying)
+            apply(foldOver(maybeAdd(buf, tp), tp), tp.underlying)
           case tp: AppliedType =>
-            foldOver(xs, tp)
+            foldOver(buf, tp)
           case TypeBounds(lo, hi) =>
-            apply(apply(xs, lo), hi)
+            apply(apply(buf, lo), hi)
           case tp: ParamRef =>
-            apply(xs, tp.underlying)
+            apply(buf, tp.underlying)
           case tp: ConstantType =>
-            apply(xs, tp.underlying)
+            apply(buf, tp.underlying)
           case _ =>
-            foldOver(xs, tp)
+            foldOver(buf, tp)
   end NamedPartsAccumulator
 
   class isGroundAccumulator(using Context) extends TypeAccumulator[Boolean] {
