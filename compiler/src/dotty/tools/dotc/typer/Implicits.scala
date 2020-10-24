@@ -1213,54 +1213,61 @@ trait Implicits:
        *      treated as a simple failure, with a warning that semantics will change.
        *    - otherwise add the failure to `rfailures` and continue testing the other candidates.
        */
-      def rank(pending: List[Candidate], found: SearchResult, rfailures: List[SearchFailure]): SearchResult =
-        pending match {
-          case cand :: remaining =>
-            /** To recover from an ambiguous implicit failure, we need to find a pending
-             *  candidate that is strictly better than the failed candidate(s).
-             *  If no such candidate is found, we propagate the ambiguity.
-             */
-            def healAmbiguous(fail: SearchFailure, betterThanFailed: Candidate => Boolean) =
-              val newPending = remaining.filter(betterThanFailed)
-              rank(newPending, fail, Nil).recoverWith(_ => fail)
+      def rank(pending: List[Candidate], idx: Int, found: SearchResult, rfailures: scala.List[SearchFailure]): SearchResult =
+        if idx == pending.length then
+          if rfailures.isEmpty then found
+          else found.recoverWith(_ => rfailures.reverse.maxBy(_.tree.treeSize))
+        else
+          val cand = pending(idx)
 
-            negateIfNot(tryImplicit(cand, contextual)) match {
-              case fail: SearchFailure =>
-                if (fail.isAmbiguous)
-                  if migrateTo3 then
-                    val result = rank(remaining, found, NoMatchingImplicitsFailure :: rfailures)
-                    if (result.isSuccess)
-                      warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
-                    result
+          def keep(p: Candidate => Boolean): List[Candidate] =
+            var buf: List.Buffer[Candidate] = null
+            var i = idx + 1
+            while i < pending.length do
+              val cand = pending(i)
+              if p(cand) then
+                if buf == null then buf = List.Buffer()
+                buf += cand
+              i += 1
+            if buf == null then Nil else buf.toList
+
+          /** To recover from an ambiguous implicit failure, we need to find a pending
+            *  candidate that is strictly better than the failed candidate(s).
+            *  If no such candidate is found, we propagate the ambiguity.
+            */
+          def healAmbiguous(fail: SearchFailure, betterThanFailed: Candidate => Boolean) =
+            rank(keep(betterThanFailed), 0, fail, scala.Nil).recoverWith(_ => fail)
+
+          negateIfNot(tryImplicit(cand, contextual)) match
+            case fail: SearchFailure =>
+              if (fail.isAmbiguous)
+                if migrateTo3 then
+                  val result = rank(pending, idx + 1, found, NoMatchingImplicitsFailure :: rfailures)
+                  if (result.isSuccess)
+                    warnAmbiguousNegation(fail.reason.asInstanceOf[AmbiguousImplicits])
+                  result
+                else
+                  // The ambiguity happened in a nested search: to recover we
+                  // need a candidate better than `cand`
+                  healAmbiguous(fail, newCand => compareAlternatives(newCand, cand) > 0)
+              else rank(pending, idx + 1, found, fail :: rfailures)
+            case best: SearchSuccess =>
+              if ctx.mode.is(Mode.ImplicitExploration) || isCoherent then
+                best
+              else disambiguate(found, best) match
+                case retained: SearchSuccess =>
+                  if (retained eq found) || idx + 1 == pending.length then
+                    rank(pending, idx + 1, retained, rfailures)
                   else
-                    // The ambiguity happened in a nested search: to recover we
-                    // need a candidate better than `cand`
-                    healAmbiguous(fail, newCand =>
-                      compareAlternatives(newCand, cand) > 0)
-                else rank(remaining, found, fail :: rfailures)
-              case best: SearchSuccess =>
-                if (ctx.mode.is(Mode.ImplicitExploration) || isCoherent)
-                  best
-                else disambiguate(found, best) match {
-                  case retained: SearchSuccess =>
-                    val newPending =
-                      if (retained eq found) || remaining.isEmpty then remaining
-                      else remaining.filter(cand =>
-                        compareAlternatives(retained, cand) <= 0)
-                    rank(newPending, retained, rfailures)
-                  case fail: SearchFailure =>
-                    // The ambiguity happened in the current search: to recover we
-                    // need a candidate better than the two ambiguous alternatives.
-                    val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
-                    healAmbiguous(fail, newCand =>
-                      compareAlternatives(newCand, ambi.alt1) > 0 &&
-                      compareAlternatives(newCand, ambi.alt2) > 0)
-                }
-            }
-          case nil =>
-            if (rfailures.isEmpty) found
-            else found.recoverWith(_ => rfailures.reverse.maxBy(_.tree.treeSize))
-        }
+                    rank(keep(compareAlternatives(retained, _) <= 0), 0, retained, rfailures)
+                case fail: SearchFailure =>
+                  // The ambiguity happened in the current search: to recover we
+                  // need a candidate better than the two ambiguous alternatives.
+                  val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
+                  healAmbiguous(fail, newCand =>
+                    compareAlternatives(newCand, ambi.alt1) > 0
+                    && compareAlternatives(newCand, ambi.alt2) > 0)
+      end rank
 
       def negateIfNot(result: SearchResult) =
         if (isNot)
@@ -1311,13 +1318,12 @@ trait Implicits:
        *  This is just an optimization that aims at reducing the average
        *  number of candidates to be tested.
        */
-      def sort(eligible: List[Candidate]) = eligible match {
-        case Nil => eligible
-        case e1 :: Nil => eligible
-        case e1 :: e2 :: Nil =>
-          if (prefer(e2, e1)) e2 :: e1 :: Nil
+      def sort(eligible: List[Candidate]) =
+        if eligible.length <= 1 then eligible
+        else if eligible.length == 2 then
+          if prefer(eligible(1), eligible(0)) then List(eligible(1), eligible(0))
           else eligible
-        case _ =>
+        else
           try eligible.sortWith(prefer)
           catch case ex: IllegalArgumentException =>
             // diagnostic to see what went wrong
@@ -1331,9 +1337,8 @@ trait Implicits:
               val es = List(e1, e2, e3)
               println(i"transitivity violated for $es%, %\n ${es.map(_.implicitRef.underlyingRef.symbol.showLocated)}%, %")
             throw ex
-      }
 
-      rank(sort(eligible), NoMatchingImplicitsFailure, Nil)
+      rank(sort(eligible), 0, NoMatchingImplicitsFailure, scala.Nil)
     end searchImplicit
 
     private def searchImplicit(contextual: Boolean): SearchResult =
