@@ -1354,83 +1354,87 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def paramBounds(tparam: Symbol): TypeBounds =
       tparam.info.substApprox(tparams2.asInstanceOf[List[Symbol]], args2).bounds
 
-    def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo]): Boolean =
-      if (args1.isEmpty) args2.isEmpty
-      else args2.nonEmpty && {
-        val tparam = tparams2.head
-        val v = tparam.paramVarianceSign
+    def recurArgs(idx: Int): Boolean =
+      if idx == args1.length then idx == args2.length
+      else
+        idx < args2.length
+        && {
+          val tparam = tparams2(idx)
+          val v = tparam.paramVarianceSign
 
-        /** Try a capture conversion:
-         *  If the original left-hand type `leftRoot` is a path `p.type`,
-         *  and the current widened left type is an application with wildcard arguments
-         *  such as `C[?]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
-         *  compare with `C[p.X]` instead. Otherwise approximate based on variance.
-         *  Also do a capture conversion in either of the following cases:
-         *
-         *   - If we are after typer. We generally relax soundness requirements then.
-         *     We need the relaxed condition to correctly compute overriding relationships.
-         *     Missing this case led to AbstractMethod errors in the bootstrap.
-         *
-         *   - If we are in mode TypevarsMissContext, which means we test implicits
-         *     for eligibility. In this case, we can be more permissive, since it's
-         *     just a pre-check. This relaxation is needed since the full
-         *     implicit typing might perform an adaptation that skolemizes the
-         *     type of a synthesized tree before comparing it with an expected type.
-         *     But no such adaptation is applied for implicit eligibility
-         *     testing, so we have to compensate.
-         *
-         *  Note: Doing the capture conversion on path types is actually not necessary
-         *  since we can already deal with the situation through skolemization in Typer#captureWildcards.
-         *  But performance tests indicate that it's better to do it, since we avoid
-         *  skolemizations, which are more expensive . And, besides, capture conversion on
-         *  paths is less intrusive than skolemization.
-         */
-        def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
-          case tparam: Symbol =>
-            if (leftRoot.isStable || (ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
-                && leftRoot.member(tparam.name).exists) {
-              val captured = TypeRef(leftRoot, tparam)
-              try isSubArg(captured, arg2)
-              catch case ex: TypeError =>
-                // The captured reference could be illegal and cause a
-                // TypeError to be thrown in argDenot
+          /** Try a capture conversion:
+          *  If the original left-hand type `leftRoot` is a path `p.type`,
+          *  and the current widened left type is an application with wildcard arguments
+          *  such as `C[?]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
+          *  compare with `C[p.X]` instead. Otherwise approximate based on variance.
+          *  Also do a capture conversion in either of the following cases:
+          *
+          *   - If we are after typer. We generally relax soundness requirements then.
+          *     We need the relaxed condition to correctly compute overriding relationships.
+          *     Missing this case led to AbstractMethod errors in the bootstrap.
+          *
+          *   - If we are in mode TypevarsMissContext, which means we test implicits
+          *     for eligibility. In this case, we can be more permissive, since it's
+          *     just a pre-check. This relaxation is needed since the full
+          *     implicit typing might perform an adaptation that skolemizes the
+          *     type of a synthesized tree before comparing it with an expected type.
+          *     But no such adaptation is applied for implicit eligibility
+          *     testing, so we have to compensate.
+          *
+          *  Note: Doing the capture conversion on path types is actually not necessary
+          *  since we can already deal with the situation through skolemization in Typer#captureWildcards.
+          *  But performance tests indicate that it's better to do it, since we avoid
+          *  skolemizations, which are more expensive . And, besides, capture conversion on
+          *  paths is less intrusive than skolemization.
+          */
+          def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
+            case tparam: Symbol =>
+              if (leftRoot.isStable || (ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
+                  && leftRoot.member(tparam.name).exists) {
+                val captured = TypeRef(leftRoot, tparam)
+                try isSubArg(captured, arg2)
+                catch case ex: TypeError =>
+                  // The captured reference could be illegal and cause a
+                  // TypeError to be thrown in argDenot
+                  false
+              }
+              else if (v > 0)
+                isSubType(paramBounds(tparam).hi, arg2)
+              else if (v < 0)
+                isSubType(arg2, paramBounds(tparam).lo)
+              else
                 false
-            }
-            else if (v > 0)
-              isSubType(paramBounds(tparam).hi, arg2)
-            else if (v < 0)
-              isSubType(arg2, paramBounds(tparam).lo)
-            else
+            case _ =>
               false
-          case _ =>
-            false
+          }
+
+          def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
+            case arg2: TypeBounds =>
+              val arg1norm = arg1 match {
+                case arg1: TypeBounds =>
+                  tparam match {
+                    case tparam: Symbol => arg1 & paramBounds(tparam)
+                    case _ => arg1 // This case can only arise when a hk-type is illegally instantiated with a wildcard
+                  }
+                case _ => arg1
+              }
+              arg2.contains(arg1norm)
+            case _ =>
+              arg1 match {
+                case arg1: TypeBounds =>
+                  compareCaptured(arg1, arg2)
+                case _ =>
+                  (v > 0 || isSubType(arg2, arg1)) &&
+                  (v < 0 || isSubType(arg1, arg2))
+              }
+          }
+
+          isSubArg(args1(idx), args2(idx))
         }
+        && recurArgs(idx + 1)
+    end recurArgs
 
-        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match {
-          case arg2: TypeBounds =>
-            val arg1norm = arg1 match {
-              case arg1: TypeBounds =>
-                tparam match {
-                  case tparam: Symbol => arg1 & paramBounds(tparam)
-                  case _ => arg1 // This case can only arise when a hk-type is illegally instantiated with a wildcard
-                }
-              case _ => arg1
-            }
-            arg2.contains(arg1norm)
-          case _ =>
-            arg1 match {
-              case arg1: TypeBounds =>
-                compareCaptured(arg1, arg2)
-              case _ =>
-                (v > 0 || isSubType(arg2, arg1)) &&
-                (v < 0 || isSubType(arg1, arg2))
-            }
-        }
-
-        isSubArg(args1.head, args2.head)
-      } && recurArgs(args1.tail, args2.tail, tparams2.tail)
-
-    recurArgs(args1, args2, tparams2)
+    recurArgs(0)
   }
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
