@@ -134,12 +134,6 @@ object SymUtils {
   /** Apply symbol/symbol substitution to this symbol */
   def subst(from: List[Symbol], to: List[Symbol]): Symbol =
     from.substitute(to)(self)
-/*    val len = from.length
-    var i = 0
-    while i < len do
-      if self eq from(i) then return to(i)
-      i += 1
-    self*/
 
   def accessorNamed(name: TermName)(using Context): Symbol =
     self.owner.info.decl(name).suchThat(_.is(Accessor)).symbol
