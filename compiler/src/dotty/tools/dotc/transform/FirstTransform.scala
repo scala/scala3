@@ -19,6 +19,7 @@ import NameOps._
 import NameKinds.OuterSelectName
 import StdNames._
 import NullOpsDecorator._
+import util.HashMap
 
 object FirstTransform {
   val name: String = "firstTransform"
@@ -78,40 +79,22 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
     }
 
   /** Reorder statements so that module classes always come after their companion classes */
-  private def reorderAndComplete(stats: List[Tree])(using Context): List[Tree] = {
-    val moduleClassDefs, singleClassDefs = mutable.Map[Name, Tree]()
-
-    /* Returns the result of reordering stats and prepending revPrefix in reverse order to it.
-     * The result of reorder is equivalent to reorder(stats, revPrefix) = revPrefix.reverse ::: reorder(stats, Nil).
-     * This implementation is tail recursive as long as the element is not a module TypeDef.
-     */
-    def reorder(stats: List[Tree], revPrefix: List[Tree]): List[Tree] = stats match {
-      case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
-        if (stat.symbol.is(Flags.Module)) {
-          def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] =
-            xs.foldLeft(ys)((ys, x) => x :: ys)
-          moduleClassDefs += (stat.name -> stat)
-          singleClassDefs -= stat.name.stripModuleClassSuffix
-          val stats1r = reorder(stats1, Nil)
-          pushOnTop(revPrefix, if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r)
-        }
-        else
-          reorder(
-            stats1,
-            moduleClassDefs remove stat.name.moduleClassName match {
-              case Some(mcdef) =>
-                mcdef :: stat :: revPrefix
-              case None =>
-                singleClassDefs += (stat.name -> stat)
-                stat :: revPrefix
-            }
-          )
-      case stat :: stats1 => reorder(stats1, stat :: revPrefix)
-      case Nil => revPrefix.reverse
+  private def reorderAndComplete(stats: List[Tree])(using Context): List[Tree] =
+    val moduleClassDefs = util.HashMap[Name, Tree]()
+    val stats1 = stats.mapConserve {
+      case stat: TypeDef if stat.symbol.isClass =>
+        if stat.symbol.is(ModuleClass) then
+          moduleClassDefs(stat.name) = stat
+          stat
+        else moduleClassDefs.remove(stat.name.moduleClassName) match
+          case null => stat
+          case mcdef => Thicket(stat, mcdef)
+      case stat => stat
     }
-
-    reorder(stats, Nil)
-  }
+    stats1.filter {
+      case stat: TypeDef if stat.symbol.is(ModuleClass) => moduleClassDefs.contains(stat.name)
+      case _ => true
+    }
 
   /** eliminate self in Template */
   override def transformTemplate(impl: Template)(using Context): Tree =
@@ -130,7 +113,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformStats(trees: List[Tree])(using Context): List[Tree] =
-    ast.Trees.flatten(atPhase(thisPhase.next)(reorderAndComplete(trees)))
+    flatten(atPhase(thisPhase.next)(reorderAndComplete(trees)))
 
   private object collectBinders extends TreeAccumulator[List[Ident]] {
     def apply(annots: List[Ident], t: Tree)(using Context): List[Ident] = t match {
@@ -204,7 +187,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   private def foldCondition(tree: Apply)(using Context) = tree.fun match {
     case Select(x @ Literal(Constant(c: Boolean)), op) =>
       tree.args match {
-        case y :: Nil if y.tpe.widen.isRef(defn.BooleanClass) =>
+        case List(y) if y.tpe.widen.isRef(defn.BooleanClass) =>
           op match {
             case nme.ZAND => if (c) y else x
             case nme.ZOR  => if (c) x else y
