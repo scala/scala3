@@ -89,17 +89,9 @@ object Scopes {
     def foreach(f: Symbol => Unit)(using Context): Unit = toList.foreach(f)
 
     /** Selects all Symbols of this Scope which satisfy a predicate. */
-    def filter(p: Symbol => Boolean)(using Context): List[Symbol] = {
+    def filter(p: Symbol => Boolean)(using Context): List[Symbol] =
       ensureComplete()
-      var syms: List[Symbol] = Nil
-      var e = lastEntry
-      while ((e ne null) && e.owner == this) {
-        val sym = e.sym
-        if (p(sym)) syms = sym :: syms
-        e = e.prev
-      }
-      syms
-    }
+      toList.filter(p)
 
     /** Tests whether a predicate holds for at least one Symbol of this Scope. */
     def exists(p: Symbol => Boolean)(using Context): Boolean = filter(p).nonEmpty
