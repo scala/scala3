@@ -865,7 +865,7 @@ object Contexts {
     /** List of names which have a findMemberCall on stack,
      *  after Config.LogPendingFindMemberThreshold is reached.
      */
-    private[core] var pendingMemberSearches: List[Name] = Nil
+    private[core] var pendingMemberSearches: scala.List[Name] = scala.Nil
 
     /** The number of recursive invocation of underlying on a NamedType
      *  during a controlled operation.
