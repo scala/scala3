@@ -27,16 +27,9 @@ object SymUtils {
    *  through the superclass. Traits are given in the order they appear in the
    *  parents clause (which is the reverse of their order in baseClasses)
    */
-  def directlyInheritedTraits(using Context): List[ClassSymbol] = {
+  def directlyInheritedTraits(using Context): List[ClassSymbol] =
     val superCls = self.asClass.superClass
-    val baseClasses = self.asClass.baseClasses
-    if (baseClasses.isEmpty) Nil
-    else
-      def recur(bcs: List[ClassSymbol], acc: List[ClassSymbol]): List[ClassSymbol] = bcs match
-        case bc :: bcs1 => if bc eq superCls then acc else recur(bcs1, bc :: acc)
-        case nil => acc
-      recur(baseClasses.tail, Nil)
-  }
+    self.asClass.baseClasses.takeWhile(_ ne superCls, from = 1).reverse
 
   /** All traits implemented by a class, except for those inherited through the superclass.
    *  The empty list if `self` is a trait.

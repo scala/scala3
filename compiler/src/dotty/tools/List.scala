@@ -418,8 +418,10 @@ object List:
       val idx = firstIndexWhere(p)
       if idx < length then Some(xs.apply(idx)) else None
 
-    def takeWhile(p: T => Boolean): List[T] = take(firstIndexWhere(!p(_)))
-    def dropWhile(p: T => Boolean): List[T] = drop(firstIndexWhere(!p(_)))
+    def takeWhile(p: T => Boolean, from: Int = 0): List[T] =
+      slice(from, firstIndexWhere(!p(_), from))
+    def dropWhile(p: T => Boolean, from: Int = 0): List[T] =
+      drop(firstIndexWhere(!p(_), from))
 
     def reduceLeft(op: (T, T) => T) = xs match
       case null =>
@@ -681,7 +683,7 @@ object List:
     @infix def eqLst(ys: List[U]) = eq(xs, ys)
     @infix def neLst(ys: List[U]) = !eq(xs, ys)
 
-    inline def corresponds(ys: List[U])(p: (T, U) => Boolean): Boolean =
+    inline def corresponds(ys: List[U])(inline p: (T, U) => Boolean): Boolean =
       xs.length == ys.length
       && {
         var i = 0
