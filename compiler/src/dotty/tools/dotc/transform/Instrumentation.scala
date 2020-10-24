@@ -89,7 +89,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
       .orElse(tree)
     case id: RefTree
     if listNamesToRecord.contains(id.name) && tree.args.nonEmpty =>
-      val key = Literal(Constant(s"totalSize/${id.name}@${tree.sourcePos.show}"))
+      val key = Literal(Constant(s"listSize/${id.name}@${tree.sourcePos.show}"))
       val arg1 = ref(Stats_doRecordListSize).appliedTo(key, tree.args.head).cast(tree.args.head.tpe.widen)
       cpy.Apply(tree)(id, arg1 :: tree.args.tail)
     case _ =>

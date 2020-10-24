@@ -33,7 +33,12 @@ import collection.mutable
     coll
 
   def doRecordListSize[T](fn: String, coll: List[T]): coll.type =
-    doRecord(fn, coll.size)
+    val name = fn.drop("listSize/".length).takeWhile(_ != '@')
+    val adjustedSize =
+      if name == "extension_tail" then coll.size - 1
+      else if name == "extension_::" then coll.size + 1
+      else coll.size
+    if adjustedSize > 1 then doRecord(fn, coll.size)
     coll
 
   def doRecordBufferSize(fn: String, coll: List.Buffer[_]): coll.type =
