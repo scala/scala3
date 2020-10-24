@@ -386,13 +386,25 @@ object List:
         i
       case elem: T @ unchecked => if from == 0 && elem == x then 0 else 1
 
-    def firstIndexWhere(p: T => Boolean, from: Int = 0): Int = xs match
+    inline def firstIndexWhere(inline p: T => Boolean, from: Int = 0): Int = xs match
       case null => 0
       case xs: Arr =>
         var i = from
         while i < length && !p(xs.at(i)) do i += 1
         i
       case elem: T @ unchecked => if from == 0 && p(elem) then 0 else 1
+
+    def substitute(mapped: List[T])(candidate: T): T =
+      xs match
+        case null =>
+        case xs: Arr =>
+          var i = 0
+          while i < xs.length do
+            if eq(xs.at(i), candidate) then return mapped(i)
+            i += 1
+        case elem: T @ unchecked =>
+          if eq(elem, candidate) then return mapped(0)
+      candidate
 
     def indexOf(x: T, from: Int = 0) =
       val idx = firstIndexOf(x, from)
