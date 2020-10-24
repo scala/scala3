@@ -1,3 +1,4 @@
+> recordPreviousIterations
 > compile
 # Force recompilation of B, B.getInline hasn't changed so C shouldn't be recompiled.
 $ copy-file changes/B1.scala B.scala
