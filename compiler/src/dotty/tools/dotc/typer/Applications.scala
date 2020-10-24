@@ -1799,7 +1799,7 @@ trait Applications extends Compatibility {
     trace(i"resolve over $alts%, %, pt = $pt", typr, show = true) {
     record(s"resolveOverloaded1", alts.length)
 
-    def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
+    def isDetermined(alts: List[TermRef]) = alts.length <= 1
 
     /** The shape of given tree as a type; cannot handle named arguments. */
     def typeShape(tree: untpd.Tree): Type = tree match {

@@ -1117,10 +1117,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   extension (xs: List[tpd.Tree]):
-    def tpes: List[Type] = xs match {
-      case x :: xs1 => x.tpe :: xs1.tpes
-      case nil => Nil
-    }
+    def tpes: List[Type] = xs.map(_.tpe)
 
   /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
   trait TreeProvider {
