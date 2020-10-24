@@ -2253,21 +2253,13 @@ object Types {
       val cls = tparam.owner
       val base = pre.baseType(cls)
       base match {
-        case AppliedType(_, allArgs) =>
-          var tparams = cls.typeParams
-          var args = allArgs
-          var idx = 0
-          while (tparams.nonEmpty && args.nonEmpty) {
-            if (tparams.head.eq(tparam))
-              return args.head match {
-                case _: TypeBounds => TypeRef(pre, tparam)
-                case arg => arg
-              }
-            tparams = tparams.tail
-            args = args.tail
-            idx += 1
-          }
-          NoType
+        case AppliedType(_, args) =>
+          val idx = cls.typeParams.firstIndexOf(tparam)
+          if idx < args.length then
+            args(idx) match
+              case _: TypeBounds => TypeRef(pre, tparam)
+              case arg => arg
+          else NoType
         case base: AndOrType =>
           var tp1 = argForParam(base.tp1)
           var tp2 = argForParam(base.tp2)
@@ -4999,16 +4991,12 @@ object Types {
     protected def derivedLambdaType(tp: LambdaType)(formals: List[tp.PInfo], restpe: Type): Type =
       tp.derivedLambdaType(tp.paramNames, formals, restpe)
 
-    protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match
-      case arg :: otherArgs if tparams.nonEmpty =>
-        val arg1 = arg match
+    protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] =
+      args.zipWithConserve(tparams) { (arg, tparam) =>
+        arg match
           case arg: TypeBounds => this(arg)
-          case arg => atVariance(variance * tparams.head.paramVarianceSign)(this(arg))
-        val otherArgs1 = mapArgs(otherArgs, tparams.tail)
-        if ((arg1 eq arg) && (otherArgs1 eqLst otherArgs)) args
-        else arg1 :: otherArgs1
-      case nil =>
-        nil
+          case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
+      }
 
     protected def mapOverLambda(tp: LambdaType) =
       val restpe = tp.resultType
@@ -5738,15 +5726,11 @@ object Types {
 
   implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
 
-  extension (tps1: List[Type]) {
-    @tailrec def hashIsStable: Boolean =
-      tps1.isEmpty || tps1.head.hashIsStable && tps1.tail.hashIsStable
-    @tailrec def equalElements(tps2: List[Type], bs: BinderPairs): Boolean =
-      (tps1 `eqLst` tps2) || {
-        if (tps1.isEmpty) tps2.isEmpty
-        else tps2.nonEmpty && tps1.head.equals(tps2.head, bs) && tps1.tail.equalElements(tps2.tail, bs)
-      }
-  }
+  extension (tps1: List[Type])
+    def hashIsStable: Boolean = tps1.forall(_.hashIsStable)
+
+    def equalElements(tps2: List[Type], bs: BinderPairs): Boolean =
+      tps1.corresponds(tps2)(_.equals(_, bs))
 
   private val keepAlways: AnnotatedType => Context ?=> Boolean = _ => true
   private val keepNever: AnnotatedType => Context ?=> Boolean = _ => false
