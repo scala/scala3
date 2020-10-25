@@ -28,7 +28,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
   override def isEnabled(using Context) =
     ctx.settings.Yinstrument.value
 
-  private val collectionNamesOfInterest = List(
+  private val collectionNamesToRecord = Set(
     "toList", "reversedToList"
     /*
     "map", "flatMap", "filter", "filterNot", "withFilter", "collect", "flatten", "foldLeft", "foldRight", "take",
@@ -39,17 +39,15 @@ class Instrumentation extends MiniPhase { thisPhase =>
     "mapConserve", "mapConserve", "filter", "zipWithConserve", "mapWithIndexConserve"*/
   )
 
-  private val listNamesOfInterest = List(
-    "extension_::", "extension_tail", "extension_drop", "extension_take",
+  private val listNamesToRecord = Set(
+    "extension_::",  "extension_:::", "extension_tail", "extension_drop", "extension_take",
     "extension_drop", "extension_dropWhile", "unapply")
 
-  private val namesOfInterest = List(
-    "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",
-    "slice", "staticRef", "requiredClass")
+  private val namesToRecord = Set(
+    "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName")
+    ++ collectionNamesToRecord
+    ++ listNamesToRecord
 
-  private var namesToRecord: Set[Name] = _
-  private var collectionNamesToRecord: Set[Name] = _
-  private var listNamesToRecord: Set[Name] = _
   private var Stats_doRecord: Symbol = _
   private var Stats_doRecordSize: Symbol = _
   private var Stats_doRecordListSize: Symbol = _
@@ -58,9 +56,6 @@ class Instrumentation extends MiniPhase { thisPhase =>
   private var ListBufferClass: ClassSymbol = _
 
   override def prepareForUnit(tree: Tree)(using Context): Context =
-    collectionNamesToRecord = collectionNamesOfInterest.map(_.toTermName).toSet
-    listNamesToRecord = listNamesOfInterest.map(_.toTermName).toSet
-    namesToRecord = namesOfInterest.map(_.toTermName).toSet ++ listNamesToRecord ++ collectionNamesToRecord
     val StatsModule = requiredModule("dotty.tools.dotc.util.Stats")
     Stats_doRecord = StatsModule.requiredMethod("doRecord")
     Stats_doRecordSize = StatsModule.requiredMethod("doRecordSize")
@@ -77,7 +72,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
 
   private def recordSize(tree: Apply)(using Context): Tree = tree.fun match
     case sel @ Select(qual, name)
-    if collectionNamesToRecord.contains(name) =>
+    if collectionNamesToRecord.contains(name.toString) =>
       val qualType = qual.tpe.widen
       def tryRecord(cls: ClassSymbol, recorder: Symbol): Tree =
         if qualType.derivesFrom(cls) then
@@ -90,7 +85,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
       .orElse(tryRecord(ListBufferClass, Stats_doRecordBufferSize))
       .orElse(tree)
     case id: RefTree
-    if listNamesToRecord.contains(id.name) && tree.args.nonEmpty =>
+    if listNamesToRecord.contains(id.name.toString) && tree.args.nonEmpty =>
       val key = Literal(Constant(s"listSize/${id.name}@${tree.sourcePos.show}"))
       val arg1 = ref(Stats_doRecordListSize).appliedTo(key, tree.args.head).cast(tree.args.head.tpe.widen)
       cpy.Apply(tree)(id, arg1 :: tree.args.tail)
@@ -118,7 +113,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
   override def transformApply(tree: Apply)(using Context): Tree = tree.fun match {
     case Select(nu: New, _) =>
       cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) :: Nil, tree)
-    case ref: RefTree if namesToRecord.contains(ref.name) && ok =>
+    case ref: RefTree if namesToRecord.contains(ref.name.toString) && ok =>
       cpy.Block(tree)(record(i"call/${ref.name}", tree) :: Nil, recordSize(tree))
     case _ =>
       tree
