@@ -605,6 +605,23 @@ object List:
         if newElems == null then xs.asInstanceOf[List[U]] else multi[U](newElems)
       case x: T @ unchecked => single[U](f(x))
 
+    def mapWithIndexConserve(f: (T, Int) => U): List[U] = xs match
+      case null => Nil
+      case xs: Arr =>
+        var newElems: Arr = null
+        var i = 0
+        while i < xs.length do
+          val x = xs.at(i)
+          val y = f(x, i)
+          if newElems != null then newElems(i) = y
+          else if !eq(x, y) then
+            newElems = new Arr(xs.length)
+            System.arraycopy(xs, 0, newElems, 0, i)
+            newElems(i) = y
+          i += 1
+        if newElems == null then xs.asInstanceOf[List[U]] else multi[U](newElems)
+      case x: T @ unchecked => single[U](f(x, 0))
+
     def flatMap(f: T => List[U]): List[U] = xs match
       case null => Nil
       case xs: Arr =>
