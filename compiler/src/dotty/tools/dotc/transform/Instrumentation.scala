@@ -40,7 +40,8 @@ class Instrumentation extends MiniPhase { thisPhase =>
   )
 
   private val listNamesOfInterest = List(
-    "extension_::", "extension_tail", "extension_drop", "extension_take", "unapply")
+    "extension_::", "extension_tail", "extension_drop", "extension_take",
+    "extension_drop", "extension_dropWhile", "unapply")
 
   private val namesOfInterest = List(
     "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",

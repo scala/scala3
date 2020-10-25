@@ -285,7 +285,7 @@ object SymDenotations {
       rawParamss = (tparams :: vparamss).filter(!_.isEmpty)
 
     final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
-      setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))
+      setParamss(tparams.map(_.symbol), vparamss.nestedMap(_.symbol))
 
 
     /** The symbols of each type parameter list and value parameter list of this
@@ -326,8 +326,8 @@ object SymDenotations {
     final def extensionParam(using Context): Symbol =
       def leadParam(paramss: List[List[Symbol]]): Symbol = paramss match
         case (param :: _) :: paramss1 if param.isType => leadParam(paramss1)
-        case _ :: (snd :: Nil) :: _ if name.isRightAssocOperatorName => snd
-        case (fst :: Nil) :: _ => fst
+        case _ :: List(snd) :: _ if name.isRightAssocOperatorName => snd
+        case List(fst) :: _ => fst
         case _ => NoSymbol
       assert(isAllOf(ExtensionMethod))
       leadParam(rawParamss)
@@ -1529,8 +1529,9 @@ object SymDenotations {
                   case _ => false
 
         if owner.isClass then
-          for c <- owner.info.decls.toList if maybeChild(c) do
-            c.ensureCompleted()
+          for c <- owner.info.decls do
+            if maybeChild(c) then
+              c.ensureCompleted()
       end completeChildrenIn
 
       if is(Sealed) then
@@ -2276,7 +2277,7 @@ object SymDenotations {
     /** Unlink all package members defined in `file` in a previous run. */
     def unlinkFromFile(file: AbstractFile)(using Context): Unit = {
       val scope = unforcedDecls.openForMutations
-      for (sym <- scope.toList.iterator)
+      for sym <- scope.iterator do
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
         if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
@@ -2560,7 +2561,7 @@ object SymDenotations {
 
     protected def invalidateDependents() = {
       if (dependent != null) {
-        val it = dependent.keySet.iterator()
+        val it = dependent.keySet.iterator
         while (it.hasNext()) it.next().invalidate()
       }
       dependent = null

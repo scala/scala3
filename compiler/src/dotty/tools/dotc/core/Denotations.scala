@@ -414,18 +414,19 @@ object Denotations {
 
         /** Does `owner1` come before `owner2` in the linearization of `pre`? */
         def linearScore(owner1: Symbol, owner2: Symbol): Int =
-
-          def searchBaseClasses(bcs: List[ClassSymbol]): Int = bcs match
-            case bc :: bcs1 =>
-              if bc eq owner1 then 1
-              else if bc eq owner2 then -1
-              else searchBaseClasses(bcs1)
-            case Nil => 0
-
           if owner1 eq owner2 then 0
           else if owner1.derivesFrom(owner2) then 1
           else if owner2.derivesFrom(owner1) then -1
-          else searchBaseClasses(pre.baseClasses)
+          else
+            var i = 0
+            var score = 0
+            val bcs = pre.baseClasses
+            while i < bcs.length && score == 0 do
+              val bc = bcs(i)
+              if bc eq owner1 then score = 1
+              else if bc eq owner2 then score = -1
+              i += 1
+            score
         end linearScore
 
         /** Similar to SymDenotation#accessBoundary, but without the special cases. */

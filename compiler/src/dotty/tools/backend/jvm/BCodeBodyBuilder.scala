@@ -1007,14 +1007,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     def genLoadArguments(args: List[Tree], btpes: List[BType]): Unit =
-      args match
-        case arg :: args1 =>
-          btpes match
-            case btpe :: btpes1 =>
-              genLoad(arg, btpe)
-              genLoadArguments(args1, btpes1)
-            case _ =>
-        case _ =>
+      args.zipped(btpes).foreach(genLoad)
 
     def genLoadModule(tree: Tree): BType = {
       val module = (
