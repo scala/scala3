@@ -968,6 +968,12 @@ object List:
           i += 1
         fromArr(elems1)
 
+    def takeRight(n: Int): List[T] =
+      assert(len >= 0)
+      if n == 1 && len > 0 then single(last)
+      else if n > 1 then _fromArray(elems, (len - n) max 0, len)
+      else Nil
+
     def clear() =
       len = 0
 
