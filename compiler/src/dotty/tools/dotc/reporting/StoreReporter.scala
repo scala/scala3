@@ -34,7 +34,7 @@ class StoreReporter(outer: Reporter = Reporter.NoReporter) extends Reporter {
     infos != null && infos.exists(_.isInstanceOf[StickyError])
 
   override def removeBufferedMessages(using Context): List[Diagnostic] =
-    if (infos != null) try infos.toList finally infos = null
+    if (infos != null && infos.length > 0) try infos.toList finally infos = null
     else Nil
 
   override def pendingMessages(using Context): List[Diagnostic] = infos.toList

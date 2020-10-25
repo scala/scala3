@@ -723,7 +723,7 @@ trait Applications extends Compatibility {
       typedArgBuf += adapt(arg, formal.widenExpr)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
-      val args = typedArgBuf.toList.takeRight(n)
+      val args = typedArgBuf.takeRight(n)
       typedArgBuf.trimEnd(n)
       val elemtpt = TypeTree(elemFormal)
       typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
@@ -785,12 +785,13 @@ trait Applications extends Compatibility {
 
             // lift arguments in the definition order
             val argDefBuf = List.Buffer[Tree]()
+            val origArgs = typedArgs
             typedArgs = lifter.liftArgs(argDefBuf, methType, typedArgs)
             // Lifted arguments ordered based on the original order of typedArgBuf and
             // with all non-explicit default parameters at the end in declaration order.
             val orderedArgDefs = {
               // Indices of original typed arguments that are lifted by liftArgs
-              val impureArgIndices = typedArgBuf.toList.zipWithIndex.collect {
+              val impureArgIndices = origArgs.zipWithIndex.collect {
                 case (arg, idx) if !lifter.noLift(arg) => idx
               }
               def position(arg: Trees.Tree[T]) = {
