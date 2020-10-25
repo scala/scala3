@@ -101,9 +101,10 @@ class MemberLookupTests {
     import scala.tasty.inspector.TastyInspector
     class Inspector extends TastyInspector:
       var alreadyRan: Boolean = false
-      override def processCompilationUnit(using r: Reflection)(root: r.Tree): Unit =
+
+      override def processCompilationUnit(using ctx: quoted.QuoteContext)(root: ctx.reflect.Tree): Unit =
         if !alreadyRan then
-          this.test()
+          this.test()(using ctx.reflect)
           alreadyRan = true
 
       def test()(using r: Reflection): Unit = {

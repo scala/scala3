@@ -1,7 +1,7 @@
 // re-expose subproject settings
 val `example-project` = ExampleProject.`example-project`
 
-val dottyVersion = "0.27.0-RC1"
+val dottyVersion = "3.0.0-M1-bin-SNAPSHOT"
 val dokkaVersion = "1.4.10.2"
 val flexmarkVersion = "0.42.12"
 val jacksonVersion = "2.9.8"
@@ -12,9 +12,8 @@ libraryDependencies ++= Seq(
   "org.jetbrains.dokka" % "dokka-test-api" % dokkaVersion % "test", // TODO move testing utils to dokka-site
   "com.virtuslab.dokka" % "dokka-site" % dokkaSiteVersion,
 
-  "ch.epfl.lamp" %% "dotty-tasty-inspector" % dottyVersion,
-  "ch.epfl.lamp" %% "dotty-compiler" % dottyVersion,
-  "ch.epfl.lamp" %% "dotty-library" % dottyVersion,
+  "org.scala-lang" %% "scala3-tasty-inspector" % dottyVersion,
+  "org.scala-lang" %% "scala3-compiler" % dottyVersion,
   "org.scala-sbt" % "io_2.13" % "1.3.4",
 
   "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
@@ -27,7 +26,6 @@ libraryDependencies ++= Seq(
 resolvers += Resolver.jcenterRepo
 resolvers += Resolver.bintrayRepo("kotlin", "kotlin-dev")
 resolvers += Resolver.bintrayRepo("virtuslab", "dokka")
-resolvers += Resolver.mavenLocal
 
 lazy val root = project
   .in(file("."))

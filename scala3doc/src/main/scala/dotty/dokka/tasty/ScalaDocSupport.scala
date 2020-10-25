@@ -13,7 +13,7 @@ trait ScaladocSupport { self: TastyParser =>
   import reflect._
 
   def parseComment(
-    commentNode: reflect.Comment,
+    commentNode: reflect.Documentation,
     tree: reflect.Tree
   ): dkkd.DocumentationNode = {
     val preparsed =

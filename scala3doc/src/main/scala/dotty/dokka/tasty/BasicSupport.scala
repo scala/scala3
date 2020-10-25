@@ -24,7 +24,7 @@ trait BasicSupport:
     val params = annotTerm match 
       case Apply(target, appliedWith) => {
         appliedWith.map {
-          case Literal(Constant(value)) => Annotation.PrimitiveParameter(None, value match {
+          case Literal(constant) => Annotation.PrimitiveParameter(None, constant.value match {
             case s: String => "\"" + s"$s" + "\""
             case other => other.toString()
           })
@@ -40,7 +40,7 @@ trait BasicSupport:
   
 
   extension (sym: reflect.Symbol):
-    def documentation(using cxt: reflect.Context) = sym.comment match
+    def documentation(using cxt: reflect.Context) = sym.documentation match
       case Some(comment) =>
           Map(sourceSet.getSourceSet -> parseComment(comment, sym.tree))
       case None =>

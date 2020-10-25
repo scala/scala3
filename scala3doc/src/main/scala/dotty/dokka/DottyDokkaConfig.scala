@@ -19,7 +19,8 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
 
   private object OurConfig extends DokkaConfiguration.PluginConfiguration:
     override def getFqPluginName = "ExternalDocsTooKey"
-    override def getSerializationFormat: DokkaConfiguration$SerializationFormat = DokkaConfiguration$SerializationFormat.JSON
+    override def getSerializationFormat: DokkaConfiguration$SerializationFormat =
+      DokkaConfiguration$SerializationFormat.JSON.asInstanceOf[DokkaConfiguration$SerializationFormat]
     override def getValues: String = docConfiguration.args.docsRoot.getOrElse("")
 
   override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] = List(OurConfig).asJava

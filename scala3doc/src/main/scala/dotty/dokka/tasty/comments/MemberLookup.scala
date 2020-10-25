@@ -104,12 +104,15 @@ trait MemberLookup {
       matched.map(hackResolveModule)
     }
 
-    owner.tree match {
-      case tree: r.ClassDef =>
-        findMatch(tree.body.iterator.collect { case t: r.Definition => t.symbol })
-      case _ =>
-        findMatch(hackMembersOf(owner))
-    }
+    if owner.isPackageDef then
+      findMatch(hackMembersOf(owner))
+    else
+      owner.tree match {
+        case tree: r.ClassDef =>
+          findMatch(tree.body.iterator.collect { case t: r.Definition => t.symbol })
+        case _ =>
+          findMatch(hackMembersOf(owner))
+      }
   }
 
   private def downwardLookup(using r: Reflection)(query: List[String], owner: r.Symbol): Option[r.Symbol] =

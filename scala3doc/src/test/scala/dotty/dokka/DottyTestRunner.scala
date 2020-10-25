@@ -98,7 +98,7 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
         // e.g. to remove '(0)' from object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/ 
         val CommentRegexp = """\/\*<-\*\/[^\/]+\/\*->\*\/"""
 
-        def (s: String).doesntStartWithAnyOfThese(c: Char*) = c.forall(char => !s.startsWith(char.toString))
+        extension (s: String) def doesntStartWithAnyOfThese(c: Char*) = c.forall(char => !s.startsWith(char.toString))
         val lines = s.getLines().map(_.trim).toList
             .filter(_.doesntStartWithAnyOfThese('=',':','{','}'))
             .filterNot(_.trim.isEmpty)
