@@ -133,6 +133,37 @@ jobs:
         run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
 
+  build_docs:
+    runs-on: [self-hosted, Linux]
+    container: lampepfl/dotty:2020-04-24
+
+    # timeout-minutes: 20 We need much more for first run
+
+    steps:
+      - name: Set JDK 11 as default
+        run: echo "/usr/lib/jvm/java-11-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - uses: actions/checkout@v2
+      - run: git fetch --prune --unshallow --tags
+
+      - name: Cache Coursier
+        uses: actions/cache@v1
+        with:
+          path: ~/.cache/coursier
+          key: sbt-coursier-cache
+
+      - name: Cache SBT
+        uses: actions/cache@v1
+        with:
+          path: ~/.sbt
+          key: sbt-${{ hashFiles('**/build.sbt') }}
+
+      - name: Generate documentation for the doctool
+        run: ./project/scripts/sbt "scala3doc/generateSelfDocumentation"
+
+      - name: Generate documentation for the example documented project
+        run: ./project/scripts/sbt "scala3doc-example-project/doc"
+
   community_build:
     runs-on: [self-hosted, Linux]
     container: lampepfl/dotty:2020-04-24
