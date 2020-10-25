@@ -38,7 +38,8 @@ import collection.mutable
       if name == "extension_tail" then coll.size - 1
       else if name == "extension_::" then coll.size + 1
       else coll.size
-    if adjustedSize > 1 then doRecord(fn, coll.size)
+    if adjustedSize > 1 then
+      doRecord(fn, coll.size + 5) // 5 words overhead for arrays: 3 words header + length + elementTag
     coll
 
   def doRecordBufferSize(fn: String, coll: List.Buffer[_]): coll.type =
