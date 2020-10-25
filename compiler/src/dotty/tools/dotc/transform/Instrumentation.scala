@@ -39,7 +39,8 @@ class Instrumentation extends MiniPhase { thisPhase =>
     "mapConserve", "mapConserve", "filter", "zipWithConserve", "mapWithIndexConserve"*/
   )
 
-  private val listNamesOfInterest = List("::", "tail", "drop", "take")
+  private val listNamesOfInterest = List(
+    "extension_::", "extension_tail", "extension_drop", "extension_take", "unapply")
 
   private val namesOfInterest = List(
     "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",
@@ -57,7 +58,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
 
   override def prepareForUnit(tree: Tree)(using Context): Context =
     collectionNamesToRecord = collectionNamesOfInterest.map(_.toTermName).toSet
-    listNamesToRecord = listNamesOfInterest.map(name => s"extension_$name".toTermName).toSet
+    listNamesToRecord = listNamesOfInterest.map(_.toTermName).toSet
     namesToRecord = namesOfInterest.map(_.toTermName).toSet ++ listNamesToRecord ++ collectionNamesToRecord
     val StatsModule = requiredModule("dotty.tools.dotc.util.Stats")
     Stats_doRecord = StatsModule.requiredMethod("doRecord")
