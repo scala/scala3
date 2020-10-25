@@ -29,23 +29,26 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
   val exitCode = process.waitFor()
   exitCode
 
-
 sealed trait CommunityProject:
   private var published = false
 
   val project: String
   val testCommand: String
   val publishCommand: String
+  val docCommand: String
   val dependencies: List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
 
+  final def publishDependencies(): Unit =
+    dependencies.foreach(_.publish())
+
   /** Publish this project to the local Maven repository */
   final def publish(): Unit =
     if !published then
-      dependencies.foreach(_.publish())
+      publishDependencies()
       log(s"Publishing $project")
       if publishCommand eq null then
         throw RuntimeException(s"Publish command is not specified for $project. Project details:\n$this")
@@ -53,6 +56,16 @@ sealed trait CommunityProject:
       if exitCode != 0 then
         throw RuntimeException(s"Publish command exited with code $exitCode for project $project. Project details:\n$this")
       published = true
+
+  final def doc(): Unit =
+    publishDependencies()
+    log(s"Documenting $project")
+    if docCommand eq null then
+      throw RuntimeException(s"Doc command is not specified for $project. Project details:\n$this")
+    val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ docCommand): _*)
+    if exitCode != 0 then
+      throw RuntimeException(s"Doc command exited with code $exitCode for project $project. Project details:\n$this")
+
 end CommunityProject
 
 final case class MillCommunityProject(
@@ -62,6 +75,7 @@ final case class MillCommunityProject(
   override val binaryName: String = "./mill"
   override val testCommand = s"$baseCommand.test"
   override val publishCommand = s"$baseCommand.publishLocal"
+  override val docCommand = null
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
 
 final case class SbtCommunityProject(
@@ -70,11 +84,16 @@ final case class SbtCommunityProject(
     extraSbtArgs: List[String] = Nil,
     forceUpgradeSbtScalajsPlugin: Boolean = false,
     dependencies: List[CommunityProject] = Nil,
-    sbtPublishCommand: String = null) extends CommunityProject:
+    sbtPublishCommand: String = null,
+    sbtDocCommand: String = null
+  ) extends CommunityProject:
   override val binaryName: String = "sbt"
   private val baseCommand = s";clean ;set logLevel in Global := Level.Error ;set updateOptions in Global ~= (_.withLatestSnapshots(false)) ;++$compilerVersion! "
   override val testCommand = s"$baseCommand$sbtTestCommand"
-  override val publishCommand = s"$baseCommand$sbtPublishCommand"
+  override val publishCommand = if sbtPublishCommand eq null then null else s"$baseCommand$sbtPublishCommand"
+  override val docCommand =
+    if sbtDocCommand eq null then null else
+      s"$baseCommand;set every useScala3doc := true $sbtDocCommand"
 
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
@@ -86,11 +105,12 @@ final case class SbtCommunityProject(
       else Nil
     extraSbtArgs ++ sbtProps ++ List(
       "-sbt-version", "1.3.8",
-       "-Dsbt.supershell=false",
+      "-Dsbt.supershell=false",
       s"--addPluginSbtFile=$sbtPluginFilePath"
     ) ++ scalaJSPluginArgs
 
 object projects:
+
   lazy val utest = MillCommunityProject(
     project = "utest",
     baseCommand = s"utest.jvm[$compilerVersion]",
@@ -212,6 +232,7 @@ object projects:
   lazy val betterfiles = SbtCommunityProject(
     project       = "betterfiles",
     sbtTestCommand   = "dotty-community-build/compile",
+    sbtDocCommand   = ";core/doc ;akka/doc ;shapelessScanner/doc"
   )
 
   lazy val ScalaPB = SbtCommunityProject(
@@ -308,6 +329,7 @@ object projects:
   lazy val scalaz = SbtCommunityProject(
     project          = "scalaz",
     sbtTestCommand   = "rootJVM/test",
+    // has doc/sources set to Nil
     dependencies     = List(scalacheck)
   )
 
@@ -324,7 +346,51 @@ object projects:
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
-    sbtTestCommand = "testIfRelevant"
+    sbtTestCommand = "testIfRelevant",
+    // has doc/sources disabled by SpiewakPlugin
   )
 
+  val projectMap = Map(
+    "utest" -> utest,
+    "sourcecode" -> sourcecode,
+    "oslib" -> oslib,
+    "oslibWatch" -> oslibWatch,
+    "ujson" -> ujson,
+    "upickle" -> upickle,
+    "upickleCore" -> upickleCore,
+    "geny" -> geny,
+    "fansi" -> fansi,
+    "pprint" -> pprint,
+    "requests" -> requests,
+    "scas" -> scas,
+    "intent" -> intent,
+    "algebra" -> algebra,
+    "scalacheck" -> scalacheck,
+    "scalatest" -> scalatest,
+    "scalatestplusScalacheck" -> scalatestplusScalacheck,
+    "scalaXml" -> scalaXml,
+    "scopt" -> scopt,
+    "scalap" -> scalap,
+    "squants" -> squants,
+    "betterfiles" -> betterfiles,
+    "ScalaPB" -> ScalaPB,
+    "minitest" -> minitest,
+    "fastparse" -> fastparse,
+    "stdLib213" -> stdLib213,
+    "shapeless" -> shapeless,
+    "xmlInterpolator" -> xmlInterpolator,
+    "effpi" -> effpi,
+    "sconfig" -> sconfig,
+    "zio" -> zio,
+    "munit" -> munit,
+    "scodecBits" -> scodecBits,
+    "scodec" -> scodec,
+    "scalaParserCombinators" -> scalaParserCombinators,
+    "dottyCpsAsync" -> dottyCpsAsync,
+    "scalaz" -> scalaz,
+    "endpoints4s" -> endpoints4s,
+    "catsEffect2" -> catsEffect2,
+    "catsEffect3" -> catsEffect3,
+  )
+  def apply(key: String) = projectMap(key)
 end projects
