@@ -5,6 +5,7 @@ import collection.immutable.{Map, List => sList, Nil => sNil}
 import reflect.ClassTag
 import annotation.{infix, tailrec}
 import math.Ordering
+import dotc.util.Stats
 
 /** A lightweight class for lists, optimized for short and medium lengths.
  *  A list is represented at runtime as
@@ -870,12 +871,18 @@ object List:
 
     /** pre: len > 0, n >= 1 */
     private def ensureSize(n: Int): Unit =
-      if len < n then
-        if len == 1 then
+      val capacity =
+        if elems == null then 1 else elems.length
+      if capacity < n then
+        if capacity == 1 then
+          Stats.record("Buffer.initial")
+          Stats.record("Buffer.initial size", n max initialSize)
           elems = new Arr(n max initialSize)
           elems(0) = elem
         else
-          val newLen = n max len * 2
+          val newLen = n max capacity * 2
+          Stats.record("Buffer.double")
+          Stats.record("Buffer.double size", newLen)
           val newElems = new Arr(newLen)
           System.arraycopy(elems, 0, newElems, 0, len)
           elems = newElems
