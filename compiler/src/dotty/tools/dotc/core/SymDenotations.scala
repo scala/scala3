@@ -241,19 +241,13 @@ object SymDenotations {
 
     /** Optionally, the annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(using Context): Option[Annotation] =
-      dropOtherAnnotations(annotations, cls) match {
-        case annot :: _ => Some(annot)
-        case nil => None
-      }
+      dropOtherAnnotations(annotations, cls).headOption
 
     /** The same as getAnnotation, but without ensuring
      *  that the symbol carrying the annotation is completed
      */
     final def unforcedAnnotation(cls: Symbol)(using Context): Option[Annotation] =
-      dropOtherAnnotations(myAnnotations, cls) match {
-        case annot :: _ => Some(annot)
-        case nil => None
-      }
+      dropOtherAnnotations(myAnnotations, cls).headOption
 
     /** Add given annotation to the annotations of this denotation */
     final def addAnnotation(annot: Annotation): Unit =
@@ -277,11 +271,8 @@ object SymDenotations {
     final def addAnnotations(annots: TraversableOnce[Annotation])(using Context): Unit =
       annots.iterator.foreach(addAnnotation)
 
-    @tailrec
-    private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(using Context): List[Annotation] = anns match {
-      case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
-      case Nil => Nil
-    }
+    private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(using Context): List[Annotation] =
+      anns.dropWhile(ann => !ann.matches(cls))
 
     /** If this is a method, the parameter symbols, by section.
      *  Both type and value parameters are included. Empty sections are skipped.
@@ -501,7 +492,7 @@ object SymDenotations {
       alphaAnnot match {
         case Some(ann) =>
           ann.arguments match {
-            case Literal(Constant(str: String)) :: Nil =>
+            case List(Literal(Constant(str: String))) =>
               if (isType)
                 if (is(ModuleClass))
                   str.toTypeName.moduleClassName
@@ -1312,17 +1303,15 @@ object SymDenotations {
      *  seen from class `base`. This symbol is always concrete.
      *  pre: `this.owner` is in the base class sequence of `base`.
      */
-    final def superSymbolIn(base: Symbol)(using Context): Symbol = {
-      @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
-        case bc :: bcs1 =>
-          val sym = matchingDecl(bcs.head, base.thisType)
-            .suchThat(alt => !alt.is(Deferred)).symbol
-          if (sym.exists) sym else loop(bcs.tail)
-        case _ =>
-          NoSymbol
-      }
-      loop(base.info.baseClasses.dropWhile(owner != _).tail)
-    }
+    final def superSymbolIn(base: Symbol)(using Context): Symbol =
+      val bcs = base.info.baseClasses
+      val limit = bcs.length
+      var idx = bcs.firstIndexOf(owner) + 1
+      var sup: Symbol = NoSymbol
+      while idx < limit && !sup.exists do
+        sup = matchingDecl(bcs(idx), base.thisType).suchThat(alt => !alt.is(Deferred)).symbol
+        idx += 1
+      sup
 
     /** A member of class `base` is incomplete if
      *  (1) it is declared deferred or
@@ -1747,24 +1736,18 @@ object SymDenotations {
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
       baseData._2
 
-    def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
+    def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) =
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
-      if (classParents.isEmpty && !emptyParentsExpected)
+      if classParents.isEmpty && !emptyParentsExpected then
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      def traverse(parents: List[Type]): Unit = parents match {
-        case p :: parents1 =>
-          p.classSymbol match {
-            case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
-            case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
-          }
-          traverse(parents1)
-        case nil =>
-      }
-      traverse(classParents)
-      (classSymbol :: builder.baseClasses, builder.baseClassSet)
-    }
+      for p <- classParents do
+        p.classSymbol match
+          case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
+          case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
+      builder.addRoot(classSymbol)
+      (builder.baseClasses, builder.baseClassSet)
 
     final override def derivesFrom(base: Symbol)(using Context): Boolean =
       !isAbsent() &&
@@ -2208,23 +2191,6 @@ object SymDenotations {
      */
     override def computeMembersNamed(name: Name)(using Context): PreDenotation =
 
-      def recur(pobjs: List[ClassDenotation], acc: PreDenotation): PreDenotation = pobjs match
-        case pcls :: pobjs1 =>
-          if (pcls.isCompleting) recur(pobjs1, acc)
-          else
-            val pobjMembers = pcls.nonPrivateMembersNamed(name).filterWithPredicate { d =>
-              // Drop members of `Any` and `Object`
-              val owner = d.symbol.maybeOwner
-              (owner ne defn.AnyClass) && (owner ne defn.ObjectClass)
-            }
-            recur(pobjs1, acc.union(pobjMembers))
-        case nil =>
-          val directMembers = super.computeMembersNamed(name)
-          if !acc.exists then directMembers
-          else acc.union(directMembers.filterWithPredicate(!_.symbol.isAbsent())) match
-            case d: DenotUnion => dropStale(d)
-            case d => d
-
       def dropStale(multi: DenotUnion): PreDenotation =
         val compiledNow = multi.filterWithPredicate(d =>
           d.symbol.isDefinedInCurrentRun || d.symbol.associatedFile == null
@@ -2267,21 +2233,31 @@ object SymDenotations {
 
       if symbol eq defn.ScalaPackageClass then
         val denots = super.computeMembersNamed(name)
-        if denots.exists || name == nme.CONSTRUCTOR then denots
-        else recur(packageObjs, NoDenotation)
-      else recur(packageObjs, NoDenotation)
+        if denots.exists || name == nme.CONSTRUCTOR then return denots
+
+      val pobjMembers =
+        packageObjs.foldLeft(NoDenotation: PreDenotation) { (pd, pcls) =>
+          if pcls.isCompleting then pd
+          else pd.union {
+            pcls.nonPrivateMembersNamed(name).filterWithPredicate { d =>
+              // Drop members of `Any` and `Object`
+              val owner = d.symbol.maybeOwner
+              (owner ne defn.AnyClass) && (owner ne defn.ObjectClass)
+            }
+          }
+        }
+      val directMembers = super.computeMembersNamed(name)
+      if !pobjMembers.exists then directMembers
+      else pobjMembers.union(directMembers.filterWithPredicate(!_.symbol.isAbsent())) match
+        case d: DenotUnion => dropStale(d)
+        case d => d
     end computeMembersNamed
 
     /** The union of the member names of the package and the package object */
-    override def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
-      def recur(pobjs: List[ClassDenotation], acc: Set[Name]): Set[Name] = pobjs match {
-        case pcls :: pobjs1 =>
-          recur(pobjs1, acc.union(pcls.memberNames(keepOnly)))
-        case nil =>
-          acc
+    override def memberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] =
+      packageObjs.foldLeft(super.memberNames(keepOnly)) { (names, pcls) =>
+        names.union(pcls.memberNames(keepOnly))
       }
-      recur(packageObjs, super.memberNames(keepOnly))
-    }
 
     /** If another symbol with the same name is entered, unlink it.
      *  If symbol is a package object, invalidate the packageObj cache.
@@ -2716,7 +2692,8 @@ object SymDenotations {
 
   /** A class to combine base data from parent types */
   class BaseDataBuilder {
-    private var classes: List[ClassSymbol] = Nil
+    private var classes: List[ClassSymbol] = nullList
+    private var rclasses = List.Buffer[ClassSymbol]()
     private var classIds = new Array[Int](32)
     private var length = 0
 
@@ -2734,24 +2711,26 @@ object SymDenotations {
 
     def addAll(bcs: List[ClassSymbol]): this.type = {
       val len = length
-      bcs match {
-        case bc :: bcs1 =>
-          addAll(bcs1)
-          if (!new BaseClassSet(classIds).contains(bc, len)) {
-            add(bc)
-            classes = bc :: classes
-          }
-        case nil =>
+      bcs.foreachReversed { bc =>
+        if !new BaseClassSet(classIds).contains(bc, len) then
+          add(bc)
+          rclasses += bc
       }
       this
     }
+
+    def addRoot(cls: ClassSymbol): this.type =
+      rclasses += cls
+      this
 
     def baseClassSet: BaseClassSet = {
       if (length != classIds.length) resize(length)
       new BaseClassSet(classIds)
     }
 
-    def baseClasses: List[ClassSymbol] = classes
+    def baseClasses: List[ClassSymbol] =
+      if classes eqLst nullList then classes = rclasses.reversedToList
+      classes
   }
 
   private val packageTypeName = ModuleClassName(nme.PACKAGE).toTypeName
