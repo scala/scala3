@@ -1000,7 +1000,7 @@ class Definitions {
 
   object FunctionOf {
     def apply(args: List[Type], resultType: Type, isContextual: Boolean = false, isErased: Boolean = false)(using Context): Type =
-      FunctionType(args.length, isContextual, isErased).appliedTo(args ::: resultType :: Nil)
+      FunctionType(args.length, isContextual, isErased).appliedTo(args ++ List(resultType))
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean, Boolean)] = {
       val tsym = ft.typeSymbol
       if isFunctionClass(tsym) && ft.isRef(tsym) then

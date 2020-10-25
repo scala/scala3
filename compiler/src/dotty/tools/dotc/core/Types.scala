@@ -3219,7 +3219,7 @@ object Types {
 
     def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(using Context): This =
       companion(paramNames)(
-          x => paramInfos.map(_.subst(this, x).asInstanceOf[PInfo]),
+          x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
           x => resType.subst(this, x))
 
     protected def prefixString: String
@@ -3837,7 +3837,7 @@ object Types {
     }
 
     inline def map(inline op: Type => Type)(using Context) =
-      derivedAppliedType(op(tycon), args.map(op))
+      derivedAppliedType(op(tycon), args.mapConserve(op))
 
     inline def fold[T](x: T, inline op: (T, Type) => T)(using Context): T =
       args.foldLeft(op(x, tycon))(op)
