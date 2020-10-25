@@ -24,5 +24,5 @@ class InheritanceInformationTransformer(val ctx: DokkaContext) extends Documenta
                 c.parents.map(_._2 -> selfLink)
             
             c.allMembers.flatMap(getSupertypes) ++ selfMapping
-        case other => List.empty
+        case null => List.empty
     }

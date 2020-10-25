@@ -37,7 +37,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
             elemOp: (SignatureBuilder, E) => SignatureBuilder
         ): SignatureBuilder = elements match {
             case Nil => this
-            case head +: tail =>
+            case head :: tail =>
                 tail.foldLeft(elemOp(text(prefix), head))((b, e) => elemOp(b.text(separator), e)).text(suffix)
         }
 

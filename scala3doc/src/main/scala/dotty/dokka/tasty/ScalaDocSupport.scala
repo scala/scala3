@@ -10,7 +10,7 @@ import dotty.dokka.ScalaTagWrapper
 import comments.{kt, dkk}
 
 trait ScaladocSupport { self: TastyParser =>
-  import reflect.{given _, _}
+  import reflect._
 
   def parseComment(
     commentNode: reflect.Comment,

@@ -33,6 +33,7 @@ object DotDiagramBuilder:
         case Kind.Trait => "fill: #1CAACF;"
         case Kind.Enum => "fill: #B66722;"
         case Kind.EnumCase => "fill: #B66722;"
+        case other => sys.error(s"unexpected value: $other")
         
 
     private def getHtmlLabel(vertex: Vertex, renderer: SignatureRenderer): String =

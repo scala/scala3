@@ -27,14 +27,14 @@ object FilterAttributes:
   private def keywords(documentable: Documentable): Map[String, String] = documentable match 
     case v: Member =>
       Map("keywords" -> v.modifiers.map(_.name).mkString(","))  
-    case _ =>
+    case null =>
       Map.empty
 
 
   private def visibity(documentable: Documentable): Map[String, String] = documentable match
     case v: Member => 
       Map("visibility" -> v.visibility.name)
-    case _ => 
+    case null => 
       Map.empty
 
 
@@ -45,7 +45,7 @@ object FilterAttributes:
         case Origin.ImplicitlyAddedBy(name, _) => Map("implicitly" -> s"by $name")
         case Origin.ExtensionFrom(name, _) => Map("extension" -> s"from $name")
         case _ => Map.empty
-    case _ =>
+    case null =>
       Map.empty     
 
   def defaultValues = Map(
