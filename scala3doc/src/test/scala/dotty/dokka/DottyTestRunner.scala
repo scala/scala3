@@ -56,7 +56,7 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
 
         def listTastyFiles(f: File): Seq[File] = 
             val (files, dirs) = f.listFiles().partition(_.isFile)
-            files.filter(_.getName.endsWith(".tasty")) ++ dirs.flatMap(listTastyFiles)
+            files.toIndexedSeq.filter(_.getName.endsWith(".tasty")) ++ dirs.flatMap(listTastyFiles)
 
         val tastyFiles = tastyDir.split(File.pathSeparatorChar).toList.flatMap(p => listTastyFiles(new File(p))).map(_.toString)
             

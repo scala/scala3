@@ -133,7 +133,9 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val muteDefaultSourceLinksTransformer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getPageTransformer)
-    .fromInstance(identity)
+    .fromInstance(new PageTransformer {
+      override def invoke(root: RootPageNode) = root
+    })
     .overrideExtension(dokkaBase.getSourceLinksTransformer)
     .name("muteDefaultSourceLinksTransformer")
   )    

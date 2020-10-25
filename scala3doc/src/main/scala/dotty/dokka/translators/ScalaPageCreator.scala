@@ -319,7 +319,7 @@ class ScalaPageCreator(
                     }
 
                     d match{
-                        case d: (WithSources & WithExtraProperties[Documentable]) if d.get(SourceLinks) != null && !d.get(SourceLinks).links.isEmpty => d.get(SourceLinks).links.foldLeft(withCompanion){
+                        case d: (WithSources & WithExtraProperties[_]) if d.get(SourceLinks) != null && !d.get(SourceLinks).links.isEmpty => d.get(SourceLinks).links.foldLeft(withCompanion){
                             case (bdr, (sourceSet, link)) => bdr
                                     .cell(sourceSets = Set(sourceSet)){ b => b
                                         .text("Source")
@@ -336,9 +336,11 @@ class ScalaPageCreator(
 
         def contentForScope(s: Documentable & WithScope & WithExtraProperties[_]) = 
             def groupExtensions(extensions: Seq[Member]): Seq[DocumentableSubGroup] = 
-                extensions.groupBy(_.kind).map { case (Kind.Extension(on), members) => 
-                    val signature = Signature(s"extension (${on.name}: ") join on.signature join Signature(")")
-                    DocumentableSubGroup(signature, members.toSeq)
+                extensions.groupBy(_.kind).map {
+                    case (Kind.Extension(on), members) =>
+                        val signature = Signature(s"extension (${on.name}: ") join on.signature join Signature(")")
+                        DocumentableSubGroup(signature, members.toSeq)
+                    case other => sys.error(s"unexpected value: $other")
                 }.toSeq
             
                 
