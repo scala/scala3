@@ -87,7 +87,7 @@ case class SbtDokkaTastyInspector(
 
     override def run(implicit ctx: Context): Unit =
       val qctx = QuoteContextImpl()
-      self.processCompilationUnit(qctx.tasty)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.tasty.Tree])
+      self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.tasty.Tree])
 
   end TastyInspectorPhase
 
@@ -100,8 +100,8 @@ trait DokkaBaseTastyInspector:
 
   private val topLevels = Seq.newBuilder[Documentable]
 
-  def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit =
-    val parser = new TastyParser(reflect, this, config)
+  def processCompilationUnit(using ctx: quoted.QuoteContext)(root: ctx.reflect.Tree): Unit =
+    val parser = new TastyParser(ctx.reflect, this, config)
     topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.reflect.Tree])
 
   def result(): List[DPackage] =

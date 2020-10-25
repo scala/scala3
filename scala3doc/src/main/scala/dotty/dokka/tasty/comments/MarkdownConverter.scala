@@ -163,14 +163,14 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
     case _ =>
       println(s"!!! DEFAULTING @ ${n.getNodeName}")
       emit(dkkd.P(
-        List(
+        List[dkkd.DocTag](
           dkkd.Span(
             List(dkk.text(s"!!! DEFAULTING @ ${n.getNodeName}")).asJava,
             kt.emptyMap,
           ),
           dkk.text(MarkdownParser.renderToText(n))
         ).asJava,
-        kt.emptyMap
+        kt.emptyMap[String, String]
       ))
   }
 

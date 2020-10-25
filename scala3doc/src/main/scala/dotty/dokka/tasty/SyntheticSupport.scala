@@ -38,7 +38,7 @@ trait SyntheticsSupport:
     def getAllMembers: List[Symbol] = hackGetAllMembers(self.reflect)(s)
 
   def isSyntheticField(c: Symbol) =
-    c.flags.is(Flags.CaseAcessor) || c.flags.is(Flags.Object)
+    c.flags.is(Flags.CaseAccessor) || c.flags.is(Flags.Object)
 
   def isValidPos(pos: Position) =
     pos.exists && pos.start != pos.end
@@ -101,11 +101,11 @@ trait SyntheticsSupport:
     cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[r.Type]
 
   object MatchTypeCase:
-    def unapply(tpe: Type): Option[(TypeOrBounds, TypeOrBounds)] =
+    def unapply(tpe: Type): Option[(Type, Type)] =
       tpe match
-        case AppliedType(t, Seq(from, to)) if t == MatchCaseType =>
+        case AppliedType(t, Seq(from, to)) /*if t == MatchCaseType*/ =>
             Some((from, to))
-        case TypeLambda(paramNames, paramTypes, AppliedType(t, Seq(from, to))) if t == MatchCaseType =>
+        case TypeLambda(paramNames, paramTypes, AppliedType(t, Seq(from, to))) /*if t == MatchCaseType*/ =>
             Some((from, to))
         case _ =>
           None
