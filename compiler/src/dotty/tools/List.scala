@@ -419,13 +419,17 @@ object List:
       val idx = firstIndexOf(x, from)
       if idx == length then -1 else idx
 
-    def indexWhere(p: T => Boolean): Int =
-      val idx = firstIndexWhere(p)
+    def indexWhere(p: T => Boolean, from: Int = 0): Int =
+      val idx = firstIndexWhere(p, from)
       if idx == length then -1 else idx
 
-    def find(p: T => Boolean): Option[T] =
-      val idx = firstIndexWhere(p)
-      if idx < length then Some(xs.apply(idx)) else None
+    def find(p: T => Boolean, from: Int = 0): Option[T] =
+      val idx = firstIndexWhere(p, from)
+      if idx < length then Some(xs(idx)) else None
+
+    def findOr(default: T, from: Int = 0)(p: T => Boolean): T =
+      val idx = firstIndexWhere(p, from)
+      if idx < length then xs(idx) else default
 
     def takeWhile(p: T => Boolean, from: Int = 0): List[T] =
       slice(from, firstIndexWhere(!p(_), from))
