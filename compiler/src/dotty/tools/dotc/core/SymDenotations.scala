@@ -1298,10 +1298,7 @@ object SymDenotations {
       else overriddenFromType(owner.asClass.classInfo.selfType)
 
     private def overriddenFromType(tp: Type)(using Context): Iterator[Symbol] =
-      tp.baseClasses match {
-        case _ :: inherited => inherited.iterator.map(overriddenSymbol(_)).filter(_.exists)
-        case Nil => Iterator.empty
-      }
+      tp.baseClasses.iterator.drop(1).map(overriddenSymbol(_)).filter(_.exists)
 
     /** The symbol overriding this symbol in given subclass `ofclazz`.
      *
@@ -1945,11 +1942,6 @@ object SymDenotations {
 
         tp match {
           case tp @ TypeRef(prefix, _) =>
-            def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-              case p :: ps1 => foldGlb(bt & recur(p), ps1)
-              case _ => bt
-            }
-
             def computeTypeRef = {
               btrCache(tp) = NoPrefix
               val tpSym = tp.symbol
@@ -1966,7 +1958,8 @@ object SymDenotations {
                     else if (isOwnThis)
                       if (clsd.baseClassSet.contains(symbol))
                         if (symbol.isStatic && symbol.typeParams.isEmpty) symbol.typeRef
-                        else foldGlb(NoType, clsd.classParents)
+                        else clsd.classParents
+                          .foldLeft(NoType: Type)((bt, parent) => bt & recur(parent))
                       else NoType
                     else
                       recur(clsd.typeRef).asSeenFrom(prefix, clsd.owner)

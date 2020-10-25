@@ -369,8 +369,8 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  final def appliedTo(arg: Type)(using Context): Type = appliedTo(arg :: Nil)
-  final def appliedTo(arg1: Type, arg2: Type)(using Context): Type = appliedTo(arg1 :: arg2 :: Nil)
+  final def appliedTo(arg: Type)(using Context): Type = appliedTo(List(arg))
+  final def appliedTo(arg1: Type, arg2: Type)(using Context): Type = appliedTo(List(arg1, arg2))
 
   final def applyIfParameterized(args: List[Type])(using Context): Type =
     if (typeParams.nonEmpty) appliedTo(args) else self

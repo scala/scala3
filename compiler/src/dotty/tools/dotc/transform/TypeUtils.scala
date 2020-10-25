@@ -51,7 +51,7 @@ object TypeUtils {
 
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs */
     def tupleElementTypes(using Context): List[Type] = self match {
-      case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
+      case AppliedType(tycon, List(hd, tl)) if tycon.isRef(defn.PairClass) =>
         hd :: tl.tupleElementTypes
       case self: SingletonType =>
         assert(self.termSymbol == defn.EmptyTupleModule, "not a tuple")

@@ -1789,41 +1789,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`
    *  to override `tp2` ? This is the case if they're pairwise `=:=`.
    */
-  def matchingMethodParams(tp1: MethodType, tp2: MethodType): Boolean = {
-    def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
-      case formal1 :: rest1 =>
-        formals2 match {
-          case formal2 :: rest2 =>
-            val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
-            isSameTypeWhenFrozen(formal1, formal2a) && loop(rest1, rest2)
-          case nil =>
-            false
-        }
-      case nil =>
-        formals2.isEmpty
+  def matchingMethodParams(tp1: MethodType, tp2: MethodType): Boolean =
+    tp1.paramInfos.corresponds(tp2.paramInfos) { (formal1, formal2) =>
+      val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
+      isSameTypeWhenFrozen(formal1, formal2a)
     }
-    loop(tp1.paramInfos, tp2.paramInfos)
-  }
 
   /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`
    *  to override `tp2` ? This is the case if they're pairwise >:>.
    */
-  def matchingPolyParams(tp1: PolyType, tp2: PolyType): Boolean = {
-    def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
-      case formal1 :: rest1 =>
-        formals2 match {
-          case formal2 :: rest2 =>
-            val formal2a = formal2.subst(tp2, tp1)
-            isSubTypeWhenFrozen(formal2a, formal1) &&
-            loop(rest1, rest2)
-          case nil =>
-            false
-        }
-      case nil =>
-        formals2.isEmpty
+  def matchingPolyParams(tp1: PolyType, tp2: PolyType): Boolean =
+    tp1.paramInfos.corresponds(tp2.paramInfos) { (formal1, formal2) =>
+      val formal2a = formal2.subst(tp2, tp1)
+      isSubTypeWhenFrozen(formal2a, formal1)
     }
-    loop(tp1.paramInfos, tp2.paramInfos)
-  }
 
   // Type equality =:=
 

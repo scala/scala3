@@ -190,60 +190,54 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
 
     // Split class body into statements that go into constructor and
     // definitions that are kept as members of the class.
-    def splitStats(stats: List[Tree]): Unit = stats match {
-      case stat :: stats1 =>
-        stat match {
-          case stat @ ValDef(name, tpt, _) if !stat.symbol.is(Lazy) && !stat.symbol.hasAnnotation(defn.ScalaStaticAnnot) =>
-            val sym = stat.symbol
-            if (isRetained(sym)) {
-              if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
-                constrStats += Assign(ref(sym), intoConstr(stat.rhs, sym)).withSpan(stat.span)
-              clsStats += cpy.ValDef(stat)(rhs = EmptyTree)
-            }
-            else if (!stat.rhs.isEmpty) {
-              dropped += sym
-              sym.copySymDenotation(
-                initFlags = sym.flags &~ Private,
-                owner = constr.symbol).installAfter(thisPhase)
-              constrStats += intoConstr(stat, sym)
-            } else
-              dropped += sym
-          case stat @ DefDef(name, _, _, tpt, _)
-              if stat.symbol.isGetter && stat.symbol.owner.is(Trait) && !stat.symbol.is(Lazy) =>
-            val sym = stat.symbol
-            assert(isRetained(sym), sym)
-            if !stat.rhs.isEmpty && !isWildcardArg(stat.rhs) then
-              /* !!! Work around #9390
-               * This should really just be `sym.setter`. However, if we do that, we'll miss
-               * setters for mixed in `private var`s. Even though the scope clearly contains the
-               * setter symbol with the correct Name structure (since the `find` finds it),
-               * `.decl(setterName)` used by `.setter` through `.accessorNamed` will *not* find it.
-               * Could it be that the hash table of the `Scope` is corrupted?
-               * We still try `sym.setter` first as an optimization, since it will work for all
-               * public vars in traits and all (public or private) vars in classes.
-               */
-              val symSetter =
-                if sym.setter.exists then
-                  sym.setter
-                else
-                  val setterName = sym.asTerm.name.setterName
-                  sym.owner.info.decls.find(d => d.is(Accessor) && d.name == setterName)
-              val setter =
-                if (symSetter.exists) symSetter
-                else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
-              constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
-            clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
-          case DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
-            clsStats += mapOuter(outerParam.symbol).transform(stat)
-          case _: DefTree =>
-            clsStats += stat
-          case _ =>
-            constrStats += intoConstr(stat, tree.symbol)
+    tree.body.foreach {
+      case stat @ ValDef(name, tpt, _) if !stat.symbol.is(Lazy) && !stat.symbol.hasAnnotation(defn.ScalaStaticAnnot) =>
+        val sym = stat.symbol
+        if (isRetained(sym)) {
+          if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
+            constrStats += Assign(ref(sym), intoConstr(stat.rhs, sym)).withSpan(stat.span)
+          clsStats += cpy.ValDef(stat)(rhs = EmptyTree)
         }
-        splitStats(stats1)
-      case Nil =>
+        else if (!stat.rhs.isEmpty) {
+          dropped += sym
+          sym.copySymDenotation(
+            initFlags = sym.flags &~ Private,
+            owner = constr.symbol).installAfter(thisPhase)
+          constrStats += intoConstr(stat, sym)
+        } else
+          dropped += sym
+      case stat @ DefDef(name, _, _, tpt, _)
+          if stat.symbol.isGetter && stat.symbol.owner.is(Trait) && !stat.symbol.is(Lazy) =>
+        val sym = stat.symbol
+        assert(isRetained(sym), sym)
+        if !stat.rhs.isEmpty && !isWildcardArg(stat.rhs) then
+          /* !!! Work around #9390
+            * This should really just be `sym.setter`. However, if we do that, we'll miss
+            * setters for mixed in `private var`s. Even though the scope clearly contains the
+            * setter symbol with the correct Name structure (since the `find` finds it),
+            * `.decl(setterName)` used by `.setter` through `.accessorNamed` will *not* find it.
+            * Could it be that the hash table of the `Scope` is corrupted?
+            * We still try `sym.setter` first as an optimization, since it will work for all
+            * public vars in traits and all (public or private) vars in classes.
+            */
+          val symSetter =
+            if sym.setter.exists then
+              sym.setter
+            else
+              val setterName = sym.asTerm.name.setterName
+              sym.owner.info.decls.find(d => d.is(Accessor) && d.name == setterName)
+          val setter =
+            if (symSetter.exists) symSetter
+            else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
+          constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
+        clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
+      case stat @ DefDef(nme.CONSTRUCTOR, _, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
+        clsStats += mapOuter(outerParam.symbol).transform(stat)
+      case stat: DefTree =>
+        clsStats += stat
+      case stat =>
+        constrStats += intoConstr(stat, tree.symbol)
     }
-    splitStats(tree.body)
 
     // The initializers for the retained accessors */
     val copyParams = accessors flatMap { acc =>
