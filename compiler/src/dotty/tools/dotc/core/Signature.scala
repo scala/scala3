@@ -126,7 +126,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
 
   override def equals(that: Any) = that match
     case that: Signature =>
-      this.paramsSig === that.paramsSig && this.resSig == that.resSig
+      (this.paramsSig eqElements that.paramsSig) && this.resSig == that.resSig
     case _ =>
       false
 

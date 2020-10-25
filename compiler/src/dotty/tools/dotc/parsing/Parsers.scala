@@ -920,22 +920,22 @@ object Parsers {
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
-    var opStack: List[OpInfo] = Nil
+    val opStack = List.Buffer[OpInfo]()
 
     def checkAssoc(offset: Token, op1: Name, op2: Name, op2LeftAssoc: Boolean): Unit =
       if (op1.isRightAssocOperatorName == op2LeftAssoc)
         syntaxError(MixedLeftAndRightAssociativeOps(op1, op2, op2LeftAssoc), offset)
 
-    def reduceStack(base: List[OpInfo], top: Tree, prec: Int, leftAssoc: Boolean, op2: Name, isType: Boolean): Tree = {
-      if (opStack =/= base && precedence(opStack.head.operator.name) == prec)
-        checkAssoc(opStack.head.offset, opStack.head.operator.name, op2, leftAssoc)
+    def reduceStack(limit: Int, top: Tree, prec: Int, leftAssoc: Boolean, op2: Name, isType: Boolean): Tree = {
+      if (opStack.length > limit && precedence(opStack.last.operator.name) == prec)
+        checkAssoc(opStack.last.offset, opStack.last.operator.name, op2, leftAssoc)
       def recur(top: Tree): Tree =
-        if (opStack === base) top
+        if (opStack.length === limit) top
         else {
-          val opInfo = opStack.head
+          val opInfo = opStack.last
           val opPrec = precedence(opInfo.operator.name)
           if (prec < opPrec || leftAssoc && prec == opPrec) {
-            opStack = opStack.tail
+            opStack.trimEnd(1)
             recur {
               atSpan(opInfo.operator.span union opInfo.operand.span union top.span) {
                 InfixOp(opInfo.operand, opInfo.operator, top)
@@ -958,19 +958,19 @@ object Parsers {
         isType: Boolean = false,
         isOperator: => Boolean = true,
         maybePostfix: Boolean = false): Tree = {
-      val base = opStack
+      val limit = opStack.length
 
       def recur(top: Tree): Tree =
         if (isIdent && isOperator) {
           val op = if (isType) typeIdent() else termIdent()
-          val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
-          opStack = OpInfo(top1, op, in.offset) :: opStack
+          val top1 = reduceStack(limit, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
+          opStack += OpInfo(top1, op, in.offset)
           colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
           if (maybePostfix && !canStartOperand(in.token)) {
-            val topInfo = opStack.head
-            opStack = opStack.tail
-            val od = reduceStack(base, topInfo.operand, 0, true, in.name, isType)
+            val topInfo = opStack.last
+            opStack.trimEnd(1)
+            val od = reduceStack(limit, topInfo.operand, 0, true, in.name, isType)
             atSpan(startOffset(od), topInfo.offset) {
               PostfixOp(od, topInfo.operator)
             }
@@ -978,7 +978,7 @@ object Parsers {
           else recur(operand())
         }
         else
-          val t = reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
+          val t = reduceStack(limit, top, minPrec, leftAssoc = true, in.name, isType)
           if !isType && in.token == MATCH then recurAtMinPrec(matchClause(t))
           else t
 
