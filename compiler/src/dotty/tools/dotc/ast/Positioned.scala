@@ -105,7 +105,12 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         case y :: ys =>
           include(include(span, y), ys)
         case xs: List.Arr =>
-          xs.foldLeft(span)(include(_, _))
+          var acc = span
+          var i = 0
+          while i < xs.length do  // written out to avoid boxing of value class Span
+            acc = include(acc, xs(i))
+            i += 1
+          acc
         case _ => span
       }
       val limit = productArity
