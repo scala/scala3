@@ -312,14 +312,8 @@ object TypeErasure {
             val cls2 = tp2.classSymbol
 
             /** takeWhile+1 */
-            def takeUntil[T](l: List[T])(f: T => Boolean): List[T] = {
-              @tailrec def loop(tail: List[T], acc: List[T]): List[T] =
-                tail match {
-                  case h :: t => loop(if (f(h)) t else Nil, h :: acc)
-                  case Nil    => acc.reverse
-                }
-              loop(l, Nil)
-            }
+            def takeUntil[T](l: List[T])(f: T => Boolean): List[T] =
+              l.take(l.firstIndexWhere(!f(_)) + 1)
 
             // We are not interested in anything that is not a supertype of tp2
             val tp2superclasses = tp1.baseClasses.filter(cls2.derivesFrom)

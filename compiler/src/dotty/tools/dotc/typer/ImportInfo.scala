@@ -21,10 +21,9 @@ object ImportInfo {
 
   /** The import info for a root import */
   def rootImport(ref: RootRef)(using Context): ImportInfo =
-    var selectors =
-      untpd.ImportSelector(untpd.Ident(nme.WILDCARD))  // import all normal members...
-      :: untpd.ImportSelector(untpd.Ident(nme.EMPTY))  // ... and also all given members
-      :: Nil
+    var selectors = List(
+        untpd.ImportSelector(untpd.Ident(nme.WILDCARD)), // import all normal members...
+        untpd.ImportSelector(untpd.Ident(nme.EMPTY)))  // ... and also all given members
     if ref.isPredef then                               // do not import any2stringadd
       selectors = untpd.ImportSelector(untpd.Ident(nme.any2stringadd), untpd.Ident(nme.WILDCARD))
         :: selectors

@@ -698,7 +698,7 @@ object RefChecks {
        *  can assume invariant refinement for case classes in `constrainPatternType`.
        */
       def checkCaseClassInheritanceInvariant() =
-        for (caseCls <- clazz.info.baseClasses.tail.find(_.is(Case)))
+        for (caseCls <- clazz.info.baseClasses.find(_.is(Case), from = 1))
           for (baseCls <- caseCls.info.baseClasses.tail)
             if (baseCls.typeParams.exists(_.paramVarianceSign != 0))
               for (problem <- variantInheritanceProblems(baseCls, caseCls, "non-variant", "case "))
@@ -737,15 +737,14 @@ object RefChecks {
       //
       // This is necessary because parameter values are determined directly or indirectly
       // by `Super`. So we cannot pretend they have a different type when seen from `Sub`.
-      def checkParameterizedTraitsOK() = {
+      def checkParameterizedTraitsOK() =
         val mixins = clazz.mixins
-        for {
-          cls <- clazz.info.baseClasses.tail
-          if cls.paramAccessors.nonEmpty && !mixins.contains(cls)
-          problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super")
-        }
-        report.error(problem(), clazz.srcPos)
-      }
+        val bcs = clazz.info.baseClasses
+        for i <- 1 until bcs.length do
+          val cls = bcs(i)
+          if cls.paramAccessors.nonEmpty && !mixins.contains(cls) then
+            for problem <- variantInheritanceProblems(cls, clazz.asClass.superClass, "parameterized", "super") do
+              report.error(problem(), clazz.srcPos)
 
       checkParameterizedTraitsOK()
     }
@@ -912,7 +911,9 @@ object RefChecks {
        && !sym.isConstructor
     then
       val cls = sym.owner.asClass
-      for bc <- cls.baseClasses.tail do
+      val bcs = cls.baseClasses
+      for i <- 1 until bcs.length do
+        val bc = bcs(i)
         val other = sym.matchingDecl(bc, cls.thisType)
         if other.exists then
           report.error(i"private $sym cannot override ${other.showLocated}", sym.srcPos)

@@ -123,7 +123,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
       if (!owner.is(Trait))
         if (mix.name.isEmpty)
           // scala/bug#4989 Check if an intermediate class between `clazz` and `sym.owner` redeclares the method as abstract.
-          for (intermediateClass <- clazz.info.baseClasses.tail.takeWhile(_ != sym.owner)) {
+          for (intermediateClass <- clazz.info.baseClasses.takeWhile(_ != sym.owner, from = 1)) {
             val overriding = sym.overridingSymbol(intermediateClass)
             if (overriding.is(Deferred, butNot = AbsOverride) && !overriding.owner.is(Trait))
               report.error(

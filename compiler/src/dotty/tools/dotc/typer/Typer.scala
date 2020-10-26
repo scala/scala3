@@ -1684,13 +1684,11 @@ class Typer extends Namer
   }
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(using Context): Tree = {
-    tree.args match
-      case arg :: _ if arg.isTerm =>
-        if dependentEnabled then
-          return errorTree(tree, i"Not yet implemented: T(...)")
-        else
-          return errorTree(tree, dependentStr)
-      case _ =>
+    if tree.args.nonEmpty && tree.args.head.isTerm then
+      if dependentEnabled then
+        return errorTree(tree, i"Not yet implemented: T(...)")
+      else
+        return errorTree(tree, dependentStr)
 
     val tpt1 = withoutMode(Mode.Pattern) {
       typed(tree.tpt, AnyTypeConstructorProto)

@@ -1280,7 +1280,9 @@ class Namer { typer: Typer =>
           // TODO: Look only at member of supertype instead?
           lazy val schema = paramFn(WildcardType)
           val site = sym.owner.thisType
-          sym.owner.info.baseClasses.tail.foldLeft(NoType: Type) { (tp, cls) =>
+          val bcs = sym.owner.info.baseClasses
+          (1 until bcs.length).foldLeft(NoType: Type) { (tp, idx) =>
+            val cls = bcs(idx)
             def instantiatedResType(info: Type, tparams: List[Symbol], paramss: List[List[Symbol]]): Type = info match {
               case info: PolyType =>
                 if (info.paramNames.length == typeParams.length)
