@@ -55,7 +55,7 @@ trait ClassLikeSupport:
       }
       val selfSiangture: DSignature = typeForClass(classDef).dokkaType.asSignature
 
-      val graph = HierarchyGraph.empty ++ getSupertypesGraph(classDef, LinkToType(selfSiangture, classDef.symbol.dri, kindForClasslike(classDef.symbol)))
+      val graph = HierarchyGraph.withEdges(getSupertypesGraph(classDef, LinkToType(selfSiangture, classDef.symbol.dri, kindForClasslike(classDef.symbol))))
       val baseExtra = PropertyContainer.Companion.empty()
             .plus(ClasslikeExtension(classDef.getConstructorMethod, classDef.getCompanion))
             .plus(MemberExtension(

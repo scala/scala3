@@ -98,28 +98,15 @@ extension (s: Signature):
   def join(a: Signature): Signature = s ++ a
 
 case class LinkToType(signature: Signature, dri: DRI, kind: Kind)
-
-case class Vertex(id: Int, body: LinkToType)
-case class Edge(from: Vertex, to: Vertex)
-case class HierarchyGraph private (edges: Seq[Edge], private val nextId: Int):
-  def vertecies = edges.flatMap(edge => Seq(edge.from, edge.to)).distinct
-  def +(edge: (LinkToType, LinkToType)) = 
-    val from = vertecies.find(_.body == edge._1).getOrElse(Vertex(nextId, edge._1))
-    val to = vertecies.find(_.body == edge._2).getOrElse {
-      val id = if from.id == nextId then nextId + 1 else nextId
-      Vertex(id, edge._2)
-    }
-    val higherId = List(from.id, to.id).max
-    val newNextId = if higherId >= nextId then higherId + 1 else nextId 
-    HierarchyGraph(edges ++ Seq(Edge(from, to)), newNextId)
-
-  def ++(edges: Seq[(LinkToType, LinkToType)]) = edges.foldLeft(this) {
+case class HierarchyGraph(edges: Seq[(LinkToType, LinkToType)]):
+  def vertecies: Seq[LinkToType] = edges.flatten((a, b) => Seq(a, b)).distinct
+  val verteciesWithId: Map[LinkToType, Int] = vertecies.zipWithIndex.toMap
+  def +(edge: (LinkToType, LinkToType)): HierarchyGraph = HierarchyGraph((edges :+ edge).distinct)
+  def ++(edges: Seq[(LinkToType, LinkToType)]): HierarchyGraph = edges.foldLeft(this) {
     case (acc, edge) => acc + edge
   }
-
 object HierarchyGraph:
-  def empty = HierarchyGraph(Seq.empty, 0)
-  def withEdge(edge: (LinkToType, LinkToType)) = HierarchyGraph.empty + edge
+  def empty = HierarchyGraph(Seq.empty)
   def withEdges(edges: Seq[(LinkToType, LinkToType)]) = HierarchyGraph.empty ++ edges
 
 
