@@ -852,13 +852,15 @@ object List:
         i += 1
       acc
 
+  inline val DefaultInitialBufferSize = 16
+
   class Buffer[T]:
     thisBuffer =>
 
     private var len = 0
     private var elem: T = _
     private var elems: Arr = _
-    private var initialSize = 16
+    private var initialSize = DefaultInitialBufferSize
 
     def size = len
     def length = len
@@ -871,19 +873,22 @@ object List:
 
     /** pre: len > 0, n >= 1 */
     private def ensureSize(n: Int): Unit =
-      val capacity =
-        if elems == null then 1 else elems.length
-      if capacity < n then
-        if capacity == 1 then
-          Stats.record("Buffer.initial")
-          Stats.record("Buffer.initial size", n max initialSize)
-          elems = new Arr(n max initialSize)
+      if n > 1 then
+        if elems == null then
+          val newc = n max initialSize
+          if newc == DefaultInitialBufferSize then
+            Stats.record("Buffer.initial default")
+            Stats.record("Buffer.initial default size", newc)
+          else
+            Stats.record("Buffer.initial hinted")
+            Stats.record("Buffer.initial hinted size", newc)
+          elems = new Arr(newc)
           elems(0) = elem
-        else
-          val newLen = n max capacity * 2
+        else if n > elems.length then
+          val newc = n max elems.length * 2
           Stats.record("Buffer.double")
-          Stats.record("Buffer.double size", newLen)
-          val newElems = new Arr(newLen)
+          Stats.record("Buffer.double size", newc)
+          val newElems = new Arr(newc)
           System.arraycopy(elems, 0, newElems, 0, len)
           elems = newElems
 
@@ -963,7 +968,11 @@ object List:
     def toList: List[T] =
       if len == 0 then Nil
       else if len == 1 then single(elem)
-      else _fromArray(elems, 0, len)
+      else
+        val xs = _fromArray(elems, 0, len)
+        Stats.record(s"Buffer.toList precise fit = ${xs.length == len}")
+        Stats.record("Buffer.toList size", len)
+        xs
 
     def reversedToList: List[T] =
       if len <= 1 then toList
@@ -973,7 +982,10 @@ object List:
         while i < len do
           elems1(len - 1 - i) = elems(i)
           i += 1
-        fromArr(elems1)
+        val xs = fromArr(elems1)
+        Stats.record("Buffer.toList")
+        Stats.record("Buffer.toList size", len)
+        xs
 
     def takeRight(n: Int): List[T] =
       assert(len >= 0)
