@@ -26,7 +26,7 @@ object Async {
       case Inlined(_,_,Block(_,Apply(TypeApply(Select(q,n),tparams),List(param)))) =>
         param.tpe match
           case AppliedType(tp,tparams1) =>
-            val fType = summon[quoted.Type[F]]
+            val fType = Type[F]
             val ptp = tparams1.tail.head
             val ptpTree = Inferred(fType.unseal.tpe.appliedTo(ptp))
             '{ println(${Expr(ptpTree.show)}) }

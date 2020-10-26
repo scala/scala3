@@ -88,7 +88,7 @@ object Liftable {
   given ClassLiftable[T] as Liftable[Class[T]] = new Liftable[Class[T]] {
     def toExpr(x: Class[T]) = {
       import qctx.reflect._
-      Ref(defn.Predef_classOf).appliedToType(Type.typeConstructorOf(x)).seal.asInstanceOf[Expr[Class[T]]]
+      Ref(defn.Predef_classOf).appliedToType(TypeRepr.typeConstructorOf(x)).seal.asInstanceOf[Expr[Class[T]]]
     }
   }
 

@@ -11,7 +11,7 @@ object Macros {
       tup.toArray.toList.map {
         case r: Expr[_] =>
           s"Expr(${r.unseal.show})"
-        case r: quoted.Type[_] =>
+        case r: Type[_] =>
           s"Type(${r.unseal.show})"
         case r: String =>
           s"String($r)"

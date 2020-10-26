@@ -9,10 +9,10 @@ object Test {
     import qctx.reflect._
     import util._
 
-    val foo = Type.of[Foo[String]]
+    val foo = TypeRepr.of[Foo[String]]
     val symbol = foo.typeSymbol.field("a")
     val a = foo.select(symbol)
-    assert(a <:< Type.of[String])
+    assert(a <:< TypeRepr.of[String])
 
     '{???}
   }

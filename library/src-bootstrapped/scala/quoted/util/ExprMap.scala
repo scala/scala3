@@ -16,7 +16,7 @@ trait ExprMap {
         def localCtx(definition: Definition): Context = definition.symbol.localContext
         tree match {
           case tree: Term =>
-            transformTerm(tree, Type.of[Any])
+            transformTerm(tree, TypeRepr.of[Any])
           case tree: Definition =>
             transformDefinition(tree)
           case tree: Import =>
@@ -42,7 +42,7 @@ trait ExprMap {
         }
       }
 
-      def transformTermChildren(tree: Term, tpe: Type)(using ctx: Context): Term = tree match {
+      def transformTermChildren(tree: Term, tpe: TypeRepr)(using ctx: Context): Term = tree match {
         case Ident(name) =>
           tree
         case Select(qualifier, name) =>
@@ -53,17 +53,17 @@ trait ExprMap {
           tree
         case tree as Apply(fun, args) =>
           val MethodType(_, tpes, _) = fun.tpe.widen
-          Apply.copy(tree)(transformTerm(fun, Type.of[Any]), transformTerms(args, tpes))
+          Apply.copy(tree)(transformTerm(fun, TypeRepr.of[Any]), transformTerms(args, tpes))
         case TypeApply(fun, args) =>
-          TypeApply.copy(tree)(transformTerm(fun, Type.of[Any]), args)
+          TypeApply.copy(tree)(transformTerm(fun, TypeRepr.of[Any]), args)
         case _: Literal =>
           tree
         case New(tpt) =>
           New.copy(tree)(transformTypeTree(tpt))
         case Typed(expr, tpt) =>
           val tp = tpt.tpe match
-            case AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "<repeated>"), List(tp0: Type)) =>
-              Type.of[Seq].appliedTo(tp0)
+            case AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "<repeated>"), List(tp0: TypeRepr)) =>
+              TypeRepr.of[Seq].appliedTo(tp0)
             case tp => tp
           Typed.copy(tree)(transformTerm(expr, tp), transformTypeTree(tpt))
         case tree: NamedArg =>
@@ -74,7 +74,7 @@ trait ExprMap {
           Block.copy(tree)(transformStats(stats), transformTerm(expr, tpe))
         case If(cond, thenp, elsep) =>
           If.copy(tree)(
-            transformTerm(cond, Type.of[Boolean]),
+            transformTerm(cond, TypeRepr.of[Boolean]),
             transformTerm(thenp, tpe),
             transformTerm(elsep, tpe))
         case _: Closure =>
@@ -87,16 +87,16 @@ trait ExprMap {
           // Return.copy(tree)(transformTerm(expr, expr.tpe))
           tree
         case While(cond, body) =>
-          While.copy(tree)(transformTerm(cond, Type.of[Boolean]), transformTerm(body, Type.of[Any]))
+          While.copy(tree)(transformTerm(cond, TypeRepr.of[Boolean]), transformTerm(body, TypeRepr.of[Any]))
         case Try(block, cases, finalizer) =>
-          Try.copy(tree)(transformTerm(block, tpe), transformCaseDefs(cases, Type.of[Any]), finalizer.map(x => transformTerm(x, Type.of[Any])))
+          Try.copy(tree)(transformTerm(block, tpe), transformCaseDefs(cases, TypeRepr.of[Any]), finalizer.map(x => transformTerm(x, TypeRepr.of[Any])))
         case Repeated(elems, elemtpt) =>
           Repeated.copy(tree)(transformTerms(elems, elemtpt.tpe), elemtpt)
         case Inlined(call, bindings, expansion) =>
           Inlined.copy(tree)(call, transformDefinitions(bindings), transformTerm(expansion, tpe)/*()call.symbol.localContext)*/)
       }
 
-      def transformTerm(tree: Term, tpe: Type)(using ctx: Context): Term =
+      def transformTerm(tree: Term, tpe: TypeRepr)(using ctx: Context): Term =
         tree match
           case _: Closure =>
             tree
@@ -112,8 +112,8 @@ trait ExprMap {
 
       def transformTypeTree(tree: TypeTree)(using ctx: Context): TypeTree = tree
 
-      def transformCaseDef(tree: CaseDef, tpe: Type)(using ctx: Context): CaseDef =
-        CaseDef.copy(tree)(tree.pattern, tree.guard.map(x => transformTerm(x, Type.of[Boolean])), transformTerm(tree.rhs, tpe))
+      def transformCaseDef(tree: CaseDef, tpe: TypeRepr)(using ctx: Context): CaseDef =
+        CaseDef.copy(tree)(tree.pattern, tree.guard.map(x => transformTerm(x, TypeRepr.of[Boolean])), transformTerm(tree.rhs, tpe))
 
       def transformTypeCaseDef(tree: TypeCaseDef)(using ctx: Context): TypeCaseDef = {
         TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern), transformTypeTree(tree.rhs))
@@ -125,7 +125,7 @@ trait ExprMap {
       def transformDefinitions(trees: List[Definition])(using ctx: Context): List[Definition] =
         trees mapConserve (transformDefinition(_))
 
-      def transformTerms(trees: List[Term], tpes: List[Type])(using ctx: Context): List[Term] =
+      def transformTerms(trees: List[Term], tpes: List[TypeRepr])(using ctx: Context): List[Term] =
         var tpes2 = tpes // TODO use proper zipConserve
         trees mapConserve { x =>
           val tpe :: tail = tpes2
@@ -133,13 +133,13 @@ trait ExprMap {
           transformTerm(x, tpe)
         }
 
-      def transformTerms(trees: List[Term], tpe: Type)(using ctx: Context): List[Term] =
+      def transformTerms(trees: List[Term], tpe: TypeRepr)(using ctx: Context): List[Term] =
         trees.mapConserve(x => transformTerm(x, tpe))
 
       def transformTypeTrees(trees: List[TypeTree])(using ctx: Context): List[TypeTree] =
         trees mapConserve (transformTypeTree(_))
 
-      def transformCaseDefs(trees: List[CaseDef], tpe: Type)(using ctx: Context): List[CaseDef] =
+      def transformCaseDefs(trees: List[CaseDef], tpe: TypeRepr)(using ctx: Context): List[CaseDef] =
         trees mapConserve (x => transformCaseDef(x, tpe))
 
       def transformTypeCaseDefs(trees: List[TypeCaseDef])(using ctx: Context): List[TypeCaseDef] =

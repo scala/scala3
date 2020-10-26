@@ -12,7 +12,7 @@ trait Printer[R <: Reflection & Singleton] {
   def showTree(tree: Tree): String
 
   /** Show a String representation of a reflect.Type */
-  def showType(tpe: Type): String
+  def showType(tpe: TypeRepr): String
 
   /** Show a String representation of a reflect.Constant */
   def showConstant(const: Constant): String

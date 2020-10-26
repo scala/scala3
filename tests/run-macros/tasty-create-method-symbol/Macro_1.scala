@@ -12,8 +12,8 @@ object Macros {
       Symbol.currentOwner,
       "sym1",
       MethodType(List("a","b"))(
-        _ => List(Type.of[Int], Type.of[Int]),
-        _ => Type.of[Int]))
+        _ => List(TypeRepr.of[Int], TypeRepr.of[Int]),
+        _ => TypeRepr.of[Int]))
     assert(sym1.isDefDef)
     assert(sym1.name == "sym1")
     val sym1Statements : List[Statement] = List(
@@ -29,7 +29,7 @@ object Macros {
     val sym2 : Symbol = Symbol.newMethod(
       Symbol.currentOwner,
       "sym2",
-      ByNameType(Type.of[Int]))
+      ByNameType(TypeRepr.of[Int]))
     assert(sym2.isDefDef)
     assert(sym2.name == "sym2")
     val sym2Statements : List[Statement] = List(
@@ -46,7 +46,7 @@ object Macros {
       Symbol.currentOwner,
       "sym3",
       MethodType(List("a"))(
-        _ => List(Type.of[Int]),
+        _ => List(TypeRepr.of[Int]),
         mt => MethodType(List("b"))(
           _ => List(mt.param(0)),
           _ => mt.param(0))))
@@ -66,8 +66,8 @@ object Macros {
       Symbol.currentOwner,
       "sym4",
       MethodType(List("x"))(
-        _ => List(Type.of[Int]),
-        _ => Type.of[Int]))
+        _ => List(TypeRepr.of[Int]),
+        _ => TypeRepr.of[Int]))
     assert(sym4.isDefDef)
     assert(sym4.name == "sym4")
     val sym4Statements : List[Statement] = List(
@@ -88,8 +88,8 @@ object Macros {
       Symbol.currentOwner,
       "sym5",
       MethodType(List("x"))(
-        _ => List(Type.of[Int]),
-        _ => Type.of[Int=>Int]))
+        _ => List(TypeRepr.of[Int]),
+        _ => TypeRepr.of[Int=>Int]))
     assert(sym5.isDefDef)
     assert(sym5.name == "sym5")
     val sym5Statements : List[Statement] = List(
@@ -101,8 +101,8 @@ object Macros {
                 sym5,
                 "sym51",
                 MethodType(List("x"))(
-                  _ => List(Type.of[Int]),
-                  _ => Type.of[Int]))
+                  _ => List(TypeRepr.of[Int]),
+                  _ => TypeRepr.of[Int]))
               Block(
                 List(
                   DefDef(sym51, {
@@ -122,14 +122,14 @@ object Macros {
       Symbol.currentOwner,
       "sym6_1",
       MethodType(List("x"))(
-        _ => List(Type.of[Int]),
-        _ => Type.of[Int]))
+        _ => List(TypeRepr.of[Int]),
+        _ => TypeRepr.of[Int]))
     val sym6_2 : Symbol = Symbol.newMethod(
       Symbol.currentOwner,
       "sym6_2",
       MethodType(List("x"))(
-        _ => List(Type.of[Int]),
-        _ => Type.of[Int]))
+        _ => List(TypeRepr.of[Int]),
+        _ => TypeRepr.of[Int]))
     assert(sym6_1.isDefDef)
     assert(sym6_2.isDefDef)
     assert(sym6_1.name == "sym6_1")
@@ -169,7 +169,7 @@ object Macros {
       Symbol.currentOwner,
       "sym7",
       PolyType(List("T"))(
-        tp => List(TypeBounds(Type.of[Nothing], Type.of[Any])),
+        tp => List(TypeBounds(TypeRepr.of[Nothing], TypeRepr.of[Any])),
         tp => MethodType(List("t"))(
           _ => List(tp.param(0)),
           _ => tp.param(0))))
@@ -182,7 +182,7 @@ object Macros {
             Some(Typed(x, Inferred(t)))
         }
       }),
-      '{ assert(${ Apply(TypeApply(Ref(sym7), List(Inferred(Type.of[Int]))), List(Literal(Constant.Int(7)))).seal.asInstanceOf[Expr[Int]] } == 7) }.unseal)
+      '{ assert(${ Apply(TypeApply(Ref(sym7), List(Inferred(TypeRepr.of[Int]))), List(Literal(Constant.Int(7)))).seal.asInstanceOf[Expr[Int]] } == 7) }.unseal)
 
     Block(
       sym1Statements ++

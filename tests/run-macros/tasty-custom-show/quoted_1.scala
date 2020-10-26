@@ -42,7 +42,7 @@ object Macros {
       val reflect = qctx.reflect
       import qctx.reflect._
       def showTree(tree: Tree): String = "Tree"
-      def showType(tpe: Type): String = "Type"
+      def showType(tpe: TypeRepr): String = "TypeRepr"
       def showConstant(const: Constant): String = "Constant"
       def showSymbol(symbol: Symbol): String = "Symbol"
       def showFlags(flags: Flags): String = "Flags"

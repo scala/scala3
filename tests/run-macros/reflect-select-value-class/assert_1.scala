@@ -8,7 +8,7 @@ object scalatest {
     import qctx.reflect._
     import util._
 
-    def isImplicitMethodType(tp: Type): Boolean = tp match
+    def isImplicitMethodType(tp: TypeRepr): Boolean = tp match
       case tp: MethodType => tp.isImplicit
       case _ => false
 
