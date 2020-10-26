@@ -218,7 +218,7 @@ object Parsers {
     def isExprIntro: Boolean =
       in.canStartExprTokens.contains(in.token)
       && !in.isSoftModifierInModifierPosition
-      && !(isIdent(nme.extension) && followingIsExtension())
+      && !followingIsExtension()
 
     def isDefIntro(allowedMods: BitSet, excludedSoftModifiers: Set[TermName] = Set.empty): Boolean =
       in.token == AT
@@ -916,8 +916,13 @@ object Parsers {
       lookahead.isIdent(nme.as)
 
     def followingIsExtension() =
-      val next = in.lookahead.token
-      next == LBRACKET || next == LPAREN
+      if isIdent(nme.extension) then
+        val lookahead = in.lookahead
+        val next = lookahead.token
+        (next == LBRACKET || next == LPAREN)
+        // and there is at least a whitespace between the `extension` and the arguments
+        && lookahead.offset - in.offset > nme.extension.asSimpleName.length
+      else false
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -3743,7 +3748,7 @@ object Parsers {
           stats ++= importClause(IMPORT, mkImport(outermost))
         else if (in.token == EXPORT)
           stats ++= importClause(EXPORT, Export.apply)
-        else if isIdent(nme.extension) && followingIsExtension() then
+        else if followingIsExtension() then
           stats += extension()
         else if isDefIntro(modifierTokens) then
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
@@ -3797,7 +3802,7 @@ object Parsers {
           stats ++= importClause(IMPORT, mkImport())
         else if (in.token == EXPORT)
           stats ++= importClause(EXPORT, Export.apply)
-        else if isIdent(nme.extension) && followingIsExtension() then
+        else if followingIsExtension() then
           stats += extension()
         else if (isDefIntro(modifierTokensOrCase))
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
@@ -3879,7 +3884,7 @@ object Parsers {
           stats += expr(Location.InBlock)
         else if in.token == IMPLICIT && !in.inModifierPosition() then
           stats += closure(in.offset, Location.InBlock, modifiers(BitSet(IMPLICIT)))
-        else if isIdent(nme.extension) && followingIsExtension() then
+        else if followingIsExtension() then
           stats += extension()
         else if isDefIntro(localModifierTokens, excludedSoftModifiers = Set(nme.`opaque`)) then
           stats +++= localDef(in.offset)

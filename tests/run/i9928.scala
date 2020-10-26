@@ -3,7 +3,7 @@ trait Magic[F]:
 
 trait LowPrio:
   given Magic[String]:
-    extension(x: Int) def read: String =
+    extension (x: Int) def read: String =
       println("In string")
       s"$x"
 
