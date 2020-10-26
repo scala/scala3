@@ -228,7 +228,7 @@ object Erasure {
      *  fields (see TupleX). (ID)
      */
     private def safelyRemovableUnboxArg(tree: Tree)(using Context): Tree = tree match {
-      case Apply(fn, arg :: Nil)
+      case Apply(fn, List(arg))
       if isUnbox(fn.symbol) && defn.ScalaBoxedClasses().contains(arg.tpe.typeSymbol) =>
         arg
       case _ =>
@@ -236,7 +236,7 @@ object Erasure {
     }
 
     def constant(tree: Tree, const: Tree)(using Context): Tree =
-      (if (isPureExpr(tree)) const else Block(tree :: Nil, const)).withSpan(tree.span)
+      (if (isPureExpr(tree)) const else Block(List(tree), const)).withSpan(tree.span)
 
     final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
@@ -495,7 +495,7 @@ object Erasure {
                 MethodType(argTpes, resTpe), coord = tree.span.endPos)
               anonFun.info = transformInfo(anonFun, anonFun.info)
               def lambdaBody(refss: List[List[Tree]]) =
-                val refs :: Nil : @unchecked = refss
+                val List(refs) : @unchecked = refss
                 val expandedRefs = refs.map(_.withSpan(tree.span.endPos)) match
                   case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
                     argTpes.indices.map(n =>
@@ -668,7 +668,7 @@ object Erasure {
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
         if erasedPre.isAnyRef then
-          partialApply(ref(defn.runtimeMethodRef(tree.name.genericArrayOp)), qual :: Nil)
+          partialApply(ref(defn.runtimeMethodRef(tree.name.genericArrayOp)), List(qual))
         else if !(qual.tpe <:< erasedPre) then
           selectArrayMember(cast(qual, erasedPre), erasedPre)
         else
@@ -886,7 +886,7 @@ object Erasure {
 
         val ddef1 = untpd.cpy.DefDef(ddef)(
           tparams = Nil,
-          vparamss = vparams :: Nil,
+          vparamss = List(vparams),
           tpt = untpd.TypedSplice(TypeTree(restpe).withSpan(ddef.tpt.span)),
           rhs = rhs1)
         super.typedDefDef(ddef1, sym)

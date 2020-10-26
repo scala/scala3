@@ -182,7 +182,7 @@ object desugar {
       val setter = cpy.DefDef(vdef)(
         name     = valName.setterName,
         tparams  = Nil,
-        vparamss = (setterParam :: Nil) :: Nil,
+        vparamss = (List(setterParam)) :: Nil,
         tpt      = TypeTree(defn.UnitType),
         rhs      = setterRhs
       ).withMods((mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
@@ -628,7 +628,7 @@ object desugar {
 
     var parents1 = parents
     if (isEnumCase && parents.isEmpty)
-      parents1 = enumClassTypeRef :: Nil
+      parents1 = List(enumClassTypeRef)
     if (isNonEnumCase)
       parents1 = parents1 :+ scalaDot(str.Product.toTypeName) :+ scalaDot(nme.Serializable.toTypeName)
     if (isEnum)
@@ -643,7 +643,7 @@ object desugar {
     def companionDefs(parentTpt: Tree, defs: List[Tree]) = {
       val mdefs = moduleDef(
         ModuleDef(
-          className.toTermName, Template(emptyConstructor, parentTpt :: Nil, companionDerived, EmptyValDef, defs))
+          className.toTermName, Template(emptyConstructor, List(parentTpt), companionDerived, EmptyValDef, defs))
             .withMods(companionMods | Synthetic))
         .withSpan(cdef.span).toList
       if (companionDerived.nonEmpty)
@@ -719,7 +719,7 @@ object desugar {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
           val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
-          DefDef(methName, derivedTparams, (unapplyParam :: Nil) :: Nil, unapplyResTp, unapplyRHS)
+          DefDef(methName, derivedTparams, (List(unapplyParam)) :: Nil, unapplyResTp, unapplyRHS)
             .withMods(synthetic)
         }
         val toStringMeth =
@@ -1092,7 +1092,7 @@ object desugar {
       val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
       val matchExpr =
         if (tupleOptimizable) rhs
-        else Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), caseDef :: Nil)
+        else Match(makeSelector(rhs, MatchCheck.IrrefutablePatDef), List(caseDef))
       vars match {
         case Nil if !mods.is(Lazy) =>
           matchExpr
@@ -1203,9 +1203,9 @@ object desugar {
         case Tuple(args) if args.exists(_.isInstanceOf[Assign]) =>
           Apply(sel, args.mapConserve(assignToNamedArg))
         case Tuple(args) =>
-          Apply(sel, arg :: Nil).setApplyKind(ApplyKind.InfixTuple)
+          Apply(sel, List(arg)).setApplyKind(ApplyKind.InfixTuple)
         case _ =>
-          Apply(sel, arg :: Nil)
+          Apply(sel, List(arg))
 
     if op.name.isRightAssocOperatorName then
       makeOp(right, left, Span(op.span.start, right.span.end))
@@ -1286,7 +1286,7 @@ object desugar {
    */
   def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean)(using Context): Block =
     Block(
-      DefDef(nme.ANON_FUN, Nil, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
+      DefDef(nme.ANON_FUN, Nil, List(params), if (tpt == null) TypeTree() else tpt, body)
         .withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), if (isContextual) ContextualEmptyTree else EmptyTree))
 
@@ -1340,7 +1340,7 @@ object desugar {
         case (param, idx) =>
           DefDef(param.name, Nil, Nil, param.tpt, selector(idx)).withSpan(param.span)
       }
-    Function(param :: Nil, Block(vdefs, body))
+    Function(List(param), Block(vdefs, body))
   }
 
   def makeContextualFunction(formals: List[Tree], body: Tree, isErased: Boolean)(using Context): Function = {
@@ -1648,7 +1648,7 @@ object desugar {
           else
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
-              New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
+              New(ref(defn.RepeatedAnnot.typeRef), List(Nil)))
         }
         else {
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
@@ -1703,7 +1703,7 @@ object desugar {
           Apply(Select(tmpId, nme.isDefinedAt), excId),
           Apply(Select(tmpId, nme.apply), excId),
           Throw(excId))
-        Block(init :: Nil, test)
+        Block(List(init), test)
       else
         Apply(Select(handler, nme.apply), excId)
     CaseDef(excId, EmptyTree, rhs)
@@ -1736,16 +1736,16 @@ object desugar {
    */
   def refinedTypeToClass(parent: tpd.Tree, refinements: List[Tree])(using Context): TypeDef = {
     def stripToCore(tp: Type): List[Type] = tp match {
-      case tp: AppliedType => tp :: Nil
-      case tp: TypeRef if tp.symbol.isClass => tp :: Nil     // monomorphic class type
+      case tp: AppliedType => List(tp)
+      case tp: TypeRef if tp.symbol.isClass => List(tp)     // monomorphic class type
       case tp: TypeProxy => stripToCore(tp.underlying)
       case AndType(tp1, tp2) => stripToCore(tp1) ::: stripToCore(tp2)
-      case _ => defn.AnyType :: Nil
+      case _ => List(defn.AnyType)
     }
     val parentCores = stripToCore(parent.tpe)
     val untpdParent = TypedSplice(parent)
     val (classParents, self) =
-      if (parentCores.length == 1 && (parent.tpe eq parentCores.head)) (untpdParent :: Nil, EmptyValDef)
+      if (parentCores.length == 1 && (parent.tpe eq parentCores.head)) (List(untpdParent), EmptyValDef)
       else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
     val impl = Template(emptyConstructor, classParents, Nil, self, refinements)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)

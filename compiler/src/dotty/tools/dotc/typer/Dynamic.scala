@@ -26,7 +26,7 @@ object DynamicUnapply {
   def unapply(tree: tpd.Tree): Option[List[tpd.Tree]] = tree match
     case TypeApply(Select(qual, name), _) if name == nme.asInstanceOfPM =>
       unapply(qual)
-    case Apply(Apply(Select(selectable, fname), Literal(Constant(name)) :: ctag :: Nil), _ :: implicits)
+    case Apply(Apply(Select(selectable, fname), List(Literal(Constant(name)), ctag)), _ :: implicits)
     if fname == nme.applyDynamic && (name == "unapply" || name == "unapplySeq") =>
       Some(selectable :: ctag :: implicits)
     case _ =>
@@ -182,10 +182,10 @@ trait Dynamic {
       def addClassTags(tree: Tree): Tree = tree match
         case Apply(fn: Apply, args) =>
           cpy.Apply(tree)(addClassTags(fn), args)
-        case Apply(fn @ Select(_, nme.applyDynamic), nameArg :: _ :: Nil) =>
+        case Apply(fn @ Select(_, nme.applyDynamic), List(nameArg, _)) =>
           fn.tpe.widen match
             case mt: MethodType => mt.paramInfos match
-              case _ :: ctagsParam :: Nil
+              case List(_, ctagsParam)
               if ctagsParam.isRepeatedParam
                  && ctagsParam.argInfos.head.isRef(defn.ClassTagClass) =>
                   val ctagType = defn.ClassTagClass.typeRef.appliedTo(TypeBounds.empty)

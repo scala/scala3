@@ -27,7 +27,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   val synthesizedClassTag: SpecialHandler = (formal, span) =>
     formal.argInfos match
-      case arg :: Nil =>
+      case List(arg) =>
         fullyDefinedType(arg, "ClassTag argument", span) match
           case defn.ArrayOf(elemTp) =>
             val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
@@ -47,7 +47,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   val synthesizedTupleFunction: SpecialHandler = (formal, span) =>
     formal match
-      case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
+      case AppliedType(_, funArgs @ List(fun, tupled)) =>
         def functionTypeEqual(baseFun: Type, actualArgs: List[Type],
             actualRet: Type, expected: Type) =
           expected =:= defn.FunctionOf(actualArgs, actualRet,
@@ -65,7 +65,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           else if defn.isFunctionType(tupled) then
             // TupledFunction[?, (...) => R]
             tupled.dropDependentRefinement.dealias.argInfos match
-              case tupledArgs :: funRet :: Nil =>
+              case List(tupledArgs, funRet) =>
                 defn.tupleTypes(tupledArgs.dealias) match
                   case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
                     // TupledFunction[?, ((...funArgs...)) => funRet]
@@ -151,7 +151,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           canComparePredefinedClasses(cls1, cls2)))
 
     formal.argTypes match
-      case args @ (arg1 :: arg2 :: Nil) =>
+      case args @ List(arg1, arg2) =>
         List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", span))
         if canComparePredefined(arg1, arg2)
             || !Implicits.strictEquality && explore(validEqAnyArgs(arg1, arg2))
@@ -166,10 +166,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedValueOf: SpecialHandler = (formal, span) =>
 
     def success(t: Tree) =
-      New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
+      New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), List(t)).withSpan(span)
 
     formal.argInfos match
-      case arg :: Nil =>
+      case List(arg) =>
         fullyDefinedType(arg.dealias, "ValueOf argument", span).normalized match
           case ConstantType(c: Constant) =>
             success(Literal(c))
@@ -193,7 +193,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       parents = untpd.TypeTree(defn.ObjectType) :: Nil,
       derived = Nil,
       self = EmptyValDef,
-      body = monoTypeDef :: Nil
+      body = List(monoTypeDef)
     ).withAttachment(attachment, ())
     typer.typed(untpd.New(newImpl).withSpan(span))
 
@@ -242,7 +242,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           val modulePath = pathFor(mirroredType).withSpan(span)
           if module.info.classSymbol.is(Scala2x) then
             val mirrorType = mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, module.name, formal)
-            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, modulePath :: Nil)
+            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, List(modulePath))
             mirrorRef.cast(mirrorType)
           else
             val mirrorType = mirrorCore(defn.Mirror_SingletonClass, mirroredType, mirroredType, module.name, formal)

@@ -174,7 +174,7 @@ object Inliner {
       inlineCall(fun.appliedToArgss(argss).withSpan(unapp.span))(using ctx.withOwner(unappplySym))
     )
     val cdef = ClassDef(cls, DefDef(constr), List(unapply))
-    val newUnapply = Block(cdef :: Nil, New(cls.typeRef, Nil))
+    val newUnapply = Block(List(cdef), New(cls.typeRef, Nil))
     val newFun = newUnapply.select(unappplySym).withSpan(unapp.span)
     cpy.UnApply(unapp)(newFun, implicits, patterns)
   }
@@ -283,7 +283,7 @@ object Inliner {
         case _ => t
       }
 
-      val Apply(_, codeArg :: Nil) = tree
+      val Apply(_, List(codeArg)) = tree
       val underlyingCodeArg = stripTyped(codeArg.underlying)
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
@@ -616,7 +616,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
     // Special handling of `requireConst`
     callValueArgss match
-      case (arg :: Nil) :: Nil if inlinedMethod == defn.Compiletime_requireConst =>
+      case (List(arg)) :: Nil if inlinedMethod == defn.Compiletime_requireConst =>
         arg match
           case ConstantValue(_) | Inlined(_, Nil, Typed(ConstantValue(_), _)) => // ok
           case _ => report.error(em"expected a constant value but found: $arg", arg.srcPos)
@@ -633,7 +633,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         val constVal = tryConstValue
         return (
           if (constVal.isEmpty) ref(defn.NoneModule.termRef)
-          else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
+          else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), List(constVal))
         )
       }
 
@@ -703,7 +703,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           }
         case tree => tree
       },
-      oldOwners = inlinedMethod :: Nil,
+      oldOwners = List(inlinedMethod),
       newOwners = ctx.owner :: Nil
     )(using inlineCtx)
 
@@ -712,7 +712,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     val expansion = inliner.transform(rhsToInline)
 
     def issueError() = callValueArgss match {
-      case (msgArg :: Nil) :: Nil =>
+      case (List(msgArg)) :: Nil =>
         val message = msgArg.tpe match {
           case ConstantType(Constant(msg: String)) => msg
           case _ => s"A literal string is expected as an argument to `compiletime.error`. Got ${msgArg.show}"
@@ -1229,7 +1229,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           val selected0 = if (b) tree.thenp else tree.elsep
           val selected = if (selected0.isEmpty) tpd.Literal(Constant(())) else typed(selected0, pt)
           if (isIdempotentExpr(cond1)) selected
-          else Block(cond1 :: Nil, selected)
+          else Block(List(cond1), selected)
         case cond1 =>
           if (tree.isInline)
             errorTree(tree, em"""cannot reduce inline if

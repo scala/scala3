@@ -128,7 +128,7 @@ class Definitions {
           isErased = name.isErasedFunction)
         decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))
         denot.info =
-          ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: Nil, decls)
+          ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectType), decls)
       }
     }
     val flags0 = Trait | NoInits
@@ -420,8 +420,8 @@ class Definitions {
     @tu lazy val Object_notify: TermSymbol = enterMethod(ObjectClass, nme.notify_, MethodType(Nil, UnitType), Final)
     @tu lazy val Object_notifyAll: TermSymbol = enterMethod(ObjectClass, nme.notifyAll_, MethodType(Nil, UnitType), Final)
     @tu lazy val Object_wait: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(Nil, UnitType), Final)
-    @tu lazy val Object_waitL: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: Nil, UnitType), Final)
-    @tu lazy val Object_waitLI: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: IntType :: Nil, UnitType), Final)
+    @tu lazy val Object_waitL: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(List(LongType), UnitType), Final)
+    @tu lazy val Object_waitLI: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(List(LongType, IntType), UnitType), Final)
 
     def ObjectMethods: List[TermSymbol] = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
@@ -457,7 +457,7 @@ class Definitions {
   def NothingType: TypeRef = NothingClass.typeRef
   @tu lazy val NullClass: ClassSymbol = {
     val parent = if (ctx.explicitNulls) AnyType else ObjectType
-    enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parent :: Nil)
+    enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, List(parent))
   }
   def NullType: TypeRef = NullClass.typeRef
 
@@ -1013,7 +1013,7 @@ class Definitions {
 
   object PartialFunctionOf {
     def apply(arg: Type, result: Type)(using Context): Type =
-      PartialFunctionClass.typeRef.appliedTo(arg :: result :: Nil)
+      PartialFunctionClass.typeRef.appliedTo(List(arg, result))
     def unapply(pft: Type)(using Context): Option[(Type, List[Type])] =
       if (pft.isRef(PartialFunctionClass)) {
         val targs = pft.dealias.argInfos
@@ -1025,7 +1025,7 @@ class Definitions {
   object ArrayOf {
     def apply(elem: Type)(using Context): Type =
       if (ctx.erasedTypes) JavaArrayType(elem)
-      else ArrayType.appliedTo(elem :: Nil)
+      else ArrayType.appliedTo(List(elem))
     def unapply(tp: Type)(using Context): Option[Type] = tp.dealias match {
       case AppliedType(at, List(arg)) if at.isRef(ArrayType.symbol) => Some(arg)
       case _ => None
@@ -1036,7 +1036,7 @@ class Definitions {
     def apply(pat: Type, body: Type)(using Context): Type =
       MatchCaseClass.typeRef.appliedTo(pat, body)
     def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp match {
-      case AppliedType(tycon, pat :: body :: Nil) if tycon.isRef(MatchCaseClass) =>
+      case AppliedType(tycon, List(pat, body)) if tycon.isRef(MatchCaseClass) =>
         Some((pat, body))
       case _ =>
         None

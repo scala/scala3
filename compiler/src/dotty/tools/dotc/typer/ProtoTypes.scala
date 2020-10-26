@@ -442,7 +442,7 @@ object ProtoTypes {
     override def resultType(using Context): Type = resType
 
     def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
-      ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
+      ctx.typer.isApplicableType(tp, List(argType), resultType) || {
         resType match {
           case selProto @ SelectionProto(_: TermName, mbrType, _, _) =>
             ctx.typer.hasExtensionMethodNamed(tp, selProto.extensionName, argType, mbrType)
@@ -558,7 +558,7 @@ object ProtoTypes {
 
   def newTypeVar(bounds: TypeBounds)(using Context): TypeVar = {
     val poly = PolyType(DepParamName.fresh().toTypeName :: Nil)(
-        pt => bounds :: Nil,
+        pt => List(bounds),
         pt => defn.AnyType)
     constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true)
       ._2.head.tpe.asInstanceOf[TypeVar]

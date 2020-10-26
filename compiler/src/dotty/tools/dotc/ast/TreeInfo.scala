@@ -531,7 +531,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
         if (isIdempotentExpr(tree1)) Literal(value).withSpan(tree.span)
         else {
           def keepPrefix(pre: Tree) =
-            Block(pre :: Nil, Literal(value)).withSpan(tree.span)
+            Block(List(pre), Literal(value)).withSpan(tree.span)
 
           tree1 match {
             case Select(pre, _) if tree1.tpe.isInstanceOf[ConstantType] =>
@@ -746,15 +746,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case tdef: TypeDef =>
       val sym = tdef.symbol
       assert(sym.isClass)
-      if (cls == sym || cls == sym.linkedClass) tdef :: Nil
+      if (cls == sym || cls == sym.linkedClass) List(tdef)
       else Nil
     case vdef: ValDef =>
       val sym = vdef.symbol
       assert(sym.is(Module))
-      if (cls == sym.companionClass || cls == sym.moduleClass) vdef :: Nil
+      if (cls == sym.companionClass || cls == sym.moduleClass) List(vdef)
       else Nil
     case tree =>
-      tree :: Nil
+      List(tree)
   }
 
   /** The statement sequence that contains a definition of `sym`, or Nil
@@ -838,8 +838,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   final def splitAtSuper(constrStats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
     constrStats match {
-      case (sc: Apply) :: rest if sc.symbol.isConstructor => (sc :: Nil, rest)
-      case (block @ Block(_, sc: Apply)) :: rest if sc.symbol.isConstructor => (block :: Nil, rest)
+      case (sc: Apply) :: rest if sc.symbol.isConstructor => (List(sc), rest)
+      case (block @ Block(_, sc: Apply)) :: rest if sc.symbol.isConstructor => (List(block), rest)
       case stats => (Nil, stats)
     }
 
@@ -920,7 +920,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       tree.select(defn.Any_typeCast).appliedToType(AndType(tree.tpe, tpnn))
 
     def unapply(tree: tpd.TypeApply)(using Context): Option[tpd.Tree] = tree match
-      case TypeApply(Select(qual: RefTree, nme.asInstanceOfPM), arg :: Nil) =>
+      case TypeApply(Select(qual: RefTree, nme.asInstanceOfPM), List(arg)) =>
         arg.tpe match
           case AndType(ref, nn1) if qual.tpe eq ref =>
             qual.tpe.widen match

@@ -187,7 +187,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         case stat: DefDef if stat.symbol.isSetter =>
           cpy.DefDef(stat)(rhs = EmptyTree) :: Nil
         case stat =>
-          stat :: Nil
+          List(stat)
       }
     }
 
@@ -227,7 +227,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     def superCallOpt(baseCls: Symbol): List[Tree] = superCallsAndArgs.get(baseCls) match
       case Some((call, _, _)) =>
         if (defn.NotRuntimeClasses.contains(baseCls) || baseCls.isAllOf(NoInitsTrait)) Nil
-        else call :: Nil
+        else List(call)
       case None =>
         if baseCls.isAllOf(NoInitsTrait) || defn.NoInitClasses.contains(baseCls) || defn.isFunctionClass(baseCls) then
           Nil
@@ -285,7 +285,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     cpy.Template(impl)(
       constr =
-        if (cls.is(Trait)) cpy.DefDef(impl.constr)(vparamss = Nil :: Nil)
+        if (cls.is(Trait)) cpy.DefDef(impl.constr)(vparamss = List(Nil))
         else impl.constr,
       parents = impl.parents.map(p => TypeTree(p.tpe).withSpan(p.span)),
       body =

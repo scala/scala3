@@ -802,7 +802,7 @@ object PatternMatcher {
       def recur(plan: Plan): List[(List[Tree], Plan)] = plan match {
         case SeqPlan(testPlan @ TestPlan(EqualTest(tree), scrut, _, ons), tail)
         if scrut === scrutinee && !canFallThrough(ons) && isNewIntConst(tree) =>
-          (tree :: Nil, ons) :: recur(tail)
+          (List(tree), ons) :: recur(tail)
         case SeqPlan(AlternativesPlan(alts, ons), tail) =>
           (alts, ons) :: recur(tail)
         case _ =>
@@ -839,7 +839,7 @@ object PatternMatcher {
 
       val caseDefs = cases.map { (alts, ons) =>
         val pat = alts match {
-          case alt :: Nil => intLiteral(alt)
+          case List(alt) => intLiteral(alt)
           case Nil => Underscore(defn.IntType) // default case
           case _ => Alternative(alts.map(intLiteral))
         }
@@ -895,7 +895,7 @@ object PatternMatcher {
                 If(conditions, emit(plan.onSuccess), unitLiteral)
             }
           }
-          emitWithMashedConditions(plan :: Nil)
+          emitWithMashedConditions(List(plan))
         case LetPlan(sym, body) =>
           seq(ValDef(sym, initializer(sym).ensureConforms(sym.info)) :: Nil, emit(body))
         case LabeledPlan(label, expr) =>

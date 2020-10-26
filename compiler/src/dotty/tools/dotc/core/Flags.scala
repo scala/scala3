@@ -130,7 +130,7 @@ object Flags {
           if ((x.bits & (1L << kind)) != 0) flagName(idx)(kind) else ""
         val termFS = halfString(TERMindex)
         val typeFS = halfString(TYPEindex)
-        val strs = termFS :: (if (termFS == typeFS) Nil else typeFS :: Nil)
+        val strs = termFS :: (if (termFS == typeFS) Nil else List(typeFS))
         strs filter (_.nonEmpty)
       }
 

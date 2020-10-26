@@ -144,10 +144,10 @@ object Splicer {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
-        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
+        case Apply(Select(Apply(fn, List(quoted)), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
           // OK
 
-        case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.QuotedTypeModule_apply =>
+        case TypeApply(fn, List(quoted)) if fn.symbol == defn.QuotedTypeModule_apply =>
           // OK
 
         case Literal(Constant(value)) =>
@@ -180,7 +180,7 @@ object Splicer {
       }
 
       def checkIfValidStaticCall(tree: Tree)(using Env): Unit = tree match {
-        case closureDef(ddef @ DefDef(_, Nil, (ev :: Nil) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
+        case closureDef(ddef @ DefDef(_, Nil, (List(ev)) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
           checkIfValidStaticCall(ddef.rhs)(using summon[Env] + ev.symbol)
 
         case Block(stats, expr) =>
@@ -227,7 +227,7 @@ object Splicer {
       }
 
     def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
-      case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
+      case Apply(Select(Apply(TypeApply(fn, _), List(quoted)), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
         val quoted1 = quoted match {
           case quoted: Ident if quoted.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
@@ -237,7 +237,7 @@ object Splicer {
         }
         interpretQuote(quoted1)
 
-      case Apply(Select(TypeApply(fn, quoted :: Nil), _), _) if fn.symbol == defn.QuotedTypeModule_apply =>
+      case Apply(Select(TypeApply(fn, List(quoted)), _), _) if fn.symbol == defn.QuotedTypeModule_apply =>
         interpretTypeQuote(quoted)
 
       case Literal(Constant(value)) =>
@@ -270,7 +270,7 @@ object Splicer {
         else
           unexpectedTree(tree)
 
-      case closureDef((ddef @ DefDef(_, _, (arg :: Nil) :: Nil, _, _))) =>
+      case closureDef((ddef @ DefDef(_, _, (List(arg)) :: Nil, _, _))) =>
         (obj: AnyRef) => interpretTree(ddef.rhs)(using env.updated(arg.symbol, obj))
 
       // Interpret `foo(j = x, i = y)` which it is expanded to

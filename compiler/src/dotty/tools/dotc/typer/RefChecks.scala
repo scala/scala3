@@ -582,7 +582,7 @@ object RefChecks {
 
             matchingArity match {
               // So far so good: only one candidate method
-              case concrete :: Nil =>
+              case List(concrete) =>
                 val mismatches =
                   abstractParams.zip(concrete.info.firstParamTypes)
                     .filterNot { case (x, y) => x =:= y }
@@ -1383,7 +1383,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     private def checkTypeRefBounds(tp: Type, tree: Tree) = {
       var skipBounds = false
       tp match {
-        case AnnotatedType(ann :: Nil, underlying) if ann.symbol == UncheckedBoundsClass =>
+        case AnnotatedType(List(ann), underlying) if ann.symbol == UncheckedBoundsClass =>
           skipBounds = true
           underlying
         case TypeRef(pre, sym, args) =>

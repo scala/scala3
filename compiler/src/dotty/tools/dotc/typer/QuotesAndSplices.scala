@@ -243,12 +243,12 @@ trait QuotesAndSplices {
       val freshTypeBindingsBuff = List.Buffer[Tree]()
       val typePatBuf = List.Buffer[Tree]()
       override def transform(tree: Tree)(using Context) = tree match {
-        case Typed(Apply(fn, pat :: Nil), tpt) if fn.symbol.isExprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+        case Typed(Apply(fn, List(pat)), tpt) if fn.symbol.isExprSplice && !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           val tpt1 = transform(tpt) // Transform type bindings
-          val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), tpt1 :: Nil)
+          val exprTpt = AppliedTypeTree(TypeTree(defn.QuotedExprClass.typeRef), List(tpt1))
           val newSplice = ref(defn.InternalQuoted_exprSplice).appliedToType(tpt1.tpe).appliedTo(Typed(pat, exprTpt))
           transform(newSplice)
-        case Apply(TypeApply(fn, targs), Apply(sp, pat :: Nil) :: args :: Nil) if fn.symbol == defn.InternalQuotedPatterns_patternHigherOrderHole =>
+        case Apply(TypeApply(fn, targs), List(Apply(sp, List(pat)), args)) if fn.symbol == defn.InternalQuotedPatterns_patternHigherOrderHole =>
           args match // TODO support these patterns. Possibly using scala.quoted.util.Var
             case SeqLiteral(args, _) =>
               for arg <- args; if arg.symbol.is(Mutable) do
@@ -260,7 +260,7 @@ trait QuotesAndSplices {
             val pat1 = if (patType eq patType1) pat else pat.withType(patType1)
             patBuf += pat1
           }
-        case Apply(fn, pat :: Nil) if fn.symbol.isExprSplice =>
+        case Apply(fn, List(pat)) if fn.symbol.isExprSplice =>
           try ref(defn.InternalQuotedPatterns_patternHole.termRef).appliedToType(tree.tpe).withSpan(tree.span)
           finally {
             val patType = pat.tpe.widen
@@ -319,7 +319,7 @@ trait QuotesAndSplices {
         if (variance == -1)
           tdef.symbol.addAnnotation(Annotation(New(ref(defn.InternalQuotedPatterns_fromAboveAnnot.typeRef)).withSpan(tdef.span)))
         val bindingType = getBinding(tdef.symbol).symbol.typeRef
-        val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, bindingType :: Nil)
+        val bindingTypeTpe = AppliedType(defn.QuotedTypeClass.typeRef, List(bindingType))
         val sym = newPatternBoundSymbol(nameOfSyntheticGiven, bindingTypeTpe, tdef.span, flags = ImplicitTerm)(using ctx0)
         buff += Bind(sym, untpd.Ident(nme.WILDCARD).withType(bindingTypeTpe)).withSpan(tdef.span)
         super.transform(tdef)
@@ -462,8 +462,8 @@ trait QuotesAndSplices {
       else ref(defn.QuotedTypeModule_apply.termRef).appliedToTypeTree(shape).select(nme.apply).appliedTo(qctx)
     UnApply(
       fun = ref(unapplySym.termRef).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
-      implicits = quotedPattern :: qctx :: Nil,
-      patterns = splicePat :: Nil,
+      implicits = List(quotedPattern, qctx),
+      patterns = List(splicePat),
       proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
   }
 }

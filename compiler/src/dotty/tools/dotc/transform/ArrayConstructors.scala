@@ -27,7 +27,7 @@ class ArrayConstructors extends MiniPhase {
       tpd.newArray(elemType, tree.tpe, tree.span, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 
     if (tree.fun.symbol eq defn.ArrayConstructor) {
-      val TypeApply(tycon, targ :: Nil) = tree.fun
+      val TypeApply(tycon, List(targ)) = tree.fun
       expand(targ.tpe, tree.args)
     }
     else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModule.moduleClass) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {

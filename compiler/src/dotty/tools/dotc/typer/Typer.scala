@@ -733,11 +733,11 @@ class Typer extends Namer
 
     def ascription(tpt: Tree, isWildcard: Boolean) = {
       val underlyingTreeTpe =
-        if (isRepeatedParamType(tpt)) TypeTree(defn.SeqType.appliedTo(pt :: Nil))
+        if (isRepeatedParamType(tpt)) TypeTree(defn.SeqType.appliedTo(List(pt)))
         else tpt
 
       val expr1 =
-        if (isRepeatedParamType(tpt)) tree.expr.withType(defn.SeqType.appliedTo(pt :: Nil))
+        if (isRepeatedParamType(tpt)) tree.expr.withType(defn.SeqType.appliedTo(List(pt)))
         else if (isWildcard) tree.expr.withType(tpt.tpe)
         else typed(tree.expr, tpt.tpe.widenSkolem)
       assignType(cpy.Typed(tree)(expr1, tpt), underlyingTreeTpe)
@@ -2949,7 +2949,7 @@ class Typer extends Namer
       def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
       val alts = altDenots.map(altRef)
       resolveOverloaded(alts, pt) match {
-        case alt :: Nil =>
+        case List(alt) =>
           readaptSimplified(tree.withType(alt))
         case Nil =>
           // If alternative matches, there are still two ways to recover:
@@ -2965,7 +2965,7 @@ class Typer extends Namer
               tryInsertApplyOrImplicit(tree, pt, locked)(noMatches)
             case _ =>
               alts.filter(_.info.isParameterless) match {
-                case alt :: Nil => readaptSimplified(tree.withType(alt))
+                case List(alt) => readaptSimplified(tree.withType(alt))
                 case _ =>
                   if (altDenots exists (_.info.paramInfoss == ListOfNil))
                     typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt, locked)

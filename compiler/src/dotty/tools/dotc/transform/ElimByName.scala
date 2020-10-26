@@ -54,7 +54,7 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
     applyIfFunction(tree, tree)
 
   override def transformTypeApply(tree: TypeApply)(using Context): Tree = tree match {
-    case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
+    case TypeApply(Select(_, nme.asInstanceOf_), List(arg)) =>
       // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
       // See pos/t296.scala
       applyIfFunction(tree, arg)

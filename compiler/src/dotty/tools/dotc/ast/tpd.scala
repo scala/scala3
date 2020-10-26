@@ -355,7 +355,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
     val forwarders = fns.zipped(methNames).map(forwarder)
     val cdef = ClassDef(cls, DefDef(constr), forwarders)
-    Block(cdef :: Nil, New(cls.typeRef, Nil))
+    Block(List(cdef), New(cls.typeRef, Nil))
   }
 
   def Import(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import =
@@ -453,18 +453,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  kind for the given element type in `elemTpe`. No type arguments or
    *  `length` arguments are given.
    */
-  def newArray(elemTpe: Type, returnTpe: Type, span: Span, dims: JavaSeqLiteral)(using Context): Tree = {
+  def newArray(elemTpe: Type, returnTpe: Type, span: Span, dims: JavaSeqLiteral)(using Context): Tree =
     val elemClass = elemTpe.classSymbol
-    def newArr =
+    val newArr =
       ref(defn.DottyArraysModule).select(defn.newArrayMethod).withSpan(span)
-
-    if (!ctx.erasedTypes) {
-      assert(!TypeErasure.isGeneric(elemTpe), elemTpe) //needs to be done during typer. See Applications.convertNewGenericArray
-      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
-    }
-    else  // after erasure
-      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
-  }
+    val instArr =
+      if ctx.erasedTypes then newArr
+      else
+        assert(!TypeErasure.isGeneric(elemTpe), elemTpe) //needs to be done during typer. See Applications.convertNewGenericArray
+        newArr.appliedToTypeTrees(List(TypeTree(returnTpe)))
+    instArr.appliedToArgs(List(clsOf(elemTpe), clsOf(returnTpe), dims)).withSpan(span)
 
   /** The wrapped array method name for an array of type elemtp */
   def wrapArrayMethodName(elemtp: Type)(using Context): TermName = {
@@ -480,7 +478,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def wrapArray(tree: Tree, elemtp: Type)(using Context): Tree =
     val wrapper = ref(defn.getWrapVarargsArrayModule)
       .select(wrapArrayMethodName(elemtp))
-      .appliedToTypes(if (elemtp.isPrimitiveValueType) Nil else elemtp :: Nil)
+      .appliedToTypes(if (elemtp.isPrimitiveValueType) Nil else List(elemtp))
     val actualElem = wrapper.tpe.widen.firstParamTypes.head
     wrapper.appliedTo(tree.ensureConforms(actualElem))
 
@@ -805,7 +803,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         else
           //println(i"change owner ${from :: froms}%, % ==> $tos of $tree")
           TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
-      if (from == to) tree else loop(from, Nil, to :: Nil)
+      if (from == to) tree else loop(from, Nil, List(to))
     }
 
     /**
@@ -895,7 +893,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** A unary apply node with given argument: `tree(arg)` */
     def appliedTo(arg: Tree)(using Context): Apply =
-      appliedToArgs(arg :: Nil)
+      appliedToArgs(List(arg))
 
     /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
     def appliedTo(arg: Tree, args: Tree*)(using Context): Apply =
@@ -920,7 +918,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToType(targ: Type)(using Context): Tree =
-      appliedToTypes(targ :: Nil)
+      appliedToTypes(List(targ))
 
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
     def appliedToTypes(targs: List[Type])(using Context): Tree =
@@ -928,7 +926,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToTypeTree(targ: Tree)(using Context): Tree =
-      appliedToTypeTrees(targ :: Nil)
+      appliedToTypeTrees(List(targ))
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
     def appliedToTypeTrees(targs: List[Tree])(using Context): Tree =
@@ -943,7 +941,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (that.tpe.widen.isRef(defn.NothingClass))
         Literal(Constant(false))
       else
-        applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
+        applyOverloaded(tree, nme.EQ, List(that), Nil, defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(using Context): Tree = tp.dealias match {
@@ -1181,7 +1179,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (exprPurity(tree) >= level) within(tree)
     else {
       val vdef = SyntheticValDef(TempResultName.fresh(), tree)
-      Block(vdef :: Nil, within(Ident(vdef.namedType)))
+      Block(List(vdef), within(Ident(vdef.namedType)))
     }
 
   /** Let bind `tree` unless `tree` is at least idempotent */
@@ -1310,14 +1308,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val selectTree = Select(noPosExpr, sym.name).withSpan(id.span)
       rename match {
         case None =>
-          selectTree :: Nil
+          List(selectTree)
         case Some(rename) =>
           // Get the type of the symbol that is actually selected, and construct a select
           // node with the new name and the type of the real symbol.
           val name = if (sym.name.isTypeName) rename.name.toTypeName else rename.name
           val actual = Select(noPosExpr, sym.name)
           val renameTree = Select(noPosExpr, name).withSpan(rename.span).withType(actual.tpe)
-          selectTree :: renameTree :: Nil
+          List(selectTree, renameTree)
       }
     }
 
@@ -1342,7 +1340,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** Creates the nested pairs type tree repesentation of the type trees in `ts` */
   def nestedPairsTypeTree(ts: List[Tree])(using Context): Tree =
-    ts.foldRight(TypeTree(defn.EmptyTupleModule.termRef): Tree)((x, acc) => AppliedTypeTree(TypeTree(defn.PairClass.typeRef), x :: acc :: Nil))
+    ts.foldRight(TypeTree(defn.EmptyTupleModule.termRef): Tree)((x, acc) => AppliedTypeTree(TypeTree(defn.PairClass.typeRef), List(x, acc)))
 
   /** Replaces all positions in `tree` with zero-extent positions */
   private def focusPositions(tree: Tree)(using Context): Tree = {

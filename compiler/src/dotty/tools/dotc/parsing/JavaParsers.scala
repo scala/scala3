@@ -734,7 +734,7 @@ object JavaParsers {
 //          case _            => Pair(ident, ident)
 //        }
         val imp = atSpan(start) { Import(qual, ImportSelector(ident) :: Nil) }
-        imp :: Nil
+        List(imp)
       }
     }
 

@@ -128,14 +128,14 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def transformTemplate(tree: Template)(using Context): Tree = {
     val cls = ctx.owner.asClass
 
-    val constr @ DefDef(nme.CONSTRUCTOR, Nil, vparams :: Nil, _, EmptyTree) = tree.constr
+    val constr @ DefDef(nme.CONSTRUCTOR, Nil, List(vparams), _, EmptyTree) = tree.constr
 
     // Produce aligned accessors and constructor parameters. We have to adjust
     // for any outer parameters, which are last in the sequence of original
     // parameter accessors but come first in the constructor parameter list.
     val accessors = cls.paramAccessors.filterNot(x => x.isSetter)
     val vparamsWithOuterLast = vparams match {
-      case vparam :: rest if vparam.name == nme.OUTER => rest ::: vparam :: Nil
+      case vparam :: rest if vparam.name == nme.OUTER => rest ::: List(vparam)
       case _ => vparams
     }
     val paramSyms = vparamsWithOuterLast map (_.symbol)

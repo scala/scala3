@@ -582,7 +582,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     val siteStr = importInfo.site.show
     val exprStr = if siteStr.endsWith(".type") then siteStr.dropRight(5) else siteStr
     val selectorStr = importInfo.selectors match
-      case sel :: Nil if sel.renamed.isEmpty && sel.bound.isEmpty =>
+      case List(sel) if sel.renamed.isEmpty && sel.bound.isEmpty =>
         if sel.isGiven then "given" else sel.name.show
       case _ => "{...}"
     s"import $exprStr.$selectorStr"

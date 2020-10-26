@@ -49,7 +49,7 @@ class ExpandSAMs extends MiniPhase {
           val tpe1 = checkRefinements(tpe, fn)
           val List(samDenot) = tpe1.possibleSamMethods
           cpy.Block(tree)(stats,
-              AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
+              AnonClass(List(tpe1), fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
       }
     case _ =>
       tree
@@ -133,7 +133,7 @@ class ExpandSAMs extends MiniPhase {
               defaultValue)
           val unchecked = selector.annotated(New(ref(defn.UncheckedAnnot.typeRef)))
           cpy.Match(tree)(unchecked, cases :+ defaultCase)
-            .subst(param.symbol :: Nil, pfParam :: Nil)
+            .subst(param.symbol :: Nil, List(pfParam))
               // Needed because  a partial function can be written as:
               // param => param match { case "foo" if foo(param) => param }
               // And we need to update all references to 'param'
@@ -160,7 +160,7 @@ class ExpandSAMs extends MiniPhase {
         val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)(using ctx.withOwner(isDefinedAtFn))))
         val applyOrElseDef = transformFollowingDeep(DefDef(applyOrElseFn, applyOrElseRhs(_)(using ctx.withOwner(applyOrElseFn))))
         val pfDef = ClassDef(pfSym, DefDef(constr), List(isDefinedAtDef, applyOrElseDef))
-        cpy.Block(tree)(pfDef :: Nil, New(pfSym.typeRef, Nil))
+        cpy.Block(tree)(List(pfDef), New(pfSym.typeRef, Nil))
 
       case _ =>
         val found = tpe.baseType(defn.FunctionClass(1))

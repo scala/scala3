@@ -136,19 +136,19 @@ object Annotations {
       apply(cls, Nil)
 
     def apply(cls: ClassSymbol, arg: Tree)(using Context): Annotation =
-      apply(cls, arg :: Nil)
+      apply(cls, List(arg))
 
     def apply(cls: ClassSymbol, arg1: Tree, arg2: Tree)(using Context): Annotation =
-      apply(cls, arg1 :: arg2 :: Nil)
+      apply(cls, List(arg1, arg2))
 
     def apply(cls: ClassSymbol, args: List[Tree])(using Context): Annotation =
       apply(cls.typeRef, args)
 
     def apply(atp: Type, arg: Tree)(using Context): Annotation =
-      apply(atp, arg :: Nil)
+      apply(atp, List(arg))
 
     def apply(atp: Type, arg1: Tree, arg2: Tree)(using Context): Annotation =
-      apply(atp, arg1 :: arg2 :: Nil)
+      apply(atp, List(arg1, arg2))
 
     def apply(atp: Type, args: List[Tree])(using Context): Annotation =
       apply(New(atp, args))

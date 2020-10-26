@@ -747,7 +747,7 @@ trait Checking {
         sym.srcPos)
 
     sym.info.stripPoly match {
-      case mt @ MethodType(_ :: Nil)
+      case mt @ MethodType(List(_))
       if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's a conversion
         check()
       case AppliedType(tycon, _)

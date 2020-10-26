@@ -138,16 +138,16 @@ object Texts {
     def ~ (that: Text): Text =
       if (this.isEmpty) that
       else if (that.isEmpty) this
-      else Fluid(that :: this :: Nil)
+      else Fluid(List(that, this))
 
     def ~~ (that: Text): Text =
       if (this.isEmpty) that
       else if (that.isEmpty) this
-      else Fluid(that :: Str(" ") :: this :: Nil)
+      else Fluid(List(that, Str(" "), this))
 
     def over (that: Text): Vertical =
       if (this.isVertical) Vertical(that :: this.relems)
-      else Vertical(that :: this :: Nil)
+      else Vertical(List(that, this))
   }
 
   object Text {

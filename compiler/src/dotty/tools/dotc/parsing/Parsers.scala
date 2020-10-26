@@ -1462,7 +1462,7 @@ object Parsers {
         else infixType()
 
       in.token match {
-        case ARROW | CTXARROW => functionRest(t :: Nil)
+        case ARROW | CTXARROW => functionRest(List(t))
         case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
@@ -2303,7 +2303,7 @@ object Parsers {
       colonAtEOLOpt()
       possibleTemplateStart(isNew = true)
       parents match {
-        case parent :: Nil if !in.isNestedStart =>
+        case List(parent) if !in.isNestedStart =>
           reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
         case _ =>
           New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
@@ -2988,7 +2988,7 @@ object Parsers {
 
       def checkVarArgsRules(vparams: List[ValDef]): Unit = vparams match {
         case Nil =>
-        case _ :: Nil if !prefix =>
+        case List(_) if !prefix =>
         case vparam :: rest =>
           vparam.tpt match {
             case PostfixOp(_, op) if op.name == tpnme.raw.STAR =>
@@ -3205,7 +3205,7 @@ object Parsers {
           in.nextToken()
           id :: commaSeparated(() => termIdent())
         case _ =>
-          first :: Nil
+          List(first)
       }
       def emptyType = TypeTree().withSpan(Span(in.lastOffset))
       val tpt =
@@ -3833,7 +3833,7 @@ object Parsers {
             else "refinement cannot be a class or trait"
           case _ =>
             "this kind of definition cannot be a refinement"
-        if problem.isEmpty then tree :: Nil
+        if problem.isEmpty then List(tree)
         else { syntaxError(problem, tree.span); Nil }
 
       while (!isStatSeqEnd) {

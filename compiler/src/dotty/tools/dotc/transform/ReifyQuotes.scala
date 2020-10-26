@@ -191,7 +191,7 @@ class ReifyQuotes extends MacroTransform {
     protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree =
       if (level > 1) {
         val body1 = nested(isQuote = false).transform(body)(using spliceContext)
-        cpy.Apply(splice)(splice.fun, body1 :: Nil)
+        cpy.Apply(splice)(splice.fun, List(body1))
       }
       else {
         assert(level == 1, "unexpected top splice outside quote")

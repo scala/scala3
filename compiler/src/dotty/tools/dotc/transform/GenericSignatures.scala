@@ -265,7 +265,7 @@ object GenericSignatures {
           methodResultSig(restpe)
 
         case AndType(tp1, tp2) =>
-          jsig(intersectionDominator(tp1 :: tp2 :: Nil), primitiveOK = primitiveOK)
+          jsig(intersectionDominator(List(tp1, tp2)), primitiveOK = primitiveOK)
 
         case ci: ClassInfo =>
           def polyParamSig(tparams: List[TypeParamInfo]): Unit =
@@ -367,7 +367,7 @@ object GenericSignatures {
 
   private def hiBounds(bounds: TypeBounds)(using Context): List[Type] = bounds.hi.widenDealias match {
     case AndType(tp1, tp2) => hiBounds(tp1.bounds) ::: hiBounds(tp2.bounds)
-    case tp => tp :: Nil
+    case tp => List(tp)
   }
 
 

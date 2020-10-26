@@ -47,7 +47,7 @@ import Signature._
  *   - tpnme.WILDCARD       Arises from a Wildcard or error type
  *   - tpnme.Uninstantiated Arises from an uninstantiated type variable
  */
-case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
+case class Signature(paramsSig: scala.List[ParamSig], resSig: TypeName) {
 
   /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
   private def consistent(name1: ParamSig, name2: ParamSig) =

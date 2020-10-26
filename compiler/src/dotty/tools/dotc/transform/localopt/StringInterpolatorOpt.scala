@@ -135,7 +135,7 @@ class StringInterpolatorOpt extends MiniPhase {
             if (!str.const.stringValue.isEmpty) concat(str)
           }
           result
-        case Apply(intp, args :: Nil) if sym.eq(defn.StringContext_f) =>
+        case Apply(intp, List(args)) if sym.eq(defn.StringContext_f) =>
           val partsStr = StringContextChecker.checkedParts(intp, args).mkString
           resolveConstructor(defn.StringOps.typeRef, List(Literal(Constant(partsStr))))
             .select(nme.format)
@@ -144,7 +144,7 @@ class StringInterpolatorOpt extends MiniPhase {
         // library, so we need to expand them manually.
         // sc.s(args)    -->   standardInterpolator(processEscapes, args, sc.parts)
         // sc.raw(args)  -->   standardInterpolator(x => x,         args, sc.parts)
-        case Apply(intp, args :: Nil) =>
+        case Apply(intp, List(args)) =>
           val pre = intp match {
             case Select(pre, _) => pre
             case intp: Ident => tpd.desugarIdentPrefix(intp)

@@ -340,7 +340,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         }
 
         def appliedTo(arg: Term): Term =
-          self.appliedToArgs(arg :: Nil)
+          self.appliedToArgs(List(arg))
         def appliedTo(arg: Term, args: Term*): Term =
           self.appliedToArgs(arg :: args.toList)
         def appliedToArgs(args: List[Term]): Apply =
@@ -350,7 +350,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def appliedToNone: Apply =
           self.appliedToArgs(Nil)
         def appliedToType(targ: TypeRepr): Term =
-          self.appliedToTypes(targ :: Nil)
+          self.appliedToTypes(List(targ))
         def appliedToTypes(targs: List[TypeRepr]): Term =
           self.appliedToTypeTrees(targs map (Inferred(_)))
         def appliedToTypeTrees(targs: List[TypeTree]): Term =
@@ -680,7 +680,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         case block: tpd.Block if block.stats.size > 1 =>
           def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
             case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
-              tpd.Block((x :: Nil).tolist, y) :: normalizeInnerLoops(xs)
+              tpd.Block((List(x)).tolist, y) :: normalizeInnerLoops(xs)
             case x :: xs => x :: normalizeInnerLoops(xs)
             case Nil => Nil
           }
@@ -748,7 +748,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       def apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block =
         tpd.Lambda(tpe, xs => rhsFn(xs.toScalaList))
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
-        case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+        case Block((ddef @ DefDef(_, _, List(params), _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
           Some((params, body))
         case _ => None
@@ -2484,7 +2484,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       def ScalaPrimitiveValueClasses: List[Symbol] =
         UnitClass :: BooleanClass :: ScalaNumericValueClasses
       def ScalaNumericValueClasses: List[Symbol] =
-        ByteClass :: ShortClass :: IntClass :: LongClass :: FloatClass :: DoubleClass :: CharClass :: Nil
+        List(ByteClass, ShortClass, IntClass, LongClass, FloatClass, DoubleClass, CharClass)
     end defn
 
     type Flags = dotc.core.Flags.FlagSet

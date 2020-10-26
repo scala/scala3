@@ -25,6 +25,6 @@ package object printing {
   /** @pre `nel` is non-empty list */
   extension [A](nel: List[A]):
     private[printing] def intersperse(a: A): List[A] =
-      nel.flatMap(a :: _ :: Nil).tail
+      nel.flatMap(b => List(a, b)).tail
 
 }

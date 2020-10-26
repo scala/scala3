@@ -200,7 +200,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         else if defn.isFunctionClass(cls) then toTextFunction(args, cls.name.isContextFunction, cls.name.isErasedFunction)
         else if tp.tupleArity >= 2 && !printDebug then toTextTuple(tp.tupleElementTypes)
         else if isInfixType(tp) then
-          val l :: r :: Nil = args
+          val List(l, r) = args
           val opName = tyconName(tycon)
           toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
         else Str("")
@@ -822,7 +822,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
     val Template(constr @ DefDef(_, tparams, vparamss, _, _), _, self, _) = impl
     val tparamsTxt = withEnclosingDef(constr) { tparamsText(tparams) }
-    val primaryConstrs = if (constr.rhs.isEmpty) Nil else constr :: Nil
+    val primaryConstrs = if (constr.rhs.isEmpty) Nil else List(constr)
     val prefix: Text =
       if (vparamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
       else {

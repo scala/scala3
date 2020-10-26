@@ -6,7 +6,7 @@ package object tools {
   // risks failing.
   dotty.tools.dotc.core.handleRecursive
 
-  val ListOfNil: List[Nil.type] = Nil :: Nil
+  val ListOfNil: List[Nil.type] = List(Nil)
 
   /** True if two lists have the same length.  Since calling length on linear sequences
    *  is O(n), it is an inadvisable way to test length equality.

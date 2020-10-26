@@ -38,7 +38,7 @@ object TypeUtils {
      *  or -1 if this is not a tuple type.
      */
     def tupleArity(using Context): Int = self match {
-      case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
+      case AppliedType(tycon, List(_, tl)) if tycon.isRef(defn.PairClass) =>
         val arity = tl.tupleArity
         if (arity < 0) arity else arity + 1
       case self: SingletonType =>

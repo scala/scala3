@@ -105,7 +105,7 @@ trait FullParameterization {
       val thisParamType = mapClassParams(clazz.classInfo.selfType)
       val firstArgType = if (liftThisType) thisParamType & clazz.thisType else thisParamType
       MethodType(nme.SELF :: Nil)(
-          mt => firstArgType :: Nil,
+          mt => List(firstArgType),
           mt => mapClassParams(origResult).substThisUnlessStatic(clazz, mt.newParamRef(0)))
     }
 
@@ -211,8 +211,8 @@ trait FullParameterization {
           case tree: This if tree.symbol == origClass => thisRef
           case tree => rewireTree(tree, Nil) orElse tree
         },
-        oldOwners = origMeth :: Nil,
-        newOwners = derived :: Nil
+        oldOwners = List(origMeth),
+        newOwners = List(derived)
       ).transform(originalDef.rhs)
     })
 

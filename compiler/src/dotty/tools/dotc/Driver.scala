@@ -103,7 +103,7 @@ class Driver {
         else
           assert(name.endsWith(".tasty"))
           TastyFileUtil.getClassName(path) match
-            case Some(res) => res :: Nil
+            case Some(res) => List(res)
             case _ =>
               report.error(s"Could not load classname from: $name")
               Nil

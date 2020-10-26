@@ -1072,7 +1072,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val ldef = DefDef(symbol.asTerm, rhs)
         def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw.toString)
         if (isCaseLabel(symbol)) ldef
-        else Block(ldef :: Nil, Apply(Ident(symbol.termRef), Nil))
+        else Block(List(ldef), Apply(Ident(symbol.termRef), Nil))
 
       case IMPORTtree =>
         setSym()

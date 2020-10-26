@@ -440,10 +440,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   def Block(stat: Tree, expr: Tree)(implicit src: SourceFile): Block =
-    Block(stat :: Nil, expr)
+    Block(List(stat), expr)
 
   def Apply(fn: Tree, arg: Tree)(implicit src: SourceFile): Apply =
-    Apply(fn, arg :: Nil)
+    Apply(fn, List(arg))
 
   def ensureApplied(tpt: Tree)(implicit src: SourceFile): Tree = tpt match {
     case _: Apply => tpt
@@ -451,7 +451,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   def AppliedTypeTree(tpt: Tree, arg: Tree)(implicit src: SourceFile): AppliedTypeTree =
-    AppliedTypeTree(tpt, arg :: Nil)
+    AppliedTypeTree(tpt, List(arg))
 
   def TypeTree(tpe: Type)(using Context): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
@@ -485,17 +485,17 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal)
 
   def makeTupleOrParens(ts: List[Tree])(using Context): Tree = ts match {
-    case t :: Nil => Parens(t)
+    case List(t) => Parens(t)
     case _ => Tuple(ts)
   }
 
   def makeTuple(ts: List[Tree])(using Context): Tree = ts match {
-    case t :: Nil => t
+    case List(t) => t
     case _ => Tuple(ts)
   }
 
   def makeAndType(left: Tree, right: Tree)(using Context): AppliedTypeTree =
-    AppliedTypeTree(ref(defn.andType.typeRef), left :: right :: Nil)
+    AppliedTypeTree(ref(defn.andType.typeRef), List(left, right))
 
   def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers, isBackquoted: Boolean = false)(using Context): ValDef = {
     val vdef = ValDef(pname, tpe, EmptyTree)

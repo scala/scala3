@@ -139,9 +139,9 @@ class ImportInfo(symf: Context ?=> Symbol,
               || ctx.mode.is(Mode.FindHiddenImplicits)  // consider both implicits and givens for error reporting
               || ref.symbol.is(Implicit)                // a wildcard `_` import only pulls in implicits
             val bound = if isGivenImport then givenBound else wildcardBound
-            if isEligible && ref.denot.asSingleDenotation.matchesImportBound(bound) then ref :: Nil
+            if isEligible && ref.denot.asSingleDenotation.matchesImportBound(bound) then List(ref)
             else Nil
-          else if renamed == ref.name then ref :: Nil
+          else if renamed == ref.name then List(ref)
           else RenamedImplicitRef(ref, renamed) :: Nil
       }
     else

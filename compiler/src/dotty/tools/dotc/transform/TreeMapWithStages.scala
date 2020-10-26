@@ -68,8 +68,8 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   /** Transform the quote `quote` which contains the quoted `body`. */
   protected def transformQuotation(body: Tree, quote: Tree)(using Context): Tree =
     quote match {
-      case quote: Apply => cpy.Apply(quote)(quote.fun, body :: Nil)
-      case quote: TypeApply => cpy.TypeApply(quote)(quote.fun, body :: Nil)
+      case quote: Apply => cpy.Apply(quote)(quote.fun, List(body))
+      case quote: TypeApply => cpy.TypeApply(quote)(quote.fun, List(body))
     }
 
   /** Transform the expression splice `splice` which contains the spliced `body`. */

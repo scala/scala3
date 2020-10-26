@@ -223,7 +223,7 @@ trait ImportSuggestions:
         .map(mbr => TermRef(site, mbr.symbol))
         .filter(ref =>
           ref.symbol.is(ExtensionMethod)
-          && isApplicableMethodRef(ref, argType :: Nil, WildcardType))
+          && isApplicableMethodRef(ref, List(argType), WildcardType))
         .headOption
 
     try

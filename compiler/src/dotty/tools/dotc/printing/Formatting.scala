@@ -235,7 +235,7 @@ object Formatting {
 
     val toExplain: List[(String, Recorded)] = seen.tolist.flatMap { kvs =>
       val res: List[(String, Recorded)] = kvs match {
-        case (key, entry :: Nil) =>
+        case (key, List(entry)) =>
           if (needsExplanation(entry)) (key.str, entry) :: Nil else Nil
         case (key, entries) =>
           for (alt <- entries) yield {

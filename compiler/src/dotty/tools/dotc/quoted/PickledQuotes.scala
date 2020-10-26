@@ -163,12 +163,12 @@ object PickledQuotes {
     quotePickling.println(i"**** pickling quote of\n$tree")
     val pickler = new TastyPickler(defn.RootClass)
     val treePkl = pickler.treePkl
-    treePkl.pickle(tree :: Nil)
+    treePkl.pickle(List(tree))
     treePkl.compactify()
     if tree.span.exists then
       val positionWarnings = List.Buffer[String]()
       new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots)
-        .picklePositions(tree :: Nil, positionWarnings)
+        .picklePositions(List(tree), positionWarnings)
       positionWarnings.foreach(report.warning(_))
 
     val pickled = pickler.assembleParts()

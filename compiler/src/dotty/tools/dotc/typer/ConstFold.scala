@@ -33,7 +33,7 @@ object ConstFold:
         xt.tpe.widenTermRefExpr.normalized match
           case ConstantType(x) =>
             tree.args match
-              case yt :: Nil =>
+              case List(yt) =>
                 yt.tpe.widenTermRefExpr.normalized match
                   case ConstantType(y) => tree.withFoldedType(foldBinop(op, x, y))
                   case _ => tree

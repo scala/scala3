@@ -114,7 +114,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
       def icall = record(i"method/${sym.fullName}", tree)
       def rhs1 = tree.rhs match
         case rhs @ Block(stats, expr) => cpy.Block(rhs)(icall :: stats, expr)
-        case _: Match | _: If | _: Try | _: Labeled => cpy.Block(tree.rhs)(icall :: Nil, tree.rhs)
+        case _: Match | _: If | _: Try | _: Labeled => cpy.Block(tree.rhs)(List(icall), tree.rhs)
         case rhs => rhs
       cpy.DefDef(tree)(rhs = rhs1)
     else tree

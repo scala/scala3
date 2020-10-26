@@ -1023,7 +1023,7 @@ object PrepJSInterop {
       case Nil =>
         report.error(badAnnotCountMsg, pos)
         None
-      case result :: Nil =>
+      case List(result) =>
         Some(result)
       case _ =>
         // Annotations are stored in reverse order, which we re-reverse now

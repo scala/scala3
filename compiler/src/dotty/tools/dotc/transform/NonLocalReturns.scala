@@ -80,7 +80,7 @@ class NonLocalReturns extends MiniPhase {
         Throw(ref(ex)))
     val catches = CaseDef(pat, EmptyTree, rhs) :: Nil
     val tryCatch = Try(body, catches, EmptyTree)
-    Block(keyDef :: Nil, tryCatch)
+    Block(List(keyDef), tryCatch)
   }
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =

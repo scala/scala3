@@ -126,7 +126,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
 
       // begin hoistSuperArg
       arg match {
-        case Apply(fn, arg1 :: Nil) if fn.symbol == defn.cbnArg =>
+        case Apply(fn, List(arg1)) if fn.symbol == defn.cbnArg =>
           cpy.Apply(arg)(fn, hoistSuperArg(arg1, cdef) :: Nil)
         case _ if arg.existsSubTree(needsHoist) =>
           val superMeth = newSuperArgMethod(arg.tpe)

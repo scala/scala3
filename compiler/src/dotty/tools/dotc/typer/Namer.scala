@@ -643,7 +643,7 @@ class Namer { typer: Typer =>
   def lateEnter(tree: Tree)(using Context): Context = {
     val saved = lateCompile
     lateCompile = true
-    try index(tree :: Nil) finally lateCompile = saved
+    try index(List(tree)) finally lateCompile = saved
   }
 
   /** The type bound on wildcard imports of an import list, with special values

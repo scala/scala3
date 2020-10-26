@@ -151,7 +151,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     val ts = Utility.parseAttributeValue(s, text(span, _), entityRef(span, _))
     ts match {
       case Nil      => TypedSplice(tpd.ref(defn.NilModule).withSpan(span))
-      case t :: Nil => t
+      case List(t) => t
       case _        => makeXMLseq(span, ts.toSeq)
     }
   }
@@ -241,7 +241,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     val (attrResult, nsResult) =
       (attributes.isEmpty, namespaces.isEmpty) match {
         case (true ,  true)   => (Nil, Nil)
-        case (true , false)   => (scopeDef :: Nil, tmpScopeDef :: namespaces)
+        case (true , false)   => (List(scopeDef), tmpScopeDef :: namespaces)
         case (false,  true)   => (metadataDef :: attributes, Nil)
         case (false, false)   => (scopeDef :: metadataDef :: attributes, tmpScopeDef :: namespaces)
       }

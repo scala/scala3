@@ -157,7 +157,7 @@ trait SpaceLogic {
         case Nil => Prod(tp, fun, Nil, full) :: Nil
         case ss  =>
           ss.foldLeft(List[Prod]()) { (acc, flat) =>
-            if (acc.isEmpty) flat.map(s => Prod(tp, fun, s :: Nil, full))
+            if (acc.isEmpty) flat.map(s => Prod(tp, fun, List(s), full))
             else for (Prod(tp, fun, ss, full) <- acc; s <- flat) yield Prod(tp, fun, ss :+ s, full)
           }
       }
@@ -371,7 +371,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       Typ(pat.tpe, false)
 
     case Ident(nme.WILDCARD) =>
-      Or(Typ(erase(pat.tpe.stripAnnots), false) :: constantNullSpace :: Nil)
+      Or(List(Typ(erase(pat.tpe.stripAnnots), false), constantNullSpace))
 
     case Ident(_) | Select(_, _) =>
       Typ(erase(pat.tpe.stripAnnots), false)
@@ -507,7 +507,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
     val unapplyTp = scalaConsType.classSymbol.companionModule.termRef.select(nme.unapply)
     items.foldRight(zero: Space) { (pat, acc) =>
       val consTp = scalaConsType.appliedTo(pats.head.tpe.widen)
-      Prod(consTp, unapplyTp, project(pat) :: acc :: Nil, true)
+      Prod(consTp, unapplyTp, List(project(pat), acc), true)
     }
   }
 
@@ -586,7 +586,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
             val getTp = resTp.select(nme.get).finalResultType.widen
-            if (argLen == 1) getTp :: Nil
+            if (argLen == 1) List(getTp)
             else productSelectorTypes(getTp, unappSym.srcPos)
           }
         }
@@ -720,7 +720,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         val tps = signature(unappTp, tp, ss.length)
         ss.zip(tps).flatMap {
           case (sp : Prod, tp) => sp.tp -> tp :: genConstraint(sp)
-          case (Typ(tp1, _), tp2) => tp1 -> tp2 :: Nil
+          case (Typ(tp1, _), tp2) => List(tp1 -> tp2)
           case _ => impossible
         }
       case Typ(_, _) => Nil

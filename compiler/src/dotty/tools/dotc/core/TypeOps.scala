@@ -368,7 +368,7 @@ object TypeOps:
     }
 
     def close(tp: Type) = RecType.closeOver { rt =>
-      tp.subst(cls :: Nil, rt.recThis :: Nil).substThis(cls, rt.recThis)
+      tp.subst(List(cls), rt.recThis :: Nil).substThis(cls, rt.recThis)
     }
 
     def isRefinable(sym: Symbol) = !sym.is(Private) && !sym.isConstructor

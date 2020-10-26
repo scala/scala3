@@ -265,7 +265,7 @@ class JUnitBootstrappers extends MiniPhase {
         ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef)) :: Nil,
         tests.foldRight {
           val tp = junitdefn.NoSuchMethodExceptionType
-          Throw(resolveConstructor(tp, nameParamRef :: Nil)): Tree
+          Throw(resolveConstructor(tp, List(nameParamRef))): Tree
         } { (test, next) =>
           If(Literal(Constant(test.name.toString)).select(defn.Any_equals).appliedTo(nameParamRef),
             genTestInvocation(testClass, test, ref(castInstanceSym)),

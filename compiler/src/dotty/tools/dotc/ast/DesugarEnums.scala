@@ -97,10 +97,10 @@ object DesugarEnums {
     Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
 
   private def ArrayLiteral(values: List[Tree], tpt: Tree)(using Context): Tree =
-    val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), tpt :: Nil)
-    val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), tpt :: Nil), clazzOf :: Nil)
+    val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), List(tpt))
+    val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), List(tpt)), List(clazzOf))
     val apply   = Select(ref(defn.ArrayModule.termRef), nme.apply)
-    Apply(Apply(TypeApply(apply, tpt :: Nil), values), ctag :: Nil)
+    Apply(Apply(TypeApply(apply, List(tpt)), values), List(ctag))
 
   /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *
@@ -137,10 +137,10 @@ object DesugarEnums {
       val defaultCase =
         val msg = Apply(Select(Literal(Constant("enum case not found: ")), nme.PLUS), Ident(nme.nameDollar))
         CaseDef(Ident(nme.WILDCARD), EmptyTree,
-          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(msg :: Nil))))
+          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(List(msg)))))
       val stringCases = enumValues.map(enumValue =>
         CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, enumValue)
-      ) ::: defaultCase :: Nil
+      ) ::: List(defaultCase)
       Match(Ident(nme.nameDollar), stringCases)
     val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.nameDollar, defn.StringType) :: Nil),
       TypeTree(), valuesOfBody)
@@ -148,13 +148,13 @@ object DesugarEnums {
 
     privateValuesDef ::
     valuesDef ::
-    valueOfDef :: Nil
+    List(valueOfDef)
   }
 
   private def enumLookupMethods(constraints: EnumConstraints)(using Context): List[Tree] =
     def scaffolding: List[Tree] =
       if constraints.isEnumeration then enumScaffolding(constraints.enumCases.map(_._2)) else Nil
-    def valueCtor: List[Tree] = if constraints.requiresCreator then enumValueCreator :: Nil else Nil
+    def valueCtor: List[Tree] = if constraints.requiresCreator then List(enumValueCreator) else Nil
     def fromOrdinal: Tree =
       def throwArg(ordinal: Tree) =
         Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(Select(ordinal, nme.toString_) :: Nil)))
@@ -177,7 +177,7 @@ object DesugarEnums {
       // it seems `enumClass` might be `NoSymbol`; in this case we provide no scaffolding.
       Nil
     else
-      scaffolding ::: valueCtor ::: fromOrdinal :: Nil
+      scaffolding ::: valueCtor ::: List(fromOrdinal)
   end enumLookupMethods
 
   /** A creation method for a value of enum type `E`, which is defined as follows:
@@ -312,7 +312,7 @@ object DesugarEnums {
     if (!enumClass.exists) EmptyTree
     else if (enumClass.typeParams.nonEmpty) {
       val parent = interpolatedEnumParent(span)
-      val impl = Template(emptyConstructor, parent :: Nil, Nil, EmptyValDef, Nil)
+      val impl = Template(emptyConstructor, List(parent), Nil, EmptyValDef, Nil)
       expandEnumModule(name, impl, mods, definesLookups, span)
     }
     else {

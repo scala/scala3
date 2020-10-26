@@ -132,7 +132,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
 
         // binary operation
-        case rarg :: Nil =>
+        case List(rarg) =>
           val isShift = isShiftOp(code)
           resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg))
 
@@ -1079,7 +1079,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           bc.genStartConcat
           for (elem <- concatenations) {
             val loadedElem = elem match {
-              case Apply(boxOp, value :: Nil) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
+              case Apply(boxOp, List(value)) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
@@ -1184,9 +1184,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             primitives.getPrimitive(tree, larg.tpe) == ScalaPrimitivesOps.CONCAT)
           liftStringConcat(larg) ::: rarg
         else
-          tree :: Nil
+          List(tree)
       case _ =>
-        tree :: Nil
+        List(tree)
     }
 
     /* Emit code to compare the two top-most stack values using the 'op' operator. */

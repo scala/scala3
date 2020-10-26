@@ -319,7 +319,7 @@ object Denotations {
       info.member(name).requiredSymbol("method", name, this, argTypes) { x =>
         x.is(Method) && {
           x.info.paramInfoss match {
-            case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
+            case List(paramInfos) => paramInfos.corresponds(argTypes)(_ =:= _)
             case _ => false
           }
         }
@@ -599,7 +599,7 @@ object Denotations {
     inline def orElse(inline that: SingleDenotation): SingleDenotation = if (this.exists) this else that
 
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
-      if (exists && p(symbol)) this :: Nil else Nil
+      if (exists && p(symbol)) List(this) else Nil
 
     def suchThat(p: Symbol => Boolean)(using Context): SingleDenotation =
       if (exists && p(symbol)) this else NoDenotation

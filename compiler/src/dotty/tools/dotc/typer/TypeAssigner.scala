@@ -99,7 +99,7 @@ trait TypeAssigner {
             val whatCanNot = alts match {
               case Nil =>
                 em"$name cannot"
-              case sym :: Nil =>
+              case List(sym) =>
                 em"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
               case _ =>
                 em"none of the overloaded alternatives named $name can"
@@ -200,7 +200,7 @@ trait TypeAssigner {
     val p = nme.primitive
     val tp = tree.name match {
       case p.arrayApply => MethodType(defn.IntType :: Nil, arrayElemType)
-      case p.arrayUpdate => MethodType(defn.IntType :: arrayElemType :: Nil, defn.UnitType)
+      case p.arrayUpdate => MethodType(List(defn.IntType, arrayElemType), defn.UnitType)
       case p.arrayLength => MethodType(Nil, defn.IntType)
 
       // Note that we do not need to handle calls to Array[T]#clone() specially:
@@ -249,7 +249,7 @@ trait TypeAssigner {
       case qtype @ ThisType(_) =>
         val cls = qtype.cls
         def findMixinSuper(site: Type): Type = site.parents filter (_.typeSymbol.name == mix.name) match {
-          case p :: Nil =>
+          case List(p) =>
             p.typeConstructor
           case Nil =>
             errorType(SuperQualMustBeParent(mix, cls), tree.srcPos)

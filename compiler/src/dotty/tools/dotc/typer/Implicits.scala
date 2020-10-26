@@ -1702,7 +1702,7 @@ final class SearchRoot extends SearchHistory:
 
             val res = resMap(tree)
 
-            val blk = Block(classDef :: inst :: Nil, res).withSpan(span)
+            val blk = Block(List(classDef, inst), res).withSpan(span)
 
             success.copy(tree = blk)(success.tstate, success.gstate)
           }
@@ -1722,7 +1722,7 @@ sealed class TermRefSet(using Context):
       case null =>
         elems.put(sym, pre)
       case prefix: Type =>
-        if !(prefix =:= pre) then elems.put(sym, pre :: prefix :: Nil)
+        if !(prefix =:= pre) then elems.put(sym, List(pre, prefix))
       case prefixes: List[Type] =>
         if !prefixes.exists(_ =:= pre) then elems.put(sym, pre :: prefixes)
 

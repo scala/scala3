@@ -110,7 +110,7 @@ abstract class AccessProxies {
           case getterInfo: LambdaType =>
             getterInfo.derivedLambdaType(resType = toSetterInfo(getterInfo.resType))
           case _ =>
-            MethodType(getterInfo :: Nil, defn.UnitType)
+            MethodType(List(getterInfo), defn.UnitType)
         }
         val setterInfo = toSetterInfo(getter.info.widenExpr)
         val setter = accessorSymbol(getter.owner, setterName, setterInfo, accessed)

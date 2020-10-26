@@ -266,7 +266,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               // need to check instantiability here, because the type of the New itself
               // might be a type constructor.
               Checking.checkInstantiable(tree.tpe, nu.srcPos)
-              withNoCheckNews(nu :: Nil)(app1)
+              withNoCheckNews(List(nu))(app1)
             case _ =>
               app1
         case UnApply(fun, implicits, patterns) =>

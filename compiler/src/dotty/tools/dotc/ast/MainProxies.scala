@@ -91,13 +91,13 @@ object MainProxies {
       val handler = CaseDef(
         Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
         EmptyTree,
-        Apply(ref(defn.CLP_showError.termRef), errVar :: Nil))
-      val body = Try(call, handler :: Nil, EmptyTree)
+        Apply(ref(defn.CLP_showError.termRef), List(errVar)))
+      val body = Try(call, List(handler), EmptyTree)
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
-      val mainMeth = DefDef(nme.main, Nil, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
+      val mainMeth = DefDef(nme.main, Nil, (List(mainArg)) :: Nil, TypeTree(defn.UnitType), body)
         .withFlags(JavaStatic)
-      val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
+      val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, List(mainMeth))
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
         .withFlags(Final)
       if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil

@@ -38,7 +38,7 @@ class FunctionalInterfaces extends MiniPhase {
     if (defn.isSpecializableFunction(cls, implParamTypes, implResultType) &&
         !ctx.settings.scalajs.value) { // never do anything for Scala.js, but do this test as late as possible not to slow down Scala/JVM
       val names = atPhase(erasurePhase) { cls.typeParams.map(_.name) }
-      val interfaceName = (functionName ++ implParamTypes.length.toString).specializedFor(implParamTypes ::: implResultType :: Nil, names, Nil, Nil)
+      val interfaceName = (functionName ++ implParamTypes.length.toString).specializedFor(implParamTypes ::: List(implResultType), names, Nil, Nil)
 
       // symbols loaded from classpath aren't defined in periods earlier than when they where loaded
       val interface = atPhase(typerPhase)(requiredClass(functionPackage ++ interfaceName))

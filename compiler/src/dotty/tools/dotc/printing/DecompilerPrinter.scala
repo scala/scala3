@@ -19,9 +19,9 @@ class DecompilerPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
 
   override protected def blockToText[T >: Untyped](block: Block[T]): Text =
     block match {
-      case Block(DefDef(_, _, _, _, Trees.If(cond, Trees.Block(body :: Nil, _), _)) :: Nil, y) if y.symbol.name == nme.WHILE_PREFIX =>
+      case Block(DefDef(_, _, _, _, Trees.If(cond, Trees.Block(List(body), _), _)) :: Nil, y) if y.symbol.name == nme.WHILE_PREFIX =>
         keywordText("while") ~ " (" ~ toText(cond) ~ ")" ~ toText(body)
-      case Block(DefDef(_, _, _, _, Trees.Block(body :: Nil, Trees.If(cond, _, _))) :: Nil, y) if y.symbol.name == nme.DO_WHILE_PREFIX =>
+      case Block(DefDef(_, _, _, _, Trees.Block(List(body), Trees.If(cond, _, _))) :: Nil, y) if y.symbol.name == nme.DO_WHILE_PREFIX =>
         keywordText("do") ~ toText(body) ~ keywordText("while") ~ " (" ~ toText(cond) ~ ")"
       case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, _: Closure[T]) =>
         withEnclosingDef(meth) {

@@ -26,7 +26,7 @@ class ArrayApply extends MiniPhase {
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
     if (tree.symbol.name == nme.apply && tree.symbol.owner == defn.ArrayModule.moduleClass) // Is `Array.apply`
       tree.args match {
-        case StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: ct :: Nil
+        case List(StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)), ct)
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>
           seqLit
 
@@ -46,7 +46,7 @@ class ArrayApply extends MiniPhase {
    *  - `ClassTag.XYZ` for primitive types
    */
   private def elideClassTag(ct: Tree)(using Context): Boolean = ct match {
-    case Apply(_, rc :: Nil) if ct.symbol == defn.ClassTagModule_apply =>
+    case Apply(_, List(rc)) if ct.symbol == defn.ClassTagModule_apply =>
       rc match {
         case _: Literal => true // ClassTag.apply(classOf[XYZ])
         case rc: RefTree if rc.name == nme.TYPE_ =>

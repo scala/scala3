@@ -94,7 +94,7 @@ class TryCatchPatterns extends MiniPhase {
       Some(CaseDef(
           Bind(fallbackSelector, Underscore(fallbackSelector.info).withSpan(span)),
           EmptyTree,
-          transformFollowing(Match(sel, patternMatchCases ::: rethrow :: Nil)))
+          transformFollowing(Match(sel, patternMatchCases ::: List(rethrow))))
       )
     }
 }

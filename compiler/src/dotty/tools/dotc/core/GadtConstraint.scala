@@ -32,7 +32,7 @@ sealed abstract class GadtConstraint extends Showable {
    * @see [[ConstraintHandling.addToConstraint]]
    */
   def addToConstraint(syms: List[Symbol])(using Context): Boolean
-  def addToConstraint(sym: Symbol)(using Context): Boolean = addToConstraint(sym :: Nil)
+  def addToConstraint(sym: Symbol)(using Context): Boolean = addToConstraint(List(sym))
 
   /** Further constrain a symbol already present in the constraint. */
   def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean

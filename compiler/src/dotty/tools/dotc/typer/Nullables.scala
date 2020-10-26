@@ -85,7 +85,7 @@ object Nullables:
     def unapply(tree: Tree)(using Context): Option[(Tree, Boolean)] = tree match
       case Apply(Select(l, _), Literal(Constant(null)) :: Nil) =>
         testSym(tree.symbol, l)
-      case Apply(Select(Literal(Constant(null)), _), r :: Nil) =>
+      case Apply(Select(Literal(Constant(null)), _), List(r)) =>
         testSym(tree.symbol, r)
       case _ =>
         None
@@ -318,7 +318,7 @@ object Nullables:
             case CompareNull(TrackedRef(ref), testEqual) =>
               if testEqual then setConditional(Set(), Set(ref))
               else setConditional(Set(ref), Set())
-            case Apply(Select(x, _), y :: Nil) =>
+            case Apply(Select(x, _), List(y)) =>
               val xc = x.notNullConditional
               val yc = y.notNullConditional
               if !(xc.isEmpty && yc.isEmpty) then

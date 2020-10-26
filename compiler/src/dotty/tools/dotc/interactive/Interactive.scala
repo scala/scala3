@@ -276,7 +276,7 @@ object Interactive {
   }
 
   def contextOfPath(path: List[Tree])(using Context): Context = path match {
-    case Nil | _ :: Nil =>
+    case Nil | List(_) =>
       ctx.fresh
     case nested :: encl :: rest =>
       val outer = contextOfPath(encl :: rest)

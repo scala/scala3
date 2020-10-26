@@ -87,7 +87,7 @@ object Completion {
 
       case Import(expr, selectors) :: _ =>
         selectors.find(_.span.contains(pos.span)).map { selector =>
-          completionPrefix(selector :: Nil, pos)
+          completionPrefix(List(selector), pos)
         }.getOrElse("")
 
       case (ref: untpd.RefTree) :: _ =>
@@ -164,7 +164,7 @@ object Completion {
      */
     private def description(symbols: List[Symbol])(using Context): String =
       symbols match {
-        case sym :: Nil =>
+        case List(sym) =>
           if (sym.isType) sym.showFullName
           else sym.info.widenTermRefExpr.show
 

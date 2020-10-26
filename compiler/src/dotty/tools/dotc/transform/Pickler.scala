@@ -67,14 +67,14 @@ class Pickler extends Phase {
         beforePickling(cls) = tree.show
         picklers(cls) = pickler
       val treePkl = pickler.treePkl
-      treePkl.pickle(tree :: Nil)
+      treePkl.pickle(List(tree))
       val positionWarnings = List.Buffer[String]()
       val pickledF = inContext(ctx.fresh) {
         Future {
           treePkl.compactify()
           if tree.span.exists then
             new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots)
-              .picklePositions(tree :: Nil, positionWarnings)
+              .picklePositions(List(tree), positionWarnings)
 
           if !ctx.settings.YdropComments.value then
             new CommentPickler(pickler, treePkl.buf.addrOfTree, treePkl.docString)

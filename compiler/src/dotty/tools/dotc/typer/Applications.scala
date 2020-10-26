@@ -141,9 +141,9 @@ object Applications {
     if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass))) {
       val sels = productSelectorTypes(tp, pos)
       if (sels.length == args.length) sels
-      else tp :: Nil
+      else List(tp)
     }
-    else tp :: Nil
+    else List(tp)
 
   def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] = {
     val selTps = productSelectorTypes(tp, pos)
@@ -1006,7 +1006,7 @@ trait Applications extends Compatibility {
           case _: untpd.Splice if ctx.mode.is(Mode.QuotedPattern) => typedAppliedSplice(tree, pt)
           case _ => realApply
         app match {
-          case Apply(fn @ Select(left, _), right :: Nil) if fn.hasType =>
+          case Apply(fn @ Select(left, _), List(right)) if fn.hasType =>
             val op = fn.symbol
             if (op == defn.Any_== || op == defn.Any_!=)
               checkCanEqual(left.tpe.widen, right.tpe.widen, app.span)
@@ -1081,7 +1081,7 @@ trait Applications extends Compatibility {
    *  we rely on implicit search to find one.
    */
   def convertNewGenericArray(tree: Tree)(using Context): Tree = tree match {
-    case Apply(TypeApply(tycon, targs@(targ :: Nil)), args) if tycon.symbol == defn.ArrayConstructor =>
+    case Apply(TypeApply(tycon, targs@(List(targ))), args) if tycon.symbol == defn.ArrayConstructor =>
       fullyDefinedType(tree.tpe, "array", tree.span)
 
       def newGenericArrayCall =
@@ -1287,7 +1287,7 @@ trait Applications extends Compatibility {
             unapplyArgType
           }
         val dummyArg = dummyTreeOfType(ownType)
-        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
+        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, List(dummyArg))))
         def unapplyImplicits(unapp: Tree): List[Tree] = {
           val res = List.Buffer[Tree]()
           def loop(unapp: Tree): Unit = unapp match {
@@ -1305,7 +1305,7 @@ trait Applications extends Compatibility {
         var argTypes = unapplyArgs(unapplyApp.tpe, unapplyFn, args, tree.srcPos)
         for (argType <- argTypes) assert(!isBounds(argType), unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
-          case argType :: Nil =>
+          case List(argType) =>
             if (args.length > 1 && Feature.autoTuplingEnabled) untpd.Tuple(args) :: Nil
             else args
           case _ => args
@@ -1386,7 +1386,7 @@ trait Applications extends Compatibility {
    */
   def hasExtensionMethodNamed(tp: Type, xname: TermName, argType: Type, resultType: Type)(using Context) = {
     def qualifies(mbr: Denotation) =
-      mbr.exists && isApplicableType(tp.select(xname, mbr), argType :: Nil, resultType)
+      mbr.exists && isApplicableType(tp.select(xname, mbr), List(argType), resultType)
     tp.memberBasedOnFlags(xname, required = ExtensionMethod) match {
       case mbr: SingleDenotation => qualifies(mbr)
       case mbr => mbr.hasAltWith(qualifies(_))
@@ -1561,7 +1561,7 @@ trait Applications extends Compatibility {
           def apply(t: Type) = t match {
             case t @ AppliedType(tycon, args) =>
               def mapArg(arg: Type, tparam: TypeParamInfo) =
-                if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionOf(arg :: Nil, defn.UnitType)
+                if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionOf(List(arg), defn.UnitType)
                 else arg
               mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
             case _ => mapOver(t)
@@ -1693,10 +1693,10 @@ trait Applications extends Compatibility {
           (alt ne chosen) && explore(resultConforms(alt.symbol, alt, pt.resultType)))
         conformingAlts match {
           case Nil => chosen
-          case alt2 :: Nil => alt2
+          case List(alt2) => alt2
           case alts2 =>
             resolveOverloaded(alts2, pt) match {
-              case alt2 :: Nil => alt2
+              case List(alt2) => alt2
               case _ => chosen
             }
         }
@@ -1717,7 +1717,7 @@ trait Applications extends Compatibility {
       if found.isEmpty && ctx.mode.is(Mode.ImplicitsEnabled) then
         found = resolveOverloaded1(alts, pt)
       found match
-        case alt :: Nil => adaptByResult(alt, alts) :: Nil
+        case List(alt) => adaptByResult(alt, alts) :: Nil
         case _ => found
     end resolve
 
@@ -1742,7 +1742,7 @@ trait Applications extends Compatibility {
         }
         qual.member(nme.apply).alternatives.map(TermRef(alt, nme.apply, _))
       }
-      else alt :: Nil
+      else List(alt)
 
     /** Fall back from an apply method to its original alternative */
     def retract(alt: TermRef): TermRef =
@@ -2010,7 +2010,7 @@ trait Applications extends Compatibility {
             def argTypesOfFormal(formal: Type): List[Type] =
               formal match {
                 case defn.FunctionOf(args, result, isImplicit, isErased) => args
-                case defn.PartialFunctionOf(arg, result) => arg :: Nil
+                case defn.PartialFunctionOf(arg, result) => List(arg)
                 case _ => Nil
               }
             val formalParamTypessForArg: List[List[Type]] =

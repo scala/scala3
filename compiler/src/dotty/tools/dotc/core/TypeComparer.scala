@@ -1151,7 +1151,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *  Otherwise, if `other` is a Nat constant `n`, proceed with comparing `arg` and `n - 1`.
      */
     def compareS(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = tp.args match {
-      case arg :: Nil =>
+      case List(arg) =>
         natValue(arg) match {
           case Some(n) if n != Int.MaxValue =>
             val succ = ConstantType(Constant(n + 1))
