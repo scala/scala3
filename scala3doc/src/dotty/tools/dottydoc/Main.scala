@@ -12,6 +12,8 @@ import dotc.reporting.Reporter
 import dotc.{ Compiler, Driver }
 import dotc.config._
 
+import dotty.tools.dotc.config.Settings.Setting.value
+
 import java.io.File
 
 /** Main object for SBT.
@@ -43,7 +45,7 @@ object Main extends Driver {
     }
 
     val (filesToCompile, ctx) = setup(compilerArgs, rootCtx)
-    given as Context = ctx
+    given Context = ctx
 
     // parse Dokka args
     // note: all required args should be set with SBT settings,

@@ -74,7 +74,7 @@ class SymOps[R <: Reflection](val r: R):
     def getVisibility(): Visibility =
       import VisibilityScope._
 
-      def explicitScope(ownerType: Type): VisibilityScope =
+      def explicitScope(ownerType: TypeRepr): VisibilityScope =
         val moduleSym = ownerType.typeSymbol.companionModule
         if moduleSym.isNoSymbol
           then ExplicitTypeScope(ownerType.typeSymbol.name)

@@ -1,4 +1,4 @@
-name: CI for dotty-dokka
+name: CI for scala3doc
 
 on:
   push:
@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: set right cwd
-        run: cd scala3doc
 
       - uses: actions/checkout@v2
       - run: git fetch --prune --unshallow --tags
@@ -33,7 +31,7 @@ jobs:
           java-version: 11
 
       - name: Compile and test
-        run: ./project/scripts/sbt scala3doc/test
+        run: ./project/scripts/sbt scala3doc-test/test
 
       - name: Locally publish self
         run: ./project/scripts/sbt scala3doc/publishLocal
@@ -42,13 +40,16 @@ jobs:
         run: ./project/scripts/sbt scala3doc/generateSelfDocumentation
 
       - name: Generate Scala 3 documentation
+        run: ./project/scripts/sbt scala3doc/generateScala3Documentation
+
+      - name: Generate documentation for example project using dotty-sbt
         run: |
-          ./project/scripts/sbt sbt-dotty/publishLocal scala3-bootstrapped/publishLocal
+          ./project/scripts/sbt ";sbt-dotty/publishLocal;scala3/publishLocal;publishLocal"
           VERSION=$(./project/scripts/sbt "show sbt-dotty/version" | tail -1 | sed 's/\[info\] //')
           echo Using sbt-dotty version: $VERSION
           echo 'addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "'$VERSION'")' > scala3doc/example-project/project/dotty.sbt
 
-          SCALA_VERSION=$(./project/scripts/sbt "show scala3-bootstrapped/version" | tail -1 | sed 's/\[info\] //')
+          SCALA_VERSION=$(./project/scripts/sbt "show scala3-compiler-bootstrapped/version" | tail -1 | sed 's/\[info\] //')
           echo Using scala version: $SCALA_VERSION
           echo 'scalaVersion := "'$SCALA_VERSION'"' > scala3doc/example-project/dotty.sbt
 

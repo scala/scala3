@@ -14,17 +14,17 @@ trait TypesSupport:
           inner(tpeTree.tpe)
         case other => None
 
-      def inner(tpe: Type): Option[Symbol] = tpe match
+      def inner(tpe: TypeRepr): Option[Symbol] = tpe match
         case ThisType(tpe) => inner(tpe)
         case AnnotatedType(tpe, _) => inner(tpe)
         case AppliedType(tpe, _) => inner(tpe)
         case tp @ TermRef(qual, typeName) =>
           qual match
-            case _: Type | _: NoPrefix => Some(tp.termSymbol)
+            case _: TypeRepr | _: NoPrefix => Some(tp.termSymbol)
             case other => None
         case tp @ TypeRef(qual, typeName) =>
           qual match
-            case _: Type | _: NoPrefix => Some(tp.typeSymbol)
+            case _: TypeRepr | _: NoPrefix => Some(tp.typeSymbol)
             case other => None
 
       val typeSymbol = extractTypeSymbol(method.returnTpt)
@@ -46,7 +46,7 @@ trait TypesSupport:
                 new GenericTypeConstructor(tpeTree.symbol.dri, data.asJava, null)
 
     given TypeSyntax as AnyRef:
-        extension (tpe: Type):
+        extension (tpe: TypeRepr):
             def dokkaType(using ctx: reflect.Context): Bound =
                 val data = inner(tpe)
                 val dri = data.collect{
@@ -74,7 +74,7 @@ trait TypesSupport:
         tpeAnnotation.tpe.typeSymbol.toString == "class Repeated"
 
     // TODO #23 add support for all types signatures that makes sense
-    private def inner(tp: reflect.Type)(using cxt: reflect.Context): List[JProjection] =
+    private def inner(tp: reflect.TypeRepr)(using cxt: reflect.Context): List[JProjection] =
         def noSupported(name: String): List[JProjection] =
             println(s"WARN: Unsupported type: $name: ${tp.show}") 
             List(text(s"Unsupported[$name]")) 
@@ -102,7 +102,7 @@ trait TypesSupport:
             
                 
             case r: Refinement => { //(parent, name, info)
-                def getRefinementInformation(t: Type): List[Type] = t match {
+                def getRefinementInformation(t: TypeRepr): List[TypeRepr] = t match {
                     case r: Refinement => getRefinementInformation(r.parent) :+ r
                     case tr: TypeRef => List(tr)
                 }
@@ -118,7 +118,7 @@ trait TypesSupport:
                         .reduceLeftOption((acc: List[JProjection], elem: List[JProjection]) => acc ++ texts(", ") ++ elem).getOrElse(List())
                     ++ texts(")")
 
-                def parseRefinedElem(name: String, info: Type, polyTyped: List[JProjection] = Nil): List[JProjection] = ( info match {
+                def parseRefinedElem(name: String, info: TypeRepr, polyTyped: List[JProjection] = Nil): List[JProjection] = ( info match {
                     case m: MethodType => {
                         val paramList = getParamList(m)
                         texts(s"def $name") ++ polyTyped ++ paramList ++ texts(": ") ++ inner(m.resType)
@@ -137,7 +137,7 @@ trait TypesSupport:
                     case other => noSupported(s"Not supported type in refinement $info")
                 } ) ++ texts("; ")
 
-                def parsePolyFunction(info: Type): List[JProjection] = info match {
+                def parsePolyFunction(info: TypeRepr): List[JProjection] = info match {
                     case t: PolyType =>
                         val paramBounds = getParamBounds(t)
                         val method = t.resType.asInstanceOf[MethodType]
@@ -185,8 +185,8 @@ trait TypesSupport:
             case tp @ TypeRef(qual, typeName) =>
                 qual match {
                     case r: RecursiveThis => texts(s"this.$typeName")
-                    case _: Type | _: NoPrefix => link(tp.typeSymbol)
-                    case other => noSupported(s"Type: $tp") 
+                    case _: TypeRepr | _: NoPrefix => link(tp.typeSymbol)
+                    case other => noSupported(s"TypeRepr: $tp") 
                 }    
                 // convertTypeOrBoundsToReference(reflect)(qual) match {
                 //     case TypeReference(label, link, xs, _) => TypeReference(typeName, link + "/" + label, xs, true)
@@ -248,7 +248,7 @@ trait TypesSupport:
 
             case RecursiveType(tp) => inner(tp)
 
-    private def typeBound(t: Type, low: Boolean) = 
+    private def typeBound(t: TypeRepr, low: Boolean) = 
         val ignore = if(low) t.typeSymbol == defn.NothingClass  else t.typeSymbol == defn.AnyClass
         val prefix = text(if low then " >: " else " <: ")
         t match {

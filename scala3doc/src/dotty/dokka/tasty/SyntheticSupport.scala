@@ -7,18 +7,18 @@ trait SyntheticsSupport:
 
   import reflect._
 
-  extension (t: Type):
+  extension (t: TypeRepr):
     def isTupleType: Boolean = hackIsTupleType(self.reflect)(t)
 
     def isCompiletimeAppliedType: Boolean = hackIsCompiletimeAppliedType(self.reflect)(t)
 
-    def hackIsTupleType(r: Reflection)(rtpe: r.Type): Boolean = 
+    def hackIsTupleType(r: Reflection)(rtpe: r.TypeRepr): Boolean = 
       import dotty.tools.dotc
       given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isTupleType(tpe)
 
-    def hackIsCompiletimeAppliedType(r: Reflection)(rtpe: r.Type): Boolean = 
+    def hackIsCompiletimeAppliedType(r: Reflection)(rtpe: r.TypeRepr): Boolean = 
       import dotty.tools.dotc
       given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
@@ -89,19 +89,19 @@ trait SyntheticsSupport:
     val ref = classdef.symbol.info.asInstanceOf[dotc.core.Types.ClassInfo].appliedRef
     val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] = 
       ref.baseClasses.map(b => b -> ref.baseType(b))
-    baseTypes.asInstanceOf[List[(r.Symbol, r.Type)]]
+    baseTypes.asInstanceOf[List[(r.Symbol, r.TypeRepr)]]
   }
 
   def getSupertypes(c: ClassDef) = hackGetSupertypes(self.reflect)(c).tail
 
-  def typeForClass(c: ClassDef): r.Type = 
+  def typeForClass(c: ClassDef): r.TypeRepr = 
     import dotty.tools.dotc
     given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
     val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
-    cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[r.Type]
+    cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[r.TypeRepr]
 
   object MatchTypeCase:
-    def unapply(tpe: Type): Option[(Type, Type)] =
+    def unapply(tpe: TypeRepr): Option[(TypeRepr, TypeRepr)] =
       tpe match
         case AppliedType(t, Seq(from, to)) /*if t == MatchCaseType*/ =>
             Some((from, to))

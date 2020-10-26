@@ -79,10 +79,10 @@ trait ClassLikeSupport:
     
   private val conversionSymbol = Symbol.requiredClass("scala.Conversion")
 
-  def extractImplicitConversion(tpe: Type): Option[ImplicitConversion] =
+  def extractImplicitConversion(tpe: TypeRepr): Option[ImplicitConversion] =
       if tpe.derivesFrom(conversionSymbol) then None
       else tpe.baseType(conversionSymbol) match
-        case AppliedType(tpe, List(from: Type, to: Type)) =>
+        case AppliedType(tpe, List(from: TypeRepr, to: TypeRepr)) =>
           Some(ImplicitConversion(from.typeSymbol.dri, to.typeSymbol.dri))
         case _ =>
           None
