@@ -57,9 +57,11 @@ object Main extends Driver {
         "--output", ctx.settings.outputDir.value.toString,
       )
 
+      val allArgs = requiredArgs ++ dokkaStrArgs
+      println(s"Running scala3doc with arguments: $allArgs")
       val parser = org.kohsuke.args4j.CmdLineParser(dokkaRawArgs)
       try {
-        parser.parseArgument(requiredArgs ++ dokkaStrArgs : _*)
+        parser.parseArgument(allArgs : _*)
       } catch {
         case ex: org.kohsuke.args4j.CmdLineException =>
           // compiler errors are reported in SBT

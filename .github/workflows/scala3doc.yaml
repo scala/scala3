@@ -33,13 +33,24 @@ jobs:
           java-version: 11
 
       - name: Compile and test
-        run: sbt scala3doc/test
+        run: ./project/scripts/sbt scala3doc/test
 
       - name: Locally publish self
-        run: sbt scala3doc/publishLocal
+        run: ./project/scripts/sbt scala3doc/publishLocal
 
       - name: Generate test documentation
-        run: sbt scala3doc/generateSelfDocumentation
+        run: ./project/scripts/sbt scala3doc/generateSelfDocumentation
 
       - name: Generate Scala 3 documentation
-        run: sbt scala3doc/generateScala3Documentation
+        run: |
+          ./project/scripts/sbt sbt-dotty/publishLocal scala3-bootstrapped/publishLocal
+          VERSION=$(./project/scripts/sbt "show sbt-dotty/version" | tail -1 | sed 's/\[info\] //')
+          echo Using sbt-dotty version: $VERSION
+          echo 'addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "'$VERSION'")' > scala3doc/example-project/project/dotty.sbt
+
+          SCALA_VERSION=$(./project/scripts/sbt "show scala3-bootstrapped/version" | tail -1 | sed 's/\[info\] //')
+          echo Using scala version: $SCALA_VERSION
+          echo 'scalaVersion := "'$SCALA_VERSION'"' > scala3doc/example-project/dotty.sbt
+
+          cd scala3doc/example-project
+          sbt doc

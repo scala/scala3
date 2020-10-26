@@ -353,7 +353,24 @@ object DottyPlugin extends AutoPlugin {
           Def.valueStrict { scalaInstance.taskValue }
       }.value,
 
-      // We need more stuff on the classpath to run the `doc` task.
+      // Configuration for the doctool
+      resolvers ++= Seq(
+        Resolver.jcenterRepo,
+        Resolver.bintrayRepo("kotlin", "kotlin-dev"),
+        Resolver.bintrayRepo("virtuslab", "dokka"),
+      ),
+      useScala3doc := false,
+      scala3docOptions := Seq("-n", name.value),
+      Compile / doc / scalacOptions := {
+        val s3dOpts = scala3docOptions.value.map("--+DOC+" + _)
+        val s3cOpts = (Compile / doc / scalacOptions).value
+        if (isDotty.value && useScala3doc.value) {
+           s3dOpts ++ s3cOpts
+        } else {
+          s3cOpts
+        }
+      },
+      // We need to add doctool classes to the classpath so they can be called
       scalaInstance in doc := Def.taskDyn {
         if (isDotty.value)
           dottyScalaInstanceTask(scala3Artefact(scalaVersion.value, "doc"))

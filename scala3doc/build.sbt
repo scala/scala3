@@ -52,3 +52,9 @@ generateScala3Documentation := Def.taskDyn {
   generateDottyDocsFromClasspath(dotttyJars) 
 }.value
 
+val prepareExampleProject = taskKey[Unit]("Prepare example projet for interaction test")
+prepareExampleProject := {
+  
+
+
+}
