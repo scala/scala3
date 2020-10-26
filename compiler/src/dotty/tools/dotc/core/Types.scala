@@ -3110,7 +3110,7 @@ object Types {
     protected def resultSignature(using Context): Signature = try resultType match {
       case rtp: MethodicType => rtp.signature
       case tp =>
-        if (tp.isRef(defn.UnitClass)) Signature(Nil, defn.UnitClass.fullName.asTypeName)
+        if (tp.isRef(defn.UnitClass)) Signature(scala.Nil, defn.UnitClass.fullName.asTypeName)
         else Signature(tp, isJava = false)
     }
     catch {

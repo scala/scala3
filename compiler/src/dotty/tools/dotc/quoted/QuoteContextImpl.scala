@@ -2426,7 +2426,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object SignatureMethodsImpl extends SignatureMethods:
       extension (self: Signature):
         def paramSigs: List[String | Int] =
-          self.paramsSig.toScalaList.map {
+          self.paramsSig.map {
             case paramSig: dotc.core.Names.TypeName =>
               paramSig.toString
             case paramSig: Int =>

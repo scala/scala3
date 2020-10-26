@@ -86,6 +86,32 @@ object Decorators {
     def & (ys: List[T]): List[T] = xs filter (ys contains _)
   }
 
+  implicit class ScalaListDecorator[T](val xs: scala.List[T]) extends AnyVal {
+    import scala.{List, ::, Nil}
+
+    /** Like `xs.zipped(ys).map(f)`, but returns list `xs` itself
+     *  - instead of a copy - if function `f` maps all elements of
+     *  `xs` to themselves. Also, it is required that `ys` is at least
+     *  as long as `xs`.
+     */
+    def zipWithConserve[U](ys: List[U])(f: (T, U) => T): List[T] =
+      if (xs.isEmpty || ys.isEmpty) Nil
+      else {
+        val x1 = f(xs.head, ys.head)
+        val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
+        if ((x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) &&
+            (xs1 eq xs.tail)) xs
+        else x1 :: xs1
+      }
+
+    final def hasSameLengthAs[U](ys: List[U]): Boolean = {
+      @tailrec def loop(xs: List[T], ys: List[U]): Boolean =
+        if (xs.isEmpty) ys.isEmpty
+        else ys.nonEmpty && loop(xs.tail, ys.tail)
+      loop(xs, ys)
+    }
+  }
+
   extension [T, U](xss: List[List[T]])
     def nestedMap(f: T => U): List[List[U]] = xss match
       case xs :: xss1 => xs.map(f) :: xss1.nestedMap(f)

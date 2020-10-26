@@ -107,7 +107,8 @@ case class Signature(paramsSig: scala.List[ParamSig], resSig: TypeName) {
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
   def prependTermParams(params: List[Type], isJava: Boolean)(using Context): Signature =
-    Signature(params.map(p => sigName(p, isJava)) ::: paramsSig, resSig)
+    val params1 = params.foldRight(paramsSig)((p, sig) => sigName(p, isJava) :: sig)
+    Signature(params1, resSig)
 
   /** Construct a signature by prepending the length of a type parameter section
    *  to the parameter part of this signature.
@@ -123,16 +124,6 @@ case class Signature(paramsSig: scala.List[ParamSig], resSig: TypeName) {
    */
   def isUnderDefined(using Context): Boolean =
     paramsSig.contains(tpnme.Uninstantiated) || resSig == tpnme.Uninstantiated
-
-  override def equals(that: Any) = that match
-    case that: Signature =>
-      (this.paramsSig eqElements that.paramsSig) && this.resSig == that.resSig
-    case _ =>
-      false
-
-  override def hashCode: Int =
-    paramsSig.hashcode * 41 + resSig.hashCode
-
 }
 
 object Signature {
@@ -161,11 +152,11 @@ object Signature {
   /** The signature of everything that's not a method, i.e. that has
    *  a type different from PolyType or MethodType.
    */
-  val NotAMethod: Signature = Signature(List(), EmptyTypeName)
+  val NotAMethod: Signature = Signature(scala.Nil, EmptyTypeName)
 
   /** The signature of an overloaded denotation.
    */
-  val OverloadedSignature: Signature = Signature(List(tpnme.OVERLOADED), EmptyTypeName)
+  val OverloadedSignature: Signature = Signature(scala.List(tpnme.OVERLOADED), EmptyTypeName)
 
   /** The signature of a method with no parameters and result type `resultType`.
    *
@@ -175,7 +166,7 @@ object Signature {
    */
   def apply(resultType: Type, isJava: Boolean)(using Context): Signature = {
     assert(!resultType.isInstanceOf[ExprType])
-    apply(Nil, sigName(resultType, isJava))
+    apply(scala.Nil, sigName(resultType, isJava))
   }
 
   val lexicographicOrdering: Ordering[Signature] = new Ordering[Signature] {
