@@ -229,7 +229,7 @@ object SymDenotations {
 
     /** Does this denotation have an annotation matching the given class symbol? */
     final def hasAnnotation(cls: Symbol)(using Context): Boolean =
-      dropOtherAnnotations(annotations, cls).nonEmpty
+      annotations.exists(_.matches(cls))
 
     /** Apply transform `f` to all annotations of this denotation */
     final def transformAnnotations(f: Annotation => Annotation)(using Context): Unit =
@@ -241,13 +241,13 @@ object SymDenotations {
 
     /** Optionally, the annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(using Context): Option[Annotation] =
-      dropOtherAnnotations(annotations, cls).headOption
+      annotations.find(_.matches(cls))
 
     /** The same as getAnnotation, but without ensuring
      *  that the symbol carrying the annotation is completed
      */
     final def unforcedAnnotation(cls: Symbol)(using Context): Option[Annotation] =
-      dropOtherAnnotations(myAnnotations, cls).headOption
+      myAnnotations.find(_.matches(cls))
 
     /** Add given annotation to the annotations of this denotation */
     final def addAnnotation(annot: Annotation): Unit =
@@ -270,9 +270,6 @@ object SymDenotations {
     /** Add all given annotations to this symbol */
     final def addAnnotations(annots: TraversableOnce[Annotation])(using Context): Unit =
       annots.iterator.foreach(addAnnotation)
-
-    private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(using Context): List[Annotation] =
-      anns.dropWhile(ann => !ann.matches(cls))
 
     /** If this is a method, the parameter symbols, by section.
      *  Both type and value parameters are included. Empty sections are skipped.
