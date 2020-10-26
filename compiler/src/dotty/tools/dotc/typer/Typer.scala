@@ -2994,7 +2994,7 @@ class Typer extends Namer
     def isUnary(tp: Type): Boolean = tp match {
       case tp: MethodicType =>
         tp.firstParamTypes match {
-          case ptype :: Nil => !ptype.isRepeatedParam
+          case List(ptype) => !ptype.isRepeatedParam
           case _ => false
         }
       case tp: TermRef =>

@@ -1027,7 +1027,7 @@ class Definitions {
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(elem :: Nil)
     def unapply(tp: Type)(using Context): Option[Type] = tp.dealias match {
-      case AppliedType(at, arg :: Nil) if at.isRef(ArrayType.symbol) => Some(arg)
+      case AppliedType(at, List(arg)) if at.isRef(ArrayType.symbol) => Some(arg)
       case _ => None
     }
   }

@@ -29,7 +29,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   def isOpAssign(tree: Tree): Boolean = unsplice(tree) match {
-    case Apply(fn, _ :: _) =>
+    case Apply(fn, args) if args.length != 0 =>
       unsplice(fn) match {
         case Select(_, name) if name.isOpAssignmentName => true
         case _ => false

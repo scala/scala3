@@ -532,8 +532,9 @@ trait Applications extends Compatibility {
      *  @param n   The position of the first parameter in formals in `methType`.
      */
     def matchArgs(args: List[Arg], formals: List[Type], n: Int): Unit =
-      if (success) formals match {
-        case formal :: formals1 =>
+      if success then
+        if n < formals.length then
+          val formal = formals(n)
 
           /** Add result of typing argument `arg` against parameter type `formal`.
            *  @return  The remaining formal parameter types. If the method is parameter-dependent
@@ -546,9 +547,12 @@ trait Applications extends Compatibility {
             addArg(typedArg(arg, formal), formal)
             if methodType.isParamDependent && typeOfArg(arg).exists then
               // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-              formals1.mapConserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
+              val origRest = formals.drop(n + 1)
+              val mappedRest = origRest.mapConserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
+              if mappedRest eqLst origRest then formals
+              else formals.take(n + 1) ++ mappedRest
             else
-              formals1
+              formals
 
           def missingArg(n: Int): Unit = {
             val pname = methodType.paramNames(n)
@@ -557,7 +561,7 @@ trait Applications extends Compatibility {
               else s"missing argument for parameter $pname of $methString")
           }
 
-          def tryDefault(n: Int, args1: List[Arg]): Unit = {
+          def tryDefault(n: Int): Unit = {
             val sym = methRef.symbol
 
             val defaultArg =
@@ -590,48 +594,41 @@ trait Applications extends Compatibility {
             def implicitArg = implicitArgTree(formal, appPos.span)
 
             if !defaultArg.isEmpty then
-              matchArgs(args1, addTyped(treeToArg(defaultArg), formal), n + 1)
+              matchArgs(args, addTyped(treeToArg(defaultArg), formal), n + 1)
             else if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
-              matchArgs(args1, addTyped(treeToArg(implicitArg), formal), n + 1)
+              matchArgs(args, addTyped(treeToArg(implicitArg), formal), n + 1)
             else
               missingArg(n)
           }
 
           if (formal.isRepeatedParam)
-            args match {
-              case arg :: Nil if isVarArg(arg) =>
+            args.drop(n) match {
+              case List(arg) if isVarArg(arg) =>
                 addTyped(arg, formal)
-              case Typed(Literal(Constant(null)), _) :: Nil =>
-                addTyped(args.head, formal)
-              case _ =>
+              case List(arg @ Typed(Literal(Constant(null)), _)) =>
+                addTyped(arg, formal)
+              case argsRest =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
                 val typedArgs =
-                  harmonic(harmonizeArgs, elemFormal)(args.map(typedArg(_, elemFormal)))
+                  harmonic(harmonizeArgs, elemFormal)(argsRest.map(typedArg(_, elemFormal)))
                 typedArgs.foreach(addArg(_, elemFormal))
-                makeVarArg(args.length, elemFormal)
+                makeVarArg(argsRest.length, elemFormal)
             }
-          else args match {
-            case EmptyTree :: args1 =>
-              tryDefault(n, args1)
-            case arg :: args1 =>
-              matchArgs(args1, addTyped(arg, formal), n + 1)
-            case nil =>
-              tryDefault(n, args)
-          }
-
-        case nil =>
-          args match {
-            case arg :: args1 =>
-              def msg = arg match
-                case untpd.Tuple(Nil)
-                if applyKind == ApplyKind.InfixTuple && funType.widen.isNullaryMethod =>
-                  i"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
-                case _ =>
-                  i"too many arguments for $methString"
-              fail(msg, arg)
-            case nil =>
-          }
-      }
+          else if n < args.length then
+            args(n) match
+              case EmptyTree => tryDefault(n)
+              case arg => matchArgs(args, addTyped(arg, formal), n + 1)
+          else
+            tryDefault(n)
+        else if n < args.length then
+          val arg = args(n)
+          def msg = arg match
+            case untpd.Tuple(Nil)
+            if applyKind == ApplyKind.InfixTuple && funType.widen.isNullaryMethod =>
+              i"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
+            case _ =>
+              i"too many arguments for $methString"
+          fail(msg, arg)
   }
 
   /** Subclass of Application for the cases where we are interested only
@@ -1637,37 +1634,24 @@ trait Applications extends Compatibility {
     else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
   }
 
-  def narrowMostSpecific(alts: List[TermRef])(using Context): List[TermRef] = {
+  def narrowMostSpecific(alts: List[TermRef])(using Context): List[TermRef] =
     record("narrowMostSpecific")
-    alts match {
-      case Nil => alts
-      case _ :: Nil => alts
-      case alt1 :: alt2 :: Nil =>
-        compare(alt1, alt2) match {
-          case  1 => alt1 :: Nil
-          case -1 => alt2 :: Nil
-          case  0 => alts
-        }
-      case alt :: alts1 =>
-        def survivors(previous: List[TermRef], alts: List[TermRef]): List[TermRef] = alts match {
-          case alt :: alts1 =>
-            compare(previous.head, alt) match {
-              case  1 => survivors(previous, alts1)
-              case -1 => survivors(alt :: previous.tail, alts1)
-              case  0 => survivors(alt :: previous, alts1)
-            }
-          case Nil => previous
-        }
-        val best :: rest = survivors(alt :: Nil, alts1)
-        def asGood(alts: List[TermRef]): List[TermRef] = alts match {
-          case alt :: alts1 =>
-            if (compare(alt, best) < 0) asGood(alts1) else alt :: asGood(alts1)
-          case nil =>
-            Nil
-        }
-        best :: asGood(rest)
-    }
-  }
+    if alts.length <= 1 then alts
+    else if alts.length == 2 then
+      compare(alts(0), alts(1)) match
+        case  1 => List(alts(0))
+        case -1 => List(alts(1))
+        case  0 => alts
+    else
+      def survivors(previous: List[TermRef], n: Int): List[TermRef] =
+        if n == alts.length then previous
+        else compare(previous.head, alts(n)) match
+          case  1 => survivors(previous, n + 1)
+          case -1 => survivors(alts(n) :: previous.tail, n + 1)
+          case  0 => survivors(alts(n) :: previous, n + 1)
+      val best :: rest = survivors(List(alts(0)), 1)
+      def asGood(alts: List[TermRef]): List[TermRef] = alts.filter(compare(_, best) >= 0)
+      best :: asGood(rest)
 
   /** Resolve overloaded alternative `alts`, given expected type `pt`.
    *  Two trials: First, without implicits or SAM conversions enabled. Then,
