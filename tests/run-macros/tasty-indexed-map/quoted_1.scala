@@ -27,11 +27,11 @@ object Index {
   def succImpl[K, H, T](implicit qctx: QuoteContext, k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
     import qctx.reflect._
 
-    def name(tp: Type): String = tp match {
+    def name(tp: TypeRepr): String = tp match {
       case ConstantType(Constant.String(str)) => str
     }
 
-    def names(tp: Type): List[String] = tp match {
+    def names(tp: TypeRepr): List[String] = tp match {
       case AppliedType(_, x1 :: x2 :: Nil) => name(x1) :: names(x2)
       case _ => Nil
     }

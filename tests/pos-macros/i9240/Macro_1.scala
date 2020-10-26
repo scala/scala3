@@ -3,11 +3,11 @@ import scala.tasty._
 
 inline def diveInto[T]: String = ${ diveIntoImpl[T]() }
 
-def diveIntoImpl[T]()(implicit qctx: QuoteContext, ttype: scala.quoted.Type[T]): Expr[String] =
+def diveIntoImpl[T]()(implicit qctx: QuoteContext, ttype: Type[T]): Expr[String] =
   import qctx.reflect._
-  Expr( unwindType(qctx.tasty)(Type.of[T]) )
+  Expr( unwindType(qctx.tasty)(TypeRepr.of[T]) )
 
-def unwindType(reflect: Reflection)(aType: reflect.Type): String =
+def unwindType(reflect: Reflection)(aType: reflect.TypeRepr): String =
   import reflect._
 
   aType match {

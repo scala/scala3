@@ -44,30 +44,30 @@ object Type {
   // TODO generalize following optimizations for all classes without parameters
 
   def Unit: QuoteContext ?=> quoted.Type[Unit] =
-    qctx.reflect.Type.typeConstructorOf(classOf[Unit]).seal.asInstanceOf[quoted.Type[Unit]]
+    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Unit]).seal.asInstanceOf[quoted.Type[Unit]]
 
   def Boolean: QuoteContext ?=> quoted.Type[Boolean] =
-    qctx.reflect.Type.typeConstructorOf(classOf[Boolean]).seal.asInstanceOf[quoted.Type[Boolean]]
+    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Boolean]).seal.asInstanceOf[quoted.Type[Boolean]]
 
   def Byte: QuoteContext ?=> quoted.Type[Byte] =
-    qctx.reflect.Type.typeConstructorOf(classOf[Byte]).seal.asInstanceOf[quoted.Type[Byte]]
+    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Byte]).seal.asInstanceOf[quoted.Type[Byte]]
 
   def Char: QuoteContext ?=> quoted.Type[Char] =
-    qctx.reflect.Type.typeConstructorOf(classOf[Char]).seal.asInstanceOf[quoted.Type[Char]]
+    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Char]).seal.asInstanceOf[quoted.Type[Char]]
 
   def Short: QuoteContext ?=> quoted.Type[Short] =
-    qctx.reflect.Type.typeConstructorOf(classOf[Short]).seal.asInstanceOf[quoted.Type[Short]]
+    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Short]).seal.asInstanceOf[quoted.Type[Short]]
 
   def Int: QuoteContext ?=> quoted.Type[Int] =
-    qctx.reflect.Type.typeConstructorOf(classOf[Int]).seal.asInstanceOf[quoted.Type[Int]]
+    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Int]).seal.asInstanceOf[quoted.Type[Int]]
 
   def Long: QuoteContext ?=> quoted.Type[Long] =
-    qctx.reflect.Type.typeConstructorOf(classOf[Long]).seal.asInstanceOf[quoted.Type[Long]]
+    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Long]).seal.asInstanceOf[quoted.Type[Long]]
 
   def Float: QuoteContext ?=> quoted.Type[Float] =
-    qctx.reflect.Type.typeConstructorOf(classOf[Float]).seal.asInstanceOf[quoted.Type[Float]]
+    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Float]).seal.asInstanceOf[quoted.Type[Float]]
 
   def Double: QuoteContext ?=> quoted.Type[Double] =
-    qctx.reflect.Type.typeConstructorOf(classOf[Double]).seal.asInstanceOf[quoted.Type[Double]]
+    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Double]).seal.asInstanceOf[quoted.Type[Double]]
 
 }

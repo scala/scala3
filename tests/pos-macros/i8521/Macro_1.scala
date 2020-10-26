@@ -4,7 +4,7 @@ object Foo {
   inline def foo[T <: AnyKind]: String = ${ bar[T] }
 
   def bar[T <: AnyKind : Type](using qctx: QuoteContext): Expr[String] = {
-    import qctx.reflect.{Type => _, _}
+    import qctx.reflect._
 
     def packageToName(sym: Symbol): Unit = {
       if sym.isPackageDef then

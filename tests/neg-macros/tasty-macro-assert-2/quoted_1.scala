@@ -17,7 +17,7 @@ object Asserts {
 
     val tree = cond.unseal
 
-    def isOps(tpe: Type): Boolean = tpe match {
+    def isOps(tpe: TypeRepr): Boolean = tpe match {
       case tpe: TermRef => tpe.termSymbol.isDefDef && tpe.name == "Ops"// TODO check that the parent is Asserts
       case _ => false
     }

@@ -88,8 +88,8 @@ object Iso {
     import qctx.reflect._
     import util._
 
-    val tpS = Type.of[S]
-    val tpA = Type.of[A]
+    val tpS = TypeRepr.of[S]
+    val tpA = TypeRepr.of[A]
 
     // 1. S must be a case class
     // 2. A must be a tuple
@@ -127,7 +127,7 @@ object Iso {
     import qctx.reflect._
     import util._
 
-    val tpS = Type.of[S]
+    val tpS = TypeRepr.of[S]
 
     if (tpS.isSingleton) {
       val ident = Ident(tpS.asInstanceOf[TermRef]).seal.cast[S]

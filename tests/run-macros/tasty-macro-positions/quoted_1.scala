@@ -18,7 +18,7 @@ object Macros {
     }
   }
 
-  def impl2[T](x: quoted.Type[T])(using qctx: QuoteContext) : Expr[Unit] = {
+  def impl2[T](x: Type[T])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
     val pos = x.unseal.pos
     val code = x.unseal.show

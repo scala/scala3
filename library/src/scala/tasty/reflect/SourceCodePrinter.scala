@@ -12,7 +12,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
   def showTree(tree: Tree): String =
     (new Buffer).printTree(tree).result()
 
-  def showType(tpe: Type): String =
+  def showType(tpe: TypeRepr): String =
     (new Buffer).printType(tpe)(using None).result()
 
   def showConstant(const: Constant): String =
@@ -437,7 +437,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
             inParens {
               printTree(term)
               this += (if (scala.internal.Chars.isOperatorPart(sb.last)) " : " else ": ")
-              def printTypeOrAnnots(tpe: Type): Unit = tpe match {
+              def printTypeOrAnnots(tpe: TypeRepr): Unit = tpe match {
                 case AnnotatedType(tp, annot) if tp == term.tpe =>
                   printAnnotation(annot)
                 case AnnotatedType(tp, annot) =>
@@ -651,8 +651,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
     def printTypeTrees(trees: List[TypeTree], sep: String)(using elideThis: Option[Symbol] = None): Buffer =
       printList(trees, sep, (t: TypeTree) => printTypeTree(t))
 
-    def printTypes(trees: List[Type], sep: String)(using elideThis: Option[Symbol]): Buffer = {
-      def printSeparated(list: List[Type]): Unit = list match {
+    def printTypes(trees: List[TypeRepr], sep: String)(using elideThis: Option[Symbol]): Buffer = {
+      def printSeparated(list: List[TypeRepr]): Unit = list match {
         case Nil =>
         case x :: Nil => printType(x)
         case x :: xs =>
@@ -717,8 +717,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
       this
     }
 
-    def printTypesOrBounds(types: List[Type], sep: String)(using elideThis: Option[Symbol]): Buffer = {
-      def printSeparated(list: List[Type]): Unit = list match {
+    def printTypesOrBounds(types: List[TypeRepr], sep: String)(using elideThis: Option[Symbol]): Buffer = {
+      def printSeparated(list: List[TypeRepr]): Unit = list match {
         case Nil =>
         case x :: Nil => printType(x)
         case x :: xs =>
@@ -976,7 +976,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
     def printTypeTree(tree: TypeTree)(using elideThis: Option[Symbol] = None): Buffer = tree match {
       case Inferred() =>
         // TODO try to move this logic into `printType`
-        def printTypeAndAnnots(tpe: Type): Buffer = tpe match {
+        def printTypeAndAnnots(tpe: TypeRepr): Buffer = tpe match {
           case AnnotatedType(tp, annot) =>
             printTypeAndAnnots(tp)
             this += " "
@@ -1067,7 +1067,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
       *   Self type annotation and types in parent list should elide current class
       *   prefix `C.this` to avoid type checking errors.
       */
-    def printType(tpe: Type)(using elideThis: Option[Symbol] = None): Buffer = tpe match {
+    def printType(tpe: TypeRepr)(using elideThis: Option[Symbol] = None): Buffer = tpe match {
       case ConstantType(const) =>
         printConstant(const)
 
@@ -1090,7 +1090,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
             this += "#"
           case ThisType(TermRef(cdef, _)) if elideThis.nonEmpty && cdef == elideThis.get =>
           case ThisType(TypeRef(cdef, _)) if elideThis.nonEmpty && cdef == elideThis.get =>
-          case prefix: Type =>
+          case prefix: TypeRepr =>
             printType(prefix)
             this += "."
         }
@@ -1194,7 +1194,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
       case tpe: MethodType =>
         this += "("
         printList(tpe.paramNames.zip(tpe.paramTypes), ", ",
-          (x: (String, Type)) => (this += x._1 += ": ").printType(x._2))
+          (x: (String, TypeRepr)) => (this += x._1 += ": ").printType(x._2))
         this += ")"
         printType(tpe.resType)
 
@@ -1261,8 +1261,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
       else this
     }
 
-    def printRefinement(tpe: Type)(using elideThis: Option[Symbol]): Buffer = {
-      def printMethodicType(tp: Type): Unit = tp match {
+    def printRefinement(tpe: TypeRepr)(using elideThis: Option[Symbol]): Buffer = {
+      def printMethodicType(tp: TypeRepr): Unit = tp match {
         case tp @ MethodType(paramNames, params, res) =>
           inParens(printMethodicTypeParams(paramNames, params))
           printMethodicType(res)
@@ -1272,11 +1272,11 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
         case ByNameType(t) =>
           this += ": "
           printType(t)
-        case tp: Type =>
+        case tp: TypeRepr =>
           this += ": "
           printType(tp)
       }
-      def rec(tp: Type): Unit = tp match {
+      def rec(tp: TypeRepr): Unit = tp match {
         case Refinement(parent, name, info) =>
           rec(parent)
           indented {
@@ -1288,7 +1288,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
               case ByNameType(_) | MethodType(_, _, _) | TypeLambda(_, _, _) =>
                 this += highlightKeyword("def ") += highlightTypeDef(name)
                 printMethodicType(info)
-              case info: Type =>
+              case info: TypeRepr =>
                 this += highlightKeyword("val ") += highlightValDef(name)
                 printMethodicType(info)
             }
@@ -1301,14 +1301,14 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
       this += lineBreak() += "}"
     }
 
-    def printMethodicTypeParams(paramNames: List[String], params: List[Type])(using elideThis: Option[Symbol]): Unit = {
-      def printInfo(info: Type) = info match {
+    def printMethodicTypeParams(paramNames: List[String], params: List[TypeRepr])(using elideThis: Option[Symbol]): Unit = {
+      def printInfo(info: TypeRepr) = info match {
         case info: TypeBounds => printBounds(info)
-        case info: Type =>
+        case info: TypeRepr =>
           this += ": "
           printType(info)
       }
-      def printSeparated(list: List[(String, Type)]): Unit = list match {
+      def printSeparated(list: List[(String, TypeRepr)]): Unit = list match {
         case Nil =>
         case (name, info) :: Nil =>
           this += name
@@ -1346,7 +1346,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
 
     def printProtectedOrPrivate(definition: Definition): Boolean = {
       var prefixWasPrinted = false
-      def printWithin(within: Type) = within match {
+      def printWithin(within: TypeRepr) = within match {
         case TypeRef(_, name) => this += name
         case _ => printFullClassName(within)
       }
@@ -1372,8 +1372,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
       prefixWasPrinted
     }
 
-    def printFullClassName(tp: Type): Unit = {
-      def printClassPrefix(prefix: Type): Unit = prefix match {
+    def printFullClassName(tp: TypeRepr): Unit = {
+      def printClassPrefix(prefix: TypeRepr): Unit = prefix match {
         case TypeRef(prefix2, name) =>
           printClassPrefix(prefix2)
           this += name += "."
@@ -1457,8 +1457,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
   private object Types {
 
     object Sequence {
-      def unapply(tpe: Type): Option[Type] = tpe match {
-        case AppliedType(seq, (tp: Type) :: Nil)
+      def unapply(tpe: TypeRepr): Option[TypeRepr] = tpe match {
+        case AppliedType(seq, (tp: TypeRepr) :: Nil)
             if seq.typeSymbol == Symbol.requiredClass("scala.collection.Seq") || seq.typeSymbol == Symbol.requiredClass("scala.collection.immutable.Seq") =>
           Some(tp)
         case _ => None
@@ -1466,8 +1466,8 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
     }
 
     object Repeated {
-      def unapply(tpe: Type): Option[Type] = tpe match {
-        case AppliedType(rep, (tp: Type) :: Nil) if rep.typeSymbol == Symbol.requiredClass("scala.<repeated>") => Some(tp)
+      def unapply(tpe: TypeRepr): Option[TypeRepr] = tpe match {
+        case AppliedType(rep, (tp: TypeRepr) :: Nil) if rep.typeSymbol == Symbol.requiredClass("scala.<repeated>") => Some(tp)
         case _ => None
       }
     }

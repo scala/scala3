@@ -7,7 +7,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Pri
   def showTree(tree: Tree): String =
     new Buffer().visitTree(tree).result()
 
-  def showType(tpe: Type): String =
+  def showType(tpe: TypeRepr): String =
     new Buffer().visitType(tpe).result()
 
   def showConstant(const: Constant): String =
@@ -181,7 +181,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Pri
         visitType(value) += ")"
     }
 
-    def visitType(x: Type): Buffer = x match {
+    def visitType(x: TypeRepr): Buffer = x match {
       case ConstantType(value) =>
         this += "ConstantType(" += value += ")"
       case TermRef(qual, name) =>
@@ -272,9 +272,9 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Pri
     }
 
     private implicit class TypeOps(buff: Buffer) {
-      def +=(x: Type): Buffer = { visitType(x); buff }
-      def +=(x: Option[Type]): Buffer = { visitOption(x, visitType); buff }
-      def ++=(x: List[Type]): Buffer = { visitList(x, visitType); buff }
+      def +=(x: TypeRepr): Buffer = { visitType(x); buff }
+      def +=(x: Option[TypeRepr]): Buffer = { visitOption(x, visitType); buff }
+      def ++=(x: List[TypeRepr]): Buffer = { visitList(x, visitType); buff }
     }
 
     private implicit class SignatureOps(buff: Buffer) {

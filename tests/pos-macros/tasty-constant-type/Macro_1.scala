@@ -9,8 +9,8 @@ object Macro {
   def impl[A <: Int : Type, B <: Int : Type](using qctx: QuoteContext) : Expr[AddInt[A, B]] = {
     import qctx.reflect._
 
-    val ConstantType(Constant.Int(v1)) = Type.of[A]
-    val ConstantType(Constant.Int(v2)) = Type.of[B]
+    val ConstantType(Constant.Int(v1)) = TypeRepr.of[A]
+    val ConstantType(Constant.Int(v2)) = TypeRepr.of[B]
 
     Literal(Constant.Int(v1 + v2)).tpe.seal match
       case '[$T] => '{ null: AddInt[A, B] { type Out = T } }
