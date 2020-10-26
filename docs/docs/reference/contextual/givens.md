@@ -90,6 +90,21 @@ transparent inline given mkAnnotations[A, T] as Annotations[A, T] = ${
 ```
 Since `mkAnnotations` is `transparent`, the type of an application is the type of its right hand side, which can be a proper subtype of the declared result type `Annotations[A, T]`.
 
+## Pattern-Bound Given Instances
+
+Given instances can also appear as pattern bound-variables. Example:
+
+```scala
+for given Context <- applicationContexts do
+
+pair match
+  case (ctx as given Context, y) => ...
+```
+In the first fragment above, anonymous given instances for class `Context` are established by enumerating over `applicationContexts`. In the the second fragment, a given `Context`
+instance named `ctx` is established by matching against the first half of the `pair` selector.
+
+In each case, a pattern-bound given instance consists of `given` and a type `T`. The pattern matches exactly the same selectors as the type ascription pattern `_: T`.
+
 ## Given Instance Initialization
 
 A given instance without type or context parameters is initialized on-demand, the first
