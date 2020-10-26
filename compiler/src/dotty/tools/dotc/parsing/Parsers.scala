@@ -2986,17 +2986,12 @@ object Parsers {
         }
       }
 
-      def checkVarArgsRules(vparams: List[ValDef]): Unit = vparams match {
-        case Nil =>
-        case List(_) if !prefix =>
-        case vparam :: rest =>
-          vparam.tpt match {
+      def checkVarArgsRules(vparams: List[ValDef]): Unit =
+        for i <- 0 until vparams.length - 1 do
+          vparams(i).tpt match
             case PostfixOp(_, op) if op.name == tpnme.raw.STAR =>
-              syntaxError(VarArgsParamMustComeLast(), vparam.tpt.span)
+              syntaxError(VarArgsParamMustComeLast(), vparams(i).tpt.span)
             case _ =>
-          }
-          checkVarArgsRules(rest)
-      }
 
       // begin paramClause
       inParens {

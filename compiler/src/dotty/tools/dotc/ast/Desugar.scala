@@ -263,24 +263,32 @@ object desugar {
       else cpy.ValDef(vparam)(rhs = EmptyTree).withMods(vparam.mods | HasDefault)
     )
 
-    def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] = vparamss match {
-      case (vparam :: vparams) :: vparamss1 =>
-        def defaultGetter: DefDef =
-          DefDef(
-            name = DefaultGetterName(methName, n),
-            tparams = meth.tparams.map(tparam => dropContextBounds(toDefParam(tparam, keepAnnotations = true))),
-            vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam(_, keepAnnotations = true, keepDefault = false)), n),
-            tpt = TypeTree(),
-            rhs = vparam.rhs
-          )
-          .withMods(Modifiers(mods.flags & (AccessFlags | Synthetic), mods.privateWithin))
-        val rest = defaultGetters(vparams :: vparamss1, n + 1)
-        if (vparam.rhs.isEmpty) rest else defaultGetter :: rest
-      case Nil :: vparamss1 =>
-        defaultGetters(vparamss1, n)
-      case nil =>
-        Nil
-    }
+    def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] =
+      def recur(buf: List.Buffer[DefDef], i: Int, j: Int, n: Int): List[DefDef] =
+        if i == vparamss.length then
+          if buf == null then Nil else buf.toList
+        else
+          val vparams = vparamss(i)
+          if j == vparams.length then
+            recur(buf, i + 1, 0, n)
+          else
+            val vparam = vparams(j)
+            def defaultGetter: DefDef =
+              DefDef(
+                name = DefaultGetterName(methName, n),
+                tparams = meth.tparams.map(tparam => dropContextBounds(toDefParam(tparam, keepAnnotations = true))),
+                vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam(_, keepAnnotations = true, keepDefault = false)), n),
+                tpt = TypeTree(),
+                rhs = vparam.rhs
+              )
+              .withMods(Modifiers(mods.flags & (AccessFlags | Synthetic), mods.privateWithin))
+            if !vparam.rhs.isEmpty then
+              val buf1 = if buf == null then List.Buffer[DefDef]() else buf
+              recur(buf1 += defaultGetter, i, j + 1, n + 1)
+            else
+              recur(buf, i, j + 1, n + 1)
+      recur(null, 0, 0, 0)
+    end defaultGetters
 
     val defGetters = defaultGetters(meth1.vparamss, 0)
     if (defGetters.isEmpty) meth1

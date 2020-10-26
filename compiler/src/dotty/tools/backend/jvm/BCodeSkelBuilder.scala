@@ -592,10 +592,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           genDefDef(dd)
 
         case tree: Template =>
-          val body =
-            if (tree.constr.rhs.isEmpty) tree.body
-            else tree.constr :: tree.body
-          body foreach gen
+          if !tree.constr.rhs.isEmpty then gen(tree.constr)
+          tree.body.foreach(gen)
 
         case _ => abort(s"Illegal tree in gen: $tree")
       }

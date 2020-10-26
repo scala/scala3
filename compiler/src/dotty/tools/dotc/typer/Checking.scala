@@ -869,23 +869,23 @@ trait Checking {
     typr.println(i"check no double declarations $cls")
 
     def checkDecl(decl: Symbol): Unit = {
-      for (other <- seen(decl.name) if !decl.isAbsent() && !other.isAbsent()) {
-        typr.println(i"conflict? $decl $other")
-        def javaFieldMethodPair =
-          decl.is(JavaDefined) && other.is(JavaDefined) &&
-          decl.is(Method) != other.is(Method)
-        if (decl.matches(other) && !javaFieldMethodPair) {
-          def doubleDefError(decl: Symbol, other: Symbol): Unit =
-            if (!decl.info.isErroneous && !other.info.isErroneous)
-              report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
-          if (decl is Synthetic) doubleDefError(other, decl)
-          else doubleDefError(decl, other)
-        }
-        if decl.hasDefaultParams && other.hasDefaultParams then
-          report.error(em"two or more overloaded variants of $decl have default arguments", decl.srcPos)
-          decl.resetFlag(HasDefaultParams)
-      }
-      if (!excludeFromDoubleDeclCheck(decl))
+      for other <- seen(decl.name) do
+        if !decl.isAbsent() && !other.isAbsent() then
+          typr.println(i"conflict? $decl $other")
+          def javaFieldMethodPair =
+            decl.is(JavaDefined) && other.is(JavaDefined) &&
+            decl.is(Method) != other.is(Method)
+          if (decl.matches(other) && !javaFieldMethodPair) {
+            def doubleDefError(decl: Symbol, other: Symbol): Unit =
+              if (!decl.info.isErroneous && !other.info.isErroneous)
+                report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
+            if (decl is Synthetic) doubleDefError(other, decl)
+            else doubleDefError(decl, other)
+          }
+          if decl.hasDefaultParams && other.hasDefaultParams then
+            report.error(em"two or more overloaded variants of $decl have default arguments", decl.srcPos)
+            decl.resetFlag(HasDefaultParams)
+      if !excludeFromDoubleDeclCheck(decl) then
         seen(decl.name) = decl :: seen(decl.name)
     }
 
@@ -987,20 +987,16 @@ trait Checking {
   /** Check that method parameter types do not reference their own parameter
    *  or later parameters in the same parameter section.
    */
-  def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = vparams match {
-    case vparam :: vparams1 =>
+  def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit =
+    for vparam <- vparams do
       val check = new TreeTraverser {
-        def traverse(tree: Tree)(using Context) = tree match {
+        def traverse(tree: Tree)(using Context) = tree match
           case id: Ident if vparams.exists(_.symbol == id.symbol) =>
             report.error("illegal forward reference to method parameter", id.srcPos)
           case _ =>
             traverseChildren(tree)
-        }
       }
       check.traverse(vparam.tpt)
-      checkNoForwardDependencies(vparams1)
-    case Nil =>
-  }
 
   /** Check that all named types that form part of this type have a denotation.
    *  Called on inferred (result) types of ValDefs and DefDefs.

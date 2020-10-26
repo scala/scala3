@@ -581,7 +581,8 @@ class TreePickler(pickler: TastyPickler) {
                 }
               }
             }
-            pickleStats(tree.constr :: rest)
+            pickleStats(List(tree.constr))
+            pickleStats(rest)
           }
         case Import(expr, selectors) =>
           writeByte(IMPORT)

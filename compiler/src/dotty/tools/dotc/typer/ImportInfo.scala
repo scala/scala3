@@ -21,17 +21,15 @@ object ImportInfo {
 
   /** The import info for a root import */
   def rootImport(ref: RootRef)(using Context): ImportInfo =
-    var selectors = List(
-        untpd.ImportSelector(untpd.Ident(nme.WILDCARD)), // import all normal members...
-        untpd.ImportSelector(untpd.Ident(nme.EMPTY)))  // ... and also all given members
-    if ref.isPredef then                               // do not import any2stringadd
-      selectors = untpd.ImportSelector(untpd.Ident(nme.any2stringadd), untpd.Ident(nme.WILDCARD))
-        :: selectors
-
+    val wildcardSelector = untpd.ImportSelector(untpd.Ident(nme.WILDCARD))
+    val givenSelector = untpd.ImportSelector(untpd.Ident(nme.EMPTY))
+    def noStringAddSelector = untpd.ImportSelector(untpd.Ident(nme.any2stringadd), untpd.Ident(nme.WILDCARD))
+    val selectors =
+      if ref.isPredef then List(noStringAddSelector, wildcardSelector, givenSelector)
+      else List(wildcardSelector, givenSelector)
     def sym(using Context) =
       val expr = tpd.Ident(ref.refFn()) // refFn must be called in the context of ImportInfo.sym
       tpd.Import(expr, selectors).symbol
-
     ImportInfo(sym, selectors, None, isRootImport = true)
 
   extension (c: Context):

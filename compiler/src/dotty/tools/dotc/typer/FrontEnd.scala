@@ -26,7 +26,9 @@ class FrontEnd extends Phase {
   override def allowsImplicitSearch: Boolean = true
 
   /** The contexts for compilation units that are parsed but not yet entered */
-  private var remaining: List[Context] = Nil
+  private var unitContexts: List[Context] = Nil
+
+  private var enteredCount: Int = 0
 
   /** The position of the first XML literal encountered while parsing,
    *  NoSourcePosition if there were no XML literals.
@@ -37,7 +39,8 @@ class FrontEnd extends Phase {
    *  that is parsed but not yet entered?
    */
   def stillToBeEntered(name: String): Boolean =
-    remaining.exists(_.compilationUnit.toString.endsWith(name + ".scala"))
+    (enteredCount until unitContexts.length).exists(i =>
+      unitContexts(i).compilationUnit.toString.endsWith(name + ".scala"))
 
   def monitor(doing: String)(body: => Unit)(using Context): Unit =
     try body
@@ -101,16 +104,16 @@ class FrontEnd extends Phase {
     unit.isJava || unit.suspended
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    val unitContexts =
+    unitContexts =
       for unit <- units yield
         report.inform(s"compiling ${unit.source}")
         ctx.fresh.setCompilationUnit(unit).withRootImports
     unitContexts.foreach(parse(using _))
     record("parsedTrees", ast.Trees.ntrees)
-    remaining = unitContexts
-    while remaining.nonEmpty do
-      enterSyms(using remaining.head)
-      remaining = remaining.tail
+    enteredCount = 0
+    while enteredCount < unitContexts.length do
+      enterSyms(using unitContexts(enteredCount))
+      enteredCount += 1
 
     if firstXmlPos.exists && !defn.ScalaXmlPackageClass.exists then
       report.error("""To support XML literals, your project must depend on scala-xml.

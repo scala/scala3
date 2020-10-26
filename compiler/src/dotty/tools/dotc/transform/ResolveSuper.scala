@@ -80,7 +80,8 @@ object ResolveSuper {
    *  @param acc        The symbol statically referred to by the superaccessor in the trait
    */
   def rebindSuper(base: Symbol, acc: Symbol)(using Context): Symbol = {
-    var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
+    val bcs = base.info.baseClasses
+    var idx = bcs.firstIndexWhere(acc.owner == _) + 1
     var sym: Symbol = NoSymbol
 
     var mix: Name = nme.EMPTY
@@ -93,11 +94,11 @@ object ResolveSuper {
 
     report.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
 
-    while (bcs.nonEmpty && sym == NoSymbol) {
-      val other = bcs.head.info.nonPrivateDecl(memberName)
+    while idx < bcs.length && sym == NoSymbol do
+      val other = bcs(idx).info.nonPrivateDecl(memberName)
         .filterWithPredicate(denot => mix.isEmpty || denot.symbol.owner.name == mix)
         .matchingDenotation(base.thisType, base.thisType.memberInfo(acc))
-      report.debuglog(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
+      report.debuglog(i"rebindsuper ${bcs(idx)} $other deferred = ${other.symbol.is(Deferred)}")
       if other.exists && !other.symbol.is(Deferred) then
         sym = other.symbol
         // Having a matching denotation is not enough: it should also be a subtype
@@ -106,9 +107,7 @@ object ResolveSuper {
         val accTp = acc.asSeenFrom(base.typeRef).info
         if (!(otherTp.overrides(accTp, matchLoosely = true)))
           report.error(IllegalSuperAccessor(base, memberName, acc, accTp, other.symbol, otherTp), base.srcPos)
-
-      bcs = bcs.tail
-    }
+      idx += 1
     assert(sym.exists)
     sym
   }
