@@ -1153,6 +1153,10 @@ object Build {
   lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
   lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
 
+  lazy val `scala3doc` = project.in(file("scala3doc")).asScala3doc
+  lazy val `scala3doc-test` = project.in(file("scala3doc-test")).asScala3docTest
+  lazy val `scala3doc-example-project` = project.in(file("scala3doc-example-project")).asDocExampleProject
+
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/scala3-example-project for usage.
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
@@ -1439,6 +1443,73 @@ object Build {
       dependsOn(dottyCompiler).
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
+
+    def commonScala3DocSettings = commonBootstrappedSettings ++ Seq(
+      scalaVersion := dottyVersion,
+      resolvers += Resolver.jcenterRepo,
+      resolvers += Resolver.bintrayRepo("kotlin", "kotlin-dev"),
+      resolvers += Resolver.bintrayRepo("virtuslab", "dokka"),
+      // hack, we cannot build documentation so we need this to publish locally
+      publishArtifact in (Compile, packageDoc) := false
+    )
+
+    def asScala3doc: Project = 
+      project.
+        settings(commonScala3DocSettings).
+        dependsOn(`scala3-compiler-bootstrapped`).
+        dependsOn(`scala3-tasty-inspector`)
+
+    def asScala3docTest: Project = 
+      project.
+        settings(commonScala3DocSettings).
+        dependsOn(`scala3doc`)
+    
+    def asDocExampleProject: Project = project.
+      settings(commonBootstrappedSettings0).
+      dependsOn(`scala3-compiler-bootstrapped`).
+      settings(
+        Compile/scalaSource := baseDirectory.value / "src/main/scala",
+        Test/scalaSource := baseDirectory.value / "src/test/scala",
+        Compile/resourceDirectory := baseDirectory.value / "src/main/resources",
+        Test/resourceDirectory := baseDirectory.value / "src/test/resources",
+
+        name := "scala3doc-example-project",
+        description := "Example SBT project that is documented using Scala3doc",
+        version := "0.1.0-SNAPSHOT",
+        scalaVersion := dottyVersion,
+
+        useScala3doc := true,
+        scala3docOptions ++= Seq("--name", "example-project"),
+        Compile / doc / target := file("out/doc/example-project"),
+
+        // we cannot set
+        doc/scalaInstance := {
+          val externalNonBootstrappedDeps = externalDependencyClasspath.in(`scala3doc`, Compile).value
+          val scalaLibrary = findArtifact(externalNonBootstrappedDeps, "scala-library")
+
+          // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+          // just directories containing classfiles because sbt maintains a cache of
+          // compiler instances. This cache is invalidated based on timestamps
+          // however this is only implemented on jars, directories are never
+          // invalidated.
+          val tastyCore = packageBin.in(`tasty-core`, Compile).value
+          val dottyLibrary = packageBin.in(`scala3-library-bootstrapped`, Compile).value
+          val dottyInterfaces = packageBin.in(`scala3-interfaces`, Compile).value
+          val dottyCompiler = packageBin.in(`scala3-compiler-bootstrapped`, Compile).value
+          val doctool = packageBin.in(`scala3doc`, Compile).value
+
+          val allJars = Seq(tastyCore, dottyLibrary, dottyInterfaces, dottyCompiler, doctool) ++ externalNonBootstrappedDeps.map(_.data)
+
+          makeScalaInstance(
+            state.value,
+            scalaVersion.value,
+            scalaLibrary,
+            dottyLibrary,
+            dottyCompiler,
+            allJars
+          )
+        },
+      )
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).

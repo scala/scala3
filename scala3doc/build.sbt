@@ -1,59 +1,33 @@
-// re-expose subproject settings
-val `example-project` = ExampleProject.`example-project`
-
-val dottyVersion = "3.0.0-M1-bin-SNAPSHOT"
-val dokkaVersion = "1.4.10.2"
 val flexmarkVersion = "0.42.12"
 val jacksonVersion = "2.9.8"
 val scalaTagsVersion = "0.9.1"
 val dokkaSiteVersion = "0.1.9"
 
+
 libraryDependencies ++= Seq(
-  "org.jetbrains.dokka" % "dokka-test-api" % dokkaVersion % "test", // TODO move testing utils to dokka-site
+  "org.scala-lang" %% "scala3-tasty-inspector" % scalaVersion.value,
+
+
   "com.virtuslab.dokka" % "dokka-site" % dokkaSiteVersion,
-
-  "org.scala-lang" %% "scala3-tasty-inspector" % dottyVersion,
-  "org.scala-lang" %% "scala3-compiler" % dottyVersion,
   "org.scala-sbt" % "io_2.13" % "1.3.4",
-
   "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
   "com.lihaoyi" % "scalatags_2.13" % scalaTagsVersion,
   "nl.big-o" % "liqp" % "0.6.7",
   "args4j" % "args4j" % "2.33",
-  "com.novocode" % "junit-interface" % "0.11" % "test",
-)
-
-resolvers += Resolver.jcenterRepo
-resolvers += Resolver.bintrayRepo("kotlin", "kotlin-dev")
-resolvers += Resolver.bintrayRepo("virtuslab", "dokka")
-
-lazy val root = project
-  .in(file("."))
-  .settings(
-    name := "scala3doc",
-    version := "0.1.1-SNAPSHOT",
-    scalaVersion := dottyVersion
-  )
+) //a a
 
 val generateSelfDocumentation = inputKey[Unit]("Generate example documentation")
 generateSelfDocumentation := {
   run.in(Compile).fullInput(" -o output/self -t target/scala-0.27/classes -d documentation -n scala3doc -s src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L").evaluated // TODO #35 proper sbt integration
 }
 
+
 // Uncomment to debug dokka processing (require to run debug in listen mode on 5005 port)
 // javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:5005,suspend=y"
 
 fork.in(run) := true
-// There is a bug in dokka that prevents parallel tests withing the same jvm
-fork.in(test) := true
-Test / parallelExecution := false
-
-scalacOptions in Compile += "-language:implicitConversions"
-
 Compile / mainClass := Some("dotty.dokka.Main")
 
-// hack, we cannot build documentation so we need this to publish locally
-publishArtifact in (Compile, packageDoc) := false
 
 // TODO #35 proper sbt integration
 val generateDottyLibDocumentation = taskKey[Unit]("Generate documentation for dotty lib")

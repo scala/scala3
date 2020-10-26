@@ -55,6 +55,7 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
         }
 
         def listTastyFiles(f: File): Seq[File] = 
+            assertTrue(s"Tasty root dir does not exisits: $f", f.isDirectory())
             val (files, dirs) = f.listFiles().partition(_.isFile)
             files.toIndexedSeq.filter(_.getName.endsWith(".tasty")) ++ dirs.flatMap(listTastyFiles)
 
