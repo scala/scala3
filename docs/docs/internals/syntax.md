@@ -401,7 +401,7 @@ ObjectDef         ::=  id [Template]                                            
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
 GivenDef          ::=  [GivenSig] Type ‘=’ Expr
                     |  [GivenSig] ConstrApps [TemplateBody]
-GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘as’
+GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘as’       -- one of `id`, `DefParamClause`, `UsingParamClause` must appear
 Extension         ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
                        {UsingParamClause}] ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’

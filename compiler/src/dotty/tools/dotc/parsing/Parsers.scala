@@ -3544,7 +3544,7 @@ object Parsers {
           then paramClauses(givenOnly = true)
           else Nil
         newLinesOpt()
-        if isIdent(nme.as) || !name.isEmpty || !tparams.isEmpty || !vparamss.isEmpty then
+        if !name.isEmpty || !tparams.isEmpty || !vparamss.isEmpty then
           accept(nme.as)
         val parents = constrApps(commaOK = true, templateCanFollow = true)
         if in.token == EQUALS && parents.length == 1 && parents.head.isType then
