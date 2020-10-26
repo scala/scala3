@@ -2603,13 +2603,9 @@ object Parsers {
           deprecationWarning(s"`@` bindings have been deprecated; use `as` instead", in.offset)
 
         val offset = in.skipToken()
-
         infixPattern() match {
           case pt @ Ident(tpnme.WILDCARD_STAR) =>  // compatibility for Scala2 `x @ _*` syntax
-            if sourceVersion.isAtLeast(`3.1`) then
-              report.errorOrMigrationWarning(
-                "The syntax `x @ _*` is no longer supported; use `x : _*` instead",
-                in.sourcePos(startOffset(p)))
+            warnMigration(p)
             atSpan(startOffset(p), offset) { Typed(p, pt) }
           case pt @ Bind(nme.WILDCARD, pt1: Typed) if pt.mods.is(Given) =>
             atSpan(startOffset(p), 0) { Bind(name, pt1).withMods(pt.mods) }
@@ -2617,15 +2613,17 @@ object Parsers {
             atSpan(startOffset(p), 0) { Bind(name, pt) }
         }
       case p @ Ident(tpnme.WILDCARD_STAR) =>
-        // compatibility for Scala2 `_*` syntax
-        if sourceVersion.isAtLeast(`3.1`) then
-          report.errorOrMigrationWarning(
-            "The syntax `_*` is no longer supported; use `x : _*` instead",
-            in.sourcePos(startOffset(p)))
+        warnMigration(p)
         atSpan(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
         p
     }
+
+    private def warnMigration(p: Tree) =
+      if sourceVersion.isAtLeast(`3.1`) then
+        report.errorOrMigrationWarning(
+          "The syntax `x @ _*` is no longer supported; use `x : _*` instead",
+          in.sourcePos(startOffset(p)))
 
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
