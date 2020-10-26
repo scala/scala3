@@ -46,6 +46,10 @@ import collection.mutable
     doRecord(fn, coll.size)
     coll
 
+  def doRecordArraySize[T](fn: String, arr: Array[T]): arr.type =
+    doRecord(fn, arr.length)
+    arr
+
   inline def trackTime[T](fn: String)(inline op: T): T =
     if (enabled) doTrackTime(fn)(op) else op
 

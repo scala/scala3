@@ -44,7 +44,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
     "extension_drop", "extension_dropWhile", "unapply")
 
   private val namesToRecord = Set(
-    "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName")
+    "::", "+=", "toString", "box", "toCharArray", "termName", "typeName")
     ++ collectionNamesToRecord
     ++ listNamesToRecord
 
@@ -52,6 +52,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
   private var Stats_doRecordSize: Symbol = _
   private var Stats_doRecordListSize: Symbol = _
   private var Stats_doRecordBufferSize: Symbol = _
+  private var Stats_doRecordArraySize: Symbol = _
   private var CollectionIterableClass: ClassSymbol = _
   private var ListBufferClass: ClassSymbol = _
 
@@ -61,6 +62,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
     Stats_doRecordSize = StatsModule.requiredMethod("doRecordSize")
     Stats_doRecordListSize = StatsModule.requiredMethod("doRecordListSize")
     Stats_doRecordBufferSize = StatsModule.requiredMethod("doRecordBufferSize")
+    Stats_doRecordArraySize = StatsModule.requiredMethod("doRecordArraySize")
     CollectionIterableClass = requiredClass("scala.collection.Iterable")
     ListBufferClass = requiredClass("dotty.tools.List.Buffer")
     ctx
@@ -92,6 +94,13 @@ class Instrumentation extends MiniPhase { thisPhase =>
     case _ =>
       tree
 
+  def recordArraySize(tree: Apply)(using Context): Tree = tree.args match
+    case List(arg1, arg2, arg3) =>
+      val key = Literal(Constant(s"totalSize/Array@${tree.sourcePos.show}"))
+      ref(Stats_doRecordArraySize).appliedTo(key, tree).cast(tree.tpe)
+    case _ =>
+      tree
+
   private def ok(using Context) =
     !ctx.owner.ownersIterator.exists(_.name.toString.startsWith("Stats"))
 
@@ -115,6 +124,8 @@ class Instrumentation extends MiniPhase { thisPhase =>
       cpy.Block(tree)(record(i"alloc/${nu.tpe}", tree) :: Nil, tree)
     case ref: RefTree if namesToRecord.contains(ref.name.toString) && ok =>
       cpy.Block(tree)(record(i"call/${ref.name}", tree) :: Nil, recordSize(tree))
+    case ref: RefTree if ref.name.toString == "newArray" && ok =>
+      cpy.Block(tree)(record(i"alloc/Array", tree) :: Nil, recordArraySize(tree))
     case _ =>
       tree
   }
