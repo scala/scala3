@@ -136,6 +136,8 @@ object Build {
 
   val fetchScalaJSSource = taskKey[File]("Fetch the sources of Scala.js")
 
+  val aritfactsForScala3Documentation = taskKey[Seq[File]]("All artifacts to document")
+
   lazy val SourceDeps = config("sourcedeps")
 
   // Settings shared by the build (scoped in ThisBuild). Used in build.sbt
@@ -1457,7 +1459,15 @@ object Build {
       project.
         settings(commonScala3DocSettings).
         dependsOn(`scala3-compiler-bootstrapped`).
-        dependsOn(`scala3-tasty-inspector`)
+        dependsOn(`scala3-tasty-inspector`).
+        settings(aritfactsForScala3Documentation := Seq(
+            // All projects below will be put co generated documentaiton for Scala 3
+            classDirectory.in(`scala3-interfaces`).in(Compile).value,
+            classDirectory.in(`tasty-core`).in(Compile).value,
+            classDirectory.in(`scala3-library`).in(Compile).value,
+            // TODO this one fails to load using TASTY
+            // classDirectory.in(`stdlib-bootstrapped`).in(Compile).value,
+        ))
 
     def asScala3docTest: Project = 
       project.

@@ -1,40 +1,4 @@
-*.class
-*.log
-libs/
-
-# sbt specific
-.cache
-.history
-.lib/
-dist/*
-target/
-lib_managed/
-src_managed/
-project/boot/
-project/plugins/project/
-
-# Scala-IDE specific
-.scala_dependencies
-.worksheet
-.bsp
-
-# Intellij
-.idea
-
-#integration tests dir
-/test-ws
-
-# to test deploy
-private-*
-repo
-
-.metals
-metals.sbt
-.bloop
-.dotty-ide*
-
-# custom things
+# root where we generate documentation
 output
 
-.vscode
 

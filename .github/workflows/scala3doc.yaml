@@ -41,5 +41,5 @@ jobs:
       - name: Generate test documentation
         run: sbt scala3doc/generateSelfDocumentation
 
-      - name: Generate documentation with SBT plugin
-        run: sbt scala3doc-example-project/doc
+      - name: Generate Scala 3 documentation
+        run: sbt scala3doc/generateScala3Documentation

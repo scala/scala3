@@ -2,7 +2,15 @@ name: Dotty CI
 
 on:
   push:
+    paths-ignore:
+      # Do not run everything on changes only in docs
+      - 'scala3doc/**' 
+      - 'scala3doc-test/**'
   pull_request:
+    paths-ignore:
+      # Do not run everything on changes only in docs
+      - 'scala3doc/**' 
+      - 'scala3doc-test/**'
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
 
