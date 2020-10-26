@@ -99,8 +99,8 @@ object Checking {
     val tparams = tycon.tpe.typeParams
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
     def instantiate(bound: Type, args: List[Type]) =
-      tparams match
-        case LambdaParam(lam, _) :: _ =>
+      tparams.headOr(null) match
+        case LambdaParam(lam, _) =>
           HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
         case _ =>
           bound // paramInfoAsSeenFrom already took care of instantiation in this case

@@ -1677,13 +1677,11 @@ object SymDenotations {
     }
 
     /** The symbol of the superclass, NoSymbol if no superclass exists */
-    def superClass(using Context): Symbol = classParents match {
-      case parent :: _ =>
-        val cls = parent.classSymbol
+    def superClass(using Context): Symbol =
+      if classParents.isEmpty then NoSymbol
+      else
+        val cls = classParents.head.classSymbol
         if (cls.is(Trait)) NoSymbol else cls
-      case _ =>
-        NoSymbol
-    }
 
     /** The explicitly given self type (self types of modules are assumed to be
      *  explcitly given here).
@@ -1966,12 +1964,11 @@ object SymDenotations {
               btrCache(tp) = NoPrefix
               val baseTp =
                 if (tycon.typeSymbol eq symbol) tp
-                else (tycon.typeParams: @unchecked) match {
-                  case LambdaParam(_, _) :: _ =>
+                else tycon.typeParams.head match
+                  case LambdaParam(_, _) =>
                     recur(tp.superType)
-                  case tparams: List[Symbol @unchecked] =>
-                    recur(tycon).substApprox(tparams, args)
-                }
+                  case _ =>
+                    recur(tycon).substApprox(tycon.typeParams.asInstanceOf[List[Symbol]], args)
               record(tp, baseTp)
               baseTp
             }

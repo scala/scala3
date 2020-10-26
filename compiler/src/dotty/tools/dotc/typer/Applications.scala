@@ -528,7 +528,6 @@ trait Applications extends Compatibility {
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.derivesFrom(defn.AnnotationClass)
-
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.
      */
@@ -754,30 +753,13 @@ trait Applications extends Compatibility {
         myNormalizedFun = lifter.liftApp(liftedDefs, myNormalizedFun)
       }
 
-    /** The index of the first difference between lists of trees `xs` and `ys`
-     *  -1 if there are no differences.
-     */
-    private def firstDiff[T <: Trees.Tree[?]](xs: List[T], ys: List[T], n: Int = 0): Int = xs match {
-      case x :: xs1 =>
-        ys match {
-          case y :: ys1 => if (x ne y) n else firstDiff(xs1, ys1, n + 1)
-          case nil => n
-        }
-      case nil =>
-        ys match {
-          case y :: ys1 => n
-          case nil => -1
-        }
-    }
-    private def sameSeq[T <: Trees.Tree[?]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
-
     val result:   Tree = {
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
         else {
-          if (!sameSeq(args, orderedArgs.dropWhile(_ eq EmptyTree)) && !isJavaAnnotConstr(methRef.symbol)) {
+          if (!args.eqElements(orderedArgs.dropWhile(_ eq EmptyTree)) && !isJavaAnnotConstr(methRef.symbol)) {
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
 
@@ -811,7 +793,7 @@ trait Applications extends Compatibility {
             }
             liftedDefs ++= orderedArgDefs
           }
-          if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
+          if (typedArgs.eqElements(args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
           assignType(app0, normalizedFun, typedArgs)
         }

@@ -601,15 +601,13 @@ object TypeOps:
       check(using checkCtx)
     }
 
-    def loop(args: List[Tree], boundss: List[TypeBounds]): Unit = args match
-      case arg :: args1 => boundss match
-        case bounds :: boundss1 =>
+    def loop(args: List[Tree], boundss: List[TypeBounds]): Unit =
+      if args.nonEmpty then
+        args.zipped(boundss).foreach { (arg, bounds) =>
           arg.tpe match
             case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi, arg, bounds)
             case tp => checkOverlapsBounds(tp, tp, arg, bounds)
-          loop(args1, boundss1)
-        case _ =>
-      case _ =>
+        }
 
     loop(args, boundss)
     violations.toList

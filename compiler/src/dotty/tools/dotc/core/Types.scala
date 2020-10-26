@@ -3206,9 +3206,9 @@ object Types {
      *  either a list of type parameter symbols or a list of lambda parameters
      */
     def integrate(tparams: List[ParamInfo], tp: Type)(using Context): Type =
-      tparams match {
-        case LambdaParam(lam, _) :: _ => tp.subst(lam, this)
-        case params => tp.subst(params.asInstanceOf[List[Symbol]], paramRefs)
+      tparams.headOr(null) match {
+        case LambdaParam(lam, _) => tp.subst(lam, this)
+        case _ => tp.subst(tparams.asInstanceOf[List[Symbol]], paramRefs)
       }
 
     final def derivedLambdaType(paramNames: List[ThisName] = this.paramNames,

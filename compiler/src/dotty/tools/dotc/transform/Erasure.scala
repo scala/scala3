@@ -200,7 +200,7 @@ object Erasure {
    */
   def expandedMethodType(mt: MethodType, origFun: Tree)(using Context): MethodType =
     mt.paramInfos match
-      case JavaArrayType(elemType) :: Nil if elemType.isRef(defn.ObjectClass) =>
+      case List(JavaArrayType(elemType)) if elemType.isRef(defn.ObjectClass) =>
         val origArity = totalParamCount(origFun.symbol)(using preErasureCtx)
         if origArity > MaxImplementedFunctionArity then
           MethodType(List.fill(origArity)(defn.ObjectType), mt.resultType)
