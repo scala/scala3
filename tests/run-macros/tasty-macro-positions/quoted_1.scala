@@ -6,7 +6,7 @@ object Macros {
 
   inline def fun2(x: =>Any): Unit = ${ impl('x) }
 
-  inline def fun3[T]: Unit = ${ impl2('[T]) }
+  inline def fun3[T]: Unit = ${ impl2(Type[T]) }
 
   def impl(x: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._

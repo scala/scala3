@@ -9,7 +9,7 @@ inline def test(): Unit = ${ testExpr }
 def testExpr(using QuoteContext): Expr[Unit] = {
   import qctx.reflect._
 
-  val t = '[B].unseal.tpe
+  val t = Type[B].unseal.tpe
   val baseTypes = t.baseClasses.map(b => t.baseType(b))
 
   '{

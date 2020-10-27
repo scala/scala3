@@ -2,5 +2,5 @@ import quoted._
 
 def foo()(using QuoteContext) = {
   class C
-  '[C] // error
+  Type[C] // error
 }
