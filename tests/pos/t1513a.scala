@@ -1,3 +1,4 @@
+import language.experimental.namedTypeArguments
 object Test {
   // Heterogeneous lists and natural numbers as defined in shapeless.
 

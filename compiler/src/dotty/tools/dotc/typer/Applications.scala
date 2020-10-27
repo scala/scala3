@@ -1057,6 +1057,11 @@ trait Applications extends Compatibility {
 
   def typedNamedArgs(args: List[untpd.Tree])(using Context): List[NamedArg] =
     for (arg @ NamedArg(id, argtpt) <- args) yield {
+      if !Feature.namedTypeArgsEnabled then
+        report.error(
+          i"""Named type arguments are experimental,
+             |they must be enabled with a `experimental.namedTypeArguments` language import or setting""",
+          arg.srcPos)
       val argtpt1 = typedType(argtpt)
       cpy.NamedArg(arg)(id, argtpt1).withType(argtpt1.tpe)
     }

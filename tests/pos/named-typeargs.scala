@@ -1,3 +1,4 @@
+import language.experimental.namedTypeArguments
 package namedTypeArgsR {
 
 object t1 {

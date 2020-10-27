@@ -161,7 +161,7 @@ SimpleType        ::=  SimpleLiteral                                            
 SimpleType1       ::=  id                                                       Ident(name)
                     |  Singleton ‘.’ id                                         Select(t, name)
                     |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)
-                    |  ‘(’ ArgTypes ‘)’                                         Tuple(ts)
+                    |  ‘(’ Types ‘)’                                            Tuple(ts)
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  ‘$’ ‘{’ Block ‘}’
                     |  SimpleType1 TypeArgs                                     AppliedTypeTree(t, args)
@@ -170,16 +170,13 @@ Singleton         ::=  SimpleRef
                     |  SimpleLiteral
                     |  Singleton ‘.’ id
 -- not yet          |  Singleton ‘(’ Singletons ‘)’
--- not yet          |  Singleton ‘[’ ArgTypes ‘]’
+-- not yet          |  Singleton ‘[’ Types ‘]’
 Singletons        ::=  Singleton { ‘,’ Singleton }
-ArgTypes          ::=  Types
 FunArgType        ::=  Type
                     |  ‘=>’ Type                                                PrefixOp(=>, t)
 ParamType         ::=  [‘=>’] ParamValueType
 ParamValueType    ::=  Type [‘*’]                                               PostfixOp(t, "*")
-TypeArgs          ::=  ‘[’ ArgTypes ‘]’                                         ts
-NamedTypeArg      ::=  id ‘=’ Type                                              NamedArg(id, t)
-NamedTypeArgs     ::=  ‘[’ NamedTypeArg {‘,’ NamedTypeArg} ‘]’                  nts
+TypeArgs          ::=  ‘[’ Types ‘]’                                         ts
 Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)

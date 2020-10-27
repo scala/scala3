@@ -1,3 +1,4 @@
+import language.experimental.namedTypeArguments
 import scala.compiletime._
 
 final case class Coproduct[+Set, +Value, Index <: Int](value: Value & Set, index: Index)
