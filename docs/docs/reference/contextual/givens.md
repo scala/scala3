@@ -100,7 +100,7 @@ for given Context <- applicationContexts do
 pair match
   case (ctx as given Context, y) => ...
 ```
-In the first fragment above, anonymous given instances for class `Context` are established by enumerating over `applicationContexts`. In the the second fragment, a given `Context`
+In the first fragment above, anonymous given instances for class `Context` are established by enumerating over `applicationContexts`. In the second fragment, a given `Context`
 instance named `ctx` is established by matching against the first half of the `pair` selector.
 
 In each case, a pattern-bound given instance consists of `given` and a type `T`. The pattern matches exactly the same selectors as the type ascription pattern `_: T`.
