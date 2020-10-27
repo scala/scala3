@@ -17,7 +17,7 @@ import dotty.dokka.model.api.{Signature => DSignature, Link => DLink}
 
 trait ClassLikeSupport:
   self: TastyParser =>
-  import reflect._
+  import qctx.reflect._
 
   private val placeholderVisibility = Map(sourceSet.getSourceSet -> KotlinVisibility.Public.INSTANCE).asJava
   private val placeholderModifier = Map(sourceSet.getSourceSet -> KotlinModifier.Empty.INSTANCE).asJava
@@ -161,12 +161,12 @@ trait ClassLikeSupport:
         parseMethod(d, constructorWithoutParamLists(c), s => c.getParameterModifier(s))
       )
 
-  def parseClasslike(classDef: reflect.ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass = classDef match
+  def parseClasslike(classDef: ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass = classDef match
     case c: ClassDef if classDef.symbol.flags.is(Flags.Object) => parseObject(c, signatureOnly)
     case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) => parseEnum(c, signatureOnly)
     case clazz => DClass(classDef)(signatureOnly = signatureOnly)
 
-  def parseObject(classDef: reflect.ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass =
+  def parseObject(classDef: ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass =
     DClass(classDef)(
       name = classDef.name.stripSuffix("$"),
       // All objects are final so we do not need final modifer!
@@ -175,7 +175,7 @@ trait ClassLikeSupport:
     )
 
     // TODO check withNewExtras?
-  def parseEnum(classDef: reflect.ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass =
+  def parseEnum(classDef: ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass =
     val extraModifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Sealed).filter(_ != Modifier.Abstract)
     val companion = classDef.symbol.getCompanionSymbol.map(_.tree.asInstanceOf[ClassDef]).get
 

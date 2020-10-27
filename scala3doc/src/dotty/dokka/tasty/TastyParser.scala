@@ -16,7 +16,7 @@ import org.jetbrains.dokka.model.properties.PropertyContainerKt._
 import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 import java.util.{List => JList}
 
-import scala.tasty.Reflection
+import quoted.QuoteContext
 import scala.tasty.inspector.TastyInspector
 import dotty.dokka.model.api.withNewMembers
 import com.virtuslab.dokka.site.SourceSetWrapper
@@ -44,6 +44,7 @@ case class SbtDokkaTastyInspector(
   import dotty.tools.dotc.core.Phases.Phase
   import dotty.tools.dotc.fromtasty._
   import dotty.tools.dotc.quoted.QuoteContextImpl
+ 
 
   val parser: Parser = null
 
@@ -100,9 +101,9 @@ trait DokkaBaseTastyInspector:
 
   private val topLevels = Seq.newBuilder[Documentable]
 
-  def processCompilationUnit(using ctx: quoted.QuoteContext)(root: ctx.reflect.Tree): Unit =
-    val parser = new TastyParser(ctx.reflect, this, config)
-    topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.reflect.Tree])
+  def processCompilationUnit(using qctx: QuoteContext)(root: qctx.reflect.Tree): Unit =
+    val parser = new TastyParser(qctx, this, config)
+    topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
 
   def result(): List[DPackage] =
     val all = topLevels.result()
@@ -161,9 +162,9 @@ trait DokkaBaseTastyInspector:
     )
 
 /** Parses a single Tasty compilation unit. */
-case class TastyParser(reflect: Reflection, inspector: DokkaBaseTastyInspector, config: DottyDokkaConfig)
+case class TastyParser(qctx: QuoteContext, inspector: DokkaBaseTastyInspector, config: DottyDokkaConfig)
     extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport:
-  import reflect._
+  import qctx.reflect._
 
   def sourceSet = inspector.sourceSet
 
@@ -196,7 +197,7 @@ case class TastyParser(reflect: Reflection, inspector: DokkaBaseTastyInspector, 
         }
         seen = seen.tail
 
-    try Traverser.traverseTree(root)(using reflect.rootContext)
+    try Traverser.traverseTree(root)(using qctx.reflect.rootContext)
     catch case e: Throwable =>
       println(s"Problem parsing ${root.pos}, documentation may not be generated.")
       e.printStackTrace()

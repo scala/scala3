@@ -354,11 +354,11 @@ object DottyPlugin extends AutoPlugin {
       }.value,
 
       // Configuration for the doctool
-      resolvers ++= Seq(
+      resolvers ++= (if(useScala3doc.value) Nil else Seq(
         Resolver.jcenterRepo,
         Resolver.bintrayRepo("kotlin", "kotlin-dev"),
         Resolver.bintrayRepo("virtuslab", "dokka"),
-      ),
+      )),
       useScala3doc := false,
       scala3docOptions := Nil,
       Compile / doc / scalacOptions := {

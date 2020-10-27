@@ -5,12 +5,12 @@ import scala.tasty.Reflection
 trait SyntheticsSupport:
   self: TastyParser =>
 
-  import reflect._
+  import qctx.reflect._
 
   extension (t: TypeRepr):
-    def isTupleType: Boolean = hackIsTupleType(self.reflect)(t)
+    def isTupleType: Boolean = hackIsTupleType(qctx.reflect)(t)
 
-    def isCompiletimeAppliedType: Boolean = hackIsCompiletimeAppliedType(self.reflect)(t)
+    def isCompiletimeAppliedType: Boolean = hackIsCompiletimeAppliedType(qctx.reflect)(t)
 
     def hackIsTupleType(r: Reflection)(rtpe: r.TypeRepr): Boolean = 
       import dotty.tools.dotc
@@ -31,11 +31,11 @@ trait SyntheticsSupport:
 
     def isDefaultHelperMethod: Boolean = ".*\\$default\\$\\d+$".r.matches(s.name)
 
-    def isOpaque: Boolean = hackIsOpaque(self.reflect)(s)
+    def isOpaque: Boolean = hackIsOpaque(qctx.reflect)(s)
 
-    def isInfix: Boolean = hackIsInfix(self.reflect)(s)
+    def isInfix: Boolean = hackIsInfix(qctx.reflect)(s)
     
-    def getAllMembers: List[Symbol] = hackGetAllMembers(self.reflect)(s)
+    def getAllMembers: List[Symbol] = hackGetAllMembers(qctx.reflect)(s)
 
   def isSyntheticField(c: Symbol) =
     c.flags.is(Flags.CaseAccessor) || c.flags.is(Flags.Object)
@@ -92,7 +92,7 @@ trait SyntheticsSupport:
     baseTypes.asInstanceOf[List[(r.Symbol, r.TypeRepr)]]
   }
 
-  def getSupertypes(c: ClassDef) = hackGetSupertypes(self.reflect)(c).tail
+  def getSupertypes(c: ClassDef) = hackGetSupertypes(qctx.reflect)(c).tail
 
   def typeForClass(c: ClassDef): r.TypeRepr = 
     import dotty.tools.dotc

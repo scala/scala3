@@ -6,7 +6,7 @@ import collection.JavaConverters._
 
 trait TypesSupport:
     self: TastyParser =>
-    import reflect._
+    import qctx.reflect._
 
     def getGivenInstance(method: DefDef): Option[Bound] = {
       def extractTypeSymbol(t: Tree): Option[Symbol] = t match
@@ -37,7 +37,7 @@ trait TypesSupport:
 
     given TreeSyntax as AnyRef:
         extension (tpeTree: Tree):
-            def dokkaType(using cxt: reflect.Context): Bound =
+            def dokkaType(using cxt: Context): Bound =
                 val data = tpeTree match
                     case TypeBoundsTree(low, high) => typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
                     case tpeTree: TypeTree =>  inner(tpeTree.tpe)
@@ -47,7 +47,7 @@ trait TypesSupport:
 
     given TypeSyntax as AnyRef:
         extension (tpe: TypeRepr):
-            def dokkaType(using ctx: reflect.Context): Bound =
+            def dokkaType(using ctx: Context): Bound =
                 val data = inner(tpe)
                 val dri = data.collect{
                     case o: TypeParameter => o
@@ -59,7 +59,7 @@ trait TypesSupport:
     private def texts(str: String): List[JProjection] = List(text(str))
 
     
-    private def link(symbol: reflect.Symbol)(using cxt: reflect.Context): List[JProjection] = {
+    private def link(symbol: Symbol)(using cxt: Context): List[JProjection] = {
         val suffix = if symbol.isValDef then texts(".type") else Nil
         (new TypeParameter(symbol.dri, symbol.name, null)) :: suffix
     }
@@ -74,7 +74,7 @@ trait TypesSupport:
         tpeAnnotation.tpe.typeSymbol.toString == "class Repeated"
 
     // TODO #23 add support for all types signatures that makes sense
-    private def inner(tp: reflect.TypeRepr)(using cxt: reflect.Context): List[JProjection] =
+    private def inner(tp: TypeRepr)(using cxt: Context): List[JProjection] =
         def noSupported(name: String): List[JProjection] =
             println(s"WARN: Unsupported type: $name: ${tp.show}") 
             List(text(s"Unsupported[$name]")) 
@@ -233,7 +233,7 @@ trait TypesSupport:
                 if(low == hi) texts(" = ") ++ inner(low)
                 else typeBound(low, low = true) ++ typeBound(hi, low = false)
             
-            case reflect.NoPrefix() => Nil
+            case NoPrefix() => Nil
 
             case MatchType(bond, sc, cases) =>
                 val casesTexts = cases.flatMap {

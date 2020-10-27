@@ -10,11 +10,11 @@ import dotty.dokka.ScalaTagWrapper
 import comments.{kt, dkk}
 
 trait ScaladocSupport { self: TastyParser =>
-  import reflect._
+  import qctx.reflect._
 
   def parseComment(
-    commentNode: reflect.Documentation,
-    tree: reflect.Tree
+    commentNode: Documentation,
+    tree: Tree
   ): dkkd.DocumentationNode = {
     val preparsed =
       comments.Preparser.preparse(comments.Cleaner.clean(commentNode.raw))
@@ -32,9 +32,9 @@ trait ScaladocSupport { self: TastyParser =>
 
     val parser = commentSyntax match {
       case CommentSyntax.Wiki =>
-        comments.WikiCommentParser(comments.Repr(reflect)(tree.symbol))
+        comments.WikiCommentParser(comments.Repr(qctx.reflect)(tree.symbol))
       case CommentSyntax.Markdown =>
-        comments.MarkdownCommentParser(comments.Repr(reflect)(tree.symbol))
+        comments.MarkdownCommentParser(comments.Repr(qctx.reflect)(tree.symbol))
     }
     val parsed = parser.parse(preparsed)
 

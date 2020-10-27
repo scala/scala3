@@ -11,7 +11,7 @@ import collection.JavaConverters._
 
 trait PackageSupport:
     self: TastyParser =>
-    import reflect._
+    import qctx.reflect._
 
     def parsePackage(pck: PackageClause): DPackage = {
         val name = extractPackageName(pck.pid.show)

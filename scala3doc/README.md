@@ -3,7 +3,7 @@
 Scala3doc (name subject to change) is the documentation tool for
 [Dotty](https://github.com/lampepfl/dotty), which is scheduled to become
 Scala 3. It's based on [Dokka](https://github.com/Kotlin/dokka), the
-documentation tool for Kotlin. It uses Tasty-Reflect to access definitions,
+documentation tool for Kotlin. It uses the TastyInspector to access definitions,
 which is an officially supported way to access Dotty's perspective of a
 codebase.
 
