@@ -176,9 +176,9 @@ trait QuotesAndSplices {
       typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuotedPatterns_patternTypeAnnot.typeRef)).withSpan(tree.expr.span)))
       val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
           using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-      pat.select(tpnme.spliceType)
+      pat.select(tpnme.Underlying)
     else
-      val tree1 = typedSelect(untpd.Select(tree.expr, tpnme.spliceType), pt)(using spliceContext).withSpan(tree.span)
+      val tree1 = typedSelect(untpd.Select(tree.expr, tpnme.Underlying), pt)(using spliceContext).withSpan(tree.span)
       val msg = em"Consider using canonical type reference ${tree1.tpe} instead"
       if sourceVersion.isAtLeast(`3.1-migration`) then report.error(msg, tree.srcPos)
       else report.warning(msg, tree.srcPos)

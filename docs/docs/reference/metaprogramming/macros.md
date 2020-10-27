@@ -187,25 +187,25 @@ Indeed, the definition of `to` above uses `T` in the next stage, there is a
 quote but no splice between the parameter binding of `T` and its
 usage. But the code can be rewritten by adding a binding of a `Type[T]` tag:
 ```scala
-def to[T, R: Type](f: Expr[T] => Expr[R])(using t: Type[T])(using QuoteContext): Expr[T => R] =
-  '{ (x: $t) => ${ f('x) } }
+def to[T, R](f: Expr[T] => Expr[R])(using Type[T], Type[R], QuoteContext): Expr[T => R] =
+  '{ (x: T) => ${ f('x) } }
 ```
 In this version of `to`, the type of `x` is now the result of
 splicing the `Type` value `t`. This operation _is_ splice correct -- there
 is one quote and one splice between the use of `t` and its definition.
 
 To avoid clutter, the Scala implementation tries to convert any type
-reference to a type `T` in subsequent phases to a type-splice, by rewriting `T` to `${ summon[Type[T]] }`.
+reference to a type `T` in subsequent phases to a type-splice, by rewriting `T` to `summon[Type[T]].Underlying`.
 For instance, the user-level definition of `to`:
 
 ```scala
-def to[T: Type, R: Type](f: Expr[T] => Expr[R])(using QuoteContext): Expr[T => R] =
+def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], QuoteContext): Expr[T => R] =
   '{ (x: T) => ${ f('x) } }
 ```
 would be rewritten to
 ```scala
-def to[T: Type, R: Type](f: Expr[T] => Expr[R])(using QuoteContext): Expr[T => R] =
-  '{ (x: ${ summon[Type[T]] }) => ${ f('x) } }
+def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], QuoteContext): Expr[T => R] =
+  '{ (x: t.Underlying }) => ${ f('x) } }
 ```
 The `summon` query succeeds because there is a given instance of
 type `Type[T]` available (namely the given parameter corresponding
@@ -499,10 +499,10 @@ function `f` and one `sum` that performs a sum by delegating to `map`.
 
 ```scala
 object Macros {
-  def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])(using t: Type[T], qctx: QuoteContext): Expr[Unit] = '{
+  def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])(using Type[T], QuoteContext): Expr[Unit] = '{
     var i: Int = 0
     while (i < ($arr).length) {
-      val element: $t = ($arr)(i)
+      val element: T = ($arr)(i)
       ${f('element)}
       i += 1
     }
@@ -703,11 +703,11 @@ Sometimes it is necessary to get a more precise type for an expression. This can
 ```scala
 def f(exp: Expr[Any])(using QuoteContext) =
   expr match
-    case '{ $x: $t } =>
+    case '{ $x: $T } =>
       // If the pattern match succeeds, then there is some type `T` such that
       // - `x` is bound to a variable of type `Expr[T]`
-      // - `t` is bound to a given instance of type `Type[T]`
-      // That is, we have `x: Expr[T]` and `given t: Type[T]`, for some (unknown) type `T`.
+      // - `T` is bound to a new type T and a given instance `Type[T]` is provided for it
+      // That is, we have `x: Expr[T]` and `given Type[T]`, for some (unknown) type `T`.
 ```
 
 This might be used to then perform an implicit search as in:
@@ -720,9 +720,8 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
   argsExpr match {
     case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {
-        case '{ $arg: $tp } =>
-          val showTp = '[Show[$tp]]
-          Expr.summon(using showTp) match {
+        case '{ $arg: $T } =>
+          Expr.summon[Show[T]] match {
             case Some(showExpr) => '{ $showExpr.show($arg) }
             case None => Reporting.error(s"could not find implicit for ${showTp.show}", arg); '{???}
           }
