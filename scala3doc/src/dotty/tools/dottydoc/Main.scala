@@ -55,6 +55,7 @@ object Main extends Driver {
       val requiredArgs = Seq(
         "--tastyRoots", "", // hack, value is not used in SBT but required in CLI
         // we extract some settings from Dotty options since that's how SBT passes them
+        "--name", ctx.settings.projectName.value,
         "--projectTitle", ctx.settings.projectName.value,
         "--output", ctx.settings.outputDir.value.toString,
       )

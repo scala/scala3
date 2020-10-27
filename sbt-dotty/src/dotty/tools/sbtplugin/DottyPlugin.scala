@@ -360,7 +360,7 @@ object DottyPlugin extends AutoPlugin {
         Resolver.bintrayRepo("virtuslab", "dokka"),
       ),
       useScala3doc := false,
-      scala3docOptions := Seq("-n", name.value),
+      scala3docOptions := Nil,
       Compile / doc / scalacOptions := {
         val s3dOpts = scala3docOptions.value.map("--+DOC+" + _)
         val s3cOpts = (Compile / doc / scalacOptions).value
