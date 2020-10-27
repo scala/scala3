@@ -508,7 +508,8 @@ trait Inferencing { this: Typer =>
         //     found   : Int(1)
         //     required: String
         //     val y: List[List[String]] = List(List(1))
-        val hasUnreportedErrors = state.reporter.hasUnreportedErrors
+        if state.reporter.hasUnreportedErrors then return tree
+
         def constraint = state.constraint
         type InstantiateQueue = mutable.ListBuffer[(TypeVar, Boolean)]
         val toInstantiate = new InstantiateQueue
@@ -521,7 +522,7 @@ trait Inferencing { this: Typer =>
               typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
               toInstantiate += ((tvar, tvar.hasLowerBound))
             }
-            else if (!hasUnreportedErrors)
+            else
               if (v.intValue != 0) {
                 typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
                 toInstantiate += ((tvar, v.intValue == 1))
