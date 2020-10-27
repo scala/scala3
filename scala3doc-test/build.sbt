@@ -5,15 +5,15 @@ libraryDependencies ++= Seq(
   "com.novocode" % "junit-interface" % "0.11" % "test",
 )
 
-val testOuputDir = taskKey[String]("Root directory where tests classses are generated")
-testOuputDir := (Compile/target/classDirectory).value.getAbsolutePath.toString
+val testOutputDir = taskKey[String]("Root directory where tests classses are generated")
+testOutputDir := (Compile/target/classDirectory).value.getAbsolutePath.toString
 
 val testSourceRoot = taskKey[String]("Root directory where tests sources are generated")
 testSourceRoot := (baseDirectory.value / "src").getAbsolutePath.toString
 
 
 buildInfoKeys in Test := Seq[BuildInfoKey](
-  testOuputDir,
+  testOutputDir,
   testSourceRoot,
 )
 buildInfoPackage in Test := "dotty.dokka"

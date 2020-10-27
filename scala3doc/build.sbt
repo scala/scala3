@@ -30,7 +30,6 @@ fork.in(run) := true
 Compile / mainClass := Some("dotty.dokka.Main")
 
 
-
 def generateDottyDocsFromClasspath(artifacts: Seq[String]) =  Def.taskDyn {
   val roots = artifacts.mkString(java.io.File.pathSeparator)
   val mapping = "=https://github.com/lampepfl/dotty/tree/master#L"
@@ -38,21 +37,14 @@ def generateDottyDocsFromClasspath(artifacts: Seq[String]) =  Def.taskDyn {
     streams.value.log.error("Dotty lib wasn't found")
   } else Def.task {
     run.in(Compile).toTask(s" -o output/stdLib -t $roots -d dotty-docs/docs -n dotty-lib -s $mapping ").value
-  } 
+  }
 }
 
 val generateScala3Documentation = taskKey[Unit]("Generate documentation for dotty lib")
-generateScala3Documentation := Def.taskDyn { 
-  val dotttyJars = Build.aritfactsForScala3Documentation.value.map(_.toString)
+generateScala3Documentation := Def.taskDyn {
+  val dottyJars = Build.artifactsForScala3Documentation.value.map(_.toString)
 
-  streams.value.log.info(s"Documenting classes from:\n${dotttyJars.mkString("\n")}")
+  streams.value.log.info(s"Documenting classes from:\n${dottyJars.mkString("\n")}")
 
-  generateDottyDocsFromClasspath(dotttyJars) 
+  generateDottyDocsFromClasspath(dottyJars)
 }.value
-
-val prepareExampleProject = taskKey[Unit]("Prepare example projet for interaction test")
-prepareExampleProject := {
-  
-
-
-}

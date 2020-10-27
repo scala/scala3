@@ -123,7 +123,7 @@ class MemberLookupTests {
     import java.io.File
     import scala.collection.mutable.ListBuffer
 
-    val classRoot = new File(BuildInfo.testOuputDir)
+    val classRoot = new File(BuildInfo.testOutputDir)
 
     def go(bld: ListBuffer[String])(file: File): Unit =
       file.listFiles.foreach { f =>
