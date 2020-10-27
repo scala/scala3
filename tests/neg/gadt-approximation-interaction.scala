@@ -63,7 +63,7 @@ object GivenConversion {
   class Pow(self: Int):
     def **(other: Int): Int = math.pow(self, other).toInt
 
-  given as Conversion[Int, Pow] = (i: Int) => Pow(i)
+  given Conversion[Int, Pow] = (i: Int) => Pow(i)
 
   def foo[T](t: T, ev: T SUB Int) =
     ev match { case SUB.Refl() =>

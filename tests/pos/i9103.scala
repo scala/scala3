@@ -1,6 +1,6 @@
 object a:
   type Foo[T]
-  given as Foo[Unit] = ???
+  given Foo[Unit] = ???
 
 val b = a
 

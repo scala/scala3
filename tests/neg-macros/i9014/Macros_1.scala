@@ -1,4 +1,4 @@
 import scala.quoted._
 trait Bar
-inline given as Bar = ${ impl }
+inline given Bar = ${ impl }
 def impl(using qctx: QuoteContext): Expr[Bar] = report.throwError("Failed to expand!")
