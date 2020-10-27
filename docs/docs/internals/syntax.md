@@ -161,7 +161,7 @@ SimpleType        ::=  SimpleLiteral                                            
 SimpleType1       ::=  id                                                       Ident(name)
                     |  Singleton ‘.’ id                                         Select(t, name)
                     |  Singleton ‘.’ ‘type’                                     SingletonTypeTree(p)
-                    |  ‘(’ Types ‘)’                                         Tuple(ts)
+                    |  ‘(’ Types ‘)’                                            Tuple(ts)
                     |  Refinement                                               RefinedTypeTree(EmptyTree, refinement)
                     |  ‘$’ ‘{’ Block ‘}’
                     |  SimpleType1 TypeArgs                                     AppliedTypeTree(t, args)
