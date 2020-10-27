@@ -272,7 +272,10 @@ object Build {
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
-  lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
+  lazy val commonBootstrappedSettings = commonBootstrappedSettings0 ++ Seq(
+    disableDocSetting,
+  )
+  lazy val commonBootstrappedSettings0 = commonDottySettings ++ Seq(
     unmanagedSourceDirectories in Compile += baseDirectory.value / "src-bootstrapped",
 
     version := dottyVersion,
@@ -1451,8 +1454,6 @@ object Build {
       resolvers += Resolver.jcenterRepo,
       resolvers += Resolver.bintrayRepo("kotlin", "kotlin-dev"),
       resolvers += Resolver.bintrayRepo("virtuslab", "dokka"),
-      // hack, we cannot build documentation so we need this to publish locally
-      publishArtifact in (Compile, packageDoc) := false
     )
 
     def asScala3doc: Project = 
