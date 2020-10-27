@@ -4,11 +4,7 @@ import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.model._
 import org.jetbrains.dokka._
-import scalatags.Text.all._
-import scalatags.Text.svgTags._
-import scalatags.Text.svgTags.attr
-import scalatags.Text.tags2.{title, main, nav}
-import scalatags.Text.TypedTag
+import HTML._
 import collection.JavaConverters._
 import com.virtuslab.dokka.site.SiteRenderer
 import com.virtuslab.dokka.site.BaseStaticSiteProcessor
@@ -26,17 +22,17 @@ import org.jetbrains.dokka.base.resolvers.local.LocationProvider
 class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
     def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
 
-    def renderLink(name: String, dri: DRI, modifiers: scalatags.Text.all.Modifier*) =
+    def renderLink(name: String, dri: DRI, modifiers: AppliedAttr*) =
         link(dri) match
             case Some(link) => a(href := link, modifiers)(name)
             case None if modifiers.isEmpty => raw(name)
             case _ => span(modifiers)(name)
             
 
-    def renderElementWith(e: String | (String, DRI) | Link, modifiers: scalatags.Text.all.Modifier*) = e match
-        case (name, dri) => renderLink(name, dri, modifiers)
+    def renderElementWith(e: String | (String, DRI) | Link, modifiers: AppliedAttr*) = e match
+        case (name, dri) => renderLink(name, dri, modifiers:_*)
         case name: String => raw(name)
-        case Link(name, dri) => renderLink(name, dri, modifiers)
+        case Link(name, dri) => renderLink(name, dri, modifiers:_*)
             
 
     def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
@@ -77,8 +73,6 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         }
     }
 
-    private val cls = `class`
-
     private val anchor = raw("""
         <svg width="24" height="24" viewBox="0 0 24 24" fill="darkgray" xmlns="http://www.w3.org/2000/svg">
             <path d="M21.2496 5.3C20.3496 4.5 19.2496 4 18.0496 4C16.8496 4 15.6496 4.5 14.8496 5.3L10.3496 9.8L11.7496 11.2L16.2496 6.7C17.2496 5.7 18.8496 5.7 19.8496 6.7C20.8496 7.7 20.8496 9.3 19.8496 10.3L15.3496 14.8L16.7496 16.2L21.2496 11.7C22.1496 10.8 22.5496 9.7 22.5496 8.5C22.5496 7.3 22.1496 6.2 21.2496 5.3Z"></path>
@@ -95,7 +89,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         import renderer._
 
         def buildDocumentable(element: DocumentableElement) = 
-            def topLevelAttr = Seq(cls := "documentableElement") ++ element.attributes.map{ case (n, v) => attr(s"data-f-$n") := v }
+            def topLevelAttr = Seq(cls := "documentableElement") ++ element.attributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
             val kind = element.modifiers.takeRight(1)
             val otherModifiers = element.modifiers.dropRight(1)
 
@@ -193,10 +187,11 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
     
     def buildDiagram(f: FlowContent, diagram: HierarchyDiagram, pageContext: ContentPage) = 
         val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
-        withHtml(f, div( id := "inheritance-diagram",
+        withHtml(f, div( id := "inheritance-diagram")(
                 svg(id := "graph"),
-                script(`type` := "text/dot", id := "dot", raw(DotDiagramBuilder.build(diagram, renderer)))
-            ).render
+                script(`type` := "text/dot", id := "dot"),
+                raw(DotDiagramBuilder.build(diagram, renderer))
+            ).toString()
         )
 
     override def buildHtml(page: PageNode, resources: JList[String], kotlinxContent: FlowContentConsumer): String =
@@ -219,18 +214,14 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
                 if fromTemplate then
                     raw(buildWithKotlinx(kotlinxContent))
                 else
-                    div(
-                        id := "container",
-                        div(
-                            id := "leftColumn",
+                    div(id := "container")(
+                        div(id := "leftColumn")(
                             div(id := "logo"),
                             div(id := "paneSearch"),
                             nav(id := "sideMenu"),
                         ),
-                        div(
-                            id := "main",
-                            div (
-                                id := "leftToggler",
+                        div(id := "main")(
+                            div (id := "leftToggler")(
                                 span(cls := "icon-toggler")
                             ),
                             div(id := "searchBar"),
@@ -259,7 +250,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
     private def resolveRoot(page: PageNode, path: String) =
         getLocationProvider.pathToRoot(page) + path
 
-    private def linkResources(page: PageNode, resources: Iterable[String]): Iterable[Frag] =
+    private def linkResources(page: PageNode, resources: Iterable[String]): Iterable[AppliedTag] =
         def fileExtension(url: String): String =
             val param = url.indexOf('?')
             val end = if param < 0 then url.length else param

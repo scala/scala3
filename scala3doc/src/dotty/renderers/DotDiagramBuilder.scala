@@ -6,7 +6,7 @@ import org.jetbrains.dokka.links.DRI
 import org.jetbrains.dokka.base.resolvers.local.LocationProvider
 import org.jetbrains.dokka.pages._
 import dotty.dokka.model.api.Kind
-import scalatags.Text.all._
+import HTML._
 import dotty.dokka.model.api._
 
 object DotDiagramBuilder:

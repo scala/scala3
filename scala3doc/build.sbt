@@ -9,10 +9,9 @@ libraryDependencies ++= Seq(
 
   "com.virtuslab.dokka" % "dokka-site" % dokkaSiteVersion,
   "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
-  "com.lihaoyi" % "scalatags_2.13" % scalaTagsVersion,
   "nl.big-o" % "liqp" % "0.6.7",
   "args4j" % "args4j" % "2.33",
-) //a a
+)
 
 val generateSelfDocumentation = inputKey[Unit]("Generate example documentation")
 generateSelfDocumentation := Def.inputTaskDyn {
