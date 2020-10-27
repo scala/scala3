@@ -8,7 +8,6 @@ libraryDependencies ++= Seq(
   "org.scala-lang" %% "scala3-tasty-inspector" % scalaVersion.value,
 
   "com.virtuslab.dokka" % "dokka-site" % dokkaSiteVersion,
-  "org.scala-sbt" % "io_2.13" % "1.3.4",
   "com.vladsch.flexmark" % "flexmark-all" % flexmarkVersion,
   "com.lihaoyi" % "scalatags_2.13" % scalaTagsVersion,
   "nl.big-o" % "liqp" % "0.6.7",

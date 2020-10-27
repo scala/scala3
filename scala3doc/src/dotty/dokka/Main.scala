@@ -12,7 +12,6 @@ import java.util.{List => JList}
 
 import scala.tasty.Reflection
 import scala.tasty.inspector.TastyInspector
-import sbt.io.IO
 import java.nio.file.Files
 
 import org.kohsuke.args4j.{CmdLineParser, Option => COption}
