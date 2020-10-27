@@ -74,11 +74,13 @@ object Scala2Unpickler {
       case cinfo => (Nil, cinfo)
     }
     val ost =
-      if ((selfInfo eq NoType) && denot.is(ModuleClass) && denot.sourceModule.exists)
-        // it seems sometimes the source module does not exist for a module class.
-        // An example is `scala.reflect.internal.Trees.Template$. Without the
-        // `denot.sourceModule.exists` provision i859.scala crashes in the backend.
-        denot.owner.thisType select denot.sourceModule
+      if (selfInfo eq NoType) && denot.is(ModuleClass) then
+        val sourceModule = denot.sourceModule.orElse {
+          // For non-toplevel modules, `sourceModule` won't be set when completing
+          // the module class, we need to go find it ourselves.
+          NamerOps.findModuleBuddy(cls.name.sourceModuleName, denot.owner.info.decls)
+        }
+        denot.owner.thisType.select(sourceModule)
       else selfInfo
     val tempInfo = new TempClassInfo(denot.owner.thisType, cls, decls, ost)
     denot.info = tempInfo // first rough info to avoid CyclicReferences
