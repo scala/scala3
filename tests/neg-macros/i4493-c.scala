@@ -1,6 +1,6 @@
 class Index[K]
 object Index {
   inline def succ[K]: Unit = ${
-    '{new Index[K]}
+    '{new Index[K]} // error
   }
 }
