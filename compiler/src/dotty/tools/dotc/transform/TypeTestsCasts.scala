@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -193,8 +194,11 @@ object TypeTestsCasts {
           tree.fun.symbol == defn.Any_typeTest ||  // new scheme
           expr.symbol.is(Case)                // old scheme
 
-        def transformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
+        def transformIsInstanceOf(
+            expr: Tree, testType: Type,
+            unboxedTestType: Type, flagUnrelated: Boolean): Tree = {
           def testCls = effectiveClass(testType.widen)
+          def unboxedTestCls = effectiveClass(unboxedTestType.widen)
 
           def unreachable(why: => String)(using Context): Boolean = {
             if (flagUnrelated)
@@ -226,9 +230,10 @@ object TypeTestsCasts {
             def check(foundCls: Symbol): Boolean =
               if (!isCheckable(foundCls)) true
               else if (!foundCls.derivesFrom(testCls)) {
-                val unrelated = !testCls.derivesFrom(foundCls) && (
-                  testCls.is(Final) || !testCls.is(Trait) && !foundCls.is(Trait)
-                )
+                val unrelated =
+                  !testCls.derivesFrom(foundCls)
+                  && !unboxedTestCls.derivesFrom(foundCls)
+                  && (testCls.is(Final) || !testCls.is(Trait) && !foundCls.is(Trait))
                 if (foundCls.is(Final))
                   unreachable(i"$exprType is not a subclass of $testCls")
                 else if (unrelated)
@@ -265,7 +270,8 @@ object TypeTestsCasts {
                 case List(cls) if cls.isPrimitiveValueClass =>
                   constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
                 case _ =>
-                  transformIsInstanceOf(expr, defn.boxedType(testCls.typeRef), flagUnrelated)
+                  transformIsInstanceOf(
+                    expr, defn.boxedType(testCls.typeRef), testCls.typeRef, flagUnrelated)
             else
               derivedTree(expr, defn.Any_isInstanceOf, testType)
           }
@@ -342,7 +348,8 @@ object TypeTestsCasts {
           case AppliedType(tref: TypeRef, _) if tref.symbol == defn.PairClass =>
             ref(defn.RuntimeTuple_isInstanceOfNonEmptyTuple).appliedTo(expr)
           case _ =>
-            transformIsInstanceOf(expr, erasure(testType), flagUnrelated)
+            val erasedTestType = erasure(testType)
+            transformIsInstanceOf(expr, erasedTestType, erasedTestType, flagUnrelated)
         }
 
         if (sym.isTypeTest) {
