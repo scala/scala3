@@ -1282,9 +1282,11 @@ object Parsers {
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
       if in.token == COLONEOL then
-        in.nextToken()
-        if in.token != INDENT then
-          syntaxErrorOrIncomplete(i"indented definitions expected")
+        if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
+        else
+          in.nextToken()
+          if in.token != INDENT then
+            syntaxErrorOrIncomplete(i"indented definitions expected, ${in}")
       else
         newLineOptWhenFollowedBy(LBRACE)
 
