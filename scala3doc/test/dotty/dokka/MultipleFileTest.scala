@@ -51,7 +51,7 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
         def cleanup(s: String) = s.replace("\n", " ").replaceAll(" +", " ")
         
         val allFromSource = sourceFiles.map{ file => 
-            val all = signaturesFromSource(Source.fromFile(s"${BuildInfo.testSourceRoot}/tests/$file.scala"))
+            val all = signaturesFromSource(Source.fromFile(s"${BuildInfo.test_testcasesSourceRoot}/tests/$file.scala"))
             (all.expected, all.unexpected)
         }
 
@@ -59,7 +59,7 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
         val unexpectedFromSource = allFromSource.map(_._2).flatten.filter(extractSymbolName(_) != "NULL").map(cleanup)
         val unexpectedSignatureSymbolNames = unexpectedFromSource.map(extractSymbolName)
 
-        val allFromDocumentation = tastyFolders.flatMap(folder => signaturesFromDocumentation(s"${BuildInfo.testOutputDir}/tests/$folder"))
+        val allFromDocumentation = tastyFolders.flatMap(folder => signaturesFromDocumentation(s"${BuildInfo.test_testcasesOutputDir}/tests/$folder"))
         val fromDocumentation = allFromDocumentation.filter(extractSymbolName(_) != "NULL").map(cleanup)
         
         val documentedSignatures = fromDocumentation.flatMap(matchSignature(_, expectedFromSource)).toSet

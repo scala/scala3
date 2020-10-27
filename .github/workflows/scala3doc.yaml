@@ -33,7 +33,7 @@ jobs:
           java-version: 11
 
       - name: Compile and test
-        run: ./project/scripts/sbt scala3doc-test/test
+        run: ./project/scripts/sbt scala3doc/test
 
       - name: Locally publish self
         run: ./project/scripts/sbt scala3doc/publishLocal

@@ -1158,8 +1158,10 @@ object Build {
   lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
   lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
 
+  val testcasesOutputDir = taskKey[String]("Root directory where tests classses are generated")
+  val testcasesSourceRoot = taskKey[String]("Root directory where tests sources are generated")
   lazy val `scala3doc` = project.in(file("scala3doc")).asScala3doc
-  lazy val `scala3doc-test` = project.in(file("scala3doc-test")).asScala3docTest
+  lazy val `scala3doc-testcases` = project.in(file("scala3doc-testcases")).asScala3docTestcases
 
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/scala3-example-project for usage.
@@ -1448,59 +1450,33 @@ object Build {
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
 
-    def commonScala3docSettings = Seq(
-      resolvers += Resolver.jcenterRepo,
-      resolvers += Resolver.bintrayRepo("kotlin", "kotlin-dev"),
-      resolvers += Resolver.bintrayRepo("virtuslab", "dokka"),
-    )
-
     def asScala3doc: Project =
       project.settings(commonBootstrappedSettings).
-        settings(commonScala3docSettings).
         dependsOn(`scala3-compiler-bootstrapped`).
         dependsOn(`scala3-tasty-inspector`).
-        settings(artifactsForScala3Documentation := Seq(
-          // All projects below will be used to generated documentation for Scala 3
-          classDirectory.in(`scala3-interfaces`).in(Compile).value,
-          classDirectory.in(`tasty-core`).in(Compile).value,
-          classDirectory.in(`scala3-library`).in(Compile).value,
-          // TODO this one fails to load using TASTY
-          // classDirectory.in(`stdlib-bootstrapped`).in(Compile).value,
-        ))
-
-    def asScala3docTest: Project =
-      project.settings(commonBootstrappedSettings0).
-        settings(commonScala3docSettings).
-        dependsOn(`scala3doc`).
         settings(
-          Compile/doc/target := baseDirectory.value / "../out/doc" / name.value,
-          doc/scalaInstance := {
-            val externalNonBootstrappedDeps = externalDependencyClasspath.in(`scala3doc`, Compile).value
-            val scalaLibrary = findArtifact(externalNonBootstrappedDeps, "scala-library")
-
-            // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
-            // just directories containing classfiles because sbt maintains a cache of
-            // compiler instances. This cache is invalidated based on timestamps
-            // however this is only implemented on jars, directories are never
-            // invalidated.
-            val tastyCore = packageBin.in(`tasty-core`, Compile).value
-            val dottyLibrary = packageBin.in(`scala3-library-bootstrapped`, Compile).value
-            val dottyInterfaces = packageBin.in(`scala3-interfaces`, Compile).value
-            val dottyCompiler = packageBin.in(`scala3-compiler-bootstrapped`, Compile).value
-            val doctool = packageBin.in(`scala3doc`, Compile).value
-
-            val allJars = Seq(tastyCore, dottyLibrary, dottyInterfaces, dottyCompiler, doctool) ++ externalNonBootstrappedDeps.map(_.data)
-
-            makeScalaInstance(
-              state.value,
-              scalaVersion.value,
-              scalaLibrary,
-              dottyLibrary,
-              dottyCompiler,
-              allJars
-            )
+          resolvers += Resolver.jcenterRepo,
+          resolvers += Resolver.bintrayRepo("kotlin", "kotlin-dev"),
+          resolvers += Resolver.bintrayRepo("virtuslab", "dokka"),
+          artifactsForScala3Documentation := Seq(
+            // All projects below will be used to generated documentation for Scala 3
+            classDirectory.in(`scala3-interfaces`).in(Compile).value,
+            classDirectory.in(`tasty-core`).in(Compile).value,
+            classDirectory.in(`scala3-library`).in(Compile).value,
+            // TODO this one fails to load using TASTY
+            // classDirectory.in(`stdlib-bootstrapped`).in(Compile).value,
+          ),
+          test.in(Test) := {
+            // Test
+            compile.in(Compile).in(`scala3doc-testcases`).value
+            test.in(Test).value
           },
+          testcasesOutputDir.in(Test) := classDirectory.in(Compile).in(`scala3doc-testcases`).value.getAbsolutePath.toString,
+          testcasesSourceRoot.in(Test) := (baseDirectory.in(`scala3doc-testcases`).value / "src").getAbsolutePath.toString
         )
+
+    def asScala3docTestcases: Project =
+      project.dependsOn(`scala3-compiler-bootstrapped`).settings(commonBootstrappedSettings)
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
