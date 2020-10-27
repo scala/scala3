@@ -151,7 +151,7 @@ object Trees {
     def denot(using Context): Denotation = NoDenotation
 
     /** Shorthand for `denot.symbol`. */
-    final def symbol(using Context): Symbol = denot.symbol
+    def symbol(using Context): Symbol = NoSymbol
 
     /** Does this tree represent a type? */
     def isType: Boolean = false
@@ -261,6 +261,12 @@ object Trees {
   /** Tree's denotation can be derived from its type */
   abstract class DenotingTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends Tree[T] {
     type ThisTree[-T >: Untyped] <: DenotingTree[T]
+
+    private var cachedSym: Symbol = null
+    override def symbol(using Context) =
+      if cachedSym == null then cachedSym = denot.symbol
+      cachedSym
+
     override def denot(using Context): Denotation = typeOpt match {
       case tpe: NamedType => tpe.denot
       case tpe: ThisType => tpe.cls.denot
@@ -271,6 +277,11 @@ object Trees {
       }
       case _ => NoDenotation
     }
+
+    private[dotc] override def overwriteType(tpe: T): Unit =
+      cachedSym = null
+      super.overwriteType(tpe)
+
   }
 
   /** Tree's denot/isType/isTerm properties come from a subtree
@@ -280,6 +291,7 @@ object Trees {
     type ThisTree[-T >: Untyped] <: ProxyTree[T]
     def forwardTo: Tree[T]
     override def denot(using Context): Denotation = forwardTo.denot
+    override def symbol(using Context): Symbol = forwardTo.symbol
     override def isTerm: Boolean = forwardTo.isTerm
     override def isType: Boolean = forwardTo.isType
   }

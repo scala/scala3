@@ -39,7 +39,7 @@ class Instrumentation extends MiniPhase { thisPhase =>
 
   private val namesOfInterest = collectionNamesOfInterest ++ List(
     "::", "+=", "toString", "newArray", "box", "toCharArray", "termName", "typeName",
-    "slice", "staticRef", "requiredClass")
+    "slice", "staticRef", "requiredClass", "symbol")
 
   private var namesToRecord: Set[Name] = _
   private var collectionNamesToRecord: Set[Name] = _
