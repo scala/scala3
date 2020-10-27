@@ -125,7 +125,7 @@ object DesugarEnums {
         // Singleton enum values always construct a new anonymous class, which will not be checked by the init-checker,
         // so this warning will always persist even if the implementation of the anonymous class is safe.
         // TODO: remove @unchecked after https://github.com/lampepfl/dotty-feature-requests/issues/135 is resolved.
-        Annotated(ArrayLiteral(enumValues, rawEnumClassRef), New(ref(defn.UncheckedAnnot.typeRef)))
+        Annotated(ArrayLiteral(enumValues, rawEnumClassRef), New(ref(defn.UncheckedAnnot.typeRef), Nil))
       ValDef(nme.DOLLAR_VALUES, TypeTree(), uncheckedValues)
         .withFlags(Private | Synthetic)
 
