@@ -6,8 +6,7 @@ import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Types.AndType
 import dotty.tools.dotc.transform.MegaPhase._
 import tpd._
-
-
+import dotty.tools.dotc.core.Decorators._
 
 /**
  * This transform makes sure that all private member selections from
@@ -22,7 +21,10 @@ class CrossCastAnd extends MiniPhase {
 
     lazy val qtype = tree.qualifier.tpe.widen
     val sym = tree.symbol
-    if (sym.is(Flags.Private) && !sym.isConstructor && qtype.typeSymbol != sym.owner)
+    if sym.is(Flags.Private)
+       && !sym.isConstructor
+       && qtype.classSymbol != sym.owner
+    then
       cpy.Select(tree)(tree.qualifier.cast(AndType(qtype.baseType(sym.owner), tree.qualifier.tpe)), tree.name)
     else tree
   }
