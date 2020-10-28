@@ -3973,7 +3973,7 @@ Occurrences:
 [5:0..5:0): -> _empty_/toplevel$package.MyProgram().
 [5:0..5:0): -> scala/util/CommandLineParser.parseArgument().
 [5:0..5:0): -> _empty_/MyProgram#main().(args)
-[5:0..5:0): -> scala/util/FromString.given_FromString_Int.
+[5:0..5:0): -> scala/util/CommandLineParser.FromString.given_FromString_Int.
 [5:0..5:0): -> scala/util/CommandLineParser.showError().
 [5:0..5:0): -> local0
 [5:1..5:5): main -> scala/main#
