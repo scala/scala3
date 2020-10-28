@@ -1,7 +1,7 @@
 def typed[A](using t: quoted.Type[A], qctx: quoted.QuoteContext): Unit = {
   import qctx.reflect._
   '{
-    type T = $t
+    type T = A
     ${'{???}.cast[T]}
   }
 }

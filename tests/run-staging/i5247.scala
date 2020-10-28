@@ -9,10 +9,10 @@ object Test {
   }
   def foo[H : Type](using QuoteContext): Expr[H] = {
     val t = Type[H]
-    '{ null.asInstanceOf[$t] }
+    '{ null.asInstanceOf[t.Underlying] }
   }
   def bar[H : Type](using QuoteContext): Expr[List[H]] = {
     val t = Type[List[H]]
-    '{ null.asInstanceOf[$t] }
+    '{ null.asInstanceOf[t.Underlying] }
   }
 }

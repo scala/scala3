@@ -5,7 +5,7 @@ object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
     def asof[T: Type, U](x: Expr[T], t: Type[U]): Expr[U] =
-      '{$x.asInstanceOf[$t]}
+      '{$x.asInstanceOf[t.Underlying]}
 
     println(asof('{}, Type[Unit]).show)
     println(asof('{true}, Type[Boolean]).show)

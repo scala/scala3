@@ -16,18 +16,18 @@ abstract class Test {
       import t.given
       println(summon[Type[t.T]].show)
       // val r = '{Option.empty[t.T]} // access to value t from wrong staging level
-      val r2 = '{Option.empty[${t.T}]} // works
+      val r2 = '{Option.empty[t.T.Underlying]} // works
     }
 
     {
-      val r1 = '{Option.empty[${T}]} // works
-      val r2 = '{Option.empty[List[${T}]]} // works
-      val r3 = '{summon[Type[${T}]]} // error: is not stable
-      val r4 = '{summon[${T} <:< Any]} // error: is not stable
+      val r1 = '{Option.empty[T.Underlying]} // works
+      val r2 = '{Option.empty[List[T.Underlying]]} // works
+      val r3 = '{summon[Type[T.Underlying]]} // error: is not stable
+      val r4 = '{summon[T.Underlying <:< Any]} // error: is not stable
     }
 
     {
-      val s = '{Option.empty[${T}]} // works
+      val s = '{Option.empty[T.Underlying]} // works
       val r = '{identity($s)} // works
       val r2 = '{identity(${s: Expr[Option[T]]})} // error // error : is not stable
     }
