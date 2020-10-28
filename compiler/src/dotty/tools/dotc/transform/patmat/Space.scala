@@ -477,8 +477,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
           else args.map(arg => erase(arg, inArray = false))
         tp.derivedAppliedType(erase(tycon, inArray), args2)
 
-      case OrType(tp1, tp2) =>
-        OrType(erase(tp1, inArray), erase(tp2, inArray))
+      case tp as OrType(tp1, tp2) =>
+        OrType(erase(tp1, inArray), erase(tp2, inArray), tp.isSoft)
 
       case AndType(tp1, tp2) =>
         AndType(erase(tp1, inArray), erase(tp2, inArray))
@@ -862,7 +862,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       if (ctx.explicitNulls || selTyp.classSymbol.isPrimitiveValueClass)
         project(selTyp)
       else
-        project(OrType(selTyp, constantNullType))
+        project(OrType(selTyp, constantNullType, soft = false))
 
     // in redundancy check, take guard as false in order to soundly approximate
     def projectPrevCases(cases: List[CaseDef]): Space =

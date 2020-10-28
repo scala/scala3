@@ -616,7 +616,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             }
         }
         compareTypeLambda
-      case OrType(tp21, tp22) =>
+      case tp2 as OrType(tp21, tp22) =>
         compareAtoms(tp1, tp2) match
           case Some(b) => return b
           case _ =>
@@ -648,12 +648,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // solutions. The rewriting delays the point where we have to choose.
         tp21 match {
           case AndType(tp211, tp212) =>
-            return recur(tp1, OrType(tp211, tp22)) && recur(tp1, OrType(tp212, tp22))
+            return recur(tp1, OrType(tp211, tp22, tp2.isSoft)) && recur(tp1, OrType(tp212, tp22, tp2.isSoft))
           case _ =>
         }
         tp22 match {
           case AndType(tp221, tp222) =>
-            return recur(tp1, OrType(tp21, tp221)) && recur(tp1, OrType(tp21, tp222))
+            return recur(tp1, OrType(tp21, tp221, tp2.isSoft)) && recur(tp1, OrType(tp21, tp222, tp2.isSoft))
           case _ =>
         }
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
@@ -2123,7 +2123,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val t2 = distributeOr(tp2, tp1)
       if (t2.exists) t2
       else if (isErased) erasedLub(tp1, tp2)
-      else liftIfHK(tp1, tp2, OrType(_, _), _ | _, _ & _)
+      else liftIfHK(tp1, tp2, OrType(_, _, soft = true), _ | _, _ & _)
     }
   }
 
