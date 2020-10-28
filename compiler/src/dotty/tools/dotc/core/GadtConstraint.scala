@@ -173,7 +173,7 @@ final class ProperGadtConstraint private(
       case null => null
       case tv =>
         fullBounds(tv.origin)
-          .ensuring(containsNoInternalTypes(_))
+          // .ensuring(containsNoInternalTypes(_))
     }
 
   override def bounds(sym: Symbol)(using Context): TypeBounds =
