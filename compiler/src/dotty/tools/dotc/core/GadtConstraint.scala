@@ -223,27 +223,27 @@ final class ProperGadtConstraint private(
   override protected def isSub(tp1: Type, tp2: Type)(using Context): Boolean = TypeComparer.isSubType(tp1, tp2)
   override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = TypeComparer.isSameType(tp1, tp2)
 
-   override def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds =
-     val externalizeMap = new TypeMap {
-       def apply(tp: Type): Type = tp match {
-         case tpr: TypeParamRef => externalize(tpr)
-         case tp => mapOver(tp)
-       }
-     }
-     externalizeMap(constraint.nonParamBounds(param)).bounds
+  override def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds =
+    val externalizeMap = new TypeMap {
+      def apply(tp: Type): Type = tp match {
+        case tpr: TypeParamRef => externalize(tpr)
+        case tp => mapOver(tp)
+      }
+    }
+    externalizeMap(constraint.nonParamBounds(param)).bounds
 
-   override def fullLowerBound(param: TypeParamRef)(using Context): Type =
-     constraint.minLower(param).foldLeft(nonParamBounds(param).lo) {
-       (t, u) => t | externalize(u)
-     }
+  override def fullLowerBound(param: TypeParamRef)(using Context): Type =
+    constraint.minLower(param).foldLeft(nonParamBounds(param).lo) {
+      (t, u) => t | externalize(u)
+    }
 
-   override def fullUpperBound(param: TypeParamRef)(using Context): Type =
-     constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (t, u) =>
-       val eu = externalize(u)
-       // Any as the upper bound means "no bound", but if F is higher-kinded,
-       // Any & F = F[_]; this is wrong for us so we need to short-circuit
-       if t.isAny then eu else t & eu
-     }
+  override def fullUpperBound(param: TypeParamRef)(using Context): Type =
+    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (t, u) =>
+      val eu = externalize(u)
+      // Any as the upper bound means "no bound", but if F is higher-kinded,
+      // Any & F = F[_]; this is wrong for us so we need to short-circuit
+      if t.isAny then eu else t & eu
+    }
 
   // ---- Private ----------------------------------------------------------
 
