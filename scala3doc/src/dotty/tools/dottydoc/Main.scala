@@ -57,7 +57,7 @@ object Main extends Driver {
         // we extract some settings from Dotty options since that's how SBT passes them
         "--name", ctx.settings.projectName.value,
         "--projectTitle", ctx.settings.projectName.value,
-        "--output", ctx.settings.outputDir.value.toString,
+        "--dest", ctx.settings.outputDir.value.toString,
       )
 
       val allArgs = requiredArgs ++ dokkaStrArgs

@@ -9,11 +9,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: lampepfl/dotty:2020-04-24
-    
-    steps:
 
+    steps:
+      - name: Git Checkout
       - uses: actions/checkout@v2
-      - run: git fetch --prune --unshallow --tags
 
       - name: Cache Coursier
         uses: actions/cache@v1

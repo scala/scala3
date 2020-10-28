@@ -21,7 +21,7 @@ class RawArgs:
     @COption(name="--tastyRoots", required = true, aliases = Array("-t"), usage="Roots where tools should look for tasty files")
     protected var tastyRoots: String = null
 
-    @COption(name="--output",required = true, aliases = Array("-o"), usage="Output to generate documentation to")
+    @COption(name="--dest",required = true, aliases = Array("-d"), usage="Output to generate documentation to")
     protected var output: String = "output"
 
     @COption(name="--classpath", aliases = Array("--cp", "-c"), usage="Classpath to load dependencies from")
@@ -30,7 +30,7 @@ class RawArgs:
     @COption(name="--name", required = true, aliases = Array("-n"), usage="Name of module in generated documentation")
     protected var name: String = "main"
 
-    @COption(name="--docs", aliases = Array("-d"), usage="Root of project docs")
+    @COption(name="--docs", aliases = Array("-p"), usage="Root of project docs")
     private var docsRoot: String =  null
 
     @COption(name="--sources", handler = classOf[StringArrayOptionHandler], aliases = Array("-s"), usage = "Links to source files provided in convention: local_directory=remote_directory#line_suffix")
