@@ -108,7 +108,7 @@ object BootstrappedStdLibTASYyTest:
         ()
     }
     val classNames = scalaLibJarTastyClassNames.filterNot(blacklisted)
-    val hasErrors = inspector.inspect(scalaLibJarPath, classNames)
+    val hasErrors = inspector.inspectTastyFilesInJar(scalaLibJarPath)
     assert(!hasErrors, "Errors reported while loading from TASTy")
 
   def compileFromTasty(blacklisted: String => Boolean): Unit = {
