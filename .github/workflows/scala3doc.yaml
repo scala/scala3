@@ -7,7 +7,7 @@ on:
   pull_request:
 jobs:
   build:
-    runs-on: [self-hosted, Linux]
+    runs-on: ubuntu-latest
     container: lampepfl/dotty:2020-04-24
     
     steps:
