@@ -9,7 +9,6 @@ jobs:
   build:
     runs-on: [self-hosted, Linux]
     container: lampepfl/dotty:2020-04-24
-    timeout-minutes: 20
     
     steps:
 
