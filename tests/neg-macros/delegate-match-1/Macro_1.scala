@@ -5,7 +5,7 @@ inline def f: Any = ${ fImpl }
 
 private def fImpl(using qctx: QuoteContext): Expr[Unit] = {
   import qctx.reflect._
-  Implicits.search(('[A]).unseal.tpe) match {
+  Implicits.search((Type[A]).unseal.tpe) match {
     case x: ImplicitSearchSuccess =>
       '{}
     case x: DivergingImplicit => '{}

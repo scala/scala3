@@ -7,9 +7,9 @@ class Test(using QuoteContext) {
     val z = $x
   }
 
-  f('{2})('[Int])
-  f('{ true })('[Boolean])
+  f('{2})(Type[Int])
+  f('{ true })(Type[Boolean])
 
   def g(es: Expr[String], t: Type[String]) =
-    f('{ ($es + "!") :: Nil })('[List[$t]])
+    f('{ ($es + "!") :: Nil })(Type[List[t.Underlying]])
 }

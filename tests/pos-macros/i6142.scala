@@ -4,7 +4,7 @@ object O {
   def foo(using QuoteContext) = {
     type T
     implicit val _: scala.quoted.Type[T] = ???
-    '[List[T]]
+    Type[List[T]]
     ()
   }
 }

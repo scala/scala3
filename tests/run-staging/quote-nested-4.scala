@@ -6,7 +6,7 @@ object Test {
   def main(args: Array[String]): Unit = withQuoteContext {
 
     val q = '{ (using qctx: QuoteContext) =>
-      val t = '[String]
+      val t = Type[String]
       t
     }
 

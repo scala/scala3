@@ -14,7 +14,7 @@ object Macro2 {
   object Record extends SelectableRecordCompanion[Record] {
     import scala.quoted._
 
-    inline def apply[R <: Record](elems: (String, Any)*) : R = ${ applyImpl('elems, '[R]) }
+    inline def apply[R <: Record](elems: (String, Any)*) : R = ${ applyImpl('elems, Type[R]) }
 
     def applyImpl[R <: Record: Type](elems: Expr[Seq[(String, Any)]], ev: Type[R])(using qctx: QuoteContext) = {
       '{ new Record($elems:_*).asInstanceOf[$ev] }
