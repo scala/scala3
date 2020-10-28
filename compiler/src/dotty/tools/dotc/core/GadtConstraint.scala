@@ -224,10 +224,13 @@ final class ProperGadtConstraint private(
   override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = TypeComparer.isSameType(tp1, tp2)
 
    override def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds =
-     constraint.nonParamBounds(param) match {
-       case TypeAlias(tpr: TypeParamRef) => TypeAlias(externalize(tpr))
-       case tb => tb
+     val externalizeMap = new TypeMap {
+       def apply(tp: Type): Type = tp match {
+         case tpr: TypeParamRef => externalize(tpr)
+         case tp => mapOver(tp)
+       }
      }
+     externalizeMap(constraint.nonParamBounds(param)).bounds
 
    override def fullLowerBound(param: TypeParamRef)(using Context): Type =
      constraint.minLower(param).foldLeft(nonParamBounds(param).lo) {
