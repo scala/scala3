@@ -22,8 +22,6 @@ VecOps.append(vec1, vec2)
 ```
 The `@alpha` annotation has no bearing on Scala usages. Any application of that method in Scala has to use `++=`, not `append`.
 
-An `@alpha` annotation will be _mandatory_ if the method name is symbolic. Symbolic methods without `@alpha` annotations are deprecated.
-
 ### Motivation
 
 The `@alpha` annotation serves a dual purpose:

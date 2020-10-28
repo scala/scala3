@@ -311,18 +311,17 @@ object Checking {
   /** If `sym` has an operator name, check that it has an @alpha annotation in 3.1 and later
    */
   def checkValidOperator(sym: Symbol)(using Context): Unit =
-    sym.name.toTermName match {
-      case name: SimpleName
-      if name.isOperatorName
-         && !name.isSetterName
-         && !name.isConstructorName
-         && !sym.getAnnotation(defn.AlphaAnnot).isDefined
-         && !sym.is(Synthetic)
-         && sourceVersion.isAtLeast(`3.1`) =>
-        report.deprecationWarning(
-          i"$sym has an operator name; it should come with an @alpha annotation", sym.srcPos)
-      case _ =>
-    }
+    if ctx.settings.YrequireAlpha.value then
+      sym.name.toTermName match
+        case name: SimpleName
+        if name.isOperatorName
+          && !name.isSetterName
+          && !name.isConstructorName
+          && !sym.getAnnotation(defn.AlphaAnnot).isDefined
+          && !sym.is(Synthetic) =>
+          report.warning(
+            i"$sym has an operator name; it should come with an @alpha annotation", sym.srcPos)
+        case _ =>
 
   /** Check that `info` of symbol `sym` is not cyclic.
    *  @pre     sym is not yet initialized (i.e. its type is a Completer).
