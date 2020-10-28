@@ -242,6 +242,7 @@ object StdNames {
     final val Tree: N                = "Tree"
     final val Type : N               = "Type"
     final val TypeTree: N            = "TypeTree"
+    final val Underlying: N          = "Underlying"
 
     // Annotation simple names, used in Namer
     final val BeanPropertyAnnot: N = "BeanProperty"
@@ -583,7 +584,6 @@ object StdNames {
     val setSymbol: N            = "setSymbol"
     val setType: N              = "setType"
     val setTypeSignature: N     = "setTypeSignature"
-    val spliceType: N           = "T"
     val standardInterpolator: N = "standardInterpolator"
     val staticClass : N         = "staticClass"
     val staticModule : N        = "staticModule"

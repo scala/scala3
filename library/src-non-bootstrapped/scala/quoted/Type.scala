@@ -2,8 +2,9 @@ package scala.quoted
 
 import scala.annotation.compileTimeOnly
 
-abstract class Type[X <: AnyKind] private[scala]:
-  type T = X
+abstract class Type[T <: AnyKind] private[scala]:
+  type Underlying = T
+
   def unseal(using qctx: QuoteContext): qctx.reflect.TypeTree
 
 object Type:

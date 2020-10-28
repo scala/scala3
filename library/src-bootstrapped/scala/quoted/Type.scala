@@ -4,8 +4,10 @@ import scala.annotation.compileTimeOnly
 import scala.quoted.show.SyntaxHighlight
 
 /** Quoted type (or kind) `T` */
-abstract class Type[X <: AnyKind] private[scala] {
-  type T = X
+abstract class Type[T <: AnyKind] private[scala] {
+
+  /** The type represented `Type` */
+  type Underlying = T
 
   /** Show a source code like representation of this type without syntax highlight */
   def show(using qctx: QuoteContext): String =

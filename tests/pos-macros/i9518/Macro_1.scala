@@ -11,7 +11,7 @@ def shiftTerm(using QuoteContext): Expr[Unit] = {
   val tp1 = '[CB[Int]].unseal.tpe
   val tp2 = '[([X] =>> CB[X])[Int]].unseal.tpe
   val ta = '[[X] =>> CB[X]]
-  val tp3 = '[ta.T[Int]].unseal.tpe
+  val tp3 = '[ta.Underlying[Int]].unseal.tpe
   val tp4 = '[CB].unseal.tpe.appliedTo(TypeRepr.of[Int])
   assert(nTree.tpe <:< tp1)
   assert(nTree.tpe <:< tp2)
