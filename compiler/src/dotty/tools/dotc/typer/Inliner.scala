@@ -1235,9 +1235,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           else Block(cond1 :: Nil, selected)
         case cond1 =>
           if (tree.isInline)
-            errorTree(tree, em"""cannot reduce inline if
-                                | its condition   ${tree.cond}
-                                | is not a constant value""")
+            errorTree(tree,
+              em"Cannot reduce `inline if` because its condition is not a constant value: $cond1")
           else
             cond1.computeNullableDeeply()
             val if1 = untpd.cpy.If(tree)(cond = untpd.TypedSplice(cond1))
