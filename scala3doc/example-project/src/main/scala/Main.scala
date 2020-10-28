@@ -22,8 +22,6 @@ object Main {
 
     runExample("Multiversal Equality")(MultiversalEquality.test)
 
-    runExample("Named Type Arguments")(NamedTypeArguments.test)
-
     runExample("Auto Param Tupling")(AutoParamTupling.test)
 
     runExample("Structural Types")(StructuralTypes.test)
