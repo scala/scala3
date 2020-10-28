@@ -1,4 +1,16 @@
+// Place your settings in this file to overwrite default and user settings.
 {
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+
+  "files.trimTrailingWhitespace": true,
+
+  "search.exclude": {
+    "**/*.class": true,
+    "**/*.hasTasty": true,
+    "**/target/": true,
+    "community-build/community-projects": true
+  },
   "files.watcherExclude": {
     "**/target": true
   }

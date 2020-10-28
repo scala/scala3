@@ -44,15 +44,4 @@ jobs:
         run: ./project/scripts/sbt scala3doc/generateScala3Documentation
 
       - name: Generate documentation for example project using dotty-sbt
-        run: |
-          ./project/scripts/sbt ";sbt-dotty/publishLocal;scala3/publishLocal;publishLocal"
-          VERSION=$(./project/scripts/sbt "show sbt-dotty/version" | tail -1 | sed 's/\[info\] //')
-          echo Using sbt-dotty version: $VERSION
-          echo 'addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "'$VERSION'")' > scala3doc/example-project/project/dotty.sbt
-
-          SCALA_VERSION=$(./project/scripts/sbt "show scala3-compiler-bootstrapped/version" | tail -1 | sed 's/\[info\] //')
-          echo Using scala version: $SCALA_VERSION
-          echo 'scalaVersion := "'$SCALA_VERSION'"' > scala3doc/example-project/dotty.sbt
-
-          cd scala3doc/example-project
-          sbt doc
+        run: ./project/scripts/sbt "sbt-dotty/scripted sbt-dotty/scala3doc"
