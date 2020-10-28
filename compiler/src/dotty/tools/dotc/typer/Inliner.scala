@@ -1473,10 +1473,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }.apply(Nil, tree)
 
   object ConstantValue {
-    def unapply(tree: Tree)(using Context): Option[Any] = tree.tpe.widenTermRefExpr.normalized match {
-      case ConstantType(Constant(x)) => Some(x)
-      case _ => None
-    }
+    def unapply(tree: Tree)(using Context): Option[Any] =
+      tree match
+        case Typed(expr, _) => unapply(expr)
+        case Inlined(_, Nil, expr) => unapply(expr)
+        case Block(Nil, expr) => unapply(expr)
+        case _ =>
+          tree.tpe.widenTermRefExpr.normalized match
+            case ConstantType(Constant(x)) => Some(x)
+            case _ => None
   }
 
 }
