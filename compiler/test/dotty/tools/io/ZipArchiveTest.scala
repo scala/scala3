@@ -83,8 +83,8 @@ class ZipArchiveTest {
     finally {
       archive.close()
       // The following results in IOException on Windows (file in use by another process).
-      // As jar is a temp file, it will be deleted automatically.
-      // Files.delete(jar)
+      // As jar created with Files.createTempFile, it will be deleted automatically.
+      try Files.delete(jar) catch case _: IOException => ()
     }
   }
 

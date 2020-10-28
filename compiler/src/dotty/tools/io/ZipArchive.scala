@@ -201,6 +201,7 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
   private[this] var closeables: List[java.io.Closeable] = Nil
   override def close(): Unit = {
     closeables.foreach(_.close)
+    closeables = Nil
   }
 }
 
@@ -266,5 +267,6 @@ final class ManifestResources(val url: URL) extends ZipArchive(null) {
   private[this] var closeables: List[java.io.Closeable] = Nil
   override def close(): Unit = {
     closeables.foreach(_.close())
+    closeables = Nil
   }
 }
