@@ -1101,7 +1101,6 @@ object Build {
           ++ (dir / "shared/src/test/require-jdk7" ** "*.scala").get
 
           ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
-            -- "ExportsTest.scala" // JS exports + IR checking error
             -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
@@ -1118,6 +1117,7 @@ object Build {
       Test / testOptions += Tests.Filter { name =>
         !Set[String](
           "org.scalajs.testsuite.jsinterop.AsyncTest", // needs JS exports in PromiseMock.scala
+          "org.scalajs.testsuite.jsinterop.ExportsTest", // JS exports
           "org.scalajs.testsuite.jsinterop.JSExportStaticTest", // JS exports
 
           // Not investigated so far
