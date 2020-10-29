@@ -1,6 +1,6 @@
 package dotty.dokka
 
-import org.jetbrains.dokka.{ DokkaConfiguration$DokkaSourceSet => DokkaSourceSet } 
+import org.jetbrains.dokka.{ DokkaConfiguration$DokkaSourceSet => DokkaSourceSet }
 import com.virtuslab.dokka.site.JavaSourceToDocumentableTranslator
 import com.virtuslab.dokka.site.SourceSetWrapper
 import org.jetbrains.dokka.plugability.DokkaContext
@@ -16,15 +16,15 @@ import org.jetbrains.dokka.base.parsers.MarkdownParser
 import collection.JavaConverters._
 
 object ScalaModuleProvider extends JavaSourceToDocumentableTranslator:
-   override def process(rawSourceSet: DokkaSourceSet, cxt: DokkaContext) = 
+   override def process(rawSourceSet: DokkaSourceSet, cxt: DokkaContext) =
     val sourceSet = SourceSetWrapper(rawSourceSet)
     cxt.getConfiguration match
       case dottyConfig: DottyDokkaConfig =>
         val result = dottyConfig.docConfiguration match {
-          case DocConfiguration.Standalone(args, tastyFiles) =>
+          case DocConfiguration.Standalone(args, tastyFiles, jars) =>
             // TODO use it to resolve link logic
             val inspector = DokkaTastyInspector(sourceSet, new MarkdownParser(_ => null), dottyConfig)
-            inspector.inspect(args.classpath, tastyFiles)
+            inspector.inspectAllTastyFiles(tastyFiles, jars, args.classpath.split(java.io.File.pathSeparator).toList)
             inspector.result()
           case DocConfiguration.Sbt(args, tastyFiles, rootCtx) =>
             val inspector =

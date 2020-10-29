@@ -27,13 +27,13 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
             case Some(link) => a(href := link, modifiers)(name)
             case None if modifiers.isEmpty => raw(name)
             case _ => span(modifiers)(name)
-            
+
 
     def renderElementWith(e: String | (String, DRI) | Link, modifiers: AppliedAttr*) = e match
         case (name, dri) => renderLink(name, dri, modifiers:_*)
         case name: String => raw(name)
         case Link(name, dri) => renderLink(name, dri, modifiers:_*)
-            
+
 
     def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
 
@@ -65,7 +65,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         node match {
             case n: HtmlContentNode => withHtml(f, raw(n.body).toString)
             case n: HierarchyDiagramContentNode => buildDiagram(f, n.diagram, pageContext)
-            case n: DocumentableList => 
+            case n: DocumentableList =>
                 val ss = if sourceSetRestriciton == null then Set.empty.asJava else sourceSetRestriciton
                 withHtml(f, buildDocumentableList(n, pageContext, ss).toString())
             case n: DocumentableFilter => withHtml(f, buildDocumentableFilter.toString)
@@ -80,15 +80,15 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         </svg>
     """)
 
-    
 
-    private def buildDocumentableList(n: DocumentableList, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = 
-        def render(n: ContentNode) = raw(buildWithKotlinx(n, pageContext, null)) 
+
+    private def buildDocumentableList(n: DocumentableList, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) =
+        def render(n: ContentNode) = raw(buildWithKotlinx(n, pageContext, null))
 
         val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
         import renderer._
 
-        def buildDocumentable(element: DocumentableElement) = 
+        def buildDocumentable(element: DocumentableElement) =
             def topLevelAttr = Seq(cls := "documentableElement") ++ element.attributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
             val kind = element.modifiers.takeRight(1)
             val otherModifiers = element.modifiers.dropRight(1)
@@ -108,12 +108,12 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
                         div(cls := "documentableBrief")(element.brief.map(render)),
                     )
                 ),
-                
-            )    
+
+            )
 
         div(cls := "documentableList")(
             if(n.groupName.isEmpty) raw("") else h3(cls := "documentableHeader")(n.groupName.map(renderElement)),
-            n.elements.flatMap { 
+            n.elements.flatMap {
                 case element: DocumentableElement =>
                     Seq(buildDocumentable(element))
                 case group: DocumentableElementGroup =>
@@ -184,13 +184,11 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         })
     }
 
-    
-    def buildDiagram(f: FlowContent, diagram: HierarchyDiagram, pageContext: ContentPage) = 
+    def buildDiagram(f: FlowContent, diagram: HierarchyDiagram, pageContext: ContentPage) =
         val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
         withHtml(f, div( id := "inheritance-diagram")(
                 svg(id := "graph"),
-                script(`type` := "text/dot", id := "dot"),
-                raw(DotDiagramBuilder.build(diagram, renderer))
+                script(`type` := "text/dot", id := "dot")(raw(DotDiagramBuilder.build(diagram, renderer))),
             ).toString()
         )
 

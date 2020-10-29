@@ -116,7 +116,7 @@ class MemberLookupTests {
         cases.testAll()
       }
 
-    Inspector().inspect("", listOurClasses())
+    Inspector().inspectTastyFiles(listOurClasses())
   }
 
   def listOurClasses(): List[String] = {
@@ -128,12 +128,7 @@ class MemberLookupTests {
     def go(bld: ListBuffer[String])(file: File): Unit =
       file.listFiles.foreach { f =>
         if f.isFile() then
-          if f.toString.endsWith(".tasty") then
-            bld.append(f.toString
-              .stripPrefix(classRoot.toString + "/")
-              .stripSuffix(".tasty")
-              .replaceAll("/", ".")
-            )
+          if f.toString.endsWith(".tasty") then bld.append(f.toString)
         else go(bld)(f)
       }
 

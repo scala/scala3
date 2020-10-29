@@ -18,6 +18,9 @@ object DottyPlugin extends AutoPlugin {
     val isDotty = settingKey[Boolean]("Is this project compiled with Dotty?")
     val isDottyJS = settingKey[Boolean]("Is this project compiled with Dotty and Scala.js?")
 
+    val useScala3doc = settingKey[Boolean]("Use Scala3doc as the documentation tool")
+    val scala3docOptions = settingKey[Seq[String]]("Options for Scala3doc")
+
     // NOTE:
     // - this is a def to support `scalaVersion := dottyLatestNightlyBuild`
     // - if this was a taskKey, then you couldn't do `scalaVersion := dottyLatestNightlyBuild`
@@ -373,7 +376,10 @@ object DottyPlugin extends AutoPlugin {
       // We need to add doctool classes to the classpath so they can be called
       scalaInstance in doc := Def.taskDyn {
         if (isDotty.value)
-          dottyScalaInstanceTask(scala3Artefact(scalaVersion.value, "doc"))
+          if (useScala3doc.value)
+            dottyScalaInstanceTask("scala3doc")
+          else
+            dottyScalaInstanceTask(scala3Artefact(scalaVersion.value, "doc"))
         else
           Def.valueStrict { (scalaInstance in doc).taskValue }
       }.value,

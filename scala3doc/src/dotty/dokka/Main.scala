@@ -103,7 +103,7 @@ trait BaseDocConfiguration:
   val tastyFiles: List[String]
 
 enum DocConfiguration extends BaseDocConfiguration:
-  case Standalone(args: Args, tastyFiles: List[String])
+  case Standalone(args: Args, tastyFiles: List[String], tastyJars: List[String])
   case Sbt(args: Args, tastyFiles: List[String], rootCtx: DottyContext)
 
 /** Main class for the doctool.
@@ -124,33 +124,27 @@ object Main:
       new CmdLineParser(rawArgs).parseArgument(args:_*)
       val parsedArgs = rawArgs.toArgs
 
-      val (jars, dirs) = parsedArgs.tastyRoots.partition(_.isFile)
-      val extracted = jars.filter(_.exists()).map { jarFile =>
-          val tempFile = Files.createTempDirectory("jar-unzipped").toFile
-          IO.unzip(jarFile, tempFile)
-          tempFile
-      }
-
-      try
-        def listTastyFiles(f: File): Seq[String] =
-          val (files, dirs) = f.listFiles().partition(_.isFile)
-          ArraySeq.unsafeWrapArray(
-            files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
-          )
-        val tastyFiles = (dirs ++ extracted).flatMap(listTastyFiles).toList
-
-        val config = DocConfiguration.Standalone(parsedArgs, tastyFiles)
-
-        if (parsedArgs.output.exists()) IO.delete(parsedArgs.output)
-
-        // TODO #20 pass options, classpath etc.
-        new DokkaGenerator(new DottyDokkaConfig(config), DokkaConsoleLogger.INSTANCE).generate()
-
-        println("Done")
+      val (files, dirs) = parsedArgs.tastyRoots.partition(_.isFile)
+      val (providedTastyFiles, jars) = files.toList.map(_.getAbsolutePath).partition(_.endsWith(".tasty"))
+      jars.foreach(j => if(!j.endsWith(".jar")) sys.error(s"Provided file $j is not jar not tasty file") )
 
 
-      finally
-        extracted.foreach(IO.delete)
+      def listTastyFiles(f: File): Seq[String] =
+        val (files, dirs) = f.listFiles().partition(_.isFile)
+        ArraySeq.unsafeWrapArray(
+          files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
+        )
+      val tastyFiles = providedTastyFiles ++ dirs.flatMap(listTastyFiles)
+
+      val config = DocConfiguration.Standalone(parsedArgs, tastyFiles, jars)
+
+      if (parsedArgs.output.exists()) IO.delete(parsedArgs.output)
+
+      // TODO #20 pass options, classpath etc.
+      new DokkaGenerator(new DottyDokkaConfig(config), DokkaConsoleLogger.INSTANCE).generate()
+
+      println("Done")
+
       // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
       sys.exit(0)
     catch

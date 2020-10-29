@@ -219,7 +219,6 @@ object Build {
     // sonatype happy.
       sources in (Compile, doc) := Seq()
 
-
   lazy val commonSettings = publishSettings ++ Seq(
     scalaSource       in Compile    := baseDirectory.value / "src",
     scalaSource       in Test       := baseDirectory.value / "test",
