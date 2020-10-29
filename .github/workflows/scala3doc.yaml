@@ -1,0 +1,75 @@
+name: CI for dotty-dokka
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: set right cwd
+        run: cd scala3doc
+
+      - uses: actions/checkout@v2
+      - run: git fetch --prune --unshallow --tags
+
+      - name: Cache Coursier
+        uses: actions/cache@v1
+        with:
+          path: ~/.cache/coursier
+          key: sbt-coursier-cache
+      - name: Cache SBT
+        uses: actions/cache@v1
+        with:
+          path: ~/.sbt
+          key: sbt-${{ hashFiles('**/build.sbt') }}
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Compile and test
+        run: sbt compile test
+
+      - name: Locally publish self
+        run: sbt publishLocal
+
+      - name: Generate test documentation
+        run: sbt generateSelfDocumentation
+        
+      - name: Generate documentation for dotty library
+        run: sbt generateDottyLibDocumentation      
+
+      - name: Generate documentation with SBT plugin
+        run: sbt example-project/doc
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Publish all
+        run: |
+              dest=s3://scala3doc/$([ $GITHUB_REF = "master" ] && echo master || echo pr-$(echo $GITHUB_REF | cut '-d/' -f3))
+              aws s3 rm $dest
+              aws s3 sync output $dest
+
+      - name: Update gh-pages
+        run: |
+             if [ $GITHUB_REF = "refs/heads/master" ]; then
+                git config --global user.email "$(git log -1 --format=%ae)"
+                git config --global user.name "$(git log -1 --format=%an)"
+                git subtree add --prefix=our-site origin gh-pages
+                rm -r our-site/*
+                cp -r  output/self/* our-site
+                git add our-site
+                git commit -m "$(git log -1 --pretty=%B)"
+                git subtree push --prefix=our-site origin gh-pages
+             fi
+

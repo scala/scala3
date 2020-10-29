@@ -1,0 +1,169 @@
+ @import url('https://fonts.googleapis.com/css?family=Lobster&display=swap');
+ 
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family-sans-serif);
+  font-weight: 300;
+  scroll-behavior: smooth;
+}
+
+h1, h2, h3 {
+  font-family: "Lobster", serif;
+  font-weight: 500;
+  text-align: center;
+  padding-top: 20px;
+}
+
+h1 {
+  font-size: 64px;
+}
+
+h1#main {
+  font-size: 15vh;
+}
+
+/* navigation */
+header {
+  font-size: 24px;
+}
+
+header .nav-item i {
+  font-size: 1.5em;
+}
+
+.navbar-dark .navbar-nav .nav-link, .navbar-dark .navbar-toggler {
+  color: white;
+}
+
+.navbar-dark .navbar-toggler {
+  border: none;
+  padding: 0;
+  font-size: 1.5em;
+}
+
+.navbar #navbarContent {
+  /* above the logo when opened on small screens */
+  background: #ca445e;
+  z-index: 100;
+  box-shadow: 0px 10px 40px #ca445e;
+}
+
+.nav-item {
+  margin-left: .5em;
+}
+
+/* layout */
+section.page {
+  min-height: 100vh;
+  width: 100%;
+  padding: 0;
+}
+
+section .container {
+  max-width: 750px;
+}
+
+section p {
+  margin-bottom: 0px;
+  padding-bottom: 15px;
+  line-height: 3vh;
+}
+
+section p ~ pre {
+  margin-top: -8px;
+  margin-bottom: 25px;
+}
+
+.centered-table table {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* background colors */
+.bg-red {
+  background-color: #ca445e;
+}
+.bg-blue {
+  background-color: #002B36;
+}
+.bg-teal {
+  background-color: #224951;
+}
+
+/* text colors */
+.bg-dark {
+  color: white;
+}
+.bg-dark a {
+  color: #f26527;
+}
+.bg-dark a:hover {
+  color: #da4323;
+}
+
+/* code */
+pre, code {
+  background-color: #efefef;
+  border-radius: 4px;
+  padding: 3px 8px;
+  line-height: 1.75em;
+}
+
+/* gitter chat */
+.gitter-chat-embed {
+  top: 0;
+  bottom: 0;
+}
+
+aside {
+  margin: 0;
+  padding: 0;
+}
+
+/* logo animation */
+@keyframes fadeInLogo {
+  from {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.scala-logo-container {
+  height: calc(100vh - 80px);
+  margin: auto;
+  position: absolute;
+  top: 80px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  animation: 2s fadeInLogo;
+  animation-timing-function: cubic-bezier(0.6, 0.2, 0.1, 1) 0.1s;
+}
+
+.scala-logo-container img {
+  height: 60%;
+  display: block;
+  width: 100%;
+}
+
+.scala-logo-container .subtitle {
+  bottom: 0;
+  position: absolute;
+  width: 100%;
+  font-size: 1.5em;
+  line-height: 3vh;
+}
+
+.scala-logo-container .subtitle h1 {
+  font-size: 100px;
+  font-size: 15vh;
+}

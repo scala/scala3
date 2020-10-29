@@ -1,0 +1,137 @@
+.documentableFilter {
+  padding: 24px 12px;
+  background-color: var(--leftbar-bg);
+}
+
+.documentableFilter.active .filterToggleButton svg {
+  transform: rotate(90deg);
+}
+
+.documentableFilter.active .filterLowerContainer {
+  display: block;
+}
+
+.filterUpperContainer {
+  display: flex;
+  align-items: center;
+}
+
+.filterToggleButton {
+  padding: 0;
+  outline: 0;
+  border: 0;
+  background-color: transparent;
+  cursor: pointer;
+  transition: width 0.2s ease-in-out;
+}
+
+.filterToggleButton svg {
+  fill: var(--code-bg);
+  transition: fill 0.1s ease-in, transform 0.1s ease-in-out;
+}
+
+.filterToggleButton:hover svg,
+.filterToggleButton:focus svg {
+  fill: var(--active-tab-color);
+}
+
+.filterableInput {
+  padding: 6px 4px;
+  flex: 1;
+  outline: 0;
+  border: 0;
+  border-radius: 3px;
+  background-color: var(--code-bg);
+}
+
+.filterLowerContainer {
+  padding-top: 30px;
+  display: none;
+}
+
+.filterGroup {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.filterList {
+  margin-left: 10px;
+}
+
+.filterButtonItem {
+  display: none;
+  padding: 6px 16px;
+  margin-bottom: 6px;
+  margin-right: 6px;
+  outline: 0;
+  border: 0;
+  border-radius: 3px;
+  color: var(--leftbar-bg);
+  background-color: var(--code-bg);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 2px solid var(--inactive-fg);
+  transition: all 0.1s ease-in;
+}
+
+.filterButtonItem:hover,
+.filterButtonItem:focus {
+  opacity: 0.7;
+}
+
+.filterButtonItem.active {
+  color: var(--code-bg);
+  border-bottom-color: var(--link-fg);
+  background-color: var(--active-tab-color);
+}
+
+.filterButtonItem.visible {
+  display: inline-block;
+}
+
+.groupTitle {
+  min-width: 98px;
+  margin-top: 4px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--code-bg);
+}
+
+.groupButtonsContainer {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.selectAll {
+  margin-right: 4px;
+}
+
+.selectAll,
+.deselectAll {
+  outline: 0;
+  border: 0;
+  background-color: transparent;
+  padding: 0;
+  color: var(--code-bg);
+  font-size: 8px;
+  cursor: pointer;
+  transition: all 0.1s ease-in;
+}
+
+.selectAll {
+  padding: 4px;
+  border-radius: 2px;
+  background-color: var(--active-tab-color);
+}
+
+.selectAll:hover,
+.selectAll:focus {
+  opacity: 0.7;
+}
+
+.deselectAll:hover,
+.deselectAll:focus {
+  color: var(--active-tab-color);
+}
