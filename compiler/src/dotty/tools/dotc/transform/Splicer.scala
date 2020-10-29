@@ -146,17 +146,11 @@ object Splicer {
         case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
           // OK
 
-        case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.QuotedTypeModule_apply =>
+        case Apply(Select(TypeApply(fn, List(quoted)), nme.apply), _)if fn.symbol == defn.QuotedTypeModule_apply =>
           // OK
 
         case Literal(Constant(value)) =>
           // OK
-
-        case Call(fn, args)
-            if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) ||
-               fn.symbol.is(Module) || fn.symbol.isStatic ||
-               (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) =>
-          args.foreach(_.foreach(checkIfValidArgument))
 
         case NamedArg(_, arg) =>
           checkIfValidArgument(arg)
