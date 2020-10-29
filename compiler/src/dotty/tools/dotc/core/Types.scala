@@ -1193,7 +1193,7 @@ object Types {
         else tp.derivedOrType(tp1Widen, defn.NullType)
       case tp =>
         tp.widenUnionWithoutNull
-    }.reporting(i"widenUnion($this) = $result")
+    }
 
     def widenUnionWithoutNull(using Context): Type =
 
@@ -1214,19 +1214,28 @@ object Types {
 
       def recombine(tp1: Type, tp2: Type) = harden(TypeComparer.lub(tp1, tp2))
 
+      inline val asymmetric = false
+
       widen match
         case tp @ OrType(lhs, rhs) =>
-          if tp.isSoft then
-            val (lhsCore, lhsExtras) = splitAlts(lhs.widenUnionWithoutNull, Nil)
-            val (rhsCore, rhsExtras) = splitAlts(rhs.widenUnionWithoutNull, Nil)
-            val core = TypeComparer.lub(lhsCore, rhsCore, canConstrain = true) match
+          if asymmetric then
+            if tp.isSoft then
+              val (lhsCore, lhsExtras) = splitAlts(lhs.widenUnionWithoutNull, Nil)
+              val (rhsCore, rhsExtras) = splitAlts(rhs.widenUnionWithoutNull, Nil)
+              val core = TypeComparer.lub(lhsCore, rhsCore, canConstrain = true) match
+                case union: OrType => union.join
+                case res => res
+              rhsExtras.foldLeft(lhsExtras.foldLeft(core)(recombine))(recombine)
+            else
+              val lhs1 = lhs.widenUnionWithoutNull
+              val rhs1 = rhs.widenUnionWithoutNull
+              if (lhs1 eq lhs) && (rhs1 eq rhs) then tp else recombine(lhs1, rhs1)
+          else if tp.isSoft then
+            TypeComparer.lub(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull, canConstrain = true) match
               case union: OrType => union.join
               case res => res
-            rhsExtras.foldLeft(lhsExtras.foldLeft(core)(recombine))(recombine)
           else
-            val lhs1 = lhs.widenUnionWithoutNull
-            val rhs1 = rhs.widenUnionWithoutNull
-            if (lhs1 eq lhs) && (rhs1 eq rhs) then tp else recombine(lhs1, rhs1)
+            tp.derivedOrType(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull)
         case tp @ AndType(tp1, tp2) =>
           tp derived_& (tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull)
         case tp: RefinedType =>
