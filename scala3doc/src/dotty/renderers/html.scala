@@ -25,18 +25,25 @@ object HTML:
         case t: AppliedTag =>
           sb.append(t)
         case s: String =>
-          sb.append(s)  
+          sb.append(s.escapeReservedTokens)  
         case s: Seq[AppliedTag | String] =>
           s.foreach{
             case a: AppliedTag =>
               sb.append(a)
             case s: String =>
-            sb.append(s)
+            sb.append(s.escapeReservedTokens)
           }
       }
       sb.append(s"</$name>")
       sb
     }
+
+  extension (s: String) private def escapeReservedTokens: String =
+    s.replace("&", "&amp;")
+      .replace("<", "&lt;")
+      .replace(">", "&gt;")
+      .replace("\"", "&quot;")
+      .replace("'", "&apos;")
 
   case class Attr(name: String):
     def :=(value: String): AppliedAttr = AppliedAttr(s"""$name="$value"""")
@@ -48,6 +55,7 @@ object HTML:
   val div = Tag("div")
   val span = Tag("span")
   val a = Tag("a")
+  val p = Tag("p")
   val h1 = Tag("h1")
   val h2 = Tag("h2")
   val h3 = Tag("h3")
