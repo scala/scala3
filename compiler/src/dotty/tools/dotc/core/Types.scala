@@ -1217,34 +1217,44 @@ object Types {
     /** The singleton types that must or may be in this type. @see Atoms.
      *  Overridden and cached in OrType.
      */
-    def atoms(using Context): Atoms = dealias match
-      case tp: SingletonType =>
-        def normalize(tp: Type): Type = tp match
-          case tp: SingletonType =>
-            tp.underlying.dealias match
-              case tp1: SingletonType => normalize(tp1)
-              case _ =>
-                tp match
-                  case tp: TermRef => tp.derivedSelect(normalize(tp.prefix))
-                  case _ => tp
-          case _ => tp
-        tp.underlying.atoms match
-          case as @ Atoms.Range(lo, hi) =>
-            if hi.size == 1 then as // if there's just one atom, there's no uncertainty which one it is
-            else Atoms.Range(Set.empty, hi)
-          case Atoms.Unknown =>
-            if tp.isStable then
-              val single = Set.empty + normalize(tp)
-              Atoms.Range(single, single)
-            else Atoms.Unknown
-      case tp: ExprType => tp.resType.atoms
-      case tp: OrType => tp.atoms // `atoms` overridden in OrType
-      case tp: AndType => tp.tp1.atoms & tp.tp2.atoms
-      case tp: TypeProxy =>
-        tp.underlying.atoms match
-          case Atoms.Range(_, hi) => Atoms.Range(Set.empty, hi)
-          case Atoms.Unknown => Atoms.Unknown
-      case _ => Atoms.Unknown
+    def atoms(using Context): Atoms =
+      def normalize(tp: Type): Type = tp match
+        case tp: SingletonType =>
+          tp.underlying.dealias match
+            case tp1: SingletonType => normalize(tp1)
+            case _ =>
+              tp match
+                case tp: TermRef => tp.derivedSelect(normalize(tp.prefix))
+                case _ => tp
+        case _ => tp
+
+      def single(tp: Type): Atoms =
+        if tp.isStable then
+          val set = Set.empty + normalize(tp)
+          Atoms.Range(set, set)
+        else Atoms.Unknown
+
+      dealias match
+        case tp: SingletonType =>
+          tp.underlying.atoms match
+            case as @ Atoms.Range(lo, hi) =>
+              if hi.size == 1 then as // if there's just one atom, there's no uncertainty which one it is
+              else Atoms.Range(Set.empty, hi)
+            case Atoms.Unknown =>
+              single(tp)
+        case tp: ExprType => tp.resType.atoms
+        case tp: OrType => tp.atoms // `atoms` overridden in OrType
+        case tp: AndType => tp.tp1.atoms & tp.tp2.atoms
+        case tp: TypeRef if tp.symbol.is(ModuleClass) =>
+          // The atom of a module class is the module itself,
+          // this corresponds to the special case in TypeComparer
+          // which ensures that `X$ <:< X.type` returns true.
+          single(tp.symbol.companionModule.termRef.asSeenFrom(tp.prefix, tp.symbol.owner))
+        case tp: TypeProxy =>
+          tp.underlying.atoms match
+            case Atoms.Range(_, hi) => Atoms.Range(Set.empty, hi)
+            case Atoms.Unknown => Atoms.Unknown
+        case _ => Atoms.Unknown
 
     private def dealias1(keep: AnnotatedType => Context ?=> Boolean)(using Context): Type = this match {
       case tp: TypeRef =>

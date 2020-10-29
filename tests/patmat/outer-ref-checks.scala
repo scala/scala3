@@ -16,7 +16,6 @@ class Outer {
 
   def belongsOtherOuter(a: Outer#Inner): Unit = a match {
     case Inner(s) => // unchecked warning
-    case O.Inner(s) => // unchecked warning
     case _ =>
   }
 }
