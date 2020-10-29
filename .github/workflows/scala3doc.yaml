@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Git Checkout
-      - uses: actions/checkout@v2
+        uses: actions/checkout@v2
 
       - name: Cache Coursier
         uses: actions/cache@v1
