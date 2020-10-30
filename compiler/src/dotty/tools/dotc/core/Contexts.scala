@@ -14,7 +14,7 @@ import Uniques._
 import ast.Trees._
 import ast.untpd
 import Flags.GivenOrImplicit
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
 import typer.{Implicits, ImportInfo, Inliner, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import Nullables.{NotNullInfo, given}
 import Implicits.ContextualImplicits
@@ -26,6 +26,7 @@ import scala.io.Codec
 import collection.mutable
 import printing._
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
+import classfile.ReusableDataReader
 
 import scala.annotation.internal.sharable
 
@@ -911,6 +912,8 @@ object Contexts {
     private[Contexts] var comparersInUse: Int = 0
 
     private var charArray = new Array[Char](256)
+
+    private[core] val reusableDataReader = ReusableInstance(new ReusableDataReader())
 
     def sharedCharArray(len: Int): Array[Char] =
       while len > charArray.length do
