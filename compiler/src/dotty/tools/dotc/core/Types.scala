@@ -1166,26 +1166,10 @@ object Types {
      *  is approximated by constraining `A` to be =:= to `Int` and returning `ArrayBuffer[Int]`
      *  instead of `ArrayBuffer[? >: Int | A <: Int & A]`
      *
-     *  Hard unions inside soft ones are treated specially. For illustration assume we
-     *  want to widen the type `(A | C) \/ (B | C)` where `\/` means soft union and `|`
-     *  means hard union. In that case, the hard unions `A | C` and `B | C` are treated
-     *  in an asymmetric way. Only the first parts `A` and `B` are joined and the rest
-     *  is added again with a hard union to the result. So
-     *
-     *       widenUnion[ (A | C) \/ (B | C) ]
-     *    =  widenUnion[ A \/ B ] | C | C
-     *    =  D | C | C
-     *    =  D | C
-     *
-     *  In general, If a hard union A | B_1 | ... | B_n is part of of a soft union,
-     *  only A forms part of the join, and B_1, ..., B_n are pushed out, just `C` is
-     *  pushed out above. All types that are pushed out are recombined with the result
-     *  of the join with a lub, but that lub yields again a hard union, not a soft one.
-     *
      *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
-    def widenUnion(using Context): Type = widen.match {
+    def widenUnion(using Context): Type = widen match
       case tp @ OrNull(tp1): OrType =>
         // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
         val tp1Widen = tp1.widenUnionWithoutNull
@@ -1193,60 +1177,22 @@ object Types {
         else tp.derivedOrType(tp1Widen, defn.NullType)
       case tp =>
         tp.widenUnionWithoutNull
-    }
 
-    def widenUnionWithoutNull(using Context): Type =
-
-      // Split hard union `A | B1 | ... | Bn` into leftmost part `A` and list of
-      // pushed out parts `B1, ..., Bn`.
-      def splitAlts(tp: Type, follow: List[Type]): (Type, List[Type]) = tp match
-        case tp as OrType(lhs, rhs) if !tp.isSoft =>
-          splitAlts(lhs, rhs :: follow)
-        case _ =>
-          (tp, follow)
-
-      // Convert any soft unions in result of lub to hard ones */
-      def harden(tp: Type): Type = tp match
-        case tp as OrType(tp1, tp2) if tp.isSoft =>
-          OrType(harden(tp1), harden(tp2), soft = false)
-        case _ =>
-          tp
-
-      def recombine(tp1: Type, tp2: Type) = harden(TypeComparer.lub(tp1, tp2))
-
-      inline val asymmetric = false
-
-      widen match
-        case tp @ OrType(lhs, rhs) =>
-          if asymmetric then
-            if tp.isSoft then
-              val (lhsCore, lhsExtras) = splitAlts(lhs.widenUnionWithoutNull, Nil)
-              val (rhsCore, rhsExtras) = splitAlts(rhs.widenUnionWithoutNull, Nil)
-              val core = TypeComparer.lub(lhsCore, rhsCore, canConstrain = true) match
-                case union: OrType => union.join
-                case res => res
-              rhsExtras.foldLeft(lhsExtras.foldLeft(core)(recombine))(recombine)
-            else
-              val lhs1 = lhs.widenUnionWithoutNull
-              val rhs1 = rhs.widenUnionWithoutNull
-              if (lhs1 eq lhs) && (rhs1 eq rhs) then tp else recombine(lhs1, rhs1)
-          else if tp.isSoft then
-            TypeComparer.lub(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull, canConstrain = true) match
-              case union: OrType => union.join
-              case res => res
-          else
-            tp.derivedOrType(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull)
-        case tp @ AndType(tp1, tp2) =>
-          tp derived_& (tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull)
-        case tp: RefinedType =>
-          tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
-        case tp: RecType =>
-          tp.rebind(tp.parent.widenUnion)
-        case tp: HKTypeLambda =>
-          tp.derivedLambdaType(resType = tp.resType.widenUnion)
-        case tp =>
-          tp
-    end widenUnionWithoutNull
+    def widenUnionWithoutNull(using Context): Type = widen match
+      case tp @ OrType(lhs, rhs) if tp.isSoft =>
+        TypeComparer.lub(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull, canConstrain = true) match
+          case union: OrType => union.join
+          case res => res
+      case tp: AndOrType =>
+        tp.derivedAndOrType(tp.tp1.widenUnionWithoutNull, tp.tp2.widenUnionWithoutNull)
+      case tp: RefinedType =>
+        tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
+      case tp: RecType =>
+        tp.rebind(tp.parent.widenUnion)
+      case tp: HKTypeLambda =>
+        tp.derivedLambdaType(resType = tp.resType.widenUnion)
+      case tp =>
+        tp
 
     /** Widen all top-level singletons reachable by dealiasing
      *  and going to the operands of & and |.
