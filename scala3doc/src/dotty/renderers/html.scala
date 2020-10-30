@@ -14,7 +14,7 @@ object HTML:
     def apply(attrs: AttrArg*)(tags: TagArg*): AppliedTag = {
       val sb = StringBuilder()
       sb.append(s"<$name")
-      attrs.foreach{
+      attrs.filter(_ != Nil).foreach{
         case s: Seq[AppliedAttr] =>
           s.foreach(sb.append(" ").append)
         case e: AppliedAttr =>
