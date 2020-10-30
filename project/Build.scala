@@ -63,7 +63,7 @@ object Build {
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
   val publishedDottyVersion = referenceVersion
-  val publishedSbtDottyVersion = "0.4.4"
+  val publishedSbtDottyVersion = "0.4.5"
 
   /** scala-library version required to compile Dotty.
    *
