@@ -793,10 +793,8 @@ object desugar {
         val originalVparamsIt = originalVparamss.iterator.flatten
         derivedVparamss match {
           case first :: rest =>
-            // Annotations on the class _value_ parameters are not set on the parameter accessors
-            def mods(vdef: ValDef) = vdef.mods.withAnnotations(Nil)
-            first.map(_.withMods(mods(originalVparamsIt.next()) | caseAccessor)) ++
-            rest.flatten.map(_.withMods(mods(originalVparamsIt.next())))
+            first.map(_.withMods(originalVparamsIt.next().mods | caseAccessor)) ++
+            rest.flatten.map(_.withMods(originalVparamsIt.next().mods))
           case _ =>
             Nil
         }
