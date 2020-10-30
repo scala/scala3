@@ -11,7 +11,8 @@ class Foo {
       type Z = x.Y
       ${
         val t: Type[Z] = Type[Z]
-        '{ val y: $t = x.y }
+        '{ val y: Z = x.y }
+        '{ val y: t.Underlying = x.y }
       }
     }
   }

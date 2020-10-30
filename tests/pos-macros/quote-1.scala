@@ -3,7 +3,7 @@ import scala.quoted._
 class Test(using QuoteContext) {
 
   def f[T](x: Expr[T])(implicit t: Type[T]) = '{
-    val y: $t = $x
+    val y: T = $x
     val z = $x
   }
 

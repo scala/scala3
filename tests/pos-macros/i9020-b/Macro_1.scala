@@ -8,8 +8,8 @@ object Show {
   import quoted._
   def impl[T](using ctx: QuoteContext, tpe: Type[T]): Expr[Show[T]] =
     '{
-      new Show[$tpe] {
-        def show(t: $tpe): String = "TODO"
+      new Show[tpe.Underlying] {
+        def show(t: tpe.Underlying): String = "TODO"
       }
     }
 }

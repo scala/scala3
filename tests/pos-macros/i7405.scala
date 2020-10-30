@@ -6,7 +6,7 @@ class Foo {
       val x: X = ???
       ${
         val t: Type[X] = Type[X] // Level 0
-        '{ val y: $t = x }
+        '{ val y: t.Underlying = x }
       }
     }
   }

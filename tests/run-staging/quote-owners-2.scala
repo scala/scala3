@@ -12,8 +12,8 @@ object Test {
 
   def f(t: Type[List[Int]])(using QuoteContext): Expr[Int] = '{
     def ff: Int = {
-      val a: $t = {
-        type T = $t
+      val a: t.Underlying = {
+        type T = t.Underlying
         val b: T = 3 :: Nil
         b
       }

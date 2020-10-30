@@ -77,7 +77,6 @@ class ReifyQuotes extends MacroTransform {
       case tree: RefTree if !Inliner.inInlineMethod =>
         assert(!tree.symbol.isQuote)
         assert(!tree.symbol.isExprSplice)
-        assert(!tree.symbol.isTypeSplice)
       case _ : TypeDef =>
         assert(!tree.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot),
           s"${tree.symbol} should have been removed by PickledQuotes because it has a @quoteTypeTag")
@@ -210,16 +209,15 @@ class ReifyQuotes extends MacroTransform {
      *  are in the body of an inline method.
      */
      protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree =
-      if (level > 1) {
+      if level > 1 then
         val body1 = nested(isQuote = false).transform(body)(using spliceContext)
         cpy.Select(splice)(body1, splice.name)
-      }
-      else {
-        assert(level == 1, "unexpected top splice outside quote")
+      else if level == 1 then
         val (body1, quotes) = nested(isQuote = false).splitSplice(body)(using spliceContext)
         val tpe = outer.embedded.getHoleType(body, splice)
         makeHole(splice.isTerm, body1, quotes, tpe).withSpan(splice.span)
-      }
+      else
+        splice
 
     /** Transforms the contents of a nested splice
      *  Assuming
