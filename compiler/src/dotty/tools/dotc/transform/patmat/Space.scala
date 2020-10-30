@@ -527,14 +527,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
   /** Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
   def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int): List[Type] = {
     val unappSym = unapp.symbol
-    def caseClass = unappSym.owner.linkedClass
 
     // println("scrutineeTp = " + scrutineeTp.show)
-
-    lazy val caseAccessors = caseClass.caseAccessors.filter(_.is(Method))
-
-    def isSyntheticScala2Unapply(sym: Symbol) =
-      sym.isAllOf(SyntheticCase) && sym.owner.is(Scala2x)
 
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
@@ -564,9 +558,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
     val resTp = mt.finalResultType
 
     val sig =
-      if (isSyntheticScala2Unapply(unappSym) && caseAccessors.length == argLen)
-        caseAccessors.map(_.info.asSeenFrom(mt.paramInfos.head, caseClass).widenExpr)
-      else if (resTp.isRef(defn.BooleanClass))
+      if (resTp.isRef(defn.BooleanClass))
         List()
       else {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
@@ -584,7 +576,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
           if (arity > 0)
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
-            val getTp = resTp.select(nme.get).finalResultType.widen
+            val getTp = resTp.select(nme.get).finalResultType.widenTermRefExpr
             if (argLen == 1) getTp :: Nil
             else productSelectorTypes(getTp, unappSym.srcPos)
           }
