@@ -8,7 +8,7 @@ transparent inline def summonT[Tp <: Tuple](using QuoteContext): Tuple = inline 
   case _ : (hd *: tl) => {
     type H = hd
     summonFrom {
-      case given _ : Type[H] => summon[Type[H]] *: summonT[tl]
+      case given Type[H] => summon[Type[H]] *: summonT[tl]
     }
   }
 }

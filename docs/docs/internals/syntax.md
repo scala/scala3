@@ -269,8 +269,7 @@ TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [nl]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  Pattern2 [‘:’ RefinedType]                               Bind(name, Typed(Ident(wildcard), tpe))
-                    |  ‘given’ PatVar ‘:’ RefinedType
-Pattern2          ::=  [id ‘as’] InfixPattern                                    Bind(name, pat)
+Pattern2          ::=  [id ‘as’] InfixPattern                                   Bind(name, pat)
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
@@ -278,6 +277,7 @@ SimplePattern     ::=  PatVar                                                   
                     |  Quoted
                     |  XmlPattern
                     |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
+                    |  ‘given’ RefinedType
 SimplePattern1    ::=  SimpleRef
                     |  SimplePattern1 ‘.’ id
 PatVar            ::=  varid
