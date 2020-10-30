@@ -40,10 +40,14 @@
   color: var(--inactive-fg) !important;
   font-weight: 500 !important;
 }
-.action_def:hover, .action_def:focus-within {
+.action_def:hover, .action_def.hover_a79 {
   color: var(--selected-fg);
   background: var(--selected-bg) !important;
   font-weight: 500;
+}
+.action_def .template-description {
+  margin-left: 2rem;
+  font-style: italic;
 }
 
 /* Landscape phones, portait tablets */
