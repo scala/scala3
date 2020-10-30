@@ -13,6 +13,6 @@ object Macro {
     val ConstantType(Constant.Int(v2)) = TypeRepr.of[B]
 
     Literal(Constant.Int(v1 + v2)).tpe.seal match
-      case '[$T] => '{ null: AddInt[A, B] { type Out = T } }
+      case '[t] => '{ null: AddInt[A, B] { type Out = t } }
   }
 }

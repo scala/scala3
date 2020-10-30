@@ -1,10 +1,10 @@
 import scala.quoted._
 object Test {
   def test(x: quoted.Expr[Int])(using QuoteContext): Unit = x match {
-    case '{ type $T; 4 } => Type[T]
-    case '{ type $T; poly[$T]($x); 4 } => // error: duplicate pattern variable: T
-    case '{ type `$T`; poly[`$T`]($x); 4 } =>
-      Type[T] // error
+    case '{ type t; 4 } => Type[t]
+    case '{ type t; poly[t]($x); 4 } => // error: duplicate pattern variable: t
+    case '{ type `t`; poly[`t`]($x); 4 } =>
+      Type[t] // error
     case _ =>
   }
 

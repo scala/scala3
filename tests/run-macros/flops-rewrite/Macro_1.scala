@@ -5,10 +5,10 @@ inline def rewrite[T](inline x: T): T = ${ rewriteMacro('x) }
 private def rewriteMacro[T: Type](x: Expr[T])(using QuoteContext): Expr[T] = {
   val rewriter = Rewriter(
     postTransform = {
-      case '{ Nil.map[$t]($f) } => '{ Nil }
+      case '{ Nil.map[t]($f) } => '{ Nil }
       case '{ Nil.filter($f) }  => '{ Nil }
-      case '{ Nil.++[$t]($xs) } => xs
-      case '{ ($xs: List[$t]).++(Nil) } => xs
+      case '{ Nil.++[t]($xs) } => xs
+      case '{ ($xs: List[t]).++(Nil) } => xs
       case x => x
     }
   )
@@ -40,7 +40,7 @@ private class Rewriter(preTransform: Expr[Any] => Expr[Any], postTransform: Expr
   private def checkedTransform[T: Type](e: Expr[T], transform: Expr[T] => Expr[Any])(using QuoteContext): Expr[T] = {
     transform(e) match {
       case '{ $x: T } => x
-      case '{ $x: $t } => throw new Exception(
+      case '{ $x: t } => throw new Exception(
         s"""Transformed
            |${e.show}
            |into

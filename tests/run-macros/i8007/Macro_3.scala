@@ -26,9 +26,9 @@ object Eq {
     }
 
   def summonAll[T](using t: Type[T])(using qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
-    case '[String *: $Tpes] => '{ summon[Eq[String]] }  :: summonAll[Tpes]
-    case '[Int *: $Tpes]    => '{ summon[Eq[Int]] }     :: summonAll[Tpes]
-    case '[$Tpe *: $Tpes]   => derived[Tpe] :: summonAll[Tpes]
+    case '[String *: tpes] => '{ summon[Eq[String]] }  :: summonAll[tpes]
+    case '[Int *: tpes]    => '{ summon[Eq[Int]] }     :: summonAll[tpes]
+    case '[tpe *: tpes]   => derived[tpe] :: summonAll[tpes]
     case '[EmptyTuple] => Nil
   }
 
@@ -38,8 +38,8 @@ object Eq {
     val ev: Expr[Mirror.Of[T]] = Expr.summon(using Type[Mirror.Of[T]]).get
 
     ev match {
-      case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $ElementTypes }} =>
-        val elemInstances = summonAll[ElementTypes]
+      case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
+        val elemInstances = summonAll[elementTypes]
         val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
           elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
             case (acc, (elem, index)) =>
@@ -53,8 +53,8 @@ object Eq {
           eqProduct((x: T, y: T) => ${eqProductBody('x, 'y)})
         }
 
-      case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = $ElementTypes }} =>
-        val elemInstances = summonAll[ElementTypes]
+      case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = elementTypes }} =>
+        val elemInstances = summonAll[elementTypes]
         val eqSumBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
           val ordx = '{ $m.ordinal($x) }
           val ordy = '{ $m.ordinal($y) }

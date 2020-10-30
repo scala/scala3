@@ -8,21 +8,21 @@ object Test {
     val '[List[Int]] = Type[List[Int]]
 
     Type[List[Int]] match
-      case '[List[$Int]] =>
-        println(Type.show[Int])
+      case '[List[int]] =>
+        println(Type.show[int])
         println()
 
     Type[Int => Double] match
-      case  '[Function1[$T1, $R]] =>
-        println(Type.show[T1])
-        println(Type.show[R])
+      case  '[Function1[t1, r]] =>
+        println(Type.show[t1])
+        println(Type.show[r])
         println()
 
     Type[(Int => Short) => Double] match
-      case '[Function1[Function1[$T1, $R0], $R]] =>
-        println(Type.show[T1])
-        println(Type.show[R0])
-        println(Type.show[R])
+      case '[Function1[Function1[t1, r0], r]] =>
+        println(Type.show[t1])
+        println(Type.show[r0])
+        println(Type.show[r])
 
   }
 }

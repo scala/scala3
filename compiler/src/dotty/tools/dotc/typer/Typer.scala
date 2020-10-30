@@ -431,12 +431,16 @@ class Typer extends Namer
     val name = tree.name
     def kind = if (name.isTermName) "" else "type "
     typr.println(s"typed ident $kind$name in ${ctx.owner}")
-    if (ctx.mode is Mode.Pattern) {
-      if (name == nme.WILDCARD)
+    if ctx.mode.is(Mode.Pattern) then
+      if name == nme.WILDCARD then
         return tree.withType(pt)
-      if (untpd.isVarPattern(tree) && name.isTermName)
+      if untpd.isVarPattern(tree) && name.isTermName then
         return typed(desugar.patternVar(tree), pt)
-    }
+    else if ctx.mode.is(Mode.QuotedPattern) then
+      if untpd.isVarPattern(tree) && name.isTypeName then
+        return typedQuotedTypeVar(tree, pt)
+    end if
+
     // Shortcut for the root package, this is not just a performance
     // optimization, it also avoids forcing imports thus potentially avoiding
     // cyclic references.

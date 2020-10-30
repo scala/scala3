@@ -6,7 +6,7 @@ object Macro1 {
 
   def mirrorFields[T: Type](using qctx: QuoteContext): List[String] =
     Type[T] match {
-      case '[$Field *: $Fields] => Type.show[Field] :: mirrorFields[Fields]
+      case '[field *: fields] => Type.show[field] :: mirrorFields[fields]
       case '[EmptyTuple] => Nil
     }
 
@@ -22,8 +22,8 @@ object Macro1 {
     val mirrorTpe = Type[Mirror.Of[T]]
 
     Expr.summon(using mirrorTpe).get match {
-      case '{ $m: Mirror.ProductOf[T]{ type MirroredElemLabels = $Elems } } => {
-        Expr(mirrorFields[Elems])
+      case '{ $m: Mirror.ProductOf[T]{ type MirroredElemLabels = elems } } => {
+        Expr(mirrorFields[elems])
       }
     }
   }

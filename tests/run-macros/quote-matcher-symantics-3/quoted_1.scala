@@ -18,7 +18,7 @@ object Macros {
     object FromEnv {
       def unapply[T](e: Expr[Any])(using env: Env): Option[Expr[R[T]]] =
         e match
-          case '{envVar[$_](${Const(id)})} =>
+          case '{envVar[t](${Const(id)})} =>
             env.get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
           case _ =>
             None
@@ -37,11 +37,11 @@ object Macros {
       case '{ ($x: Int) <= ($y: Int) } =>
         '{ $sym.leq(${lift(x)}, ${lift(y)}).asInstanceOf[R[T]] }
 
-      case '{ ${f}($arg: $A): $B } =>
-        '{ $sym.app[A, B](${lift(f)}, ${lift(arg)}).asInstanceOf[R[T]] }
+      case '{ ${f}($arg: a): b } =>
+        '{ $sym.app[a, b](${lift(f)}, ${lift(arg)}).asInstanceOf[R[T]] }
 
-      case '{ (if ($cond) $thenp else $elsep): $A } =>
-        '{ $sym.ifThenElse[A](${lift(cond)}, ${lift(thenp)}, ${lift(elsep)}) }.asInstanceOf[Expr[R[T]]]
+      case '{ (if ($cond) $thenp else $elsep): a } =>
+        '{ $sym.ifThenElse[a](${lift(cond)}, ${lift(thenp)}, ${lift(elsep)}) }.asInstanceOf[Expr[R[T]]]
 
       case '{ (x0: Int) => $bodyFn(x0): Any } =>
         val (i, nEnvVar) = freshEnvVar[Int]()
@@ -58,8 +58,8 @@ object Macros {
         val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
         '{ $sym.lam((x: R[Int => Int]) => ${given Env = envWith(i, 'x)(using env); lift(body2)}).asInstanceOf[R[T]] }
 
-      case '{ Symantics.fix[$A, $B]($f) } =>
-        '{ $sym.fix[A, B]((x: R[A => B]) => $sym.app(${lift(f)}, x)).asInstanceOf[R[T]] }
+      case '{ Symantics.fix[a, b]($f) } =>
+        '{ $sym.fix[a, b]((x: R[a => b]) => $sym.app(${lift(f)}, x)).asInstanceOf[R[T]] }
 
       case FromEnv(expr) => expr.asInstanceOf[Expr[R[T]]]
 
