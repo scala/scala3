@@ -29,6 +29,7 @@
   --mono-font: "Fira Code", monospace;
   --text-font: "Lato", sans-serif;
   --title-font: "Roboto Slab", serif;
+  --leftbar-font-size: 15px;
 
   /* Layout Settings (changes on small screens) */
   --side-width: 255px;
@@ -123,7 +124,7 @@ th {
   overflow-y: auto;
   scrollbar-width: thin;
   height: 100%;
-  font-size: 15px;
+  font-size: var(--leftbar-font-size);
 }
 #logo {
   background-size: contain;
@@ -198,16 +199,22 @@ th {
   cursor: pointer;
 }
 .sideMenuPart .navButtonContent::before {
-  content: url("../images/arrow_down.svg");
+  content: "\e905"; /* arrow up */
+  font-family: "dotty-icons" !important;
+  font-size: 20px;
+  line-height: var(--leftbar-font-size);
+  color: var(--leftbar-fg);
   height: 100%;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  transform: rotate(180deg);
 }
 .sideMenuPart.hidden .navButtonContent::before {
-  transform: rotate(0deg);
+  content: "\e903"; /* arrow down */
+}
+.sideMenuPart .navButtonContent:hover::before {
+  color: var(--leftbar-current-bg);
 }
 
 /* Search */
