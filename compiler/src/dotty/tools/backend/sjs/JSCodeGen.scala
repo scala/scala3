@@ -3384,8 +3384,15 @@ class JSCodeGen()(using genCtx: Context) {
         } else {
           val captureValues = {
             if (code == CREATE_INNER_JS_CLASS) {
+              /* Private inner classes that do not actually access their outer
+               * pointer do not receive an outer argument. We therefore count
+               * the number of constructors that have non-empty param list to
+               * know how many times we need to pass `this`.
+               */
+              val requiredThisParams =
+                classSym.info.decls.lookupAll(nme.CONSTRUCTOR).count(_.info.paramInfoss.head.nonEmpty)
               val outer = genThis()
-              List.fill(classSym.info.decls.lookupAll(nme.CONSTRUCTOR).size)(outer)
+              List.fill(requiredThisParams)(outer)
             } else {
               val fakeNewInstances = args(2).asInstanceOf[JavaSeqLiteral].elems
               fakeNewInstances.flatMap(genCaptureValuesFromFakeNewInstance(_))
