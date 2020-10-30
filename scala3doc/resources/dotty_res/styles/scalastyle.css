@@ -132,6 +132,7 @@ th {
   background-origin: content-box;
   padding: 8px 0 8px 16px;
   height: 42px;
+  cursor: pointer;
 }
 #logo::after {
   color: var(--leftbar-fg);
