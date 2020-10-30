@@ -18,7 +18,7 @@ import org.junit.Test
 class PatmatExhaustivityTest {
   val testsDir = "tests/patmat"
   // stop-after: patmatexhaust-huge.scala crash compiler
-  val options = List("-color:never", "-Ystop-after:crossCast", "-Ycheck-all-patmat", "-classpath", TestConfiguration.basicClasspath)
+  val options = List("-color:never", "-Ystop-after:explicitSelf", "-Ycheck-all-patmat", "-classpath", TestConfiguration.basicClasspath)
 
   private def compile(files: Seq[String]): Seq[String] = {
     val stringBuffer = new StringWriter()
