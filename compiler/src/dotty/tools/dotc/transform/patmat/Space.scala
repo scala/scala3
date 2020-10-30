@@ -150,19 +150,22 @@ trait SpaceLogic {
   })
 
   /** Flatten space to get rid of `Or` for pretty print */
-  def flatten(space: Space)(using Context): List[Space] = space match {
+  def flatten(space: Space)(using Context): Seq[Space] = space match {
     case Prod(tp, fun, spaces, full) =>
-      spaces.map(flatten) match {
-        case Nil => Prod(tp, fun, Nil, full) :: Nil
-        case ss  =>
-          ss.foldLeft(List[Prod]()) { (acc, flat) =>
-            if (acc.isEmpty) flat.map(s => Prod(tp, fun, s :: Nil, full))
-            else for (Prod(tp, fun, ss, full) <- acc; s <- flat) yield Prod(tp, fun, ss :+ s, full)
-          }
+      val ss = LazyList(spaces: _*).map(flatten)
+
+      ss.foldLeft(LazyList(Nil : List[Space])) { (acc, flat) =>
+        for { sps <- acc; s <- flat }
+        yield sps :+ s
+      }.map { sps =>
+        Prod(tp, fun, sps, full)
       }
+
     case Or(spaces) =>
-      spaces.flatMap(flatten _)
-    case _ => List(space)
+      LazyList(spaces: _*).flatMap(flatten)
+
+    case _ =>
+      List(space)
   }
 
   /** Is `a` a subspace of `b`? Equivalent to `a - b == Empty`, but faster */
@@ -838,8 +841,10 @@ class SpaceEngine(using Context) extends SpaceLogic {
         s != Empty && (!checkGADTSAT || satisfiable(s))
       }
 
-    if (uncovered.nonEmpty)
-      report.warning(PatternMatchExhaustivity(show(uncovered)), sel.srcPos)
+
+    if uncovered.nonEmpty then
+      val hasMore = uncovered.lengthCompare(6) > 0
+      report.warning(PatternMatchExhaustivity(show(uncovered.take(6)), hasMore), sel.srcPos)
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =

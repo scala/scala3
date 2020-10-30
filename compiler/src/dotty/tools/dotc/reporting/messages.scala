@@ -822,14 +822,16 @@ import transform.SymUtils._
            |"""
   }
 
-  class PatternMatchExhaustivity(uncoveredFn: => String)(using Context)
+  class PatternMatchExhaustivity(uncoveredFn: => String, hasMore: Boolean)(using Context)
   extends Message(PatternMatchExhaustivityID) {
     def kind = "Pattern Match Exhaustivity"
     lazy val uncovered = uncoveredFn
     def msg =
+      val addendum = if hasMore then "(More unmatched cases are elided)" else ""
       em"""|${hl("match")} may not be exhaustive.
            |
-           |It would fail on pattern case: $uncovered"""
+           |It would fail on pattern case: $uncovered
+           |$addendum"""
 
 
     def explain =
