@@ -550,15 +550,41 @@ object Erasure {
       if (!ctx.mode.is(Mode.Type)) {
         if (isErased(tree))
           report.error(em"${tree.symbol} is declared as erased, but is in fact used", tree.srcPos)
-        tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match {
-          case Some(annot) =>
-            def defaultMsg =
-              i"""Reference to ${tree.symbol.showLocated} should not have survived,
-                 |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
-            val message = annot.argumentConstant(0).fold(defaultMsg)(_.stringValue)
-            report.error(message, tree.srcPos)
-          case _ => // OK
-        }
+
+        def parentSyms(tpe: Type): LazyList[Symbol] =
+          val ref = tpe.widen.finalResultType
+          ref.classSymbol #:: ref.parents.to(LazyList).flatMap(parentSyms)
+
+        def checkTree(tree: Tree, pos: util.SrcPos, toCheck: LazyList[Symbol]): Boolean =
+          toCheck.exists { sym =>
+            sym.getAnnotation(defn.CompileTimeOnlyAnnot) match {
+              case Some(annot) =>
+                def defaultMsg =
+                  i"""Reference to ${tree.symbol.showLocated} should not have survived,
+                    |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
+                val message = annot.argumentConstant(0).fold(defaultMsg)(_.stringValue)
+                report.error(message, pos)
+                true
+              case _ => // OK
+                false
+            }
+          }
+
+        tree match
+          case ddef: DefDef =>
+            for
+              vparams <- ddef.vparamss
+              vparam  <- vparams
+            do
+              checkTree(vparam, vparam.tpt.srcPos, parentSyms(vparam.tpt.tpe))
+            checkTree(ddef, ddef.tpt.srcPos, parentSyms(ddef.tpt.tpe))
+
+          case vdef: ValDef => checkTree(vdef, vdef.tpt.srcPos, parentSyms(vdef.tpt.tpe))
+
+          case tree =>
+            // in the other branches we avoid checking the symbol itself
+            // in-case it is annotated for downstream members
+            checkTree(tree, tree.srcPos, tree.symbol #:: parentSyms(tree.tpe))
       }
       tree
     }
@@ -844,8 +870,8 @@ object Erasure {
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
       if (sym.isEffectivelyErased) erasedDef(sym)
       else
-        super.typedValDef(untpd.cpy.ValDef(vdef)(
-          tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)
+        checkNotErased(super.typedValDef(untpd.cpy.ValDef(vdef)(
+          tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym))
 
     /** Besides normal typing, this function also compacts anonymous functions
      *  with more than `MaxImplementedFunctionArity` parameters to use a single
@@ -889,7 +915,7 @@ object Erasure {
           vparamss = vparams :: Nil,
           tpt = untpd.TypedSplice(TypeTree(restpe).withSpan(ddef.tpt.span)),
           rhs = rhs1)
-        super.typedDefDef(ddef1, sym)
+        checkNotErased(super.typedDefDef(ddef1, sym))
     end typedDefDef
 
     /** The outer parameter definition of a constructor if it needs one */
