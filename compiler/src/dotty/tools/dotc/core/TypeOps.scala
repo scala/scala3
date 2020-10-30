@@ -633,8 +633,6 @@ object TypeOps:
    *  returned. Otherwise, `NoType` is returned.
    */
   def refineUsingParent(parent: Type, child: Symbol)(using Context): Type = {
-    if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
-
     // <local child> is a place holder from Scalac, it is hopeless to instantiate it.
     //
     // Quote from scalac (from nsc/symtab/classfile/Pickler.scala):
