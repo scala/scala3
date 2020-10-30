@@ -1,0 +1,1 @@
+val foo = new PolyFunction {}

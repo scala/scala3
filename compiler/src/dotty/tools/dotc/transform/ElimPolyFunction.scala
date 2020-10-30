@@ -31,29 +31,30 @@ class ElimPolyFunction extends MiniPhase with DenotTransformer {
   override def transform(ref: SingleDenotation)(using Context) = ref match {
     case ref: ClassDenotation if ref.symbol != defn.PolyFunctionClass && ref.derivesFrom(defn.PolyFunctionClass) =>
       val cinfo = ref.classInfo
-      val newParent = functionTypeOfPoly(cinfo)
-      val newParents = cinfo.classParents.map(parent =>
-        if (parent.typeSymbol == defn.PolyFunctionClass)
-          newParent
-        else
-          parent
-      )
-      ref.copySymDenotation(info = cinfo.derivedClassInfo(classParents = newParents))
+      functionTypeOfPoly(cinfo).fold(ref) { newParent =>
+        val newParents = cinfo.classParents.map(parent =>
+          if (parent.typeSymbol == defn.PolyFunctionClass)
+            newParent
+          else
+            parent
+        )
+        ref.copySymDenotation(info = cinfo.derivedClassInfo(classParents = newParents))
+      }
     case _ =>
       ref
   }
 
-  def functionTypeOfPoly(cinfo: ClassInfo)(using Context): Type = {
+  def functionTypeOfPoly(cinfo: ClassInfo)(using Context): Option[Type] = {
     val applyMeth = cinfo.decls.lookup(nme.apply).info
-    val arity = applyMeth.paramNamess.head.length
-    defn.FunctionType(arity)
+    for paramNames <- applyMeth.paramNamess.headOption yield
+      defn.FunctionType(paramNames.length)
   }
 
   override def transformTemplate(tree: Template)(using Context): Tree = {
     val newParents = tree.parents.mapconserve(parent =>
       if (parent.tpe.typeSymbol == defn.PolyFunctionClass) {
         val cinfo = tree.symbol.owner.asClass.classInfo
-        tpd.TypeTree(functionTypeOfPoly(cinfo))
+        functionTypeOfPoly(cinfo).fold(parent)(tpd.TypeTree)
       }
       else
         parent
@@ -65,4 +66,3 @@ class ElimPolyFunction extends MiniPhase with DenotTransformer {
 object ElimPolyFunction {
   val name = "elimPolyFunction"
 }
-
