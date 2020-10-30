@@ -126,6 +126,9 @@ th {
   height: 100%;
   font-size: var(--leftbar-font-size);
 }
+#paneSearch {
+  display: none;
+}
 #logo {
   background-size: contain;
   background-repeat: no-repeat;
