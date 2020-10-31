@@ -463,7 +463,7 @@ trait TypeAssigner {
     val ownType =
       if (sameLength(tparams, args))
         if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
-        else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe)
+        else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe, soft = false)
         else tycon.tpe.appliedTo(args.tpes)
       else wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
     tree.withType(ownType)

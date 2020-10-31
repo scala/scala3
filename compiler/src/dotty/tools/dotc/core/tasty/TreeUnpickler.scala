@@ -368,7 +368,7 @@ class TreeUnpickler(reader: TastyReader,
             case ANDtype =>
               AndType(readType(), readType())
             case ORtype =>
-              OrType(readType(), readType())
+              OrType(readType(), readType(), soft = false)
             case SUPERtype =>
               SuperType(readType(), readType())
             case MATCHtype =>
@@ -1222,7 +1222,7 @@ class TreeUnpickler(reader: TastyReader,
               val args = until(end)(readTpt())
               val ownType =
                 if (tycon.symbol == defn.andType) AndType(args(0).tpe, args(1).tpe)
-                else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe)
+                else if (tycon.symbol == defn.orType) OrType(args(0).tpe, args(1).tpe, soft = false)
                 else tycon.tpe.safeAppliedTo(args.tpes)
               untpd.AppliedTypeTree(tycon, args).withType(ownType)
             case ANNOTATEDtpt =>

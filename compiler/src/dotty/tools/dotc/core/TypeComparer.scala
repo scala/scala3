@@ -428,6 +428,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case Some(b) => return b
           case None =>
 
+        def widenOK =
+          (tp2.widenSingletons eq tp2)
+          && (tp1.widenSingletons ne tp1)
+          && recur(tp1.widenSingletons, tp2)
+
         def joinOK = tp2.dealiasKeepRefiningAnnots match {
           case tp2: AppliedType if !tp2.tycon.typeSymbol.isClass =>
             // If we apply the default algorithm for `A[X] | B[Y] <: C[Z]` where `C` is a
@@ -439,25 +444,30 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             false
         }
 
+        // If LHS is a hard union, constrain any type variables of the RHS with it as lower bound
+        // before splitting the LHS into its constituents. That way, the RHS variables are
+        // constraint by the hard union and can be instantiated to it. If we just split and add
+        // the two parts of the LHS separately to the constraint, the lower bound would become
+        // a soft union.
+        def constrainRHSVars(tp2: Type): Boolean = tp2.dealiasKeepRefiningAnnots match
+          case tp2: TypeParamRef if constraint contains tp2 => compareTypeParamRef(tp2)
+          case AndType(tp21, tp22) => constrainRHSVars(tp21) && constrainRHSVars(tp22)
+          case _ => true
+
+        // An & on the left side loses information. We compensate by also trying the join.
+        // This is less ad-hoc than it looks since we produce joins in type inference,
+        // and then need to check that they are indeed supertypes of the original types
+        // under -Ycheck. Test case is i7965.scala.
         def containsAnd(tp: Type): Boolean = tp.dealiasKeepRefiningAnnots match
           case tp: AndType => true
           case OrType(tp1, tp2) => containsAnd(tp1) || containsAnd(tp2)
           case _ => false
 
-        def widenOK =
-          (tp2.widenSingletons eq tp2) &&
-          (tp1.widenSingletons ne tp1) &&
-          recur(tp1.widenSingletons, tp2)
-
         widenOK
         || joinOK
-        || recur(tp11, tp2) && recur(tp12, tp2)
+        || (tp1.isSoft || constrainRHSVars(tp2)) && recur(tp11, tp2) && recur(tp12, tp2)
         || containsAnd(tp1) && recur(tp1.join, tp2)
-            // An & on the left side loses information. Compensate by also trying the join.
-            // This is less ad-hoc than it looks since we produce joins in type inference,
-            // and then need to check that they are indeed supertypes of the original types
-            // under -Ycheck. Test case is i7965.scala.
-      case tp1: MatchType =>
+     case tp1: MatchType =>
         val reduced = tp1.reduced
         if (reduced.exists) recur(reduced, tp2) else thirdTry
       case _: FlexType =>
@@ -511,35 +521,36 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         fourthTry
     }
 
+    def compareTypeParamRef(tp2: TypeParamRef): Boolean =
+      assumedTrue(tp2) || {
+        val alwaysTrue =
+          // The following condition is carefully formulated to catch all cases
+          // where the subtype relation is true without needing to add a constraint
+          // It's tricky because we might need to either approximate tp2 by its
+          // lower bound or else widen tp1 and check that the result is a subtype of tp2.
+          // So if the constraint is not yet frozen, we do the same comparison again
+          // with a frozen constraint, which means that we get a chance to do the
+          // widening in `fourthTry` before adding to the constraint.
+          if (frozenConstraint) recur(tp1, bounds(tp2).lo)
+          else isSubTypeWhenFrozen(tp1, tp2)
+        alwaysTrue ||
+        frozenConstraint && (tp1 match {
+          case tp1: TypeParamRef => constraint.isLess(tp1, tp2)
+          case _ => false
+        }) || {
+          if (canConstrain(tp2) && !approx.low)
+            addConstraint(tp2, tp1.widenExpr, fromBelow = true)
+          else fourthTry
+        }
+      }
+
     def thirdTry: Boolean = tp2 match {
       case tp2 @ AppliedType(tycon2, args2) =>
         compareAppliedType2(tp2, tycon2, args2)
       case tp2: NamedType =>
         thirdTryNamed(tp2)
       case tp2: TypeParamRef =>
-        def compareTypeParamRef =
-          assumedTrue(tp2) || {
-            val alwaysTrue =
-              // The following condition is carefully formulated to catch all cases
-              // where the subtype relation is true without needing to add a constraint
-              // It's tricky because we might need to either approximate tp2 by its
-              // lower bound or else widen tp1 and check that the result is a subtype of tp2.
-              // So if the constraint is not yet frozen, we do the same comparison again
-              // with a frozen constraint, which means that we get a chance to do the
-              // widening in `fourthTry` before adding to the constraint.
-              if (frozenConstraint) recur(tp1, bounds(tp2).lo)
-              else isSubTypeWhenFrozen(tp1, tp2)
-            alwaysTrue ||
-            frozenConstraint && (tp1 match {
-              case tp1: TypeParamRef => constraint.isLess(tp1, tp2)
-              case _ => false
-            }) || {
-              if (canConstrain(tp2) && !approx.low)
-                addConstraint(tp2, tp1.widenExpr, fromBelow = true)
-              else fourthTry
-            }
-          }
-        compareTypeParamRef
+        compareTypeParamRef(tp2)
       case tp2: RefinedType =>
         def compareRefinedSlow: Boolean = {
           val name2 = tp2.refinedName
@@ -616,7 +627,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             }
         }
         compareTypeLambda
-      case OrType(tp21, tp22) =>
+      case tp2 as OrType(tp21, tp22) =>
         compareAtoms(tp1, tp2) match
           case Some(b) => return b
           case _ =>
@@ -648,12 +659,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // solutions. The rewriting delays the point where we have to choose.
         tp21 match {
           case AndType(tp211, tp212) =>
-            return recur(tp1, OrType(tp211, tp22)) && recur(tp1, OrType(tp212, tp22))
+            return recur(tp1, OrType(tp211, tp22, tp2.isSoft)) && recur(tp1, OrType(tp212, tp22, tp2.isSoft))
           case _ =>
         }
         tp22 match {
           case AndType(tp221, tp222) =>
-            return recur(tp1, OrType(tp21, tp221)) && recur(tp1, OrType(tp21, tp222))
+            return recur(tp1, OrType(tp21, tp221, tp2.isSoft)) && recur(tp1, OrType(tp21, tp222, tp2.isSoft))
           case _ =>
         }
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
@@ -2123,7 +2134,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val t2 = distributeOr(tp2, tp1)
       if (t2.exists) t2
       else if (isErased) erasedLub(tp1, tp2)
-      else liftIfHK(tp1, tp2, OrType(_, _), _ | _, _ & _)
+      else liftIfHK(tp1, tp2, OrType(_, _, soft = true), _ | _, _ & _)
     }
   }
 

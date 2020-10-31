@@ -214,8 +214,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       // of AndType and OrType to account for associativity
       case AndType(tp1, tp2) =>
         toTextInfixType(tpnme.raw.AMP, tp1, tp2) { toText(tpnme.raw.AMP) }
-      case OrType(tp1, tp2) =>
-        toTextInfixType(tpnme.raw.BAR, tp1, tp2) { toText(tpnme.raw.BAR) }
+      case tp as OrType(tp1, tp2) =>
+        toTextInfixType(tpnme.raw.BAR, tp1, tp2) {
+          if tp.isSoft && printDebug then toText(tpnme.ZOR) else toText(tpnme.raw.BAR)
+        }
       case tp @ EtaExpansion(tycon)
       if !printDebug && appliedText(tp.asInstanceOf[HKLambda].resType).isEmpty =>
         // don't eta contract if the application would be printed specially

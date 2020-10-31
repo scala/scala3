@@ -1040,7 +1040,7 @@ object Types {
     def safe_& (that: Type)(using Context): Type = (this, that) match {
       case (TypeBounds(lo1, hi1), TypeBounds(lo2, hi2)) =>
         TypeBounds(
-           OrType.makeHk(lo1.stripLazyRef, lo2.stripLazyRef),
+          OrType.makeHk(lo1.stripLazyRef, lo2.stripLazyRef),
           AndType.makeHk(hi1.stripLazyRef, hi2.stripLazyRef))
       case _ =>
         this & that
@@ -1151,10 +1151,11 @@ object Types {
       case _ => this
     }
 
-    /** Widen this type and if the result contains embedded union types, replace
+    /** Widen this type and if the result contains embedded soft union types, replace
      *  them by their joins.
-     *  "Embedded" means: inside type lambdas, intersections or recursive types, or in prefixes of refined types.
-     *  If an embedded union is found, we first try to simplify or eliminate it by
+     *  "Embedded" means: inside type lambdas, intersections or recursive types,
+     *  in prefixes of refined types, or in hard union types.
+     *  If an embedded soft union is found, we first try to simplify or eliminate it by
      *  re-lubbing it while allowing type parameters to be constrained further.
      *  Any remaining union types are replaced by their joins.
      *
@@ -1168,7 +1169,7 @@ object Types {
      *  Exception (if `-YexplicitNulls` is set): if this type is a nullable union (i.e. of the form `T | Null`),
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
-    def widenUnion(using Context): Type = widen match {
+    def widenUnion(using Context): Type = widen match
       case tp @ OrNull(tp1): OrType =>
         // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
         val tp1Widen = tp1.widenUnionWithoutNull
@@ -1176,16 +1177,14 @@ object Types {
         else tp.derivedOrType(tp1Widen, defn.NullType)
       case tp =>
         tp.widenUnionWithoutNull
-    }
 
-    def widenUnionWithoutNull(using Context): Type = widen match {
-      case tp @ OrType(lhs, rhs) =>
-        TypeComparer.lub(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull, canConstrain = true) match {
+    def widenUnionWithoutNull(using Context): Type = widen match
+      case tp @ OrType(lhs, rhs) if tp.isSoft =>
+        TypeComparer.lub(lhs.widenUnionWithoutNull, rhs.widenUnionWithoutNull, canConstrain = true) match
           case union: OrType => union.join
           case res => res
-        }
-      case tp @ AndType(tp1, tp2) =>
-        tp derived_& (tp1.widenUnionWithoutNull, tp2.widenUnionWithoutNull)
+      case tp: AndOrType =>
+        tp.derivedAndOrType(tp.tp1.widenUnionWithoutNull, tp.tp2.widenUnionWithoutNull)
       case tp: RefinedType =>
         tp.derivedRefinedType(tp.parent.widenUnion, tp.refinedName, tp.refinedInfo)
       case tp: RecType =>
@@ -1194,7 +1193,6 @@ object Types {
         tp.derivedLambdaType(resType = tp.resType.widenUnion)
       case tp =>
         tp
-    }
 
     /** Widen all top-level singletons reachable by dealiasing
      *  and going to the operands of & and |.
@@ -2917,8 +2915,9 @@ object Types {
 
     def derivedAndOrType(tp1: Type, tp2: Type)(using Context) =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
-      else if (isAnd) AndType.make(tp1, tp2, checkValid = true)
-      else OrType.make(tp1, tp2)
+      else this match
+        case tp: OrType => OrType.make(tp1, tp2, tp.isSoft)
+        case tp: AndType => AndType.make(tp1, tp2, checkValid = true)
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends AndOrType {
@@ -2992,6 +2991,7 @@ object Types {
 
   abstract case class OrType(tp1: Type, tp2: Type) extends AndOrType {
     def isAnd: Boolean = false
+    def isSoft: Boolean
     private var myBaseClassesPeriod: Period = Nowhere
     private var myBaseClasses: List[ClassSymbol] = _
     /** Base classes of are the intersection of the operand base classes. */
@@ -3052,32 +3052,33 @@ object Types {
       myWidened
     }
 
-    def derivedOrType(tp1: Type, tp2: Type)(using Context): Type =
-      if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
-      else OrType.make(tp1, tp2)
+    def derivedOrType(tp1: Type, tp2: Type, soft: Boolean = isSoft)(using Context): Type =
+      if ((tp1 eq this.tp1) && (tp2 eq this.tp2) && soft == isSoft) this
+      else OrType.make(tp1, tp2, soft)
 
-    override def computeHash(bs: Binders): Int = doHash(bs, tp1, tp2)
+    override def computeHash(bs: Binders): Int =
+      doHash(bs, if isSoft then 0 else 1, tp1, tp2)
 
     override def eql(that: Type): Boolean = that match {
-      case that: OrType => tp1.eq(that.tp1) && tp2.eq(that.tp2)
+      case that: OrType => tp1.eq(that.tp1) && tp2.eq(that.tp2) && isSoft == that.isSoft
       case _ => false
     }
   }
 
-  final class CachedOrType(tp1: Type, tp2: Type) extends OrType(tp1, tp2)
+  final class CachedOrType(tp1: Type, tp2: Type, override val isSoft: Boolean) extends OrType(tp1, tp2)
 
   object OrType {
-    def apply(tp1: Type, tp2: Type)(using Context): OrType = {
+    def apply(tp1: Type, tp2: Type, soft: Boolean)(using Context): OrType = {
       assertUnerased()
-      unique(new CachedOrType(tp1, tp2))
+      unique(new CachedOrType(tp1, tp2, soft))
     }
-    def make(tp1: Type, tp2: Type)(using Context): Type =
+    def make(tp1: Type, tp2: Type, soft: Boolean)(using Context): Type =
       if (tp1 eq tp2) tp1
-      else apply(tp1, tp2)
+      else apply(tp1, tp2, soft)
 
     /** Like `make`, but also supports higher-kinded types as argument */
     def makeHk(tp1: Type, tp2: Type)(using Context): Type =
-      TypeComparer.liftIfHK(tp1, tp2, OrType(_, _), makeHk, _ & _)
+      TypeComparer.liftIfHK(tp1, tp2, OrType(_, _, soft = true), makeHk, _ & _)
   }
 
   /** An extractor object to pattern match against a nullable union.
@@ -3089,7 +3090,7 @@ object Types {
    */
   object OrNull {
     def apply(tp: Type)(using Context) =
-      OrType(tp, defn.NullType)
+      OrType(tp, defn.NullType, soft = false)
     def unapply(tp: Type)(using Context): Option[Type] =
       if (ctx.explicitNulls) {
         val tp1 = tp.stripNull()
@@ -3107,7 +3108,7 @@ object Types {
    */
   object OrUncheckedNull {
     def apply(tp: Type)(using Context) =
-      OrType(tp, defn.UncheckedNullAliasType)
+      OrType(tp, defn.UncheckedNullAliasType, soft = false)
     def unapply(tp: Type)(using Context): Option[Type] =
       if (ctx.explicitNulls) {
         val tp1 = tp.stripUncheckedNull

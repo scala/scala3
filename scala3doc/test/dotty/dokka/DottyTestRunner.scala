@@ -79,7 +79,6 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
             case l: DocumentableElement =>
                 (l.annotations ++ Seq(" ") ++ l.modifiers ++ Seq(l.name) ++ l.signature).map {
                     case s: String => s
-                    case (s: String, _) => s
                     case Link(s: String, _) => s
                 }
             case _ => Seq()
