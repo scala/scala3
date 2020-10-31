@@ -152,6 +152,10 @@ object Flags {
     def flagsString: String = x.flagStrings("").mkString(" ")
   }
 
+  // Temporary while extension names are in flux
+  def or(x1: FlagSet, x2: FlagSet) = x1 | x2
+  def and(x1: FlagSet, x2: FlagSet) = x1 & x2
+
   def termFlagSet(x: Long) = FlagSet(TERMS | x)
 
   private inline val TYPESHIFT = 2

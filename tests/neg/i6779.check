@@ -8,8 +8,8 @@
    |                             ^^^
    |                             Found:    F[T]
    |                             Required: F[G[T]]
--- [E007] Type Mismatch Error: tests/neg/i6779.scala:14:48 -------------------------------------------------------------
-14 |  def g3[T](x: T): F[G[T]] = this.extension_f(x)(using summon[Stuff]) // error
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-- [E007] Type Mismatch Error: tests/neg/i6779.scala:14:38 -------------------------------------------------------------
+14 |  def g3[T](x: T): F[G[T]] = this.f(x)(using summon[Stuff]) // error
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                             Found:    F[T]
    |                             Required: F[G[T]]

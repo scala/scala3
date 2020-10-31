@@ -2535,8 +2535,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
     object FlagsMethodsImpl extends FlagsMethods:
       extension (self: Flags):
         def is(that: Flags): Boolean = self.isAllOf(that)
-        def |(that: Flags): Flags = dotc.core.Flags.extension_|(self)(that)
-        def &(that: Flags): Flags = dotc.core.Flags.extension_&(self)(that)
+        def |(that: Flags): Flags = dotc.core.Flags.or(self, that) // TODO: Replace with dotc.core.Flags.|(self)(that)  once extension names have stabilized
+        def &(that: Flags): Flags = dotc.core.Flags.and(self, that)// TODO: Replace with dotc.core.Flags.&(self)(that)  once extension names have stabilized
         def showExtractors: String =
           Extractors.showFlags(using QuoteContextImpl.this)(self)
         def show: String =

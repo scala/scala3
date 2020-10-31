@@ -895,7 +895,7 @@ object desugar {
           mdef.tparams.head.srcPos)
       defDef(
         cpy.DefDef(mdef)(
-          name = normalizeName(mdef, ext).toExtensionName,
+          name = normalizeName(mdef, ext).asTermName,
           tparams = ext.tparams ++ mdef.tparams,
           vparamss = mdef.vparamss match
             case vparams1 :: vparamss1 if mdef.name.isRightAssocOperatorName =>
@@ -928,10 +928,10 @@ object desugar {
 
   /** The normalized name of `mdef`. This means
    *   1. Check that the name does not redefine a Scala core class.
-   *      If it does redefine, issue an error and return a mangled name instead of the original one.
-   *   2. Check that the name does not start with `extension_` unless the
-   *      method is an extension method.
-   *   3. If the name is missing (this can be the case for instance definitions), invent one instead.
+   *      If it does redefine, issue an error and return a mangled name instead
+   *      of the original one.
+   *   2. If the name is missing (this can be the case for instance definitions),
+   *      invent one instead.
    */
   def normalizeName(mdef: MemberDef, impl: Tree)(using Context): Name = {
     var name = mdef.name
@@ -942,31 +942,16 @@ object desugar {
       report.error(IllegalRedefinitionOfStandardKind(kind, name), errPos)
       name = name.errorName
     }
-    mdef match {
-      case vdef: ValDef if name.isExtension && isSetterNeeded(vdef)  =>
-        report.error(em"illegal setter name: `extension_=`", errPos)
-      case memDef if name.isExtensionName && !mdef.mods.is(ExtensionMethod) =>
-        report.error(em"illegal name: $name may not start with `extension_`", errPos)
-      case _ =>
-    }
     name
   }
 
-  /** Invent a name for an anonympus given or extension of type or template `impl`. */
+  /** Invent a name for an anonympus given of type or template `impl`. */
   def inventGivenOrExtensionName(impl: Tree)(using Context): SimpleName =
     val str = impl match
       case impl: Template =>
         if impl.parents.isEmpty then
-          impl.body.find {
-            case dd: DefDef if dd.mods.is(ExtensionMethod) => true
-            case _ => false
-          }
-          match
-            case Some(DefDef(name, _, (vparam :: _) :: _, _, _)) =>
-              s"extension_${name}_${inventTypeName(vparam.tpt)}"
-            case _ =>
-              report.error(AnonymousInstanceCannotBeEmpty(impl), impl.srcPos)
-              nme.ERROR.toString
+          report.error(AnonymousInstanceCannotBeEmpty(impl), impl.srcPos)
+          nme.ERROR.toString
         else
           impl.parents.map(inventTypeName(_)).mkString("given_", "_", "")
       case impl: Tree =>

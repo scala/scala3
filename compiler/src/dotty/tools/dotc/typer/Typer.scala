@@ -133,6 +133,15 @@ class Typer extends Namer
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
     def fail(msg: Message) = report.error(msg, pos)
 
+    def qualifies(denot: Denotation): Boolean =
+      reallyExists(denot)
+      && {
+        if required.is(ExtensionMethod) then
+          denot.hasAltWith(_.symbol.is(ExtensionMethod))
+        else
+          denot.hasAltWith(!_.symbol.is(ExtensionMethod))
+      }
+
     /** A symbol qualifies if it really exists and is not a package class.
      *  In addition, if we are in a constructor of a pattern, we ignore all definitions
      *  which are methods and not accessors (note: if we don't do that
@@ -142,8 +151,8 @@ class Typer extends Namer
      *  we could not reload them via `_.member`. On the other hand, accessing a
      *  package as a type from source is always an error.
      */
-    def qualifies(denot: Denotation): Boolean =
-      reallyExists(denot)
+    def qualifiesAsDef(denot: Denotation): Boolean =
+      qualifies(denot)
       && !(pt.isInstanceOf[UnapplySelectionProto] && denot.symbol.is(Method, butNot = Accessor))
       && !denot.symbol.is(PackageClass)
 
@@ -204,7 +213,7 @@ class Typer extends Namer
                 denot = denot.filterWithPredicate { mbr =>
                   mbr.matchesImportBound(if mbr.symbol.is(Given) then imp.givenBound else imp.wildcardBound)
                 }
-              if reallyExists(denot) then
+              if qualifies(denot) then
                 if unimported.isEmpty || !unimported.contains(pre.termSymbol) then
                   return pre.select(name, denot)
           case _ =>
@@ -217,13 +226,6 @@ class Typer extends Namer
        */
       def namedImportRef(imp: ImportInfo)(using Context): Type = {
         val termName = name.toTermName
-
-        def adjustExtension(n: Name) =
-          if required.is(ExtensionMethod) && termName.endsWith(n.lastPart)
-               // pre-check to avoid forming a new string; form extension only if it has a chance of matching `termName`
-          then n.toExtensionName
-          else n
-
         def recur(selectors: List[untpd.ImportSelector]): Type = selectors match
           case selector :: rest =>
             def checkUnambiguous(found: Type) =
@@ -232,12 +234,12 @@ class Typer extends Namer
                 fail(em"reference to `$name` is ambiguous; it is imported twice")
               found
 
-            if adjustExtension(selector.rename) == termName && selector.rename != nme.WILDCARD then
+            if selector.rename == termName && selector.rename != nme.WILDCARD then
               val memberName =
                 if selector.name == termName then name
                 else if name.isTypeName then selector.name.toTypeName
                 else selector.name
-              checkUnambiguous(selection(imp, adjustExtension(memberName), checkBounds = false))
+              checkUnambiguous(selection(imp, memberName, checkBounds = false))
             else
               recur(rest)
 
@@ -343,7 +345,7 @@ class Typer extends Namer
 
           if isNewDefScope then
             val defDenot = ctx.denotNamed(name, required)
-            if (qualifies(defDenot)) {
+            if (qualifiesAsDef(defDenot)) {
               val found =
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
                 else {
@@ -456,21 +458,15 @@ class Typer extends Namer
       unimported = Set.empty
       foundUnderScala2 = NoType
       try
-        val found = findRef(name, pt, EmptyFlags, tree.srcPos)
+        val reqFlags = if pt.isExtensionApplyProto then ExtensionMethod else EmptyFlags
+        val found = findRef(name, pt, reqFlags, tree.srcPos)
         if foundUnderScala2.exists && !(foundUnderScala2 =:= found) then
           report.migrationWarning(
             ex"""Name resolution will change.
               | currently selected                          : $foundUnderScala2
               | in the future, without -source 3.0-migration: $found""", tree.srcPos)
           foundUnderScala2
-        else
-          found match
-          case found: TermRef
-          if !found.denot.hasAltWith(!_.symbol.is(ExtensionMethod))
-              && !pt.isExtensionApplyProto =>
-            NoType // direct calls to extension methods need a prefix
-          case _ =>
-            found
+        else found
       finally
       	unimported = saved1
       	foundUnderScala2 = saved2
@@ -3340,8 +3336,12 @@ class Typer extends Namer
     // where we have an argument that must be converted with another
     // implicit conversion to the receiver type.
     def sharpenedPt = pt match
-      case pt: SelectionProto if pt.name.isExtensionName => pt.deepenProto
-      case _ => pt
+      case pt: SelectionProto
+      if pt.name.isExtensionName
+         || pt.memberProto.revealIgnored.isExtensionApplyProto =>
+        pt.deepenProto
+      case _ =>
+        pt
 
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
@@ -3484,17 +3484,17 @@ class Typer extends Namer
 
       // try an extension method in scope
       pt match {
-        case selProto @ SelectionProto(_: TermName, mbrType, _, _) =>
+        case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
           def tryExtension(using Context): Tree =
             try
-              findRef(selProto.extensionName, WildcardType, ExtensionMethod, tree.srcPos) match {
+              findRef(selName, WildcardType, ExtensionMethod, tree.srcPos) match
                 case ref: TermRef =>
                   extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
-                case _ => EmptyTree
-              }
-            catch {
-              case ex: TypeError => errorTree(tree, ex, tree.srcPos)
-            }
+                case _ => findRef(selProto.extensionName, WildcardType, ExtensionMethod, tree.srcPos) match
+                  case ref: TermRef =>
+                    extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
+                  case _ => EmptyTree
+            catch case ex: TypeError => errorTree(tree, ex, tree.srcPos)
           val nestedCtx = ctx.fresh.setNewTyperState()
           val app = tryExtension(using nestedCtx)
           if (!app.isEmpty && !nestedCtx.reporter.hasErrors) {
@@ -3603,7 +3603,6 @@ class Typer extends Namer
                 case _ =>  tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
               }
             case pt: SelectionProto if tree.isInstanceOf[ExtMethodApply] =>
-              assert(pt.extensionName == tree.symbol.name)
               tree
             case _ =>
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)

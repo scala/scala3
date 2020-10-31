@@ -444,8 +444,9 @@ object ProtoTypes {
     def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
       ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
         resType match {
-          case selProto @ SelectionProto(_: TermName, mbrType, _, _) =>
-            ctx.typer.hasExtensionMethodNamed(tp, selProto.extensionName, argType, mbrType)
+          case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
+               ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
+            || ctx.typer.hasExtensionMethodNamed(tp, selProto.extensionName, argType, mbrType)
               //.reporting(i"has ext $tp $name $argType $mbrType: $result")
           case _ =>
             false

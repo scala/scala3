@@ -4,5 +4,5 @@ object Test:
 
   val test = {
     42.render // error
-    Test.extension_render(42) // error
+    Test.render(42) // error
   }

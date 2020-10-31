@@ -1392,7 +1392,7 @@ trait Applications extends Compatibility {
   }
 
   /** Does `tp` have an extension method named `xname` with this-argument `argType` and
-   *  result matching `resultType`? `xname` is supposed to start with `extension_`.
+   *  result matching `resultType`?
    */
   def hasExtensionMethodNamed(tp: Type, xname: TermName, argType: Type, resultType: Type)(using Context) = {
     def qualifies(mbr: Denotation) =

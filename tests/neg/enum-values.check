@@ -6,7 +6,7 @@
    |                                         meaning a values array is not defined.
    |                                         An extension method was tried, but could not be fully constructed:
    |
-   |                                             example.Extensions.extension_values(Tag)
+   |                                             example.Extensions.values(Tag)
 -- [E008] Not Found Error: tests/neg/enum-values.scala:33:50 -----------------------------------------------------------
 33 |  val listlikes: Array[ListLike[?]]    = ListLike.values // error
    |                                         ^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@
    |                                         meaning a values array is not defined.
    |                                         An extension method was tried, but could not be fully constructed:
    |
-   |                                             example.Extensions.extension_values(ListLike)
+   |                                             example.Extensions.values(ListLike)
 -- [E008] Not Found Error: tests/neg/enum-values.scala:34:52 -----------------------------------------------------------
 34 |  val typeCtorsK: Array[TypeCtorsK[?]] = TypeCtorsK.values // error
    |                                         ^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@
    |                                         meaning a values array is not defined.
    |                                         An extension method was tried, but could not be fully constructed:
    |
-   |                                             example.Extensions.extension_values(TypeCtorsK)
+   |                                             example.Extensions.values(TypeCtorsK)
 -- [E008] Not Found Error: tests/neg/enum-values.scala:36:6 ------------------------------------------------------------
 36 |  Tag.valueOf("Int") // error
    |  ^^^^^^^^^^^
@@ -54,7 +54,7 @@
    |  value values is not a member of object example.NotAnEnum.
    |  An extension method was tried, but could not be fully constructed:
    |
-   |      example.Extensions.extension_values(NotAnEnum)
+   |      example.Extensions.values(NotAnEnum)
 -- [E008] Not Found Error: tests/neg/enum-values.scala:41:12 -----------------------------------------------------------
 41 |  NotAnEnum.valueOf("Foo") // error
    |  ^^^^^^^^^^^^^^^^^

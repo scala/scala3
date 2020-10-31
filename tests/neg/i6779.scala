@@ -11,4 +11,4 @@ object Test:
 
   def g2[T](x: T): F[G[T]] = x.f // error
 
-  def g3[T](x: T): F[G[T]] = this.extension_f(x)(using summon[Stuff]) // error
+  def g3[T](x: T): F[G[T]] = this.f(x)(using summon[Stuff]) // error

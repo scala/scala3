@@ -9,7 +9,7 @@ object ExtMethods:
 
   val circle = Circle(0, 0, 1)
   circle.circumference
-  assert(circle.circumference == this.extension_circumference(circle))
+  assert(circle.circumference == this.circumference(circle))
 
   extension (x: String) def < (y: String) = x.compareTo(y) < 0
   extension [Elem](x: Elem) def #: (xs: Seq[Elem]) = x +: xs
@@ -103,7 +103,7 @@ object ExtMethods:
 
     summon[Ord[Lst[Lst[Int]]]]
 
-    assert(Lst.ord[Lst[Int]].extension_less(xss)(Lst(Lst(3))))
+    assert(Lst.ord[Lst[Int]].less(xss)(Lst(Lst(3))))
     assert(xss `less` Lst(Lst(3)))
     assert(xss.flatten `less` Lst(3))
 
@@ -117,7 +117,7 @@ object ExtMethods:
       require(exponent > 0)
       if exponent == 0 then 1 else x * (x ** (exponent - 1))
 
-  import DoubleOps.{**, extension_**}
-  assert(2.0 ** 3 == DoubleOps.extension_**(2.0)(3))
+  import DoubleOps.{**}
+  assert(2.0 ** 3 == DoubleOps.**(2.0)(3))
 
 end ExtMethods

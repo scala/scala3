@@ -1,5 +1,5 @@
 /*<-_empty_::toplevel$package.*/inline val a/*<-_empty_::toplevel$package.a.*/ = ""
-extension (x/*<-_empty_::toplevel$package.extension_combine().(x)*/: Int/*->scala::Int#*/) def combine/*<-_empty_::toplevel$package.extension_combine().*/ (y/*<-_empty_::toplevel$package.extension_combine().(y)*/: Int/*->scala::Int#*/) = x/*->_empty_::toplevel$package.extension_combine().(x)*/ +/*->scala::Int#`+`(+4).*/ y/*->_empty_::toplevel$package.extension_combine().(y)*/
+extension (x/*<-_empty_::toplevel$package.combine().(x)*/: Int/*->scala::Int#*/) def combine/*<-_empty_::toplevel$package.combine().*/ (y/*<-_empty_::toplevel$package.combine().(y)*/: Int/*->scala::Int#*/) = x/*->_empty_::toplevel$package.combine().(x)*/ +/*->scala::Int#`+`(+4).*/ y/*->_empty_::toplevel$package.combine().(y)*/
 def combine/*<-_empty_::toplevel$package.combine().*/(x/*<-_empty_::toplevel$package.combine().(x)*/: Int/*->scala::Int#*/, y/*<-_empty_::toplevel$package.combine().(y)*/: Int/*->scala::Int#*/, z/*<-_empty_::toplevel$package.combine().(z)*/: Int/*->scala::Int#*/) = x/*->_empty_::toplevel$package.combine().(x)*/ +/*->scala::Int#`+`(+4).*/ y/*->_empty_::toplevel$package.combine().(y)*/ +/*->scala::Int#`+`(+4).*/ z/*->_empty_::toplevel$package.combine().(z)*/
 def combine/*<-_empty_::toplevel$package.combine(+1).*/ = 0
 def foo/*<-_empty_::toplevel$package.foo().*/ = "foo"

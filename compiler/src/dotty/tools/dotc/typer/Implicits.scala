@@ -75,8 +75,9 @@ object Implicits:
    *  method with the selecting name? False otherwise.
    */
   def hasExtMethod(tp: Type, expected: Type)(using Context) = expected match
-    case selProto @ SelectionProto(_: TermName, _, _, _) =>
-      tp.memberBasedOnFlags(selProto.extensionName, required = ExtensionMethod).exists
+    case selProto @ SelectionProto(selName: TermName, _, _, _) =>
+         tp.memberBasedOnFlags(selName, required = ExtensionMethod).exists
+      || tp.memberBasedOnFlags(selProto.extensionName, required = ExtensionMethod).exists
     case _ => false
 
   def strictEquality(using Context): Boolean =
@@ -993,9 +994,14 @@ trait Implicits:
               pt, locked)
           }
           pt match
-            case selProto @ SelectionProto(_: TermName, mbrType, _, _) if cand.isExtension =>
+            case selProto @ SelectionProto(selName: TermName, mbrType, _, _) if cand.isExtension =>
               def tryExtension(using Context) =
-                extMethodApply(untpd.Select(untpdGenerated, selProto.extensionName), argument, mbrType)
+                val xname =
+                  if ref.memberBasedOnFlags(selProto.extensionName, required = ExtensionMethod).exists then
+                    selProto.extensionName
+                  else
+                    selName
+                extMethodApply(untpd.Select(untpdGenerated, xname), argument, mbrType)
               if cand.isConversion then
                 val extensionCtx, conversionCtx = ctx.fresh.setNewTyperState()
                 val extensionResult = tryExtension(using extensionCtx)

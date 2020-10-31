@@ -5,7 +5,7 @@ object M {
   given optionMonad as M[Option] { def pure[A](x: A): Option[A] = Some(x) }
   val value1: List[String] = "ola".pure
   val value2 = "ola".pure  // error
-  val value3 = M.extension_pure("ola") // error
+  val value3 = M.pure("ola") // error
 
   extension (x: Int) def len: Int = x
   val l = "abc".len  // error

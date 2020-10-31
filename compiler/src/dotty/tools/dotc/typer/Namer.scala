@@ -1016,7 +1016,7 @@ class Namer { typer: Typer =>
 
         def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit = {
           val size = buf.size
-          val mbrs = List(name, name.toTypeName, name.toExtensionName).flatMap(path.tpe.member(_).alternatives)
+          val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
           mbrs.foreach(addForwarder(alias, _, span))
           if (buf.size == size) {
             val reason = mbrs.map(whyNoForwarder).dropWhile(_ == SKIP) match {
