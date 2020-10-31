@@ -65,4 +65,3 @@ object X:
          changes.transformTerm(body)
 
    transform(f.unseal).seal.cast[CB[T]]
-
