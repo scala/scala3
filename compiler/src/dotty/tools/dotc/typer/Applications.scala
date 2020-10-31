@@ -2162,7 +2162,9 @@ trait Applications extends Compatibility {
 
     val (core, pt1) = normalizePt(methodRef, pt)
     val app = withMode(Mode.SynthesizeExtMethodReceiver) {
-      typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)
+      typed(
+        untpd.Apply(core, untpd.TypedSplice(receiver, isExtensionReceiver = true) :: Nil),
+        pt1, ctx.typerState.ownedVars)
     }
     def isExtension(tree: Tree): Boolean = methPart(tree) match {
       case Inlined(call, _, _) => isExtension(call)

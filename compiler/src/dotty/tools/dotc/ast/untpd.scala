@@ -24,15 +24,20 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSplice
-   *  @param owner  The current owner at the time the tree was defined
+   *  @param owner               The current owner at the time the tree was defined
+   *  @param isExtensionReceiver The splice was created from the receiver `e` in an extension
+   *                             method call `e.f(...)`
    */
-  abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol)(implicit @constructorOnly src: SourceFile) extends ProxyTree {
+  abstract case class TypedSplice(splice: tpd.Tree)(val owner: Symbol, val isExtensionReceiver: Boolean)(implicit @constructorOnly src: SourceFile) extends ProxyTree {
     def forwardTo: tpd.Tree = splice
+    override def toString =
+      def ext = if isExtensionReceiver then ", isExtensionReceiver = true" else ""
+      s"TypedSplice($splice$ext)"
   }
 
   object TypedSplice {
-    def apply(tree: tpd.Tree)(using Context): TypedSplice =
-      new TypedSplice(tree)(ctx.owner) {}
+    def apply(tree: tpd.Tree, isExtensionReceiver: Boolean = false)(using Context): TypedSplice =
+      new TypedSplice(tree)(ctx.owner, isExtensionReceiver) {}
   }
 
   /** mods object name impl */

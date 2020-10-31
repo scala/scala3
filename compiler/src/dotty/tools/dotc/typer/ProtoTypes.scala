@@ -517,6 +517,12 @@ object ProtoTypes {
   /** A prototype for type constructors that are followed by a type application */
   @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways
 
+  extension (pt: Type)
+    def isExtensionApplyProto: Boolean = pt match
+      case PolyProto(targs, res) => res.isExtensionApplyProto
+      case FunProto((arg: untpd.TypedSplice) :: Nil, _) => arg.isExtensionReceiver
+      case _ => false
+
   /** Add all parameters of given type lambda `tl` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,
    *  make a copy of the type lambda and add the copy's type parameters instead.

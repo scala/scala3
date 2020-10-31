@@ -7,5 +7,5 @@ object Test {
   x.foo(4)
   x.foo
   Test.extension_foo(x)(4)
-  extension_foo(x)
+  this.extension_foo(x)
 }

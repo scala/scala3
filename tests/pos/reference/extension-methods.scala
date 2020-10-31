@@ -9,7 +9,7 @@ object ExtMethods:
 
   val circle = Circle(0, 0, 1)
   circle.circumference
-  assert(circle.circumference == extension_circumference(circle))
+  assert(circle.circumference == this.extension_circumference(circle))
 
   extension (x: String) def < (y: String) = x.compareTo(y) < 0
   extension [Elem](x: Elem) def #: (xs: Seq[Elem]) = x +: xs
@@ -118,6 +118,6 @@ object ExtMethods:
       if exponent == 0 then 1 else x * (x ** (exponent - 1))
 
   import DoubleOps.{**, extension_**}
-  assert(2.0 ** 3 == extension_**(2.0)(3))
+  assert(2.0 ** 3 == DoubleOps.extension_**(2.0)(3))
 
 end ExtMethods

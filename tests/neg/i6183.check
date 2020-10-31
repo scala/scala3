@@ -1,16 +1,16 @@
--- [E008] Not Found Error: tests/neg/i6183.scala:5:5 -------------------------------------------------------------------
-5 |  42.render // error
-  |  ^^^^^^^^^
-  |  value render is not a member of Int.
-  |  An extension method was tried, but could not be fully constructed:
+-- [E008] Not Found Error: tests/neg/i6183.scala:6:7 -------------------------------------------------------------------
+6 |    42.render // error
+  |    ^^^^^^^^^
+  |    value render is not a member of Int.
+  |    An extension method was tried, but could not be fully constructed:
   |
-  |      extension_render(42)
--- [E051] Reference Error: tests/neg/i6183.scala:6:2 -------------------------------------------------------------------
-6 |  extension_render(42) // error
-  |  ^^^^^^^^^^^^^^^^
-  |  Ambiguous overload. The overloaded alternatives of method extension_render with types
-  |   [B](b: B)(using x$1: DummyImplicit): Char
-  |   [A](a: A): String
-  |  both match arguments ((42 : Int))
+  |        extension_render(42)
+-- [E051] Reference Error: tests/neg/i6183.scala:7:9 -------------------------------------------------------------------
+7 |    Test.extension_render(42) // error
+  |    ^^^^^^^^^^^^^^^^^^^^^
+  |    Ambiguous overload. The overloaded alternatives of method extension_render in object Test with types
+  |     [B](b: B)(using x$1: DummyImplicit): Char
+  |     [A](a: A): String
+  |    both match arguments ((42 : Int))
 
 longer explanation available when compiling with `-explain`

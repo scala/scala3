@@ -450,27 +450,30 @@ class Typer extends Namer
     if (name == nme.ROOTPKG)
       return tree.withType(defn.RootPackage.termRef)
 
-    val rawType = {
+    val rawType =
       val saved1 = unimported
       val saved2 = foundUnderScala2
       unimported = Set.empty
       foundUnderScala2 = NoType
-      try {
-        var found = findRef(name, pt, EmptyFlags, tree.srcPos)
-        if (foundUnderScala2.exists && !(foundUnderScala2 =:= found)) {
+      try
+        val found = findRef(name, pt, EmptyFlags, tree.srcPos)
+        if foundUnderScala2.exists && !(foundUnderScala2 =:= found) then
           report.migrationWarning(
             ex"""Name resolution will change.
               | currently selected                          : $foundUnderScala2
               | in the future, without -source 3.0-migration: $found""", tree.srcPos)
-          found = foundUnderScala2
-        }
-        found
-      }
-      finally {
+          foundUnderScala2
+        else
+          found match
+          case found: TermRef
+          if !found.denot.hasAltWith(!_.symbol.is(ExtensionMethod))
+              && !pt.isExtensionApplyProto =>
+            NoType // direct calls to extension methods need a prefix
+          case _ =>
+            found
+      finally
       	unimported = saved1
       	foundUnderScala2 = saved2
-      }
-    }
 
     def setType(ownType: Type): Tree =
       val tree1 = ownType match
@@ -842,7 +845,9 @@ class Typer extends Namer
               case fn @ TypeApply(fn1, targs) =>
                 untpd.cpy.TypeApply(fn)(toSetter(fn1), targs.map(untpd.TypedSplice(_)))
               case fn @ Apply(fn1, args) =>
-                val result = untpd.cpy.Apply(fn)(toSetter(fn1), args.map(untpd.TypedSplice(_)))
+                val result = untpd.cpy.Apply(fn)(
+                  toSetter(fn1),
+                  args.map(untpd.TypedSplice(_, isExtensionReceiver = true)))
                 fn1 match
                   case Apply(_, _) => // current apply is to implicit arguments
                     result.setApplyKind(ApplyKind.Using)
@@ -2947,7 +2952,15 @@ class Typer extends Namer
     }
 
     def adaptOverloaded(ref: TermRef) = {
-      val altDenots = ref.denot.alternatives
+      val altDenots =
+        val allDenots = ref.denot.alternatives
+        def isIdent = tree match
+          case _: Ident => true
+          case Select(qual, name) => qual.span.isZeroExtent
+          case _ => false
+        if pt.isExtensionApplyProto then allDenots.filter(_.symbol.is(ExtensionMethod))
+        else if isIdent then allDenots.filterNot(_.symbol.is(ExtensionMethod))
+        else allDenots
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%\n\n %")
       def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
       val alts = altDenots.map(altRef)

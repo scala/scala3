@@ -1,13 +1,15 @@
 import scala.quoted._
 
-extension (inline x: String) inline def strip: String =
-  ${ stripImpl('x) }
+object M:
 
-def stripImpl(x: Expr[String])(using qctx: QuoteContext) : Expr[String] =
-  Expr(x.unliftOrError.stripMargin)
+  extension (inline x: String) inline def strip: String =
+    ${ stripImpl('x) }
 
-inline def isHello(inline x: String): Boolean =
-  ${ isHelloImpl('x) }
+  def stripImpl(x: Expr[String])(using qctx: QuoteContext) : Expr[String] =
+    Expr(x.unliftOrError.stripMargin)
 
-def isHelloImpl(x: Expr[String])(using qctx: QuoteContext) : Expr[Boolean] =
-  if (x.unliftOrError == "hello") Expr(true) else Expr(false)
+  inline def isHello(inline x: String): Boolean =
+    ${ isHelloImpl('x) }
+
+  def isHelloImpl(x: Expr[String])(using qctx: QuoteContext) : Expr[Boolean] =
+    if (x.unliftOrError == "hello") Expr(true) else Expr(false)

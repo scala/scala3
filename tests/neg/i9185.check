@@ -7,9 +7,9 @@
   |    M.extension_pure[A, F]("ola")(
   |      /* ambiguous: both object listMonad in object M and object optionMonad in object M match type M[F] */summon[M[F]]
   |    )
--- Error: tests/neg/i9185.scala:8:36 -----------------------------------------------------------------------------------
-8 |  val value3 = extension_pure("ola") // error
-  |                                    ^
+-- Error: tests/neg/i9185.scala:8:38 -----------------------------------------------------------------------------------
+8 |  val value3 = M.extension_pure("ola") // error
+  |                                      ^
   |ambiguous implicit arguments: both object listMonad in object M and object optionMonad in object M match type M[F] of parameter m of method extension_pure in object M
 -- [E008] Not Found Error: tests/neg/i9185.scala:11:16 -----------------------------------------------------------------
 11 |  val l = "abc".len  // error

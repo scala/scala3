@@ -257,7 +257,11 @@ object Denotations {
     def checkUnique(using Context): SingleDenotation = suchThat(alwaysTrue)
 
     /** Does this denotation have an alternative that satisfies the predicate `p`? */
-    def hasAltWith(p: SingleDenotation => Boolean): Boolean
+    inline def hasAltWith(inline p: SingleDenotation => Boolean): Boolean =
+      def p1(x: SingleDenotation) = p(x)
+      this match
+        case d: SingleDenotation => exists && p1(d)
+        case _ => filterWithPredicate(p1).exists
 
     /** The denotation made up from the alternatives of this denotation that
      *  are accessible from prefix `pre`, or NoDenotation if no accessible alternative exists.
@@ -603,9 +607,6 @@ object Denotations {
 
     def suchThat(p: Symbol => Boolean)(using Context): SingleDenotation =
       if (exists && p(symbol)) this else NoDenotation
-
-    def hasAltWith(p: SingleDenotation => Boolean): Boolean =
-      exists && p(this)
 
     def accessibleFrom(pre: Type, superAccess: Boolean)(using Context): Denotation =
       if (!symbol.exists || symbol.isAccessibleFrom(pre, superAccess)) this else NoDenotation
@@ -1185,8 +1186,6 @@ object Denotations {
     }
     override def filterWithPredicate(p: SingleDenotation => Boolean): Denotation =
       derivedUnionDenotation(denot1.filterWithPredicate(p), denot2.filterWithPredicate(p))
-    def hasAltWith(p: SingleDenotation => Boolean): Boolean =
-      denot1.hasAltWith(p) || denot2.hasAltWith(p)
     def accessibleFrom(pre: Type, superAccess: Boolean)(using Context): Denotation = {
       val d1 = denot1 accessibleFrom (pre, superAccess)
       val d2 = denot2 accessibleFrom (pre, superAccess)
