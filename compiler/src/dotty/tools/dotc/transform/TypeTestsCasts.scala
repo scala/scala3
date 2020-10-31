@@ -71,7 +71,7 @@ object TypeTestsCasts {
         case tref: TypeRef if tref.typeSymbol.isPatternBound =>
           if (variance == 1) tref.info.hiBound
           else if (variance == -1) tref.info.loBound
-          else OrType(defn.AnyType, defn.NothingType)
+          else OrType(defn.AnyType, defn.NothingType, soft = true)
         case _ => mapOver(tp)
       }
     }.apply(tp)

@@ -1823,7 +1823,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     end OrTypeTypeTest
 
     object OrType extends OrTypeModule:
-      def apply(lhs: TypeRepr, rhs: TypeRepr): OrType = Types.OrType(lhs, rhs)
+      def apply(lhs: TypeRepr, rhs: TypeRepr): OrType = Types.OrType(lhs, rhs, soft = false)
       def unapply(x: OrType): Option[(TypeRepr, TypeRepr)] = Some((x.left, x.right))
     end OrType
 
