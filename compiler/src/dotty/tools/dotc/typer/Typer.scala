@@ -133,15 +133,6 @@ class Typer extends Namer
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
     def fail(msg: Message) = report.error(msg, pos)
 
-    def qualifies(denot: Denotation): Boolean =
-      reallyExists(denot)
-      && {
-        if required.is(ExtensionMethod) then
-          denot.hasAltWith(_.symbol.is(ExtensionMethod))
-        else
-          denot.hasAltWith(!_.symbol.is(ExtensionMethod))
-      }
-
     /** A symbol qualifies if it really exists and is not a package class.
      *  In addition, if we are in a constructor of a pattern, we ignore all definitions
      *  which are methods and not accessors (note: if we don't do that
@@ -151,8 +142,8 @@ class Typer extends Namer
      *  we could not reload them via `_.member`. On the other hand, accessing a
      *  package as a type from source is always an error.
      */
-    def qualifiesAsDef(denot: Denotation): Boolean =
-      qualifies(denot)
+    def qualifies(denot: Denotation): Boolean =
+      reallyExists(denot)
       && !(pt.isInstanceOf[UnapplySelectionProto] && denot.symbol.is(Method, butNot = Accessor))
       && !denot.symbol.is(PackageClass)
 
@@ -213,7 +204,7 @@ class Typer extends Namer
                 denot = denot.filterWithPredicate { mbr =>
                   mbr.matchesImportBound(if mbr.symbol.is(Given) then imp.givenBound else imp.wildcardBound)
                 }
-              if qualifies(denot) then
+              if reallyExists(denot) then
                 if unimported.isEmpty || !unimported.contains(pre.termSymbol) then
                   return pre.select(name, denot)
           case _ =>
@@ -345,7 +336,7 @@ class Typer extends Namer
 
           if isNewDefScope then
             val defDenot = ctx.denotNamed(name, required)
-            if (qualifiesAsDef(defDenot)) {
+            if (qualifies(defDenot)) {
               val found =
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
                 else {
@@ -458,8 +449,7 @@ class Typer extends Namer
       unimported = Set.empty
       foundUnderScala2 = NoType
       try
-        val reqFlags = if pt.isExtensionApplyProto then ExtensionMethod else EmptyFlags
-        val found = findRef(name, pt, reqFlags, tree.srcPos)
+        val found = findRef(name, pt, EmptyFlags, tree.srcPos)
         if foundUnderScala2.exists && !(foundUnderScala2 =:= found) then
           report.migrationWarning(
             ex"""Name resolution will change.
@@ -481,16 +471,27 @@ class Typer extends Namer
       checkStableIdentPattern(tree2, pt)
       tree2
 
-    def fail: Tree =
-      if ctx.owner.isConstructor && !ctx.owner.isPrimaryConstructor
-         && ctx.owner.owner.unforcedDecls.lookup(tree.name).exists
-      then
-        // we are in the arguments of a this(...) constructor call
-        errorTree(tree, ex"$tree is not accessible from constructor arguments")
-      else
-        errorTree(tree, MissingIdent(tree, kind, name))
+    def isLocalExtensionMethodRef: Boolean = { rawType match
+      case rawType: TermRef =>
+        rawType.denot.hasAltWith(_.symbol.is(ExtensionMethod))
+        && !pt.isExtensionApplyProto
+        && {
+          val xmethod = ctx.owner.enclosingExtensionMethod
+          rawType.denot.hasAltWith { alt =>
+            alt.symbol.is(ExtensionMethod)
+            && alt.symbol.extensionParam.span == xmethod.extensionParam.span
+          }
+        }
+      case _ =>
+        false
+    }
 
-    if rawType.exists then
+    if ctx.mode.is(Mode.InExtensionMethod) && isLocalExtensionMethodRef then
+      val xmethod = ctx.owner.enclosingExtensionMethod
+      val qualifier = untpd.ref(xmethod.extensionParam.termRef)
+      val selection = untpd.cpy.Select(tree)(qualifier, name)
+      typed(selection, pt)
+    else if rawType.exists then
       setType(ensureAccessible(rawType, superAccess = false, tree.srcPos))
     else if name == nme._scope then
       // gross hack to support current xml literals.
@@ -498,24 +499,12 @@ class Typer extends Namer
       ref(defn.XMLTopScopeModule.termRef)
     else if name.toTermName == nme.ERROR then
       setType(UnspecifiedErrorType)
-    else if name.isTermName then
-      // Convert a reference `f` to an extension method select `p.f`, where
-      // `p` is the closest enclosing extension parameter, or else convert to `this.f`.
-      val xmethod = ctx.owner.enclosingExtensionMethod
-      if xmethod.exists then
-        val qualifier = untpd.ref(xmethod.extensionParam.termRef)
-        val selection = untpd.cpy.Select(tree)(qualifier, name)
-        val result = tryEither(typed(selection, pt))((_, _) => fail)
-        def canAccessUnqualified(sym: Symbol) =
-          sym.is(ExtensionMethod) && (sym.extensionParam.span == xmethod.extensionParam.span)
-        if result.tpe.isError || canAccessUnqualified(result.symbol) then
-          result
-        else
-          fail
-      else
-        fail
+    else if ctx.owner.isConstructor && !ctx.owner.isPrimaryConstructor
+        && ctx.owner.owner.unforcedDecls.lookup(tree.name).exists
+    then // we are in the arguments of a this(...) constructor call
+      errorTree(tree, ex"$tree is not accessible from constructor arguments")
     else
-      fail
+      errorTree(tree, MissingIdent(tree, kind, name))
   end typedIdent
 
   /** Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
