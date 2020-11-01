@@ -7,5 +7,5 @@ object Test {
   x.foo(4)
   x.foo
   Test.foo(x)(4)
-  this.foo(x)
+  foo(x)
 }

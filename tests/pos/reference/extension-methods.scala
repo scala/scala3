@@ -118,6 +118,6 @@ object ExtMethods:
       if exponent == 0 then 1 else x * (x ** (exponent - 1))
 
   import DoubleOps.{**}
-  assert(2.0 ** 3 == DoubleOps.**(2.0)(3))
+  assert(2.0 ** 3 == **(2.0)(3))
 
 end ExtMethods

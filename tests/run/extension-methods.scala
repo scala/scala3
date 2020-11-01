@@ -2,7 +2,7 @@ object Test extends App {
 
   extension (x: Int) def em: Boolean = x > 0
 
-  assert(1.em == this.em(1))
+  assert(1.em == em(1))
 
   case class Circle(x: Double, y: Double, radius: Double)
 
