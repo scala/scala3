@@ -212,7 +212,7 @@ object NameOps {
     /** Same as `funArity`, except that it returns -1 if the prefix
      *  is not one of "", "Context", "Erased", "ErasedContext"
      */
-    private def checkedFunArity(suffixStart: Int) =
+    private def checkedFunArity(suffixStart: Int): Int =
       if suffixStart == 0
          || isPreceded("Context", suffixStart)
          || isPreceded("Erased", suffixStart)

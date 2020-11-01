@@ -1187,7 +1187,7 @@ trait Applications extends Compatibility {
             typedType(untpd.rename(tree, tree.name.toTypeName))(using nestedCtx)
           ttree.tpe match {
             case alias: TypeRef if alias.info.isTypeAlias && !nestedCtx.reporter.hasErrors =>
-              companionRef(alias) match {
+              Inferencing.companionRef(alias) match {
                 case companion: TermRef => return untpd.ref(companion).withSpan(tree.span)
                 case _ =>
               }
