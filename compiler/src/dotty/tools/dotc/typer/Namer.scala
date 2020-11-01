@@ -1353,7 +1353,8 @@ class Namer { typer: Typer =>
       def dealiasIfUnit(tp: Type) = if (tp.isRef(defn.UnitClass)) defn.UnitType else tp
 
       var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
-      if (sym.isInlineMethod) rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
+      if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
+      if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
       if (typeParams.nonEmpty) {
         // we'll be typing an expression from a polymorphic definition's body,
         // so we must allow constraining its type parameters
