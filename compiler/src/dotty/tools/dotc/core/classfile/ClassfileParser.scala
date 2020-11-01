@@ -699,14 +699,13 @@ class ClassfileParser(
           sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil))
 
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
-        case tpnme.RuntimeVisibleAnnotationATTR
-          | tpnme.RuntimeInvisibleAnnotationATTR =>
+        case tpnme.RuntimeVisibleAnnotationATTR =>
           parseAnnotations(attrLen)
 
         // TODO 1: parse runtime visible annotations on parameters
         // case tpnme.RuntimeParamAnnotationATTR
 
-        // TODO 2: also parse RuntimeInvisibleParamAnnotation
+        // TODO 2: also parse RuntimeInvisibleAnnotationATTR / RuntimeInvisibleParamAnnotation
         // i.e. java annotations with RetentionPolicy.CLASS?
 
         case tpnme.ExceptionsATTR =>
@@ -938,7 +937,7 @@ class ClassfileParser(
         // attribute isn't, this classfile is a compilation artifact.
         return Some(NoEmbedded)
 
-      if (scan(tpnme.RuntimeVisibleAnnotationATTR) || scan(tpnme.RuntimeInvisibleAnnotationATTR)) {
+      if (scan(tpnme.RuntimeVisibleAnnotationATTR)) {
         val attrLen = in.nextInt
         val nAnnots = in.nextChar
         var i = 0
