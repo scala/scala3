@@ -471,7 +471,7 @@ class Typer extends Namer
       checkStableIdentPattern(tree2, pt)
       tree2
 
-    def isLocalExtensionMethodRef: Boolean = { rawType match
+    def isLocalExtensionMethodRef: Boolean = rawType match
       case rawType: TermRef =>
         rawType.denot.hasAltWith(_.symbol.is(ExtensionMethod))
         && !pt.isExtensionApplyProto
@@ -484,7 +484,6 @@ class Typer extends Namer
         }
       case _ =>
         false
-    }
 
     if ctx.mode.is(Mode.InExtensionMethod) && isLocalExtensionMethodRef then
       val xmethod = ctx.owner.enclosingExtensionMethod
@@ -2940,12 +2939,7 @@ class Typer extends Namer
     def adaptOverloaded(ref: TermRef) = {
       val altDenots =
         val allDenots = ref.denot.alternatives
-        def isIdent = tree match
-          case _: Ident => true
-          case Select(qual, name) => qual.span.isZeroExtent
-          case _ => false
         if pt.isExtensionApplyProto then allDenots.filter(_.symbol.is(ExtensionMethod))
-        else if isIdent then allDenots.filterNot(_.symbol.is(ExtensionMethod))
         else allDenots
       typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%\n\n %")
       def altRef(alt: SingleDenotation) = TermRef(ref.prefix, ref.name, alt)
