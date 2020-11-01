@@ -9,7 +9,7 @@ object ExtMethods:
 
   val circle = Circle(0, 0, 1)
   circle.circumference
-  assert(circle.circumference == this.circumference(circle))
+  assert(circle.circumference == circumference(circle))
 
   extension (x: String) def < (y: String) = x.compareTo(y) < 0
   extension [Elem](x: Elem) def #: (xs: Seq[Elem]) = x +: xs
