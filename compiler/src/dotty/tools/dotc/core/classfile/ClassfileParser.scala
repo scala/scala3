@@ -518,16 +518,24 @@ class ClassfileParser(
   }
   // sigToType
 
-  def parseAnnotArg(skip: Boolean = false)(using ctx: Context, in: DataReader): Option[untpd.Tree] = {
+  class EnumTag(sig: String, name: NameOrString) {
+    def toTree(using ctx: Context): untpd.Tree = {
+      val enumClassTp = sigToType(sig)
+      val enumModuleClass = enumClassTp.classSymbol.companionModule
+      val tmref = TermRef(enumModuleClass.termRef, name.name)
+      untpd.TypedSplice(ref(tmref))
+    }
+  }
+
+  def parseAnnotArg(skip: Boolean = false)(using ctx: Context, in: DataReader): Option[untpd.Tree | EnumTag] = {
 
     // If we encounter an empty array literal, we need the type of the corresponding
     // parameter to properly type it, but that would require forcing the annotation
     // early. To avoid this we store annotation arguments as untyped trees
-    import untpd._
 
     // ... but constants need to actually be typed with a ConstantType, so we
     // can't rely on type inference, and type them early.
-    def lit(c: Constant): Tree = TypedSplice(ast.tpd.Literal(c))
+    def lit(c: Constant): untpd.Tree = untpd.TypedSplice(tpd.Literal(c))
 
     val tag = in.nextByte.toChar
     val index = in.nextChar
@@ -545,34 +553,36 @@ class ClassfileParser(
       case CLASS_TAG =>
         if (skip) None else Some(lit(Constant(pool.getType(index))))
       case ENUM_TAG =>
-        val enumClassTp = pool.getType(index)
+        val sig = pool.getExternalName(index).value
         val enumCaseName = pool.getName(in.nextChar)
-        if (skip)
-          None
-        else {
-          val enumModuleClass = enumClassTp.classSymbol.companionModule
-          Some(Select(ref(enumModuleClass), enumCaseName.name))
-        }
+        if (skip) None else Some(EnumTag(sig, enumCaseName))
       case ARRAY_TAG =>
-        val arr = new ArrayBuffer[Tree]()
+        val arr = new ArrayBuffer[untpd.Tree]()
         var hasError = false
         for (i <- 0 until index)
           parseAnnotArg(skip) match {
-            case Some(c) => arr += c
+            case Some(c: untpd.Tree) => arr += c
+            case Some(tag: EnumTag) => arr += tag.toTree
             case None => hasError = true
           }
         if (hasError) None
         else if (skip) None
         else {
           val elems = arr.toList
-          Some(untpd.JavaSeqLiteral(elems, TypeTree()))
+          Some(untpd.JavaSeqLiteral(elems, untpd.TypeTree()))
         }
       case ANNOTATION_TAG =>
         parseAnnotation(index, skip).map(_.untpdTree)
     }
   }
 
-  class ClassfileAnnotation(annotType: Type, args: List[untpd.Tree]) extends LazyAnnotation {
+  class ClassfileAnnotation(annotType: Type, lazyArgs: List[(NameOrString, untpd.Tree | EnumTag)]) extends LazyAnnotation {
+    private def args(using Context): List[untpd.Tree] =
+      lazyArgs.map {
+        case (name, tree: untpd.Tree) => untpd.NamedArg(name.name, tree).withSpan(NoSpan)
+        case (name, tag: EnumTag)     => untpd.NamedArg(name.name, tag.toTree).withSpan(NoSpan)
+      }
+
     protected var mySym: Symbol | (Context ?=> Symbol) =
       (using ctx: Context) => annotType.classSymbol
 
@@ -598,13 +608,16 @@ class ClassfileParser(
       case _ =>
 
     val nargs = in.nextChar
-    val argbuf = new ListBuffer[untpd.Tree]
+    val argbuf = new ListBuffer[(NameOrString, untpd.Tree | EnumTag)]
     var hasError = false
     for (i <- 0 until nargs) {
       val name = pool.getName(in.nextChar)
       parseAnnotArg(skip) match {
-        case Some(arg) => argbuf += untpd.NamedArg(name.name, arg)
-        case None => hasError = !skip
+        case Some(arg) =>
+          argbuf += name -> arg
+
+        case None =>
+          hasError = !skip
       }
     }
     if (hasError || skip) None
