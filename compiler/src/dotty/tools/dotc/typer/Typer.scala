@@ -2776,7 +2776,7 @@ class Typer extends Namer
               typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)
           }
           recur(tycon, pt)
-            .reporting(i"try new $tree -> $result", typr)
+            .showing(i"try new $tree -> $result", typr)
         }
       } { (nu, nuState) =>
         if (nu.isEmpty) fallBack(nuState)

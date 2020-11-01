@@ -203,7 +203,7 @@ object Inliner {
         ref(meth).appliedToTypes(targs).appliedToArgss(prefss)
           .withSpan(mdef.rhs.span.startPos))(
         using ctx.withOwner(retainer)))
-    .reporting(i"retainer for $meth: $result", inlining)
+    .showing(i"retainer for $meth: $result", inlining)
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(using Context): Tree =
@@ -853,7 +853,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           if (idx >= 0 && idx < args.length) {
             def finish(arg: Tree) =
               new TreeTypeMap().transform(arg) // make sure local bindings in argument have fresh symbols
-                .reporting(i"projecting $tree -> $result", inlining)
+                .showing(i"projecting $tree -> $result", inlining)
             val arg = args(idx)
             if (precomputed)
               if (isElideableExpr(arg)) finish(arg)

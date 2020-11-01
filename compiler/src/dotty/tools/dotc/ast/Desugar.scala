@@ -814,7 +814,7 @@ object desugar {
     }
 
     flatTree(cdef1 :: companions ::: implicitWrappers ::: enumScaffolding)
-  }.reporting(i"desugared: $result", Printers.desugar)
+  }.showing(i"desugared: $result", Printers.desugar)
 
   /** Expand
    *

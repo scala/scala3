@@ -232,7 +232,7 @@ object Decorators {
       }
 
   extension [T](x: T)
-    def reporting(
+    def showing(
         op: WrappedResult[T] ?=> String,
         printer: config.Printers.Printer = config.Printers.default): T = {
       printer.println(op(using WrappedResult(x)))
