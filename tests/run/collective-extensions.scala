@@ -7,8 +7,9 @@ extension (x: String)
   def bam(y: String): String = this.baz(x)(y)
   def ban(foo: String): String = x + foo
   def bao(y: String): String =
-    val bam = "ABC"
+    val bam = name
     x ++ y ++ bam
+  def name: String = "ABC"
 
   def app(n: Int, suffix: String): String =
     if n == 0 then x ++ suffix
