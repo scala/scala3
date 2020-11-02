@@ -44,7 +44,7 @@ case class SbtDokkaTastyInspector(
   import dotty.tools.dotc.core.Phases.Phase
   import dotty.tools.dotc.fromtasty._
   import dotty.tools.dotc.quoted.QuoteContextImpl
- 
+
 
   val parser: Parser = null
 
@@ -157,7 +157,7 @@ trait DokkaBaseTastyInspector:
         sourceSet.toSet,
         PropertyContainer.Companion.empty()
       ),
-      self, 
+      self,
       other
     )
 

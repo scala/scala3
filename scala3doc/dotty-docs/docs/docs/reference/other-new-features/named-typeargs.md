@@ -16,7 +16,7 @@ val xs2 = construct[Coll = List](1, 2, 3)
 
 Similar to a named value argument `(x = e)`, a named type argument
 `[X = T]` instantiates the type parameter `X` to the type `T`.
-Named type arguments do not have to be in order (see `xs1` above) and 
+Named type arguments do not have to be in order (see `xs1` above) and
 unspecified arguments are inferred by the compiler (see `xs2` above).
 Type arguments must be all named or un-named, mixtures of named and
 positional type arguments are not supported.

@@ -45,7 +45,7 @@ trait PackageSupport:
                 .plus(clazz.get(CompositeMemberExtension))
             )
         }
-        
+
 
     private def extractPackageName(pidShowNoColor: String): String = {
         val pidSplit = pidShowNoColor.split("\\.")

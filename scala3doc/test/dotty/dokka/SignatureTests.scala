@@ -8,7 +8,7 @@ class TraitSignatures extends SingleFileTest("traitSignatures", Seq("trait"))
 
 
 // We do not support companion objects properly in tests
-class ClassSignatureTestSourceTest extends SingleFileTest("classSignatureTestSource", 
+class ClassSignatureTestSourceTest extends SingleFileTest("classSignatureTestSource",
   SingleFileTest.all.filterNot(Seq("val", "var", "object").contains))
 
 // TODO we still cannot filter out all constructor-based fields
@@ -21,7 +21,7 @@ class Visibility extends SingleFileTest("visibility", SingleFileTest.all)
 
 class GenericMethodsTest extends SingleFileTest("genericMethods", Seq("def"))
 
-class MethodsAndConstructors extends SingleFileTest("methodsAndConstructors", Seq("def")) 
+class MethodsAndConstructors extends SingleFileTest("methodsAndConstructors", Seq("def"))
 
 class TypesSignatures extends SingleFileTest("typesSignatures", SingleFileTest.all)
 

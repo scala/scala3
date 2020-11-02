@@ -15,7 +15,7 @@ import org.jetbrains.dokka.model.properties._
 import dotty.dokka.model.api._
 
 class ScalaSourceLinksTransformer(
-      val ctx: DokkaContext,        
+      val ctx: DokkaContext,
       val commentsToContentConverter: CommentsToContentConverter,
       val signatureProvider: SignatureProvider,
       val logger: DokkaLogger
@@ -27,19 +27,19 @@ class ScalaSourceLinksTransformer(
     case class SourceLink(val path: String, val url: String, val lineSuffix: Option[String], val sourceSetData: DokkaConfiguration.DokkaSourceSet)
 
     object SourceLink {
-        def apply(sourceLinkDef: DokkaConfiguration$SourceLinkDefinition, sourceSetData: DokkaConfiguration.DokkaSourceSet): SourceLink = 
+        def apply(sourceLinkDef: DokkaConfiguration$SourceLinkDefinition, sourceSetData: DokkaConfiguration.DokkaSourceSet): SourceLink =
             SourceLink(sourceLinkDef.getLocalDirectory, sourceLinkDef.getRemoteUrl.toString, Option(sourceLinkDef.getRemoteLineSuffix), sourceSetData)
     }
 
 
-    override def invoke(input: DModule, context: DokkaContext): DModule = 
-        input.updateMembers { 
-            case c0: (Member & WithSources & WithExtraProperties[_]) => 
+    override def invoke(input: DModule, context: DokkaContext): DModule =
+        input.updateMembers {
+            case c0: (Member & WithSources & WithExtraProperties[_]) =>
                 val c = c0.asInstanceOf[Member & WithSources & WithExtraProperties[Member]]
                 c.withNewExtras(c.getExtra plus getSourceLinks(c))
             case c => c
         }
-    
+
 
     private def getSourceLinks(doc: WithSources): ExtraProperty[Member] = {
         val urls = doc.getSources.asScala.toMap.flatMap{
@@ -54,7 +54,7 @@ class ScalaSourceLinksTransformer(
     }
 
     private def createLink(source: DocumentableSource, link: SourceLink): Option[String] = source match {
-        case s: TastyDocumentableSource => Some(s.lineNumber).map( line => 
+        case s: TastyDocumentableSource => Some(s.lineNumber).map( line =>
             link.url + s.path.split(link.path)(1) + link.lineSuffix.map(_ + (line + 1)).getOrElse("") //TASTY enumerates lines from 0
         )
         case other => None

@@ -12,13 +12,13 @@ trait SyntheticsSupport:
 
     def isCompiletimeAppliedType: Boolean = hackIsCompiletimeAppliedType(qctx.reflect)(t)
 
-    def hackIsTupleType(r: Reflection)(rtpe: r.TypeRepr): Boolean = 
+    def hackIsTupleType(r: Reflection)(rtpe: r.TypeRepr): Boolean =
       import dotty.tools.dotc
       given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isTupleType(tpe)
 
-    def hackIsCompiletimeAppliedType(r: Reflection)(rtpe: r.TypeRepr): Boolean = 
+    def hackIsCompiletimeAppliedType(r: Reflection)(rtpe: r.TypeRepr): Boolean =
       import dotty.tools.dotc
       given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
@@ -34,7 +34,7 @@ trait SyntheticsSupport:
     def isOpaque: Boolean = hackIsOpaque(qctx.reflect)(s)
 
     def isInfix: Boolean = hackIsInfix(qctx.reflect)(s)
-    
+
     def getAllMembers: List[Symbol] = hackGetAllMembers(qctx.reflect)(s)
 
   def isSyntheticField(c: Symbol) =
@@ -58,7 +58,7 @@ trait SyntheticsSupport:
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     ctx.definitions.isInfix(sym)
   }
-  /* We need there to filter out symbols with certain flagsets, because these symbols come from compiler and TASTY can't handle them well. 
+  /* We need there to filter out symbols with certain flagsets, because these symbols come from compiler and TASTY can't handle them well.
   They are valdefs that describe case companion objects and cases from enum.
   TASTY crashed when calling _.tree on them.
   */
@@ -87,14 +87,14 @@ trait SyntheticsSupport:
     given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
     val classdef = rdef.asInstanceOf[dotc.ast.tpd.TypeDef]
     val ref = classdef.symbol.info.asInstanceOf[dotc.core.Types.ClassInfo].appliedRef
-    val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] = 
+    val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] =
       ref.baseClasses.map(b => b -> ref.baseType(b))
     baseTypes.asInstanceOf[List[(r.Symbol, r.TypeRepr)]]
   }
 
   def getSupertypes(c: ClassDef) = hackGetSupertypes(qctx.reflect)(c).tail
 
-  def typeForClass(c: ClassDef): r.TypeRepr = 
+  def typeForClass(c: ClassDef): r.TypeRepr =
     import dotty.tools.dotc
     given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
     val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]

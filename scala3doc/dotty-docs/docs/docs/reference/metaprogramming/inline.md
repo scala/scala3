@@ -268,10 +268,10 @@ val obj2 = choose(false) // static type is B
 // obj1.m() // compile-time error: `m` is not defined on `A`
 obj2.m()    // OK
 ```
-Here, the inline method `choose` returns an instance of either of the two types `A` or `B`. 
+Here, the inline method `choose` returns an instance of either of the two types `A` or `B`.
 If `choose` had not been declared to be `transparent`, the result
-of its expansion would always be of type `A`, even though the computed value might be of the subtype `B`. 
-The inline method is a "blackbox" in the sense that details of its implementation do not leak out. 
+of its expansion would always be of type `A`, even though the computed value might be of the subtype `B`.
+The inline method is a "blackbox" in the sense that details of its implementation do not leak out.
 But if a `transparent` modifier is given, the expansion is the type of the expanded body. If the argument `b`
 is `true`, that type is `A`, otherwise it is `B`. Consequently, calling `m` on `obj2`
 type-checks since `obj2` has the same type as the expansion of `choose(false)`, which is `B`.

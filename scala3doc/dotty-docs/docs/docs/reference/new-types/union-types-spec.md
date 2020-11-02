@@ -130,7 +130,7 @@ def test(x: A | B) = x.hello // error: value `hello` is not a member of A | B
 On the otherhand, the following would be allowed
 ```scala
 trait C { def hello: String }
-trait A extends C with D 
+trait A extends C with D
 trait B extends C with E
 
 def test(x: A | B) = x.hello // ok as `hello` is a member of the join of A | B which is C

@@ -16,8 +16,8 @@ class PackageHierarchyTransformer(context: DokkaContext) extends PageTransformer
     }
 
     def rearangePackagePages(page: ModulePageNode): ModulePageNode = {
-        val (h1, h2) = page.getChildren.asScala.partition{ 
-            case p: PackagePageNode => true 
+        val (h1, h2) = page.getChildren.asScala.partition{
+            case p: PackagePageNode => true
             case other => false
         }
 
@@ -34,8 +34,8 @@ class PackageHierarchyTransformer(context: DokkaContext) extends PageTransformer
             )
 
         def buildPackageTree(
-            depth: Int, 
-            remaining: Seq[(Seq[String], PackagePageNode)], 
+            depth: Int,
+            remaining: Seq[(Seq[String], PackagePageNode)],
             processsed: Seq[(Seq[String], PackagePageNode)]
         ): Seq[PackagePageNode] = {
             val (currentDepth,rest) = remaining.partition((tokens, page) => tokens.size == depth)
@@ -51,14 +51,14 @@ class PackageHierarchyTransformer(context: DokkaContext) extends PageTransformer
                 }
             )
             val oldFilteredProcessed = processsed
-                .filter( (tokens, page) => 
-                    currentDepth.forall( (parentTokens, parentPage) => 
-                        !isParent(parentTokens, tokens) 
-                    ) 
+                .filter( (tokens, page) =>
+                    currentDepth.forall( (parentTokens, parentPage) =>
+                        !isParent(parentTokens, tokens)
+                    )
                 )
 
             if(depth == 1) (newProcessed ++ oldFilteredProcessed).map(_(1))
-            else buildPackageTree(depth - 1, rest, newProcessed ++ oldFilteredProcessed) 
+            else buildPackageTree(depth - 1, rest, newProcessed ++ oldFilteredProcessed)
         }
 
         val packagePagesWithTokens = packagePages.map(page => (("""\.""".r.split(page.getName)).toSeq, page))
@@ -70,5 +70,5 @@ class PackageHierarchyTransformer(context: DokkaContext) extends PageTransformer
             (otherPages ++ buildPackageTree(maxDepthElem(0).size, packagePagesWithTokens, Seq.empty)).asJava
         )
 
-        
+
     }

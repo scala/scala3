@@ -14,9 +14,9 @@ class ScalaResourceInstaller extends PageTransformer:
         val newResources = input.getChildren.asScala ++ Seq("fonts", "images", "styles", "scripts", "hljs").map(dottyRes) ++ Seq(dynamicJsData)
         input.modified(input.getName, newResources.asJava)
 
-    private def dynamicJsData = 
-        // If data at any point will become more complex we should use a proper 
+    private def dynamicJsData =
+        // If data at any point will become more complex we should use a proper
         val data: Map[String, Map[String, String]] = Map("filterDefaults" -> FilterAttributes.defaultValues)
         val str = new ObjectMapper().writeValueAsString(data.transform((_, v) => v.asJava).asJava)
-        
+
         new RendererSpecificResourcePage("scripts/data.js", java.util.ArrayList(), RenderingStrategy$Write(s"var scala3DocData = $str"))

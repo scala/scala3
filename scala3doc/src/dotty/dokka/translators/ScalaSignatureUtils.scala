@@ -22,7 +22,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
     def text(str: String): SignatureBuilder
     def name(str: String, dri: DRI) = driLink(str, dri)
     def driLink(text: String, dri: DRI): SignatureBuilder
-    
+
     def signature(s: Signature) = s.foldLeft(this){ (b, e) => e match
         case Link(name, dri) => b.driLink(name, dri)
         case txt: String => b.text(txt)
@@ -41,17 +41,17 @@ trait SignatureBuilder extends ScalaSignatureUtils {
                 tail.foldLeft(elemOp(text(prefix), head))((b, e) => elemOp(b.text(separator), e)).text(suffix)
         }
 
-    def annotationsBlock(d: Member): SignatureBuilder = 
+    def annotationsBlock(d: Member): SignatureBuilder =
             d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation)}
-        
+
         def annotationsInline(d: Documentable with WithExtraProperties[_]): SignatureBuilder =
                 d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation) }
 
-        private def buildAnnotation(a: Annotation): SignatureBuilder = 
+        private def buildAnnotation(a: Annotation): SignatureBuilder =
            text("@").driLink(a.dri.getClassNames, a.dri).buildAnnotationParams(a).text(" ")
 
-        private def buildAnnotationParams(a: Annotation): SignatureBuilder = 
-            if !a.params.isEmpty then 
+        private def buildAnnotationParams(a: Annotation): SignatureBuilder =
+            if !a.params.isEmpty then
                 list(a.params, "(", ")", ", "){ (bdr, param) => bdr.buildAnnotationParameter(param)}
             else this
 
@@ -61,11 +61,11 @@ trait SignatureBuilder extends ScalaSignatureUtils {
             }
 
         private def buildAnnotationParameter(a: Annotation.AnnotationParameter): SignatureBuilder = a match {
-            case Annotation.PrimitiveParameter(name, value) => 
+            case Annotation.PrimitiveParameter(name, value) =>
                 addParameterName(name).text(value)
-            case Annotation.LinkParameter(name, dri, text) => 
+            case Annotation.LinkParameter(name, dri, text) =>
                 addParameterName(name).driLink(text, dri)
-            case Annotation.UnresolvedParameter(name, value) => 
+            case Annotation.UnresolvedParameter(name, value) =>
                 addParameterName(name).text(value)
         }
 
@@ -81,7 +81,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
             case tc: TypeConstructor =>
                 tc.getProjections.asScala.foldLeft(this) { (bdr, elem) => elem match {
                     case text: UnresolvedBound => bdr.text(text.getName)
-                    case link: TypeParameter => 
+                    case link: TypeParameter =>
                         bdr.driLink(link.getName, link.getDri)
                     case other =>
                         bdr.text(s"TODO($other)")
@@ -91,12 +91,12 @@ trait SignatureBuilder extends ScalaSignatureUtils {
                 text(s"TODO: $other")
         }
 
-        def generics(on: WithGenerics) = list(on.getGenerics.asScala.toList, "[", "]"){ (bdr, e) => 
+        def generics(on: WithGenerics) = list(on.getGenerics.asScala.toList, "[", "]"){ (bdr, e) =>
             val bldr = bdr.text(e.getName)
             e.getBounds.asScala.foldLeft(bldr)( (b, bound) => b.typeSignature(bound))
         }
-        
-        def functionParameters(method: DFunction) = 
+
+        def functionParameters(method: DFunction) =
             val methodExtension = method.get(MethodExtension)
             val receiverPos = if method.isRightAssociative() then methodExtension.parametersListSizes(0) else 0
             val (bldr, index) = methodExtension.parametersListSizes.foldLeft(this, 0){

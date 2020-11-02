@@ -157,14 +157,14 @@ class HtmlTagsTest {
         val expect = """<div class="someClass" id="myId" style="some: style;">StringSeqString<h1>AppliedTag</h1><h1>SeqAppliedTag</h1>SeqString<h1>AppliedTag</h1></div>"""
         assertEquals(expect, actual)
     }
-    
+
     @Test
     def nilTagArg = {
         val nil: TagArg = Nil
         val actual = div(nil).toString
         val expect = """<div></div>"""
         assertEquals(expect, actual)
-    }   
+    }
 
     @Test
     def nilAttrArg = {

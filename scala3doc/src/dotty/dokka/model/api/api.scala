@@ -8,7 +8,7 @@ import org.jetbrains.dokka.model._
 import collection.JavaConverters._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
-import org.jetbrains.dokka.model.properties._  
+import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.pages._
 import java.util.{List => JList, Set => JSet}
 
@@ -107,7 +107,7 @@ case class Edge(val from: Vertex, val to: Vertex)
 type Member = Documentable // with WithExtraProperty[_] // Kotlin does not add generics to ExtraProperty implemented by e.g. DFunction
 
 object Member:
-  def unapply(d: Documentable): Option[(String, DRI, Visibility, Kind, Origin)] = 
+  def unapply(d: Documentable): Option[(String, DRI, Visibility, Kind, Origin)] =
     d.memberExt.map(v => (d.getName, d.getDri, v.visibility, v.kind, v.origin))
 
 extension[T] (member: Member):
@@ -117,16 +117,16 @@ extension[T] (member: Member):
   private[api] def compositeMemberExt = CompositeMemberExtension.getFrom(member)
 
   def visibility: Visibility = memberExt.fold(Visibility.Unrestricted)(_.visibility)
-  
-  def signature: Signature = memberExt.fold(Signature(name))(_.signature) 
+
+  def signature: Signature = memberExt.fold(Signature(name))(_.signature)
   def asLink: LinkToType = LinkToType(signature, dri, kind)
-  
+
   def modifiers: Seq[dotty.dokka.model.api.Modifier] = memberExt.fold(Nil)(_.modifiers)
   def kind: Kind = memberExt.fold(Kind.Unknown)(_.kind)
   def origin: Origin =  memberExt.fold(Origin.DefinedWithin)(_.origin)
   def annotations: List[Annotation] = memberExt.fold(Nil)(_.annotations)
   def name = member.getName
-  def dri = member.getDri 
+  def dri = member.getDri
 
   // TODO rename parent and knownChildren
   def allMembers: Seq[Member] = compositeMemberExt.fold(Nil)(_.members)
@@ -138,4 +138,4 @@ extension[T] (member: Member):
 
 
 extension (module: DModule):
-  def driMap: Map[DRI, Member] = ModuleExtension.getFrom(module).fold(Map.empty)(_.driMap)  
+  def driMap: Map[DRI, Member] = ModuleExtension.getFrom(module).fold(Map.empty)(_.driMap)

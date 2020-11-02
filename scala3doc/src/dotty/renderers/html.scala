@@ -1,7 +1,7 @@
 package dotty.dokka
 
-/** 
- * This is trivial html renderer using api inspired by ScalaTags 
+/**
+ * This is trivial html renderer using api inspired by ScalaTags
  * It probably could be more efficient but for now on it should be good enough.
  */
 object HTML:
@@ -25,7 +25,7 @@ object HTML:
         case t: AppliedTag =>
           sb.append(t)
         case s: String =>
-          sb.append(s.escapeReservedTokens)  
+          sb.append(s.escapeReservedTokens)
         case s: Seq[AppliedTag | String] =>
           s.foreach{
             case a: AppliedTag =>
@@ -49,7 +49,7 @@ object HTML:
     def :=(value: String): AppliedAttr = AppliedAttr(s"""$name="$value"""")
 
   opaque type AppliedTag = StringBuilder
-  
+
   opaque type AppliedAttr = String
 
   val div = Tag("div")
@@ -89,6 +89,6 @@ object HTML:
   val charset = Attr("charset")
   val name = Attr("name")
   val content = Attr("content")
-  
+
   def raw(content: String): AppliedTag = AppliedTag(content)
-  
+

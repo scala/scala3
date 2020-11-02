@@ -33,18 +33,18 @@ extension (sourceSets: Set[DokkaConfiguration$DokkaSourceSet]):
     def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava
 
 class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
-  override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] = 
+  override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] =
     MergeStrategy.Remove.INSTANCE.asInstanceOf[MergeStrategy[T]]
 
   def definedIn(e: T): Boolean = e match
     case e: WithExtraProperties[_] => e.getExtra.getMap.containsKey(this)
     case _ => false
 
-  
+
   def getFrom(e: T): Option[V] = e match
     case e: WithExtraProperties[_] => getFromExtra(e, this)
-    case _ => None    
-  
+    case _ => None
+
 def getFromExtra[V](e: WithExtraProperties[_], k: ExtraProperty.Key[_, V]): Option[V] =
     Option(e.getExtra.getMap.get(k)).asInstanceOf[Option[V]]
 
@@ -83,13 +83,13 @@ def modifyContentGroup(originalContentNodeWithParents: Seq[ContentGroup], modifi
 def getContentGroupWithParents(root: ContentGroup, condition: ContentGroup => Boolean): Seq[ContentGroup] = {
     def getFirstMatch(list: List[ContentNode]): Seq[ContentGroup] = list match {
         case head :: tail => head match {
-            case g: ContentGroup => 
+            case g: ContentGroup =>
                 val res = getContentGroupWithParents(g, condition)
                 if(!res.isEmpty) res
                 else getFirstMatch(tail)
             case _ => getFirstMatch(tail)
         }
-            
+
         case _ => Seq()
     }
     if(condition(root)) Seq(root)

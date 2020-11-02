@@ -20,7 +20,7 @@ import org.jetbrains.dokka.model.DModule
 import collection.JavaConverters._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc.DocumentationNode
-import org.jetbrains.dokka.model.properties._  
+import org.jetbrains.dokka.model.properties._
 import java.util.{List => JList, Set => JSet}
 
 import com.virtuslab.dokka.site.SourceSetWrapper
@@ -28,9 +28,9 @@ import com.virtuslab.dokka.site.SourceSetWrapper
 private [model] case class MemberExtension(
   visibility: Visibility,
   modifiers: Seq[dotty.dokka.model.api.Modifier],
-  kind: Kind, 
+  kind: Kind,
   val annotations: List[Annotation],
-  signature: Signature, 
+  signature: Signature,
   origin: Origin = Origin.DefinedWithin
 ) extends ExtraProperty[Documentable]:
  override def getKey = MemberExtension
@@ -49,30 +49,30 @@ case class CompositeMemberExtension(
 object CompositeMemberExtension extends BaseKey[Documentable, CompositeMemberExtension]:
   val empty = CompositeMemberExtension()
 
-  override def mergeStrategyFor(left: CompositeMemberExtension, right: CompositeMemberExtension) = 
+  override def mergeStrategyFor(left: CompositeMemberExtension, right: CompositeMemberExtension) =
     new MergeStrategy$Replace(left.copy(members = left.members ++ right.members))
       .asInstanceOf[MergeStrategy[Documentable]]
 
 extension (member: Member):
-  private def putInMember(ext: MemberExtension) = 
+  private def putInMember(ext: MemberExtension) =
     val memberWithExtra = member.asInstanceOf[WithExtraProperties[Member]]
     memberWithExtra.withNewExtras(memberWithExtra.getExtra plus ext).asInstanceOf[Member]
 
-  private def putInCompositeMember(ext: CompositeMemberExtension) = 
+  private def putInCompositeMember(ext: CompositeMemberExtension) =
     val memberWithExtra = member.asInstanceOf[WithExtraProperties[Member]]
-    memberWithExtra.withNewExtras(memberWithExtra.getExtra plus ext).asInstanceOf[Member]  
+    memberWithExtra.withNewExtras(memberWithExtra.getExtra plus ext).asInstanceOf[Member]
 
   def copy(modifiers: Seq[Modifier]) =
     val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(modifiers = modifiers)
     putInMember(ext)
-  
+
   def withOrigin(origin: Origin) =
     val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(origin = origin)
     putInMember(ext)
 
   def withKind(kind: Kind) =
     val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(kind = kind)
-    putInMember(ext)  
+    putInMember(ext)
 
   def withMembers(newMembers: Seq[Member]): Member =
     val original = member.compositeMemberExt.getOrElse(CompositeMemberExtension())
@@ -88,11 +88,11 @@ extension (member: Member):
     val original = member.compositeMemberExt.getOrElse(CompositeMemberExtension())
     val newExt = original.copy(knownChildren = knownChildren)
     putInCompositeMember(newExt)
-    
-  def updateRecusivly(op: Member => Member) = op(member).withMembers(member.allMembers.map(op))  
+
+  def updateRecusivly(op: Member => Member) = op(member).withMembers(member.allMembers.map(op))
 
 extension (bound: Bound):
-  def asSignature: Signature = bound match 
+  def asSignature: Signature = bound match
     case tc: TypeConstructor =>
       tc.getProjections.asScala.toSeq.map {
         case txt: UnresolvedBound => txt.getName
@@ -101,7 +101,7 @@ extension (bound: Bound):
       }
 
 extension (m: DModule):
-  def updatePackages(op: Seq[DPackage] => Seq[DPackage]): DModule = 
+  def updatePackages(op: Seq[DPackage] => Seq[DPackage]): DModule =
     m.copy(
             m.getName,
             op(m.getPackages.asScala.toSeq).asJava,

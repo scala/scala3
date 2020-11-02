@@ -20,9 +20,9 @@ object ScalaCommentToContentConverter extends CommentsToContentConverter:
     ): JList[ContentNode] = docTag match {
         case h: Html => List(
             HtmlContentNode(
-                h.getChildren.asScala.collect{case c: Text => c}.head.getBody, 
-                dci, 
-                sourceSets.asScala.toSet.toDisplay.asScala.toSet, 
+                h.getChildren.asScala.collect{case c: Text => c}.head.getBody,
+                dci,
+                sourceSets.asScala.toSet.toDisplay.asScala.toSet,
                 styles.asScala.toSet
             )
         ).asJava

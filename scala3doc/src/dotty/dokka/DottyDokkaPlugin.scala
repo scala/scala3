@@ -44,15 +44,15 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     _.extensionPoint(CoreExtensions.INSTANCE.getSourceToDocumentableTranslator)
     .fromInstance(EmptyModuleProvider)
     .overrideExtension(dokkaBase.getPsiToDocumentableTranslator)
-  ) 
+  )
 
-  // Just turn off another translator since multiple overrides does not work    
+  // Just turn off another translator since multiple overrides does not work
   val disableDescriptorTranslator = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getSourceToDocumentableTranslator)
     .fromInstance(ScalaModuleProvider)
     .overrideExtension(dokkaBase.getDescriptorToDocumentableTranslator)
     .name("disableDescriptorTranslator")
-  ) 
+  )
 
   // Clean up empty module provided in disableDescriptorTranslator
   val cleanUpEmptyModules = extend(
@@ -65,20 +65,20 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
       .fromRecipe(ctx =>
         new ScalaSignatureProvider(ctx.single(dokkaBase.getCommentsToContentConverter), ctx.getLogger)
       ).overrideExtension(dokkaBase.getKotlinSignatureProvider)
-  )    
+  )
 
   val scalaResourceInstaller = extend(
     _.extensionPoint(dokkaBase.getHtmlPreprocessors)
       .fromInstance(new ScalaResourceInstaller())
       .after(dokkaBase.getCustomResourceInstaller)
-  )  
+  )
 
   val scalaEmbeddedResourceAppender =  extend(
     _.extensionPoint(dokkaBase.getHtmlPreprocessors)
       .fromInstance(new ScalaEmbeddedResourceAppender())
       .after(dokkaBase.getCustomResourceInstaller)
       .name("scalaEmbeddedResourceAppender")
-  )  
+  )
 
   val scalaDocumentableToPageTranslator = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableToPageTranslator)
@@ -88,19 +88,19 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
             ctx.getLogger
       ))
       .overrideExtension(dokkaBase.getDocumentableToPageTranslator)
-  )   
+  )
 
   val packageHierarchyTransformer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getPageTransformer)
       .fromRecipe(PackageHierarchyTransformer(_))
       .before(dokkaBase.getRootCreator)
-  )  
+  )
 
   val inheritanceTransformer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
       .fromRecipe(InheritanceInformationTransformer(_))
       .name("inheritanceTransformer")
-  )    
+  )
 
   val ourSourceLinksTransformer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
@@ -123,7 +123,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     _.extensionPoint(dokkaBase.getCommentsToContentConverter)
     .fromInstance(ScalaCommentToContentConverter)
     .overrideExtension(dokkaBase.getDocTagToContentConverter)
-  )  
+  )
 
   val implicitMembersExtensionTransformer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer )
@@ -138,7 +138,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     })
     .overrideExtension(dokkaBase.getSourceLinksTransformer)
     .name("muteDefaultSourceLinksTransformer")
-  )    
+  )
 
 // TODO remove once problem is fixed in Dokka
 extension [T]  (builder: ExtensionBuilder[T]):
@@ -146,4 +146,4 @@ extension [T]  (builder: ExtensionBuilder[T]):
     (new ExtensionBuilderEx).newOrdering(builder, exts.toArray, Array.empty)
 
   def after(exts: Extension[_, _, _]*):  ExtensionBuilder[T] =
-    (new ExtensionBuilderEx).newOrdering(builder, Array.empty, exts.toArray)  
+    (new ExtensionBuilderEx).newOrdering(builder, Array.empty, exts.toArray)

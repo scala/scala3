@@ -22,20 +22,20 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
     private val _collector = new ErrorCollector();
 
     // This should work correctly except for names in backticks and operator names containing a colon
-    def extractSymbolName(signature: String) = 
+    def extractSymbolName(signature: String) =
         val Pattern = s"""(?s).*(?:${signatureKinds.mkString("|")}) ([^\\[(: \\n\\t]+).*""".r
         signature match {
             case Pattern(name) => name
             case x => "NULL"
         }
-        
-    def matchSignature(s: String, signatureList: List[String]): Seq[String] = 
+
+    def matchSignature(s: String, signatureList: List[String]): Seq[String] =
         val symbolName = extractSymbolName(s)
         val candidates = signatureList.filter(extractSymbolName(_) == symbolName)
 
         candidates.filter(_ == s) match {
             case Nil =>
-                val candidateMsg = 
+                val candidateMsg =
                     if candidates.isEmpty then s"No candidate found for symbol name $symbolName"
                     else s"Candidates:\n${candidates.mkString("\n")}\n"
 
@@ -47,10 +47,10 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
         }
 
     @Test
-    def testSignatures(): Unit = 
+    def testSignatures(): Unit =
         def cleanup(s: String) = s.replace("\n", " ").replaceAll(" +", " ")
-        
-        val allFromSource = sourceFiles.map{ file => 
+
+        val allFromSource = sourceFiles.map{ file =>
             val all = signaturesFromSource(Source.fromFile(s"${BuildInfo.test_testcasesSourceRoot}/tests/$file.scala"))
             (all.expected, all.unexpected)
         }
@@ -61,7 +61,7 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
 
         val allFromDocumentation = tastyFolders.flatMap(folder => signaturesFromDocumentation(s"${BuildInfo.test_testcasesOutputDir}/tests/$folder"))
         val fromDocumentation = allFromDocumentation.filter(extractSymbolName(_) != "NULL").map(cleanup)
-        
+
         val documentedSignatures = fromDocumentation.flatMap(matchSignature(_, expectedFromSource)).toSet
         val missingSignatures = expectedFromSource.filterNot(documentedSignatures.contains)
 
@@ -70,7 +70,7 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
 
         val reportMissingSignatures = !ignoreUndocumentedSignatures && missingSignatures.nonEmpty
         val reportUnexpectedSignatures = unexpectedSignatures.nonEmpty
-        
+
         if reportMissingSignatures || reportUnexpectedSignatures then
             val missingSignaturesMessage = Option.when(reportMissingSignatures)
                 (s"Not documented signatures:\n${missingSignatures.mkString("\n")}")
@@ -78,7 +78,7 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
             val unexpectedSignaturesMessage = Option.when(reportUnexpectedSignatures)
                 (s"Unexpectedly documented signatures:\n${unexpectedSignatures.mkString("\n")}")
 
-            val allSignaturesMessage = 
+            val allSignaturesMessage =
                 s"""
                 |All documented signatures:
                 |${documentedSignatures.mkString("\n")}
@@ -86,7 +86,7 @@ abstract class MultipleFileTest(val sourceFiles: List[String], val tastyFolders:
                 |All expected signatures from source:
                 |${expectedFromSource.mkString("\n")}
                 """.stripMargin
-             
+
             val errorMessages = missingSignaturesMessage ++ unexpectedSignaturesMessage ++ Some(allSignaturesMessage)
-            
+
             reportError(errorMessages.mkString("\n", "\n\n", "\n"))
