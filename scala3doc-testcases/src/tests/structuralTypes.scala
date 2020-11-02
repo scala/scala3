@@ -7,8 +7,8 @@ type Person = Record { val name: String; val age: Int; type Height = Int; def st
 type R = { type T; val x: Int; type U <: this.T; def foo(): Int; }
 
 class Record(elems: (String, Any)*) extends Selectable {
-    val fields: Map[String, Any]
-     = elems.toMap
-    def selectDynamic(name: String): Any
-     = fields(name)
+  val fields: Map[String, Any]
+   = elems.toMap
+  def selectDynamic(name: String): Any
+   = fields(name)
 }

@@ -8,9 +8,9 @@ import org.jetbrains.dokka.transformers.documentation.DocumentableToPageTranslat
 import org.jetbrains.dokka.utilities.DokkaLogger
 
 class ScalaDocumentableToPageTranslator(
-    val commentsToContentConverter: CommentsToContentConverter,
-    val signatureProvider: SignatureProvider,
-    val logger: DokkaLogger
+  val commentsToContentConverter: CommentsToContentConverter,
+  val signatureProvider: SignatureProvider,
+  val logger: DokkaLogger
 ) extends DocumentableToPageTranslator {
-    override def invoke(module: DModule): ModulePageNode = ScalaPageCreator(commentsToContentConverter, signatureProvider, logger).pageForModule(module)
+  override def invoke(module: DModule): ModulePageNode = ScalaPageCreator(commentsToContentConverter, signatureProvider, logger).pageForModule(module)
 }

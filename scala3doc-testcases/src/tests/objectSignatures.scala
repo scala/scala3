@@ -3,8 +3,8 @@ package objectSignatures
 
 class A[T]
 {
-    val a: String = "asd"
-    def method3() = "asd"
+  val a: String = "asd"
+  def method3() = "asd"
 }
 
 object A

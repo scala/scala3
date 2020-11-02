@@ -7,11 +7,11 @@ class D[T]
 class E[T] extends D[T]
 
 class Constructors(a: String):
-    def this()
-    = this("Ala")
+  def this()
+  = this("Ala")
 
-    def this(a: A)(b: A)
-    = this("Ala")
+  def this(a: A)(b: A)
+  = this("Ala")
 
 /** Some methods to tests */
 class Methods:
