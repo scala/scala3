@@ -377,7 +377,7 @@ object Inferencing {
 
   /** All occurrences of type vars in this type that satisfy predicate
    *  `include` mapped to their variances (-1/0/1) in this type, where
-   *  -1 means: only covariant occurrences
+   *  -1 means: only contravariant occurrences
    *  +1 means: only covariant occurrences
    *  0 means: mixed or non-variant occurrences
    *
