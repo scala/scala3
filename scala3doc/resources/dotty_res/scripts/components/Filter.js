@@ -1,22 +1,13 @@
-const defaultFilterGroup = {
-  FOrdering: { Alphabetical: true },
-};
-
 /**
- * @typedef { Object } FilterItem
- * @prop { string } selected
- * @prop { number } visible
- */
-
- /**
- * @typedef { Record<string, FilterItem> } Filters
+ * @typedef { { selected: boolean; visible: boolean } } FilterItem
+ * @typedef { { fKeywords: Record<string, FilterItem> } } Filters
  */
 
 class Filter {
   /**
    * @param value { string }
    * @param filters { Filters }
-   * @param elementsRefs { Element }
+   * @param elementsRefs { Element[] }
    */
   constructor(value, filters, elementsRefs, init = false) {
     this._init = init;
@@ -87,10 +78,10 @@ class Filter {
 
         return name.includes(value) || description.includes(value);
       })
-      .map((elRef) => this._getDatasetWithF(elRef.dataset))
+      .map((elRef) => this._getDatasetWithKeywordData(elRef.dataset))
       .reduce((filtersObject, datasets) => {
-        datasets.map(([key, value]) => {
-          this._splitByComma(value).map((val) => {
+        datasets.forEach(([key, value]) => {
+          this._splitByComma(value).forEach((val) => {
             filtersObject[key] = {
               ...filtersObject[key],
               [val]: {
@@ -150,24 +141,24 @@ class Filter {
   * @returns { Filters }
   */
   _withNewFilters() {
-    console.log("this._elementsRefs", this._elementsRefs)
+    const newFilter = { selected: true, visible: true }
+
     const newFilters = this._elementsRefs.reduce((filtersObject, elementRef) => {
-      this._getDatasetWithF(elementRef.dataset).map(([key, value]) =>
-        this._splitByComma(value).map((val) => {
-          if (!filtersObject[key]) {
-            filtersObject[key] = { [val]: { selected: true, visible: true } };
-          } else {
-            filtersObject[key] = {
-              ...filtersObject[key],
-              [val]: filtersObject[key][val] ?? { selected: true, visible: true },
-            };
-          }
+      this._getDatasetWithKeywordData(elementRef.dataset).forEach(([key, value]) =>
+        this._splitByComma(value).forEach((val) => {
+          filtersObject[key] = filtersObject[key] 
+            ? { ...filtersObject[key], [val]: filtersObject[key][val] ?? newFilter}
+            : { [val]: newFilter }
         })
       );
       return filtersObject;
     }, {});
-    console.log("newFilters", newFilters)
-    return newFilters
+
+    const shouldAddDefaultFilter = this._elementsRefs.some(ref => !!ref.dataset['fKeywords'])
+
+    return shouldAddDefaultFilter 
+      ? { ...newFilters, fKeywords: { ...newFilters.fKeywords, default: newFilter } } 
+      : newFilters
   }
 
   /**
@@ -198,7 +189,8 @@ class Filter {
   /**
   * @private
   * @param dataset { DOMStringMap }
+  * @returns { [key: string, value: string][] }
   */
-  _getDatasetWithF = (dataset) =>
+  _getDatasetWithKeywordData = (dataset) =>
     Object.entries(dataset).filter(([key]) => startsWith(key, "f"));
 }

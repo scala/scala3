@@ -1,3 +1,7 @@
+/**
+ * @typedef { import("./Filter").Filter } Filter
+ */
+
 class DocumentableList extends Component {
   constructor(props) {
     super(props);
@@ -14,24 +18,16 @@ class DocumentableList extends Component {
     this.render(this.props);
   }
 
-  toggleElementDatasetVisibility(condition, element) {
-    if (condition) {
-      element.dataset.visibility = true;
-    } else {
-      element.dataset.visibility = false;
-    }
+  toggleElementDatasetVisibility(isVisible, ref) {
+    ref.dataset.visibility = isVisible
   }
 
   toggleDisplayStyles(condition, ref, onVisibleStyle) {
-    if (condition) {
-      ref.style.display = onVisibleStyle;
-    } else {
-      ref.style.display = "none";
-    }
+    ref.style.display = condition ? onVisibleStyle : 'none'
   }
 
   render({ filter }) {
-    this.state.list.sectionsRefs.map((sectionRef) => {
+    this.state.list.sectionsRefs.map(sectionRef => {
       const tabRef = this.state.list.getTabRefFromSectionRef(sectionRef);
 
       const isTabVisible = this.state.list
@@ -39,22 +35,13 @@ class DocumentableList extends Component {
         .filter((listRef) => {
           const isListVisible = this.state.list
             .getSectionListElementsRefs(listRef)
-            .map((elementRef) => this.state.list.mapListElementRef(elementRef))
-            .filter((elementData) => {
-              const isElementVisible = this.state.list.isElementVisible(
-                elementData,
-                filter
-              );
+            .map(elementRef => this.state.list.toListElement(elementRef))
+            .filter(elementData => {
+              const isElementVisible = this.state.list.isElementVisible(elementData, filter);
 
-              this.toggleDisplayStyles(
-                isElementVisible,
-                elementData.ref,
-                "table"
-              );
-              this.toggleElementDatasetVisibility(
-                isElementVisible,
-                elementData.ref
-              );
+              this.toggleDisplayStyles(isElementVisible, elementData.ref, "table");
+              this.toggleElementDatasetVisibility(isElementVisible, elementData.ref);
+
               return isElementVisible;
             }).length;
 
@@ -68,39 +55,65 @@ class DocumentableList extends Component {
   }
 }
 
-class List {
-  filterTab(name) {
-    return name !== "Linear supertypes" && name !== "Known subtypes" && name !== "Type hierarchy"
-  }
+/**
+ * @typedef { { ref: Element; name: string; description: string } } ListElement
+ */
 
+class List { 
+  /**
+   * @param tabsRef { Element[] }
+   * @param sectionRefs { Element[] }
+   */
   constructor(tabsRef, sectionRefs) {
     this._tabsRef = tabsRef;
     this._sectionRefs = sectionRefs;
   }
 
   get tabsRefs() {
-    return this._tabsRef.filter((tabRef) => this.filterTab(this._getTogglable(tabRef)));
+    return this._tabsRef.filter(tabRef => this.filterTab(this._getTogglable(tabRef)));
   }
 
   get sectionsRefs() {
-    return this._sectionRefs.filter( (sectionRef) => this.filterTab(this._getTogglable(sectionRef)));
+    return this._sectionRefs.filter(sectionRef => this.filterTab(this._getTogglable(sectionRef)));
   }
 
+  /**
+  * @param name { string }
+  */
+  filterTab(name) { 
+    return name !== "Linear supertypes" && name !== "Known subtypes" && name !== "Type hierarchy"
+  }
+
+  /**
+   * @param sectionRef { Element }
+   */
   getTabRefFromSectionRef(sectionRef) {
     return this.tabsRefs.find(
       (tabRef) => this._getTogglable(tabRef) === this._getTogglable(sectionRef)
     );
   }
 
+  /**
+   * @param sectionRef { Element }
+   * @returns { Element[] }
+   */
   getSectionListRefs(sectionRef) {
     return findRefs(".documentableList", sectionRef);
   }
 
+  /**
+   * @param listRef { Element }
+   * @returns { Element[] }
+   */
   getSectionListElementsRefs(listRef) {
     return findRefs(".documentableElement", listRef);
   }
 
-  mapListElementRef(elementRef) {
+  /**
+   * @param elementRef { Element }
+   * @returns { ListElement }
+   */
+  toListElement(elementRef) {
     return {
       ref: elementRef,
       name: getElementTextContent(getElementNameRef(elementRef)),
@@ -108,43 +121,38 @@ class List {
     };
   }
 
+  /**
+  * @param elementData { ListElement }
+  * @param filter { Filter }
+  */
   isElementVisible(elementData, filter) {
-    if (!this._areFiltersFromElementSelected(elementData, filter)) {
+    if (!areFiltersFromElementSelected(elementData, filter)) {
       return false;
+    } else {
+      return includesInputValue(elementData, filter);
     }
-    return this._includesInputValue(elementData, filter);
+
+    function includesInputValue() {
+      return elementData.name.includes(filter.value) || elementData.description.includes(filter.value);
+    }
+
+    function areFiltersFromElementSelected() {
+      /** @type {[key: string, value: string][]} */
+      const dataset = Object.entries(elementData.ref.dataset).filter(([key]) => startsWith(key, "f"));
+
+      const hasCorrespondingFilters = () =>
+        dataset.every(([key, value]) => {
+          const filterGroup = filter.filters[key];
+          return value.split(",").every(val => filterGroup && filterGroup[val].selected);
+        });
+
+      return dataset.length ? hasCorrespondingFilters() : true;
+    }
   }
 
-  _includesInputValue = (elementData, filter) => {
-    if (elementData.name.includes(filter.value)) {
-      return true;
-    }
-    return elementData.description.includes(filter.value);
-  };
-
-  _areFiltersFromElementSelected(elementRef, filter) {
-    const dataset = this._getCorrectDatasetFromElement(elementRef);
-    return dataset.length
-      ? this._hasCorrespodingFilters(dataset, filter.filters)
-      : true;
-  }
-
-  _hasCorrespodingFilters = (dataset, filters) =>
-    dataset.every(([key, value]) => {
-      const filterGroup = filters[key];
-      return this._splitByComma(value).every(
-        (val) => filterGroup && filterGroup[val].selected
-      );
-    });
-
-  _getCorrectDatasetFromElement = (elementRef) =>
-    Object.entries(elementRef.ref.dataset).filter(([key]) =>
-      this._startsWithF(key)
-    );
-
-  _splitByComma = (str) => str.split(",");
-
-  _startsWithF = (str) => startsWith(str, "f");
-
-  _getTogglable = (elementRef) => elementRef.dataset.togglable;
+  /**
+  * @param elementData { ListElement }
+  */
+  _getTogglable = elementData => elementData.dataset.togglable;
 }
+
