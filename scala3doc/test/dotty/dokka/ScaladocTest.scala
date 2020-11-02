@@ -8,8 +8,8 @@ import org.jetbrains.dokka.testApi.logger.TestLogger
 import org.jetbrains.dokka.utilities.DokkaConsoleLogger
 import org.jetbrains.dokka.DokkaConfiguration
 import scala.jdk.CollectionConverters.{ListHasAsScala, SeqHasAsJava}
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
+import org.junit.{Test, Rule}
+import org.junit.rules.{TemporaryFolder, ErrorCollector}
 import java.io.File
 
 abstract class ScaladocTest(val name: String):
@@ -33,18 +33,23 @@ abstract class ScaladocTest(val name: String):
       sourceLinks = Nil
     )
 
-  private def tastyFiles = 
+  private def tastyFiles =
     def collectFiles(dir: File): List[String] = dir.listFiles.toList.flatMap {
         case f if f.isDirectory => collectFiles(f)
         case f if f.getName endsWith ".tasty" => f.getAbsolutePath :: Nil
         case _ => Nil
       }
-    collectFiles(File(s"target/scala-0.27/classes/tests/$name"))
+    collectFiles(File(s"${BuildInfo.test_testcasesOutputDir}/tests/$name"))
+
+  @Rule
+  def collector = _collector
+  private val _collector = new ErrorCollector();
+  def reportError(msg: String) = collector.addError(new AssertionError(msg))
 
   @Test
-  def executeTest = 
+  def executeTest =
     DokkaTestGenerator(
-      DottyDokkaConfig(DocConfiguration.Standalone(args, tastyFiles)),
+      DottyDokkaConfig(DocConfiguration.Standalone(args, tastyFiles, Nil)),
       TestLogger(DokkaConsoleLogger.INSTANCE),
       assertions.asTestMethods,
       Nil.asJava
@@ -71,7 +76,7 @@ extension (s: Seq[Assertion]):
     import Assertion._
     TestMethods(
       (context => s.collect { case AfterPluginSetup(fn) => fn(context) }.kUnit),
-      (validator => s.collect { case DuringValidation(fn) => fn(() => validator) }.kUnit),
+      (validator => s.collect { case DuringValidation(fn) => fn(() => validator.invoke()) }.kUnit),
       (modules => s.collect { case AfterDocumentablesCreation(fn) => fn(modules.asScala.toSeq) }.kUnit),
       (modules => s.collect { case AfterPreMergeDocumentablesTransformation(fn) => fn(modules.asScala.toSeq) }.kUnit),
       (module => s.collect { case AfterDocumentablesMerge(fn) => fn(module)}.kUnit),
