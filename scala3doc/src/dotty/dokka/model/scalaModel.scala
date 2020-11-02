@@ -59,9 +59,9 @@ object ScalaTagWrapper {
 case class ImplicitConversion(conversion: Documentable, from: DRI, to: DRI)
 
 case class HierarchyGraphContentNode(
-  val diagram: HierarchyGraph, 
-  val dci: DCI, 
-  val sourceSets: Set[DisplaySourceSet], 
+  val diagram: HierarchyGraph,
+  val dci: DCI,
+  val sourceSets: Set[DisplaySourceSet],
   val style: Set[Style],
   val extra: PropertyContainer[ContentNode] = PropertyContainer.Companion.empty
 ) extends ContentNode:

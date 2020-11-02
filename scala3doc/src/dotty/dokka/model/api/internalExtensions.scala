@@ -30,7 +30,7 @@ private [model] case class MemberExtension(
   modifiers: Seq[dotty.dokka.model.api.Modifier],
   kind: Kind,
   val annotations: List[Annotation],
-  signature: Signature, 
+  signature: Signature,
   origin: Origin = Origin.DefinedWithin,
   graph: HierarchyGraph = HierarchyGraph.empty,
 ) extends ExtraProperty[Documentable]:
@@ -94,8 +94,8 @@ extension (member: Member):
     val oldExt = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty)
     val newExt = oldExt.copy(graph = oldExt.graph ++ edges)
     putInMember(newExt)
-    
-  def updateRecusivly(op: Member => Member) = op(member).withMembers(member.allMembers.map(op))  
+
+  def updateRecusivly(op: Member => Member) = op(member).withMembers(member.allMembers.map(op))
 
 extension (bound: Bound):
   def asSignature: Signature = bound match

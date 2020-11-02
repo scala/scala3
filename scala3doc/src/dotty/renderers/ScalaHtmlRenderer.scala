@@ -26,7 +26,7 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
         link(dri) match
             case Some(link) => a(href := link, modifiers)(name)
             case _ => span(Attr("data-unresolved-link") := dri.toString, modifiers)(name)
- 
+
     def renderElementWith(e: String | (String, DRI) | Link, modifiers: AppliedAttr*) = e match
         case (name, dri) => renderLink(name, dri, modifiers:_*)
         case name: String => raw(name)
@@ -63,7 +63,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         node match {
             case n: HtmlContentNode => withHtml(f, raw(n.body).toString)
             case n: HierarchyGraphContentNode => buildDiagram(f, n.diagram, pageContext)
-            case n: DocumentableList => 
+            case n: DocumentableList =>
                 val ss = if sourceSetRestriciton == null then Set.empty.asJava else sourceSetRestriciton
                 withHtml(f, buildDocumentableList(n, pageContext, ss).toString())
             case n: DocumentableFilter => withHtml(f, buildDocumentableFilter.toString)
@@ -202,7 +202,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
         })
     }
 
-    def buildDiagram(f: FlowContent, diagram: HierarchyGraph, pageContext: ContentPage) = 
+    def buildDiagram(f: FlowContent, diagram: HierarchyGraph, pageContext: ContentPage) =
         val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
         withHtml(f, div( id := "inheritance-diagram", cls := "diagram-class")(
                 svg(id := "graph"),

@@ -33,7 +33,7 @@ trait ClassLikeSupport:
       name: String = classDef.name,
       signatureOnly: Boolean = false,
       modifiers: Seq[Modifier] = classDef.symbol.getExtraModifiers(),
-    ): DClass = 
+    ): DClass =
 
       // This Try is here because of problem that code compiles, but at runtime fails claiming
       // java.lang.ClassCastException: class dotty.tools.dotc.ast.Trees$DefDef cannot be cast to class dotty.tools.dotc.ast.Trees$TypeDef (dotty.tools.dotc.ast.Trees$DefDef and dotty.tools.dotc.ast.Trees$TypeDef are in unnamed module of loader 'app')
@@ -47,7 +47,7 @@ trait ClassLikeSupport:
             val symbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
             val superLink = LinkToType(tree.dokkaType.asSignature, symbol.dri, kindForClasslike(symbol))
             Seq(link -> superLink) ++ getSupertypesGraph(tree.asInstanceOf[ClassDef], superLink)
-          }       
+          }
         )
 
       val supertypes = getSupertypes(classDef).map {
@@ -60,9 +60,9 @@ trait ClassLikeSupport:
             .plus(ClasslikeExtension(classDef.getConstructorMethod, classDef.getCompanion))
             .plus(MemberExtension(
               classDef.symbol.getVisibility(),
-              modifiers, 
-              kindForClasslike( classDef.symbol), 
-              classDef.symbol.getAnnotations(), 
+              modifiers,
+              kindForClasslike( classDef.symbol),
+              classDef.symbol.getAnnotations(),
               selfSiangture,
               graph = graph
             ))

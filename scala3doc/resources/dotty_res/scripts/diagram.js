@@ -16,7 +16,7 @@ $("#inheritance-diagram").ready(function() {
       var g = graphlibDot.read(dotNode.text);
       g.graph().rankDir = 'BT';
       g.nodes().forEach(function (v) {
-        g.setNode(v, {    
+        g.setNode(v, {
           labelType: "html",
           label: g.node(v).label,
           style: g.node(v).style

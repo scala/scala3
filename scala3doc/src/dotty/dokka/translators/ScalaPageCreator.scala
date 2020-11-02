@@ -429,14 +429,14 @@ class ScalaPageCreator(
                             _.list(subtypes.toList, separator="")(contentForTypeLink)
                         }
                     }
-            
+
             graph.fold(withSubtypes) { graph =>
                 if graph.edges.isEmpty then withSubtypes else
                     withSubtypes.header(2, "Type hierarchy")().group(
                         kind = ContentKind.Comment,
-                        styles = Set(ContentStyle.WithExtraAttributes), 
+                        styles = Set(ContentStyle.WithExtraAttributes),
                         extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Type hierarchy")
-                    ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) { 
+                    ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) {
                             _.dotDiagram(graph)
                         }
                     }

@@ -47,7 +47,7 @@ CLI command for running our tool is in form: `sbt main -n <name> -o <output> -t 
    - `<classpath>`: classpath that was used to generate tasty files
    - `<sources>`: links to source files of module that are used to link symbols on pages to their source file. They need to be supplied in form:
       `local_dir=remote_dir#line_suffix` e.g. `src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L`
-   - `<documentation>`: directory of static documentation that you would like to render with API documentation. This feature is provided by dokka-site plugin: 
+   - `<documentation>`: directory of static documentation that you would like to render with API documentation. This feature is provided by dokka-site plugin:
       - [GitHub](https://github.com/VirtusLab/dokka-site)
       - [Documentation](https://virtuslab.github.io/dokka-site/index.html)
 
