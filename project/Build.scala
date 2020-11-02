@@ -1490,14 +1490,20 @@ object Build {
             generateDocumentation(classDirectory.in(Compile).value.getAbsolutePath, "scala3doc", "self", "-p documentation")
           }.value,
           generateScala3Documentation := Def.taskDyn {
+            // ensure all projects we're documenting are compiled
+            (`scala3-interfaces`/Compile/compile).value
+            (`tasty-core`/Compile/compile).value
+            (`scala3-library`/Compile/compile).value
+            // TODO we can't load stdlib from Tasty
+            // (`stdlib-bootstrapped`/Compile/compile).value
+
             val dottyJars = Seq(
-              // All projects below will be used to generated documentation for Scala 3
-              classDirectory.in(`scala3-interfaces`).in(Compile).value,
-              classDirectory.in(`tasty-core`).in(Compile).value,
-              classDirectory.in(`scala3-library`).in(Compile).value,
-              // TODO this one fails to load using TASTY
-              // classDirectory.in(`stdlib-bootstrapped`).in(Compile).value,
+              (`scala3-interfaces`/Compile/classDirectory).value,
+              (`tasty-core`/Compile/classDirectory).value,
+              (`scala3-library`/Compile/classDirectory).value,
+              // (`stdlib-bootstrapped`/Compile/classDirectory).value,
             )
+
             val roots = dottyJars.map(_.toString).mkString(java.io.File.pathSeparator)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
