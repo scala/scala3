@@ -23,6 +23,8 @@ import scala.internal.quoted.PickledQuote
 import scala.quoted.QuoteContext
 import scala.collection.mutable
 
+import QuoteUtils._
+
 object PickledQuotes {
   import tpd._
 
@@ -39,14 +41,14 @@ object PickledQuotes {
   def quotedExprToTree[T](expr: quoted.Expr[T])(using Context): Tree = {
     val expr1 = expr.asInstanceOf[scala.internal.quoted.Expr[Tree]]
     QuoteContextImpl.checkScopeId(expr1.scopeId)
-    healOwner(expr1.tree)
+    changeOwnerOfTree(expr1.tree, ctx.owner)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(tpe: quoted.Type[?])(using Context): Tree = {
     val tpe1 = tpe.asInstanceOf[scala.internal.quoted.Type[Tree]]
     QuoteContextImpl.checkScopeId(tpe1.scopeId)
-    healOwner(tpe1.typeTree)
+    changeOwnerOfTree(tpe1.typeTree, ctx.owner)
   }
 
   /** Unpickle the tree contained in the TastyExpr */
@@ -195,19 +197,4 @@ object PickledQuotes {
     tree
   }
 
-  /** Make sure that the owner of this tree is `ctx.owner` */
-  def healOwner(tree: Tree)(using Context): Tree = {
-    val getCurrentOwner = new TreeAccumulator[Option[Symbol]] {
-      def apply(x: Option[Symbol], tree: tpd.Tree)(using Context): Option[Symbol] =
-        if (x.isDefined) x
-        else tree match {
-          case tree: DefTree => Some(tree.symbol.owner)
-          case _ => foldOver(x, tree)
-        }
-    }
-    getCurrentOwner(None, tree) match {
-      case Some(owner) if owner != ctx.owner => tree.changeOwner(owner, ctx.owner)
-      case _ => tree
-    }
-  }
 }

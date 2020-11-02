@@ -10,6 +10,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.NameKinds
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.quoted.reflect._
+import dotty.tools.dotc.quoted.QuoteUtils._
 import dotty.tools.dotc.core.Decorators._
 
 import scala.quoted.QuoteContext
@@ -741,7 +742,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Lambda extends LambdaModule:
       def apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block =
-        tpd.Lambda(tpe, rhsFn)
+        val meth = dotc.core.Symbols.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, tpe)
+        tpd.Closure(meth, tss => changeOwnerOfTree(rhsFn(tss.head), meth))
+
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
         case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
