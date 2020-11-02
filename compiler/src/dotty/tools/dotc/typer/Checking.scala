@@ -308,19 +308,20 @@ object Checking {
     }
   }
 
-  /** If `sym` has an operator name, check that it has an @alpha annotation in 3.1 and later
+  /** Under -Yrequire-targetName, if `sym` has an operator name, check that it has a
+   *  @targetName annotation.
    */
   def checkValidOperator(sym: Symbol)(using Context): Unit =
-    if ctx.settings.YrequireAlpha.value then
+    if ctx.settings.YrequireTargetName.value then
       sym.name.toTermName match
         case name: SimpleName
         if name.isOperatorName
           && !name.isSetterName
           && !name.isConstructorName
-          && !sym.getAnnotation(defn.AlphaAnnot).isDefined
+          && !sym.getAnnotation(defn.TargetNameAnnot).isDefined
           && !sym.is(Synthetic) =>
           report.warning(
-            i"$sym has an operator name; it should come with an @alpha annotation", sym.srcPos)
+            i"$sym has an operator name; it should come with an @targetName annotation", sym.srcPos)
         case _ =>
 
   /** Check that `info` of symbol `sym` is not cyclic.
@@ -1203,19 +1204,16 @@ trait Checking {
     }
 
   /** Check that symbol's external name does not clash with symbols defined in the same scope */
-  def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = {
+  def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit =
     var seen = Set[Name]()
-    for (stat <- stats) {
+    for stat <- stats do
       val sym = stat.symbol
       val ename = sym.erasedName
-      if (ename != sym.name) {
+      if ename != sym.name then
         val preExisting = ctx.effectiveScope.lookup(ename)
-        if (preExisting.exists || seen.contains(ename))
-          report.error(em"@alpha annotation ${'"'}$ename${'"'} clashes with other definition is same scope", stat.srcPos)
+        if preExisting.exists || seen.contains(ename) then
+          report.error(em"@targetName annotation ${'"'}$ename${'"'} clashes with other definition in same scope", stat.srcPos)
         if stat.isDef then seen += ename
-      }
-    }
-  }
 }
 
 trait ReChecking extends Checking {
@@ -1238,7 +1236,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
   override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
-  override def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = ()
+  override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
   override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()

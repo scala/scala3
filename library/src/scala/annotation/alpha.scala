@@ -6,4 +6,5 @@ package scala.annotation
  *  the regular name. An `alpha` annotation is mandatory for definitions
  *  with symbolic names.
  */
+@deprecated("use @targetName instead")
 final class alpha(externalName: String) extends StaticAnnotation

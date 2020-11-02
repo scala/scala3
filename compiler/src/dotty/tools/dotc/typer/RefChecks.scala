@@ -433,9 +433,9 @@ object RefChecks {
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp(self), otherTp(self)))
       else if (member.erasedName != other.erasedName)
         if (other.erasedName != other.name)
-          overrideError(i"needs to be declared with @alpha(${"\""}${other.erasedName}${"\""}) so that external names match")
+          overrideError(i"needs to be declared with @targetName(${"\""}${other.erasedName}${"\""}) so that external names match")
         else
-          overrideError("cannot have an @alpha annotation since external names would be different")
+          overrideError("cannot have a @targetName annotation since external names would be different")
       else
         checkOverrideDeprecated()
     }

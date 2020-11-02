@@ -1,20 +1,20 @@
 package alpha
-import annotation.alpha
+import annotation.targetName
 
 abstract class Alpha[T] {
 
   def foo() = 1
 
-  @alpha("bar") def foo(x: T): T
+  @targetName("bar") def foo(x: T): T
 
-  @alpha("append") def ++ (xs: Alpha[T]): Alpha[T] = this
+  @targetName("append") def ++ (xs: Alpha[T]): Alpha[T] = this
 
 }
 
-@alpha("Bar") class | extends Alpha[String] {
+@targetName("Bar") class | extends Alpha[String] {
 
-  @alpha("bar") override def foo(x: String) = x ++ x
+  @targetName("bar") override def foo(x: String) = x ++ x
 
-  @alpha("append") override def ++ (xs: Alpha[String]) = this
+  @targetName("append") override def ++ (xs: Alpha[String]) = this
 
 }

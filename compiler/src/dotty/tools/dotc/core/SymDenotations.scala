@@ -495,26 +495,21 @@ object SymDenotations {
     /** `fullName` where `.' is the separator character */
     def fullName(using Context): Name = fullNameSeparated(QualifiedName)
 
-    /** The name given in an `@alpha` annotation if one is present, `name` otherwise */
+    /** The name given in a `@targetName` annotation if one is present, `name` otherwise */
     final def erasedName(using Context): Name =
-      val alphaAnnot =
-        if isAllOf(ModuleClass | Synthetic) then companionClass.getAnnotation(defn.AlphaAnnot)
-        else getAnnotation(defn.AlphaAnnot)
-      alphaAnnot match {
+      val targetNameAnnot =
+        if isAllOf(ModuleClass | Synthetic) then companionClass.getAnnotation(defn.TargetNameAnnot)
+        else getAnnotation(defn.TargetNameAnnot)
+      targetNameAnnot match
         case Some(ann) =>
-          ann.arguments match {
+          ann.arguments match
             case Literal(Constant(str: String)) :: Nil =>
-              if (isType)
-                if (is(ModuleClass))
-                  str.toTypeName.moduleClassName
-                else
-                  str.toTypeName
-              else
-                str.toTermName
+              if isType then
+                if is(ModuleClass) then str.toTypeName.moduleClassName
+                else str.toTypeName
+              else str.toTermName
             case _ => name
-          }
         case _ => name
-      }
 
     // ----- Tests -------------------------------------------------
 

@@ -1982,7 +1982,7 @@ class Typer extends Namer
     if (sym.isConstructor && !sym.isPrimaryConstructor) {
       val ename = sym.erasedName
       if (ename != sym.name)
-        report.error(em"@alpha annotation ${'"'}$ename${'"'} may not be used on a constructor", ddef.srcPos)
+        report.error(em"@targetName annotation may not be used on a constructor", ddef.srcPos)
 
       for (param <- tparams1 ::: vparamss1.flatten)
         checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
@@ -2665,7 +2665,7 @@ class Typer extends Namer
     }
     val (stats0, finalCtx) = traverse(stats)(using localCtx)
     val stats1 = stats0.mapConserve(finalize)
-    if (ctx.owner == exprOwner) checkNoAlphaConflict(stats1)
+    if ctx.owner == exprOwner then checkNoTargetNameConflict(stats1)
     (stats1, finalCtx)
   }
 

@@ -1,10 +1,10 @@
-import annotation.{infix, alpha}
+import annotation.{infix, targetName}
 object Test extends App {
 
   case class Rational(n: Int, d: Int) {
     @infix def + (that: Rational) =
       Rational(this.n * that.d + that.n * this.d, this.d * that.d)
-    @infix @alpha("multiply") def * (that: Rational) =
+    @infix @targetName("multiply") def * (that: Rational) =
       Rational(this.n * that.n, this.d * that.d)
   }
 
