@@ -7,14 +7,14 @@ class OuterClass:
 
   object ImplicitMemberTarget:
     extension (a: ImplicitMemberTarget):
-      def extensionFromCompanion: String = 
+      def extensionFromCompanion: String =
         "ImplicitMemberTarget"
-    
-  // does not work      
+
+  // does not work
   extension (a: ImplicitMemberTarget):
-    def extensionFromOuterClass: String = 
-      "ImplicitMemberTarget"         
+    def extensionFromOuterClass: String =
+      "ImplicitMemberTarget"
 
 extension (a: OuterClass#ImplicitMemberTarget):
-    def extensionFromPackage: String = 
-      "ImplicitMemberTarget"      
+    def extensionFromPackage: String =
+      "ImplicitMemberTarget"

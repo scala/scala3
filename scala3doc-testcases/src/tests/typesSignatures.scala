@@ -8,12 +8,12 @@ class A
   type C[A, B <: A] = Seq[B]
 }
 
-trait V 
+trait V
 {
   type Ala[+J] <: Int
   type Ola[+T]
   type X
-} 
+}
 
 class Generic[T]
 

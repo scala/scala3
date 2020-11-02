@@ -1,7 +1,7 @@
 package tests.signatureTestSource
 class A
 class B extends A
-class C 
+class C
 class D[T]
 class E[T] extends D[T]
 
@@ -14,7 +14,7 @@ class SignatureTestClass(a: String)
     def multipleParams(a: A, b: B): C
      = ???
     def likeVararg(a: Seq[A]): C
-     = ??? 
+     = ???
     def vararg(a: A*): C
      = ???
     def multipleList(a: A)(b: B): C

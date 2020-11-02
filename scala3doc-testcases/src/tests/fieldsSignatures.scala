@@ -3,7 +3,7 @@ package fieldsSignatures
 
 case class A(cA: String, var cB: Int)
 {
-  val A: Int 
+  val A: Int
     = 1
   val B: Int
    = 2
@@ -36,6 +36,6 @@ abstract class D2 extends C
 
 object Documentation
 {
-  val valInsideDocObject: Nothing 
+  val valInsideDocObject: Nothing
     = ???
 }

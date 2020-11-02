@@ -9,7 +9,7 @@ case class CaseClass(parameterOfClassConstructor: String)
     = ???
   def methodInClass1(): String
     = ???
-  
+
   def methodInClass2(): CaseClass
     = ???
 }
@@ -21,7 +21,7 @@ case object CaseClass
 
   def methodInCompanion1(): String
     = ???
-  
+
   def methodInCompanion2(): CaseClass
     = ???
 }

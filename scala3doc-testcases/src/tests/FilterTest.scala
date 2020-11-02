@@ -7,7 +7,7 @@ trait FilterTestBaseTrait:
   private def privateDefInheritedTrait(a: Int): String = ???
   /** doc */
   def publicDefInheritedTrait(a: Int): String = ???
-  
+
   /** doc */
   object PublicObjectInheritedTrait
   /** doc */
@@ -39,7 +39,7 @@ class FilterTestBase:
   private def privateDefInherited(a: Int): String = ???
   /** doc */
   def publicDefInherited(a: Int): String = ???
-  
+
   /** doc */
   object PublicObjectInherited
   /** doc */
@@ -51,14 +51,14 @@ class FilterTestBase:
   private val privateValInherited = 344
   /** doc */
   val publicValInherited = 567
-  
+
   /** doc */
   protected type protectedTypeInherited = 123
   /** doc */
   private type privateTypeInherited = 344
   /** doc */
   type publicTypeInherited = 567
-  
+
   /** doc */
   protected given Set[String | Int] = Set(1, "ala")
   /** doc */
@@ -87,14 +87,14 @@ class FilterTest extends FilterTestBase with FilterTestBaseTrait:
   object PublicObject
   /** doc */
   protected object ProtectedObject
-  
+
   /** doc */
   protected def protectetDef(a: B): String = ???
   /** doc */
   private def privateDef(a: C): String = ???
   /** doc */
   def publicDef(a: D): FilterTest = ???
-  
+
 
   /** doc */
   protected val protectetVal = 123
@@ -102,19 +102,19 @@ class FilterTest extends FilterTestBase with FilterTestBaseTrait:
   private val privateVal= 344
   /** doc */
   val publicVal = 567
-  
+
   /** doc */
   protected type protectedType = 123
   /** doc */
   private type privateType= 344
   /** doc */
   type publicType = 567
-  
+
   /** doc */
   protected given Seq[String | Int | Double] = List(1)
   /** doc */
   given List[String] = "ula" :: Nil
-  
+
   /** doc */
   given namedList as List[String] = "ula" :: Nil
   /** doc */
@@ -124,4 +124,4 @@ extension (e: FilterTest):
   def extensionMethod(name: FilterTest): FilterTest = ???
 
 extension (e: FilterTestBase):
-  def extensionMethodBase(name: FilterTest): FilterTest = ???    
+  def extensionMethodBase(name: FilterTest): FilterTest = ???

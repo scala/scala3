@@ -21,7 +21,7 @@ abstract class Methods()
 
   inline def inlineMethod(): Unit
     = Unit
-  
+
   implicit def toImplicitString(): String
    = "asd"
 }

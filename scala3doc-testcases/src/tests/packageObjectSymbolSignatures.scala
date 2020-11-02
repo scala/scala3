@@ -4,7 +4,7 @@ package object packageObjectSymbolSignatures
 {
   val property1: String
     = ???
-  
+
   type MyType = String
 
   val property2: Int
