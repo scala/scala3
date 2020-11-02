@@ -12,9 +12,9 @@ trait BasicSupport:
   object SymOps extends SymOps[qctx.reflect.type](qctx.reflect)
   export SymOps._
 
-  def parseAnnotation(annotTerm: Term): Annotation = 
+  def parseAnnotation(annotTerm: Term): Annotation =
     val dri = annotTerm.tpe.typeSymbol.dri
-    val params = annotTerm match 
+    val params = annotTerm match
       case Apply(target, appliedWith) => {
         appliedWith.map {
           case Literal(constant) => Annotation.PrimitiveParameter(None, constant.value match {
@@ -28,9 +28,9 @@ trait BasicSupport:
           case other => Annotation.UnresolvedParameter(None, other.show)
         }
       }
-  
+
     Annotation(dri, params)
-  
+
 
   extension (sym: Symbol):
     def documentation(using cxt: Context) = sym.documentation match
@@ -46,7 +46,7 @@ trait BasicSupport:
         case None => Map.empty
       }
 
-    def getAnnotations(): List[Annotation] = 
+    def getAnnotations(): List[Annotation] =
     sym.annots.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse
 
   private val emptyDRI = DRI.Companion.getTopLevel

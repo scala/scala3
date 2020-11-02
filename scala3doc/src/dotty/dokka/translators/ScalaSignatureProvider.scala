@@ -31,15 +31,15 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
         def driLink(text: String, dri: DRI): SignatureBuilder = ContentNodeBuilder(builder.driLink(text, dri))
     }
 
-    override def signature(documentable: Documentable) = 
-        JList(signatureContent(documentable){ builder => 
+    override def signature(documentable: Documentable) =
+        JList(signatureContent(documentable){ builder =>
             val withAnnotations = ContentNodeBuilder(builder).annotationsBlock(documentable)
             val res = ScalaSignatureProvider.rawSignature(documentable, withAnnotations)
-            res.asInstanceOf[ContentNodeBuilder].builder 
+            res.asInstanceOf[ContentNodeBuilder].builder
         })
 
-object ScalaSignatureProvider:     
-    def rawSignature(documentable: Documentable, builder: SignatureBuilder): SignatureBuilder = 
+object ScalaSignatureProvider:
+    def rawSignature(documentable: Documentable, builder: SignatureBuilder): SignatureBuilder =
         documentable match
             case extension: DFunction if extension.kind.isInstanceOf[Kind.Extension] =>
                 extensionSignature(extension, builder)
@@ -47,17 +47,17 @@ object ScalaSignatureProvider:
                 givenMethodSignature(method, builder)
             case method: DFunction =>
                 methodSignature(method, builder)
-            case enumEntry: DClass if enumEntry.kind == Kind.EnumCase => 
+            case enumEntry: DClass if enumEntry.kind == Kind.EnumCase =>
                 enumEntrySignature(enumEntry, builder)
             case clazz: DClass =>
                 classSignature(clazz, builder)
-            case enumProperty: DProperty if enumProperty.kind == Kind.EnumCase => 
+            case enumProperty: DProperty if enumProperty.kind == Kind.EnumCase =>
                 enumPropertySignature(enumProperty, builder)
             case property: DProperty =>
                 propertySignature(property, builder)
             case parameter: DParameter =>
                 parameterSignature(parameter, builder)
-            case _ => 
+            case _ =>
                 ???
 
 
@@ -73,18 +73,18 @@ object ScalaSignatureProvider:
         }
         parentsSignature(entry, withParameters)
 
-    private def enumPropertySignature(entry: DProperty, builder: SignatureBuilder): SignatureBuilder = 
+    private def enumPropertySignature(entry: DProperty, builder: SignatureBuilder): SignatureBuilder =
         val modifiedType = entry.getType match
             case t: TypeConstructor => GenericTypeConstructor(
                 t.getDri,
-                t.getProjections.asScala.map{ 
-                    case t: UnresolvedBound if t.getName == " & " => UnresolvedBound(" with "); 
+                t.getProjections.asScala.map{
+                    case t: UnresolvedBound if t.getName == " & " => UnresolvedBound(" with ");
                     case other => other
                 }.asJava,
                 null
             )
             case other => other
-        
+
         builder
             .text("case ")
             .name(entry.getName, entry.getDri)
@@ -119,27 +119,27 @@ object ScalaSignatureProvider:
         val withSinature = builder
             .modifiersAndVisibility(extension, "def")
             .name(extension.getName, extension.getDri)
-            .generics(extension)  
+            .generics(extension)
             .functionParameters(extension)
-        
+
         if extension.isConstructor then withSinature
         else withSinature.text(":").text(" ").typeSignature(extension.getType)
 
     private def givenMethodSignature(method: DFunction, builder: SignatureBuilder): SignatureBuilder = method.kind match
-        case Kind.Given(Some(instance), _) => 
+        case Kind.Given(Some(instance), _) =>
             builder.text("given ")
                 .name(method.getName, method.getDri)
                 .text(" as ")
                 .signature(instance)
-        case _ => 
+        case _ =>
             builder.text("given ").name(method.getName, method.getDri)
-        
+
 
     private def methodSignature(method: DFunction, builder: SignatureBuilder): SignatureBuilder =
         val bdr = builder
         .modifiersAndVisibility(method, "def")
         .name(method.getName, method.getDri)
-        .generics(method)  
+        .generics(method)
         .functionParameters(method)
         if !method.isConstructor then
             bdr
@@ -147,7 +147,7 @@ object ScalaSignatureProvider:
                 .text(" ")
                 .typeSignature(method.getType)
         else bdr
-        
+
 
     private def propertySignature(property: DProperty, builder: SignatureBuilder): SignatureBuilder =
         property.kind match
@@ -165,7 +165,7 @@ object ScalaSignatureProvider:
             (if tpe.concreate then bdr.text(" = ") else bdr)
                 .typeSignature(typeDef.getType)
         } else bdr
-        
+
 
     private def givenPropertySignature(property: DProperty, builder: SignatureBuilder): SignatureBuilder =
         val bdr = builder
@@ -173,8 +173,8 @@ object ScalaSignatureProvider:
             .name(property.getName, property.getDri)
 
         property.kind match
-            case Kind.Given(Some(instance), _) =>   
-                 bdr.text(" as ").signature(instance) 
+            case Kind.Given(Some(instance), _) =>
+                 bdr.text(" as ").signature(instance)
             case _ => bdr
 
     private def fieldSignature(property: DProperty, kind: String, builder: SignatureBuilder): SignatureBuilder =

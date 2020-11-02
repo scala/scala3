@@ -10,7 +10,7 @@ import HTML._
 import dotty.dokka.model.api._
 
 object DotDiagramBuilder:
-    def build(diagram: HierarchyDiagram, renderer: SignatureRenderer): String = 
+    def build(diagram: HierarchyDiagram, renderer: SignatureRenderer): String =
         val vertecies = diagram.edges.flatMap(edge => Seq(edge.from, edge.to)).distinct.map { vertex =>
             s"""node${vertex.id} [label="${getHtmlLabel(vertex, renderer)}", style="${getStyle(vertex)}"];\n"""
         }.mkString
@@ -27,14 +27,14 @@ object DotDiagramBuilder:
         |""".stripMargin
 
 
-    private def getStyle(vertex: Vertex) = vertex.body.kind match 
+    private def getStyle(vertex: Vertex) = vertex.body.kind match
         case Kind.Class => "fill: #45AD7D;"
         case Kind.Object => "fill: #285577;"
         case Kind.Trait => "fill: #1CAACF;"
         case Kind.Enum => "fill: #B66722;"
         case Kind.EnumCase => "fill: #B66722;"
         case other => sys.error(s"unexpected value: $other")
-        
+
 
     private def getHtmlLabel(vertex: Vertex, renderer: SignatureRenderer): String =
         span(style := "color: #FFFFFF;")(

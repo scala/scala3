@@ -22,7 +22,7 @@ trait ClassLikeSupport:
   private val placeholderVisibility = Map(sourceSet.getSourceSet -> KotlinVisibility.Public.INSTANCE).asJava
   private val placeholderModifier = Map(sourceSet.getSourceSet -> KotlinModifier.Empty.INSTANCE).asJava
 
-  private def kindForClasslike(sym: Symbol): Kind = 
+  private def kindForClasslike(sym: Symbol): Kind =
         if sym.flags.is(Flags.Object) then Kind.Object
         else if sym.flags.is(Flags.Trait) then Kind.Trait
         else if sym.flags.is(Flags.Enum) then Kind.Enum
@@ -34,7 +34,7 @@ trait ClassLikeSupport:
       name: String = classDef.name,
       signatureOnly: Boolean = false,
       modifiers: Seq[Modifier] = classDef.symbol.getExtraModifiers(),
-    ): DClass = 
+    ): DClass =
       val supertypes = getSupertypes(classDef).map{ case (symbol, tpe) =>
         LinkToType(tpe.dokkaType.asSignature, symbol.dri, kindForClasslike(symbol))
       }
@@ -43,18 +43,18 @@ trait ClassLikeSupport:
             .plus(ClasslikeExtension(classDef.getConstructorMethod, classDef.getCompanion))
             .plus(MemberExtension(
               classDef.symbol.getVisibility(),
-              modifiers, 
-              kindForClasslike( classDef.symbol), 
-              classDef.symbol.getAnnotations(), 
+              modifiers,
+              kindForClasslike( classDef.symbol),
+              classDef.symbol.getAnnotations(),
               selfSiangture
             ))
 
-      val fullExtra = 
-        if (signatureOnly) baseExtra 
+      val fullExtra =
+        if (signatureOnly) baseExtra
         else baseExtra.plus(CompositeMemberExtension(
-          classDef.extractMembers, 
+          classDef.extractMembers,
           classDef.getParents.map(_.dokkaType.asSignature),
-          supertypes, 
+          supertypes,
           Nil))
 
       new DClass(
@@ -76,7 +76,7 @@ trait ClassLikeSupport:
           /*isExpectActual =*/ false,
           fullExtra.asInstanceOf[PropertyContainer[DClass]]
       )
-    
+
   private val conversionSymbol = Symbol.requiredClass("scala.Conversion")
 
   def extractImplicitConversion(tpe: TypeRepr): Option[ImplicitConversion] =
@@ -87,26 +87,26 @@ trait ClassLikeSupport:
         case _ =>
           None
 
-  private def parseMember(s: Tree): Option[Member] = processTreeOpt(s)(s match 
+  private def parseMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isSyntheticFunc && dd.symbol.isExtensionMethod =>
-        dd.symbol.extendedSymbol.map { extSym => 
+        dd.symbol.extendedSymbol.map { extSym =>
           val target = ExtensionTarget(extSym.symbol.name, extSym.tpt.dokkaType.asSignature, extSym.tpt.symbol.dri)
           parseMethod(dd.symbol, kind = Kind.Extension(target))
         }
-    
+
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven =>
         Some(parseMethod(dd.symbol, kind = Kind.Given(getGivenInstance(dd).map(_.asSignature), None))) // TODO check given methods?
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isGiven && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod =>
         Some(parseMethod(dd.symbol))
 
-      case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) => 
-        Some(parseTypeDef(td))  
+      case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
+        Some(parseTypeDef(td))
 
-      case vd: ValDef if !isSyntheticField(vd.symbol) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) => 
+      case vd: ValDef if !isSyntheticField(vd.symbol) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) =>
         Some(parseValDef(vd))
 
-      case c: ClassDef if c.symbol.shouldDocumentClasslike &&  !c.symbol.isGiven => 
+      case c: ClassDef if c.symbol.shouldDocumentClasslike &&  !c.symbol.isGiven =>
         Some(parseClasslike(c))
 
       case _ => None
@@ -115,14 +115,14 @@ trait ClassLikeSupport:
   extension (c: ClassDef):
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
-    def getNonTrivialInheritedMemberTrees = 
+    def getNonTrivialInheritedMemberTrees =
       c.symbol.getAllMembers.filterNot(s => s.isHiddenByVisibility || s.maybeOwner == c.symbol)
         .filter(s => s.maybeOwner != defn.ObjectClass && s.maybeOwner != defn.AnyClass)
         .map(_.tree)
 
     def extractMembers: Seq[Member] = {
-      // val inherited = c.getNonTrivialInheritedMemberTrees.collect { 
-      //     case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd 
+      // val inherited = c.getNonTrivialInheritedMemberTrees.collect {
+      //     case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd
       //     case other => other
       //   }
 
@@ -137,7 +137,7 @@ trait ClassLikeSupport:
         parentSymbol = if parentTree.symbol.isClassConstructor then parentTree.symbol.owner else parentTree.symbol
         if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass
       yield parentTree
-      
+
 
     def getConstructors: List[Symbol] = membersToDocument.collect {
       case d: DefDef if d.symbol.isClassConstructor && c.constructor.symbol != d.symbol => d.symbol
@@ -170,7 +170,7 @@ trait ClassLikeSupport:
     DClass(classDef)(
       name = classDef.name.stripSuffix("$"),
       // All objects are final so we do not need final modifer!
-      modifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Final), 
+      modifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Final),
       signatureOnly = signatureOnly
     )
 
@@ -193,7 +193,7 @@ trait ClassLikeSupport:
 
     val classlikie = DClass(classDef)(modifiers = extraModifiers, signatureOnly = signatureOnly)
     classlikie.withNewMembers((enumVals ++ enumTypes ++ enumNested).map(_.withKind(Kind.EnumCase))).asInstanceOf[DClass]
-   
+
   def parseMethod(
       methodSymbol: Symbol,
       emptyParamsList: Boolean = false,
@@ -204,15 +204,15 @@ trait ClassLikeSupport:
     val paramLists = if emptyParamsList then Nil else method.paramss
     val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.typeParams
 
-    val methodKind = 
-      if methodSymbol.isClassConstructor then Kind.Constructor 
+    val methodKind =
+      if methodSymbol.isClassConstructor then Kind.Constructor
       else if methodSymbol.flags.is(Flags.Implicit) then extractImplicitConversion(method.returnTpt.tpe) match
-        case Some(conversion) if paramLists.size == 0 || (paramLists.size == 1 && paramLists.head.size == 0) => 
+        case Some(conversion) if paramLists.size == 0 || (paramLists.size == 1 && paramLists.head.size == 0) =>
           Kind.Implicit(Kind.Def, Some(conversion))
-        case _ => 
+        case _ =>
           Kind.Implicit(Kind.Def, None)
       else kind
-    
+
     val name = methodKind match
       case Kind.Constructor => "this"
       case Kind.Given(_, _) => methodSymbol.name.stripPrefix("given_")
@@ -237,9 +237,9 @@ trait ClassLikeSupport:
       PropertyContainer.Companion.empty()
         plus MethodExtension(paramLists.map(_.size))
         plus(MemberExtension(
-          methodSymbol.getVisibility(), 
-          methodSymbol.getExtraModifiers(), 
-          methodKind, 
+          methodSymbol.getVisibility(),
+          methodSymbol.getExtraModifiers(),
+          methodKind,
           methodSymbol.getAnnotations(),
           method.returnTpt.dokkaType.asSignature
         ))
@@ -293,7 +293,7 @@ trait ClassLikeSupport:
       /*documentation =*/ typeDef.symbol.documentation.asJava,
       /*expectPresentInSet =*/ null, // unused
       /*sources =*/ typeDef.symbol.source.asJava,
-      /*visibility =*/ placeholderVisibility, 
+      /*visibility =*/ placeholderVisibility,
       /*type =*/ tpeTree.dokkaType, // TODO this may be hard...
       /*receiver =*/ null, // Not used
       /*setter =*/ null,
@@ -304,7 +304,7 @@ trait ClassLikeSupport:
        /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty() plus MemberExtension(
         typeDef.symbol.getVisibility(),
-        typeDef.symbol.getExtraModifiers(), 
+        typeDef.symbol.getExtraModifiers(),
         Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque),
         typeDef.symbol.getAnnotations(),
         tpeTree.dokkaType.asSignature
@@ -317,11 +317,11 @@ trait ClassLikeSupport:
         .map(_.tree.asInstanceOf[ClassDef])
         .flatMap(_.getParents.headOption)
         .map(_.dokkaType.asSignature)
-    
+
     def defaultKind = if valDef.symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val
-    val kind = 
+    val kind =
       if valDef.symbol.isGiven then Kind.Given(givenInstance, extractImplicitConversion(valDef.tpt.tpe))
-      else if valDef.symbol.flags.is(Flags.Implicit) then 
+      else if valDef.symbol.flags.is(Flags.Implicit) then
         Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
       else defaultKind
 
@@ -341,11 +341,11 @@ trait ClassLikeSupport:
       /*generics =*/ Nil.asJava,
        /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty().plus(MemberExtension(
-          valDef.symbol.getVisibility(), 
-          valDef.symbol.getExtraModifiers(), 
+          valDef.symbol.getVisibility(),
+          valDef.symbol.getExtraModifiers(),
           kind,
           valDef.symbol.getAnnotations(),
           valDef.tpt.tpe.dokkaType.asSignature
       ))
     )
-  
+

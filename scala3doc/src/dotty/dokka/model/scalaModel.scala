@@ -6,7 +6,7 @@ import org.jetbrains.dokka.model._
 import collection.JavaConverters._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
-import org.jetbrains.dokka.model.properties._  
+import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.pages._
 import java.util.{List => JList, Set => JSet}
 import dotty.dokka.model.api.Signature
@@ -22,9 +22,9 @@ enum TableStyle extends org.jetbrains.dokka.pages.Style:
   case NestedDescriptionList
 
 case class HtmlContentNode(
-  val body: String, 
-  val dci: DCI, 
-  val sourceSets: Set[DisplaySourceSet], 
+  val body: String,
+  val dci: DCI,
+  val sourceSets: Set[DisplaySourceSet],
   val style: Set[Style],
   val extra: PropertyContainer[ContentNode] = PropertyContainer.Companion.empty
 ) extends ContentNode:
@@ -59,9 +59,9 @@ object ScalaTagWrapper {
 case class ImplicitConversion(conversion: Documentable, from: DRI, to: DRI)
 
 case class HierarchyDiagramContentNode(
-  val diagram: HierarchyDiagram, 
-  val dci: DCI, 
-  val sourceSets: Set[DisplaySourceSet], 
+  val diagram: HierarchyDiagram,
+  val dci: DCI,
+  val sourceSets: Set[DisplaySourceSet],
   val style: Set[Style],
   val extra: PropertyContainer[ContentNode] = PropertyContainer.Companion.empty
 ) extends ContentNode:
@@ -75,8 +75,8 @@ case class HierarchyDiagramContentNode(
   override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
 
 case class ContentNodeParams(
-  val dci: DCI, 
-  val sourceSets: java.util.Set[DisplaySourceSet], 
+  val dci: DCI,
+  val sourceSets: java.util.Set[DisplaySourceSet],
   val style: Set[Style],
   val extra: PropertyContainer[ContentNode] = PropertyContainer.Companion.empty
 ):
@@ -89,12 +89,12 @@ abstract class ScalaContentNode(params: ContentNodeParams) extends ContentNode:
   override def getSourceSets = params.sourceSets
   override def getStyle = params.style.asJava
   override def hasAnyContent = true
-  def withSourceSets(sourceSets: JSet[DisplaySourceSet]) = 
+  def withSourceSets(sourceSets: JSet[DisplaySourceSet]) =
     newInstance(params.copy(sourceSets = sourceSets))
   override def getChildren: JList[ContentNode] = Nil.asJava
   override def getExtra = params.extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = newInstance(params.copy(extra = p))
-   
+
 case class DocumentableElement(
   annotations: Signature,
   modifiers: Signature,
@@ -118,7 +118,7 @@ case class DocumentableElementGroup(
 
 case class DocumentableList(
   groupName: Signature,
-  elements: Seq[DocumentableElement | DocumentableElementGroup], 
+  elements: Seq[DocumentableElement | DocumentableElementGroup],
   params: ContentNodeParams
 ) extends ScalaContentNode(params):
   override def newInstance(params: ContentNodeParams) = copy(params = params)

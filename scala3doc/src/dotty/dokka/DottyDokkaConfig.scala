@@ -25,7 +25,7 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
 
   override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] = List(OurConfig).asJava
 
-  def mkSourceSet: DokkaConfiguration.DokkaSourceSet = 
+  def mkSourceSet: DokkaConfiguration.DokkaSourceSet =
     val sourceLinks:Set[SourceLinkDefinitionImpl] = docConfiguration.args.sourceLinks.map(SourceLinkDefinitionImpl.Companion.parseSourceLinkDefinition(_)).toSet
     new DokkaSourceSetImpl(
       /*displayName=*/ docConfiguration.args.name,

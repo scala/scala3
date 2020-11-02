@@ -68,8 +68,8 @@ class DocumentableList extends Component {
   }
 }
 
-class List { 
-  filterTab(name) { 
+class List {
+  filterTab(name) {
     return name !== "Linear supertypes" && name !== "Known subtypes" && name !== "Type hierarchy"
   }
 
