@@ -2,7 +2,22 @@ const defaultFilterGroup = {
   FOrdering: { Alphabetical: true },
 };
 
+/**
+ * @typedef { Object } FilterItem
+ * @prop { string } selected
+ * @prop { number } visible
+ */
+
+ /**
+ * @typedef { Record<string, FilterItem> } Filters
+ */
+
 class Filter {
+  /**
+   * @param value { string }
+   * @param filters { Filters }
+   * @param elementsRefs { Element }
+   */
   constructor(value, filters, elementsRefs, init = false) {
     this._init = init;
     this._value = value;
@@ -23,6 +38,10 @@ class Filter {
     return this._elementsRefs;
   }
 
+  /**
+  * @param key { string }
+  * @param value { string }
+  */
   onFilterToggle(key, value) {
     return new Filter(
       this.value,
@@ -31,6 +50,10 @@ class Filter {
     );
   }
 
+  /**
+  * @param key { string }
+  * @param isActive { boolean }
+  */
   onGroupSelectionChange(key, isActive) {
     return new Filter(
       this.value,
@@ -39,6 +62,10 @@ class Filter {
     );
   }
 
+  /**
+  * @param value { string }
+  * @returns { FilterItem }
+  */
   onInputValueChange(value) {
     return new Filter(
       value,
@@ -47,6 +74,11 @@ class Filter {
     );
   }
 
+  /**
+  * @private
+  * @param value { string }
+  * @returns { Filters }
+  */
   _generateFiltersOnTyping(value) {
     return this.elementsRefs
       .filter((elRef) => {
@@ -72,6 +104,10 @@ class Filter {
       }, this._allFiltersAreHidden());
   }
 
+  /**
+  * @private
+  * @returns { Filters }
+  */
   _allFiltersAreHidden() {
     return Object.entries(this.filters).reduce(
       (filters, [key, filterGroup]) => {
@@ -87,6 +123,12 @@ class Filter {
     );
   }
 
+  /**
+  * @private
+  * @param key { string }
+  * @param isActive { boolean }
+  * @returns { Filters }
+  */
   _withNewSelectionOfGroup(key, isActive) {
     return {
       ...this.filters,
@@ -103,8 +145,13 @@ class Filter {
     };
   }
 
+ /**
+  * @private
+  * @returns { Filters }
+  */
   _withNewFilters() {
-    return this._elementsRefs.reduce((filtersObject, elementRef) => {
+    console.log("this._elementsRefs", this._elementsRefs)
+    const newFilters = this._elementsRefs.reduce((filtersObject, elementRef) => {
       this._getDatasetWithF(elementRef.dataset).map(([key, value]) =>
         this._splitByComma(value).map((val) => {
           if (!filtersObject[key]) {
@@ -112,18 +159,23 @@ class Filter {
           } else {
             filtersObject[key] = {
               ...filtersObject[key],
-              [val]: filtersObject[key][val] ?? {
-                selected: true,
-                visible: true,
-              },
+              [val]: filtersObject[key][val] ?? { selected: true, visible: true },
             };
           }
         })
       );
       return filtersObject;
     }, {});
+    console.log("newFilters", newFilters)
+    return newFilters
   }
 
+  /**
+  * @private
+  * @param key { string }
+  * @param value { string }
+  * @returns { Filters }
+  */
   _withToggledFilter(key, value) {
     return {
       ...this.filters,
@@ -137,10 +189,16 @@ class Filter {
     };
   }
 
+  /**
+  * @private
+  * @param str { string }
+  */
   _splitByComma = (str) => str.split(",");
 
+  /**
+  * @private
+  * @param dataset { DOMStringMap }
+  */
   _getDatasetWithF = (dataset) =>
-    Object.entries(dataset).filter(([key]) => this._startsWithF(key));
-
-  _startsWithF = (str) => startsWith(str, "f");
+    Object.entries(dataset).filter(([key]) => startsWith(key, "f"));
 }
