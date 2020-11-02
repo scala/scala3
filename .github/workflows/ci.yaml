@@ -4,12 +4,12 @@ on:
   push:
     paths-ignore:
       # Do not run everything on changes only in docs
-      - 'scala3doc/**' 
+      - 'scala3doc/**'
       - 'scala3doc-testcases/**'
   pull_request:
     paths-ignore:
       # Do not run everything on changes only in docs
-      - 'scala3doc/**' 
+      - 'scala3doc/**'
       - 'scala3doc-testcases/**'
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
@@ -20,13 +20,13 @@ env:
 jobs:
   test:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-04-24
+    container: lampepfl/dotty:2020-09-08
     if: "!(github.event_name == 'push' &&
            startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
 
     steps:
       - name: Set JDK 11 as default
-        run: echo "/usr/lib/jvm/java-11-openjdk-amd64/bin" >> $GITHUB_PATH
+        run: echo "/usr/lib/jvm/java-14-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -65,13 +65,13 @@ jobs:
 
   test_bootstrapped:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-04-24
+    container: lampepfl/dotty:2020-09-08
     if: "!(github.event_name == 'push' &&
            startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
 
     steps:
       - name: Set JDK 11 as default
-        run: echo "/usr/lib/jvm/java-11-openjdk-amd64/bin" >> $GITHUB_PATH
+        run: echo "/usr/lib/jvm/java-14-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -143,7 +143,7 @@ jobs:
 
   community_build:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-04-24
+    container: lampepfl/dotty:2020-09-08
 
     steps:
       - name: Checkout cleanup script
@@ -184,7 +184,7 @@ jobs:
 
   test_sbt:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-04-24
+    container: lampepfl/dotty:2020-09-08
     if: (
           github.event_name == 'push' &&
           startsWith(github.event.ref, 'refs/tags/')
@@ -227,7 +227,7 @@ jobs:
 
   test_java8:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-04-24
+    container: lampepfl/dotty:2020-09-08
     if: "(
           github.event_name == 'push' &&
           startsWith(github.event.ref, 'refs/tags/') &&
@@ -274,7 +274,7 @@ jobs:
 
   publish_nightly:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-04-24
+    container: lampepfl/dotty:2020-09-08
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
     if: github.event_name == 'schedule'
     env:
@@ -321,7 +321,7 @@ jobs:
 
   nightly_documentation:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-04-24
+    container: lampepfl/dotty:2020-09-08
     needs: [publish_nightly]
     if: github.event_name == 'schedule'
     env:
@@ -375,7 +375,7 @@ jobs:
 
   publish_release:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-04-24
+    container: lampepfl/dotty:2020-09-08
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
@@ -470,7 +470,7 @@ jobs:
 
   release_documentation:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-04-24
+    container: lampepfl/dotty:2020-09-08
     needs: [publish_release]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
@@ -527,7 +527,7 @@ jobs:
 
   publish_sbt_release:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-04-24
+    container: lampepfl/dotty:2020-09-08
     needs: [community_build, test_sbt]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
