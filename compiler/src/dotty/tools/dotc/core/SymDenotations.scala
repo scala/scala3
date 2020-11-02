@@ -496,7 +496,7 @@ object SymDenotations {
     def fullName(using Context): Name = fullNameSeparated(QualifiedName)
 
     /** The name given in a `@targetName` annotation if one is present, `name` otherwise */
-    final def erasedName(using Context): Name =
+    def erasedName(using Context): Name =
       val targetNameAnnot =
         if isAllOf(ModuleClass | Synthetic) then companionClass.getAnnotation(defn.TargetNameAnnot)
         else getAnnotation(defn.TargetNameAnnot)
@@ -2318,6 +2318,7 @@ object SymDenotations {
     override def mapInfo(f: Type => Type)(using Context): SingleDenotation = this
 
     override def matches(other: SingleDenotation)(using Context): Boolean = false
+    override def erasedName(using Context): Name = EmptyTermName
     override def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(using Context): SingleDenotation = this
     override def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation = this
     override def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation = this
