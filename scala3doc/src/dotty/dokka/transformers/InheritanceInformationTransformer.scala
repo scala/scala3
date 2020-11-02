@@ -24,4 +24,3 @@ class InheritanceInformationTransformer(val ctx: DokkaContext) extends Documenta
         case c: Member  => 
             val selfMapping = if !c.kind.isInstanceOf[Classlike] then Nil else c.parents.map(_._2 -> c.asLink)            
             c.allMembers.flatMap(getSupertypes) ++ selfMapping
-        case other => List.empty

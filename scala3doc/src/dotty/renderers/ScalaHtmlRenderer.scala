@@ -25,7 +25,7 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
     def renderLink(name: String, dri: DRI, modifiers: AppliedAttr*) =
         link(dri) match
             case Some(link) => a(href := link, modifiers)(name)
-            case _ => span(attr("data-unresolved-link") := dri.toString, modifiers)(name)
+            case _ => span(Attr("data-unresolved-link") := dri.toString, modifiers)(name)
  
     def renderElementWith(e: String | (String, DRI) | Link, modifiers: AppliedAttr*) = e match
         case (name, dri) => renderLink(name, dri, modifiers:_*)
@@ -204,7 +204,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
 
     def buildDiagram(f: FlowContent, diagram: HierarchyGraph, pageContext: ContentPage) = 
         val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
-        withHtml(f, div( id := "inheritance-diagram", cls := "diagram-class",
+        withHtml(f, div( id := "inheritance-diagram", cls := "diagram-class")(
                 svg(id := "graph"),
                 script(`type` := "text/dot", id := "dot")(raw(DotDiagramBuilder.build(diagram, renderer))),
             ).toString()
