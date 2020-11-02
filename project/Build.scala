@@ -1495,13 +1495,13 @@ object Build {
             (`tasty-core`/Compile/compile).value
             (`scala3-library`/Compile/compile).value
             // TODO we can't load stdlib from Tasty
-            // (`stdlib-bootstrapped`/Compile/compile).value
+            (`stdlib-bootstrapped`/Compile/compile).value
 
             val dottyJars = Seq(
               (`scala3-interfaces`/Compile/classDirectory).value,
               (`tasty-core`/Compile/classDirectory).value,
               (`scala3-library`/Compile/classDirectory).value,
-              // (`stdlib-bootstrapped`/Compile/classDirectory).value,
+              (`stdlib-bootstrapped`/Compile/classDirectory).value,
             )
 
             val roots = dottyJars.map(_.toString).mkString(java.io.File.pathSeparator)
