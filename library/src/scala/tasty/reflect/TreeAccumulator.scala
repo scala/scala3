@@ -57,7 +57,7 @@ trait TreeAccumulator[X] {
         foldTree(x, meth)
       case Match(selector, cases) =>
         foldTrees(foldTree(x, selector), cases)
-      case Return(expr) =>
+      case Return(expr, _) =>
         foldTree(x, expr)
       case Try(block, handler, finalizer) =>
         foldTrees(foldTrees(foldTree(x, block), handler), finalizer)

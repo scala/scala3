@@ -866,16 +866,18 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     end ReturnTypeTest
 
     object Return extends ReturnModule:
-      def apply(expr: Term): Return =
-        withDefaultPos(tpd.Return(expr, ctx.owner))
-      def copy(original: Tree)(expr: Term): Return =
-        tpd.cpy.Return(original)(expr, tpd.ref(ctx.owner))
-      def unapply(x: Return): Option[Term] = Some(x.expr)
+      def apply(expr: Term, from: Symbol): Return =
+        withDefaultPos(tpd.Return(expr, from))
+      def copy(original: Tree)(expr: Term, from: Symbol): Return =
+        tpd.cpy.Return(original)(expr, tpd.ref(from))
+      def unapply(x: Return): Option[(Term, Symbol)] =
+        Some((x.expr, x.from.symbol))
     end Return
 
     object ReturnMethodsImpl extends ReturnMethods:
       extension (self: Return):
         def expr: Term = self.expr
+        def from: Symbol = self.from.symbol
       end extension
     end ReturnMethodsImpl
 
