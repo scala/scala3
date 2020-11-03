@@ -1,6 +1,7 @@
 /**
  * @typedef { import("./Filter").Filter } Filter
  * @typedef { { ref: Element; name: string; description: string } } ListElement
+ *  @typedef { [key: string, value: string][] } Dataset
  */
 
 class DocumentableList extends Component {
@@ -132,37 +133,42 @@ class List {
     }
 
     function areFiltersFromElementSelected() {
-      /** @type { [key: string, value: string][] } */
-      const dataset = Object.entries(elementData.ref.dataset) 
-      
-      const datasetWithFilterData = dataset.filter(([key]) => isFilterData(key));
+      /** @type { Dataset } */
+      const dataset = Object.entries(elementData.ref.dataset)
 
-      return hasCorrespondingFilters() || haveDefaultFilters()
+      /** @type { Dataset } */
+      const defaultFilters = Object.entries(Filter.defaultFilters)
+        .filter(([key]) => !!filter.filters[getFilterKey(key)])
 
-      function haveDefaultFilters() {
-        return (
-          Object.entries(Filter.defaultFilters).some(([key, value]) => {
-            const filterKey = getFilterKey(key)
-      
-            return (
-              filter.filters[filterKey] && 
-              filter.filters[filterKey][value].selected && 
-              !dataset.some(([k]) => k === filterKey)
-            )
-           }
-          )
-        )
-      }
-       
-      // check if any selected filter is on data attr
-      function hasCorrespondingFilters() {
-        return datasetWithFilterData
-          .some(([filterKey, value]) => 
-            value.split(",").some(val => 
-              filter.filters[filterKey] && filter.filters[filterKey][val].selected
-            )
-          )
-      }
+       /** @type { Dataset } */
+      const defaultFiltersForMembersWithoutDataAttribute = 
+        defaultFilters.reduce((acc, [key, value]) => {
+          const filterKey = getFilterKey(key)
+          const shouldAddDefaultFilter = !dataset.some(([k]) => k === filterKey)
+          return shouldAddDefaultFilter ? [...acc, [filterKey, value]] : acc
+        }, [])
+
+      /** @type { Dataset } */
+      const datasetWithAppendedDefaultFilters = dataset
+        .filter(([k]) => isFilterData(k))
+        .map(([k, v]) => {
+          const defaultFilter = defaultFilters.find(([defaultKey]) => defaultKey === k)
+          return defaultFilter ? [k, `${v},${defaultFilter[1]}`] : [k, v]
+        })
+
+      const datasetWithDefaultFilters = [ 
+        ...defaultFiltersForMembersWithoutDataAttribute,
+        ...datasetWithAppendedDefaultFilters
+      ]
+
+      const isVisible = datasetWithDefaultFilters
+        .every(([filterKey, value]) => {
+          const filterGroup = filter.filters[filterKey]
+
+          return value.split(",").some(v => filterGroup && filterGroup[v].selected)
+        })
+
+      return isVisible
     }
   }
 
