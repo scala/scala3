@@ -158,7 +158,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YretainTrees: Setting[Boolean] = BooleanSetting("-Yretain-trees", "Retain trees for top-level classes, accessible from ClassSymbol#tree")
   val Ysemanticdb: Setting[Boolean] = BooleanSetting("-Ysemanticdb", "Store information in SemanticDB.")
   val YshowTreeIds: Setting[Boolean] = BooleanSetting("-Yshow-tree-ids", "Uniquely tag all tree nodes in debugging output.")
-  val YfromTastyBlacklist: Setting[List[String]] = MultiStringSetting("-Yfrom-tasty-blacklist", "file", "List of `tasty` files in jar files that will not be loaded when using -from-tasty")
+  val YfromTastyIgnoreList: Setting[List[String]] = MultiStringSetting("-Yfrom-tasty-ignore-list", "file", "List of `tasty` files in jar files that will not be loaded when using -from-tasty")
 
   val YprofileEnabled: Setting[Boolean] = BooleanSetting("-Yprofile-enabled", "Enable profiling.")
   val YprofileDestination: Setting[String] = StringSetting("-Yprofile-destination", "file", "Where to send profiling output - specify a file, default is to the console.", "")

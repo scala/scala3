@@ -120,7 +120,7 @@ object BootstrappedStdLibTASYyTest:
   def compileFromTastyInJar(blacklisted: Set[String]): Unit = {
     val driver = new dotty.tools.dotc.Driver
     val yFromTastyBlacklist =
-      blacklisted.mkString("-Yfrom-tasty-blacklist:", ",", "")
+      blacklisted.mkString("-Yfrom-tasty-ignore-list:", ",", "")
     val args = Array(
       "-classpath", ClasspathFromClassloader(getClass.getClassLoader),
       "-from-tasty",

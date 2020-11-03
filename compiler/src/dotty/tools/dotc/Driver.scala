@@ -86,7 +86,7 @@ class Driver {
   protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) =
     given Context = ctx0
     if (ctx0.settings.fromTasty.value) {
-      val fromTastyBlacklist = ctx0.settings.YfromTastyBlacklist.value.toSet
+      val fromTastyIgnoreList = ctx0.settings.YfromTastyIgnoreList.value.toSet
       // Resolve classpath and class names of tasty files
       val (classPaths, classNames) = fileNames0.flatMap { name =>
         val path = Paths.get(name)
@@ -97,7 +97,7 @@ class Driver {
           Nil
         else if name.endsWith(".jar") then
           new dotty.tools.io.Jar(File(name)).toList.collect {
-            case e if e.getName.endsWith(".tasty") && !fromTastyBlacklist(e.getName) =>
+            case e if e.getName.endsWith(".tasty") && !fromTastyIgnoreList(e.getName) =>
               (name, e.getName.stripSuffix(".tasty").replace("/", "."))
           }
         else
