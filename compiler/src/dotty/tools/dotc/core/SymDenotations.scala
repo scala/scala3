@@ -1889,10 +1889,20 @@ object SymDenotations {
      *  The elements of the returned pre-denotation all have existing symbols.
      */
     final def nonPrivateMembersNamed(name: Name)(using Context): PreDenotation =
+      membersNamedNoShadowingBasedOnFlags(name, excluded = Private)
+
+    /** All members of this class that have the given name and match the
+     *  `required` and `excluded` flag sets; members excluded based on the
+     *  flag sets do not shadow inherited members that would not be excluded.
+     *
+     *  The elements of the returned pre-denotation all have existing symbols.
+     */
+    final def membersNamedNoShadowingBasedOnFlags(name: Name,
+        required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =
       val mbr = membersNamed(name)
-      val nonPrivate = mbr.filterWithFlags(EmptyFlags, Private)
-      if nonPrivate eq mbr then mbr
-      else addInherited(name, nonPrivate)
+      val filtered = mbr.filterWithFlags(required, excluded)
+      if filtered eq mbr then mbr
+      else addInherited(name, filtered, required, excluded)
 
     private[core] def computeMembersNamed(name: Name)(using Context): PreDenotation =
       Stats.record("computeMembersNamed")
@@ -1901,13 +1911,14 @@ object SymDenotations {
         println(s"$this.member($name), ownDenots = $ownDenots")
       addInherited(name, ownDenots)
 
-    private def addInherited(name: Name, ownDenots: PreDenotation)(using Context): PreDenotation =
+    private def addInherited(name: Name, ownDenots: PreDenotation,
+        required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =
       def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match
         case p :: ps =>
           val denots1 = collect(denots, ps)
           p.classSymbol.denot match
             case parentd: ClassDenotation =>
-              val inherited = parentd.nonPrivateMembersNamed(name)
+              val inherited = parentd.membersNamedNoShadowingBasedOnFlags(name, required, excluded | Private)
               denots1.union(inherited.mapInherited(ownDenots, denots1, thisType))
             case _ =>
               denots1
@@ -1918,6 +1929,10 @@ object SymDenotations {
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
       raw.filterWithFlags(required, excluded).asSeenFrom(pre).toDenot(pre)
+
+    final def findMemberNoShadowingBasedOnFlags(name: Name, pre: Type,
+        required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): Denotation =
+      membersNamedNoShadowingBasedOnFlags(name, required, excluded).asSeenFrom(pre).toDenot(pre)
 
     /** Compute tp.baseType(this) */
     final def baseTypeOf(tp: Type)(using Context): Type = {

@@ -139,12 +139,14 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       }
 
       checkJSNameAnnots(sym)
+      constFoldJSExportTopLevelAndStaticAnnotations(sym)
 
       markExposedIfRequired(tree.symbol)
 
       tree match {
         case tree: TypeDef if tree.isClassDef =>
-          registerClassOrModuleExports(sym)
+          checkClassOrModuleExports(sym)
+
           if (isJSAny(sym))
             transformJSClassDef(tree)
           else
@@ -154,14 +156,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           super.transform(tree)
 
         case tree: ValOrDefDef =>
-          /* Prepare exports for methods, local defs and local variables.
-           * Avoid *fields* (non-local non-method) because they all have a
-           * corresponding getter, which is the one that handles exports.
-           * (Note that local-to-block can never have exports, but the error
-           * messages for that are handled by genExportMember).
-           */
-          if (sym.is(Method) || sym.isLocalToBlock)
-            exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++= genExportMember(sym)
+          // Prepare exports
+          exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++= genExportMember(sym)
 
           if (sym.isLocalToBlock)
             super.transform(tree)
@@ -231,6 +227,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       exporters.get(clsSym).fold {
         transformedTree
       } { exports =>
+        checkNoDoubleDeclaration(clsSym)
+
         cpy.Template(transformedTree)(
           transformedTree.constr,
           transformedTree.parents,
@@ -834,6 +832,45 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
               argTree)
         }
       }
+    }
+
+    /** Constant-folds arguments to `@JSExportTopLevel` and `@JSExportStatic`.
+     *
+     *  Unlike scalac, dotc does not constant-fold expressions in annotations.
+     *  Our back-end needs to have access to the arguments to those two
+     *  annotations as literal strings, so we specifically constant-fold them
+     *  here.
+     */
+    private def constFoldJSExportTopLevelAndStaticAnnotations(sym: Symbol)(using Context): Unit = {
+      val annots = sym.annotations
+      val newAnnots = annots.mapConserve { annot =>
+        if (annot.symbol == jsdefn.JSExportTopLevelAnnot || annot.symbol == jsdefn.JSExportStaticAnnot) {
+          annot.tree match {
+            case app @ Apply(fun, args) =>
+              val newArgs = args.mapConserve { arg =>
+                arg match {
+                  case _: Literal =>
+                    arg
+                  case _ =>
+                    arg.tpe.widenTermRefExpr.normalized match {
+                      case ConstantType(c) => Literal(c).withSpan(arg.span)
+                      case _               => arg // PrepJSExports will emit an error for those cases
+                    }
+                }
+              }
+              if (newArgs eq args)
+                annot
+              else
+                Annotation(cpy.Apply(app)(fun, newArgs))
+            case _ =>
+              annot
+          }
+        } else {
+          annot
+        }
+      }
+      if (newAnnots ne annots)
+        sym.annotations = newAnnots
     }
 
     /** Mark the symbol as exposed if it is a non-private term member of a
