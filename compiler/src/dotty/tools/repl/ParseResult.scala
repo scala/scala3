@@ -102,7 +102,7 @@ case object Help extends Command {
       |:load <path>             interpret lines in a file
       |:quit                    exit the interpreter
       |:type <expression>       evaluate the type of the given expression
-      |:doc <expression>        print the documentation for the given expresssion
+      |:doc <expression>        print the documentation for the given expression
       |:imports                 show import history
       |:reset                   reset the repl to its initial state, forgetting all session entries
     """.stripMargin
