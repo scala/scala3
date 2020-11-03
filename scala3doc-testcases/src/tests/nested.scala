@@ -1,16 +1,16 @@
 package tests.nested
 
-class A 
+class A
 {
-  object B 
+  object B
   {
     def bb(): Int
       = 123
-    val a: Double 
+    val a: Double
       = 0.3
   }
 
-  class C 
+  class C
   {
     def cc: Int
       = 123
@@ -22,17 +22,17 @@ class A
   }
 }
 
-object R 
+object R
 {
-  object B 
+  object B
   {
     def bb(): Int
       = 123
-    val a: Double 
+    val a: Double
       = 0.3
   }
 
-  class C 
+  class C
   {
     def cc: Int
       = 123
@@ -50,7 +50,7 @@ class X
 }
 
 // bug found in dotty code, still fails with type
-sealed trait ErrorKind 
+sealed trait ErrorKind
 object ErrorKind
 {
   // This below produce some strange type

@@ -3,8 +3,8 @@ package objectSignatures
 
 class A[T]
 {
-    val a: String = "asd"
-    def method3() = "asd"
+  val a: String = "asd"
+  def method3() = "asd"
 }
 
 object A
@@ -16,4 +16,4 @@ object Base
 object A2 extends A[String] with C
 
 // We are not going to add final below
-// final object B 
+// final object B

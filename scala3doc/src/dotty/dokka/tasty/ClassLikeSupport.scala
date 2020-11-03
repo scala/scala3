@@ -14,7 +14,6 @@ import dotty.dokka.model.api.Kind
 import dotty.dokka.model.api.ImplicitConversion
 import dotty.dokka.model.api.{Signature => DSignature, Link => DLink}
 
-
 trait ClassLikeSupport:
   self: TastyParser =>
   import qctx.reflect._
@@ -35,10 +34,28 @@ trait ClassLikeSupport:
       signatureOnly: Boolean = false,
       modifiers: Seq[Modifier] = classDef.symbol.getExtraModifiers(),
     ): DClass =
-      val supertypes = getSupertypes(classDef).map{ case (symbol, tpe) =>
-        LinkToType(tpe.dokkaType.asSignature, symbol.dri, kindForClasslike(symbol))
+
+      // This Try is here because of problem that code compiles, but at runtime fails claiming
+      // java.lang.ClassCastException: class dotty.tools.dotc.ast.Trees$DefDef cannot be cast to class dotty.tools.dotc.ast.Trees$TypeDef (dotty.tools.dotc.ast.Trees$DefDef and dotty.tools.dotc.ast.Trees$TypeDef are in unnamed module of loader 'app')
+      // It is probably bug in Tasty
+      def hackGetParents(classDef: ClassDef): Option[List[Tree]] = scala.util.Try(classDef.parents).toOption
+
+      def getSupertypesGraph(classDef: ClassDef, link: LinkToType): Seq[(LinkToType, LinkToType)] =
+        val smbl = classDef.symbol
+        val parents = if smbl.exists then hackGetParents(smbl.tree.asInstanceOf[ClassDef]) else None
+        parents.fold(Seq())(_.flatMap { case tree =>
+            val symbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
+            val superLink = LinkToType(tree.dokkaType.asSignature, symbol.dri, kindForClasslike(symbol))
+            Seq(link -> superLink) ++ getSupertypesGraph(tree.asInstanceOf[ClassDef], superLink)
+          }
+        )
+
+      val supertypes = getSupertypes(classDef).map {
+        case (symbol, tpe) => LinkToType(tpe.dokkaType.asSignature, symbol.dri, kindForClasslike(symbol))
       }
       val selfSiangture: DSignature = typeForClass(classDef).dokkaType.asSignature
+
+      val graph = HierarchyGraph.withEdges(getSupertypesGraph(classDef, LinkToType(selfSiangture, classDef.symbol.dri, kindForClasslike(classDef.symbol))))
       val baseExtra = PropertyContainer.Companion.empty()
             .plus(ClasslikeExtension(classDef.getConstructorMethod, classDef.getCompanion))
             .plus(MemberExtension(
@@ -46,7 +63,8 @@ trait ClassLikeSupport:
               modifiers,
               kindForClasslike( classDef.symbol),
               classDef.symbol.getAnnotations(),
-              selfSiangture
+              selfSiangture,
+              graph = graph
             ))
 
       val fullExtra =

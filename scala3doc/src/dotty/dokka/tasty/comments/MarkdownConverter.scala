@@ -161,17 +161,8 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
     case _: mda.SoftLineBreak => emit(dkkd.Br.INSTANCE)
 
     case _ =>
-      println(s"!!! DEFAULTING @ ${n.getNodeName}")
-      emit(dkkd.P(
-        List[dkkd.DocTag](
-          dkkd.Span(
-            List(dkk.text(s"!!! DEFAULTING @ ${n.getNodeName}")).asJava,
-            kt.emptyMap,
-          ),
-          dkk.text(MarkdownParser.renderToText(n))
-        ).asJava,
-        kt.emptyMap[String, String]
-      ))
+      println(s"WARN: Encountered unrecognised Markdown node `${n.getNodeName}`, please open an issue.")
+      emit(dkk.text(MarkdownParser.renderToText(n)))
   }
 
   def extractAndConvertSummary(doc: mdu.Document): Option[dkkd.DocTag] =
@@ -189,7 +180,8 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
         case Some((sym, targetText)) =>
           dkkd.DocumentationLink(sym.dri, resolveBody(default = targetText), kt.emptyMap)
         case None =>
-          dkkd.A(resolveBody(default = query.join), Map("href" -> "#").asJava)
+          println(s"WARN: Definition lookup for following query failed: $queryStr")
+          dkkd.A(resolveBody(default = query.join), Map("title" -> s"Definition was not found: $queryStr", "href" -> "#").asJava)
       }
     }
   }

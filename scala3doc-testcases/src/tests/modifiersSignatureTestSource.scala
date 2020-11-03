@@ -13,28 +13,28 @@ sealed class Sealed()
 open class Open
 
 opaque type Opaque
-    = Open
+  = Open
 
 abstract class Methods()
 {
-    def method1(): Unit
+  def method1(): Unit
 
-    inline def inlineMethod(): Unit
-        = Unit
-    
-    implicit def toImplicitString(): String
-     = "asd"
+  inline def inlineMethod(): Unit
+    = Unit
+
+  implicit def toImplicitString(): String
+   = "asd"
 }
 
 class ImplementedMethods() extends Methods/*<-*/()/*->*/
 {
-    override def method1(): Unit
-        = ???
+  override def method1(): Unit
+    = ???
 
 }
 
 case class ReimplementedMethods() extends ImplementedMethods/*<-*/()/*->*/
 {
-    override def method1(): Unit
-        = ???
+  override def method1(): Unit
+    = ???
 }

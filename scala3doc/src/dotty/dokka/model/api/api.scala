@@ -98,10 +98,16 @@ extension (s: Signature):
   def join(a: Signature): Signature = s ++ a
 
 case class LinkToType(signature: Signature, dri: DRI, kind: Kind)
-
-case class HierarchyDiagram(edges: Seq[Edge])
-case class Vertex(val id: Int, val body: LinkToType)
-case class Edge(val from: Vertex, val to: Vertex)
+case class HierarchyGraph(edges: Seq[(LinkToType, LinkToType)]):
+  def vertecies: Seq[LinkToType] = edges.flatten((a, b) => Seq(a, b)).distinct
+  val verteciesWithId: Map[LinkToType, Int] = vertecies.zipWithIndex.toMap
+  def +(edge: (LinkToType, LinkToType)): HierarchyGraph = HierarchyGraph((edges :+ edge).distinct)
+  def ++(edges: Seq[(LinkToType, LinkToType)]): HierarchyGraph = edges.foldLeft(this) {
+    case (acc, edge) => acc + edge
+  }
+object HierarchyGraph:
+  def empty = HierarchyGraph(Seq.empty)
+  def withEdges(edges: Seq[(LinkToType, LinkToType)]) = HierarchyGraph.empty ++ edges
 
 
 type Member = Documentable // with WithExtraProperty[_] // Kotlin does not add generics to ExtraProperty implemented by e.g. DFunction

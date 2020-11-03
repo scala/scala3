@@ -8,13 +8,13 @@ import example.level2.Documentation
 
 abstract class Documentation[T, A <: Int, B >: String, -X, +Y](c1: String, val c2: List[T]) extends Seq[T] with Product with Serializable
 {
-    def this(ac: String) 
+    def this(ac: String)
     = this(ac, Nil)
 
-    def this() 
+    def this()
     = this("", Nil)
 
-    def this(x: T) 
+    def this(x: T)
     = this()
 
     class innerDocumentationClass

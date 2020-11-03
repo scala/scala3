@@ -1,8 +1,8 @@
 package tests
 
 package object mergedPackage{
-    val propertyFromPackageObject: Double
-        = ???
-    def functionFromPackageObject(): String => String
-        = ???
+  val propertyFromPackageObject: Double
+    = ???
+  def functionFromPackageObject(): String => String
+    = ???
 }

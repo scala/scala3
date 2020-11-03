@@ -29,6 +29,7 @@
   --mono-font: "Fira Code", monospace;
   --text-font: "Lato", sans-serif;
   --title-font: "Roboto Slab", serif;
+  --leftbar-font-size: 15px;
 
   /* Layout Settings (changes on small screens) */
   --side-width: 255px;
@@ -123,7 +124,10 @@ th {
   overflow-y: auto;
   scrollbar-width: thin;
   height: 100%;
-  font-size: 15px;
+  font-size: var(--leftbar-font-size);
+}
+#paneSearch {
+  display: none;
 }
 #logo {
   background-size: contain;
@@ -132,6 +136,7 @@ th {
   background-origin: content-box;
   padding: 8px 0 8px 16px;
   height: 42px;
+  cursor: pointer;
 }
 #logo::after {
   color: var(--leftbar-fg);
@@ -144,29 +149,29 @@ th {
   padding-left: 1em;
 }
 .sideMenuPart a {
-	align-items: center;
-	flex: 1;
-	overflow-x: hidden;
+  align-items: center;
+  flex: 1;
+  overflow-x: hidden;
   overflow-wrap: anywhere;
   color: var(--leftbar-fg);
   margin-right: .5rem;
+  padding: 7px 0;
 }
 .sideMenuPart > .overview {
-	display: flex;
-	align-items: center;
-	position: relative;
+  display: flex;
+  align-items: center;
+  position: relative;
   user-select: none;
-  padding: 7px 0;
 }
 .sideMenuPart > .overview::before {
   width: var(--side-width);
-	box-sizing: border-box;
-	content: '';
-	top: 0;
-	right: 0;
-	bottom: 0;
-	position: absolute;
-	z-index: 1;
+  box-sizing: border-box;
+  content: '';
+  top: 0;
+  right: 0;
+  bottom: 0;
+  position: absolute;
+  z-index: 1;
 }
 .sideMenuPart > .overview:hover::before {
   background: var(--leftbar-hover-bg);
@@ -182,76 +187,37 @@ th {
   color: var(--leftbar-current-fg);
 }
 .sideMenuPart.hidden > .sideMenuPart {
-	height: 0;
-	visibility: hidden;
+  height: 0;
+  visibility: hidden;
 }
 .overview a, .overview .navButton {
   z-index: 3;
 }
 .sideMenuPart .navButton {
-	height: 100%;
-	align-items: center;
-	display: flex;
-	justify-content: flex-end;
-	padding-right: 1rem;
+  height: 100%;
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  padding: 7px 10px;
   cursor: pointer;
 }
 .sideMenuPart .navButtonContent::before {
-  content: url("../images/arrow_down.svg");
+  content: "\e905"; /* arrow up */
+  font-family: "dotty-icons" !important;
+  font-size: 20px;
+  line-height: var(--leftbar-font-size);
+  color: var(--leftbar-fg);
   height: 100%;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  transform: rotate(180deg);
 }
 .sideMenuPart.hidden .navButtonContent::before {
-  transform: rotate(0deg);
+  content: "\e903"; /* arrow down */
 }
-
-/* Search */
-.search-content {
-  /* TODO override search style without !important */
-  padding: 0 !important;
-	margin: var(--content-padding) !important;
-	position: absolute !important;
-	top: 0 !important;
-	right: 0 !important;
-	z-index: 5 !important;
-	background: none !important;
-}
-.search button {
-  background: none !important;
-  fill: var(--icon-color) !important;
-  cursor: pointer !important;
-}
-.search button:hover {
-  fill: var(--link-hover-fg) !important;
-}
-.search button svg {
-  width: 24px !important;
-  height: 24px !important;
-}
-.popup-wrapper { /* search popup */
-  box-shadow: 0 0 10px var(--border-light) !important;
-  border: 2px solid var(--border-light) !important;
-  font-family: var(--mono-font) !important;
-  /* TODO dokka already uses !important so I can't override that...
-  min-width: calc(100% - var(--side-width) - 36px) !important;
-  left: 24px;
-  */
-}
-.popup-wrapper .indented {
-  text-indent: 1.5em !important;
-}
-.popup-wrapper .disabled {
-  color: var(--inactive-fg) !important;
-  font-weight: 500 !important;
-}
-.action_def:hover, .action_def:focus-within {
-  color: var(--selected-fg);
-  background: var(--selected-bg) !important;
-  font-weight: 500;
+.sideMenuPart .navButton:hover .navButtonContent::before {
+  color: var(--leftbar-current-bg);
 }
 
 /* Cover */
@@ -263,46 +229,46 @@ th {
 
 /* Tabs */
 .section-tab {
-	border: none;
-	outline: none;
+  border: none;
+  outline: none;
   background: transparent;
-	padding: 0 6px 4px 6px;
-	margin: 1rem 1rem 0 0;
-	border-bottom: 1px solid grey;
-	cursor: pointer;
+  padding: 0 6px 4px 6px;
+  margin: 1rem 1rem 0 0;
+  border-bottom: 1px solid grey;
+  cursor: pointer;
 }
 .section-tab[data-active=""] {
   color: unset;
   font-weight: bold;
-	border-bottom: 2px solid var(--active-tab-color);
+  border-bottom: 2px solid var(--active-tab-color);
 }
 .tabs-section-body > :not([data-active]) {
-	display: none;
+  display: none;
 }
 
 /* Tabs content */
 .table {
-	/*! display: flex; */
-	flex-direction: column;
+  /*! display: flex; */
+  flex-direction: column;
 }
 .table-row {
-	border-bottom: 2px solid var(--border-light);
-	padding: 8px 24px 8px 0;
+  border-bottom: 2px solid var(--border-light);
+  padding: 8px 24px 8px 0;
 }
 .main-subrow  {
   margin-bottom: .5em;
 }
 .main-subrow > span > a, .main-subrow > span > span[data-unresolved-link] {
-	text-decoration: none;
-	font-style: normal;
-	font-weight: bold;
-	color: unset;
-	font-size: 18px;
+  text-decoration: none;
+  font-style: normal;
+  font-weight: bold;
+  color: unset;
+  font-size: 18px;
 }
 .main-subrow .anchor-icon { /* Link Anchor */
-	margin-left: .25rem;
-	opacity: 0;
-	transition: 0.2s 0.5s;
+  margin-left: .25rem;
+  opacity: 0;
+  transition: 0.2s 0.5s;
   cursor: pointer;
 }
 .main-subrow .anchor-icon > svg {
@@ -310,44 +276,44 @@ th {
   fill: var(--link-fg);
 }
 .main-subrow:hover .anchor-icon {
-	opacity: 1;
-	transition: 0.2s;
+  opacity: 1;
+  transition: 0.2s;
 }
 .brief-with-platform-tags ~ .main-subrow {
-	padding-top: 0;
+  padding-top: 0;
 }
 
 .brief {
-	white-space: pre-wrap;
-	overflow: hidden;
+  white-space: pre-wrap;
+  overflow: hidden;
   margin-bottom: .5em;
 }
 /* Declarations */
 .symbol.monospace {
   color: var(--symbol-fg);
-	display: block;
-	white-space: normal;
+  display: block;
+  white-space: normal;
   position: relative;
   padding-right: 24px; /* avoid the copy button */
   margin: 1em 0;
 }
 .symbol .top-right-position {
-	position: absolute;
-	top: 8px;
-	right: 8px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }
 /* "copy to clipboard" button */
 .copy-popup-wrapper {
-	display: none;
-	position: absolute;
-	z-index: 1000;
-	background: white;
-	width: max-content;
-	cursor: default;
-	border: 1px solid var(--border-light);
-	box-sizing: border-box;
-	box-shadow: 0px 5px 10px var(--border-light);
-	border-radius: 3px;
+  display: none;
+  position: absolute;
+  z-index: 1000;
+  background: white;
+  width: max-content;
+  cursor: default;
+  border: 1px solid var(--border-light);
+  box-sizing: border-box;
+  box-shadow: 0px 5px 10px var(--border-light);
+  border-radius: 3px;
   font-weight: normal;
 }
 .copy-popup-wrapper.active-popup {
@@ -355,7 +321,7 @@ th {
   align-items: center;
 }
 .copy-popup-wrapper.popup-to-left {
-	left: -14rem;
+  left: -14rem;
 }
 .copy-popup-wrapper svg {
   padding: 8px;
@@ -393,29 +359,29 @@ dl.attributes > dd {
 
 /* params list documentation */
 dl.paramsdesc {
-	display: flex;
-	flex-flow: row wrap;
+  display: flex;
+  flex-flow: row wrap;
 }
 dl.paramsdesc dt {
-	flex-basis: 20%;
-	padding: 2px 0;
-	text-align: left;
-	font-weight: bold;
+  flex-basis: 20%;
+  padding: 2px 0;
+  text-align: left;
+  font-weight: bold;
 }
 dl.paramsdesc dd {
-	flex-basis: 80%;
-	flex-grow: 1;
-	margin: 0;
-	padding: 2px 0;
+  flex-basis: 80%;
+  flex-grow: 1;
+  margin: 0;
+  padding: 2px 0;
 }
 
 .platform-dependent-row dl.attributes > dd {
   padding-left: 3em;
 }
 
-/* Workaround for dynamically rendered content inside hidden tab. 
+/* Workaround for dynamically rendered content inside hidden tab.
 There's some limitation of css/html that causes wrong width/height property of elements that are rendered dynamically inside element with display:none;
-Same solution is already used in Dokka. 
+Same solution is already used in Dokka.
 */
 .platform-hinted[data-togglable="Type hierarchy"] > .content:not([data-active]),
 .tabs-section-body > *[data-togglable="Type hierarchy"]:not([data-active]) {
@@ -469,7 +435,7 @@ footer .pull-right {
 .documentableElement {
   width: 100%;
   color: var(--symbol-fg);
-	white-space: normal;
+  white-space: normal;
   position: relative;
   margin: 0;
   padding: 5px 4px 5px 4px;
@@ -567,12 +533,6 @@ footer .pull-right {
     content: "\e900"; /* clear icon */
   }
   /* --- */
-
-  .search-content {
-    margin: 0 !important;
-    top: 9px !important;
-    right: 12px !important;
-  }
   .cover h1 {
     margin-top: 0;
   }

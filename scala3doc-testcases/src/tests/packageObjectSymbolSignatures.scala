@@ -2,17 +2,17 @@ package tests
 
 package object packageObjectSymbolSignatures
 {
-    val property1: String
-        = ???
-    
-    type MyType = String
+  val property1: String
+    = ???
 
-    val property2: Int
-        = ???
+  type MyType = String
 
-    def method1(): Int
-        = ???
+  val property2: Int
+    = ???
 
-    def method2(): String
-        = ???
+  def method1(): Int
+    = ???
+
+  def method2(): String
+    = ???
 }

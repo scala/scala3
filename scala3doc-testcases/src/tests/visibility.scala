@@ -51,7 +51,7 @@ class InClassVisibility()
 
     protected[InClassVisibility] def protectedInClassMethod: Int
       = ???
-    
+
     protected[this] def locallyProtectedMethod: Int //unexpected
       = ???
 }

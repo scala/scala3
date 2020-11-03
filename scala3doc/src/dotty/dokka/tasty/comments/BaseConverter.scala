@@ -10,9 +10,10 @@ trait BaseConverter {
   protected def withParsedQuery(queryStr: String)(thunk: Query => dkkd.DocTag): dkkd.DocTag = {
     QueryParser(queryStr).tryReadQuery() match {
       case Left(err) =>
+        val msg = err.getMessage
         // TODO: for better experience we should show source location here
-        println("WARN: " + err.getMessage)
-        dkkd.A(List(dkk.text(err.getMessage)).asJava, Map("href" -> "#").asJava)
+        println("WARN: " + msg)
+        dkkd.A(List(dkk.text(queryStr)).asJava, Map("title" -> msg, "href" -> "#").asJava)
       case Right(query) =>
         thunk(query)
     }

@@ -6,7 +6,7 @@ class D[T]
 
 class D2[T]()
 
-class DD[+T] 
+class DD[+T]
 
 class A
 

@@ -15,47 +15,47 @@ import org.jetbrains.dokka.model.properties._
 import dotty.dokka.model.api._
 
 class ScalaSourceLinksTransformer(
-      val ctx: DokkaContext,
-      val commentsToContentConverter: CommentsToContentConverter,
-      val signatureProvider: SignatureProvider,
-      val logger: DokkaLogger
+    val ctx: DokkaContext,
+    val commentsToContentConverter: CommentsToContentConverter,
+    val signatureProvider: SignatureProvider,
+    val logger: DokkaLogger
 ) extends DocumentableTransformer:
 
-    val sourceLinks = ctx.getConfiguration.getSourceSets.asScala.flatMap(s => s.getSourceLinks.asScala.map(l => SourceLink(l, s)))
-    val pageBuilder = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger)
+  val sourceLinks = ctx.getConfiguration.getSourceSets.asScala.flatMap(s => s.getSourceLinks.asScala.map(l => SourceLink(l, s)))
+  val pageBuilder = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger)
 
-    case class SourceLink(val path: String, val url: String, val lineSuffix: Option[String], val sourceSetData: DokkaConfiguration.DokkaSourceSet)
+  case class SourceLink(val path: String, val url: String, val lineSuffix: Option[String], val sourceSetData: DokkaConfiguration.DokkaSourceSet)
 
-    object SourceLink {
-        def apply(sourceLinkDef: DokkaConfiguration$SourceLinkDefinition, sourceSetData: DokkaConfiguration.DokkaSourceSet): SourceLink =
-            SourceLink(sourceLinkDef.getLocalDirectory, sourceLinkDef.getRemoteUrl.toString, Option(sourceLinkDef.getRemoteLineSuffix), sourceSetData)
+  object SourceLink {
+    def apply(sourceLinkDef: DokkaConfiguration$SourceLinkDefinition, sourceSetData: DokkaConfiguration.DokkaSourceSet): SourceLink =
+      SourceLink(sourceLinkDef.getLocalDirectory, sourceLinkDef.getRemoteUrl.toString, Option(sourceLinkDef.getRemoteLineSuffix), sourceSetData)
+  }
+
+
+  override def invoke(input: DModule, context: DokkaContext): DModule =
+    input.updateMembers {
+      case c0: (Member & WithSources & WithExtraProperties[_]) =>
+        val c = c0.asInstanceOf[Member & WithSources & WithExtraProperties[Member]]
+        c.withNewExtras(c.getExtra plus getSourceLinks(c))
+      case c => c
     }
 
 
-    override def invoke(input: DModule, context: DokkaContext): DModule =
-        input.updateMembers {
-            case c0: (Member & WithSources & WithExtraProperties[_]) =>
-                val c = c0.asInstanceOf[Member & WithSources & WithExtraProperties[Member]]
-                c.withNewExtras(c.getExtra plus getSourceLinks(c))
-            case c => c
-        }
-
-
-    private def getSourceLinks(doc: WithSources): ExtraProperty[Member] = {
-        val urls = doc.getSources.asScala.toMap.flatMap{
-            case (key,value) => sourceLinks.find(s => value.getPath.contains(s.path) && key == s.sourceSetData).map(
-                    link => (key, createLink(value, link))
-                )
-        }.collect{
-            case (key, Some(value)) => (key,value)
-        }.toMap
-
-        SourceLinks(urls)
-    }
-
-    private def createLink(source: DocumentableSource, link: SourceLink): Option[String] = source match {
-        case s: TastyDocumentableSource => Some(s.lineNumber).map( line =>
-            link.url + s.path.split(link.path)(1) + link.lineSuffix.map(_ + (line + 1)).getOrElse("") //TASTY enumerates lines from 0
+  private def getSourceLinks(doc: WithSources): ExtraProperty[Member] = {
+    val urls = doc.getSources.asScala.toMap.flatMap{
+      case (key,value) => sourceLinks.find(s => value.getPath.contains(s.path) && key == s.sourceSetData).map(
+          link => (key, createLink(value, link))
         )
-        case other => None
-    }
+    }.collect{
+      case (key, Some(value)) => (key,value)
+    }.toMap
+
+    SourceLinks(urls)
+  }
+
+  private def createLink(source: DocumentableSource, link: SourceLink): Option[String] = source match {
+    case s: TastyDocumentableSource => Some(s.lineNumber).map( line =>
+      link.url + s.path.split(link.path)(1) + link.lineSuffix.map(_ + (line + 1)).getOrElse("") //TASTY enumerates lines from 0
+    )
+    case other => None
+  }

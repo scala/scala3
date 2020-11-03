@@ -7,20 +7,25 @@ $("#inheritance-diagram").ready(function() {
 
       // Set up zoom support
       var zoom = d3.zoom()
-          .on("zoom", function({transform}) {
-            inner.attr("transform", transform);
-          });
+        .on("zoom", function({transform}) {
+          inner.attr("transform", transform);
+        });
       svg.call(zoom);
 
       var render = new dagreD3.render();
       var g = graphlibDot.read(dotNode.text);
       g.graph().rankDir = 'BT';
       g.nodes().forEach(function (v) {
-          g.setNode(v, {
-              labelType: "html",
-              label: g.node(v).label,
-              style: g.node(v).style
-          });
+        g.setNode(v, {
+          labelType: "html",
+          label: g.node(v).label,
+          style: g.node(v).style
+        });
+      });
+      g.edges().forEach(function(v) {
+        g.setEdge(v, {
+          arrowhead: "vee"
+        });
       });
       render(inner, g);
     }

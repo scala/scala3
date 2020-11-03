@@ -13,6 +13,8 @@ We're aiming to support all the features Scaladoc did, plus new and exciting one
 - displaying project and API documentation together on one site!
 - and more!
 
+**Yes, this page was generated using scala3doc**
+
 ## Running the project
 
 Use the following commands to generate documentation for this project and for Dotty, respectively:
@@ -29,12 +31,25 @@ cd output
 python3 -m http.server 8080
 ```
 
-And afterwards point your browser to `http://localhost:8080/self` or
-`http://localhost:8080/stdLib` for this project and for Dotty documentation
+And afterwards point your browser to <http://localhost:8080/self> or
+<http://localhost:8080/stdLib> for this project and for Dotty documentation
 respectively.
 
 It's not strictly necessary to go through an HTTP server, but because of CORS
 the documentation won't work completely if you don't.
+
+## CLI Documentation
+
+CLI command for running our tool is in form: `sbt main -n <name> -o <output> -t <tasty-files> -cp <classpath> -s { <sources> } -d <documentation> ` where:
+   - `<name>`: name of module in generated documentation
+   - `<output>`: location where documentation should be created
+   - `<tasty-files>`: is list of dirs or jars that contains tasty files that should be documented
+   - `<classpath>`: classpath that was used to generate tasty files
+   - `<sources>`: links to source files of module that are used to link symbols on pages to their source file. They need to be supplied in form:
+      `local_dir=remote_dir#line_suffix` e.g. `src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L`
+   - `<documentation>`: directory of static documentation that you would like to render with API documentation. This feature is provided by dokka-site plugin:
+      - [GitHub](https://github.com/VirtusLab/dokka-site)
+      - [Documentation](https://virtuslab.github.io/dokka-site/index.html)
 
 ## Developing
 
@@ -44,16 +59,16 @@ work on the project.
 For every PR, we build documentation for Scala3doc and Dotty. For example, for
 PR 123 you can find them at:
 
-+ https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/self/main/index.html
-+ https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/stdLib/main/index.html
++ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/self/main/index.html>
++ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/stdLib/main/index.html>
 
 Note that these correspond to the contents of `output` directory - that's
 precisely what they are.
 
 You can also find the result of building the same sites for latest `master` at:
 
-+ https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/self/main/index.html
-+ https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/stdLib/main/index.html
++ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/self/main/index.html>
++ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/stdLib/main/index.html>
 
 ### Testing
 

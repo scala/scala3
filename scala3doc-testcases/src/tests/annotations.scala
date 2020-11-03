@@ -23,6 +23,6 @@ class AnnotatedParams(@MyAnnotation val a: String, @AnnotationWithMultiArg(2, "c
 
 class AnnotatedMethods
 {
-    @MyAnnotation @AnnotationWithMultiArg(2, "cda", 'a', 'b', 'c') def a: String
-    = ???
+  @MyAnnotation @AnnotationWithMultiArg(2, "cda", 'a', 'b', 'c') def a: String
+  = ???
 }

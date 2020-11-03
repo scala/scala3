@@ -4,9 +4,9 @@ package annotationsExample
 import scala.annotation.StaticAnnotation
 
 enum Enum {
-    case A extends Enum
-    case B extends Enum
-    case C extends Enum
+  case A extends Enum
+  case B extends Enum
+  case C extends Enum
 }
 
 class SomeObject(val s: String)
@@ -28,8 +28,8 @@ class AnnotatedParams(@MyAnnotation val a: String, @AnnotationWithMultiArg(2, "c
 
 class AnnotatedMethods
 {
-    @MyAnnotation
-    @AnnotationWithMultiArg(2, "cda", 'a', 'b', 'c')
-    def a: String
-    = ???
+  @MyAnnotation
+  @AnnotationWithMultiArg(2, "cda", 'a', 'b', 'c')
+  def a: String
+  = ???
 }

@@ -31,7 +31,8 @@ private [model] case class MemberExtension(
   kind: Kind,
   val annotations: List[Annotation],
   signature: Signature,
-  origin: Origin = Origin.DefinedWithin
+  origin: Origin = Origin.DefinedWithin,
+  graph: HierarchyGraph = HierarchyGraph.empty,
 ) extends ExtraProperty[Documentable]:
  override def getKey = MemberExtension
 
@@ -88,6 +89,11 @@ extension (member: Member):
     val original = member.compositeMemberExt.getOrElse(CompositeMemberExtension())
     val newExt = original.copy(knownChildren = knownChildren)
     putInCompositeMember(newExt)
+
+  def withNewGraphEdges(edges: Seq[(LinkToType, LinkToType)]): Member =
+    val oldExt = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty)
+    val newExt = oldExt.copy(graph = oldExt.graph ++ edges)
+    putInMember(newExt)
 
   def updateRecusivly(op: Member => Member) = op(member).withMembers(member.allMembers.map(op))
 
