@@ -17,8 +17,6 @@ const attachDOM = (element, html) => {
   }
 };
 
-const startsWith = (str, character) => str.charAt(0) === character;
-
 const htmlToString = (html) => {
   if (Array.isArray(html)) {
     return html.join("");

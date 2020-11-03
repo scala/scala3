@@ -1,5 +1,4 @@
 /**
- * @typedef { { selected: boolean; visible: boolean } } FilterItem
  * @typedef { { fKeywords: Record<string, FilterItem> } } Filters
  */
 
@@ -21,6 +20,11 @@ class Filter {
    * Key for filters without the `fKeywords`
    */
   static defaultFilterKey = 'default'
+
+  /**
+   * HTML data attribute that contains non-default keywords
+   */
+  static KeywordsKey = 'fKeywords'
 
   get value() {
     return this._value;
@@ -60,7 +64,6 @@ class Filter {
 
   /**
   * @param value { string }
-  * @returns { FilterItem }
   */
   onInputValueChange(value) {
     return new Filter(
@@ -76,24 +79,31 @@ class Filter {
   * @returns { Filters }
   */
   _generateFiltersOnTyping(value) {
-    const datasets = this.elementsRefs
-      .filter((elRef) => {
-        const name = getElementTextContent(getElementNameRef(elRef));
-        const description = getElementTextContent(getElementDescription(elRef));
+    const elementsDatasets = this.elementsRefs
+      .filter(element => {
+        const name = getElementTextContent(getElementNameRef(element));
+        const description = getElementTextContent(getElementDescription(element));
 
         return name.includes(value) || description.includes(value);
       })
-      .map((elRef) => this._getDatasetWithKeywordData(elRef.dataset))
+      .map(element => this._getDatasetWithKeywordData(element.dataset))
 
-
-      return dataset.reduce((filtersObject, datasets) => {
+      const newFilters = elementsDatasets.reduce((filtersObject, datasets) => {
         datasets.forEach(([key, value]) => {
           this._splitByComma(value).forEach((val) => {
             filtersObject[key] = { ...filtersObject[key], [val]: { ...filtersObject[key][val], visible: true} };
           });
         });
+
         return filtersObject;
       }, this._allFiltersAreHidden());
+
+      const shouldAddDefaultFilter = elementsDatasets
+        .some(d => d.length === 0 || d.some(([key]) => key !== Filter.KeywordsKey))
+
+      return shouldAddDefaultFilter
+        ? this._attachDefaultFilters(newFilters)
+        : newFilters
   }
 
   /**
@@ -142,24 +152,35 @@ class Filter {
   * @returns { Filters }
   */
   _withNewFilters() {
-    const newFilter = { selected: true, visible: true }
-
     const newFilters = this._elementsRefs.reduce((filtersObject, elementRef) => {
       this._getDatasetWithKeywordData(elementRef.dataset).forEach(([key, value]) =>
         this._splitByComma(value).forEach((val) => {
           filtersObject[key] = filtersObject[key] 
-            ? { ...filtersObject[key], [val]: filtersObject[key][val] ?? newFilter}
-            : { [val]: newFilter }
+            ? { ...filtersObject[key], [val]: filtersObject[key][val] ?? new FilterItem() }
+            : { [val]: new FilterItem()  }
         })
       );
       return filtersObject;
     }, {});
 
-    const shouldAddDefaultFilter = this._elementsRefs.some(ref => !!ref.dataset['fKeywords'])
+    const shouldAddDefaultFilter = this._elementsRefs.some(ref => !!ref.dataset[Filter.KeywordsKey])
 
     return shouldAddDefaultFilter 
-      ? { ...newFilters, fKeywords: { ...newFilters.fKeywords, [Filter.defaultFilterKey]: newFilter } } 
+      ? this._attachDefaultFilters(newFilters)
       : newFilters
+  }
+
+  /**
+   * @private
+   * @param {Filters} filters 
+   */
+  _attachDefaultFilters(filters) {
+    return { 
+      ...filters, [Filter.KeywordsKey]: { 
+        ...filters.fKeywords, 
+        [Filter.defaultFilterKey]: new FilterItem() 
+      } 
+    } 
   }
 
   /**
@@ -193,5 +214,12 @@ class Filter {
   * @returns { [key: string, value: string][] }
   */
   _getDatasetWithKeywordData = (dataset) =>
-    Object.entries(dataset).filter(([key]) => startsWith(key, "f"));
+    Object.entries(dataset).filter(([key]) => key === Filter.KeywordsKey);
+}
+
+class FilterItem {
+  constructor(selected = true, visible = true) {
+    this.selected = selected
+    this.visible = visible
+  }
 }

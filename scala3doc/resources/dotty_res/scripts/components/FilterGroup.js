@@ -99,7 +99,6 @@ class FilterGroup extends Component {
   }
 
   render({ filter }) {
-    console.log(filter.filters)
     attachDOM(
       this.filterLowerContainerRef,
       Object.entries(filter.filters)

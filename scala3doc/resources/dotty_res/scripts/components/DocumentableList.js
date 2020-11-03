@@ -133,7 +133,8 @@ class List {
 
     function areFiltersFromElementSelected() {
       /** @param str { string } */
-      const haveKeywordData = str => str.startsWith("f")
+      const haveKeywordData = key => key === Filter.KeywordsKey
+      
       /** @type { [key: string, value: string][] } */
       const dataset = Object.entries(elementData.ref.dataset) 
       
