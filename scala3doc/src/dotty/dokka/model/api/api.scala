@@ -10,8 +10,6 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.pages._
-import java.util.{List => JList, Set => JSet}
-
 
 enum Visibility(val name: String):
   case Unrestricted extends Visibility("")

@@ -12,8 +12,6 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.base.parsers._
 import org.jetbrains.dokka.plugability.DokkaContext
-import com.virtuslab.dokka.site.SourceSetWrapper
-import com.virtuslab.dokka.site.JavaSourceToDocumentableTranslator
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import dotty.dokka.tasty.{DokkaTastyInspector, SbtDokkaTastyInspector}
@@ -23,10 +21,7 @@ import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.pages._
 import dotty.dokka.model.api._
 import org.jetbrains.dokka.CoreExtensions
-import com.virtuslab.dokka.site.StaticSitePlugin
 import org.jetbrains.dokka.base.DokkaBase
-import com.virtuslab.dokka.site.ExtensionBuilderEx
-import java.util.{List => JList}
 
 /** Main Dokka plugin for the doctool.
   *
@@ -38,7 +33,6 @@ import java.util.{List => JList}
 class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   lazy val dokkaBase = plugin(classOf[DokkaBase])
-  lazy val dokkaSitePlugin = plugin(classOf[StaticSitePlugin])
 
   val provideMembers = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getSourceToDocumentableTranslator)
@@ -116,7 +110,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
   val ourRenderer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getRenderer)
       .fromRecipe(ScalaHtmlRenderer(_))
-      .overrideExtension(dokkaSitePlugin.getCustomRenderer)
+      .overrideExtension(dokkaBase.getHtmlRenderer)
   )
 
   val commentsToContentConverter = extend(
@@ -140,10 +134,23 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     .name("muteDefaultSourceLinksTransformer")
   )
 
-// TODO remove once problem is fixed in Dokka
+// TODO (https://github.com/lampepfl/scala3doc/issues/232): remove once problem is fixed in Dokka
 extension [T]  (builder: ExtensionBuilder[T]):
-  def before(exts: Extension[_, _, _]*):  ExtensionBuilder[T] =
-    (new ExtensionBuilderEx).newOrdering(builder, exts.toArray, Array.empty)
+  def ordered(before: Seq[Extension[_, _, _]], after: Seq[Extension[_, _, _]]): ExtensionBuilder[T] =
+    val byDsl = new OrderingKind.ByDsl(dsl => {
+      dsl.after(after:_*)
+      dsl.before(before:_*)
+      kotlin.Unit.INSTANCE // TODO why U does not work here? 
+    })
+    // Does not compile but compiles in scala 2
+    // ExtensionBuilder.copy$default(builder, null, null, null, byDsl, null, null, 55, null)
+    val m = classOf[ExtensionBuilder[_]].getDeclaredMethods().find(_.getName == "copy$default").get
+    m.setAccessible(true)
+    // All nulls and 55 is taken from Kotlin bytecode and represent how defaut parameter are represented in Kotlin
+    // Defaut arguments are encoded by null and mapping that 55 represent whic arguments are actually provided
+    m.invoke(null, builder, null, null, null, byDsl, null, null, 55, null).asInstanceOf[ExtensionBuilder[T]]
 
-  def after(exts: Extension[_, _, _]*):  ExtensionBuilder[T] =
-    (new ExtensionBuilderEx).newOrdering(builder, Array.empty, exts.toArray)
+
+  def before(exts: Extension[_, _, _]*):  ExtensionBuilder[T] = ordered(exts, Nil)
+    
+  def after(exts: Extension[_, _, _]*):  ExtensionBuilder[T] = ordered(Nil, exts)

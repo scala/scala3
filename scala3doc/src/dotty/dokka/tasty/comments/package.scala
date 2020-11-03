@@ -1,4 +1,5 @@
-package dotty.dokka.tasty.comments
+package dotty.dokka
+package tasty.comments
 
 import scala.jdk.CollectionConverters._
 
@@ -17,7 +18,7 @@ object dkk:
   def p(params: (String, String)*)(children: dkkd.DocTag*) =
     dkkd.P(children.asJava, params.toMap.asJava)
 
-  def text(str: String) = dkkd.Text(str, Nil.asJava, Map.empty.asJava)
+  def text(str: String) = dkkd.Text(str, JList(), Map.empty.asJava)
 
   def a(children: dkkd.DocTag*) =
     dkkd.A(children.asJava, Map.empty.asJava)

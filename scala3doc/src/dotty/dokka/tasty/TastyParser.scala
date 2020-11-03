@@ -14,12 +14,10 @@ import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.properties.PropertyContainerKt._
 import org.jetbrains.dokka.model.properties.{WithExtraProperties}
-import java.util.{List => JList}
 
 import quoted.QuoteContext
 import scala.tasty.inspector.TastyInspector
 import dotty.dokka.model.api.withNewMembers
-import com.virtuslab.dokka.site.SourceSetWrapper
 
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
   *
@@ -124,8 +122,8 @@ trait DokkaBaseTastyInspector:
             f.getDri,
             f.getFunctions,
             f.getProperties,
-            Nil.asJava, // TODO add support for other things like type or package object entries
-            Nil.asJava,
+            JList(), // TODO add support for other things like type or package object entries
+            JList(),
             f.getDocumentation,
             null,
             sourceSet.toSet,
@@ -137,22 +135,18 @@ trait DokkaBaseTastyInspector:
     }.toList
 
   extension (self: DPackage) def mergeWith(other: DPackage): DPackage =
-    val doc1 = self.getDocumentation.asScala.get(sourceSet.getSourceSet).map(_.getChildren).getOrElse(Nil.asJava)
-    val doc2 = other.getDocumentation.asScala.get(sourceSet.getSourceSet).map(_.getChildren).getOrElse(Nil.asJava)
+    def nodes(p: DPackage): JList[TagWrapper] = p.getDocumentation.get(sourceSet) match 
+      case null => JList[TagWrapper]()
+      case node => node.getChildren
+
     mergeExtras(
       DPackage(
         self.getDri,
         (self.getFunctions.asScala ++ other.getFunctions.asScala).asJava,
         (self.getProperties.asScala ++ other.getProperties.asScala).asJava,
-        Nil.asJava, // WARNING Merging is done before collecting classlikes, if it changes it needs to be refactored
-        Nil.asJava,
-        sourceSet.asMap(
-            DocumentationNode(
-                (
-                  doc1.asScala ++ doc2.asScala
-                ).asJava
-            )
-        ),
+        JList(), // WARNING Merging is done before collecting classlikes, if it changes it needs to be refactored
+        JList(),
+        sourceSet.toMap(DocumentationNode(nodes(self) ++ nodes(other))),
         null,
         sourceSet.toSet,
         PropertyContainer.Companion.empty()

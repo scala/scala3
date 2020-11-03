@@ -13,23 +13,9 @@ import org.jetbrains.dokka.base.translators.documentables._
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
-import java.util.{List => JList, Set => JSet, Map => JMap}
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.plugability._
 import kotlin.jvm.JvmClassMappingKt.getKotlinClass
-
-extension [V] (a: WithExtraProperties[_]):
-  def get(key: ExtraProperty.Key[_, V]): V = a.getExtra().getMap().get(key).asInstanceOf[V]
-
-extension [E <: WithExtraProperties[E]] (a: E):
-  def put(value: ExtraProperty[_ >: E]): E = // TODO remove some of the InstanceOf
-  a.withNewExtras(a.getExtra plus value).asInstanceOf[E]
-
-extension [V] (map: JMap[DokkaConfiguration$DokkaSourceSet, V]):
-  def defaultValue: V = map.values.asScala.toSeq(0)
-
-extension (sourceSets: Set[DokkaConfiguration$DokkaSourceSet]):
-  def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava
 
 class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
   override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] =
@@ -50,14 +36,6 @@ def getFromExtra[V](e: WithExtraProperties[_], k: ExtraProperty.Key[_, V]): Opti
 
 extension (f: DFunction):
   def isRightAssociative(): Boolean = f.getName.endsWith(":")
-
-object JList:
-  def apply[T](elem: T): JList[T] = List(elem).asJava
-  def apply[T]() = List[T]().asJava
-
-object JSet:
-  def apply[T](elem: T): JSet[T] = Set(elem).asJava
-  def apply[T]() = Set[T]().asJava
 
 def modifyContentGroup(originalContentNodeWithParents: Seq[ContentGroup], modifiedContentNode: ContentGroup): ContentGroup =
   originalContentNodeWithParents match {

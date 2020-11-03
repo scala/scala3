@@ -113,7 +113,7 @@ class SymOps[R <: Reflection](val r: R):
         new DRI(
           sym.packageName,
           sym.topLevelEntryName.orNull, // TODO do we need any of this fields?
-          method.map(s => new org.jetbrains.dokka.links.Callable(s.name, null, Nil.asJava)).orNull,
+          method.map(s => new org.jetbrains.dokka.links.Callable(s.name, null, JList())).orNull,
           pointsTo, // TODO different targets?
           s"${sym.show}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )

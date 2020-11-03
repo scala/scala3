@@ -8,7 +8,6 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.pages._
-import java.util.{List => JList, Set => JSet}
 import dotty.dokka.model.api.Signature
 import dotty.dokka.model.api.HierarchyGraph
 
@@ -33,7 +32,7 @@ case class HtmlContentNode(
   override def getStyle = style.asJava
   override def hasAnyContent = !body.isEmpty
   def withSourceSets(sourceSets: JSet[DisplaySourceSet]) = copy(sourceSets = sourceSets.asScala.toSet)
-  override def getChildren: JList[ContentNode] = Nil.asJava
+  override def getChildren: JList[ContentNode] = JList()
   override def getExtra = extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
 
@@ -70,7 +69,7 @@ case class HierarchyGraphContentNode(
   override def getStyle = style.asJava
   override def hasAnyContent = !diagram.edges.isEmpty
   def withSourceSets(sourceSets: JSet[DisplaySourceSet]) = copy(sourceSets = sourceSets.asScala.toSet)
-  override def getChildren: JList[ContentNode] = Nil.asJava
+  override def getChildren: JList[ContentNode] = JList()
   override def getExtra = extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
 
@@ -91,7 +90,7 @@ abstract class ScalaContentNode(params: ContentNodeParams) extends ContentNode:
   override def hasAnyContent = true
   def withSourceSets(sourceSets: JSet[DisplaySourceSet]) =
     newInstance(params.copy(sourceSets = sourceSets))
-  override def getChildren: JList[ContentNode] = Nil.asJava
+  override def getChildren: JList[ContentNode] = JList()
   override def getExtra = params.extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = newInstance(params.copy(extra = p))
 
