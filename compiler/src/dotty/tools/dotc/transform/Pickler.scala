@@ -90,7 +90,7 @@ class Pickler extends Phase {
           if pickling ne noPrinter then
             pickling.synchronized {
               println(i"**** pickled info of $cls")
-              println(new TastyPrinter(pickled).printContents())
+              println(TastyPrinter.show(pickled))
             }
           pickled
         }(using ExecutionContext.global)

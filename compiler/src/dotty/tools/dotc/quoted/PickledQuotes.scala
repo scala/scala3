@@ -173,14 +173,14 @@ object PickledQuotes {
       positionWarnings.foreach(report.warning(_))
 
     val pickled = pickler.assembleParts()
-    quotePickling.println(s"**** pickled quote\n${new TastyPrinter(pickled).printContents()}")
+    quotePickling.println(s"**** pickled quote\n${TastyPrinter.show(pickled)}")
     pickled
   }
 
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(pickledQuote: PickledQuote, isType: Boolean)(using Context): Tree = {
     val bytes = pickledQuote.bytes()
-    quotePickling.println(s"**** unpickling quote from TASTY\n${new TastyPrinter(bytes).printContents()}")
+    quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.show(bytes)}")
 
     val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
     val unpickler = new DottyUnpickler(bytes, mode)

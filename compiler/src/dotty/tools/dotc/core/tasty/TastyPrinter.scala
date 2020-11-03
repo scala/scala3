@@ -11,24 +11,31 @@ import TastyUnpickler._
 import util.Spans.offsetToInt
 import printing.Highlighting._
 
-class TastyPrinter(bytes: Array[Byte])(using Context) {
+object TastyPrinter:
+  def show(bytes: Array[Byte])(using Context): String =
+    val printer =
+      if ctx.settings.color.value == "never" then new TastyPrinter(bytes)
+      else new TastyAnsiiPrinter(bytes)
+    printer.showContents()
+
+class TastyPrinter(bytes: Array[Byte]) {
 
   private val sb: StringBuilder = new StringBuilder
 
-  val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
+  private val unpickler: TastyUnpickler = new TastyUnpickler(bytes)
   import unpickler.{nameAtRef, unpickle}
 
-  def nameToString(name: Name): String = name.debugString
+  private def nameToString(name: Name): String = name.debugString
 
-  def nameRefToString(ref: NameRef): String = nameToString(nameAtRef(ref))
+  private def nameRefToString(ref: NameRef): String = nameToString(nameAtRef(ref))
 
-  def printNames(): Unit =
+  private def printNames(): Unit =
     for ((name, idx) <- nameAtRef.contents.zipWithIndex) {
-      val index = nameColor("%4d".format(idx))
+      val index = nameStr("%4d".format(idx))
       sb.append(index).append(": ").append(nameToString(name)).append("\n")
     }
 
-  def printContents(): String = {
+  def showContents(): String = {
     sb.append("Names:\n")
     printNames()
     sb.append("\n")
@@ -59,13 +66,13 @@ class TastyPrinter(bytes: Array[Byte])(using Context) {
       import reader._
       var indent = 0
       def newLine() = {
-        val length = treeColor("%5d".format(index(currentAddr) - index(startAddr)))
+        val length = treeStr("%5d".format(index(currentAddr) - index(startAddr)))
         sb.append(s"\n $length:" + " " * indent)
       }
-      def printNat() = sb.append(treeColor(" " + readNat()))
+      def printNat() = sb.append(treeStr(" " + readNat()))
       def printName() = {
         val idx = readNat()
-        sb.append(nameColor(" " + idx + " [" + nameRefToString(NameRef(idx)) + "]"))
+        sb.append(nameStr(" " + idx + " [" + nameRefToString(NameRef(idx)) + "]"))
       }
       def printTree(): Unit = {
         newLine()
@@ -74,7 +81,7 @@ class TastyPrinter(bytes: Array[Byte])(using Context) {
         indent += 2
         if (tag >= firstLengthTreeTag) {
           val len = readNat()
-          sb.append(s"(${lengthColor(len.toString)})")
+          sb.append(s"(${lengthStr(len.toString)})")
           val end = currentAddr + len
           def printTrees() = until(end)(printTree())
           tag match {
@@ -116,7 +123,7 @@ class TastyPrinter(bytes: Array[Byte])(using Context) {
           }
         indent -= 2
       }
-      sb.append(i"start = ${reader.startAddr}, base = $base, current = $currentAddr, end = $endAddr\n")
+      sb.append(s"start = ${reader.startAddr}, base = $base, current = $currentAddr, end = $endAddr\n")
       sb.append(s"${endAddr.index - startAddr.index} bytes of AST, base = $currentAddr\n")
       while (!isAtEnd) {
         printTree()
@@ -136,7 +143,7 @@ class TastyPrinter(bytes: Array[Byte])(using Context) {
       sb.append(s" position bytes:\n")
       val sorted = spans.toSeq.sortBy(_._1.index)
       for ((addr, pos) <- sorted) {
-        sb.append(treeColor("%10d".format(addr.index)))
+        sb.append(treeStr("%10d".format(addr.index)))
         sb.append(s": ${offsetToInt(pos.start)} .. ${pos.end}\n")
       }
       sb.result
@@ -153,14 +160,14 @@ class TastyPrinter(bytes: Array[Byte])(using Context) {
       sb.append(s" comment bytes:\n")
       val sorted = comments.toSeq.sortBy(_._1.index)
       for ((addr, cmt) <- sorted) {
-        sb.append(treeColor("%10d".format(addr.index)))
+        sb.append(treeStr("%10d".format(addr.index)))
         sb.append(s": ${cmt.raw} (expanded = ${cmt.isExpanded})\n")
       }
       sb.result
     }
   }
 
-  protected def nameColor(str: String): String = Magenta(str).show
-  protected def treeColor(str: String): String = Yellow(str).show
-  protected def lengthColor(str: String): String = Cyan(str).show
+  protected def nameStr(str: String): String = str
+  protected def treeStr(str: String): String = str
+  protected def lengthStr(str: String): String = str
 }
