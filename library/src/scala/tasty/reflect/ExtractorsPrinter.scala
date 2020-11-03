@@ -1,22 +1,24 @@
 package scala.tasty
 package reflect
 
-class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Printer[R] {
-  import reflect._
+import scala.quoted._
 
-  def showTree(tree: Tree): String =
-    new Buffer().visitTree(tree).result()
+class ExtractorsPrinter extends Printer {
 
-  def showType(tpe: TypeRepr): String =
-    new Buffer().visitType(tpe).result()
+  def showTree(using QuoteContext)(tree: qctx.reflect.Tree): String =
+    new Buffer[qctx.type]().visitTree(tree).result()
 
-  def showConstant(const: Constant): String =
-    new Buffer().visitConstant(const).result()
+  def showType(using QuoteContext)(tpe: qctx.reflect.TypeRepr): String =
+    new Buffer[qctx.type]().visitType(tpe).result()
 
-  def showSymbol(symbol: Symbol): String =
-    new Buffer().visitSymbol(symbol).result()
+  def showConstant(using QuoteContext)(const: qctx.reflect.Constant): String =
+    new Buffer[qctx.type]().visitConstant(const).result()
 
-  def showFlags(flags: Flags): String = {
+  def showSymbol(using QuoteContext)(symbol: qctx.reflect.Symbol): String =
+    new Buffer[qctx.type]().visitSymbol(symbol).result()
+
+  def showFlags(using QuoteContext)(flags: qctx.reflect.Flags): String = {
+    import qctx.reflect._
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "Flags.Abstract"
     if (flags.is(Flags.Artifact)) flagList += "Flags.Artifact"
@@ -55,13 +57,14 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Pri
     flagList.result().mkString(" | ")
   }
 
-  private class Buffer { self =>
+  private class Buffer[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) { self =>
+    import qctx.reflect._
 
     private val sb: StringBuilder = new StringBuilder
 
     def result(): String = sb.result()
 
-    def visitTree(x: Tree): Buffer = x match {
+    def visitTree(x: Tree): this.type = x match {
       case Ident(name) =>
         this += "Ident(\"" += name += "\")"
       case Select(qualifier, name) =>
@@ -164,7 +167,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Pri
         this += "Alternative(" ++= patterns += ")"
     }
 
-    def visitConstant(x: Constant): Buffer = x match {
+    def visitConstant(x: Constant): this.type = x match {
       case Constant.Unit() => this += "Constant.Unit()"
       case Constant.Null() => this += "Constant.Null()"
       case Constant.Boolean(value) => this += "Constant.Boolean(" += value += ")"
@@ -181,7 +184,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Pri
         visitType(value) += ")"
     }
 
-    def visitType(x: TypeRepr): Buffer = x match {
+    def visitType(x: TypeRepr): this.type = x match {
       case ConstantType(value) =>
         this += "ConstantType(" += value += ")"
       case TermRef(qual, name) =>
@@ -225,18 +228,18 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Pri
         this += "NoPrefix()"
     }
 
-    def visitSignature(sig: Signature): Buffer = {
+    def visitSignature(sig: Signature): this.type = {
       val Signature(params, res) = sig
       this += "Signature(" ++= params.map(_.toString) += ", " += res += ")"
     }
 
-    def visitImportSelector(sel: ImportSelector): Buffer = sel match {
+    def visitImportSelector(sel: ImportSelector): this.type = sel match {
       case SimpleSelector(id) => this += "SimpleSelector(" += id += ")"
       case RenameSelector(id1, id2) => this += "RenameSelector(" += id1 += ", " += id2 += ")"
       case OmitSelector(id) => this += "OmitSelector(" += id += ")"
     }
 
-    def visitSymbol(x: Symbol): Buffer =
+    def visitSymbol(x: Symbol): this.type =
       if x.isPackageDef  then this += "IsPackageDefSymbol(<" += x.fullName += ">)"
       else if x.isClassDef then this += "IsClassDefSymbol(<" += x.fullName += ">)"
       else if x.isDefDef then this += "IsDefDefSymbol(<" += x.fullName += ">)"
@@ -244,52 +247,52 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Pri
       else if x.isTypeDef then this += "IsTypeDefSymbol(<" += x.fullName += ">)"
       else { assert(x.isNoSymbol); this += "NoSymbol()" }
 
-    def +=(x: Boolean): Buffer = { sb.append(x); this }
-    def +=(x: Byte): Buffer = { sb.append(x); this }
-    def +=(x: Short): Buffer = { sb.append(x); this }
-    def +=(x: Int): Buffer = { sb.append(x); this }
-    def +=(x: Long): Buffer = { sb.append(x); this }
-    def +=(x: Float): Buffer = { sb.append(x); this }
-    def +=(x: Double): Buffer = { sb.append(x); this }
-    def +=(x: Char): Buffer = { sb.append(x); this }
-    def +=(x: String): Buffer = { sb.append(x); this }
+    def +=(x: Boolean): this.type = { sb.append(x); this }
+    def +=(x: Byte): this.type = { sb.append(x); this }
+    def +=(x: Short): this.type = { sb.append(x); this }
+    def +=(x: Int): this.type = { sb.append(x); this }
+    def +=(x: Long): this.type = { sb.append(x); this }
+    def +=(x: Float): this.type = { sb.append(x); this }
+    def +=(x: Double): this.type = { sb.append(x); this }
+    def +=(x: Char): this.type = { sb.append(x); this }
+    def +=(x: String): this.type = { sb.append(x); this }
 
-    def ++=(xs: List[String]): Buffer = visitList[String](xs, +=)
+    def ++=(xs: List[String]): this.type = visitList[String](xs, +=)
 
-    private implicit class StringOps(buff: Buffer) {
-      def +=(x: Option[String]): Buffer = { visitOption(x, y => buff += "\"" += y += "\""); buff }
+    private implicit class StringOps(buff: self.type) {
+      def +=(x: Option[String]): self.type = { visitOption(x, y => buff += "\"" += y += "\""); buff }
     }
 
-    private implicit class TreeOps(buff: Buffer) {
-      def +=(x: Tree): Buffer = { visitTree(x); buff }
-      def +=(x: Option[Tree]): Buffer = { visitOption(x, visitTree); buff }
-      def ++=(x: List[Tree]): Buffer = { visitList(x, visitTree); buff }
-      def +++=(x: List[List[Tree]]): Buffer = { visitList(x, ++=); buff }
+    private implicit class TreeOps(buff: self.type) {
+      def +=(x: Tree): self.type = { visitTree(x); buff }
+      def +=(x: Option[Tree]): self.type = { visitOption(x, visitTree); buff }
+      def ++=(x: List[Tree]): self.type = { visitList(x, visitTree); buff }
+      def +++=(x: List[List[Tree]]): self.type = { visitList(x, ++=); buff }
     }
 
-    private implicit class ConstantOps(buff: Buffer) {
-      def +=(x: Constant): Buffer = { visitConstant(x); buff }
+    private implicit class ConstantOps(buff: self.type) {
+      def +=(x: Constant): self.type = { visitConstant(x); buff }
     }
 
-    private implicit class TypeOps(buff: Buffer) {
-      def +=(x: TypeRepr): Buffer = { visitType(x); buff }
-      def +=(x: Option[TypeRepr]): Buffer = { visitOption(x, visitType); buff }
-      def ++=(x: List[TypeRepr]): Buffer = { visitList(x, visitType); buff }
+    private implicit class TypeOps(buff: self.type) {
+      def +=(x: TypeRepr): self.type = { visitType(x); buff }
+      def +=(x: Option[TypeRepr]): self.type = { visitOption(x, visitType); buff }
+      def ++=(x: List[TypeRepr]): self.type = { visitList(x, visitType); buff }
     }
 
-    private implicit class SignatureOps(buff: Buffer) {
-      def +=(x: Option[Signature]): Buffer = { visitOption(x, visitSignature); buff }
+    private implicit class SignatureOps(buff: self.type) {
+      def +=(x: Option[Signature]): self.type = { visitOption(x, visitSignature); buff }
     }
 
-    private implicit class ImportSelectorOps(buff: Buffer) {
-      def ++=(x: List[ImportSelector]): Buffer = { visitList(x, visitImportSelector); buff }
+    private implicit class ImportSelectorOps(buff: self.type) {
+      def ++=(x: List[ImportSelector]): self.type = { visitList(x, visitImportSelector); buff }
     }
 
-    private implicit class SymbolOps(buff: Buffer) {
-      def +=(x: Symbol): Buffer = { visitSymbol(x); buff }
+    private implicit class SymbolOps(buff: self.type) {
+      def +=(x: Symbol): self.type = { visitSymbol(x); buff }
     }
 
-    private def visitOption[U](opt: Option[U], visit: U => Buffer): Buffer = opt match {
+    private def visitOption[U](opt: Option[U], visit: U => this.type): this.type = opt match {
       case Some(x) =>
         this += "Some("
         visit(x)
@@ -298,7 +301,7 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Pri
         this += "None"
     }
 
-    private def visitList[U](list: List[U], visit: U => Buffer): Buffer = list match {
+    private def visitList[U](list: List[U], visit: U => this.type): this.type = list match {
       case x0 :: xs =>
         this += "List("
         visit(x0)

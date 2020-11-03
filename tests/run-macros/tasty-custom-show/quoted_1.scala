@@ -37,15 +37,13 @@ object Macros {
     '{print(${Expr(buff.result())})}
   }
 
-  def dummyShow(using qctx: QuoteContext) : scala.tasty.reflect.Printer[qctx.reflect.type] = {
+  def dummyShow: scala.tasty.reflect.Printer = {
     new scala.tasty.reflect.Printer {
-      val reflect = qctx.reflect
-      import qctx.reflect._
-      def showTree(tree: Tree): String = "Tree"
-      def showType(tpe: TypeRepr): String = "TypeRepr"
-      def showConstant(const: Constant): String = "Constant"
-      def showSymbol(symbol: Symbol): String = "Symbol"
-      def showFlags(flags: Flags): String = "Flags"
+      def showTree(using qctx: QuoteContext)(tree: qctx.reflect.Tree): String = "Tree"
+      def showType(using qctx: QuoteContext)(tpe: qctx.reflect.TypeRepr): String = "TypeRepr"
+      def showConstant(using qctx: QuoteContext)(const: qctx.reflect.Constant): String = "Constant"
+      def showSymbol(using qctx: QuoteContext)(symbol: qctx.reflect.Symbol): String = "Symbol"
+      def showFlags(using qctx: QuoteContext)(flags: qctx.reflect.Flags): String = "Flags"
     }
   }
 

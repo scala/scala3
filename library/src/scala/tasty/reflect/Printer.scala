@@ -1,25 +1,21 @@
 package scala.tasty
 package reflect
 
-// TODO use QuoteContext instead of Reflection
-trait Printer[R <: Reflection & Singleton] {
+import scala.quoted._
 
-  /** Instance of reflection interface */
-  val reflect: R
-  import reflect._
-
+trait Printer {
   /** Show a String representation of a reflect.Tree */
-  def showTree(tree: Tree): String
+  def showTree(using QuoteContext)(tree: qctx.reflect.Tree): String
 
   /** Show a String representation of a reflect.Type */
-  def showType(tpe: TypeRepr): String
+  def showType(using QuoteContext)(tpe: qctx.reflect.TypeRepr): String
 
   /** Show a String representation of a reflect.Constant */
-  def showConstant(const: Constant): String
+  def showConstant(using QuoteContext)(const: qctx.reflect.Constant): String
 
   /** Show a String representation of a reflect.Symbol */
-  def showSymbol(symbol: Symbol): String
+  def showSymbol(using QuoteContext)(symbol: qctx.reflect.Symbol): String
 
   /** Show a String representation of a reflect.Flags */
-  def showFlags(flags: Flags): String
+  def showFlags(using QuoteContext)(flags: qctx.reflect.Flags): String
 }

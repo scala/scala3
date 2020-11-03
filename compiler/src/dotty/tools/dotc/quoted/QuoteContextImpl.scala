@@ -65,11 +65,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def pos: Position = self.sourcePos
         def symbol: Symbol = self.symbol
         def showExtractors: String =
-          new ExtractorsPrinter[reflect.type](reflect).showTree(self)
+          new ExtractorsPrinter().showTree(using QuoteContextImpl.this)(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showTree(self)
+          new SourceCodePrinter(syntaxHighlight).showTree(using QuoteContextImpl.this)(self)
         def isExpr: Boolean =
           self match
             case TermTypeTest(self) =>
@@ -1589,13 +1589,13 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object TypeMethodsImpl extends TypeMethods:
       extension (self: TypeRepr):
         def showExtractors: String =
-          new ExtractorsPrinter[reflect.type](reflect).showType(self)
+          new ExtractorsPrinter().showType(using QuoteContextImpl.this)(self)
 
         def show: String =
           self.showWith(SyntaxHighlight.plain)
 
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showType(self)
+          new SourceCodePrinter(syntaxHighlight).showType(using QuoteContextImpl.this)(self)
 
         def seal: scala.quoted.Type[_] =
           new scala.internal.quoted.Type(Inferred(self), QuoteContextImpl.this.hashCode)
@@ -2172,11 +2172,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       extension (self: Constant):
         def value: Any = self.value
         def showExtractors: String =
-          new ExtractorsPrinter[reflect.type](reflect).showConstant(self)
+          new ExtractorsPrinter().showConstant(using QuoteContextImpl.this)(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showConstant(self)
+          new SourceCodePrinter(syntaxHighlight).showConstant(using QuoteContextImpl.this)(self)
       end extension
     end ConstantMethodsImpl
 
@@ -2395,11 +2395,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def children: List[Symbol] = self.denot.children
 
         def showExtractors: String =
-          new ExtractorsPrinter[reflect.type](reflect).showSymbol(self)
+          new ExtractorsPrinter().showSymbol(using QuoteContextImpl.this)(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showSymbol(self)
+          new SourceCodePrinter(syntaxHighlight).showSymbol(using QuoteContextImpl.this)(self)
 
       end extension
 
@@ -2531,11 +2531,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def |(that: Flags): Flags = dotc.core.Flags.extension_|(self)(that)
         def &(that: Flags): Flags = dotc.core.Flags.extension_&(self)(that)
         def showExtractors: String =
-          new ExtractorsPrinter[reflect.type](reflect).showFlags(self)
+          new ExtractorsPrinter().showFlags(using QuoteContextImpl.this)(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showFlags(self)
+          new SourceCodePrinter(syntaxHighlight).showFlags(using QuoteContextImpl.this)(self)
       end extension
     end FlagsMethodsImpl
 
