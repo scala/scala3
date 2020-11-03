@@ -17,6 +17,11 @@ class Filter {
     this._filters = this._init ? this._withNewFilters() : filters;
   }
 
+  /**
+   * Key for filters without the `fKeywords`
+   */
+  static defaultFilterKey = 'default'
+
   get value() {
     return this._value;
   }
@@ -71,7 +76,7 @@ class Filter {
   * @returns { Filters }
   */
   _generateFiltersOnTyping(value) {
-    return this.elementsRefs
+    const datasets = this.elementsRefs
       .filter((elRef) => {
         const name = getElementTextContent(getElementNameRef(elRef));
         const description = getElementTextContent(getElementDescription(elRef));
@@ -79,16 +84,12 @@ class Filter {
         return name.includes(value) || description.includes(value);
       })
       .map((elRef) => this._getDatasetWithKeywordData(elRef.dataset))
-      .reduce((filtersObject, datasets) => {
+
+
+      return dataset.reduce((filtersObject, datasets) => {
         datasets.forEach(([key, value]) => {
           this._splitByComma(value).forEach((val) => {
-            filtersObject[key] = {
-              ...filtersObject[key],
-              [val]: {
-                ...filtersObject[key][val],
-                visible: true,
-              },
-            };
+            filtersObject[key] = { ...filtersObject[key], [val]: { ...filtersObject[key][val], visible: true} };
           });
         });
         return filtersObject;
@@ -157,7 +158,7 @@ class Filter {
     const shouldAddDefaultFilter = this._elementsRefs.some(ref => !!ref.dataset['fKeywords'])
 
     return shouldAddDefaultFilter 
-      ? { ...newFilters, fKeywords: { ...newFilters.fKeywords, default: newFilter } } 
+      ? { ...newFilters, fKeywords: { ...newFilters.fKeywords, [Filter.defaultFilterKey]: newFilter } } 
       : newFilters
   }
 

@@ -1,5 +1,6 @@
 /**
  * @typedef { import("./Filter").Filter } Filter
+ * @typedef { { ref: Element; name: string; description: string } } ListElement
  */
 
 class DocumentableList extends Component {
@@ -54,10 +55,6 @@ class DocumentableList extends Component {
     });
   }
 }
-
-/**
- * @typedef { { ref: Element; name: string; description: string } } ListElement
- */
 
 class List { 
   /**
@@ -126,31 +123,49 @@ class List {
   * @param filter { Filter }
   */
   isElementVisible(elementData, filter) {
-    if (!areFiltersFromElementSelected(elementData, filter)) {
-      return false;
-    } else {
-      return includesInputValue(elementData, filter);
-    }
+    return !areFiltersFromElementSelected() 
+      ? false 
+      : includesInputValue()
 
     function includesInputValue() {
       return elementData.name.includes(filter.value) || elementData.description.includes(filter.value);
     }
 
     function areFiltersFromElementSelected() {
-      /** @type {[key: string, value: string][]} */
-      const dataset = Object.entries(elementData.ref.dataset).filter(([key]) => startsWith(key, "f"));
+      /** @param str { string } */
+      const haveKeywordData = str => str.startsWith("f")
+      /** @type { [key: string, value: string][] } */
+      const dataset = Object.entries(elementData.ref.dataset) 
+      
+      const datasetWithDefaultData =  dataset.filter(([key]) => !haveKeywordData(key));
+      const datasetWithKeywordData =  dataset.filter(([key]) => haveKeywordData(key));
 
-      const hasCorrespondingFilters = () =>
-        dataset.every(([key, value]) => {
-          const filterGroup = filter.filters[key];
-          return value.split(",").every(val => filterGroup && filterGroup[val].selected);
-        });
+      return datasetWithKeywordData.length > 0 
+        ? hasCorrespondingFilters() 
+        : haveDefaultFilters()
 
-      return dataset.length ? hasCorrespondingFilters() : true;
+      function haveDefaultFilters() {
+        return (
+          filter.filters.fKeywords[Filter.defaultFilterKey] && 
+          filter.filters.fKeywords[Filter.defaultFilterKey].selected &&
+          datasetWithDefaultData.length >= 1
+        )
+      }
+        
+      function hasCorrespondingFilters() {
+        return (
+          datasetWithKeywordData
+            .every(([key, value]) => {
+              const filterGroup = filter.filters[key];
+              return value.split(",").every(val => filterGroup && filterGroup[val].selected);
+            })
+        )
+      }
     }
   }
 
   /**
+  * @private
   * @param elementData { ListElement }
   */
   _getTogglable = elementData => elementData.dataset.togglable;
