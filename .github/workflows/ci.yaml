@@ -2,15 +2,7 @@ name: Dotty CI
 
 on:
   push:
-    paths-ignore:
-      # Do not run everything on changes only in docs
-      - 'scala3doc/**'
-      - 'scala3doc-testcases/**'
   pull_request:
-    paths-ignore:
-      # Do not run everything on changes only in docs
-      - 'scala3doc/**'
-      - 'scala3doc-testcases/**'
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
 
@@ -382,7 +374,7 @@ jobs:
           ./project/scripts/sbt dist/packArchive
           sha256sum dist/target/scala3-* > dist/target/sha256sum.txt
           ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
-          echo "::set-env name=RELEASE_TAG::${GITHUB_REF#*refs/tags/}"
+          echo "name=RELEASE_TAG::${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         id: create_gh_release
