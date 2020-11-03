@@ -10,6 +10,7 @@ import dotty.tools.dotc.util.ClasspathFromClassloader
 import scala.quoted._
 
 import java.io.File.pathSeparator
+import java.io.File.separator
 
 class BootstrappedStdLibTASYyTest:
 
@@ -22,13 +23,6 @@ class BootstrappedStdLibTASYyTest:
   /** Test that we can load and compile trees from TASTy */
   @Test def testFromTasty: Unit =
     compileFromTasty(loadBlacklisted.union(compileBlacklisted))
-
-  @Ignore
-  @Test def testWhiteListFromTasty: Unit =
-    val whitelist = Set(
-      "scala.collection.mutable.StringBuilder"
-    )
-    compileFromTasty(x => !whitelist(x))
 
   @Test def blacklistNoDuplicates =
     def testDup(name: String, list: List[String], set: Set[String]) =
@@ -111,15 +105,17 @@ object BootstrappedStdLibTASYyTest:
     val hasErrors = inspector.inspectTastyFilesInJar(scalaLibJarPath)
     assert(!hasErrors, "Errors reported while loading from TASTy")
 
-  def compileFromTasty(blacklisted: String => Boolean): Unit = {
+  def compileFromTasty(blacklisted: Iterable[String]): Unit = {
     val driver = new dotty.tools.dotc.Driver
-    val currentClasspath = ClasspathFromClassloader(getClass.getClassLoader)
-    val classNames = scalaLibJarTastyClassNames.filterNot(blacklisted)
+    val yFromTastyBlacklist =
+      blacklisted.map(x => x.replace(".", separator) + ".tasty").mkString("-Yfrom-tasty-blacklist:", ",", "")
     val args = Array(
-      "-classpath", s"$scalaLibJarPath$pathSeparator$currentClasspath",
+      "-classpath", ClasspathFromClassloader(getClass.getClassLoader),
       "-from-tasty",
-      "-nowarn"
-    ) ++ classNames
+      "-nowarn",
+      yFromTastyBlacklist,
+      scalaLibJarPath,
+    )
     val reporter = driver.process(args)
     assert(reporter.errorCount == 0, "Errors while re-compiling")
   }
