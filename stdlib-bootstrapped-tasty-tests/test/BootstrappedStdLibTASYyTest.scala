@@ -20,6 +20,10 @@ class BootstrappedStdLibTASYyTest:
   @Test def testTastyInspector: Unit =
     loadWithTastyInspector(loadBlacklisted)
 
+  /** Test that we can load and compile trees from TASTy in a Jar */
+  @Test def testFromTastyInJar: Unit =
+    compileFromTastyInJar(loadBlacklisted.union(compileBlacklisted))
+
   /** Test that we can load and compile trees from TASTy */
   @Test def testFromTasty: Unit =
     compileFromTasty(loadBlacklisted.union(compileBlacklisted))
@@ -38,14 +42,14 @@ class BootstrappedStdLibTASYyTest:
         "`compileBlacklist` contains names that are already in `loadBlacklist`: \n  ", "\n  ", "\n\n"))
 
   @Test def blacklistsOnlyContainsClassesThatExist =
-    val scalaLibJarTastyClassNamesSet = scalaLibJarTastyClassNames.toSet
+    val scalaLibTastyPathsSet = scalaLibTastyPaths.toSet
     val intersection = loadBlacklisted & compileBlacklisted
-    assert(loadBlacklisted.diff(scalaLibJarTastyClassNamesSet).isEmpty,
-      loadBlacklisted.diff(scalaLibJarTastyClassNamesSet).mkString(
-        "`loadBlacklisted` contains names that are not in `scalaLibJarTastyClassNames`: \n  ", "\n  ", "\n\n"))
-    assert(compileBlacklisted.diff(scalaLibJarTastyClassNamesSet).isEmpty,
-      compileBlacklisted.diff(scalaLibJarTastyClassNamesSet).mkString(
-        "`loadBlacklisted` contains names that are not in `scalaLibJarTastyClassNames`: \n  ", "\n  ", "\n\n"))
+    assert(loadBlacklisted.diff(scalaLibTastyPathsSet).isEmpty,
+      loadBlacklisted.diff(scalaLibTastyPathsSet).mkString(
+        "`loadBlacklisted` contains names that are not in `scalaLibTastyPaths`: \n  ", "\n  ", "\n\n"))
+    assert(compileBlacklisted.diff(scalaLibTastyPathsSet).isEmpty,
+      compileBlacklisted.diff(scalaLibTastyPathsSet).mkString(
+        "`loadBlacklisted` contains names that are not in `scalaLibTastyPaths`: \n  ", "\n  ", "\n\n"))
 
   @Ignore
   @Test def testLoadBacklistIsMinimal =
@@ -73,7 +77,7 @@ class BootstrappedStdLibTASYyTest:
       val blacklist = blacklist0 - notBlacklisted
       println(s"Trying withouth $notBlacklisted in the blacklist (${i+1}/$size)")
       try {
-        compileFromTasty(blacklist)
+        compileFromTastyInJar(blacklist)
         shouldBeWhitelisted = notBlacklisted :: shouldBeWhitelisted
       }
       catch {
@@ -86,7 +90,9 @@ end BootstrappedStdLibTASYyTest
 
 object BootstrappedStdLibTASYyTest:
 
-  val scalaLibJarPath = System.getProperty("dotty.scala.library")
+  def scalaLibJarPath = System.getProperty("dotty.scala.library")
+  def scalaLibClassesPath =
+    java.nio.file.Paths.get(scalaLibJarPath).getParent.resolve("classes").normalize
 
   val scalaLibJarTastyClassNames = {
     val scalaLibJar = Jar(new File(java.nio.file.Paths.get(scalaLibJarPath)))
@@ -95,20 +101,26 @@ object BootstrappedStdLibTASYyTest:
       .sorted
   }
 
-  def loadWithTastyInspector(blacklisted: String => Boolean): Unit =
+  val scalaLibTastyPaths =
+    new Directory(scalaLibClassesPath).deepFiles
+      .filter(_.`extension` == "tasty")
+      .map(_.normalize.path.stripPrefix(scalaLibClassesPath.toString + "/"))
+      .toList
+
+  def loadWithTastyInspector(blacklisted: Set[String]): Unit =
     val inspector = new scala.tasty.inspector.TastyInspector {
       def processCompilationUnit(using QuoteContext)(root: qctx.reflect.Tree): Unit =
         root.showExtractors // Check that we can traverse the full tree
         ()
     }
-    val classNames = scalaLibJarTastyClassNames.filterNot(blacklisted)
+    val classNames = scalaLibJarTastyClassNames.filterNot(blacklisted.map(_.stripSuffix(".tasty").replace("/", ".")))
     val hasErrors = inspector.inspectTastyFilesInJar(scalaLibJarPath)
     assert(!hasErrors, "Errors reported while loading from TASTy")
 
-  def compileFromTasty(blacklisted: Iterable[String]): Unit = {
+  def compileFromTastyInJar(blacklisted: Set[String]): Unit = {
     val driver = new dotty.tools.dotc.Driver
     val yFromTastyBlacklist =
-      blacklisted.map(x => x.replace(".", separator) + ".tasty").mkString("-Yfrom-tasty-blacklist:", ",", "")
+      blacklisted.mkString("-Yfrom-tasty-blacklist:", ",", "")
     val args = Array(
       "-classpath", ClasspathFromClassloader(getClass.getClassLoader),
       "-from-tasty",
@@ -120,12 +132,24 @@ object BootstrappedStdLibTASYyTest:
     assert(reporter.errorCount == 0, "Errors while re-compiling")
   }
 
-  /** List of classes that cannot be loaded from TASTy */
+  def compileFromTasty(blacklisted: Set[String]): Unit = {
+    val driver = new dotty.tools.dotc.Driver
+    val tastyFiles = scalaLibTastyPaths.filterNot(blacklisted)
+    val args = Array(
+      "-classpath", ClasspathFromClassloader(getClass.getClassLoader),
+      "-from-tasty",
+      "-nowarn",
+    ) ++ tastyFiles.map(x => scalaLibClassesPath.resolve(x).toString)
+    val reporter = driver.process(args)
+    assert(reporter.errorCount == 0, "Errors while re-compiling")
+  }
+
+  /** List of tasty files that cannot be loaded from TASTy */
   def loadBlacklist = List[String](
     // No issues :)
   )
 
-  /** List of classes that cannot be recompilied from TASTy */
+  /** List of tasty files that cannot be recompilied from TASTy */
   def compileBlacklist = List[String](
     // See #10048
     // failed: java.lang.AssertionError: assertion failed: class Boolean
@@ -135,22 +159,22 @@ object BootstrappedStdLibTASYyTest:
     //   at dotty.tools.backend.jvm.BCodeHelpers$BCInnerClassGen.getClassBTypeAndRegisterInnerClass$(BCodeHelpers.scala:210)
     //   at dotty.tools.backend.jvm.BCodeSkelBuilder$PlainSkelBuilder.getClassBTypeAndRegisterInnerClass(BCodeSkelBuilder.scala:62)
     //   at dotty.tools.backend.jvm.BCodeHelpers$BCInnerClassGen.internalName(BCodeHelpers.scala:237)
-    "scala.Array",
-    "scala.Boolean",
-    "scala.Byte",
-    "scala.Char",
-    "scala.Double",
-    "scala.Float",
-    "scala.Int",
-    "scala.Long",
-    "scala.Short",
-    "scala.Unit",
-  )
+    "scala/Array.tasty",
+    "scala/Boolean.tasty",
+    "scala/Byte.tasty",
+    "scala/Char.tasty",
+    "scala/Double.tasty",
+    "scala/Float.tasty",
+    "scala/Int.tasty",
+    "scala/Long.tasty",
+    "scala/Short.tasty",
+    "scala/Unit.tasty",
+  ).map(_.replace("/", separator))
 
-  /** Set of classes that cannot be loaded from TASTy */
+  /** Set of tasty files that cannot be loaded from TASTy */
   def loadBlacklisted = loadBlacklist.toSet
 
-  /** Set of classes that cannot be recompilied from TASTy */
+  /** Set of tasty files that cannot be recompilied from TASTy */
   def compileBlacklisted = compileBlacklist.toSet
 
 end BootstrappedStdLibTASYyTest
