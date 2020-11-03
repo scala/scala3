@@ -99,8 +99,8 @@ trait TreeMap {
         Closure.copy(tree)(transformTerm(meth), tpt)
       case Match(selector, cases) =>
         Match.copy(tree)(transformTerm(selector), transformCaseDefs(cases))
-      case Return(expr) =>
-        Return.copy(tree)(transformTerm(expr))
+      case Return(expr, from) =>
+        Return.copy(tree)(transformTerm(expr), from)
       case While(cond, body) =>
         While.copy(tree)(transformTerm(cond), transformTerm(body))
       case Try(block, cases, finalizer) =>

@@ -505,7 +505,7 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
             this
         }
 
-      case Return(expr) =>
+      case Return(expr, from) =>
         this += "return "
         printTree(expr)
 

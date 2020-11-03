@@ -94,7 +94,7 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 Inlined(None, Nil, Block(List(DefDef("f1", Nil, Nil, TypeIdent("Int"), Some(Literal(Constant.Int(3))))), Literal(Constant.Unit())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(DefDef("f2", Nil, Nil, TypeIdent("Int"), Some(Return(Literal(Constant.Int(4)))))), Literal(Constant.Unit())))
+Inlined(None, Nil, Block(List(DefDef("f2", Nil, Nil, TypeIdent("Int"), Some(Return(Literal(Constant.Int(4)), IsDefDefSymbol(<Test$._$_$f2>))))), Literal(Constant.Unit())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Block(List(DefDef("f3", Nil, List(List(ValDef("i", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Ident("i")))), Literal(Constant.Unit())))

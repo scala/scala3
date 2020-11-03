@@ -94,8 +94,8 @@ class ExtractorsPrinter[R <: Reflection & Singleton](val reflect: R) extends Pri
         this += "Match(" += selector += ", " ++= cases += ")"
       case GivenMatch(cases) =>
         this += "GivenMatch(" ++= cases += ")"
-      case Return(expr) =>
-        this += "Return(" += expr += ")"
+      case Return(expr, from) =>
+        this += "Return(" += expr += ", " += from += ")"
       case While(cond, body) =>
         this += "While(" += cond += ", " += body += ")"
       case Try(block, handlers, finalizer) =>

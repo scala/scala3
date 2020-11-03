@@ -1021,12 +1021,12 @@ trait Reflection { reflection =>
   trait ReturnModule { this: Return.type =>
 
     /** Creates `return <expr: Term>` */
-    def apply(expr: Term): Return
+    def apply(expr: Term, from: Symbol): Return
 
-    def copy(original: Tree)(expr: Term): Return
+    def copy(original: Tree)(expr: Term, from: Symbol): Return
 
-    /** Matches `return <expr: Term>` */
-    def unapply(x: Return): Option[Term]
+    /** Matches `return <expr: Term>` and extracts the expression and symbol of the method */
+    def unapply(x: Return): Option[(Term, Symbol)]
   }
 
   given ReturnMethods as ReturnMethods = ReturnMethodsImpl
@@ -1035,6 +1035,7 @@ trait Reflection { reflection =>
   trait ReturnMethods:
     extension (self: Return):
       def expr: Term
+      def from: Symbol
     end extension
   end ReturnMethods
 
