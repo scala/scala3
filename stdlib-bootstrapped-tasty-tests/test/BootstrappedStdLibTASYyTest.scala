@@ -94,13 +94,6 @@ object BootstrappedStdLibTASYyTest:
   def scalaLibClassesPath =
     java.nio.file.Paths.get(scalaLibJarPath).getParent.resolve("classes").normalize
 
-  val scalaLibJarTastyClassNames = {
-    val scalaLibJar = Jar(new File(java.nio.file.Paths.get(scalaLibJarPath)))
-    scalaLibJar.toList.map(_.toString).filter(_.endsWith(".tasty"))
-      .map(_.stripSuffix(".tasty").replace("/", "."))
-      .sorted
-  }
-
   val scalaLibTastyPaths =
     new Directory(scalaLibClassesPath).deepFiles
       .filter(_.`extension` == "tasty")
@@ -113,8 +106,8 @@ object BootstrappedStdLibTASYyTest:
         root.showExtractors // Check that we can traverse the full tree
         ()
     }
-    val classNames = scalaLibJarTastyClassNames.filterNot(blacklisted.map(_.stripSuffix(".tasty").replace("/", ".")))
-    val hasErrors = inspector.inspectTastyFilesInJar(scalaLibJarPath)
+    val tastyFiles = scalaLibTastyPaths.filterNot(blacklisted)
+    val hasErrors = inspector.inspectTastyFiles(tastyFiles.map(x => scalaLibClassesPath.resolve(x).toString))
     assert(!hasErrors, "Errors reported while loading from TASTy")
 
   def compileFromTastyInJar(blacklisted: Set[String]): Unit = {
