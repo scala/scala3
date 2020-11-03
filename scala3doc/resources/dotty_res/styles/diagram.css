@@ -23,7 +23,9 @@
   text-decoration: underline;
   color: #FFF;
 }
-
+.diagram-class a:hover {
+  color: #BFE7F3;
+}
 .diagram-class span[data-unresolved-link] {
   color: #FFF;
 }
