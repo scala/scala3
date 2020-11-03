@@ -1084,7 +1084,12 @@ import transform.SymUtils._
 
   class OverridesNothingButNameExists(member: Symbol, existing: List[Denotations.SingleDenotation])(using Context)
   extends DeclarationMsg(OverridesNothingButNameExistsID) {
-    def msg = em"""${member} has a different signature than the overridden declaration"""
+    def msg =
+      val what =
+        if !existing.exists(sd => Denotations.targetNamesMatch(member.erasedName, sd.symbol.erasedName))
+        then "target name"
+        else "signature"
+      em"""${member} has a different $what than the overridden declaration"""
     def explain =
       val existingDecl: String = existing.map(_.showDcl).mkString("  \n")
       em"""|There must be a non-final field or method with the name ${member.name} and the

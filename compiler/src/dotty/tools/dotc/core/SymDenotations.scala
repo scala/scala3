@@ -495,11 +495,9 @@ object SymDenotations {
     /** `fullName` where `.' is the separator character */
     def fullName(using Context): Name = fullNameSeparated(QualifiedName)
 
-    /** The name given in a `@targetName` annotation if one is present, `name` otherwise */
-    def erasedName(using Context): Name =
-      val targetNameAnnot =
-        if isAllOf(ModuleClass | Synthetic) then companionClass.getAnnotation(defn.TargetNameAnnot)
-        else getAnnotation(defn.TargetNameAnnot)
+    private var myTargetName: Name = null
+
+    private def computeTargetName(targetNameAnnot: Option[Annotation])(using Context): Name =
       targetNameAnnot match
         case Some(ann) =>
           ann.arguments match
@@ -510,6 +508,21 @@ object SymDenotations {
               else str.toTermName
             case _ => name
         case _ => name
+
+    def setTargetName(name: Name): Unit =
+      myTargetName = name
+
+    /** The name given in a `@targetName` annotation if one is present, `name` otherwise */
+    def erasedName(using Context): Name =
+      if myTargetName == null then
+        val carrier: SymDenotation =
+          if isAllOf(ModuleClass | Synthetic) then companionClass else this
+        val targetNameAnnot =
+          if carrier.isCompleting // annotations have been set already in this case
+          then carrier.unforcedAnnotation(defn.TargetNameAnnot)
+          else carrier.getAnnotation(defn.TargetNameAnnot)
+        myTargetName = computeTargetName(targetNameAnnot)
+      myTargetName
 
     // ----- Tests -------------------------------------------------
 
@@ -1238,7 +1251,7 @@ object SymDenotations {
     final def matchingDecl(inClass: Symbol, site: Type)(using Context): Symbol = {
       var denot = inClass.info.nonPrivateDecl(name)
       if (denot.isTerm) // types of the same name always match
-        denot = denot.matchingDenotation(site, site.memberInfo(symbol))
+        denot = denot.matchingDenotation(site, site.memberInfo(symbol), symbol.erasedName)
       denot.symbol
     }
 
@@ -1247,7 +1260,7 @@ object SymDenotations {
     final def matchingMember(site: Type)(using Context): Symbol = {
       var denot = site.nonPrivateMember(name)
       if (denot.isTerm) // types of the same name always match
-        denot = denot.matchingDenotation(site, site.memberInfo(symbol))
+        denot = denot.matchingDenotation(site, site.memberInfo(symbol), symbol.erasedName)
       denot.symbol
     }
 

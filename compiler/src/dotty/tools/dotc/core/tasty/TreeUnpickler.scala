@@ -335,8 +335,8 @@ class TreeUnpickler(reader: TastyReader,
               val prefix = readType()
               val owner = readType()
               sname match {
-                case SignedName(name, sig) =>
-                  TermRef(prefix, name, owner.decl(name).atSignature(sig).asSeenFrom(prefix))
+                case SignedName(name, sig, target) =>
+                  TermRef(prefix, name, owner.decl(name).atSignature(sig, target).asSeenFrom(prefix))
                 case name =>
                   TermRef(prefix, name, owner.decl(name).asSeenFrom(prefix))
               }
@@ -410,8 +410,8 @@ class TreeUnpickler(reader: TastyReader,
           val sname = readName()
           val prefix = readType()
           sname match {
-            case SignedName(name, sig) =>
-              TermRef(prefix, name, prefix.member(name).atSignature(sig))
+            case SignedName(name, sig, target) =>
+              TermRef(prefix, name, prefix.member(name).atSignature(sig, target))
             case name =>
               TermRef(prefix, name)
           }
@@ -1057,20 +1057,20 @@ class TreeUnpickler(reader: TastyReader,
         }
         ConstFold.Select(untpd.Select(qual, name).withType(tpe))
 
-      def completeSelect(name: Name, sig: Signature): Select =
+      def completeSelect(name: Name, sig: Signature, target: Name): Select =
         val qual = readTerm()
-        val denot = accessibleDenot(qual.tpe.widenIfUnstable, name, sig)
+        val denot = accessibleDenot(qual.tpe.widenIfUnstable, name, sig, target)
         makeSelect(qual, name, denot)
 
       def readQualId(): (untpd.Ident, TypeRef) =
         val qual = readTerm().asInstanceOf[untpd.Ident]
         (untpd.Ident(qual.name).withSpan(qual.span), qual.tpe.asInstanceOf[TypeRef])
 
-      def accessibleDenot(qualType: Type, name: Name, sig: Signature) = {
+      def accessibleDenot(qualType: Type, name: Name, sig: Signature, target: Name) = {
         val pre = ctx.typeAssigner.maybeSkolemizePrefix(qualType, name)
-        val d = qualType.findMember(name, pre).atSignature(sig)
+        val d = qualType.findMember(name, pre).atSignature(sig, target)
         if (!d.symbol.exists || d.symbol.isAccessibleFrom(pre)) d
-        else qualType.findMember(name, pre, excluded = Private).atSignature(sig)
+        else qualType.findMember(name, pre, excluded = Private).atSignature(sig, target)
       }
 
       def readSimpleTerm(): Tree = tag match {
@@ -1082,12 +1082,12 @@ class TreeUnpickler(reader: TastyReader,
           untpd.Ident(readName().toTypeName).withType(readType())
         case SELECT =>
           readName() match {
-            case SignedName(name, sig) => completeSelect(name, sig)
-            case name => completeSelect(name, Signature.NotAMethod)
+            case SignedName(name, sig, target) => completeSelect(name, sig, target)
+            case name => completeSelect(name, Signature.NotAMethod, EmptyTermName)
           }
         case SELECTtpt =>
           val name = readName().toTypeName
-          completeSelect(name, Signature.NotAMethod)
+          completeSelect(name, Signature.NotAMethod, EmptyTermName)
         case QUALTHIS =>
           val (qual, tref) = readQualId()
           untpd.This(qual).withType(ThisType.raw(tref))
@@ -1181,8 +1181,8 @@ class TreeUnpickler(reader: TastyReader,
                 val prefix = ctx.typeAssigner.maybeSkolemizePrefix(qual.tpe.widenIfUnstable, name)
                 makeSelect(qual, name, denot.asSeenFrom(prefix))
               sname match
-                case SignedName(name, sig) =>
-                  select(name, owner.decl(name).atSignature(sig))
+                case SignedName(name, sig, target) =>
+                  select(name, owner.decl(name).atSignature(sig, target))
                 case name =>
                   select(name, owner.decl(name))
             case REPEATED =>

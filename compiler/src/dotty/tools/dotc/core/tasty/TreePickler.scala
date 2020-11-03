@@ -92,10 +92,10 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
 
-  private def pickleNameAndSig(name: Name, sig: Signature): Unit =
+  private def pickleNameAndSig(name: Name, sig: Signature, target: Name): Unit =
     pickleName(
       if (sig eq Signature.NotAMethod) name
-      else SignedName(name.toTermName, sig))
+      else SignedName(name.toTermName, sig, target.asTermName))
 
   private def pickleSymRef(sym: Symbol)(using Context) = symRefs.get(sym) match {
     case Some(label) =>
@@ -197,14 +197,14 @@ class TreePickler(pickler: TastyPickler) {
         if (sym.is(Flags.Private) || isShadowedRef) {
           writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
           withLength {
-            pickleNameAndSig(sym.name, tpe.symbol.signature)
+            pickleNameAndSig(sym.name, sym.signature, sym.erasedName)
             pickleType(tpe.prefix)
             pickleType(sym.owner.typeRef)
           }
         }
         else {
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
-          pickleNameAndSig(sym.name, tpe.signature)
+          pickleNameAndSig(sym.name, tpe.signature, sym.erasedName)
           pickleType(tpe.prefix)
         }
       }
@@ -405,21 +405,22 @@ class TreePickler(pickler: TastyPickler) {
               }
             case _ =>
               val sig = tree.tpe.signature
+              var ename = tree.symbol.erasedName
               val isAmbiguous =
                 sig != Signature.NotAMethod
                 && qual.tpe.nonPrivateMember(name).match
-                  case d: MultiDenotation => d.atSignature(sig).isInstanceOf[MultiDenotation]
+                  case d: MultiDenotation => d.atSignature(sig, ename).isInstanceOf[MultiDenotation]
                   case _ => false
               if isAmbiguous then
                 writeByte(SELECTin)
                 withLength {
-                  pickleNameAndSig(name, tree.symbol.signature)
+                  pickleNameAndSig(name, tree.symbol.signature, ename)
                   pickleTree(qual)
                   pickleType(tree.symbol.owner.typeRef)
                 }
               else
                 writeByte(if (name.isTypeName) SELECTtpt else SELECT)
-                pickleNameAndSig(name, sig)
+                pickleNameAndSig(name, sig, ename)
                 pickleTree(qual)
           }
         case Apply(fun, args) =>

@@ -1664,6 +1664,9 @@ class Typer extends Namer
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
+      rsym.setTargetName(EmptyTermName)
+        // refinements can refine members with arbitrary target names, so we make their tragetnames
+        // polymorphic here in order to avoid to trigger the `member.isOverloaded` test below.
       val polymorphicRefinementAllowed =
         tpt1.tpe.typeSymbol == defn.PolyFunctionClass && rsym.name == nme.apply
       if (!polymorphicRefinementAllowed && rsym.info.isInstanceOf[PolyType] && rsym.allOverriddenSymbols.isEmpty)

@@ -222,7 +222,7 @@ object Denotations {
      *  when seen from prefix `site`.
      *  @param relaxed  When true, consider only parameter signatures for a match.
      */
-    def atSignature(sig: Signature, site: Type = NoPrefix, relaxed: Boolean = false)(using Context): Denotation
+    def atSignature(sig: Signature, targetName: Name, site: Type = NoPrefix, relaxed: Boolean = false)(using Context): Denotation
 
     /** The variant of this denotation that's current in the given context.
      *  If no such denotation exists, returns the denotation with each alternative
@@ -347,13 +347,15 @@ object Denotations {
     }
 
     /** The alternative of this denotation that has a type matching `targetType` when seen
-     *  as a member of type `site`, `NoDenotation` if none exists.
+     *  as a member of type `site` and that has an erased name matching `targetName`, or
+     *  `NoDenotation` if none exists.
      */
-    def matchingDenotation(site: Type, targetType: Type)(using Context): SingleDenotation = {
-      def qualifies(sym: Symbol) = site.memberInfo(sym).matchesLoosely(targetType)
+    def matchingDenotation(site: Type, targetType: Type, targetName: Name)(using Context): SingleDenotation = {
+      def qualifies(sym: Symbol) =
+        site.memberInfo(sym).matchesLoosely(targetType) && targetNamesMatch(sym.erasedName, targetName)
       if (isOverloaded)
-        atSignature(targetType.signature, site, relaxed = true) match {
-          case sd: SingleDenotation => sd.matchingDenotation(site, targetType)
+        atSignature(targetType.signature, targetName, site, relaxed = true) match {
+          case sd: SingleDenotation => sd.matchingDenotation(site, targetType, targetName)
           case md => md.suchThat(qualifies(_))
         }
       else if (exists && !qualifies(symbol)) NoDenotation
@@ -610,9 +612,9 @@ object Denotations {
     def accessibleFrom(pre: Type, superAccess: Boolean)(using Context): Denotation =
       if (!symbol.exists || symbol.isAccessibleFrom(pre, superAccess)) this else NoDenotation
 
-    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(using Context): SingleDenotation =
+    def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): SingleDenotation =
       val situated = if site == NoPrefix then this else asSeenFrom(site)
-      val matches = sig.matchDegree(situated.signature) match
+      val sigMatches = sig.matchDegree(situated.signature) match
         case FullMatch =>
           true
         case MethodNotAMethodMatch =>
@@ -622,7 +624,8 @@ object Denotations {
           relaxed
         case noMatch =>
           false
-      if matches then this else NoDenotation
+      if sigMatches && targetNamesMatch(symbol.erasedName, targetName) then this
+      else NoDenotation
 
     def matchesImportBound(bound: Type)(using Context): Boolean =
       if bound.isRef(defn.NothingClass) then false
@@ -983,33 +986,35 @@ object Denotations {
     final def last: SingleDenotation = this
 
     def matches(other: SingleDenotation)(using Context): Boolean =
-      val d = signature.matchDegree(other.signature)
-
-      d match
-        case FullMatch =>
-          true
-        case MethodNotAMethodMatch =>
-          !ctx.erasedTypes && {
-            val isJava = symbol.is(JavaDefined)
-            val otherIsJava = other.symbol.is(JavaDefined)
-            // A Scala zero-parameter method and a Scala non-method always match.
-            if !isJava && !otherIsJava then
-              true
-            // Java allows defining both a field and a zero-parameter method with the same name,
-            // so they must not match.
-            else if isJava && otherIsJava then
-              false
-            // A Java field never matches a Scala method.
-            else if isJava then
-              symbol.is(Method)
-            else // otherIsJava
-              other.symbol.is(Method)
-          }
-        case ParamMatch =>
-           // The signatures do not tell us enough to be sure about matching
-          !ctx.erasedTypes && info.matches(other.info)
-        case noMatch =>
-          false
+      targetNamesMatch(symbol.erasedName, other.symbol.erasedName)
+      && {
+        val d = signature.matchDegree(other.signature)
+        d match
+          case FullMatch =>
+            true
+          case MethodNotAMethodMatch =>
+            !ctx.erasedTypes && {
+              val isJava = symbol.is(JavaDefined)
+              val otherIsJava = other.symbol.is(JavaDefined)
+              // A Scala zero-parameter method and a Scala non-method always match.
+              if !isJava && !otherIsJava then
+                true
+              // Java allows defining both a field and a zero-parameter method with the same name,
+              // so they must not match.
+              else if isJava && otherIsJava then
+                false
+              // A Java field never matches a Scala method.
+              else if isJava then
+                symbol.is(Method)
+              else // otherIsJava
+                other.symbol.is(Method)
+            }
+          case ParamMatch =>
+            // The signatures do not tell us enough to be sure about matching
+            !ctx.erasedTypes && info.matches(other.info)
+          case noMatch =>
+            false
+      }
     end matches
 
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(using Context): SingleDenotation =
@@ -1164,9 +1169,11 @@ object Denotations {
     final def hasUniqueSym: Boolean = false
     final def name(using Context): Name = denot1.name
     final def signature(using Context): Signature = Signature.OverloadedSignature
-    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(using Context): Denotation =
+    def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): Denotation =
       if (sig eq Signature.OverloadedSignature) this
-      else derivedUnionDenotation(denot1.atSignature(sig, site, relaxed), denot2.atSignature(sig, site, relaxed))
+      else derivedUnionDenotation(
+            denot1.atSignature(sig, targetName, site, relaxed),
+            denot2.atSignature(sig, targetName, site, relaxed))
     def current(using Context): Denotation =
       derivedUnionDenotation(denot1.current, denot2.current)
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
@@ -1263,7 +1270,6 @@ object Denotations {
     else ctx.run.staticRefs.getOrElseUpdate(path, recur(path))
   }
 
-
   /** If we are looking for a non-existing term name in a package,
     *  assume it is a package for which we do not have a directory and
     *  enter it.
@@ -1279,4 +1285,7 @@ object Denotations {
     util.Stats.record("stale symbol")
     override def getMessage(): String = msg
   }
+
+  def targetNamesMatch(name1: Name, name2: Name): Boolean =
+    name1 == name2 || name1.isEmpty || name2.isEmpty
 }

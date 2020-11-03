@@ -882,8 +882,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
 
     /** A select node with the given selector name and signature and a computed type */
-    def selectWithSig(name: Name, sig: Signature)(using Context): Tree =
-      untpd.SelectWithSig(tree, name, sig).withType(tree.tpe.select(name.asTermName, sig))
+    def selectWithSig(name: Name, sig: Signature, target: Name)(using Context): Tree =
+      untpd.SelectWithSig(tree, name, sig).withType(tree.tpe.select(name.asTermName, sig, target))
 
     /** A select node with selector name and signature taken from `sym`.
      *  Note: Use this method instead of select(sym) if the referenced symbol
@@ -891,7 +891,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  on select(sym: Symbol).
      */
     def selectWithSig(sym: Symbol)(using Context): Tree =
-      selectWithSig(sym.name, sym.signature)
+      selectWithSig(sym.name, sym.signature, sym.erasedName)
 
     /** A unary apply node with given argument: `tree(arg)` */
     def appliedTo(arg: Tree)(using Context): Apply =
