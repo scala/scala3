@@ -1,19 +1,19 @@
 package scala.quoted
 package reflect.printers
 
-class ExtractorsPrinter extends Printer {
+object Extractors {
 
   def showTree(using QuoteContext)(tree: qctx.reflect.Tree): String =
-    new Buffer[qctx.type]().visitTree(tree).result()
+    new ExtractorsPrinter[qctx.type]().visitTree(tree).result()
 
   def showType(using QuoteContext)(tpe: qctx.reflect.TypeRepr): String =
-    new Buffer[qctx.type]().visitType(tpe).result()
+    new ExtractorsPrinter[qctx.type]().visitType(tpe).result()
 
   def showConstant(using QuoteContext)(const: qctx.reflect.Constant): String =
-    new Buffer[qctx.type]().visitConstant(const).result()
+    new ExtractorsPrinter[qctx.type]().visitConstant(const).result()
 
   def showSymbol(using QuoteContext)(symbol: qctx.reflect.Symbol): String =
-    new Buffer[qctx.type]().visitSymbol(symbol).result()
+    new ExtractorsPrinter[qctx.type]().visitSymbol(symbol).result()
 
   def showFlags(using QuoteContext)(flags: qctx.reflect.Flags): String = {
     import qctx.reflect._
@@ -55,7 +55,7 @@ class ExtractorsPrinter extends Printer {
     flagList.result().mkString(" | ")
   }
 
-  private class Buffer[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) { self =>
+  private class ExtractorsPrinter[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) { self =>
     import qctx.reflect._
 
     private val sb: StringBuilder = new StringBuilder

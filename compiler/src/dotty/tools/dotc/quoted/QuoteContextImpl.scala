@@ -14,7 +14,7 @@ import dotty.tools.dotc.quoted.QuoteUtils._
 import dotty.tools.dotc.core.Decorators._
 
 import scala.quoted.QuoteContext
-import scala.quoted.reflect.printers.{ExtractorsPrinter, SourceCodePrinter, SyntaxHighlight}
+import scala.quoted.reflect.printers.{Extractors, SourceCode, SyntaxHighlight}
 
 import scala.internal.quoted.PickledQuote
 import scala.tasty.reflect._
@@ -65,11 +65,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def pos: Position = self.sourcePos
         def symbol: Symbol = self.symbol
         def showExtractors: String =
-          new ExtractorsPrinter().showTree(using QuoteContextImpl.this)(self)
+          Extractors.showTree(using QuoteContextImpl.this)(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter(syntaxHighlight).showTree(using QuoteContextImpl.this)(self)
+          SourceCode.showTree(using QuoteContextImpl.this)(self)(syntaxHighlight)
         def isExpr: Boolean =
           self match
             case TermTypeTest(self) =>
@@ -1589,13 +1589,13 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object TypeMethodsImpl extends TypeMethods:
       extension (self: TypeRepr):
         def showExtractors: String =
-          new ExtractorsPrinter().showType(using QuoteContextImpl.this)(self)
+          Extractors.showType(using QuoteContextImpl.this)(self)
 
         def show: String =
           self.showWith(SyntaxHighlight.plain)
 
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter(syntaxHighlight).showType(using QuoteContextImpl.this)(self)
+          SourceCode.showType(using QuoteContextImpl.this)(self)(syntaxHighlight)
 
         def seal: scala.quoted.Type[_] =
           new scala.internal.quoted.Type(Inferred(self), QuoteContextImpl.this.hashCode)
@@ -2172,11 +2172,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       extension (self: Constant):
         def value: Any = self.value
         def showExtractors: String =
-          new ExtractorsPrinter().showConstant(using QuoteContextImpl.this)(self)
+          Extractors.showConstant(using QuoteContextImpl.this)(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter(syntaxHighlight).showConstant(using QuoteContextImpl.this)(self)
+          SourceCode.showConstant(using QuoteContextImpl.this)(self)(syntaxHighlight)
       end extension
     end ConstantMethodsImpl
 
@@ -2395,11 +2395,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def children: List[Symbol] = self.denot.children
 
         def showExtractors: String =
-          new ExtractorsPrinter().showSymbol(using QuoteContextImpl.this)(self)
+          Extractors.showSymbol(using QuoteContextImpl.this)(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter(syntaxHighlight).showSymbol(using QuoteContextImpl.this)(self)
+          SourceCode.showSymbol(using QuoteContextImpl.this)(self)(syntaxHighlight)
 
       end extension
 
@@ -2531,11 +2531,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def |(that: Flags): Flags = dotc.core.Flags.extension_|(self)(that)
         def &(that: Flags): Flags = dotc.core.Flags.extension_&(self)(that)
         def showExtractors: String =
-          new ExtractorsPrinter().showFlags(using QuoteContextImpl.this)(self)
+          Extractors.showFlags(using QuoteContextImpl.this)(self)
         def show: String =
           self.showWith(SyntaxHighlight.plain)
         def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter(syntaxHighlight).showFlags(using QuoteContextImpl.this)(self)
+          SourceCode.showFlags(using QuoteContextImpl.this)(self)(syntaxHighlight)
       end extension
     end FlagsMethodsImpl
 
