@@ -20,6 +20,7 @@ import dotty.dokka.model.api.Link
 import dotty.dokka.model.api.HierarchyGraph
 import org.jetbrains.dokka.base.resolvers.local.LocationProvider
 import dotty.dokka.site.StaticPageNode
+import dotty.dokka.site.PartiallyRenderedContent
 
 class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
   def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
@@ -37,7 +38,7 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
 
   def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
 
-class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) { // TODO migrate from dokka site!
+class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
 
   // Implementation below is based on Kotlin bytecode and we will try to migrate it to dokka
   // TODO (https://github.com/lampepfl/scala3doc/issues/232): Move this method to dokka
@@ -206,6 +207,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) { // TODO m
     pageContext: ContentPage,
   ): Unit = {
     // we cannot use Scalatags, because we need to call buildContentNode
+    // TODO rewrite it to using HTML
     import kotlinx.html.{Gen_consumer_tagsKt => dsl}
     val c = f.getConsumer
 
@@ -230,6 +232,30 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) { // TODO m
         script(`type` := "text/dot", id := "dot")(raw(DotDiagramBuilder.build(diagram, renderer))),
       ).toString()
     )
+
+  private def render(c: PartiallyRenderedContent, p: ContentPage): String  =
+      val parsed = if (!c.page.hasMarkdown) c.page.code else
+        div(raw(
+          buildWithKotlinx{ div => 
+            c.getChildren.forEach(build(_, div, p, /*sourceSetRestriction=*/null))
+            U
+          }
+        )).toString
+
+      return c.page.render(parsed).code
+
+
+  override def buildPageContent(context: FlowContent, page: ContentPage): Unit = 
+    page match
+      case s: StaticPageNode if !s.hasFrame() =>
+      case _ =>  buildNavigation(context, page)
+
+    page.getContent match
+      case prc: PartiallyRenderedContent =>
+        withHtml(context, render(prc, page))
+      case content =>
+        build(content, context, page, /*sourceSetRestriction=*/null)
+  
 
   override def buildHtml(page: PageNode, resources: JList[String], kotlinxContent: FlowContentConsumer): String =
     val (pageTitle, pageResources, fromTemplate) = page match
@@ -316,5 +342,4 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) { // TODO m
       null,
       func
     ).toString.stripPrefix("<div>").stripSuffix("</div>\n")
-
 }
