@@ -1463,6 +1463,9 @@ object Build {
           run.in(Compile).toTask(s""" -d output/$outDir -t $targets -n "$name" -s $sourceMapping $params""")
       }
 
+      def joinProducts(products: Seq[java.io.File]): String =
+        products.iterator.map(_.getAbsolutePath.toString).mkString(java.io.File.pathSeparator)
+
       project.settings(commonBootstrappedSettings).
         dependsOn(`scala3-compiler-bootstrapped`).
         dependsOn(`scala3-tasty-inspector`).
@@ -1481,7 +1484,7 @@ object Build {
             "com.novocode" % "junit-interface" % "0.11" % "test",
           ),
           Test / test := (Test / test).dependsOn(compile.in(Compile).in(`scala3doc-testcases`)).value,
-          testcasesOutputDir.in(Test) := classDirectory.in(Compile).in(`scala3doc-testcases`).value.getAbsolutePath.toString,
+          testcasesOutputDir.in(Test) := joinProducts((`scala3doc-testcases`/Compile/products).value),
           testcasesSourceRoot.in(Test) := (baseDirectory.in(`scala3doc-testcases`).value / "src").getAbsolutePath.toString,
           Compile / mainClass := Some("dotty.dokka.Main"),
           // There is a bug in dokka that prevents parallel tests withing the same jvm
@@ -1498,7 +1501,7 @@ object Build {
               // (`stdlib-bootstrapped`/Compile/products).value,
             ).flatten
 
-            val roots = dottyJars.map(_.toString).mkString(java.io.File.pathSeparator)
+            val roots = joinProducts(dottyJars)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
             else generateDocumentation(roots, "Scala 3", "stdLib", "-p dotty-docs/docs")
