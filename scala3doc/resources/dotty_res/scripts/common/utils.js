@@ -24,6 +24,10 @@ const htmlToString = (html) => {
   return html;
 };
 
+const isFilterData = key => key.startsWith("f")
+
+const getFilterKey = key => `f${key.charAt(0).toUpperCase()}${key.slice(1)}`
+
 const attachListeners = (elementsRefs, type, callback) =>
   elementsRefs.map((elRef) => withEvent(elRef, type, callback));
 

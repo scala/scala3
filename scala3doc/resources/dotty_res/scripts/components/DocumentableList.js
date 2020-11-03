@@ -132,35 +132,36 @@ class List {
     }
 
     function areFiltersFromElementSelected() {
-      /** @param str { string } */
-      const haveKeywordData = key => key === Filter.KeywordsKey
-      
       /** @type { [key: string, value: string][] } */
       const dataset = Object.entries(elementData.ref.dataset) 
       
-      const datasetWithDefaultData =  dataset.filter(([key]) => !haveKeywordData(key));
-      const datasetWithKeywordData =  dataset.filter(([key]) => haveKeywordData(key));
+      const datasetWithFilterData = dataset.filter(([key]) => isFilterData(key));
 
-      return datasetWithKeywordData.length > 0 
-        ? hasCorrespondingFilters() 
-        : haveDefaultFilters()
+      return hasCorrespondingFilters() || haveDefaultFilters()
 
       function haveDefaultFilters() {
         return (
-          filter.filters.fKeywords[Filter.defaultFilterKey] && 
-          filter.filters.fKeywords[Filter.defaultFilterKey].selected &&
-          datasetWithDefaultData.length >= 1
+          Object.entries(Filter.defaultFilters).some(([key, value]) => {
+            const filterKey = getFilterKey(key)
+      
+            return (
+              filter.filters[filterKey] && 
+              filter.filters[filterKey][value].selected && 
+              !dataset.some(([k]) => k === filterKey)
+            )
+           }
+          )
         )
       }
-        
+       
+      // check if any selected filter is on data attr
       function hasCorrespondingFilters() {
-        return (
-          datasetWithKeywordData
-            .every(([key, value]) => {
-              const filterGroup = filter.filters[key];
-              return value.split(",").every(val => filterGroup && filterGroup[val].selected);
-            })
-        )
+        return datasetWithFilterData
+          .some(([filterKey, value]) => 
+            value.split(",").some(val => 
+              filter.filters[filterKey] && filter.filters[filterKey][val].selected
+            )
+          )
       }
     }
   }

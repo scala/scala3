@@ -1,5 +1,7 @@
 /**
- * @typedef { { fKeywords: Record<string, FilterItem> } } Filters
+ * @typedef { Record<string, FilterItem> } FilterMap
+ * @typedef { "fKeywords" | "fInherited" | "fImplicitly" | "fExtension" | "fVisibility" } FilterAttributes
+ * @typedef { Record<FilterAttributes, FilterMap> } Filters
  */
 
 class Filter {
@@ -16,15 +18,9 @@ class Filter {
     this._filters = this._init ? this._withNewFilters() : filters;
   }
 
-  /**
-   * Key for filters without the `fKeywords`
-   */
-  static defaultFilterKey = 'default'
-
-  /**
-   * HTML data attribute that contains non-default keywords
-   */
-  static KeywordsKey = 'fKeywords'
+  static get defaultFilters() {
+    return scala3DocData.filterDefaults
+  }
 
   get value() {
     return this._value;
@@ -98,12 +94,8 @@ class Filter {
         return filtersObject;
       }, this._allFiltersAreHidden());
 
-      const shouldAddDefaultFilter = elementsDatasets
-        .some(d => d.length === 0 || d.some(([key]) => key !== Filter.KeywordsKey))
+      return this._attachDefaultFilters(newFilters)
 
-      return shouldAddDefaultFilter
-        ? this._attachDefaultFilters(newFilters)
-        : newFilters
   }
 
   /**
@@ -163,24 +155,29 @@ class Filter {
       return filtersObject;
     }, {});
 
-    const shouldAddDefaultFilter = this._elementsRefs.some(ref => !!ref.dataset[Filter.KeywordsKey])
-
-    return shouldAddDefaultFilter 
-      ? this._attachDefaultFilters(newFilters)
-      : newFilters
+    return this._attachDefaultFilters(newFilters)
   }
 
   /**
    * @private
-   * @param {Filters} filters 
+   * @param {Filters} newFilters
+   * @returns {Filters} 
    */
-  _attachDefaultFilters(filters) {
-    return { 
-      ...filters, [Filter.KeywordsKey]: { 
-        ...filters.fKeywords, 
-        [Filter.defaultFilterKey]: new FilterItem() 
-      } 
-    } 
+  _attachDefaultFilters(newFilters) {
+    return Object.entries(Filter.defaultFilters).reduce((acc, [key, defaultFilter]) => {
+      const filterKey = getFilterKey(key)
+      const shouldAddDefaultKeywordFilter = this._elementsRefs.some(ref => !!ref.dataset[filterKey])
+      
+      return shouldAddDefaultKeywordFilter 
+        ? { 
+          ...acc, 
+          [filterKey]: { 
+            ...acc[filterKey], 
+            [defaultFilter]: new FilterItem() 
+          } 
+        } 
+        : acc
+    }, newFilters)
   }
 
   /**
@@ -214,7 +211,7 @@ class Filter {
   * @returns { [key: string, value: string][] }
   */
   _getDatasetWithKeywordData = (dataset) =>
-    Object.entries(dataset).filter(([key]) => key === Filter.KeywordsKey);
+    Object.entries(dataset).filter(([key]) => isFilterData(key));
 }
 
 class FilterItem {
