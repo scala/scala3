@@ -93,8 +93,8 @@ object DottyPlugin extends AutoPlugin {
        *  with Dotty this will change the cross-version to a Scala 2.x one. This
        *  works because Dotty is currently retro-compatible with Scala 2.x.
        *
-       *  NOTE: As a special-case, the cross-version of dotty-library, dotty-compiler and
-       *  dotty will never be rewritten because we know that they're Dotty-only.
+       *  NOTE: As a special-case, the cross-version of scala3-library and scala3-compiler
+       *  will never be rewritten because we know that they're Scala 3 only.
        *  This makes it possible to do something like:
        *  {{{
        *  libraryDependencies ~= (_.map(_.withDottyCompat(scalaVersion.value)))
@@ -102,7 +102,8 @@ object DottyPlugin extends AutoPlugin {
        */
       def withDottyCompat(scalaVersion: String): ModuleID = {
         val name = moduleID.name
-        if (name != "scala3" && name != "scala3-library" && name != "scala3-compiler")
+        if (name != "scala3-library" && name != "scala3-compiler" &&
+            name != "dotty" && name != "dotty-library" && name != "dotty-compiler")
           moduleID.crossVersion match {
             case binary: librarymanagement.Binary =>
               val compatVersion =
