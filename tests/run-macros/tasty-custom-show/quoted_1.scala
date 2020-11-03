@@ -37,8 +37,8 @@ object Macros {
     '{print(${Expr(buff.result())})}
   }
 
-  def dummyShow: scala.tasty.reflect.Printer = {
-    new scala.tasty.reflect.Printer {
+  def dummyShow: scala.quoted.reflect.printers.Printer = {
+    new scala.quoted.reflect.printers.Printer {
       def showTree(using qctx: QuoteContext)(tree: qctx.reflect.Tree): String = "Tree"
       def showType(using qctx: QuoteContext)(tpe: qctx.reflect.TypeRepr): String = "TypeRepr"
       def showConstant(using qctx: QuoteContext)(const: qctx.reflect.Constant): String = "Constant"

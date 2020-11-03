@@ -1,7 +1,5 @@
-package scala.tasty
-package reflect
-
-import scala.quoted._
+package scala.quoted
+package reflect.printers
 
 trait Printer {
   /** Show a String representation of a reflect.Tree */

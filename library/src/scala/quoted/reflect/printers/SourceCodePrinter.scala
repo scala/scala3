@@ -1,10 +1,8 @@
-package scala.tasty
-package reflect
+package scala.quoted
+package reflect.printers
 
 import scala.annotation.switch
 import scala.quoted.show.SyntaxHighlight
-
-import scala.quoted._
 
 /** Printer for fully elaborated representation of the source code */
 class SourceCodePrinter(syntaxHighlight: SyntaxHighlight) extends Printer {
