@@ -2,7 +2,6 @@ package scala.quoted
 package reflect.printers
 
 import scala.annotation.switch
-import scala.quoted.show.SyntaxHighlight
 
 /** Printer for fully elaborated representation of the source code */
 class SourceCodePrinter(syntaxHighlight: SyntaxHighlight) extends Printer {

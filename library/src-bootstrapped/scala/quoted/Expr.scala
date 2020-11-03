@@ -1,6 +1,6 @@
 package scala.quoted
 
-import scala.quoted.show.SyntaxHighlight
+import scala.quoted.reflect.printers.SyntaxHighlight
 import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
 /** Quoted expression of type `T` */

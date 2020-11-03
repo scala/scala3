@@ -1,7 +1,7 @@
 package scala.quoted
 
 import scala.annotation.compileTimeOnly
-import scala.quoted.show.SyntaxHighlight
+import scala.quoted.reflect.printers.SyntaxHighlight
 
 /** Quoted type (or kind) `T` */
 abstract class Type[T <: AnyKind] private[scala] {
