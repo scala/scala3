@@ -72,22 +72,36 @@ You can also find the result of building the same sites for latest `master` at:
 
 ### Testing
 
-Most tests rely on comparing signatures (of classes, methods, objects etc.) extracted from the generated documentation
-to signatures found in source files. Such tests are defined using [MultipleFileTest](src/test/scala/dotty/dokka/MultipleFileTest.scala) class
-and its subtypes (such as [SingleFileTest](src/test/scala/dotty/dokka/SingleFileTest.scala))
+To implement integration tests that inspects state of the model on different stages of
+documentation generation one can use [ScaladocTest](src/test/scala/dotty/dokka/ScaladocTest.scala#L15).
+This class requires providing the name of the test and a the list of assertions.
 
-WARNING: As the classes mentioned above are likely to evolve, the description below might easily get out of date.
-In case of any discrepancies rely on the source files instead.
+Name of the test is used to extract symbols that should be included in given test run from
+the TASTY files. All test data is located in [scala3doc-testcases module](../scala3doc-testcases/src).
+It is compiled together with the rest of modules. This solves lots of potential problems with
+invoking the compiler in a separate process such as mismatching versions. Every test is using
+only symbols defined in the package with the same name as the test located inside top level `tests`
+package (including subpackages). This restriction may be relaxed in the future.
 
-`MultipleFileTest` requires that you specify the names of the files used to extract signatures,
-the names of directories containing corresponding TASTY files
-and the kinds of signatures from source files (corresponding to keywords used to declare them like `def`, `class`, `object` etc.)
-whose presence in the generated documentation will be checked (other signatures, when missing, will be ignored).
-The mentioned source files should be located directly inside `src/main/scala/tests` directory
-but the file names passed as parameters should contain neither this path prefix nor `.scala` suffix.
-The TASTY folders are expected to be located in `target/${dottyVersion}/classes/tests` (after successful compilation of the project)
-and similarly only their names relative to this path should be provided as tests' parameters.
-For `SingleFileTest` the name of the source file and the TASTY folder are expected to be the same.
+Assertions of each test are defined as list of [Assertion enum](src/test/scala/dotty/dokka/ScaladocTest.scala#L63)
+instances. Each of them represents a callback that is invoked in corresponding phase of
+documentation generation. Those callback can inspect the model, log information and raise errors
+using `reportError` method.
+
+#### Signature tests
+
+Some of the tests rely on comparing signatures (of classes, methods, objects etc.) extracted from
+the generated documentation to signatures found in source files. Such tests are defined using
+[SignatureTest](src/test/scala/dotty/dokka/SignatureTest.scala#L16) class, that is a subclass of
+`ScaladocTest` and uses exactly tha same mechanism to find input symbols in the TASTY files.
+
+Signature tests by default assume that sources that were used to generate used TASTY files are
+located in the file with the same name as the name of the test. If this is not the case optional
+parameter `sourceFiles` can be used to pass list of source file names (without `.scala` extension).
+
+Those tests also requires specifying kinds of ignatures from source files (corresponding to
+keywords used to declare them like `def`, `class`, `object` etc.) whose presence in the generated
+documentation will be checked (other signatures, when missing, will be ignored).
 
 By default it's expected that all signatures from the source files will be present in the documentation
 but not vice versa (because the documentation can contain also inherited signatures).
