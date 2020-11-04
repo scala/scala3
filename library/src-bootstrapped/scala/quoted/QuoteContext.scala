@@ -17,9 +17,6 @@ trait QuoteContext { self =>
    */
   val reflect: scala.tasty.Reflection
 
-  @deprecated("Use `reflect` instead", "")
-  def tasty: reflect.type = reflect
-
   /** Type of a QuoteContext provided by a splice within a quote that took this context.
    *  It is only required if working with the reflection API.
    *
@@ -34,7 +31,7 @@ trait QuoteContext { self =>
    *  ```
    */
   type Nested = QuoteContext {
-    val reflect: self.tasty.type
+    val reflect: self.reflect.type
   }
 
 }

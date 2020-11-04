@@ -10,7 +10,7 @@ object macros {
   class Foo { val x = 10 }
 
   def mcrImpl(body: Expr[Any])(using ctx: QuoteContext): Expr[Any] = {
-    import ctx.tasty._
+    import ctx.reflect._
     try {
       body match {
         case '{$x: Foo} => Expr(run(x).x)
