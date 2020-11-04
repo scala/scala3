@@ -103,8 +103,10 @@ sidebar:
               url: docs/reference/other-new-features/kind-polymorphism.html
             - title: Tupled Function
               url: docs/reference/other-new-features/tupled-function.html
-            - title: threadUnsafe Annotation
+            - title: @threadUnsafe Annotation
               url: docs/reference/other-new-features/threadUnsafe-annotation.html
+            - title: @targetName Annotation
+              url: docs/reference/other-new-features/targetName.html
             - title: New Control Syntax
               url: docs/reference/other-new-features/control-syntax.html
             - title: Optional Braces
