@@ -881,6 +881,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def annotText(tree: untpd.Tree): Text = "@" ~ constrText(tree) // DD
 
+  override def annotsText(sym: Symbol): Text =
+    Text(sym.annotations.map(ann =>
+      if ann.symbol == defn.BodyAnnot then Str(simpleNameString(ann.symbol))
+      else annotText(ann.tree)))
+
   protected def modText(mods: untpd.Modifiers, sym: Symbol, kw: String, isType: Boolean): Text = { // DD
     val suppressKw = if (enclDefIsClass) mods.isAllOf(LocalParam) else mods.is(Param)
     var flagMask =
