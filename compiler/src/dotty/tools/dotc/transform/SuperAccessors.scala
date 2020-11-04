@@ -8,6 +8,8 @@ import ValueClasses.isMethodWithExtension
 import core._
 import Contexts._, Flags._, Symbols._, Names._, StdNames._, NameOps._, Trees._
 import TypeUtils._, SymUtils._
+import Constants.Constant
+import Annotations.Annotation
 import DenotTransformers.DenotTransformer
 import Symbols._
 import util.Spans._
@@ -67,11 +69,15 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val Select(qual, name) = sel
     val sym = sel.symbol
     val clazz = qual.symbol.asClass
-    val preName = if (mixName.isEmpty) name.toTermName else ExpandPrefixName(name.toTermName, mixName.toTermName)
-    var superName = SuperAccessorName(preName)
-    if (clazz.is(Trait)) superName = superName.expandedName(clazz)
-    val superInfo = sel.tpe.widenSingleton.ensureMethodic
 
+    def superAccessorName(original: Name) =
+      val unexpanded = SuperAccessorName(
+        if mixName.isEmpty then original.toTermName
+        else ExpandPrefixName(original.toTermName, mixName.toTermName))
+      if clazz.is(Trait) then unexpanded.expandedName(clazz) else unexpanded
+
+    val superName = superAccessorName(name)
+    val superInfo = sel.tpe.widenSingleton.ensureMethodic
     val accRange = sel.span.focus
     val superAcc = clazz.info.decl(superName)
       .suchThat(_.signature == superInfo.signature).symbol
@@ -81,6 +87,10 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         val acc = newSymbol(
             clazz, superName, Artifact | Method | maybeDeferred,
             superInfo, coord = accRange).enteredAfter(thisPhase)
+        if !Denotations.targetNamesMatch(sym.name, sym.erasedName) then
+          acc.addAnnotation(
+            Annotation(defn.TargetNameAnnot,
+              Literal(Constant(superAccessorName(sym.erasedName).toString)).withSpan(sym.span)))
         // Diagnostic for SI-7091
         if (!accDefs.contains(clazz))
           report.error(

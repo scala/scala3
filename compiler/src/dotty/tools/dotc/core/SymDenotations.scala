@@ -522,6 +522,9 @@ object SymDenotations {
           then carrier.unforcedAnnotation(defn.TargetNameAnnot)
           else carrier.getAnnotation(defn.TargetNameAnnot)
         myTargetName = computeTargetName(targetNameAnnot)
+        if name.is(SuperAccessorName) then
+          myTargetName = myTargetName.unmangle(List(ExpandedName, SuperAccessorName, ExpandPrefixName))
+
       myTargetName
 
     // ----- Tests -------------------------------------------------

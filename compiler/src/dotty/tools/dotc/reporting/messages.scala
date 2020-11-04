@@ -2204,7 +2204,7 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class IllegalSuperAccessor(base: Symbol, memberName: Name,
+  class IllegalSuperAccessor(base: Symbol, memberName: Name, targetName: Name,
       acc: Symbol, accTp: Type,
       other: Symbol, otherTp: Type)(using Context) extends DeclarationMsg(IllegalSuperAccessorID) {
     def msg = {
@@ -2220,7 +2220,8 @@ import transform.SymUtils._
       // does in classes, i.e. followed the linearization of the trait itself.
       val staticSuperCall = {
         val staticSuper = accMixin.asClass.info.parents.reverse
-          .find(_.nonPrivateMember(memberName).matchingDenotation(accMixin.thisType, acc.info).exists)
+          .find(_.nonPrivateMember(memberName)
+            .matchingDenotation(accMixin.thisType, acc.info, targetName).exists)
         val staticSuperName = staticSuper match {
           case Some(parent) =>
             parent.classSymbol.name.show
