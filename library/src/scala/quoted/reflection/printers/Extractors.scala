@@ -1,5 +1,5 @@
 package scala.quoted
-package reflect.printers
+package reflection.printers
 
 object Extractors {
 

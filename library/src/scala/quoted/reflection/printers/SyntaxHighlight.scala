@@ -1,5 +1,5 @@
 package scala.quoted
-package reflect.printers
+package reflection.printers
 
 trait SyntaxHighlight {
   def highlightKeyword(str: String): String

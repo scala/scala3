@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.reflect.printers.SyntaxHighlight.ANSI
+import scala.quoted.reflection.printers.SyntaxHighlight.ANSI
 
 object api {
   extension (inline x: String) inline def reflect : String =

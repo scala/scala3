@@ -14,7 +14,7 @@ import dotty.tools.dotc.quoted.QuoteUtils._
 import dotty.tools.dotc.core.Decorators._
 
 import scala.quoted.QuoteContext
-import scala.quoted.reflect.printers.{Extractors, SourceCode, SyntaxHighlight}
+import scala.quoted.reflection.printers.{Extractors, SourceCode, SyntaxHighlight}
 
 import scala.internal.quoted.PickledQuote
 import scala.tasty.reflect._

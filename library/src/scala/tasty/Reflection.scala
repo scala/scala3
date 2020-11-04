@@ -3,7 +3,7 @@ package scala.tasty
 import scala.internal.tasty.CompilerInterface
 
 import scala.quoted.QuoteContext
-import scala.quoted.reflect.printers.SyntaxHighlight
+import scala.quoted.reflection.printers.SyntaxHighlight
 import scala.tasty.reflect._
 
 /** TASTy Reflect Interface.
