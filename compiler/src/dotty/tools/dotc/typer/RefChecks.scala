@@ -23,7 +23,7 @@ import scala.util.matching.Regex._
 import Constants.Constant
 
 object RefChecks {
-  import tpd.{Tree, MemberDef, Literal, Template, DefDef}
+  import tpd.{Tree, MemberDef, NamedArg, Literal, Template, DefDef}
 
   val name: String = "refchecks"
 
@@ -957,18 +957,11 @@ object RefChecks {
    *  (i.e. they refer to a type variable that really occurs in the signature of the annotated symbol.)
    */
   private object checkImplicitNotFoundAnnotation:
-
     /** Warns if the class or trait has an @implicitNotFound annotation
      *  with invalid type variable references.
      */
     def template(sd: SymDenotation)(using Context): Unit =
-      for
-        annotation <- sd.getAnnotation(defn.ImplicitNotFoundAnnot)
-        l@Literal(c: Constant) <- annotation.argument(0)
-      do forEachTypeVariableReferenceIn(c.stringValue) { case (ref, start) =>
-        if !sd.typeParams.exists(_.denot.name.show == ref) then
-          reportInvalidReferences(l, ref, start, sd)
-      }
+      checkReferences(sd)
 
     /** Warns if the def has parameters with an `@implicitNotFound` annotation
      *  with invalid type variable references.
@@ -977,26 +970,42 @@ object RefChecks {
       for
         paramSymss <- sd.paramSymss
         param <- paramSymss
-      do
-        for
-          annotation <- param.getAnnotation(defn.ImplicitNotFoundAnnot)
-          l@Literal(c: Constant) <- annotation.argument(0)
-        do forEachTypeVariableReferenceIn(c.stringValue) { case (ref, start) =>
-          if !sd.paramSymss.flatten.exists(_.name.show == ref) then
-            reportInvalidReferences(l, ref, start, sd)
-        }
+        if param.isTerm
+      do checkReferences(param.denot)
 
-    /** Reports an invalid reference to a type variable `typeRef` that was found in `l` */
-    private def reportInvalidReferences(
-      l: Literal,
+    private object PositionedStringLiteralArgument:
+      def unapply(tree: Tree): Option[(String, Span)] = tree match {
+        case l@Literal(Constant(s: String)) => Some((s, l.span))
+        case NamedArg(_, l@Literal(Constant(s: String))) => Some((s, l.span))
+        case _ => None
+      }
+
+    private def checkReferences(sd: SymDenotation)(using Context): Unit =
+      lazy val substitutableTypesNames =
+        ErrorReporting.substitutableTypeSymbolsInScope(sd.symbol).map(_.denot.name.show)
+      for
+        annotation <- sd.getAnnotation(defn.ImplicitNotFoundAnnot)
+        PositionedStringLiteralArgument(msg, span) <- annotation.argument(0)
+      do forEachTypeVariableReferenceIn(msg) { case (ref, start) =>
+        if !substitutableTypesNames.contains(ref) then
+          reportInvalidReference(span, ref, start, sd)
+      }
+
+    /** Reports an invalid reference to a type variable `typeRef` that was found in `span` */
+    private def reportInvalidReference(
+      span: Span,
       typeRef: String,
-      offsetInLiteral: Int,
+      variableOffsetinArgumentLiteral: Int,
       sd: SymDenotation
     )(using Context) =
-      val msg = InvalidReferenceInImplicitNotFoundAnnotation(
-        typeRef, if (sd.isConstructor) "the constructor" else sd.name.show)
-      val span = l.span.shift(offsetInLiteral + 1) // +1 because of 0-based index
-      val pos = ctx.source.atSpan(span.startPos)
+      val typeRefName = s"`$typeRef`"
+      val ownerName =
+        if sd.isType then s"type `${sd.name.show}`"
+        else if sd.owner.isConstructor then s"the constructor of `${sd.owner.owner.name.show}`"
+        else s"method `${sd.owner.name.show}`"
+      val msg = InvalidReferenceInImplicitNotFoundAnnotation(typeRefName, ownerName)
+      val startPos = span.shift(variableOffsetinArgumentLiteral + 1).startPos // +1 because of 0-based index
+      val pos = ctx.source.atSpan(startPos)
       report.warning(msg, pos)
 
     /** Calls the supplied function for each quoted reference to a type variable in <pre>s</pre>.
@@ -1013,10 +1022,15 @@ object RefChecks {
      * @param f A function to apply to every pair of (\<type variable>, \<position in string>).
      */
     private def forEachTypeVariableReferenceIn(s: String)(f: (String, Int) => Unit) =
-      // matches quoted references such as "${(A)}", "${(Abc)}", etc.
-      val reference = """(?<=\$\{)[a-zA-Z]+(?=\})""".r
-      val matches = reference.findAllIn(s)
-      for m <- matches do f(m, matches.start)
+      // matches quoted references such as "${A}", "${ Abc }", etc.
+      val referencePattern = """\$\{\s*([^}\s]+)\s*\}""".r
+      val matches = referencePattern.findAllIn(s)
+      for reference <- matches do
+        val referenceOffset = matches.start
+        val prefixlessReference = reference.replaceFirst("""\$\{\s*""", "")
+        val variableOffset = referenceOffset + reference.length - prefixlessReference.length
+        val variableName = prefixlessReference.replaceFirst("""\s*\}""", "")
+        f(variableName, variableOffset)
 
   end checkImplicitNotFoundAnnotation
 

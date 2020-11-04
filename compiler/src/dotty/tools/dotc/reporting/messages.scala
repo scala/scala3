@@ -2447,8 +2447,8 @@ import transform.SymUtils._
 
   class InvalidReferenceInImplicitNotFoundAnnotation(typeVar: String, owner: String)(using Context)
     extends ReferenceMsg(InvalidReferenceInImplicitNotFoundAnnotationID) {
-    def msg = em"""|Invalid reference to a type variable "${hl(typeVar)}" found in the annotation argument.
-                   |The variable does not occur in the signature of ${hl(owner)}.
+    def msg = em"""|Invalid reference to a type variable ${hl(typeVar)} found in the annotation argument.
+                   |The variable does not occur as a parameter in the scope of ${hl(owner)}.
                    |""".stripMargin
     def explain = ""
   }

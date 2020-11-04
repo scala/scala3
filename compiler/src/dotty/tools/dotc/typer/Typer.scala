@@ -2003,6 +2003,13 @@ class Typer extends Namer
       checkThisConstrCall(rhs1)
     }
 
+    if sym.is(Method) && sym.owner.denot.isRefinementClass then
+      for annot <- sym.paramSymss.flatten.filter(_.isTerm).flatMap(_.getAnnotation(defn.ImplicitNotFoundAnnot)) do
+        report.warning(
+          i"The annotation ${defn.ImplicitNotFoundAnnot} is not allowed on parameters of methods defined inside a refinement and it will have no effect",
+          annot.tree.sourcePos
+        )
+
     val ddef2 = assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
 
     checkSignatureRepeatedParam(sym)
@@ -3108,12 +3115,20 @@ class Typer extends Namer
         val propFail = propagatedFailure(args)
 
         def issueErrors(): Tree = {
+          def paramSymWithMethodTree(paramName: TermName) =
+            if tree.symbol.exists then
+              val paramSyms = tree.symbol.paramSymss.flatten.map(sym => sym.name -> sym).toMap
+              Some((paramSyms(paramName), tree))
+            else
+              None
+
           wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach { (paramName, formal, arg) =>
             arg.tpe match {
               case failure: SearchFailureType =>
                 report.error(
-                  missingArgMsg(arg, formal, implicitParamString(paramName, methodStr, tree)),
-                  tree.srcPos.endPos)
+                  missingArgMsg(arg, formal, implicitParamString(paramName, methodStr, tree), paramSymWithMethodTree(paramName)),
+                  tree.srcPos.endPos
+                )
               case _ =>
             }
           }
