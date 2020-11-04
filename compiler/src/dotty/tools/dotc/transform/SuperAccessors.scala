@@ -87,7 +87,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         val acc = newSymbol(
             clazz, superName, Artifact | Method | maybeDeferred,
             superInfo, coord = accRange).enteredAfter(thisPhase)
-        if !Denotations.targetNamesMatch(sym.name, sym.erasedName) then
+        if sym.hasAnnotation(defn.TargetNameAnnot) then
           acc.addAnnotation(
             Annotation(defn.TargetNameAnnot,
               Literal(Constant(superAccessorName(sym.erasedName).toString)).withSpan(sym.span)))

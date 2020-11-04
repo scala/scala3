@@ -198,6 +198,8 @@ object Inliner {
       name = BodyRetainerName(meth.name),
       flags = meth.flags &~ (Inline | Macro | Override) | Private,
       coord = mdef.rhs.span.startPos).asTerm
+    for targetAnnot <- meth.getAnnotation(defn.TargetNameAnnot) do
+      retainer.addAnnotation(targetAnnot)
     polyDefDef(retainer, targs => prefss =>
       inlineCall(
         ref(meth).appliedToTypes(targs).appliedToArgss(prefss)

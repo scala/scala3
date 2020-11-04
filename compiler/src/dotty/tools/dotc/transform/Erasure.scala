@@ -936,9 +936,17 @@ object Erasure {
         case stat: DefDef @unchecked if stat.symbol.name.is(BodyRetainerName) =>
           val retainer = stat.symbol
           val origName = retainer.name.asTermName.exclude(BodyRetainerName)
+          val targetName =
+            if retainer.hasAnnotation(defn.TargetNameAnnot) then
+              try retainer.erasedName
+              finally
+                 // reset target name so that definition will have a BodyRetainerName
+                 // after erasure and be thereby eliminated in typedDefDef
+                retainer.setTargetName(retainer.name)
+            else origName
           val inlineMeth = atPhase(typerPhase) {
             retainer.owner.info.decl(origName)
-              .matchingDenotation(retainer.owner.thisType, stat.symbol.info)
+              .matchingDenotation(retainer.owner.thisType, stat.symbol.info, targetName)
               .symbol
           }
           (inlineMeth, stat)
