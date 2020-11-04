@@ -38,7 +38,9 @@ class ScalaEmbeddedResourceAppender extends PageTransformer {
           "scripts/components/FilterGroup.js",
           "scripts/components/Filter.js",
           "scripts/data.js",
-          "scripts/fast-navigation-loader.js"
+          "scripts/fast-navigation-loader.js",
+          "scripts/bundle.js",
+          "styles/main.css"
         )).asJava,
         page.getChildren
       )
