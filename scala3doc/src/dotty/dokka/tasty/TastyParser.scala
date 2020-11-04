@@ -88,7 +88,7 @@ case class SbtDokkaTastyInspector(
 
     override def run(implicit ctx: Context): Unit =
       val qctx = QuoteContextImpl()
-      self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.tasty.Tree])
+      self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.reflect.Tree])
 
   end TastyInspectorPhase
 

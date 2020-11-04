@@ -18,7 +18,7 @@ trait TastyInspector:
   self =>
 
   /** Process a TASTy file using TASTy reflect */
-  protected def processCompilationUnit(using QuoteContext)(root: qctx.tasty.Tree): Unit
+  protected def processCompilationUnit(using QuoteContext)(root: qctx.reflect.Tree): Unit
 
   /** Load and process TASTy files using TASTy reflect
    *
@@ -85,7 +85,7 @@ trait TastyInspector:
 
       override def run(implicit ctx: Context): Unit =
         val qctx = QuoteContextImpl()
-        self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.tasty.Tree])
+        self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.reflect.Tree])
 
     end TastyInspectorPhase
 

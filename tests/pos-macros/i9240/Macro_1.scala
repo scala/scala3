@@ -5,7 +5,7 @@ inline def diveInto[T]: String = ${ diveIntoImpl[T]() }
 
 def diveIntoImpl[T]()(implicit qctx: QuoteContext, ttype: Type[T]): Expr[String] =
   import qctx.reflect._
-  Expr( unwindType(qctx.tasty)(TypeRepr.of[T]) )
+  Expr( unwindType(qctx.reflect)(TypeRepr.of[T]) )
 
 def unwindType(reflect: Reflection)(aType: reflect.TypeRepr): String =
   import reflect._
