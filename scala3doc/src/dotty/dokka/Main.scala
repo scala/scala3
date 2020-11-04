@@ -128,13 +128,38 @@ object Main:
       val (providedTastyFiles, jars) = files.toList.map(_.getAbsolutePath).partition(_.endsWith(".tasty"))
       jars.foreach(j => if(!j.endsWith(".jar")) sys.error(s"Provided file $j is not jar not tasty file") )
 
+      val blacklist = Set(
+        "scala/Function.tasty",
+        // "scala/Array.tasty",
+        // "scala/Boolean.tasty",
+        // "scala/Char.tasty",
+        // "scala/Byte.tasty",
+        // "scala/Int.tasty",
+        // "scala/Long.tasty",
+        // "scala/Float.tasty",
+        // "scala/Short.tasty",
+        // "scala/Double.tasty",
+        // "scala/Unit.tasty",
+      )
 
-      def listTastyFiles(f: File): Seq[String] =
+      def listTastyFiles(root: File, f: File): Seq[String] =
         val (files, dirs) = f.listFiles().partition(_.isFile)
+        val filteredFiles = files.flatMap {
+          case f if f.getName.endsWith(".tasty") =>
+            val rel = root.toPath.relativize(f.toPath).toString
+            if blacklist contains rel then
+              println(s"Blacklisting: $f")
+              None
+            else
+              Some(f)
+          case _ => None
+        }
         ArraySeq.unsafeWrapArray(
-          files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
+          filteredFiles.map(_.toString) ++ dirs.flatMap(d => listTastyFiles(root, d))
         )
-      val tastyFiles = providedTastyFiles ++ dirs.flatMap(listTastyFiles)
+      val baseTastyFiles = providedTastyFiles ++ dirs.flatMap(d => listTastyFiles(d, d))
+
+      val tastyFiles = baseTastyFiles
 
       val config = DocConfiguration.Standalone(parsedArgs, tastyFiles, jars)
 

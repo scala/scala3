@@ -87,7 +87,11 @@ trait MemberLookup {
         )
 
       def hackResolveModule(s: r.Symbol): r.Symbol =
-        if s.flags.is(Flags.Object) then s.moduleClass else s
+        try
+          if s.flags.is(Flags.Object) then s.moduleClass else s
+        catch
+          case ex: java.lang.UnsupportedOperationException =>
+            throw new RuntimeException(s"Was trying to read flags of: $s", ex)
 
       val matched = syms.find(matches)
 

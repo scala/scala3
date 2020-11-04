@@ -1494,11 +1494,11 @@ object Build {
           }.value,
           generateScala3Documentation := Def.taskDyn {
             val dottyJars: Seq[java.io.File] = Seq(
-              (`scala3-interfaces`/Compile/products).value,
-              (`tasty-core`/Compile/products).value,
-              (`scala3-library`/Compile/products).value,
+              // (`scala3-interfaces`/Compile/products).value,
+              // (`tasty-core`/Compile/products).value,
+              // (`scala3-library`/Compile/products).value,
               // TODO we can't load stdlib from Tasty
-              // (`stdlib-bootstrapped`/Compile/products).value,
+              (`stdlib-bootstrapped`/Compile/products).value,
             ).flatten
 
             val roots = joinProducts(dottyJars)
