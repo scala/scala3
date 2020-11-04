@@ -3165,17 +3165,16 @@ trait Reflection { reflection =>
   // POSITIONS //
   ///////////////
 
-  // TODO: Should this be in the QuoteContext?
-  // TODO: rename to enclosingPosition (as in scala.reflect)
-  /** Root position of this tasty context. For macros it corresponds to the expansion site. */
-  def rootPosition: Position
 
   /** Position in a source file */
   type Position <: AnyRef
 
   val Position: PositionModule
 
-  trait PositionModule { this: Position.type => }
+  trait PositionModule { this: Position.type =>
+    /** Position of the expansion site of the macro */
+    def ofMacroExpansion: Position
+  }
 
   given PositionMethods as PositionMethods = PositionMethodsImpl
   protected val PositionMethodsImpl: PositionMethods

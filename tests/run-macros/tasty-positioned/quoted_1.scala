@@ -10,8 +10,8 @@ object Positioned {
   implicit inline def apply[T](x: => T): Positioned[T] = ${impl('x)}
 
   def impl[T](x: Expr[T])(implicit ev: Type[T], qctx: QuoteContext): Expr[Positioned[T]] = {
-    import qctx.reflect.{Position => _, _}
-    val pos = rootPosition
+    import qctx.reflect.{Position => Pos, _}
+    val pos = Pos.ofMacroExpansion
 
     val path = Expr(pos.sourceFile.jpath.toString)
     val start = Expr(pos.start)

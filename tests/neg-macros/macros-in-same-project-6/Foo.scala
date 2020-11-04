@@ -6,7 +6,7 @@ object Foo {
 
   def aMacroImplementation(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
-    Reporting.error("some error", rootPosition)
+    Reporting.error("some error", Position.ofMacroExpansion)
     throw new NoClassDefFoundError("Bar$")
   }
 }

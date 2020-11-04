@@ -10,7 +10,7 @@ object AsObject {
     inline given x as LineNo = ${impl}
     private def impl(using qctx: QuoteContext) : Expr[LineNo] = {
       import qctx.reflect._
-      '{unsafe(${Expr(rootPosition.startLine)})}
+      '{unsafe(${Expr(Position.ofMacroExpansion.startLine)})}
     }
   }
 }

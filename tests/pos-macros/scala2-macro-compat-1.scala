@@ -21,6 +21,6 @@ object LineNumberMacro3 {
   import scala.quoted._
   def thisLineNumberExpr(using qctx: QuoteContext): Expr[Int] = {
     import qctx.reflect._
-    Expr(rootPosition.startLine + 1)
+    Expr(Position.ofMacroExpansion.startLine + 1)
   }
 }

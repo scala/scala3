@@ -14,6 +14,6 @@ object Macros {
 
   def thisLineNumberImpl(using qctx: QuoteContext) : Expr[Int] = {
     import qctx.reflect._
-    Expr(rootPosition.startLine)
+    Expr(Position.ofMacroExpansion.startLine)
   }
 }
