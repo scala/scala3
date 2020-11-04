@@ -90,9 +90,7 @@ class Driver {
       // Resolve classpath and class names of tasty files
       val (classPaths, classNames) = fileNames0.flatMap { name =>
         val path = Paths.get(name)
-        if !name.endsWith(".jar") && !name.endsWith(".tasty") then // is class name
-          ("", name) :: Nil // TODO remove this case. We cannot rely on an expected tasty file beeing loaded.
-        else if !Files.exists(path) then
+        if !Files.exists(path) then
           report.error(s"File does not exist: $name")
           Nil
         else if name.endsWith(".jar") then
@@ -100,13 +98,15 @@ class Driver {
             case e if e.getName.endsWith(".tasty") && !fromTastyIgnoreList(e.getName) =>
               (name, e.getName.stripSuffix(".tasty").replace("/", "."))
           }
-        else
-          assert(name.endsWith(".tasty"))
+        else if name.endsWith(".tasty") then
           TastyFileUtil.getClassName(path) match
             case Some(res) => res :: Nil
             case _ =>
               report.error(s"Could not load classname from: $name")
               Nil
+        else
+          report.error(s"File extension is not `tasty` or `jar`: $name")
+          Nil
       }.unzip
       val ctx1 = ctx0.fresh
       val classPaths1 = classPaths.distinct.filter(_ != "")
