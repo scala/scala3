@@ -56,3 +56,5 @@ class InheritanceLoop extends SignatureTest("inheritanceLoop", SignatureTest.all
 
 class InheritedMembers extends SignatureTest("inheritedMembers2", SignatureTest.all.filter(_ != "class"),
   sourceFiles = List("inheritedMembers1", "inheritedMembers2"))
+
+class ComplexNames extends SignatureTest("complexNames", Seq("def"))
