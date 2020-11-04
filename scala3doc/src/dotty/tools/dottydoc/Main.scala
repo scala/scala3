@@ -9,6 +9,7 @@ import org.jetbrains.dokka.plugability._
 
 import dotc.core.Contexts._
 import dotc.reporting.Reporter
+import dotc.report
 import dotc.{ Compiler, Driver }
 import dotc.config._
 
@@ -45,6 +46,16 @@ object Main extends Driver {
     }
 
     val (filesToCompile, ctx) = setup(compilerArgs, rootCtx)
+
+    for
+      fileToCompile <- filesToCompile
+      if !filesToCompile.endsWith(".tasty") && !filesToCompile.endsWith(".jar")
+    do
+      report.error("Not a tasty or jar file: " + fileToCompile)
+
+    if rootCtx.reporter.hasErrors then
+      return rootCtx.reporter
+
     given Context = ctx
 
     // parse Dokka args

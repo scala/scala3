@@ -22,13 +22,11 @@ object ScalaModuleProvider extends JavaSourceToDocumentableTranslator:
       case dottyConfig: DottyDokkaConfig =>
         val result = dottyConfig.docConfiguration match {
           case DocConfiguration.Standalone(args, tastyFiles, jars) =>
-            assert(tastyFiles.forall(_.endsWith(".tasty")))
             // TODO use it to resolve link logic
             val inspector = DokkaTastyInspector(sourceSet, new MarkdownParser(_ => null), dottyConfig)
             inspector.inspectAllTastyFiles(tastyFiles, jars, args.classpath.split(java.io.File.pathSeparator).toList)
             inspector.result()
           case DocConfiguration.Sbt(args, tastyFiles, rootCtx) =>
-            assert(tastyFiles.forall(_.endsWith(".tasty")))
             val inspector =
               SbtDokkaTastyInspector(
                 sourceSet,
