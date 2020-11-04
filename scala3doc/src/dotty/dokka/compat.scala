@@ -12,7 +12,7 @@ import org.jetbrains.dokka.model.properties.ExtraProperty
 import java.util.stream.Stream // comment out - wrong error!
 import java.util.stream.Collectors
 
-def mkDRI(classNames: String = null, extra: String = null) = new DRI(null, classNames, null, PointingToDeclaration.INSTANCE, extra)
+def mkDRI(packageName: String = null, extra: String = null) = new DRI(packageName, null, null, PointingToDeclaration.INSTANCE, extra)
 
 val U: kotlin.Unit = kotlin.Unit.INSTANCE
 
@@ -56,4 +56,4 @@ extension [V] (map: JMap[SourceSetWrapper, V]):
 
 extension [V](jlist: JList[V]):
   def ++ (other: JList[V]): JList[V] = 
-    Stream.of(jlist, other).flatMap(_.stream).collect(Collectors.toList())  
+    Stream.of(jlist, other).flatMap(_.stream).collect(Collectors.toList())

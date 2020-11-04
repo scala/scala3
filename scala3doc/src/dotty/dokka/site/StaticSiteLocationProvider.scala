@@ -24,7 +24,7 @@ class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
           else {
             val path = jpath.asScala.toList
             val start = if (path.head == "--root--") List("docs") else path.take(1)
-            val pageName = page.loadedTemplate.file.getName
+            val pageName = page.template.file.getName
             val dotIndex = pageName.lastIndexOf('.')
             val newName = if (dotIndex < 0) pageName else pageName.substring(0, dotIndex)
             (start ++ path.drop(1).dropRight(1) ++ List(newName)).asJava

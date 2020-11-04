@@ -23,6 +23,12 @@ import dotty.dokka.model.api._
 import org.jetbrains.dokka.CoreExtensions
 import org.jetbrains.dokka.base.DokkaBase
 
+import dotty.dokka.site.SitePagesCreator
+import dotty.dokka.site.StaticSiteContext
+import dotty.dokka.site.RootIndexPageCreator
+import dotty.dokka.site.SiteResourceManager
+import dotty.dokka.site.StaticSiteLocationProviderFactory
+
 /** Main Dokka plugin for the doctool.
   *
   * Wires together classes responsible for consuming Tasty and generating
@@ -120,7 +126,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
   )
 
   val implicitMembersExtensionTransformer = extend(
-    _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer )
+    _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
       .fromRecipe(ImplicitMembersExtensionTransformer(_))
       .name("implicitMembersExtensionTransformer")
   )
@@ -133,6 +139,54 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     .overrideExtension(dokkaBase.getSourceLinksTransformer)
     .name("muteDefaultSourceLinksTransformer")
   )
+
+  val customDocumentationProvider = extend(
+    _.extensionPoint(dokkaBase.getHtmlPreprocessors)
+      .fromRecipe(c => SitePagesCreator(c.siteContext))
+      .name("customDocumentationProvider")
+      .ordered(
+        before = Seq(
+          dokkaBase.getNavigationPageInstaller,
+          dokkaBase.getScriptsInstaller,
+          dokkaBase.getStylesInstaller,
+          dokkaBase.getPackageListCreator,  
+        ),
+        after = Seq(dokkaBase.getRootCreator)
+      )
+  )
+
+  val customIndexRootProvider = extend(
+    _.extensionPoint(dokkaBase.getHtmlPreprocessors)
+      .fromRecipe(c => RootIndexPageCreator(c.siteContext))
+      .name("customIndexRootProvider")
+      .ordered(
+        before = Seq(
+          dokkaBase.getScriptsInstaller,
+          dokkaBase.getStylesInstaller,
+        ),
+        after = Seq(dokkaBase.getNavigationPageInstaller)
+      )
+  )
+
+  val customDocumentationResources = extend(
+    _.extensionPoint(dokkaBase.getHtmlPreprocessors)
+    .fromRecipe(c => SiteResourceManager(c.siteContext))
+      .name("customDocumentationResources")
+      .after(
+        scalaEmbeddedResourceAppender.getValue
+      )
+  )
+
+  val locationProvider = extend(
+    _.extensionPoint(dokkaBase.getLocationProviderFactory)
+      .fromRecipe(StaticSiteLocationProviderFactory(_))
+      .overrideExtension(dokkaBase.getLocationProvider)
+  )
+
+  extension (ctx: DokkaContext):
+    def siteContext: Option[StaticSiteContext] = ctx.getConfiguration match 
+      case d: DottyDokkaConfig => d.staticSiteContext
+      case _ => None
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/232): remove once problem is fixed in Dokka
 extension [T]  (builder: ExtensionBuilder[T]):

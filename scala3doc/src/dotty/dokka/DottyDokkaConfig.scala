@@ -4,6 +4,7 @@ import org.jetbrains.dokka._
 import org.jetbrains.dokka.DokkaSourceSetImpl
 import java.io.File
 import collection.JavaConverters._
+import dotty.dokka.site.StaticSiteContext
 
 case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaConfiguration:
   override def getOutputDir: File = docConfiguration.args.output
@@ -16,15 +17,11 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
   override def getModuleName(): String = "ModuleName"
   override def getModuleVersion(): String = ""
 
-  private object OurConfig extends DokkaConfiguration.PluginConfiguration:
-    override def getFqPluginName = "ExternalDocsTooKey"
-    override def getSerializationFormat: DokkaConfiguration$SerializationFormat =
-      DokkaConfiguration$SerializationFormat.JSON.asInstanceOf[DokkaConfiguration$SerializationFormat]
-    override def getValues: String = docConfiguration.args.docsRoot.getOrElse("")
+  lazy val staticSiteContext = docConfiguration.args.docsRoot.map(path => StaticSiteContext(File(path).getAbsoluteFile(), Set(mkSourceSet.asInstanceOf[SourceSetWrapper])))
 
-  override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] = JList(OurConfig)
+  override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] = JList()
 
-  def mkSourceSet: DokkaSourceSet =
+  lazy val mkSourceSet: DokkaSourceSet =
     val sourceLinks:Set[SourceLinkDefinitionImpl] = docConfiguration.args.sourceLinks.map(SourceLinkDefinitionImpl.Companion.parseSourceLinkDefinition(_)).toSet
     new DokkaSourceSetImpl(
       /*displayName=*/ docConfiguration.args.name,

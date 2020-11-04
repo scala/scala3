@@ -12,36 +12,6 @@ import org.jetbrains.dokka.transformers.pages.PageTransformer
 
 import scala.collection.JavaConverters._
 
-case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTemplate], file: File) {
-    def isIndexPage() = file.isFile && (file.getName == "index.md" || file.getName == "index.html")
-    def relativePath(root: File): String =
-        root.toPath().relativize(file.toPath()).toString().replace(File.separatorChar, '.')
-}
-
-case class StaticPageNode(
-                           loadedTemplate: LoadedTemplate,
-                           override val getName: String,
-                           override val getContent: ContentNode,
-                           override val getDri: JSet[DRI],
-                           override val getEmbeddedResources: JList[String],
-                           override val getChildren: JList[PageNode],
-                         ) extends ContentPage:
-    override def getDocumentable: Documentable = null
-
-    def title(): String = loadedTemplate.templateFile.title()
-    def hasFrame(): Boolean = loadedTemplate.templateFile.hasFrame()
-
-    override def modified(name: String, content: ContentNode, dri: JSet[DRI], embeddedResources: JList[String], children: JList[_ <: PageNode]): ContentPage =
-        copy(loadedTemplate, name, content, dri, embeddedResources, children.asInstanceOf[JList[PageNode]])
-
-    override def modified(name: String, children: JList[_ <: PageNode]): PageNode =
-        copy(getName = name, getChildren = children.asInstanceOf[JList[PageNode]])
-
-    def resources(): List[String] = getContent match 
-        case p: PartiallyRenderedContent => p.allResources
-        case _ => Nil
-
-
 abstract class BaseStaticSiteProcessor(staticSiteContext: Option[StaticSiteContext]) extends PageTransformer:
     final override def invoke(input: RootPageNode): RootPageNode = staticSiteContext.fold(input)(transform(input, _))
 
@@ -57,7 +27,8 @@ class SiteResourceManager(ctx: Option[StaticSiteContext]) extends BaseStaticSite
 
     override def transform(input: RootPageNode, ctx: StaticSiteContext): RootPageNode =
         val imgPath = ctx.root.toPath().resolve("images")
-        val allImgPaths = Files.walk(imgPath).filter(Files.isRegularFile(_))
+        val allImgPaths = Files.walk(imgPath)
+          .filter(p => Files.isRegularFile(p) && p.getFileName().toString().endsWith(".svg"))
         val images = allImgPaths.iterator().asScala.toList.map(_.toString)
 
         val resources = listResources(input.getChildren.asScala.toList) ++ images
@@ -65,12 +36,13 @@ class SiteResourceManager(ctx: Option[StaticSiteContext]) extends BaseStaticSite
             val content = Files.readString(ctx.root.toPath.resolve(path))
             new RendererSpecificResourcePage(path, JList(), new RenderingStrategy.Write(content))
         }.toList
+
         val modified = input.transformContentPagesTree {
             case it: StaticPageNode =>
-                val newRes = JList[String]()
-                newRes.addAll(it.getEmbeddedResources)
-                newRes.addAll(it.resources().asJava)
-                it.copy(getEmbeddedResources = newRes)
+                it.copy(getEmbeddedResources = 
+                  if it.template.hasFrame() then it.getEmbeddedResources ++ it.resources().asJava
+                  else it.resources().asJava
+                )
             case it => it
         }
         modified.modified(modified.getName, (resourcePages ++ modified.getChildren.asScala).asJava)
@@ -120,7 +92,7 @@ class SitePagesCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSitePro
         val (contentPage, others) = input.getChildren.asScala.toList.partition { _.isInstanceOf[ContentPage] }
         val modifiedModuleRoot = processRootPage(input, contentPage)
         val allFiles = Option(ctx.docsFile.listFiles()).toList.flatten
-        val (indexes, children) = ctx.loadFiles(allFiles).partition(_.loadedTemplate.isIndexPage())
+        val (indexes, children) = ctx.loadFiles(allFiles).partition(_.template.isIndexPage())
         if (indexes.size > 1) println("ERROR: Multiple index pages found $indexes}") // TODO (#14): provide proper error handling
 
         val rootContent = indexes.headOption.fold(ctx.asContent(Text(), mkDRI(extra = "root_content")).get(0))(_.getContent)

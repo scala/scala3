@@ -18,11 +18,9 @@ import org.jetbrains.dokka.model.doc.Text
 
 import scala.collection.JavaConverters._
 
-val ExternalDocsTooKey = "ExternalDocsTooKey"
 val docsRootDRI: DRI = mkDRI(extra = "_top_level_index")
 val docsDRI: DRI = mkDRI(extra = "_docs_level_index")
-val apiPageDRI: DRI = mkDRI(classNames = "api", extra = "__api__")
-
+val apiPageDRI: DRI = mkDRI(packageName = "api", extra = "__api__")
 
 val defaultMarkdownOptions: DataHolder =
   new MutableDataSet()

@@ -33,25 +33,8 @@ case class RenderingContext(
       resources = this.resources ++ resources
     )
 
-case class LayoutInfo(htmlTemple: TemplateFile, ctx: RenderingContext)
-
-case class PreResolvedPage(
-                            code: String,
-                            nextLayoutInfo: Option[LayoutInfo],
-                            hasMarkdown: Boolean,
-                            resources: List[String] = Nil
-                          ):
-  def render(renderedMarkdown: String): ResolvedPage = nextLayoutInfo match
-    case None => ResolvedPage(renderedMarkdown, hasMarkdown, resources)
-    case Some(nextLayoutInfo) =>
-      val newCtx =
-        nextLayoutInfo.ctx.copy(properties = nextLayoutInfo.ctx.properties + ("content" -> renderedMarkdown))
-      val res = nextLayoutInfo.htmlTemple.resolveToHtml(newCtx, hasMarkdown)
-      ResolvedPage(res.code, hasMarkdown, res.resources)
-
 case class ResolvedPage(
                          val code: String,
-                         val hasMarkdown: Boolean,
                          val resources: List[String] = Nil
                        )
 
@@ -88,39 +71,26 @@ case class TemplateFile(
 
   def hasFrame(): Boolean = !stringSetting("hasFrame").contains("false")
 
+  def isIndexPage() = file.isFile && (file.getName == "index.md" || file.getName == "index.html")
 
-  def resolveMarkdown(ctx: RenderingContext): PreResolvedPage =
-    resolveInner(
-      ctx = ctx.copy(properties = ctx.properties + ("page" -> Map("title" -> title()))),
-      stopAtHtml = true,
-      !isHtml // This is top level template
-    )
+  def resolveToHtml(ctx: StaticSiteContext): ResolvedPage = resolveInner(RenderingContext(Map(), ctx.layouts))
 
-  def resolveToHtml(ctx: RenderingContext, hasMarkdown: Boolean): PreResolvedPage =
-    resolveInner(ctx, stopAtHtml = false, hasMarkdown)
-
-  private def resolveInner(ctx: RenderingContext, stopAtHtml: Boolean, hasMarkdown: Boolean): PreResolvedPage =
+  private def resolveInner(ctx: RenderingContext): ResolvedPage =
     if (ctx.resolving.contains(file.getAbsolutePath))
-      throw new RuntimeException("Cycle in templates involving $file: ${ctx.resolving}")
+      throw new RuntimeException(s"Cycle in templates involving $file: ${ctx.resolving}")
 
     val layoutTemplate = layout().map(name =>
       ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}")))
 
-    if (!stopAtHtml && !isHtml)
-      throw new java.lang.RuntimeException(
-        "Markdown layout cannot be applied after .html. Rendering $file after: ${ctx.resolving}"
-      )
-
-    if stopAtHtml && isHtml then
-      PreResolvedPage(ctx.properties.getOrElse("content", "").toString, Some(LayoutInfo(this, ctx)), hasMarkdown)
-    else 
-      val rendered = Template.parse(this.rawCode).render(ctx.properties.asJava) // Library requires mutable maps..
-      val code = if (!isHtml) rendered else
-        val parser: Parser = Parser.builder().build()
-        HtmlRenderer.builder(ctx.markdownOptions).build().render(parser.parse(rendered))
-      
-      val resources = listSetting("extraCSS") ++ listSetting("extraJS")
-      layoutTemplate match 
-        case None => PreResolvedPage(code, None, hasMarkdown, resources ++ ctx.resources)
-        case Some(layoutTemplate) =>
-          layoutTemplate.resolveInner(ctx.nest(code, file, resources), stopAtHtml, hasMarkdown)
+    // Library requires mutable maps..
+    val mutableProperties = new java.util.HashMap[String, Object](ctx.properties.asJava)
+    val rendered = Template.parse(this.rawCode).render(mutableProperties) 
+    val code = if (!isHtml) rendered else
+      val parser: Parser = Parser.builder().build()
+      HtmlRenderer.builder(ctx.markdownOptions).build().render(parser.parse(rendered))
+    
+    val resources = listSetting("extraCSS") ++ listSetting("extraJS")
+    layoutTemplate match 
+      case None => ResolvedPage(code, resources ++ ctx.resources)
+      case Some(layoutTemplate) =>
+        layoutTemplate.resolveInner(ctx.nest(code, file, resources))

@@ -233,50 +233,35 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
       ).toString()
     )
 
-  private def render(c: PartiallyRenderedContent, p: ContentPage): String  =
-      val parsed = if (!c.page.hasMarkdown) c.page.code else
-        div(raw(
-          buildWithKotlinx{ div => 
-            c.getChildren.forEach(build(_, div, p, /*sourceSetRestriction=*/null))
-            U
-          }
-        )).toString
-
-      return c.page.render(parsed).code
-
-
   override def buildPageContent(context: FlowContent, page: ContentPage): Unit = 
     page match
       case s: StaticPageNode if !s.hasFrame() =>
-      case _ =>  buildNavigation(context, page)
+      case _ => buildNavigation(context, page)
 
     page.getContent match
       case prc: PartiallyRenderedContent =>
-        withHtml(context, render(prc, page))
+        withHtml(context, prc.resolved.code)
       case content =>
         build(content, context, page, /*sourceSetRestriction=*/null)
   
 
   override def buildHtml(page: PageNode, resources: JList[String], kotlinxContent: FlowContentConsumer): String =
-    val (pageTitle, pageResources, fromTemplate) = page match
+    val (pageTitle, noFrame) = page match
       case static: StaticPageNode =>
-        val res = if static.hasFrame() then resources else static.getEmbeddedResources()
-        val title = static.loadedTemplate.templateFile.title()
-        (title, res, !static.hasFrame())
+        (static.template.title(), !static.hasFrame())
       case _ =>
-        (page.getName, resources, false)
+        (page.getName, false)
+
     html(
       head(
         meta(charset := "utf-8"),
         meta(name := "viewport", content := "width=device-width, initial-scale=1"),
         title(pageTitle),
-        linkResources(page, pageResources.asScala).toSeq,
+        linkResources(page, resources.asScala).toSeq,
         script(raw(s"""var pathToRoot = "${getLocationProvider.pathToRoot(page)}";"""))
       ),
       body(
-        if fromTemplate then
-          raw(buildWithKotlinx(kotlinxContent))
-        else
+        if noFrame then raw(buildWithKotlinx(kotlinxContent)) else
           div(id := "container")(
             div(id := "leftColumn")(
               div(id := "logo"),
