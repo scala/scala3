@@ -17,7 +17,7 @@ jobs:
            startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
 
     steps:
-      - name: Set JDK 11 as default
+      - name: Set JDK 14 as default
         run: echo "/usr/lib/jvm/java-14-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
@@ -62,7 +62,7 @@ jobs:
            startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
 
     steps:
-      - name: Set JDK 11 as default
+      - name: Set JDK 14 as default
         run: echo "/usr/lib/jvm/java-14-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
