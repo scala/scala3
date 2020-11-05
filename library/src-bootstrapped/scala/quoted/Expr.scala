@@ -1,18 +1,15 @@
 package scala.quoted
 
-import scala.quoted.reflection.printers.SyntaxHighlight
 import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
 /** Quoted expression of type `T` */
 abstract class Expr[+T] private[scala] {
 
   /** Show a source code like representation of this expression without syntax highlight */
-  def show(using qctx: QuoteContext): String =
-    this.unseal.showWith(SyntaxHighlight.plain)
+  def show(using qctx: QuoteContext): String = this.unseal.show
 
-  /** Show a source code like representation of this expression */
-  def showWith(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
-    this.unseal.showWith(syntaxHighlight)
+  /** Shows the tree as fully typed source code colored with ANSI */
+  def showAnsiColored(using qctx: QuoteContext): String = this.unseal.showAnsiColored
 
   /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
    *  It does the equivalent of

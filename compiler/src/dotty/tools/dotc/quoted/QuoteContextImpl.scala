@@ -26,16 +26,13 @@ object QuoteContextImpl {
   def apply()(using Context): QuoteContext =
     new QuoteContextImpl(ctx)
 
-  def showTree(tree: tpd.Tree)(using Context): String = {
-    val qctx = QuoteContextImpl()(using MacroExpansion.context(tree))
-    val syntaxHighlight =
-      if (ctx.settings.color.value == "always") SyntaxHighlight.ANSI
-      else SyntaxHighlight.plain
-    show(using qctx)(tree.asInstanceOf[qctx.reflect.Tree], syntaxHighlight)(using ctx.asInstanceOf[qctx.reflect.Context])
+  def showDecompiledTree(tree: tpd.Tree)(using Context): String = {
+    val qctx: QuoteContextImpl = new QuoteContextImpl(MacroExpansion.context(tree))
+    if ctx.settings.color.value == "always" then
+      qctx.reflect.TreeMethodsImpl.extension_showAnsiColored(tree)
+    else
+      qctx.reflect.TreeMethodsImpl.extension_show(tree)
   }
-
-  private def show(using qctx: QuoteContext)(tree: qctx.reflect.Tree, syntaxHighlight: SyntaxHighlight)(using qctx.reflect.Context) =
-    tree.showWith(syntaxHighlight)
 
   private[dotty] def checkScopeId(id: ScopeId)(using Context): Unit =
     if (id != scopeId)
@@ -67,9 +64,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def showExtractors: String =
           Extractors.showTree(using QuoteContextImpl.this)(self)
         def show: String =
-          self.showWith(SyntaxHighlight.plain)
-        def showWith(syntaxHighlight: SyntaxHighlight): String =
-          SourceCode.showTree(using QuoteContextImpl.this)(self)(syntaxHighlight)
+          SourceCode.showTree(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
+        def showAnsiColored: String =
+          SourceCode.showTree(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
         def isExpr: Boolean =
           self match
             case TermTypeTest(self) =>
@@ -1592,10 +1589,10 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
           Extractors.showType(using QuoteContextImpl.this)(self)
 
         def show: String =
-          self.showWith(SyntaxHighlight.plain)
+          SourceCode.showType(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
 
-        def showWith(syntaxHighlight: SyntaxHighlight): String =
-          SourceCode.showType(using QuoteContextImpl.this)(self)(syntaxHighlight)
+        def showAnsiColored: String =
+          SourceCode.showType(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
 
         def seal: scala.quoted.Type[_] =
           new scala.internal.quoted.Type(Inferred(self), QuoteContextImpl.this.hashCode)
@@ -2174,9 +2171,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def showExtractors: String =
           Extractors.showConstant(using QuoteContextImpl.this)(self)
         def show: String =
-          self.showWith(SyntaxHighlight.plain)
-        def showWith(syntaxHighlight: SyntaxHighlight): String =
-          SourceCode.showConstant(using QuoteContextImpl.this)(self)(syntaxHighlight)
+          SourceCode.showConstant(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
+        def showAnsiColored: String =
+          SourceCode.showConstant(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
       end extension
     end ConstantMethodsImpl
 
@@ -2397,9 +2394,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def showExtractors: String =
           Extractors.showSymbol(using QuoteContextImpl.this)(self)
         def show: String =
-          self.showWith(SyntaxHighlight.plain)
-        def showWith(syntaxHighlight: SyntaxHighlight): String =
-          SourceCode.showSymbol(using QuoteContextImpl.this)(self)(syntaxHighlight)
+          SourceCode.showSymbol(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
+        def showAnsiColored: String =
+          SourceCode.showSymbol(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
 
       end extension
 
@@ -2533,9 +2530,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def showExtractors: String =
           Extractors.showFlags(using QuoteContextImpl.this)(self)
         def show: String =
-          self.showWith(SyntaxHighlight.plain)
-        def showWith(syntaxHighlight: SyntaxHighlight): String =
-          SourceCode.showFlags(using QuoteContextImpl.this)(self)(syntaxHighlight)
+          SourceCode.showFlags(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
+        def showAnsiColored: String =
+          SourceCode.showFlags(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
       end extension
     end FlagsMethodsImpl
 
