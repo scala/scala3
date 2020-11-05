@@ -100,6 +100,7 @@ class CommunityBuildTest:
   @Test def requests = projects.requests.run()
   @Test def scalacheck = projects.scalacheck.run()
   @Test def scalap = projects.scalap.run()
+  @Test def scalaParallelCollections = projects.scalaParallelCollections.run()
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
   @Test def ScalaPB = projects.ScalaPB.run()
   @Test def scalatest = projects.scalatest.run()
