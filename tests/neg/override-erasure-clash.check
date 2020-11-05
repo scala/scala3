@@ -5,6 +5,3 @@
   |      def f(): Int in class A at line 3 and
   |      def g(): Int in class B at line 5
   |      have the same name and type after erasure.
-  |
-  |      Consider adding a @targetName annotation to one of the conflicting definitions
-  |      for disambiguation.
