@@ -250,7 +250,7 @@ class ImplicitSearchError(
    */
   private def userDefinedMsg(sym: Symbol, cls: Symbol) = for {
     ann <- sym.getAnnotation(cls)
-    Trees.Literal(Constant(msg: String)) <- ann.argument(0)
+    msg <- ann.argumentConstantString(0)
   } yield msg
 
   private def location(preposition: String) = if (where.isEmpty) "" else s" $preposition $where"
@@ -313,7 +313,7 @@ class ImplicitSearchError(
    *
    *  def foo(implicit @annotation.implicitNotFound("Foo is missing") foo: Foo): Any = ???
    */
-  private def userDefinedImplicitNotFoundParamMessage = paramSymWithMethodCallTree.flatMap { (sym, applTree) =>
+  private def userDefinedImplicitNotFoundParamMessage: Option[String] = paramSymWithMethodCallTree.flatMap { (sym, applTree) =>
     userDefinedMsg(sym, defn.ImplicitNotFoundAnnot).map { rawMsg =>
       val (fn, targs, _) = tpd.decomposeCall(applTree)
       val methodOwner = fn.symbol.owner
@@ -332,8 +332,12 @@ class ImplicitSearchError(
    *
    *  def foo(implicit foo: Foo): Any = ???
    */
-  private def userDefinedImplicitNotFoundTypeMessage =
-    val classSym = pt.classSymbol
+  private def userDefinedImplicitNotFoundTypeMessage: Option[String] =
+    pt.baseClasses.iterator
+      .map(userDefinedImplicitNotFoundTypeMessage(_))
+      .find(_.isDefined).flatten
+
+  private def userDefinedImplicitNotFoundTypeMessage(classSym: ClassSymbol): Option[String] =
     userDefinedMsg(classSym, defn.ImplicitNotFoundAnnot).map { rawMsg =>
       val substituteType = (_: Type).asSeenFrom(pt, classSym)
       formatAnnotationMessage(rawMsg, classSym, substituteType)
