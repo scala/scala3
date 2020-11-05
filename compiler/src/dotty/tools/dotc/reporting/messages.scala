@@ -2079,7 +2079,10 @@ import transform.SymUtils._
             case MethodNotAMethodMatch =>
               "neither has parameters."
             case FullMatch =>
-              i"have the same$nameAnd type after erasure."
+              i"""have the same$nameAnd type after erasure.
+                 |
+                 |Consider adding a @targetName annotation to one of the conflicting definitions
+                 |for disambiguation."""
           }
         }
         else ""
