@@ -125,9 +125,9 @@ trait ClassLikeSupport:
           .map { _ =>
             parseMethod(dd.symbol, kind = Kind.Given(getGivenInstance(dd).map(_.asSignature), None))
           }
-          
+
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported =>
-        val exportedTarget = dd.rhs.collect { 
+        val exportedTarget = dd.rhs.collect {
           case a: Apply => a.fun.asInstanceOf[Select]
           case s: Select => s
         }
@@ -137,7 +137,7 @@ trait ClassLikeSupport:
           case Select(qualifier: Ident, _) => qualifier.tpe.typeSymbol.normalizedName
         }.getOrElse("instance")
         val dri = dd.rhs.collect {
-          case s: Select if s.symbol.isDefDef => s.symbol.dri 
+          case s: Select if s.symbol.isDefDef => s.symbol.dri
         }.orElse(exportedTarget.map(_.qualifier.tpe.typeSymbol.dri))
         Some(parseMethod(dd.symbol, kind = Kind.Exported).withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dri)))
 
@@ -350,13 +350,13 @@ trait ClassLikeSupport:
   def parseArgument(argument: ValDef, prefix: Symbol => String, isExtendedSymbol: Boolean = false, isGrouped: Boolean = false): DParameter =
     new DParameter(
       argument.symbol.dri,
-      prefix(argument.symbol) + argument.symbol.normalizedName,
+      argument.symbol.normalizedName,
       argument.symbol.documentation.asJava,
       null,
       argument.tpt.dokkaType,
       ctx.sourceSet.toSet,
       PropertyContainer.Companion.empty()
-        .plus(ParameterExtension(isExtendedSymbol, isGrouped))
+        .plus(ParameterExtension(isExtendedSymbol, isGrouped, prefix(argument.symbol)))
         .plus(MemberExtension.empty.copy(annotations = argument.symbol.getAnnotations()))
     )
 

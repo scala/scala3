@@ -19,7 +19,7 @@ case class MethodExtension(parametersListSizes: Seq[Int]) extends ExtraProperty[
 
 object MethodExtension extends BaseKey[DFunction, MethodExtension]
 
-case class ParameterExtension(isExtendedSymbol: Boolean, isGrouped: Boolean) extends ExtraProperty[DParameter]:
+case class ParameterExtension(isExtendedSymbol: Boolean, isGrouped: Boolean, prefix: String) extends ExtraProperty[DParameter]:
   override def getKey = ParameterExtension
 
 object ParameterExtension extends BaseKey[DParameter, ParameterExtension]

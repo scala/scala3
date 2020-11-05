@@ -19,7 +19,7 @@ object InlineSignatureBuilder:
 
 trait SignatureBuilder extends ScalaSignatureUtils {
   def text(str: String): SignatureBuilder
-  def name(str: String, dri: DRI) = driLink(str, dri)
+  def name(str: String, dri: DRI) = driLink(hackEscapedName(str), dri)
   def driLink(text: String, dri: DRI): SignatureBuilder
 
   def signature(s: Signature) = s.foldLeft(this){ (b, e) => e match
@@ -47,7 +47,8 @@ trait SignatureBuilder extends ScalaSignatureUtils {
         d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation) }
 
     private def buildAnnotation(a: Annotation): SignatureBuilder =
-       text("@").driLink(a.dri.getClassNames, a.dri).buildAnnotationParams(a).text(" ")
+      val name = hackEscapedName(a.dri.getClassNames)
+      text("@").driLink(name, a.dri).buildAnnotationParams(a).text(" ")
 
     private def buildAnnotationParams(a: Annotation): SignatureBuilder =
       if !a.params.isEmpty then
@@ -81,7 +82,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
         tc.getProjections.asScala.foldLeft(this) { (bdr, elem) => elem match {
           case text: UnresolvedBound => bdr.text(text.getName)
           case link: TypeParameter =>
-            bdr.driLink(link.getName, link.getDri)
+            bdr.driLink(hackEscapedName(link.getName), link.getDri)
           case other =>
             bdr.text(s"TODO($other)")
         }
@@ -105,7 +106,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
           else if !method.kind.isInstanceOf[Kind.Extension] || from != receiverPos then
             val b = builder.list(method.getParameters.subList(from, toIndex).asScala.toList, "(", ")"){ (bdr, param) => bdr
               .annotationsInline(param)
-              .text(param.getName)
+              .text(prefixFor(param) + hackEscapedName(param.getName))
               .text(": ")
               .typeSignature(param.getType)
             }
@@ -113,8 +114,17 @@ trait SignatureBuilder extends ScalaSignatureUtils {
           else (builder, toIndex)
       }
       bldr
+
+    private def prefixFor(param: DParameter): String = param.get(ParameterExtension).prefix
 }
 
 trait ScalaSignatureUtils:
   extension (tokens: Seq[String]) def toSignatureString(): String =
     tokens.filter(_.trim.nonEmpty).mkString(""," "," ")
+
+// TODO: remove after adding name abstraction to reflection api
+private[dokka] def hackEscapedName(name: String) =
+  val simpleIdentifierRegex = raw"(?:\w+_[^\[\(\s_]+)|\w+|[^\[\(\s\w_]+".r
+  name match
+    case simpleIdentifierRegex() => name
+    case _ => s"`$name`"

@@ -498,7 +498,7 @@ class ScalaPageContentBuilder(
         DocumentableElement(
           buildAnnotations(documentable),
           signatureBuilder.preName.reverse,
-          documentable.getName,
+          hackEscapedName(documentable.getName),
           signatureBuilder.names.reverse,
           docs.fold(Nil)(d => reset().rawComment(d.getRoot)),
           originInfo,
