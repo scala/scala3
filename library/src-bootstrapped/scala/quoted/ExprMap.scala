@@ -1,8 +1,6 @@
-package scala.quoted.util
+package scala.quoted
 
-import scala.quoted._
-
-trait ExprMap {
+trait ExprMap:
 
   /** Map an expression `e` with a type `tpe` */
   def transform[T](e: Expr[T])(using qctx: QuoteContext, tpe: Type[T]): Expr[T]
@@ -149,4 +147,4 @@ trait ExprMap {
     new MapChildren().transformTermChildren(e.unseal, tpe.unseal.tpe).asExprOf[T]
   }
 
-}
+end ExprMap

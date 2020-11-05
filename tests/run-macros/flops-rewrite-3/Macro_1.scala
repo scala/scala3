@@ -92,7 +92,7 @@ private object Rewriter {
   def apply(): Rewriter = new Rewriter(Nil, Nil, false)
 }
 
-private class Rewriter private (preTransform: List[Transformation] = Nil, postTransform: List[Transformation] = Nil, fixPoint: Boolean) extends util.ExprMap {
+private class Rewriter private (preTransform: List[Transformation] = Nil, postTransform: List[Transformation] = Nil, fixPoint: Boolean) extends ExprMap {
 
   def withFixPoint: Rewriter =
     new Rewriter(preTransform, postTransform, fixPoint = true)

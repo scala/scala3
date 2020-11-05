@@ -28,7 +28,7 @@ private object Rewriter {
     new Rewriter(preTransform, postTransform, fixPoint)
 }
 
-private class Rewriter(preTransform: Expr[Any] => Expr[Any], postTransform: Expr[Any] => Expr[Any], fixPoint: Boolean) extends util.ExprMap {
+private class Rewriter(preTransform: Expr[Any] => Expr[Any], postTransform: Expr[Any] => Expr[Any], fixPoint: Boolean) extends ExprMap {
   def transform[T](e: Expr[T])(using QuoteContext, Type[T]): Expr[T] = {
     val e2 = checkedTransform(e, preTransform)
     val e3 = transformChildren(e2)

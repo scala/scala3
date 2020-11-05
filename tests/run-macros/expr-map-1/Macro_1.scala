@@ -6,7 +6,7 @@ inline def rewrite[T](inline x: Any): Any = ${ stringRewriter('x) }
 private def stringRewriter(e: Expr[Any])(using QuoteContext): Expr[Any] =
   StringRewriter.transform(e)
 
-private object StringRewriter extends util.ExprMap {
+private object StringRewriter extends ExprMap {
 
   def transform[T](e: Expr[T])(using QuoteContext, Type[T]): Expr[T] = e match
     case Const(s: String) =>
