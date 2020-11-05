@@ -17,18 +17,11 @@ We're aiming to support all the features Scaladoc did, plus new and exciting one
 
 ## Running the project
 
-Run `sbt` and switch to scala3doc project from the root
+Use the following commands to generate documentation for this project and for Dotty, respectively:
 
 ```
-sbt
-project scala3doc
-```
-
-When in the `scala3doc` project in `sbt`, use the following commands to generate documentation for this project and for Dotty, respectively:
-
-```
-generateSelfDocumentation
-generateScala3Documentation
+sbt scala3doc/generateSelfDocumentation
+sbt scala3doc/generateScala3Documentation
 ```
 
 To actually view the documentation, the easiest way is to run the following in project root:
@@ -48,15 +41,16 @@ the documentation won't work completely if you don't.
 ## CLI Documentation
 
 CLI command for running our tool is in form: `sbt main -n <name> -o <output> -t <tasty-files> -cp <classpath> -s { <sources> } -d <documentation> ` where:
-   - `<name>`: name of module in generated documentation
-   - `<output>`: location where documentation should be created
-   - `<tasty-files>`: is list of dirs or jars that contains tasty files that should be documented
-   - `<classpath>`: classpath that was used to generate tasty files
-   - `<sources>`: links to source files of module that are used to link symbols on pages to their source file. They need to be supplied in form:
-      `local_dir=remote_dir#line_suffix` e.g. `src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L`
-   - `<documentation>`: directory of static documentation that you would like to render with API documentation. This feature is provided by dokka-site plugin:
-      - [GitHub](https://github.com/VirtusLab/dokka-site)
-      - [Documentation](https://virtuslab.github.io/dokka-site/index.html)
+
+- `<name>`: name of module in generated documentation
+- `<output>`: location where documentation should be created
+- `<tasty-files>`: is list of dirs or jars that contains tasty files that should be documented
+- `<classpath>`: classpath that was used to generate tasty files
+- `<sources>`: links to source files of module that are used to link symbols on pages to their source file. They need to be supplied in form:
+  `local_dir=remote_dir#line_suffix` e.g. `src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L`
+- `<documentation>`: directory of static documentation that you would like to render with API documentation. This feature is provided by dokka-site plugin:
+  - [GitHub](https://github.com/VirtusLab/dokka-site)
+  - [Documentation](https://virtuslab.github.io/dokka-site/index.html)
 
 ## Developing
 
@@ -66,16 +60,16 @@ work on the project.
 For every PR, we build documentation for Scala3doc and Dotty. For example, for
 PR 123 you can find them at:
 
-+ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/self/main/index.html>
-+ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/stdLib/main/index.html>
+- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/self/main/index.html>
+- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/stdLib/main/index.html>
 
 Note that these correspond to the contents of `output` directory - that's
 precisely what they are.
 
 You can also find the result of building the same sites for latest `master` at:
 
-+ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/self/main/index.html>
-+ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/stdLib/main/index.html>
+- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/self/main/index.html>
+- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/stdLib/main/index.html>
 
 ### Testing
 
