@@ -27,6 +27,17 @@ abstract class ScaladocTest(val name: String):
       projectVersion = Some("1.0")
     )
 
+  private def tastyFiles =
+    def listFilesSafe(dir: File) = Option(dir.listFiles).getOrElse {
+      throw AssertionError(s"$dir not found. The test name is incorrect or scala3doc-testcases were not recompiled.")
+    }
+    def collectFiles(dir: File): List[String] = listFilesSafe(dir).toList.flatMap {
+        case f if f.isDirectory => collectFiles(f)
+        case f if f.getName endsWith ".tasty" => f.getAbsolutePath :: Nil
+        case _ => Nil
+      }
+    collectFiles(File(s"${BuildInfo.test_testcasesOutputDir}/tests/$name"))
+
   @Rule
   def collector = _collector
   private val _collector = new ErrorCollector();
