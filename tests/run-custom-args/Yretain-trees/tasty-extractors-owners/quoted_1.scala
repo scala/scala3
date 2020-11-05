@@ -10,15 +10,16 @@ object Macros {
 
     val buff = new StringBuilder
 
-    val output = new MyTraverser(qctx.reflect)(buff)
+    val output = myTraverser(buff)
 
     val tree = x.unseal
     output.traverseTree(tree)
     '{print(${Expr(buff.result())})}
   }
 
-  class MyTraverser[R <: scala.tasty.Reflection & Singleton](val reflect: R)(buff: StringBuilder) extends scala.tasty.reflect.TreeTraverser {
-    import reflect._
+
+  def myTraverser(using qctx: QuoteContext)(buff: StringBuilder): qctx.reflect.TreeTraverser = new {
+    import qctx.reflect._
     override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
       tree match {
         case tree @ DefDef(name, _, _, _, _) =>
