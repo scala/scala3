@@ -29,15 +29,15 @@ abstract class SignatureTest(
       .flatMap(signaturesFromSources(_, signatureKinds))
       .toList
     val expectedFromSources: Map[String, List[String]] = allSignaturesFromSources
-      .collect { case Expected(name, signature) => name -> signature }
-      .groupMap(_._1)(_._2)
+      .collect { case e: Expected => e }
+      .groupMap(_.name)(_.signature)
     val unexpectedFromSources: Set[String] = allSignaturesFromSources.collect { case Unexpected(name) => name }.toSet
 
     val actualSignatures: Map[String, Seq[String]] = signaturesFromDocumentation(root).flatMap { signature =>
       findName(signature, signatureKinds).map(_ -> signature)
     }.groupMap(_._1)(_._2)
 
-    val unexpected = unexpectedFromSources.flatMap(actualSignatures.getOrElse(_, Nil))
+    val unexpected = unexpectedFromSources.flatMap(actualSignatures.get)
     val expectedButNotFound = expectedFromSources.flatMap {
       case (k, v) => findMissingSingatures(v, actualSignatures.getOrElse(k, Nil))
     }

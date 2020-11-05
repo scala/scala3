@@ -34,7 +34,10 @@ abstract class ScaladocTest(val name: String):
     )
 
   private def tastyFiles =
-    def collectFiles(dir: File): List[String] = dir.listFiles.toList.flatMap {
+    def listFilesSafe(dir: File) = Option(dir.listFiles).getOrElse {
+      throw AssertionError(s"$dir not found. The test name is incorrect or scala3doc-testcases were not recompiled.")
+    }
+    def collectFiles(dir: File): List[String] = listFilesSafe(dir).toList.flatMap {
         case f if f.isDirectory => collectFiles(f)
         case f if f.getName endsWith ".tasty" => f.getAbsolutePath :: Nil
         case _ => Nil
@@ -57,12 +60,14 @@ abstract class ScaladocTest(val name: String):
 
 end ScaladocTest
 
+type Validator = () => Unit
+
 /**
  * Those assertions map 1-1 to their dokka counterparts. Some of them may be irrelevant in scala3doc.
  */
 enum Assertion:
   case AfterPluginSetup(fn: DokkaContext => Unit)
-  case DuringValidation(fn: (() => Unit) => Unit)
+  case DuringValidation(fn: Validator => Unit)
   case AfterDocumentablesCreation(fn: Seq[DModule] => Unit)
   case AfterPreMergeDocumentablesTransformation(fn: Seq[DModule] => Unit)
   case AfterDocumentablesMerge(fn: DModule => Unit)
