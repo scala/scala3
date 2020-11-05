@@ -10,7 +10,7 @@ class TemplateFileTests:
   private def testTemplate(code: String, ext: String = "html")(op: TemplateFile => Unit): Unit =
     val tmpFile = Files.createTempFile("headerTests", s".${ext}").toFile()
     try
-      Files.writeString(tmpFile.toPath, code)
+      Files.write(tmpFile.toPath, code.getBytes)
       op(loadTemplateFile(tmpFile))
     finally tmpFile.delete()
 

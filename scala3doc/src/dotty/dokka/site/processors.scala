@@ -34,7 +34,7 @@ class SiteResourceManager(ctx: Option[StaticSiteContext]) extends BaseStaticSite
 
     val resources = listResources(input.getChildren.asScala.toList) ++ images
     val resourcePages = resources.map { path =>
-      val content = Files.readString(ctx.root.toPath.resolve(path))
+      val content = Files.readAllLines(ctx.root.toPath.resolve(path)).asScala.mkString("\n")
       new RendererSpecificResourcePage(path, JList(), new RenderingStrategy.Write(content))
     }.toList
 
