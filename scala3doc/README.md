@@ -38,6 +38,14 @@ respectively.
 It's not strictly necessary to go through an HTTP server, but because of CORS
 the documentation won't work completely if you don't.
 
+## Building frontend
+
+Make sure you have installed `node`
+
+- Go to `resources` folder and run: `npm i`
+- Start development server and weback in watch mode: `npm run dev`
+- Finally, run `sbt scala3/generateTestcasesDocumentation` when you want to preview newest changes
+
 ## CLI Documentation
 
 CLI command for running our tool is in form: `sbt main -n <name> -o <output> -t <tasty-files> -cp <classpath> -s { <sources> } -d <documentation> ` where:
