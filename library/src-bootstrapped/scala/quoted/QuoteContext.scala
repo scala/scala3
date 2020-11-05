@@ -1,7 +1,5 @@
 package scala.quoted
 
-import scala.quoted.show.SyntaxHighlight
-
 /** Quotation context provided by a macro expansion or in the scope of `scala.quoted.run`.
  *  Used to perform all operations on quoted `Expr` or `Type`.
  *

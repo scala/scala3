@@ -3,7 +3,6 @@ package scala.tasty
 import scala.internal.tasty.CompilerInterface
 
 import scala.quoted.QuoteContext
-import scala.quoted.show.SyntaxHighlight
 import scala.tasty.reflect._
 
 /** TASTy Reflect Interface.
@@ -156,8 +155,8 @@ trait Reflection { reflection =>
       /** Shows the tree as fully typed source code */
       def show: String
 
-      /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight): String
+      /** Shows the tree as fully typed source code colored with ANSI */
+      def showAnsiColored: String
 
       /** Does this tree represent a valid expression? */
       def isExpr: Boolean
@@ -1753,8 +1752,8 @@ trait Reflection { reflection =>
       /** Shows the tree as fully typed source code */
       def show: String
 
-      /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight): String
+      /** Shows the tree as fully typed source code colored with ANSI */
+      def showAnsiColored: String
 
       /** Convert `TypeRepr` to an `quoted.Type[_]` */
       def seal: scala.quoted.Type[_]
@@ -2491,8 +2490,8 @@ trait Reflection { reflection =>
       /** Shows the tree as fully typed source code */
       def show: String
 
-      /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight): String
+      /** Shows the tree as fully typed source code colored with ANSI */
+      def showAnsiColored: String
     end extension
   }
 
@@ -2800,8 +2799,8 @@ trait Reflection { reflection =>
       /** Shows the tree as fully typed source code */
       def show: String
 
-      /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight): String
+      /** Shows the tree as fully typed source code colored with ANSI */
+      def showAnsiColored: String
 
       /** Case class or case object children of a sealed trait */
       def children: List[Symbol]
@@ -3155,8 +3154,8 @@ trait Reflection { reflection =>
       /** Shows the tree as fully typed source code */
       def show: String
 
-      /** Shows the tree as fully typed source code */
-      def showWith(syntaxHighlight: SyntaxHighlight): String
+      /** Shows the tree as fully typed source code colored with ANSI */
+      def showAnsiColored: String
 
     end extension
   }

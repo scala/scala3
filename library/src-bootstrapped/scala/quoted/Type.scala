@@ -1,7 +1,6 @@
 package scala.quoted
 
 import scala.annotation.compileTimeOnly
-import scala.quoted.show.SyntaxHighlight
 
 /** Quoted type (or kind) `T` */
 abstract class Type[T <: AnyKind] private[scala] {
@@ -10,12 +9,10 @@ abstract class Type[T <: AnyKind] private[scala] {
   type Underlying = T
 
   /** Show a source code like representation of this type without syntax highlight */
-  def show(using qctx: QuoteContext): String =
-    this.unseal.showWith(SyntaxHighlight.plain)
+  def show(using qctx: QuoteContext): String = this.unseal.show
 
-  /** Show a source code like representation of this type */
-  def showWith(syntaxHighlight: SyntaxHighlight)(using qctx: QuoteContext): String =
-    this.unseal.showWith(syntaxHighlight)
+  /** Shows the tree as fully typed source code colored with ANSI */
+  def showAnsiColored(using qctx: QuoteContext): String = this.unseal.showAnsiColored
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
   def unseal(using qctx: QuoteContext): qctx.reflect.TypeTree

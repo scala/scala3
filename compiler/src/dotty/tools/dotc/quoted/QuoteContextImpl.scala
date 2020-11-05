@@ -14,7 +14,7 @@ import dotty.tools.dotc.quoted.QuoteUtils._
 import dotty.tools.dotc.core.Decorators._
 
 import scala.quoted.QuoteContext
-import scala.quoted.show.SyntaxHighlight
+import dotty.tools.dotc.quoted.printers.{Extractors, SourceCode, SyntaxHighlight}
 
 import scala.internal.quoted.PickledQuote
 import scala.tasty.reflect._
@@ -26,16 +26,13 @@ object QuoteContextImpl {
   def apply()(using Context): QuoteContext =
     new QuoteContextImpl(ctx)
 
-  def showTree(tree: tpd.Tree)(using Context): String = {
-    val qctx = QuoteContextImpl()(using MacroExpansion.context(tree))
-    val syntaxHighlight =
-      if (ctx.settings.color.value == "always") SyntaxHighlight.ANSI
-      else SyntaxHighlight.plain
-    show(using qctx)(tree.asInstanceOf[qctx.reflect.Tree], syntaxHighlight)(using ctx.asInstanceOf[qctx.reflect.Context])
+  def showDecompiledTree(tree: tpd.Tree)(using Context): String = {
+    val qctx: QuoteContextImpl = new QuoteContextImpl(MacroExpansion.context(tree))
+    if ctx.settings.color.value == "always" then
+      qctx.reflect.TreeMethodsImpl.extension_showAnsiColored(tree)
+    else
+      qctx.reflect.TreeMethodsImpl.extension_show(tree)
   }
-
-  private def show(using qctx: QuoteContext)(tree: qctx.reflect.Tree, syntaxHighlight: SyntaxHighlight)(using qctx.reflect.Context) =
-    tree.showWith(syntaxHighlight)
 
   private[dotty] def checkScopeId(id: ScopeId)(using Context): Unit =
     if (id != scopeId)
@@ -65,11 +62,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def pos: Position = self.sourcePos
         def symbol: Symbol = self.symbol
         def showExtractors: String =
-          new ExtractorsPrinter[reflect.type](reflect).showTree(self)
+          Extractors.showTree(using QuoteContextImpl.this)(self)
         def show: String =
-          self.showWith(SyntaxHighlight.plain)
-        def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showTree(self)
+          SourceCode.showTree(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
+        def showAnsiColored: String =
+          SourceCode.showTree(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
         def isExpr: Boolean =
           self match
             case TermTypeTest(self) =>
@@ -1589,13 +1586,13 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     object TypeMethodsImpl extends TypeMethods:
       extension (self: TypeRepr):
         def showExtractors: String =
-          new ExtractorsPrinter[reflect.type](reflect).showType(self)
+          Extractors.showType(using QuoteContextImpl.this)(self)
 
         def show: String =
-          self.showWith(SyntaxHighlight.plain)
+          SourceCode.showType(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
 
-        def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showType(self)
+        def showAnsiColored: String =
+          SourceCode.showType(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
 
         def seal: scala.quoted.Type[_] =
           new scala.internal.quoted.Type(Inferred(self), QuoteContextImpl.this.hashCode)
@@ -2172,11 +2169,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       extension (self: Constant):
         def value: Any = self.value
         def showExtractors: String =
-          new ExtractorsPrinter[reflect.type](reflect).showConstant(self)
+          Extractors.showConstant(using QuoteContextImpl.this)(self)
         def show: String =
-          self.showWith(SyntaxHighlight.plain)
-        def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showConstant(self)
+          SourceCode.showConstant(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
+        def showAnsiColored: String =
+          SourceCode.showConstant(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
       end extension
     end ConstantMethodsImpl
 
@@ -2395,11 +2392,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def children: List[Symbol] = self.denot.children
 
         def showExtractors: String =
-          new ExtractorsPrinter[reflect.type](reflect).showSymbol(self)
+          Extractors.showSymbol(using QuoteContextImpl.this)(self)
         def show: String =
-          self.showWith(SyntaxHighlight.plain)
-        def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showSymbol(self)
+          SourceCode.showSymbol(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
+        def showAnsiColored: String =
+          SourceCode.showSymbol(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
 
       end extension
 
@@ -2531,11 +2528,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
         def |(that: Flags): Flags = dotc.core.Flags.extension_|(self)(that)
         def &(that: Flags): Flags = dotc.core.Flags.extension_&(self)(that)
         def showExtractors: String =
-          new ExtractorsPrinter[reflect.type](reflect).showFlags(self)
+          Extractors.showFlags(using QuoteContextImpl.this)(self)
         def show: String =
-          self.showWith(SyntaxHighlight.plain)
-        def showWith(syntaxHighlight: SyntaxHighlight): String =
-          new SourceCodePrinter[reflect.type](reflect)(syntaxHighlight).showFlags(self)
+          SourceCode.showFlags(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
+        def showAnsiColored: String =
+          SourceCode.showFlags(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
       end extension
     end FlagsMethodsImpl
 
