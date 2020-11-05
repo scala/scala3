@@ -87,10 +87,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         val acc = newSymbol(
             clazz, superName, Artifact | Method | maybeDeferred,
             superInfo, coord = accRange).enteredAfter(thisPhase)
-        if sym.hasAnnotation(defn.TargetNameAnnot) then
-          acc.addAnnotation(
-            Annotation(defn.TargetNameAnnot,
-              Literal(Constant(superAccessorName(sym.erasedName).toString)).withSpan(sym.span)))
+        acc.deriveTargetNameAnnotation(sym, superAccessorName)
         // Diagnostic for SI-7091
         if (!accDefs.contains(clazz))
           report.error(

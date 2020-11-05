@@ -199,10 +199,7 @@ object Inliner {
       name = BodyRetainerName(meth.name),
       flags = meth.flags &~ (Inline | Macro | Override) | Private,
       coord = mdef.rhs.span.startPos).asTerm
-    if meth.hasAnnotation(defn.TargetNameAnnot) then
-      retainer.addAnnotation(
-        Annotation(defn.TargetNameAnnot,
-          Literal(Constant(BodyRetainerName(meth.erasedName.asTermName).toString)).withSpan(meth.span)))
+    retainer.deriveTargetNameAnnotation(meth, name => BodyRetainerName(name.asTermName))
     polyDefDef(retainer, targs => prefss =>
       inlineCall(
         ref(meth).appliedToTypes(targs).appliedToArgss(prefss)
