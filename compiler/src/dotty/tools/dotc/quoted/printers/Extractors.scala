@@ -1,5 +1,6 @@
-package scala.quoted
-package reflection.printers
+package dotty.tools.dotc.quoted.printers
+
+import scala.quoted._
 
 object Extractors {
 

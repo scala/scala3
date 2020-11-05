@@ -1,7 +1,7 @@
-package scala.quoted
-package reflection.printers
+package dotty.tools.dotc.quoted.printers
 
 import scala.annotation.switch
+import scala.quoted._
 
 /** Printer for fully elaborated representation of the source code */
 object SourceCode {
