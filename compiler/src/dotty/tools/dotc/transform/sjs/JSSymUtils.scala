@@ -43,11 +43,8 @@ object JSSymUtils {
 
   extension (sym: Symbol) {
     /** Is this symbol a JavaScript type? */
-    def isJSType(using Context): Boolean = {
-      atPhase(erasurePhase) {
-        sym.derivesFrom(jsdefn.JSAnyClass) || sym == jsdefn.PseudoUnionClass
-      }
-    }
+    def isJSType(using Context): Boolean =
+      sym.hasAnnotation(jsdefn.JSTypeAnnot)
 
     /** Is this symbol a non-native JS class? */
     def isNonNativeJSClass(using Context): Boolean =
