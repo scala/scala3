@@ -91,8 +91,8 @@ object ResolveSuper {
 
     val (memberName, mix) = decomposeSuperName(acc.name.unexpandedName)
     val targetName =
-      if acc.name == acc.erasedName then memberName
-      else decomposeSuperName(acc.erasedName)._1
+      if acc.name == acc.targetName then memberName
+      else decomposeSuperName(acc.targetName)._1
 
     report.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
 
@@ -112,7 +112,7 @@ object ResolveSuper {
 
       bcs = bcs.tail
     }
-    assert(sym.exists, i"cannot rebind $acc, ${acc.erasedName} $memberName")
+    assert(sym.exists, i"cannot rebind $acc, ${acc.targetName} $memberName")
     sym
   }
 }

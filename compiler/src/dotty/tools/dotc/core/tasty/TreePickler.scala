@@ -197,14 +197,14 @@ class TreePickler(pickler: TastyPickler) {
         if (sym.is(Flags.Private) || isShadowedRef) {
           writeByte(if (tpe.isType) TYPEREFin else TERMREFin)
           withLength {
-            pickleNameAndSig(sym.name, sym.signature, sym.erasedName)
+            pickleNameAndSig(sym.name, sym.signature, sym.targetName)
             pickleType(tpe.prefix)
             pickleType(sym.owner.typeRef)
           }
         }
         else {
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
-          pickleNameAndSig(sym.name, tpe.signature, sym.erasedName)
+          pickleNameAndSig(sym.name, tpe.signature, sym.targetName)
           pickleType(tpe.prefix)
         }
       }
@@ -405,7 +405,7 @@ class TreePickler(pickler: TastyPickler) {
               }
             case _ =>
               val sig = tree.tpe.signature
-              var ename = tree.symbol.erasedName
+              var ename = tree.symbol.targetName
               val isAmbiguous =
                 sig != Signature.NotAMethod
                 && qual.tpe.nonPrivateMember(name).match

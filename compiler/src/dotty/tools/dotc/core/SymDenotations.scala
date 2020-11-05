@@ -513,7 +513,7 @@ object SymDenotations {
       myTargetName = name
 
     /** The name given in a `@targetName` annotation if one is present, `name` otherwise */
-    def erasedName(using Context): Name =
+    def targetName(using Context): Name =
       if myTargetName == null then
         val carrier: SymDenotation =
           if isAllOf(ModuleClass | Synthetic) then companionClass else this
@@ -1254,7 +1254,7 @@ object SymDenotations {
     final def matchingDecl(inClass: Symbol, site: Type)(using Context): Symbol = {
       var denot = inClass.info.nonPrivateDecl(name)
       if (denot.isTerm) // types of the same name always match
-        denot = denot.matchingDenotation(site, site.memberInfo(symbol), symbol.erasedName)
+        denot = denot.matchingDenotation(site, site.memberInfo(symbol), symbol.targetName)
       denot.symbol
     }
 
@@ -1263,7 +1263,7 @@ object SymDenotations {
     final def matchingMember(site: Type)(using Context): Symbol = {
       var denot = site.nonPrivateMember(name)
       if (denot.isTerm) // types of the same name always match
-        denot = denot.matchingDenotation(site, site.memberInfo(symbol), symbol.erasedName)
+        denot = denot.matchingDenotation(site, site.memberInfo(symbol), symbol.targetName)
       denot.symbol
     }
 
@@ -2334,7 +2334,7 @@ object SymDenotations {
     override def mapInfo(f: Type => Type)(using Context): SingleDenotation = this
 
     override def matches(other: SingleDenotation)(using Context): Boolean = false
-    override def erasedName(using Context): Name = EmptyTermName
+    override def targetName(using Context): Name = EmptyTermName
     override def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(using Context): SingleDenotation = this
     override def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation = this
     override def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation = this

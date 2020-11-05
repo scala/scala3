@@ -266,6 +266,6 @@ object SymUtils:
       if original.hasAnnotation(defn.TargetNameAnnot) then
         self.addAnnotation(
           Annotation(defn.TargetNameAnnot,
-            Literal(Constant(nameFn(original.erasedName).toString)).withSpan(original.span)))
+            Literal(Constant(nameFn(original.targetName).toString)).withSpan(original.span)))
   end extension
 end SymUtils

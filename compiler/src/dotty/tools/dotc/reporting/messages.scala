@@ -1086,7 +1086,7 @@ import transform.SymUtils._
   extends DeclarationMsg(OverridesNothingButNameExistsID) {
     def msg =
       val what =
-        if !existing.exists(sd => Denotations.targetNamesMatch(member.erasedName, sd.symbol.erasedName))
+        if !existing.exists(sd => Denotations.targetNamesMatch(member.targetName, sd.symbol.targetName))
         then "target name"
         else "signature"
       em"""${member} has a different $what than the overridden declaration"""

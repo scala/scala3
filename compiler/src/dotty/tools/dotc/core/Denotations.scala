@@ -347,12 +347,12 @@ object Denotations {
     }
 
     /** The alternative of this denotation that has a type matching `targetType` when seen
-     *  as a member of type `site` and that has an erased name matching `targetName`, or
+     *  as a member of type `site` and that has a target name matching `targetName`, or
      *  `NoDenotation` if none exists.
      */
     def matchingDenotation(site: Type, targetType: Type, targetName: Name)(using Context): SingleDenotation = {
       def qualifies(sym: Symbol) =
-        site.memberInfo(sym).matchesLoosely(targetType) && targetNamesMatch(sym.erasedName, targetName)
+        site.memberInfo(sym).matchesLoosely(targetType) && targetNamesMatch(sym.targetName, targetName)
       if (isOverloaded)
         atSignature(targetType.signature, targetName, site, relaxed = true) match {
           case sd: SingleDenotation => sd.matchingDenotation(site, targetType, targetName)
@@ -624,7 +624,7 @@ object Denotations {
           relaxed
         case noMatch =>
           false
-      if sigMatches && targetNamesMatch(symbol.erasedName, targetName) then this
+      if sigMatches && targetNamesMatch(symbol.targetName, targetName) then this
       else NoDenotation
 
     def matchesImportBound(bound: Type)(using Context): Boolean =
@@ -986,7 +986,7 @@ object Denotations {
     final def last: SingleDenotation = this
 
     def matches(other: SingleDenotation)(using Context): Boolean =
-      targetNamesMatch(symbol.erasedName, other.symbol.erasedName)
+      targetNamesMatch(symbol.targetName, other.symbol.targetName)
       && {
         val d = signature.matchDegree(other.signature)
         d match

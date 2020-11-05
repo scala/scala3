@@ -1983,8 +1983,7 @@ class Typer extends Namer
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor) {
-      val ename = sym.erasedName
-      if (ename != sym.name)
+      if (sym.targetName != sym.name)
         report.error(em"@targetName annotation may not be used on a constructor", ddef.srcPos)
 
       for (param <- tparams1 ::: vparamss1.flatten)

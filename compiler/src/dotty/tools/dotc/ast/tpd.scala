@@ -891,7 +891,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  on select(sym: Symbol).
      */
     def selectWithSig(sym: Symbol)(using Context): Tree =
-      selectWithSig(sym.name, sym.signature, sym.erasedName)
+      selectWithSig(sym.name, sym.signature, sym.targetName)
 
     /** A unary apply node with given argument: `tree(arg)` */
     def appliedTo(arg: Tree)(using Context): Apply =

@@ -2084,7 +2084,7 @@ object Types {
     }
 
     private def disambiguate(d: Denotation)(using Context): Denotation =
-      disambiguate(d, currentSignature, currentSymbol.erasedName)
+      disambiguate(d, currentSignature, currentSymbol.targetName)
 
     private def disambiguate(d: Denotation, sig: Signature, target: Name)(using Context): Denotation =
       if (sig != null)
@@ -2396,7 +2396,7 @@ object Types {
           d = disambiguate(d,
                 if (lastSymbol.signature == Signature.NotAMethod) Signature.NotAMethod
                 else lastSymbol.asSeenFrom(prefix).signature,
-                lastSymbol.erasedName)
+                lastSymbol.targetName)
         NamedType(prefix, name, d)
       }
       if (prefix eq this.prefix) this

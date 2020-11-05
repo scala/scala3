@@ -1208,12 +1208,12 @@ trait Checking {
     var seen = Set[Name]()
     for stat <- stats do
       val sym = stat.symbol
-      val ename = sym.erasedName
-      if ename != sym.name then
-        val preExisting = ctx.effectiveScope.lookup(ename)
-        if preExisting.exists || seen.contains(ename) then
-          report.error(em"@targetName annotation ${'"'}$ename${'"'} clashes with other definition in same scope", stat.srcPos)
-        if stat.isDef then seen += ename
+      val tname = sym.targetName
+      if tname != sym.name then
+        val preExisting = ctx.effectiveScope.lookup(tname)
+        if preExisting.exists || seen.contains(tname) then
+          report.error(em"@targetName annotation ${'"'}$tname${'"'} clashes with other definition in same scope", stat.srcPos)
+        if stat.isDef then seen += tname
 }
 
 trait ReChecking extends Checking {

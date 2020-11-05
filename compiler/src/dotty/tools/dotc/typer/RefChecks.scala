@@ -431,9 +431,9 @@ object RefChecks {
       else if (!compatibleTypes(memberTp(self), otherTp(self)) &&
                  !compatibleTypes(memberTp(upwardsSelf), otherTp(upwardsSelf)))
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp(self), otherTp(self)))
-      else if (member.erasedName != other.erasedName)
-        if (other.erasedName != other.name)
-          overrideError(i"needs to be declared with @targetName(${"\""}${other.erasedName}${"\""}) so that external names match")
+      else if (member.targetName != other.targetName)
+        if (other.targetName != other.name)
+          overrideError(i"needs to be declared with @targetName(${"\""}${other.targetName}${"\""}) so that external names match")
         else
           overrideError("cannot have a @targetName annotation since external names would be different")
       else
