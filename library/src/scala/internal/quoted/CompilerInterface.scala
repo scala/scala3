@@ -12,12 +12,12 @@ trait CompilerInterface { self: scala.quoted.QuoteContext =>
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `holes`
    */
-  def unpickleTerm(pickledQuote: PickledQuote): Term
+  def unpickleExpr(pickledQuote: PickledQuote): scala.quoted.Expr[Any]
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `holes`
    */
-  def unpickleTypeTree(pickledQuote: PickledQuote): TypeTree
+  def unpickleType(pickledQuote: PickledQuote): scala.quoted.Type[?]
 
   /** Pattern matches the scrutinee against the pattern and returns a tuple
    *  with the matched holes if successful.
@@ -34,20 +34,20 @@ trait CompilerInterface { self: scala.quoted.QuoteContext =>
    *    - scala.internal.Quoted.patternHole[T]: hole that matches an expression `x` of type `Expr[U]`
    *                                            if `U <:< T` and returns `x` as part of the match.
    *
-   *  @param scrutinee `Term` on which we are pattern matching
-   *  @param pattern `Term` containing the pattern tree
+   *  @param scrutinee `Expr` on which we are pattern matching
+   *  @param pattern `Expr` containing the pattern tree
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Term``
    */
-  def termMatch(scrutinee: Term, pattern: Term): Option[Tuple]
+  def exprMatch(scrutinee: scala.quoted.Expr[Any], pattern: scala.quoted.Expr[Any]): Option[Tuple]
 
   /** Pattern matches the scrutineeType against the patternType and returns a tuple
    *  with the matched holes if successful.
    *
-   *  @param scrutinee `TypeTree` on which we are pattern matching
-   *  @param pattern `TypeTree` containing the pattern tree
-   *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `quoted.Type[Ti]``
+   *  @param scrutinee `Type` on which we are pattern matching
+   *  @param pattern `Type` containing the pattern tree
+   *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `scala.quoted.Type[Ti]``
    */
-  def typeTreeMatch(scrutinee: TypeTree, pattern: TypeTree): Option[Tuple]
+  def typeMatch(scrutinee: scala.quoted.Type[?], pattern: scala.quoted.Type[?]): Option[Tuple]
 
 }
 

@@ -18,13 +18,11 @@ object PickledQuote:
 
   def unpickleExpr[T](pickledQuote: PickledQuote): QuoteContext ?=> Expr[T] =
     val qctx = CompilerInterface.quoteContextWithCompilerInterface(summon[QuoteContext])
-    val tree = qctx.unpickleTerm(pickledQuote)
-    new scala.internal.quoted.Expr(tree, qctx.hashCode).asInstanceOf[Expr[T]]
+    qctx.unpickleExpr(pickledQuote).asInstanceOf[Expr[T]]
 
   def unpickleType[T](pickledQuote: PickledQuote): QuoteContext ?=> Type[T] =
     val qctx = CompilerInterface.quoteContextWithCompilerInterface(summon[QuoteContext])
-    val tree = qctx.unpickleTypeTree(pickledQuote)
-    new scala.internal.quoted.Type(tree, qctx.hashCode).asInstanceOf[Type[T]]
+    qctx.unpickleType(pickledQuote).asInstanceOf[Type[T]]
 
   /** Create an instance of PickledExpr from encoded tasty and sequence of labmdas to fill holes
    *

@@ -2617,17 +2617,19 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
   end reflect
 
-  def unpickleTerm(pickledQuote: PickledQuote): reflect.Term =
-    PickledQuotes.unpickleTerm(pickledQuote)(using reflect.rootContext)
+  def unpickleExpr(pickledQuote: PickledQuote): scala.quoted.Expr[Any] =
+    val tree = PickledQuotes.unpickleTerm(pickledQuote)(using reflect.rootContext)
+    new scala.internal.quoted.Expr(tree, hash)
 
-  def unpickleTypeTree(pickledQuote: PickledQuote): reflect.TypeTree =
-    PickledQuotes.unpickleTypeTree(pickledQuote)(using reflect.rootContext)
+  def unpickleType(pickledQuote: PickledQuote): scala.quoted.Type[?] =
+    val tree = PickledQuotes.unpickleTypeTree(pickledQuote)(using reflect.rootContext)
+    new scala.internal.quoted.Type(tree, hash)
 
-  def termMatch(scrutinee: reflect.Term, pattern: reflect.Term): Option[Tuple] =
-    treeMatch(scrutinee, pattern)
+  def exprMatch(scrutinee: scala.quoted.Expr[Any], pattern: scala.quoted.Expr[Any]): Option[Tuple] =
+    treeMatch(scrutinee.unseal(using this), pattern.unseal(using this))
 
-  def typeTreeMatch(scrutinee: reflect.TypeTree, pattern: reflect.TypeTree): Option[Tuple] =
-    treeMatch(scrutinee, pattern)
+  def typeMatch(scrutinee: scala.quoted.Type[?], pattern: scala.quoted.Type[?]): Option[Tuple] =
+    treeMatch(scrutinee.unseal(using this), pattern.unseal(using this))
 
   private def treeMatch(scrutinee: reflect.Tree, pattern: reflect.Tree): Option[Tuple] = {
     import reflect._
