@@ -1,10 +1,10 @@
-import quoted._
-import quoted.unsafe._
+import scala.quoted._
+
 object Main {
 
   def myMacroImpl(body: Expr[_])(using qctx: QuoteContext) : Expr[_] = {
     import qctx.reflect._
-    val bodyTerm = UnsafeExpr.underlyingArgument(body).unseal
+    val bodyTerm = underlyingArgument(body).unseal
     val showed = bodyTerm.show
     '{
       println(${Expr(showed)})
@@ -15,4 +15,7 @@ object Main {
   transparent inline def myMacro(body: => Any): Any = ${
     myMacroImpl('body)
   }
+
+  def underlyingArgument[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
+    expr.unseal.underlyingArgument.seal.asInstanceOf[Expr[T]]
 }
