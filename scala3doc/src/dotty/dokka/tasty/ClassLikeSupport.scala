@@ -130,6 +130,11 @@ trait ClassLikeSupport:
       case _ => None
   )
 
+  private def parseInheritedMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
+    case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
+    case other => parseMember(other)
+  ).map(_.withOrigin(Origin.InheritedFrom(s.symbol.owner.name, s.symbol.owner.dri)))
+
   extension (c: ClassDef):
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
@@ -139,14 +144,13 @@ trait ClassLikeSupport:
         .map(_.tree)
 
     def extractMembers: Seq[Member] = {
-      // val inherited = c.getNonTrivialInheritedMemberTrees.collect {
-      //     case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd
-      //     case other => other
-      //   }
+      val inherited = c.getNonTrivialInheritedMemberTrees.collect {
+        case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd
+        case other => other
+      }
 
-      c.membersToDocument.flatMap(parseMember)
-      // ++
-      //   inherited.flatMap(s => parseMember(s).map(_.withOrigin(Origin.InheritedFrom(s.symbol.owner.name, s.symbol.owner.dri))))
+      c.membersToDocument.flatMap(parseMember) ++
+        inherited.flatMap(s => parseInheritedMember(s))
     }
 
     def getParents: List[Tree] =
