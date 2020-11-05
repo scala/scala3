@@ -9,11 +9,11 @@ import java.nio.file.Files
 class TemplateFileTests:
   private def testTemplate(code: String, ext: String = "html")(op: TemplateFile => Unit): Unit =
     val tmpFile = Files.createTempFile("headerTests", s".${ext}").toFile()
-    try 
+    try
       Files.writeString(tmpFile.toPath, code)
       op(loadTemplateFile(tmpFile))
     finally tmpFile.delete()
-    
+
 
   private def testTemplates(
                              props: Map[String, String],
@@ -28,7 +28,7 @@ class TemplateFileTests:
           val newCtx = cxt.copy(layouts = cxt.layouts + (template.name() -> template))
           rec(newCtx, remaining.drop(1))
         }
-  
+
     rec(RenderingContext(props), template)
 
   private def fullRender(template: TemplateFile, ctx: RenderingContext): String = template.resolveInner(ctx).code.trim()
@@ -44,7 +44,7 @@ class TemplateFileTests:
       assertEquals(t.rawCode, "code")
       assertEquals(t.title(), "myTitle")
     }
-  
+
 
   @Test
   def testLinks(): Unit =

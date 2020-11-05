@@ -135,7 +135,7 @@ trait DokkaBaseTastyInspector:
     }.toList
 
   extension (self: DPackage) def mergeWith(other: DPackage): DPackage =
-    def nodes(p: DPackage): JList[TagWrapper] = p.getDocumentation.get(sourceSet) match 
+    def nodes(p: DPackage): JList[TagWrapper] = p.getDocumentation.get(sourceSet) match
       case null => JList[TagWrapper]()
       case node => node.getChildren
 

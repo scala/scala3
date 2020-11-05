@@ -12,13 +12,13 @@ import org.jetbrains.dokka.plugability.DokkaContext
 import scala.collection.JavaConverters._
 
 class StaticSiteLocationProviderFactory(private val ctx: DokkaContext) extends LocationProviderFactory:
-    override def getLocationProvider(pageNode: RootPageNode): LocationProvider =
-      new StaticSiteLocationProvider(ctx, pageNode)
+  override def getLocationProvider(pageNode: RootPageNode): LocationProvider =
+    new StaticSiteLocationProvider(ctx, pageNode)
 
-class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode) 
+class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
   extends DokkaLocationProvider(pageNode, ctx, ".html"):
     private def updatePageEntry(page: PageNode, jpath: JList[String]): JList[String] =
-      page match 
+      page match
         case page: StaticPageNode =>
           if (page.getDri.contains(docsRootDRI)) JList("index")
           else {

@@ -149,7 +149,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
           dokkaBase.getNavigationPageInstaller,
           dokkaBase.getScriptsInstaller,
           dokkaBase.getStylesInstaller,
-          dokkaBase.getPackageListCreator,  
+          dokkaBase.getPackageListCreator,
         ),
         after = Seq(dokkaBase.getRootCreator)
       )
@@ -184,7 +184,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
   )
 
   extension (ctx: DokkaContext):
-    def siteContext: Option[StaticSiteContext] = ctx.getConfiguration match 
+    def siteContext: Option[StaticSiteContext] = ctx.getConfiguration match
       case d: DottyDokkaConfig => d.staticSiteContext
       case _ => None
 
@@ -194,7 +194,7 @@ extension [T]  (builder: ExtensionBuilder[T]):
     val byDsl = new OrderingKind.ByDsl(dsl => {
       dsl.after(after:_*)
       dsl.before(before:_*)
-      kotlin.Unit.INSTANCE // TODO why U does not work here? 
+      kotlin.Unit.INSTANCE // TODO why U does not work here?
     })
     // Does not compile but compiles in scala 2
     // ExtensionBuilder.copy$default(builder, null, null, null, byDsl, null, null, 55, null)
@@ -206,5 +206,5 @@ extension [T]  (builder: ExtensionBuilder[T]):
 
 
   def before(exts: Extension[_, _, _]*):  ExtensionBuilder[T] = ordered(exts, Nil)
-    
+
   def after(exts: Extension[_, _, _]*):  ExtensionBuilder[T] = ordered(Nil, exts)

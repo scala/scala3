@@ -36,15 +36,15 @@ extension [T] (wrapper: DokkaSourceSet):
     // when named `toSet` fails in runtime -- TODO: create a minimal!
     // def toSet: JSet[DokkaConfiguration$DokkaSourceSet] = JSet(wrapper.asInstanceOf[SourceSetWrapper])
     def asSet: JSet[DokkaConfiguration$DokkaSourceSet] = JSet(wrapper.asInstanceOf[SourceSetWrapper])
-    def asMap(value: T): JMap[DokkaConfiguration$DokkaSourceSet, T] = JMap(wrapper.asInstanceOf[SourceSetWrapper] -> value)    
+    def asMap(value: T): JMap[DokkaConfiguration$DokkaSourceSet, T] = JMap(wrapper.asInstanceOf[SourceSetWrapper] -> value)
 
 extension (sourceSets: JList[DokkaSourceSet]):
   def asDokka: JSet[SourceSetWrapper] = sourceSets.asScala.toSet.asJava.asInstanceOf[JSet[SourceSetWrapper]]
-  def toDisplaySourceSet = sourceSets.asScala.map(ss => DisplaySourceSet(ss.asInstanceOf[SourceSetWrapper])).toSet.asJava 
+  def toDisplaySourceSet = sourceSets.asScala.map(ss => DisplaySourceSet(ss.asInstanceOf[SourceSetWrapper])).toSet.asJava
 
 extension (sourceSets: Set[SourceSetWrapper]):
-  def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava    
-  
+  def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava
+
 extension [V] (a: WithExtraProperties[_]):
   def get(key: ExtraProperty.Key[_, V]): V = a.getExtra().getMap().get(key).asInstanceOf[V]
 
@@ -55,5 +55,5 @@ extension [V] (map: JMap[SourceSetWrapper, V]):
   def defaultValue: V = map.values.asScala.head
 
 extension [V](jlist: JList[V]):
-  def ++ (other: JList[V]): JList[V] = 
+  def ++ (other: JList[V]): JList[V] =
     Stream.of(jlist, other).flatMap(_.stream).collect(Collectors.toList())

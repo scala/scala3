@@ -11,8 +11,8 @@ import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.transformers.pages.PageTransformer
 
 case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTemplate], file: File) {
-    def relativePath(root: File): String =
-        root.toPath().relativize(file.toPath()).toString().replace(File.separatorChar, '.')
+  def relativePath(root: File): String =
+    root.toPath().relativize(file.toPath()).toString().replace(File.separatorChar, '.')
 }
 
 case class StaticPageNode(
@@ -23,17 +23,22 @@ case class StaticPageNode(
                            override val getEmbeddedResources: JList[String],
                            override val getChildren: JList[PageNode],
                          ) extends ContentPage:
-    override def getDocumentable: Documentable = null
+  override def getDocumentable: Documentable = null
 
-    def title(): String = template.title()
-    def hasFrame(): Boolean = template.hasFrame()
+  def title(): String = template.title()
+  def hasFrame(): Boolean = template.hasFrame()
 
-    override def modified(name: String, content: ContentNode, dri: JSet[DRI], embeddedResources: JList[String], children: JList[_ <: PageNode]): ContentPage =
-        copy(template, name, content, dri, embeddedResources, children.asInstanceOf[JList[PageNode]])
+  override def modified(
+    name: String,
+    content: ContentNode,
+    dri: JSet[DRI],
+    embeddedResources: JList[String],
+    children: JList[_ <: PageNode]): ContentPage =
+      copy(template, name, content, dri, embeddedResources, children.asInstanceOf[JList[PageNode]])
 
-    override def modified(name: String, children: JList[_ <: PageNode]): PageNode =
-        copy(getName = name, getChildren = children.asInstanceOf[JList[PageNode]])
+  override def modified(name: String, children: JList[_ <: PageNode]): PageNode =
+    copy(getName = name, getChildren = children.asInstanceOf[JList[PageNode]])
 
-    def resources(): List[String] = getContent match 
-        case p: PartiallyRenderedContent => p.resolved.resources
-        case _ => Nil
+  def resources(): List[String] = getContent match
+    case p: PartiallyRenderedContent => p.resolved.resources
+    case _ => Nil

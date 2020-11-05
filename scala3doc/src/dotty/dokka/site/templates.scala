@@ -33,10 +33,7 @@ case class RenderingContext(
       resources = this.resources ++ resources
     )
 
-case class ResolvedPage(
-                         val code: String,
-                         val resources: List[String] = Nil
-                       )
+case class ResolvedPage(val code: String, val resources: List[String] = Nil)
 
 /**
  * case class for the template files.
@@ -84,13 +81,13 @@ case class TemplateFile(
 
     // Library requires mutable maps..
     val mutableProperties = new java.util.HashMap[String, Object](ctx.properties.asJava)
-    val rendered = Template.parse(this.rawCode).render(mutableProperties) 
+    val rendered = Template.parse(this.rawCode).render(mutableProperties)
     val code = if (!isHtml) rendered else
       val parser: Parser = Parser.builder().build()
       HtmlRenderer.builder(ctx.markdownOptions).build().render(parser.parse(rendered))
-    
+
     val resources = listSetting("extraCSS") ++ listSetting("extraJS")
-    layoutTemplate match 
+    layoutTemplate match
       case None => ResolvedPage(code, resources ++ ctx.resources)
       case Some(layoutTemplate) =>
         layoutTemplate.resolveInner(ctx.nest(code, file, resources))

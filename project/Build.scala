@@ -1465,7 +1465,7 @@ object Build {
 
       def joinProducts(products: Seq[java.io.File]): String =
         products.iterator.map(_.getAbsolutePath.toString).mkString(java.io.File.pathSeparator)
-      
+
       val dokkaVersion = "1.4.10.2"
 
       project.settings(commonBootstrappedSettings).

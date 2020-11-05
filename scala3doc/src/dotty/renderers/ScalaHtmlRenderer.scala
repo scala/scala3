@@ -50,14 +50,14 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
       })
     case _ =>
       val div = new DIV(JMap(), context.getConsumer())
-      try 
+      try
         div.getConsumer().onTagStart(div)
         withHtml(div, content)
       catch
         case e: Throwable =>
           div.getConsumer.onTagError(div, e)
       finally
-        div.getConsumer.onTagEnd(div)    
+        div.getConsumer.onTagEnd(div)
   }
 
   lazy val sourceSets = ctx.getConfiguration.getSourceSets.asScala
@@ -189,7 +189,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
   ): Unit = {
     import kotlinx.html.{Gen_consumer_tagsKt => dsl}
     val c = f.getConsumer
-    
+
     dsl.a(c, node.getAddress, /*target*/ null, /*classes*/ null, { e =>
       import ScalaCommentToContentConverter._
       // node.getExtra.getMap.asScala.get(LinkAttributesKey)
@@ -233,7 +233,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
       ).toString()
     )
 
-  override def buildPageContent(context: FlowContent, page: ContentPage): Unit = 
+  override def buildPageContent(context: FlowContent, page: ContentPage): Unit =
     page match
       case s: StaticPageNode if !s.hasFrame() =>
       case _ => buildNavigation(context, page)
@@ -243,7 +243,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
         withHtml(context, prc.resolved.code)
       case content =>
         build(content, context, page, /*sourceSetRestriction=*/null)
-  
+
 
   override def buildHtml(page: PageNode, resources: JList[String], kotlinxContent: FlowContentConsumer): String =
     val (pageTitle, noFrame) = page match
