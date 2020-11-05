@@ -10,7 +10,7 @@ object LineNumber {
 
   def lineImpl(using QuoteContext) : Expr[LineNumber] = {
     import qctx.reflect._
-    '{new LineNumber(${Expr(rootPosition.startLine)})}
+    '{new LineNumber(${Expr(Position.ofMacroExpansion.startLine)})}
   }
 
 }

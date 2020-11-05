@@ -54,9 +54,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     def rootContext: Context = ctx
 
-    def rootPosition: dotc.util.SourcePosition =
-      MacroExpansion.position.getOrElse(dotc.util.SourcePosition(rootContext.source, dotc.util.Spans.NoSpan))
-
     type Context = dotc.core.Contexts.Context
 
     type Tree = tpd.Tree
@@ -2185,7 +2182,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     object Implicits extends ImplicitsModule:
       def search(tpe: TypeRepr): ImplicitSearchResult =
-        ctx.typer.inferImplicitArg(tpe, rootPosition.span)
+        ctx.typer.inferImplicitArg(tpe, Position.ofMacroExpansion.span)
     end Implicits
 
     type ImplicitSearchResult = Tree
@@ -2544,7 +2541,10 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
 
     type Position = dotc.util.SourcePosition
 
-    object Position extends PositionModule
+    object Position extends PositionModule:
+      def ofMacroExpansion: dotc.util.SourcePosition =
+        MacroExpansion.position.getOrElse(dotc.util.SourcePosition(rootContext.source, dotc.util.Spans.NoSpan))
+    end Position
 
     object PositionMethodsImpl extends PositionMethods:
       extension (self: Position):
@@ -2616,7 +2616,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
       if tree.isEmpty then None else Some(tree)
 
     private def withDefaultPos[T <: Tree](fn: Context ?=> T): T =
-      fn(using ctx.withSource(rootPosition.source)).withSpan(rootPosition.span)
+      fn(using ctx.withSource(Position.ofMacroExpansion.source)).withSpan(Position.ofMacroExpansion.span)
 
     def unpickleTerm(pickledQuote: PickledQuote): Term =
       PickledQuotes.unpickleTerm(pickledQuote)
