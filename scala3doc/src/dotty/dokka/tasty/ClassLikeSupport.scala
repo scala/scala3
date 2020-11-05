@@ -18,8 +18,8 @@ trait ClassLikeSupport:
   self: TastyParser =>
   import qctx.reflect._
 
-  private val placeholderVisibility = Map(sourceSet.getSourceSet -> KotlinVisibility.Public.INSTANCE).asJava
-  private val placeholderModifier = Map(sourceSet.getSourceSet -> KotlinModifier.Empty.INSTANCE).asJava
+  private val placeholderVisibility = JMap(sourceSet -> KotlinVisibility.Public.INSTANCE)
+  private val placeholderModifier = JMap(sourceSet -> KotlinModifier.Empty.INSTANCE)
 
   private def kindForClasslike(sym: Symbol): Kind =
         if sym.flags.is(Flags.Object) then Kind.Object
@@ -79,9 +79,9 @@ trait ClassLikeSupport:
           dri,
           name,
           (if(signatureOnly) Nil else classDef.getConstructors.map(parseMethod(_))).asJava,
-          Nil.asJava,
-          Nil.asJava,
-          Nil.asJava,
+          JList(),
+          JList(),
+          JList(),
           classDef.symbol.source.asJava,
           placeholderVisibility,
           null,
@@ -250,7 +250,7 @@ trait ClassLikeSupport:
       /*generics =*/ genericTypes.map(parseTypeArgument).asJava,
       /*receiver =*/ null, // Not used
       /*modifier =*/ placeholderModifier,
-      sourceSet.toSet(),
+      sourceSet.toSet,
        /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty()
         plus MethodExtension(paramLists.map(_.size))
@@ -270,7 +270,7 @@ trait ClassLikeSupport:
       argument.symbol.documentation.asJava,
       null,
       argument.tpt.dokkaType,
-      sourceSet.toSet(),
+      sourceSet.toSet,
       PropertyContainer.Companion.empty()
         .plus(ParameterExtension(isExtendedSymbol, isGrouped))
         .plus(MemberExtension.empty.copy(annotations = argument.symbol.getAnnotations()))
@@ -287,8 +287,8 @@ trait ClassLikeSupport:
       Invariance(TypeParameter(argument.symbol.dri, variancePrefix + argument.symbol.name, null)),
       argument.symbol.documentation.asJava,
       null,
-      List(argument.rhs.dokkaType).asJava,
-      sourceSet.toSet(),
+      JList(argument.rhs.dokkaType),
+      sourceSet.toSet,
       PropertyContainer.Companion.empty()
     )
 
@@ -317,7 +317,7 @@ trait ClassLikeSupport:
       /*setter =*/ null,
       /*getter =*/ null,
       /*modifier =*/ placeholderModifier,
-      sourceSet.toSet(),
+      sourceSet.toSet,
       /*generics =*/ generics.asJava, // TODO
        /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty() plus MemberExtension(
@@ -355,8 +355,8 @@ trait ClassLikeSupport:
       /*setter =*/ null,
       /*getter =*/ null,
       /*modifier =*/ placeholderModifier,
-      sourceSet.toSet(),
-      /*generics =*/ Nil.asJava,
+      sourceSet.toSet,
+      /*generics =*/ JList(),
        /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty().plus(MemberExtension(
           valDef.symbol.getVisibility(),

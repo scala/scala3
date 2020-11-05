@@ -3,21 +3,24 @@ package dotty.dokka
 import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.model._
+import org.jetbrains.dokka.base.renderers.html.HtmlRenderer
 import org.jetbrains.dokka._
 import HTML._
 import collection.JavaConverters._
-import com.virtuslab.dokka.site.SiteRenderer
-import com.virtuslab.dokka.site.BaseStaticSiteProcessor
 import java.net.URI
 import java.util.{List => JList, Set => JSet}
 import kotlinx.html.FlowContent
 import kotlinx.html.stream.StreamKt
 import kotlinx.html.Gen_consumer_tagsKt
+import kotlinx.html.ApiKt
+import kotlinx.html.HTMLTag
+import kotlinx.html.DIV
 import org.jetbrains.dokka.links.DRI
 import dotty.dokka.model.api.Link
 import dotty.dokka.model.api.HierarchyGraph
 import org.jetbrains.dokka.base.resolvers.local.LocationProvider
-
+import dotty.dokka.site.StaticPageNode
+import dotty.dokka.site.PartiallyRenderedContent
 
 class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
   def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
@@ -35,7 +38,27 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
 
   def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
 
-class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
+class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
+
+  // Implementation below is based on Kotlin bytecode and we will try to migrate it to dokka
+  // TODO (https://github.com/lampepfl/scala3doc/issues/232): Move this method to dokka
+  def withHtml(context: FlowContent, content: String): Unit = context match {
+    case tag: HTMLTag =>
+      ApiKt.unsafe(tag, { x =>
+        x.unaryPlus(content)
+        U
+      })
+    case _ =>
+      val div = new DIV(JMap(), context.getConsumer())
+      try
+        div.getConsumer().onTagStart(div)
+        withHtml(div, content)
+      catch
+        case e: Throwable =>
+          div.getConsumer.onTagError(div, e)
+      finally
+        div.getConsumer.onTagEnd(div)
+  }
 
   lazy val sourceSets = ctx.getConfiguration.getSourceSets.asScala
     .map(s => DisplaySourceSetKt.toDisplaySourceSet(s.asInstanceOf[DokkaConfiguration$DokkaSourceSet])).toSet.asJava
@@ -166,7 +189,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
   ): Unit = {
     import kotlinx.html.{Gen_consumer_tagsKt => dsl}
     val c = f.getConsumer
-    val U = kotlin.Unit.INSTANCE
+
     dsl.a(c, node.getAddress, /*target*/ null, /*classes*/ null, { e =>
       import ScalaCommentToContentConverter._
       // node.getExtra.getMap.asScala.get(LinkAttributesKey)
@@ -184,9 +207,9 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
     pageContext: ContentPage,
   ): Unit = {
     // we cannot use Scalatags, because we need to call buildContentNode
+    // TODO rewrite it to using HTML
     import kotlinx.html.{Gen_consumer_tagsKt => dsl}
     val c = f.getConsumer
-    val U = kotlin.Unit.INSTANCE
 
     dsl.div(c, "sample-container", { e =>
       dsl.pre(c, null, { e =>
@@ -210,26 +233,35 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
       ).toString()
     )
 
+  override def buildPageContent(context: FlowContent, page: ContentPage): Unit =
+    page match
+      case s: StaticPageNode if !s.hasFrame() =>
+      case _ => buildNavigation(context, page)
+
+    page.getContent match
+      case prc: PartiallyRenderedContent =>
+        withHtml(context, prc.resolved.code)
+      case content =>
+        build(content, context, page, /*sourceSetRestriction=*/null)
+
+
   override def buildHtml(page: PageNode, resources: JList[String], kotlinxContent: FlowContentConsumer): String =
-    val (pageTitle, pageResources, fromTemplate) = page match
-      case static: BaseStaticSiteProcessor.StaticPageNode =>
-        val res = if static.hasFrame then resources else static.resources
-        val title = static.getLoadedTemplate.getTemplateFile.title
-        (title, res, !static.hasFrame)
+    val (pageTitle, noFrame) = page match
+      case static: StaticPageNode =>
+        (static.template.title(), !static.hasFrame())
       case _ =>
-        (page.getName, resources, false)
+        (page.getName, false)
+
     html(
       head(
         meta(charset := "utf-8"),
         meta(name := "viewport", content := "width=device-width, initial-scale=1"),
         title(pageTitle),
-        linkResources(page, pageResources.asScala).toSeq,
+        linkResources(page, resources.asScala).toSeq,
         script(raw(s"""var pathToRoot = "${getLocationProvider.pathToRoot(page)}";"""))
       ),
       body(
-        if fromTemplate then
-          raw(buildWithKotlinx(kotlinxContent))
-        else
+        if noFrame then raw(buildWithKotlinx(kotlinxContent)) else
           div(id := "container")(
             div(id := "leftColumn")(
               div(id := "logo"),
@@ -295,5 +327,4 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends SiteRenderer(ctx) {
       null,
       func
     ).toString.stripPrefix("<div>").stripSuffix("</div>\n")
-
 }

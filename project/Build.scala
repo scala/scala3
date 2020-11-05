@@ -1466,21 +1466,23 @@ object Build {
       def joinProducts(products: Seq[java.io.File]): String =
         products.iterator.map(_.getAbsolutePath.toString).mkString(java.io.File.pathSeparator)
 
+      val dokkaVersion = "1.4.10.2"
+
       project.settings(commonBootstrappedSettings).
         dependsOn(`scala3-compiler-bootstrapped`).
         dependsOn(`scala3-tasty-inspector`).
         settings(
           // Needed to download dokka and its dependencies
           resolvers += Resolver.jcenterRepo,
-          // Needed to download dokka-site
-          resolvers += Resolver.bintrayRepo("virtuslab", "dokka"),
           libraryDependencies ++= Seq(
-            "com.virtuslab.dokka" % "dokka-site" % "0.1.9",
+            "org.jetbrains.dokka" % "dokka-core" % dokkaVersion,
+            "org.jetbrains.dokka" % "dokka-base" % dokkaVersion,
+            "org.jetbrains.kotlinx" % "kotlinx-html-jvm" % "0.7.2", // Needs update when dokka version changes
             "com.vladsch.flexmark" % "flexmark-all" % "0.42.12",
             "nl.big-o" % "liqp" % "0.6.7",
             "args4j" % "args4j" % "2.33",
 
-            "org.jetbrains.dokka" % "dokka-test-api" % "1.4.10.2" % "test",
+            "org.jetbrains.dokka" % "dokka-test-api" % dokkaVersion % "test",
             "com.novocode" % "junit-interface" % "0.11" % "test",
           ),
           Test / test := (Test / test).dependsOn(compile.in(Compile).in(`scala3doc-testcases`)).value,

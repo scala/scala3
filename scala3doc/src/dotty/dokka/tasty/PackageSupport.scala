@@ -1,4 +1,5 @@
-package dotty.dokka.tasty
+package dotty.dokka
+package tasty
 
 import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.links._
@@ -18,10 +19,10 @@ trait PackageSupport:
         val documentation = pck.symbol.documentation
         DPackage(
           new DRI(name, null, null, PointingToDeclaration.INSTANCE, null),
-          Nil.asJava,
-          Nil.asJava,
-          Nil.asJava,
-          Nil.asJava,
+          JList(),
+          JList(),
+          JList(),
+          JList(),
           documentation.asJava,
           null,
           sourceSet.toSet,
@@ -36,8 +37,8 @@ trait PackageSupport:
               new DRI(pckObj.symbol.dri.getPackageName, null, null, PointingToDeclaration.INSTANCE, null),
               clazz.getFunctions,
               clazz.getProperties,
-              Nil.asJava,
-              Nil.asJava,
+              JList(),
+              JList(),
               pckObj.symbol.documentation.asJava,
               null,
               sourceSet.toSet,

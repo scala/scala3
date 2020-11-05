@@ -9,7 +9,6 @@ import collection.JavaConverters._
 import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._
-import java.util.{List => JList, Set => JSet}
 import dotty.dokka.model.api._
 
 case class ModuleExtension(driMap: Map[DRI, Member]) extends ExtraProperty[DModule]:

@@ -66,7 +66,7 @@ abstract class DottyAbstractCoreTest extends AbstractCoreTest:
       config,
       new TestLogger(DokkaConsoleLogger.INSTANCE),
       tests.build(),
-      Nil.asJava
+      JList()
     ).generate()
 
     signatures

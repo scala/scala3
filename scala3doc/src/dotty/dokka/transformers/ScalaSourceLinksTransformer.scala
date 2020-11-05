@@ -24,10 +24,10 @@ class ScalaSourceLinksTransformer(
   val sourceLinks = ctx.getConfiguration.getSourceSets.asScala.flatMap(s => s.getSourceLinks.asScala.map(l => SourceLink(l, s)))
   val pageBuilder = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger)
 
-  case class SourceLink(val path: String, val url: String, val lineSuffix: Option[String], val sourceSetData: DokkaConfiguration.DokkaSourceSet)
+  case class SourceLink(val path: String, val url: String, val lineSuffix: Option[String], val sourceSetData: DokkaSourceSet)
 
   object SourceLink {
-    def apply(sourceLinkDef: DokkaConfiguration$SourceLinkDefinition, sourceSetData: DokkaConfiguration.DokkaSourceSet): SourceLink =
+    def apply(sourceLinkDef: DokkaConfiguration$SourceLinkDefinition, sourceSetData: DokkaSourceSet): SourceLink =
       SourceLink(sourceLinkDef.getLocalDirectory, sourceLinkDef.getRemoteUrl.toString, Option(sourceLinkDef.getRemoteLineSuffix), sourceSetData)
   }
 

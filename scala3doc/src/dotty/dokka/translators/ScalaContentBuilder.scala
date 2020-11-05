@@ -370,7 +370,7 @@ class ScalaPageContentBuilder(
         address,
         DCI(mainDRI.asJava, kind),
         sourceSets.toDisplay,
-        Set().asJava,
+        JSet(),
         PropertyContainer.Companion.empty()
       )
     )
@@ -388,7 +388,7 @@ class ScalaPageContentBuilder(
         address,
         DCI(mainDRI.asJava, kind),
         sourceSets.toDisplay,
-        Set().asJava,
+        JSet(),
         PropertyContainer.Companion.empty()
       )
     )
@@ -407,7 +407,7 @@ class ScalaPageContentBuilder(
         address,
         DCI(mainDRI.asJava, kind),
         sourceSets.toDisplay,
-        Set().asJava,
+        JSet(),
         PropertyContainer.Companion.empty()
       )
     )
@@ -434,7 +434,7 @@ class ScalaPageContentBuilder(
           docTag,
           DCI(mainDRI.asJava, kind),
           sourceSets.asJava,
-          Set().asJava,
+          JSet(),
           PropertyContainer.Companion.empty()
         ).asScala.toSeq
 

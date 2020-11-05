@@ -10,8 +10,6 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.pages._
-import java.util.{List => JList, Set => JSet}
-
 
 enum Visibility(val name: String):
   case Unrestricted extends Visibility("")
@@ -89,7 +87,7 @@ object Annotation:
 
 // TODO (longterm) properly represent signatures
 case class Link(name: String, dri: DRI)
-type Signature = Seq[String | Link]// TODO migrate tupes to Links
+type Signature = Seq[String | Link]
 
 object Signature:
   def apply(names: (String | Link)*): Signature = names // TO batter dotty shortcommings in union types

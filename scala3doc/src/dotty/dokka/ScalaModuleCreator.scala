@@ -1,23 +1,22 @@
 package dotty.dokka
 
 import org.jetbrains.dokka.{ DokkaConfiguration$DokkaSourceSet => DokkaSourceSet }
-import com.virtuslab.dokka.site.JavaSourceToDocumentableTranslator
-import com.virtuslab.dokka.site.SourceSetWrapper
 import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.model.properties.PropertyContainer
+import org.jetbrains.dokka.model.DModule
+import org.jetbrains.dokka.transformers.sources.SourceToDocumentableTranslator
 
 import dotty.dokka.tasty.{DokkaTastyInspector, SbtDokkaTastyInspector}
 import org.jetbrains.dokka.pages._
 import dotty.dokka.model.api._
 import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.links.DRI
-import java.util.{List => JList}
 import org.jetbrains.dokka.base.parsers.MarkdownParser
 import collection.JavaConverters._
+import kotlin.coroutines.Continuation
 
-object ScalaModuleProvider extends JavaSourceToDocumentableTranslator:
-   override def process(rawSourceSet: DokkaSourceSet, cxt: DokkaContext) =
-    val sourceSet = SourceSetWrapper(rawSourceSet)
+object ScalaModuleProvider extends SourceToDocumentableTranslator:
+   override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =
     cxt.getConfiguration match
       case dottyConfig: DottyDokkaConfig =>
         val result = dottyConfig.docConfiguration match {
@@ -41,9 +40,9 @@ object ScalaModuleProvider extends JavaSourceToDocumentableTranslator:
         def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.allMembers.flatMap(flattenMember)
 
         new DModule(
-          sourceSet.getSourceSet.getDisplayName,
+          sourceSet.getDisplayName,
           result.asJava,
-          Map().asJava,
+          JMap(),
           null,
           sourceSet.toSet,
           PropertyContainer.Companion.empty() plus ModuleExtension(result.flatMap(flattenMember).toMap)
@@ -51,6 +50,6 @@ object ScalaModuleProvider extends JavaSourceToDocumentableTranslator:
       case _ =>
         ???
 
-object EmptyModuleProvider extends JavaSourceToDocumentableTranslator:
-  override def process(sourceSet: DokkaSourceSet, context: DokkaContext) =
-    DModule("", Nil.asJava, Map.empty.asJava, null, Set(sourceSet).asJava, PropertyContainer.Companion.empty())
+object EmptyModuleProvider extends SourceToDocumentableTranslator:
+   override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =
+    DModule("", JList(), Map.empty.asJava, null, Set(sourceSet).asJava, PropertyContainer.Companion.empty())

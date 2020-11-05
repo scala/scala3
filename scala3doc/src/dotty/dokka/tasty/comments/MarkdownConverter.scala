@@ -1,4 +1,5 @@
-package dotty.dokka.tasty.comments
+package dotty.dokka
+package tasty.comments
 
 import scala.jdk.CollectionConverters._
 import scala.tasty.Reflection
@@ -40,7 +41,8 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
       emit(dkkd.P(convertChildren(n).asJava, kt.emptyMap))
 
     case n: mda.Heading => emit(n.getLevel match {
-        case 1 => dkkd.H1(List(dkk.text(n.getText().toString)).asJava, kt.emptyMap)
+        case 1 => dkkd.H1(List(dkk.text(n.getText().toString)).asJava, JMap())
+        // case -1 => dkkd.H1(List(dkk.text(n.getText().toString)).asJava, JMap()) // This does not compile but should!
         case 2 => dkkd.H2(List(dkk.text(n.getText().toString)).asJava, kt.emptyMap)
         case 3 => dkkd.H3(List(dkk.text(n.getText().toString)).asJava, kt.emptyMap)
         case 4 => dkkd.H4(List(dkk.text(n.getText().toString)).asJava, kt.emptyMap)

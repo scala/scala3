@@ -8,7 +8,6 @@ import java.io.File
 import java.util.jar._
 import collection.JavaConverters._
 import collection.immutable.ArraySeq
-import java.util.{List => JList}
 
 import scala.tasty.Reflection
 import scala.tasty.inspector.TastyInspector
