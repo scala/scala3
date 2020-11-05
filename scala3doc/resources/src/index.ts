@@ -1,3 +1,5 @@
-import './style.scss';
+import { FilterBar } from './filterBar/index';
 
-console.log('Hello');
+window.addEventListener('DOMContentLoaded', () => {
+  FilterBar.tryAttaching();
+});
