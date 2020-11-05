@@ -4815,6 +4815,11 @@ object Types {
   /** The type of an import clause tree */
   case class ImportType(expr: Tree) extends UncachedGroundType
 
+  /** Sentinal for typed export clauses */
+  @sharable case object ExportType extends CachedGroundType {
+    override def computeHash(bs: Binders): Int = hashSeed
+  }
+
   /** Sentinel for "missing type" */
   @sharable case object NoType extends CachedGroundType {
     override def computeHash(bs: Binders): Int = hashSeed

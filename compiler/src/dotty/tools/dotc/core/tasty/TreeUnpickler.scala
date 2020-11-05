@@ -711,7 +711,7 @@ class TreeUnpickler(reader: TastyReader,
             else if (sym.isClass ||
               sym.is(Method, butNot = Deferred) && !sym.isConstructor)
               initsFlags &= NoInits
-          case IMPORT =>
+          case IMPORT | EXPORT =>
             skipTree()
           case PACKAGE =>
             processPackage { (pid, end) => indexStats(end) }
@@ -970,7 +970,9 @@ class TreeUnpickler(reader: TastyReader,
       case TYPEDEF | VALDEF | DEFDEF =>
         readIndexedDef()
       case IMPORT =>
-        readImport()
+        readImportOrExport(Import(_, _))()
+      case EXPORT =>
+        readImportOrExport(Export(_, _))()
       case PACKAGE =>
         val start = currentAddr
         processPackage { (pid, end) =>
@@ -980,14 +982,16 @@ class TreeUnpickler(reader: TastyReader,
         readTerm()(using ctx.withOwner(exprOwner))
     }
 
-    def readImport()(using Context): Tree = {
+    inline def readImportOrExport(inline mkTree:
+        (Tree, List[untpd.ImportSelector]) => Tree)()(using Context): Tree = {
       val start = currentAddr
       assert(sourcePathAt(start).isEmpty)
       readByte()
       readEnd()
       val expr = readTerm()
-      setSpan(start, Import(expr, readSelectors()))
+      setSpan(start, mkTree(expr, readSelectors()))
     }
+
     def readSelectors()(using Context): List[untpd.ImportSelector] =
       if nextByte == IMPORTED then
         val start = currentAddr

@@ -16,7 +16,7 @@ trait ExprMap:
             transformTerm(tree, TypeRepr.of[Any])(owner)
           case tree: Definition =>
             transformDefinition(tree)(owner)
-          case tree: Import =>
+          case tree @ (_:Import | _:Export) =>
             tree
         }
       }

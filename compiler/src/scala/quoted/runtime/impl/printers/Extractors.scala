@@ -129,6 +129,8 @@ object Extractors {
         this += ", " += self += ", " ++= body += ")"
       case Import(expr, selectors) =>
         this += "Import(" += expr += ", " ++= selectors += ")"
+      case Export(expr, selectors) =>
+        this += "Export(" += expr += ", " ++= selectors += ")"
       case PackageClause(pid, stats) =>
         this += "PackageClause(" += pid += ", " ++= stats += ")"
       case Inferred() =>
@@ -239,7 +241,7 @@ object Extractors {
       this += "Signature(" ++= params.map(_.toString) += ", " += res += ")"
     }
 
-    def visitImportSelector(sel: ImportSelector): this.type = sel match {
+    def visitSelector(sel: Selector): this.type = sel match {
       case SimpleSelector(id) => this += "SimpleSelector(" += id += ")"
       case RenameSelector(id1, id2) => this += "RenameSelector(" += id1 += ", " += id2 += ")"
       case OmitSelector(id) => this += "OmitSelector(" += id += ")"
@@ -291,8 +293,8 @@ object Extractors {
       def +=(x: Option[Signature]): self.type = { visitOption(x, visitSignature); buff }
     }
 
-    private implicit class ImportSelectorOps(buff: self.type) {
-      def ++=(x: List[ImportSelector]): self.type = { visitList(x, visitImportSelector); buff }
+    private implicit class SelectorOps(buff: self.type) {
+      def ++=(x: List[Selector]): self.type = { visitList(x, visitSelector); buff }
     }
 
     private implicit class SymbolOps(buff: self.type) {
