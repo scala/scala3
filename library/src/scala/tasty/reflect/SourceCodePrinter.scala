@@ -1237,15 +1237,12 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
 
     def printAnnotation(annot: Term)(using elideThis: Option[Symbol]): Buffer = {
       val Annotation(ref, args) = annot
-      if (annot.symbol.maybeOwner == Symbol.requiredClass("scala.internal.quoted.showName")) this
-      else {
-        this += "@"
-        printTypeTree(ref)
-        if (args.isEmpty)
-          this
-        else
-          inParens(printTrees(args, ", "))
-      }
+      this += "@"
+      printTypeTree(ref)
+      if (args.isEmpty)
+        this
+      else
+        inParens(printTrees(args, ", "))
     }
 
     def printDefAnnotations(definition: Definition)(using elideThis: Option[Symbol]): Buffer = {
@@ -1413,22 +1410,16 @@ class SourceCodePrinter[R <: Reflection & Singleton](val reflect: R)(syntaxHighl
   private[this] val namesIndex = collection.mutable.Map.empty[String, Int]
 
   private def splicedName(sym: Symbol): Option[String] = {
-    sym.annots.find(_.symbol.owner == Symbol.requiredClass("scala.internal.quoted.showName")).flatMap {
-      case Apply(_, Literal(Constant.String(c)) :: Nil) => Some(c)
-      case Apply(_, Inlined(_, _, Literal(Constant.String(c))) :: Nil) => Some(c)
-      case annot => None
-    }.orElse {
-      if sym.owner.isClassDef then None
-      else names.get(sym).orElse {
-        val name0 = sym.name
-        val index = namesIndex.getOrElse(name0, 1)
-        namesIndex(name0) = index + 1
-        val name =
-          if index == 1 then name0
-          else s"`$name0${index.toString.toCharArray.map {x => (x - '0' + '₀').toChar}.mkString}`"
-        names(sym) = name
-        Some(name)
-      }
+    if sym.owner.isClassDef then None
+    else names.get(sym).orElse {
+      val name0 = sym.name
+      val index = namesIndex.getOrElse(name0, 1)
+      namesIndex(name0) = index + 1
+      val name =
+        if index == 1 then name0
+        else s"`$name0${index.toString.toCharArray.map {x => (x - '0' + '₀').toChar}.mkString}`"
+      names(sym) = name
+      Some(name)
     }
   }
 
