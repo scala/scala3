@@ -895,12 +895,9 @@ class Definitions {
     lazy val RuntimeTuple_isInstanceOfEmptyTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfEmptyTuple")
     lazy val RuntimeTuple_isInstanceOfNonEmptyTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfNonEmptyTuple")
 
-  @tu lazy val TupledFunctionTypeRef: TypeRef = requiredClassRef("scala.TupledFunction")
+  @tu lazy val TupledFunctionTypeRef: TypeRef = requiredClassRef("scala.util.TupledFunction")
   def TupledFunctionClass(using Context): ClassSymbol = TupledFunctionTypeRef.symbol.asClass
-
-  @tu lazy val InternalTupledFunctionTypeRef: TypeRef = requiredClassRef("scala.internal.TupledFunction")
-  def InternalTupleFunctionClass(using Context): ClassSymbol = InternalTupledFunctionTypeRef.symbol.asClass
-  def InternalTupleFunctionModule(using Context): Symbol = requiredModule("scala.internal.TupledFunction")
+  def RuntimeTupleFunctionsModule(using Context): Symbol = requiredModule("scala.runtime.TupledFunctions")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")

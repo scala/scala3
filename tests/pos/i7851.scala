@@ -18,7 +18,7 @@ given [H: Wrappable, T <: Tuple, WrappedT0 <: Tuple]
 def wrappedFunction[F, FArgs <: Tuple, WrapperFArgs <: Tuple, R: Wrappable](
   function: F
 )(input: FArgs)(using
-  tf: TupledFunction[F, WrapperFArgs => Wrapped[R]],
+  tf: util.TupledFunction[F, WrapperFArgs => Wrapped[R]],
   vs: Wrapper.Aux[FArgs, WrapperFArgs]
 ): (R, R => Option[FArgs]) = {
   val variableInput = input.asInstanceOf[WrapperFArgs] // This is not correct but it's ok for the sake of this example.
