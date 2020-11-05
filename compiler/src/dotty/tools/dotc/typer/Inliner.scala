@@ -17,6 +17,7 @@ import Contexts._
 import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName, BodyRetainerName}
 import ProtoTypes.selectionProto
+import Annotations.Annotation
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
 import config.Printers.inlining
@@ -198,8 +199,10 @@ object Inliner {
       name = BodyRetainerName(meth.name),
       flags = meth.flags &~ (Inline | Macro | Override) | Private,
       coord = mdef.rhs.span.startPos).asTerm
-    for targetAnnot <- meth.getAnnotation(defn.TargetNameAnnot) do
-      retainer.addAnnotation(targetAnnot)
+    if meth.hasAnnotation(defn.TargetNameAnnot) then
+      retainer.addAnnotation(
+        Annotation(defn.TargetNameAnnot,
+          Literal(Constant(BodyRetainerName(meth.erasedName.asTermName).toString)).withSpan(meth.span)))
     polyDefDef(retainer, targs => prefss =>
       inlineCall(
         ref(meth).appliedToTypes(targs).appliedToArgss(prefss)
