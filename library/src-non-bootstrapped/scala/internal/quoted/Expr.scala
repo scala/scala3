@@ -1,7 +1,6 @@
 package scala.internal.quoted
 
 import scala.quoted._
-import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
 /** An Expr backed by a tree. Only the current compiler trees are allowed.
  *

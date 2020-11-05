@@ -1,15 +1,13 @@
-package scala.internal.tasty
+package scala.internal.quoted
 
 import scala.quoted.QuoteContext
 import scala.tasty.reflect._
 import scala.internal.quoted.PickledQuote
 
 /** Part of the reflection interface that needs to be implemented by the compiler */
-trait CompilerInterface { self: scala.tasty.Reflection =>
+trait CompilerInterface { self: scala.quoted.QuoteContext =>
 
-  //////////////////////
-  // QUOTE UNPICKLING //
-  //////////////////////
+  import self.reflect._
 
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `holes`
@@ -56,7 +54,7 @@ trait CompilerInterface { self: scala.tasty.Reflection =>
 
 object CompilerInterface {
 
-  private[scala] def quoteContextWithCompilerInterface(qctx: QuoteContext): qctx.type { val reflect: qctx.reflect.type & scala.internal.tasty.CompilerInterface } =
-    qctx.asInstanceOf[qctx.type { val reflect: qctx.reflect.type & scala.internal.tasty.CompilerInterface }]
+  private[scala] def quoteContextWithCompilerInterface(qctx: QuoteContext): qctx.type { val reflect: qctx.reflect.type } & CompilerInterface =
+    qctx.asInstanceOf[qctx.type { val reflect: qctx.reflect.type } & CompilerInterface]
 
 }

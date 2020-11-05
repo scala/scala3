@@ -1,7 +1,5 @@
 package scala.quoted
 
-import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
-
 /** Quoted expression of type `T` */
 abstract class Expr[+T] private[scala] {
 

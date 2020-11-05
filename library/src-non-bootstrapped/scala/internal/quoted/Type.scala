@@ -1,7 +1,6 @@
 package scala.internal.quoted
 
 import scala.quoted._
-import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
 /** Quoted type (or kind) `T` backed by a tree */
 final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quoted.Type[Any] {
