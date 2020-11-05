@@ -512,6 +512,9 @@ object SymDenotations {
     def setTargetName(name: Name): Unit =
       myTargetName = name
 
+    def hasTargetName(name: Name)(using Context): Boolean =
+      targetName.matchesTargetName(name)
+
     /** The name given in a `@targetName` annotation if one is present, `name` otherwise */
     def targetName(using Context): Name =
       if myTargetName == null then

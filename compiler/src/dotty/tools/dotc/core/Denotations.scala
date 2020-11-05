@@ -352,7 +352,7 @@ object Denotations {
      */
     def matchingDenotation(site: Type, targetType: Type, targetName: Name)(using Context): SingleDenotation = {
       def qualifies(sym: Symbol) =
-        site.memberInfo(sym).matchesLoosely(targetType) && targetNamesMatch(sym.targetName, targetName)
+        site.memberInfo(sym).matchesLoosely(targetType) && sym.hasTargetName(targetName)
       if (isOverloaded)
         atSignature(targetType.signature, targetName, site, relaxed = true) match {
           case sd: SingleDenotation => sd.matchingDenotation(site, targetType, targetName)
@@ -624,8 +624,7 @@ object Denotations {
           relaxed
         case noMatch =>
           false
-      if sigMatches && targetNamesMatch(symbol.targetName, targetName) then this
-      else NoDenotation
+      if sigMatches && symbol.hasTargetName(targetName) then this else NoDenotation
 
     def matchesImportBound(bound: Type)(using Context): Boolean =
       if bound.isRef(defn.NothingClass) then false
@@ -986,7 +985,7 @@ object Denotations {
     final def last: SingleDenotation = this
 
     def matches(other: SingleDenotation)(using Context): Boolean =
-      targetNamesMatch(symbol.targetName, other.symbol.targetName)
+      symbol.hasTargetName(other.symbol.targetName)
       && {
         val d = signature.matchDegree(other.signature)
         d match
@@ -1285,7 +1284,4 @@ object Denotations {
     util.Stats.record("stale symbol")
     override def getMessage(): String = msg
   }
-
-  def targetNamesMatch(name1: Name, name2: Name): Boolean =
-    name1 == name2 || name1.isEmpty || name2.isEmpty
 }

@@ -9,9 +9,9 @@ import TastyBuffer._
 import collection.mutable
 import Names.{Name, chrs, SimpleName, DerivedName, TypeName}
 import NameKinds._
+import NameOps._
 import Decorators._
 import scala.io.Codec
-import Denotations.targetNamesMatch
 import NameTags.{SIGNED, TARGETSIGNED}
 
 class NameBuffer extends TastyBuffer(10000) {
@@ -28,7 +28,7 @@ class NameBuffer extends TastyBuffer(10000) {
         name1 match {
           case SignedName(original, Signature(params, result), target) =>
             nameIndex(original)
-            if !targetNamesMatch(original, target) then nameIndex(target)
+            if !original.matchesTargetName(target) then nameIndex(target)
             nameIndex(result)
             params.foreach {
               case param: TypeName =>
@@ -95,7 +95,7 @@ class NameBuffer extends TastyBuffer(10000) {
         writeByte(tag)
         withLength { writeNameRef(original); writeNat(num) }
       case SignedName(original, Signature(paramsSig, result), target) =>
-        val needsTarget = !targetNamesMatch(original, target)
+        val needsTarget = !original.matchesTargetName(target)
         writeByte(if needsTarget then TARGETSIGNED else SIGNED)
         withLength(
           { writeNameRef(original)
