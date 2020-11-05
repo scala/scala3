@@ -75,7 +75,7 @@ case class TemplateFile(
 
   def resolveToHtml(ctx: StaticSiteContext): ResolvedPage = resolveInner(RenderingContext(Map(), ctx.layouts))
 
-  private def resolveInner(ctx: RenderingContext): ResolvedPage =
+  private[site] def resolveInner(ctx: RenderingContext): ResolvedPage =
     if (ctx.resolving.contains(file.getAbsolutePath))
       throw new RuntimeException(s"Cycle in templates involving $file: ${ctx.resolving}")
 

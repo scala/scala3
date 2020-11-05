@@ -27,9 +27,11 @@ class SiteResourceManager(ctx: Option[StaticSiteContext]) extends BaseStaticSite
 
     override def transform(input: RootPageNode, ctx: StaticSiteContext): RootPageNode =
         val imgPath = ctx.root.toPath().resolve("images")
-        val allImgPaths = Files.walk(imgPath)
-          .filter(p => Files.isRegularFile(p) && p.getFileName().toString().endsWith(".svg"))
-        val images = allImgPaths.iterator().asScala.toList.map(_.toString)
+        val images = 
+          if !Files.exists(imgPath) then Nil 
+          else 
+            val stream = Files.walk(imgPath)filter(p => Files.isRegularFile(p) && p.getFileName().toString().endsWith(".svg"))
+            stream.iterator().asScala.toList.map(_.toString)
 
         val resources = listResources(input.getChildren.asScala.toList) ++ images
         val resourcePages = resources.map { path =>

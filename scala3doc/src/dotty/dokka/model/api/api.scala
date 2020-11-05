@@ -87,7 +87,7 @@ object Annotation:
 
 // TODO (longterm) properly represent signatures
 case class Link(name: String, dri: DRI)
-type Signature = Seq[String | Link]// TODO migrate tupes to Links
+type Signature = Seq[String | Link]
 
 object Signature:
   def apply(names: (String | Link)*): Signature = names // TO batter dotty shortcommings in union types
