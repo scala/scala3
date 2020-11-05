@@ -747,7 +747,7 @@ class Definitions {
     @tu lazy val PartialFunction_applyOrElse: Symbol = PartialFunctionClass.requiredMethod(nme.applyOrElse)
 
   @tu lazy val AbstractPartialFunctionClass: ClassSymbol = requiredClass("scala.runtime.AbstractPartialFunction")
-  @tu lazy val FunctionXXLClass: ClassSymbol = requiredClass("scala.FunctionXXL")
+  @tu lazy val FunctionXXLClass: ClassSymbol = requiredClass("scala.runtime.FunctionXXL")
   @tu lazy val ScalaSymbolClass: ClassSymbol = requiredClass("scala.Symbol")
   @tu lazy val DynamicClass: ClassSymbol = requiredClass("scala.Dynamic")
   @tu lazy val OptionClass: ClassSymbol = requiredClass("scala.Option")
