@@ -90,8 +90,7 @@ class SitePagesCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSitePro
   override def transform(input: RootPageNode, ctx: StaticSiteContext): RootPageNode =
     val (contentPage, others) = input.getChildren.asScala.toList.partition { _.isInstanceOf[ContentPage] }
     val modifiedModuleRoot = processRootPage(input, contentPage)
-    val allFiles = Option(ctx.docsFile.listFiles()).toList.flatten
-    val (indexes, children) = ctx.loadFiles(allFiles).partition(_.template.isIndexPage())
+    val (indexes, children) = ctx.loadAllFiles().partition(_.template.isIndexPage())
       // TODO (#14): provide proper error handling
     if (indexes.size > 1) println("ERROR: Multiple index pages found $indexes}")
 

@@ -17,7 +17,6 @@ import org.jetbrains.dokka.model.DisplaySourceSet
 import scala.collection.JavaConverters._
 
 class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
-  val docsFile = new File(root, "docs")
 
   def indexPage():Option[StaticPageNode] =
     val files = List(new File(root, "index.html"), new File(root, "index.md")).filter { _.exists() }
@@ -35,10 +34,12 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
       file.getName.endsWith(".html")
 
 
-  private def loadTemplate(from: File): Option[LoadedTemplate] =
+  private def loadTemplate(from: File, isBlog: Boolean = false): Option[LoadedTemplate] =
     if (!isValidTemplate(from)) None else
       try
-        val (indexes, children) = Option(from.listFiles()).toSeq.flatten.flatMap(loadTemplate).partition(_.templateFile.isIndexPage())
+        val topLevelFiles = if isBlog then Seq(from, new File(from, "_posts")) else Seq(from)
+        val allFiles = topLevelFiles.filter(_.isDirectory).flatMap(_.listFiles()) 
+        val (indexes, children) = allFiles.flatMap(loadTemplate(_)).partition(_.templateFile.isIndexPage())
         if (indexes.size > 1)
           println(s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}") // TODO (#14): provide proper error handling
 
@@ -67,8 +68,12 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
     new PropertyContainer(JMap())
   )
 
-  def loadFiles(files: List[File], customChildren: List[PageNode] = Nil): List[StaticPageNode] =
-    val all = files.flatMap(loadTemplate)
+  def loadAllFiles() = 
+    def dir(name: String)= List(new File(root, name)).filter(_.isDirectory)
+    loadFiles(dir("docs").flatMap(_.listFiles())) ++ loadFiles(dir("blog"), isBlog = true)
+
+  def loadFiles(files: List[File], isBlog: Boolean = false): List[StaticPageNode] =
+    val all = files.flatMap(loadTemplate(_, isBlog))
     def flatten(it: LoadedTemplate): List[String] =
       List(it.relativePath(root)) ++ it.children.flatMap(flatten)
 
@@ -92,7 +97,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
         content,
         JSet(dri),
         JList(),
-        (myTemplate.children.map(templateToPage) ++ customChildren).asJava
+        (myTemplate.children.map(templateToPage)).asJava
       )
 
     all.map(templateToPage)
