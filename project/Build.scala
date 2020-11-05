@@ -1506,7 +1506,7 @@ object Build {
             val roots = joinProducts(dottyJars)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-            else generateDocumentation(roots, "Scala 3", "stdLib", "-p dotty-docs/docs")
+            else generateDocumentation(roots, "Scala 3", "scala3", "-p scala3-docs")
           }.value,
           generateTestcasesDocumentation := Def.taskDyn {
             generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "testcases")
