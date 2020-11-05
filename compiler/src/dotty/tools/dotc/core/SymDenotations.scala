@@ -824,30 +824,25 @@ object SymDenotations {
       }
 
       /** Is protected access to target symbol permitted? */
-      def isProtectedAccessOK = {
-        def fail(str: => String): Boolean = {
-          if (whyNot != null) whyNot append str
+      def isProtectedAccessOK: Boolean =
+        inline def fail(str: String): false =
+          if whyNot != null then whyNot.append(str)
           false
-        }
         val cls = owner.enclosingSubClass
-        if (!cls.exists)
-          fail(
-            i"""
-               | Access to protected $this not permitted because enclosing ${ctx.owner.enclosingClass.showLocated}
+        if !cls.exists then
+          val encl = if ctx.owner.isConstructor then ctx.owner.enclosingClass.owner.enclosingClass else ctx.owner.enclosingClass
+          fail(i"""
+               | Access to protected $this not permitted because enclosing ${encl.showLocated}
                | is not a subclass of ${owner.showLocated} where target is defined""")
-        else if
-          !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
-           || pre.derivesFrom(cls)
-           || isConstructor
-           || owner.is(ModuleClass) // don't perform this check for static members
-           )
-        then
-          fail(
-            i"""
+        else if isType || pre.derivesFrom(cls) || isConstructor || owner.is(ModuleClass) then
+          // allow accesses to types from arbitrary subclasses fixes #4737
+          // don't perform this check for static members
+          true
+        else
+          fail(i"""
                | Access to protected ${symbol.show} not permitted because prefix type ${pre.widen.show}
                | does not conform to ${cls.showLocated} where the access takes place""")
-        else true
-      }
+      end isProtectedAccessOK
 
       if pre eq NoPrefix then true
       else if isAbsent() then false
