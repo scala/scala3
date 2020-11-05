@@ -1,7 +1,7 @@
 package scala
 package internal
 
-import scala.runtime.TupleXXL
+import scala.runtime.{TupleXXL, FunctionXXL}
 
 object TupledFunction {
 
