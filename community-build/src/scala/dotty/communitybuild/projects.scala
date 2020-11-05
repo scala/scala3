@@ -172,7 +172,7 @@ object projects:
 
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
-    sbtTestCommand   = "jvm/test",
+    sbtTestCommand   = "jvm/test; js/test",
     sbtPublishCommand = ";set jvm/publishArtifact in (Compile, packageDoc) := false ;jvm/publishLocal"
   )
 
