@@ -16,11 +16,6 @@ object Patterns {
   /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
   def higherOrderHole[U](args: Any*): U = ???
 
-  // TODO remove
-  /** A splice of a name in a quoted pattern is desugared by wrapping getting this annotation */
-  @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternBindHole`")
-  class patternBindHole extends Annotation
-
   /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.patternType`")
   class patternType extends Annotation
