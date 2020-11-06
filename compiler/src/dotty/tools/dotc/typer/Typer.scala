@@ -232,7 +232,7 @@ class Typer extends Namer
                 fail(em"reference to `$name` is ambiguous; it is imported twice")
               found
 
-            if adjustExtension(selector.rename) == termName then
+            if adjustExtension(selector.rename) == termName && selector.rename != nme.WILDCARD then
               val memberName =
                 if selector.name == termName then name
                 else if name.isTypeName then selector.name.toTypeName

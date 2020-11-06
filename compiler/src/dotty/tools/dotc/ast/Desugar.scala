@@ -1456,10 +1456,15 @@ object desugar {
 
       /** If `pat` is not an Identifier, a Typed(Ident, _), or a Bind, wrap
        *  it in a Bind with a fresh name. Return the transformed pattern, and the identifier
-       *  that refers to the bound variable for the pattern.
+       *  that refers to the bound variable for the pattern. Wildcard Binds are
+       *  also replaced by Binds with fresh names.
        */
       def makeIdPat(pat: Tree): (Tree, Ident) = pat match {
-        case Bind(name, _) => (pat, Ident(name))
+        case Bind(name, pat1) =>
+          if name == nme.WILDCARD then
+            val name = UniqueName.fresh()
+            (cpy.Bind(pat)(name, pat1), Ident(name))
+          else (pat, Ident(name))
         case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD => (id, id)
         case Typed(id: Ident, _) if isVarPattern(id) && id.name != nme.WILDCARD => (pat, id)
         case _ =>
