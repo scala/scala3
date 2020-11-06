@@ -799,13 +799,29 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  owner to `to`, and continue until a non-weak owner is reached.
      */
     def changeOwner(from: Symbol, to: Symbol)(using Context): ThisTree = {
-      @tailrec def loop(from: Symbol, froms: List[Symbol], tos: List[Symbol]): ThisTree =
-        if (from.isWeakOwner && !from.owner.isClass)
-          loop(from.owner, from :: froms, to :: tos)
-        else
-          //println(i"change owner ${from :: froms}%, % ==> $tos of $tree")
-          TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
-      if (from == to) tree else loop(from, Nil, to :: Nil)
+       changeOwners(List(from),to)
+    }
+
+    /** Change owner from all `froms` to `to`. If `from` is a weak owner, also change its
+     *  owner to `to`, and continue until a non-weak owner is reached.
+     */
+    def changeOwners(froms: List[Symbol], to: Symbol)(using Context): ThisTree = {
+      @tailrec def loop(froms: List[Symbol], processedFroms: List[Symbol], tos: List[Symbol]): ThisTree =
+        froms match
+          case from::rest =>
+            if (from == to)
+               loop(rest, processedFroms, tos)
+            else
+               if (from.isWeakOwner && !from.owner.isClass)
+                  loop(from.owner::rest, from :: processedFroms, to :: tos)
+               else
+                  loop(rest, from::processedFroms, to :: tos)
+          case Nil =>
+               if (processedFroms.isEmpty)
+                  tree
+               else
+                  TreeTypeMap(oldOwners = processedFroms, newOwners = tos).apply(tree)
+      loop(froms, Nil, Nil)
     }
 
     /**
