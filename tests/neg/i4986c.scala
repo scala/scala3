@@ -16,7 +16,7 @@ class Outer[A] {
 
 trait X$Y
 
-@implicitNotFound("There's no U[${X}, ${Y}, ${Z}]")
+@implicitNotFound(msg = "There's no U[${X}, ${Y}, ${Z}]")
 trait U[X, Y[_], Z[_, ZZ]] {
   class I[R] {
     def m[S](implicit @implicitNotFound("${X}; ${Y}; ${ Z }; ${R}; ${S}; ${XX}") i: Int) = ???
@@ -24,7 +24,7 @@ trait U[X, Y[_], Z[_, ZZ]] {
 }
 
 class Test[A] {
-  def f(implicit @implicitNotFound("Missing X$Y for Test[${A}]") xy: X$Y) = ???
+  def f(implicit @implicitNotFound(msg = "Missing X$Y for Test[${A}]") xy: X$Y) = ???
   def g[B: Outer] = ???
   def h[B](implicit outer: Outer[B]) = ???
   def i[B](implicit @implicitNotFound("Missing implicit outer param of type Outer[${B}] for Test[${A}]") outer: Outer[B]) = ???
