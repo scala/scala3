@@ -27,22 +27,23 @@ final case class TestFlags(
   private def withoutLanguageFeaturesOptions = options.filterNot(_.startsWith(languageFeatureFlag))
 
   // TODO simplify to add `-language:feature` to `options` once
-  //      https://github.com/lampepfl/dotty-feature-requests/issues/107 is implemented
-  def andLanguageFeature(feature: String) = {
+  //      https://github.com/lampepfl/dotty/issues/9787 is implemented
+  def andLanguageFeature(feature: String) =
     val (languageFeatures, rest) = options.partition(_.startsWith(languageFeatureFlag))
-    val existingFeatures = if (languageFeatures.isEmpty) languageFeatures.mkString(",") + "," else ""
-    copy(options = rest ++ Array(languageFeatureFlag + existingFeatures + feature))
-  }
+    val existingFeatures = languageFeatures.flatMap(_.stripPrefix(languageFeatureFlag).split(","))
+    val featurePrefix =
+      if existingFeatures.isEmpty then ""
+      else existingFeatures.mkString(",") + ","
+    copy(options = rest ++ Array(languageFeatureFlag + featurePrefix + feature))
 
-  def withoutLanguageFeature(feature: String) = {
+  def withoutLanguageFeature(feature: String) =
     val (languageFeatures, rest) = options.partition(_.startsWith(languageFeatureFlag))
-    val filteredFeatures = languageFeatures.filter(_ == feature)
+    val existingFeatures = languageFeatures.flatMap(_.stripPrefix(languageFeatureFlag).split(","))
+    val filteredFeatures = existingFeatures.filterNot(_ == feature)
     val newOptions =
-      if (filteredFeatures.isEmpty) rest
+      if filteredFeatures.isEmpty then rest
       else rest ++ Array(languageFeatureFlag + filteredFeatures.mkString(","))
-
     copy(options = newOptions)
-  }
 
   /** Subset of the flags that should be passed to javac. */
   def javacFlags: Array[String] = {
