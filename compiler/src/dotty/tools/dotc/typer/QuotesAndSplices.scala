@@ -197,7 +197,7 @@ trait QuotesAndSplices {
       )
 
   /** Split a typed quoted pattern is split into its type bindings, pattern expression and inner patterns.
-   *  Type definitions with `@patternBindHole` will be inserted in the pattern expression for each type binding.
+   *  Type definitions with `@patternType` will be inserted in the pattern expression for each type binding.
    *
    *  A quote pattern
    *  ```
@@ -208,7 +208,7 @@ trait QuotesAndSplices {
    *  (
    *    Map(<$t>: Symbol -> <$t @ _>: Bind),
    *    <'{
-   *       @scala.internal.Quoted.patternBindHole type $t
+   *       @scala.internal.Quoted.patternType type $t
    *       scala.internal.Quoted.patternHole[List[$t]]
    *    }>: Tree,
    *    List(<ls: Expr[List[$t]]>: Tree)
@@ -366,7 +366,7 @@ trait QuotesAndSplices {
    *  ```
    *
    *  For each type splice we will create a new type binding in the pattern match ($t @ _ in this case)
-   *  and a corresponding type in the quoted pattern as a hole (@patternBindHole type $t in this case).
+   *  and a corresponding type in the quoted pattern as a hole (@patternType type $t in this case).
    *  All these generated types are inserted at the start of the quoted code.
    *
    *  After typing the tree will resemble
@@ -388,7 +388,7 @@ trait QuotesAndSplices {
    *            (implicit t @ _, ls @ _: Expr[List[$t]]) // from the spliced patterns
    *        )(
    *         '{ // Runtime quote Matcher.unapply uses to mach against. Expression directly inside the quoted pattern without the splices
-   *            @scala.internal.Quoted.patternBindHole type $t
+   *            @scala.internal.Quoted.patternType type $t
    *            scala.internal.Quoted.patternHole[List[$t]]
    *          },
    *          true, // If there is at least one type splice. Used to instantiate the context with or without GADT constraints
