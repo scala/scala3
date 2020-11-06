@@ -78,11 +78,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         if arity == -1 then
           EmptyTree
         else if arity <= Definitions.MaxImplementedFunctionArity then
-          ref(defn.InternalTupleFunctionModule)
+          ref(defn.RuntimeTupleFunctionsModule)
             .select(s"tupledFunction$arity".toTermName)
             .appliedToTypes(funArgs)
         else
-          ref(defn.InternalTupleFunctionModule)
+          ref(defn.RuntimeTupleFunctionsModule)
             .select("tupledFunctionXXL".toTermName)
             .appliedToTypes(funArgs)
       case _ =>
