@@ -1,7 +1,7 @@
 package scala.internal.quoted
 
 import scala.quoted._
-import scala.internal.quoted.CompilerInterface.quoteContextWithCompilerInterface
+import scala.internal.quoted.QuoteContextInternal.quoteContextWithQuoteContextInternal
 
 /** An Expr backed by a tree. Only the current compiler trees are allowed.
  *
@@ -53,7 +53,7 @@ object Expr {
    */
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeExpr: scala.quoted.Expr[Any])
         (using patternExpr: scala.quoted.Expr[Any], qctx: QuoteContext): Option[Tup] = {
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
+    val qctx1 = quoteContextWithQuoteContextInternal(qctx)
     qctx1.exprMatch(scrutineeExpr, patternExpr).asInstanceOf[Option[Tup]]
   }
 

@@ -1,7 +1,7 @@
 package scala.internal.quoted
 
 import scala.quoted._
-import scala.internal.quoted.CompilerInterface.quoteContextWithCompilerInterface
+import scala.internal.quoted.QuoteContextInternal.quoteContextWithQuoteContextInternal
 
 /** Quoted type (or kind) `T` backed by a tree */
 final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quoted.Type[Any] {
@@ -36,7 +36,7 @@ object Type {
    */
   def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: scala.quoted.Type[_])
       (using patternType: scala.quoted.Type[_], qctx: QuoteContext): Option[Tup] = {
-    val qctx1 = quoteContextWithCompilerInterface(qctx)
+    val qctx1 = quoteContextWithQuoteContextInternal(qctx)
     qctx1.typeMatch(scrutineeType, patternType).asInstanceOf[Option[Tup]]
   }
 

@@ -4,8 +4,8 @@ import scala.quoted.QuoteContext
 import scala.tasty.reflect._
 import scala.internal.quoted.PickledQuote
 
-/** Part of the reflection interface that needs to be implemented by the compiler */
-trait CompilerInterface { self: scala.quoted.QuoteContext =>
+/** Part of the QuoteContext interface that needs to be implemented by the compiler but is not visible to users */
+trait QuoteContextInternal { self: scala.quoted.QuoteContext =>
 
   import self.reflect._
 
@@ -52,9 +52,9 @@ trait CompilerInterface { self: scala.quoted.QuoteContext =>
 }
 
 
-object CompilerInterface {
+object QuoteContextInternal {
 
-  private[scala] def quoteContextWithCompilerInterface(qctx: QuoteContext): qctx.type { val reflect: qctx.reflect.type } & CompilerInterface =
-    qctx.asInstanceOf[qctx.type { val reflect: qctx.reflect.type } & CompilerInterface]
+  private[scala] def quoteContextWithQuoteContextInternal(qctx: QuoteContext): qctx.type { val reflect: qctx.reflect.type } & QuoteContextInternal =
+    qctx.asInstanceOf[qctx.type { val reflect: qctx.reflect.type } & QuoteContextInternal]
 
 }

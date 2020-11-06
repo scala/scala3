@@ -17,11 +17,11 @@ trait PickledQuote:
 object PickledQuote:
 
   def unpickleExpr[T](pickledQuote: PickledQuote): QuoteContext ?=> Expr[T] =
-    val qctx = CompilerInterface.quoteContextWithCompilerInterface(summon[QuoteContext])
+    val qctx = QuoteContextInternal.quoteContextWithQuoteContextInternal(summon[QuoteContext])
     qctx.unpickleExpr(pickledQuote).asInstanceOf[Expr[T]]
 
   def unpickleType[T](pickledQuote: PickledQuote): QuoteContext ?=> Type[T] =
-    val qctx = CompilerInterface.quoteContextWithCompilerInterface(summon[QuoteContext])
+    val qctx = QuoteContextInternal.quoteContextWithQuoteContextInternal(summon[QuoteContext])
     qctx.unpickleType(pickledQuote).asInstanceOf[Type[T]]
 
   /** Create an instance of PickledExpr from encoded tasty and sequence of labmdas to fill holes

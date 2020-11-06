@@ -45,7 +45,7 @@ object QuoteContextImpl {
 
 }
 
-class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.internal.quoted.CompilerInterface:
+class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.internal.quoted.QuoteContextInternal:
 
   object reflect extends scala.tasty.Reflection:
 
@@ -2670,7 +2670,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
         ctx1
 
     val qctx1 = dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)
-      .asInstanceOf[QuoteContext & scala.internal.quoted.CompilerInterface]
+      .asInstanceOf[QuoteContext & scala.internal.quoted.QuoteContextInternal]
 
     val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1) {
       def patternHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole.asInstanceOf
