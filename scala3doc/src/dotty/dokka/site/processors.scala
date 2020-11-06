@@ -90,7 +90,7 @@ class SitePagesCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSitePro
   override def transform(input: RootPageNode, ctx: StaticSiteContext): RootPageNode =
     val (contentPage, others) = input.getChildren.asScala.toList.partition { _.isInstanceOf[ContentPage] }
     val modifiedModuleRoot = processRootPage(input, contentPage)
-    val (indexes, children) = ctx.loadAllFiles().partition(_.template.isIndexPage())
+    val (indexes, children) = ctx.pages.partition(_.template.isIndexPage())
       // TODO (#14): provide proper error handling
     if (indexes.size > 1) println("ERROR: Multiple index pages found $indexes}")
 
@@ -117,13 +117,21 @@ class RootIndexPageCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSit
       val (navigations, rest) = nonContent.partition { _.isInstanceOf[NavigationPage] }
       val modifiedNavigation = navigations.map { it =>
         val root = it.asInstanceOf[NavigationPage].getRoot
-        val (api, rest) = root.getChildren.asScala.partition { _.getDri == apiPageDRI }
+        val api = root.getChildren.asScala.filter(_.getDri == apiPageDRI)
+
+        def toNavigationNode(page: StaticPageNode): NavigationNode = NavigationNode(
+            page.title(),
+            page.getDri.asScala.head,
+            root.getSourceSets,
+            page.getChildren.asScala.collect { case p: StaticPageNode => toNavigationNode(p)}.asJava
+          )
+
         new NavigationPage(
           new NavigationNode(
             input.getName,
             docsRootDRI,
             root.getSourceSets,
-            (rest ++ api).asJava
+            (ctx.pages.map(toNavigationNode) ++ api).asJava
           )
         )
       }

@@ -47,7 +47,7 @@ case class TemplateFile(
                          val file: File,
                          val isHtml: Boolean,
                          val rawCode: String,
-                         private val settings: Map[String, List[String]]
+                         val settings: Map[String, List[String]]
                        ):
 
   private def stringSetting(name: String): Option[String] =

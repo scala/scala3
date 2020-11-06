@@ -2,6 +2,8 @@ package dotty.dokka
 package site
 
 import java.io.File
+import java.nio.file.Files
+
 
 import org.jetbrains.dokka.base.parsers.MarkdownParser
 import org.jetbrains.dokka.base.transformers.pages.comments.DocTagToContentConverter
@@ -21,12 +23,21 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
   def indexPage():Option[StaticPageNode] =
     val files = List(new File(root, "index.html"), new File(root, "index.md")).filter { _.exists() }
     if (files.size > 1) println(s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}") // TODO (#14): provide proper error handling
-    loadFiles(files).headOption
+    files.flatMap(loadTemplate(_, isBlog = false)).headOption.map(templateToPage)
 
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")
     val dirs: Array[File] = Option(layoutRoot.listFiles()).getOrElse(Array())
     dirs.map { it => loadTemplateFile(it) }.map { it => it.name() -> it }.toMap
+
+  lazy val sideBarConfig =
+    val sidebarFile = root.toPath.resolve("sidebar.yml")
+    if (!Files.exists(sidebarFile)) None
+    else Some(Sidebar.load(Files.readAllLines(sidebarFile).asScala.mkString("\n")))
+
+  lazy val templates: Seq[LoadedTemplate] = sideBarConfig.fold(loadAllFiles())(_.map(loadSidebarContent))
+
+  lazy val pages = templates.map(templateToPage)
 
   private def isValidTemplate(file: File): Boolean =
     (file.isDirectory && !file.getName.startsWith("_")) ||
@@ -38,7 +49,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
     if (!isValidTemplate(from)) None else
       try
         val topLevelFiles = if isBlog then Seq(from, new File(from, "_posts")) else Seq(from)
-        val allFiles = topLevelFiles.filter(_.isDirectory).flatMap(_.listFiles()) 
+        val allFiles = topLevelFiles.filter(_.isDirectory).flatMap(_.listFiles())
         val (indexes, children) = allFiles.flatMap(loadTemplate(_)).partition(_.templateFile.isIndexPage())
         if (indexes.size > 1)
           println(s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}") // TODO (#14): provide proper error handling
@@ -68,36 +79,38 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
     new PropertyContainer(JMap())
   )
 
-  def loadAllFiles() = 
+  private def loadSidebarContent(entry: Sidebar): LoadedTemplate = entry match
+    case Sidebar.Page(title, url) =>
+      val isBlog = title == "Blog"
+      val path = if isBlog then "blog" else url.stripSuffix(".html") + ".md"
+      val file = root.toPath.resolve(path) // Add support for.html files!
+      val LoadedTemplate(template, children, tFile) = loadTemplate(file.toFile, isBlog).get // Add proper logging if file does not exisits
+      LoadedTemplate(template.copy(settings = template.settings + ("title" -> List(title))), children, tFile)
+    case Sidebar.Category(title, nested) =>
+      val fakeFile = new File(root, title)
+      LoadedTemplate(emptyTemplate(fakeFile), nested.map(loadSidebarContent), fakeFile)
+
+  private def loadAllFiles() =
     def dir(name: String)= List(new File(root, name)).filter(_.isDirectory)
-    loadFiles(dir("docs").flatMap(_.listFiles())) ++ loadFiles(dir("blog"), isBlog = true)
+    dir("docs").flatMap(_.listFiles()).flatMap(loadTemplate(_, isBlog = false))
+      ++ dir("blog").flatMap(loadTemplate(_, isBlog = true))
 
-  def loadFiles(files: List[File], isBlog: Boolean = false): List[StaticPageNode] =
-    val all = files.flatMap(loadTemplate(_, isBlog))
-    def flatten(it: LoadedTemplate): List[String] =
-      List(it.relativePath(root)) ++ it.children.flatMap(flatten)
-
+  def templateToPage(myTemplate: LoadedTemplate): StaticPageNode =
     def pathToDRI(path: String) = mkDRI(s"_.$path")
-
-    val driMap = all.flatMap(flatten).map(it => it -> pathToDRI(it)).toMap
-
-    def templateToPage(myTemplate: LoadedTemplate): StaticPageNode =
-      val dri = pathToDRI(myTemplate.relativePath(root))
-      val content = new PartiallyRenderedContent(
-        myTemplate.templateFile,
-        this,
-        JList(),
-        new DCI(Set(dri).asJava, ContentKind.Empty),
-        sourceSets.toDisplay,
-        JSet()
-      )
-      StaticPageNode(
-        myTemplate.templateFile,
-        myTemplate.templateFile.title(),
-        content,
-        JSet(dri),
-        JList(),
-        (myTemplate.children.map(templateToPage)).asJava
-      )
-
-    all.map(templateToPage)
+    val dri = pathToDRI(myTemplate.relativePath(root))
+    val content = new PartiallyRenderedContent(
+      myTemplate.templateFile,
+      this,
+      JList(),
+      new DCI(Set(dri).asJava, ContentKind.Empty),
+      sourceSets.toDisplay,
+      JSet()
+    )
+    StaticPageNode(
+      myTemplate.templateFile,
+      myTemplate.templateFile.title(),
+      content,
+      JSet(dri),
+      JList(),
+      (myTemplate.children.map(templateToPage)).asJava
+    )
