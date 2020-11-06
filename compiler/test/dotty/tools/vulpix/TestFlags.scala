@@ -26,15 +26,8 @@ final case class TestFlags(
   private val languageFeatureFlag = "-language:"
   private def withoutLanguageFeaturesOptions = options.filterNot(_.startsWith(languageFeatureFlag))
 
-  // TODO simplify to add `-language:feature` to `options` once
-  //      https://github.com/lampepfl/dotty/issues/9787 is implemented
   def andLanguageFeature(feature: String) =
-    val (languageFeatures, rest) = options.partition(_.startsWith(languageFeatureFlag))
-    val existingFeatures = languageFeatures.flatMap(_.stripPrefix(languageFeatureFlag).split(","))
-    val featurePrefix =
-      if existingFeatures.isEmpty then ""
-      else existingFeatures.mkString(",") + ","
-    copy(options = rest ++ Array(languageFeatureFlag + featurePrefix + feature))
+    copy(options = options ++ Array(s"$languageFeatureFlag$feature"))
 
   def withoutLanguageFeature(feature: String) =
     val (languageFeatures, rest) = options.partition(_.startsWith(languageFeatureFlag))
