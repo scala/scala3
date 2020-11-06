@@ -14,7 +14,7 @@ object Test {
       run(ret).apply(10)
       throw new Exception
     } catch {
-      case ex: scala.quoted.ScopeException =>
+      case ex: scala.internal.quoted.ScopeException =>
         // ok
     }
   }

@@ -16,7 +16,7 @@ object macros {
         case '{$x: Foo} => Expr(run(x).x)
       }
     } catch {
-      case ex: scala.quoted.ScopeException =>
+      case ex: scala.internal.quoted.ScopeException =>
         '{"OK"}
     }
   }

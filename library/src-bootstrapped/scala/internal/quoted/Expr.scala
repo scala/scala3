@@ -21,7 +21,7 @@ import scala.internal.quoted.CompilerInterface.quoteContextWithCompilerInterface
 
   def unseal(using qctx: QuoteContext): qctx.reflect.Term =
     if (qctx.hashCode != scopeId)
-      throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
+      throw new scala.internal.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
     tree.asInstanceOf[qctx.reflect.Term]
 
   override def hashCode: Int = tree.hashCode

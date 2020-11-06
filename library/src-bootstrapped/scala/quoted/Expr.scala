@@ -32,7 +32,7 @@ abstract class Expr[+T] private[scala] {
     if isExprOf[X] then
       this.asInstanceOf[scala.quoted.Expr[X]]
     else
-      throw new tasty.reflect.ExprCastError(
+      throw new scala.internal.quoted.ExprCastError(
         s"""Expr: ${this.show}
            |of type: ${this.unseal.tpe.show}
            |did not conform to type: ${tp.unseal.tpe.show}
