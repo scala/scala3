@@ -1,7 +1,5 @@
 import scala.quoted._
 
-import scala.quoted.unsafe._
-
 inline def sum(args: Int*): Int = ${ sumExpr('args) }
 
 inline def sumShow(args: Int*): String = ${ sumExprShow('args) }
@@ -27,4 +25,9 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[I
     case _ =>
       '{ $argsExpr.sum }
   }
+}
+
+object UnsafeExpr {
+  def underlyingArgument[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
+    expr.unseal.underlyingArgument.seal.asInstanceOf[Expr[T]]
 }
