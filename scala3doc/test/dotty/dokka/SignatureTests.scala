@@ -50,3 +50,8 @@ class OpaqueTypes extends SingleFileTest("opaqueTypes", SingleFileTest.all)
 // class GivenSignatures extends SingleFileTest("givenSignatures", SingleFileTest.all)
 
 class Annotations extends SingleFileTest("annotations", SingleFileTest.all)
+
+class InheritanceLoop extends SingleFileTest("inheritanceLoop", SingleFileTest.all)
+
+class InheritedMembers extends MultipleFileTest(List("inheritedMembers1", "inheritedMembers2"), List("inheritedMembers2"), MultipleFileTest.all.filter(_ != "class"))
+
