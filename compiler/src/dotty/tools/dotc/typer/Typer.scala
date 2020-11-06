@@ -2241,11 +2241,12 @@ class Typer extends Namer
     val pkg = pid1.symbol
     pid1 match
       case pid1: RefTree if pkg.is(Package) =>
-        val packageCtx = ctx.packageContext(tree, pkg)
-        var stats1 = typedStats(tree.stats, pkg.moduleClass)(using packageCtx)._1
-        if (!ctx.isAfterTyper)
-          stats1 = stats1 ++ typedBlockStats(MainProxies.mainProxies(stats1))(using packageCtx)._1
-        cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
+        inContext(ctx.packageContext(tree, pkg)) {
+          var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
+          if (!ctx.isAfterTyper)
+            stats1 = stats1 ++ typedBlockStats(MainProxies.mainProxies(stats1))._1
+          cpy.PackageDef(tree)(pid1, stats1).withType(pkg.termRef)
+        }
       case _ =>
         // Package will not exist if a duplicate type has already been entered, see `tests/neg/1708.scala`
         errorTree(tree,
