@@ -23,17 +23,19 @@ abstract class Expr[+T] private[scala] {
   /** Checked cast to a `quoted.Expr[U]` */
   def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = asExprOf[U]
 
+  /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
+  def isExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): Boolean =
+    this.unseal.tpe <:< tp.unseal.tpe
+
   /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
   def asExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): scala.quoted.Expr[X] = {
-    val tree = this.unseal
-    val expectedType = tp.unseal.tpe
-    if (tree.tpe <:< expectedType)
+    if isExprOf[X] then
       this.asInstanceOf[scala.quoted.Expr[X]]
     else
-      throw new scala.tasty.reflect.ExprCastError(
-        s"""Expr: ${tree.show}
-           |of type: ${tree.tpe.show}
-           |did not conform to type: ${expectedType.show}
+      throw new tasty.reflect.ExprCastError(
+        s"""Expr: ${this.show}
+           |of type: ${this.unseal.tpe.show}
+           |did not conform to type: ${tp.unseal.tpe.show}
            |""".stripMargin
       )
   }
