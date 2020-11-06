@@ -1001,7 +1001,10 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
         case _ => None
     end TypeTreeTypeTest
 
-    object TypeTree extends TypeTreeModule
+    object TypeTree extends TypeTreeModule:
+      def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeTree =
+        tp.asInstanceOf[scala.internal.quoted.Type[TypeTree]].typeTree
+    end TypeTree
 
     object TypeTreeMethodsImpl extends TypeTreeMethods:
       extension (self: TypeTree):
@@ -1568,8 +1571,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
     type TypeRepr = dotc.core.Types.Type
 
     object TypeRepr extends TypeReprModule:
-      def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): TypeRepr =
-        qtype.asInstanceOf[scala.internal.quoted.Type[TypeTree]].typeTree.tpe
+      def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeRepr =
+        tp.asInstanceOf[scala.internal.quoted.Type[TypeTree]].typeTree.tpe
       def typeConstructorOf(clazz: Class[?]): TypeRepr =
         if (clazz.isPrimitive)
           if (clazz == classOf[Boolean]) dotc.core.Symbols.defn.BooleanType
@@ -2640,7 +2643,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
     treeMatch(scrutinee.unseal(using this), pattern.unseal(using this))
 
   def typeMatch(scrutinee: scala.quoted.Type[?], pattern: scala.quoted.Type[?]): Option[Tuple] =
-    treeMatch(scrutinee.unseal(using this), pattern.unseal(using this))
+    treeMatch(reflect.TypeTree.of(using scrutinee), reflect.TypeTree.of(using pattern))
 
   private def treeMatch(scrutinee: reflect.Tree, pattern: reflect.Tree): Option[Tuple] = {
     import reflect._

@@ -10,7 +10,7 @@ object Macros {
       case '[List[$T]] => s"%List[${lift[T]}]%"
       case '[Option[$T]] => s"%Option[${lift[T]}]%"
       case '[Function1[$T, $U]] => s"%${lift[T]} => ${lift[U]}%"
-      case _ => tp.show
+      case _ => Type.show[T]
     }
     Expr(lift[A])
   }

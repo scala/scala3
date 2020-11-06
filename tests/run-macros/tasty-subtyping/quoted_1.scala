@@ -3,20 +3,20 @@ import scala.quoted._
 object Macros {
 
   inline def isTypeEqual[T, U]: Boolean =
-    ${isTypeEqualImpl(Type[T], Type[U])}
+    ${isTypeEqualImpl[T, U]}
 
   inline def isSubTypeOf[T, U]: Boolean =
-    ${isSubTypeOfImpl(Type[T], Type[U])}
+    ${isSubTypeOfImpl[T, U]}
 
-  def isTypeEqualImpl[T, U](t: Type[T], u: Type[U])(using QuoteContext) : Expr[Boolean] = {
+  def isTypeEqualImpl[T: Type, U: Type](using QuoteContext) : Expr[Boolean] = {
     import qctx.reflect._
-    val isTypeEqual = t.unseal.tpe =:= u.unseal.tpe
+    val isTypeEqual = TypeRepr.of[T] =:= TypeRepr.of[U]
     Expr(isTypeEqual)
   }
 
-  def isSubTypeOfImpl[T, U](t: Type[T], u: Type[U])(using QuoteContext) : Expr[Boolean] = {
+  def isSubTypeOfImpl[T: Type, U: Type](using QuoteContext) : Expr[Boolean] = {
     import qctx.reflect._
-    val isTypeEqual = t.unseal.tpe <:< u.unseal.tpe
+    val isTypeEqual = TypeRepr.of[T] <:< TypeRepr.of[U]
     Expr(isTypeEqual)
   }
 }

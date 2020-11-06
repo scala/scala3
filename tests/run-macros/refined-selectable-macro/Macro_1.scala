@@ -89,7 +89,7 @@ object Macro {
 
     val r = rec(repr, Set.empty)
 
-    val refinementType = r.foldLeft(Type[T].unseal.tpe)((acc, e) => Refinement(acc, e._1, e._2)).seal
+    val refinementType = r.foldLeft(TypeRepr.of[T])((acc, e) => Refinement(acc, e._1, e._2)).seal
 
     refinementType match { case '[$T] =>
         '{ $newRecord($s.toArray.map(e => e.asInstanceOf[(String, Any)])).asInstanceOf[T] }

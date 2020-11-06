@@ -25,7 +25,7 @@ abstract class Expr[+T] private[scala] {
 
   /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
   def isExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): Boolean =
-    this.unseal.tpe <:< tp.unseal.tpe
+    this.unseal.tpe <:< qctx.reflect.TypeRepr.of[X]
 
   /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
   def asExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): scala.quoted.Expr[X] = {
@@ -35,7 +35,7 @@ abstract class Expr[+T] private[scala] {
       throw Exception(
         s"""Expr cast exception: ${this.show}
            |of type: ${this.unseal.tpe.show}
-           |did not conform to type: ${tp.unseal.tpe.show}
+           |did not conform to type: ${qctx.reflect.TypeRepr.of[X].show}
            |""".stripMargin
       )
   }
@@ -189,7 +189,7 @@ object Expr {
    */
   def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
     import qctx.reflect._
-    Implicits.search(tpe.unseal.tpe) match {
+    Implicits.search(TypeRepr.of[T]) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None
     }

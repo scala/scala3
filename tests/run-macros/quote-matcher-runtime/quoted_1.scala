@@ -10,9 +10,9 @@ object Macros {
     val res = scala.internal.quoted.Expr.unapply[Tuple, Tuple](a)(using b, qctx).map { tup =>
       tup.toArray.toList.map {
         case r: Expr[_] =>
-          s"Expr(${r.unseal.show})"
-        case r: Type[_] =>
-          s"Type(${r.unseal.show})"
+          s"Expr(${r.show})"
+        case t: Type[_] =>
+          s"Type(${Type.show(using t)})"
       }
     }
 

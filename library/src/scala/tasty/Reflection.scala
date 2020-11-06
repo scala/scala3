@@ -1167,7 +1167,10 @@ trait Reflection { reflection =>
 
   val TypeTree: TypeTreeModule
 
-  trait TypeTreeModule { this: TypeTree.type => }
+  trait TypeTreeModule { this: TypeTree.type =>
+    /** Returns the tree of type or kind (TypeTree) of T */
+    def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeTree
+  }
 
   given TypeTreeMethods as TypeTreeMethods = TypeTreeMethodsImpl
   protected val TypeTreeMethodsImpl: TypeTreeMethods
@@ -1750,7 +1753,7 @@ trait Reflection { reflection =>
 
   trait TypeReprModule { this: TypeRepr.type =>
     /** Returns the type or kind (TypeRepr) of T */
-    def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): TypeRepr
+    def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeRepr
 
     /** Returns the type constructor of the runtime (erased) class */
     def typeConstructorOf(clazz: Class[?]): TypeRepr

@@ -2,10 +2,10 @@ import scala.quoted._
 
 object Macros {
 
-  inline def dealias[T]: String = ${ impl(Type[T]) }
+  inline def dealias[T]: String = ${ impl[T] }
 
-  def impl[T](x: Type[T])(using qctx: QuoteContext) : Expr[String] = {
+  def impl[T: Type](using qctx: QuoteContext) : Expr[String] = {
     import qctx.reflect._
-    Expr(x.unseal.tpe.dealias.show)
+    Expr(TypeRepr.of[T].dealias.show)
   }
 }

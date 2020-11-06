@@ -9,20 +9,20 @@ object Test {
 
     Type[List[Int]] match
       case '[List[$Int]] =>
-        println(Type[Int].show)
+        println(Type.show[Int])
         println()
 
     Type[Int => Double] match
       case  '[Function1[$T1, $R]] =>
-        println(Type[T1].show)
-        println(Type[R].show)
+        println(Type.show[T1])
+        println(Type.show[R])
         println()
 
     Type[(Int => Short) => Double] match
       case '[Function1[Function1[$T1, $R0], $R]] =>
-        println(Type[T1].show)
-        println(Type[R0].show)
-        println(Type[R].show)
+        println(Type.show[T1])
+        println(Type.show[R0])
+        println(Type.show[R])
 
   }
 }

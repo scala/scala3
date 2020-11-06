@@ -47,9 +47,9 @@ private class Rewriter(preTransform: Expr[Any] => Expr[Any], postTransform: Expr
            |${x.show}
            |
            |Expected type to be
-           |${summon[Type[T]].show}
+           |${Type.show[T]}
            |but was
-           |${Type[t].show}
+           |${Type.show[t]}
          """.stripMargin)
     }
   }
