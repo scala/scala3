@@ -68,7 +68,7 @@ val tt: TypeTest[Any, String] =
 f[AnyRef, String]("acb")(using tt)
 ```
 
-The compiler will synthesize a new instance of a type test if non is found in scope as
+The compiler will synthesize a new instance of a type test if none is found in scope as:
 ```scala
 new TypeTest[A, B]:
   def unapply(s: A): Option[s.type & B] =
@@ -78,8 +78,8 @@ new TypeTest[A, B]:
 ```
 If the type tests cannot be done there will be an unchecked warning that will be raised on the `case s: B =>` test.
 
-The most common `TypeTest` are the ones that take any parameters (i.e. `TypeTest[Any, T]`).
-To make it possible to use this directly in context bounds we provide the alias
+The most common `TypeTest` instances are the ones that take any parameters (i.e. `TypeTest[Any, T]`).
+To make it possible to use such instances directly in context bounds we provide the alias
 ```scala
 package scala.reflect
 
@@ -99,10 +99,10 @@ f[Int] // fasle
 ```
 
 ### TypeTest and ClassTag
-`TypeTest` is a replacemnt for the same functionallity performed by the `ClassTag.unaplly`.
-Using `ClassTag` instances happend to be unsound.
-`TypeTest` fixes that unsoundess and adds extra flexibility with the `S` type.
-`ClassTag` type tests will still be supported but a warining will be emitted after 3.0.
+`TypeTest` is a replacement for functionality provided previously by `ClassTag.unapply`.
+Using `ClassTag` instances was unsound since classtags can check only the class component of a type.
+`TypeTest` fixes that unsoundness.
+`ClassTag` type tests are still supported but a warning will be emitted after 3.0.
 
 
 Examples
@@ -132,7 +132,7 @@ it will be possible to write the following program
 
 ```scala
 val peano: Peano = ...
-import peano.{_, given _}
+import peano._
 def divOpt(m: Nat, n: Nat): Option[(Nat, Nat)] =
   n match
     case Zero => None
