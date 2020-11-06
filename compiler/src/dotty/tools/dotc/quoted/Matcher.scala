@@ -4,7 +4,6 @@ import scala.annotation.internal.sharable
 import scala.annotation.{Annotation, compileTimeOnly}
 
 import scala.quoted._
-import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.
@@ -98,7 +97,7 @@ import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
  */
 object Matcher {
 
-  abstract class QuoteMatcher[QCtx <: QuoteContext { val reflect: scala.internal.tasty.CompilerInterface } & Singleton](val qctx: QCtx) {
+  abstract class QuoteMatcher[QCtx <: QuoteContext & scala.internal.quoted.CompilerInterface & Singleton](val qctx: QCtx) {
 
     // TODO improve performance
 

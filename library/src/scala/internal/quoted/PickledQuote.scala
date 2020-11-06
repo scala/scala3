@@ -1,7 +1,6 @@
 package scala.internal.quoted
 
 import scala.quoted._
-import scala.internal.tasty.CompilerInterface.quoteContextWithCompilerInterface
 
 /** Pickled representation of a quoted expression or type */
 trait PickledQuote:
@@ -18,14 +17,12 @@ trait PickledQuote:
 object PickledQuote:
 
   def unpickleExpr[T](pickledQuote: PickledQuote): QuoteContext ?=> Expr[T] =
-    val qctx = quoteContextWithCompilerInterface(summon[QuoteContext])
-    val tree = qctx.reflect.unpickleTerm(pickledQuote)
-    new scala.internal.quoted.Expr(tree, qctx.hashCode).asInstanceOf[Expr[T]]
+    val qctx = CompilerInterface.quoteContextWithCompilerInterface(summon[QuoteContext])
+    qctx.unpickleExpr(pickledQuote).asInstanceOf[Expr[T]]
 
   def unpickleType[T](pickledQuote: PickledQuote): QuoteContext ?=> Type[T] =
-    val qctx = quoteContextWithCompilerInterface(summon[QuoteContext])
-    val tree = qctx.reflect.unpickleTypeTree(pickledQuote)
-    new scala.internal.quoted.Type(tree, qctx.hashCode).asInstanceOf[Type[T]]
+    val qctx = CompilerInterface.quoteContextWithCompilerInterface(summon[QuoteContext])
+    qctx.unpickleType(pickledQuote).asInstanceOf[Type[T]]
 
   /** Create an instance of PickledExpr from encoded tasty and sequence of labmdas to fill holes
    *

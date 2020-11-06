@@ -45,9 +45,9 @@ object QuoteContextImpl {
 
 }
 
-class QuoteContextImpl private (ctx: Context) extends QuoteContext:
+class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.internal.quoted.CompilerInterface:
 
-  object reflect extends scala.tasty.Reflection, scala.internal.tasty.CompilerInterface:
+  object reflect extends scala.tasty.Reflection:
 
     def rootContext: Context = ctx
 
@@ -2615,70 +2615,74 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext:
     private def withDefaultPos[T <: Tree](fn: Context ?=> T): T =
       fn(using ctx.withSource(Position.ofMacroExpansion.source)).withSpan(Position.ofMacroExpansion.span)
 
-    def unpickleTerm(pickledQuote: PickledQuote): Term =
-      PickledQuotes.unpickleTerm(pickledQuote)
+  end reflect
 
-    def unpickleTypeTree(pickledQuote: PickledQuote): TypeTree =
-      PickledQuotes.unpickleTypeTree(pickledQuote)
+  def unpickleExpr(pickledQuote: PickledQuote): scala.quoted.Expr[Any] =
+    val tree = PickledQuotes.unpickleTerm(pickledQuote)(using reflect.rootContext)
+    new scala.internal.quoted.Expr(tree, hash)
 
-    def termMatch(scrutinee: Term, pattern: Term): Option[Tuple] =
-      treeMatch(scrutinee, pattern)
+  def unpickleType(pickledQuote: PickledQuote): scala.quoted.Type[?] =
+    val tree = PickledQuotes.unpickleTypeTree(pickledQuote)(using reflect.rootContext)
+    new scala.internal.quoted.Type(tree, hash)
 
-    def typeTreeMatch(scrutinee: TypeTree, pattern: TypeTree): Option[Tuple] =
-      treeMatch(scrutinee, pattern)
+  def exprMatch(scrutinee: scala.quoted.Expr[Any], pattern: scala.quoted.Expr[Any]): Option[Tuple] =
+    treeMatch(scrutinee.unseal(using this), pattern.unseal(using this))
 
-    private def treeMatch(scrutinee: Tree, pattern: Tree): Option[Tuple] = {
-      def isTypeHoleDef(tree: Tree): Boolean =
-        tree match
-          case tree: TypeDef =>
-            tree.symbol.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_patternTypeAnnot)
-          case _ => false
+  def typeMatch(scrutinee: scala.quoted.Type[?], pattern: scala.quoted.Type[?]): Option[Tuple] =
+    treeMatch(scrutinee.unseal(using this), pattern.unseal(using this))
 
-      def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
-        pat match
-          case tpd.Inlined(_, Nil, pat2) => extractTypeHoles(pat2)
-          case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
-            val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol)
-            val otherStats = stats.dropWhile(isTypeHoleDef)
-            (tpd.cpy.Block(pat)(otherStats, expr), holes)
-          case _ =>
-            (pat, Nil)
+  private def treeMatch(scrutinee: reflect.Tree, pattern: reflect.Tree): Option[Tuple] = {
+    import reflect._
+    given Context = rootContext
+    def isTypeHoleDef(tree: Tree): Boolean =
+      tree match
+        case tree: TypeDef =>
+          tree.symbol.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_patternTypeAnnot)
+        case _ => false
 
-      val (pat1, typeHoles) = extractTypeHoles(pattern)
+    def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
+      pat match
+        case tpd.Inlined(_, Nil, pat2) => extractTypeHoles(pat2)
+        case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
+          val holes = stats.takeWhile(isTypeHoleDef).map(_.symbol)
+          val otherStats = stats.dropWhile(isTypeHoleDef)
+          (tpd.cpy.Block(pat)(otherStats, expr), holes)
+        case _ =>
+          (pat, Nil)
 
-      val ctx1 =
-        if typeHoles.isEmpty then ctx
-        else
-          val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(dotc.core.Mode.GadtConstraintInference)
-          ctx1.gadt.addToConstraint(typeHoles)
-          ctx1
+    val (pat1, typeHoles) = extractTypeHoles(pattern)
 
-      val qctx1 = dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)
-        .asInstanceOf[QuoteContext { val reflect: QuoteContextImpl.this.reflect.type }]
+    val ctx1 =
+      if typeHoles.isEmpty then ctx
+      else
+        val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(dotc.core.Mode.GadtConstraintInference)
+        ctx1.gadt.addToConstraint(typeHoles)
+        ctx1
 
-      val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1) {
-        def patternHoleSymbol: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole
-        def higherOrderHoleSymbol: Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_higherOrderHole
-      }
+    val qctx1 = dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)
+      .asInstanceOf[QuoteContext & scala.internal.quoted.CompilerInterface]
 
-      val matchings =
-        if pat1.isType then matcher.termMatch(scrutinee, pat1)
-        else matcher.termMatch(scrutinee, pat1)
-
-      // val matchings = matcher.termMatch(scrutinee, pattern)
-      if typeHoles.isEmpty then matchings
-      else {
-        // After matching and doing all subtype checks, we have to approximate all the type bindings
-        // that we have found, seal them in a quoted.Type and add them to the result
-        def typeHoleApproximation(sym: Symbol) =
-          ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_fromAboveAnnot)).seal
-        matchings.map { tup =>
-          Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
-        }
-      }
+    val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1) {
+      def patternHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole.asInstanceOf
+      def higherOrderHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_higherOrderHole.asInstanceOf
     }
 
-  end reflect
+    val matchings =
+      if pat1.isType then matcher.termMatch(scrutinee.asInstanceOf[matcher.qctx.reflect.Term], pat1.asInstanceOf[matcher.qctx.reflect.Term])
+      else matcher.termMatch(scrutinee.asInstanceOf[matcher.qctx.reflect.Term], pat1.asInstanceOf[matcher.qctx.reflect.Term])
+
+    // val matchings = matcher.termMatch(scrutinee, pattern)
+    if typeHoles.isEmpty then matchings
+    else {
+      // After matching and doing all subtype checks, we have to approximate all the type bindings
+      // that we have found, seal them in a quoted.Type and add them to the result
+      def typeHoleApproximation(sym: Symbol) =
+        ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_fromAboveAnnot)).asInstanceOf[qctx1.reflect.TypeRepr].seal
+      matchings.map { tup =>
+        Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
+      }
+    }
+  }
 
   private[this] val hash = QuoteContextImpl.scopeId(using ctx)
   override def hashCode: Int = hash
