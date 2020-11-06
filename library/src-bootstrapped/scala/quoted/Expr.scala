@@ -29,13 +29,6 @@ abstract class Expr[+T] private[scala] {
   def isExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): Boolean =
     this.unseal.tpe <:< tp.unseal.tpe
 
-  /** Convert this to an `Some[quoted.Expr[X]]` if this expression is a valid expression of type `X`.
-   *  Otherwise returns None.
-   */
-  def toExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): Option[scala.quoted.Expr[X]] =
-    if isExprOf[X] then Some(this.asInstanceOf[scala.quoted.Expr[X]])
-    else None
-
   /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
   def asExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): scala.quoted.Expr[X] = {
     if isExprOf[X] then

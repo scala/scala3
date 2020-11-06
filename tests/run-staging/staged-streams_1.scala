@@ -1,6 +1,5 @@
 import scala.quoted._
 import scala.quoted.staging._
-import scala.quoted.util._
 import language.experimental.namedTypeArguments
 
 /**
