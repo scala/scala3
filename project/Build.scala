@@ -1481,6 +1481,7 @@ object Build {
             "com.vladsch.flexmark" % "flexmark-all" % "0.42.12",
             "nl.big-o" % "liqp" % "0.6.7",
             "args4j" % "args4j" % "2.33",
+            Dependencies.`jackson-dataformat-yaml`,
 
             "org.jetbrains.dokka" % "dokka-test-api" % dokkaVersion % "test",
             "com.novocode" % "junit-interface" % "0.11" % "test",
@@ -1506,7 +1507,7 @@ object Build {
             val roots = joinProducts(dottyJars)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-            else generateDocumentation(roots, "Scala 3", "stdLib", "-p dotty-docs/docs")
+            else generateDocumentation(roots, "Scala 3", "scala3", "-p scala3-docs")
           }.value,
           generateTestcasesDocumentation := Def.taskDyn {
             generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "testcases")
