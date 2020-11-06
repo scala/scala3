@@ -72,22 +72,30 @@ class FilterGroup extends Component {
     const defaultFilterKey = `${filterKey.charAt(1).toLowerCase()}${filterKey.slice(2)}`
     const defaultGroupFilter = Filter.defaultFilters[defaultFilterKey]
 
-    return Object.entries(values).sort(([a], [b]) => 
-      a === defaultGroupFilter || b === defaultGroupFilter ? 1 : a.localeCompare(b)
-    )
+    return Object.entries(values).sort(([a], [b]) =>  {
+      if (a === defaultGroupFilter) {
+        return -1
+      } 
+
+      if (b === defaultGroupFilter) {
+        return 1
+      }
+
+      return a.localeCompare(b)
+    })
   }
 
   getFilterGroup(filterKey, values) {
     return `
-      <div class="filterGroup">
+      <div class="filterGroup" data-test-id="filterGroup">
         <div class="groupTitle">
-          <span>${filterKey.substring(1)}</span>
+          <span data-test-id="filterGroupTitle">${filterKey.substring(1)}</span>
           <div class="groupButtonsContainer">
             <button class="selectAll" data-key="${filterKey}">Select All</button>
             <button class="deselectAll" data-key="${filterKey}">Deselect All</button>
           </div>
         </div>
-        <div class="filterList">
+        <div class="filterList" data-test-id="filterGroupList">
           ${this.getSortedValues(filterKey, values)
             .map(
               ([key, data]) =>
@@ -95,7 +103,7 @@ class FilterGroup extends Component {
                   data.selected
                 )} ${this.isVisible(
                   data.visible
-                )}" data-key="${filterKey}" data-value="${key}">${key}</button>`
+                )}" data-key="${filterKey}" data-value="${key}" data-test-id="filterGroupButton">${key}</button>`
             )
             .join(" ")}
         </div>
