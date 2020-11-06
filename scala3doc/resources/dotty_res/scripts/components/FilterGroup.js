@@ -90,7 +90,7 @@ class FilterGroup extends Component {
       <div class="filterGroup" data-test-id="filterGroup">
         <div class="groupTitle">
           <span data-test-id="filterGroupTitle">${filterKey.substring(1)}</span>
-          <div class="groupButtonsContainer">
+          <div class="groupButtonsContainer" data-test-id="filterGroupBatchToggle">
             <button class="selectAll" data-key="${filterKey}">Select All</button>
             <button class="deselectAll" data-key="${filterKey}">Deselect All</button>
           </div>
@@ -103,7 +103,7 @@ class FilterGroup extends Component {
                   data.selected
                 )} ${this.isVisible(
                   data.visible
-                )}" data-key="${filterKey}" data-value="${key}" data-test-id="filterGroupButton">${key}</button>`
+                )}" data-key="${filterKey}" data-selected="${data.selected}" data-value="${key}" data-test-id="filterGroupButton">${key}</button>`
             )
             .join(" ")}
         </div>
