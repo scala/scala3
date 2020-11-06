@@ -14,10 +14,10 @@ object scalatest {
 
     cond.unseal.underlyingArgument match {
       case t @ Apply(sel @ Select(lhs, op), rhs :: Nil) =>
-        let(lhs) { left =>
-          let(rhs) { right =>
+        ValDef.let(lhs) { left =>
+          ValDef.let(rhs) { right =>
             val app = left.select(sel.symbol).appliedTo(right)
-            let(app) { result =>
+            ValDef.let(app) { result =>
               val l = left.seal
               val r = right.seal
               val b = result.seal.cast[Boolean]
@@ -28,10 +28,10 @@ object scalatest {
         }.seal.cast[Unit]
       case Apply(f @ Apply(sel @ Select(Apply(qual, lhs :: Nil), op), rhs :: Nil), implicits)
       if isImplicitMethodType(f.tpe) =>
-        let(lhs) { left =>
-          let(rhs) { right =>
+        ValDef.let(lhs) { left =>
+          ValDef.let(rhs) { right =>
             val app = qual.appliedTo(left).select(sel.symbol).appliedTo(right)
-            let(Apply(app, implicits)) { result =>
+            ValDef.let(Apply(app, implicits)) { result =>
               val l = left.seal
               val r = right.seal
               val b = result.seal.cast[Boolean]

@@ -10,8 +10,8 @@ object Macros {
 
     val rhsTerm = rhs.unseal
 
-    import qctx.reflect.{let => letTerm}
-    letTerm(rhsTerm) { rhsId =>
+    import qctx.reflect._
+    ValDef.let(rhsTerm) { rhsId =>
       Expr.betaReduce('{$body(${rhsId.seal.asInstanceOf[Expr[T]]})}).unseal // Dangerous uncheked cast!
     }.seal.cast[Unit]
   }

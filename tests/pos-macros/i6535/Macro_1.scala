@@ -7,6 +7,7 @@ object scalatest {
   def assertImpl(cond: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
     import util._
+    import ValDef.let
 
     cond.unseal.underlyingArgument match {
       case t @ Apply(Select(lhs, op), rhs :: Nil) =>

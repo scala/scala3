@@ -311,6 +311,15 @@ trait Reflection { reflection =>
     def apply(symbol: Symbol, rhs: Option[Term]): ValDef
     def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
     def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])]
+
+    /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }` */
+    def let(name: String, rhs: Term)(body: Ident => Term): Term
+
+    /** Creates a block `{ val x = <rhs: Term>; <body(x): Term> }` */
+    def let(rhs: Term)(body: Ident => Term): Term = let("x", rhs)(body)
+
+    /** Creates a block `{ val x1 = <terms(0): Term>; ...; val xn = <terms(n-1): Term>; <body(List(x1, ..., xn)): Term> }` */
+    def let(terms: List[Term])(body: List[Ident] => Term): Term
   }
 
   given ValDefMethods as ValDefMethods = ValDefMethodsImpl
@@ -3602,23 +3611,5 @@ trait Reflection { reflection =>
       transformTrees(trees).asInstanceOf[List[Tr]]
 
   end TreeMap
-
-  // TODO: extract from Reflection
-
-  /** Bind the `rhs` to a `val` and use it in `body` */
-  def let(rhs: Term)(body: Ident => Term): Term = {
-    val sym = Symbol.newVal(Symbol.currentOwner, "x", rhs.tpe.widen, Flags.EmptyFlags, Symbol.noSymbol)
-    Block(List(ValDef(sym, Some(rhs))), body(Ref(sym).asInstanceOf[Ident]))
-  }
-
-  /** Bind the given `terms` to names and use them in the `body` */
-  def lets(terms: List[Term])(body: List[Term] => Term): Term = {
-    def rec(xs: List[Term], acc: List[Term]): Term = xs match {
-      case Nil => body(acc)
-      case x :: xs => let(x) { (x: Term) => rec(xs, x :: acc) }
-    }
-    rec(terms, Nil)
-  }
-
 
 }

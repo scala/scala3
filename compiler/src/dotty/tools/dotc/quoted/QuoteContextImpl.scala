@@ -242,6 +242,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
         tpd.cpy.ValDef(original)(name.toTermName, tpt, rhs.getOrElse(tpd.EmptyTree))
       def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])] =
         Some((vdef.name.toString, vdef.tpt, optional(vdef.rhs)))
+
+      def let(name: String, rhs: Term)(body: Ident => Term): Term =
+        val vdef = tpd.SyntheticValDef(name.toTermName, rhs)
+        val ref = tpd.ref(vdef.symbol).asInstanceOf[Ident]
+        Block(List(vdef), body(ref))
+
+      def let(terms: List[Term])(body: List[Ident] => Term): Term =
+        val vdefs = terms.map(term => tpd.SyntheticValDef("x".toTermName, term))
+        val refs = vdefs.map(vdef => tpd.ref(vdef.symbol).asInstanceOf[Ident])
+        Block(vdefs, body(refs))
     end ValDef
 
     object ValDefMethodsImpl extends ValDefMethods:
