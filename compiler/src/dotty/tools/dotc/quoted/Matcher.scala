@@ -97,7 +97,7 @@ import scala.quoted._
  */
 object Matcher {
 
-  abstract class QuoteMatcher[QCtx <: QuoteContext & scala.internal.quoted.QuoteContextInternal & Singleton](val qctx: QCtx) {
+  abstract class QuoteMatcher[QCtx <: QuoteContext & Singleton](val qctx: QCtx) {
 
     // TODO improve performance
 
