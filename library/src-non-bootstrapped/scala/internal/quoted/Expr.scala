@@ -19,9 +19,10 @@ import scala.quoted._
   }
 
   def unseal(using qctx: QuoteContext): qctx.reflect.Term =
-    if (qctx.hashCode != scopeId)
-      throw new scala.internal.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
-    tree.asInstanceOf[qctx.reflect.Term]
+    throw new Exception("Non bootstrapped lib")
+
+  def checkScopeId(scopeId: Int): Unit =
+    throw new Exception("Non bootstrapped lib")
 
   override def hashCode: Int = tree.hashCode
   override def toString: String = "'{ ... }"
