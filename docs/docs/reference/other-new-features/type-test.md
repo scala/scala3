@@ -124,7 +124,7 @@ trait Peano:
   }
   given TypeTest[Nat, Zero] = typeTestOfZero
   protected def typeTestOfZero: TypeTest[Nat, Zero]
-  given TypeTest[Nat, Succ]
+  given TypeTest[Nat, Succ] = typeTestOfSucc
   protected def typeTestOfSucc: TypeTest[Nat, Succ]
 ```
 
