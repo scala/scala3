@@ -34,10 +34,6 @@ object QuoteContextImpl {
       qctx.reflect.TreeMethodsImpl.extension_show(tree)
   }
 
-  private[dotty] def checkScopeId(id: ScopeId)(using Context): Unit =
-    if (id != scopeId)
-      throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
-
   // TODO Explore more fine grained scope ids.
   //      This id can only differentiate scope extrusion from one compiler instance to another.
   private[dotty] def scopeId(using Context): ScopeId =

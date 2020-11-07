@@ -40,14 +40,14 @@ object PickledQuotes {
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(using Context): Tree = {
     val expr1 = expr.asInstanceOf[scala.internal.quoted.Expr[Tree]]
-    QuoteContextImpl.checkScopeId(expr1.scopeId)
+    expr1.checkScopeId(QuoteContextImpl.scopeId)
     changeOwnerOfTree(expr1.tree, ctx.owner)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(tpe: quoted.Type[?])(using Context): Tree = {
     val tpe1 = tpe.asInstanceOf[scala.internal.quoted.Type[Tree]]
-    QuoteContextImpl.checkScopeId(tpe1.scopeId)
+    tpe1.checkScopeId(QuoteContextImpl.scopeId)
     changeOwnerOfTree(tpe1.typeTree, ctx.owner)
   }
 

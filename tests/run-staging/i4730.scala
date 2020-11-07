@@ -10,12 +10,20 @@ object Test {
     }
   }
   def main(args: Array[String]): Unit = {
-    try {
-      run(ret).apply(10)
-      throw new Exception
-    } catch {
-      case ex: scala.quoted.ScopeException =>
-        // ok
+    scala.mytest.myTest()
+  }
+}
+
+package scala {
+  package mytest {
+    def myTest()(using Toolbox) = {
+      try {
+        run(Test.ret).apply(10)
+        throw new Exception
+      } catch {
+        case ex: scala.internal.quoted.ScopeException =>
+          // ok
+      }
     }
   }
 }

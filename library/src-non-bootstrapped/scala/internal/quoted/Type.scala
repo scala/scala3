@@ -14,9 +14,10 @@ final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quote
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
   def unseal(using qctx: QuoteContext): qctx.reflect.TypeTree =
-    if (qctx.hashCode != scopeId)
-      throw new scala.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
-    typeTree.asInstanceOf[qctx.reflect.TypeTree]
+    throw new Exception("Non bootstrapped lib")
+
+  def checkScopeId(scopeId: Int): Unit =
+    throw new Exception("Non bootstrapped lib")
 
   override def hashCode: Int = typeTree.hashCode
   override def toString: String = "'[ ... ]"
