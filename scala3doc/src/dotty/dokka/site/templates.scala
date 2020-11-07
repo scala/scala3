@@ -1,4 +1,5 @@
-package dotty.dokka.site
+package dotty.dokka
+package site
 
 import java.io.File
 import java.nio.file.Files
@@ -69,7 +70,9 @@ case class TemplateFile(
 
   def isIndexPage() = file.isFile && (file.getName == "index.md" || file.getName == "index.html")
 
-  def resolveToHtml(ctx: StaticSiteContext): ResolvedPage = resolveInner(RenderingContext(Map(), ctx.layouts))
+  def resolveToHtml(ctx: StaticSiteContext): ResolvedPage =
+    val props = Map("page" -> JMap("title" -> title()))
+    resolveInner(RenderingContext(props, ctx.layouts))
 
   private[site] def resolveInner(ctx: RenderingContext): ResolvedPage =
     if (ctx.resolving.contains(file.getAbsolutePath))

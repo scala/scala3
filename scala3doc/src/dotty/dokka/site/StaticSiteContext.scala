@@ -58,7 +58,6 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
         name.endsWith(".md") || name.endsWith(".html")
     }
 
-    println(s"Rendering: $orphanedFiles")
     val orphanedTemplates = orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
 
     mainPages ++ orphanedTemplates.map(templateToPage)
