@@ -113,18 +113,25 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     infoDiagnostic(d.symbol.showUser, d)
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(using Context): Option[Diagnostic] = {
+  def renderVal(d: Denotation)(using Context): Option[Diagnostic] =
     val dcl = d.symbol.showUser
 
-    try {
+    try
       if (d.symbol.is(Flags.Lazy)) Some(infoDiagnostic(dcl, d))
       else valueOf(d.symbol).map(value => infoDiagnostic(s"$dcl = $value", d))
-    }
-    catch { case ex: InvocationTargetException => Some(infoDiagnostic(renderError(ex), d)) }
-  }
+    catch case ex: InvocationTargetException => Some(infoDiagnostic(renderError(ex), d))
+  end renderVal
 
-  /** Render the stack trace of the underlying exception */
-  private def renderError(ex: InvocationTargetException): String = {
+  /** Force module initialization in the absence of members. */
+  def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
+    def load() =
+      val objectName = sym.fullName.encode.toString
+      val resObj: Class[?] = Class.forName(objectName, true, classLoader())
+      Nil
+    try load() catch case e: ExceptionInInitializerError => List(infoDiagnostic(renderError(e), sym.denot))
+
+  /** Render the stack trace of the underlying exception. */
+  private def renderError(ex: InvocationTargetException | ExceptionInInitializerError): String = {
     val cause = ex.getCause match {
       case ex: ExceptionInInitializerError => ex.getCause
       case ex => ex
