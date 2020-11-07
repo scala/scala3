@@ -26,13 +26,6 @@ object QuoteUtils:
   /** Changes the owner of the tree based on the current owner of the tree */
   def changeOwnerOfTree(tree: Tree, owner: Symbol)(using Context): Tree = {
     tree.changeOwners(treeOwners(tree), owner)
-    /*
-    treeOwner(tree) match
-      case Some(oldOwner) if oldOwner != owner => tree.changeOwner(oldOwner, owner)
-      case _ => 
-           println(s"tree without owner: $tree")
-           tree
-    */
   }
 
 end QuoteUtils
