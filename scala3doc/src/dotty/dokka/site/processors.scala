@@ -3,6 +3,7 @@ package site
 
 import java.io.File
 import java.nio.file.Files
+import java.nio.file.FileVisitOption
 
 import org.jetbrains.dokka.base.renderers.html.{NavigationNode, NavigationPage}
 import org.jetbrains.dokka.links.DRI
@@ -25,18 +26,20 @@ class SiteResourceManager(ctx: Option[StaticSiteContext]) extends BaseStaticSite
     }.toSet
 
   override def transform(input: RootPageNode, ctx: StaticSiteContext): RootPageNode =
-    val imgPath = ctx.root.toPath().resolve("images")
+    val rootPath = ctx.root.toPath
+    val imgPath = rootPath.resolve("images")
     val images =
       if !Files.exists(imgPath) then Nil
       else
-        val stream = Files.walk(imgPath)filter(p => Files.isRegularFile(p) && p.getFileName().toString().endsWith(".svg"))
-        stream.iterator().asScala.toList.map(_.toString)
+        val allPaths = Files.walk(imgPath, FileVisitOption.FOLLOW_LINKS)
+        val files = allPaths.filter(Files.isRegularFile(_)).iterator().asScala
+        files.map(p => rootPath.relativize(p).toString).toList
 
-    val resources = listResources(input.getChildren.asScala.toList) ++ images
+    val resources = images ++ listResources(input.getChildren.asScala.toList)
     val resourcePages = resources.map { path =>
-      val content = Files.readAllLines(ctx.root.toPath.resolve(path)).asScala.mkString("\n")
-      new RendererSpecificResourcePage(path, JList(), new RenderingStrategy.Write(content))
-    }.toList
+      val strategy = new RenderingStrategy.Copy(rootPath.resolve(path).toString)
+      new RendererSpecificResourcePage(path, JList(), strategy)
+    }
 
     val modified = input.transformContentPagesTree {
       case it: StaticPageNode =>
