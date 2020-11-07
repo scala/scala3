@@ -91,7 +91,7 @@ class SitePagesCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSitePro
     val (contentPage, others) = input.getChildren.asScala.toList.partition { _.isInstanceOf[ContentPage] }
     val modifiedModuleRoot = processRootPage(input, contentPage)
     val (indexes, children) = ctx.pages.partition(_.template.isIndexPage())
-      // TODO (#14): provide proper error handling
+    // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
     if (indexes.size > 1) println("ERROR: Multiple index pages found $indexes}")
 
     val rootContent = indexes.headOption.fold(ctx.asContent(Text(), mkDRI(extra = "root_content")).get(0))(_.getContent)

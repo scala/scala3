@@ -10,10 +10,7 @@ import org.jetbrains.dokka.model.Documentable
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.transformers.pages.PageTransformer
 
-case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTemplate], file: File) {
-  def relativePath(root: File): String =
-    root.toPath().relativize(file.toPath()).toString().replace(File.separatorChar, '.')
-}
+case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTemplate], file: File)
 
 case class StaticPageNode(
                            template: TemplateFile,

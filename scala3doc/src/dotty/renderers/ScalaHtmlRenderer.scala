@@ -8,6 +8,7 @@ import org.jetbrains.dokka._
 import HTML._
 import collection.JavaConverters._
 import java.net.URI
+import java.net.URL
 import java.util.{List => JList, Set => JSet}
 import kotlinx.html.FlowContent
 import kotlinx.html.stream.StreamKt
@@ -21,6 +22,7 @@ import dotty.dokka.model.api.HierarchyGraph
 import org.jetbrains.dokka.base.resolvers.local.LocationProvider
 import dotty.dokka.site.StaticPageNode
 import dotty.dokka.site.PartiallyRenderedContent
+import scala.util.Try
 
 class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
   def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
@@ -240,7 +242,13 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
 
     page.getContent match
       case prc: PartiallyRenderedContent =>
-        withHtml(context, prc.resolved.code)
+        def processLocalLink(str: String): String =
+          // TODO (https://github.com/lampepfl/scala3doc/issues/238) error handling
+          prc.context.driForLink(prc.template, str).toOption
+            .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
+            .getOrElse(str)
+
+        withHtml(context, prc.procsesHtml(url => Try(URL(url)).fold(_ => processLocalLink(url), _ => url)))
       case content =>
         build(content, context, page, /*sourceSetRestriction=*/null)
 

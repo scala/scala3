@@ -1480,6 +1480,7 @@ object Build {
             "org.jetbrains.kotlinx" % "kotlinx-html-jvm" % "0.7.2", // Needs update when dokka version changes
             "com.vladsch.flexmark" % "flexmark-all" % "0.42.12",
             "nl.big-o" % "liqp" % "0.6.7",
+            "org.jsoup" % "jsoup" % "1.13.1", // Needed to process .html files for static site
             "args4j" % "args4j" % "2.33",
             Dependencies.`jackson-dataformat-yaml`,
 
