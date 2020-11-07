@@ -2,7 +2,6 @@ package dotty.tools.dotc.quoted
 
 import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Annotations
 import dotty.tools.dotc.core.Contexts._
