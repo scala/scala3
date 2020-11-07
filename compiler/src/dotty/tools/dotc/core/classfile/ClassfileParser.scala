@@ -464,7 +464,7 @@ class ClassfileParser(
         if (sig(index) != ':') { // guard against empty class bound
           val tp = sig2type(tparams, skiptvs)
           if (!skiptvs)
-            ts += tp
+            ts += cook(tp)
         }
       }
       if (!skiptvs) {
