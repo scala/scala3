@@ -93,7 +93,7 @@ class SitePagesCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSitePro
   override def transform(input: RootPageNode, ctx: StaticSiteContext): RootPageNode =
     val (contentPage, others) = input.getChildren.asScala.toList.partition { _.isInstanceOf[ContentPage] }
     val modifiedModuleRoot = processRootPage(input, contentPage)
-    val (indexes, children) = ctx.pages.partition(_.template.isIndexPage())
+    val (indexes, children) = ctx.allPages.partition(_.template.isIndexPage())
     // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
     if (indexes.size > 1) println("ERROR: Multiple index pages found $indexes}")
 
@@ -134,7 +134,7 @@ class RootIndexPageCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSit
             input.getName,
             docsRootDRI,
             root.getSourceSets,
-            (ctx.pages.map(toNavigationNode) ++ api).asJava
+            (ctx.mainPages.map(toNavigationNode) ++ api).asJava
           )
         )
       }
