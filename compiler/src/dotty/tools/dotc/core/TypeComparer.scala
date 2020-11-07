@@ -971,7 +971,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        */
       def isMatchingApply(tp1: Type): Boolean = tp1 match {
         case tp1 as AppliedType(tycon1, args1) =>
-          // We intentionally do not dealias `tycon1` or `tycon2` here.
+          // We intentionally do not automatically dealias `tycon1` or `tycon2` here.
           // `TypeApplications#appliedTo` already takes care of dealiasing type
           // constructors when this can be done without affecting type
           // inference, doing it here would not only prevent code from compiling
@@ -997,6 +997,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           //   ?F := [X] =>> (Int, X)
           //
           // Which is not what we wanted!
+          // On the other hand, we are not allowed to stop at the present arguments either.
+          // An example is i10129.scala. Here, we have the following situation:
+          //
+          //    type Lifted[A] = Err | A
+          //    def point[O](o: O): Lifted[O] = o
+          //    extension [O, U](o: Lifted[O]) def map(f: O => U): Lifted[U] = ???
+          //    point("a").map(_ => if true then 1 else error)
+          //
+          // This leads to the constraint Lifted[U] <: Lifted[Int]. If we just
+          // check the arguments this gives `U <: Int`. But this is wrong. Dealiasing
+          // `Lifted` gives `Err | U <: Err | Int`, hence it should be `U <: Err | Int`.
+          //
+          // So it's a conundrum. We need to check the immediate arguments for hk type inference,
+          // but this could narrow the constraint too much. The solution is to do an
+          // either with two alternatives when encountering an applied type alis.
+          // The first alternative checks the arguments, the second alternative checks the
+          // dealiased types. We pick the alternative that constrains least, or if there
+          // is no winner, the first one. We are forced to use a `sufficientEither`
+          // in the comparison, which is still not quite right. See the comment below.
           def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
@@ -1039,9 +1058,35 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                       (tycon1sym.isClass || tycon2sym.isClass)
                       && (!touchedGADTs || gadtIsInstantiated)
 
-                    inFrozenGadtIf(!tyconIsInjective) {
-                      isSubArgs(args1, args2, tp1, tparams)
-                    }
+                    def checkArgs(): Boolean =
+                      if tycon1sym == tycon2sym && tycon1sym.isAliasType then
+                        // if types are simple forwarding aliases then try the dealiased types
+                        tp1.superType match
+                          case tp1a as AppliedType(_, args1a) if args1a.eqElements(args1) =>
+                            tp2.superType match
+                              case tp2a as AppliedType(_, args2a) if args2a.eqElements(args2) =>
+                                return recur(tp1a, tp2a)
+                              case _ =>
+                          case _ =>
+                        // Otherwise either compare arguments or compare dealiased types.
+                        // Note: This test should be done with an `either`, but this fails
+                        // for hk-alias-unification.scala The problem is not GADT boundschecking;
+                        // that is taken care of by the outer inFrozenGadtIf test. The problem is
+                        // that hk-alias-unification.scala relies on the right isSubArgs being performed
+                        // when constraining the result type of a method. But there we are only allowed
+                        // to use a necessaryEither, since it might be that an implicit conversion will
+                        // be inserted on the result. So strictly speaking by going to a sufficientEither
+                        // we overshoot and narrow the constraint unnecessarily. On the other hand, this
+                        // is probably an extreme corner case. If we exclude implicit conversions, the
+                        // problem goes away since in that case we would have a normal subtype test here,
+                        // which demands a sufficientEither anyway.
+                        sufficientEither(
+                          isSubArgs(args1, args2, tp1, tparams),
+                          recur(tp1.superType, tp2.superType))
+                      else
+                        isSubArgs(args1, args2, tp1, tparams)
+
+                    inFrozenGadtIf(!tyconIsInjective)(checkArgs())
                   }
                   if (res && touchedGADTs) GADTused = true
                   res
