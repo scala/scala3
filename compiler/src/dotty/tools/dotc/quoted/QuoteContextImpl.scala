@@ -743,8 +743,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
         case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
-          //val cleanParams = params.map(_.changeOwner(meth.symbol,ctx.owner))
-          //val cleanBody = body.changeOwner(meth.symbol,ctx.owner)
           Some((params, body))
         case _ => None
       }
