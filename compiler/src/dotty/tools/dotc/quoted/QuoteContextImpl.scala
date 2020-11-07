@@ -29,9 +29,9 @@ object QuoteContextImpl {
   def showDecompiledTree(tree: tpd.Tree)(using Context): String = {
     val qctx: QuoteContextImpl = new QuoteContextImpl(MacroExpansion.context(tree))
     if ctx.settings.color.value == "always" then
-      qctx.reflect.TreeMethodsImpl.extension_showAnsiColored(tree)
+      qctx.reflect.TreeMethodsImpl.temporaryShowAnsiColored(tree)
     else
-      qctx.reflect.TreeMethodsImpl.extension_show(tree)
+      qctx.reflect.TreeMethodsImpl.temporaryShow(tree)
   }
 
   private[dotty] def checkScopeId(id: ScopeId)(using Context): Unit =

@@ -140,6 +140,10 @@ trait Reflection { reflection =>
   protected val TreeMethodsImpl: TreeMethods
 
   trait TreeMethods {
+    // Dodo: Drop once extension methods have stabilized
+    def temporaryShowAnsiColored(self: Tree): String = self.showAnsiColored
+    def temporaryShow(self: Tree): String = self.show
+
     extension (self: Tree):
       /** Position in the source code */
       def pos: Position
