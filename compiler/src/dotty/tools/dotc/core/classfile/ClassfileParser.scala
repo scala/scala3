@@ -461,11 +461,17 @@ class ClassfileParser(
       val ts = new ListBuffer[Type]
       while (sig(index) == ':') {
         index += 1
-        if (sig(index) != ':') // guard against empty class bound
-          ts += sig2type(tparams, skiptvs)
+        if (sig(index) != ':') { // guard against empty class bound
+          val tp = sig2type(tparams, skiptvs)
+          if (!skiptvs)
+            ts += tp
+        }
       }
-      val bound = if ts.isEmpty then defn.AnyType else ts.reduceLeft(AndType.apply)
-      TypeBounds.upper(bound)
+      if (!skiptvs) {
+        val bound = if ts.isEmpty then defn.AnyType else ts.reduceLeft(AndType.apply)
+        TypeBounds.upper(bound)
+      }
+      else NoType
     }
 
     var tparams = classTParams
