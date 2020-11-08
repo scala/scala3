@@ -162,10 +162,15 @@ trait Reflection { reflection =>
 
       /** Does this tree represent a valid expression? */
       def isExpr: Boolean
+
+      /** Convert this tree to an `quoted.Expr[Any]` if the tree is a valid expression or throws */
+      def asExpr: scala.quoted.Expr[Any]
     end extension
 
     /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
     extension [T](self: Tree)
+      // FIXME: remove QuoteContext from parameters
+      // TODO: Move Reflection inside QuoteContext as it can never be instantiated outside a QuoteContext
       def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T]
   }
 

@@ -70,15 +70,18 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
                 case _: MethodType | _: PolyType => false
                 case _ => true
             case _ => false
+        def asExpr: scala.quoted.Expr[Any] =
+          if self.isExpr then
+            new scala.internal.quoted.Expr(self, QuoteContextImpl.this.hashCode)
+          else self match
+            case TermTypeTest(self) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
+            case _ => throw new Exception("Expected a Term but was: " + self)
       end extension
 
-      extension [T](tree: Tree)
+      extension [T](self: Tree)
         def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T] =
-          if tree.isExpr then
-            new scala.internal.quoted.Expr(tree, QuoteContextImpl.this.hashCode).asExprOf[T]
-          else tree match
-            case TermTypeTest(tree) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
-            case _ => throw new Exception("Expected a Term but was: " + tree)
+          self.asExpr.asExprOf[T]
+      end extension
 
     end TreeMethodsImpl
 
