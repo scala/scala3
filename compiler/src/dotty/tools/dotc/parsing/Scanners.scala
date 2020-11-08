@@ -6,7 +6,7 @@ import core.Names._, core.Contexts._, core.Decorators._, util.Spans._
 import core.StdNames._, core.Comments._
 import util.SourceFile
 import java.lang.Character.isDigit
-import scala.internal.Chars._
+import util.Chars._
 import util.{SourcePosition, CharBuffer}
 import util.Spans.Span
 import config.Config

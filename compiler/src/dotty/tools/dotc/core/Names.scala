@@ -7,7 +7,7 @@ import util.NameTransformer
 import printing.{Showable, Texts, Printer}
 import Texts.Text
 import StdNames.str
-import scala.internal.Chars.isIdentifierStart
+import util.Chars.isIdentifierStart
 import collection.immutable
 import config.Config
 import util.{LinearMap, HashSet}

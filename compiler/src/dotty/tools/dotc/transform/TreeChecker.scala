@@ -18,7 +18,7 @@ import typer.ErrorReporting._
 import reporting._
 import ast.Trees._
 import ast.{tpd, untpd}
-import scala.internal.Chars._
+import util.Chars._
 import collection.mutable
 import ProtoTypes._
 

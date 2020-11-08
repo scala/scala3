@@ -7,7 +7,7 @@ import Spans._
 import core.Contexts._
 
 import scala.io.Codec
-import scala.internal.Chars._
+import Chars._
 import scala.annotation.internal.sharable
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer

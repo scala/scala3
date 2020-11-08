@@ -1,7 +1,6 @@
 package scala.util
 import scala.math.{BigInt}
 import quoted._
-import internal.Chars.digit2int
 import annotation.internal.sharable
 
 /** A type class for types that admit numeric literals.
@@ -80,9 +79,13 @@ object FromDigits {
     }
     if (i == len) throw MalformedNumber()
     while (i < len) {
-      val c = digits(i)
-      val d = digit2int(c, radix)
-      if (d < 0) throw MalformedNumber()
+      val ch = digits(i)
+      val d =
+        if (ch <= '9') ch - '0'
+        else if ('a' <= ch && ch <= 'z') ch - 'a' + 10
+        else if ('A' <= ch && ch <= 'Z') ch - 'A' + 10
+        else -1
+      if (d < 0 || radix <= d) throw MalformedNumber()
       if (value < 0 ||
           limit / (radix / divider) < value ||
           limit - (d / divider) < value * (radix / divider) &&

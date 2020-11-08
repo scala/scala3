@@ -38,7 +38,7 @@ import config.SourceVersion._
 
 import collection.mutable
 import reporting._
-import scala.internal.Chars.isOperatorPart
+import util.Chars.isOperatorPart
 
 object Checking {
   import tpd._

@@ -1,4 +1,4 @@
-package scala.internal
+package dotty.tools.dotc.util
 
 import scala.annotation.switch
 import java.lang.{Character => JCharacter}

@@ -10,7 +10,7 @@ import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import Diagnostic._
 import util.SourcePosition
-import scala.internal.Chars.{ LF, CR, FF, SU }
+import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
 import scala.collection.mutable
