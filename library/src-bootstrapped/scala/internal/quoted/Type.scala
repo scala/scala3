@@ -19,7 +19,7 @@ final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quote
 
   def checkScopeId(expectedScopeId: Int): Unit =
     if expectedScopeId != scopeId then
-      throw new scala.internal.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
+      throw new Exception("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
 
   override def hashCode: Int = typeTree.hashCode
   override def toString: String = "'[ ... ]"

@@ -31,7 +31,7 @@ object Toolbox:
       def run[T](exprBuilder: QuoteContext => Expr[T]): T = synchronized {
         try
           if (running) // detected nested run
-            throw new scala.internal.quoted.ScopeException("Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
+            throw new Exception("Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
           running = true
           driver.run(exprBuilder, settings)
         finally
