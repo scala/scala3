@@ -227,7 +227,7 @@ The precise rules for resolving a selection to an extension method are as follow
 Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type arguments `[Ts]` are optional, and where `T` is the expected type.
 The following two rewritings are tried in order:
 
- 1. The selection is rewritten to m[Ts](e)`.
+ 1. The selection is rewritten to `m[Ts](e)`.
  2. If the first rewriting does not typecheck with expected type `T`,
     and there is an extension method `m` in some eligible object `o`, the selection is rewritten to `o.m[Ts](e)`. An object `o` is _eligible_ if
 
