@@ -8,13 +8,13 @@ object scalatest {
 
   def assertImpl(condition: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
-    val tree = condition.unseal
+    val tree = condition.asReflectTree
     def exprStr: String = condition.show
 
     tree.underlyingArgument match {
       case Apply(Select(lhs, op), rhs :: Nil) =>
-        val left = lhs.seal
-        val right = rhs.seal
+        val left = lhs.asExpr
+        val right = rhs.asExpr
         op match {
           case "==" =>
         '{

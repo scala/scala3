@@ -103,8 +103,8 @@ trait ExprMap:
           case _ if tree.isExpr =>
             type X
             val expr = tree.asExpr.asInstanceOf[Expr[X]]
-            val t = tpe.asType.asInstanceOf[Type[X]]
-            transform(expr)(using qctx, t).unseal
+            val t = tpe.asType.asInstanceOf[quoted.Type[X]]
+            transform(expr)(using qctx, t).asReflectTree
           case _ =>
             transformTermChildren(tree, tpe)
 
@@ -144,7 +144,7 @@ trait ExprMap:
         trees mapConserve (transformTypeCaseDef(_))
 
     }
-    new MapChildren().transformTermChildren(e.unseal, TypeRepr.of[T]).asExprOf[T]
+    new MapChildren().transformTermChildren(e.asReflectTree, TypeRepr.of[T]).asExprOf[T]
   }
 
 end ExprMap

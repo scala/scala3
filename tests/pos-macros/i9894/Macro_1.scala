@@ -36,7 +36,7 @@ object X:
         case Block(stats, last) => Block(stats, transform(last))
         case Inlined(x,List(),body) => transform(body)
         case l@Literal(x) =>
-             '{ CBM.pure(${term.seal}) }.unseal
+             '{ CBM.pure(${term.asExpr}) }.asReflectTree
         case other =>
              throw RuntimeException(s"Not supported $other")
 
@@ -64,4 +64,4 @@ object X:
          }
          changes.transformTerm(body)
 
-   transform(f.unseal).asExprOf[CB[T]]
+   transform(f.asReflectTree).asExprOf[CB[T]]

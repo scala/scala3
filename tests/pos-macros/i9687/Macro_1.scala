@@ -24,8 +24,8 @@ object X {
 
  def transformImpl[A:Type](x:Expr[A])(using qctx: QuoteContext):Expr[A] = {
     import qctx.reflect._
-    val slowPath = '{ SlowPath }.unseal
-    val fastPath = '{ FastPath }.unseal
+    val slowPath = '{ SlowPath }.asReflectTree
+    val fastPath = '{ FastPath }.asReflectTree
     val transformer = new TreeMap() {
       override def transformTerm(term:Term)(using ctx:Context):Term = {
         term match
@@ -37,7 +37,7 @@ object X {
           case _ => super.transformTerm(term)
       }
     }
-    val r = transformer.transformTerm(x.unseal).asExprOf[A]
+    val r = transformer.transformTerm(x.asReflectTree).asExprOf[A]
     s"result: ${r.show}"
     r
  }

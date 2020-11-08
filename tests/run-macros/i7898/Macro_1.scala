@@ -4,11 +4,11 @@ object Main {
 
   def myMacroImpl(body: Expr[_])(using qctx: QuoteContext) : Expr[_] = {
     import qctx.reflect._
-    val bodyTerm = underlyingArgument(body).unseal
+    val bodyTerm = underlyingArgument(body).asReflectTree
     val showed = bodyTerm.show
     '{
       println(${Expr(showed)})
-      ${bodyTerm.seal}
+      ${bodyTerm.asExpr}
     }
   }
 
@@ -17,5 +17,5 @@ object Main {
   }
 
   def underlyingArgument[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    expr.unseal.underlyingArgument.seal.asInstanceOf[Expr[T]]
+    expr.asReflectTree.underlyingArgument.asExpr.asInstanceOf[Expr[T]]
 }

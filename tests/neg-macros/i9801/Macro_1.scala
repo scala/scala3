@@ -15,6 +15,6 @@ def impl(prog: Expr[Double])(using QuoteContext) : Expr[Double] =
     triggerStackOverflow(0)
   } catch {
     case e =>
-      qctx.reflect.Reporting.error(e.getMessage, prog.unseal.pos)
+      qctx.reflect.Reporting.error(e.getMessage, prog.asReflectTree.pos)
       '{ 42.0 }
   }

@@ -13,7 +13,7 @@ object FQuote {
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>
-        val head = x.seal
+        val head = x.asExpr
         val tail = liftListOfAny(xs)
         '{ $head :: $tail }
       case Nil => '{Nil}
@@ -31,7 +31,7 @@ object FQuote {
       tree.symbol.fullName == "scala.StringContext$.apply"
 
     // FQuote.SCOps(StringContext.apply([p0, ...]: String*)
-    val parts = receiver.unseal.underlyingArgument match {
+    val parts = receiver.asReflectTree.underlyingArgument match {
       case Apply(conv, List(Apply(fun, List(Typed(Repeated(values, _), _)))))
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
@@ -43,7 +43,7 @@ object FQuote {
     }
 
     // [a0, ...]: Any*
-    val Typed(Repeated(allArgs, _), _) = args.unseal.underlyingArgument
+    val Typed(Repeated(allArgs, _), _) = args.asReflectTree.underlyingArgument
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
       if (part.startsWith("%d") && !(arg.tpe <:< TypeRepr.of[Int])) {

@@ -20,7 +20,7 @@ final class Expr(val tree: tpd.Tree, val scopeId: Int) extends scala.quoted.Expr
     case _ => false
   }
 
-  def unseal(using qctx: QuoteContext): qctx.reflect.Term =
+  def asReflectTree(using qctx: QuoteContext): qctx.reflect.Term =
     checkScopeId(qctx.hashCode)
     tree.asInstanceOf[qctx.reflect.Term]
 

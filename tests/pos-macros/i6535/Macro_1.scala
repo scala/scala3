@@ -9,17 +9,17 @@ object scalatest {
     import util._
     import ValDef.let
 
-    cond.unseal.underlyingArgument match {
+    cond.asReflectTree.underlyingArgument match {
       case t @ Apply(Select(lhs, op), rhs :: Nil) =>
         let(lhs) { left =>
           let(rhs) { right =>
             val app = Select.overloaded(left, op, Nil, right :: Nil)
             let(app) { result =>
-              val l = left.seal
-              val r = right.seal
+              val l = left.asExpr
+              val r = right.asExpr
               val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert($b) }
-              code.unseal
+              code.asReflectTree
             }
           }
         }.asExprOf[Unit]

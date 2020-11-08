@@ -4,10 +4,10 @@ package scala.quoted
 abstract class Expr[+T] private[scala] {
 
   /** Show a source code like representation of this expression without syntax highlight */
-  def show(using qctx: QuoteContext): String = this.unseal.show
+  def show(using qctx: QuoteContext): String = this.asReflectTree.show
 
   /** Shows the tree as fully typed source code colored with ANSI */
-  def showAnsiColored(using qctx: QuoteContext): String = this.unseal.showAnsiColored
+  def showAnsiColored(using qctx: QuoteContext): String = this.asReflectTree.showAnsiColored
 
   /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
    *  It does the equivalent of
@@ -23,7 +23,7 @@ abstract class Expr[+T] private[scala] {
 
   /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
   def isExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): Boolean =
-    this.unseal.tpe <:< qctx.reflect.TypeRepr.of[X]
+    this.asReflectTree.tpe <:< qctx.reflect.TypeRepr.of[X]
 
   /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
   def asExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): scala.quoted.Expr[X] = {
@@ -32,14 +32,14 @@ abstract class Expr[+T] private[scala] {
     else
       throw Exception(
         s"""Expr cast exception: ${this.show}
-           |of type: ${this.unseal.tpe.show}
+           |of type: ${this.asReflectTree.tpe.show}
            |did not conform to type: ${qctx.reflect.TypeRepr.of[X].show}
            |""".stripMargin
       )
   }
 
-  /** View this expression `quoted.Expr[T]` as a `Term` */
-  def unseal(using qctx: QuoteContext): qctx.reflect.Term
+  /** Convert this expression `Expr[T]` into an AST as a `Term` */
+  def asReflectTree(using qctx: QuoteContext): qctx.reflect.Term
 
 }
 
@@ -75,8 +75,8 @@ object Expr {
    *   Some bindings may be elided as an early optimization.
    */
   def betaReduce[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    qctx.reflect.Term.betaReduce(expr.unseal) match
-      case Some(expr1) => expr1.seal.asInstanceOf[Expr[T]]
+    qctx.reflect.Term.betaReduce(expr.asReflectTree) match
+      case Some(expr1) => expr1.asExpr.asInstanceOf[Expr[T]]
       case _ => expr
 
   /** Returns an expression containing a block with the given statements and ending with the expresion
@@ -85,7 +85,7 @@ object Expr {
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using qctx: QuoteContext): Expr[T] = {
     import qctx.reflect._
-    Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
+    Block(statements.map(_.asReflectTree), expr.asReflectTree).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Lift a value into an expression containing the construction of that value */
@@ -272,7 +272,7 @@ object Expr {
   def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
     import qctx.reflect._
     Implicits.search(TypeRepr.of[T]) match {
-      case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])
+      case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None
     }
   }

@@ -12,16 +12,16 @@ object scalatest {
       case tp: MethodType => tp.isImplicit
       case _ => false
 
-    cond.unseal.underlyingArgument match {
+    cond.asReflectTree.underlyingArgument match {
       case Apply(sel @ Select(lhs, op), rhs :: Nil) =>
         ValDef.let(lhs) { left =>
           ValDef.let(rhs) { right =>
             ValDef.let(Apply(Select.copy(sel)(left, op), right :: Nil)) { result =>
-              val l = left.seal
-              val r = right.seal
+              val l = left.asExpr
+              val r = right.asExpr
               val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert(${b}) }
-              code.unseal
+              code.asReflectTree
             }
           }
         }.asExprOf[Unit]
@@ -30,11 +30,11 @@ object scalatest {
         ValDef.let(lhs) { left =>
           ValDef.let(rhs) { right =>
             ValDef.let(Apply(Apply(Select.copy(sel)(Apply(qual, left :: Nil), op), right :: Nil), implicits)) { result =>
-              val l = left.seal
-              val r = right.seal
+              val l = left.asExpr
+              val r = right.asExpr
               val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert(${b}) }
-              code.unseal
+              code.asReflectTree
             }
           }
         }.asExprOf[Unit]

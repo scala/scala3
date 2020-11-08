@@ -2631,8 +2631,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
   object ExprMatch extends ExprMatchModule:
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
-      val scrutineeTree = scrutinee.unseal(using QuoteContextImpl.this)
-      val patternTree = pattern.unseal(using QuoteContextImpl.this)
+      val scrutineeTree = scrutinee.asReflectTree(using QuoteContextImpl.this)
+      val patternTree = pattern.asReflectTree(using QuoteContextImpl.this)
       treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
   end ExprMatch
 

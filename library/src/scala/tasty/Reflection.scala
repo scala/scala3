@@ -158,7 +158,7 @@ trait Reflection { reflection =>
       /** Does this tree represent a valid expression? */
       def isExpr: Boolean
 
-      /** Convert this tree to an `quoted.Expr[Any]` if the tree is a valid expression or throws */
+      /** Convert this tree to an `Expr[Any]` if the tree is a valid expression or throws */
       def asExpr: scala.quoted.Expr[Any]
     end extension
 
@@ -390,12 +390,6 @@ trait Reflection { reflection =>
 
   trait TermMethods {
     extension (self: Term):
-
-      /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
-      def seal: scala.quoted.Expr[Any]
-
-      /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression */
-      def sealOpt: Option[scala.quoted.Expr[Any]]
 
       /** TypeRepr of this term */
       def tpe: TypeRepr
