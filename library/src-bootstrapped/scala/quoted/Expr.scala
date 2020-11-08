@@ -21,9 +21,6 @@ abstract class Expr[+T] private[scala] {
     val ExprMatch = qctx.asInstanceOf[scala.internal.quoted.QuoteContextInternal].ExprMatch
     ExprMatch.unapply[EmptyTuple, EmptyTuple](this)(using that).nonEmpty
 
-  /** Checked cast to a `quoted.Expr[U]` */
-  def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = asExprOf[U]
-
   /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
   def isExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): Boolean =
     this.unseal.tpe <:< qctx.reflect.TypeRepr.of[X]

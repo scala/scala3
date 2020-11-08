@@ -32,7 +32,7 @@ object Asserts {
 
     tree match {
       case Inlined(_, Nil, Apply(Select(OpsTree(left), op), right :: Nil)) =>
-        '{assertTrue(${left.seal.cast[Boolean]})} // Buggy code. To generate the errors
+        '{assertTrue(${left.asExprOf[Boolean]})} // Buggy code. To generate the errors
       case _ =>
         '{assertTrue($cond)}
     }

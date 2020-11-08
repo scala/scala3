@@ -9,7 +9,7 @@ object scalatest {
 
     cond.unseal.underlyingArgument match {
       case Apply(select @ Select(lhs, op), rhs :: Nil) =>
-        val cond = Apply(Select.copy(select)(lhs, ">"), rhs :: Nil).seal.cast[Boolean]
+        val cond = Apply(Select.copy(select)(lhs, ">"), rhs :: Nil).asExprOf[Boolean]
         '{ scala.Predef.assert($cond) }
       case _ =>
         '{ scala.Predef.assert($cond) }

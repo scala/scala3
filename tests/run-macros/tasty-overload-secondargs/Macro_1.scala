@@ -31,4 +31,4 @@ object Macro:
                                  TypeRepr.of[(S) => R]
                        )
        val r = Apply(firstPart,List(x.unseal))
-       r.seal.cast[R]
+       r.asExprOf[R]

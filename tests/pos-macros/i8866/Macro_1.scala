@@ -19,7 +19,7 @@ object Macro {
         '{ OtherMacro }.unseal,
         "apply"
       )
-    )(identity).seal.cast[Int]
+    )(identity).asExprOf[Int]
   }
 
   inline def apply = ${ Macro.impl }

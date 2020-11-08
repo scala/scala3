@@ -9,6 +9,6 @@ object Macro {
 
     val seq = List(t0, t1)
     val res = Expr.ofTupleFromSeq(seq)
-    res.cast[(T0, T1)]
+    res.asExprOf[(T0, T1)]
   }
 }

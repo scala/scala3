@@ -13,7 +13,7 @@ object Macros {
     import qctx.reflect._
     ValDef.let(rhsTerm) { rhsId =>
       Expr.betaReduce('{$body(${rhsId.seal.asInstanceOf[Expr[T]]})}).unseal // Dangerous uncheked cast!
-    }.seal.cast[Unit]
+    }.asExprOf[Unit]
   }
 
 

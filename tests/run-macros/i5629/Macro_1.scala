@@ -6,7 +6,7 @@ object Macros {
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
-    val b = cond.unseal.underlyingArgument.seal.cast[Boolean]
+    val b = cond.unseal.underlyingArgument.asExprOf[Boolean]
     '{ scala.Predef.assert($b) }
   }
 

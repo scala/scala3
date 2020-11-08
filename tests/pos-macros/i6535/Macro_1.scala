@@ -17,12 +17,12 @@ object scalatest {
             let(app) { result =>
               val l = left.seal
               val r = right.seal
-              val b = result.seal.cast[Boolean]
+              val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert($b) }
               code.unseal
             }
           }
-        }.seal.cast[Unit]
+        }.asExprOf[Unit]
     }
   }
 
