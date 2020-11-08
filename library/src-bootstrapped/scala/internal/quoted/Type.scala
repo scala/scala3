@@ -41,34 +41,4 @@ object Type {
     qctx.asInstanceOf[QuoteContextInternal].typeMatch(scrutineeType, patternType).asInstanceOf[Option[Tup]]
   }
 
-
-  // TODO generalize following optimizations for all classes without parameters
-
-  def Unit: QuoteContext ?=> quoted.Type[Unit] =
-    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Unit]).seal.asInstanceOf[quoted.Type[Unit]]
-
-  def Boolean: QuoteContext ?=> quoted.Type[Boolean] =
-    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Boolean]).seal.asInstanceOf[quoted.Type[Boolean]]
-
-  def Byte: QuoteContext ?=> quoted.Type[Byte] =
-    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Byte]).seal.asInstanceOf[quoted.Type[Byte]]
-
-  def Char: QuoteContext ?=> quoted.Type[Char] =
-    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Char]).seal.asInstanceOf[quoted.Type[Char]]
-
-  def Short: QuoteContext ?=> quoted.Type[Short] =
-    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Short]).seal.asInstanceOf[quoted.Type[Short]]
-
-  def Int: QuoteContext ?=> quoted.Type[Int] =
-    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Int]).seal.asInstanceOf[quoted.Type[Int]]
-
-  def Long: QuoteContext ?=> quoted.Type[Long] =
-    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Long]).seal.asInstanceOf[quoted.Type[Long]]
-
-  def Float: QuoteContext ?=> quoted.Type[Float] =
-    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Float]).seal.asInstanceOf[quoted.Type[Float]]
-
-  def Double: QuoteContext ?=> quoted.Type[Double] =
-    qctx.reflect.TypeRepr.typeConstructorOf(classOf[Double]).seal.asInstanceOf[quoted.Type[Double]]
-
 }

@@ -1603,7 +1603,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
         def showAnsiColored: String =
           SourceCode.showType(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
 
-        def seal: scala.quoted.Type[_] =
+        def seal: scala.quoted.Type[_] = self.asType
+
+        def asType: scala.quoted.Type[?] =
           new scala.internal.quoted.Type(Inferred(self), QuoteContextImpl.this.hashCode)
 
         def =:=(that: TypeRepr): Boolean = self =:= that

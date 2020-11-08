@@ -199,10 +199,30 @@ class ReifyQuotes extends MacroTransform {
         ref(unpickleMeth).appliedToType(originalTp).appliedTo(pickledQuote)
       }
 
-      def taggedType(sym: Symbol) = ref(defn.InternalQuotedTypeModule).select(sym.name.toTermName)
+      /** Encode quote using Reflection.TypeRepr.typeConstructorOf
+       *
+       *  Generate the code
+       *  ```scala
+       *    qctx => qctx.reflect.TypeReprMethods.asType(
+       *      qctx.reflect.TypeRepr.typeConstructorOf(classOf[<type>]])
+       *    ).asInstanceOf[scala.quoted.Type[<type>]]
+       *  ```
+       *  this closure is always applied directly to the actual context and the BetaReduce phase removes it.
+       */
+      def taggedType() =
+        val typeType = defn.QuotedTypeClass.typeRef.appliedTo(body.tpe)
+        val classTree = TypeApply(ref(defn.Predef_classOf.termRef), body :: Nil)
+        val tpe = MethodType(defn.QuoteContextClass.typeRef :: Nil, typeType)
+        val meth = newSymbol(ctx.owner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
+        def mkConst(tss: List[List[Tree]]) = {
+          val reflect = tss.head.head.select("reflect".toTermName)
+          val typeRepr = reflect.select("TypeRepr".toTermName).select("typeConstructorOf".toTermName).appliedTo(classTree)
+          reflect.select("TypeReprMethods".toTermName).select("asType".toTermName).appliedTo(typeRepr).asInstance(typeType)
+        }
+        Closure(meth, mkConst).withSpan(body.span)
 
       if (isType) {
-        if (splices.isEmpty && body.symbol.isPrimitiveValueClass) taggedType(body.symbol)
+        if (splices.isEmpty && body.symbol.isPrimitiveValueClass) taggedType()
         else pickleAsTasty()
       }
       else getLiteral(body) match {

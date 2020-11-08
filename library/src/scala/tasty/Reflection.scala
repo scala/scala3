@@ -1774,6 +1774,17 @@ trait Reflection { reflection =>
       /** Convert `TypeRepr` to an `quoted.Type[_]` */
       def seal: scala.quoted.Type[_]
 
+      /** Convert this `TypeRepr` to an `Type[?]`
+       *
+       *  Usage:
+       *  ```
+       *  typeRepr.asType match
+       *    case '[$t] =>
+       *      '{ val x: t = ... }
+       *  ```
+       */
+      def asType: scala.quoted.Type[?]
+
       /** Is `self` type the same as `that` type?
        *  This is the case iff `self <:< that` and `that <:< self`.
        */
