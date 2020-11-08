@@ -26,7 +26,7 @@ the scope where it is used.
 ```scala
 import scala.quoted._
 
-inline def natConst(x: => Int): Int = ${natConstImpl('{x})}
+inline def natConst(inline x: Int): Int = ${natConstImpl('{x})}
 
 def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
   import qctx.reflect._
@@ -66,28 +66,6 @@ The method `qctx.reflect.Term.seal` provides a way to go back to a
 must be set explicitly with a checked `cast` call. If the type does not conform
 to it an exception will be thrown at runtime.
 
-### Obtaining the underlying argument
-
-A macro can access the tree of the actual argument passed on the call-site. The
-`underlyingArgument` method on a `Term` object will give access to the tree
-defining the expression passed. For example the code below matches a selection
-operation expression passed while calling the `macro` below.
-
-```scala
-inline def macro(param: => Boolean): Unit = ${ macroImpl('param) }
-
-def macroImpl(param: Expr[Boolean])(using qctx: QuoteContext): Expr[Unit] = {
-  import qctx.reflect._
-  import util._
-
-  param.unseal.underlyingArgument match {
-    case t @ Apply(Select(lhs, op), rhs :: Nil) => ..
-  }
-}
-
-// example
-macro(this.checkCondition())
-```
 
 ### Positions
 

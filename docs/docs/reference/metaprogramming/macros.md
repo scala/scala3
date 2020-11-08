@@ -656,7 +656,7 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = a
 
 #### Quoted patterns
 
-Quoted pattens allow to deconstruct complex code that contains a precise structure, types or methods.
+Quoted pattens allow deconstructing complex code that contains a precise structure, types or methods.
 Patterns `'{ ... }` can be placed in any location where Scala expects a pattern.
 
 For example
