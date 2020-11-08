@@ -79,9 +79,13 @@ object FromDigits {
     }
     if (i == len) throw MalformedNumber()
     while (i < len) {
-      val c = digits(i)
-      val d = digit2int(c, radix)
-      if (d < 0) throw MalformedNumber()
+      val ch = digits(i)
+      val d =
+        if (ch <= '9') ch - '0'
+        else if ('a' <= ch && ch <= 'z') ch - 'a' + 10
+        else if ('A' <= ch && ch <= 'Z') ch - 'A' + 10
+        else -1
+      if (d < 0 || radix <= d) throw MalformedNumber()
       if (value < 0 ||
           limit / (radix / divider) < value ||
           limit - (d / divider) < value * (radix / divider) &&
@@ -90,19 +94,6 @@ object FromDigits {
       i += 1
     }
     if (negated) -value else value
-  }
-
-  /** Convert a character digit to an Int according to given base,
-   *  -1 if no success
-   */
-  private def digit2int(ch: Char, base: Int): Int = {
-    val num = (
-      if (ch <= '9') ch - '0'
-      else if ('a' <= ch && ch <= 'z') ch - 'a' + 10
-      else if ('A' <= ch && ch <= 'Z') ch - 'A' + 10
-      else -1
-      )
-    if (0 <= num && num < base) num else -1
   }
 
   /** Convert digit string to Int number
