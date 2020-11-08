@@ -1060,26 +1060,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
                     def checkArgs(): Boolean =
                       if tycon1sym == tycon2sym && tycon1sym.isAliasType then
-                        // if types are simple forwarding aliases then try the dealiased types
-                        tp1.superType match
-                          case tp1a as AppliedType(_, args1a) if args1a.eqElements(args1) =>
-                            tp2.superType match
-                              case tp2a as AppliedType(_, args2a) if args2a.eqElements(args2) =>
-                                return recur(tp1a, tp2a)
-                              case _ =>
-                          case _ =>
-                        // Otherwise either compare arguments or compare dealiased types.
+                        // Either compare arguments or compare dealiased types.
                         // Note: This test should be done with an `either`, but this fails
                         // for hk-alias-unification.scala The problem is not GADT boundschecking;
                         // that is taken care of by the outer inFrozenGadtIf test. The problem is
                         // that hk-alias-unification.scala relies on the right isSubArgs being performed
-                        // when constraining the result type of a method. But there we are only allowed
-                        // to use a necessaryEither, since it might be that an implicit conversion will
-                        // be inserted on the result. So strictly speaking by going to a sufficientEither
-                        // we overshoot and narrow the constraint unnecessarily. On the other hand, this
-                        // is probably an extreme corner case. If we exclude implicit conversions, the
-                        // problem goes away since in that case we would have a normal subtype test here,
-                        // which demands a sufficientEither anyway.
+                        // when constraining the result type of a method. But since #8635 we are only allowed
+                        // to use a necessaryEither, since we might otherwise constrain too much.
+                        // So strictly speaking by going to a sufficientEither we overshoot and narrow
+                        // the constraint unnecessarily. But unlike in the situation of #8365 with test cases
+                        // and-inf.scala and or-inf.scala, we don't cut off solutions in principle by dealiasing.
+                        // We "just" risk missing an opportunity to do a desired hk-type inference. This
+                        // is hopefully a less frequent corner case. Where it goes wrong compared to the status
+                        // before this fix: If isSubArgs succeeds and then the dealised test also succeeds
+                        // while constraining strictly less than the isSubArgs, then the we used to pick the
+                        // constraint after isSubArgs, but we now pick the constraint after the dealiased test.
+                        // There's one test in shapeless/deriving that had to be disabled
+                        // (modules/deriving/src/test/scala/shapeless3/deriving/deriving.scala, value v7 in the functor test).
                         sufficientEither(
                           isSubArgs(args1, args2, tp1, tparams),
                           recur(tp1.superType, tp2.superType))
