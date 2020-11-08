@@ -4,10 +4,8 @@ import scala.quoted.QuoteContext
 import scala.tasty.reflect._
 import scala.internal.quoted.PickledQuote
 
-/** Part of the reflection interface that needs to be implemented by the compiler */
-trait CompilerInterface { self: scala.quoted.QuoteContext =>
-
-  import self.reflect._
+/** Part of the QuoteContext interface that needs to be implemented by the compiler but is not visible to users */
+trait QuoteContextInternal { self: scala.quoted.QuoteContext =>
 
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `holes`
@@ -48,13 +46,5 @@ trait CompilerInterface { self: scala.quoted.QuoteContext =>
    *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `scala.quoted.Type[Ti]``
    */
   def typeMatch(scrutinee: scala.quoted.Type[?], pattern: scala.quoted.Type[?]): Option[Tuple]
-
-}
-
-
-object CompilerInterface {
-
-  private[scala] def quoteContextWithCompilerInterface(qctx: QuoteContext): qctx.type { val reflect: qctx.reflect.type } & CompilerInterface =
-    qctx.asInstanceOf[qctx.type { val reflect: qctx.reflect.type } & CompilerInterface]
 
 }
