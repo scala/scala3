@@ -34,6 +34,9 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
       - name: Test
         run: |
           ./project/scripts/sbt ";compile ;test"
@@ -62,6 +65,9 @@ jobs:
 
       - name: Git Checkout
         uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: |
@@ -120,6 +126,9 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
       - name: Test
         run: |
           git submodule sync
@@ -149,6 +158,9 @@ jobs:
 
       - name: Git Checkout
         uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: ./project/scripts/sbt sbt-dotty/scripted
@@ -182,6 +194,9 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
       - name: Test
         run: ./project/scripts/sbt ";compile ;test"
 
@@ -212,6 +227,9 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
       - name: Publish Nightly
         run: |
           ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
@@ -241,6 +259,9 @@ jobs:
 
       - name: Git Checkout
         uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Generate Website
         run: |
@@ -283,6 +304,9 @@ jobs:
 
       - name: Git Checkout
         uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Publish Release
         run: |
@@ -362,6 +386,9 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
       - name: Generate Website
         run: |
           ./project/scripts/genDocs -doc-snapshot
@@ -402,6 +429,9 @@ jobs:
 
       - name: Git Checkout
         uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Publish Dotty SBT Plugin Release
         run: |
