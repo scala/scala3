@@ -157,7 +157,7 @@ trait TypesSupport:
         }
       }
       case t @ AppliedType(tpe, typeList) =>
-        import scala.internal.Chars._
+        import util.Chars._
         if !t.typeSymbol.name.forall(isIdentifierPart) && typeList.size == 2 then
           inner(typeList.head)
           ++ texts(" ")

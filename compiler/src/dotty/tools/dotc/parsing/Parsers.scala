@@ -23,7 +23,7 @@ import Constants._
 import Symbols.defn
 import ScriptParsers._
 import Decorators._
-import scala.internal.Chars
+import util.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
