@@ -3,7 +3,7 @@ layout: doc-page
 title: The @targetName annotation
 ---
 
-A `@targetName` annotation on a definition defines an alternate name for the implementation of that definition: Example:
+A `@targetName` annotation on a definition defines an alternate name for the implementation of that definition. Example:
 ```scala
 import scala.annotation.targetName
 
