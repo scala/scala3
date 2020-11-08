@@ -229,7 +229,6 @@ class Definitions {
     @tu lazy val Compiletime_requireConst: Symbol = CompiletimePackageObject.requiredMethod("requireConst")
     @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageObject.requiredMethod("constValue")
     @tu lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageObject.requiredMethod("constValueOpt")
-    @tu lazy val Compiletime_code         : Symbol = CompiletimePackageObject.requiredMethod("extension_code")
     @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageObject.requiredMethod("summonFrom")
   @tu lazy val CompiletimeTestingPackageObject: Symbol = requiredModule("scala.compiletime.testing.package")
     @tu lazy val CompiletimeTesting_typeChecks: Symbol = CompiletimeTestingPackageObject.requiredMethod("typeChecks")

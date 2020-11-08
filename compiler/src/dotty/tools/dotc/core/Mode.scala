@@ -112,4 +112,7 @@ object Mode {
 
   /** Are we in a quote in a pattern? */
   val QuotedPattern: Mode = newMode(25, "QuotedPattern")
+
+  /** Are we typechecking the rhs of an extension method? */
+  val InExtensionMethod: Mode = newMode(26, "InExtensionMethod")
 }

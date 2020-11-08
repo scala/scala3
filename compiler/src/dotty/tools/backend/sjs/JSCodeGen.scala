@@ -206,7 +206,7 @@ class JSCodeGen()(using genCtx: Context) {
         withScopedVars(
             currentClassSym := sym
         ) {
-          val tree = if (isJSType(sym)) {
+          val tree = if (sym.isJSType) {
             if (!sym.is(Trait) && sym.isNonNativeJSClass)
               genNonNativeJSClass(td)
             else
@@ -702,7 +702,7 @@ class JSCodeGen()(using genCtx: Context) {
       Nil
     } else {
       val moduleClass = module.moduleClass
-      if (!isJSType(moduleClass))
+      if (!moduleClass.isJSType)
         genStaticForwardersFromModuleClass(existingMembers, moduleClass)
       else
         Nil
@@ -1678,7 +1678,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     fun match {
-      case _ if isJSDefaultParam(sym) =>
+      case _ if sym.isJSDefaultParam =>
         js.Transient(UndefinedParam)(toIRType(sym.info.finalResultType))
 
       case Select(Super(_, _), _) =>
@@ -1771,7 +1771,7 @@ class JSCodeGen()(using genCtx: Context) {
     } else /*if (translatedAnonFunctions contains tpe.typeSymbol) {
       val functionMaker = translatedAnonFunctions(tpe.typeSymbol)
       functionMaker(args map genExpr)
-    } else*/ if (isJSType(clsSym)) {
+    } else*/ if (clsSym.isJSType) {
       genNewJSClass(tree)
     } else {
       toTypeRef(tpe) match {
@@ -2406,7 +2406,7 @@ class JSCodeGen()(using genCtx: Context) {
      * and `-0.0`, see Javadoc (scala-dev#329, scala-js#2799).
      */
     val mustUseAnyComparator: Boolean = {
-      isJSType(lsym) || isJSType(rsym) || {
+      lsym.isJSType || rsym.isJSType || {
         val p = ctx.platform
         p.isMaybeBoxed(lsym) && p.isMaybeBoxed(rsym) && {
           val areSameFinals = lsym.is(Final) && rsym.is(Final) && (ltpe =:= rtpe)
@@ -2603,7 +2603,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     if (isMethodStaticInIR(sym)) {
       genApplyStatic(sym, genActualArgs(sym, args))
-    } else if (isJSType(sym.owner)) {
+    } else if (sym.owner.isJSType) {
       if (!sym.owner.isNonNativeJSClass || sym.isJSExposed)
         genApplyJSMethodGeneric(sym, genExprOrGlobalScope(receiver), genActualJSArgs(sym, args), isStat)(tree.sourcePos)
       else
@@ -2689,13 +2689,13 @@ class JSCodeGen()(using genCtx: Context) {
           }
         }
 
-        if (isJSGetter(sym)) {
+        if (sym.isJSGetter) {
           assert(noSpread && argc == 0)
           genSelectGet(jsFunName)
-        } else if (isJSSetter(sym)) {
+        } else if (sym.isJSSetter) {
           assert(noSpread && argc == 1)
           genSelectSet(jsFunName, requireNotSpread(args.head))
-        } else if (isJSBracketAccess(sym)) {
+        } else if (sym.isJSBracketAccess) {
           assert(noSpread && (argc == 1 || argc == 2),
               s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments")
           (args: @unchecked) match {
@@ -2704,7 +2704,7 @@ class JSCodeGen()(using genCtx: Context) {
             case List(keyArg, valueArg) =>
               genSelectSet(requireNotSpread(keyArg), requireNotSpread(valueArg))
           }
-        } else if (isJSBracketCall(sym)) {
+        } else if (sym.isJSBracketCall) {
           val (methodName, actualArgs) = extractFirstArg(args)
           genCall(methodName, actualArgs)
         } else {
@@ -3187,7 +3187,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     val sym = to.typeSymbol
 
-    if (sym == defn.ObjectClass || isJSType(sym)) {
+    if (sym == defn.ObjectClass || sym.isJSType) {
       /* asInstanceOf[Object] always succeeds, and
        * asInstanceOf to a raw JS type is completely erased.
        */
@@ -3217,7 +3217,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     if (sym == defn.ObjectClass) {
       js.BinaryOp(js.BinaryOp.!==, value, js.Null())
-    } else if (isJSType(sym)) {
+    } else if (sym.isJSType) {
       if (sym.is(Trait)) {
         report.error(
             s"isInstanceOf[${sym.fullName}] not supported because it is a JS trait",
@@ -3347,7 +3347,7 @@ class JSCodeGen()(using genCtx: Context) {
       arg match {
         case Literal(value) if value.tag == Constants.ClazzTag =>
           val classSym = value.typeValue.typeSymbol
-          if (isJSType(classSym) && !classSym.is(Trait) && !classSym.is(ModuleClass))
+          if (classSym.isJSType && !classSym.is(Trait) && !classSym.is(ModuleClass))
             classSym
           else
             fail()
@@ -3999,7 +3999,7 @@ class JSCodeGen()(using genCtx: Context) {
     } else {
       val cls = encodeClassName(sym)
       val tree =
-        if (isJSType(sym)) js.LoadJSModule(cls)
+        if (sym.isJSType) js.LoadJSModule(cls)
         else js.LoadModule(cls)
       MaybeGlobalScope.NotGlobalScope(tree)
     }

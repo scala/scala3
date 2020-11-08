@@ -370,7 +370,7 @@ object TypeOps:
           }
       if needsRefinement then
         RefinedType(parent, decl.name, decl.info)
-          .reporting(i"add ref $parent $decl --> " + result, typr)
+          .showing(i"add ref $parent $decl --> " + result, typr)
       else parent
     }
 

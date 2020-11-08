@@ -36,9 +36,7 @@ class ScalaPageCreator(
   override def pageForModule(m: DModule): ModulePageNode = super.pageForModule(m)
 
   private def updatePageNameForMember(page: PageNode, p: Member) =
-    val name = p.kind match
-      case Kind.Extension(_) =>  s"extension_${page.getName}"
-      case _ => page.getName
+    val name = page.getName
 
     page.modified(name, page.getChildren)
 
@@ -164,7 +162,7 @@ class ScalaPageCreator(
 
   extension (b: DocBuilder):
     def descriptionIfNotEmpty(d: Documentable): DocBuilder = {
-      val desc = contentForDescription(d).asScala.toSeq
+      val desc = this.contentForDescription(d).asScala.toSeq
       val res = if desc.isEmpty then b else b
         .sourceSetDependentHint(
           Set(d.getDri),

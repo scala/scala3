@@ -159,7 +159,7 @@ trait ConstraintHandling {
     val bound = adjust(rawBound)
     bound.exists
     && addOneBound(param, bound, isUpper) && others.forall(addOneBound(_, bound, isUpper))
-        .reporting(i"added $description = $result$location", constr)
+        .showing(i"added $description = $result$location", constr)
   end addBoundTransitively
 
   protected def addLess(p1: TypeParamRef, p2: TypeParamRef)(using Context): Boolean = {

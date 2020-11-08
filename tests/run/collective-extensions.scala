@@ -4,11 +4,12 @@ extension (x: String)
   def baz(y: String): String =
     val x = y
     bar(x)
-  def bam(y: String): String = this.extension_baz(x)(y)
+  def bam(y: String): String = this.baz(x)(y)
   def ban(foo: String): String = x + foo
   def bao(y: String): String =
-    val bam = "ABC"
+    val bam = name
     x ++ y ++ bam
+  def name: String = "ABC"
 
   def app(n: Int, suffix: String): String =
     if n == 0 then x ++ suffix

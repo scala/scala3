@@ -65,7 +65,7 @@ object Instances extends Common:
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
   def descending[T](using asc: Ord[T]): Ord[T] = new Ord[T]:
-    extension (x: T) def compareTo(y: T) = asc.extension_compareTo(y)(x)
+    extension (x: T) def compareTo(y: T) = asc.compareTo(y)(x)
 
   def minimum[T](xs: List[T])(using Ord[T]) =
     maximum(xs)(using descending)
@@ -163,7 +163,7 @@ object AnonymousInstances extends Common:
     def second = xs.tail.head
 
   given [From, To](using c: Convertible[From, To]) as Convertible[List[From], List[To]]:
-    extension (x: List[From]) def convert: List[To] = x.map(c.extension_convert)
+    extension (x: List[From]) def convert: List[To] = x.map(c.convert)
 
   given Monoid[String]:
     extension (x: String) def combine(y: String): String = x.concat(y)
@@ -190,7 +190,7 @@ object Implicits extends Common:
 
   class given_Convertible_List_List[From, To](implicit c: Convertible[From, To])
   extends Convertible[List[From], List[To]]:
-    extension (x: List[From]) def convert: List[To] = x.map(c.extension_convert)
+    extension (x: List[From]) def convert: List[To] = x.map(c.convert)
   implicit def given_Convertible_List_List[From, To](implicit c: Convertible[From, To])
     : Convertible[List[From], List[To]] =
     new given_Convertible_List_List[From, To]
@@ -200,7 +200,7 @@ object Implicits extends Common:
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
   def descending[T](implicit asc: Ord[T]): Ord[T] = new Ord[T]:
-    extension (x: T) def compareTo(y: T) = asc.extension_compareTo(y)(x)
+    extension (x: T) def compareTo(y: T) = asc.compareTo(y)(x)
 
   def minimum[T](xs: List[T])(implicit cmp: Ord[T]) =
     maximum(xs)(descending)

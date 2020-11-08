@@ -1187,7 +1187,7 @@ trait Applications extends Compatibility {
             typedType(untpd.rename(tree, tree.name.toTypeName))(using nestedCtx)
           ttree.tpe match {
             case alias: TypeRef if alias.info.isTypeAlias && !nestedCtx.reporter.hasErrors =>
-              companionRef(alias) match {
+              Inferencing.companionRef(alias) match {
                 case companion: TermRef => return untpd.ref(companion).withSpan(tree.span)
                 case _ =>
               }
@@ -1392,7 +1392,7 @@ trait Applications extends Compatibility {
   }
 
   /** Does `tp` have an extension method named `xname` with this-argument `argType` and
-   *  result matching `resultType`? `xname` is supposed to start with `extension_`.
+   *  result matching `resultType`?
    */
   def hasExtensionMethodNamed(tp: Type, xname: TermName, argType: Type, resultType: Type)(using Context) = {
     def qualifies(mbr: Denotation) =
@@ -2162,7 +2162,9 @@ trait Applications extends Compatibility {
 
     val (core, pt1) = normalizePt(methodRef, pt)
     val app = withMode(Mode.SynthesizeExtMethodReceiver) {
-      typed(untpd.Apply(core, untpd.TypedSplice(receiver) :: Nil), pt1, ctx.typerState.ownedVars)
+      typed(
+        untpd.Apply(core, untpd.TypedSplice(receiver, isExtensionReceiver = true) :: Nil),
+        pt1, ctx.typerState.ownedVars)
     }
     def isExtension(tree: Tree): Boolean = methPart(tree) match {
       case Inlined(call, _, _) => isExtension(call)

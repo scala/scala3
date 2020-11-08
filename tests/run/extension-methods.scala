@@ -2,7 +2,7 @@ object Test extends App {
 
   extension (x: Int) def em: Boolean = x > 0
 
-  assert(1.em == extension_em(1))
+  assert(1.em == em(1))
 
   case class Circle(x: Double, y: Double, radius: Double)
 
@@ -10,7 +10,7 @@ object Test extends App {
 
   val circle = new Circle(1, 1, 2.0)
 
-  assert(circle.circumference == extension_circumference(circle))
+  assert(circle.circumference == this.circumference(circle))
 
   extension (xs: Seq[String]) def longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
@@ -113,7 +113,7 @@ object Test extends App {
 
   def mappAll[F[_]: Monad, T](x: T, fs: List[T => T]): F[T] =
     fs.foldLeft(implicitly[Monad[F]].pure(x))((x: F[T], f: T => T) =>
-      if (true) implicitly[Monad[F]].extension_map(x)(f)
+      if (true) implicitly[Monad[F]].map(x)(f)
       else if (true) x.map(f)
       else x.map[T, T](f)
     )

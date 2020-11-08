@@ -325,6 +325,7 @@ object SymDenotations {
         case _ =>
           Nil
 
+      ensureCompleted()
       if rawParamss.isEmpty then recurWithoutParamss(info)
       else recurWithParamss(info, rawParamss)
     end paramSymss
@@ -339,6 +340,7 @@ object SymDenotations {
         case (fst :: Nil) :: _ => fst
         case _ => NoSymbol
       assert(isAllOf(ExtensionMethod))
+      ensureCompleted()
       leadParam(rawParamss)
 
     /** The denotation is completed: info is not a lazy type and attributes have defined values */

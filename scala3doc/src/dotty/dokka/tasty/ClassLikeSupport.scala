@@ -238,7 +238,6 @@ trait ClassLikeSupport:
     val name = methodKind match
       case Kind.Constructor => "this"
       case Kind.Given(_, _) => methodSymbol.name.stripPrefix("given_")
-      case Kind.Extension(_) => methodSymbol.name.stripPrefix("extension_")
       case _ => methodSymbol.name
 
     new DFunction(

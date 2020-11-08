@@ -125,7 +125,7 @@ final class ProperGadtConstraint private(
 
     // The replaced symbols are picked up here.
     addToConstraint(poly1, tvars)
-      .reporting(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
+      .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
@@ -158,7 +158,7 @@ final class ProperGadtConstraint private(
         case bound =>
           addBoundTransitively(symTvar.origin, bound, isUpper)
       }
-    ).reporting({
+    ).showing({
       val descr = if (isUpper) "upper" else "lower"
       val op = if (isUpper) "<:" else ">:"
       i"adding $descr bound $sym $op $bound = $result"
@@ -187,7 +187,7 @@ final class ProperGadtConstraint private(
             case tb => tb
           }
         retrieveBounds
-          //.reporting(i"gadt bounds $sym: $result", gadts)
+          //.showing(i"gadt bounds $sym: $result", gadts)
           //.ensuring(containsNoInternalTypes(_))
     }
 

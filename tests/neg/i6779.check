@@ -1,15 +1,15 @@
--- [E007] Type Mismatch Error: tests/neg/i6779.scala:9:30 --------------------------------------------------------------
-9 |def g1[T](x: T): F[G[T]] = x.f(using summon[Stuff]) // error
-  |                           ^^^^^^^^^^^^^^^^^^^^^^^^
-  |                           Found:    F[T]
-  |                           Required: F[G[T]]
--- [E007] Type Mismatch Error: tests/neg/i6779.scala:11:29 -------------------------------------------------------------
-11 |def g2[T](x: T): F[G[T]] = x.f // error
-   |                           ^^^
-   |                           Found:    F[T]
-   |                           Required: F[G[T]]
--- [E007] Type Mismatch Error: tests/neg/i6779.scala:13:41 -------------------------------------------------------------
-13 |def g3[T](x: T): F[G[T]] = extension_f(x)(using summon[Stuff]) // error
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                           Found:    F[T]
-   |                           Required: F[G[T]]
+-- [E007] Type Mismatch Error: tests/neg/i6779.scala:10:32 -------------------------------------------------------------
+10 |  def g1[T](x: T): F[G[T]] = x.f(using summon[Stuff]) // error
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                             Found:    F[T]
+   |                             Required: F[G[T]]
+-- [E007] Type Mismatch Error: tests/neg/i6779.scala:12:31 -------------------------------------------------------------
+12 |  def g2[T](x: T): F[G[T]] = x.f // error
+   |                             ^^^
+   |                             Found:    F[T]
+   |                             Required: F[G[T]]
+-- [E007] Type Mismatch Error: tests/neg/i6779.scala:14:38 -------------------------------------------------------------
+14 |  def g3[T](x: T): F[G[T]] = this.f(x)(using summon[Stuff]) // error
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                             Found:    F[T]
+   |                             Required: F[G[T]]

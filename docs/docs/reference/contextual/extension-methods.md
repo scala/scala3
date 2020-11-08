@@ -21,14 +21,13 @@ circle.circumference
 
 ### Translation of Extension Methods
 
-Extension methods are methods that have a parameter clause in front of the defined identifier.
-An extension method named `f` translates to the method named `extension_f` that takes the leading parameter section as its first argument list.
-So, the definition of `circumference` above translates to the following method, and can also be invoked as such:
+An extension method translates to a specially labelled method that takes the leading parameter section as its first argument list. The label, expressed
+as `<extension>` here, is compiler-internal. So, the definition of `circumference` above translates to the following method, and can also be invoked as such:
 
 ```scala
-def extension_circumference(c: Circle): Double = c.radius * math.Pi * 2
+<extension> def circumference(c: Circle): Double = c.radius * math.Pi * 2
 
-assert(circle.circumference == extension_circumference(circle))
+assert(circle.circumference == circumference(circle))
 ```
 
 ### Operators
@@ -51,9 +50,9 @@ x min 3
 The three definitions above translate to
 
 ```scala
-def extension_< (x: String)(y: String): Boolean = ...
-def extension_+: (xs: Seq[Elem])(x: Elem): Seq[Elem] = ...
-@infix def extension_min(x: Number)(y: Number): Number = ...
+<extension> def < (x: String)(y: String): Boolean = ...
+<extension> def +: (xs: Seq[Elem])(x: Elem): Seq[Elem] = ...
+@infix <extension> def min(x: Number)(y: Number): Number = ...
 ```
 
 Note the swap of the two parameters `x` and `xs` when translating
@@ -101,7 +100,7 @@ By contrast, using clauses can be defined for the `extension` as well as per `de
 Sometimes, one wants to define several extension methods that share the same
 left-hand parameter type. In this case one can "pull out" the common parameters into
 a single extension and enclose all methods in braces or an indented region following a '`:`'.
-Following an example using an indented region:
+Example:
 
 ```scala
 extension (ss: Seq[String]):
@@ -139,6 +138,16 @@ extension (ss: Seq[String])
 
 extension (ss: Seq[String])
   def longestString: String = ss.longestStrings.head
+```
+
+Collective extensions also can take type parameters and have using clauses. Example:
+
+```scala
+extension [T](xs: List[T])(using Ordering[T]):
+  def smallest(n: Int): List[T] = xs.sorted.take(n)
+  def smallestIndices(n: Int): List[Int] =
+    val limit = smallest(n).max
+    xs.zipWithIndex.collect { case (x, i) if x <= limit => i }
 ```
 
 ### Translation of Calls to Extension Methods
@@ -218,9 +227,9 @@ The precise rules for resolving a selection to an extension method are as follow
 Assume a selection `e.m[Ts]` where `m` is not a member of `e`, where the type arguments `[Ts]` are optional, and where `T` is the expected type.
 The following two rewritings are tried in order:
 
- 1. The selection is rewritten to `extension_m[Ts](e)`.
+ 1. The selection is rewritten to `m[Ts](e)`.
  2. If the first rewriting does not typecheck with expected type `T`,
-    and there is an extension method `m` in some eligible object `o`, the selection is rewritten to `o.extension_m[Ts](e)`. An object `o` is _eligible_ if
+    and there is an extension method `m` in some eligible object `o`, the selection is rewritten to `o.m[Ts](e)`. An object `o` is _eligible_ if
 
     - `o` forms part of the implicit scope of `T`, or
     - `o` is a given instance that is visible at the point of the application, or
@@ -229,15 +238,13 @@ The following two rewritings are tried in order:
     This second rewriting is attempted at the time where the compiler also tries an implicit conversion
     from `T` to a type containing `m`. If there is more than one way of rewriting, an ambiguity error results.
 
-An extension method can also be used as an identifier by itself. If an identifier `m` does not
-resolve, the identifier is rewritten to:
-
-- `x.m`    if the identifier appears in an extension with parameter `x`
-           and the method `m` resolves to an extension method in
-           a (possibly collective) extension that also contains the call,
-- `this.m` otherwise
-
-and the rewritten term is again tried as an application of an extension method. In
+An extension method can also be referenced using a simple identifier without a preceding expression. If an identifier `g` appears in the body of an extension method `f` and refers to an extension method `g` that is defined in the same collective extension
+```scala
+extension (x: T)
+  def f ... = ... g ...
+  def g ...
+```
+the identifier is rewritten to `x.g`. This is also the case if `f` and `g` are the same method. Example:
 
 ```scala
 extension (s: String)
@@ -249,27 +256,11 @@ extension (s: String)
 The recursive call `position(ch, n + 1)` expands to `s.position(ch, n + 1)` in this case. The whole extension method rewrites to
 
 ```scala
-def extension_position(s: String)(ch: Char, n: Int): Int =
-  if n < s.length && s(n) != ch then extension_position(s)(ch, n + 1)
+def position(s: String)(ch: Char, n: Int): Int =
+  if n < s.length && s(n) != ch then position(s)(ch, n + 1)
   else n
 ```
 
-### More Details
-
-1. To avoid confusion, names of normal methods are not allowed to start with `extension_`.
-
-2. A named import such as `import a.m` of an extension method in `a` will make `m` only available as an extension method.
-   To access it under `extension_m` that name has to be imported separately. Example:
-
-   ```scala
-   object DoubleOps:
-     extension (x: Double) def ** (exponent: Int): Double =
-       require(exponent >= 0)
-       if exponent == 0 then 1 else x * (x ** (exponent - 1))
-
-   import DoubleOps.{**, extension_**}
-   assert(2.0 ** 3 == extension_**(2.0)(3))
-   ```
 
 ### Syntax
 

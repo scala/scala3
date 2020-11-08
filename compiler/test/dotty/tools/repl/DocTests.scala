@@ -30,7 +30,7 @@ class DocTests extends ReplTest {
     eval("/** doc */ trait Foo").andThen { implicit s =>
       assertEquals("doc", doc("new Foo"))
     }
-
+/*
   @Test def docOfExtension1 =
     eval("/** doc */ extension (x: Int) def foo = 0").andThen { implicit s =>
       assertEquals("doc", doc("extension_foo"))
@@ -47,7 +47,7 @@ class DocTests extends ReplTest {
       assertEquals("doc2", doc("extension_bar"))
       assertEquals("doc0", doc("extension_baz"))
     }
-
+*/
   @Test def docOfDefInObject =
     eval("object O { /** doc */ def foo = 0 }").andThen { implicit s =>
       assertEquals("doc", doc("O.foo"))

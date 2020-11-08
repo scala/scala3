@@ -31,6 +31,6 @@ object Main {
 
   def f3 = {
     import Semigroup.SumSemiGroupDeco
-    sumSemigroup.extension_append(1)(2)
+    sumSemigroup.append(1)(2)
   }
 }

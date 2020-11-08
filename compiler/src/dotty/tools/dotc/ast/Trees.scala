@@ -343,10 +343,7 @@ object Trees {
         if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR) Span(point)
         else {
           val realName = name.stripModuleClassSuffix.lastPart
-          var length = realName.length
-          if (rawMods.is(ExtensionMethod) || symbol.is(ExtensionMethod)) && name.isExtensionName then
-            length -= "extension_".length
-          Span(point, point + length, point)
+          Span(point, point + realName.length, point)
         }
       }
       else span

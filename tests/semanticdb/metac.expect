@@ -757,12 +757,12 @@ _empty_/Enums.Suits.Diamonds. => case val static enum method Diamonds
 _empty_/Enums.Suits.Hearts. => case val static enum method Hearts
 _empty_/Enums.Suits.Spades. => case val static enum method Spades
 _empty_/Enums.Suits.derived$Eql(). => implicit method derived$Eql
-_empty_/Enums.Suits.extension_isBlack(). => method extension_isBlack
-_empty_/Enums.Suits.extension_isBlack().(suit) => param suit
-_empty_/Enums.Suits.extension_isRed(). => method extension_isRed
-_empty_/Enums.Suits.extension_isRed().(suit) => param suit
 _empty_/Enums.Suits.fromOrdinal(). => method fromOrdinal
 _empty_/Enums.Suits.fromOrdinal().(ordinal) => param ordinal
+_empty_/Enums.Suits.isBlack(). => method isBlack
+_empty_/Enums.Suits.isBlack().(suit) => param suit
+_empty_/Enums.Suits.isRed(). => method isRed
+_empty_/Enums.Suits.isRed().(suit) => param suit
 _empty_/Enums.Suits.valueOf(). => method valueOf
 _empty_/Enums.Suits.valueOf().($name) => param $name
 _empty_/Enums.Suits.values(). => method values
@@ -819,12 +819,12 @@ _empty_/Enums.`<:<`.fromOrdinal(). => method fromOrdinal
 _empty_/Enums.`<:<`.fromOrdinal().(ordinal) => param ordinal
 _empty_/Enums.`<:<`.given_T(). => final implicit method given_T
 _empty_/Enums.`<:<`.given_T().[T] => typeparam T
-_empty_/Enums.extension_unwrap(). => method extension_unwrap
-_empty_/Enums.extension_unwrap().(ev) => implicit param ev
-_empty_/Enums.extension_unwrap().(opt) => param opt
-_empty_/Enums.extension_unwrap().[A] => typeparam A
-_empty_/Enums.extension_unwrap().[B] => typeparam B
 _empty_/Enums.some1. => val method some1
+_empty_/Enums.unwrap(). => method unwrap
+_empty_/Enums.unwrap().(ev) => implicit param ev
+_empty_/Enums.unwrap().(opt) => param opt
+_empty_/Enums.unwrap().[A] => typeparam A
+_empty_/Enums.unwrap().[B] => typeparam B
 local0 => param x
 
 Occurrences:
@@ -851,22 +851,22 @@ Occurrences:
 [11:25..11:30): Clubs <- _empty_/Enums.Suits.Clubs.
 [11:32..11:40): Diamonds <- _empty_/Enums.Suits.Diamonds.
 [13:9..13:14): Suits <- _empty_/Enums.Suits.
-[14:15..14:19): suit <- _empty_/Enums.Suits.extension_isRed().(suit)
+[14:15..14:19): suit <- _empty_/Enums.Suits.isRed().(suit)
 [14:21..14:26): Suits -> _empty_/Enums.Suits#
-[14:32..14:37): isRed <- _empty_/Enums.Suits.extension_isRed().
+[14:32..14:37): isRed <- _empty_/Enums.Suits.isRed().
 [14:39..14:46): Boolean -> scala/Boolean#
-[15:6..15:10): suit -> _empty_/Enums.Suits.extension_isRed().(suit)
+[15:6..15:10): suit -> _empty_/Enums.Suits.isRed().(suit)
 [15:11..15:13): == -> scala/Any#`==`().
 [15:14..15:20): Hearts -> _empty_/Enums.Suits.Hearts.
 [15:21..15:23): || -> scala/Boolean#`||`().
-[15:24..15:28): suit -> _empty_/Enums.Suits.extension_isRed().(suit)
+[15:24..15:28): suit -> _empty_/Enums.Suits.isRed().(suit)
 [15:29..15:31): == -> scala/Any#`==`().
 [15:32..15:40): Diamonds -> _empty_/Enums.Suits.Diamonds.
-[17:15..17:19): suit <- _empty_/Enums.Suits.extension_isBlack().(suit)
+[17:15..17:19): suit <- _empty_/Enums.Suits.isBlack().(suit)
 [17:21..17:26): Suits -> _empty_/Enums.Suits#
-[17:32..17:39): isBlack <- _empty_/Enums.Suits.extension_isBlack().
+[17:32..17:39): isBlack <- _empty_/Enums.Suits.isBlack().
 [17:41..17:48): Boolean -> scala/Boolean#
-[17:51..17:55): suit -> _empty_/Enums.Suits.extension_isBlack().(suit)
+[17:51..17:55): suit -> _empty_/Enums.Suits.isBlack().(suit)
 [18:11..18:17): Spades -> _empty_/Enums.Suits.Spades.
 [18:20..18:25): Clubs -> _empty_/Enums.Suits.Clubs.
 [21:7..21:15): WeekDays <- _empty_/Enums.WeekDays#
@@ -944,30 +944,30 @@ Occurrences:
 [49:24..49:25): T -> _empty_/Enums.`<:<`.given_T().[T]
 [49:29..49:33): Refl -> _empty_/Enums.`<:<`.Refl.
 [49:33..49:33): -> _empty_/Enums.`<:<`.Refl.apply().
-[51:13..51:14): A <- _empty_/Enums.extension_unwrap().[A]
-[51:16..51:17): B <- _empty_/Enums.extension_unwrap().[B]
-[51:19..51:22): opt <- _empty_/Enums.extension_unwrap().(opt)
+[51:13..51:14): A <- _empty_/Enums.unwrap().[A]
+[51:16..51:17): B <- _empty_/Enums.unwrap().[B]
+[51:19..51:22): opt <- _empty_/Enums.unwrap().(opt)
 [51:24..51:30): Option -> scala/Option#
-[51:31..51:32): A -> _empty_/Enums.extension_unwrap().[A]
-[51:39..51:45): unwrap <- _empty_/Enums.extension_unwrap().
-[51:52..51:54): ev <- _empty_/Enums.extension_unwrap().(ev)
-[51:56..51:57): A -> _empty_/Enums.extension_unwrap().[A]
+[51:31..51:32): A -> _empty_/Enums.unwrap().[A]
+[51:39..51:45): unwrap <- _empty_/Enums.unwrap().
+[51:52..51:54): ev <- _empty_/Enums.unwrap().(ev)
+[51:56..51:57): A -> _empty_/Enums.unwrap().[A]
 [51:58..51:61): <:< -> _empty_/Enums.`<:<`#
 [51:62..51:68): Option -> scala/Option#
-[51:69..51:70): B -> _empty_/Enums.extension_unwrap().[B]
+[51:69..51:70): B -> _empty_/Enums.unwrap().[B]
 [51:74..51:80): Option -> scala/Option#
-[51:81..51:82): B -> _empty_/Enums.extension_unwrap().[B]
-[51:86..51:88): ev -> _empty_/Enums.extension_unwrap().(ev)
+[51:81..51:82): B -> _empty_/Enums.unwrap().[B]
+[51:86..51:88): ev -> _empty_/Enums.unwrap().(ev)
 [52:9..52:13): Refl -> _empty_/Enums.`<:<`.Refl.
 [52:13..52:13): -> _empty_/Enums.`<:<`.Refl.unapply().
-[52:19..52:22): opt -> _empty_/Enums.extension_unwrap().(opt)
+[52:19..52:22): opt -> _empty_/Enums.unwrap().(opt)
 [52:23..52:30): flatMap -> scala/Option#flatMap().
 [52:31..52:39): identity -> scala/Predef.identity().
 [52:31..52:31): -> local0
 [52:40..52:46): Option -> scala/Option#
-[52:47..52:48): B -> _empty_/Enums.extension_unwrap().[B]
+[52:47..52:48): B -> _empty_/Enums.unwrap().[B]
 [54:6..54:11): some1 <- _empty_/Enums.some1.
-[54:14..54:14): -> _empty_/Enums.extension_unwrap().
+[54:14..54:14): -> _empty_/Enums.unwrap().
 [54:14..54:18): Some -> scala/Some.
 [54:18..54:18): -> scala/Some.apply().
 [54:19..54:23): Some -> scala/Some.
@@ -1239,86 +1239,86 @@ a/b/Givens. => final object Givens
 a/b/Givens.Monoid# => trait Monoid
 a/b/Givens.Monoid#[A] => typeparam A
 a/b/Givens.Monoid#`<init>`(). => primary ctor <init>
+a/b/Givens.Monoid#combine(). => abstract method combine
+a/b/Givens.Monoid#combine().(x) => param x
+a/b/Givens.Monoid#combine().(y) => param y
 a/b/Givens.Monoid#empty(). => abstract method empty
-a/b/Givens.Monoid#extension_combine(). => abstract method extension_combine
-a/b/Givens.Monoid#extension_combine().(x) => param x
-a/b/Givens.Monoid#extension_combine().(y) => param y
-a/b/Givens.extension_sayGoodbye(). => method extension_sayGoodbye
-a/b/Givens.extension_sayGoodbye().(any) => param any
-a/b/Givens.extension_sayGoodbye().[B] => typeparam B
-a/b/Givens.extension_sayHello(). => method extension_sayHello
-a/b/Givens.extension_sayHello().(any) => param any
-a/b/Givens.extension_sayHello().[A] => typeparam A
-a/b/Givens.extension_saySoLong(). => method extension_saySoLong
-a/b/Givens.extension_saySoLong().(any) => param any
-a/b/Givens.extension_saySoLong().[B] => typeparam B
 a/b/Givens.foo(). => method foo
 a/b/Givens.foo().(A) => implicit param A
 a/b/Givens.foo().[A] => typeparam A
 a/b/Givens.given_Monoid_String. => final implicit object given_Monoid_String
+a/b/Givens.given_Monoid_String.combine(). => method combine
+a/b/Givens.given_Monoid_String.combine().(x) => param x
+a/b/Givens.given_Monoid_String.combine().(y) => param y
 a/b/Givens.given_Monoid_String.empty(). => method empty
-a/b/Givens.given_Monoid_String.extension_combine(). => method extension_combine
-a/b/Givens.given_Monoid_String.extension_combine().(x) => param x
-a/b/Givens.given_Monoid_String.extension_combine().(y) => param y
 a/b/Givens.goodbye1. => val method goodbye1
 a/b/Givens.hello1. => val method hello1
 a/b/Givens.int2String(). => final implicit macro int2String
+a/b/Givens.sayGoodbye(). => method sayGoodbye
+a/b/Givens.sayGoodbye().(any) => param any
+a/b/Givens.sayGoodbye().[B] => typeparam B
+a/b/Givens.sayHello(). => method sayHello
+a/b/Givens.sayHello().(any) => param any
+a/b/Givens.sayHello().[A] => typeparam A
+a/b/Givens.saySoLong(). => method saySoLong
+a/b/Givens.saySoLong().(any) => param any
+a/b/Givens.saySoLong().[B] => typeparam B
 a/b/Givens.soLong1. => val method soLong1
 
 Occurrences:
 [0:8..0:9): a <- a/
 [1:8..1:9): b <- a/b/
 [3:7..3:13): Givens <- a/b/Givens.
-[5:13..5:14): A <- a/b/Givens.extension_sayHello().[A]
-[5:16..5:19): any <- a/b/Givens.extension_sayHello().(any)
-[5:21..5:22): A -> a/b/Givens.extension_sayHello().[A]
-[6:8..6:16): sayHello <- a/b/Givens.extension_sayHello().
+[5:13..5:14): A <- a/b/Givens.sayHello().[A]
+[5:16..5:19): any <- a/b/Givens.sayHello().(any)
+[5:21..5:22): A -> a/b/Givens.sayHello().[A]
+[6:8..6:16): sayHello <- a/b/Givens.sayHello().
 [6:21..6:21): -> scala/StringContext.apply().
-[6:34..6:37): any -> a/b/Givens.extension_sayHello().(any)
+[6:34..6:37): any -> a/b/Givens.sayHello().(any)
 [6:37..6:38): " -> scala/StringContext#s().
-[8:13..8:14): B <- a/b/Givens.extension_sayGoodbye().[B]
-[8:13..8:14): B <- a/b/Givens.extension_saySoLong().[B]
-[8:16..8:19): any <- a/b/Givens.extension_sayGoodbye().(any)
-[8:16..8:19): any <- a/b/Givens.extension_saySoLong().(any)
-[8:21..8:22): B -> a/b/Givens.extension_sayGoodbye().[B]
-[8:21..8:22): B -> a/b/Givens.extension_saySoLong().[B]
-[9:8..9:18): sayGoodbye <- a/b/Givens.extension_sayGoodbye().
+[8:13..8:14): B <- a/b/Givens.sayGoodbye().[B]
+[8:13..8:14): B <- a/b/Givens.saySoLong().[B]
+[8:16..8:19): any <- a/b/Givens.sayGoodbye().(any)
+[8:16..8:19): any <- a/b/Givens.saySoLong().(any)
+[8:21..8:22): B -> a/b/Givens.sayGoodbye().[B]
+[8:21..8:22): B -> a/b/Givens.saySoLong().[B]
+[9:8..9:18): sayGoodbye <- a/b/Givens.sayGoodbye().
 [9:23..9:23): -> scala/StringContext.apply().
-[9:38..9:41): any -> a/b/Givens.extension_sayGoodbye().(any)
+[9:38..9:41): any -> a/b/Givens.sayGoodbye().(any)
 [9:41..9:42): " -> scala/StringContext#s().
-[10:8..10:17): saySoLong <- a/b/Givens.extension_saySoLong().
+[10:8..10:17): saySoLong <- a/b/Givens.saySoLong().
 [10:22..10:22): -> scala/StringContext.apply().
-[10:37..10:40): any -> a/b/Givens.extension_saySoLong().(any)
+[10:37..10:40): any -> a/b/Givens.saySoLong().(any)
 [10:40..10:41): " -> scala/StringContext#s().
 [12:6..12:12): hello1 <- a/b/Givens.hello1.
-[12:15..12:15): -> a/b/Givens.extension_sayHello().
+[12:15..12:15): -> a/b/Givens.sayHello().
 [13:6..13:14): goodbye1 <- a/b/Givens.goodbye1.
-[13:17..13:17): -> a/b/Givens.extension_sayGoodbye().
+[13:17..13:17): -> a/b/Givens.sayGoodbye().
 [14:6..14:13): soLong1 <- a/b/Givens.soLong1.
-[14:16..14:16): -> a/b/Givens.extension_saySoLong().
+[14:16..14:16): -> a/b/Givens.saySoLong().
 [16:8..16:14): Monoid <- a/b/Givens.Monoid#
 [16:14..16:14): <- a/b/Givens.Monoid#`<init>`().
 [16:15..16:16): A <- a/b/Givens.Monoid#[A]
 [17:8..17:13): empty <- a/b/Givens.Monoid#empty().
 [17:15..17:16): A -> a/b/Givens.Monoid#[A]
-[18:15..18:16): x <- a/b/Givens.Monoid#extension_combine().(x)
+[18:15..18:16): x <- a/b/Givens.Monoid#combine().(x)
 [18:18..18:19): A -> a/b/Givens.Monoid#[A]
-[18:25..18:32): combine <- a/b/Givens.Monoid#extension_combine().
-[18:33..18:34): y <- a/b/Givens.Monoid#extension_combine().(y)
+[18:25..18:32): combine <- a/b/Givens.Monoid#combine().
+[18:33..18:34): y <- a/b/Givens.Monoid#combine().(y)
 [18:36..18:37): A -> a/b/Givens.Monoid#[A]
 [18:40..18:41): A -> a/b/Givens.Monoid#[A]
 [20:8..21:3): <- a/b/Givens.given_Monoid_String.
 [20:8..20:14): Monoid -> a/b/Givens.Monoid#
 [20:15..20:21): String -> scala/Predef.String#
 [21:8..21:13): empty <- a/b/Givens.given_Monoid_String.empty().
-[22:15..22:16): x <- a/b/Givens.given_Monoid_String.extension_combine().(x)
+[22:15..22:16): x <- a/b/Givens.given_Monoid_String.combine().(x)
 [22:18..22:24): String -> scala/Predef.String#
-[22:30..22:37): combine <- a/b/Givens.given_Monoid_String.extension_combine().
-[22:38..22:39): y <- a/b/Givens.given_Monoid_String.extension_combine().(y)
+[22:30..22:37): combine <- a/b/Givens.given_Monoid_String.combine().
+[22:38..22:39): y <- a/b/Givens.given_Monoid_String.combine().(y)
 [22:41..22:47): String -> scala/Predef.String#
-[22:51..22:52): x -> a/b/Givens.given_Monoid_String.extension_combine().(x)
+[22:51..22:52): x -> a/b/Givens.given_Monoid_String.combine().(x)
 [22:53..22:54): + -> java/lang/String#`+`().
-[22:55..22:56): y -> a/b/Givens.given_Monoid_String.extension_combine().(y)
+[22:55..22:56): y -> a/b/Givens.given_Monoid_String.combine().(y)
 [24:15..24:25): int2String <- a/b/Givens.int2String().
 [24:29..24:39): Conversion -> scala/Conversion#
 [24:40..24:43): Int -> scala/Int#
@@ -1331,11 +1331,11 @@ Occurrences:
 [26:29..26:30): A -> a/b/Givens.foo().[A]
 [26:34..26:35): A -> a/b/Givens.foo().[A]
 [26:38..26:39): A -> a/b/Givens.foo().(A)
-[26:40..26:57): extension_combine -> a/b/Givens.Monoid#extension_combine().
-[26:58..26:59): A -> a/b/Givens.foo().(A)
-[26:60..26:65): empty -> a/b/Givens.Monoid#empty().
-[26:67..26:68): A -> a/b/Givens.foo().(A)
-[26:69..26:74): empty -> a/b/Givens.Monoid#empty().
+[26:40..26:47): combine -> a/b/Givens.Monoid#combine().
+[26:48..26:49): A -> a/b/Givens.foo().(A)
+[26:50..26:55): empty -> a/b/Givens.Monoid#empty().
+[26:57..26:58): A -> a/b/Givens.foo().(A)
+[26:59..26:64): empty -> a/b/Givens.Monoid#empty().
 
 expect/ImplicitConversion.scala
 -------------------------------
@@ -3935,38 +3935,38 @@ _empty_/toplevel$package.a. => val method a
 _empty_/toplevel$package.combine(). => method combine
 _empty_/toplevel$package.combine().(x) => param x
 _empty_/toplevel$package.combine().(y) => param y
-_empty_/toplevel$package.combine().(z) => param z
 _empty_/toplevel$package.combine(+1). => method combine
-_empty_/toplevel$package.extension_combine(). => method extension_combine
-_empty_/toplevel$package.extension_combine().(x) => param x
-_empty_/toplevel$package.extension_combine().(y) => param y
+_empty_/toplevel$package.combine(+1).(x) => param x
+_empty_/toplevel$package.combine(+1).(y) => param y
+_empty_/toplevel$package.combine(+1).(z) => param z
+_empty_/toplevel$package.combine(+2). => method combine
 _empty_/toplevel$package.foo(). => method foo
 local0 => val local error
 
 Occurrences:
 [0:0..0:0): <- _empty_/toplevel$package.
 [0:11..0:12): a <- _empty_/toplevel$package.a.
-[1:11..1:12): x <- _empty_/toplevel$package.extension_combine().(x)
+[1:11..1:12): x <- _empty_/toplevel$package.combine().(x)
 [1:14..1:17): Int -> scala/Int#
-[1:23..1:30): combine <- _empty_/toplevel$package.extension_combine().
-[1:32..1:33): y <- _empty_/toplevel$package.extension_combine().(y)
+[1:23..1:30): combine <- _empty_/toplevel$package.combine().
+[1:32..1:33): y <- _empty_/toplevel$package.combine().(y)
 [1:35..1:38): Int -> scala/Int#
-[1:42..1:43): x -> _empty_/toplevel$package.extension_combine().(x)
+[1:42..1:43): x -> _empty_/toplevel$package.combine().(x)
 [1:44..1:45): + -> scala/Int#`+`(+4).
-[1:46..1:47): y -> _empty_/toplevel$package.extension_combine().(y)
-[2:4..2:11): combine <- _empty_/toplevel$package.combine().
-[2:12..2:13): x <- _empty_/toplevel$package.combine().(x)
+[1:46..1:47): y -> _empty_/toplevel$package.combine().(y)
+[2:4..2:11): combine <- _empty_/toplevel$package.combine(+1).
+[2:12..2:13): x <- _empty_/toplevel$package.combine(+1).(x)
 [2:15..2:18): Int -> scala/Int#
-[2:20..2:21): y <- _empty_/toplevel$package.combine().(y)
+[2:20..2:21): y <- _empty_/toplevel$package.combine(+1).(y)
 [2:23..2:26): Int -> scala/Int#
-[2:28..2:29): z <- _empty_/toplevel$package.combine().(z)
+[2:28..2:29): z <- _empty_/toplevel$package.combine(+1).(z)
 [2:31..2:34): Int -> scala/Int#
-[2:38..2:39): x -> _empty_/toplevel$package.combine().(x)
+[2:38..2:39): x -> _empty_/toplevel$package.combine(+1).(x)
 [2:40..2:41): + -> scala/Int#`+`(+4).
-[2:42..2:43): y -> _empty_/toplevel$package.combine().(y)
+[2:42..2:43): y -> _empty_/toplevel$package.combine(+1).(y)
 [2:44..2:45): + -> scala/Int#`+`(+4).
-[2:46..2:47): z -> _empty_/toplevel$package.combine().(z)
-[3:4..3:11): combine <- _empty_/toplevel$package.combine(+1).
+[2:46..2:47): z -> _empty_/toplevel$package.combine(+1).(z)
+[3:4..3:11): combine <- _empty_/toplevel$package.combine(+2).
 [4:4..4:7): foo <- _empty_/toplevel$package.foo().
 [5:0..5:0): <- _empty_/MyProgram#
 [5:0..5:0): <- _empty_/MyProgram#`<init>`().

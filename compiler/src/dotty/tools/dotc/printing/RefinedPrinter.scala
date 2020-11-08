@@ -752,11 +752,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   private def useSymbol(tree: untpd.Tree) =
     tree.hasType && tree.symbol.exists && ctx.settings.YprintSyms.value
 
-  protected def nameIdText[T >: Untyped](tree: NameTree[T], dropExtension: Boolean = false): Text =
+  protected def nameIdText[T >: Untyped](tree: NameTree[T]): Text =
     if (tree.hasType && tree.symbol.exists) {
-      var str = nameString(tree.symbol)
-      if tree.symbol.is(ExtensionMethod) && dropExtension && str.startsWith("extension_") then
-        str = str.drop("extension_".length)
+      val str = nameString(tree.symbol)
       tree match {
         case tree: RefTree => withPos(str, tree.sourcePos)
         case tree: MemberDef => withPos(str, tree.sourcePos.withSpan(tree.nameSpan))
@@ -808,7 +806,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               case vparams1 :: rest =>
                 (vparams1, rest)
             (keywordStr("extension") ~~ paramsText(leadingParams)
-             ~~ (defKeyword ~~ valDefText(nameIdText(tree, dropExtension = true))).close,
+             ~~ (defKeyword ~~ valDefText(nameIdText(tree))).close,
              otherParamss)
           else (defKeyword ~~ valDefText(nameIdText(tree)), tree.vparamss)
 

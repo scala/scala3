@@ -219,7 +219,7 @@ trait ImportSuggestions:
      *  applicable to `argType`.
      */
     def extensionMethod(site: TermRef, name: TermName, argType: Type): Option[TermRef] =
-      site.member(name.toExtensionName)
+      site.member(name)
         .alternatives
         .map(mbr => TermRef(site, mbr.symbol))
         .filter(ref =>
@@ -320,7 +320,7 @@ trait ImportSuggestions:
     def importString(ref: TermRef): String =
       val imported =
         if ref.symbol.is(ExtensionMethod) then
-          s"${ctx.printer.toTextPrefix(ref.prefix).show}${ref.symbol.name.dropExtension}"
+          s"${ctx.printer.toTextPrefix(ref.prefix).show}${ref.symbol.name}"
         else
           ctx.printer.toTextRef(ref).show
       s"  import $imported"

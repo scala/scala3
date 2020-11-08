@@ -60,15 +60,15 @@ extension (member: Member):
     val memberWithExtra = member.asInstanceOf[WithExtraProperties[Member]]
     memberWithExtra.withNewExtras(memberWithExtra.getExtra plus ext).asInstanceOf[Member]
 
-  def copy(modifiers: Seq[Modifier]) =
+  def copy(modifiers: Seq[Modifier]): Member =
     val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(modifiers = modifiers)
     putInMember(ext)
 
-  def withOrigin(origin: Origin) =
+  def withOrigin(origin: Origin): Member =
     val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(origin = origin)
     putInMember(ext)
 
-  def withKind(kind: Kind) =
+  def withKind(kind: Kind): Member =
     val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(kind = kind)
     putInMember(ext)
 

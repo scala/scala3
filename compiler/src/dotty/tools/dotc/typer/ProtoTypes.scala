@@ -444,8 +444,9 @@ object ProtoTypes {
     def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
       ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
         resType match {
-          case selProto @ SelectionProto(_: TermName, mbrType, _, _) =>
-            ctx.typer.hasExtensionMethodNamed(tp, selProto.extensionName, argType, mbrType)
+          case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
+               ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
+            || ctx.typer.hasExtensionMethodNamed(tp, selProto.extensionName, argType, mbrType)
               //.reporting(i"has ext $tp $name $argType $mbrType: $result")
           case _ =>
             false
@@ -516,6 +517,12 @@ object ProtoTypes {
 
   /** A prototype for type constructors that are followed by a type application */
   @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways
+
+  extension (pt: Type)
+    def isExtensionApplyProto: Boolean = pt match
+      case PolyProto(targs, res) => res.isExtensionApplyProto
+      case FunProto((arg: untpd.TypedSplice) :: Nil, _) => arg.isExtensionReceiver
+      case _ => false
 
   /** Add all parameters of given type lambda `tl` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,
