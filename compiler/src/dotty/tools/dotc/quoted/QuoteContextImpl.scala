@@ -1567,7 +1567,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
     type TypeRepr = dotc.core.Types.Type
 
-    object TypeRepr extends TypeModule:
+    object TypeRepr extends TypeReprModule:
       def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): TypeRepr =
         qtype.asInstanceOf[scala.internal.quoted.Type[TypeTree]].typeTree.tpe
       def typeConstructorOf(clazz: Class[?]): TypeRepr =
@@ -1592,7 +1592,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
           dotc.core.Symbols.getClassIfDefined(clazz.getCanonicalName).typeRef
     end TypeRepr
 
-    object TypeMethodsImpl extends TypeMethods:
+    object TypeReprMethodsImpl extends TypeReprMethods:
       extension (self: TypeRepr):
         def showExtractors: String =
           Extractors.showType(using QuoteContextImpl.this)(self)
@@ -1639,7 +1639,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
       end extension
-    end TypeMethodsImpl
+    end TypeReprMethodsImpl
 
     type ConstantType = dotc.core.Types.ConstantType
 

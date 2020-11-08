@@ -1746,9 +1746,9 @@ trait Reflection { reflection =>
   /** A type, type constructors, type bounds or NoPrefix */
   type TypeRepr
 
-  val TypeRepr: TypeModule
+  val TypeRepr: TypeReprModule
 
-  trait TypeModule { this: TypeRepr.type =>
+  trait TypeReprModule { this: TypeRepr.type =>
     /** Returns the type or kind (TypeRepr) of T */
     def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): TypeRepr
 
@@ -1756,10 +1756,10 @@ trait Reflection { reflection =>
     def typeConstructorOf(clazz: Class[?]): TypeRepr
   }
 
-  given TypeMethods as TypeMethods = TypeMethodsImpl
-  protected val TypeMethodsImpl: TypeMethods
+  given TypeReprMethods as TypeReprMethods = TypeReprMethodsImpl
+  protected val TypeReprMethodsImpl: TypeReprMethods
 
-  trait TypeMethods {
+  trait TypeReprMethods {
     extension (self: TypeRepr):
 
       /** Shows the tree as extractors */
