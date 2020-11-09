@@ -1,10 +1,10 @@
-package scala.internal.quoted
+package scala.internal
 
 import scala.annotation.{Annotation, compileTimeOnly}
 import scala.quoted._
 
 @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime`")
-object CompileTime {
+object Quoted {
 
   /** A term quote is desugared by the compiler into a call to this method */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprQuote`")

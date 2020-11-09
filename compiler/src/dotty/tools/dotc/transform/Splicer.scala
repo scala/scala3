@@ -143,7 +143,7 @@ object Splicer {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
-        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
+        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.Quoted_exprQuote =>
           // OK
 
         case Apply(Select(TypeApply(fn, List(quoted)), nme.apply), _)if fn.symbol == defn.QuotedTypeModule_apply =>
@@ -220,7 +220,7 @@ object Splicer {
       }
 
     def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
-      case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
+      case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.Quoted_exprQuote =>
         val quoted1 = quoted match {
           case quoted: Ident if quoted.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter

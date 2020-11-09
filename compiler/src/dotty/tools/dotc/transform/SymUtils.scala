@@ -220,11 +220,11 @@ object SymUtils {
 
   /** Is symbol a quote operation? */
   def isQuote(using Context): Boolean =
-    self == defn.InternalQuoted_exprQuote || self == defn.QuotedTypeModule_apply
+    self == defn.Quoted_exprQuote || self == defn.QuotedTypeModule_apply
 
   /** Is symbol a term splice operation? */
   def isExprSplice(using Context): Boolean =
-    self == defn.InternalQuoted_exprSplice || self == defn.InternalQuoted_exprNestedSplice
+    self == defn.Quoted_exprSplice || self == defn.Quoted_exprNestedSplice
 
   /** Is symbol a type splice operation? */
   def isTypeSplice(using Context): Boolean =
