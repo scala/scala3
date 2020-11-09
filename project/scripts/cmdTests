@@ -48,6 +48,9 @@ rm $OUT/A.scala
 "$SBT" "scalac -classpath $OUT1 -d $OUT1 $OUT/B.scala" > "$tmp" 2>&1 || echo "ok"
 grep -qe "B.scala:2:7" "$tmp"
 
+echo "testing -Ythrough-tasty"
+clear_out "$OUT"
+"$SBT" ";scalac -Ythrough-tasty $SOURCE"
 
 ## Disabled because of flakeyness, should be changed to not depend on sbt
 # echo "running Vulpix meta test"
