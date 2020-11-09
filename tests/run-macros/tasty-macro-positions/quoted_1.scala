@@ -6,7 +6,7 @@ object Macros {
 
   inline def fun2(x: =>Any): Unit = ${ impl('x) }
 
-  inline def fun3[T]: Unit = ${ impl2(Type[T]) }
+  inline def fun3[T]: Unit = ${ impl2(using Type[T]) }
 
   def impl(x: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
@@ -18,10 +18,10 @@ object Macros {
     }
   }
 
-  def impl2[T](x: Type[T])(using qctx: QuoteContext) : Expr[Unit] = {
+  def impl2[T](using x: Type[T])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
-    val pos = x.unseal.pos
-    val code = x.unseal.show
+    val pos = TypeTree.of[T].pos
+    val code = TypeTree.of[T].show
     '{
       println(${posStr(qctx)(pos)})
       println(${Expr(code)})

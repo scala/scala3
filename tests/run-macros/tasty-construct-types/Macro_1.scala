@@ -40,14 +40,14 @@ object Macros {
             tl => TypeRepr.of[scala.internal.MatchCase].appliedTo(List(TypeRepr.of[List].appliedTo(tl.param(0)), tl.param(0)))))
       )
 
-    assert(x1T =:= Type[1].unseal.tpe)
-    assert(x2T =:= Type[1|2].unseal.tpe)
-    assert(x3T =:= Type[3&Any].unseal.tpe)
-    assert(x4T =:= Type[[A,B] =>> B].unseal.tpe)
-    assert(x5T =:= Type[RefineMe { type T = Int }].unseal.tpe)
-    assert(x6T =:= Type[List[Int]].unseal.tpe)
-    assert(x7T =:= Type[7 @TestAnnotation].unseal.tpe)
-    assert(x8T =:= Type[List[8] match { case List[t] => t }].unseal.tpe)
+    assert(x1T =:= TypeRepr.of[1])
+    assert(x2T =:= TypeRepr.of(using Type[1|2]))
+    assert(x3T =:= TypeRepr.of[3&Any])
+    assert(x4T =:= TypeRepr.of[[A,B] =>> B])
+    assert(x5T =:= TypeRepr.of[RefineMe { type T = Int }])
+    assert(x6T =:= TypeRepr.of[List[Int]])
+    assert(x7T =:= TypeRepr.of[7 @TestAnnotation])
+    assert(x8T =:= TypeRepr.of[List[8] match { case List[t] => t }])
 
     '{
       println("Ok")

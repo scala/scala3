@@ -6,7 +6,7 @@ object Macro2 {
 
   def mirrorFields[T](using t: Type[T])(using qctx: QuoteContext): List[String] =
     t match {
-      case '[$Field *: $Fields] => Type[Field].show.substring(1, Type[Field].show.length-1) :: mirrorFields[Fields]
+      case '[$Field *: $Fields] => Type.show[Field].substring(1, Type.show[Field].length-1) :: mirrorFields[Fields]
       case '[EmptyTuple] => Nil
     }
 

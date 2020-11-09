@@ -144,7 +144,7 @@ trait ExprMap:
         trees mapConserve (transformTypeCaseDef(_))
 
     }
-    new MapChildren().transformTermChildren(e.unseal, tpe.unseal.tpe).asExprOf[T]
+    new MapChildren().transformTermChildren(e.unseal, TypeRepr.of[T]).asExprOf[T]
   }
 
 end ExprMap

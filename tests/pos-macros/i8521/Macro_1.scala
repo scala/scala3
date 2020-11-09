@@ -11,7 +11,7 @@ object Foo {
         packageToName(sym.owner)
     }
 
-    val sym = implicitly[Type[T]].unseal.symbol
+    val sym = TypeRepr.of[T].typeSymbol
     if (!sym.isNoSymbol) {
       sym.tree match {
         case c: ClassDef =>

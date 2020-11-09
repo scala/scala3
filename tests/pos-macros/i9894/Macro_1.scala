@@ -45,7 +45,7 @@ object X:
           case lt@Lambda(params, body) =>
             val paramTypes = params.map(_.tpt.tpe)
             val paramNames = params.map(_.name)
-            val mt = MethodType(paramNames)(_ => paramTypes, _ => Type[CB].unseal.tpe.appliedTo(body.tpe.widen) )
+            val mt = MethodType(paramNames)(_ => paramTypes, _ => TypeRepr.of[CB].appliedTo(body.tpe.widen) )
             val r = Lambda(mt, args => changeArgs(params,args,transform(body)) )
             r
           case _ =>
