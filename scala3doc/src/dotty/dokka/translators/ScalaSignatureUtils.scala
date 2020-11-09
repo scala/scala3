@@ -7,6 +7,8 @@ import org.jetbrains.dokka.model.properties.WithExtraProperties
 import org.jetbrains.dokka.pages._
 import collection.JavaConverters._
 import dotty.dokka.model.api.{Kind, _}
+import dotty.tools.dotc.core.StdNames.nme.keywords
+import dotty.tools.dotc.core.Names.termName
 
 case class InlineSignatureBuilder(names: Signature = Nil, preName: Signature = Nil) extends SignatureBuilder:
   override def text(str: String): SignatureBuilder = copy(names = str +: names)
@@ -126,5 +128,6 @@ trait ScalaSignatureUtils:
 private[dokka] def hackEscapedName(name: String) =
   val simpleIdentifierRegex = raw"(?:\w+_[^\[\(\s_]+)|\w+|[^\[\(\s\w_]+".r
   name match
+    case n if keywords(termName(n)) => s"`$n`"
     case simpleIdentifierRegex() => name
-    case _ => s"`$name`"
+    case n => s"`$n`"

@@ -39,3 +39,10 @@ abstract class A:
   def withStrangeType: `*** Type`
   def withOtherType: `OtherType` //expected: def withOtherType: OtherType
   def withOtherType2: OtherType
+
+  def `class`: A
+  def `case`: A
+  def `=>`: A
+  def `=>:`(other: A): A //expected: def =>:(other: A): A
+  def `caseclass`: A //expected: def caseclass: A
+  def `Class`: A //expected: def Class: A
