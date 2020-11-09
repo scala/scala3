@@ -554,7 +554,7 @@ object Scanners {
         currentRegion = r.outer
       case _ =>
 
-    /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SUPER + TRAIT => SUPERTRAIT
+    /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT
      *         SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
      */
@@ -570,10 +570,6 @@ object Scanners {
           lookAhead()
           if (token == CLASS) fuse(CASECLASS)
           else if (token == OBJECT) fuse(CASEOBJECT)
-          else reset()
-        case SUPER =>
-          lookAhead()
-          if token == TRAIT then fuse(SUPERTRAIT)
           else reset()
         case SEMI =>
           lookAhead()

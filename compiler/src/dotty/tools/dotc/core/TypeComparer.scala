@@ -2638,8 +2638,8 @@ object TypeComparer {
   def widenInferred(inst: Type, bound: Type)(using Context): Type =
     comparing(_.widenInferred(inst, bound))
 
-  def dropSuperTraits(tp: Type, bound: Type)(using Context): Type =
-    comparing(_.dropSuperTraits(tp, bound))
+  def dropMixinTraits(tp: Type, bound: Type)(using Context): Type =
+    comparing(_.dropMixinTraits(tp, bound))
 
   def constrainPatternType(pat: Type, scrut: Type)(using Context): Boolean =
     comparing(_.constrainPatternType(pat, scrut))
