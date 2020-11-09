@@ -26,7 +26,7 @@ final class Expr(val tree: tpd.Tree, val scopeId: Int) extends scala.quoted.Expr
 
   def checkScopeId(expectedScopeId: Int): Unit =
     if expectedScopeId != scopeId then
-      throw new Exception("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
+      throw new ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
 
   override def hashCode: Int = tree.hashCode
   override def toString: String = "'{ ... }"
