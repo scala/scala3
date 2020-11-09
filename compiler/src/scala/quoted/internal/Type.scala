@@ -1,4 +1,4 @@
-package scala.internal.quoted
+package scala.quoted.internal
 
 import scala.quoted._
 
