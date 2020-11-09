@@ -155,10 +155,9 @@ class ReifyQuotes extends MacroTransform {
        */
       def pickleAsLiteral(lit: Literal) = {
         val exprType = defn.QuotedExprClass.typeRef.appliedTo(body.tpe)
-        val tpe = MethodType(defn.QuoteContextClass.typeRef :: Nil, exprType)
-        val meth = newSymbol(ctx.owner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
-        def mkConst(tss: List[List[Tree]]) = {
-          val reflect = tss.head.head.select("reflect".toTermName)
+        val lambdaTpe = MethodType(defn.QuoteContextClass.typeRef :: Nil, exprType)
+        def mkConst(ts: List[Tree]) = {
+          val reflect = ts.head.select("reflect".toTermName)
           val typeName = body.tpe.typeSymbol.name
           val literalValue =
             if lit.const.tag == Constants.NullTag || lit.const.tag == Constants.UnitTag then Nil
@@ -167,7 +166,7 @@ class ReifyQuotes extends MacroTransform {
           val literal = reflect.select("Literal".toTermName).select(nme.apply).appliedTo(constant)
           reflect.select("TreeMethods".toTermName).select("asExpr".toTermName).appliedTo(literal).asInstance(exprType)
         }
-        Closure(meth, mkConst).withSpan(body.span)
+        Lambda(lambdaTpe, mkConst).withSpan(body.span)
       }
 
       def pickleAsValue(lit: Literal) = {
@@ -229,14 +228,13 @@ class ReifyQuotes extends MacroTransform {
       def taggedType() =
         val typeType = defn.QuotedTypeClass.typeRef.appliedTo(body.tpe)
         val classTree = TypeApply(ref(defn.Predef_classOf.termRef), body :: Nil)
-        val tpe = MethodType(defn.QuoteContextClass.typeRef :: Nil, typeType)
-        val meth = newSymbol(ctx.owner, UniqueName.fresh(nme.ANON_FUN), Synthetic | Method, tpe)
-        def mkConst(tss: List[List[Tree]]) = {
-          val reflect = tss.head.head.select("reflect".toTermName)
+        val lambdaTpe = MethodType(defn.QuoteContextClass.typeRef :: Nil, typeType)
+        def callTypeConstructorOf(ts: List[Tree]) = {
+          val reflect = ts.head.select("reflect".toTermName)
           val typeRepr = reflect.select("TypeRepr".toTermName).select("typeConstructorOf".toTermName).appliedTo(classTree)
           reflect.select("TypeReprMethods".toTermName).select("asType".toTermName).appliedTo(typeRepr).asInstance(typeType)
         }
-        Closure(meth, mkConst).withSpan(body.span)
+        Lambda(lambdaTpe, callTypeConstructorOf).withSpan(body.span)
 
       if (isType) {
         if (splices.isEmpty && body.symbol.isPrimitiveValueClass) taggedType()
