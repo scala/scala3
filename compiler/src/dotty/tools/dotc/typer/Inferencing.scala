@@ -81,8 +81,9 @@ object Inferencing {
     if (depVars.nonEmpty) instantiateSelected(tp, depVars.toList)
   }
 
-  /** If `tp` is type variable with a lower bound in the current constraint,
-   *  instantiate it from below.
+  /** If `tp` is top-level type variable with a lower bound in the current constraint,
+   *  instantiate it from below. We also look for TypeVars whereever their instantiation
+   *  could uncover new type members.
    */
   def couldInstantiateTypeVar(tp: Type)(using Context): Boolean = tp.dealias match
     case tvar: TypeVar
@@ -91,6 +92,14 @@ object Inferencing {
        && tvar.hasLowerBound =>
       tvar.instantiate(fromBelow = true)
       true
+    case AppliedType(tycon, _) =>
+      couldInstantiateTypeVar(tycon)
+    case RefinedType(parent, _, _) =>
+      couldInstantiateTypeVar(parent)
+    case tp: AndOrType =>
+      couldInstantiateTypeVar(tp.tp1) || couldInstantiateTypeVar(tp.tp2)
+    case AnnotatedType(tp, _) =>
+      couldInstantiateTypeVar(tp)
     case _ =>
       false
 
