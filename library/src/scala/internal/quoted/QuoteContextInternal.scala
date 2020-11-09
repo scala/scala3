@@ -10,12 +10,12 @@ trait QuoteContextInternal { self: scala.quoted.QuoteContext =>
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `holes`
    */
-  def unpickleExpr(pickledQuote: PickledQuote): scala.quoted.Expr[Any]
+  def unpickleExpr[T](pickledQuote: PickledQuote): scala.quoted.Expr[T]
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `holes`
    */
-  def unpickleType(pickledQuote: PickledQuote): scala.quoted.Type[?]
+  def unpickleType[T <: AnyKind](pickledQuote: PickledQuote): scala.quoted.Type[T]
 
   /** Pattern matches the scrutinee against the pattern and returns a tuple
    *  with the matched holes if successful.

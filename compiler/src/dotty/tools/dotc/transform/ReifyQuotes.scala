@@ -194,9 +194,9 @@ class ReifyQuotes extends MacroTransform {
        *
        *  Generate the code
        *  ```scala
-       *    qctx => qctx.asInstanceOf[QuoteContextInternal].<unpickleExpr|unpickleType>(
+       *    qctx => qctx.asInstanceOf[QuoteContextInternal].<unpickleExpr|unpickleType>[<type>](
        *      <pickledQuote>
-       *    ).asInstanceOf[scala.quoted.<Expr|Type>[<type>]]
+       *    )
        *  ```
        *  this closure is always applied directly to the actual context and the BetaReduce phase removes it.
        */
@@ -211,7 +211,7 @@ class ReifyQuotes extends MacroTransform {
         def callUnpickle(ts: List[Tree]) = {
           val qctx = ts.head.asInstance(defn.QuoteContextInternalClass.typeRef)
           val unpickleMethName = if isType then "unpickleType" else "unpickleExpr"
-          qctx.select(unpickleMethName.toTermName).appliedTo(pickledQuote).asInstance(quotedType)
+          qctx.select(unpickleMethName.toTermName).appliedToType(originalTp).appliedTo(pickledQuote)
         }
         Lambda(lambdaTpe, callUnpickle).withSpan(body.span)
       }
