@@ -2698,7 +2698,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
       // After matching and doing all subtype checks, we have to approximate all the type bindings
       // that we have found, seal them in a quoted.Type and add them to the result
       def typeHoleApproximation(sym: Symbol) =
-        ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_fromAboveAnnot)).asInstanceOf[qctx1.reflect.TypeRepr].seal
+        ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_fromAboveAnnot)).asInstanceOf[qctx1.reflect.TypeRepr].asType
       matchings.map { tup =>
         Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
       }

@@ -102,8 +102,8 @@ trait ExprMap:
             transformTermChildren(tree, tpe)
           case _ if tree.isExpr =>
             type X
-            val expr = tree.seal.asInstanceOf[Expr[X]]
-            val t = tpe.seal.asInstanceOf[quoted.Type[X]]
+            val expr = tree.asExpr.asInstanceOf[Expr[X]]
+            val t = tpe.asType.asInstanceOf[Type[X]]
             transform(expr)(using qctx, t).unseal
           case _ =>
             transformTermChildren(tree, tpe)
