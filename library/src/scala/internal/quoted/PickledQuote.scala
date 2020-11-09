@@ -16,12 +16,6 @@ trait PickledQuote:
 
 object PickledQuote:
 
-  def unpickleExpr[T](pickledQuote: PickledQuote): QuoteContext ?=> Expr[T] =
-    qctx.asInstanceOf[QuoteContextInternal].unpickleExpr(pickledQuote).asInstanceOf[Expr[T]]
-
-  def unpickleType[T](pickledQuote: PickledQuote): QuoteContext ?=> Type[T] =
-    qctx.asInstanceOf[QuoteContextInternal].unpickleType(pickledQuote).asInstanceOf[Type[T]]
-
   /** Create an instance of PickledExpr from encoded tasty and sequence of labmdas to fill holes
    *
    *  @param pickled: Bytes of tasty encoded using TastyString.pickle

@@ -2631,13 +2631,13 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
   end reflect
 
-  def unpickleExpr(pickledQuote: PickledQuote): scala.quoted.Expr[Any] =
+  def unpickleExpr[T](pickledQuote: PickledQuote): scala.quoted.Expr[T] =
     val tree = PickledQuotes.unpickleTerm(pickledQuote)(using reflect.rootContext)
-    new scala.internal.quoted.Expr(tree, hash)
+    new scala.internal.quoted.Expr(tree, hash).asInstanceOf[scala.quoted.Expr[T]]
 
-  def unpickleType(pickledQuote: PickledQuote): scala.quoted.Type[?] =
+  def unpickleType[T <: AnyKind](pickledQuote: PickledQuote): scala.quoted.Type[T] =
     val tree = PickledQuotes.unpickleTypeTree(pickledQuote)(using reflect.rootContext)
-    new scala.internal.quoted.Type(tree, hash)
+    new scala.internal.quoted.Type(tree, hash).asInstanceOf[scala.quoted.Type[T]]
 
   def exprMatch(scrutinee: scala.quoted.Expr[Any], pattern: scala.quoted.Expr[Any]): Option[Tuple] =
     treeMatch(scrutinee.unseal(using this), pattern.unseal(using this))
