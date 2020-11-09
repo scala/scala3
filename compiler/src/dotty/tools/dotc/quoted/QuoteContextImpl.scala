@@ -70,15 +70,18 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
                 case _: MethodType | _: PolyType => false
                 case _ => true
             case _ => false
+        def asExpr: scala.quoted.Expr[Any] =
+          if self.isExpr then
+            new scala.internal.quoted.Expr(self, QuoteContextImpl.this.hashCode)
+          else self match
+            case TermTypeTest(self) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
+            case _ => throw new Exception("Expected a Term but was: " + self)
       end extension
 
-      extension [T](tree: Tree)
+      extension [T](self: Tree)
         def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T] =
-          if tree.isExpr then
-            new scala.internal.quoted.Expr(tree, QuoteContextImpl.this.hashCode).asExprOf[T]
-          else tree match
-            case TermTypeTest(tree) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
-            case _ => throw new Exception("Expected a Term but was: " + tree)
+          self.asExpr.asExprOf[T]
+      end extension
 
     end TreeMethodsImpl
 
@@ -1564,7 +1567,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
     type TypeRepr = dotc.core.Types.Type
 
-    object TypeRepr extends TypeModule:
+    object TypeRepr extends TypeReprModule:
       def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): TypeRepr =
         qtype.asInstanceOf[scala.internal.quoted.Type[TypeTree]].typeTree.tpe
       def typeConstructorOf(clazz: Class[?]): TypeRepr =
@@ -1589,7 +1592,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
           dotc.core.Symbols.getClassIfDefined(clazz.getCanonicalName).typeRef
     end TypeRepr
 
-    object TypeMethodsImpl extends TypeMethods:
+    object TypeReprMethodsImpl extends TypeReprMethods:
       extension (self: TypeRepr):
         def showExtractors: String =
           Extractors.showType(using QuoteContextImpl.this)(self)
@@ -1600,7 +1603,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
         def showAnsiColored: String =
           SourceCode.showType(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
 
-        def seal: scala.quoted.Type[_] =
+        def seal: scala.quoted.Type[_] = self.asType
+
+        def asType: scala.quoted.Type[?] =
           new scala.internal.quoted.Type(Inferred(self), QuoteContextImpl.this.hashCode)
 
         def =:=(that: TypeRepr): Boolean = self =:= that
@@ -1636,7 +1641,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
       end extension
-    end TypeMethodsImpl
+    end TypeReprMethodsImpl
 
     type ConstantType = dotc.core.Types.ConstantType
 

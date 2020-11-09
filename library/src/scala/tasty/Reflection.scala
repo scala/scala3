@@ -162,10 +162,15 @@ trait Reflection { reflection =>
 
       /** Does this tree represent a valid expression? */
       def isExpr: Boolean
+
+      /** Convert this tree to an `quoted.Expr[Any]` if the tree is a valid expression or throws */
+      def asExpr: scala.quoted.Expr[Any]
     end extension
 
     /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
     extension [T](self: Tree)
+      // FIXME: remove QuoteContext from parameters
+      // TODO: Move Reflection inside QuoteContext as it can never be instantiated outside a QuoteContext
       def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T]
   }
 
@@ -1741,9 +1746,9 @@ trait Reflection { reflection =>
   /** A type, type constructors, type bounds or NoPrefix */
   type TypeRepr
 
-  val TypeRepr: TypeModule
+  val TypeRepr: TypeReprModule
 
-  trait TypeModule { this: TypeRepr.type =>
+  trait TypeReprModule { this: TypeRepr.type =>
     /** Returns the type or kind (TypeRepr) of T */
     def of[T <: AnyKind](using qtype: scala.quoted.Type[T]): TypeRepr
 
@@ -1751,10 +1756,10 @@ trait Reflection { reflection =>
     def typeConstructorOf(clazz: Class[?]): TypeRepr
   }
 
-  given TypeMethods as TypeMethods = TypeMethodsImpl
-  protected val TypeMethodsImpl: TypeMethods
+  given TypeReprMethods as TypeReprMethods = TypeReprMethodsImpl
+  protected val TypeReprMethodsImpl: TypeReprMethods
 
-  trait TypeMethods {
+  trait TypeReprMethods {
     extension (self: TypeRepr):
 
       /** Shows the tree as extractors */
@@ -1768,6 +1773,17 @@ trait Reflection { reflection =>
 
       /** Convert `TypeRepr` to an `quoted.Type[_]` */
       def seal: scala.quoted.Type[_]
+
+      /** Convert this `TypeRepr` to an `Type[?]`
+       *
+       *  Usage:
+       *  ```
+       *  typeRepr.asType match
+       *    case '[$t] =>
+       *      '{ val x: t = ... }
+       *  ```
+       */
+      def asType: scala.quoted.Type[?]
 
       /** Is `self` type the same as `that` type?
        *  This is the case iff `self <:< that` and `that <:< self`.

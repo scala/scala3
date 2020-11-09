@@ -58,16 +58,4 @@ object Expr {
     qctx.asInstanceOf[QuoteContextInternal].exprMatch(scrutineeExpr, patternExpr).asInstanceOf[Option[Tup]]
   }
 
-  /** Returns a null expresssion equivalent to `'{null}` */
-  def `null`: QuoteContext ?=> quoted.Expr[Null] = (using qctx) => {
-    import qctx.reflect._
-    Literal(Constant.Null()).seal.asInstanceOf[quoted.Expr[Null]]
-  }
-
-  /** Returns a unit expresssion equivalent to `'{}` or `'{()}` */
-  def Unit: QuoteContext ?=> quoted.Expr[Unit] = (using qctx) => {
-    import qctx.reflect._
-    Literal(Constant.Unit()).seal.asInstanceOf[quoted.Expr[Unit]]
-  }
-
 }
