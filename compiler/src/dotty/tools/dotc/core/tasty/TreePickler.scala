@@ -729,7 +729,6 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(Sealed)) writeModTag(SEALED)
       if (flags.is(Abstract)) writeModTag(ABSTRACT)
       if (flags.is(Trait)) writeModTag(TRAIT)
-      if flags.is(SuperTrait) then writeModTag(SUPERTRAIT)
       if (flags.is(Covariant)) writeModTag(COVARIANT)
       if (flags.is(Contravariant)) writeModTag(CONTRAVARIANT)
       if (flags.is(Opaque)) writeModTag(OPAQUE)

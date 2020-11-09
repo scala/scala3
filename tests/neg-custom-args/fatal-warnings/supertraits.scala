@@ -1,5 +1,6 @@
-sealed super trait TA
-sealed super trait TB
+import annotation.mixin
+@mixin sealed trait TA
+@mixin sealed trait TB
 trait S
 case object a extends S, TA, TB
 case object b extends S, TA, TB
