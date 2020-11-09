@@ -1003,7 +1003,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
     object TypeTree extends TypeTreeModule:
       def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeTree =
-        tp.asInstanceOf[scala.quoted.internal.Type[TypeTree]].typeTree
+        tp.asInstanceOf[scala.quoted.internal.Type].typeTree
     end TypeTree
 
     object TypeTreeMethodsImpl extends TypeTreeMethods:
@@ -1572,7 +1572,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
     object TypeRepr extends TypeReprModule:
       def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeRepr =
-        tp.asInstanceOf[scala.quoted.internal.Type[TypeTree]].typeTree.tpe
+        tp.asInstanceOf[scala.quoted.internal.Type].typeTree.tpe
       def typeConstructorOf(clazz: Class[?]): TypeRepr =
         if (clazz.isPrimitive)
           if (clazz == classOf[Boolean]) dotc.core.Symbols.defn.BooleanType

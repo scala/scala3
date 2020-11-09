@@ -2,10 +2,12 @@ package scala.quoted.internal
 
 import scala.quoted._
 
+import dotty.tools.dotc.ast.tpd
+
 /** Quoted type (or kind) `T` backed by a tree */
-final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quoted.Type[Any] {
+final class Type(val typeTree: tpd.Tree, val scopeId: Int) extends scala.quoted.Type[?] {
   override def equals(that: Any): Boolean = that match {
-    case that: Type[_] => typeTree ==
+    case that: Type => typeTree ==
       // TastyTreeExpr are wrappers around trees, therfore they are equals if their trees are equal.
       // All scopeId should be equal unless two different runs of the compiler created the trees.
       that.typeTree && scopeId == that.scopeId
