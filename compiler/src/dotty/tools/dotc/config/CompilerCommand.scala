@@ -31,7 +31,7 @@ object CompilerCommand {
 
   def shortUsage: String = s"Usage: $cmdName <options> <source files>"
 
-  def versionMsg: String = s"Dotty compiler $versionString -- $copyrightString"
+  def versionMsg: String = s"Scala compiler $versionString -- $copyrightString"
 
   /** Distill arguments into summary detailing settings, errors and files to compiler */
   def distill(args: Array[String])(using Context): ArgsSummary = {
