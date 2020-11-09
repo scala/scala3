@@ -190,13 +190,30 @@ class ReifyQuotes extends MacroTransform {
         }
       }
 
+      /** Encode quote using QuoteContextInternal.{unpickleExpr, unpickleType}
+       *
+       *  Generate the code
+       *  ```scala
+       *    qctx => qctx.asInstanceOf[QuoteContextInternal].<unpickleExpr|unpickleType>(
+       *      <pickledQuote>
+       *    ).asInstanceOf[scala.quoted.<Expr|Type>[<type>]]
+       *  ```
+       *  this closure is always applied directly to the actual context and the BetaReduce phase removes it.
+       */
       def pickleAsTasty() = {
-        val unpickleMeth = if isType then defn.PickledQuote_unpickleType else defn.PickledQuote_unpickleExpr
         val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType)
         // TODO: generate an instance of PickledSplices directly instead of passing through a List
         val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), defn.AnyType))
         val pickledQuote = ref(defn.PickledQuote_make).appliedTo(pickledQuoteStrings, splicesList)
-        ref(unpickleMeth).appliedToType(originalTp).appliedTo(pickledQuote)
+        val quoteClass = if isType then defn.QuotedTypeClass else defn.QuotedExprClass
+        val quotedType = quoteClass.typeRef.appliedTo(originalTp)
+        val lambdaTpe = MethodType(defn.QuoteContextClass.typeRef :: Nil, quotedType)
+        def callUnpickle(ts: List[Tree]) = {
+          val qctx = ts.head.asInstance(defn.QuoteContextInternalClass.typeRef)
+          val unpickleMethName = if isType then "unpickleType" else "unpickleExpr"
+          qctx.select(unpickleMethName.toTermName).appliedTo(pickledQuote).asInstance(quotedType)
+        }
+        Lambda(lambdaTpe, callUnpickle).withSpan(body.span)
       }
 
       /** Encode quote using Reflection.TypeRepr.typeConstructorOf

@@ -795,6 +795,7 @@ class Definitions {
   @tu lazy val QuotedExprModule: Symbol = QuotedExprClass.companionModule
 
   @tu lazy val QuoteContextClass: ClassSymbol = requiredClass("scala.quoted.QuoteContext")
+  @tu lazy val QuoteContextInternalClass: ClassSymbol = requiredClass("scala.internal.quoted.QuoteContextInternal")
 
   @tu lazy val LiftableModule: Symbol = requiredModule("scala.quoted.Liftable")
     @tu lazy val LiftableModule_BooleanLiftable: Symbol = LiftableModule.requiredMethod("BooleanLiftable")
@@ -837,8 +838,6 @@ class Definitions {
   @tu lazy val TastyReflectionClass: ClassSymbol = requiredClass("scala.tasty.Reflection")
 
   @tu lazy val PickledQuote_make: Symbol = requiredMethod("scala.internal.quoted.PickledQuote.make")
-  @tu lazy val PickledQuote_unpickleExpr: Symbol = requiredMethod("scala.internal.quoted.PickledQuote.unpickleExpr")
-  @tu lazy val PickledQuote_unpickleType: Symbol = requiredMethod("scala.internal.quoted.PickledQuote.unpickleType")
 
   @tu lazy val EqlClass: ClassSymbol = requiredClass("scala.Eql")
     def Eql_eqlAny(using Context): TermSymbol = EqlClass.companionModule.requiredMethod(nme.eqlAny)
