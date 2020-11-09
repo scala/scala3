@@ -85,7 +85,7 @@ class Compiler {
          new SeqLiterals,            // Express vararg arguments as arrays
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
-         new SpecializeFunctions,    // Specialized Function{0,1,2} by replacing super with specialized super
+        //  new SpecializeFunctions,    // Specialized Function{0,1,2} by replacing super with specialized super
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections

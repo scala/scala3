@@ -85,7 +85,8 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
   }
 
   /** Create bridge methods for FunctionN with specialized applys */
-  override def transformTemplate(tree: Template)(using Context) = {
+  // override def transformTemplate(tree: Template)(using Context) = {
+  def transformTemplate1(tree: Template)(using Context) = {
     val cls = tree.symbol.owner.asClass
 
     def synthesizeApply(names: collection.Set[TermName]): Tree = {
