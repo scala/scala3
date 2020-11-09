@@ -458,14 +458,17 @@ trait QuotesAndSplices {
       if splices.isEmpty then ref(defn.EmptyTupleModule.termRef)
       else typed(untpd.Tuple(splices.map(x => untpd.TypedSplice(replaceBindingsInTree.transform(x)))).withSpan(quoted.span), patType)
 
-    val unapplySym = if (tree.quoted.isTerm) defn.InternalQuotedExpr_unapply else defn.InternalQuotedType_unapply
     val quoteClass = if (tree.quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeClass
     val quotedPattern =
       if (tree.quoted.isTerm) ref(defn.InternalQuoted_exprQuote.termRef).appliedToType(defn.AnyType).appliedTo(shape).select(nme.apply).appliedTo(qctx)
       else ref(defn.QuotedTypeModule_apply.termRef).appliedToTypeTree(shape).select(nme.apply).appliedTo(qctx)
+
+    val matchModule = if tree.quoted.isTerm then defn.QuoteContextInternalClass_ExprMatch else defn.QuoteContextInternalClass_TypeMatch
+    val unapplyFun = qctx.asInstance(defn.QuoteContextInternalClass.typeRef).select(matchModule).select(nme.unapply)
+
     UnApply(
-      fun = ref(unapplySym.termRef).appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
-      implicits = quotedPattern :: qctx :: Nil,
+      fun = unapplyFun.appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
+      implicits = quotedPattern :: Nil,
       patterns = splicePat :: Nil,
       proto = quoteClass.typeRef.appliedTo(replaceBindings(quoted1.tpe) & quotedPt))
   }

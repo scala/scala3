@@ -18,7 +18,8 @@ abstract class Expr[+T] private[scala] {
    *  ```
    */
   final def matches(that: Expr[Any])(using qctx: QuoteContext): Boolean =
-    !scala.internal.quoted.Expr.unapply[EmptyTuple, EmptyTuple](this)(using that, qctx).isEmpty
+    val ExprMatch = qctx.asInstanceOf[scala.internal.quoted.QuoteContextInternal].ExprMatch
+    ExprMatch.unapply[EmptyTuple, EmptyTuple](this)(using that).nonEmpty
 
   /** Checked cast to a `quoted.Expr[U]` */
   def cast[U](using tp: scala.quoted.Type[U])(using qctx: QuoteContext): scala.quoted.Expr[U] = asExprOf[U]
@@ -121,57 +122,141 @@ object Expr {
    *    `'{ ($e1, $e2, ...) }` typed as an `Expr[Tuple]`
    */
   def ofTupleFromSeq(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] = {
-    seq match {
-      case Seq() =>
-        '{ Tuple() }
-      case Seq('{ $x1: t1 }) =>
-        '{ Tuple1($x1) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }) =>
-        '{ Tuple2($x1, $x2) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }) =>
-        '{ Tuple3($x1, $x2, $x3) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }) =>
-        '{ Tuple4($x1, $x2, $x3, $x4) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }) =>
-        '{ Tuple5($x1, $x2, $x3, $x4, $x5) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }) =>
-        '{ Tuple6($x1, $x2, $x3, $x4, $x5, $x6) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }) =>
-        '{ Tuple7($x1, $x2, $x3, $x4, $x5, $x6, $x7) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }) =>
-        '{ Tuple8($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }) =>
-        '{ Tuple9($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }) =>
-        '{ Tuple10($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }) =>
-        '{ Tuple11($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }) =>
-        '{ Tuple12($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }) =>
-        '{ Tuple13($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }) =>
-        '{ Tuple14($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }) =>
-        '{ Tuple15($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }) =>
-        '{ Tuple16($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }) =>
-        '{ Tuple17($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }, '{ $x18: t18 }) =>
-        '{ Tuple18($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }, '{ $x18: t18 }, '{ $x19: t19 }) =>
-        '{ Tuple19($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18, $x19) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }, '{ $x18: t18 }, '{ $x19: t19 }, '{ $x20: t20 }) =>
-        '{ Tuple20($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18, $x19, $x20) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }, '{ $x18: t18 }, '{ $x19: t19 }, '{ $x20: t20 }, '{ $x21: t21 }) =>
-        '{ Tuple21($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18, $x19, $x20, $x21) }
-      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }, '{ $x18: t18 }, '{ $x19: t19 }, '{ $x20: t20 }, '{ $x21: t21 }, '{ $x22: t22 }) =>
-        '{ Tuple22($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18, $x19, $x20, $x21, $x22) }
-      case _ =>
-        '{ Tuple.fromIArray(IArray(${Varargs(seq)}: _*)) }
+    seq.size match {
+      case 0 => '{ Tuple() }
+      case 1 => ofTupleFromSeq1(seq)
+      case 2 => ofTupleFromSeq2(seq)
+      case 3 => ofTupleFromSeq3(seq)
+      case 4 => ofTupleFromSeq4(seq)
+      case 5 => ofTupleFromSeq5(seq)
+      case 6 => ofTupleFromSeq6(seq)
+      case 7 => ofTupleFromSeq7(seq)
+      case 8 => ofTupleFromSeq8(seq)
+      case 9 => ofTupleFromSeq9(seq)
+      case 10 => ofTupleFromSeq10(seq)
+      case 11 => ofTupleFromSeq11(seq)
+      case 12 => ofTupleFromSeq12(seq)
+      case 13 => ofTupleFromSeq13(seq)
+      case 14 => ofTupleFromSeq14(seq)
+      case 15 => ofTupleFromSeq15(seq)
+      case 16 => ofTupleFromSeq16(seq)
+      case 17 => ofTupleFromSeq17(seq)
+      case 18 => ofTupleFromSeq18(seq)
+      case 19 => ofTupleFromSeq19(seq)
+      case 20 => ofTupleFromSeq20(seq)
+      case 21 => ofTupleFromSeq21(seq)
+      case 22 => ofTupleFromSeq22(seq)
+      case _ => '{ Tuple.fromIArray(IArray(${Varargs(seq)}: _*)) }
     }
   }
+
+  private def ofTupleFromSeq1(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }) => '{ Tuple1($x1) }
+
+  private def ofTupleFromSeq2(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }) => '{ Tuple2($x1, $x2) }
+
+  private def ofTupleFromSeq3(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }) => '{ Tuple3($x1, $x2, $x3) }
+
+  private def ofTupleFromSeq4(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }) =>
+       '{ Tuple4($x1, $x2, $x3, $x4) }
+
+  private def ofTupleFromSeq5(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }) =>
+        '{ Tuple5($x1, $x2, $x3, $x4, $x5) }
+
+  private def ofTupleFromSeq6(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }) =>
+        '{ Tuple6($x1, $x2, $x3, $x4, $x5, $x6) }
+
+  private def ofTupleFromSeq7(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }) =>
+        '{ Tuple7($x1, $x2, $x3, $x4, $x5, $x6, $x7) }
+
+  private def ofTupleFromSeq8(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }) =>
+        '{ Tuple8($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8) }
+
+  private def ofTupleFromSeq9(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }) =>
+        '{ Tuple9($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9) }
+
+  private def ofTupleFromSeq10(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }) =>
+        '{ Tuple10($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10) }
+
+  private def ofTupleFromSeq11(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }) =>
+        '{ Tuple11($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11) }
+
+  private def ofTupleFromSeq12(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }) =>
+        '{ Tuple12($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12) }
+
+  private def ofTupleFromSeq13(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }) =>
+        '{ Tuple13($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13) }
+
+  private def ofTupleFromSeq14(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }) =>
+        '{ Tuple14($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14) }
+
+  private def ofTupleFromSeq15(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }) =>
+        '{ Tuple15($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15) }
+
+  private def ofTupleFromSeq16(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }) =>
+        '{ Tuple16($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16) }
+
+  private def ofTupleFromSeq17(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }) =>
+        '{ Tuple17($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17) }
+
+  private def ofTupleFromSeq18(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }, '{ $x18: t18 }) =>
+        '{ Tuple18($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18) }
+
+  private def ofTupleFromSeq19(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }, '{ $x18: t18 }, '{ $x19: t19 }) =>
+        '{ Tuple19($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18, $x19) }
+
+  private def ofTupleFromSeq20(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }, '{ $x18: t18 }, '{ $x19: t19 }, '{ $x20: t20 }) =>
+        '{ Tuple20($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18, $x19, $x20) }
+
+  private def ofTupleFromSeq21(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }, '{ $x18: t18 }, '{ $x19: t19 }, '{ $x20: t20 }, '{ $x21: t21 }) =>
+        '{ Tuple21($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18, $x19, $x20, $x21) }
+
+  private def ofTupleFromSeq22(seq: Seq[Expr[Any]])(using qctx: QuoteContext): Expr[Tuple] =
+    seq match
+      case Seq('{ $x1: t1 }, '{ $x2: t2 }, '{ $x3: t3 }, '{ $x4: t4 }, '{ $x5: t5 }, '{ $x6: t6 }, '{ $x7: t7 }, '{ $x8: t8 }, '{ $x9: t9 }, '{ $x10: t10 }, '{ $x11: t11 }, '{ $x12: t12 }, '{ $x13: t13 }, '{ $x14: t14 }, '{ $x15: t15 }, '{ $x16: t16 }, '{ $x17: t17 }, '{ $x18: t18 }, '{ $x19: t19 }, '{ $x20: t20 }, '{ $x21: t21 }, '{ $x22: t22 }) =>
+        '{ Tuple22($x1, $x2, $x3, $x4, $x5, $x6, $x7, $x8, $x9, $x10, $x11, $x12, $x13, $x14, $x15, $x16, $x17, $x18, $x19, $x20, $x21, $x22) }
+
 
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`. */
   def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using qctx: QuoteContext): Expr[Tuple.InverseMap[T, Expr]] = {

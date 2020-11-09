@@ -24,21 +24,3 @@ final class Type[Tree](val typeTree: Tree, val scopeId: Int) extends scala.quote
   override def hashCode: Int = typeTree.hashCode
   override def toString: String = "'[ ... ]"
 }
-
-object Type {
-
-  /** Pattern matches an the scrutineeType against the patternType and returns a tuple
-   *  with the matched holes if successful.
-   *
-   *  @param scrutineeType `Type[_]` on which we are pattern matching
-   *  @param patternType `Type[_]` containing the pattern tree
-   *  @param hasTypeSplices `Boolean` notify if the pattern has type splices
-   *  @param qctx the current QuoteContext
-   *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Type[Ti]``
-   */
-  def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutineeType: scala.quoted.Type[_])
-      (using patternType: scala.quoted.Type[_], qctx: QuoteContext): Option[Tup] = {
-    qctx.asInstanceOf[QuoteContextInternal].typeMatch(scrutineeType, patternType).asInstanceOf[Option[Tup]]
-  }
-
-}
