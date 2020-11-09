@@ -37,7 +37,7 @@ object X {
           case _ => super.transformTerm(term)
       }
     }
-    val r = transformer.transformTerm(x.unseal).seal.cast[A]
+    val r = transformer.transformTerm(x.unseal).asExprOf[A]
     s"result: ${r.show}"
     r
  }

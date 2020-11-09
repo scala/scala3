@@ -19,12 +19,12 @@ object scalatest {
             ValDef.let(Apply(Select.copy(sel)(left, op), right :: Nil)) { result =>
               val l = left.seal
               val r = right.seal
-              val b = result.seal.cast[Boolean]
+              val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert(${b}) }
               code.unseal
             }
           }
-        }.seal.cast[Unit]
+        }.asExprOf[Unit]
       case Apply(f @ Apply(sel @ Select(Apply(qual, lhs :: Nil), op), rhs :: Nil), implicits)
       if isImplicitMethodType(f.tpe) =>
         ValDef.let(lhs) { left =>
@@ -32,12 +32,12 @@ object scalatest {
             ValDef.let(Apply(Apply(Select.copy(sel)(Apply(qual, left :: Nil), op), right :: Nil), implicits)) { result =>
               val l = left.seal
               val r = right.seal
-              val b = result.seal.cast[Boolean]
+              val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert(${b}) }
               code.unseal
             }
           }
-        }.seal.cast[Unit]
+        }.asExprOf[Unit]
     }
   }
 

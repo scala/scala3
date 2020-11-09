@@ -64,4 +64,4 @@ object X:
          }
          changes.transformTerm(body)
 
-   transform(f.unseal).seal.cast[CB[T]]
+   transform(f.unseal).asExprOf[CB[T]]

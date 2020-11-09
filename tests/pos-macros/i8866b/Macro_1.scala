@@ -14,7 +14,7 @@ object Macro {
         '{ Other }.unseal,
         "apply"
       )
-    )(identity).seal.cast[Int]
+    )(identity).asExprOf[Int]
 
   }
 

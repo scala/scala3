@@ -13,7 +13,7 @@ object Macros {
           report.error("Parameter must be natural number")
           '{0}
         } else {
-          xTree.seal.cast[Int]
+          xTree.asExprOf[Int]
         }
       case _ =>
         report.error("Parameter must be a known constant")

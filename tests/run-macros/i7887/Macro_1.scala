@@ -4,7 +4,7 @@ def myMacroImpl(a: quoted.Expr[_])(using qctx: quoted.QuoteContext) = {
     implicit val t: quoted.Type[A] = a.unseal.tpe.widen.seal.asInstanceOf[quoted.Type[A]]
     '{
       type T = A
-      ${a.unseal.seal.cast[T]}
+      ${a.unseal.asExprOf[T]}
     }
   }
 

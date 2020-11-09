@@ -13,10 +13,10 @@ object scalatest {
         ValDef.let(lhs) { left =>
           ValDef.let(rhs) { rs =>
             val app = Select.overloaded(left, op, targs.map(_.tpe), rs)
-            val b = app.seal.cast[Boolean]
+            val b = app.asExprOf[Boolean]
             '{ scala.Predef.assert($b) }.unseal
           }
-        }.seal.cast[Unit]
+        }.asExprOf[Unit]
     }
   }
 }
