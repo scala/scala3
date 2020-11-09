@@ -81,6 +81,19 @@ object Inferencing {
     if (depVars.nonEmpty) instantiateSelected(tp, depVars.toList)
   }
 
+  /** If `tp` is type variable with a lower bound in the current constraint,
+   *  instantiate it from below.
+   */
+  def couldInstantiateTypeVar(tp: Type)(using Context): Boolean = tp.dealias match
+    case tvar: TypeVar
+    if !tvar.isInstantiated
+       && ctx.typerState.constraint.contains(tvar)
+       && tvar.hasLowerBound =>
+      tvar.instantiate(fromBelow = true)
+      true
+    case _ =>
+      false
+
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. The direction in which
    *  a type variable is instantiated is determined as follows:
