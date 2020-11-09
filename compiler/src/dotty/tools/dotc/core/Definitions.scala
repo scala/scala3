@@ -796,6 +796,8 @@ class Definitions {
 
   @tu lazy val QuoteContextClass: ClassSymbol = requiredClass("scala.quoted.QuoteContext")
   @tu lazy val QuoteContextInternalClass: ClassSymbol = requiredClass("scala.internal.quoted.QuoteContextInternal")
+    @tu lazy val QuoteContextInternalClass_ExprMatch: Symbol = QuoteContextInternalClass.requiredMethod("ExprMatch")
+    @tu lazy val QuoteContextInternalClass_TypeMatch: Symbol = QuoteContextInternalClass.requiredMethod("TypeMatch")
 
   @tu lazy val LiftableModule: Symbol = requiredModule("scala.quoted.Liftable")
     @tu lazy val LiftableModule_BooleanLiftable: Symbol = LiftableModule.requiredMethod("BooleanLiftable")
@@ -820,14 +822,6 @@ class Definitions {
     @tu lazy val InternalQuotedPatterns_higherOrderHole: Symbol = InternalQuotedPatterns.requiredMethod("higherOrderHole")
     @tu lazy val InternalQuotedPatterns_patternTypeAnnot: ClassSymbol = InternalQuotedPatterns.requiredClass("patternType")
     @tu lazy val InternalQuotedPatterns_fromAboveAnnot: ClassSymbol = InternalQuotedPatterns.requiredClass("fromAbove")
-
-  @tu lazy val InternalQuotedExprModule: Symbol = requiredModule("scala.internal.quoted.Expr")
-    @tu lazy val InternalQuotedExpr_unapply: Symbol = InternalQuotedExprModule.requiredMethod(nme.unapply)
-    @tu lazy val InternalQuotedExpr_null: Symbol = InternalQuotedExprModule.requiredMethod(nme.null_)
-    @tu lazy val InternalQuotedExpr_unit: Symbol = InternalQuotedExprModule.requiredMethod(nme.Unit)
-
-  @tu lazy val InternalQuotedTypeModule: Symbol = requiredModule("scala.internal.quoted.Type")
-    @tu lazy val InternalQuotedType_unapply: Symbol = InternalQuotedTypeModule.requiredMethod(nme.unapply)
 
   @tu lazy val QuotedTypeClass: ClassSymbol = requiredClass("scala.quoted.Type")
     @tu lazy val QuotedType_splice: Symbol = QuotedTypeClass.requiredType(tpnme.Underlying)

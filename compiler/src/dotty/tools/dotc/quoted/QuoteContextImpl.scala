@@ -2639,11 +2639,19 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
     val tree = PickledQuotes.unpickleTypeTree(pickledQuote)(using reflect.rootContext)
     new scala.internal.quoted.Type(tree, hash).asInstanceOf[scala.quoted.Type[T]]
 
-  def exprMatch(scrutinee: scala.quoted.Expr[Any], pattern: scala.quoted.Expr[Any]): Option[Tuple] =
-    treeMatch(scrutinee.unseal(using this), pattern.unseal(using this))
+  object ExprMatch extends ExprMatchModule:
+    def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
+      val scrutineeTree = scrutinee.unseal(using QuoteContextImpl.this)
+      val patternTree = pattern.unseal(using QuoteContextImpl.this)
+      treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
+  end ExprMatch
 
-  def typeMatch(scrutinee: scala.quoted.Type[?], pattern: scala.quoted.Type[?]): Option[Tuple] =
-    treeMatch(reflect.TypeTree.of(using scrutinee), reflect.TypeTree.of(using pattern))
+  object TypeMatch extends TypeMatchModule:
+    def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Type[?])(using pattern: scala.quoted.Type[?]): Option[Tup] =
+      val scrutineeTree = reflect.TypeTree.of(using scrutinee)
+      val patternTree = reflect.TypeTree.of(using pattern)
+      treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
+  end TypeMatch
 
   private def treeMatch(scrutinee: reflect.Tree, pattern: reflect.Tree): Option[Tuple] = {
     import reflect._

@@ -7,7 +7,7 @@ object Macros {
   private def matchesExpr[A, B](using a: Type[A], b: Type[B])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
 
-    val res = scala.internal.quoted.Type.unapply[Tuple, Tuple](a)(using b, qctx).map { tup =>
+    val res = qctx.asInstanceOf[scala.internal.quoted.QuoteContextInternal].TypeMatch.unapply[Tuple, Tuple](a)(using b).map { tup =>
       tup.toArray.toList.map {
         case r: Type[_] =>
           s"Type(${TypeTree.of(using r).show})"

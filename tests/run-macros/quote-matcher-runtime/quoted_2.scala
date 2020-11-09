@@ -1,8 +1,6 @@
 
 import Macros._
 
-import scala.internal.quoted.Expr._
-
 import scala.internal.quoted.Patterns._
 
 object Test {
