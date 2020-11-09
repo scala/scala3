@@ -63,23 +63,23 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
 
   /** Add symbols for specialized methods to FunctionN */
   override def transformInfo(tp: Type, sym: Symbol)(using Context) = tp match {
-    case tp: ClassInfo =>
-      if sym == defn.SpecializableFunctions(0) then
-          val scope = tp.decls.cloneScope
-          specFun0 { r => scope.enter(specApplySymbol(sym, Nil, r)) }
-          tp.derivedClassInfo(decls = scope)
+    // case tp: ClassInfo =>
+    //   if sym == defn.SpecializableFunctions(0) then
+    //       val scope = tp.decls.cloneScope
+    //       specFun0 { r => scope.enter(specApplySymbol(sym, Nil, r)) }
+    //       tp.derivedClassInfo(decls = scope)
 
-      else if sym == defn.SpecializableFunctions(1) then
-          val scope = tp.decls.cloneScope
-          specFun1 { (t1, r) => scope.enter(specApplySymbol(sym, List(t1), r)) }
-          tp.derivedClassInfo(decls = scope)
+    //   else if sym == defn.SpecializableFunctions(1) then
+    //       val scope = tp.decls.cloneScope
+    //       specFun1 { (t1, r) => scope.enter(specApplySymbol(sym, List(t1), r)) }
+    //       tp.derivedClassInfo(decls = scope)
 
-      else if sym == defn.SpecializableFunctions(2) then
-          val scope = tp.decls.cloneScope
-          specFun2 { (t1, t2, r) => scope.enter(specApplySymbol(sym, List(t1, t2), r)) }
-          tp.derivedClassInfo(decls = scope)
+    //   else if sym == defn.SpecializableFunctions(2) then
+    //       val scope = tp.decls.cloneScope
+    //       specFun2 { (t1, t2, r) => scope.enter(specApplySymbol(sym, List(t1, t2), r)) }
+    //       tp.derivedClassInfo(decls = scope)
 
-      else tp
+    //   else tp
 
     case _ => tp
   }
