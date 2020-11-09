@@ -6,7 +6,7 @@ class M {
 
 def f[T: Type](using QuoteContext) =
   Expr.summon[M] match
-    case Some('{ $mm : $tt }) =>
+    case Some('{ $mm : tt }) =>
       '{
         val m = $mm
         type ME = m.E

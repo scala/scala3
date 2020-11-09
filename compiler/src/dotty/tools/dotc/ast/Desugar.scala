@@ -908,21 +908,26 @@ object desugar {
 
   /** Transforms
    *
-   *    <mods> type $T >: Low <: Hi
-   *
+   *    <mods> type t >: Low <: Hi
    *  to
    *
    *    @patternType <mods> type $T >: Low <: Hi
    *
-   *  if the type is a type splice.
+   *  if the type has a pattern variable name
    */
   def quotedPatternTypeDef(tree: TypeDef)(using Context): TypeDef = {
     assert(ctx.mode.is(Mode.QuotedPattern))
-    if (tree.name.startsWith("$") && !tree.isBackquoted) {
+    if tree.name.isVarPattern && !tree.isBackquoted then
       val patternTypeAnnot = New(ref(defn.InternalQuotedPatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)
       val mods = tree.mods.withAddedAnnotation(patternTypeAnnot)
       tree.withMods(mods)
-    }
+    else if tree.name.startsWith("$") && !tree.isBackquoted then
+      report.error(
+        """Quoted pattern variable names starting with $ are not suported anymore.
+          |Use lower cases type pattern name instead.
+          |""".stripMargin,
+        tree.srcPos)
+      tree
     else tree
   }
 

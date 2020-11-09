@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.NameKinds.{UniqueName, PatMatVarName}
+import dotty.tools.dotc.core.NameKinds.{UniqueName, PatMatGivenVarName}
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
@@ -37,7 +37,7 @@ trait QuotesAndSplices {
 
   import tpd._
 
-  /** Translate `'{ t }` into `scala.quoted.Expr.apply(t)` and `'[T]` into `scala.quoted.Type.apply[T]`
+  /** Translate `'{ e }` into `scala.quoted.Expr.apply(e)` and `'[T]` into `scala.quoted.Type.apply[T]`
    *  while tracking the quotation level in the context.
    */
   def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree = {
@@ -83,7 +83,7 @@ trait QuotesAndSplices {
         def spliceOwner(ctx: Context): Symbol =
           if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
         val pat = typedPattern(tree.expr, defn.QuotedExprClass.typeRef.appliedTo(pt))(
-          using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+          using spliceContext.retractMode(Mode.QuotedPattern).addMode(Mode.Pattern).withOwner(spliceOwner(ctx)))
         val baseType = pat.tpe.baseType(defn.QuotedExprClass)
         val argType = if baseType != NoType then baseType.argTypesHi.head else defn.NothingType
         ref(defn.InternalQuoted_exprSplice).appliedToType(argType).appliedTo(pat)
@@ -158,25 +158,11 @@ trait QuotesAndSplices {
     }
 
     if ctx.mode.is(Mode.QuotedPattern) && level == 1 then
-      def spliceOwner(ctx: Context): Symbol =
-      if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
-      val (name, expr) = tree.expr match {
-        case Ident(name) =>
-          val nameOfSyntheticGiven = PatMatVarName.fresh()
-          (name.toTypeName, untpd.cpy.Ident(tree.expr)(nameOfSyntheticGiven))
-        case expr =>
-          report.error("expected a name binding", expr.srcPos)
-          ("$error".toTypeName, expr)
-      }
-
-      val typeSymInfo = pt match
-        case pt: TypeBounds => pt
-        case _ => TypeBounds.empty
-      val typeSym = newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.expr.span)
-      typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuotedPatterns_patternTypeAnnot.typeRef)).withSpan(tree.expr.span)))
-      val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
-          using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
-      pat.select(tpnme.Underlying)
+      report.error(
+            """`$` for quote pattern varable is not supported anymore.
+               |Use lower cased variable name without the `$` instead.""".stripMargin,
+            tree.srcPos)
+      ref(defn.NothingType)
     else
       val tree1 = typedSelect(untpd.Select(tree.expr, tpnme.Underlying), pt)(using spliceContext).withSpan(tree.span)
       val msg = em"Consider using canonical type reference ${tree1.tpe} instead"
@@ -184,6 +170,24 @@ trait QuotesAndSplices {
       else report.warning(msg, tree.srcPos)
       tree1
   }
+
+  /** Type a pattern variable name `t` in quote pattern as `${given t$giveni: Type[t @ _]}`.
+   *  The resulting pattern is the split in `splitQuotePattern`.
+   */
+  def typedQuotedTypeVar(tree: untpd.Ident, pt: Type)(using Context): Tree =
+    def spliceOwner(ctx: Context): Symbol =
+      if (ctx.mode.is(Mode.QuotedPattern)) spliceOwner(ctx.outer) else ctx.owner
+    val name = tree.name.toTypeName
+    val nameOfSyntheticGiven = PatMatGivenVarName.fresh(tree.name.toTermName)
+    val expr = untpd.cpy.Ident(tree)(nameOfSyntheticGiven)
+    val typeSymInfo = pt match
+      case pt: TypeBounds => pt
+      case _ => TypeBounds.empty
+    val typeSym = newSymbol(spliceOwner(ctx), name, EmptyFlags, typeSymInfo, NoSymbol, tree.span)
+    typeSym.addAnnotation(Annotation(New(ref(defn.InternalQuotedPatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)))
+    val pat = typedPattern(expr, defn.QuotedTypeClass.typeRef.appliedTo(typeSym.typeRef))(
+        using spliceContext.retractMode(Mode.QuotedPattern).withOwner(spliceOwner(ctx)))
+    pat.select(tpnme.Underlying)
 
   private def checkSpliceOutsideQuote(tree: untpd.Tree)(using Context): Unit =
     if (level == 0 && !ctx.owner.ownersIterator.exists(_.is(Inline)))
@@ -201,17 +205,17 @@ trait QuotesAndSplices {
    *
    *  A quote pattern
    *  ```
-   *  case '{ type ${given t: Type[$t @ _]}; ${ls: Expr[List[$t]]} } => ...
+   *  case '{ type ${given t$giveni: Type[t @ _]}; ${ls: Expr[List[t]]} } => ...
    *  ```
    *  will return
    *  ```
    *  (
-   *    Map(<$t>: Symbol -> <$t @ _>: Bind),
+   *    Map(<t$giveni>: Symbol -> <t @ _>: Bind),
    *    <'{
-   *       @scala.internal.Quoted.patternType type $t
-   *       scala.internal.Quoted.patternHole[List[$t]]
+   *       @scala.internal.Quoted.patternType type t
+   *       scala.internal.Quoted.patternHole[List[t]]
    *    }>: Tree,
-   *    List(<ls: Expr[List[$t]]>: Tree)
+   *    List(<ls: Expr[List[t]]>: Tree)
    *  )
    *  ```
    */
@@ -278,7 +282,7 @@ trait QuotesAndSplices {
             tree
         case tdef: TypeDef  =>
           if tdef.symbol.hasAnnotation(defn.InternalQuotedPatterns_patternTypeAnnot) then
-            transformTypeBindingTypeDef(PatMatVarName.fresh(), tdef, typePatBuf)
+            transformTypeBindingTypeDef(PatMatGivenVarName.fresh(tdef.name.toTermName), tdef, typePatBuf)
           else if tdef.symbol.isClass then
             val kind = if tdef.symbol.is(Module) then "objects" else "classes"
             report.error("Implementation restriction: cannot match " + kind, tree.srcPos)
@@ -358,21 +362,21 @@ trait QuotesAndSplices {
    *  within the quotes become patterns again and typed accordingly.
    *
    *  ```
-   *  case '{ ($ls: List[$t]) } =>
-   *    // `t` is of type `Type[T$1]` for some unknown T$1
-   *    // `t` is implicitly available
-   *    // `l` is of type `Expr[List[T$1]]`
+   *  case '{ ($ls: List[t]) } =>
+   *    // `t$giveni` is of type `Type[t]` for some unknown `t`
+   *    // `t$giveni` is implicitly available
+   *    // `ls` is of type `Expr[List[t]]`
    *    '{ val h: $t = $ls.head  }
    *  ```
    *
-   *  For each type splice we will create a new type binding in the pattern match ($t @ _ in this case)
-   *  and a corresponding type in the quoted pattern as a hole (@patternType type $t in this case).
+   *  For each type splice we will create a new type binding in the pattern match (`t @ _` in this case)
+   *  and a corresponding type in the quoted pattern as a hole (`@patternType type t` in this case).
    *  All these generated types are inserted at the start of the quoted code.
    *
    *  After typing the tree will resemble
    *
    *  ```
-   *  case '{ type ${given t: Type[$t @ _]}; ${ls: Expr[List[$t]]} } => ...
+   *  case '{ type ${given t$giveni: Type[t @ _]}; ${ls: Expr[List[t]]} } => ...
    *  ```
    *
    *  Then the pattern is _split_ into the expression contained in the pattern replacing the splices by holes,
@@ -380,16 +384,16 @@ trait QuotesAndSplices {
    *
    *  ```
    *  case scala.internal.quoted.Expr.unapply[
-   *          Tuple1[$t @ _], // Type binging definition
-   *          Tuple2[Type[$t], Expr[List[$t]]] // Typing the result of the pattern match
+   *          Tuple1[t @ _], // Type binging definition
+   *          Tuple2[Type[t], Expr[List[t]]] // Typing the result of the pattern match
    *        ](
    *          Tuple2.unapply
-   *            [Type[$t], Expr[List[$t]]] //Propagated from the tuple above
-   *            (implicit t @ _, ls @ _: Expr[List[$t]]) // from the spliced patterns
+   *            [Type[t], Expr[List[t]]] //Propagated from the tuple above
+   *            (given t$giveni @ _, ls @ _: Expr[List[t]]) // from the spliced patterns
    *        )(
    *         '{ // Runtime quote Matcher.unapply uses to mach against. Expression directly inside the quoted pattern without the splices
-   *            @scala.internal.Quoted.patternType type $t
-   *            scala.internal.Quoted.patternHole[List[$t]]
+   *            @scala.internal.Quoted.patternType type t
+   *            scala.internal.Quoted.patternHole[List[t]]
    *          },
    *          true, // If there is at least one type splice. Used to instantiate the context with or without GADT constraints
    *          x$2 // tasty.Reflection instance
@@ -409,7 +413,7 @@ trait QuotesAndSplices {
       case _ => defn.AnyType
     }
     val quoted0 = desugar.quotedPattern(quoted, untpd.TypedSplice(TypeTree(quotedPt)))
-    val quoteCtx = quoteContext.addMode(Mode.QuotedPattern)
+    val quoteCtx = quoteContext.addMode(Mode.QuotedPattern).retractMode(Mode.Pattern)
     val quoted1 =
       if quoted.isType then typedType(quoted0, WildcardType)(using quoteCtx)
       else typedExpr(quoted0, WildcardType)(using quoteCtx)

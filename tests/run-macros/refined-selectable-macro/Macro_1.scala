@@ -38,8 +38,8 @@ object Macro {
 
     def tupleElem(name: String, info: TypeRepr): Expr[Any] = {
       val nameExpr = Expr(name)
-      info.seal match { case '[$qType] =>
-          Expr.ofTupleFromSeq(Seq(nameExpr, '{ $s.selectDynamic($nameExpr).asInstanceOf[qType] }))
+      info.seal match { case '[t] =>
+          Expr.ofTupleFromSeq(Seq(nameExpr, '{ $s.selectDynamic($nameExpr).asInstanceOf[t] }))
       }
     }
 
@@ -91,8 +91,8 @@ object Macro {
 
     val refinementType = r.foldLeft(TypeRepr.of[T])((acc, e) => Refinement(acc, e._1, e._2)).seal
 
-    refinementType match { case '[$T] =>
-        '{ $newRecord($s.toArray.map(e => e.asInstanceOf[(String, Any)])).asInstanceOf[T] }
+    refinementType match { case '[t] =>
+        '{ $newRecord($s.toArray.map(e => e.asInstanceOf[(String, Any)])).asInstanceOf[t] }
     }
   }
 }

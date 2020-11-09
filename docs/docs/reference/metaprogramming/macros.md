@@ -703,11 +703,11 @@ Sometimes it is necessary to get a more precise type for an expression. This can
 ```scala
 def f(exp: Expr[Any])(using QuoteContext) =
   expr match
-    case '{ $x: $T } =>
-      // If the pattern match succeeds, then there is some type `T` such that
-      // - `x` is bound to a variable of type `Expr[T]`
-      // - `T` is bound to a new type T and a given instance `Type[T]` is provided for it
-      // That is, we have `x: Expr[T]` and `given Type[T]`, for some (unknown) type `T`.
+    case '{ $x: t } =>
+      // If the pattern match succeeds, then there is some type `t` such that
+      // - `x` is bound to a variable of type `Expr[t]`
+      // - `t` is bound to a new type `t` and a given instance `Type[t]` is provided for it
+      // That is, we have `x: Expr[t]` and `given Type[t]`, for some (unknown) type `t`.
 ```
 
 This might be used to then perform an implicit search as in:
@@ -720,8 +720,8 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
   argsExpr match {
     case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {
-        case '{ $arg: $T } =>
-          Expr.summon[Show[T]] match {
+        case '{ $arg: t } =>
+          Expr.summon[Show[t]] match {
             case Some(showExpr) => '{ $showExpr.show($arg) }
             case None => Reporting.error(s"could not find implicit for ${showTp.show}", arg); '{???}
           }

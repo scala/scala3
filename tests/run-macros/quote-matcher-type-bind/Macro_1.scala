@@ -7,8 +7,8 @@ object Macros {
 
   private def impl(x: Expr[Unit])(using QuoteContext): Expr[Unit] = {
     x match {
-      case '{ DSL.f[$T]($x) } => '{ DSL.g[T]($x) }
-      case '{ DSL.g[$T]($x) } => '{ DSL.f[T]($x) }
+      case '{ DSL.f[t]($x) } => '{ DSL.g[t]($x) }
+      case '{ DSL.g[t]($x) } => '{ DSL.f[t]($x) }
       case _ => x
     }
   }

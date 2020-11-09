@@ -7,11 +7,11 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
   argsExpr match {
     case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {
-        case '{ $arg: $Tp } =>
-          val showTp = Type[Show[Tp]]
+        case '{ $arg: tp } =>
+          val showTp = Type[Show[tp]]
           Expr.summon(using showTp) match {
             case Some(showExpr) => '{ $showExpr.show($arg) }
-            case None => report.error(s"could not find implicit for ${Type.show[Show[Tp]]}", arg); '{???}
+            case None => report.error(s"could not find implicit for ${Type.show[Show[tp]]}", arg); '{???}
           }
       }
       val newArgsExpr = Varargs(argShowedExprs)

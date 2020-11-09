@@ -7,6 +7,6 @@ object Macros {
 
   def macroImpl[T]()(using qctx: QuoteContext): Expr[String] = {
     Expr.summon[Mirror.Of[Some[Int]]] match
-      case Some('{ $_ : $T }) => Expr(Type.show[T])
+      case Some('{ $_ : t }) => Expr(Type.show[t])
   }
 }

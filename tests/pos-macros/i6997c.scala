@@ -6,9 +6,9 @@ inline def mcr(x: => Any): Any = ${mcrImpl('x)}
 
 def mcrImpl(body: Expr[Any])(using ctx: QuoteContext): Expr[Any] =
   body match
-    case '{$x: $T} =>
+    case '{$x: t} =>
       '{
-        val tmp: T = $x
+        val tmp: t = $x
         println(tmp)
         tmp
       }
