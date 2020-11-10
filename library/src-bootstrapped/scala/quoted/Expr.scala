@@ -1,70 +1,9 @@
 package scala.quoted
 
 /** Quoted expression of type `T` */
-abstract class Expr[+T] private[scala] {
-
-  /** Show a source code like representation of this expression without syntax highlight */
-  def show(using qctx: QuoteContext): String = this.unseal.show
-
-  /** Shows the tree as fully typed source code colored with ANSI */
-  def showAnsiColored(using qctx: QuoteContext): String = this.unseal.showAnsiColored
-
-  /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
-   *  It does the equivalent of
-   *  ```
-   *  this match
-   *    case '{...} => true // where the contents of the pattern are the contents of `that`
-   *    case _ => false
-   *  ```
-   */
-  final def matches(that: Expr[Any])(using qctx: QuoteContext): Boolean =
-    val ExprMatch = qctx.asInstanceOf[scala.quoted.internal.QuoteMatching].ExprMatch
-    ExprMatch.unapply[EmptyTuple, EmptyTuple](this)(using that).nonEmpty
-
-  /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
-  def isExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): Boolean =
-    this.unseal.tpe <:< qctx.reflect.TypeRepr.of[X]
-
-  /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-  def asExprOf[X](using tp: scala.quoted.Type[X])(using qctx: QuoteContext): scala.quoted.Expr[X] = {
-    if isExprOf[X] then
-      this.asInstanceOf[scala.quoted.Expr[X]]
-    else
-      throw Exception(
-        s"""Expr cast exception: ${this.show}
-           |of type: ${this.unseal.tpe.show}
-           |did not conform to type: ${qctx.reflect.TypeRepr.of[X].show}
-           |""".stripMargin
-      )
-  }
-
-  /** View this expression `quoted.Expr[T]` as a `Term` */
-  def unseal(using qctx: QuoteContext): qctx.reflect.Term
-
-}
+abstract class Expr[+T] private[scala]
 
 object Expr {
-
-  extension [T](expr: Expr[T]):
-    /** Return the unlifted value of this expression.
-     *
-     *  Returns `None` if the expression does not contain a value or contains side effects.
-     *  Otherwise returns the `Some` of the value.
-     */
-    def unlift(using qctx: QuoteContext, unlift: Unliftable[T]): Option[T] =
-      unlift.fromExpr(expr)
-
-    /** Return the unlifted value of this expression.
-     *
-     *  Emits an error and throws if the expression does not contain a value or contains side effects.
-     *  Otherwise returns the value.
-     */
-    def unliftOrError(using qctx: QuoteContext, unlift: Unliftable[T]): T =
-      def reportError =
-        val msg = s"Expected a known value. \n\nThe value of: ${expr.show}\ncould not be unlifted using $unlift"
-        report.throwError(msg, expr)
-      unlift.fromExpr(expr).getOrElse(reportError)
-  end extension
 
   /** `e.betaReduce` returns an expression that is functionally equivalent to `e`,
    *   however if `e` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`
