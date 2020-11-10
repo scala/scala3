@@ -12,12 +12,17 @@ env:
 jobs:
   test:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-09-08
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
     if: "!(github.event_name == 'push' &&
            startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
 
     steps:
-      - name: Set JDK 11 as default
+      - name: Set JDK 14 as default
         run: echo "/usr/lib/jvm/java-14-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
@@ -29,26 +34,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: |
@@ -57,12 +44,17 @@ jobs:
 
   test_bootstrapped:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-09-08
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
     if: "!(github.event_name == 'push' &&
            startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
 
     steps:
-      - name: Set JDK 11 as default
+      - name: Set JDK 14 as default
         run: echo "/usr/lib/jvm/java-14-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
@@ -74,26 +66,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: |
@@ -135,7 +109,12 @@ jobs:
 
   community_build:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-09-08
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
 
     steps:
       - name: Checkout cleanup script
@@ -147,26 +126,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: |
@@ -176,7 +137,12 @@ jobs:
 
   test_sbt:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-09-08
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
     if: (
           github.event_name == 'push' &&
           startsWith(github.event.ref, 'refs/tags/')
@@ -193,33 +159,21 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: ./project/scripts/sbt sbt-dotty/scripted
 
   test_java8:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-09-08
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+
     if: "(
           github.event_name == 'push' &&
           startsWith(github.event.ref, 'refs/tags/') &&
@@ -240,33 +194,20 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: ./project/scripts/sbt ";compile ;test"
 
   publish_nightly:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-09-08
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
     if: github.event_name == 'schedule'
     env:
@@ -286,26 +227,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Publish Nightly
         run: |
@@ -313,7 +236,12 @@ jobs:
 
   nightly_documentation:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-09-08
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_nightly]
     if: github.event_name == 'schedule'
     env:
@@ -332,26 +260,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Generate Website
         run: |
@@ -367,7 +277,12 @@ jobs:
 
   publish_release:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-09-08
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
@@ -390,26 +305,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Publish Release
         run: |
@@ -462,7 +359,12 @@ jobs:
 
   release_documentation:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-09-08
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_release]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
@@ -484,26 +386,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Generate Website
         run: |
@@ -519,7 +403,12 @@ jobs:
 
   publish_sbt_release:
     runs-on: [self-hosted, Linux]
-    container: lampepfl/dotty:2020-09-08
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [community_build, test_sbt]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
@@ -541,26 +430,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Publish Dotty SBT Plugin Release
         run: |
