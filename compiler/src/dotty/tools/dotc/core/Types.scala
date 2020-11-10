@@ -243,8 +243,8 @@ object Types {
           // then the OrType derivesFrom the class. Otherwise, we need to check both sides
           // derivesFrom the class.
           loop(tp.tp1) && loop(tp.tp2)
-          || tp.tp1.isNullType && loop(tp.tp2)
-          || tp.tp2.isNullType && loop(tp.tp2)
+          || tp.tp1.isNullOrNothingType && loop(tp.tp2)
+          || tp.tp2.isNullOrNothingType && loop(tp.tp1)
         case tp: JavaArrayType =>
           cls == defn.ObjectClass
         case _ =>
@@ -1533,6 +1533,9 @@ object Types {
 
     /** Is this (an alias of) the `scala.Null` type? */
     final def isNullType(using Context) = isRef(defn.NullClass)
+
+    /** Is this (an alias of) the `scala.Null` or `scala.Nothing` type? */
+    final def isNullOrNothingType(using Context) = isNullType || isRef(defn.NothingClass)
 
     /** The resultType of a LambdaType, or ExprType, the type itself for others */
     def resultType(using Context): Type = this
