@@ -217,15 +217,26 @@ class PickleQuotes extends MacroTransform {
         // - Remove typeHoles/termHoles casts.
         val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), defn.AnyType))
         val holes = SyntheticValDef("holes".toTermName, splicesList)
-        val typeHoles = ref(holes.symbol).asInstance(
-          defn.FunctionType(1).appliedTo(defn.IntType,
-            defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType),
-              defn.QuotedTypeClass.typeRef.appliedTo(defn.AnyType))))
-        val termHoles = ref(holes.symbol).asInstance(
-          defn.FunctionType(1).appliedTo(defn.IntType,
-            defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType),
-              defn.FunctionType(1).appliedTo(defn.QuoteContextClass.typeRef,
-                defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)))))
+
+        val typeHoles = Lambda(
+          MethodType(List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType)), defn.QuotedTypeClass.typeRef.appliedTo(defn.AnyType)),
+          args =>
+            ref(holes.symbol).asInstance(
+                defn.FunctionType(1).appliedTo(defn.IntType,
+                  defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType),
+                    defn.QuotedTypeClass.typeRef.appliedTo(defn.AnyType))))
+              .select(nme.apply).appliedTo(args(0)).select(nme.apply).appliedTo(args(1))
+        )
+        val termHoles =Lambda(
+          MethodType(List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType), defn.QuoteContextClass.typeRef), defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
+          args =>
+            ref(holes.symbol).asInstance(
+                defn.FunctionType(1).appliedTo(defn.IntType,
+                  defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType),
+                    defn.FunctionType(1).appliedTo(defn.QuoteContextClass.typeRef,
+                      defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)))))
+              .select(nme.apply).appliedTo(args(0)).select(nme.apply).appliedTo(args(1)).select(nme.apply).appliedTo(args(2))
+        )
 
         val quoteClass = if isType then defn.QuotedTypeClass else defn.QuotedExprClass
         val quotedType = quoteClass.typeRef.appliedTo(originalTp)
