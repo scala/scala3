@@ -960,8 +960,9 @@ object Scanners {
            '|' | '\\' =>
         putChar(ch); nextChar(); getOperatorRest()
       case '/' =>
-        if (skipComment()) finishNamed()
-        else { putChar('/'); getOperatorRest() }
+        val nxch = lookaheadChar()
+        if nxch == '/' || nxch == '*' then finishNamed()
+        else { putChar(ch); nextChar(); getOperatorRest() }
       case _ =>
         if (isSpecial(ch)) { putChar(ch); nextChar(); getOperatorRest() }
         else finishNamed()
