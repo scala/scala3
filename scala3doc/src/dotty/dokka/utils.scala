@@ -14,8 +14,6 @@ import org.jetbrains.dokka.model.properties.PropertyContainer
 import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
-import org.jetbrains.dokka.plugability._
-import kotlin.jvm.JvmClassMappingKt.getKotlinClass
 
 class BaseKey[T, V] extends ExtraProperty.Key[T, V]:
   override def mergeStrategyFor(left: V, right: V): MergeStrategy[T] =
