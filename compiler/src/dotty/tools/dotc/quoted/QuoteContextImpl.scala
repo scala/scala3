@@ -2585,15 +2585,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
     object Source extends SourceModule:
       def path: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
-      def isJavaCompilationUnit: Boolean = ctx.compilationUnit.isInstanceOf[dotc.fromtasty.JavaCompilationUnit]
-      def isScala2CompilationUnit: Boolean = ctx.compilationUnit.isInstanceOf[dotc.fromtasty.Scala2CompilationUnit]
-      def isAlreadyLoadedCompilationUnit: Boolean = ctx.compilationUnit.isInstanceOf[dotc.fromtasty.AlreadyLoadedCompilationUnit]
-      def compilationUnitClassname: String =
-        ctx.compilationUnit match
-          case cu: dotc.fromtasty.JavaCompilationUnit => cu.className
-          case cu: dotc.fromtasty.Scala2CompilationUnit => cu.className
-          case cu: dotc.fromtasty.AlreadyLoadedCompilationUnit => cu.className
-          case cu => ""
     end Source
 
     object Reporting extends ReportingModule:

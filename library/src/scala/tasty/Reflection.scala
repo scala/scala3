@@ -3262,17 +3262,6 @@ trait Reflection { reflection =>
     /** Returns the source file being compiled. The path is relative to the current working directory. */
     def path: java.nio.file.Path
 
-    /** Returns true if we've tried to reflect on a Java class. */
-    def isJavaCompilationUnit: Boolean
-
-    /** Returns true if we've tried to reflect on a Scala2 (non-Tasty) class. */
-    def isScala2CompilationUnit: Boolean
-
-    /** Returns true if we've tried to reflect on a class that's already loaded (e.g. Option). */
-    def isAlreadyLoadedCompilationUnit: Boolean
-
-    /** Class name of the current CompilationUnit */
-    def compilationUnitClassname: String
   }
 
   ///////////////
