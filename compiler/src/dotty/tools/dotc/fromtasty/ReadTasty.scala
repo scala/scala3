@@ -44,9 +44,8 @@ class ReadTasty extends Phase {
                 Some(unit)
               }
             case tree: Tree[?] =>
+              // TODO handle correctly this case correctly to get the tree or avoid it completely.
               cls.denot.infoOrCompleter match {
-                case _: NoLoader => Some(Scala2CompilationUnit(cls.fullName.toString))
-                case _ if cls.flags.is(Flags.JavaDefined) => Some(JavaCompilationUnit(cls.fullName.toString))
                 case _ => Some(AlreadyLoadedCompilationUnit(cls.denot.fullName.toString))
               }
             case _ =>
