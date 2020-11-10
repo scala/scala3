@@ -1,3 +1,9 @@
+/**
+ * @typedef { import("./Filter").Filter } Filter
+ * @typedef { { ref: Element; name: string; description: string } } ListElement
+ *  @typedef { [key: string, value: string][] } Dataset
+ */
+
 class DocumentableList extends Component {
   constructor(props) {
     super(props);
@@ -14,24 +20,16 @@ class DocumentableList extends Component {
     this.render(this.props);
   }
 
-  toggleElementDatasetVisibility(condition, element) {
-    if (condition) {
-      element.dataset.visibility = true;
-    } else {
-      element.dataset.visibility = false;
-    }
+  toggleElementDatasetVisibility(isVisible, ref) {
+    ref.dataset.visibility = isVisible
   }
 
   toggleDisplayStyles(condition, ref, onVisibleStyle) {
-    if (condition) {
-      ref.style.display = onVisibleStyle;
-    } else {
-      ref.style.display = "none";
-    }
+    ref.style.display = condition ? onVisibleStyle : 'none'
   }
 
   render({ filter }) {
-    this.state.list.sectionsRefs.map((sectionRef) => {
+    this.state.list.sectionsRefs.map(sectionRef => {
       const tabRef = this.state.list.getTabRefFromSectionRef(sectionRef);
 
       const isTabVisible = this.state.list
@@ -39,22 +37,13 @@ class DocumentableList extends Component {
         .filter((listRef) => {
           const isListVisible = this.state.list
             .getSectionListElementsRefs(listRef)
-            .map((elementRef) => this.state.list.mapListElementRef(elementRef))
-            .filter((elementData) => {
-              const isElementVisible = this.state.list.isElementVisible(
-                elementData,
-                filter
-              );
+            .map(elementRef => this.state.list.toListElement(elementRef))
+            .filter(elementData => {
+              const isElementVisible = this.state.list.isElementVisible(elementData, filter);
 
-              this.toggleDisplayStyles(
-                isElementVisible,
-                elementData.ref,
-                "table"
-              );
-              this.toggleElementDatasetVisibility(
-                isElementVisible,
-                elementData.ref
-              );
+              this.toggleDisplayStyles(isElementVisible, elementData.ref, "table");
+              this.toggleElementDatasetVisibility(isElementVisible, elementData.ref);
+
               return isElementVisible;
             }).length;
 
@@ -68,39 +57,61 @@ class DocumentableList extends Component {
   }
 }
 
-class List {
-  filterTab(name) {
-    return name !== "Linear supertypes" && name !== "Known subtypes" && name !== "Type hierarchy"
-  }
-
+class List { 
+  /**
+   * @param tabsRef { Element[] }
+   * @param sectionRefs { Element[] }
+   */
   constructor(tabsRef, sectionRefs) {
     this._tabsRef = tabsRef;
     this._sectionRefs = sectionRefs;
   }
 
   get tabsRefs() {
-    return this._tabsRef.filter((tabRef) => this.filterTab(this._getTogglable(tabRef)));
+    return this._tabsRef.filter(tabRef => this.filterTab(this._getTogglable(tabRef)));
   }
 
   get sectionsRefs() {
-    return this._sectionRefs.filter( (sectionRef) => this.filterTab(this._getTogglable(sectionRef)));
+    return this._sectionRefs.filter(sectionRef => this.filterTab(this._getTogglable(sectionRef)));
   }
 
+  /**
+  * @param name { string }
+  */
+  filterTab(name) { 
+    return name !== "Linear supertypes" && name !== "Known subtypes" && name !== "Type hierarchy"
+  }
+
+  /**
+   * @param sectionRef { Element }
+   */
   getTabRefFromSectionRef(sectionRef) {
     return this.tabsRefs.find(
       (tabRef) => this._getTogglable(tabRef) === this._getTogglable(sectionRef)
     );
   }
 
+  /**
+   * @param sectionRef { Element }
+   * @returns { Element[] }
+   */
   getSectionListRefs(sectionRef) {
     return findRefs(".documentableList", sectionRef);
   }
 
+  /**
+   * @param listRef { Element }
+   * @returns { Element[] }
+   */
   getSectionListElementsRefs(listRef) {
     return findRefs(".documentableElement", listRef);
   }
 
-  mapListElementRef(elementRef) {
+  /**
+   * @param elementRef { Element }
+   * @returns { ListElement }
+   */
+  toListElement(elementRef) {
     return {
       ref: elementRef,
       name: getElementTextContent(getElementNameRef(elementRef)),
@@ -108,43 +119,63 @@ class List {
     };
   }
 
+  /**
+  * @param elementData { ListElement }
+  * @param filter { Filter }
+  */
   isElementVisible(elementData, filter) {
-    if (!this._areFiltersFromElementSelected(elementData, filter)) {
-      return false;
+    return !areFiltersFromElementSelected() 
+      ? false 
+      : includesInputValue()
+
+    function includesInputValue() {
+      return elementData.name.includes(filter.value) || elementData.description.includes(filter.value);
     }
-    return this._includesInputValue(elementData, filter);
+
+    function areFiltersFromElementSelected() {
+      /** @type { Dataset } */
+      const dataset = Object.entries(elementData.ref.dataset)
+
+      /** @type { Dataset } */
+      const defaultFilters = Object.entries(Filter.defaultFilters)
+        .filter(([key]) => !!filter.filters[getFilterKey(key)])
+
+       /** @type { Dataset } */
+      const defaultFiltersForMembersWithoutDataAttribute = 
+        defaultFilters.reduce((acc, [key, value]) => {
+          const filterKey = getFilterKey(key)
+          const shouldAddDefaultFilter = !dataset.some(([k]) => k === filterKey)
+          return shouldAddDefaultFilter ? [...acc, [filterKey, value]] : acc
+        }, [])
+
+      /** @type { Dataset } */
+      const datasetWithAppendedDefaultFilters = dataset
+        .filter(([k]) => isFilterData(k))
+        .map(([k, v]) => {
+          const defaultFilter = defaultFilters.find(([defaultKey]) => defaultKey === k)
+          return defaultFilter ? [k, `${v},${defaultFilter[1]}`] : [k, v]
+        })
+
+      const datasetWithDefaultFilters = [ 
+        ...defaultFiltersForMembersWithoutDataAttribute,
+        ...datasetWithAppendedDefaultFilters
+      ]
+
+      const isVisible = datasetWithDefaultFilters
+        .every(([filterKey, value]) => {
+          const filterGroup = filter.filters[filterKey]
+
+          return value.split(",").some(v => filterGroup && filterGroup[v].selected)
+        })
+
+      return isVisible
+    }
   }
 
-  _includesInputValue = (elementData, filter) => {
-    if (elementData.name.includes(filter.value)) {
-      return true;
-    }
-    return elementData.description.includes(filter.value);
-  };
-
-  _areFiltersFromElementSelected(elementRef, filter) {
-    const dataset = this._getCorrectDatasetFromElement(elementRef);
-    return dataset.length
-      ? this._hasCorrespodingFilters(dataset, filter.filters)
-      : true;
-  }
-
-  _hasCorrespodingFilters = (dataset, filters) =>
-    dataset.every(([key, value]) => {
-      const filterGroup = filters[key];
-      return this._splitByComma(value).every(
-        (val) => filterGroup && filterGroup[val].selected
-      );
-    });
-
-  _getCorrectDatasetFromElement = (elementRef) =>
-    Object.entries(elementRef.ref.dataset).filter(([key]) =>
-      this._startsWithF(key)
-    );
-
-  _splitByComma = (str) => str.split(",");
-
-  _startsWithF = (str) => startsWith(str, "f");
-
-  _getTogglable = (elementRef) => elementRef.dataset.togglable;
+  /**
+  * @private
+  * @param elementData { ListElement }
+  */
+  _getTogglable = elementData => elementData.dataset.togglable;
 }
+

@@ -68,29 +68,42 @@ class FilterGroup extends Component {
     return visible ? "visible" : "";
   }
 
-  getSortedValues(values) {
-    return Object.entries(values).sort((a, b) => a[0].localeCompare(b[0]));
+  getSortedValues(filterKey, values) {
+    const defaultFilterKey = `${filterKey.charAt(1).toLowerCase()}${filterKey.slice(2)}`
+    const defaultGroupFilter = Filter.defaultFilters[defaultFilterKey]
+
+    return Object.entries(values).sort(([a], [b]) =>  {
+      if (a === defaultGroupFilter) {
+        return -1
+      } 
+
+      if (b === defaultGroupFilter) {
+        return 1
+      }
+
+      return a.localeCompare(b)
+    })
   }
 
-  getFilterGroup(title, values) {
+  getFilterGroup(filterKey, values) {
     return `
-      <div class="filterGroup">
+      <div class="filterGroup" data-test-id="filterGroup">
         <div class="groupTitle">
-          <span>${title.substring(1)}</span>
-          <div class="groupButtonsContainer">
-            <button class="selectAll" data-key="${title}">Select All</button>
-            <button class="deselectAll" data-key="${title}">Deselect All</button>
+          <span data-test-id="filterGroupTitle">${filterKey.substring(1)}</span>
+          <div class="groupButtonsContainer" data-test-id="filterGroupBatchToggle">
+            <button class="selectAll" data-key="${filterKey}">Select All</button>
+            <button class="deselectAll" data-key="${filterKey}">Deselect All</button>
           </div>
         </div>
-        <div class="filterList">
-          ${this.getSortedValues(values)
+        <div class="filterList" data-test-id="filterGroupList">
+          ${this.getSortedValues(filterKey, values)
             .map(
               ([key, data]) =>
                 `<button class="filterButtonItem ${this.isActive(
                   data.selected
                 )} ${this.isVisible(
                   data.visible
-                )}" data-key="${title}" data-value="${key}">${key}</button>`
+                )}" data-key="${filterKey}" data-selected="${data.selected}" data-value="${key}" data-test-id="filterGroupButton">${key}</button>`
             )
             .join(" ")}
         </div>
@@ -102,7 +115,7 @@ class FilterGroup extends Component {
     attachDOM(
       this.filterLowerContainerRef,
       Object.entries(filter.filters)
-        .filter(([key, values]) => Object.values(values).some((v) => v.visible))
+        .filter(([_key, values]) => Object.values(values).some((v) => v.visible))
         .map(([key, values]) => this.getFilterGroup(key, values))
     );
 

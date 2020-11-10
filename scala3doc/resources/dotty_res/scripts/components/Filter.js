@@ -1,14 +1,25 @@
-const defaultFilterGroup = {
-  FOrdering: { Alphabetical: true },
-};
+/**
+ * @typedef { Record<string, FilterItem> } FilterMap
+ * @typedef { "fKeywords" | "fInherited" | "fImplicitly" | "fExtension" | "fVisibility" } FilterAttributes
+ * @typedef { Record<FilterAttributes, FilterMap> } Filters
+ */
 
 class Filter {
+  /**
+   * @param value { string }
+   * @param filters { Filters }
+   * @param elementsRefs { Element[] }
+   */
   constructor(value, filters, elementsRefs, init = false) {
     this._init = init;
     this._value = value;
     this._elementsRefs = elementsRefs;
 
     this._filters = this._init ? this._withNewFilters() : filters;
+  }
+
+  static get defaultFilters() {
+    return scala3DocData.filterDefaults
   }
 
   get value() {
@@ -23,6 +34,10 @@ class Filter {
     return this._elementsRefs;
   }
 
+  /**
+  * @param key { string }
+  * @param value { string }
+  */
   onFilterToggle(key, value) {
     return new Filter(
       this.value,
@@ -31,6 +46,10 @@ class Filter {
     );
   }
 
+  /**
+  * @param key { string }
+  * @param isActive { boolean }
+  */
   onGroupSelectionChange(key, isActive) {
     return new Filter(
       this.value,
@@ -39,6 +58,9 @@ class Filter {
     );
   }
 
+  /**
+  * @param value { string }
+  */
   onInputValueChange(value) {
     return new Filter(
       value,
@@ -47,31 +69,39 @@ class Filter {
     );
   }
 
+  /**
+  * @private
+  * @param value { string }
+  * @returns { Filters }
+  */
   _generateFiltersOnTyping(value) {
-    return this.elementsRefs
-      .filter((elRef) => {
-        const name = getElementTextContent(getElementNameRef(elRef));
-        const description = getElementTextContent(getElementDescription(elRef));
+    const elementsDatasets = this.elementsRefs
+      .filter(element => {
+        const name = getElementTextContent(getElementNameRef(element));
+        const description = getElementTextContent(getElementDescription(element));
 
         return name.includes(value) || description.includes(value);
       })
-      .map((elRef) => this._getDatasetWithF(elRef.dataset))
-      .reduce((filtersObject, datasets) => {
-        datasets.map(([key, value]) => {
-          this._splitByComma(value).map((val) => {
-            filtersObject[key] = {
-              ...filtersObject[key],
-              [val]: {
-                ...filtersObject[key][val],
-                visible: true,
-              },
-            };
+      .map(element => this._getDatasetWithKeywordData(element.dataset))
+
+      const newFilters = elementsDatasets.reduce((filtersObject, datasets) => {
+        datasets.forEach(([key, value]) => {
+          this._splitByComma(value).forEach((val) => {
+            filtersObject[key] = { ...filtersObject[key], [val]: { ...filtersObject[key][val], visible: true} };
           });
         });
+
         return filtersObject;
       }, this._allFiltersAreHidden());
+
+      return this._attachDefaultFilters(newFilters)
+
   }
 
+  /**
+  * @private
+  * @returns { Filters }
+  */
   _allFiltersAreHidden() {
     return Object.entries(this.filters).reduce(
       (filters, [key, filterGroup]) => {
@@ -87,6 +117,12 @@ class Filter {
     );
   }
 
+  /**
+  * @private
+  * @param key { string }
+  * @param isActive { boolean }
+  * @returns { Filters }
+  */
   _withNewSelectionOfGroup(key, isActive) {
     return {
       ...this.filters,
@@ -103,27 +139,53 @@ class Filter {
     };
   }
 
+ /**
+  * @private
+  * @returns { Filters }
+  */
   _withNewFilters() {
-    return this._elementsRefs.reduce((filtersObject, elementRef) => {
-      this._getDatasetWithF(elementRef.dataset).map(([key, value]) =>
-        this._splitByComma(value).map((val) => {
-          if (!filtersObject[key]) {
-            filtersObject[key] = { [val]: { selected: true, visible: true } };
-          } else {
-            filtersObject[key] = {
-              ...filtersObject[key],
-              [val]: filtersObject[key][val] ?? {
-                selected: true,
-                visible: true,
-              },
-            };
-          }
+    const newFilters = this._elementsRefs.reduce((filtersObject, elementRef) => {
+      this._getDatasetWithKeywordData(elementRef.dataset).forEach(([key, value]) =>
+        this._splitByComma(value).forEach((val) => {
+          filtersObject[key] = filtersObject[key] 
+            ? { ...filtersObject[key], [val]: filtersObject[key][val] ?? new FilterItem() }
+            : { [val]: new FilterItem()  }
         })
       );
       return filtersObject;
     }, {});
+
+    return this._attachDefaultFilters(newFilters)
   }
 
+  /**
+   * @private
+   * @param {Filters} newFilters
+   * @returns {Filters} 
+   */
+  _attachDefaultFilters(newFilters) {
+    return Object.entries(Filter.defaultFilters).reduce((acc, [key, defaultFilter]) => {
+      const filterKey = getFilterKey(key)
+      const shouldAddDefaultKeywordFilter = this._elementsRefs.some(ref => !!ref.dataset[filterKey])
+      
+      return shouldAddDefaultKeywordFilter 
+        ? { 
+          ...acc, 
+          [filterKey]: { 
+            ...acc[filterKey], 
+            [defaultFilter]: new FilterItem() 
+          } 
+        } 
+        : acc
+    }, newFilters)
+  }
+
+  /**
+  * @private
+  * @param key { string }
+  * @param value { string }
+  * @returns { Filters }
+  */
   _withToggledFilter(key, value) {
     return {
       ...this.filters,
@@ -137,10 +199,24 @@ class Filter {
     };
   }
 
+  /**
+  * @private
+  * @param str { string }
+  */
   _splitByComma = (str) => str.split(",");
 
-  _getDatasetWithF = (dataset) =>
-    Object.entries(dataset).filter(([key]) => this._startsWithF(key));
+  /**
+  * @private
+  * @param dataset { DOMStringMap }
+  * @returns { [key: string, value: string][] }
+  */
+  _getDatasetWithKeywordData = (dataset) =>
+    Object.entries(dataset).filter(([key]) => isFilterData(key));
+}
 
-  _startsWithF = (str) => startsWith(str, "f");
+class FilterItem {
+  constructor(selected = true, visible = true) {
+    this.selected = selected
+    this.visible = visible
+  }
 }

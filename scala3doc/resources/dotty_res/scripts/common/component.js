@@ -6,7 +6,6 @@ class Component {
   }
 
   setState(nextState, cb = () => {}) {
-    const prevState = { ...this.state };
     if (typeof nextState === "function") {
       this.state = {
         ...this.state,

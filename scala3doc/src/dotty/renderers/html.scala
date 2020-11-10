@@ -89,6 +89,7 @@ object HTML:
   val charset = Attr("charset")
   val name = Attr("name")
   val content = Attr("content")
+  val testId = Attr("data-test-id")
 
   def raw(content: String): AppliedTag = AppliedTag(content)
 

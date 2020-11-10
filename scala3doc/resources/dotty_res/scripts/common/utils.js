@@ -17,14 +17,16 @@ const attachDOM = (element, html) => {
   }
 };
 
-const startsWith = (str, character) => str.charAt(0) === character;
-
 const htmlToString = (html) => {
   if (Array.isArray(html)) {
     return html.join("");
   }
   return html;
 };
+
+const isFilterData = key => key.startsWith("f")
+
+const getFilterKey = key => `f${key.charAt(0).toUpperCase()}${key.slice(1)}`
 
 const attachListeners = (elementsRefs, type, callback) =>
   elementsRefs.map((elRef) => withEvent(elRef, type, callback));

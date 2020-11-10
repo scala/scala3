@@ -1,3 +1,7 @@
+/**
+ * @typedef { import("./Filter").Filter } Filter
+ */
+
 class FilterBar extends Component {
   constructor(props) {
     super(props);

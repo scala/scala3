@@ -132,7 +132,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
 
       )
 
-    div(cls := "documentableList")(
+    div(cls := "documentableList", testId := "definitionList")(
       if(n.groupName.isEmpty) raw("") else h3(cls := "documentableHeader")(n.groupName.map(renderElement)),
       n.elements.flatMap {
         case element: DocumentableElement =>
@@ -146,7 +146,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
 
   private def buildDocumentableFilter = div(cls := "documentableFilter")(
     div(cls := "filterUpperContainer")(
-      button(cls := "filterToggleButton")(
+      button(cls := "filterToggleButton", testId := "filterToggleButton")(
         raw("""
           <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
             <path d="M0 0h24v24H0z" fill="none"/>
@@ -154,7 +154,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
           </svg>
         """)
       ),
-      input(cls := "filterableInput", placeholder := "Filter all members")
+      input(cls := "filterableInput", placeholder := "Filter all members", testId := "filterBarInput")
     ),
     div(cls := "filterLowerContainer")()
   )

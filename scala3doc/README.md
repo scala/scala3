@@ -20,8 +20,8 @@ We're aiming to support all the features Scaladoc did, plus new and exciting one
 Use the following commands to generate documentation for this project and for Dotty, respectively:
 
 ```
-sbt generateSelfDocumentation
-sbt generateDottyLibDocumentation
+sbt scala3doc/generateSelfDocumentation
+sbt scala3doc/generateScala3Documentation
 ```
 
 To actually view the documentation, the easiest way is to run the following in project root:
@@ -41,15 +41,16 @@ the documentation won't work completely if you don't.
 ## CLI Documentation
 
 CLI command for running our tool is in form: `sbt main -n <name> -o <output> -t <tasty-files> -cp <classpath> -s { <sources> } -d <documentation> ` where:
-   - `<name>`: name of module in generated documentation
-   - `<output>`: location where documentation should be created
-   - `<tasty-files>`: is list of dirs or jars that contains tasty files that should be documented
-   - `<classpath>`: classpath that was used to generate tasty files
-   - `<sources>`: links to source files of module that are used to link symbols on pages to their source file. They need to be supplied in form:
-      `local_dir=remote_dir#line_suffix` e.g. `src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L`
-   - `<documentation>`: directory of static documentation that you would like to render with API documentation. This feature is provided by dokka-site plugin:
-      - [GitHub](https://github.com/VirtusLab/dokka-site)
-      - [Documentation](https://virtuslab.github.io/dokka-site/index.html)
+
+- `<name>`: name of module in generated documentation
+- `<output>`: location where documentation should be created
+- `<tasty-files>`: is list of dirs or jars that contains tasty files that should be documented
+- `<classpath>`: classpath that was used to generate tasty files
+- `<sources>`: links to source files of module that are used to link symbols on pages to their source file. They need to be supplied in form:
+  `local_dir=remote_dir#line_suffix` e.g. `src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L`
+- `<documentation>`: directory of static documentation that you would like to render with API documentation. This feature is provided by dokka-site plugin:
+  - [GitHub](https://github.com/VirtusLab/dokka-site)
+  - [Documentation](https://virtuslab.github.io/dokka-site/index.html)
 
 ## Developing
 
@@ -59,49 +60,35 @@ work on the project.
 For every PR, we build documentation for Scala3doc and Dotty. For example, for
 PR 123 you can find them at:
 
-+ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/self/main/index.html>
-+ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/stdLib/main/index.html>
+- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/self/main/index.html>
+- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/stdLib/main/index.html>
 
 Note that these correspond to the contents of `output` directory - that's
 precisely what they are.
 
 You can also find the result of building the same sites for latest `master` at:
 
-+ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/self/main/index.html>
-+ <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/stdLib/main/index.html>
+- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/self/main/index.html>
+- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/stdLib/main/index.html>
 
 ### Testing
 
-To implement integration tests that inspects state of the model on different stages of
-documentation generation one can use [ScaladocTest](src/test/scala/dotty/dokka/ScaladocTest.scala#L15).
-This class requires providing the name of the test and a the list of assertions.
+Most tests rely on comparing signatures (of classes, methods, objects etc.) extracted from the generated documentation
+to signatures found in source files. Such tests are defined using [MultipleFileTest](test/dotty/dokka/MultipleFileTest.scala) class
+and its subtypes (such as [SingleFileTest](test/dotty/dokka/SingleFileTest.scala))
 
-Name of the test is used to extract symbols that should be included in given test run from
-the TASTY files. All test data is located in [scala3doc-testcases module](../scala3doc-testcases/src).
-It is compiled together with the rest of modules. This solves lots of potential problems with
-invoking the compiler in a separate process such as mismatching versions. Every test is using
-only symbols defined in the package with the same name as the test located inside top level `tests`
-package (including subpackages). This restriction may be relaxed in the future.
+WARNING: As the classes mentioned above are likely to evolve, the description below might easily get out of date.
+In case of any discrepancies rely on the source files instead.
 
-Assertions of each test are defined as list of [Assertion enum](src/test/scala/dotty/dokka/ScaladocTest.scala#L63)
-instances. Each of them represents a callback that is invoked in corresponding phase of
-documentation generation. Those callback can inspect the model, log information and raise errors
-using `reportError` method.
-
-#### Signature tests
-
-Some of the tests rely on comparing signatures (of classes, methods, objects etc.) extracted from
-the generated documentation to signatures found in source files. Such tests are defined using
-[SignatureTest](src/test/scala/dotty/dokka/SignatureTest.scala#L16) class, that is a subclass of
-`ScaladocTest` and uses exactly tha same mechanism to find input symbols in the TASTY files.
-
-Signature tests by default assume that sources that were used to generate used TASTY files are
-located in the file with the same name as the name of the test. If this is not the case optional
-parameter `sourceFiles` can be used to pass list of source file names (without `.scala` extension).
-
-Those tests also requires specifying kinds of ignatures from source files (corresponding to
-keywords used to declare them like `def`, `class`, `object` etc.) whose presence in the generated
-documentation will be checked (other signatures, when missing, will be ignored).
+`MultipleFileTest` requires that you specify the names of the files used to extract signatures,
+the names of directories containing corresponding TASTY files
+and the kinds of signatures from source files (corresponding to keywords used to declare them like `def`, `class`, `object` etc.)
+whose presence in the generated documentation will be checked (other signatures, when missing, will be ignored).
+The mentioned source files should be located directly inside `src/main/scala/tests` directory
+but the file names passed as parameters should contain neither this path prefix nor `.scala` suffix.
+The TASTY folders are expected to be located in `target/${dottyVersion}/classes/tests` (after successful compilation of the project)
+and similarly only their names relative to this path should be provided as tests' parameters.
+For `SingleFileTest` the name of the source file and the TASTY folder are expected to be the same.
 
 By default it's expected that all signatures from the source files will be present in the documentation
 but not vice versa (because the documentation can contain also inherited signatures).
@@ -129,7 +116,6 @@ instead of
 def foo(): Int
 ```
 
-
 Because of the way how signatures in source are parsed, they're expected to span until the end of a line (including comments except those special ones mentioned above, which change the behaviour of tests) so if a definition contains an implementation, it should be placed in a separate line, e.g.
 
 ```
@@ -150,8 +136,9 @@ Otherwise the implementation would be treated as a part of the signature.
 1. Replace Dottydoc as the dedicated tool for documenting Dotty code
 
    This includes:
-   + supporting Dotty's doc pages
-   + releasing together with Dotty as the dedicated documentation tool
+
+   - supporting Dotty's doc pages
+   - releasing together with Dotty as the dedicated documentation tool
 
 1. Support all kinds of Dotty definition and generate documentation for the
    standard library
