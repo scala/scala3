@@ -796,8 +796,10 @@ class Definitions {
 
   @tu lazy val QuoteContextClass: ClassSymbol = requiredClass("scala.quoted.QuoteContext")
   @tu lazy val QuoteContextInternalClass: ClassSymbol = requiredClass("scala.internal.quoted.QuoteContextInternal")
-    @tu lazy val QuoteContextInternalClass_ExprMatch: Symbol = QuoteContextInternalClass.requiredMethod("ExprMatch")
-    @tu lazy val QuoteContextInternalClass_TypeMatch: Symbol = QuoteContextInternalClass.requiredMethod("TypeMatch")
+    @tu lazy val QuoteContextInternal_unpickleExpr: Symbol = QuoteContextInternalClass.requiredMethod("unpickleExpr")
+    @tu lazy val QuoteContextInternal_unpickleType: Symbol = QuoteContextInternalClass.requiredMethod("unpickleType")
+    @tu lazy val QuoteContextInternal_ExprMatch: Symbol = QuoteContextInternalClass.requiredMethod("ExprMatch")
+    @tu lazy val QuoteContextInternal_TypeMatch: Symbol = QuoteContextInternalClass.requiredMethod("TypeMatch")
 
   @tu lazy val LiftableModule: Symbol = requiredModule("scala.quoted.Liftable")
     @tu lazy val LiftableModule_BooleanLiftable: Symbol = LiftableModule.requiredMethod("BooleanLiftable")
@@ -830,8 +832,6 @@ class Definitions {
     @tu lazy val QuotedTypeModule_apply: Symbol = QuotedTypeModule.requiredMethod("apply")
 
   @tu lazy val TastyReflectionClass: ClassSymbol = requiredClass("scala.tasty.Reflection")
-
-  @tu lazy val PickledQuote_make: Symbol = requiredMethod("scala.internal.quoted.PickledQuote.make")
 
   @tu lazy val EqlClass: ClassSymbol = requiredClass("scala.Eql")
     def Eql_eqlAny(using Context): TermSymbol = EqlClass.companionModule.requiredMethod(nme.eqlAny)

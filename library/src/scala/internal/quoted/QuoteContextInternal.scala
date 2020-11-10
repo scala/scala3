@@ -2,7 +2,6 @@ package scala.internal.quoted
 
 import scala.quoted.{QuoteContext, Expr, Type}
 import scala.tasty.reflect._
-import scala.internal.quoted.PickledQuote
 
 /** Part of the QuoteContext interface that needs to be implemented by the compiler but is not visible to users */
 trait QuoteContextInternal { self: QuoteContext =>
@@ -10,12 +9,12 @@ trait QuoteContextInternal { self: QuoteContext =>
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `holes`
    */
-  def unpickleExpr[T](pickledQuote: PickledQuote): scala.quoted.Expr[T]
+  def unpickleExpr[T](pickled: List[String], fillHole: Seq[Seq[Any] => Any]): scala.quoted.Expr[T]
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `holes`
    */
-  def unpickleType[T <: AnyKind](pickledQuote: PickledQuote): scala.quoted.Type[T]
+  def unpickleType[T <: AnyKind](pickled: List[String], fillHole: Seq[Seq[Any] => Any]): scala.quoted.Type[T]
 
   val ExprMatch: ExprMatchModule
 

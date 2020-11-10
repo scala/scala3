@@ -201,16 +201,14 @@ class PickleQuotes extends MacroTransform {
        */
       def pickleAsTasty() = {
         val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType)
-        // TODO: generate an instance of PickledSplices directly instead of passing through a List
         val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), defn.AnyType))
-        val pickledQuote = ref(defn.PickledQuote_make).appliedTo(pickledQuoteStrings, splicesList)
         val quoteClass = if isType then defn.QuotedTypeClass else defn.QuotedExprClass
         val quotedType = quoteClass.typeRef.appliedTo(originalTp)
         val lambdaTpe = MethodType(defn.QuoteContextClass.typeRef :: Nil, quotedType)
         def callUnpickle(ts: List[Tree]) = {
           val qctx = ts.head.asInstance(defn.QuoteContextInternalClass.typeRef)
-          val unpickleMethName = if isType then "unpickleType" else "unpickleExpr"
-          qctx.select(unpickleMethName.toTermName).appliedToType(originalTp).appliedTo(pickledQuote)
+          val unpickleMeth = if isType then defn.QuoteContextInternal_unpickleType else defn.QuoteContextInternal_unpickleExpr
+          qctx.select(unpickleMeth).appliedToType(originalTp).appliedTo(pickledQuoteStrings, splicesList)
         }
         Lambda(lambdaTpe, callUnpickle).withSpan(body.span)
       }

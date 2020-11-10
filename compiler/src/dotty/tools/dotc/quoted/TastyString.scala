@@ -1,4 +1,4 @@
-package scala.internal.quoted
+package dotty.tools.dotc.quoted
 
 import java.io._
 import java.util.Base64
