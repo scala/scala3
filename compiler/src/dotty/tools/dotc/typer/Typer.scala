@@ -1664,6 +1664,9 @@ class Typer extends Namer
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
+      rsym.setTargetName(EmptyTermName)
+        // refinements can refine members with arbitrary target names, so we make their target names
+        // polymorphic here in order to avoid to trigger the `member.isOverloaded` test below.
       val polymorphicRefinementAllowed =
         tpt1.tpe.typeSymbol == defn.PolyFunctionClass && rsym.name == nme.apply
       if (!polymorphicRefinementAllowed && rsym.info.isInstanceOf[PolyType] && rsym.allOverriddenSymbols.isEmpty)
@@ -1917,7 +1920,7 @@ class Typer extends Namer
   }
 
   def typedAnnotation(annot: untpd.Tree)(using Context): Tree =
-    typed(annot, defn.AnnotationClass.typeRef)
+    checkAnnotArgs(typed(annot, defn.AnnotationClass.typeRef))
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
     val ValDef(name, tpt, _) = vdef
@@ -1980,9 +1983,8 @@ class Typer extends Namer
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
     if (sym.isConstructor && !sym.isPrimaryConstructor) {
-      val ename = sym.erasedName
-      if (ename != sym.name)
-        report.error(em"@alpha annotation ${'"'}$ename${'"'} may not be used on a constructor", ddef.srcPos)
+      if (sym.targetName != sym.name)
+        report.error(em"@targetName annotation may not be used on a constructor", ddef.srcPos)
 
       for (param <- tparams1 ::: vparamss1.flatten)
         checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
@@ -2665,7 +2667,7 @@ class Typer extends Namer
     }
     val (stats0, finalCtx) = traverse(stats)(using localCtx)
     val stats1 = stats0.mapConserve(finalize)
-    if (ctx.owner == exprOwner) checkNoAlphaConflict(stats1)
+    if ctx.owner == exprOwner then checkNoTargetNameConflict(stats1)
     (stats1, finalCtx)
   }
 

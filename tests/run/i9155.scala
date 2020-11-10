@@ -1,5 +1,5 @@
 object Foo:
-  @scala.annotation.alpha("w") def \/\/ = "W"
+  @scala.annotation.targetName("w") def \/\/ = "W"
 
 object Bar:
   export Foo._

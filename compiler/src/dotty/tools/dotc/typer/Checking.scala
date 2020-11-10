@@ -308,19 +308,20 @@ object Checking {
     }
   }
 
-  /** If `sym` has an operator name, check that it has an @alpha annotation in 3.1 and later
+  /** Under -Yrequire-targetName, if `sym` has an operator name, check that it has a
+   *  @targetName annotation.
    */
   def checkValidOperator(sym: Symbol)(using Context): Unit =
-    if ctx.settings.YrequireAlpha.value then
+    if ctx.settings.YrequireTargetName.value then
       sym.name.toTermName match
         case name: SimpleName
         if name.isOperatorName
           && !name.isSetterName
           && !name.isConstructorName
-          && !sym.getAnnotation(defn.AlphaAnnot).isDefined
+          && !sym.getAnnotation(defn.TargetNameAnnot).isDefined
           && !sym.is(Synthetic) =>
           report.warning(
-            i"$sym has an operator name; it should come with an @alpha annotation", sym.srcPos)
+            i"$sym has an operator name; it should come with an @targetName annotation", sym.srcPos)
         case _ =>
 
   /** Check that `info` of symbol `sym` is not cyclic.
@@ -1072,6 +1073,19 @@ trait Checking {
     if !Inliner.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
 
+  /** Check arguments of compiler-defined annotations */
+  def checkAnnotArgs(tree: Tree)(using Context): tree.type =
+    val cls = Annotations.annotClass(tree)
+    def needsStringLit(arg: Tree) =
+      report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
+    tree match
+      case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
+        arg match
+          case Literal(_) => // ok
+          case _ => needsStringLit(arg)
+      case _ =>
+    tree
+
   /** 1. Check that all case classes that extend `scala.reflect.Enum` are `enum` cases
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
    *  3. Check that only a static `enum` base class can extend java.lang.Enum.
@@ -1203,19 +1217,16 @@ trait Checking {
     }
 
   /** Check that symbol's external name does not clash with symbols defined in the same scope */
-  def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = {
+  def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit =
     var seen = Set[Name]()
-    for (stat <- stats) {
+    for stat <- stats do
       val sym = stat.symbol
-      val ename = sym.erasedName
-      if (ename != sym.name) {
-        val preExisting = ctx.effectiveScope.lookup(ename)
-        if (preExisting.exists || seen.contains(ename))
-          report.error(em"@alpha annotation ${'"'}$ename${'"'} clashes with other definition is same scope", stat.srcPos)
-        if stat.isDef then seen += ename
-      }
-    }
-  }
+      val tname = sym.targetName
+      if tname != sym.name then
+        val preExisting = ctx.effectiveScope.lookup(tname)
+        if preExisting.exists || seen.contains(tname) then
+          report.error(em"@targetName annotation ${'"'}$tname${'"'} clashes with other definition in same scope", stat.srcPos)
+        if stat.isDef then seen += tname
 }
 
 trait ReChecking extends Checking {
@@ -1237,8 +1248,9 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
+  override def checkAnnotArgs(tree: Tree)(using Context): tree.type = tree
   override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
-  override def checkNoAlphaConflict(stats: List[Tree])(using Context): Unit = ()
+  override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
   override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()

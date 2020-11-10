@@ -371,17 +371,19 @@ object NameKinds {
   /** A name together with a signature. Used in Tasty trees. */
   object SignedName extends NameKind(SIGNED) {
 
-    case class SignedInfo(sig: Signature) extends Info {
+    case class SignedInfo(sig: Signature, target: TermName) extends Info {
       assert(sig ne Signature.NotAMethod)
-      override def toString: String = s"$infoString $sig"
+      override def toString: String =
+        val targetStr = if target.isEmpty then "" else s" @$target"
+        s"$infoString $sig$targetStr"
       override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
     }
     type ThisInfo = SignedInfo
 
-    def apply(qual: TermName, sig: Signature): TermName =
-      qual.derived(new SignedInfo(sig))
-    def unapply(name: DerivedName): Option[(TermName, Signature)] = name match {
-      case DerivedName(underlying, info: SignedInfo) => Some((underlying, info.sig))
+    def apply(qual: TermName, sig: Signature, target: TermName): TermName =
+      qual.derived(new SignedInfo(sig, target))
+    def unapply(name: DerivedName): Option[(TermName, Signature, TermName)] = name match {
+      case DerivedName(underlying, info: SignedInfo) => Some((underlying, info.sig, info.target))
       case _ => None
     }
 

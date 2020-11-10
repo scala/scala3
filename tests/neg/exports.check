@@ -19,6 +19,9 @@
    |                                 def status: => List[String] in class Copier at line 28 and
    |                                 final def status: => List[String] in class Copier at line 23
    |                                 have the same type after erasure.
+   |
+   |                                 Consider adding a @targetName annotation to one of the conflicting definitions
+   |                                 for disambiguation.
 -- [E120] Naming Error: tests/neg/exports.scala:24:20 ------------------------------------------------------------------
 24 |    export scanUnit._               // error: double definition
    |                    ^
@@ -26,6 +29,9 @@
    |                    final def status: => List[String] in class Copier at line 23 and
    |                    final def status: => List[String] in class Copier at line 24
    |                    have the same type after erasure.
+   |
+   |                    Consider adding a @targetName annotation to one of the conflicting definitions
+   |                    for disambiguation.
 -- [E120] Naming Error: tests/neg/exports.scala:26:21 ------------------------------------------------------------------
 26 |    export printUnit.status         // error: double definition
    |                     ^
@@ -33,6 +39,9 @@
    |                     final def status: => List[String] in class Copier at line 24 and
    |                     final def status: => List[String] in class Copier at line 26
    |                     have the same type after erasure.
+   |
+   |                     Consider adding a @targetName annotation to one of the conflicting definitions
+   |                     for disambiguation.
 -- Error: tests/neg/exports.scala:35:24 --------------------------------------------------------------------------------
 35 |    export this.{concat => ++}   // error: no eligible member
    |                 ^^^^^^^^^^^^

@@ -937,7 +937,7 @@ class Definitions {
   @tu lazy val ShowAsInfixAnnot: ClassSymbol = requiredClass("scala.annotation.showAsInfix")
   @tu lazy val FunctionalInterfaceAnnot: ClassSymbol = requiredClass("java.lang.FunctionalInterface")
   @tu lazy val InfixAnnot: ClassSymbol = requiredClass("scala.annotation.infix")
-  @tu lazy val AlphaAnnot: ClassSymbol = requiredClass("scala.annotation.alpha")
+  @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return

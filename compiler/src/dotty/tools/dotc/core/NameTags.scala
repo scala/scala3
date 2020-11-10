@@ -52,5 +52,6 @@ object NameTags extends TastyFormat.NameTags {
     case OBJECTCLASS => "OBJECTCLASS"
 
     case SIGNED => "SIGNED"
+    case TARGETSIGNED => "TARGETSIGNED"
   }
 }

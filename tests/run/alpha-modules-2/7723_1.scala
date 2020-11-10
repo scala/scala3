@@ -1,3 +1,3 @@
 package alpha
 
-@scala.annotation.alpha("A") class B(val i: Int = 1)
+@scala.annotation.targetName("A") class B(val i: Int = 1)

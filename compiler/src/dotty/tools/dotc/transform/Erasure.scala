@@ -77,7 +77,7 @@ class Erasure extends Phase with DenotTransformer {
         val oldOwner = ref.owner
         val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
         val oldName = ref.name
-        val newName = ref.erasedName
+        val newName = ref.targetName
         val oldInfo = ref.info
         val newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
@@ -936,9 +936,13 @@ object Erasure {
         case stat: DefDef @unchecked if stat.symbol.name.is(BodyRetainerName) =>
           val retainer = stat.symbol
           val origName = retainer.name.asTermName.exclude(BodyRetainerName)
+          val targetName =
+            if retainer.hasAnnotation(defn.TargetNameAnnot) then
+              retainer.targetName.unmangle(BodyRetainerName).exclude(BodyRetainerName)
+            else origName
           val inlineMeth = atPhase(typerPhase) {
             retainer.owner.info.decl(origName)
-              .matchingDenotation(retainer.owner.thisType, stat.symbol.info)
+              .matchingDenotation(retainer.owner.thisType, stat.symbol.info, targetName)
               .symbol
           }
           (inlineMeth, stat)

@@ -18,6 +18,7 @@ import config.{ScalaVersion, NoScalaVersion}
 import Decorators._
 import typer.ErrorReporting._
 import config.Feature.{warnOnMigration, migrateTo3}
+import config.Printers.refcheck
 import reporting._
 import scala.util.matching.Regex._
 import Constants.Constant
@@ -236,6 +237,26 @@ object RefChecks {
       i"${if (showLocation) sym1.showLocated else sym1}$infoStr"
     }
 
+    def compatibleTypes(member: Symbol, memberTp: Type, other: Symbol, otherTp: Type, fallBack: => Boolean = false): Boolean =
+      try
+        if (member.isType) // intersection of bounds to refined types must be nonempty
+          memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi) &&
+          ((memberTp frozen_<:< otherTp) ||
+            !member.owner.derivesFrom(other.owner) && {
+              // if member and other come from independent classes or traits, their
+              // bounds must have non-empty-intersection
+              val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
+              jointBounds.lo frozen_<:< jointBounds.hi
+            })
+        else
+          member.name.is(DefaultGetterName) || // default getters are not checked for compatibility
+          memberTp.overrides(otherTp,
+              member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack)
+      catch case ex: MissingType =>
+        // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
+        // because in that case we might access types that are not members of the qualifier.
+        false
+
     /* Check that all conditions for overriding `other` by `member`
        * of class `clazz` are met.
        */
@@ -245,7 +266,7 @@ object RefChecks {
         else self.memberInfo(member)
       def otherTp(self: Type) = self.memberInfo(other)
 
-      report.debuglog("Checking validity of %s overriding %s".format(member.showLocated, other.showLocated))
+      refcheck.println(i"check override ${infoString(member)} overriding ${infoString(other)}")
 
       def noErrorType = !memberTp(self).isErroneous && !otherTp(self).isErroneous
 
@@ -264,6 +285,12 @@ object RefChecks {
         "error overriding %s;\n  %s %s%s".format(
           infoStringWithLocation(other), infoString(member), msg, addendum)
       }
+
+      def compatTypes(memberTp: Type, otherTp: Type): Boolean =
+        compatibleTypes(member, memberTp, other, otherTp,
+          fallBack = warnOnMigration(
+            overrideErrorMsg("no longer has compatible type"),
+            (if (member.owner == clazz) member else clazz).srcPos))
 
       def emitOverrideError(fullmsg: String) =
         if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
@@ -291,29 +318,14 @@ object RefChecks {
           (if (otherAccess == "") "public" else "at least " + otherAccess))
       }
 
-      def compatibleTypes(memberTp: Type, otherTp: Type): Boolean =
-        try
-          if (member.isType) // intersection of bounds to refined types must be nonempty
-            memberTp.bounds.hi.hasSameKindAs(otherTp.bounds.hi) &&
-            ((memberTp frozen_<:< otherTp) ||
-             !member.owner.derivesFrom(other.owner) && {
-               // if member and other come from independent classes or traits, their
-               // bounds must have non-empty-intersection
-               val jointBounds = (memberTp.bounds & otherTp.bounds).bounds
-               jointBounds.lo frozen_<:< jointBounds.hi
-             })
-          else
-            member.name.is(DefaultGetterName) || // default getters are not checked for compatibility
-            memberTp.overrides(otherTp,
-                member.matchNullaryLoosely || other.matchNullaryLoosely ||
-                warnOnMigration(overrideErrorMsg("no longer has compatible type"),
-                   (if (member.owner == clazz) member else clazz).srcPos))
-        catch {
-          case ex: MissingType =>
-            // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
-            // because in that case we might access types that are not members of the qualifier.
-            false
-        }
+      def overrideTargetNameError() =
+        val otherTargetName = i"@targetName(${other.targetName})"
+        if member.hasTargetName(member.name) then
+          overrideError(i"misses a target name annotation $otherTargetName")
+        else if other.hasTargetName(other.name) then
+          overrideError(i"should not have a @targetName annotation since the overridden member hasn't one either")
+        else
+          overrideError(i"has a different target name annotation; it should be $otherTargetName")
 
       //Console.println(infoString(member) + " overrides " + infoString(other) + " in " + clazz);//DEBUG
 
@@ -359,7 +371,9 @@ object RefChecks {
            && (ob.isContainedIn(mb) || other.isAllOf(JavaProtected))
              // m relaxes o's access boundary,
              // or o is Java defined and protected (see #3946)
-      if (!isOverrideAccessOK)
+      if !member.hasTargetName(other.targetName) then
+        overrideTargetNameError()
+      else if (!isOverrideAccessOK)
         overrideAccessError()
       else if (other.isClass)
         // direct overrides were already checked on completion (see Checking.chckWellFormed)
@@ -428,14 +442,14 @@ object RefChecks {
         overrideError("is not inline, cannot implement an inline method")
       else if (other.isScala2Macro && !member.isScala2Macro) // (1.11)
         overrideError("cannot be used here - only Scala-2 macros can override Scala-2 macros")
-      else if (!compatibleTypes(memberTp(self), otherTp(self)) &&
-                 !compatibleTypes(memberTp(upwardsSelf), otherTp(upwardsSelf)))
+      else if (!compatTypes(memberTp(self), otherTp(self)) &&
+                 !compatTypes(memberTp(upwardsSelf), otherTp(upwardsSelf)))
         overrideError("has incompatible type" + err.whyNoMatchStr(memberTp(self), otherTp(self)))
-      else if (member.erasedName != other.erasedName)
-        if (other.erasedName != other.name)
-          overrideError(i"needs to be declared with @alpha(${"\""}${other.erasedName}${"\""}) so that external names match")
+      else if (member.targetName != other.targetName)
+        if (other.targetName != other.name)
+          overrideError(i"needs to be declared with @targetName(${"\""}${other.targetName}${"\""}) so that external names match")
         else
-          overrideError("cannot have an @alpha annotation since external names would be different")
+          overrideError("cannot have a @targetName annotation since external names would be different")
       else
         checkOverrideDeprecated()
     }
@@ -451,7 +465,27 @@ object RefChecks {
           }*/
     }
 
-    val opc = new OverridingPairs.Cursor(clazz)
+    val opc = new OverridingPairs.Cursor(clazz):
+
+      /** We declare a match if either we have a full match including matching names
+       *  or we have a loose match with different target name but the types are the same.
+       *  This leaves two possible sorts of discrepancies to be reported as errors
+       *  in `checkOveride`:
+       *
+       *    - matching names, target names, and signatures but different types
+       *    - matching names and types, but different target names
+       */
+      override def matches(sym1: Symbol, sym2: Symbol): Boolean =
+        sym1.isType
+        || {
+          val sd1 = sym1.asSeenFrom(clazz.thisType)
+          val sd2 = sym2.asSeenFrom(clazz.thisType)
+          sd1.matchesLoosely(sd2)
+          && (sym1.hasTargetName(sym2.targetName)
+             || compatibleTypes(sym1, sd1.info, sym2, sd2.info))
+        }
+    end opc
+
     while opc.hasNext do
       checkOverride(opc.overriding, opc.overridden)
       opc.next()

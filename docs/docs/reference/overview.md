@@ -58,8 +58,8 @@ These constructs are restricted to make the language safer.
  - [Given Imports](contextual/given-imports.md): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](dropped-features/type-projection.md): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal Equality](contextual/multiversal-equality.md) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
- - [@infix and @alpha](changed-features/operators.md)
- make method application syntax uniform across code bases and require alphanumeric aliases for all symbolic names (proposed, not implemented).
+ - [@infix annotations](changed-features/operators.md)
+ make method application syntax uniform across code bases.
 
 Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other constructs in the list above are available only under `-source 3.0-migration`.
 
@@ -109,6 +109,7 @@ These are additions to the language that make it more powerful or pleasant to us
  - [Dependent Function Types](new-types/dependent-function-types.md) generalize dependent methods to dependent function values and types.
  - [Polymorphic Function Types](https://github.com/lampepfl/dotty/pull/4672) generalize polymorphic methods to dependent function values and types. _Current status_: There is a proposal, and a prototype implementation, but the implementation has not been finalized or merged yet.
  - [Kind Polymorphism](other-new-features/kind-polymorphism.md) allows the definition of operators working equally on types and type constructors.
+ - [@targetName Annotations](other-new-features/targetName.md) make it easier to interoperate with code written in other languages and give more flexibility for avoiding name clashes.
 
 ## Metaprogramming
 

@@ -222,7 +222,7 @@ object Denotations {
      *  when seen from prefix `site`.
      *  @param relaxed  When true, consider only parameter signatures for a match.
      */
-    def atSignature(sig: Signature, site: Type = NoPrefix, relaxed: Boolean = false)(using Context): Denotation
+    def atSignature(sig: Signature, targetName: Name, site: Type = NoPrefix, relaxed: Boolean = false)(using Context): Denotation
 
     /** The variant of this denotation that's current in the given context.
      *  If no such denotation exists, returns the denotation with each alternative
@@ -347,13 +347,15 @@ object Denotations {
     }
 
     /** The alternative of this denotation that has a type matching `targetType` when seen
-     *  as a member of type `site`, `NoDenotation` if none exists.
+     *  as a member of type `site` and that has a target name matching `targetName`, or
+     *  `NoDenotation` if none exists.
      */
-    def matchingDenotation(site: Type, targetType: Type)(using Context): SingleDenotation = {
-      def qualifies(sym: Symbol) = site.memberInfo(sym).matchesLoosely(targetType)
+    def matchingDenotation(site: Type, targetType: Type, targetName: Name)(using Context): SingleDenotation = {
+      def qualifies(sym: Symbol) =
+        site.memberInfo(sym).matchesLoosely(targetType) && sym.hasTargetName(targetName)
       if (isOverloaded)
-        atSignature(targetType.signature, site, relaxed = true) match {
-          case sd: SingleDenotation => sd.matchingDenotation(site, targetType)
+        atSignature(targetType.signature, targetName, site, relaxed = true) match {
+          case sd: SingleDenotation => sd.matchingDenotation(site, targetType, targetName)
           case md => md.suchThat(qualifies(_))
         }
       else if (exists && !qualifies(symbol)) NoDenotation
@@ -610,9 +612,9 @@ object Denotations {
     def accessibleFrom(pre: Type, superAccess: Boolean)(using Context): Denotation =
       if (!symbol.exists || symbol.isAccessibleFrom(pre, superAccess)) this else NoDenotation
 
-    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(using Context): SingleDenotation =
+    def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): SingleDenotation =
       val situated = if site == NoPrefix then this else asSeenFrom(site)
-      val matches = sig.matchDegree(situated.signature) match
+      val sigMatches = sig.matchDegree(situated.signature) match
         case FullMatch =>
           true
         case MethodNotAMethodMatch =>
@@ -622,7 +624,7 @@ object Denotations {
           relaxed
         case noMatch =>
           false
-      if matches then this else NoDenotation
+      if sigMatches && symbol.hasTargetName(targetName) then this else NoDenotation
 
     def matchesImportBound(bound: Type)(using Context): Boolean =
       if bound.isRef(defn.NothingClass) then false
@@ -983,8 +985,12 @@ object Denotations {
     final def last: SingleDenotation = this
 
     def matches(other: SingleDenotation)(using Context): Boolean =
-      val d = signature.matchDegree(other.signature)
+      symbol.hasTargetName(other.symbol.targetName)
+      && matchesLoosely(other)
 
+    /** matches without a target name check */
+    def matchesLoosely(other: SingleDenotation)(using Context): Boolean =
+      val d = signature.matchDegree(other.signature)
       d match
         case FullMatch =>
           true
@@ -1006,11 +1012,10 @@ object Denotations {
               other.symbol.is(Method)
           }
         case ParamMatch =>
-           // The signatures do not tell us enough to be sure about matching
+          // The signatures do not tell us enough to be sure about matching
           !ctx.erasedTypes && info.matches(other.info)
         case noMatch =>
           false
-    end matches
 
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(using Context): SingleDenotation =
       if hasUniqueSym && prevDenots.containsSym(symbol) then NoDenotation
@@ -1164,9 +1169,11 @@ object Denotations {
     final def hasUniqueSym: Boolean = false
     final def name(using Context): Name = denot1.name
     final def signature(using Context): Signature = Signature.OverloadedSignature
-    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(using Context): Denotation =
+    def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): Denotation =
       if (sig eq Signature.OverloadedSignature) this
-      else derivedUnionDenotation(denot1.atSignature(sig, site, relaxed), denot2.atSignature(sig, site, relaxed))
+      else derivedUnionDenotation(
+            denot1.atSignature(sig, targetName, site, relaxed),
+            denot2.atSignature(sig, targetName, site, relaxed))
     def current(using Context): Denotation =
       derivedUnionDenotation(denot1.current, denot2.current)
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
@@ -1262,7 +1269,6 @@ object Denotations {
     if ctx.run == null then recur(path)
     else ctx.run.staticRefs.getOrElseUpdate(path, recur(path))
   }
-
 
   /** If we are looking for a non-existing term name in a package,
     *  assume it is a package for which we do not have a directory and

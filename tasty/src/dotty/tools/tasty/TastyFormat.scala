@@ -40,6 +40,7 @@ Macro-format:
                   OBJECTCLASS       Length underlying_NameRef                               -- A$  (name of the module class for module A)
 
                   SIGNED            Length original_NameRef resultSig_NameRef ParamSig*     -- name + signature
+                  TARGETSIGNED      Length original_NameRef target_NameRef resultSig_NameRef ParamSig*
 
   ParamSig      = Int // If negative, the absolute value represents the length of a type parameter section
                       // If positive, this is a NameRef for the fully qualified name of a term parameter.
@@ -253,7 +254,7 @@ object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion: Int = 24
-  val MinorVersion: Int = 0
+  val MinorVersion: Int = 1
 
   /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
   class NameTags {
@@ -284,6 +285,11 @@ object TastyFormat {
 
     final val SIGNED = 63            // A pair of a name and a signature, used to identify
                                      // possibly overloaded methods.
+
+    final val TARGETSIGNED = 62      // A triple of a name, a targetname and a signature, used to identify
+                                     // possibly overloaded methods that carry a @targetName annotation.
+
+    // TODO swap SIGNED and TARGETSIGNED codes on next major version bump
   }
   object NameTags extends NameTags
 
@@ -306,6 +312,7 @@ object TastyFormat {
       case BODYRETAINER => "BODYRETAINER"
       case OBJECTCLASS => "OBJECTCLASS"
       case SIGNED => "SIGNED"
+      case TARGETSIGNED => "TARGETSIGNED"
       case id => s"NotANameTag($id)"
     }
   }
