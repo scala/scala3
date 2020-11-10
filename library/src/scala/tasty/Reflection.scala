@@ -1,12 +1,6 @@
 package scala.tasty
 
-import scala.quoted.QuoteContext
 import scala.tasty.reflect._
-
-/** TASTy Reflect Interface.
- *
- *
- */
 
 /** TASTy Reflect Interface.
  *
@@ -112,6 +106,7 @@ import scala.tasty.reflect._
  *  ```
  */
 trait Reflection { reflection =>
+  // TODO: Move Reflection inside QuoteContext as it can never be instantiated outside a QuoteContext
 
   //////////////
   // CONTEXTS //
@@ -169,9 +164,7 @@ trait Reflection { reflection =>
 
     /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
     extension [T](self: Tree)
-      // FIXME: remove QuoteContext from parameters
-      // TODO: Move Reflection inside QuoteContext as it can never be instantiated outside a QuoteContext
-      def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T]
+      def asExprOf(using scala.quoted.Type[T]): scala.quoted.Expr[T]
   }
 
   /** Tree representing a pacakage clause in the source code */

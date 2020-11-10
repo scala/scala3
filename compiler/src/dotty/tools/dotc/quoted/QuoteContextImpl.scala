@@ -79,8 +79,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
       end extension
 
       extension [T](self: Tree)
-        def asExprOf(using scala.quoted.Type[T])(using QuoteContext): scala.quoted.Expr[T] =
-          self.asExpr.asExprOf[T]
+        def asExprOf(using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
+          self.asExpr.asExprOf[T](using tp)(using QuoteContextImpl.this)
       end extension
 
     end TreeMethodsImpl
