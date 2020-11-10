@@ -242,8 +242,9 @@ object Types {
           // If the type is `T | Null` or `T | Nothing`, and `T` derivesFrom the class,
           // then the OrType derivesFrom the class. Otherwise, we need to check both sides
           // derivesFrom the class.
-          if defn.isBottomType(tp.tp1) then loop(tp.tp2)
-          else loop(tp.tp1) && (defn.isBottomType(tp.tp2) || loop(tp.tp2))
+          loop(tp.tp1) && loop(tp.tp2)
+          || tp.tp1.isNullType && loop(tp.tp2)
+          || tp.tp2.isNullType && loop(tp.tp2)
         case tp: JavaArrayType =>
           cls == defn.ObjectClass
         case _ =>
