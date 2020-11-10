@@ -26,7 +26,7 @@ object CompileTime {
    *  `'{ @quoteTypeTag type T$1 = $t ... F[T$1] ... }` to have a tree for `$t`.
    *  This artifact is removed during quote unpickling.
    *
-   *  See ReifyQuotes.scala and PickledQuotes.scala
+   *  See PickleQuotes.scala and PickledQuotes.scala
    */
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.quoteTypeTag`")
   class quoteTypeTag extends Annotation

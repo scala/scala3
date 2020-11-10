@@ -8,7 +8,7 @@ import transform.MegaPhase.MiniPhase
 import Decorators._
 import Symbols.{Symbol, requiredClass}
 import Constants.Constant
-import transform.{Pickler, ReifyQuotes}
+import transform.{Pickler, PickleQuotes}
 import StdNames._
 
 class DivideZero extends PluginPhase with StandardPlugin {
@@ -18,7 +18,7 @@ class DivideZero extends PluginPhase with StandardPlugin {
   val phaseName = name
 
   override val runsAfter = Set(Pickler.name)
-  override val runsBefore = Set(ReifyQuotes.name)
+  override val runsBefore = Set(PickleQuotes.name)
 
   override def init(options: List[String]): List[PluginPhase] = this :: Nil
 

@@ -25,7 +25,7 @@ a quoted expression or type is treated as a splice `${x}` and a quoted identifie
 
 Quotes and splices are primitive forms in the generated abstract syntax trees.
 Top-level splices are eliminated during macro expansion while typing. On the
-other hand, top-level quotes are eliminated in an expansion phase `ReifyQuotes`
+other hand, top-level quotes are eliminated in an expansion phase `PickleQuotes`
 phase (after typing and pickling). PCP checking occurs while preparing the RHS
 of an inline method for top-level splices and in the `Staging` phase (after
 typing and before pickling).

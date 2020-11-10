@@ -16,7 +16,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types.ExprType
 import dotty.tools.dotc.quoted.PickledQuotes
 import dotty.tools.dotc.transform.Splicer.checkEscapedVariables
-import dotty.tools.dotc.transform.ReifyQuotes
+import dotty.tools.dotc.transform.PickleQuotes
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{Path, VirtualFile}
@@ -37,7 +37,7 @@ private class QuoteCompiler extends Compiler:
     List(List(new QuotedFrontend))
 
   override protected def picklerPhases: List[List[Phase]] =
-    List(List(new ReifyQuotes))
+    List(List(new PickleQuotes))
 
   override def newRun(implicit ctx: Context): ExprRun =
     reset()
