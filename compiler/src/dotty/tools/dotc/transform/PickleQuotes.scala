@@ -218,9 +218,9 @@ class PickleQuotes extends MacroTransform {
         }
 
         // This and all closures in typeSplices are removed by the BetaReduce phase
-        val typeHoles = typeSplices match
-          case Nil => Literal(Constant(null)) // keep pickled quote without splices as small as possible
-          case _ =>
+        val typeHoles =
+          if typeSplices.isEmpty then Literal(Constant(null)) // keep pickled quote without splices as small as possible
+          else
             Lambda(
               MethodType(
                 List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType)),
@@ -234,9 +234,9 @@ class PickleQuotes extends MacroTransform {
             )
 
         // This and all closures in termSplices are removed by the BetaReduce phase
-        val termHoles = termSplices match
-          case Nil => Literal(Constant(null)) // keep pickled quote without splices as small as possible
-          case (firstSplice, _) :: _ =>
+        val termHoles =
+          if termSplices.isEmpty then Literal(Constant(null)) // keep pickled quote without splices as small as possible
+          else
             Lambda(
               MethodType(
                 List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType), defn.QuoteContextClass.typeRef),
