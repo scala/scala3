@@ -51,7 +51,7 @@ object PickledQuotes {
   }
 
   /** Unpickle the tree contained in the TastyExpr */
-  def unpickleTerm(pickled: List[String], fillHole: Seq[Seq[Any] => Any])(using Context): Tree = {
+  def unpickleTerm(pickled: List[String], fillHole: Int => Seq[Any] => Any)(using Context): Tree = {
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = false))
     val Inlined(call, Nil, expnasion) = unpickled
     val inlineCtx = inlineContext(call)
@@ -61,13 +61,13 @@ object PickledQuotes {
   }
 
   /** Unpickle the tree contained in the TastyType */
-  def unpickleTypeTree(pickled: List[String], fillHole: Seq[Seq[Any] => Any])(using Context): Tree = {
+  def unpickleTypeTree(pickled: List[String], fillHole: Int => Seq[Any] => Any)(using Context): Tree = {
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = true))
     spliceTypes(unpickled, fillHole)
   }
 
   /** Replace all term holes with the spliced terms */
-  private def spliceTerms(tree: Tree, fillHole: Seq[Seq[Any] => Any])(using Context): Tree = {
+  private def spliceTerms(tree: Tree, fillHole: Int => Seq[Any] => Any)(using Context): Tree = {
     val evaluateHoles = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args) =>
@@ -121,7 +121,7 @@ object PickledQuotes {
   }
 
   /** Replace all type holes generated with the spliced types */
-  private def spliceTypes(tree: Tree, fillHole: Seq[Seq[Any] => Any])(using Context): Tree = {
+  private def spliceTypes(tree: Tree, fillHole: Int => Seq[Any] => Any)(using Context): Tree = {
     tree match
       case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) =>
         val typeSpliceMap = (stat :: rest).iterator.map {
