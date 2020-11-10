@@ -1073,6 +1073,19 @@ trait Checking {
     if !Inliner.inInlineMethod && !ctx.isInlineContext then
       report.error(em"$what can only be used in an inline method", pos)
 
+  /** Check arguments of compiler-defined annotations */
+  def checkAnnotArgs(tree: Tree)(using Context): tree.type =
+    val cls = Annotations.annotClass(tree)
+    def needsStringLit(arg: Tree) =
+      report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
+    tree match
+      case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
+        arg match
+          case Literal(_) => // ok
+          case _ => needsStringLit(arg)
+      case _ =>
+    tree
+
   /** 1. Check that all case classes that extend `scala.reflect.Enum` are `enum` cases
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
    *  3. Check that only a static `enum` base class can extend java.lang.Enum.
@@ -1235,6 +1248,7 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = ()
   override def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
+  override def checkAnnotArgs(tree: Tree)(using Context): tree.type = tree
   override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()

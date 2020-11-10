@@ -1920,7 +1920,7 @@ class Typer extends Namer
   }
 
   def typedAnnotation(annot: untpd.Tree)(using Context): Tree =
-    typed(annot, defn.AnnotationClass.typeRef)
+    checkAnnotArgs(typed(annot, defn.AnnotationClass.typeRef))
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree = {
     val ValDef(name, tpt, _) = vdef
