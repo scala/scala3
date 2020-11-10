@@ -1184,13 +1184,6 @@ class Definitions {
 
   def isBottomClassAfterErasure(cls: Symbol): Boolean = cls == NothingClass || cls == NullClass
 
-  def isBottomType(tp: Type): Boolean =
-    if (ctx.explicitNulls && !ctx.phase.erasedTypes) tp.derivesFrom(NothingClass)
-    else isBottomTypeAfterErasure(tp)
-
-  def isBottomTypeAfterErasure(tp: Type): Boolean =
-    tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
-
   /** Is any function class where
    *   - FunctionXXL
    *   - FunctionN for N >= 0
@@ -1455,7 +1448,7 @@ class Definitions {
     for
       r  <- Function2SpecializedReturnTypes
       t1 <- Function2SpecializedParamTypes
-      t2 <- Function2SpecializedReturnTypes
+      t2 <- Function2SpecializedParamTypes
     yield
       nme.apply.specializedFunction(r, List(t1, t2)).asTermName
 
