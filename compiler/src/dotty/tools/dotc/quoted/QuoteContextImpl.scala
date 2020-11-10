@@ -2621,12 +2621,12 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
   end reflect
 
-  def unpickleExpr[T](pickled: String | List[String], fillHole: Int => Seq[Any] => Any): scala.quoted.Expr[T] =
-    val tree = PickledQuotes.unpickleTerm(pickled, fillHole)(using reflect.rootContext)
+  def unpickleExpr[T](pickled: String | List[String], typeHole: Int => Seq[Any] => scala.quoted.Type[?], termHole: Int => Seq[Any] => scala.quoted.QuoteContext => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
+    val tree = PickledQuotes.unpickleTerm(pickled, typeHole, termHole)(using reflect.rootContext)
     new scala.quoted.internal.Expr(tree, hash).asInstanceOf[scala.quoted.Expr[T]]
 
-  def unpickleType[T <: AnyKind](pickled: String | List[String], fillHole: Int => Seq[Any] => Any): scala.quoted.Type[T] =
-    val tree = PickledQuotes.unpickleTypeTree(pickled, fillHole)(using reflect.rootContext)
+  def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: Int => Seq[Any] => scala.quoted.Type[?], termHole: Int => Seq[Any] => scala.quoted.QuoteContext => scala.quoted.Expr[?]): scala.quoted.Type[T] =
+    val tree = PickledQuotes.unpickleTypeTree(pickled, typeHole, termHole)(using reflect.rootContext)
     new scala.quoted.internal.Type(tree, hash).asInstanceOf[scala.quoted.Type[T]]
 
   object ExprMatch extends ExprMatchModule:

@@ -9,12 +9,12 @@ trait QuoteContextInternal { self: QuoteContext =>
   /** Unpickle `repr` which represents a pickled `Expr` tree,
    *  replacing splice nodes with `holes`
    */
-  def unpickleExpr[T](pickled: String | List[String], fillHole: Int => Seq[Any] => Any): scala.quoted.Expr[T]
+  def unpickleExpr[T](pickled: String | List[String], typeHole: Int => Seq[Any] => Type[?], termHole: Int => Seq[Any] => QuoteContext => Expr[?]): scala.quoted.Expr[T]
 
   /** Unpickle `repr` which represents a pickled `Type` tree,
    *  replacing splice nodes with `holes`
    */
-  def unpickleType[T <: AnyKind](pickled: String | List[String], fillHole: Int => Seq[Any] => Any): scala.quoted.Type[T]
+  def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: Int => Seq[Any] => Type[?], termHole: Int => Seq[Any] => QuoteContext => Expr[?]): scala.quoted.Type[T]
 
   val ExprMatch: ExprMatchModule
 

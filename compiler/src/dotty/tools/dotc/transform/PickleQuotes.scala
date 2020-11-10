@@ -204,16 +204,38 @@ class PickleQuotes extends MacroTransform {
         val pickledQuoteStrings = pickleQuote match
           case x :: Nil => Literal(Constant(x))
           case xs => liftList(xs.map(x => Literal(Constant(x))), defn.StringType)
+
+
+        val (typeSplices, termSplices) = splices.partition { splice =>
+          splice.tpe match
+            case defn.FunctionOf(_, res, _, _) => res.typeSymbol == defn.QuotedTypeClass
+            case _ => false
+        }
+        // TODO encode this in a more efficient way.
+        // - Create one function that takes the index, the args, and the context directly.
+        // - Take advantage of beta reduction to avoid the creation of the inner closures.
+        // - Remove typeHoles/termHoles casts.
         val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), defn.AnyType))
+        val holes = SyntheticValDef("holes".toTermName, splicesList)
+        val typeHoles = ref(holes.symbol).asInstance(
+          defn.FunctionType(1).appliedTo(defn.IntType,
+            defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType),
+              defn.QuotedTypeClass.typeRef.appliedTo(defn.AnyType))))
+        val termHoles = ref(holes.symbol).asInstance(
+          defn.FunctionType(1).appliedTo(defn.IntType,
+            defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType),
+              defn.FunctionType(1).appliedTo(defn.QuoteContextClass.typeRef,
+                defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)))))
+
         val quoteClass = if isType then defn.QuotedTypeClass else defn.QuotedExprClass
         val quotedType = quoteClass.typeRef.appliedTo(originalTp)
         val lambdaTpe = MethodType(defn.QuoteContextClass.typeRef :: Nil, quotedType)
         def callUnpickle(ts: List[Tree]) = {
           val qctx = ts.head.asInstance(defn.QuoteContextInternalClass.typeRef)
           val unpickleMeth = if isType then defn.QuoteContextInternal_unpickleType else defn.QuoteContextInternal_unpickleExpr
-          qctx.select(unpickleMeth).appliedToType(originalTp).appliedTo(pickledQuoteStrings, splicesList)
+          qctx.select(unpickleMeth).appliedToType(originalTp).appliedTo(pickledQuoteStrings, typeHoles, termHoles)
         }
-        Lambda(lambdaTpe, callUnpickle).withSpan(body.span)
+        Block(List(holes), Lambda(lambdaTpe, callUnpickle)).withSpan(body.span)
       }
 
       /** Encode quote using Reflection.TypeRepr.typeConstructorOf
