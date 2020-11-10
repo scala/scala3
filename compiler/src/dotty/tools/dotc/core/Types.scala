@@ -2680,7 +2680,7 @@ object Types {
     }
   }
 
-  case class LazyRef(private var refFn: Context ?=> Type, reportCycles: Boolean = false) extends UncachedProxyType with ValueType {
+  case class LazyRef(private var refFn: Context ?=> Type) extends UncachedProxyType with ValueType {
     private var myRef: Type = null
     private var computed = false
 
@@ -2689,7 +2689,7 @@ object Types {
         if myRef == null then
           // if errors were reported previously handle this by throwing a CyclicReference
           // instead of crashing immediately. A test case is neg/i6057.scala.
-          assert(reportCycles || ctx.reporter.errorsReported)
+          assert(ctx.mode.is(Mode.CheckCyclic) || ctx.reporter.errorsReported)
           throw CyclicReference(NoDenotation)
       else
         computed = true
@@ -4515,7 +4515,9 @@ object Types {
             else defn.AnyType         // dummy type in case of errors
           def refineSelfType(selfType: Type) =
             RefinedType(selfType, sym.name,
-              TypeAlias(LazyRef(force, reportCycles = true)))
+              TypeAlias(
+                withMode(Mode.CheckCyclic)(
+                  LazyRef(force))))
           cinfo.selfInfo match
             case self: Type =>
               cinfo.derivedClassInfo(

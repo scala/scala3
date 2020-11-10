@@ -406,21 +406,19 @@ object Checking {
       for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
       yield mbr.name.asTypeName
 
-    for (name <- abstractTypeNames)
-      try {
-        val mbr = joint.member(name)
-        mbr.info match {
-          case bounds: TypeBounds =>
-            !checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
-          case _ =>
-            true
-        }
-      }
-      catch {
-        case ex: RecursionOverflow =>
+    withMode(Mode.CheckCyclic) {
+      for name <- abstractTypeNames do
+        try
+          val mbr = joint.member(name)
+          mbr.info match
+            case bounds: TypeBounds =>
+              !checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
+            case _ =>
+              true
+        catch case _: RecursionOverflow | _: CyclicReference =>
           report.error(em"cyclic reference involving type $name", pos)
           false
-      }
+    }
   }
 
   /** Check that symbol's definition is well-formed. */

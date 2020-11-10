@@ -41,6 +41,7 @@ object Mode {
    */
   val TypevarsMissContext: Mode = newMode(4, "TypevarsMissContext")
 
+  /** Are we looking for cyclic references? */
   val CheckCyclic: Mode = newMode(5, "CheckCyclic")
 
   /** We are in a pattern alternative */
