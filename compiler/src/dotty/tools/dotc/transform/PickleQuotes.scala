@@ -200,7 +200,10 @@ class PickleQuotes extends MacroTransform {
        *  this closure is always applied directly to the actual context and the BetaReduce phase removes it.
        */
       def pickleAsTasty() = {
-        val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType)
+        val pickleQuote = PickledQuotes.pickleQuote(body)
+        val pickledQuoteStrings = pickleQuote match
+          case x :: Nil => Literal(Constant(x))
+          case xs => liftList(xs.map(x => Literal(Constant(x))), defn.StringType)
         val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), defn.AnyType))
         val quoteClass = if isType then defn.QuotedTypeClass else defn.QuotedExprClass
         val quotedType = quoteClass.typeRef.appliedTo(originalTp)

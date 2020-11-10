@@ -51,7 +51,7 @@ object PickledQuotes {
   }
 
   /** Unpickle the tree contained in the TastyExpr */
-  def unpickleTerm(pickled: List[String], fillHole: Int => Seq[Any] => Any)(using Context): Tree = {
+  def unpickleTerm(pickled: String | List[String], fillHole: Int => Seq[Any] => Any)(using Context): Tree = {
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = false))
     val Inlined(call, Nil, expnasion) = unpickled
     val inlineCtx = inlineContext(call)
@@ -61,7 +61,7 @@ object PickledQuotes {
   }
 
   /** Unpickle the tree contained in the TastyType */
-  def unpickleTypeTree(pickled: List[String], fillHole: Int => Seq[Any] => Any)(using Context): Tree = {
+  def unpickleTypeTree(pickled: String | List[String], fillHole: Int => Seq[Any] => Any)(using Context): Tree = {
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = true))
     spliceTypes(unpickled, fillHole)
   }
@@ -175,8 +175,11 @@ object PickledQuotes {
   }
 
   /** Unpickle TASTY bytes into it's tree */
-  private def unpickle(pickled: List[String], isType: Boolean)(using Context): Tree = {
-    val bytes = TastyString.unpickle(pickled)
+  private def unpickle(pickled: String | List[String], isType: Boolean)(using Context): Tree = {
+    val bytes = pickled match
+      case pickled: String => TastyString.unpickle(pickled)
+      case pickled: List[String] => TastyString.unpickle(pickled)
+
     quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.show(bytes)}")
 
     val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term

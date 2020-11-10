@@ -22,4 +22,9 @@ object TastyString {
     strings.foreach(string.append)
     Base64.getDecoder().decode(string.result().getBytes(UTF_8))
   }
+
+  /** Decode the Strings into TASTY bytes */
+  def unpickle(string: String): Array[Byte] =
+    Base64.getDecoder().decode(string.getBytes(UTF_8))
+
 }
