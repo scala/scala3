@@ -5,7 +5,7 @@ object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def ret(using QuoteContext): Expr[Int => Int] = '{ (x: Int) =>
     ${
-      val z = run('{x + 1}) // throws Exception("Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
+      val z = run('{x + 1}) // throws scala.quoted.internal.ScopeException =>
       Expr(z)
     }
   }
@@ -21,7 +21,7 @@ package scala {
         run(Test.ret).apply(10)
         throw new Exception
       } catch {
-        case ex: Exception if ex.getMessage == "Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`" =>
+        case ex: Exception if ex.getClass.getName == "scala.quoted.internal.ScopeException" =>
           // ok
       }
     }

@@ -22,7 +22,7 @@ package scala {
         throw new Exception
       } catch {
         case ex: java.lang.reflect.InvocationTargetException =>
-          assert(ex.getTargetException.getMessage == "Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
+          assert(ex.getTargetException.getClass.getName == "scala.quoted.internal.ScopeException")
       }
     }
   }

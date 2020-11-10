@@ -3,6 +3,8 @@ package staging
 
 import scala.annotation.implicitNotFound
 
+import scala.quoted.internal.ScopeException
+
 @implicitNotFound("Could not find implicit scala.quoted.staging.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `given scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)`\n\n")
 trait Toolbox:
   def run[T](expr: QuoteContext => Expr[T]): T
@@ -31,7 +33,7 @@ object Toolbox:
       def run[T](exprBuilder: QuoteContext => Expr[T]): T = synchronized {
         try
           if (running) // detected nested run
-            throw new Exception("Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
+            throw new ScopeException("Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
           running = true
           driver.run(exprBuilder, settings)
         finally

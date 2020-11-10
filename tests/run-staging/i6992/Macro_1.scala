@@ -25,7 +25,7 @@ package scala {
           case '{$x: Foo} => Expr(run(x).x)
         }
       } catch {
-        case ex: Exception if ex.getMessage == "Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`" =>
+        case ex: Exception if ex.getClass.getName == "scala.quoted.internal.ScopeException" =>
           '{"OK"}
       }
     }
