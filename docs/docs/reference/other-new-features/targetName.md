@@ -56,8 +56,31 @@ def f(x: => Int): Int = x + 1  // OK
 ```
 This will produce methods `f_string` and `f` in the generated code.
 
+However, `@targetName` annotations are not allowed to break overriding relationships
+between two definitions that have otherwise the same names and types. So the following would be in error:
+```scala
+import annotation.targetName
+class A:
+  def f(): Int = 1
+class B extends A:
+  targetName("g") def f(): Int = 2
+```
+The compiler reports here:
+```
+-- Error: test.scala:6:23 ------------------------------------------------------
+6 |  @targetName("g") def f(): Int = 2
+  |                       ^
+  |error overriding method f in class A of type (): Int;
+  |  method f of type (): Int should not have a @targetName annotation since the overridden member hasn't one either
+```
+The relevant overriding rules can be summarized as follows:
+
+ - Two members can override each other if their names and signatures are the same,
+   and they either have the same erased names or the same types.
+ - If two members override, then both their erased names and their types must be the same.
+
 As usual, any overriding relationship in the generated code must also
-be present in the original code. So the following example would be in error:
+be present in the original code. So the following example would also be in error:
 ```scala
 import annotation.targetName
 class A:
