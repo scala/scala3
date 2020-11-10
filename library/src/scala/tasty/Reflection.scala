@@ -1767,9 +1767,6 @@ trait Reflection { reflection =>
       /** Shows the tree as fully typed source code colored with ANSI */
       def showAnsiColored: String
 
-      /** Convert `TypeRepr` to an `quoted.Type[_]` */
-      def seal: scala.quoted.Type[_]
-
       /** Convert this `TypeRepr` to an `Type[?]`
        *
        *  Usage:
