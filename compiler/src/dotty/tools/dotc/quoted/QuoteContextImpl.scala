@@ -16,7 +16,6 @@ import dotty.tools.dotc.core.Decorators._
 import scala.quoted.QuoteContext
 import dotty.tools.dotc.quoted.printers.{Extractors, SourceCode, SyntaxHighlight}
 
-import scala.internal.quoted.PickledQuote
 import scala.tasty.reflect._
 
 object QuoteContextImpl {
@@ -2622,12 +2621,12 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
   end reflect
 
-  def unpickleExpr[T](pickledQuote: PickledQuote): scala.quoted.Expr[T] =
-    val tree = PickledQuotes.unpickleTerm(pickledQuote)(using reflect.rootContext)
+  def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
+    val tree = PickledQuotes.unpickleTerm(pickled, typeHole, termHole)(using reflect.rootContext)
     new scala.quoted.internal.Expr(tree, hash).asInstanceOf[scala.quoted.Expr[T]]
 
-  def unpickleType[T <: AnyKind](pickledQuote: PickledQuote): scala.quoted.Type[T] =
-    val tree = PickledQuotes.unpickleTypeTree(pickledQuote)(using reflect.rootContext)
+  def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?]): scala.quoted.Type[T] =
+    val tree = PickledQuotes.unpickleTypeTree(pickled, typeHole, termHole)(using reflect.rootContext)
     new scala.quoted.internal.Type(tree, hash).asInstanceOf[scala.quoted.Type[T]]
 
   object ExprMatch extends ExprMatchModule:

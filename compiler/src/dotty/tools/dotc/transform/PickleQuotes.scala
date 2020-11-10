@@ -28,7 +28,7 @@ import dotty.tools.dotc.typer.Inliner
 import scala.annotation.constructorOnly
 
 
-/** Translates quoted terms and types to `unpickle` method calls.
+/** Translates quoted terms and types to `unpickleExpr` or `unpickleType` method calls.
  *
  *  Transforms top level quote
  *   ```
@@ -42,23 +42,27 @@ import scala.annotation.constructorOnly
  *    ```
  *  to
  *    ```
- *     unpickle(
- *       [[ // PICKLED TASTY
+ *     unpickleExpr(
+ *       pickled = [[ // PICKLED TASTY
  *         ...
  *         val x1 = ???
  *         val x2 = ???
  *         ...
- *         Hole(0 | x1, x2)
+ *         Hole(<i> | x1, x2)
  *         ...
  *       ]],
- *       List(
- *         (args: Seq[Any]) => {
+ *       typeHole = (idx: Int, args: List[Any]) => idx match {
+ *         case 0 => ...
+ *       },
+ *       termHole = (idx: Int, args: List[Any], qctx: QuoteContext) => idx match {
+ *         case 0 => ...
+ *         ...
+ *         case <i> =>
  *           val x1$1 = args(0).asInstanceOf[Expr[T]]
  *           val x2$1 = args(1).asInstanceOf[Expr[T]] // can be asInstanceOf[Type[T]]
- *           ...
+ *            ...
  *           { ... '{ ... ${x1$1} ... ${x2$1} ...} ... }
- *         }
- *       )
+ *       },
  *     )
  *    ```
  *  and then performs the same transformation on `'{ ... ${x1$1} ... ${x2$1} ...}`.
@@ -194,23 +198,66 @@ class PickleQuotes extends MacroTransform {
        *  Generate the code
        *  ```scala
        *    qctx => qctx.asInstanceOf[QuoteContextInternal].<unpickleExpr|unpickleType>[<type>](
-       *      <pickledQuote>
+       *      <pickledQuote>,
+       *      <typeHole>,
+       *      <termHole>,
        *    )
        *  ```
        *  this closure is always applied directly to the actual context and the BetaReduce phase removes it.
        */
       def pickleAsTasty() = {
-        val pickledQuoteStrings = liftList(PickledQuotes.pickleQuote(body).map(x => Literal(Constant(x))), defn.StringType)
-        // TODO: generate an instance of PickledSplices directly instead of passing through a List
-        val splicesList = liftList(splices, defn.FunctionType(1).appliedTo(defn.SeqType.appliedTo(defn.AnyType), defn.AnyType))
-        val pickledQuote = ref(defn.PickledQuote_make).appliedTo(pickledQuoteStrings, splicesList)
+        val pickleQuote = PickledQuotes.pickleQuote(body)
+        val pickledQuoteStrings = pickleQuote match
+          case x :: Nil => Literal(Constant(x))
+          case xs => liftList(xs.map(x => Literal(Constant(x))), defn.StringType)
+
+        // TODO split holes earlier into types and terms. This all holes in each category can have consecutive indices
+        val (typeSplices, termSplices) = splices.zipWithIndex.partition { case (splice, _) =>
+          splice.tpe match
+            case defn.FunctionOf(_, res, _, _) => res.typeSymbol == defn.QuotedTypeClass
+        }
+
+        // This and all closures in typeSplices are removed by the BetaReduce phase
+        val typeHoles =
+          if typeSplices.isEmpty then Literal(Constant(null)) // keep pickled quote without splices as small as possible
+          else
+            Lambda(
+              MethodType(
+                List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType)),
+                defn.QuotedTypeClass.typeRef.appliedTo(WildcardType)),
+              args => {
+                val cases = typeSplices.map { case (splice, idx) =>
+                  CaseDef(Literal(Constant(idx)), EmptyTree, splice.select(nme.apply).appliedTo(args(1)))
+                }
+                Match(args(0).annotated(New(ref(defn.UncheckedAnnot.typeRef))), cases)
+              }
+            )
+
+        // This and all closures in termSplices are removed by the BetaReduce phase
+        val termHoles =
+          if termSplices.isEmpty then Literal(Constant(null)) // keep pickled quote without splices as small as possible
+          else
+            Lambda(
+              MethodType(
+                List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType), defn.QuoteContextClass.typeRef),
+                defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
+              args => {
+                val cases = termSplices.map { case (splice, idx) =>
+                  val defn.FunctionOf(_, defn.FunctionOf(qctxType :: _, _, _, _), _, _) = splice.tpe
+                  val rhs = splice.select(nme.apply).appliedTo(args(1)).select(nme.apply).appliedTo(args(2).asInstance(qctxType))
+                  CaseDef(Literal(Constant(idx)), EmptyTree, rhs)
+                }
+                Match(args(0).annotated(New(ref(defn.UncheckedAnnot.typeRef))), cases)
+              }
+            )
+
         val quoteClass = if isType then defn.QuotedTypeClass else defn.QuotedExprClass
         val quotedType = quoteClass.typeRef.appliedTo(originalTp)
         val lambdaTpe = MethodType(defn.QuoteContextClass.typeRef :: Nil, quotedType)
         def callUnpickle(ts: List[Tree]) = {
           val qctx = ts.head.asInstance(defn.QuoteContextInternalClass.typeRef)
-          val unpickleMethName = if isType then "unpickleType" else "unpickleExpr"
-          qctx.select(unpickleMethName.toTermName).appliedToType(originalTp).appliedTo(pickledQuote)
+          val unpickleMeth = if isType then defn.QuoteContextInternal_unpickleType else defn.QuoteContextInternal_unpickleExpr
+          qctx.select(unpickleMeth).appliedToType(originalTp).appliedTo(pickledQuoteStrings, typeHoles, termHoles)
         }
         Lambda(lambdaTpe, callUnpickle).withSpan(body.span)
       }

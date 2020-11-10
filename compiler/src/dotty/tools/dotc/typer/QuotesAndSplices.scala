@@ -463,7 +463,7 @@ trait QuotesAndSplices {
       if (tree.quoted.isTerm) ref(defn.InternalQuoted_exprQuote.termRef).appliedToType(defn.AnyType).appliedTo(shape).select(nme.apply).appliedTo(qctx)
       else ref(defn.QuotedTypeModule_apply.termRef).appliedToTypeTree(shape).select(nme.apply).appliedTo(qctx)
 
-    val matchModule = if tree.quoted.isTerm then defn.QuoteContextInternalClass_ExprMatch else defn.QuoteContextInternalClass_TypeMatch
+    val matchModule = if tree.quoted.isTerm then defn.QuoteContextInternal_ExprMatch else defn.QuoteContextInternal_TypeMatch
     val unapplyFun = qctx.asInstance(defn.QuoteContextInternalClass.typeRef).select(matchModule).select(nme.unapply)
 
     UnApply(
