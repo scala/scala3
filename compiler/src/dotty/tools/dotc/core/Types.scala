@@ -205,6 +205,12 @@ object Types {
         false
     }
 
+    /** Like isRef, but also extends to unions and intersections */
+    def isCombinedRef(sym: Symbol)(using Context): Boolean = stripped match
+      case AndType(tp1: Type, tp2: Type) => tp1.isRef(sym) || tp2.isRef(sym)
+      case OrType(tp1: Type, tp2: Type) => tp1.isRef(sym) && tp2.isRef(sym)
+      case _ => isRef(sym)
+
     def isAny(using Context): Boolean     = isRef(defn.AnyClass, skipRefined = false)
     def isAnyRef(using Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
     def isAnyKind(using Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
@@ -242,9 +248,8 @@ object Types {
           // If the type is `T | Null` or `T | Nothing`, and `T` derivesFrom the class,
           // then the OrType derivesFrom the class. Otherwise, we need to check both sides
           // derivesFrom the class.
-          loop(tp.tp1) && loop(tp.tp2)
-          || tp.tp1.isNullOrNothingType && loop(tp.tp2)
-          || tp.tp2.isNullOrNothingType && loop(tp.tp1)
+          loop(tp.tp1) && (loop(tp.tp2) || defn.isBottomType(tp.tp2))
+          || defn.isBottomType(tp.tp1) && loop(tp.tp2)
         case tp: JavaArrayType =>
           cls == defn.ObjectClass
         case _ =>
