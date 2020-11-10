@@ -14,8 +14,8 @@ def f[T: Type](using QuoteContext) =
         ${ g[m.E](using Type[ME]) }
         ${ g[ME](using Type[m.E]) }
         ${ g[m.E](using Type[m.E]) }
-        // ${ g[ME] } // FIXME: issue seems to be in ReifyQuotes
-        // ${ g[m.E] } // FIXME: issue seems to be in ReifyQuotes
+        // ${ g[ME] } // FIXME: issue seems to be in PickleQuotes
+        // ${ g[m.E] } // FIXME: issue seems to be in PickleQuotes
       }
 
 def g[T](using Type[T]) = ???

@@ -64,11 +64,11 @@ import scala.annotation.constructorOnly
  *  and then performs the same transformation on `'{ ... ${x1$1} ... ${x2$1} ...}`.
  *
  */
-class ReifyQuotes extends MacroTransform {
-  import ReifyQuotes._
+class PickleQuotes extends MacroTransform {
+  import PickleQuotes._
   import tpd._
 
-  override def phaseName: String = ReifyQuotes.name
+  override def phaseName: String = PickleQuotes.name
 
   override def allowsImplicitSearch: Boolean = true
 
@@ -463,10 +463,10 @@ class ReifyQuotes extends MacroTransform {
 }
 
 
-object ReifyQuotes {
+object PickleQuotes {
   import tpd._
 
-  val name: String = "reifyQuotes"
+  val name: String = "pickleQuotes"
 
   def getLiteral(tree: tpd.Tree): Option[Literal] = tree match {
     case tree: Literal => Some(tree)

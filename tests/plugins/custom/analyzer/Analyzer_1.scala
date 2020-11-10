@@ -19,13 +19,13 @@ import Decorators._
 import Symbols.{Symbol, requiredPackage}
 import Constants.Constant
 import Types._
-import transform.{ReifyQuotes, FirstTransform}
+import transform.{PickleQuotes, FirstTransform}
 
 class SetDefTree extends PluginPhase {
   import tpd._
 
   override val phaseName: String = SetDefTree.name
-  override def runsAfter: Set[String] = Set(ReifyQuotes.name)
+  override def runsAfter: Set[String] = Set(PickleQuotes.name)
   override def runsBefore: Set[String] = Set(FirstTransform.name)
     // don't allow plugins to change tasty
     // research plugins can still change the phase plan at will

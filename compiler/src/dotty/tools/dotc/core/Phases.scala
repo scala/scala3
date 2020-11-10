@@ -197,7 +197,7 @@ object Phases {
     private var myPostTyperPhase: Phase = _
     private var mySbtExtractDependenciesPhase: Phase = _
     private var myPicklerPhase: Phase = _
-    private var myReifyQuotesPhase: Phase = _
+    private var myPickleQuotesPhase: Phase = _
     private var myCollectNullableFieldsPhase: Phase = _
     private var myRefChecksPhase: Phase = _
     private var myPatmatPhase: Phase = _
@@ -216,7 +216,7 @@ object Phases {
     final def postTyperPhase: Phase = myPostTyperPhase
     final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
     final def picklerPhase: Phase = myPicklerPhase
-    final def reifyQuotesPhase: Phase = myReifyQuotesPhase
+    final def pickleQuotesPhase: Phase = myPickleQuotesPhase
     final def collectNullableFieldsPhase: Phase = myCollectNullableFieldsPhase
     final def refchecksPhase: Phase = myRefChecksPhase
     final def patmatPhase: Phase = myPatmatPhase
@@ -238,7 +238,7 @@ object Phases {
       myPostTyperPhase = phaseOfClass(classOf[PostTyper])
       mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
-      myReifyQuotesPhase = phaseOfClass(classOf[ReifyQuotes])
+      myPickleQuotesPhase = phaseOfClass(classOf[PickleQuotes])
       myCollectNullableFieldsPhase = phaseOfClass(classOf[CollectNullableFields])
       myRefChecksPhase = phaseOfClass(classOf[RefChecks])
       myElimRepeatedPhase = phaseOfClass(classOf[ElimRepeated])
@@ -402,7 +402,7 @@ object Phases {
   def postTyperPhase(using Context): Phase              = ctx.base.postTyperPhase
   def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
   def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
-  def reifyQuotesPhase(using Context): Phase            = ctx.base.reifyQuotesPhase
+  def pickleQuotesPhase(using Context): Phase           = ctx.base.pickleQuotesPhase
   def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase
   def elimRepeatedPhase(using Context): Phase           = ctx.base.elimRepeatedPhase
   def extensionMethodsPhase(using Context): Phase       = ctx.base.extensionMethodsPhase

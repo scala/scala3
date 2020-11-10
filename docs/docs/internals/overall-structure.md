@@ -110,7 +110,7 @@ phases. The current list of phases is specified in class [Compiler] as follows:
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
-    List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
+    List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
