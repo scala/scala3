@@ -57,6 +57,9 @@ jobs:
       - name: Generate documentation for example project using dotty-sbt
         run: ./project/scripts/sbt "sbt-dotty/scripted sbt-dotty/scala3doc"
 
+      - name: Generate index file
+        run: scala3doc/scripts/mk-index.sh scala3doc/output > scala3doc/output/index.html
+
       - name: Upload documentation to server
         uses: azure/CLI@v1
         env: 
