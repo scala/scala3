@@ -192,13 +192,6 @@ pre {
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-pre > code {
-  display: block;
-  padding: 0.5rem;
-  overflow-x: auto;
-  background: transparent;
-}
-
 /* admonitions */
 blockquote {
   padding: 0 1em;

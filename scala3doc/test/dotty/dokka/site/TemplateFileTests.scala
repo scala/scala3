@@ -15,23 +15,22 @@ class TemplateFileTests:
     finally tmpFile.delete()
 
 
-  private def testTemplates(
-                             props: Map[String, String],
-                             template: List[(String, String)])(
-                             op: RenderingContext => Unit
-                           ) =
-    def rec(cxt: RenderingContext, remaining: List[(String, String)]): Unit =
-      if (remaining.isEmpty) op(cxt)
+  private def testContent(
+                            expected: String,
+                            props: Map[String, String],
+                            template: List[(String, String)]
+                          ) =
+    def rec(ctx: RenderingContext, remaining: List[(String, String)]): Unit =
+      if remaining.isEmpty then
+        assertEquals(expected.trim(), ctx.layouts("content").resolveInner(ctx).code.trim())
       else
         val (code, ext) = remaining.head
         testTemplate(code, ext) { template =>
-          val newCtx = cxt.copy(layouts = cxt.layouts + (template.name() -> template))
+          val newCtx = ctx.copy(layouts = ctx.layouts + (template.name() -> template))
           rec(newCtx, remaining.drop(1))
         }
 
     rec(RenderingContext(props), template)
-
-  private def fullRender(template: TemplateFile, ctx: RenderingContext): String = template.resolveInner(ctx).code.trim()
 
   @Test
   def testParsingHeaders(): Unit =
@@ -65,17 +64,14 @@ class TemplateFileTests:
         |""".stripMargin
 
 
-    val expected = """<p>Ala ma kota w <strong>paski</strong> from <a href="link/here.md">here</a>. Hej with <a href="link/target.md">link</a>!</p>"""
+    val expected =
+    """<p>Ala ma kota w <strong>paski</strong> from <a href="link/here.md">here</a>. Hej with <a href="link/target.md">link</a>!</p>""".stripMargin
 
-    testTemplates(
+    testContent(
+      expected,
       Map("p1" -> "paski", "p2" -> "Hej"),
-      List(base -> "html", content -> "md")
-    ) { it =>
-      assertEquals(
-        expected,
-        fullRender(it.layouts("content"), it)
-      )
-    }
+      List(base -> "md", content -> "md")
+    )
 
   @Test
   def layout(): Unit =
@@ -96,17 +92,15 @@ class TemplateFileTests:
         |""".stripMargin
 
 
-    val expected = """<p>Ala ma kota w <strong>paski</strong>. Hej!</p>""".stripMargin
+    val expected =
+      """Ala <p>ma kota w <strong>paski</strong></p>
+        |. Hej!""".stripMargin
 
-    testTemplates(
+    testContent(
+      expected,
       Map("p1" -> "paski", "p2" -> "Hej"),
       List(base -> "html", content -> "md")
-    ) { it =>
-      assertEquals(
-        expected,
-        fullRender(it.layouts("content"), it)
-      )
-    }
+    )
 
   @Test
   def nestedLayout_htmlMdHtml(): Unit =
@@ -114,7 +108,7 @@ class TemplateFileTests:
       """---
         |name: toplevel
         |---
-        |[div id="root"]{{ content }}[/div]
+        |<div id="root">{{ content }}</div>
         |""".stripMargin
 
     val basePage =
@@ -139,19 +133,20 @@ class TemplateFileTests:
 
 
     val expected =
-      """[div id="root"][h1]Test page[/h1]
-        |[p]Hello world!![/p]
-        |[h2]Test page end[/h2]
-        |[/div]""".stripMargin
+      """<div id="root"><h1>Test page</h1>
+        |<p>Hello world!!</p>
+        |<h2>Test page end</h2>
+        |</div>""".stripMargin
 
-    testTemplates(
+    testContent(
+      expected,
       Map("pageName" -> "Test page", "name" -> "world!"),
       List(
         toplevel -> "html",
         basePage -> "md",
         content -> "md"
       )
-    ) (it => fullRender(it.layouts("content"), it))
+    )
 
   @Test
   def nestedLayout_mdHtmlMd(): Unit =
@@ -187,25 +182,28 @@ class TemplateFileTests:
     val expected =
       """<h1>The Page</h1>
         |<h2>Test page</h2>
+        |
         |<p>Hello world!!</p>
+        |
+        |
         |<h3>Test page end</h3>""".stripMargin
 
-    testTemplates(
+    testContent(
+      expected,
       Map("pageName" -> "Test page", "name" -> "world!"),
       List(
         toplevel -> "html",
         basePage -> "html",
         content -> "md"
       )
-    ) { ctx => assertEquals(expected, fullRender(ctx.layouts("content"), ctx)) }
-
+    )
   @Test
   def markdown(): Unit =
     testTemplate(
       """# Hello {{ msg }}!""",
       ext = "md"
     ) { t =>
-      assertEquals("# Hello there!", t.resolveInner(RenderingContext(Map("msg" -> "there"))).code.trim())
+      assertEquals("<h1>Hello there!</h1>", t.resolveInner(RenderingContext(Map("msg" -> "there"))).code.trim())
     }
 
   @Test
@@ -214,5 +212,35 @@ class TemplateFileTests:
       """# Hello {{ msg }}!""",
       ext = "md"
     ) { t =>
-      assertEquals("# Hello there!", t.resolveInner(RenderingContext(Map("msg" -> "there"))).code.trim())
+      assertEquals("<h1>Hello there!</h1>", t.resolveInner(RenderingContext(Map("msg" -> "there"))).code.trim())
     }
+
+  @Test
+  def htmlOnly(): Unit =
+    val html =
+    """<div>Ala</ala>
+      |
+      |<span>Ula</span>
+      |""".stripMargin
+
+    val base =
+      """---
+        |title: myTitle
+        |name: base
+        |---
+        |{{ content }}
+        |""".stripMargin
+
+    val content =
+      s"""---
+         |layout: base
+         |name: content
+         |---
+         |$html
+         |""".stripMargin
+
+
+    testContent(
+      html,
+      Map(),
+      List(base -> "html", content -> "html"))

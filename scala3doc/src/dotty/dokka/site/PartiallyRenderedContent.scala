@@ -4,6 +4,9 @@ package site
 import org.jetbrains.dokka.model.DisplaySourceSet
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.pages.{ContentNode, DCI, Style}
+import org.jetbrains.dokka.base.resolvers.local.LocationProvider
+import com.vladsch.flexmark.convert.html.FlexmarkHtmlParser
+import org.jsoup.Jsoup
 
 case class PartiallyRenderedContent(
   template: TemplateFile,
@@ -23,3 +26,8 @@ case class PartiallyRenderedContent(
     copy(getSourceSets = sourceSets)
 
   lazy val resolved = template.resolveToHtml(context)
+
+  def procsesHtml(linkTo: String => String): String =
+    val document = Jsoup.parse(resolved.code)
+    document.select("a").forEach(element => element.attr("href", linkTo(element.attr("href"))))// forrach does not work here
+    document.outerHtml()

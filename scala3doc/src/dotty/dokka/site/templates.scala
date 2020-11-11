@@ -1,4 +1,5 @@
-package dotty.dokka.site
+package dotty.dokka
+package site
 
 import java.io.File
 import java.nio.file.Files
@@ -22,7 +23,6 @@ case class RenderingContext(
                              properties: Map[String, Object],
                              layouts: Map[String, TemplateFile] = Map(),
                              resolving: Set[String] = Set(),
-                             markdownOptions: DataHolder = defaultMarkdownOptions,
                              resources: List[String] = Nil
                            ):
 
@@ -70,7 +70,9 @@ case class TemplateFile(
 
   def isIndexPage() = file.isFile && (file.getName == "index.md" || file.getName == "index.html")
 
-  def resolveToHtml(ctx: StaticSiteContext): ResolvedPage = resolveInner(RenderingContext(Map(), ctx.layouts))
+  def resolveToHtml(ctx: StaticSiteContext): ResolvedPage =
+    val props = Map("page" -> JMap("title" -> title()))
+    resolveInner(RenderingContext(props, ctx.layouts))
 
   private[site] def resolveInner(ctx: RenderingContext): ResolvedPage =
     if (ctx.resolving.contains(file.getAbsolutePath))
@@ -82,9 +84,10 @@ case class TemplateFile(
     // Library requires mutable maps..
     val mutableProperties = new java.util.HashMap[String, Object](ctx.properties.asJava)
     val rendered = Template.parse(this.rawCode).render(mutableProperties)
-    val code = if (!isHtml) rendered else
+    // We want to render markdown only if next template is html
+    val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
       val parser: Parser = Parser.builder().build()
-      HtmlRenderer.builder(ctx.markdownOptions).build().render(parser.parse(rendered))
+      HtmlRenderer.builder(defaultMarkdownOptions).build().render(parser.parse(rendered))
 
     val resources = listSetting("extraCSS") ++ listSetting("extraJS")
     layoutTemplate match
