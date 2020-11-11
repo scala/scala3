@@ -3423,9 +3423,12 @@ class Typer extends Namer
 
     def adaptToSubType(wtp: Type): Tree = {
       // try converting a constant to the target type
-      val folded = ConstFold(tree, pt)
-      if (folded ne tree)
-        return adaptConstant(folded, folded.tpe.asInstanceOf[ConstantType])
+      ConstFold(tree).tpe.widenTermRefExpr.normalized match
+        case ConstantType(x) =>
+          val converted = x.convertTo(pt)
+          if converted != null && (converted ne x) then
+            return adaptConstant(tree, ConstantType(converted))
+        case _ =>
 
       val captured = captureWildcards(wtp)
       if (captured `ne` wtp)
