@@ -852,6 +852,9 @@ object Build {
         } (Set(scalaLibrarySourcesJar)).toSeq
       }.taskValue,
       sources in Compile ~= (_.filterNot(file =>
+        // Ported filles from https://github.com/scala/scala/pull/9307
+        // TODO: Remove this and `stdlib-bootstrapped/src` files when the library is updated above 2.13.3
+        file.getPath.contains("scala-library-src/scala/runtime/java8/JFunction0$mc") ||
         // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
         file.getPath.endsWith("scala-library-src/scala/Any.scala") ||
         file.getPath.endsWith("scala-library-src/scala/AnyVal.scala") ||
