@@ -15,7 +15,7 @@ object Expr {
    */
   def betaReduce[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
     qctx.reflect.Term.betaReduce(expr.unseal) match
-      case Some(expr1) => expr1.seal.asInstanceOf[Expr[T]]
+      case Some(expr1) => expr1.asExpr.asInstanceOf[Expr[T]]
       case _ => expr
 
   /** Returns an expression containing a block with the given statements and ending with the expresion
@@ -24,7 +24,7 @@ object Expr {
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using qctx: QuoteContext): Expr[T] = {
     import qctx.reflect._
-    Block(statements.map(_.unseal), expr.unseal).seal.asInstanceOf[Expr[T]]
+    Block(statements.map(_.unseal), expr.unseal).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Lift a value into an expression containing the construction of that value */
@@ -211,7 +211,7 @@ object Expr {
   def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
     import qctx.reflect._
     Implicits.search(TypeRepr.of[T]) match {
-      case iss: ImplicitSearchSuccess => Some(iss.tree.seal.asInstanceOf[Expr[T]])
+      case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None
     }
   }

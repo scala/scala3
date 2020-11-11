@@ -391,12 +391,6 @@ trait Reflection { reflection =>
   trait TermMethods {
     extension (self: Term):
 
-      /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression or throws */
-      def seal: scala.quoted.Expr[Any]
-
-      /** Convert `Term` to an `quoted.Expr[Any]` if the term is a valid expression */
-      def sealOpt: Option[scala.quoted.Expr[Any]]
-
       /** TypeRepr of this term */
       def tpe: TypeRepr
 

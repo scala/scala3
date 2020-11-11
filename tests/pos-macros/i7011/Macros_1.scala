@@ -8,7 +8,7 @@ def mcrImpl[T](body: Expr[Any])(using QuoteContext) : Expr[Any] = {
   val bTree = body.unseal
   val under = bTree.underlyingArgument
 
-  val res = '{Box(${under.asInstanceOf[Term].seal})}
+  val res = '{Box(${under.asInstanceOf[Term].asExpr})}
   res
 }
 

@@ -49,7 +49,7 @@ def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
         Reporting.error("Parameter must be natural number")
         '{0}
       } else {
-        xTree.seal.cast[Int]
+        xTree.asExprOf[Int]
       }
     case _ =>
       Reporting.error("Parameter must be a known constant")
@@ -61,10 +61,9 @@ def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
 To easily know which extractors are needed, the `showExtractors` method on a
 `qctx.reflect.Term` returns the string representation of the extractors.
 
-The method `qctx.reflect.Term.seal` provides a way to go back to a
-`quoted.Expr[Any]`. Note that the type is `Expr[Any]`. Consequently, the type
-must be set explicitly with a checked `cast` call. If the type does not conform
-to it an exception will be thrown at runtime.
+The methods `qctx.reflect.Term.{asExpr, asExprOf}` provide a way to go back to a `quoted.Expr`.
+Note that `asExpr` returns a `Expr[Any]`.
+On the other hand `asExprOf[T]` returns a `Expr[T]`, if the type does not conform to it an exception will be thrown at runtime.
 
 
 ### Positions

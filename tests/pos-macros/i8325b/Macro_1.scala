@@ -14,9 +14,9 @@ object A:
   def transformImplExpr[A:Type](using qctx: QuoteContext)(expr: Expr[A]): Expr[A] = {
      import qctx.reflect._
      expr.unseal match {
-         case Inlined(x,y,z) => transformImplExpr(z.seal.asInstanceOf[Expr[A]])
+         case Inlined(x,y,z) => transformImplExpr(z.asExpr.asInstanceOf[Expr[A]])
          case r@Apply(fun,args) =>  '{
-              A.pure(${r.seal.asInstanceOf[Expr[A]]}) }
+              A.pure(${r.asExpr.asInstanceOf[Expr[A]]}) }
          case other => expr
      }
   }

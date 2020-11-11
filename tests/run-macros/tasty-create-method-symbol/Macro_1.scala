@@ -20,10 +20,10 @@ object Macros {
       DefDef(sym1, {
         case List() => {
           case List(List(a, b)) =>
-            Some('{ ${ a.seal.asInstanceOf[Expr[Int]] } - ${ b.seal.asInstanceOf[Expr[Int]] } }.unseal)
+            Some('{ ${ a.asExpr.asInstanceOf[Expr[Int]] } - ${ b.asExpr.asInstanceOf[Expr[Int]] } }.unseal)
         }
       }),
-      '{ assert(${ Apply(Ref(sym1), List(Literal(Constant.Int(2)), Literal(Constant.Int(3)))).seal.asInstanceOf[Expr[Int]] } == -1) }.unseal)
+      '{ assert(${ Apply(Ref(sym1), List(Literal(Constant.Int(2)), Literal(Constant.Int(3)))).asExpr.asInstanceOf[Expr[Int]] } == -1) }.unseal)
 
     // test for no argument list (no Apply node)
     val sym2 : Symbol = Symbol.newMethod(
@@ -39,7 +39,7 @@ object Macros {
             Some(Literal(Constant.Int(2)))
         }
       }),
-      '{ assert(${ Ref(sym2).seal.asInstanceOf[Expr[Int]] } == 2) }.unseal)
+      '{ assert(${ Ref(sym2).asExpr.asInstanceOf[Expr[Int]] } == 2) }.unseal)
 
    // test for multiple argument lists
    val sym3 : Symbol = Symbol.newMethod(
@@ -59,7 +59,7 @@ object Macros {
             Some(a)
         }
       }),
-      '{ assert(${ Apply(Apply(Ref(sym3), List(Literal(Constant.Int(3)))), List(Literal(Constant.Int(3)))).seal.asInstanceOf[Expr[Int]] } == 3) }.unseal)
+      '{ assert(${ Apply(Apply(Ref(sym3), List(Literal(Constant.Int(3)))), List(Literal(Constant.Int(3)))).asExpr.asInstanceOf[Expr[Int]] } == 3) }.unseal)
 
     // test for recursive references
     val sym4 : Symbol = Symbol.newMethod(
@@ -75,13 +75,13 @@ object Macros {
         case List() => {
           case List(List(x)) =>
             Some('{
-              if ${ x.seal.asInstanceOf[Expr[Int]] } == 0
+              if ${ x.asExpr.asInstanceOf[Expr[Int]] } == 0
               then 0
-              else ${ Apply(Ref(sym4), List('{ ${ x.seal.asInstanceOf[Expr[Int]] } - 1 }.unseal)).seal.asInstanceOf[Expr[Int]] }
+              else ${ Apply(Ref(sym4), List('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - 1 }.unseal)).asExpr.asInstanceOf[Expr[Int]] }
             }.unseal)
         }
       }),
-      '{ assert(${ Apply(Ref(sym4), List(Literal(Constant.Int(4)))).seal.asInstanceOf[Expr[Int]] } == 0) }.unseal)
+      '{ assert(${ Apply(Ref(sym4), List(Literal(Constant.Int(4)))).asExpr.asInstanceOf[Expr[Int]] } == 0) }.unseal)
 
     // test for nested functions (one symbol is the other's parent, and we use a Closure)
     val sym5 : Symbol = Symbol.newMethod(
@@ -108,14 +108,14 @@ object Macros {
                   DefDef(sym51, {
                     case List() => {
                       case List(List(xx)) =>
-                        Some('{ ${ x.seal.asInstanceOf[Expr[Int]] } - ${ xx.seal.asInstanceOf[Expr[Int]] } }.unseal)
+                        Some('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - ${ xx.asExpr.asInstanceOf[Expr[Int]] } }.unseal)
                     }
                   })),
                 Closure(Ref(sym51), None))
             }
         }
       }),
-      '{ assert(${ Apply(Ref(sym5), List(Literal(Constant.Int(5)))).seal.asInstanceOf[Expr[Int=>Int]] }(4) == 1) }.unseal)
+      '{ assert(${ Apply(Ref(sym5), List(Literal(Constant.Int(5)))).asExpr.asInstanceOf[Expr[Int=>Int]] }(4) == 1) }.unseal)
 
     // test mutually recursive definitions
     val sym6_1 : Symbol = Symbol.newMethod(
@@ -140,10 +140,10 @@ object Macros {
           case List(List(x)) =>
             Some {
               '{
-                println(s"sym6_1: ${ ${ x.seal.asInstanceOf[Expr[Int]] } }")
-                if ${ x.seal.asInstanceOf[Expr[Int]] } == 0
+                println(s"sym6_1: ${ ${ x.asExpr.asInstanceOf[Expr[Int]] } }")
+                if ${ x.asExpr.asInstanceOf[Expr[Int]] } == 0
                 then 0
-                else ${ Apply(Ref(sym6_2), List('{ ${ x.seal.asInstanceOf[Expr[Int]] } - 1 }.unseal)).seal.asInstanceOf[Expr[Int]] }
+                else ${ Apply(Ref(sym6_2), List('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - 1 }.unseal)).asExpr.asInstanceOf[Expr[Int]] }
               }.unseal
             }
         }
@@ -153,16 +153,16 @@ object Macros {
           case List(List(x)) =>
             Some {
               '{
-                println(s"sym6_2: ${ ${ x.seal.asInstanceOf[Expr[Int]] } }")
-                if ${ x.seal.asInstanceOf[Expr[Int]] } == 0
+                println(s"sym6_2: ${ ${ x.asExpr.asInstanceOf[Expr[Int]] } }")
+                if ${ x.asExpr.asInstanceOf[Expr[Int]] } == 0
                 then 0
-                else ${ Apply(Ref(sym6_1), List('{ ${ x.seal.asInstanceOf[Expr[Int]] } - 1 }.unseal)).seal.asInstanceOf[Expr[Int]] }
+                else ${ Apply(Ref(sym6_1), List('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - 1 }.unseal)).asExpr.asInstanceOf[Expr[Int]] }
               }.unseal
             }
         }
 
       }),
-      '{ assert(${ Apply(Ref(sym6_2), List(Literal(Constant.Int(6)))).seal.asInstanceOf[Expr[Int]] } == 0) }.unseal)
+      '{ assert(${ Apply(Ref(sym6_2), List(Literal(Constant.Int(6)))).asExpr.asInstanceOf[Expr[Int]] } == 0) }.unseal)
 
     // test polymorphic methods by synthesizing an identity method
     val sym7 : Symbol = Symbol.newMethod(
@@ -182,7 +182,7 @@ object Macros {
             Some(Typed(x, Inferred(t)))
         }
       }),
-      '{ assert(${ Apply(TypeApply(Ref(sym7), List(Inferred(TypeRepr.of[Int]))), List(Literal(Constant.Int(7)))).seal.asInstanceOf[Expr[Int]] } == 7) }.unseal)
+      '{ assert(${ Apply(TypeApply(Ref(sym7), List(Inferred(TypeRepr.of[Int]))), List(Literal(Constant.Int(7)))).asExpr.asInstanceOf[Expr[Int]] } == 7) }.unseal)
 
     Block(
       sym1Statements ++
@@ -193,7 +193,7 @@ object Macros {
       sym6Statements ++
       sym7Statements ++
       List('{ println("Ok") }.unseal),
-      Literal(Constant.Unit())).seal.asInstanceOf[Expr[Unit]]
+      Literal(Constant.Unit())).asExpr.asInstanceOf[Expr[Unit]]
   }
 }
 
