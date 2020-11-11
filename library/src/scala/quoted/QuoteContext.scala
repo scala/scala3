@@ -8,7 +8,7 @@ package scala.quoted
  *
  *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import qctx.reflect._; ... }`.
  */
-trait QuoteContext { self =>
+trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
 
   /** Low-level Typed AST API metaprogramming API.
    *  This API does not have the static type guarantiees that `Expr` and `Type` provide.

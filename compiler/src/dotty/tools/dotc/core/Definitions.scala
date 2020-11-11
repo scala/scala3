@@ -795,11 +795,14 @@ class Definitions {
   @tu lazy val QuotedExprModule: Symbol = QuotedExprClass.companionModule
 
   @tu lazy val QuoteContextClass: ClassSymbol = requiredClass("scala.quoted.QuoteContext")
-  @tu lazy val QuoteContextInternalClass: ClassSymbol = requiredClass("scala.internal.quoted.QuoteContextInternal")
-    @tu lazy val QuoteContextInternal_unpickleExpr: Symbol = QuoteContextInternalClass.requiredMethod("unpickleExpr")
-    @tu lazy val QuoteContextInternal_unpickleType: Symbol = QuoteContextInternalClass.requiredMethod("unpickleType")
-    @tu lazy val QuoteContextInternal_ExprMatch: Symbol = QuoteContextInternalClass.requiredMethod("ExprMatch")
-    @tu lazy val QuoteContextInternal_TypeMatch: Symbol = QuoteContextInternalClass.requiredMethod("TypeMatch")
+
+  @tu lazy val QuoteUnpicklerClass: ClassSymbol = requiredClass("scala.quoted.internal.QuoteUnpickler")
+    @tu lazy val QuoteUnpickler_unpickleExpr: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleExpr")
+    @tu lazy val QuoteUnpickler_unpickleType: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleType")
+
+  @tu lazy val QuoteMatchingClass: ClassSymbol = requiredClass("scala.quoted.internal.QuoteMatching")
+    @tu lazy val QuoteMatching_ExprMatch: Symbol = QuoteMatchingClass.requiredMethod("ExprMatch")
+    @tu lazy val QuoteMatching_TypeMatch: Symbol = QuoteMatchingClass.requiredMethod("TypeMatch")
 
   @tu lazy val LiftableModule: Symbol = requiredModule("scala.quoted.Liftable")
     @tu lazy val LiftableModule_BooleanLiftable: Symbol = LiftableModule.requiredMethod("BooleanLiftable")

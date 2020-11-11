@@ -14,6 +14,7 @@ import dotty.tools.dotc.quoted.QuoteUtils._
 import dotty.tools.dotc.core.Decorators._
 
 import scala.quoted.QuoteContext
+import scala.quoted.internal.{QuoteUnpickler, QuoteMatching}
 import dotty.tools.dotc.quoted.printers.{Extractors, SourceCode, SyntaxHighlight}
 
 import scala.tasty.reflect._
@@ -40,7 +41,7 @@ object QuoteContextImpl {
 
 }
 
-class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.internal.quoted.QuoteContextInternal:
+class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickler, QuoteMatching:
 
   object reflect extends scala.tasty.Reflection:
 

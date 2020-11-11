@@ -1,20 +1,10 @@
-package scala.internal.quoted
+package scala.quoted.internal
 
 import scala.quoted.{QuoteContext, Expr, Type}
 import scala.tasty.reflect._
 
 /** Part of the QuoteContext interface that needs to be implemented by the compiler but is not visible to users */
-trait QuoteContextInternal { self: QuoteContext =>
-
-  /** Unpickle `repr` which represents a pickled `Expr` tree,
-   *  replacing splice nodes with `holes`
-   */
-  def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => Type[?], termHole: (Int, Seq[Any], QuoteContext) => Expr[?]): scala.quoted.Expr[T]
-
-  /** Unpickle `repr` which represents a pickled `Type` tree,
-   *  replacing splice nodes with `holes`
-   */
-  def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: (Int, Seq[Any]) => Type[?], termHole: (Int, Seq[Any], QuoteContext) => Expr[?]): scala.quoted.Type[T]
+trait QuoteMatching { self: QuoteContext & QuoteUnpickler =>
 
   val ExprMatch: ExprMatchModule
 
