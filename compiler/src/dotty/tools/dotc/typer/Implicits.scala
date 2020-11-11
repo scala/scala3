@@ -715,7 +715,7 @@ trait ImplicitRunInfo:
               seen += t
               t.underlying match
                 case TypeBounds(lo, hi) =>
-                  if defn.isBottomTypeAfterErasure(lo) then apply(hi)
+                  if lo.isBottomTypeAfterErasure then apply(hi)
                   else AndType.make(apply(lo), apply(hi))
                 case u => apply(u)
 

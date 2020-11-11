@@ -715,7 +715,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         compareTypeBounds
       case tp2: AnnotatedType if tp2.isRefining =>
-        (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || defn.isBottomType(tp1)) &&
+        (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
         recur(tp1, tp2.parent)
       case ClassInfo(pre2, cls2, _, _, _) =>
         def compareClassInfo = tp1 match {
@@ -2338,7 +2338,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   def provablyEmpty(tp: Type): Boolean =
     tp.dealias match {
-      case tp if tp.isNothing => true
+      case tp if tp.isExactlyNothing => true
       case AndType(tp1, tp2) => provablyDisjoint(tp1, tp2)
       case OrType(tp1, tp2) => provablyEmpty(tp1) && provablyEmpty(tp2)
       case at @ AppliedType(tycon, args) =>

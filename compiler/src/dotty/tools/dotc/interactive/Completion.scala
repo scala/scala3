@@ -205,7 +205,7 @@ object Completion {
      * considered.
      */
     def addMemberCompletions(qual: Tree)(using Context): Unit =
-      if (!qual.tpe.widenDealias.isNothing) {
+      if (!qual.tpe.widenDealias.isExactlyNothing) {
         addAccessibleMembers(qual.tpe)
         if (!mode.is(Mode.Import) && !qual.tpe.isNullType)
           // Implicit conversions do not kick in when importing

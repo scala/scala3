@@ -373,7 +373,7 @@ object PatternMatcher {
               patternPlan(casted, pat, onSuccess)
             })
         case UnApply(extractor, implicits, args) =>
-          val unappPlan = if (defn.isBottomType(scrutinee.info))
+          val unappPlan = if (scrutinee.info.isBottomType)
             // Generate a throwaway but type-correct plan.
             // This plan will never execute because it'll be guarded by a `NonNullTest`.
             ResultPlan(tpd.Throw(tpd.nullLiteral))

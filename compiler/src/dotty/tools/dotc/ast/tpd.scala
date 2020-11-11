@@ -586,7 +586,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           val tree2: Select = tree.tpe match {
             case tpe: NamedType =>
               val qualType = qualifier.tpe.widenIfUnstable
-              if qualType.isNothing then tree1.withTypeUnchecked(tree.tpe)
+              if qualType.isExactlyNothing then tree1.withTypeUnchecked(tree.tpe)
               else tree1.withType(tpe.derivedSelect(qualType))
             case _ => tree1.withTypeUnchecked(tree.tpe)
           }
@@ -980,7 +980,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** `tree ne null` (might need a cast to be type correct) */
     def testNotNull(using Context): Tree = {
-      val receiver = if (defn.isBottomType(tree.tpe))
+      val receiver = if (tree.tpe.isBottomType)
         // If the receiver is of type `Nothing` or `Null`, add an ascription so that the selection
         // succeeds: e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
         Typed(tree, TypeTree(defn.AnyRefType))

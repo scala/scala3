@@ -42,7 +42,7 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
       def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {
         case formalExpr: ExprType =>
           var argType = arg.tpe.widenIfUnstable
-          if (defn.isBottomType(argType)) argType = formal.widenExpr
+          if (argType.isBottomType) argType = formal.widenExpr
           def wrap(arg: Tree) =
             ref(defn.cbnArg).appliedToType(argType).appliedTo(arg).withSpan(arg.span)
           arg match {

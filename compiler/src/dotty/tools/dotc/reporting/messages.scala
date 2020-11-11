@@ -269,7 +269,7 @@ import transform.SymUtils._
           if expected.isAny
              || expected.isAnyRef
              || expected.isRef(defn.AnyValClass)
-             || defn.isBottomType(found)
+             || found.isBottomType
           then ""
           else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
       val (where, printCtx) = Formatting.disambiguateTypes(found2, expected2)
