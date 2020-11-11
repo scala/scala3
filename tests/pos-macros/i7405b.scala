@@ -10,7 +10,7 @@ class Foo {
       val x: X = ???
       type Z = x.Y
       ${
-        val t: Type[Z] = Type[Z]
+        val t: Type[Z] = Type.of[Z]
         '{ val y: Z = x.y }
         '{ val y: t.Underlying = x.y }
       }

@@ -20,7 +20,7 @@ object Type:
     qctx.reflect.TypeTree.of[T].showAnsiColored
 
   /** Return a quoted.Type with the given type */
-  @compileTimeOnly("Reference to `scala.quoted.Type.apply` was not handled by PickleQuotes")
-  given apply[T <: AnyKind] as (QuoteContext ?=> Type[T]) = ???
+  @compileTimeOnly("Reference to `scala.quoted.Type.of` was not handled by PickleQuotes")
+  given of[T <: AnyKind] as (QuoteContext ?=> Type[T]) = ???
 
 end Type

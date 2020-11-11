@@ -45,7 +45,7 @@ object Macro2 {
   def test2Impl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[Unit] = {
     import qctx.reflect._
 
-    val mirrorTpe = Type[Mirror.Of[T]]
+    val mirrorTpe = Type.of[Mirror.Of[T]]
     val mirrorExpr = Expr.summon(using mirrorTpe).get
     val derivedInstance = JsonEncoder.derived(mirrorExpr)
 

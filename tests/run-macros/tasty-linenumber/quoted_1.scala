@@ -7,7 +7,7 @@ class LineNumber(val value: Int) {
 object LineNumber {
 
   implicit inline def line[T >: Unit <: Unit]: LineNumber =
-    ${lineImpl(Type[T])}
+    ${lineImpl(Type.of[T])}
 
   def lineImpl(x: Type[Unit])(using QuoteContext) : Expr[LineNumber] = {
     import qctx.reflect._

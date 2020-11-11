@@ -24,5 +24,5 @@ final class TypeImpl(val typeTree: tpd.Tree, val scopeId: Int) extends scala.quo
       throw new ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")
 
   override def hashCode: Int = typeTree.hashCode
-  override def toString: String = "'[ ... ]"
+  override def toString: String = "Type.of[...]"
 }

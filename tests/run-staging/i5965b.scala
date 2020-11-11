@@ -6,7 +6,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     given Toolbox = Toolbox.make(getClass.getClassLoader)
 
-    withQuoteContext(Type[List])
+    withQuoteContext(Type.of[List])
     def list(using QuoteContext) = bound('{List(1, 2, 3)})
     println(withQuoteContext(list.show))
     println(run(list))

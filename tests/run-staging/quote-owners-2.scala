@@ -5,7 +5,7 @@ import scala.quoted.staging._
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
-    val q = f(g(Type[Int]))
+    val q = f(g(Type.of[Int]))
     println(q.show)
     '{ println($q) }
   }
@@ -22,5 +22,5 @@ object Test {
     ff
   }
 
-  def g[T](a: Type[T])(using QuoteContext): Type[List[T]] = Type[List[a.Underlying]]
+  def g[T](a: Type[T])(using QuoteContext): Type[List[T]] = Type.of[List[a.Underlying]]
 }

@@ -24,6 +24,6 @@ def test[T: Type](x: Expr[Any])(using QuoteContext): Unit =
     case '{ type t; $x: `t` } => // match any `t` and bind it as a type variable
       '{ val y: t = $x; } // use `t` provided by previous match
 
-  Type[T] match
-    case '[List[u]] => Type[u]
-    case '[u] => Type[u]
+  Type.of[T] match
+    case '[List[u]] => Type.of[u]
+    case '[u] => Type.of[u]
