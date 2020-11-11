@@ -1175,11 +1175,13 @@ class Definitions {
   def isBottomClassAfterErasure(cls: Symbol): Boolean = cls == NothingClass || cls == NullClass
 
   def isBottomType(tp: Type): Boolean =
-    if (ctx.explicitNulls && !ctx.phase.erasedTypes) tp.isCombinedRef(NothingClass)
-    else isBottomTypeAfterErasure(tp)
+    val tpw = tp.widen
+    tpw.isCombinedRef(NothingClass)
+    || tpw.isCombinedRef(NullClass) && (!ctx.explicitNulls || ctx.phase.erasedTypes)
 
   def isBottomTypeAfterErasure(tp: Type): Boolean =
-    tp.isCombinedRef(NothingClass) || tp.isCombinedRef(NullClass)
+    val tpw = tp.widen
+    tpw.isCombinedRef(NothingClass) || tpw.isCombinedRef(NullClass)
 
   /** Is a function class.
    *   - FunctionXXL
