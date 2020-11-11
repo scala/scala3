@@ -20,10 +20,6 @@ final class ExprImpl(val tree: tpd.Tree, val scopeId: Int) extends scala.quoted.
     case _ => false
   }
 
-  def unseal(using qctx: QuoteContext): qctx.reflect.Term =
-    checkScopeId(qctx.hashCode)
-    tree.asInstanceOf[qctx.reflect.Term]
-
   def checkScopeId(expectedScopeId: Int): Unit =
     if expectedScopeId != scopeId then
       throw new ScopeException("Cannot call `scala.quoted.staging.run(...)` within a macro or another `run(...)`")

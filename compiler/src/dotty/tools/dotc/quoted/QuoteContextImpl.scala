@@ -43,6 +43,42 @@ object QuoteContextImpl {
 
 class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickler, QuoteMatching:
 
+  extension [T](self: scala.quoted.Expr[T]):
+    def show: String =
+      reflect.TreeMethodsImpl.show(self.asReflectTree)
+
+    def showAnsiColored: String =
+      reflect.TreeMethodsImpl.showAnsiColored(self.asReflectTree)
+
+    def matches(that: scala.quoted.Expr[Any]): Boolean =
+      treeMatch(self.asReflectTree, that.asReflectTree).nonEmpty
+
+    def asReflectTree: reflect.Term =
+      val expr = self.asInstanceOf[ExprImpl]
+      expr.checkScopeId(QuoteContextImpl.this.hashCode)
+      expr.tree
+
+  end extension
+
+  extension [X](self: scala.quoted.Expr[Any]):
+    /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
+    def isExprOf(using scala.quoted.Type[X]): Boolean =
+      reflect.TypeReprMethodsImpl.<:<(self.asReflectTree.tpe)(reflect.TypeRepr.of[X])
+
+    /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
+    def asExprOf(using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
+      if isExprOf[X] then
+        self.asInstanceOf[scala.quoted.Expr[X]]
+      else
+        throw Exception(
+          s"""Expr cast exception: ${self.show}
+            |of type: ${reflect.TypeReprMethodsImpl.show(self.asReflectTree.tpe)}
+            |did not conform to type: ${reflect.TypeReprMethodsImpl.show(reflect.TypeRepr.of[X])}
+            |""".stripMargin
+        )
+    }
+  end extension
+
   object reflect extends scala.tasty.Reflection:
 
     def rootContext: Context = ctx
@@ -72,7 +108,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
             case _ => false
         def asExpr: scala.quoted.Expr[Any] =
           if self.isExpr then
-            new dotty.tools.dotc.quoted.ExprImpl(self, QuoteContextImpl.this.hashCode)
+            new ExprImpl(self, QuoteContextImpl.this.hashCode)
           else self match
             case TermTypeTest(self) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
             case _ => throw new Exception("Expected a Term but was: " + self)
@@ -80,7 +116,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
       extension [T](self: Tree)
         def asExprOf(using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
-          self.asExpr.asExprOf[T](using tp)(using QuoteContextImpl.this)
+          QuoteContextImpl.this.asExprOf[T](self.asExpr)(using tp)
       end extension
 
     end TreeMethodsImpl
@@ -316,11 +352,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     object TermMethodsImpl extends TermMethods:
       extension (self: Term):
         def seal: scala.quoted.Expr[Any] =
-          if self.isExpr then new dotty.tools.dotc.quoted.ExprImpl(self, QuoteContextImpl.this.hashCode)
+          if self.isExpr then new ExprImpl(self, QuoteContextImpl.this.hashCode)
           else throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
 
         def sealOpt: Option[scala.quoted.Expr[Any]] =
-          if self.isExpr then Some(new dotty.tools.dotc.quoted.ExprImpl(self, QuoteContextImpl.this.hashCode))
+          if self.isExpr then Some(new ExprImpl(self, QuoteContextImpl.this.hashCode))
           else None
 
         def tpe: TypeRepr = self.tpe
@@ -1003,7 +1039,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     object TypeTree extends TypeTreeModule:
       def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeTree =
-        tp.asInstanceOf[dotty.tools.dotc.quoted.TypeImpl].typeTree
+        tp.asInstanceOf[TypeImpl].typeTree
     end TypeTree
 
     object TypeTreeMethodsImpl extends TypeTreeMethods:
@@ -1572,7 +1608,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     object TypeRepr extends TypeReprModule:
       def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeRepr =
-        tp.asInstanceOf[dotty.tools.dotc.quoted.TypeImpl].typeTree.tpe
+        tp.asInstanceOf[TypeImpl].typeTree.tpe
       def typeConstructorOf(clazz: Class[?]): TypeRepr =
         if (clazz.isPrimitive)
           if (clazz == classOf[Boolean]) dotc.core.Symbols.defn.BooleanType
@@ -1609,7 +1645,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
         def seal: scala.quoted.Type[_] = self.asType
 
         def asType: scala.quoted.Type[?] =
-          new dotty.tools.dotc.quoted.TypeImpl(Inferred(self), QuoteContextImpl.this.hashCode)
+          new TypeImpl(Inferred(self), QuoteContextImpl.this.hashCode)
 
         def =:=(that: TypeRepr): Boolean = self =:= that
         def <:<(that: TypeRepr): Boolean = self <:< that
@@ -2624,16 +2660,16 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
     val tree = PickledQuotes.unpickleTerm(pickled, typeHole, termHole)(using reflect.rootContext)
-    new dotty.tools.dotc.quoted.ExprImpl(tree, hash).asInstanceOf[scala.quoted.Expr[T]]
+    new ExprImpl(tree, hash).asInstanceOf[scala.quoted.Expr[T]]
 
   def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?]): scala.quoted.Type[T] =
     val tree = PickledQuotes.unpickleTypeTree(pickled, typeHole, termHole)(using reflect.rootContext)
-    new dotty.tools.dotc.quoted.TypeImpl(tree, hash).asInstanceOf[scala.quoted.Type[T]]
+    new TypeImpl(tree, hash).asInstanceOf[scala.quoted.Type[T]]
 
   object ExprMatch extends ExprMatchModule:
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
-      val scrutineeTree = scrutinee.unseal(using QuoteContextImpl.this)
-      val patternTree = pattern.unseal(using QuoteContextImpl.this)
+      val scrutineeTree = QuoteContextImpl.this.asReflectTree(scrutinee)
+      val patternTree = QuoteContextImpl.this.asReflectTree(pattern)
       treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
   end ExprMatch
 

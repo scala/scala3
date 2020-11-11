@@ -1,14 +1,12 @@
 import scala.quoted._
 
-object Macros {
+object Macros:
+  implicit inline def identityMaped[T](x: => T): T = ${ MacrosImpl.impl('x) }
 
-  implicit inline def identityMaped[T](x: => T): T = ${ impl('x) }
-
+object MacrosImpl:
   def impl[T: Type](x: Expr[T])(using qctx: QuoteContext) : Expr[T] = {
-    import qctx.reflect.{_, given} // FIXME: #8919
+    import qctx.reflect._
     val identityMap = new TreeMap { }
     val transformed = identityMap.transformTerm(x.unseal).asExprOf[T]
     transformed
   }
-
-}
