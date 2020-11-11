@@ -818,7 +818,7 @@ class Definitions {
     @tu lazy val InternalQuoted_exprNestedSplice : Symbol = InternalQuotedModule.requiredMethod("exprNestedSplice")
     @tu lazy val InternalQuoted_QuoteTypeTagAnnot: ClassSymbol = InternalQuotedModule.requiredClass("quoteTypeTag")
 
-  @tu lazy val InternalQuotedPatterns: Symbol = requiredModule("scala.internal.quoted.Patterns")
+  @tu lazy val InternalQuotedPatterns: Symbol = requiredModule("scala.quoted.internal.Patterns")
     @tu lazy val InternalQuotedPatterns_patternHole: Symbol = InternalQuotedPatterns.requiredMethod("patternHole")
     @tu lazy val InternalQuotedPatterns_patternHigherOrderHole: Symbol = InternalQuotedPatterns.requiredMethod("patternHigherOrderHole")
     @tu lazy val InternalQuotedPatterns_higherOrderHole: Symbol = InternalQuotedPatterns.requiredMethod("higherOrderHole")
