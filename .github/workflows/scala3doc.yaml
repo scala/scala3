@@ -64,7 +64,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         with:
           inlineScript: |
-            DOC_DEST=pr-$PR_NUMBER
+            DOC_DEST=pr-${PR_NUMBER:-master}
             echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
             az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
             az storage blob sync -s scala3doc/output -c $DOC_DEST --account-name scala3docstorage
