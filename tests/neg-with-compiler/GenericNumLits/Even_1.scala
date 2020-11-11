@@ -1,3 +1,4 @@
+import language.experimental.genericNumberLiterals
 import scala.util.FromDigits
 import scala.quoted._
 

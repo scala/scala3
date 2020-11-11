@@ -1,3 +1,4 @@
+import language.experimental.genericNumberLiterals
 import scala.util.FromDigits
 object Test extends App {
 

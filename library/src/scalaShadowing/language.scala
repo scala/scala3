@@ -216,6 +216,9 @@ object language {
 
     /** Experimental support for named type arguments */
     object namedTypeArguments
+
+    /** Experimental support for generic number literals */
+    object genericNumberLiterals
   }
 
   /** Where imported, a backwards compatibility mode for Scala2 is enabled */
