@@ -368,14 +368,14 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val instructions = instructionsFromMethod(fun)
       val expected =
         List(
-          IntOp(BIPUSH, 10)
-          , VarOp(ISTORE, 1)
-          , VarOp(ILOAD, 1)
-          , Op(ICONST_1)
-          , Op(IADD)
-          , VarOp(ISTORE, 1)
-          , VarOp(ILOAD, 1)
-          , Op(IRETURN)
+          IntOp(BIPUSH, 10),
+          VarOp(ISTORE, 1),
+          VarOp(ILOAD, 1),
+          Op(ICONST_1),
+          Op(IADD),
+          VarOp(ISTORE, 1),
+          VarOp(ILOAD, 1),
+          Op(IRETURN),
         )
       assert(instructions == expected,
         "`f` was not properly inlined in `fun`\n" + diffInstructions(instructions, expected))
@@ -521,6 +521,37 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       assert(instructions == expected,
         "`i was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
+  @Test def beta_reduce_under_block = {
+    val source = """class Test:
+                   |  def test =
+                   |    {
+                   |      val a = 3
+                   |      (i: Int) => i + a
+                   |    }.apply(2)
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected =
+        List(
+          Op(ICONST_3),
+          VarOp(ISTORE, 1),
+          Op(ICONST_2),
+          VarOp(ILOAD, 1),
+          Op(IADD),
+          Op(IRETURN),
+        )
+
+      assert(instructions == expected,
+        "`i was not properly beta-reduced in `test`\n" + diffInstructions(instructions, expected))
 
     }
   }

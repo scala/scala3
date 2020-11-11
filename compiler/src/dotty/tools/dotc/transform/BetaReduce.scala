@@ -48,13 +48,22 @@ object BetaReduce:
   import ast.tpd._
 
   /** Beta-reduces a call to `fn` with arguments `argSyms` or returns `tree` */
-  def apply(tree: Apply, fn: Tree, args: List[Tree])(using Context): Tree =
+  def apply(original: Tree, fn: Tree, args: List[Tree])(using Context): Tree =
     fn match
-      case Typed(expr, _) => BetaReduce(tree, expr, args)
-      case Block(Nil, expr) => BetaReduce(tree, expr, args)
-      case Inlined(_, Nil, expr) => BetaReduce(tree, expr, args)
-      case Block((anonFun: DefDef) :: Nil, closure: Closure) => BetaReduce(anonFun, args)
-      case _ => tree
+      case Typed(expr, _) =>
+        BetaReduce(original, expr, args)
+      case Block((anonFun: DefDef) :: Nil, closure: Closure) =>
+        BetaReduce(anonFun, args)
+      case Block(stats, expr) =>
+        val tree = BetaReduce(original, expr, args)
+        if tree eq original then original
+        else cpy.Block(fn)(stats, tree)
+      case Inlined(call, bindings, expr) =>
+        val tree = BetaReduce(original, expr, args)
+        if tree eq original then original
+        else cpy.Inlined(fn)(call, bindings, tree)
+      case _ =>
+        original
   end apply
 
   /** Beta-reduces a call to `ddef` with arguments `argSyms` */
