@@ -205,12 +205,6 @@ object Types {
         false
     }
 
-    /** Like isRef, but also extends to unions and intersections */
-    def isCombinedRef(sym: Symbol)(using Context): Boolean = stripped match
-      case AndType(tp1: Type, tp2: Type) => tp1.isRef(sym) || tp2.isRef(sym)
-      case OrType(tp1: Type, tp2: Type) => tp1.isRef(sym) && tp2.isRef(sym)
-      case _ => isRef(sym)
-
     def isAny(using Context): Boolean     = isRef(defn.AnyClass, skipRefined = false)
     def isAnyRef(using Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
     def isAnyKind(using Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
@@ -230,7 +224,9 @@ object Types {
       case _ => false
     }
 
-    /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
+    /** True if this type is an instance of the given `cls` or an instance of
+     *  a non-bottom subclass of `cls`.
+     */
     final def derivesFrom(cls: Symbol)(using Context): Boolean = {
       def loop(tp: Type): Boolean = tp match {
         case tp: TypeRef =>
@@ -245,11 +241,15 @@ object Types {
         case tp: AndType =>
           loop(tp.tp1) || loop(tp.tp2)
         case tp: OrType =>
-          // If the type is `T | Null` or `T | Nothing`, and `T` derivesFrom the class,
-          // then the OrType derivesFrom the class. Otherwise, we need to check both sides
-          // derivesFrom the class.
-          loop(tp.tp1) && (loop(tp.tp2) || defn.isBottomType(tp.tp2))
-          || defn.isBottomType(tp.tp1) && loop(tp.tp2)
+          // If the type is `T | Null` or `T | Nothing`, the class is != Nothing,
+          // and `T` derivesFrom the class, then the OrType derivesFrom the class.
+          // Otherwise, we need to check both sides derivesFrom the class.
+          if defn.isBottomType(tp.tp1) && cls != defn.NothingClass then
+            loop(tp.tp2)
+          else if defn.isBottomType(tp.tp2) && cls != defn.NothingClass then
+            loop(tp.tp1)
+          else
+            loop(tp.tp1) && loop(tp.tp2)
         case tp: JavaArrayType =>
           cls == defn.ObjectClass
         case _ =>
@@ -483,6 +483,22 @@ object Types {
      */
     final def classSymbols(using Context): List[ClassSymbol] =
       parentSymbols(_.isClass).asInstanceOf
+
+    /** Same as `this.classSymbols.contains(cls)` but more efficient */
+    final def hasClassSymbol(cls: Symbol)(using Context): Boolean = this match
+      case tp: TypeRef   =>
+        val sym = tp.symbol
+        sym == cls || !sym.isClass && tp.superType.hasClassSymbol(cls)
+      case tp: TypeProxy =>
+        tp.underlying.hasClassSymbol(cls)
+      case tp: ClassInfo =>
+        tp.cls == cls
+      case AndType(l, r) =>
+        l.hasClassSymbol(cls) || r.hasClassSymbol(cls)
+      case OrType(l, r) =>
+        l.hasClassSymbol(cls) && r.hasClassSymbol(cls)
+      case _ =>
+        false
 
     /** The term symbol associated with the type */
     @tailrec final def termSymbol(using Context): Symbol = this match {
