@@ -812,11 +812,12 @@ class Definitions {
     @tu lazy val LiftableModule_CharLiftable: Symbol = LiftableModule.requiredMethod("CharLiftable")
     @tu lazy val LiftableModule_StringLiftable: Symbol = LiftableModule.requiredMethod("StringLiftable")
 
-  @tu lazy val InternalQuotedModule: Symbol = requiredModule("scala.internal.quoted.CompileTime")
-    @tu lazy val InternalQuoted_exprQuote  : Symbol = InternalQuotedModule.requiredMethod("exprQuote")
-    @tu lazy val InternalQuoted_exprSplice : Symbol = InternalQuotedModule.requiredMethod("exprSplice")
-    @tu lazy val InternalQuoted_exprNestedSplice : Symbol = InternalQuotedModule.requiredMethod("exprNestedSplice")
-    @tu lazy val InternalQuoted_QuoteTypeTagAnnot: ClassSymbol = InternalQuotedModule.requiredClass("quoteTypeTag")
+  @tu lazy val InternalQuotedModule: Symbol = requiredModule("scala.quoted.internal.Expr")
+    @tu lazy val InternalQuoted_exprQuote  : Symbol = InternalQuotedModule.requiredMethod("quote")
+    @tu lazy val InternalQuoted_exprSplice : Symbol = InternalQuotedModule.requiredMethod("splice")
+    @tu lazy val InternalQuoted_exprNestedSplice : Symbol = InternalQuotedModule.requiredMethod("nestedSplice")
+
+  @tu lazy val InternalQuoted_SplicedTypeAnnot: ClassSymbol = requiredClass("scala.quoted.internal.SplicedType")
 
   @tu lazy val InternalQuotedPatterns: Symbol = requiredModule("scala.quoted.internal.Patterns")
     @tu lazy val InternalQuotedPatterns_patternHole: Symbol = InternalQuotedPatterns.requiredMethod("patternHole")

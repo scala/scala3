@@ -123,10 +123,10 @@ object PickledQuotes {
   /** Replace all type holes generated with the spliced types */
   private def spliceTypes(tree: Tree, typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Int], scala.quoted.QuoteContext) => Any)(using Context): Tree = {
     tree match
-      case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) =>
+      case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.InternalQuoted_SplicedTypeAnnot) =>
         val typeSpliceMap = (stat :: rest).iterator.map {
           case tdef: TypeDef =>
-            assert(tdef.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot))
+            assert(tdef.symbol.hasAnnotation(defn.InternalQuoted_SplicedTypeAnnot))
             val tree = tdef.rhs match
               case TypeBoundsTree(_, Hole(_, idx, args), _) =>
                 val quotedType = typeHole(idx, args)
@@ -141,7 +141,7 @@ object PickledQuotes {
               tp.derivedClassInfo(classParents = tp.classParents.map(apply))
             case tp: TypeRef =>
               typeSpliceMap.get(tp.symbol) match
-                case Some(t) if tp.typeSymbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) => mapOver(t)
+                case Some(t) if tp.typeSymbol.hasAnnotation(defn.InternalQuoted_SplicedTypeAnnot) => mapOver(t)
                 case _ => mapOver(tp)
             case _ =>
               mapOver(tp)

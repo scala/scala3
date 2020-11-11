@@ -2,6 +2,7 @@ package scala.quoted.internal
 
 import scala.annotation.{Annotation, compileTimeOnly}
 
+@compileTimeOnly("Illegal reference to `scala.quoted.internal.Patterns`")
 object Patterns {
 
   /** A splice in a quoted pattern is desugared by the compiler into a call to this method */
