@@ -56,7 +56,7 @@ object Build {
   val referenceVersion = "3.0.0-M2-bin-20201108-3938388-NIGHTLY"
 
   val baseVersion = "3.0.0-M2"
-  val baseSbtDottyVersion = "0.4.5"
+  val baseSbtDottyVersion = "0.4.6"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
