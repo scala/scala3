@@ -19,6 +19,7 @@ class SourceLinkTest:
     testFailure("ala=ala=ala://ma/kota", "known provider")
     testFailure("ala=ala=ala", "subpath")
     testFailure("""{{ ala "ala"}}""", "parse")
+    testFailure("""€{TPL_NAME}""", "scaladoc")
 
 
   @Test
@@ -32,7 +33,8 @@ class SourceLinkTest:
     Seq(
       """https://github.com/organization/repo/{{ operation | replace: "view", "blob" }}/$revision/{{ path }}{{ line | prepend: "L#"}}""",
       "github://lampepfl/dotty",
-      "gitlab://lampepfl/dotty"
+      "gitlab://lampepfl/dotty",
+      "https://github.com/scala/scala/blob/2.13.x€{FILE_PATH_EXT}#€{FILE_LINE}"
     ).foreach{ template =>
       test(template)
       test(s"docs/dotty=$template")
@@ -100,6 +102,12 @@ class SourceLinksTest:
       ("project/Build.scala", 54, edit) -> "/edit/project/Build.scala#54",
     )
 
+    testLink(Seq("https://github.com/scala/scala/blob/2.13.x/€{FILE_PATH_EXT}#L€{FILE_LINE}"), Some("develop"))(
+      "project/Build.scala" -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L",
+      ("project/Build.scala", 54) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L",
+      ("project/Build.scala", 54, edit) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L54",
+    )
 
   @Test
   def testBasicPrefixedPaths =

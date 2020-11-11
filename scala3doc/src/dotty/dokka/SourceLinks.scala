@@ -11,6 +11,11 @@ object SourceLink:
   val SubPath = "([^=]+)=(.+)".r
   val KnownProvider = raw"(\w+):\/\/([^\/]+)\/([^\/]+)".r
   val BrokenKnownProvider = raw"(\w+):\/\/.+".r
+  val ScalaDocPatten = raw"€\{(TPL_NAME|TPL_NAME|FILE_PATH|FILE_EXT|FILE_LINE|FILE_PATH_EXT)\}".r
+  val SupportedScalaDocPatternReplacements = Map(
+    "€{FILE_PATH_EXT}" -> "{{ path }}",
+    "€{FILE_LINE}" -> "{{ line }}"
+  )
 
   def githubTemplate(organization: String, repo: String)(revision: String) =
     s"""https://github.com/$organization/$repo/{{ operation | replace: "view", "blob" }}/$revision/{{ path }}#L{{ line }}""".stripMargin
@@ -22,8 +27,8 @@ object SourceLink:
   private def parseLinkDefinition(s: String): Option[SourceLink] = ???
 
   def parse(string: String, revision: Option[String]): Either[String, SourceLink] =
-    def asRawTemplate =
-       try Right(SourceLink(None,Template.parse(string))) catch
+    def asTemplate(template: String) =
+       try Right(SourceLink(None,Template.parse(template))) catch
             case e: RuntimeException =>
               Left(s"Failed to parse template: ${e.getMessage}")
 
@@ -49,7 +54,14 @@ object SourceLink:
             Right(SourceLink(Some(Paths.get(prefix)), template))
       case BrokenKnownProvider("gitlab" | "github") =>
         Left(s"Does not match known provider syntax: `<name>://organization/repository`")
-      case template => asRawTemplate
+      case scaladocSetting if ScalaDocPatten.findFirstIn(scaladocSetting).nonEmpty =>
+        val all = ScalaDocPatten.findAllIn(scaladocSetting)
+        val (supported, unsupported) = all.partition(SupportedScalaDocPatternReplacements.contains)
+        if unsupported.nonEmpty then Left(s"Unsupported patterns from scaladoc format are used: ${unsupported.mkString(" ")}")
+        else asTemplate(supported.foldLeft(string)((template, pattern) =>
+          template.replace(pattern, SupportedScalaDocPatternReplacements(pattern))))
+
+      case template => asTemplate(template)
 
 
 type Operation = "view" | "edit"
@@ -86,7 +98,11 @@ object SourceLinks:
       |where <source-link> is one of following:
       | - `github://<organization>/<repository>` (requires revision to be specified as argument for scala3doc)
       | - `gitlab://<organization>/<repository>` (requires revision to be specified as argument for scala3doc)
+      | - <scaladoc-template>
       | - <template>
+      |
+      |<scaladoc-template> is a format for `doc-source-url` parameter scaladoc.
+      |NOTE: We only supports `€{FILE_PATH_EXT}` and €{FILE_LINE} patterns
       |
       |<template> is a liqid template string that can accepts follwoing arguments:
       | - `operation`: either "view" or "edit"
