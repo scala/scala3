@@ -60,16 +60,18 @@ work on the project.
 For every PR, we build documentation for Scala3doc and Dotty. For example, for
 PR 123 you can find them at:
 
-- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/self/main/index.html>
-- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-123/stdLib/main/index.html>
+- <https://scala3doc.virtuslab.com/pr-123/self/main/index.html>
+- <https://scala3doc.virtuslab.com/pr-123/scala3/main/index.html>
+- <https://scala3doc.virtuslab.com/pr-123/testcases/main/index.html>
 
 Note that these correspond to the contents of `output` directory - that's
 precisely what they are.
 
 You can also find the result of building the same sites for latest `master` at:
 
-- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/self/main/index.html>
-- <https://scala3doc.s3.eu-central-1.amazonaws.com/pr-master/stdLib/main/index.html>
+- <https://scala3doc.virtuslab.com/master/self/main/index.html>
+- <https://scala3doc.virtuslab.com/master/scala3/main/index.html>
+- <https://scala3doc.virtuslab.com/master/testcases/main/index.html>
 
 ### Testing
 
