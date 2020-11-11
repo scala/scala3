@@ -152,7 +152,7 @@ object TypeOps:
         simplify(l, theMap) & simplify(r, theMap)
       case tp as OrType(l, r)
       if !ctx.mode.is(Mode.Type)
-         && (tp.isSoft || defn.isBottomType(l) || defn.isBottomType(r)) =>
+         && (tp.isSoft || l.isBottomType || r.isBottomType) =>
         // Normalize A | Null and Null | A to A even if the union is hard (i.e.
         // explicitly declared), but not if -Yexplicit-nulls is set. The reason is
         // that in this case the normal asSeenFrom machinery is not prepared to deal

@@ -209,7 +209,27 @@ object Types {
     def isAnyRef(using Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
     def isAnyKind(using Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
 
-    def isFromJavaObject(using Context): Boolean = typeSymbol eq defn.FromJavaObjectSymbol
+    /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
+    def isExactlyNothing(using Context): Boolean = this match {
+      case tp: TypeRef =>
+        tp.name == tpnme.Nothing && (tp.symbol eq defn.NothingClass)
+      case _ => false
+    }
+
+    /** Is this type exactly Any (no vars, aliases, refinements etc allowed)? */
+    def isExactlyAny(using Context): Boolean = this match {
+      case tp: TypeRef =>
+        tp.name == tpnme.Any && (tp.symbol eq defn.AnyClass)
+      case _ => false
+    }
+
+    def isBottomType(using Context): Boolean =
+      if ctx.explicitNulls && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
+      else isBottomTypeAfterErasure
+
+    def isBottomTypeAfterErasure(using Context): Boolean =
+      val d = defn
+      hasClassSymbol(d.NothingClass) || hasClassSymbol(d.NullClass)
 
     /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
      *  Implemented like `isRef`, but follows more types: all type proxies as well as and- and or-types
@@ -224,7 +244,9 @@ object Types {
       case _ => false
     }
 
-    /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
+    /** True if this type is an instance of the given `cls` or an instance of
+     *  a non-bottom subclass of `cls`.
+     */
     final def derivesFrom(cls: Symbol)(using Context): Boolean = {
       def loop(tp: Type): Boolean = tp match {
         case tp: TypeRef =>
@@ -239,11 +261,15 @@ object Types {
         case tp: AndType =>
           loop(tp.tp1) || loop(tp.tp2)
         case tp: OrType =>
-          // If the type is `T | Null` or `T | Nothing`, and `T` derivesFrom the class,
-          // then the OrType derivesFrom the class. Otherwise, we need to check both sides
-          // derivesFrom the class.
-          if defn.isBottomType(tp.tp1) then loop(tp.tp2)
-          else loop(tp.tp1) && (defn.isBottomType(tp.tp2) || loop(tp.tp2))
+          // If the type is `T | Null` or `T | Nothing`, the class is != Nothing,
+          // and `T` derivesFrom the class, then the OrType derivesFrom the class.
+          // Otherwise, we need to check both sides derivesFrom the class.
+          if tp.tp1.isBottomType && cls != defn.NothingClass then
+            loop(tp.tp2)
+          else if tp.tp2.isBottomType && cls != defn.NothingClass then
+            loop(tp.tp1)
+          else
+            loop(tp.tp1) && loop(tp.tp2)
         case tp: JavaArrayType =>
           cls == defn.ObjectClass
         case _ =>
@@ -251,6 +277,8 @@ object Types {
       }
       loop(this)
     }
+
+    def isFromJavaObject(using Context): Boolean = typeSymbol eq defn.FromJavaObjectSymbol
 
     /** True iff `symd` is a denotation of a class type parameter and the reference
      *  `<this> . <symd>` is an actual argument reference, i.e. `this` is different
@@ -264,20 +292,6 @@ object Types {
           case _ => true
         }
       }
-
-    /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
-    def isNothing(using Context): Boolean = this match {
-      case tp: TypeRef =>
-        tp.name == tpnme.Nothing && (tp.symbol eq defn.NothingClass)
-      case _ => false
-    }
-
-    /** Is this type exactly Any (no vars, aliases, refinements etc allowed)? */
-    def isTopType(using Context): Boolean = this match {
-      case tp: TypeRef =>
-        tp.name == tpnme.Any && (tp.symbol eq defn.AnyClass)
-      case _ => false
-    }
 
     /** Is this type a (possibly aliased) singleton type? */
     def isSingleton(using Context): Boolean = dealias.isInstanceOf[SingletonType]
@@ -477,6 +491,22 @@ object Types {
      */
     final def classSymbols(using Context): List[ClassSymbol] =
       parentSymbols(_.isClass).asInstanceOf
+
+    /** Same as `this.classSymbols.contains(cls)` but more efficient */
+    final def hasClassSymbol(cls: Symbol)(using Context): Boolean = this match
+      case tp: TypeRef   =>
+        val sym = tp.symbol
+        sym == cls || !sym.isClass && tp.superType.hasClassSymbol(cls)
+      case tp: TypeProxy =>
+        tp.underlying.hasClassSymbol(cls)
+      case tp: ClassInfo =>
+        tp.cls == cls
+      case AndType(l, r) =>
+        l.hasClassSymbol(cls) || r.hasClassSymbol(cls)
+      case OrType(l, r) =>
+        l.hasClassSymbol(cls) && r.hasClassSymbol(cls)
+      case _ =>
+        false
 
     /** The term symbol associated with the type */
     @tailrec final def termSymbol(using Context): Symbol = this match {
@@ -2134,8 +2164,8 @@ object Types {
           case arg: TypeBounds =>
             val v = param.paramVarianceSign
             val pbounds = param.paramInfo
-            if (v > 0 && pbounds.loBound.dealiasKeepAnnots.isNothing) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
-            else if (v < 0 && pbounds.hiBound.dealiasKeepAnnots.isTopType) TypeAlias(arg.loBound | rebase(pbounds.loBound))
+            if (v > 0 && pbounds.loBound.dealiasKeepAnnots.isExactlyNothing) TypeAlias(arg.hiBound & rebase(pbounds.hiBound))
+            else if (v < 0 && pbounds.hiBound.dealiasKeepAnnots.isExactlyAny) TypeAlias(arg.loBound | rebase(pbounds.loBound))
             else arg recoverable_& rebase(pbounds)
           case arg => TypeAlias(arg)
         }
@@ -2297,7 +2327,7 @@ object Types {
           if (base.isAnd == variance >= 0) tp1 & tp2 else tp1 | tp2
         case _ =>
           if (pre.termSymbol.is(Package)) argForParam(pre.select(nme.PACKAGE))
-          else if (pre.isNothing) pre
+          else if (pre.isExactlyNothing) pre
           else NoType
       }
     }
@@ -2316,7 +2346,7 @@ object Types {
      */
     def derivedSelect(prefix: Type)(using Context): Type =
       if (prefix eq this.prefix) this
-      else if (prefix.isNothing) prefix
+      else if (prefix.isExactlyNothing) prefix
       else {
         if (isType) {
           val res =
@@ -4304,7 +4334,7 @@ object Types {
 
     /** For uninstantiated type variables: Is the lower bound different from Nothing? */
     def hasLowerBound(using Context): Boolean =
-      !ctx.typerState.constraint.entry(origin).loBound.isNothing
+      !ctx.typerState.constraint.entry(origin).loBound.isExactlyNothing
 
     /** For uninstantiated type variables: Is the upper bound different from Any? */
     def hasUpperBound(using Context): Boolean =
@@ -5309,7 +5339,7 @@ object Types {
         case _ =>
           def propagate(lo: Type, hi: Type) =
             range(derivedRefinedType(tp, parent, lo), derivedRefinedType(tp, parent, hi))
-          if (parent.isNothing) parent
+          if (parent.isExactlyNothing) parent
           else info match {
             case Range(infoLo: TypeBounds, infoHi: TypeBounds) =>
               assert(variance == 0)
@@ -5402,7 +5432,7 @@ object Types {
         case Range(lo, hi) =>
           range(tp.derivedAnnotatedType(lo, annot), tp.derivedAnnotatedType(hi, annot))
         case _ =>
-          if (underlying.isNothing) underlying
+          if (underlying.isExactlyNothing) underlying
           else tp.derivedAnnotatedType(underlying, annot)
       }
     override protected def derivedWildcardType(tp: WildcardType, bounds: Type): WildcardType =
@@ -5650,7 +5680,7 @@ object Types {
       else {
         seen += tp
         tp match {
-          case tp if tp.isTopType || tp.isNothing =>
+          case tp if tp.isExactlyAny || tp.isExactlyNothing =>
             cs
           case tp: AppliedType =>
             foldOver(cs + tp.typeSymbol, tp)

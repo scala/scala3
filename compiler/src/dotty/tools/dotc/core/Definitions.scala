@@ -1174,13 +1174,6 @@ class Definitions {
 
   def isBottomClassAfterErasure(cls: Symbol): Boolean = cls == NothingClass || cls == NullClass
 
-  def isBottomType(tp: Type): Boolean =
-    if (ctx.explicitNulls && !ctx.phase.erasedTypes) tp.derivesFrom(NothingClass)
-    else isBottomTypeAfterErasure(tp)
-
-  def isBottomTypeAfterErasure(tp: Type): Boolean =
-    tp.derivesFrom(NothingClass) || tp.derivesFrom(NullClass)
-
   /** Is a function class.
    *   - FunctionXXL
    *   - FunctionN for N >= 0
