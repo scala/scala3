@@ -25,7 +25,7 @@ package scala {
           case '{$x: Foo} => Expr(run(x).x)
         }
       } catch {
-        case ex: Exception if ex.getClass.getName == "scala.quoted.internal.ScopeException" =>
+        case ex: Exception if ex.getClass.getName == "dotty.tools.dotc.quoted.ScopeException" =>
           '{"OK"}
       }
     }

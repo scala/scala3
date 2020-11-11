@@ -795,11 +795,14 @@ class Definitions {
   @tu lazy val QuotedExprModule: Symbol = QuotedExprClass.companionModule
 
   @tu lazy val QuoteContextClass: ClassSymbol = requiredClass("scala.quoted.QuoteContext")
-  @tu lazy val QuoteContextInternalClass: ClassSymbol = requiredClass("scala.internal.quoted.QuoteContextInternal")
-    @tu lazy val QuoteContextInternal_unpickleExpr: Symbol = QuoteContextInternalClass.requiredMethod("unpickleExpr")
-    @tu lazy val QuoteContextInternal_unpickleType: Symbol = QuoteContextInternalClass.requiredMethod("unpickleType")
-    @tu lazy val QuoteContextInternal_ExprMatch: Symbol = QuoteContextInternalClass.requiredMethod("ExprMatch")
-    @tu lazy val QuoteContextInternal_TypeMatch: Symbol = QuoteContextInternalClass.requiredMethod("TypeMatch")
+
+  @tu lazy val QuoteUnpicklerClass: ClassSymbol = requiredClass("scala.quoted.internal.QuoteUnpickler")
+    @tu lazy val QuoteUnpickler_unpickleExpr: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleExpr")
+    @tu lazy val QuoteUnpickler_unpickleType: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleType")
+
+  @tu lazy val QuoteMatchingClass: ClassSymbol = requiredClass("scala.quoted.internal.QuoteMatching")
+    @tu lazy val QuoteMatching_ExprMatch: Symbol = QuoteMatchingClass.requiredMethod("ExprMatch")
+    @tu lazy val QuoteMatching_TypeMatch: Symbol = QuoteMatchingClass.requiredMethod("TypeMatch")
 
   @tu lazy val LiftableModule: Symbol = requiredModule("scala.quoted.Liftable")
     @tu lazy val LiftableModule_BooleanLiftable: Symbol = LiftableModule.requiredMethod("BooleanLiftable")
@@ -812,13 +815,14 @@ class Definitions {
     @tu lazy val LiftableModule_CharLiftable: Symbol = LiftableModule.requiredMethod("CharLiftable")
     @tu lazy val LiftableModule_StringLiftable: Symbol = LiftableModule.requiredMethod("StringLiftable")
 
-  @tu lazy val InternalQuotedModule: Symbol = requiredModule("scala.internal.quoted.CompileTime")
-    @tu lazy val InternalQuoted_exprQuote  : Symbol = InternalQuotedModule.requiredMethod("exprQuote")
-    @tu lazy val InternalQuoted_exprSplice : Symbol = InternalQuotedModule.requiredMethod("exprSplice")
-    @tu lazy val InternalQuoted_exprNestedSplice : Symbol = InternalQuotedModule.requiredMethod("exprNestedSplice")
-    @tu lazy val InternalQuoted_QuoteTypeTagAnnot: ClassSymbol = InternalQuotedModule.requiredClass("quoteTypeTag")
+  @tu lazy val InternalQuotedModule: Symbol = requiredModule("scala.quoted.internal.Expr")
+    @tu lazy val InternalQuoted_exprQuote  : Symbol = InternalQuotedModule.requiredMethod("quote")
+    @tu lazy val InternalQuoted_exprSplice : Symbol = InternalQuotedModule.requiredMethod("splice")
+    @tu lazy val InternalQuoted_exprNestedSplice : Symbol = InternalQuotedModule.requiredMethod("nestedSplice")
 
-  @tu lazy val InternalQuotedPatterns: Symbol = requiredModule("scala.internal.quoted.Patterns")
+  @tu lazy val InternalQuoted_SplicedTypeAnnot: ClassSymbol = requiredClass("scala.quoted.internal.SplicedType")
+
+  @tu lazy val InternalQuotedPatterns: Symbol = requiredModule("scala.quoted.internal.Patterns")
     @tu lazy val InternalQuotedPatterns_patternHole: Symbol = InternalQuotedPatterns.requiredMethod("patternHole")
     @tu lazy val InternalQuotedPatterns_patternHigherOrderHole: Symbol = InternalQuotedPatterns.requiredMethod("patternHigherOrderHole")
     @tu lazy val InternalQuotedPatterns_higherOrderHole: Symbol = InternalQuotedPatterns.requiredMethod("higherOrderHole")

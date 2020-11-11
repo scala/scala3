@@ -1,4 +1,4 @@
 ((qctx: scala.quoted.QuoteContext) ?=> {
-  val a: scala.quoted.Expr[scala.Int] = scala.internal.quoted.CompileTime.exprQuote[scala.Int](4).apply(using qctx)
+  val a: scala.quoted.Expr[scala.Int] = scala.quoted.internal.Expr.quote[scala.Int](4).apply(using qctx)
   ((evidence$2: qctx.Nested) ?=> a).asInstanceOf[scala.ContextFunction1[scala.quoted.QuoteContext, scala.quoted.Expr[scala.Int]]].apply(using qctx)
 })

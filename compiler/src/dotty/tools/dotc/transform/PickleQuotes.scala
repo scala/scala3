@@ -82,7 +82,7 @@ class PickleQuotes extends MacroTransform {
         assert(!tree.symbol.isQuote)
         assert(!tree.symbol.isExprSplice)
       case _ : TypeDef =>
-        assert(!tree.symbol.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot),
+        assert(!tree.symbol.hasAnnotation(defn.InternalQuoted_SplicedTypeAnnot),
           s"${tree.symbol} should have been removed by PickledQuotes because it has a @quoteTypeTag")
       case _ =>
     }
@@ -193,11 +193,11 @@ class PickleQuotes extends MacroTransform {
         }
       }
 
-      /** Encode quote using QuoteContextInternal.{unpickleExpr, unpickleType}
+      /** Encode quote using QuoteUnpickler.{unpickleExpr, unpickleType}
        *
        *  Generate the code
        *  ```scala
-       *    qctx => qctx.asInstanceOf[QuoteContextInternal].<unpickleExpr|unpickleType>[<type>](
+       *    qctx => qctx.asInstanceOf[QuoteUnpickler].<unpickleExpr|unpickleType>[<type>](
        *      <pickledQuote>,
        *      <typeHole>,
        *      <termHole>,
@@ -255,8 +255,8 @@ class PickleQuotes extends MacroTransform {
         val quotedType = quoteClass.typeRef.appliedTo(originalTp)
         val lambdaTpe = MethodType(defn.QuoteContextClass.typeRef :: Nil, quotedType)
         def callUnpickle(ts: List[Tree]) = {
-          val qctx = ts.head.asInstance(defn.QuoteContextInternalClass.typeRef)
-          val unpickleMeth = if isType then defn.QuoteContextInternal_unpickleType else defn.QuoteContextInternal_unpickleExpr
+          val qctx = ts.head.asInstance(defn.QuoteUnpicklerClass.typeRef)
+          val unpickleMeth = if isType then defn.QuoteUnpickler_unpickleType else defn.QuoteUnpickler_unpickleExpr
           qctx.select(unpickleMeth).appliedToType(originalTp).appliedTo(pickledQuoteStrings, typeHoles, termHoles)
         }
         Lambda(lambdaTpe, callUnpickle).withSpan(body.span)

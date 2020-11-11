@@ -18,7 +18,7 @@ abstract class Expr[+T] private[scala] {
    *  ```
    */
   final def matches(that: Expr[Any])(using qctx: QuoteContext): Boolean =
-    val ExprMatch = qctx.asInstanceOf[scala.internal.quoted.QuoteContextInternal].ExprMatch
+    val ExprMatch = qctx.asInstanceOf[scala.quoted.internal.QuoteMatching].ExprMatch
     ExprMatch.unapply[EmptyTuple, EmptyTuple](this)(using that).nonEmpty
 
   /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */

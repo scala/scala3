@@ -1,7 +1,7 @@
 
 import Macros._
 
-import scala.internal.quoted.Patterns._
+import scala.quoted.internal.Patterns._
 
 object Test {
 
