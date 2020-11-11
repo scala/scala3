@@ -19,10 +19,11 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
 
   lazy val staticSiteContext = docConfiguration.args.docsRoot.map(path => StaticSiteContext(File(path).getAbsoluteFile(), Set(mkSourceSet.asInstanceOf[SourceSetWrapper])))
 
+  lazy val sourceLinks: SourceLinks = SourceLinks.load(docConfiguration)
+
   override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] = JList()
 
   lazy val mkSourceSet: DokkaSourceSet =
-    val sourceLinks:Set[SourceLinkDefinitionImpl] = docConfiguration.args.sourceLinks.map(SourceLinkDefinitionImpl.Companion.parseSourceLinkDefinition(_)).toSet
     new DokkaSourceSetImpl(
       /*displayName=*/ docConfiguration.args.name,
       /*sourceSetID=*/ new DokkaSourceSetID(docConfiguration.args.name, "main"),
@@ -36,7 +37,7 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
       /*skipEmptyPackages=*/ false, // Now all our packages are empty from dokka perspective
       /*skipDeprecated=*/ true,
       /*jdkVersion=*/ 8,
-      /*sourceLinks=*/ sourceLinks.asJava,
+      /*sourceLinks=*/ JSet(),
       /*perPackageOptions=*/ JList(),
       /*externalDocumentationLinks=*/ JSet(),
       /*languageVersion=*/ null,

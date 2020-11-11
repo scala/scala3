@@ -5,6 +5,7 @@ import org.jetbrains.dokka.model._
 import collection.JavaConverters._
 import dotty.dokka._
 import dotty.dokka.model.api.Annotation
+import dotty.dokka.model.api.TastyDocumentableSource
 
 trait BasicSupport:
   self: TastyParser =>
@@ -41,10 +42,7 @@ trait BasicSupport:
 
     def source(using ctx: Context) =
       val path = Some(sym.pos.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath).map(_.toString)
-      path match{
-        case Some(p) => Map(sourceSet -> TastyDocumentableSource(p, sym.pos.startLine))
-        case None => Map.empty
-      }
+      path.map(TastyDocumentableSource(_, sym.pos.startLine))
 
     def getAnnotations(): List[Annotation] =
     sym.annots.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse

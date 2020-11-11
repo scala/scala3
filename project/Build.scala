@@ -1459,8 +1459,10 @@ object Build {
 
     def asScala3doc: Project = {
       def generateDocumentation(targets: String, name: String, outDir: String, params: String = "") = Def.taskDyn {
-          val sourceMapping = "=https://github.com/lampepfl/dotty/tree/master#L"
-          run.in(Compile).toTask(s""" -d output/$outDir -t $targets -n "$name" -s $sourceMapping $params""")
+          val sourcesAndRevision = "-s github://lampepfl/dotty --revision master"
+          run.in(Compile).toTask(
+            s""" -d output/$outDir -t $targets -n "$name" $sourcesAndRevision $params"""
+            )
       }
 
       def joinProducts(products: Seq[java.io.File]): String =

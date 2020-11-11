@@ -28,13 +28,14 @@ private [model] case class MemberExtension(
   kind: Kind,
   val annotations: List[Annotation],
   signature: Signature,
+  sources: Option[TastyDocumentableSource] = None,
   origin: Origin = Origin.DefinedWithin,
   graph: HierarchyGraph = HierarchyGraph.empty,
 ) extends ExtraProperty[Documentable]:
  override def getKey = MemberExtension
 
 object MemberExtension extends BaseKey[Documentable, MemberExtension]:
-  val empty = MemberExtension(Visibility.Unrestricted, Nil, Kind.Unknown, Nil, Nil)
+  val empty = MemberExtension(Visibility.Unrestricted, Nil, Kind.Unknown, Nil, Signature(), None)
 
 case class CompositeMemberExtension(
   members : Seq[Member] = Nil,

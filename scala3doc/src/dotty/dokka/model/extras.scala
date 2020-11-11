@@ -34,20 +34,6 @@ case class ClasslikeExtension(
 
 object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]
 
-
-case class SourceLinks(
-  links: Map[DokkaConfiguration$DokkaSourceSet, String]
-) extends ExtraProperty[Documentable]:
-  override def getKey = SourceLinks
-
-object SourceLinks extends BaseKey[Documentable, SourceLinks]
-
-// case class ImplicitConversions(val conversions: List[ImplicitConversion]) extends ExtraProperty[WithScope]:
-//   override def getKey = ImplicitConversions
-
-// object ImplicitConversions extends BaseKey[WithScope, ImplicitConversions]
-
-
 case class IsInherited(flag: Boolean) extends ExtraProperty[Documentable]:
   override def getKey = IsInherited
 

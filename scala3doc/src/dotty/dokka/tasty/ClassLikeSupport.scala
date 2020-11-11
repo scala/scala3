@@ -64,6 +64,7 @@ trait ClassLikeSupport:
               kindForClasslike( classDef.symbol),
               classDef.symbol.getAnnotations(),
               selfSiangture,
+              classDef.symbol.source,
               graph = graph
             ))
 
@@ -82,7 +83,7 @@ trait ClassLikeSupport:
           JList(),
           JList(),
           JList(),
-          classDef.symbol.source.asJava,
+          JMap(),
           placeholderVisibility,
           null,
           /*generics =*/classDef.getTypeParams.map(parseTypeArgument).asJava,
@@ -247,7 +248,7 @@ trait ClassLikeSupport:
       /*parameters =*/ paramLists.flatten.map(parseArgument(_, paramPrefix)).asJava, // TODO add support for parameters
       /*documentation =*/ methodSymbol.documentation.asJava,
       /*expectPresentInSet =*/ null, // unused
-      /*sources =*/ methodSymbol.source.asJava,
+      /*sources =*/ JMap(),
       /*visibility =*/ placeholderVisibility,
       /*type =*/ method.returnTpt.dokkaType,
       /*generics =*/ genericTypes.map(parseTypeArgument).asJava,
@@ -262,7 +263,8 @@ trait ClassLikeSupport:
           methodSymbol.getExtraModifiers(),
           methodKind,
           methodSymbol.getAnnotations(),
-          method.returnTpt.dokkaType.asSignature
+          method.returnTpt.dokkaType.asSignature,
+          methodSymbol.source
         ))
     )
 
@@ -313,7 +315,7 @@ trait ClassLikeSupport:
       typeDef.name,
       /*documentation =*/ typeDef.symbol.documentation.asJava,
       /*expectPresentInSet =*/ null, // unused
-      /*sources =*/ typeDef.symbol.source.asJava,
+      /*sources =*/ JMap(),
       /*visibility =*/ placeholderVisibility,
       /*type =*/ tpeTree.dokkaType, // TODO this may be hard...
       /*receiver =*/ null, // Not used
@@ -328,7 +330,8 @@ trait ClassLikeSupport:
         typeDef.symbol.getExtraModifiers(),
         Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque),
         typeDef.symbol.getAnnotations(),
-        tpeTree.dokkaType.asSignature
+        tpeTree.dokkaType.asSignature,
+        typeDef.symbol.source
         )
     )
 
@@ -351,7 +354,7 @@ trait ClassLikeSupport:
       valDef.name,
       /*documentation =*/ valDef.symbol.documentation.asJava,
       /*expectPresentInSet =*/ null, // unused
-      /*sources =*/ valDef.symbol.source.asJava,
+      /*sources =*/ JMap(),
       /*visibility =*/ placeholderVisibility,
       /*type =*/ valDef.tpt.dokkaType,
       /*receiver =*/ null, // Not used
@@ -366,7 +369,8 @@ trait ClassLikeSupport:
           valDef.symbol.getExtraModifiers(),
           kind,
           valDef.symbol.getAnnotations(),
-          valDef.tpt.tpe.dokkaType.asSignature
+          valDef.tpt.tpe.dokkaType.asSignature,
+          valDef.symbol.source
       ))
     )
 

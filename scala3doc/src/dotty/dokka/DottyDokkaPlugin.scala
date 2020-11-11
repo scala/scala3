@@ -4,6 +4,7 @@ import org.jetbrains.dokka.plugability._
 import org.jetbrains.dokka.transformers.sources._
 import org.jetbrains.dokka.transformers.documentation.PreMergeDocumentableTransformer
 import org.jetbrains.dokka.transformers.pages.PageTransformer
+import org.jetbrains.dokka.transformers.documentation.DocumentableToPageTranslator
 
 import org.jetbrains.dokka.DokkaConfiguration
 import org.jetbrains.dokka.{ DokkaConfiguration$DokkaSourceSet => DokkaSourceSet }
@@ -82,11 +83,16 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val scalaDocumentableToPageTranslator = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableToPageTranslator)
-      .fromRecipe(ctx => ScalaDocumentableToPageTranslator(
-            ctx.single(dokkaBase.getCommentsToContentConverter),
-            ctx.single(dokkaBase.getSignatureProvider),
-            ctx.getLogger
-      ))
+      .fromRecipe(ctx =>
+          new DocumentableToPageTranslator {
+            override def invoke(module: DModule): ModulePageNode = ScalaPageCreator(
+              ctx.single(dokkaBase.getCommentsToContentConverter),
+              ctx.single(dokkaBase.getSignatureProvider),
+              ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].sourceLinks,
+              ctx.getLogger
+            ).pageForModule(module)
+          }
+      )
       .overrideExtension(dokkaBase.getDocumentableToPageTranslator)
   )
 
@@ -100,17 +106,6 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
       .fromRecipe(InheritanceInformationTransformer(_))
       .name("inheritanceTransformer")
-  )
-
-  val ourSourceLinksTransformer = extend(
-    _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
-      .fromRecipe(ctx => ScalaSourceLinksTransformer(
-            ctx,
-            ctx.single(dokkaBase.getCommentsToContentConverter),
-            ctx.single(dokkaBase.getSignatureProvider),
-            ctx.getLogger
-        )
-      )
   )
 
   val ourRenderer = extend(
@@ -129,15 +124,6 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
       .fromRecipe(ImplicitMembersExtensionTransformer(_))
       .name("implicitMembersExtensionTransformer")
-  )
-
-  val muteDefaultSourceLinksTransformer = extend(
-    _.extensionPoint(CoreExtensions.INSTANCE.getPageTransformer)
-    .fromInstance(new PageTransformer {
-      override def invoke(root: RootPageNode) = root
-    })
-    .overrideExtension(dokkaBase.getSourceLinksTransformer)
-    .name("muteDefaultSourceLinksTransformer")
   )
 
   val customDocumentationProvider = extend(

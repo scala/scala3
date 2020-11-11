@@ -11,10 +11,6 @@ import org.jetbrains.dokka.pages._
 import dotty.dokka.model.api.Signature
 import dotty.dokka.model.api.HierarchyGraph
 
-case class TastyDocumentableSource(val path: String, val lineNumber: Int) extends DocumentableSource {
-    override def getPath = path
-}
-
 enum TableStyle extends org.jetbrains.dokka.pages.Style:
   case Borderless
   case DescriptionList

@@ -28,6 +28,7 @@ type DocBuilder = ScalaPageContentBuilder#ScalaDocumentableContentBuilder
 class ScalaPageCreator(
   commentsToContentConverter: CommentsToContentConverter,
   signatureProvider: SignatureProvider,
+  sourceLinks: SourceLinks,
   val logger: DokkaLogger
 ) extends DefaultPageCreator(commentsToContentConverter, signatureProvider, logger):
 
@@ -316,18 +317,14 @@ class ScalaPageCreator(
             case _ => withNamedTags
           }
 
-          d match{
-            case d: (WithSources & WithExtraProperties[_]) if d.get(SourceLinks) != null && !d.get(SourceLinks).links.isEmpty => d.get(SourceLinks).links.foldLeft(withCompanion){
-              case (bdr, (sourceSet, link)) => bdr
-                  .cell(sourceSets = Set(sourceSet)){ b => b
-                    .text("Source")
-                  }
-                  .cell(sourceSets = Set(sourceSet)){ b => b
-                    .resolvedLink("(source)", link)
-                  }
-            }
-            case other => withCompanion
-          }
+          d match
+            case null => withCompanion
+            case m: Member =>
+              sourceLinks.pathTo(m).fold(withCompanion){ link =>
+                val sourceSets = m.getSourceSets.asScala.toSet
+                withCompanion.cell(sourceSets = sourceSets)(_.text("Source"))
+                  .cell(sourceSets = sourceSets)(_.resolvedLink("(source)", link))
+              }
         }
       }
     }
