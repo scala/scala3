@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: lampepfl/dotty:2020-04-24
 
     steps:
       - name: Git Checkout
@@ -44,3 +43,14 @@ jobs:
 
       - name: Generate documentation for example project using dotty-sbt
         run: ./project/scripts/sbt "sbt-dotty/scripted sbt-dotty/scala3doc"
+
+      - name: Upload documentation to server
+        uses: azure/CLI@v1
+        env: 
+          AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+        with:
+          inlineScript: |
+            DOC_DEST=$([ $GITHUB_REF = "refs/heads/master" ] && echo master || echo pr-$(echo $GITHUB_REF | cut '-d/' -f3))
+            echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
+            az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
+            az storage blob sync -s scala3doc/output -c $DOC_DEST --account-name scala3docstorage
