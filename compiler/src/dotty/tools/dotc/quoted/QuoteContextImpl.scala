@@ -71,7 +71,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
             case _ => false
         def asExpr: scala.quoted.Expr[Any] =
           if self.isExpr then
-            new scala.quoted.internal.Expr(self, QuoteContextImpl.this.hashCode)
+            new dotty.tools.dotc.quoted.ExprImpl(self, QuoteContextImpl.this.hashCode)
           else self match
             case TermTypeTest(self) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
             case _ => throw new Exception("Expected a Term but was: " + self)
@@ -315,11 +315,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
     object TermMethodsImpl extends TermMethods:
       extension (self: Term):
         def seal: scala.quoted.Expr[Any] =
-          if self.isExpr then new scala.quoted.internal.Expr(self, QuoteContextImpl.this.hashCode)
+          if self.isExpr then new dotty.tools.dotc.quoted.ExprImpl(self, QuoteContextImpl.this.hashCode)
           else throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
 
         def sealOpt: Option[scala.quoted.Expr[Any]] =
-          if self.isExpr then Some(new scala.quoted.internal.Expr(self, QuoteContextImpl.this.hashCode))
+          if self.isExpr then Some(new dotty.tools.dotc.quoted.ExprImpl(self, QuoteContextImpl.this.hashCode))
           else None
 
         def tpe: TypeRepr = self.tpe
@@ -1002,7 +1002,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
     object TypeTree extends TypeTreeModule:
       def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeTree =
-        tp.asInstanceOf[scala.quoted.internal.Type].typeTree
+        tp.asInstanceOf[dotty.tools.dotc.quoted.TypeImpl].typeTree
     end TypeTree
 
     object TypeTreeMethodsImpl extends TypeTreeMethods:
@@ -1571,7 +1571,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
     object TypeRepr extends TypeReprModule:
       def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeRepr =
-        tp.asInstanceOf[scala.quoted.internal.Type].typeTree.tpe
+        tp.asInstanceOf[dotty.tools.dotc.quoted.TypeImpl].typeTree.tpe
       def typeConstructorOf(clazz: Class[?]): TypeRepr =
         if (clazz.isPrimitive)
           if (clazz == classOf[Boolean]) dotc.core.Symbols.defn.BooleanType
@@ -1608,7 +1608,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
         def seal: scala.quoted.Type[_] = self.asType
 
         def asType: scala.quoted.Type[?] =
-          new scala.quoted.internal.Type(Inferred(self), QuoteContextImpl.this.hashCode)
+          new dotty.tools.dotc.quoted.TypeImpl(Inferred(self), QuoteContextImpl.this.hashCode)
 
         def =:=(that: TypeRepr): Boolean = self =:= that
         def <:<(that: TypeRepr): Boolean = self <:< that
@@ -2623,11 +2623,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, scala.intern
 
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
     val tree = PickledQuotes.unpickleTerm(pickled, typeHole, termHole)(using reflect.rootContext)
-    new scala.quoted.internal.Expr(tree, hash).asInstanceOf[scala.quoted.Expr[T]]
+    new dotty.tools.dotc.quoted.ExprImpl(tree, hash).asInstanceOf[scala.quoted.Expr[T]]
 
   def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?]): scala.quoted.Type[T] =
     val tree = PickledQuotes.unpickleTypeTree(pickled, typeHole, termHole)(using reflect.rootContext)
-    new scala.quoted.internal.Type(tree, hash).asInstanceOf[scala.quoted.Type[T]]
+    new dotty.tools.dotc.quoted.TypeImpl(tree, hash).asInstanceOf[scala.quoted.Type[T]]
 
   object ExprMatch extends ExprMatchModule:
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =

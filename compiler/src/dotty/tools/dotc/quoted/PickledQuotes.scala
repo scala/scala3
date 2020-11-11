@@ -38,14 +38,14 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(using Context): Tree = {
-    val expr1 = expr.asInstanceOf[scala.quoted.internal.Expr]
+    val expr1 = expr.asInstanceOf[dotty.tools.dotc.quoted.ExprImpl]
     expr1.checkScopeId(QuoteContextImpl.scopeId)
     changeOwnerOfTree(expr1.tree, ctx.owner)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(tpe: quoted.Type[?])(using Context): Tree = {
-    val tpe1 = tpe.asInstanceOf[scala.quoted.internal.Type]
+    val tpe1 = tpe.asInstanceOf[dotty.tools.dotc.quoted.TypeImpl]
     tpe1.checkScopeId(QuoteContextImpl.scopeId)
     changeOwnerOfTree(tpe1.typeTree, ctx.owner)
   }
@@ -72,8 +72,8 @@ object PickledQuotes {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args) =>
           val reifiedArgs = args.map { arg =>
-            if (arg.isTerm) (using qctx: QuoteContext) => new scala.quoted.internal.Expr(arg, QuoteContextImpl.scopeId)
-            else new scala.quoted.internal.Type(arg, QuoteContextImpl.scopeId)
+            if (arg.isTerm) (using qctx: QuoteContext) => new dotty.tools.dotc.quoted.ExprImpl(arg, QuoteContextImpl.scopeId)
+            else new dotty.tools.dotc.quoted.TypeImpl(arg, QuoteContextImpl.scopeId)
           }
           if isTerm then
             val quotedExpr = termHole(idx, reifiedArgs, dotty.tools.dotc.quoted.QuoteContextImpl())
