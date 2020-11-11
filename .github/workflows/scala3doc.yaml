@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-  pull_request:
+  pull_request_target:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,6 +12,19 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v2
+
+      - name: Checkout to PR code
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run : |
+          if [[ -z "${PR_NUMBER}" ]]; then
+            echo Not a pull request do not need to checkout
+          else
+            REF=refs/pull/$PR_NUMBER/merge
+            echo checking $REF
+            git fetch origin $REF:$REF
+            git checkout $REF
+          fi     
 
       - name: Cache Coursier
         uses: actions/cache@v1
@@ -48,9 +61,10 @@ jobs:
         uses: azure/CLI@v1
         env: 
           AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         with:
           inlineScript: |
-            DOC_DEST=$([ $GITHUB_REF = "refs/heads/master" ] && echo master || echo pr-$(echo $GITHUB_REF | cut '-d/' -f3))
+            DOC_DEST=pr-$PR_NUMBER
             echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
             az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
             az storage blob sync -s scala3doc/output -c $DOC_DEST --account-name scala3docstorage
