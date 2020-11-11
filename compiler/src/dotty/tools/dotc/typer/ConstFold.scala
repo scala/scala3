@@ -59,15 +59,6 @@ object ConstFold:
       tree.withFoldedType(Constant(targ.tpe))
     case _ => tree
 
-  /** If tree is a constant value that can be converted to type `pt`, perform
-   *  the conversion.
-   */
-  def apply[T <: Tree](tree: T, pt: Type)(using Context): T =
-    val tree1 = apply(tree)
-    tree.tpe.widenTermRefExpr.normalized match
-      case ConstantType(x) => tree1.withFoldedType(x.convertTo(pt))
-      case _ => tree1
-
   extension [T <: Tree](tree: T)(using Context)
     private def withFoldedType(c: Constant | Null): T =
       if c == null then tree else tree.withType(ConstantType(c)).asInstanceOf[T]
