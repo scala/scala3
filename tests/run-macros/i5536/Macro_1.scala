@@ -10,8 +10,8 @@ object scalatest {
 
     tree.underlyingArgument match {
       case Apply(Select(lhs, op), rhs :: Nil) =>
-        val left = lhs.seal
-        val right = rhs.seal
+        val left = lhs.asExpr
+        val right = rhs.asExpr
         op match {
           case "===" =>
             '{

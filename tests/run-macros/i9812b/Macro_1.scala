@@ -29,7 +29,7 @@ case object NIL extends Lst[Nothing]
 given IntLiftable[T <: Int] as Liftable[T]:
   def toExpr(x: T): QuoteContext ?=> Expr[T] = (using qctx) => {
     import qctx.reflect._
-    Literal(Constant.Int(x)).seal.asInstanceOf[Expr[T]]
+    Literal(Constant.Int(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
 given LiftLst[T: Type: Liftable](using ev1: => Liftable[CONS[T]], ev2: => Liftable[NIL.type]) as Liftable[Lst[T]]:

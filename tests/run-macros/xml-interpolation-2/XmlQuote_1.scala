@@ -58,7 +58,7 @@ object XmlQuote {
     // [a0, ...]: Any*
     val args2: Expr[List[Any]] = args.unseal.underlyingArgument match {
       case Typed(Repeated(args0, _), _) => // statically known args, make list directly
-        Expr.ofList(args0.map(_.seal))
+        Expr.ofList(args0.map(_.asExpr))
       case _ =>
         '{$args.toList}
 

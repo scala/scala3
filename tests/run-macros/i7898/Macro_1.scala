@@ -8,7 +8,7 @@ object Main {
     val showed = bodyTerm.show
     '{
       println(${Expr(showed)})
-      ${bodyTerm.seal}
+      ${bodyTerm.asExpr}
     }
   }
 
@@ -17,5 +17,5 @@ object Main {
   }
 
   def underlyingArgument[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    expr.unseal.underlyingArgument.seal.asInstanceOf[Expr[T]]
+    expr.unseal.underlyingArgument.asExpr.asInstanceOf[Expr[T]]
 }

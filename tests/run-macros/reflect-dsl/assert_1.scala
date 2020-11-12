@@ -18,8 +18,8 @@ object scalatest {
           ValDef.let(rhs) { right =>
             val app = left.select(sel.symbol).appliedTo(right)
             ValDef.let(app) { result =>
-              val l = left.seal
-              val r = right.seal
+              val l = left.asExpr
+              val r = right.asExpr
               val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert($b) }
               code.unseal
@@ -32,8 +32,8 @@ object scalatest {
           ValDef.let(rhs) { right =>
             val app = qual.appliedTo(left).select(sel.symbol).appliedTo(right)
             ValDef.let(Apply(app, implicits)) { result =>
-              val l = left.seal
-              val r = right.seal
+              val l = left.asExpr
+              val r = right.asExpr
               val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert($b) }
               code.unseal

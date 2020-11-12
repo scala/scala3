@@ -13,7 +13,7 @@ object FQuote {
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>
-        val head = x.seal
+        val head = x.asExpr
         val tail = liftListOfAny(xs)
         '{ $head :: $tail }
       case Nil => '{Nil}

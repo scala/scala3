@@ -17,8 +17,8 @@ object scalatest {
         ValDef.let(lhs) { left =>
           ValDef.let(rhs) { right =>
             ValDef.let(Apply(Select.copy(sel)(left, op), right :: Nil)) { result =>
-              val l = left.seal
-              val r = right.seal
+              val l = left.asExpr
+              val r = right.asExpr
               val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert(${b}) }
               code.unseal
@@ -30,8 +30,8 @@ object scalatest {
         ValDef.let(lhs) { left =>
           ValDef.let(rhs) { right =>
             ValDef.let(Apply(Apply(Select.copy(sel)(Apply(qual, left :: Nil), op), right :: Nil), implicits)) { result =>
-              val l = left.seal
-              val r = right.seal
+              val l = left.asExpr
+              val r = right.asExpr
               val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert(${b}) }
               code.unseal
