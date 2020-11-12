@@ -15,8 +15,8 @@ object Test {
     assert(x eq a)
     assert(x eq b)
 
-    val i = Type[Int]
-    val j = Type[i.Underlying]
+    val i = Type.of[Int]
+    val j = Type.of[i.Underlying]
     assert(i eq j)
   }
 }

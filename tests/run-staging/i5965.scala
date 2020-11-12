@@ -5,7 +5,7 @@ object Test {
 
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = {
-    withQuoteContext(Type[List])
+    withQuoteContext(Type.of[List])
 
     def list(using QuoteContext) = bound('{List(1, 2, 3)})
     println(withQuoteContext(list.show))

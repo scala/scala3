@@ -5,7 +5,7 @@ import scala.quoted._
 object Macro1 {
 
   def mirrorFields[T: Type](using qctx: QuoteContext): List[String] =
-    Type[T] match {
+    Type.of[T] match {
       case '[field *: fields] => Type.show[field] :: mirrorFields[fields]
       case '[EmptyTuple] => Nil
     }
@@ -19,7 +19,7 @@ object Macro1 {
   def test1Impl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[List[String]] = {
     import qctx.reflect._
 
-    val mirrorTpe = Type[Mirror.Of[T]]
+    val mirrorTpe = Type.of[Mirror.Of[T]]
 
     Expr.summon(using mirrorTpe).get match {
       case '{ $m: Mirror.ProductOf[T]{ type MirroredElemLabels = elems } } => {

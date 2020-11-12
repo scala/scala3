@@ -6,7 +6,7 @@ class Foo {
   def foo: Unit = withQuoteContext {
     val e: Expr[Int] = '{3}
     val f: Expr[Int] = '{5}
-    val t: Type[Int] = Type[Int]
+    val t: Type[Int] = Type.of[Int]
     val q = '{ ${ '{ ($e + $f).asInstanceOf[t.Underlying] } } }
     println(q.show)
   }

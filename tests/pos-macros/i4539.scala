@@ -1,5 +1,5 @@
 import scala.quoted._
 def test(using QuoteContext) = {
-  val q = Type[String]
-  Type[String]
+  val q = Type.of[String]
+  Type.of[String]
 }

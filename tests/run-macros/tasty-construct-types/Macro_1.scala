@@ -41,7 +41,7 @@ object Macros {
       )
 
     assert(x1T =:= TypeRepr.of[1])
-    assert(x2T =:= TypeRepr.of(using Type[1|2]))
+    assert(x2T =:= TypeRepr.of(using Type.of[1|2]))
     assert(x3T =:= TypeRepr.of[3&Any])
     assert(x4T =:= TypeRepr.of[[A,B] =>> B])
     assert(x5T =:= TypeRepr.of[RefineMe { type T = Int }])

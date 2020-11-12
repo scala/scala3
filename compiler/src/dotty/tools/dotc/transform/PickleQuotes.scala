@@ -128,7 +128,7 @@ class PickleQuotes extends MacroTransform {
      *  core and splices as arguments.
      */
     override protected def transformQuotation(body: Tree, quote: Tree)(using Context): Tree = {
-      val isType = quote.symbol eq defn.QuotedTypeModule_apply
+      val isType = quote.symbol eq defn.QuotedTypeModule_of
       if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)(using quoteContext)
         super.transformQuotation(body1, quote)
@@ -472,7 +472,7 @@ class PickleQuotes extends MacroTransform {
         transform(tree)(using ctx.withSource(tree.source))
       else reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
-          case Apply(Select(TypeApply(fn, (body: RefTree) :: Nil), _), _) if fn.symbol == defn.QuotedTypeModule_apply && isCaptured(body.symbol, level + 1) =>
+          case Apply(Select(TypeApply(fn, (body: RefTree) :: Nil), _), _) if fn.symbol == defn.QuotedTypeModule_of && isCaptured(body.symbol, level + 1) =>
             // Optimization: avoid the full conversion when capturing `x`
             // in '{ x } to '{ ${x$1} } and go directly to `x$1`
             capturers(body.symbol)(body)

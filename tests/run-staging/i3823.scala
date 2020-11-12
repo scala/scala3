@@ -6,6 +6,6 @@ object Test {
     def f[T](x: Expr[T])(using t: Type[T]) = '{
       val z: t.Underlying = $x
     }
-    println(f('{2})(using Type[Int]).show)
+    println(f('{2})(using Type.of[Int]).show)
   }
 }

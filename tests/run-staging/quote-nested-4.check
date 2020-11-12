@@ -1,5 +1,5 @@
 ((qctx: scala.quoted.QuoteContext) ?=> {
-  val t: scala.quoted.Type[scala.Predef.String] = scala.quoted.Type.apply[scala.Predef.String].apply(using qctx)
+  val t: scala.quoted.Type[scala.Predef.String] = scala.quoted.Type.of[scala.Predef.String].apply(using qctx)
 
   (t: scala.quoted.Type[scala.Predef.String])
 })

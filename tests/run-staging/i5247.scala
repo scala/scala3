@@ -8,11 +8,11 @@ object Test {
     println(bar[Object].show)
   }
   def foo[H : Type](using QuoteContext): Expr[H] = {
-    val t = Type[H]
+    val t = Type.of[H]
     '{ null.asInstanceOf[t.Underlying] }
   }
   def bar[H : Type](using QuoteContext): Expr[List[H]] = {
-    val t = Type[List[H]]
+    val t = Type.of[List[H]]
     '{ null.asInstanceOf[t.Underlying] }
   }
 }
