@@ -30,7 +30,8 @@ abstract class ScaladocTest(val name: String):
       projectTitle = None,
       projectLogo = None,
       defaultSyntax = None,
-      sourceLinks = Nil
+      sourceLinks = Nil,
+      revision = None
     )
 
   private def tastyFiles =

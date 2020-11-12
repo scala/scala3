@@ -47,6 +47,9 @@ class RawArgs:
     @COption(name="--syntax")
     protected var syntax: String = null
 
+    @COption(name="--revision")
+    protected var revision: String = null
+
     def toArgs =
       val parsedSyntax = syntax match
         case null => None
@@ -66,7 +69,8 @@ class RawArgs:
         Option(projectTitle),
         Option(projectLogo),
         parsedSyntax,
-        Option(sourceLinks).map(_.asScala.toList).getOrElse(List.empty)
+        Option(sourceLinks).map(_.asScala.toList).getOrElse(List.empty),
+        Option(revision)
       )
 
 
@@ -80,7 +84,8 @@ case class Args(
   projectTitle: Option[String],
   projectLogo: Option[String],
   defaultSyntax: Option[Args.CommentSyntax],
-  sourceLinks: List[String]
+  sourceLinks: List[String],
+  revision: Option[String]
 )
 
 object Args:

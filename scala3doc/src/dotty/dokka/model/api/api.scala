@@ -129,6 +129,7 @@ extension[T] (member: Member):
   def kind: Kind = memberExt.fold(Kind.Unknown)(_.kind)
   def origin: Origin =  memberExt.fold(Origin.DefinedWithin)(_.origin)
   def annotations: List[Annotation] = memberExt.fold(Nil)(_.annotations)
+  def sources: Option[TastyDocumentableSource] = memberExt.fold(None)(_.sources)
   def name = member.getName
   def dri = member.getDri
 
@@ -143,3 +144,5 @@ extension[T] (member: Member):
 
 extension (module: DModule):
   def driMap: Map[DRI, Member] = ModuleExtension.getFrom(module).fold(Map.empty)(_.driMap)
+
+case class TastyDocumentableSource(val path: String, val lineNumber: Int)
