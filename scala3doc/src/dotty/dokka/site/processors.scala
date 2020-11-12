@@ -7,10 +7,13 @@ import java.nio.file.FileVisitOption
 
 import org.jetbrains.dokka.base.renderers.html.{NavigationNode, NavigationPage}
 import org.jetbrains.dokka.model.Documentable
+import org.jetbrains.dokka.model.DPackage
+import org.jetbrains.dokka.model.DModule
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.transformers.pages.PageTransformer
 
 import scala.collection.JavaConverters._
+import dotty.dokka.model.api._
 
 abstract class BaseStaticSiteProcessor(staticSiteContext: Option[StaticSiteContext]) extends PageTransformer:
   final override def invoke(input: RootPageNode): RootPageNode = staticSiteContext.fold(input)(transform(input, _))
@@ -118,13 +121,27 @@ class RootIndexPageCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSit
       val (contentNodes, nonContent) = input.getChildren.asScala.partition { _.isInstanceOf[ContentNode] }
       val (navigations, rest) = nonContent.partition { _.isInstanceOf[NavigationPage] }
       val modifiedNavigation = navigations.map { it =>
-        val root = it.asInstanceOf[NavigationPage].getRoot
-        val api = root.getChildren.asScala.filter(_.getDri == apiPageDRI)
+        val sourceSets = it.asInstanceOf[NavigationPage].getRoot.getSourceSets
+        def flatMapPackages(pn: PageNode): List[NavigationNode] =
+          def processChildren = pn.getChildren.asScala.flatMap(flatMapPackages).toList
+          pn match
+            case cp: ContentPage => cp.getDocumentable match
+              case null =>
+                processChildren
+              case p: DPackage =>
+                List(new NavigationNode(p.getName, p.getDri, sourceSets, JList())) ++ processChildren
+              case other =>
+                Nil
+            case _ =>
+              Nil
+
+        val packagesNavigation = input.getChildren.asScala.flatMap(flatMapPackages).sortBy(_.getName)
+        val api = new NavigationNode("API", apiPageDRI, sourceSets, packagesNavigation.asJava)
 
         def toNavigationNode(page: StaticPageNode): NavigationNode = NavigationNode(
             page.title(),
             page.getDri.asScala.head,
-            root.getSourceSets,
+            sourceSets,
             page.getChildren.asScala.collect { case p: StaticPageNode => toNavigationNode(p)}.asJava
           )
 
@@ -132,8 +149,8 @@ class RootIndexPageCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSit
           new NavigationNode(
             input.getName,
             docsRootDRI,
-            root.getSourceSets,
-            (ctx.mainPages.map(toNavigationNode) ++ api).asJava
+            sourceSets,
+            (ctx.mainPages.map(toNavigationNode) ++ Seq(api)).asJava
           )
         )
       }
