@@ -997,7 +997,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           //   ?F := [X] =>> (Int, X)
           //
           // Which is not what we wanted!
-          // On the other hand, we are not allowed to stop at the present arguments either.
+          // On the other hand, we are not allowed to always stop at the present arguments either.
           // An example is i10129.scala. Here, we have the following situation:
           //
           //    type Lifted[A] = Err | A
@@ -1010,12 +1010,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // `Lifted` gives `Err | U <: Err | Int`, hence it should be `U <: Err | Int`.
           //
           // So it's a conundrum. We need to check the immediate arguments for hk type inference,
-          // but this could narrow the constraint too much. The solution is to do an
-          // either with two alternatives when encountering an applied type alis.
-          // The first alternative checks the arguments, the second alternative checks the
-          // dealiased types. We pick the alternative that constrains least, or if there
-          // is no winner, the first one. We are forced to use a `sufficientEither`
-          // in the comparison, which is still not quite right. See the comment below.
+          // but this could narrow the constraint too much. The solution is to also
+          // check the constraint arising from the dealiased subtype test
+          // in the case where isSubArgs adds a constraint. If that second constraint
+          // is weaker than the first, we keep it in place of the first.
+          // Note that if the isSubArgs test fails, we will proceed anyway by
+          // dealising by doing a compareLower.
           def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
@@ -1058,32 +1058,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                       (tycon1sym.isClass || tycon2sym.isClass)
                       && (!touchedGADTs || gadtIsInstantiated)
 
-                    def checkArgs(): Boolean =
+                    inFrozenGadtIf(!tyconIsInjective) {
                       if tycon1sym == tycon2sym && tycon1sym.isAliasType then
-                        // Either compare arguments or compare dealiased types.
-                        // Note: This test should be done with an `either`, but this fails
-                        // for hk-alias-unification.scala The problem is not GADT boundschecking;
-                        // that is taken care of by the outer inFrozenGadtIf test. The problem is
-                        // that hk-alias-unification.scala relies on the right isSubArgs being performed
-                        // when constraining the result type of a method. But since #8635 we are only allowed
-                        // to use a necessaryEither, since we might otherwise constrain too much.
-                        // So strictly speaking by going to a sufficientEither we overshoot and narrow
-                        // the constraint unnecessarily. But unlike in the situation of #8365 with test cases
-                        // and-inf.scala and or-inf.scala, we don't cut off solutions in principle by dealiasing.
-                        // We "just" risk missing an opportunity to do a desired hk-type inference. This
-                        // is hopefully a less frequent corner case. Where it goes wrong compared to the status
-                        // before this fix: If isSubArgs succeeds and then the dealised test also succeeds
-                        // while constraining strictly less than the isSubArgs, then the we used to pick the
-                        // constraint after isSubArgs, but we now pick the constraint after the dealiased test.
-                        // There's one test in shapeless/deriving that had to be disabled
-                        // (modules/deriving/src/test/scala/shapeless3/deriving/deriving.scala, value v7 in the functor test).
-                        sufficientEither(
-                          isSubArgs(args1, args2, tp1, tparams),
-                          recur(tp1.superType, tp2.superType))
+                        val preConstraint = constraint
+                        isSubArgs(args1, args2, tp1, tparams)
+                        && tryAlso(preConstraint, recur(tp1.superType, tp2.superType))
                       else
                         isSubArgs(args1, args2, tp1, tparams)
-
-                    inFrozenGadtIf(!tyconIsInjective)(checkArgs())
+                    }
                   }
                   if (res && touchedGADTs) GADTused = true
                   res
@@ -1594,17 +1576,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   private def sufficientEither(op1: => Boolean, op2: => Boolean): Boolean =
     val preConstraint = constraint
-    if op1 then
-      if constraint ne preConstraint then
-        // check whether `op2` generates a weaker constraint than `op1`
-        val leftConstraint = constraint
-        constraint = preConstraint
-        if !(op2 && subsumes(leftConstraint, constraint, preConstraint)) then
-          if constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint) then
-            constr.println(i"CUT - prefer $leftConstraint over $constraint")
-          constraint = leftConstraint
-      true
-    else op2
+    if op1 then tryAlso(preConstraint, op2) else op2
+
+  /** Check whether `op` generates a weaker constraint than the
+   *  current constraint if we run it starting with `preConstraint`.
+   *  If that's the case, replace the current constraint with the
+   *  constraint generated by `op`.
+   */
+  private def tryAlso(preConstraint: Constraint, op: => Boolean): true =
+    if constraint ne preConstraint then
+      // check whether `op2` generates a weaker constraint than `op1`
+      val leftConstraint = constraint
+      constraint = preConstraint
+      if !(op && subsumes(leftConstraint, constraint, preConstraint)) then
+        if constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint) then
+          constr.println(i"CUT - prefer $leftConstraint over $constraint")
+        constraint = leftConstraint
+    true
 
   /** Returns true iff the result of evaluating either `op1` or `op2` is true, keeping the smaller constraint if any.
    *  E.g., if
