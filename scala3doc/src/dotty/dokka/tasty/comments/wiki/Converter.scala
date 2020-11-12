@@ -2,7 +2,6 @@ package dotty.dokka.tasty.comments
 package wiki
 
 import scala.jdk.CollectionConverters._
-import scala.tasty.Reflection
 
 import org.jetbrains.dokka.model.{doc => dkkd}
 
@@ -13,10 +12,10 @@ class Converter(val repr: Repr) extends BaseConverter {
 
   // makeshift support for not passing an owner
   // see same in MarkdownConverter
-  val r: repr.r.type = if repr == null then null else repr.r
-  val owner: r.Symbol = if repr == null then null.asInstanceOf[r.Symbol] else repr.sym
+  val qctx: repr.qctx.type = if repr == null then null else repr.qctx
+  val owner: qctx.reflect.Symbol = if repr == null then null.asInstanceOf[qctx.reflect.Symbol] else repr.sym
 
-  object SymOps extends SymOps[r.type](r)
+  object SymOps extends SymOps[qctx.type](qctx)
   import SymOps._
 
   def convertBody(body: Body): dkkd.DocTag = {
@@ -131,7 +130,7 @@ class Converter(val repr: Repr) extends BaseConverter {
       }
 
     withParsedQuery(queryStr) { query =>
-      MemberLookup.lookup(using r)(query, owner) match {
+      MemberLookup.lookup(using qctx)(query, owner) match {
         case Some((sym, targetText)) =>
           dkkd.DocumentationLink(sym.dri, resolveBody(default = targetText), kt.emptyMap)
         case None =>

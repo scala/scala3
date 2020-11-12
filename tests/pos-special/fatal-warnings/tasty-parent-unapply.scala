@@ -1,12 +1,10 @@
 import scala.quoted._
 
-import scala.tasty.Reflection
-
 object Macros {
 
 
-  def impl(reflect: Reflection): Unit = {
-    import reflect.{_, given}
+  def impl(using QuoteContext): Unit = {
+    import qctx.reflect._
 
     def foo(tree: Tree, term: Term, typeTree: TypeTree, parent: Tree) = {
 

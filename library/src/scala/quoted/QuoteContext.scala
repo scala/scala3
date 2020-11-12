@@ -66,7 +66,8 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
   /** Low-level Typed AST API metaprogramming API.
    *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
    */
-  val reflect: scala.tasty.Reflection
+  val reflect: scala.quoted.Reflection
+  // TODO move Reflcetion definition in here
 
   /** Type of a QuoteContext provided by a splice within a quote that took this context.
    *  It is only required if working with the reflection API.

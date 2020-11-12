@@ -2,7 +2,6 @@ package scala.tasty.interpreter
 
 import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
-import scala.tasty.Reflection
 
 abstract class TreeInterpreter[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) {
   import qctx.reflect._
@@ -196,7 +195,7 @@ abstract class TreeInterpreter[QCtx <: QuoteContext & Singleton](using val qctx:
   private def isNumericPrimitive(tpe: TypeRepr): Boolean =
     isIntegralPrimitive(tpe) || isFractionalPrimitive(tpe)
 
-  private def isIntegralPrimitive(tpe: TypeRepr): Boolean ={ 
+  private def isIntegralPrimitive(tpe: TypeRepr): Boolean = {
     tpe <:< TypeRepr.of[Byte] ||
     tpe <:< TypeRepr.of[Char] ||
     tpe <:< TypeRepr.of[Short] ||

@@ -8,8 +8,9 @@ import com.vladsch.flexmark.util.{ast => mdu}
 import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.util.options.MutableDataSet
 
-import scala.tasty.Reflection
-class Repr(val r: Reflection)(val sym: r.Symbol)
+import scala.quoted._
+
+class Repr(val qctx: QuoteContext)(val sym: qctx.reflect.Symbol)
 
 case class Comment (
   body:                    dkkd.DocTag,

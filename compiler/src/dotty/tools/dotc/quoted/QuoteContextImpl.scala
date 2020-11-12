@@ -79,7 +79,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     }
   end extension
 
-  object reflect extends scala.tasty.Reflection:
+  object reflect extends scala.quoted.Reflection:
 
     def rootContext: Context = ctx
 

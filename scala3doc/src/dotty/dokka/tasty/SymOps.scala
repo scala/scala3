@@ -7,13 +7,14 @@ import dotty.dokka._
 import dotty.dokka.model.api.Visibility
 import dotty.dokka.model.api.VisibilityScope
 import dotty.dokka.model.api.Modifier
-import scala.tasty.Reflection
 
-class SymOps[R <: Reflection](val r: R):
-  import r._
+import scala.quoted._
 
-  given R = r
-  extension (sym: r.Symbol):
+class SymOps[Q <: QuoteContext](val q: Q):
+  import q.reflect._
+
+  given Q = q
+  extension (sym: Symbol):
     def packageName(using ctx: Context): String =
       if (sym.isPackageDef) sym.fullName
       else sym.maybeOwner.packageName
@@ -49,7 +50,7 @@ class SymOps[R <: Reflection](val r: R):
     // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
     def hackIsOpen: Boolean = {
       import dotty.tools.dotc
-      given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+      given dotc.core.Contexts.Context = qctx.reflect.rootContext.asInstanceOf
       val symbol = sym.asInstanceOf[dotc.core.Symbols.Symbol]
       symbol.is(dotc.core.Flags.Open)
     }

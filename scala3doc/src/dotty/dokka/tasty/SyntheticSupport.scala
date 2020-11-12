@@ -1,6 +1,6 @@
 package dotty.dokka.tasty
 
-import scala.tasty.Reflection
+import scala.quoted._
 
 trait SyntheticsSupport:
   self: TastyParser =>
@@ -31,11 +31,11 @@ trait SyntheticsSupport:
 
     def isDefaultHelperMethod: Boolean = ".*\\$default\\$\\d+$".r.matches(s.name)
 
-    def isOpaque: Boolean = hackIsOpaque(qctx.reflect)(s)
+    def isOpaque: Boolean = hackIsOpaque(using qctx)(s)
 
-    def isInfix: Boolean = hackIsInfix(qctx.reflect)(s)
+    def isInfix: Boolean = hackIsInfix(using qctx)(s)
 
-    def getAllMembers: List[Symbol] = hackGetAllMembers(qctx.reflect)(s)
+    def getAllMembers: List[Symbol] = hackGetAllMembers(using qctx)(s)
 
   def isSyntheticField(c: Symbol) =
     c.flags.is(Flags.CaseAccessor) || c.flags.is(Flags.Object)
@@ -52,9 +52,10 @@ trait SyntheticsSupport:
     }
 
   // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
-  def hackIsInfix(r: Reflection)(rsym: r.Symbol): Boolean = {
+  def hackIsInfix(using QuoteContext)(rsym: qctx.reflect.Symbol): Boolean = {
+    import qctx.reflect._
     import dotty.tools.dotc
-    given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    given ctx as dotc.core.Contexts.Context = rootContext.asInstanceOf
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     ctx.definitions.isInfix(sym)
   }
@@ -62,43 +63,46 @@ trait SyntheticsSupport:
   They are valdefs that describe case companion objects and cases from enum.
   TASTY crashed when calling _.tree on them.
   */
-  def hackGetAllMembers(r: Reflection)(rsym: r.Symbol): List[r.Symbol] = {
+  def hackGetAllMembers(using QuoteContext)(rsym: qctx.reflect.Symbol): List[qctx.reflect.Symbol] = {
+    import qctx.reflect._
     import dotty.tools.dotc
-    given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    given ctx as dotc.core.Contexts.Context = rootContext.asInstanceOf
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef)).allMembers.iterator.map(_.symbol)
       .collect {
          case sym if
           !sym.is(dotc.core.Flags.ModuleVal) &&
           !sym.flags.isAllOf(dotc.core.Flags.Enum | dotc.core.Flags.Case | dotc.core.Flags.JavaStatic) =>
-              sym.asInstanceOf[r.Symbol]
+              sym.asInstanceOf[Symbol]
       }.toList
   }
 
-  def hackIsOpaque(r: Reflection)(rsym: r.Symbol): Boolean = {
+  def hackIsOpaque(using QuoteContext)(rsym: qctx.reflect.Symbol): Boolean = {
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    given dotc.core.Contexts.Context = qctx.reflect.rootContext.asInstanceOf
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     sym.is(dotc.core.Flags.Opaque)
   }
 
-  def hackGetSupertypes(r: Reflection)(rdef: r.ClassDef) = {
+  def hackGetSupertypes(using QuoteContext)(rdef: qctx.reflect.ClassDef) = {
+    import qctx.reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    given dotc.core.Contexts.Context = qctx.reflect.rootContext.asInstanceOf
     val classdef = rdef.asInstanceOf[dotc.ast.tpd.TypeDef]
     val ref = classdef.symbol.info.asInstanceOf[dotc.core.Types.ClassInfo].appliedRef
     val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] =
       ref.baseClasses.map(b => b -> ref.baseType(b))
-    baseTypes.asInstanceOf[List[(r.Symbol, r.TypeRepr)]]
+    baseTypes.asInstanceOf[List[(Symbol, TypeRepr)]]
   }
 
-  def getSupertypes(c: ClassDef) = hackGetSupertypes(qctx.reflect)(c).tail
+  def getSupertypes(using QuoteContext)(c: ClassDef) = hackGetSupertypes(c).tail
 
-  def typeForClass(c: ClassDef): r.TypeRepr =
+  def typeForClass(c: ClassDef): TypeRepr =
+    import qctx.reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    given dotc.core.Contexts.Context = rootContext.asInstanceOf
     val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
-    cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[r.TypeRepr]
+    cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[TypeRepr]
 
   object MatchTypeCase:
     def unapply(tpe: TypeRepr): Option[(TypeRepr, TypeRepr)] =
