@@ -1,6 +1,6 @@
-compile-time: (4: scala.Int)
+compile-time: 4:Int
 run-time: 4
-compile-time: (1: scala.Int)
+compile-time: 1:Int
 run-time: 1
 run-time: 5
 run-time: 7

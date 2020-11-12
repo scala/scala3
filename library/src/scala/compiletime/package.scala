@@ -35,7 +35,7 @@ package object compiletime {
    /** Returns the string representation of interpolated elaborated code:
     *
     *  ```scala
-    *  inline def logged(p1: => Any) = {
+    *  inline def logged(inline p1: Any) = {
     *    val c = code"code: $p1"
     *    val res = p1
     *    (c, p1)
@@ -45,11 +45,13 @@ package object compiletime {
     *  // ("code: scala.Predef.identity("foo")", identity("foo"))
     *  ```
     *
-    * @note only by-name arguments will be displayed as "code".
+    *  The formatting of the code is not stable across version of the compiler.
+    *
+    * @note only `inline` arguments will be displayed as "code".
     *       Other values may display unintutively.
     */
-    transparent inline def code (inline args: Any*): String =
-      ${ dotty.internal.CompileTimeMacros.codeExpr('self, 'args) }
+    transparent inline def code (inline args: Any*): String = ???
+
   end extension
 
   /** Checks at compiletime that the provided values is a constant after
