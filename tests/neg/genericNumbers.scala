@@ -3,7 +3,7 @@ import scala.util.FromDigits
 object Test extends App {
 
   val x: BigInt = 13232202002020202020202 // error
-  val z: BigDecimal = 132322020020.223 // error
+  val z: BigDecimal = 132322020020.223
 
   case class Even(n: Int)
 
@@ -36,6 +36,6 @@ object Test extends App {
 
   (e: Any) match {
     case 1234: Even => // error
-    case _: Even => // error
+    case _: Even =>
   }
 }
