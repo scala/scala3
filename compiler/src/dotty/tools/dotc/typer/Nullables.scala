@@ -161,205 +161,201 @@ object Nullables:
     // TODO: Add constant pattern if the constant type is not nullable
     case _ => false
 
-  given notNullInfoOps as AnyRef:
-    extension (infos: List[NotNullInfo]):
+  extension (infos: List[NotNullInfo])
 
-      /** Do the current not-null infos imply that `ref` is not null?
-      *  Not-null infos are as a history where earlier assertions and retractions replace
-      *  later ones (i.e. it records the assignment history in reverse, with most recent first)
-      */
-      @tailrec def impliesNotNull(ref: TermRef): Boolean = infos match
-        case info :: infos1 =>
-          if info.asserted.contains(ref) then true
-          else if info.retracted.contains(ref) then false
-          else infos1.impliesNotNull(ref)
-        case _ =>
-          false
+    /** Do the current not-null infos imply that `ref` is not null?
+    *  Not-null infos are as a history where earlier assertions and retractions replace
+    *  later ones (i.e. it records the assignment history in reverse, with most recent first)
+    */
+    @tailrec def impliesNotNull(ref: TermRef): Boolean = infos match
+      case info :: infos1 =>
+        if info.asserted.contains(ref) then true
+        else if info.retracted.contains(ref) then false
+        else infos1.impliesNotNull(ref)
+      case _ =>
+        false
 
-      /** Add `info` as the most recent entry to the list of null infos. Assertions
-      *  or retractions in `info` supersede infos in existing entries of `infos`.
-      */
-      def extendWith(info: NotNullInfo) =
-        if info.isEmpty
-          || info.asserted.forall(infos.impliesNotNull(_))
-              && !info.retracted.exists(infos.impliesNotNull(_))
-        then infos
-        else info :: infos
+    /** Add `info` as the most recent entry to the list of null infos. Assertions
+    *  or retractions in `info` supersede infos in existing entries of `infos`.
+    */
+    def extendWith(info: NotNullInfo) =
+      if info.isEmpty
+        || info.asserted.forall(infos.impliesNotNull(_))
+            && !info.retracted.exists(infos.impliesNotNull(_))
+      then infos
+      else info :: infos
 
-      /** Retract all references to mutable variables */
-      def retractMutables(using Context) =
-        val mutables = infos.foldLeft(Set[TermRef]())((ms, info) =>
-          ms.union(info.asserted.filter(_.symbol.is(Mutable))))
-        infos.extendWith(NotNullInfo(Set(), mutables))
+    /** Retract all references to mutable variables */
+    def retractMutables(using Context) =
+      val mutables = infos.foldLeft(Set[TermRef]())((ms, info) =>
+        ms.union(info.asserted.filter(_.symbol.is(Mutable))))
+      infos.extendWith(NotNullInfo(Set(), mutables))
 
-  end notNullInfoOps
+  end extension
 
-  given refOps as AnyRef:
-    extension (ref: TermRef):
+  extension (ref: TermRef)
 
-      /** Is the use of a mutable variable out of order
-      *
-      *  Whether to generate and use flow typing on a specific _use_ of a local mutable variable?
-      *  We only want to do flow typing on a use that belongs to the same method as the definition
-      *  of the local variable.
-      *  For example, in the following code, even `x` is not assigned to by a closure, but we can only
-      *  use flow typing in one of the occurrences (because the other occurrence happens within a nested
-      *  closure).
-      *  ```scala
-      *  var x: String|Null = ???
-      *  def y = {
-      *    if (x != null) {
-      *      // not safe to use the fact (x != null) here
-      *      // since y can be executed at the same time as the outer block
-      *      val _: String = x
-      *    }
-      *  }
-      *  if (x != null) {
-      *    val a: String = x // ok to use the fact here
-      *    x = null
-      *  }
-      *  ```
-      *
-      *  Another example:
-      *  ```scala
-      *  var x: String|Null = ???
-      *  if (x != null) {
-      *    def f: String = {
-      *      val y: String = x // error: the use of x is out of order
-      *      y
-      *    }
-      *    x = null
-      *    val y: String = f // danger
-      *  }
-      *  ```
-      */
-      def usedOutOfOrder(using Context): Boolean =
-        val refSym = ref.symbol
-        val refOwner = refSym.owner
+    /** Is the use of a mutable variable out of order
+    *
+    *  Whether to generate and use flow typing on a specific _use_ of a local mutable variable?
+    *  We only want to do flow typing on a use that belongs to the same method as the definition
+    *  of the local variable.
+    *  For example, in the following code, even `x` is not assigned to by a closure, but we can only
+    *  use flow typing in one of the occurrences (because the other occurrence happens within a nested
+    *  closure).
+    *  ```scala
+    *  var x: String|Null = ???
+    *  def y = {
+    *    if (x != null) {
+    *      // not safe to use the fact (x != null) here
+    *      // since y can be executed at the same time as the outer block
+    *      val _: String = x
+    *    }
+    *  }
+    *  if (x != null) {
+    *    val a: String = x // ok to use the fact here
+    *    x = null
+    *  }
+    *  ```
+    *
+    *  Another example:
+    *  ```scala
+    *  var x: String|Null = ???
+    *  if (x != null) {
+    *    def f: String = {
+    *      val y: String = x // error: the use of x is out of order
+    *      y
+    *    }
+    *    x = null
+    *    val y: String = f // danger
+    *  }
+    *  ```
+    */
+    def usedOutOfOrder(using Context): Boolean =
+      val refSym = ref.symbol
+      val refOwner = refSym.owner
 
-        @tailrec def recur(s: Symbol): Boolean =
-          s != NoSymbol
-          && s != refOwner
-          && (s.isOneOf(Lazy | Method) // not at the rhs of lazy ValDef or in a method (or lambda)
+      @tailrec def recur(s: Symbol): Boolean =
+        s != NoSymbol
+        && s != refOwner
+        && (s.isOneOf(Lazy | Method) // not at the rhs of lazy ValDef or in a method (or lambda)
             || s.isClass // not in a class
-            // TODO: need to check by-name parameter
+               // TODO: need to check by-name parameter
             || recur(s.owner))
 
-        refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions
-        && refOwner.isTerm
-        && recur(ctx.owner)
-  end refOps
+      refSym.is(Mutable) // if it is immutable, we don't need to check the rest conditions
+      && refOwner.isTerm
+      && recur(ctx.owner)
+  end extension
 
-  given treeOps as AnyRef:
-    extension (tree: Tree):
+  extension (tree: Tree)
 
-      /* The `tree` with added nullability attachment */
-      def withNotNullInfo(info: NotNullInfo): tree.type =
-        if !info.isEmpty then tree.putAttachment(NNInfo, info)
-        tree
+    /* The `tree` with added nullability attachment */
+    def withNotNullInfo(info: NotNullInfo): tree.type =
+      if !info.isEmpty then tree.putAttachment(NNInfo, info)
+      tree
 
-      /* The nullability info of `tree` */
-      def notNullInfo(using Context): NotNullInfo =
-        stripInlined(tree).getAttachment(NNInfo) match
-          case Some(info) if !ctx.erasedTypes => info
-          case _ => NotNullInfo.empty
+    /* The nullability info of `tree` */
+    def notNullInfo(using Context): NotNullInfo =
+      stripInlined(tree).getAttachment(NNInfo) match
+        case Some(info) if !ctx.erasedTypes => info
+        case _ => NotNullInfo.empty
 
-      /* The nullability info of `tree`, assuming it is a condition that evaluates to `c` */
-      def notNullInfoIf(c: Boolean)(using Context): NotNullInfo =
-        val cond = tree.notNullConditional
-        if cond.isEmpty then tree.notNullInfo
-        else tree.notNullInfo.seq(NotNullInfo(if c then cond.ifTrue else cond.ifFalse, Set()))
+    /* The nullability info of `tree`, assuming it is a condition that evaluates to `c` */
+    def notNullInfoIf(c: Boolean)(using Context): NotNullInfo =
+      val cond = tree.notNullConditional
+      if cond.isEmpty then tree.notNullInfo
+      else tree.notNullInfo.seq(NotNullInfo(if c then cond.ifTrue else cond.ifFalse, Set()))
 
-      /** The paths that are known to be not null if the condition represented
-      *  by `tree` yields `true` or `false`. Two empty sets if `tree` is not
-      *  a condition.
-      */
-      def notNullConditional(using Context): NotNullConditional =
-        stripBlock(tree).getAttachment(NNConditional) match
-          case Some(cond) if !ctx.erasedTypes => cond
-          case _ => NotNullConditional.empty
+    /** The paths that are known to be not null if the condition represented
+    *  by `tree` yields `true` or `false`. Two empty sets if `tree` is not
+    *  a condition.
+    */
+    def notNullConditional(using Context): NotNullConditional =
+      stripBlock(tree).getAttachment(NNConditional) match
+        case Some(cond) if !ctx.erasedTypes => cond
+        case _ => NotNullConditional.empty
 
-      /** The current context augmented with nullability information of `tree` */
-      def nullableContext(using Context): Context =
-        val info = tree.notNullInfo
-        if info.isEmpty then ctx else ctx.addNotNullInfo(info)
+    /** The current context augmented with nullability information of `tree` */
+    def nullableContext(using Context): Context =
+      val info = tree.notNullInfo
+      if info.isEmpty then ctx else ctx.addNotNullInfo(info)
 
-      /** The current context augmented with nullability information,
-      *  assuming the result of the condition represented by `tree` is the same as
-      *  the value of `c`.
-      */
-      def nullableContextIf(c: Boolean)(using Context): Context =
-        val info = tree.notNullInfoIf(c)
-        if info.isEmpty then ctx else ctx.addNotNullInfo(info)
+    /** The current context augmented with nullability information,
+    *  assuming the result of the condition represented by `tree` is the same as
+    *  the value of `c`.
+    */
+    def nullableContextIf(c: Boolean)(using Context): Context =
+      val info = tree.notNullInfoIf(c)
+      if info.isEmpty then ctx else ctx.addNotNullInfo(info)
 
-      /** The context to use for the arguments of the function represented by `tree`.
-      *  This is the current context, augmented with nullability information
-      *  of the left argument, if the application is a boolean `&&` or `||`.
-      */
-      def nullableInArgContext(using Context): Context = tree match
-        case Select(x, _) if !ctx.erasedTypes =>
-          if tree.symbol == defn.Boolean_&& then x.nullableContextIf(true)
-          else if tree.symbol == defn.Boolean_|| then x.nullableContextIf(false)
-          else ctx
-        case _ => ctx
+    /** The context to use for the arguments of the function represented by `tree`.
+    *  This is the current context, augmented with nullability information
+    *  of the left argument, if the application is a boolean `&&` or `||`.
+    */
+    def nullableInArgContext(using Context): Context = tree match
+      case Select(x, _) if !ctx.erasedTypes =>
+        if tree.symbol == defn.Boolean_&& then x.nullableContextIf(true)
+        else if tree.symbol == defn.Boolean_|| then x.nullableContextIf(false)
+        else ctx
+      case _ => ctx
 
-      /** The `tree` augmented with nullability information in an attachment.
-      *  The following operations lead to nullability info being recorded:
-      *
-      *  1. Null tests using `==`, `!=`, `eq`, `ne`, if the compared entity is
-      *     a path (i.e. a stable TermRef)
-      *  2. Boolean &&, ||, !
-      */
-      def computeNullable()(using Context): tree.type =
-        def setConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]) =
-          tree.putAttachment(NNConditional, NotNullConditional(ifTrue, ifFalse))
-        if !ctx.erasedTypes && analyzedOps.contains(tree.symbol.name.toTermName) then
-          tree match
-            case CompareNull(TrackedRef(ref), testEqual) =>
-              if testEqual then setConditional(Set(), Set(ref))
-              else setConditional(Set(ref), Set())
-            case Apply(Select(x, _), y :: Nil) =>
-              val xc = x.notNullConditional
-              val yc = y.notNullConditional
-              if !(xc.isEmpty && yc.isEmpty) then
-                if tree.symbol == defn.Boolean_&& then
-                  setConditional(xc.ifTrue | yc.ifTrue, xc.ifFalse & yc.ifFalse)
-                else if tree.symbol == defn.Boolean_|| then
-                  setConditional(xc.ifTrue & yc.ifTrue, xc.ifFalse | yc.ifFalse)
-            case Select(x, _) if tree.symbol == defn.Boolean_! =>
-              val xc = x.notNullConditional
-              if !xc.isEmpty then
-                setConditional(xc.ifFalse, xc.ifTrue)
-            case _ =>
-        tree
+    /** The `tree` augmented with nullability information in an attachment.
+    *  The following operations lead to nullability info being recorded:
+    *
+    *  1. Null tests using `==`, `!=`, `eq`, `ne`, if the compared entity is
+    *     a path (i.e. a stable TermRef)
+    *  2. Boolean &&, ||, !
+    */
+    def computeNullable()(using Context): tree.type =
+      def setConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]) =
+        tree.putAttachment(NNConditional, NotNullConditional(ifTrue, ifFalse))
+      if !ctx.erasedTypes && analyzedOps.contains(tree.symbol.name.toTermName) then
+        tree match
+          case CompareNull(TrackedRef(ref), testEqual) =>
+            if testEqual then setConditional(Set(), Set(ref))
+            else setConditional(Set(ref), Set())
+          case Apply(Select(x, _), y :: Nil) =>
+            val xc = x.notNullConditional
+            val yc = y.notNullConditional
+            if !(xc.isEmpty && yc.isEmpty) then
+              if tree.symbol == defn.Boolean_&& then
+                setConditional(xc.ifTrue | yc.ifTrue, xc.ifFalse & yc.ifFalse)
+              else if tree.symbol == defn.Boolean_|| then
+                setConditional(xc.ifTrue & yc.ifTrue, xc.ifFalse | yc.ifFalse)
+          case Select(x, _) if tree.symbol == defn.Boolean_! =>
+            val xc = x.notNullConditional
+            if !xc.isEmpty then
+              setConditional(xc.ifFalse, xc.ifTrue)
+          case _ =>
+      tree
 
-      /** Compute nullability information for this tree and all its subtrees */
-      def computeNullableDeeply()(using Context): Unit =
-        new TreeTraverser {
-          def traverse(tree: Tree)(using Context) =
-            traverseChildren(tree)
-            tree.computeNullable()
-        }.traverse(tree)
-  end treeOps
+    /** Compute nullability information for this tree and all its subtrees */
+    def computeNullableDeeply()(using Context): Unit =
+      new TreeTraverser {
+        def traverse(tree: Tree)(using Context) =
+          traverseChildren(tree)
+          tree.computeNullable()
+      }.traverse(tree)
+  end extension
 
-  given assignOps as AnyRef:
-    extension (tree: Assign):
-      def computeAssignNullable()(using Context): tree.type = tree.lhs match
-        case TrackedRef(ref) =>
-          val rhstp = tree.rhs.typeOpt
-          if ctx.explicitNulls && ref.isNullableUnion then
-            if rhstp.isNullType || rhstp.isNullableUnion then
-              // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
-              // lhs variable is no longer trackable. We don't need to check whether the type `T`
-              // is correct here, as typer will check it.
-              tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
-            else
-              // If the initial type is nullable and the assigned value is non-null,
-              // we add it to the NotNull.
-              tree.withNotNullInfo(NotNullInfo(Set(ref), Set()))
-          else tree
-        case _ => tree
-  end assignOps
+  extension (tree: Assign):
+    def computeAssignNullable()(using Context): tree.type = tree.lhs match
+      case TrackedRef(ref) =>
+        val rhstp = tree.rhs.typeOpt
+        if ctx.explicitNulls && ref.isNullableUnion then
+          if rhstp.isNullType || rhstp.isNullableUnion then
+            // If the type of rhs is nullable (`T|Null` or `Null`), then the nullability of the
+            // lhs variable is no longer trackable. We don't need to check whether the type `T`
+            // is correct here, as typer will check it.
+            tree.withNotNullInfo(NotNullInfo(Set(), Set(ref)))
+          else
+            // If the initial type is nullable and the assigned value is non-null,
+            // we add it to the NotNull.
+            tree.withNotNullInfo(NotNullInfo(Set(ref), Set()))
+        else tree
+      case _ => tree
+  end extension
 
   private val analyzedOps = Set(nme.EQ, nme.NE, nme.eq, nme.ne, nme.ZAND, nme.ZOR, nme.UNARY_!)
 

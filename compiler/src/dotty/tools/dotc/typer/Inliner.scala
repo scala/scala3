@@ -24,7 +24,7 @@ import config.Printers.inlining
 import ErrorReporting.errorTree
 import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, EqHashMap, SourceFile, SourcePosition, SrcPos}
 import dotty.tools.dotc.parsing.Parsers.Parser
-import Nullables.given
+import Nullables._
 
 import collection.mutable
 import reporting.trace
