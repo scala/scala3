@@ -40,7 +40,12 @@ val defaultMarkdownOptions: DataHolder =
       "https://github.global.ssl.fastly.net/images/icons/emoji/"
     )
 
-def emptyTemplate(file: File): TemplateFile = TemplateFile(file, isHtml = true, "", Map())
+def emptyTemplate(file: File): TemplateFile = TemplateFile(
+  file = file,
+  isHtml = true,
+  rawCode = "",
+  settings = Map.empty
+)
 
 final val ConfigSeparator = "---"
 final val LineSeparator = "\n"
@@ -61,11 +66,19 @@ def loadTemplateFile(file: File): TemplateFile = {
   val yamlCollector = new AbstractYamlFrontMatterVisitor()
   yamlCollector.visit(configParsed)
 
+  extension (v: java.util.List[String]) def getSettingValue: String | List[String] =
+    if v.size == 1 then v.get(0) else v.asScala.toList
+
+  val globalKeys = Set("extraJS", "extraCSS", "layout", "hasFrame")
+  val (global, inner) = yamlCollector.getData.asScala.toMap.transform((_, v) => v.getSettingValue)
+    .partition((k,_) => globalKeys.contains(k))
+  val settings = global ++ Map("page" -> inner)
+ 
   TemplateFile(
     file = file,
-    file.getName.endsWith(".html"),
+    isHtml = file.getName.endsWith(".html"),
     rawCode = content.mkString(LineSeparator),
-    settings = yamlCollector.getData.asScala.toMap.transform((_, v) => v.asScala.toList)
+    settings = settings,
   )
 }
 

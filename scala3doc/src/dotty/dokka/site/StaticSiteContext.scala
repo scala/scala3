@@ -32,7 +32,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")
     val dirs: Array[File] = Option(layoutRoot.listFiles()).getOrElse(Array())
-    dirs.map { it => loadTemplateFile(it) }.map { it => it.name() -> it }.toMap
+    dirs.map { it => loadTemplateFile(it) }.map { it => it.name -> it }.toMap
 
   lazy val sideBarConfig =
     val sidebarFile = root.toPath.resolve("sidebar.yml")
@@ -111,7 +111,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
       val path = if isBlog then "blog" else url.stripSuffix(".html") + ".md"
       val file = root.toPath.resolve(path) // Add support for .html files!
       val LoadedTemplate(template, children, tFile) = loadTemplate(file.toFile, isBlog).get // Add proper logging if file does not exisits
-      LoadedTemplate(template.copy(settings = template.settings + ("title" -> List(title))), children, tFile)
+      LoadedTemplate(template.copy(settings = template.settings + ("title" -> title)), children, tFile) 
     case Sidebar.Category(title, nested) =>
       // Add support for index.html/index.md files!
       val fakeFile = new File(root, title)
@@ -141,7 +141,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
     )
     StaticPageNode(
       myTemplate.templateFile,
-      myTemplate.templateFile.title(),
+      myTemplate.templateFile.title,
       content,
       JSet(dri),
       JList(),
