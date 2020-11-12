@@ -6,7 +6,8 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.tasty.TastyHTMLPrinter
 import dotty.tools.dotc.reporting._
-import dotty.tools.dotc.quoted.QuoteContextImpl
+
+import scala.quoted.internal.impl.QuoteContextImpl
 
 /**
   * Decompiler to be used with IDEs

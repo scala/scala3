@@ -21,6 +21,8 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{Path, VirtualFile}
 
+import scala.quoted.internal.impl.QuoteContextImpl
+
 import scala.annotation.tailrec
 import scala.concurrent.Promise
 import scala.quoted.{Expr, QuoteContext, Type}
@@ -68,7 +70,7 @@ private class QuoteCompiler extends Compiler:
 
           val quoted =
             given Context = unitCtx.withOwner(meth)
-            val qctx = dotty.tools.dotc.quoted.QuoteContextImpl()
+            val qctx = QuoteContextImpl()
             val quoted = PickledQuotes.quotedExprToTree(exprUnit.exprBuilder.apply(qctx))
             checkEscapedVariables(quoted, meth)
           end quoted

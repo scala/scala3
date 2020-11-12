@@ -24,8 +24,10 @@ import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 
-import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.quoted.{PickledQuotes, QuoteUtils}
+
 import scala.quoted.QuoteContext
+import scala.quoted.internal.impl._
 
 /** Utility class to splice quoted expressions */
 object Splicer {
@@ -323,10 +325,10 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new dotty.tools.dotc.quoted.ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(tree, ctx.owner)).withSpan(tree.span), QuoteContextImpl.scopeId)
+      new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(tree, ctx.owner)).withSpan(tree.span), QuoteContextImpl.scopeId)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
-      new dotty.tools.dotc.quoted.TypeImpl(QuoteUtils.changeOwnerOfTree(tree, ctx.owner), QuoteContextImpl.scopeId)
+      new TypeImpl(QuoteUtils.changeOwnerOfTree(tree, ctx.owner), QuoteContextImpl.scopeId)
 
     private def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]
