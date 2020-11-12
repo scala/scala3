@@ -1,2 +1,4 @@
 # root where we generate documentation
 output
+
+e2e/cypress/videos
