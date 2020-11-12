@@ -48,8 +48,11 @@ jobs:
       - name: Locally publish self
         run: ./project/scripts/sbt scala3doc/publishLocal
 
-      - name: Generate test documentation
+      - name: Generate self documentation
         run: ./project/scripts/sbt scala3doc/generateSelfDocumentation
+
+      - name: Generate testcases documentation
+        run: ./project/scripts/sbt scala3doc/generateTestcasesDocumentation
 
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scala3doc/generateScala3Documentation
