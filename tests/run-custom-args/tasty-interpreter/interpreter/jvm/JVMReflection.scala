@@ -1,7 +1,6 @@
 package scala.tasty.interpreter.jvm
 
 import scala.quoted._
-import scala.tasty.Reflection
 
 class JVMReflection[QCtx <: QuoteContext & Singleton](using val tasty: QCtx) {
   import qctx.reflect._

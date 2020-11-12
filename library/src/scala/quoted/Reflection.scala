@@ -1,8 +1,8 @@
-package scala.tasty
+package scala.quoted
 
 import scala.tasty.reflect._
 
-/** TASTy Reflect Interface.
+/** AST reflection interface.
  *
  *  Provides all functionality related with AST based metaprogramming.
  *

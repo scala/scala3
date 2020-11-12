@@ -10,7 +10,7 @@ import dotty.dokka.model.api.TastyDocumentableSource
 trait BasicSupport:
   self: TastyParser =>
   import qctx.reflect._
-  object SymOps extends SymOps[qctx.reflect.type](qctx.reflect)
+  object SymOps extends SymOps[qctx.type](qctx)
   export SymOps._
 
   def parseAnnotation(annotTerm: Term): Annotation =

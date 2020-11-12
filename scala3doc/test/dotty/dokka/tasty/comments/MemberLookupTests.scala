@@ -1,12 +1,12 @@
 package dotty.dokka.tasty.comments
 
-import scala.tasty.Reflection
+import scala.quoted.QuoteContext
 
 import org.junit.{Test, Rule}
 import org.junit.Assert.{assertSame, assertTrue}
 import dotty.dokka.BuildInfo
 
-class LookupTestCases[R <: Reflection](val r: R) {
+class LookupTestCases[Q <: QuoteContext](val q: QuoteContext) {
 
   def testAll(): Unit = {
     testOwnerlessLookup()
@@ -74,17 +74,17 @@ class LookupTestCases[R <: Reflection](val r: R) {
     assertTrue("strict member lookup should not look outside", MemberLookup.lookup(parseQuery(query), owner).isEmpty)
   }
 
-  given r.type = r
+  given q.type = q
 
   def parseQuery(query: String): Query = {
     val Right(parsed) = QueryParser(query).tryReadQuery()
     parsed
   }
 
-  case class Sym(symbol: r.Symbol) {
+  case class Sym(symbol: q.reflect.Symbol) {
     def fld(name: String) =
-      def hackResolveModule(s: r.Symbol): r.Symbol =
-        if s.flags.is(r.Flags.Object) then s.moduleClass else s
+      def hackResolveModule(s: q.reflect.Symbol): q.reflect.Symbol =
+        if s.flags.is(q.reflect.Flags.Object) then s.moduleClass else s
       Sym(hackResolveModule(symbol.field(name)))
     def fun(name: String) =
       val List(sym) = symbol.method(name)
@@ -92,7 +92,7 @@ class LookupTestCases[R <: Reflection](val r: R) {
     def tpe(name: String) = Sym(symbol.typeMember(name))
   }
 
-  def cls(fqn: String) = Sym(r.Symbol.classSymbol(fqn))
+  def cls(fqn: String) = Sym(q.reflect.Symbol.classSymbol(fqn))
 }
 
 class MemberLookupTests {
@@ -105,13 +105,13 @@ class MemberLookupTests {
 
       override def processCompilationUnit(using ctx: quoted.QuoteContext)(root: ctx.reflect.Tree): Unit =
         if !alreadyRan then
-          this.test()(using ctx.reflect)
+          this.test()
           alreadyRan = true
 
-      def test()(using r: Reflection): Unit = {
+      def test()(using q: QuoteContext): Unit = {
         import dotty.dokka.tasty.comments.MemberLookup
 
-        val cases = LookupTestCases[r.type](r)
+        val cases = LookupTestCases[q.type](q)
 
         cases.testAll()
       }

@@ -1,27 +1,28 @@
 package dotty.dokka.tasty.comments
 
-import scala.tasty.Reflection
+import scala.quoted._
 
 trait MemberLookup {
 
-  def lookup(using r: Reflection)(
+  def lookup(using QuoteContext)(
     query: Query,
-    owner: r.Symbol,
-  ): Option[(r.Symbol, String)] = lookupOpt(query, Some(owner))
+    owner: qctx.reflect.Symbol,
+  ): Option[(qctx.reflect.Symbol, String)] = lookupOpt(query, Some(owner))
 
-  def lookupOpt(using r: Reflection)(
+  def lookupOpt(using QuoteContext)(
     query: Query,
-    ownerOpt: Option[r.Symbol],
-  ): Option[(r.Symbol, String)] = {
+    ownerOpt: Option[qctx.reflect.Symbol],
+  ): Option[(qctx.reflect.Symbol, String)] = {
+    import qctx.reflect._
 
-    def nearestClass(sym: r.Symbol): r.Symbol =
+    def nearestClass(sym: Symbol): Symbol =
       if sym.isClassDef then sym else nearestClass(sym.owner)
 
-    def nearestPackage(sym: r.Symbol): r.Symbol =
-      if sym.flags.is(r.Flags.Package) then sym else nearestPackage(sym.owner)
+    def nearestPackage(sym: Symbol): Symbol =
+      if sym.flags.is(Flags.Package) then sym else nearestPackage(sym.owner)
 
-    def nearestMembered(sym: r.Symbol): r.Symbol =
-      if sym.isClassDef || sym.flags.is(r.Flags.Package) then sym else nearestMembered(sym.owner)
+    def nearestMembered(sym: Symbol): Symbol =
+      if sym.isClassDef || sym.flags.is(Flags.Package) then sym else nearestMembered(sym.owner)
 
     val res =
       ownerOpt match {
@@ -41,11 +42,11 @@ trait MemberLookup {
               downwardLookup(rest.asList, nearestCls).map(_ -> rest.join)
             case Query.QualifiedId(Query.Qual.Id(id), _, rest) if id == nearestPkg.name =>
               downwardLookup(rest.asList, nearestPkg).map(_ -> rest.join)
-            case query: Query.QualifiedId => downwardLookup(query.asList, r.defn.RootPackage).map(_ -> query.join)
+            case query: Query.QualifiedId => downwardLookup(query.asList, defn.RootPackage).map(_ -> query.join)
           }
 
         case None =>
-          downwardLookup(query.asList, r.defn.RootPackage).map(_ -> query.join)
+          downwardLookup(query.asList, defn.RootPackage).map(_ -> query.join)
       }
 
     // println(s"looked up `$query` in ${owner.show}[${owner.flags.show}] as ${res.map(_.show)}")
@@ -53,22 +54,23 @@ trait MemberLookup {
     res
   }
 
-  private def hackMembersOf(using r: Reflection)(rsym: r.Symbol) = {
+  private def hackMembersOf(using QuoteContext)(rsym: qctx.reflect.Symbol) = {
+    import qctx.reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+    given dotc.core.Contexts.Context = rootContext.asInstanceOf
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     val members = sym.info.decls.iterator
     // println(s"members of ${sym.show} : ${members.map(_.show).mkString(", ")}")
-    members.asInstanceOf[Iterator[r.Symbol]]
+    members.asInstanceOf[Iterator[Symbol]]
   }
 
-  private def localLookup(using r: Reflection)(query: String, owner: r.Symbol): Option[r.Symbol] = {
-    import r._
+  private def localLookup(using QuoteContext)(query: String, owner: qctx.reflect.Symbol): Option[qctx.reflect.Symbol] = {
+    import qctx.reflect._
 
-    inline def whenExists(s: Symbol)(otherwise: => Option[r.Symbol]): Option[r.Symbol] =
+    inline def whenExists(s: Symbol)(otherwise: => Option[Symbol]): Option[Symbol] =
       if s.exists then Some(s) else otherwise
 
-    def findMatch(syms: Iterator[r.Symbol]): Option[r.Symbol] = {
+    def findMatch(syms: Iterator[Symbol]): Option[Symbol] = {
       // Scaladoc overloading support allows terminal * (and they're meaningless)
       val cleanQuery = query.stripSuffix("*")
       val (q, forceTerm, forceType) =
@@ -79,14 +81,14 @@ trait MemberLookup {
         else
           (cleanQuery, false, false)
 
-      def matches(s: r.Symbol): Boolean =
+      def matches(s: Symbol): Boolean =
         s.name == q && (
           if forceTerm then s.isTerm
           else if forceType then s.isType
           else true
         )
 
-      def hackResolveModule(s: r.Symbol): r.Symbol =
+      def hackResolveModule(s: Symbol): Symbol =
         if s.flags.is(Flags.Object) then s.moduleClass else s
 
       val matched = syms.find(matches)
@@ -108,14 +110,14 @@ trait MemberLookup {
       findMatch(hackMembersOf(owner))
     else
       owner.tree match {
-        case tree: r.ClassDef =>
-          findMatch(tree.body.iterator.collect { case t: r.Definition => t.symbol })
+        case tree: ClassDef =>
+          findMatch(tree.body.iterator.collect { case t: Definition => t.symbol })
         case _ =>
           findMatch(hackMembersOf(owner))
       }
   }
 
-  private def downwardLookup(using r: Reflection)(query: List[String], owner: r.Symbol): Option[r.Symbol] =
+  private def downwardLookup(using QuoteContext)(query: List[String], owner: qctx.reflect.Symbol): Option[qctx.reflect.Symbol] =
     query match {
       case Nil => None
       case q :: Nil => localLookup(q, owner)

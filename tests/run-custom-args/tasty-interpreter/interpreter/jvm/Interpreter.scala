@@ -3,7 +3,6 @@ package jvm
 
 import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
-import scala.tasty.Reflection
 
 class Interpreter[QCtx <: QuoteContext & Singleton](using qctx0: QCtx) extends TreeInterpreter[QCtx] {
   import qctx.reflect._

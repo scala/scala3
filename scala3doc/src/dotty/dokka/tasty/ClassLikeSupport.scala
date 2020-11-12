@@ -50,7 +50,7 @@ trait ClassLikeSupport:
           }
         )
 
-      val supertypes = getSupertypes(classDef).map {
+      val supertypes = getSupertypes(using qctx)(classDef).map {
         case (symbol, tpe) => LinkToType(tpe.dokkaType.asSignature, symbol.dri, kindForClasslike(symbol))
       }
       val selfSiangture: DSignature = typeForClass(classDef).dokkaType.asSignature
