@@ -1,8 +1,7 @@
-package dotty.tools.dotc
-package quoted.printers
+package scala.quoted
+package internal.impl.printers
 
 import scala.annotation.switch
-import scala.quoted._
 
 /** Printer for fully elaborated representation of the source code */
 object SourceCode {
@@ -437,7 +436,7 @@ object SourceCode {
           case _ =>
             inParens {
               printTree(term)
-              this += (if (util.Chars.isOperatorPart(sb.last)) " : " else ": ")
+              this += (if (dotty.tools.dotc.util.Chars.isOperatorPart(sb.last)) " : " else ": ")
               def printTypeOrAnnots(tpe: TypeRepr): Unit = tpe match {
                 case AnnotatedType(tp, annot) if tp == term.tpe =>
                   printAnnotation(annot)

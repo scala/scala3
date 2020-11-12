@@ -1,6 +1,7 @@
 package scala.tasty.inspector
 
 import scala.quoted._
+import scala.quoted.internal.impl.QuoteContextImpl
 
 import dotty.tools.dotc.Compiler
 import dotty.tools.dotc.Driver
@@ -9,7 +10,6 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.fromtasty._
-import dotty.tools.dotc.quoted.QuoteContextImpl
 import dotty.tools.dotc.util.ClasspathFromClassloader
 
 import java.io.File.pathSeparator

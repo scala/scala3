@@ -22,7 +22,7 @@ package scala {
         throw new Exception
       } catch {
         case ex: java.lang.reflect.InvocationTargetException =>
-          assert(ex.getTargetException.getClass.getName == "dotty.tools.dotc.quoted.ScopeException")
+          assert(ex.getTargetException.getClass.getName == "scala.quoted.internal.impl.ScopeException")
       }
     }
   }

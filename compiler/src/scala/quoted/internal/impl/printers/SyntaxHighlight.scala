@@ -1,4 +1,5 @@
-package dotty.tools.dotc.quoted.printers
+package scala.quoted
+package internal.impl.printers
 
 trait SyntaxHighlight {
   def highlightKeyword(str: String): String

@@ -1,6 +1,5 @@
-package dotty.tools.dotc.quoted
-
-import scala.quoted._
+package scala.quoted
+package internal.impl
 
 import dotty.tools.dotc.ast.tpd
 
@@ -11,7 +10,7 @@ import dotty.tools.dotc.ast.tpd
  *
  *  May contain references to code defined outside this Expr instance.
  */
-final class ExprImpl(val tree: tpd.Tree, val scopeId: Int) extends scala.quoted.internal.Expr[Any] {
+final class ExprImpl(val tree: tpd.Tree, val scopeId: Int) extends Expr[Any] {
   override def equals(that: Any): Boolean = that match {
     case that: ExprImpl =>
       // Expr are wrappers around trees, therefore they are equals if their trees are equal.

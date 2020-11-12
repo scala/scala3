@@ -1,11 +1,10 @@
-package dotty.tools.dotc.quoted
-
-import scala.quoted._
+package scala.quoted
+package internal.impl
 
 import dotty.tools.dotc.ast.tpd
 
 /** Quoted type (or kind) `T` backed by a tree */
-final class TypeImpl(val typeTree: tpd.Tree, val scopeId: Int) extends scala.quoted.internal.Type[?] {
+final class TypeImpl(val typeTree: tpd.Tree, val scopeId: Int) extends Type[?] {
   override def equals(that: Any): Boolean = that match {
     case that: TypeImpl => typeTree ==
       // TastyTreeExpr are wrappers around trees, therfore they are equals if their trees are equal.

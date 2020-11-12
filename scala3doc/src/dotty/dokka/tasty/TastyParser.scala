@@ -41,7 +41,7 @@ case class SbtDokkaTastyInspector(
   import dotty.tools.dotc.core.Mode
   import dotty.tools.dotc.core.Phases.Phase
   import dotty.tools.dotc.fromtasty._
-  import dotty.tools.dotc.quoted.QuoteContextImpl
+  import scala.quoted.internal.impl.QuoteContextImpl
 
 
   val parser: Parser = null

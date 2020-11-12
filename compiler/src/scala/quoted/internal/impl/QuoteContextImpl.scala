@@ -1,4 +1,5 @@
-package dotty.tools.dotc.quoted
+package scala.quoted
+package internal.impl
 
 import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
@@ -13,9 +14,11 @@ import dotty.tools.dotc.quoted.reflect._
 import dotty.tools.dotc.quoted.QuoteUtils._
 import dotty.tools.dotc.core.Decorators._
 
-import scala.quoted.QuoteContext
+import dotty.tools.dotc.quoted.{MacroExpansion, PickledQuotes, QuoteUtils}
+
 import scala.quoted.internal.{QuoteUnpickler, QuoteMatching}
-import dotty.tools.dotc.quoted.printers.{Extractors, SourceCode, SyntaxHighlight}
+import scala.quoted.internal.impl.printers._
+
 
 import scala.tasty.reflect._
 
@@ -36,7 +39,7 @@ object QuoteContextImpl {
 
   // TODO Explore more fine grained scope ids.
   //      This id can only differentiate scope extrusion from one compiler instance to another.
-  private[dotty] def scopeId(using Context): ScopeId =
+  def scopeId(using Context): ScopeId =
     ctx.outersIterator.toList.last.hashCode()
 
 }
@@ -2708,7 +2711,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
         ctx1.gadt.addToConstraint(typeHoles)
         ctx1
 
-    val qctx1 = dotty.tools.dotc.quoted.QuoteContextImpl()(using ctx1)
+    val qctx1 = QuoteContextImpl()(using ctx1)
 
     val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1) {
       def patternHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole.asInstanceOf

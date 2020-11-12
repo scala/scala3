@@ -1,9 +1,8 @@
-package dotty.tools.dotc.quoted
+package scala.quoted
+package internal.impl
 
 import scala.annotation.internal.sharable
 import scala.annotation.{Annotation, compileTimeOnly}
-
-import scala.quoted._
 
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.

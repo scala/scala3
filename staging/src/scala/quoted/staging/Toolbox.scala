@@ -3,7 +3,7 @@ package staging
 
 import scala.annotation.implicitNotFound
 
-import dotty.tools.dotc.quoted.ScopeException
+import scala.quoted.internal.impl.ScopeException
 
 @implicitNotFound("Could not find implicit scala.quoted.staging.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `given scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)`\n\n")
 trait Toolbox:

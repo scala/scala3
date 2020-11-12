@@ -20,6 +20,8 @@ import dotty.tools.dotc.report
 import scala.reflect.ClassTag
 
 import scala.quoted.QuoteContext
+import scala.quoted.internal.impl._
+
 import scala.collection.mutable
 
 import QuoteUtils._
@@ -38,14 +40,14 @@ object PickledQuotes {
 
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(using Context): Tree = {
-    val expr1 = expr.asInstanceOf[dotty.tools.dotc.quoted.ExprImpl]
+    val expr1 = expr.asInstanceOf[ExprImpl]
     expr1.checkScopeId(QuoteContextImpl.scopeId)
     changeOwnerOfTree(expr1.tree, ctx.owner)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(tpe: quoted.Type[?])(using Context): Tree = {
-    val tpe1 = tpe.asInstanceOf[dotty.tools.dotc.quoted.TypeImpl]
+    val tpe1 = tpe.asInstanceOf[TypeImpl]
     tpe1.checkScopeId(QuoteContextImpl.scopeId)
     changeOwnerOfTree(tpe1.typeTree, ctx.owner)
   }
@@ -72,11 +74,11 @@ object PickledQuotes {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args) =>
           val reifiedArgs = args.map { arg =>
-            if (arg.isTerm) (using qctx: QuoteContext) => new dotty.tools.dotc.quoted.ExprImpl(arg, QuoteContextImpl.scopeId)
-            else new dotty.tools.dotc.quoted.TypeImpl(arg, QuoteContextImpl.scopeId)
+            if (arg.isTerm) (using qctx: QuoteContext) => new ExprImpl(arg, QuoteContextImpl.scopeId)
+            else new TypeImpl(arg, QuoteContextImpl.scopeId)
           }
           if isTerm then
-            val quotedExpr = termHole(idx, reifiedArgs, dotty.tools.dotc.quoted.QuoteContextImpl())
+            val quotedExpr = termHole(idx, reifiedArgs, QuoteContextImpl())
             val filled = PickledQuotes.quotedExprToTree(quotedExpr)
 
             // We need to make sure a hole is created with the source file of the surrounding context, even if
