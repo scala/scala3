@@ -7,6 +7,7 @@ describe('filter-bar', () => {
     const testTable: TestTable = [
       ['Visibility', ['public', 'protected']],
       ['Keywords', ['no keywords', 'abstract', 'case', 'final', 'sealed']],
+      ['Inherited', ['Not inherited', 'FilterTestBase', 'FilterTestBaseTrait']],
       ['Extension', ['Standard member', 'from tests']],
     ];
 
@@ -32,6 +33,7 @@ describe('filter-bar', () => {
     const testTable: TestTable = [
       ['Visibility', ['public', 'protected']],
       ['Keywords', ['no keywords']],
+      ['Inherited', ['Not inherited', 'FilterTestBase']],
       ['Extension', ['Standard member']],
     ];
 
@@ -71,7 +73,7 @@ describe('filter-bar', () => {
       });
 
       it(`'Standard member'`, () => {
-        new FilterBarFixture().toggle().group(2).toggleFilter('Standard member');
+        new FilterBarFixture().toggle().group(3).toggleFilter('Standard member');
 
         new TabsFixture().definitionTypes.should('not.be.visible');
       });
@@ -91,8 +93,17 @@ describe('filter-bar', () => {
         new TabsFixture().definitionTypes.should('not.be.visible');
       });
 
+      it('all inherited options', () => {
+        new FilterBarFixture()
+          .toggle()
+          .group(2)
+          .toggleFilter('Not inherited', 'FilterTestBase', 'FilterTestBaseTrait');
+
+        new TabsFixture().definitionTypes.should('not.be.visible');
+      });
+
       it('all extension options', () => {
-        new FilterBarFixture().toggle().group(2).toggleFilter('Standard member', 'from tests');
+        new FilterBarFixture().toggle().group(3).toggleFilter('Standard member', 'from tests');
 
         new TabsFixture().definitionTypes.should('not.be.visible');
       });
@@ -288,7 +299,7 @@ class BatchSelectionFixture {
 }
 
 function openPage() {
-  cy.visit('http://localhost:8080/testcases/api/tests/-filter-test/index.html');
+  cy.visit('http://localhost:8080/testcases/-scala3doc%20testcases/tests/-filter-test/index.html');
 }
 
 type TestTable = [string, string[]][];
