@@ -8,7 +8,7 @@ object lib {
     import qctx.reflect._
     import util._
 
-    cond.unseal.underlyingArgument match {
+    cond.asReflectTree.underlyingArgument match {
       case t @ Apply(Select(lhs, op), Lambda(param :: Nil, Apply(Select(a, "=="), b :: Nil)) :: Nil)
       if a.symbol == param.symbol || b.symbol == param.symbol =>
         '{ scala.Predef.assert($cond) }

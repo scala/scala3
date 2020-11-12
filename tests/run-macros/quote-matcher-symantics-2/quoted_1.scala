@@ -39,7 +39,7 @@ object Macros {
 
       case _ =>
         import qctx.reflect._
-        Reporting.error("Expected explicit DSL " + e.show, e.unseal.pos)
+        Reporting.error("Expected explicit DSL " + e.show, e.asReflectTree.pos)
         ???
     }
 
@@ -53,7 +53,7 @@ object Macros {
         )
       case _ =>
         import qctx.reflect._
-        Reporting.error("Expected explicit DSL => DSL "  + e.show, e.unseal.pos)
+        Reporting.error("Expected explicit DSL => DSL "  + e.show, e.asReflectTree.pos)
         ???
     }
 
@@ -65,11 +65,11 @@ object Macros {
 object UnsafeExpr {
   def open[T1, R, X](f: Expr[T1 => R])(content: (Expr[R], [t] => Expr[t] => Expr[T1] => Expr[t]) => X)(using qctx: QuoteContext): X = {
     val (params, bodyExpr) = paramsAndBody[R](f)
-    content(bodyExpr, [t] => (e: Expr[t]) => (v: Expr[T1]) => bodyFn[t](e.unseal, params, List(v.unseal)).asExpr.asInstanceOf[Expr[t]])
+    content(bodyExpr, [t] => (e: Expr[t]) => (v: Expr[T1]) => bodyFn[t](e.asReflectTree, params, List(v.asReflectTree)).asExpr.asInstanceOf[Expr[t]])
   }
   private def paramsAndBody[R](using qctx: QuoteContext)(f: Expr[Any]): (List[qctx.reflect.ValDef], Expr[R]) = {
     import qctx.reflect._
-    val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.unseal.etaExpand
+    val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.asReflectTree.etaExpand
     (params, body.asExpr.asInstanceOf[Expr[R]])
   }
 

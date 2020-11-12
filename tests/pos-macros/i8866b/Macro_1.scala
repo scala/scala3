@@ -11,7 +11,7 @@ object Macro {
 
     ValDef.let(
       Select.unique(
-        '{ Other }.unseal,
+        '{ Other }.asReflectTree,
         "apply"
       )
     )(identity).asExprOf[Int]

@@ -25,7 +25,7 @@ object Macros {
       }
     }
 
-    val tree = x.unseal
+    val tree = x.asReflectTree
     traverser.traverseTree(tree)
     '{print(${Expr(buff.result())})}
   }

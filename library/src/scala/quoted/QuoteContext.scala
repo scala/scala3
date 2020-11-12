@@ -48,9 +48,6 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
       unlift.fromExpr(self)(using QuoteContext.this).getOrElse(reportError)
 
     /** View this expression `quoted.Expr[T]` as a `Term` */
-    def unseal: reflect.Term = self.asReflectTree // TODO remove
-
-    /** View this expression `quoted.Expr[T]` as a `Term` */
     def asReflectTree: reflect.Term
   end extension
 

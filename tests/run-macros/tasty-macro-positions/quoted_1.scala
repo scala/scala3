@@ -10,8 +10,8 @@ object Macros {
 
   def impl(x: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
-    val pos = x.unseal.underlyingArgument.pos
-    val code = x.unseal.underlyingArgument.show
+    val pos = x.asReflectTree.underlyingArgument.pos
+    val code = x.asReflectTree.underlyingArgument.show
     '{
       println(${posStr(qctx)(pos)})
       println(${Expr(code)})

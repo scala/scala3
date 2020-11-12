@@ -11,7 +11,7 @@ object FIntepolator {
 
   def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[String] = {
     import qctx.reflect._
-    Reporting.error("there are no parts", strCtxExpr.unseal.underlyingArgument.pos)
+    Reporting.error("there are no parts", strCtxExpr.asReflectTree.underlyingArgument.pos)
     '{ ($strCtxExpr).s($argsExpr: _*) }
   }
 
