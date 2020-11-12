@@ -323,7 +323,6 @@ class JSCodeGen()(using genCtx: Context) {
     // Generate members (constructor + methods)
 
     val generatedNonFieldMembers = new mutable.ListBuffer[js.MemberDef]
-    val exportedSymbols = new mutable.ListBuffer[Symbol]
 
     val tpl = td.rhs.asInstanceOf[Template]
     for (tree <- tpl.constr :: tpl.body) {
@@ -336,18 +335,10 @@ class JSCodeGen()(using genCtx: Context) {
         case dd: DefDef =>
           val sym = dd.symbol
 
-          val isExport = false //jsInterop.isExport(sym)
-
           if (sym.hasAnnotation(jsdefn.JSNativeAnnot))
             generatedNonFieldMembers += genJSNativeMemberDef(dd)
           else
             generatedNonFieldMembers ++= genMethod(dd)
-
-          if (isExport) {
-            // We add symbols that we have to export here. This way we also
-            // get inherited stuff that is implemented in this class.
-            exportedSymbols += sym
-          }
 
         case _ =>
           throw new FatalError("Illegal tree in body of genScalaClass(): " + tree)
@@ -357,21 +348,11 @@ class JSCodeGen()(using genCtx: Context) {
     // Generate fields and add to methods + ctors
     val generatedMembers = genClassFields(td) ++ generatedNonFieldMembers.toList
 
-    // Generate the exported members, constructors and accessors
-    val exports = {
-      /*
-      // Generate the exported members
-      val memberExports = genMemberExports(sym, exportedSymbols.toList)
+    // Generate member exports
+    val memberExports = jsExportsGen.genMemberExports(sym)
 
-      // Generate exported constructors or accessors
-      val exportedConstructorsOrAccessors =
-        if (isStaticModule(sym)) genModuleAccessorExports(sym)
-        else genConstructorExports(sym)
-
-      memberExports ++ exportedConstructorsOrAccessors
-      */
-      Nil
-    }
+    // Generate top-level export definitions
+    val topLevelExportDefs = jsExportsGen.genTopLevelExports(sym)
 
     // Static initializer
     val optStaticInitializer = {
@@ -383,20 +364,27 @@ class JSCodeGen()(using genCtx: Context) {
           }
         }
         if (enableReflectiveInstantiation)
-          genRegisterReflectiveInstantiation(sym)
+          genRegisterReflectiveInstantiation(sym).toList
         else
-          None
+          Nil
       }
 
-      val staticInitializerStats = reflectInit.toList
+      // Initialization of the module because of field exports
+      val needsStaticModuleInit =
+        topLevelExportDefs.exists(_.isInstanceOf[js.TopLevelFieldExportDef])
+      val staticModuleInit =
+        if (!needsStaticModuleInit) Nil
+        else List(genLoadModule(sym))
+
+      val staticInitializerStats = reflectInit ::: staticModuleInit
       if (staticInitializerStats.nonEmpty)
-        List(genStaticInitializerWithStats(js.Block(staticInitializerStats)))
+        List(genStaticConstructorWithStats(ir.Names.StaticInitializerName, js.Block(staticInitializerStats)))
       else
         Nil
     }
 
     val allMemberDefsExceptStaticForwarders =
-      generatedMembers ::: exports ::: optStaticInitializer
+      generatedMembers ::: memberExports ::: optStaticInitializer
 
     // Add static forwarders
     val allMemberDefs = if (!isCandidateForForwarders(sym)) {
@@ -452,7 +440,7 @@ class JSCodeGen()(using genCtx: Context) {
         None,
         None,
         hashedDefs,
-        Nil)(
+        topLevelExportDefs)(
         optimizerHints)
 
     classDefinition
@@ -511,6 +499,28 @@ class JSCodeGen()(using genCtx: Context) {
       }
     }
 
+    // Static members (exported from the companion object)
+    val staticMembers = {
+      val module = sym.companionModule
+      if (!module.exists) {
+        Nil
+      } else {
+        val companionModuleClass = module.moduleClass
+        val exports = withScopedVars(currentClassSym := companionModuleClass) {
+          jsExportsGen.genStaticExports(companionModuleClass)
+        }
+        if (exports.exists(_.isInstanceOf[js.JSFieldDef])) {
+          val classInitializer =
+            genStaticConstructorWithStats(ir.Names.ClassInitializerName, genLoadModule(companionModuleClass))
+          exports :+ classInitializer
+        } else {
+          exports
+        }
+      }
+    }
+
+    val topLevelExports = jsExportsGen.genTopLevelExports(sym)
+
     val (jsClassCaptures, generatedConstructor) =
       genJSClassCapturesAndConstructor(sym, constructorTrees.toList)
 
@@ -525,7 +535,8 @@ class JSCodeGen()(using genCtx: Context) {
       genClassFields(td) :::
       generatedConstructor ::
       jsExportsGen.genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) :::
-      generatedMethods.toList
+      generatedMethods.toList :::
+      staticMembers
     }
 
     // Hashed definitions of the class
@@ -546,7 +557,7 @@ class JSCodeGen()(using genCtx: Context) {
         jsSuperClass,
         None,
         hashedMemberDefs,
-        Nil)(
+        topLevelExports)(
         OptimizerHints.empty)
 
     classDefinition
@@ -785,10 +796,15 @@ class JSCodeGen()(using genCtx: Context) {
       !f.isOneOf(Method | Module) && f.isTerm
         && !f.hasAnnotation(jsdefn.JSNativeAnnot)
         && !f.hasAnnotation(jsdefn.JSOptionalAnnot)
+        && !f.hasAnnotation(jsdefn.JSExportStaticAnnot)
     }.flatMap({ f =>
       implicit val pos = f.span
 
-      val isStaticField = f.is(JavaStatic).ensuring(isStatic => !(isStatic && isJSClass))
+      val isTopLevelExport = f.hasAnnotation(jsdefn.JSExportTopLevelAnnot)
+      val isJavaStatic = f.is(JavaStatic)
+      assert(!(isTopLevelExport && isJavaStatic),
+          em"found ${f.fullName} which is both a top-level export and a Java static")
+      val isStaticField = isTopLevelExport || isJavaStatic
 
       val namespace = if isStaticField then js.MemberNamespace.PublicStatic else js.MemberNamespace.Public
       val mutable = isStaticField || f.is(Mutable)
@@ -797,6 +813,7 @@ class JSCodeGen()(using genCtx: Context) {
 
       val irTpe =
         if (isJSClass) genExposedFieldIRType(f)
+        else if (isTopLevelExport) jstpe.AnyType
         else toIRType(f.info)
 
       if (isJSClass && f.isJSExposed)
@@ -806,7 +823,7 @@ class JSCodeGen()(using genCtx: Context) {
         val originalName = originalNameOfField(f)
         val fieldDef = js.FieldDef(flags, fieldIdent, originalName, irTpe)
         val optionalStaticFieldGetter =
-          if isStaticField then
+          if isJavaStatic then
             // Here we are generating a public static getter for the static field,
             // this is its API for other units. This is necessary for singleton
             // enum values, which are backed by static fields.
@@ -824,7 +841,7 @@ class JSCodeGen()(using genCtx: Context) {
     }).toList
   }
 
-  private def genExposedFieldIRType(f: Symbol): jstpe.Type = {
+  def genExposedFieldIRType(f: Symbol): jstpe.Type = {
     val tpeEnteringPosterasure = atPhase(elimErasedValueTypePhase)(f.info)
     tpeEnteringPosterasure match {
       case tpe: ErasedValueType =>
@@ -850,11 +867,11 @@ class JSCodeGen()(using genCtx: Context) {
 
   // Static initializers -----------------------------------------------------
 
-  private def genStaticInitializerWithStats(stats: js.Tree)(
+  private def genStaticConstructorWithStats(name: MethodName, stats: js.Tree)(
       implicit pos: Position): js.MethodDef = {
     js.MethodDef(
         js.MemberFlags.empty.withNamespace(js.MemberNamespace.StaticConstructor),
-        js.MethodIdent(ir.Names.StaticInitializerName),
+        js.MethodIdent(name),
         NoOriginalName,
         Nil,
         jstpe.NoType,
@@ -3916,19 +3933,17 @@ class JSCodeGen()(using genCtx: Context) {
       }
 
       (f, true)
-    } else /*if (jsInterop.topLevelExportsOf(sym).nonEmpty) {
-      val f = js.SelectStatic(encodeClassName(sym.owner),
-          encodeFieldSym(sym))(jstpe.AnyType)
+    } else if (sym.hasAnnotation(jsdefn.JSExportTopLevelAnnot)) {
+      val f = js.SelectStatic(encodeClassName(sym.owner), encodeFieldSym(sym))(jstpe.AnyType)
       (f, true)
-    } else if (jsInterop.staticExportsOf(sym).nonEmpty) {
-      val exportInfo = jsInterop.staticExportsOf(sym).head
-      val companionClass = patchedLinkedClassOfClass(sym.owner)
-      val f = js.JSSelect(
-          genLoadJSConstructor(companionClass),
-          js.StringLiteral(exportInfo.jsName))
-
+    } else if (sym.hasAnnotation(jsdefn.JSExportStaticAnnot)) {
+      val jsName = sym.getAnnotation(jsdefn.JSExportStaticAnnot).get.argumentConstantString(0).getOrElse {
+        sym.defaultJSName
+      }
+      val companionClass = sym.owner.linkedClass
+      val f = js.JSSelect(genLoadJSConstructor(companionClass), js.StringLiteral(jsName))
       (f, true)
-    } else*/ {
+    } else {
       val f =
         val className = encodeClassName(sym.owner)
         val fieldIdent = encodeFieldSym(sym)

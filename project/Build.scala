@@ -1078,7 +1078,7 @@ object Build {
       scalaJSModuleInitializers in Test ++= build.TestSuiteLinkerOptions.moduleInitializers,
 
       // Perform Ycheck after the Scala.js-specific transformation phases
-      scalacOptions += "-Ycheck:explicitJSClasses,addLocalJSFakeNews",
+      scalacOptions += "-Ycheck:prepjsinterop,explicitJSClasses,addLocalJSFakeNews",
 
       jsEnvInput in Test := {
         val resourceDir = fetchScalaJSSource.value / "test-suite/js/src/test/resources"
@@ -1124,10 +1124,6 @@ object Build {
       // Putting them here instead of above makes sure that we do not regress on compilation+linking.
       Test / testOptions += Tests.Filter { name =>
         !Set[String](
-          "org.scalajs.testsuite.jsinterop.AsyncTest", // needs JS exports in PromiseMock.scala
-          "org.scalajs.testsuite.jsinterop.ExportsTest", // JS exports
-          "org.scalajs.testsuite.jsinterop.JSExportStaticTest", // JS exports
-
           // Not investigated so far
           "org.scalajs.testsuite.junit.JUnitAbstractClassTestCheck",
           "org.scalajs.testsuite.junit.JUnitNamesTestCheck",

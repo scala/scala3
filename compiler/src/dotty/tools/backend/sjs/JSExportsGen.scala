@@ -22,18 +22,19 @@ import Types._
 import TypeErasure.ErasedValueType
 
 import dotty.tools.dotc.transform.Erasure
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.{SourcePosition, SrcPos}
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.report
 
 import org.scalajs.ir
 import org.scalajs.ir.{ClassKind, Position, Names => jsNames, Trees => js, Types => jstpe}
-import org.scalajs.ir.Names.{ClassName, MethodName, SimpleMethodName}
+import org.scalajs.ir.Names.{ClassName, DefaultModuleID, MethodName, SimpleMethodName}
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position.NoPosition
 import org.scalajs.ir.Trees.OptimizerHints
 
+import dotty.tools.dotc.transform.sjs.JSExportUtils._
 import dotty.tools.dotc.transform.sjs.JSSymUtils._
 
 import JSEncoding._
@@ -41,6 +42,254 @@ import JSEncoding._
 final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
   import jsCodeGen._
   import positionConversions._
+
+  /** Info for a non-member export. */
+  sealed trait ExportInfo {
+    val pos: SourcePosition
+  }
+
+  final case class TopLevelExportInfo(moduleID: String, jsName: String)(val pos: SourcePosition) extends ExportInfo
+  final case class StaticExportInfo(jsName: String)(val pos: SourcePosition) extends ExportInfo
+
+  private sealed trait ExportKind
+
+  private object ExportKind {
+    case object Module extends ExportKind
+    case object JSClass extends ExportKind
+    case object Constructor extends ExportKind
+    case object Method extends ExportKind
+    case object Property extends ExportKind
+    case object Field extends ExportKind
+
+    def apply(sym: Symbol): ExportKind = {
+      if (sym.is(Flags.Module) && sym.isStatic) Module
+      else if (sym.isClass) JSClass
+      else if (sym.isConstructor) Constructor
+      else if (!sym.is(Flags.Method)) Field
+      else if (sym.isJSProperty) Property
+      else Method
+    }
+  }
+
+  private def topLevelExportsOf(sym: Symbol): List[TopLevelExportInfo] = {
+    def isScalaClass(sym: Symbol): Boolean =
+      sym.isClass && !sym.isOneOf(Module | Trait) && !sym.isJSType
+
+    if (isScalaClass(sym)) {
+      // Scala classes are never exported; their constructors are
+      Nil
+    } else if (sym.is(Accessor) || sym.is(Module, butNot = ModuleClass)) {
+      /* - Accessors receive the `@JSExportTopLevel` annotation of their associated field,
+       *   but only the field is really exported.
+       * - Module values are not exported; their module class takes care of the export.
+       */
+      Nil
+    } else {
+      val symForAnnot =
+        if (sym.isConstructor && isScalaClass(sym.owner)) sym.owner
+        else sym
+
+      symForAnnot.annotations.collect {
+        case annot if annot.symbol == jsdefn.JSExportTopLevelAnnot =>
+          val jsName = annot.argumentConstantString(0).get
+          val moduleID = annot.argumentConstantString(1).getOrElse(DefaultModuleID)
+          TopLevelExportInfo(moduleID, jsName)(annot.tree.sourcePos)
+      }
+    }
+  }
+
+  private def staticExportsOf(sym: Symbol): List[StaticExportInfo] = {
+    if (sym.is(Accessor)) {
+      Nil
+    } else {
+      sym.annotations.collect {
+        case annot if annot.symbol == jsdefn.JSExportStaticAnnot =>
+          val jsName = annot.argumentConstantString(0).getOrElse {
+            sym.defaultJSName
+          }
+          StaticExportInfo(jsName)(annot.tree.sourcePos)
+      }
+    }
+  }
+
+  private def checkSameKind(tups: List[(ExportInfo, Symbol)]): Option[ExportKind] = {
+    assert(tups.nonEmpty, "must have at least one export")
+
+    val firstSym = tups.head._2
+    val overallKind = ExportKind(firstSym)
+    var bad = false
+
+    for ((info, sym) <- tups.tail) {
+      val kind = ExportKind(sym)
+
+      if (kind != overallKind) {
+        bad = true
+        report.error(
+            em"export overload conflicts with export of $firstSym: they are of different types ($kind / $overallKind)",
+            info.pos)
+      }
+    }
+
+    if (bad) None
+    else Some(overallKind)
+  }
+
+  private def checkSingleField(tups: List[(ExportInfo, Symbol)]): Symbol = {
+    assert(tups.nonEmpty, "must have at least one export")
+
+    val firstSym = tups.head._2
+
+    for ((info, _) <- tups.tail) {
+      report.error(
+          em"export overload conflicts with export of $firstSym: " +
+          "a field may not share its exported name with another export",
+          info.pos)
+    }
+
+    firstSym
+  }
+
+  def genTopLevelExports(classSym: ClassSymbol): List[js.TopLevelExportDef] = {
+    val exports = for {
+      sym <- classSym :: classSym.info.decls.toList
+      info <- topLevelExportsOf(sym)
+    } yield {
+      (info, sym)
+    }
+
+    (for {
+      (info, tups) <- exports.groupBy(_._1)
+      kind <- checkSameKind(tups)
+    } yield {
+      import ExportKind._
+
+      implicit val pos = info.pos
+
+      kind match {
+        case Module =>
+          js.TopLevelModuleExportDef(info.moduleID, info.jsName)
+
+        case JSClass =>
+          assert(classSym.isNonNativeJSClass, "found export on non-JS class")
+          js.TopLevelJSClassExportDef(info.moduleID, info.jsName)
+
+        case Constructor | Method =>
+          val exported = tups.map(t => Exported(t._2))
+
+          val methodDef = withNewLocalNameScope {
+            genExportMethod(exported, JSName.Literal(info.jsName), static = true)
+          }
+
+          js.TopLevelMethodExportDef(info.moduleID, methodDef)
+
+        case Property =>
+          throw new AssertionError("found top-level exported property")
+
+        case Field =>
+          val sym = checkSingleField(tups)
+          js.TopLevelFieldExportDef(info.moduleID, info.jsName, encodeFieldSym(sym))
+      }
+    }).toList
+  }
+
+  def genStaticExports(classSym: Symbol): List[js.MemberDef] = {
+    val exports = for {
+      sym <- classSym.info.decls.toList
+      info <- staticExportsOf(sym)
+    } yield {
+      (info, sym)
+    }
+
+    (for {
+      (info, tups) <- exports.groupBy(_._1)
+      kind <- checkSameKind(tups)
+    } yield {
+      def alts = tups.map(_._2)
+
+      implicit val pos = info.pos
+
+      import ExportKind._
+
+      kind match {
+        case Method =>
+          genMemberExportOrDispatcher(JSName.Literal(info.jsName), isProp = false, alts, static = true)
+
+        case Property =>
+          genMemberExportOrDispatcher(JSName.Literal(info.jsName), isProp = true, alts, static = true)
+
+        case Field =>
+          val sym = checkSingleField(tups)
+
+          // static fields must always be mutable
+          val flags = js.MemberFlags.empty
+            .withNamespace(js.MemberNamespace.PublicStatic)
+            .withMutable(true)
+          val name = js.StringLiteral(info.jsName)
+          val irTpe = genExposedFieldIRType(sym)
+          js.JSFieldDef(flags, name, irTpe)
+
+        case kind =>
+          throw new AssertionError(s"unexpected static export kind: $kind")
+      }
+    }).toList
+  }
+
+  /** Generates exported methods and properties for a class.
+   *
+   *  @param classSym symbol of the class we export for
+   */
+  def genMemberExports(classSym: ClassSymbol): List[js.MemberDef] = {
+    val classInfo = classSym.info
+    val allExports = classInfo.memberDenots(takeAllFilter, { (name, buf) =>
+      if (isExportName(name))
+        buf ++= classInfo.member(name).alternatives
+    })
+
+    val newlyDeclaredExports = if (classSym.superClass == NoSymbol) {
+      allExports
+    } else {
+      allExports.filterNot { denot =>
+        classSym.superClass.info.member(denot.name).hasAltWith(_.info =:= denot.info)
+      }
+    }
+
+    val newlyDeclaredExportNames = newlyDeclaredExports.map(_.name.toTermName).toList.distinct
+
+    newlyDeclaredExportNames.map(genMemberExport(classSym, _))
+  }
+
+  private def genMemberExport(classSym: ClassSymbol, name: TermName): js.MemberDef = {
+    /* This used to be `.member(name)`, but it caused #3538, since we were
+     * sometimes selecting mixin forwarders, whose type history does not go
+     * far enough back in time to see varargs. We now explicitly exclude
+     * mixed-in members in addition to bridge methods (the latter are always
+     * excluded by `.member(name)`).
+     */
+    val alts = classSym
+      .findMemberNoShadowingBasedOnFlags(name, classSym.appliedRef, required = Method, excluded = Bridge | MixedIn)
+      .alternatives
+
+    assert(!alts.isEmpty,
+        em"Ended up with no alternatives for ${classSym.fullName}::$name. " +
+        em"Original set was ${alts} with types ${alts.map(_.info)}")
+
+    val (jsName, isProp) = exportNameInfo(name)
+
+    // Check if we have a conflicting export of the other kind
+    val conflicting = classSym.info.member(makeExportName(jsName, !isProp))
+
+    if (conflicting.exists) {
+      val kind = if (isProp) "property" else "method"
+      val conflictingMember = conflicting.alternatives.head.symbol.fullName
+      val errorPos: SrcPos = alts.map(_.symbol).filter(_.owner == classSym) match {
+        case Nil         => classSym
+        case altsInClass => altsInClass.minBy(_.span.point)
+      }
+      report.error(em"Exported $kind $jsName conflicts with $conflictingMember", errorPos)
+    }
+
+    genMemberExportOrDispatcher(JSName.Literal(jsName), isProp, alts.map(_.symbol), static = false)
+  }
 
   def genJSClassDispatchers(classSym: Symbol, dispatchMethodsNames: List[JSName]): List[js.MemberDef] = {
     dispatchMethodsNames.map(genJSClassDispatcher(classSym, _))
@@ -566,7 +815,9 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
     def apply(methodSym: Symbol, infoAtElimRepeated: Type, infoAtElimEVT: Type,
         methodHasDefaultParams: Boolean, paramIndex: Int): ParamSpec = {
       val isRepeated = infoAtElimRepeated.isRepeatedParam
-      val info = if (isRepeated) infoAtElimRepeated.repeatedToSingle else infoAtElimEVT
+      val info =
+        if (isRepeated) atPhase(elimRepeatedPhase)(infoAtElimRepeated.repeatedToSingle.widenDealias)
+        else infoAtElimEVT
       val hasDefault = methodHasDefaultParams && defaultGetterDenot(methodSym, paramIndex).exists
       new ParamSpec(info, isRepeated, hasDefault)
     }

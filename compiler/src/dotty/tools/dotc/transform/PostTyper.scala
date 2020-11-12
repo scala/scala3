@@ -147,6 +147,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: ValOrDefDef if !tree.symbol.is(Synthetic) =>
           checkInferredWellFormed(tree.tpt)
           val sym = tree.symbol
+          if sym.is(Method) then
+            if sym.isSetter then
+              removeUnwantedAnnotations(sym, defn.SetterMetaAnnot, NoSymbol, keepIfNoRelevantAnnot = false)
+          else
+            if sym.is(Param) then
+              removeUnwantedAnnotations(sym, defn.ParamMetaAnnot, NoSymbol, keepIfNoRelevantAnnot = true)
+            else
+              removeUnwantedAnnotations(sym, defn.GetterMetaAnnot, defn.FieldMetaAnnot, keepIfNoRelevantAnnot = !sym.is(ParamAccessor))
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
             if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature)
                // Allow scala.reflect.materializeClassTag to be able to compile scala/reflect/package.scala
@@ -167,6 +175,18 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           // for inferred types if explicit types are already ill-formed
         => Checking.checkAppliedTypesIn(tree)
       case _ =>
+
+    private def removeUnwantedAnnotations(sym: Symbol, metaAnnotSym: Symbol,
+        metaAnnotSymBackup: Symbol, keepIfNoRelevantAnnot: Boolean)(using Context): Unit =
+      def shouldKeep(annot: Annotation): Boolean =
+        val annotSym = annot.symbol
+        annotSym.hasAnnotation(metaAnnotSym)
+          || annotSym.hasAnnotation(metaAnnotSymBackup)
+          || (keepIfNoRelevantAnnot && {
+            !annotSym.annotations.exists(metaAnnot => defn.FieldAccessorMetaAnnots.contains(metaAnnot.symbol))
+          })
+      if sym.annotations.nonEmpty then
+        sym.filterAnnotations(shouldKeep(_))
 
     private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
       val qual = tree.qualifier
