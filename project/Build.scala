@@ -56,14 +56,14 @@ object Build {
   val referenceVersion = "3.0.0-M2-bin-20201108-3938388-NIGHTLY"
 
   val baseVersion = "3.0.0-M2"
-  val baseSbtDottyVersion = "0.4.6"
+  val baseSbtDottyVersion = "0.4.7"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
   val publishedDottyVersion = referenceVersion
-  val publishedSbtDottyVersion = "0.4.5"
+  val publishedSbtDottyVersion = "0.4.6"
 
   /** scala-library version required to compile Dotty.
    *
