@@ -764,7 +764,7 @@ class Typer extends Namer
             TypeComparer.constrainPatternType(tpt1.tpe, pt)
           }
         // special case for an abstract type that comes with a class tag
-        tryWithClassTag(ascription(tpt1, isWildcard = true), pt)
+        tryWithTypeTest(ascription(tpt1, isWildcard = true), pt)
       }
       cases(
         ifPat = handlePattern,
@@ -773,21 +773,28 @@ class Typer extends Namer
     }
   }
 
-  /** For a typed tree `e: T`, if `T` is an abstract type for which an implicit class tag `ctag`
-   *  exists, rewrite to `ctag(e)`.
+  /** For a typed tree `e: T`, if `T` is an abstract type for which an implicit type test or class tag `tt`
+   *  exists, rewrite to `tt(e)`.
    *  @pre We are in pattern-matching mode (Mode.Pattern)
    */
-  def tryWithClassTag(tree: Typed, pt: Type)(using Context): Tree = tree.tpt.tpe.dealias match {
+  def tryWithTypeTest(tree: Typed, pt: Type)(using Context): Tree = tree.tpt.tpe.dealias match {
     case tref: TypeRef if !tref.symbol.isClass && !ctx.isAfterTyper && !(tref =:= pt) =>
-      require(ctx.mode.is(Mode.Pattern))
-      withoutMode(Mode.Pattern)(
-        inferImplicit(defn.ClassTagClass.typeRef.appliedTo(tref), EmptyTree, tree.tpt.span)
-      ) match {
-        case SearchSuccess(clsTag, _, _) =>
-          typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt)
-        case _ =>
-          tree
+      def withTag(tpe: Type): Option[Tree] = {
+        require(ctx.mode.is(Mode.Pattern))
+        withoutMode(Mode.Pattern)(
+          inferImplicit(tpe, EmptyTree, tree.tpt.span)
+        ) match
+          case SearchSuccess(clsTag, _, _) =>
+            Some(typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt))
+          case _ =>
+            None
       }
+      val tag = withTag(defn.TypeTestClass.typeRef.appliedTo(pt, tref))
+        .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tref)))
+        .getOrElse(tree)
+      if tag.symbol.owner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.`3.1`) then
+        report.warning("Use of ClassTag for type testing may be unsound. Consider using `reflect.Typable` instead.", tree.srcPos)
+      tag
     case _ => tree
   }
 
@@ -1835,10 +1842,10 @@ class Typer extends Namer
     val body1 = typed(tree.body, pt)
     body1 match {
       case UnApply(fn, Nil, arg :: Nil)
-      if fn.symbol.exists && fn.symbol.owner == defn.ClassTagClass && !body1.tpe.isError =>
-        // A typed pattern `x @ (e: T)` with an implicit `ctag: ClassTag[T]`
-        // was rewritten to `x @ ctag(e)` by `tryWithClassTag`.
-        // Rewrite further to `ctag(x @ e)`
+      if fn.symbol.exists && (fn.symbol.owner.derivesFrom(defn.TypeTestClass) || fn.symbol.owner == defn.ClassTagClass) && !body1.tpe.isError =>
+        // A typed pattern `x @ (e: T)` with an implicit `tt: TypeTest[T]` or `ctag: ClassTag[T]`
+        // was rewritten to `x @ tt(e)` `x @ ctag(e)` by `tryWithTypeTest`.
+        // Rewrite further to `tt(x @ e)` or `ctag(x @ e)`
         tpd.cpy.UnApply(body1)(fn, Nil,
             typed(untpd.Bind(tree.name, untpd.TypedSplice(arg)).withSpan(tree.span), arg.tpe) :: Nil)
       case _ =>

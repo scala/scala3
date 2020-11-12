@@ -790,6 +790,8 @@ class Definitions {
   @tu lazy val ClassTagModule: Symbol = ClassTagClass.companionModule
     @tu lazy val ClassTagModule_apply: Symbol = ClassTagModule.requiredMethod(nme.apply)
 
+  @tu lazy val TypeTestClass: ClassSymbol = requiredClass("scala.reflect.TypeTest")
+  @tu lazy val TypeTestModule_identity: Symbol = TypeTestClass.companionModule.requiredMethod(nme.identity)
 
   @tu lazy val QuotedExprClass: ClassSymbol = requiredClass("scala.quoted.Expr")
   @tu lazy val QuotedExprModule: Symbol = QuotedExprClass.companionModule
