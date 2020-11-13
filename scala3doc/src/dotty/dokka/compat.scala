@@ -11,6 +11,8 @@ import org.jetbrains.dokka.model.properties.ExtraProperty
 // import java.util.Stream // TODO reproduction uncomment
 import java.util.stream.Stream // comment out - wrong error!
 import java.util.stream.Collectors
+import org.jetbrains.dokka.plugability._
+import kotlin.jvm.JvmClassMappingKt.getKotlinClass
 
 def mkDRI(packageName: String = null, extra: String = null) = new DRI(packageName, null, null, PointingToDeclaration.INSTANCE, extra)
 
@@ -57,3 +59,15 @@ extension [V] (map: JMap[SourceSetWrapper, V]):
 extension [V](jlist: JList[V]):
   def ++ (other: JList[V]): JList[V] =
     Stream.of(jlist, other).flatMap(_.stream).collect(Collectors.toList())
+
+object PluginUtils:
+    import scala.reflect.ClassTag
+    import scala.reflect._
+    def plugin[T <: DokkaPlugin: ClassTag](ctx: DokkaContext) = 
+      ctx.plugin[T](getKotlinClass(implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]))
+
+    def query[T <: DokkaPlugin: ClassTag, E](ctx: DokkaContext, queryFunction: (T) => ExtensionPoint[E]): List[E] = 
+        ctx.get(queryFunction(plugin[T](ctx))).asScala.toList
+
+    def querySingle[T <: DokkaPlugin: ClassTag, E](ctx: DokkaContext, queryFunction: (T) => ExtensionPoint[E]): E = 
+        ctx.single(queryFunction(plugin[T](ctx)))

@@ -23,6 +23,7 @@ import org.jetbrains.dokka.base.resolvers.local.LocationProvider
 import dotty.dokka.site.StaticPageNode
 import dotty.dokka.site.PartiallyRenderedContent
 import scala.util.Try
+import org.jetbrains.dokka.base.renderers.html.SearchbarDataInstaller
 
 class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
   def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
@@ -41,6 +42,14 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
   def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
 
 class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
+
+  // TODO #239
+  val hackScalaSearchbarDataInstaller: SearchbarDataInstaller = {
+    val f = classOf[HtmlRenderer].getDeclaredField("searchbarDataInstaller")
+    f.setAccessible(true)
+    f.set(this, ScalaSearchbarDataInstaller(ctx))
+    f.get(this).asInstanceOf[ScalaSearchbarDataInstaller]
+  }
 
   // Implementation below is based on Kotlin bytecode and we will try to migrate it to dokka
   // TODO (https://github.com/lampepfl/scala3doc/issues/232): Move this method to dokka
