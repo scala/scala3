@@ -3,8 +3,6 @@ package config
 
 import java.nio.file.{Files, Paths}
 
-import org.jline.terminal.TerminalBuilder
-
 import Settings._
 import core.Contexts._
 import Properties._
@@ -69,14 +67,22 @@ object CompilerCommand {
   def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using Context): List[String] = {
     val settings = ctx.settings
 
-    /** Creates a help message for a subset of options based on cond;
-     *  terminalWidth = 0 means no terminal is available.
-     */
-    def availableOptionsMsg(cond: Setting[?] => Boolean, terminalWidth: Int = 0): String = {
+    /** Creates a help message for a subset of options based on cond */
+    def availableOptionsMsg(cond: Setting[?] => Boolean): String = {
       val ss = (settings.allSettings filter cond).toList sortBy (_.name)
       val maxNameWidth = 30
       val nameWidths = ss.map(_.name.length).partition(_ < maxNameWidth)._1
-      val width = if nameWidths.nonEmpty then nameWidths.max else maxNameWidth 
+      val width = if nameWidths.nonEmpty then nameWidths.max else maxNameWidth
+      val terminalWidth =
+        val pageWidth = settings.pageWidth.value
+        val columnsVar = System.getenv("COLUMNS")
+        if columnsVar != null then columnsVar.toInt
+        else if Properties.isWin then
+          val ansiconVar = System.getenv("ANSICON") // eg. "142x32766 (142x26)"
+          if ansiconVar != null && ansiconVar.matches("[0-9]+x.*") then
+            ansiconVar.substring(0, ansiconVar.indexOf("x")).toInt
+          else pageWidth
+        else pageWidth
       val (nameWidth, descriptionWidth) = {
         val w1 =
           if width < maxNameWidth then width
@@ -124,14 +130,8 @@ object CompilerCommand {
         Some(explainAdvanced) filter (_ => shouldExplain),
         Some(label + " options include:")
       ).flatten mkString "\n"
-      try
-        // Use terminal width if terminal is available (see repl.JLineTerminal)
-        val terminal = TerminalBuilder.builder().dumb(false).build()
-        val usageMsg = prefix + "\n" + availableOptionsMsg(cond, terminal.getWidth)
-        terminal.close()
-        usageMsg
-      catch _ =>
-        prefix + "\n" + availableOptionsMsg(cond)
+
+      prefix + "\n" + availableOptionsMsg(cond)
     }
 
     def isStandard(s: Setting[?]): Boolean = !isAdvanced(s) && !isPrivate(s)
