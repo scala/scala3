@@ -57,7 +57,7 @@ trait ClassLikeSupport:
 
       val graph = HierarchyGraph.withEdges(getSupertypesGraph(classDef, LinkToType(selfSiangture, classDef.symbol.dri, kindForClasslike(classDef.symbol))))
       val baseExtra = PropertyContainer.Companion.empty()
-            .plus(ClasslikeExtension(classDef.getConstructorMethod, classDef.getCompanion))
+            .plus(ClasslikeExtension(classDef.getConstructorMethod(), classDef.getCompanion))
             .plus(MemberExtension(
               classDef.symbol.getVisibility(),
               modifiers,
@@ -111,9 +111,13 @@ trait ClassLikeSupport:
           val target = ExtensionTarget(extSym.symbol.name, extSym.tpt.dokkaType.asSignature, extSym.tpt.symbol.dri)
           parseMethod(dd.symbol, kind = Kind.Extension(target))
         }
-
+      // TODO check given methods?
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven =>
-        Some(parseMethod(dd.symbol, kind = Kind.Given(getGivenInstance(dd).map(_.asSignature), None))) // TODO check given methods?
+        Some(dd.symbol.owner.typeMember(dd.name))
+          .filterNot(_.exists)
+          .map { _ =>
+            parseMethod(dd.symbol, kind = Kind.Given(getGivenInstance(dd).map(_.asSignature), None))
+          }
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isGiven && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod =>
         Some(parseMethod(dd.symbol))
@@ -121,14 +125,40 @@ trait ClassLikeSupport:
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
         Some(parseTypeDef(td))
 
+      case vd: ValDef if !isSyntheticField(vd.symbol) 
+        && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) 
+        && vd.symbol.isGiven => 
+          val classDef = Some(vd.tpt.tpe).flatMap(_.classSymbol.map(_.tree.asInstanceOf[ClassDef]))
+          Some(classDef.filter(_.symbol.flags.is(Flags.ModuleClass)).fold[Member](parseValDef(vd))(parseGivenClasslike(_)))
+
       case vd: ValDef if !isSyntheticField(vd.symbol) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) =>
         Some(parseValDef(vd))
+
+      case c: ClassDef if c.symbol.owner.method(c.name).exists(_.flags.is(Flags.Given)) =>
+        Some(parseGivenClasslike(c))
 
       case c: ClassDef if c.symbol.shouldDocumentClasslike &&  !c.symbol.isGiven =>
         Some(parseClasslike(c))
 
       case _ => None
   )
+
+  private def parseGivenClasslike(c: ClassDef): Member = {
+    val parsedClasslike = parseClasslike(c)
+    val parentTpe = c.parents(0) match {
+      case t: TypeTree => Some(t.tpe)
+      case _ => None
+    }
+    val modifiedClasslikeExtension = ClasslikeExtension.getFrom(parsedClasslike).map(_.copy(
+        constructor = c.getConstructorMethod(Some(_ => "using "))
+      )
+    ).get
+    parsedClasslike.withNewExtras(
+      parsedClasslike.getExtra.plus(modifiedClasslikeExtension)
+    ).withKind(
+      Kind.Given(parsedClasslike.directParents.headOption, parentTpe.flatMap(extractImplicitConversion))
+    )
+  }
 
   private def parseInheritedMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
     case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
@@ -178,9 +208,9 @@ trait ClassLikeSupport:
       .filterNot(_.isHiddenByVisibility)
       .map(_.dri)
 
-    def getConstructorMethod: Option[DFunction] =
+    def getConstructorMethod(paramModifierFunc: Option[Symbol => String] = None): Option[DFunction] =
       Some(c.constructor.symbol).filter(_.exists).filterNot(_.isHiddenByVisibility).map( d =>
-        parseMethod(d, constructorWithoutParamLists(c), s => c.getParameterModifier(s))
+        parseMethod(d, constructorWithoutParamLists(c), paramModifierFunc.getOrElse(s => c.getParameterModifier(s)))
       )
 
   def parseClasslike(classDef: ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass = classDef match
@@ -238,6 +268,7 @@ trait ClassLikeSupport:
     val name = methodKind match
       case Kind.Constructor => "this"
       case Kind.Given(_, _) => methodSymbol.name.stripPrefix("given_")
+      case Kind.Extension(_) => methodSymbol.name.stripPrefix("extension_")
       case _ => methodSymbol.name
 
     new DFunction(
@@ -333,18 +364,10 @@ trait ClassLikeSupport:
     )
 
   def parseValDef(valDef: ValDef): DProperty =
-    def givenInstance = Some(valDef.symbol.moduleClass)
-        .filter(_.exists)
-        .map(_.tree.asInstanceOf[ClassDef])
-        .flatMap(_.getParents.headOption)
-        .map(_.dokkaType.asSignature)
-
     def defaultKind = if valDef.symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val
-    val kind =
-      if valDef.symbol.isGiven then Kind.Given(givenInstance, extractImplicitConversion(valDef.tpt.tpe))
-      else if valDef.symbol.flags.is(Flags.Implicit) then
+    val kind = if valDef.symbol.flags.is(Flags.Implicit) then
         Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
-      else defaultKind
+        else defaultKind
 
     new DProperty(
       valDef.symbol.dri,
