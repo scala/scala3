@@ -28,6 +28,11 @@ package object compiletime {
    *  ```scala
    *  error(code"My error of this code: ${println("foo")}")
    *  ```
+   *  or
+   *  ```scala
+   *  inline def errorOnThisCode(inline x: Any) =
+   *    error(code"My error of this code: $x")
+   *  ```
    */
   inline def error(inline msg: String): Nothing = ???
 
@@ -35,7 +40,7 @@ package object compiletime {
    /** Returns the string representation of interpolated elaborated code:
     *
     *  ```scala
-    *  inline def logged(p1: => Any) = {
+    *  inline def logged(inline p1: Any) = {
     *    val c = code"code: $p1"
     *    val res = p1
     *    (c, p1)
@@ -45,11 +50,15 @@ package object compiletime {
     *  // ("code: scala.Predef.identity("foo")", identity("foo"))
     *  ```
     *
-    * @note only by-name arguments will be displayed as "code".
+    *  The formatting of the code is not stable across version of the compiler.
+    *
+    * @note only `inline` arguments will be displayed as "code".
     *       Other values may display unintutively.
     */
     transparent inline def code (inline args: Any*): String =
-      ${ dotty.internal.CompileTimeMacros.codeExpr('self, 'args) }
+      // implemented in dotty.tools.dotc.typer.Inliner.Intrinsics
+      error("Compiler bug: `code` was not evaluated by the compiler")
+
   end extension
 
   /** Checks at compiletime that the provided values is a constant after
@@ -66,18 +75,24 @@ package object compiletime {
    *  twice(m) // error: expected a constant value but found: m
    *  ```
    */
-  inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | Double | Char | String): Unit = ()
+  inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | Double | Char | String): Unit =
+    // implemented in dotty.tools.dotc.typer.Inliner
+    error("Compiler bug: `requireConst` was not evaluated by the compiler")
 
   /** Same as `constValue` but returns a `None` if a constant value
    *  cannot be constructed from the provided type. Otherwise returns
    *  that value wrapped in `Some`.
    */
-  inline def constValueOpt[T]: Option[T] = ???
+  inline def constValueOpt[T]: Option[T] =
+    // implemented in dotty.tools.dotc.typer.Inliner
+    error("Compiler bug: `constValueOpt` was not evaluated by the compiler")
 
   /** Given a constant, singleton type `T`, convert it to a value
    *  of the same singleton type. For example: `assert(constValue[1] == 1)`.
    */
-  inline def constValue[T]: T = ???
+  inline def constValue[T]: T =
+    // implemented in dotty.tools.dotc.typer.Inliner
+    error("Compiler bug: `constValue` was not evaluated by the compiler")
 
   /** Given a tuple type `(X1, ..., Xn)`, returns a tuple value
    *  `(constValue[X1], ..., constValue[Xn])`.
@@ -104,8 +119,8 @@ package object compiletime {
    *
    *  the returned value would be `2`.
    */
-  transparent inline def summonFrom[T](f: Nothing => T): T = ???
-
+  transparent inline def summonFrom[T](f: Nothing => T): T =
+    error("Compiler bug: `summonFrom` was not evaluated by the compiler")
 
   /** Summon a given value of type `T`. Usually, the argument is not passed explicitly.
    *  The summoning is delayed until the call has been fully inlined.

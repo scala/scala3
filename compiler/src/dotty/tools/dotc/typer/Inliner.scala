@@ -332,6 +332,32 @@ object Inliner {
     def typeCheckErrors(tree: Tree)(using Context): Tree =
       val errors = compileForErrors(tree, false)
       packErrors(errors)
+
+    def code(strCtx: Tree, argsTree: Tree, pos: SrcPos)(using Context): Tree =
+      object Consts:
+        def unapply(trees: List[Tree]): Option[List[String]] =
+          trees match
+            case Nil => Some(Nil)
+            case Literal(Constant(part: String)) :: Consts(rest) => Some(part :: rest)
+            case _ => None
+      strCtx match
+        case Apply(stringContextApply, List(Typed(SeqLiteral(Consts(parts), _), _)))
+        if stringContextApply.symbol == defn.StringContextModule_apply =>
+          argsTree match
+            case Typed(SeqLiteral(args, _), _) =>
+              if parts.size == args.size + 1 then
+                val argStrs = args.map(_.show)
+                val showed = StringContext(parts: _*).s(argStrs: _*)
+                Literal(Constant(showed)).withSpan(pos.span)
+              else
+                report.error("Wrong number of arguments for StringContext.s", strCtx.srcPos)
+                ref(defn.Predef_undefined)
+            case _ =>
+              report.error("Exprected explicit arguments to code", strCtx.srcPos)
+              ref(defn.Predef_undefined)
+        case _ =>
+          report.error("Exprected StringContext.apply with explicit `parts` arguments", strCtx.srcPos)
+          ref(defn.Predef_undefined)
   }
 }
 
@@ -622,6 +648,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         arg match
           case ConstantValue(_) | Inlined(_, Nil, Typed(ConstantValue(_), _)) => // ok
           case _ => report.error(em"expected a constant value but found: $arg", arg.srcPos)
+        return Literal(Constant(())).withSpan(sourcePos.span)
+      case (strCtx :: Nil) :: (args :: Nil) :: Nil if inlinedMethod == defn.Compiletime_code =>
+        return Intrinsics.code(strCtx, args, call.srcPos)
       case _ =>
 
   	// Special handling of `constValue[T]` and `constValueOpt[T]`
