@@ -64,15 +64,15 @@ case class TemplateFile(
     val layoutTemplate = layout.map(name =>
       ctx.layouts.getOrElse(name, throw new RuntimeException(s"No layouts named $name in ${ctx.layouts}")))
 
-    def asJavaElement(k: String, v: Object): Object = v match 
+    def asJavaElement(o: Object): Object = o match 
       case m: Map[_, _] => m.transform {
-        case (k: String, v: Object) => asJavaElement(k, v)
+        case (k: String, v: Object) => asJavaElement(v)
       }.asJava
-      case l: List[_] => l.asJava
+      case l: List[_] => l.map(x => asJavaElement(x.asInstanceOf[Object])).asJava
       case other => other
 
     // Library requires mutable maps..
-    val mutableProperties = HMap(ctx.properties.transform(asJavaElement).asJava)
+    val mutableProperties = HMap(ctx.properties.transform((_, v) => asJavaElement(v)).asJava)
     val rendered = Template.parse(this.rawCode).render(mutableProperties)
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else

@@ -24,6 +24,7 @@ import dotty.dokka.site.StaticPageNode
 import dotty.dokka.site.PartiallyRenderedContent
 import scala.util.Try
 import org.jetbrains.dokka.base.renderers.html.SearchbarDataInstaller
+import org.jsoup.Jsoup
 
 class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
   def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
@@ -257,7 +258,26 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
             .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
             .getOrElse(str)
 
-        withHtml(context, prc.procsesHtml(url => Try(URL(url)).fold(_ => processLocalLink(url), _ => url)))
+        val childrenContent = page.getChildren.asScala.collect {
+          case p: StaticPageNode => p.getContent.asInstanceOf[PartiallyRenderedContent]//.resolved.code
+        }
+
+        val html = prc.procsesHtml(url => Try(URL(url)).fold(_ => processLocalLink(url), _ => url))
+        val htmlAst = Jsoup.parse(html)
+
+        childrenContent.foreach { c =>
+          val code = Jsoup.parse(c.resolved.code)
+          val brief = code.select("p").first()
+          try {
+            val li = htmlAst.select(s"li:contains(${c.template.title})")
+            val div = li.select(s"div.excerpt")
+            div.html(brief.toString)
+          } catch {
+            _ =>
+          }
+        }
+
+        withHtml(context, htmlAst.toString)
       case content =>
         build(content, context, page, /*sourceSetRestriction=*/null)
 
