@@ -1429,13 +1429,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       end extension
     end BindMethodsImpl
 
-    type Unapply = tpd.UnApply
+    type Unapply = tpd.UnApply | tpd.Typed // tpd.Typed containing a tpd.UnApply as expression
 
     object UnapplyTypeTest extends TypeTest[Tree, Unapply]:
-      def unapply(x: Tree): Option[Unapply & x.type] = x match
-        case x: (tpd.UnApply & x.type) => Some(x)
-        case dotc.ast.Trees.Typed(pattern: tpd.UnApply, _) => Some(pattern.asInstanceOf[Unapply & x.type]) // FIXME return x
-        case _ => None
+      def unapply(x: Tree): Option[Unapply & x.type] =
+        x match // keep in sync with UnapplyMethodsImpl.selfUnApply
+          case x: (tpd.UnApply & x.type) => Some(x)
+          case x: (tpd.Typed & x.type) if x.expr.isInstanceOf[tpd.UnApply] => Some(x)
+          case _ => None
     end UnapplyTypeTest
 
     object Unapply extends UnapplyModule:
@@ -1447,10 +1448,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     object UnapplyMethodsImpl extends UnapplyMethods:
       extension (self: Unapply):
-        def fun: Term = self.fun
-        def implicits: List[Term] = self.implicits
-        def patterns: List[Tree] = effectivePatterns(self.patterns)
+        def fun: Term = selfUnApply(self).fun
+        def implicits: List[Term] = selfUnApply(self).implicits
+        def patterns: List[Tree] = effectivePatterns(selfUnApply(self).patterns)
       end extension
+      private def selfUnApply(self: Unapply): tpd.UnApply =
+        self match // keep in sync with UnapplyTypeTest
+          case self: tpd.UnApply => self
+          case self: tpd.Typed => self.expr.asInstanceOf[tpd.UnApply]
       private def effectivePatterns(patterns: List[Tree]): List[Tree] =
         patterns match
           case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems
