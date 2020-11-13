@@ -679,40 +679,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Block = tpd.Block
 
     val BlockTypeTest: TypeTest[Tree, Block] = new {
-      def unapply(x: Tree): Option[Block & x.type] =
-        normalizedLoops(x) match
-          case y: tpd.Block => Some(y.asInstanceOf[Block & x.type]) // FIXME return x
-          case _ => None
-
-      /** Normalizes non Blocks.
-       *  i) Put `while` loops in their own blocks: `{ def while$() = ...; while$() }`
-       *  ii) Put closures in their own blocks: `{ def anon$() = ...; closure(anon$, ...) }`
-       */
-      private def normalizedLoops(tree: tpd.Tree): tpd.Tree = tree match {
-        case block: tpd.Block if block.stats.size > 1 =>
-          def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
-            case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
-              tpd.Block(x :: Nil, y) :: normalizeInnerLoops(xs)
-            case x :: xs => x :: normalizeInnerLoops(xs)
-            case Nil => Nil
-          }
-          if (needsNormalization(block.expr)) {
-            val stats1 = normalizeInnerLoops(block.stats.init)
-            val normalLoop = tpd.Block(block.stats.last :: Nil, block.expr)
-            tpd.Block(stats1, normalLoop)
-          }
-          else {
-            val stats1 = normalizeInnerLoops(block.stats)
-            tpd.cpy.Block(block)(stats1, block.expr)
-          }
-        case _ => tree
-      }
-
-      /** If it is the second statement of a closure. See: `normalizedLoops` */
-      private def needsNormalization(tree: tpd.Tree): Boolean = tree match {
-        case _: tpd.Closure => true
-        case _ => false
-      }
+      def unapply(x: Tree): Option[Block & x.type] = x match
+        case x: (tpd.Block & x.type) => Some(x)
+        case _ => None
     }
 
     object Block extends BlockModule:
