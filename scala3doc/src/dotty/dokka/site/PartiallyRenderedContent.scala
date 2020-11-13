@@ -7,6 +7,7 @@ import org.jetbrains.dokka.pages.{ContentNode, DCI, Style}
 import org.jetbrains.dokka.base.resolvers.local.LocationProvider
 import com.vladsch.flexmark.convert.html.FlexmarkHtmlParser
 import org.jsoup.Jsoup
+import scala.collection.JavaConverters._
 
 case class PartiallyRenderedContent(
   template: TemplateFile,

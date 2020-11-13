@@ -78,12 +78,16 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
         if (indexes.size > 1)
           // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
           println(s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}")
-
         def loadIndexPage(): TemplateFile =
           val indexFiles = from.listFiles { file =>file.getName == "index.md" || file.getName == "index.html" }
           indexFiles.size match
             case 0 => emptyTemplate(from, from.getName)
-            case 1 => loadTemplateFile(indexFiles.head).copy(file = from)
+            case 1 => 
+              val index = loadTemplateFile(indexFiles.head)
+              index.copy(
+                file = from,
+                settings = index.settings ++ Map("site" -> Map("posts" -> children.map(_.templateFile.settings("page"))))
+              )
             case _ =>
               val msg = s"ERROR: Multiple index pages found under ${from.toPath}"
               throw new java.lang.RuntimeException(msg)
