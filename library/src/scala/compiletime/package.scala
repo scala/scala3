@@ -57,7 +57,7 @@ package object compiletime {
     */
     transparent inline def code (inline args: Any*): String =
       // implemented in dotty.tools.dotc.typer.Inliner.Intrinsics
-      error("`code` was not evaluated by the compiler")
+      error("Compiler bug: `code` was not evaluated by the compiler")
 
   end extension
 
@@ -77,7 +77,7 @@ package object compiletime {
    */
   inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | Double | Char | String): Unit =
     // implemented in dotty.tools.dotc.typer.Inliner
-    error("`requireConst` was not evaluated by the compiler")
+    error("Compiler bug: `requireConst` was not evaluated by the compiler")
 
   /** Same as `constValue` but returns a `None` if a constant value
    *  cannot be constructed from the provided type. Otherwise returns
@@ -85,14 +85,14 @@ package object compiletime {
    */
   inline def constValueOpt[T]: Option[T] =
     // implemented in dotty.tools.dotc.typer.Inliner
-    error("`constValueOpt` was not evaluated by the compiler")
+    error("Compiler bug: `constValueOpt` was not evaluated by the compiler")
 
   /** Given a constant, singleton type `T`, convert it to a value
    *  of the same singleton type. For example: `assert(constValue[1] == 1)`.
    */
   inline def constValue[T]: T =
     // implemented in dotty.tools.dotc.typer.Inliner
-    error("`constValue` was not evaluated by the compiler")
+    error("Compiler bug: `constValue` was not evaluated by the compiler")
 
   /** Given a tuple type `(X1, ..., Xn)`, returns a tuple value
    *  `(constValue[X1], ..., constValue[Xn])`.
@@ -120,7 +120,7 @@ package object compiletime {
    *  the returned value would be `2`.
    */
   transparent inline def summonFrom[T](f: Nothing => T): T =
-    error("`summonFrom` was not evaluated by the compiler")
+    error("Compiler bug: `summonFrom` was not evaluated by the compiler")
 
   /** Summon a given value of type `T`. Usually, the argument is not passed explicitly.
    *  The summoning is delayed until the call has been fully inlined.
