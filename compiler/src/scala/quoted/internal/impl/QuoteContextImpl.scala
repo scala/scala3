@@ -1309,19 +1309,15 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       end extension
     end TypeBlockMethodsImpl
 
-    type TypeBoundsTree = tpd.TypeBoundsTree
+    type TypeBoundsTree = tpd.TypeBoundsTree | tpd.TypeTree
 
     object TypeBoundsTreeTypeTest extends TypeTest[Tree, TypeBoundsTree]:
       def unapply(x: Tree): Option[TypeBoundsTree & x.type] = x match
         case x: (tpd.TypeBoundsTree & x.type) => Some(x)
-        case tpt @ tpd.TypeTree() =>
-          // TODO only enums generate this kind of type bounds. Is this possible without enums? If not generate tpd.TypeBoundsTree for enums instead
-          (tpt.tpe: Any) match {
-            case tpe: Types.TypeBounds =>
-              // FIXME return x.type
-              Some(tpd.TypeBoundsTree(tpd.TypeTree(tpe.lo).withSpan(x.span), tpd.TypeTree(tpe.hi).withSpan(x.span)).asInstanceOf[TypeBoundsTree & x.type])
+        case x: (tpd.TypeTree & x.type) =>
+          x.tpe match
+            case tpe: Types.TypeBounds => Some(x)
             case _ => None
-          }
         case _ => None
     end TypeBoundsTreeTypeTest
 
@@ -1333,8 +1329,12 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     object TypeBoundsTreeMethodsImpl extends TypeBoundsTreeMethods:
       extension (self: TypeBoundsTree):
         def tpe: TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
-        def low: TypeTree = self.lo
-        def hi: TypeTree = self.hi
+        def low: TypeTree = self match
+          case self: tpd.TypeBoundsTree => self.lo
+          case self: tpd.TypeTree => tpd.TypeTree(self.tpe.asInstanceOf[Types.TypeBounds].lo).withSpan(self.span)
+        def hi: TypeTree = self match
+          case self: tpd.TypeBoundsTree => self.hi
+          case self: tpd.TypeTree => tpd.TypeTree(self.tpe.asInstanceOf[Types.TypeBounds].hi).withSpan(self.span)
       end extension
     end TypeBoundsTreeMethodsImpl
 
