@@ -242,9 +242,6 @@ trait TypesSupport:
         }
         inner(sc) ++ texts(" match {\n") ++ casesTexts ++ texts("}")
 
-      // TODO: Unreachable. TypeIdent is a TypeTree and not a TypeRep. Should this be cover in antother way?
-      // case TypeIdent(t) => texts(t)
-
       case ParamRef(TypeLambda(names, _, _), i) => texts(names.apply(i))
 
       case RecursiveType(tp) => inner(tp)
