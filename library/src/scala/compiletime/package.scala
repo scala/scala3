@@ -26,40 +26,31 @@ package object compiletime {
    *  ```
    *  or
    *  ```scala
-   *  error(code"My error of this code: ${println("foo")}")
-   *  ```
-   *  or
-   *  ```scala
    *  inline def errorOnThisCode(inline x: Any) =
-   *    error(code"My error of this code: $x")
+   *    error("My error of this code: " + codeOf(x))
    *  ```
    */
   inline def error(inline msg: String): Nothing = ???
 
-  extension (inline self: StringContext):
-   /** Returns the string representation of interpolated elaborated code:
-    *
-    *  ```scala
-    *  inline def logged(inline p1: Any) = {
-    *    val c = code"code: $p1"
-    *    val res = p1
-    *    (c, p1)
-    *  }
-    *  logged(identity("foo"))
-    *  // above is equivalent to:
-    *  // ("code: scala.Predef.identity("foo")", identity("foo"))
-    *  ```
-    *
-    *  The formatting of the code is not stable across version of the compiler.
-    *
-    * @note only `inline` arguments will be displayed as "code".
-    *       Other values may display unintutively.
-    */
-    transparent inline def code (inline args: Any*): String =
-      // implemented in dotty.tools.dotc.typer.Inliner.Intrinsics
-      error("Compiler bug: `code` was not evaluated by the compiler")
-
-  end extension
+  /** Returns the string representation of argument code:
+   *
+   *  ```scala
+   *  inline def logged(inline p1: Any) =
+   *    ("code: " + codeOf(p1), p1)
+   *
+   *  logged(identity("foo"))
+   *  // above is equivalent to:
+   *  // ("code: scala.Predef.identity("foo")", identity("foo"))
+   *  ```
+   *
+   *  The formatting of the code is not stable across version of the compiler.
+   *
+   * @note only `inline` arguments will be displayed as "code".
+   *       Other values may display unintutively.
+   */
+  transparent inline def codeOf(arg: Any): String =
+    // implemented in dotty.tools.dotc.typer.Inliner.Intrinsics
+    error("Compiler bug: `codeOf` was not evaluated by the compiler")
 
   /** Checks at compiletime that the provided values is a constant after
    *  inlining and constant folding.

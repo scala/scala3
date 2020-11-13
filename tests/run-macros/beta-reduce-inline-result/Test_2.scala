@@ -45,9 +45,9 @@ object Test {
     { (i: Int) => i + 1 } : V
 
   def main(argv : Array[String]) : Unit = {
-    println(code"compile-time: ${Macros.betaReduce(dummy1)(3)}")
+    println(s"compile-time: ${codeOf(Macros.betaReduce(dummy1)(3))}")
     println(s"run-time: ${Macros.betaReduce(dummy1)(3)}")
-    println(code"compile-time: ${Macros.betaReduce(dummy2)(1)}")
+    println(s"compile-time: ${codeOf(Macros.betaReduce(dummy2)(1))}")
     // paramrefs have to be properly substituted in this case
     println(s"run-time: ${Macros.betaReduce(dummy2)(1)}")
 
