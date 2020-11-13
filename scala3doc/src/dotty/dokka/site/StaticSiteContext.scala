@@ -82,7 +82,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
         def loadIndexPage(): TemplateFile =
           val indexFiles = from.listFiles { file =>file.getName == "index.md" || file.getName == "index.html" }
           indexFiles.size match
-            case 0 => emptyTemplate(from)
+            case 0 => emptyTemplate(from, from.getName)
             case 1 => loadTemplateFile(indexFiles.head).copy(file = from)
             case _ =>
               val msg = s"ERROR: Multiple index pages found under ${from.toPath}"
@@ -115,7 +115,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
     case Sidebar.Category(title, nested) =>
       // Add support for index.html/index.md files!
       val fakeFile = new File(root, title)
-      LoadedTemplate(emptyTemplate(fakeFile), nested.map(loadSidebarContent), fakeFile)
+      LoadedTemplate(emptyTemplate(fakeFile, title), nested.map(loadSidebarContent), fakeFile)
 
   private def loadAllFiles() =
     def dir(name: String)= List(new File(root, name)).filter(_.isDirectory)
