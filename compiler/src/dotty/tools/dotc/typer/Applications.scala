@@ -820,7 +820,7 @@ trait Applications extends Compatibility {
     app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto,
     resultType: Type)(using Context)
   extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind) {
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedUnadaptedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
     def typeOfArg(arg: untpd.Tree): Type = proto.typeOfArg(arg)
   }
