@@ -22,8 +22,8 @@ case class StaticPageNode(
                          ) extends ContentPage:
   override def getDocumentable: Documentable = null
 
-  def title(): String = template.title()
-  def hasFrame(): Boolean = template.hasFrame()
+  def title(): String = template.title
+  def hasFrame(): Boolean = template.hasFrame
 
   override def modified(
     name: String,

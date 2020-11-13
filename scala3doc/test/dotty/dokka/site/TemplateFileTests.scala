@@ -26,7 +26,7 @@ class TemplateFileTests:
       else
         val (code, ext) = remaining.head
         testTemplate(code, ext) { template =>
-          val newCtx = ctx.copy(layouts = ctx.layouts + (template.name() -> template))
+          val newCtx = ctx.copy(layouts = ctx.layouts + (template.name -> template))
           rec(newCtx, remaining.drop(1))
         }
 
@@ -41,7 +41,7 @@ class TemplateFileTests:
         |code""".stripMargin
     ) { t =>
       assertEquals(t.rawCode, "code")
-      assertEquals(t.title(), "myTitle")
+      assertEquals(t.title, "myTitle")
     }
 
 
