@@ -11,8 +11,9 @@ class ScalaEmbeddedResourceAppender extends PageTransformer {
         page.getName,
         page.getContent,
         page.getDri,
-        // Remove default CSS and add our own
+        // Remove default CSS and navigation loader and add our own  versions
         (page.getEmbeddedResources.asScala
+          .filterNot(_ == "scripts/navigation-loader.js")
           .filterNot(_.endsWith(".css")) ++ Seq(
           "styles/nord-light.css",
           "styles/scalastyle.css",
@@ -37,6 +38,7 @@ class ScalaEmbeddedResourceAppender extends PageTransformer {
           "scripts/components/FilterGroup.js",
           "scripts/components/Filter.js",
           "scripts/data.js",
+          "scripts/fast-navigation-loader.js"
         )).asJava,
         page.getChildren
       )
