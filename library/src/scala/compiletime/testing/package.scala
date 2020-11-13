@@ -11,6 +11,7 @@ package object testing {
    *  The code should be a sequence of expressions or statements that may appear in a block.
    */
   inline def typeChecks(inline code: String): Boolean =
+    // implemented in package dotty.tools.dotc.typer.Inliner.Intrinsics
     error("`typeChecks` was not checked by the compiler")
 
   /** Whether the code type checks in the current context? If not,
@@ -27,5 +28,6 @@ package object testing {
    *  The code should be a sequence of expressions or statements that may appear in a block.
    */
   inline def typeCheckErrors(inline code: String): List[Error] =
+    // implemented in package dotty.tools.dotc.typer.Inliner.Intrinsics
     error("`typeCheckErrors` was not checked by the compiler")
 }
