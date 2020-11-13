@@ -49,3 +49,7 @@ i8651b.scala
 
 # uneliminated @uncheckedVariance after pickling
 annot-bootstrap.scala
+
+# interaction with Scala-2's implicitly
+i9793.scala
+
