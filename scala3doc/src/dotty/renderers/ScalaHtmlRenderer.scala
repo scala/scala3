@@ -265,7 +265,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
   override def buildHtml(page: PageNode, resources: JList[String], kotlinxContent: FlowContentConsumer): String =
     val (pageTitle, noFrame) = page match
       case static: StaticPageNode =>
-        (static.template.title(), !static.hasFrame())
+        (static.template.title, !static.hasFrame())
       case _ =>
         (page.getName, false)
 

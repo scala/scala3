@@ -22,10 +22,12 @@ def JList[T](e: T*): JList[T] = e.asJava
 def JSet[T](e: T*): JSet[T] = e.toSet.asJava
 def JMap[K, V](e: (K, V)*): JMap[K, V] = e.toMap.asJava
 def JMap2[K, V](): JMap[K, V] = ??? // e.toMap.asJava
+def newHMap[K, V](m: JMap[K, V]): HMap[K, V] = new HMap[K, V](m)
 
 type JList[T] = java.util.List[T]
 type JSet[T] = java.util.Set[T]
 type JMap[K, V] = java.util.Map[K, V]
+type HMap[K, V] = java.util.HashMap[K, V]
 
 type SourceSetWrapper = DokkaConfiguration$DokkaSourceSet
 type DokkaSourceSet = DokkaConfiguration.DokkaSourceSet

@@ -44,7 +44,7 @@ class SiteResourceManager(ctx: Option[StaticSiteContext]) extends BaseStaticSite
     val modified = input.transformContentPagesTree {
       case it: StaticPageNode =>
         it.copy(getEmbeddedResources =
-          if it.template.hasFrame() then it.getEmbeddedResources ++ it.resources().asJava
+          if it.template.hasFrame then it.getEmbeddedResources ++ it.resources().asJava
           else it.resources().asJava
         )
       case it => it

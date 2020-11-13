@@ -32,7 +32,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")
     val dirs: Array[File] = Option(layoutRoot.listFiles()).getOrElse(Array())
-    dirs.map { it => loadTemplateFile(it) }.map { it => it.name() -> it }.toMap
+    dirs.map { it => loadTemplateFile(it) }.map { it => it.name -> it }.toMap
 
   lazy val sideBarConfig =
     val sidebarFile = root.toPath.resolve("sidebar.yml")
@@ -82,7 +82,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
         def loadIndexPage(): TemplateFile =
           val indexFiles = from.listFiles { file =>file.getName == "index.md" || file.getName == "index.html" }
           indexFiles.size match
-            case 0 => emptyTemplate(from)
+            case 0 => emptyTemplate(from, from.getName)
             case 1 => loadTemplateFile(indexFiles.head).copy(file = from)
             case _ =>
               val msg = s"ERROR: Multiple index pages found under ${from.toPath}"
@@ -111,11 +111,11 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
       val path = if isBlog then "blog" else url.stripSuffix(".html") + ".md"
       val file = root.toPath.resolve(path) // Add support for .html files!
       val LoadedTemplate(template, children, tFile) = loadTemplate(file.toFile, isBlog).get // Add proper logging if file does not exisits
-      LoadedTemplate(template.copy(settings = template.settings + ("title" -> List(title))), children, tFile)
+      LoadedTemplate(template.copy(settings = template.settings + ("title" -> title)), children, tFile) 
     case Sidebar.Category(title, nested) =>
       // Add support for index.html/index.md files!
       val fakeFile = new File(root, title)
-      LoadedTemplate(emptyTemplate(fakeFile), nested.map(loadSidebarContent), fakeFile)
+      LoadedTemplate(emptyTemplate(fakeFile, title), nested.map(loadSidebarContent), fakeFile)
 
   private def loadAllFiles() =
     def dir(name: String)= List(new File(root, name)).filter(_.isDirectory)
@@ -141,7 +141,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
     )
     StaticPageNode(
       myTemplate.templateFile,
-      myTemplate.templateFile.title(),
+      myTemplate.templateFile.title,
       content,
       JSet(dri),
       JList(),
