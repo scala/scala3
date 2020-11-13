@@ -171,12 +171,14 @@ object ExplicitOuter {
     val outerCls = outerClass(cls)
     val prefix = owner.thisType.baseType(cls).normalizedPrefix
     val target =
-      if (owner == cls)
-        outerCls.appliedRef
-      else
-        outerThis.baseType(outerCls)
-          .orElse(prefix.widen)
-          .orElse(outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty)))
+      if owner == cls then outerCls.appliedRef
+      else outerThis.baseType(outerCls).orElse(prefix.widen)
+    /*println(i"""new outer $name in $owner, $cls,
+               |prefix = $prefix,
+               |outerThis = $outerThis,
+               |outCls = $outerCls,
+               |baseType = ${outerThis.baseType(outerCls)}
+               |target = $target""")*/
     val info = if (flags.is(Method)) ExprType(target) else target
     atPhaseNoEarlier(explicitOuterPhase.next) { // outer accessors are entered at explicitOuter + 1, should not be defined before.
       newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
