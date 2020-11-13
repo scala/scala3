@@ -25,7 +25,7 @@ function highlightDotty(hljs) {
       'if implicit import lazy match new object package private protected override return '+
       'sealed then throw trait true try type val var while with yield =>> => ?=> <: >: _ ? <-',
     literal: 'true false null this super',
-    built_in: '??? asInstanceOf isInstanceOf assert assertFail implicitly locally summon .nn'
+    built_in: '??? asInstanceOf isInstanceOf assert implicitly locally summon .nn'
   }
   const modifiers = 'abstract|final|implicit|override|private|protected|sealed'
 

@@ -5,7 +5,7 @@ object Test:
     case 3 => "?"
   match
     case "OK" =>
-    case "?" => assertFail()
+    case "?" => throw new AssertionError()
 
   val x = 4
   if 2 < 3

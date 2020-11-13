@@ -54,7 +54,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     val sources = List(
       mkSource("assert(true)", "()"),
       mkSource("assert(true, ???)", "()"),
-      mkSource("assert(false)", "assertFail()")
+      mkSource("assert(false)", "{ throw new java.lang.AssertionError(\"assertion failed\") }")
     )
     for (source <- sources)
       checkBCode(source) { dir =>

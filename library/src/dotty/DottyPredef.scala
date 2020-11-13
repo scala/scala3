@@ -5,16 +5,13 @@ object DottyPredef {
 
   inline final def assert(inline assertion: Boolean, inline message: => Any): Unit = {
     if (!assertion)
-      assertFail(message)
+      throw new java.lang.AssertionError("assertion failed: " + message)
   }
 
   transparent inline final def assert(inline assertion: Boolean): Unit = {
     if (!assertion)
-      assertFail()
+      throw new java.lang.AssertionError("assertion failed")
   }
-
-  def assertFail(): Nothing = throw new java.lang.AssertionError("assertion failed")
-  def assertFail(message: => Any): Nothing = throw new java.lang.AssertionError("assertion failed: " + message)
 
   inline final def implicitly[T](implicit ev: T): T = ev
 

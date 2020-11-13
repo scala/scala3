@@ -3111,31 +3111,27 @@ Schema => SemanticDB v4
 Uri => inlinedefs.scala
 Text => empty
 Language => Scala
-Symbols => 4 entries
-Occurrences => 15 entries
+Symbols => 3 entries
+Occurrences => 12 entries
 
 Symbols:
 inlinedefs/FakePredef. => final object FakePredef
 inlinedefs/FakePredef.assert(). => final macro assert
 inlinedefs/FakePredef.assert().(assertion) => param assertion
-inlinedefs/FakePredef.assertFail(). => method assertFail
 
 Occurrences:
 [0:8..0:18): inlinedefs <- inlinedefs/
 [2:7..2:17): FakePredef <- inlinedefs/FakePredef.
-[4:6..4:16): assertFail <- inlinedefs/FakePredef.assertFail().
-[4:20..4:27): Nothing -> scala/Nothing#
-[4:40..4:44): java -> java/
-[4:45..4:49): lang -> java/lang/
-[4:50..4:64): AssertionError -> java/lang/AssertionError#
-[4:64..4:64): -> java/lang/AssertionError#`<init>`(+2).
-[15:31..15:37): assert <- inlinedefs/FakePredef.assert().
-[15:45..15:54): assertion <- inlinedefs/FakePredef.assert().(assertion)
-[15:56..15:63): Boolean -> scala/Boolean#
-[15:66..15:70): Unit -> scala/Unit#
-[16:9..16:18): assertion -> inlinedefs/FakePredef.assert().(assertion)
-[16:18..16:18): -> scala/Boolean#`unary_!`().
-[17:6..17:16): assertFail -> inlinedefs/FakePredef.assertFail().
+[13:31..13:37): assert <- inlinedefs/FakePredef.assert().
+[13:45..13:54): assertion <- inlinedefs/FakePredef.assert().(assertion)
+[13:56..13:63): Boolean -> scala/Boolean#
+[13:66..13:70): Unit -> scala/Unit#
+[14:9..14:18): assertion -> inlinedefs/FakePredef.assert().(assertion)
+[14:18..14:18): -> scala/Boolean#`unary_!`().
+[15:16..15:20): java -> java/
+[15:21..15:25): lang -> java/lang/
+[15:26..15:40): AssertionError -> java/lang/AssertionError#
+[15:40..15:40): -> java/lang/AssertionError#`<init>`(+2).
 
 expect/local-file.scala
 -----------------------
