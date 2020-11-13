@@ -267,6 +267,8 @@ trait Applications extends Compatibility {
      */
     protected def addArg(arg: TypedArg, formal: Type): Unit
 
+    protected def typeArgAndAdd(arg: Arg, formal: Type): Unit
+
     /** Is this an argument of the form `expr: _*` or a RepeatedParamType
      *  derived from such an argument?
      */
@@ -542,7 +544,7 @@ trait Applications extends Compatibility {
           def addTyped(arg: Arg, formal: Type): List[Type] =
             if !ctx.isAfterTyper && isVarArg(arg) && !formal.isRepeatedParam then
               fail(i"Sequence argument type annotation `: _*` cannot be used here: the corresponding parameter has type $formal which is not a repeated parameter type", arg)
-            addArg(typedArg(arg, formal), formal)
+            typeArgAndAdd(arg, formal)
             if methodType.isParamDependent && typeOfArg(arg).exists then
               // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
               formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
@@ -662,6 +664,8 @@ trait Applications extends Compatibility {
 
     def typedArg(arg: Arg, formal: Type): Arg = arg
     final def addArg(arg: TypedArg, formal: Type): Unit = ok = ok & argOK(arg, formal)
+    final def typeArgAndAdd(arg: Arg, formal: Type): Unit = addArg(arg, formal)
+
     def makeVarArg(n: Int, elemFormal: Type): Unit = {}
     def fail(msg: Message, arg: Arg): Unit =
       ok = false
@@ -719,6 +723,8 @@ trait Applications extends Compatibility {
 
     def addArg(arg: Tree, formal: Type): Unit =
       typedArgBuf += adapt(arg, formal.widenExpr)
+    def typeArgAndAdd(arg: Trees.Tree[T], formal: Type): Unit =
+      addArg(typedArg(arg, formal), formal)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList

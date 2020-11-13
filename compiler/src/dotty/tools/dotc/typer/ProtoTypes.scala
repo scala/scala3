@@ -303,7 +303,7 @@ object ProtoTypes {
       case _ => false
     }
 
-    private def cacheTypedArg(arg: untpd.Tree, typerFn: untpd.Tree => Tree, force: Boolean)(using Context): Tree = {
+    private def cacheTypedArg(arg: untpd.Tree, force: Boolean)(typerFn: untpd.Tree => Tree)(using Context): Tree = {
       var targ = state.typedArg(arg)
       if (targ == null)
         untpd.functionWithUnknownParamType(arg) match {
@@ -343,7 +343,7 @@ object ProtoTypes {
         try
           inContext(protoCtx) {
             val args1 = args.mapWithIndexConserve((arg, idx) =>
-              cacheTypedArg(arg, arg => typer.typed(norm(arg, idx)), force = false))
+              cacheTypedArg(arg, force = false)(arg => typer.typed(norm(arg, idx))))
             if !args1.exists(arg => isUndefined(arg.tpe)) then state.typedArgs = args1
             args1
           }
@@ -357,13 +357,13 @@ object ProtoTypes {
      */
     def typedArg(arg: untpd.Tree, formal: Type)(using Context): Tree = {
       val wideFormal = formal.widenExpr
-      val argCtx =
-        if wideFormal eq formal then ctx
-        else ctx.withNotNullInfos(ctx.notNullInfos.retractMutables)
       val locked = ctx.typerState.ownedVars
-      val targ = cacheTypedArg(arg,
-        typer.typedUnadapted(_, wideFormal, locked)(using argCtx),
-        force = true)
+      val targ = cacheTypedArg(arg, force = true){  arg =>
+        val argCtx =
+          if wideFormal eq formal then ctx
+          else ctx.withNotNullInfos(ctx.notNullInfos.retractMutables)
+        typer.typedUnadapted(arg, wideFormal, locked)(using argCtx)
+      }
       typer.adapt(targ, wideFormal, locked)
     }
 
