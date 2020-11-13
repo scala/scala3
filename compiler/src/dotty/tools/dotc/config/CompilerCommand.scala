@@ -3,6 +3,8 @@ package config
 
 import java.nio.file.{Files, Paths}
 
+import org.jline.terminal.TerminalBuilder
+
 import Settings._
 import core.Contexts._
 import Properties._
@@ -67,11 +69,42 @@ object CompilerCommand {
   def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using Context): List[String] = {
     val settings = ctx.settings
 
-    /** Creates a help message for a subset of options based on cond */
-    def availableOptionsMsg(cond: Setting[?] => Boolean): String = {
-      val ss                  = (ctx.settings.allSettings filter cond).toList sortBy (_.name)
-      val width               = (ss map (_.name.length)).max
-      def format(s: String)   = ("%-" + width + "s") format s
+    /** Creates a help message for a subset of options based on cond;
+     *  terminalWidth = 0 means no terminal is available.
+     */
+    def availableOptionsMsg(cond: Setting[?] => Boolean, terminalWidth: Int = 0): String = {
+      val ss = (settings.allSettings filter cond).toList sortBy (_.name)
+      val maxNameWidth = 30
+      val nameWidths = ss.map(_.name.length).partition(_ < maxNameWidth)._1
+      val width = if nameWidths.nonEmpty then nameWidths.max else maxNameWidth 
+      val (nameWidth, descriptionWidth) = {
+        val w1 =
+          if width < maxNameWidth then width
+          else maxNameWidth
+        val w2 =
+          if terminalWidth < w1 + maxNameWidth then 0
+          else terminalWidth - w1 - 1
+        (w1, w2)
+      }
+      def formatName(name: String) =
+        if name.length <= nameWidth then ("%-" + nameWidth + "s") format name
+        else (name + "\n%-" + nameWidth + "s") format ""
+      def formatDescription(text: String): String =
+        if descriptionWidth == 0 then text
+        else if text.length < descriptionWidth then text
+        else {
+          val inx = text.substring(0, descriptionWidth).lastIndexOf(" ")
+          if inx < 0 then text
+          else
+            val str = text.substring(0, inx)
+            s"${str}\n${formatName("")} ${formatDescription(text.substring(inx + 1))}"
+        }
+      def formatSetting(name: String, value: String) =
+        if (value.nonEmpty)
+        // the format here is helping to make empty padding and put the additional information exactly under the description.
+          s"\n${formatName("")} $name: $value."
+        else
+          ""
       def helpStr(s: Setting[?]) = {
         def defaultValue = s.default match {
           case _: Int | _: String => s.default.toString
@@ -80,13 +113,7 @@ object CompilerCommand {
             // For example 'false' for the version command.
             ""
         }
-        def formatSetting(name: String, value: String) =
-          if (value.nonEmpty)
-          // the format here is helping to make empty padding and put the additional information exactly under the description.
-            s"\n${format("")} $name: $value."
-          else
-            ""
-        s"${format(s.name)} ${s.description}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
+        s"${formatName(s.name)} ${formatDescription(s.description)}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
       }
       ss map helpStr mkString "\n"
     }
@@ -97,8 +124,14 @@ object CompilerCommand {
         Some(explainAdvanced) filter (_ => shouldExplain),
         Some(label + " options include:")
       ).flatten mkString "\n"
-
-      prefix + "\n" + availableOptionsMsg(cond)
+      try
+        // Use terminal width if terminal is available (see repl.JLineTerminal)
+        val terminal = TerminalBuilder.builder().dumb(false).build()
+        val usageMsg = prefix + "\n" + availableOptionsMsg(cond, terminal.getWidth)
+        terminal.close()
+        usageMsg
+      catch _ =>
+        prefix + "\n" + availableOptionsMsg(cond)
     }
 
     def isStandard(s: Setting[?]): Boolean = !isAdvanced(s) && !isPrivate(s)
