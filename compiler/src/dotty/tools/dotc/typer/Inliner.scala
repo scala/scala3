@@ -648,6 +648,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         arg match
           case ConstantValue(_) | Inlined(_, Nil, Typed(ConstantValue(_), _)) => // ok
           case _ => report.error(em"expected a constant value but found: $arg", arg.srcPos)
+        return Literal(Constant(())).withSpan(sourcePos.span)
       case (strCtx :: Nil) :: (args :: Nil) :: Nil if inlinedMethod == defn.Compiletime_code =>
         return Intrinsics.code(strCtx, args, call.srcPos)
       case _ =>
