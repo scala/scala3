@@ -3,6 +3,8 @@ package config
 
 import java.nio.file.{Files, Paths}
 
+import org.jline.terminal.TerminalBuilder
+
 import Settings._
 import core.Contexts._
 import Properties._
