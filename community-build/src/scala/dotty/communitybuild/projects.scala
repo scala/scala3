@@ -357,8 +357,8 @@ object projects:
   lazy val stdLib213 = SbtCommunityProject(
     project       = "stdLib213",
     extraSbtArgs  = List("-Dscala.build.compileWithDotty=true"),
-    sbtTestCommand   = """library/compile""",
-    sbtPublishCommand = """set library/Compile/packageDoc/publishArtifact := false; library/publishLocal""",
+    sbtTestCommand   = """set Global / fatalWarnings := false; library/compile""",
+    sbtPublishCommand = """set Global / fatalWarnings := false; set library/Compile/packageDoc/publishArtifact := false; library/publishLocal""",
     // sbtDocCommand = "library/doc" // Does no compile? No idea :/
   )
 

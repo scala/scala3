@@ -12,8 +12,7 @@ object Message {
     * not yet been ported to the new scheme. Comment out this `implicit def` to
     * see where old errors still exist
     */
-  implicit def toNoExplanation(str: => String): Message =
-    NoExplanation(str)
+  implicit def toNoExplanation(str: => String): Message = NoExplanation(str)
 }
 
 /** A `Message` contains all semantic information necessary to easily

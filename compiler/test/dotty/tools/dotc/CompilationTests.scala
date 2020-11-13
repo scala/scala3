@@ -60,6 +60,7 @@ class CompilationTests {
       compileFile("tests/pos-custom-args/i8875.scala", defaultOptions.and("-Xprint:getters")),
       compileFile("tests/pos-custom-args/i9267.scala", defaultOptions.and("-Ystop-after:erasure")),
       compileFile("tests/pos-special/extend-java-enum.scala", defaultOptions.and("-source", "3.0-migration")),
+      compileFile("tests/pos-custom-args/help.scala", defaultOptions.and("-help", "-V", "-W", "-X", "-Y")),
     ).checkCompile()
   }
 
