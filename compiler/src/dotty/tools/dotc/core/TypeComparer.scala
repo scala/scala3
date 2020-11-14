@@ -157,9 +157,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   /** Are we forbidden from recording GADT constraints? */
   private var frozenGadt = false
-  private inline def inFrozenGadt[T](op: => T): T = {
+  private inline def inFrozenGadt[T](inline op: T): T =
+    inFrozenGadtIf(true)(op)
+
+  private inline def inFrozenGadtIf[T](cond: Boolean)(inline op: T): T = {
     val savedFrozenGadt = frozenGadt
-    frozenGadt = true
+    frozenGadt = cond
     try op finally frozenGadt = savedFrozenGadt
   }
 
@@ -967,8 +970,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
        */
       def isMatchingApply(tp1: Type): Boolean = tp1 match {
-        case AppliedType(tycon1, args1) =>
-          // We intentionally do not dealias `tycon1` or `tycon2` here.
+        case tp1 as AppliedType(tycon1, args1) =>
+          // We intentionally do not automatically dealias `tycon1` or `tycon2` here.
           // `TypeApplications#appliedTo` already takes care of dealiasing type
           // constructors when this can be done without affecting type
           // inference, doing it here would not only prevent code from compiling
@@ -976,6 +979,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // in `tests/run/hk-alias-unification.scala` we end up checking:
           //
           //   Foo[?F, ?T] <:< Foo[[X] =>> (X, String), Int]
+          //
+          // where
+          //
+          //   type Foo[F[_], T] = ErasedFoo[F[T]]
           //
           // Naturally, we'd like to infer:
           //
@@ -990,6 +997,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           //   ?F := [X] =>> (Int, X)
           //
           // Which is not what we wanted!
+          // On the other hand, we are not allowed to always stop at the present arguments either.
+          // An example is i10129.scala. Here, we have the following situation:
+          //
+          //    type Lifted[A] = Err | A
+          //    def point[O](o: O): Lifted[O] = o
+          //    extension [O, U](o: Lifted[O]) def map(f: O => U): Lifted[U] = ???
+          //    point("a").map(_ => if true then 1 else error)
+          //
+          // This leads to the constraint Lifted[U] <: Lifted[Int]. If we just
+          // check the arguments this gives `U <: Int`. But this is wrong. Dealiasing
+          // `Lifted` gives `Err | U <: Err | Int`, hence it should be `U <: Err | Int`.
+          //
+          // So it's a conundrum. We need to check the immediate arguments for hk type inference,
+          // but this could narrow the constraint too much. The solution is to also
+          // check the constraint arising from the dealiased subtype test
+          // in the case where isSubArgs adds a constraint. If that second constraint
+          // is weaker than the first, we keep it in place of the first.
+          // Note that if the isSubArgs test fails, we will proceed anyway by
+          // dealising by doing a compareLower.
           def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
@@ -1016,10 +1042,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   }
 
                   val res = (
-                    tycon1sym == tycon2sym
-                      && isSubPrefix(tycon1.prefix, tycon2.prefix)
-                      || byGadtBounds(tycon1sym, tycon2, fromAbove = true)
-                      || byGadtBounds(tycon2sym, tycon1, fromAbove = false)
+                    tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
+                    || byGadtBounds(tycon1sym, tycon2, fromAbove = true)
+                    || byGadtBounds(tycon2sym, tycon1, fromAbove = false)
                   ) && {
                     // There are two cases in which we can assume injectivity.
                     // First we check if either sym is a class.
@@ -1031,11 +1056,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     //    must be instantiated, making the two tycons equal
                     val tyconIsInjective =
                       (tycon1sym.isClass || tycon2sym.isClass)
-                        && (if touchedGADTs then gadtIsInstantiated else true)
-                    def checkSubArgs() = isSubArgs(args1, args2, tp1, tparams)
-                    // we only record GADT constraints if *both* tycons are effectively injective
-                    if (tyconIsInjective) checkSubArgs()
-                    else inFrozenGadt { checkSubArgs() }
+                      && (!touchedGADTs || gadtIsInstantiated)
+
+                    inFrozenGadtIf(!tyconIsInjective) {
+                      if tycon1sym == tycon2sym && tycon1sym.isAliasType then
+                        val preConstraint = constraint
+                        isSubArgs(args1, args2, tp1, tparams)
+                        && tryAlso(preConstraint, recur(tp1.superType, tp2.superType))
+                      else
+                        isSubArgs(args1, args2, tp1, tparams)
+                    }
                   }
                   if (res && touchedGADTs) GADTused = true
                   res
@@ -1544,19 +1574,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  Method name comes from the notion that we are keeping a constraint which is sufficient to satisfy
    *  one of subtyping relationships.
    */
-  private def sufficientEither(op1: => Boolean, op2: => Boolean): Boolean = {
+  private def sufficientEither(op1: => Boolean, op2: => Boolean): Boolean =
     val preConstraint = constraint
-    op1 && {
+    if op1 then tryAlso(preConstraint, op2) else op2
+
+  /** Check whether `op` generates a weaker constraint than the
+   *  current constraint if we run it starting with `preConstraint`.
+   *  If that's the case, replace the current constraint with the
+   *  constraint generated by `op`.
+   */
+  private def tryAlso(preConstraint: Constraint, op: => Boolean): true =
+    if constraint ne preConstraint then
+      // check whether `op2` generates a weaker constraint than `op1`
       val leftConstraint = constraint
       constraint = preConstraint
-      if (!(op2 && subsumes(leftConstraint, constraint, preConstraint))) {
-        if (constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint))
+      if !(op && subsumes(leftConstraint, constraint, preConstraint)) then
+        if constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint) then
           constr.println(i"CUT - prefer $leftConstraint over $constraint")
         constraint = leftConstraint
-      }
-      true
-    } || op2
-  }
+    true
 
   /** Returns true iff the result of evaluating either `op1` or `op2` is true, keeping the smaller constraint if any.
    *  E.g., if
