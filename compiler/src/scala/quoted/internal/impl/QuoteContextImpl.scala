@@ -19,8 +19,7 @@ import dotty.tools.dotc.quoted.{MacroExpansion, PickledQuotes, QuoteUtils}
 import scala.quoted.internal.{QuoteUnpickler, QuoteMatching}
 import scala.quoted.internal.impl.printers._
 
-
-import scala.tasty.reflect._
+import scala.reflect.TypeTest
 
 object QuoteContextImpl {
 
@@ -127,9 +126,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type PackageClause = tpd.PackageDef
 
     object PackageClauseTypeTest extends TypeTest[Tree, PackageClause]:
-      def runtimeClass: Class[?] = classOf[PackageClause]
-      override def unapply(x: Any): Option[PackageClause] = x match
-        case x: tpd.PackageDef @unchecked => Some(x)
+      def unapply(x: Tree): Option[PackageClause & x.type] = x match
+        case x: (tpd.PackageDef & x.type) => Some(x)
         case _ => None
     end PackageClauseTypeTest
 
@@ -152,9 +150,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Import = tpd.Import
 
     object ImportTypeTest extends TypeTest[Tree, Import]:
-      def runtimeClass: Class[?] = classOf[Import]
-      override def unapply(x: Any): Option[Import] = x match
-        case tree: tpd.Import @unchecked => Some(tree)
+      def unapply(x: Tree): Option[Import & x.type] = x match
+        case tree: (tpd.Import & x.type) => Some(tree)
         case _ => None
     end ImportTypeTest
 
@@ -177,20 +174,18 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Statement = tpd.Tree
 
     object StatementTypeTest extends TypeTest[Tree, Statement]:
-      def runtimeClass: Class[?] = classOf[Statement]
-      override def unapply(x: Any): Option[Statement] = x match
-        case _: tpd.PatternTree @unchecked => None
-        case tree: Tree @unchecked if tree.isTerm => TermTypeTest.unapply(tree)
-        case tree: Tree @unchecked => DefinitionTypeTest.unapply(tree)
-        case _ => None
+      def unapply(x: Tree): Option[Statement & x.type] = x match
+        case _: tpd.PatternTree => None
+        case _ =>
+          if x.isTerm then TermTypeTest.unapply(x)
+          else DefinitionTypeTest.unapply(x)
     end StatementTypeTest
 
     type Definition = tpd.MemberDef
 
     object DefinitionTypeTest extends TypeTest[Tree, Definition]:
-      def runtimeClass: Class[?] = classOf[Definition]
-      override def unapply(x: Any): Option[Definition] = x match
-        case x: tpd.MemberDef @unchecked => Some(x)
+      def unapply(x: Tree): Option[Definition & x.type] = x match
+        case x: (tpd.MemberDef & x.type) => Some(x)
         case _ => None
     end DefinitionTypeTest
 
@@ -206,9 +201,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type ClassDef = tpd.TypeDef
 
     object ClassDefTypeTest extends TypeTest[Tree, ClassDef]:
-      def runtimeClass: Class[?] = classOf[ClassDef]
-      override def unapply(x: Any): Option[ClassDef] = x match
-        case x: tpd.TypeDef @unchecked if x.isClassDef => Some(x)
+      def unapply(x: Tree): Option[ClassDef & x.type] = x match
+        case x: (tpd.TypeDef & x.type) if x.isClassDef => Some(x)
         case _ => None
     end ClassDefTypeTest
 
@@ -240,9 +234,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type DefDef = tpd.DefDef
 
     object DefDefTypeTest extends TypeTest[Tree, DefDef]:
-      def runtimeClass: Class[?] = classOf[DefDef]
-      override def unapply(x: Any): Option[DefDef] = x match
-        case x: tpd.DefDef @unchecked => Some(x)
+      def unapply(x: Tree): Option[DefDef & x.type] = x match
+        case x: (tpd.DefDef & x.type) => Some(x)
         case _ => None
     end DefDefTypeTest
 
@@ -267,9 +260,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type ValDef = tpd.ValDef
 
     object ValDefTypeTest extends TypeTest[Tree, ValDef]:
-      def runtimeClass: Class[?] = classOf[ValDef]
-      override def unapply(x: Any): Option[ValDef] = x match
-        case x: tpd.ValDef @unchecked => Some(x)
+      def unapply(x: Tree): Option[ValDef & x.type] = x match
+        case x: (tpd.ValDef & x.type) => Some(x)
         case _ => None
     end ValDefTypeTest
 
@@ -302,9 +294,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeDef = tpd.TypeDef
 
     object TypeDefTypeTest extends TypeTest[Tree, TypeDef]:
-      def runtimeClass: Class[?] = classOf[TypeDef]
-      override def unapply(x: Any): Option[TypeDef] = x match
-        case x: tpd.TypeDef @unchecked if !x.isClassDef => Some(x)
+      def unapply(x: Tree): Option[TypeDef & x.type] = x match
+        case x: (tpd.TypeDef & x.type) if !x.isClassDef => Some(x)
         case _ => None
     end TypeDefTypeTest
 
@@ -326,14 +317,13 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Term = tpd.Tree
 
     object TermTypeTest extends TypeTest[Tree, Term]:
-      def runtimeClass: Class[?] = classOf[Term]
-      override def unapply(x: Any): Option[Term] = x match
+      def unapply(x: Tree): Option[Term & x.type] = x match
         case _ if UnapplyTypeTest.unapply(x).isDefined => None
-        case _: tpd.PatternTree @unchecked => None
-        case x: tpd.Tree @unchecked if x.isTerm => Some(x)
-        case x: tpd.SeqLiteral @unchecked => Some(x)
-        case x: tpd.Inlined @unchecked => Some(x)
-        case x: tpd.NamedArg @unchecked => Some(x)
+        case _: tpd.PatternTree => None
+        case x: (tpd.Tree & x.type) if x.isTerm => Some(x)
+        case x: (tpd.SeqLiteral & x.type) => Some(x)
+        case x: (tpd.Inlined & x.type) => Some(x)
+        case x: (tpd.NamedArg & x.type) => Some(x)
         case _ => None
     end TermTypeTest
 
@@ -368,7 +358,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
         def etaExpand: Term = self.tpe.widen match {
           case mtpe: Types.MethodType if !mtpe.isParamDependent =>
             val closureResType = mtpe.resType match {
-              case t: Types.MethodType @unchecked => t.toFunctionType()
+              case t: Types.MethodType => t.toFunctionType()
               case t => t
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
@@ -401,9 +391,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Ref = tpd.RefTree
 
     object RefTypeTest extends TypeTest[Tree, Ref]:
-      def runtimeClass: Class[?] = classOf[Ref]
-      override def unapply(x: Any): Option[Ref] = x match
-        case x: tpd.RefTree @unchecked if x.isTerm => Some(x)
+      def unapply(x: Tree): Option[Ref & x.type] = x match
+        case x: (tpd.RefTree & x.type) if x.isTerm => Some(x)
         case _ => None
     end RefTypeTest
 
@@ -418,9 +407,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Ident = tpd.Ident
 
     object IdentTypeTest extends TypeTest[Tree, Ident]:
-      def runtimeClass: Class[?] = classOf[Ident]
-      override def unapply(x: Any): Option[Ident] = x match
-        case x: tpd.Ident @unchecked if x.isTerm => Some(x)
+      def unapply(x: Tree): Option[Ident & x.type] = x match
+        case x: (tpd.Ident & x.type) if x.isTerm => Some(x)
         case _ => None
     end IdentTypeTest
 
@@ -442,9 +430,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Select = tpd.Select
 
     object SelectTypeTest extends TypeTest[Tree, Select]:
-      def runtimeClass: Class[?] = classOf[Select]
-      override def unapply(x: Any): Option[Select] = x match
-        case x: tpd.Select @unchecked if x.isTerm => Some(x)
+      def unapply(x: Tree): Option[Select & x.type] = x match
+        case x: (tpd.Select & x.type) if x.isTerm => Some(x)
         case _ => None
     end SelectTypeTest
 
@@ -479,9 +466,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Literal = tpd.Literal
 
     object LiteralTypeTest extends TypeTest[Tree, Literal]:
-      def runtimeClass: Class[?] = classOf[Literal]
-      override def unapply(x: Any): Option[Literal] = x match
-        case x: tpd.Literal @unchecked => Some(x)
+      def unapply(x: Tree): Option[Literal & x.type] = x match
+        case x: (tpd.Literal & x.type) => Some(x)
         case _ => None
     end LiteralTypeTest
 
@@ -503,9 +489,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type This = tpd.This
 
     object ThisTypeTest extends TypeTest[Tree, This]:
-      def runtimeClass: Class[?] = classOf[This]
-      override def unapply(x: Any): Option[This] = x match
-        case x: tpd.This @unchecked => Some(x)
+      def unapply(x: Tree): Option[This & x.type] = x match
+        case x: (tpd.This & x.type) => Some(x)
         case _ => None
     end ThisTypeTest
 
@@ -527,9 +512,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type New = tpd.New
 
     object NewTypeTest extends TypeTest[Tree, New]:
-      def runtimeClass: Class[?] = classOf[New]
-      override def unapply(x: Any): Option[New] = x match
-        case x: tpd.New @unchecked => Some(x)
+      def unapply(x: Tree): Option[New & x.type] = x match
+        case x: (tpd.New & x.type) => Some(x)
         case _ => None
     end NewTypeTest
 
@@ -550,9 +534,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type NamedArg = tpd.NamedArg
 
     object NamedArgTypeTest extends TypeTest[Tree, NamedArg]:
-      def runtimeClass: Class[?] = classOf[NamedArg]
-      override def unapply(x: Any): Option[NamedArg] = x match
-        case x: tpd.NamedArg @unchecked if x.name.isInstanceOf[dotc.core.Names.TermName] => Some(x) // TODO: Now, the name should alwas be a term name
+      def unapply(x: Tree): Option[NamedArg & x.type] = x match
+        case x: (tpd.NamedArg & x.type) if x.name.isInstanceOf[dotc.core.Names.TermName] => Some(x) // TODO: Now, the name should alwas be a term name
         case _ => None
     end NamedArgTypeTest
 
@@ -575,9 +558,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Apply = tpd.Apply
 
     object ApplyTypeTest extends TypeTest[Tree, Apply]:
-      def runtimeClass: Class[?] = classOf[Apply]
-      override def unapply(x: Any): Option[Apply] = x match
-        case x: tpd.Apply @unchecked => Some(x)
+      def unapply(x: Tree): Option[Apply & x.type] = x match
+        case x: (tpd.Apply & x.type) => Some(x)
         case _ => None
     end ApplyTypeTest
 
@@ -600,9 +582,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeApply = tpd.TypeApply
 
     object TypeApplyTypeTest extends TypeTest[Tree, TypeApply]:
-      def runtimeClass: Class[?] = classOf[TypeApply]
-      override def unapply(x: Any): Option[TypeApply] = x match
-        case x: tpd.TypeApply @unchecked => Some(x)
+      def unapply(x: Tree): Option[TypeApply & x.type] = x match
+        case x: (tpd.TypeApply & x.type) => Some(x)
         case _ => None
     end TypeApplyTypeTest
 
@@ -625,9 +606,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Super = tpd.Super
 
     object SuperTypeTest extends TypeTest[Tree, Super]:
-      def runtimeClass: Class[?] = classOf[Super]
-      override def unapply(x: Any): Option[Super] = x match
-        case x: tpd.Super @unchecked => Some(x)
+      def unapply(x: Tree): Option[Super & x.type] = x match
+        case x: (tpd.Super & x.type) => Some(x)
         case _ => None
     end SuperTypeTest
 
@@ -651,9 +631,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Typed = tpd.Typed
 
     object TypedTypeTest extends TypeTest[Tree, Typed]:
-      def runtimeClass: Class[?] = classOf[Typed]
-      override def unapply(x: Any): Option[Typed] = x match
-        case x: tpd.Typed @unchecked => Some(x)
+      def unapply(x: Tree): Option[Typed & x.type] = x match
+        case x: (tpd.Typed & x.type) => Some(x)
         case _ => None
     end TypedTypeTest
 
@@ -676,9 +655,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Assign = tpd.Assign
 
     object AssignTypeTest extends TypeTest[Tree, Assign]:
-      def runtimeClass: Class[?] = classOf[Assign]
-      override def unapply(x: Any): Option[Assign] = x match
-        case x: tpd.Assign @unchecked => Some(x)
+      def unapply(x: Tree): Option[Assign & x.type] = x match
+        case x: (tpd.Assign & x.type) => Some(x)
         case _ => None
     end AssignTypeTest
 
@@ -701,44 +679,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Block = tpd.Block
 
     val BlockTypeTest: TypeTest[Tree, Block] = new {
-      def runtimeClass: Class[?] = classOf[Block]
-      override def unapply(x: Any): Option[Block] =
-        x match
-          case x: tpd.Tree @unchecked =>
-            normalizedLoops(x) match
-              case y: tpd.Block => Some(y)
-              case _ => None
-          case _ => None
-
-      /** Normalizes non Blocks.
-       *  i) Put `while` loops in their own blocks: `{ def while$() = ...; while$() }`
-       *  ii) Put closures in their own blocks: `{ def anon$() = ...; closure(anon$, ...) }`
-       */
-      private def normalizedLoops(tree: tpd.Tree): tpd.Tree = tree match {
-        case block: tpd.Block if block.stats.size > 1 =>
-          def normalizeInnerLoops(stats: List[tpd.Tree]): List[tpd.Tree] = stats match {
-            case (x: tpd.DefDef) :: y :: xs if needsNormalization(y) =>
-              tpd.Block(x :: Nil, y) :: normalizeInnerLoops(xs)
-            case x :: xs => x :: normalizeInnerLoops(xs)
-            case Nil => Nil
-          }
-          if (needsNormalization(block.expr)) {
-            val stats1 = normalizeInnerLoops(block.stats.init)
-            val normalLoop = tpd.Block(block.stats.last :: Nil, block.expr)
-            tpd.Block(stats1, normalLoop)
-          }
-          else {
-            val stats1 = normalizeInnerLoops(block.stats)
-            tpd.cpy.Block(block)(stats1, block.expr)
-          }
-        case _ => tree
-      }
-
-      /** If it is the second statement of a closure. See: `normalizedLoops` */
-      private def needsNormalization(tree: tpd.Tree): Boolean = tree match {
-        case _: tpd.Closure => true
-        case _ => false
-      }
+      def unapply(x: Tree): Option[Block & x.type] = x match
+        case x: (tpd.Block & x.type) => Some(x)
+        case _ => None
     }
 
     object Block extends BlockModule:
@@ -760,9 +703,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Closure = tpd.Closure
 
     object ClosureTypeTest extends TypeTest[Tree, Closure]:
-      def runtimeClass: Class[?] = classOf[Closure]
-      override def unapply(x: Any): Option[Closure] = x match
-        case x: tpd.Closure @unchecked => Some(x)
+      def unapply(x: Tree): Option[Closure & x.type] = x match
+        case x: (tpd.Closure & x.type) => Some(x)
         case _ => None
     end ClosureTypeTest
 
@@ -798,9 +740,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type If = tpd.If
 
     object IfTypeTest extends TypeTest[Tree, If]:
-      def runtimeClass: Class[?] = classOf[If]
-      override def unapply(x: Any): Option[If] = x match
-        case x: tpd.If @unchecked => Some(x)
+      def unapply(x: Tree): Option[If & x.type] = x match
+        case x: (tpd.If & x.type) => Some(x)
         case _ => None
     end IfTypeTest
 
@@ -824,9 +765,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Match = tpd.Match
 
     object MatchTypeTest extends TypeTest[Tree, Match]:
-      def runtimeClass: Class[?] = classOf[Match]
-      override def unapply(x: Any): Option[Match] = x match
-        case x: tpd.Match @unchecked if !x.selector.isEmpty => Some(x)
+      def unapply(x: Tree): Option[Match & x.type] = x match
+        case x: (tpd.Match & x.type) if !x.selector.isEmpty => Some(x)
         case _ => None
     end MatchTypeTest
 
@@ -851,9 +791,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type GivenMatch = tpd.Match
 
     object GivenMatchTypeTest extends TypeTest[Tree, GivenMatch]:
-      def runtimeClass: Class[?] = classOf[GivenMatch]
-      override def unapply(x: Any): Option[GivenMatch] = x match
-        case x: tpd.Match @unchecked if x.selector.isEmpty => Some(x)
+      def unapply(x: Tree): Option[GivenMatch & x.type] = x match
+        case x: (tpd.Match & x.type) if x.selector.isEmpty => Some(x)
         case _ => None
     end GivenMatchTypeTest
 
@@ -875,9 +814,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Try = tpd.Try
 
     object TryTypeTest extends TypeTest[Tree, Try]:
-      def runtimeClass: Class[?] = classOf[Try]
-      override def unapply(x: Any): Option[Try] = x match
-        case x: tpd.Try @unchecked => Some(x)
+      def unapply(x: Tree): Option[Try & x.type] = x match
+        case x: (tpd.Try & x.type) => Some(x)
         case _ => None
     end TryTypeTest
 
@@ -901,9 +839,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Return = tpd.Return
 
     object ReturnTypeTest extends TypeTest[Tree, Return]:
-      def runtimeClass: Class[?] = classOf[Return]
-      override def unapply(x: Any): Option[Return] = x match
-        case x: tpd.Return @unchecked => Some(x)
+      def unapply(x: Tree): Option[Return & x.type] = x match
+        case x: (tpd.Return & x.type) => Some(x)
         case _ => None
     end ReturnTypeTest
 
@@ -926,9 +863,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Repeated = tpd.SeqLiteral
 
     object RepeatedTypeTest extends TypeTest[Tree, Repeated]:
-      def runtimeClass: Class[?] = classOf[Repeated]
-      override def unapply(x: Any): Option[Repeated] = x match
-        case x: tpd.SeqLiteral @unchecked => Some(x)
+      def unapply(x: Tree): Option[Repeated & x.type] = x match
+        case x: (tpd.SeqLiteral & x.type) => Some(x)
         case _ => None
     end RepeatedTypeTest
 
@@ -951,9 +887,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Inlined = tpd.Inlined
 
     object InlinedTypeTest extends TypeTest[Tree, Inlined]:
-      def runtimeClass: Class[?] = classOf[Inlined]
-      override def unapply(x: Any): Option[Inlined] = x match
-        case x: tpd.Inlined @unchecked => Some(x)
+      def unapply(x: Tree): Option[Inlined & x.type] = x match
+        case x: (tpd.Inlined & x.type) => Some(x)
         case _ => None
     end InlinedTypeTest
 
@@ -977,9 +912,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type SelectOuter = tpd.Select
 
     object SelectOuterTypeTest extends TypeTest[Tree, SelectOuter]:
-      def runtimeClass: Class[?] = classOf[SelectOuter]
-      override def unapply(x: Any): Option[SelectOuter] = x match
-        case x: tpd.Select @unchecked =>
+      def unapply(x: Tree): Option[SelectOuter & x.type] = x match
+        case x: (tpd.Select & x.type) =>
           x.name match
             case NameKinds.OuterSelectName(_, _) => Some(x)
             case _ => None
@@ -1008,9 +942,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type While = tpd.WhileDo
 
     object WhileTypeTest extends TypeTest[Tree, While]:
-      def runtimeClass: Class[?] = classOf[While]
-      override def unapply(x: Any): Option[While] = x match
-        case x: tpd.WhileDo @unchecked => Some(x)
+      def unapply(x: Tree): Option[While & x.type] = x match
+        case x: (tpd.WhileDo & x.type) => Some(x)
         case _ => None
     end WhileTypeTest
 
@@ -1033,10 +966,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeTree = tpd.Tree
 
     object TypeTreeTypeTest extends TypeTest[Tree, TypeTree]:
-      def runtimeClass: Class[?] = classOf[TypeTree]
-      override def unapply(x: Any): Option[TypeTree] = x match
-        case x: tpd.TypeBoundsTree @unchecked => None
-        case x: tpd.Tree @unchecked if x.isType => Some(x)
+      def unapply(x: Tree): Option[TypeTree & x.type] = x match
+        case x: (tpd.TypeBoundsTree & x.type) => None
+        case x: (tpd.Tree & x.type) if x.isType => Some(x)
         case _ => None
     end TypeTreeTypeTest
 
@@ -1054,9 +986,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Inferred = tpd.TypeTree
 
     object InferredTypeTest extends TypeTest[Tree, Inferred]:
-      def runtimeClass: Class[?] = classOf[Inferred]
-      override def unapply(x: Any): Option[Inferred] = x match
-        case tpt: tpd.TypeTree @unchecked if !tpt.tpe.isInstanceOf[Types.TypeBounds] => Some(tpt)
+      def unapply(x: Tree): Option[Inferred & x.type] = x match
+        case tpt: (tpd.TypeTree & x.type) if !tpt.tpe.isInstanceOf[Types.TypeBounds] => Some(tpt)
         case _ => None
     end InferredTypeTest
 
@@ -1069,9 +1000,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeIdent = tpd.Ident
 
     object TypeIdentTypeTest extends TypeTest[Tree, TypeIdent]:
-      def runtimeClass: Class[?] = classOf[TypeIdent]
-      override def unapply(x: Any): Option[TypeIdent] = x match
-        case tpt: tpd.Ident @unchecked if tpt.isType => Some(tpt)
+      def unapply(x: Tree): Option[TypeIdent & x.type] = x match
+        case tpt: (tpd.Ident & x.type) if tpt.isType => Some(tpt)
         case _ => None
     end TypeIdentTypeTest
 
@@ -1094,9 +1024,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeSelect = tpd.Select
 
     object TypeSelectTypeTest extends TypeTest[Tree, TypeSelect]:
-      def runtimeClass: Class[?] = classOf[TypeSelect]
-      override def unapply(x: Any): Option[TypeSelect] = x match
-        case tpt: tpd.Select @unchecked if tpt.isType && tpt.qualifier.isTerm  => Some(tpt)
+      def unapply(x: Tree): Option[TypeSelect & x.type] = x match
+        case tpt: (tpd.Select & x.type) if tpt.isType && tpt.qualifier.isTerm  => Some(tpt)
         case _ => None
     end TypeSelectTypeTest
 
@@ -1119,9 +1048,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Projection = tpd.Select
 
     object ProjectionTypeTest extends TypeTest[Tree, Projection]:
-      def runtimeClass: Class[?] = classOf[Projection]
-      override def unapply(x: Any): Option[Projection] = x match
-        case tpt: tpd.Select @unchecked if tpt.isType && tpt.qualifier.isType => Some(tpt)
+      def unapply(x: Tree): Option[Projection & x.type] = x match
+        case tpt: (tpd.Select & x.type) if tpt.isType && tpt.qualifier.isType => Some(tpt)
         case _ => None
     end ProjectionTypeTest
 
@@ -1142,9 +1070,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Singleton = tpd.SingletonTypeTree
 
     object SingletonTypeTest extends TypeTest[Tree, Singleton]:
-      def runtimeClass: Class[?] = classOf[Singleton]
-      override def unapply(x: Any): Option[Singleton] = x match
-        case tpt: tpd.SingletonTypeTree @unchecked => Some(tpt)
+      def unapply(x: Tree): Option[Singleton & x.type] = x match
+        case tpt: (tpd.SingletonTypeTree & x.type) => Some(tpt)
         case _ => None
     end SingletonTypeTest
 
@@ -1166,9 +1093,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Refined = tpd.RefinedTypeTree
 
     object RefinedTypeTest extends TypeTest[Tree, Refined]:
-      def runtimeClass: Class[?] = classOf[Refined]
-      override def unapply(x: Any): Option[Refined] = x match
-        case tpt: tpd.RefinedTypeTree @unchecked => Some(tpt)
+      def unapply(x: Tree): Option[Refined & x.type] = x match
+        case tpt: (tpd.RefinedTypeTree & x.type) => Some(tpt)
         case _ => None
     end RefinedTypeTest
 
@@ -1189,9 +1115,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Applied = tpd.AppliedTypeTree
 
     object AppliedTypeTest extends TypeTest[Tree, Applied]:
-      def runtimeClass: Class[?] = classOf[Applied]
-      override def unapply(x: Any): Option[Applied] = x match
-        case tpt: tpd.AppliedTypeTree @unchecked => Some(tpt)
+      def unapply(x: Tree): Option[Applied & x.type] = x match
+        case tpt: (tpd.AppliedTypeTree & x.type) => Some(tpt)
         case _ => None
     end AppliedTypeTest
 
@@ -1214,9 +1139,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Annotated = tpd.Annotated
 
     object AnnotatedTypeTest extends TypeTest[Tree, Annotated]:
-      def runtimeClass: Class[?] = classOf[Annotated]
-      override def unapply(x: Any): Option[Annotated] = x match
-        case tpt: tpd.Annotated @unchecked => Some(tpt)
+      def unapply(x: Tree): Option[Annotated & x.type] = x match
+        case tpt: (tpd.Annotated & x.type) => Some(tpt)
         case _ => None
     end AnnotatedTypeTest
 
@@ -1239,9 +1163,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type MatchTypeTree = tpd.MatchTypeTree
 
     object MatchTypeTreeTypeTest extends TypeTest[Tree, MatchTypeTree]:
-      def runtimeClass: Class[?] = classOf[MatchTypeTree]
-      override def unapply(x: Any): Option[MatchTypeTree] = x match
-        case tpt: tpd.MatchTypeTree @unchecked => Some(tpt)
+      def unapply(x: Tree): Option[MatchTypeTree & x.type] = x match
+        case tpt: (tpd.MatchTypeTree & x.type) => Some(tpt)
         case _ => None
     end MatchTypeTreeTypeTest
 
@@ -1265,9 +1188,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type ByName = tpd.ByNameTypeTree
 
     object ByNameTypeTest extends TypeTest[Tree, ByName]:
-      def runtimeClass: Class[?] = classOf[ByName]
-      override def unapply(x: Any): Option[ByName] = x match
-        case tpt: tpd.ByNameTypeTree @unchecked => Some(tpt)
+      def unapply(x: Tree): Option[ByName & x.type] = x match
+        case tpt: (tpd.ByNameTypeTree & x.type) => Some(tpt)
         case _ => None
     end ByNameTypeTest
 
@@ -1289,9 +1211,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type LambdaTypeTree = tpd.LambdaTypeTree
 
     object LambdaTypeTreeTypeTest extends TypeTest[Tree, LambdaTypeTree]:
-      def runtimeClass: Class[?] = classOf[LambdaTypeTree]
-      override def unapply(x: Any): Option[LambdaTypeTree] = x match
-        case tpt: tpd.LambdaTypeTree @unchecked => Some(tpt)
+      def unapply(x: Tree): Option[LambdaTypeTree & x.type] = x match
+        case tpt: (tpd.LambdaTypeTree & x.type) => Some(tpt)
         case _ => None
     end LambdaTypeTreeTypeTest
 
@@ -1314,9 +1235,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeBind = tpd.Bind
 
     object TypeBindTypeTest extends TypeTest[Tree, TypeBind]:
-      def runtimeClass: Class[?] = classOf[TypeBind]
-      override def unapply(x: Any): Option[TypeBind] = x match
-        case tpt: tpd.Bind @unchecked if tpt.name.isTypeName => Some(tpt)
+      def unapply(x: Tree): Option[TypeBind & x.type] = x match
+        case tpt: (tpd.Bind & x.type) if tpt.name.isTypeName => Some(tpt)
         case _ => None
     end TypeBindTypeTest
 
@@ -1337,9 +1257,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeBlock = tpd.Block
 
     object TypeBlockTypeTest extends TypeTest[Tree, TypeBlock]:
-      def runtimeClass: Class[?] = classOf[TypeBlock]
-      override def unapply(x: Any): Option[TypeBlock] = x match
-        case tpt: tpd.Block @unchecked => Some(tpt)
+      def unapply(x: Tree): Option[TypeBlock & x.type] = x match
+        case tpt: (tpd.Block & x.type) => Some(tpt)
         case _ => None
     end TypeBlockTypeTest
 
@@ -1359,19 +1278,15 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       end extension
     end TypeBlockMethodsImpl
 
-    type TypeBoundsTree = tpd.TypeBoundsTree
+    type TypeBoundsTree = tpd.TypeBoundsTree | tpd.TypeTree
 
     object TypeBoundsTreeTypeTest extends TypeTest[Tree, TypeBoundsTree]:
-      def runtimeClass: Class[?] = classOf[TypeBoundsTree]
-      override def unapply(x: Any): Option[TypeBoundsTree] = x match
-        case x: tpd.TypeBoundsTree @unchecked => Some(x)
-        case x @ tpd.TypeTree() =>
-          // TODO only enums generate this kind of type bounds. Is this possible without enums? If not generate tpd.TypeBoundsTree for enums instead
-          (x.tpe: Any) match {
-            case tpe: Types.TypeBounds =>
-              Some(tpd.TypeBoundsTree(tpd.TypeTree(tpe.lo).withSpan(x.span), tpd.TypeTree(tpe.hi).withSpan(x.span)))
+      def unapply(x: Tree): Option[TypeBoundsTree & x.type] = x match
+        case x: (tpd.TypeBoundsTree & x.type) => Some(x)
+        case x: (tpd.TypeTree & x.type) =>
+          x.tpe match
+            case tpe: Types.TypeBounds => Some(x)
             case _ => None
-          }
         case _ => None
     end TypeBoundsTreeTypeTest
 
@@ -1383,17 +1298,20 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     object TypeBoundsTreeMethodsImpl extends TypeBoundsTreeMethods:
       extension (self: TypeBoundsTree):
         def tpe: TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
-        def low: TypeTree = self.lo
-        def hi: TypeTree = self.hi
+        def low: TypeTree = self match
+          case self: tpd.TypeBoundsTree => self.lo
+          case self: tpd.TypeTree => tpd.TypeTree(self.tpe.asInstanceOf[Types.TypeBounds].lo).withSpan(self.span)
+        def hi: TypeTree = self match
+          case self: tpd.TypeBoundsTree => self.hi
+          case self: tpd.TypeTree => tpd.TypeTree(self.tpe.asInstanceOf[Types.TypeBounds].hi).withSpan(self.span)
       end extension
     end TypeBoundsTreeMethodsImpl
 
     type WildcardTypeTree = tpd.Ident
 
     object WildcardTypeTreeTypeTest extends TypeTest[Tree, WildcardTypeTree]:
-      def runtimeClass: Class[?] = classOf[WildcardTypeTree]
-      override def unapply(x: Any): Option[WildcardTypeTree] = x match
-        case x: tpd.Ident @unchecked if x.name == nme.WILDCARD => Some(x)
+      def unapply(x: Tree): Option[WildcardTypeTree & x.type] = x match
+        case x: (tpd.Ident & x.type) if x.name == nme.WILDCARD => Some(x)
         case _ => None
     end WildcardTypeTreeTypeTest
 
@@ -1410,9 +1328,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type CaseDef = tpd.CaseDef
 
     object CaseDefTypeTest extends TypeTest[Tree, CaseDef]:
-      def runtimeClass: Class[?] = classOf[CaseDef]
-      override def unapply(x: Any): Option[CaseDef] = x match
-        case tree: tpd.CaseDef @unchecked if tree.body.isTerm => Some(tree)
+      def unapply(x: Tree): Option[CaseDef & x.type] = x match
+        case tree: (tpd.CaseDef & x.type) if tree.body.isTerm => Some(tree)
         case _ => None
     end CaseDefTypeTest
 
@@ -1436,9 +1353,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeCaseDef = tpd.CaseDef
 
     object TypeCaseDefTypeTest extends TypeTest[Tree, TypeCaseDef]:
-      def runtimeClass: Class[?] = classOf[TypeCaseDef]
-      override def unapply(x: Any): Option[TypeCaseDef] = x match
-        case tree: tpd.CaseDef @unchecked if tree.body.isType => Some(tree)
+      def unapply(x: Tree): Option[TypeCaseDef & x.type] = x match
+        case tree: (tpd.CaseDef & x.type) if tree.body.isType => Some(tree)
         case _ => None
     end TypeCaseDefTypeTest
 
@@ -1461,9 +1377,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Bind = tpd.Bind
 
     object BindTypeTest extends TypeTest[Tree, Bind]:
-      def runtimeClass: Class[?] = classOf[Bind]
-      override def unapply(x: Any): Option[Bind] = x match
-        case x: tpd.Bind @unchecked if x.name.isTermName => Some(x)
+      def unapply(x: Tree): Option[Bind & x.type] = x match
+        case x: (tpd.Bind & x.type) if x.name.isTermName => Some(x)
         case _ => None
     end BindTypeTest
 
@@ -1483,14 +1398,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       end extension
     end BindMethodsImpl
 
-    type Unapply = tpd.UnApply
+    type Unapply = tpd.UnApply | tpd.Typed // tpd.Typed containing a tpd.UnApply as expression
 
     object UnapplyTypeTest extends TypeTest[Tree, Unapply]:
-      def runtimeClass: Class[?] = classOf[Unapply]
-      override def unapply(x: Any): Option[Unapply] = x match
-        case pattern: tpd.UnApply @unchecked => Some(pattern)
-        case dotc.ast.Trees.Typed(pattern: tpd.UnApply @unchecked, _) => Some(pattern)
-        case _ => None
+      def unapply(x: Tree): Option[Unapply & x.type] =
+        x match // keep in sync with UnapplyMethodsImpl.selfUnApply
+          case x: (tpd.UnApply & x.type) => Some(x)
+          case x: (tpd.Typed & x.type) if x.expr.isInstanceOf[tpd.UnApply] => Some(x)
+          case _ => None
     end UnapplyTypeTest
 
     object Unapply extends UnapplyModule:
@@ -1502,10 +1417,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     object UnapplyMethodsImpl extends UnapplyMethods:
       extension (self: Unapply):
-        def fun: Term = self.fun
-        def implicits: List[Term] = self.implicits
-        def patterns: List[Tree] = effectivePatterns(self.patterns)
+        def fun: Term = selfUnApply(self).fun
+        def implicits: List[Term] = selfUnApply(self).implicits
+        def patterns: List[Tree] = effectivePatterns(selfUnApply(self).patterns)
       end extension
+      private def selfUnApply(self: Unapply): tpd.UnApply =
+        self match // keep in sync with UnapplyTypeTest
+          case self: tpd.UnApply => self
+          case self: tpd.Typed => self.expr.asInstanceOf[tpd.UnApply]
       private def effectivePatterns(patterns: List[Tree]): List[Tree] =
         patterns match
           case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems
@@ -1515,9 +1434,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Alternatives = tpd.Alternative
 
     object AlternativesTypeTest extends TypeTest[Tree, Alternatives]:
-      def runtimeClass: Class[?] = classOf[Alternatives]
-      override def unapply(x: Any): Option[Alternatives] = x match
-        case x: tpd.Alternative @unchecked => Some(x)
+      def unapply(x: Tree): Option[Alternatives & x.type] = x match
+        case x: (tpd.Alternative & x.type) => Some(x)
         case _ => None
     end AlternativesTypeTest
 
@@ -1543,9 +1461,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type SimpleSelector = untpd.ImportSelector
 
     object SimpleSelectorTypeTest extends TypeTest[ImportSelector, SimpleSelector]:
-      def runtimeClass: Class[?] = classOf[SimpleSelector]
-      override def unapply(x: Any): Option[SimpleSelector] = x match
-        case x: untpd.ImportSelector if x.renamed.isEmpty => Some(x)
+      def unapply(x: ImportSelector): Option[SimpleSelector & x.type] = x match
+        case x: (untpd.ImportSelector & x.type) if x.renamed.isEmpty => Some(x)
         case _ => None // TODO: handle import bounds
     end SimpleSelectorTypeTest
 
@@ -1564,9 +1481,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type RenameSelector = untpd.ImportSelector
 
     object RenameSelectorTypeTest extends TypeTest[ImportSelector, RenameSelector]:
-      def runtimeClass: Class[?] = classOf[RenameSelector]
-      override def unapply(x: Any): Option[RenameSelector] = x match
-        case x: untpd.ImportSelector if !x.renamed.isEmpty => Some(x)
+      def unapply(x: ImportSelector): Option[RenameSelector & x.type] = x match
+        case x: (untpd.ImportSelector & x.type) if !x.renamed.isEmpty => Some(x)
         case _ => None
     end RenameSelectorTypeTest
 
@@ -1586,9 +1502,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type OmitSelector = untpd.ImportSelector
 
     object OmitSelectorTypeTest extends TypeTest[ImportSelector, OmitSelector]:
-      def runtimeClass: Class[?] = classOf[OmitSelector]
-      override def unapply(x: Any): Option[OmitSelector] = x match {
-        case self: untpd.ImportSelector =>
+      def unapply(x: ImportSelector): Option[OmitSelector & x.type] = x match {
+        case self: (untpd.ImportSelector & x.type) =>
           self.renamed match
             case dotc.ast.Trees.Ident(nme.WILDCARD) => Some(self)
             case _ => None
@@ -1688,9 +1603,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type ConstantType = dotc.core.Types.ConstantType
 
     object ConstantTypeTypeTest extends TypeTest[TypeRepr, ConstantType]:
-      def runtimeClass: Class[?] = classOf[ConstantType]
-      override def unapply(x: Any): Option[ConstantType] = x match
-        case tpe: Types.ConstantType => Some(tpe)
+      def unapply(x: TypeRepr): Option[ConstantType & x.type] = x match
+        case tpe: (Types.ConstantType & x.type) => Some(tpe)
         case _ => None
     end ConstantTypeTypeTest
 
@@ -1706,9 +1620,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TermRef = dotc.core.Types.NamedType
 
     object TermRefTypeTest extends TypeTest[TypeRepr, TermRef]:
-      def runtimeClass: Class[?] = classOf[TermRef]
-      override def unapply(x: Any): Option[TermRef] = x match
-        case tp: Types.TermRef => Some(tp)
+      def unapply(x: TypeRepr): Option[TermRef & x.type] = x match
+        case tpe: (Types.TermRef & x.type) => Some(tpe)
         case _ => None
     end TermRefTypeTest
 
@@ -1729,9 +1642,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeRef = dotc.core.Types.NamedType
 
     object TypeRefTypeTest extends TypeTest[TypeRepr, TypeRef]:
-      def runtimeClass: Class[?] = classOf[TypeRef]
-      override def unapply(x: Any): Option[TypeRef] = x match
-        case tp: Types.TypeRef => Some(tp)
+      def unapply(x: TypeRepr): Option[TypeRef & x.type] = x match
+        case tpe: (Types.TypeRef & x.type) => Some(tpe)
         case _ => None
     end TypeRefTypeTest
 
@@ -1752,9 +1664,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type SuperType = dotc.core.Types.SuperType
 
     object SuperTypeTypeTest extends TypeTest[TypeRepr, SuperType]:
-      def runtimeClass: Class[?] = classOf[SuperType]
-      override def unapply(x: Any): Option[SuperType] = x match
-        case tpe: Types.SuperType => Some(tpe)
+      def unapply(x: TypeRepr): Option[SuperType & x.type] = x match
+        case tpe: (Types.SuperType & x.type) => Some(tpe)
         case _ => None
     end SuperTypeTypeTest
 
@@ -1775,9 +1686,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Refinement = dotc.core.Types.RefinedType
 
     object RefinementTypeTest extends TypeTest[TypeRepr, Refinement]:
-      def runtimeClass: Class[?] = classOf[Refinement]
-      override def unapply(x: Any): Option[Refinement] = x match
-        case tpe: Types.RefinedType => Some(tpe)
+      def unapply(x: TypeRepr): Option[Refinement & x.type] = x match
+        case tpe: (Types.RefinedType & x.type) => Some(tpe)
         case _ => None
     end RefinementTypeTest
 
@@ -1803,9 +1713,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type AppliedType = dotc.core.Types.AppliedType
 
     object AppliedTypeTypeTest extends TypeTest[TypeRepr, AppliedType]:
-      def runtimeClass: Class[?] = classOf[AppliedType]
-      override def unapply(x: Any): Option[AppliedType] = x match
-        case tpe: Types.AppliedType => Some(tpe)
+      def unapply(x: TypeRepr): Option[AppliedType & x.type] = x match
+        case tpe: (Types.AppliedType & x.type) => Some(tpe)
         case _ => None
     end AppliedTypeTypeTest
 
@@ -1824,9 +1733,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type AnnotatedType = dotc.core.Types.AnnotatedType
 
     object AnnotatedTypeTypeTest extends TypeTest[TypeRepr, AnnotatedType]:
-      def runtimeClass: Class[?] = classOf[AnnotatedType]
-      override def unapply(x: Any): Option[AnnotatedType] = x match
-        case tpe: Types.AnnotatedType => Some(tpe)
+      def unapply(x: TypeRepr): Option[AnnotatedType & x.type] = x match
+        case tpe: (Types.AnnotatedType & x.type) => Some(tpe)
         case _ => None
     end AnnotatedTypeTypeTest
 
@@ -1847,9 +1755,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type AndType = dotc.core.Types.AndType
 
     object AndTypeTypeTest extends TypeTest[TypeRepr, AndType]:
-      def runtimeClass: Class[?] = classOf[AndType]
-      override def unapply(x: Any): Option[AndType] = x match
-        case tpe: Types.AndType => Some(tpe)
+      def unapply(x: TypeRepr): Option[AndType & x.type] = x match
+        case tpe: (Types.AndType & x.type) => Some(tpe)
         case _ => None
     end AndTypeTypeTest
 
@@ -1868,9 +1775,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type OrType = dotc.core.Types.OrType
 
     object OrTypeTypeTest extends TypeTest[TypeRepr, OrType]:
-      def runtimeClass: Class[?] = classOf[OrType]
-      override def unapply(x: Any): Option[OrType] = x match
-        case tpe: Types.OrType => Some(tpe)
+      def unapply(x: TypeRepr): Option[OrType & x.type] = x match
+        case tpe: (Types.OrType & x.type) => Some(tpe)
         case _ => None
     end OrTypeTypeTest
 
@@ -1889,9 +1795,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type MatchType = dotc.core.Types.MatchType
 
     object MatchTypeTypeTest extends TypeTest[TypeRepr, MatchType]:
-      def runtimeClass: Class[?] = classOf[MatchType]
-      override def unapply(x: Any): Option[MatchType] = x match
-        case tpe: Types.MatchType => Some(tpe)
+      def unapply(x: TypeRepr): Option[MatchType & x.type] = x match
+        case tpe: (Types.MatchType & x.type) => Some(tpe)
         case _ => None
     end MatchTypeTypeTest
 
@@ -1913,9 +1818,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type ByNameType = dotc.core.Types.ExprType
 
     object ByNameTypeTypeTest extends TypeTest[TypeRepr, ByNameType]:
-      def runtimeClass: Class[?] = classOf[ByNameType]
-      override def unapply(x: Any): Option[ByNameType] = x match
-        case tpe: Types.ExprType => Some(tpe)
+      def unapply(x: TypeRepr): Option[ByNameType & x.type] = x match
+        case tpe: (Types.ExprType & x.type) => Some(tpe)
         case _ => None
     end ByNameTypeTypeTest
 
@@ -1933,10 +1837,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type ParamRef = dotc.core.Types.ParamRef
 
     object ParamRefTypeTest extends TypeTest[TypeRepr, ParamRef]:
-      def runtimeClass: Class[?] = classOf[ParamRef]
-      override def unapply(x: Any): Option[ParamRef] = x match
-        case tpe: Types.TypeParamRef => Some(tpe)
-        case tpe: Types.TermParamRef => Some(tpe)
+      def unapply(x: TypeRepr): Option[ParamRef & x.type] = x match
+        case tpe: (Types.TypeParamRef & x.type) => Some(tpe)
+        case tpe: (Types.TermParamRef & x.type) => Some(tpe)
         case _ => None
     end ParamRefTypeTest
 
@@ -1955,9 +1858,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type ThisType = dotc.core.Types.ThisType
 
     object ThisTypeTypeTest extends TypeTest[TypeRepr, ThisType]:
-      def runtimeClass: Class[?] = classOf[ThisType]
-      override def unapply(x: Any): Option[ThisType] = x match
-        case tpe: Types.ThisType => Some(tpe)
+      def unapply(x: TypeRepr): Option[ThisType & x.type] = x match
+        case tpe: (Types.ThisType & x.type) => Some(tpe)
         case _ => None
     end ThisTypeTypeTest
 
@@ -1974,9 +1876,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type RecursiveThis = dotc.core.Types.RecThis
 
     object RecursiveThisTypeTest extends TypeTest[TypeRepr, RecursiveThis]:
-      def runtimeClass: Class[?] = classOf[RecursiveThis]
-      override def unapply(x: Any): Option[RecursiveThis] = x match
-        case tpe: Types.RecThis => Some(tpe)
+      def unapply(x: TypeRepr): Option[RecursiveThis & x.type] = x match
+        case tpe: (Types.RecThis & x.type) => Some(tpe)
         case _ => None
     end RecursiveThisTypeTest
 
@@ -1994,9 +1895,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type RecursiveType = dotc.core.Types.RecType
 
     object RecursiveTypeTypeTest extends TypeTest[TypeRepr, RecursiveType]:
-      def runtimeClass: Class[?] = classOf[RecursiveType]
-      override def unapply(x: Any): Option[RecursiveType] = x match
-        case tpe: Types.RecType => Some(tpe)
+      def unapply(x: TypeRepr): Option[RecursiveType & x.type] = x match
+        case tpe: (Types.RecType & x.type) => Some(tpe)
         case _ => None
     end RecursiveTypeTypeTest
 
@@ -2018,9 +1918,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type MethodType = dotc.core.Types.MethodType
 
     object MethodTypeTypeTest extends TypeTest[TypeRepr, MethodType]:
-      def runtimeClass: Class[?] = classOf[MethodType]
-      override def unapply(x: Any): Option[MethodType] = x match
-        case tpe: Types.MethodType => Some(tpe)
+      def unapply(x: TypeRepr): Option[MethodType & x.type] = x match
+        case tpe: (Types.MethodType & x.type) => Some(tpe)
         case _ => None
     end MethodTypeTypeTest
 
@@ -2045,9 +1944,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type PolyType = dotc.core.Types.PolyType
 
     object PolyTypeTypeTest extends TypeTest[TypeRepr, PolyType]:
-      def runtimeClass: Class[?] = classOf[PolyType]
-      override def unapply(x: Any): Option[PolyType] = x match
-        case tpe: Types.PolyType => Some(tpe)
+      def unapply(x: TypeRepr): Option[PolyType & x.type] = x match
+        case tpe: (Types.PolyType & x.type) => Some(tpe)
         case _ => None
     end PolyTypeTypeTest
 
@@ -2070,9 +1968,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeLambda = dotc.core.Types.TypeLambda
 
     object TypeLambdaTypeTest extends TypeTest[TypeRepr, TypeLambda]:
-      def runtimeClass: Class[?] = classOf[TypeLambda]
-      override def unapply(x: Any): Option[TypeLambda] = x match
-        case tpe: Types.TypeLambda => Some(tpe)
+      def unapply(x: TypeRepr): Option[TypeLambda & x.type] = x match
+        case tpe: (Types.TypeLambda & x.type) => Some(tpe)
         case _ => None
     end TypeLambdaTypeTest
 
@@ -2095,9 +1992,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type TypeBounds = dotc.core.Types.TypeBounds
 
     object TypeBoundsTypeTest extends TypeTest[TypeRepr, TypeBounds]:
-      def runtimeClass: Class[?] = classOf[TypeBounds]
-      override def unapply(x: Any): Option[TypeBounds] = x match
-        case x: Types.TypeBounds => Some(x)
+      def unapply(x: TypeRepr): Option[TypeBounds & x.type] = x match
+        case x: (Types.TypeBounds & x.type) => Some(x)
         case _ => None
     end TypeBoundsTypeTest
 
@@ -2119,9 +2015,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type NoPrefix = dotc.core.Types.NoPrefix.type
 
     object NoPrefixTypeTest extends TypeTest[TypeRepr, NoPrefix]:
-      def runtimeClass: Class[?] = classOf[Types.NoPrefix.type]
-      override def unapply(x: Any): Option[NoPrefix] =
-        if (x == Types.NoPrefix) Some(Types.NoPrefix) else None
+      def unapply(x: TypeRepr): Option[NoPrefix & x.type] =
+        if x == Types.NoPrefix then Some(x.asInstanceOf[NoPrefix & x.type]) else None
     end NoPrefixTypeTest
 
     object NoPrefix extends NoPrefixModule:
@@ -2240,13 +2135,10 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type ImplicitSearchSuccess = Tree
 
     object ImplicitSearchSuccessTypeTest extends TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]:
-      def runtimeClass: Class[?] = classOf[ImplicitSearchSuccess]
-      override def unapply(x: Any): Option[ImplicitSearchSuccess] = x match
-        case x: Tree @unchecked =>
-          x.tpe match
-            case _: dotc.typer.Implicits.SearchFailureType => None
-            case _ => Some(x)
-        case _ => None
+      def unapply(x: ImplicitSearchResult): Option[ImplicitSearchSuccess & x.type] =
+        x.tpe match
+          case _: dotc.typer.Implicits.SearchFailureType => None
+          case _ => Some(x)
     end ImplicitSearchSuccessTypeTest
 
     object ImplicitSearchSuccessMethodsImpl extends ImplicitSearchSuccessMethods:
@@ -2258,13 +2150,10 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type ImplicitSearchFailure = Tree
 
     object ImplicitSearchFailureTypeTest extends TypeTest[ImplicitSearchResult, ImplicitSearchFailure]:
-      def runtimeClass: Class[?] = classOf[ImplicitSearchFailure]
-      override def unapply(x: Any): Option[ImplicitSearchFailure] = x match
-        case x: Tree @unchecked =>
-          x.tpe match
-            case _: dotc.typer.Implicits.SearchFailureType => Some(x)
-            case _ => None
-        case _ => None
+      def unapply(x: ImplicitSearchResult): Option[ImplicitSearchFailure & x.type] =
+        x.tpe match
+          case _: dotc.typer.Implicits.SearchFailureType => Some(x)
+          case _ => None
     end ImplicitSearchFailureTypeTest
 
     object ImplicitSearchFailureMethodsImpl extends ImplicitSearchFailureMethods:
@@ -2277,37 +2166,28 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type DivergingImplicit = Tree
 
     object DivergingImplicitTypeTest extends TypeTest[ImplicitSearchResult, DivergingImplicit]:
-      def runtimeClass: Class[?] = classOf[DivergingImplicit]
-      override def unapply(x: Any): Option[DivergingImplicit] = x match
-        case x: Tree @unchecked =>
-          x.tpe match
-            case _: dotc.typer.Implicits.DivergingImplicit => Some(x)
-            case _ => None
-        case _ => None
+      def unapply(x: ImplicitSearchResult): Option[DivergingImplicit & x.type] =
+        x.tpe match
+          case _: dotc.typer.Implicits.DivergingImplicit => Some(x)
+          case _ => None
     end DivergingImplicitTypeTest
 
     type NoMatchingImplicits = Tree
 
     object NoMatchingImplicitsTypeTest extends TypeTest[ImplicitSearchResult, NoMatchingImplicits]:
-      def runtimeClass: Class[?] = classOf[NoMatchingImplicits]
-      override def unapply(x: Any): Option[NoMatchingImplicits] = x match
-        case x: Tree @unchecked =>
-          x.tpe match
-            case _: dotc.typer.Implicits.NoMatchingImplicits => Some(x)
-            case _ => None
-        case _ => None
+      def unapply(x: ImplicitSearchResult): Option[NoMatchingImplicits & x.type] =
+        x.tpe match
+          case _: dotc.typer.Implicits.NoMatchingImplicits => Some(x)
+          case _ => None
     end NoMatchingImplicitsTypeTest
 
     type AmbiguousImplicits = Tree
 
     object AmbiguousImplicitsTypeTest extends TypeTest[ImplicitSearchResult, AmbiguousImplicits]:
-      def runtimeClass: Class[?] = classOf[AmbiguousImplicits]
-      override def unapply(x: Any): Option[AmbiguousImplicits] = x match
-        case x: Tree @unchecked =>
-          x.tpe match
-            case _: dotc.typer.Implicits.AmbiguousImplicits => Some(x)
-            case _ => None
-        case _ => None
+      def unapply(x: ImplicitSearchResult): Option[AmbiguousImplicits & x.type] =
+        x.tpe match
+          case _: dotc.typer.Implicits.AmbiguousImplicits => Some(x)
+          case _ => None
     end AmbiguousImplicitsTypeTest
 
     type Symbol = dotc.core.Symbols.Symbol

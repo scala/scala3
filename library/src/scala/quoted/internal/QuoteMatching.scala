@@ -1,7 +1,6 @@
 package scala.quoted.internal
 
 import scala.quoted.{QuoteContext, Expr, Type}
-import scala.tasty.reflect._
 
 /** Part of the QuoteContext interface that needs to be implemented by the compiler but is not visible to users */
 trait QuoteMatching { self: QuoteContext & QuoteUnpickler =>

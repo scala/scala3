@@ -1,4 +1,3 @@
-import tasty._
 import quoted._
 
 object Macros {

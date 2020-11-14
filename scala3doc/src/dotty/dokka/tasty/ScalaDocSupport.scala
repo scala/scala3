@@ -1,7 +1,6 @@
 package dotty.dokka.tasty
 
 import scala.jdk.CollectionConverters._
-import scala.tasty.reflect._
 
 import org.jetbrains.dokka.model.{doc => dkkd}
 
