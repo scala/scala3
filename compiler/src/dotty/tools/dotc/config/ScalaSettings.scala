@@ -38,7 +38,7 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
   val verbose: Setting[Boolean] = BooleanSetting("-verbose", "Output messages about what the compiler is doing.", aliases = List("--verbose"))
   val version: Setting[Boolean] = BooleanSetting("-version", "Print product version and exit.", aliases = List("--version"))
   val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options.", aliases = List("--help"))
-  val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", 80, aliases = List("--page-width"))
+  val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", defaultPageWidth, aliases = List("--page-width"))
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.", aliases = List("--no-warnings"))
 
   /** Other settings */
