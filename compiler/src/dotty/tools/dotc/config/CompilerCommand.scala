@@ -73,16 +73,7 @@ object CompilerCommand {
       val maxNameWidth = 30
       val nameWidths = ss.map(_.name.length).partition(_ < maxNameWidth)._1
       val width = if nameWidths.nonEmpty then nameWidths.max else maxNameWidth
-      val terminalWidth =
-        val pageWidth = settings.pageWidth.value
-        val columnsVar = System.getenv("COLUMNS")
-        if columnsVar != null then columnsVar.toInt
-        else if Properties.isWin then
-          val ansiconVar = System.getenv("ANSICON") // eg. "142x32766 (142x26)"
-          if ansiconVar != null && ansiconVar.matches("[0-9]+x.*") then
-            ansiconVar.substring(0, ansiconVar.indexOf("x")).toInt
-          else pageWidth
-        else pageWidth
+      val terminalWidth = settings.pageWidth.value
       val (nameWidth, descriptionWidth) = {
         val w1 =
           if width < maxNameWidth then width

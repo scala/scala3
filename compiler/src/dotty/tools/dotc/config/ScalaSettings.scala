@@ -11,6 +11,18 @@ class ScalaSettings extends Settings.SettingGroup {
 
   protected def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
+  protected def defaultPageWidth: Int = {
+    val defaultWidth = 80
+    val columnsVar = System.getenv("COLUMNS")
+    if columnsVar != null then columnsVar.toInt
+    else if Properties.isWin then
+      val ansiconVar = System.getenv("ANSICON") // eg. "142x32766 (142x26)"
+      if ansiconVar != null && ansiconVar.matches("[0-9]+x.*") then
+        ansiconVar.substring(0, ansiconVar.indexOf("x")).toInt
+      else defaultWidth
+    else defaultWidth
+  }
+
   /** Path related settings */
   val bootclasspath: Setting[String] = PathSetting("-bootclasspath", "Override location of bootstrap class files.", Defaults.scalaBootClassPath) withAbbreviation "--boot-class-path"
   val extdirs: Setting[String] = PathSetting("-extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs) withAbbreviation "--extension-directories"
@@ -41,7 +53,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val usejavacp: Setting[Boolean] = BooleanSetting("-usejavacp", "Utilize the java.class.path in classpath resolution.") withAbbreviation "--use-java-class-path"
   val verbose: Setting[Boolean] = BooleanSetting("-verbose", "Output messages about what the compiler is doing.") withAbbreviation "--verbose"
   val version: Setting[Boolean] = BooleanSetting("-version", "Print product version and exit.") withAbbreviation "--version"
-  val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", 80) withAbbreviation "--page-width"
+  val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", defaultPageWidth) withAbbreviation "--page-width"
   val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.") withAbbreviation "--language"
   val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites]("-rewrite", "When used in conjunction with a `...-migration` source version, rewrites sources to migrate to new version.") withAbbreviation "--rewrite"
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.") withAbbreviation "--no-warnings"
