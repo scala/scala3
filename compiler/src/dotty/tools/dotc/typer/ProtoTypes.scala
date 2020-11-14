@@ -180,10 +180,12 @@ object ProtoTypes {
       {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
-          memberProto.isRef(defn.UnitClass) ||
-          tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint)
-            // Note: can't use `m.info` here because if `m` is a method, `m.info`
-            //       loses knowledge about `m`'s default arguments.
+          val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
+          isAccessible
+          && (memberProto.isRef(defn.UnitClass)
+             || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
+              // Note: can't use `m.info` here because if `m` is a method, `m.info`
+              //       loses knowledge about `m`'s default arguments.
         mbr match { // hasAltWith inlined for performance
           case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
           case _ => mbr hasAltWith qualifies
