@@ -23,7 +23,7 @@ class ValPattern/*<-example::ValPattern#*/ {
         rightVar/*->example::ValPattern#rightVar().*/
       )
     )
-    locally/*->dotty::DottyPredef.locally().*/ {
+    locally/*->scala::Predef.locally().*/ {
       val (left/*<-local0*/, right/*<-local1*/) = (/*->scala::Tuple2.apply().*/1, 2)
       val Some/*->scala::Some.*//*->scala::Some.unapply().*/(number1/*<-local2*/) =
         Some/*->scala::Some.*//*->scala::Some.apply().*/(1)
