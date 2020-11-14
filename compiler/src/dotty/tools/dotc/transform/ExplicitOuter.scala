@@ -96,7 +96,6 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
           val parentTp = cls.denot.thisType.baseType(parentTrait)
           val outerAccImpl = newOuterAccessor(cls, parentTrait).enteredAfter(thisPhase)
           newDefs += DefDef(outerAccImpl, singleton(fixThis(outerPrefix(parentTp))))
-            .showing(i"outAcc $result, ${outerPrefix(parentTp)}")
         }
 
       val parents1 =
