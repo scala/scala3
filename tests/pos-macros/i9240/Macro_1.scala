@@ -1,5 +1,4 @@
 import scala.quoted._
-import scala.tasty._
 
 inline def diveInto[T]: String = ${ diveIntoImpl[T]() }
 

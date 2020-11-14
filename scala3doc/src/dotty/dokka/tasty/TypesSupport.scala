@@ -242,8 +242,6 @@ trait TypesSupport:
         }
         inner(sc) ++ texts(" match {\n") ++ casesTexts ++ texts("}")
 
-      case TypeIdent(t) => texts(t)
-
       case ParamRef(TypeLambda(names, _, _), i) => texts(names.apply(i))
 
       case RecursiveType(tp) => inner(tp)

@@ -1,6 +1,6 @@
 package scala.quoted
 
-import scala.tasty.reflect._
+import scala.reflect.TypeTest
 
 /** AST reflection interface.
  *
