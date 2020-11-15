@@ -428,6 +428,11 @@ object desugar {
       }
       else originalTparams
 
+    if mods.is(Trait) then
+      for vparams <- originalVparamss; vparam <- vparams do
+        if vparam.tpt.isInstanceOf[ByNameTypeTree] then
+          report.error(em"implementation restriction: traits cannot have by name parameters", vparam.srcPos)
+
     // Annotations on class _type_ parameters are set on the derived parameters
     // but not on the constructor parameters. The reverse is true for
     // annotations on class _value_ parameters.
