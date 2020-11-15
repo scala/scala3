@@ -67,6 +67,7 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
       val sym = tree.symbol
       if (exprBecomesFunction(sym))
         if sym.is(ParamAccessor) && sym.owner.is(Trait) then
+          println("TVD")
           cpy.DefDef(tree)(tree.name, Nil, Nil, tree.tpt.withType(sym.info.widenExpr), tree.rhs)
         else
           cpy.ValDef(tree)(tpt = tree.tpt.withType(sym.info))

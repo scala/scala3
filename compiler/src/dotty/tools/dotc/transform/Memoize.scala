@@ -12,7 +12,7 @@ import SymUtils._
 import Constants._
 import ast.Trees._
 import MegaPhase._
-import NameKinds.TraitSetterName
+import NameKinds.{TraitSetterName, ExpandedName}
 import NameOps._
 import Flags._
 import Decorators._
@@ -116,8 +116,12 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
       }
 
     if sym.is(Accessor, butNot = NoFieldNeeded) then
-      def adaptToField(field: Symbol, tree: Tree): Tree =
-        if (tree.isEmpty) tree else tree.ensureConforms(field.info.widen)
+      def adaptToField(field: Symbol, rhs: Tree): Tree =
+        if (rhs.isEmpty) rhs
+        else
+          if (sym.name.is(ExpandedName))
+            println(i"adapt to field $tree, ${sym.nextOverriddenSymbol.showLocated}")
+          rhs.ensureConforms(field.info.widen)
 
       def isErasableBottomField(field: Symbol, cls: Symbol): Boolean =
         !field.isVolatile && ((cls eq defn.NothingClass) || (cls eq defn.NullClass) || (cls eq defn.BoxedUnitClass))
@@ -137,6 +141,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             if isErasableBottomField(field, rhsClass) then erasedBottomTree(rhsClass)
             else transformFollowingDeep(ref(field))(using ctx.withOwner(sym))
           val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
+//          println(i"add getter $getterDef, $sym, ${sym.flagsString}, ${rhs.info}")
           addAnnotations(fieldDef.denot)
           removeUnwantedAnnotations(sym, defn.GetterMetaAnnot)
           Thicket(fieldDef, getterDef)

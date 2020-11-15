@@ -253,17 +253,23 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
       for (getter <- mixin.info.decls.toList if getter.isGetter && !wasOneOf(getter, Deferred)) yield {
         if (isCurrent(getter) || getter.name.is(ExpandedName)) {
-          val rhs =
-            if (wasOneOf(getter, ParamAccessor))
-              nextArgument()
-            else if (getter.is(Lazy, butNot = Module))
-              transformFollowing(superRef(getter).appliedToNone)
-            else if (getter.is(Module))
-              New(getter.info.resultType, List(This(cls)))
+          val (rhs, toDrop) =
+            if wasOneOf(getter, ParamAccessor) then
+              val arg = nextArgument()
+              if arg.tpe.classSymbol == defn.FunctionClass(0)
+                  && getter.initial.info.isInstanceOf[ExprType]
+              then
+                (arg.select(defn.Function0_apply).appliedToNone, Accessor)
+              else
+                (arg, EmptyFlags)
+            else if getter.is(Lazy, butNot = Module) then
+              (transformFollowing(superRef(getter).appliedToNone), EmptyFlags)
+            else if getter.is(Module) then
+              (New(getter.info.resultType, List(This(cls))), EmptyFlags)
             else
-              Underscore(getter.info.resultType)
+              (Underscore(getter.info.resultType), EmptyFlags)
           // transformFollowing call is needed to make memoize & lazy vals run
-          transformFollowing(DefDef(mkForwarderSym(getter.asTerm), rhs))
+          transformFollowing(DefDef(mkForwarderSym(getter.asTerm, dropFlags = toDrop), rhs))
         }
         else EmptyTree
       }
@@ -280,7 +286,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
       yield {
         util.Stats.record("mixin forwarders")
-        transformFollowing(polyDefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))
+        transformFollowing(polyDefDef(mkForwarderSym(meth.asTerm, extraFlags = Bridge), forwarderRhsFn(meth)))
       }
 
     cpy.Template(impl)(

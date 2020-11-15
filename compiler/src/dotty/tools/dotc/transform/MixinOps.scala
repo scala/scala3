@@ -18,11 +18,11 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     map(n => getClassIfDefined("org.junit." + n)).
     filter(_.exists)
 
-  def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol = {
+  def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags, dropFlags: FlagSet = EmptyFlags): TermSymbol = {
     val res = member.copy(
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
-      flags = member.flags &~ Deferred &~ Module | Synthetic | extraFlags,
+      flags = member.flags &~ Deferred &~ Module &~ dropFlags | Synthetic | extraFlags,
       info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
     res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
     res

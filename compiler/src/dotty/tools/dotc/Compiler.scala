@@ -102,7 +102,7 @@ class Compiler {
          new ElimPolyFunction,       // Rewrite PolyFunction subclasses to FunctionN subclasses
          new TailRec,                // Rewrite tail recursion to loops
          new CompleteJavaEnums,      // Fill in constructors for Java enums
-         new Mixin,                  // Expand trait fields and trait initializers
+         new Mixin) :: List(         // Expand trait fields and trait initializers
          new LazyVals,               // Expand lazy vals
          new Memoize,                // Add private fields to getters and setters
          new NonLocalReturns,        // Expand non-local returns
