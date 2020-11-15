@@ -2026,38 +2026,38 @@ trait Applications extends Compatibility {
   private def pretypeArgs(alts: List[TermRef], pt: FunProto)(using Context): Unit = {
     def recur(altFormals: List[List[Type]], args: List[untpd.Tree]): Unit = args match {
       case arg :: args1 if !altFormals.exists(_.isEmpty) =>
-        untpd.functionWithUnknownParamType(arg) match {
-          case Some(fn) =>
-            def isUniform[T](xs: List[T])(p: (T, T) => Boolean) = xs.forall(p(_, xs.head))
-            val formalsForArg: List[Type] = altFormals.map(_.head)
-            def argTypesOfFormal(formal: Type): List[Type] =
-              formal match {
-                case defn.FunctionOf(args, result, isImplicit, isErased) => args
-                case defn.PartialFunctionOf(arg, result) => arg :: Nil
-                case _ => Nil
-              }
-            val formalParamTypessForArg: List[List[Type]] =
-              formalsForArg.map(argTypesOfFormal)
-            if (formalParamTypessForArg.forall(_.nonEmpty) &&
-                isUniform(formalParamTypessForArg)((x, y) => x.length == y.length)) {
-              val commonParamTypes = formalParamTypessForArg.transpose.map(ps =>
-                // Given definitions above, for i = 1,...,m,
-                //   ps(i) = List(p_i_1, ..., p_i_n)  -- i.e. a column
-                // If all p_i_k's are the same, assume the type as formal parameter
-                // type of the i'th parameter of the closure.
-                if (isUniform(ps)(_ frozen_=:= _)) ps.head
-                else WildcardType)
-              def isPartial = // we should generate a partial function for the arg
-                fn.isInstanceOf[untpd.Match] &&
-                formalsForArg.exists(_.isRef(defn.PartialFunctionClass))
-              val commonFormal =
-                if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
-                else defn.FunctionOf(commonParamTypes, WildcardType)
-              overload.println(i"pretype arg $arg with expected type $commonFormal")
-              if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
-                withMode(Mode.ImplicitsEnabled)(pt.typedArg(arg, commonFormal))
-            }
-          case None =>
+        def isUniform[T](xs: List[T])(p: (T, T) => Boolean) = xs.forall(p(_, xs.head))
+        val formalsForArg: List[Type] = altFormals.map(_.head)
+        def argTypesOfFormal(formal: Type): List[Type] =
+          formal match {
+            case defn.FunctionOf(args, result, isImplicit, isErased) => args
+            case defn.PartialFunctionOf(arg, result) => arg :: Nil
+            case _ => Nil
+          }
+        val formalParamTypessForArg: List[List[Type]] =
+          formalsForArg.map(argTypesOfFormal)
+        if (formalParamTypessForArg.forall(_.nonEmpty) &&
+            isUniform(formalParamTypessForArg)((x, y) => x.length == y.length)) {
+          val commonParamTypes = formalParamTypessForArg.transpose.map(ps =>
+            // Given definitions above, for i = 1,...,m,
+            //   ps(i) = List(p_i_1, ..., p_i_n)  -- i.e. a column
+            // If all p_i_k's are the same, assume the type as formal parameter
+            // type of the i'th parameter of the closure.
+            if (isUniform(ps)(_ frozen_=:= _)) ps.head
+            else WildcardType)
+          /** Should we generate a partial function for the arg ? */
+          def isPartial = untpd.functionWithUnknownParamType(arg) match
+            case Some(fn) =>
+              fn.isInstanceOf[untpd.Match] &&
+              formalsForArg.exists(_.isRef(defn.PartialFunctionClass))
+            case None =>
+              false
+          val commonFormal =
+            if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
+            else defn.FunctionOf(commonParamTypes, WildcardType)
+          overload.println(i"pretype arg $arg with expected type $commonFormal")
+          if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
+            withMode(Mode.ImplicitsEnabled)(pt.typedArg(arg, commonFormal))
         }
         recur(altFormals.map(_.tail), args1)
       case _ =>
