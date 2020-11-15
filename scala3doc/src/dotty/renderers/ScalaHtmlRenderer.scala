@@ -253,31 +253,15 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
     page.getContent match
       case prc: PartiallyRenderedContent =>
         def processLocalLink(str: String): String =
+          Try(URL(str)).map(_ => str).getOrElse{
           // TODO (https://github.com/lampepfl/scala3doc/issues/238) error handling
-          prc.context.driForLink(prc.template.templateFile, str).toOption
-            .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
-            .getOrElse(str)
+            prc.context.driForLink(prc.template.templateFile, str).toOption
+              .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
+              .getOrElse(str)
+          }
 
-        val childrenContent = page.getChildren.asScala.collect {
-          case p: StaticPageNode => p.getContent.asInstanceOf[PartiallyRenderedContent]//.resolved.code
-        }
-
-        val html = prc.procsesHtml(url => Try(URL(url)).fold(_ => processLocalLink(url), _ => url))
-        val htmlAst = Jsoup.parse(html)
-
-        // childrenContent.foreach { c =>
-        //   val code = Jsoup.parse(c.resolved.code)
-        //   val brief = code.select("p").first()
-        //   try {
-        //     val li = htmlAst.select(s"li:contains(${c.template.title})")
-        //     val div = li.select(s"div.excerpt")
-        //     div.html(brief.toString)
-        //   } catch {
-        //     _ =>
-        //   }
-        // }
-
-        withHtml(context, htmlAst.toString)
+        val html = prc.procsesHtml(processLocalLink, resolveLink(page))
+        withHtml(context, html)
       case content =>
         build(content, context, page, /*sourceSetRestriction=*/null)
 
@@ -335,6 +319,9 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
   private def resolveRoot(page: PageNode, path: String) =
     getLocationProvider.pathToRoot(page) + path
 
+  private def resolveLink(page: PageNode)(url: String): String =
+    if URI(url).isAbsolute then url else resolveRoot(page, url)
+
   private def linkResources(page: PageNode, resources: Iterable[String]): Iterable[AppliedTag] =
     def fileExtension(url: String): String =
       val param = url.indexOf('?')
@@ -342,13 +329,10 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
       val point = url.lastIndexOf('.', end)
       url.substring(point+1, end)
 
-    def resolveLink(url: String): String =
-      if URI(url).isAbsolute then url else resolveRoot(page, url)
-
     for res <- resources yield
       fileExtension(res) match
-        case "css" => link(rel := "stylesheet", href := resolveLink(res))
-        case "js" => script(`type` := "text/javascript", src := resolveLink(res), defer := "true")
+        case "css" => link(rel := "stylesheet", href := resolveLink(page)(res))
+        case "js" => script(`type` := "text/javascript", src := resolveLink(page)(res), defer := "true")
         case _ => raw(res)
 
   private def buildWithKotlinx(node: ContentNode, pageContext: ContentPage, sourceSetRestriction: JSet[DisplaySourceSet]): String =
