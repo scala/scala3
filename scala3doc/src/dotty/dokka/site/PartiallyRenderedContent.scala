@@ -10,7 +10,7 @@ import org.jsoup.Jsoup
 import scala.collection.JavaConverters._
 
 case class PartiallyRenderedContent(
-  template: TemplateFile,
+  template: LoadedTemplate,
   context: StaticSiteContext,
   override val getChildren: JList[ContentNode],
   override val getDci: DCI,

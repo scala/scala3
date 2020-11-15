@@ -254,7 +254,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
       case prc: PartiallyRenderedContent =>
         def processLocalLink(str: String): String =
           // TODO (https://github.com/lampepfl/scala3doc/issues/238) error handling
-          prc.context.driForLink(prc.template, str).toOption
+          prc.context.driForLink(prc.template.templateFile, str).toOption
             .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
             .getOrElse(str)
 
@@ -265,17 +265,17 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
         val html = prc.procsesHtml(url => Try(URL(url)).fold(_ => processLocalLink(url), _ => url))
         val htmlAst = Jsoup.parse(html)
 
-        childrenContent.foreach { c =>
-          val code = Jsoup.parse(c.resolved.code)
-          val brief = code.select("p").first()
-          try {
-            val li = htmlAst.select(s"li:contains(${c.template.title})")
-            val div = li.select(s"div.excerpt")
-            div.html(brief.toString)
-          } catch {
-            _ =>
-          }
-        }
+        // childrenContent.foreach { c =>
+        //   val code = Jsoup.parse(c.resolved.code)
+        //   val brief = code.select("p").first()
+        //   try {
+        //     val li = htmlAst.select(s"li:contains(${c.template.title})")
+        //     val div = li.select(s"div.excerpt")
+        //     div.html(brief.toString)
+        //   } catch {
+        //     _ =>
+        //   }
+        // }
 
         withHtml(context, htmlAst.toString)
       case content =>

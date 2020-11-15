@@ -82,19 +82,20 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
           val indexFiles = from.listFiles { file =>file.getName == "index.md" || file.getName == "index.html" }
           indexFiles.size match
             case 0 => emptyTemplate(from, from.getName)
-            case 1 => 
-              val index = loadTemplateFile(indexFiles.head)
-              index.copy(
-                file = from,
-                settings = index.settings ++ Map("site" -> Map("posts" -> children.map(_.templateFile.settings("page"))))
-              )
+            case 1 => loadTemplateFile(indexFiles.head).copy(file = from)
             case _ =>
               val msg = s"ERROR: Multiple index pages found under ${from.toPath}"
               throw new java.lang.RuntimeException(msg)
 
         val templateFile = if (from.isDirectory) loadIndexPage() else loadTemplateFile(from)
 
-        Some(LoadedTemplate(templateFile, children.toList, from))
+        val processedChildren = if !isBlog then children else
+          def dateFrom(p: LoadedTemplate): String =
+            val pageSettings = p.templateFile.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
+            pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse("1900-01-01") // blogs without date are last
+          children.sortBy(dateFrom).reverse
+
+        Some(LoadedTemplate(templateFile, processedChildren.toList, from))
       catch
           case e: RuntimeException =>
             // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
@@ -115,7 +116,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
       val path = if isBlog then "blog" else url.stripSuffix(".html") + ".md"
       val file = root.toPath.resolve(path) // Add support for .html files!
       val LoadedTemplate(template, children, tFile) = loadTemplate(file.toFile, isBlog).get // Add proper logging if file does not exisits
-      LoadedTemplate(template.copy(settings = template.settings + ("title" -> title)), children, tFile) 
+      LoadedTemplate(template.copy(settings = template.settings + ("title" -> title)), children, tFile)
     case Sidebar.Category(title, nested) =>
       // Add support for index.html/index.md files!
       val fakeFile = new File(root, title)
@@ -131,12 +132,14 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
         else template.file.toPath.getParent().resolve(link)
     ))
 
-  private def driFor(dest: Path): DRI = mkDRI(s"_.${root.toPath.relativize(dest)}")
+  def driFor(dest: Path): DRI = mkDRI(s"_.${root.toPath.relativize(dest)}")
+
+  def relativePath(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
 
   def templateToPage(myTemplate: LoadedTemplate): StaticPageNode =
     val dri = driFor(myTemplate.file.toPath)
     val content = new PartiallyRenderedContent(
-      myTemplate.templateFile,
+      myTemplate,
       this,
       JList(),
       new DCI(Set(dri).asJava, ContentKind.Empty),

@@ -21,13 +21,12 @@ val U: kotlin.Unit = kotlin.Unit.INSTANCE
 def JList[T](e: T*): JList[T] = e.asJava
 def JSet[T](e: T*): JSet[T] = e.toSet.asJava
 def JMap[K, V](e: (K, V)*): JMap[K, V] = e.toMap.asJava
-def JMap2[K, V](): JMap[K, V] = ??? // e.toMap.asJava
-def newHMap[K, V](m: JMap[K, V]): HMap[K, V] = new HMap[K, V](m)
 
 type JList[T] = java.util.List[T]
 type JSet[T] = java.util.Set[T]
 type JMap[K, V] = java.util.Map[K, V]
-type HMap[K, V] = java.util.HashMap[K, V]
+type JHashMap[K, V] = java.util.HashMap[K, V]
+type JMapEntry[K, V] = java.util.Map.Entry[K, V]
 
 type SourceSetWrapper = DokkaConfiguration$DokkaSourceSet
 type DokkaSourceSet = DokkaConfiguration.DokkaSourceSet
@@ -62,14 +61,18 @@ extension [V](jlist: JList[V]):
   def ++ (other: JList[V]): JList[V] =
     Stream.of(jlist, other).flatMap(_.stream).collect(Collectors.toList())
 
+extension [V](jset: JSet[V]):
+  def ++ (other: JSet[V]): JSet[V] =
+    Stream.of(jset, other).flatMap(_.stream).collect(Collectors.toSet())
+
 object PluginUtils:
     import scala.reflect.ClassTag
     import scala.reflect._
-    def plugin[T <: DokkaPlugin: ClassTag](ctx: DokkaContext) = 
+    def plugin[T <: DokkaPlugin: ClassTag](ctx: DokkaContext) =
       ctx.plugin[T](getKotlinClass(implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]))
 
-    def query[T <: DokkaPlugin: ClassTag, E](ctx: DokkaContext, queryFunction: (T) => ExtensionPoint[E]): List[E] = 
+    def query[T <: DokkaPlugin: ClassTag, E](ctx: DokkaContext, queryFunction: (T) => ExtensionPoint[E]): List[E] =
         ctx.get(queryFunction(plugin[T](ctx))).asScala.toList
 
-    def querySingle[T <: DokkaPlugin: ClassTag, E](ctx: DokkaContext, queryFunction: (T) => ExtensionPoint[E]): E = 
+    def querySingle[T <: DokkaPlugin: ClassTag, E](ctx: DokkaContext, queryFunction: (T) => ExtensionPoint[E]): E =
         ctx.single(queryFunction(plugin[T](ctx)))

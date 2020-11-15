@@ -10,8 +10,6 @@ import org.jetbrains.dokka.model.Documentable
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.transformers.pages.PageTransformer
 
-case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTemplate], file: File)
-
 case class StaticPageNode(
                            template: TemplateFile,
                            override val getName: String,
