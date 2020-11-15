@@ -2,7 +2,7 @@
 .search-content {
   padding: 0;
   margin: var(--content-padding);
-  position: absolute;
+  position: fixed;
   top: 0;
   right: 0;
   z-index: 5;
