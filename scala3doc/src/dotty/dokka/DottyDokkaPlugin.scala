@@ -9,7 +9,6 @@ import org.jetbrains.dokka.transformers.documentation.DocumentableToPageTranslat
 import org.jetbrains.dokka.DokkaConfiguration
 import org.jetbrains.dokka.{ DokkaConfiguration$DokkaSourceSet => DokkaSourceSet }
 import org.jetbrains.dokka.model._
-import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.base.parsers._
 import org.jetbrains.dokka.plugability.DokkaContext

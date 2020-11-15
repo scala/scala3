@@ -13,7 +13,6 @@ import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.base.transformers.documentables.CallableExtensions
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.base.resolvers.anchors._
-import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.doc._
 import dotty.dokka.model.api.{Kind => _, Link => SLink, _}

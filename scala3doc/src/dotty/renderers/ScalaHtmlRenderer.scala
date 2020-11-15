@@ -16,7 +16,6 @@ import kotlinx.html.Gen_consumer_tagsKt
 import kotlinx.html.ApiKt
 import kotlinx.html.HTMLTag
 import kotlinx.html.DIV
-import org.jetbrains.dokka.links.DRI
 import dotty.dokka.model.api.Link
 import dotty.dokka.model.api.HierarchyGraph
 import org.jetbrains.dokka.base.resolvers.local.LocationProvider
@@ -255,7 +254,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
         def processLocalLink(str: String): String =
           Try(URL(str)).map(_ => str).getOrElse{
           // TODO (https://github.com/lampepfl/scala3doc/issues/238) error handling
-            prc.context.driForLink(prc.template.templateFile, str).toOption
+            prc.context.driForLink(prc.template.templateFile, str)
               .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
               .getOrElse(str)
           }

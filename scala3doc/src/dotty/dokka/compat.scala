@@ -1,6 +1,6 @@
 package dotty.dokka
 
-import org.jetbrains.dokka.links.{DRI, PointingToDeclaration}
+import org.jetbrains.dokka.links.PointingToDeclaration
 import org.jetbrains.dokka.DokkaConfiguration
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import collection.JavaConverters._
@@ -27,6 +27,8 @@ type JSet[T] = java.util.Set[T]
 type JMap[K, V] = java.util.Map[K, V]
 type JHashMap[K, V] = java.util.HashMap[K, V]
 type JMapEntry[K, V] = java.util.Map.Entry[K, V]
+
+type DRI = org.jetbrains.dokka.links.DRI
 
 type SourceSetWrapper = DokkaConfiguration$DokkaSourceSet
 type DokkaSourceSet = DokkaConfiguration.DokkaSourceSet

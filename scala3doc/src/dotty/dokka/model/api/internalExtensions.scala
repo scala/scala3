@@ -3,7 +3,6 @@ package model
 package api
 
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
-import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.{Projection => JProjection}
 import org.jetbrains.dokka.model.Documentable
 import org.jetbrains.dokka.model.DFunction
@@ -18,7 +17,6 @@ import org.jetbrains.dokka.model.DPackage
 import org.jetbrains.dokka.model.DModule
 
 import collection.JavaConverters._
-import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc.DocumentationNode
 import org.jetbrains.dokka.model.properties._
 

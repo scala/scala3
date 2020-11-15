@@ -10,7 +10,6 @@ import java.nio.file.Paths
 import org.jetbrains.dokka.base.parsers.MarkdownParser
 import org.jetbrains.dokka.base.transformers.pages.comments.DocTagToContentConverter
 import org.jetbrains.dokka.DokkaConfiguration
-import org.jetbrains.dokka.links.DRI
 import org.jetbrains.dokka.model.doc.{DocTag, Text}
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.pages.{ContentKind, ContentNode, DCI, PageNode}
@@ -22,6 +21,8 @@ import util.Try
 import scala.collection.JavaConverters._
 
 class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
+
+  var memberLinkResolver: String => Option[DRI] = _ => None
 
   def indexPage():Option[StaticPageNode] =
     val files = List(new File(root, "index.html"), new File(root, "index.md")).filter { _.exists() }
@@ -127,10 +128,14 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
     dir("docs").flatMap(_.listFiles()).flatMap(loadTemplate(_, isBlog = false))
       ++ dir("blog").flatMap(loadTemplate(_, isBlog = true))
 
-  def driForLink(template: TemplateFile, link: String): Try[DRI] = Try(driFor(
+  def driForLink(template: TemplateFile, link: String): Option[DRI] =
+    val pathDri = Try {
+      val path =
         if link.startsWith("/") then root.toPath.resolve(link.drop(1))
         else template.file.toPath.getParent().resolve(link)
-    ))
+      if Files.exists(path) then Some(driFor(path)) else None
+    }.toOption.flatten
+    pathDri.orElse(memberLinkResolver(link))
 
   def driFor(dest: Path): DRI = mkDRI(s"_.${root.toPath.relativize(dest)}")
 
