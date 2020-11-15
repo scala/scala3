@@ -8,6 +8,8 @@ import Contexts._
 import Types._
 import core.StdNames.nme
 import ast.Trees._
+import Decorators._
+import Flags._
 
 /** This phase eliminates ExprTypes `=> T` as types of method parameter references, and replaces them b
  *  nullary function types.  More precisely:
@@ -62,13 +64,21 @@ class ElimByName extends TransformByNameApply with InfoTransformer {
 
   override def transformValDef(tree: ValDef)(using Context): Tree =
     atPhase(next) {
-      if (exprBecomesFunction(tree.symbol))
-        cpy.ValDef(tree)(tpt = tree.tpt.withType(tree.symbol.info))
+      val sym = tree.symbol
+      if (exprBecomesFunction(sym))
+        if sym.is(ParamAccessor) && sym.owner.is(Trait) then
+          cpy.DefDef(tree)(tree.name, Nil, Nil, tree.tpt.withType(sym.info.widenExpr), tree.rhs)
+        else
+          cpy.ValDef(tree)(tpt = tree.tpt.withType(sym.info))
       else tree
     }
 
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
-    case ExprType(rt) => defn.FunctionOf(Nil, rt)
+    case ExprType(rt) =>
+      if sym.is(ParamAccessor) && sym.owner.is(Trait) then
+        ExprType(defn.FunctionOf(Nil, rt))
+      else
+        defn.FunctionOf(Nil, rt)
     case _ => tp
   }
 

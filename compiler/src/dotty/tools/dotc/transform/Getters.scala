@@ -12,6 +12,7 @@ import Flags._
 import ValueClasses._
 import SymUtils._
 import NameOps._
+import Decorators._
 import collection.mutable
 
 
@@ -81,6 +82,15 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
             // seem to be a problem since references to a getter don't care whether
             // it's a `T` or a `=> T`
       }
+      else if d.info.isInstanceOf[ExprType]
+          && d.is(ParamAccessor) && d.owner.is(Trait)
+          && !d.is(Method)
+      then
+        // Value parameters of traits get an accessor by the first clause of the
+        // definition of `d1` above, but by-name parameters don't since they are not
+        // value types. I.e. we do not want to replace `=> T` with `=> (=> T)`.
+        // But we still need to mark them as accessors.
+        d.copySymDenotation(initFlags = d.flags | AccessorCreationFlags)
       else d
 
     // Drop the Local flag from all private[this] and protected[this] members.
