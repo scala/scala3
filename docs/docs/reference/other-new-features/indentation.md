@@ -74,6 +74,11 @@ There are two rules:
 
     - the first token on the next line has an indentation width strictly less
         than the current indentation width, and
+    - the last token on the previous line is not one of the following tokens
+      which indicate that the previous statement continues:
+      ```
+      then  else  do  catch  finally  yield  match
+      ```
     - the first token on the next line is not a
         [leading infix operator](../changed-features/operators.html).
 
