@@ -1534,7 +1534,9 @@ object Parsers {
     def refinedTypeRest(t: Tree): Tree = {
       argumentStart()
       if (in.isNestedStart)
-        refinedTypeRest(atSpan(startOffset(t)) { RefinedTypeTree(rejectWildcardType(t), refinement()) })
+        refinedTypeRest(atSpan(startOffset(t)) {
+          RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
+        })
       else t
     }
 
@@ -1566,7 +1568,10 @@ object Parsers {
       else t
 
     /** The block in a quote or splice */
-    def stagedBlock() = inDefScopeBraces(block(simplify = true))
+    def stagedBlock() =
+      val saved = lastStatOffset
+      try inBraces(block(simplify = true))
+      finally lastStatOffset = saved
 
     /** SimpleEpxr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
      *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
@@ -1628,7 +1633,7 @@ object Parsers {
           makeTupleOrParens(inParens(argTypes(namedOK = false, wildOK = true)))
         }
       else if in.token == LBRACE then
-        atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
+        atSpan(in.offset) { RefinedTypeTree(EmptyTree, refinement(indentOK = false)) }
       else if (isSplice)
         splice(isType = true)
       else
@@ -1772,8 +1777,11 @@ object Parsers {
 
     /** Refinement ::= `{' RefineStatSeq `}'
      */
-    def refinement(): List[Tree] =
-      inBracesOrIndented(refineStatSeq(), rewriteWithColon = true)
+    def refinement(indentOK: Boolean): List[Tree] =
+      if indentOK then
+        inBracesOrIndented(refineStatSeq(), rewriteWithColon = true)
+      else
+        inBraces(refineStatSeq())
 
     /** TypeBounds ::= [`>:' Type] [`<:' Type]
      */

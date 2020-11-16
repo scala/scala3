@@ -66,7 +66,8 @@ class CompilationTests {
 
     aggregateTests(
       compileFile("tests/rewrites/rewrites.scala", scala2CompatMode.and("-rewrite", "-indent")),
-      compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite"))
+      compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
+      compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite"))
     ).checkRewrites()
   }
 
