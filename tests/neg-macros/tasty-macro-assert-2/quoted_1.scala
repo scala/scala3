@@ -15,7 +15,7 @@ object Asserts {
   def impl(cond: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
 
-    val tree = cond.unseal
+    val tree = Term.of(cond)
 
     def isOps(tpe: TypeRepr): Boolean = tpe match {
       case tpe: TermRef => tpe.termSymbol.isDefDef && tpe.name == "Ops"// TODO check that the parent is Asserts

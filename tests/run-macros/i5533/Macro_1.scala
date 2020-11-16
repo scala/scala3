@@ -10,7 +10,7 @@ object scalatest {
   def assertImpl(condition: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
 
-    val tree = condition.unseal
+    val tree = Term.of(condition)
 
     val expr = tree.asExprOf[Boolean]
 

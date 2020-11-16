@@ -6,7 +6,7 @@ object Macros {
 
   def impl(x: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
-    Reporting.error("here is the the argument is " + x.unseal.underlyingArgument.show, x.unseal.underlyingArgument.pos)
+    Reporting.error("here is the the argument is " + Term.of(x).underlyingArgument.show, Term.of(x).underlyingArgument.pos)
     '{}
   }
 

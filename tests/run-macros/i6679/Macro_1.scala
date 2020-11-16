@@ -4,7 +4,7 @@ def makeMatch[A: Type](head : Expr[A])(using qctx : QuoteContext) : Expr[Unit] =
   import qctx.reflect._
 
   val sacrifice = '{ $head match { case _ => ??? } }
-  sacrifice.unseal
+  Term.of(sacrifice)
 
   '{ println("Ok") }
 }

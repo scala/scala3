@@ -31,7 +31,7 @@ object FQuote {
       tree.symbol.fullName == "scala.StringContext$.apply"
 
     // FQuote.SCOps(StringContext.apply([p0, ...]: String*)
-    val parts = receiver.unseal.underlyingArgument match {
+    val parts = Term.of(receiver).underlyingArgument match {
       case Apply(conv, List(Apply(fun, List(Typed(Repeated(values, _), _)))))
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
@@ -43,7 +43,7 @@ object FQuote {
     }
 
     // [a0, ...]: Any*
-    val Typed(Repeated(allArgs, _), _) = args.unseal.underlyingArgument
+    val Typed(Repeated(allArgs, _), _) = Term.of(args).underlyingArgument
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
       if (part.startsWith("%d") && !(arg.tpe <:< TypeRepr.of[Int])) {

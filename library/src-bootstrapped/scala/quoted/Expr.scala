@@ -14,7 +14,8 @@ object Expr {
    *   Some bindings may be elided as an early optimization.
    */
   def betaReduce[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    qctx.reflect.Term.betaReduce(expr.unseal) match
+    import qctx.reflect._
+    Term.betaReduce(Term.of(expr)) match
       case Some(expr1) => expr1.asExpr.asInstanceOf[Expr[T]]
       case _ => expr
 
@@ -24,7 +25,7 @@ object Expr {
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using qctx: QuoteContext): Expr[T] = {
     import qctx.reflect._
-    Block(statements.map(_.unseal), expr.unseal).asExpr.asInstanceOf[Expr[T]]
+    Block(statements.map(Term.of), Term.of(expr)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Lift a value into an expression containing the construction of that value */

@@ -5,7 +5,7 @@ object scalatest {
 
   def assertImpl(condition: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
-    val tree = condition.unseal
+    val tree = Term.of(condition)
     def exprStr: String = condition.show
 
     tree.underlyingArgument match {

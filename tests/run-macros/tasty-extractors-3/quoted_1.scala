@@ -25,7 +25,7 @@ object Macros {
       }
     }
 
-    val tree = x.unseal
+    val tree = Term.of(x)
     traverser.traverseTree(tree)
     '{print(${Expr(buff.result())})}
   }
