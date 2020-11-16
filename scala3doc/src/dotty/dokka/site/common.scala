@@ -24,20 +24,19 @@ val apiPageDRI: DRI = mkDRI(packageName = "api", extra = "__api__")
 val defaultMarkdownOptions: DataHolder =
   new MutableDataSet()
     .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
-    .set(
-      Parser.EXTENSIONS, List(
-        TablesExtension.create(),
-        TaskListExtension.create(),
-        AutolinkExtension.create(),
-        AnchorLinkExtension.create(),
-        EmojiExtension.create(),
-        YamlFrontMatterExtension.create(),
-        StrikethroughExtension.create()
-      ).asJava)
-    .set(
-      EmojiExtension.ROOT_IMAGE_PATH,
-      "https://github.global.ssl.fastly.net/images/icons/emoji/"
-    )
+    .set(Parser.INDENTED_CODE_BLOCK_PARSER, false)
+    .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
+    .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
+    .set(EmojiExtension.ROOT_IMAGE_PATH, "https://github.global.ssl.fastly.net/images/icons/emoji/")
+    .set(Parser.EXTENSIONS, java.util.Arrays.asList(
+      TablesExtension.create(),
+      TaskListExtension.create(),
+      AutolinkExtension.create(),
+      AnchorLinkExtension.create(),
+      EmojiExtension.create(),
+      YamlFrontMatterExtension.create(),
+      StrikethroughExtension.create()
+    ))
 
 def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(
   file = file,

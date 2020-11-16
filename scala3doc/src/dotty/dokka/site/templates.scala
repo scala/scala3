@@ -74,7 +74,7 @@ case class TemplateFile(
     val rendered = Template.parse(this.rawCode).render(mutableProperties)
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
-      val parser: Parser = Parser.builder().build()
+      val parser: Parser = Parser.builder(defaultMarkdownOptions).build()
       HtmlRenderer.builder(defaultMarkdownOptions).build().render(parser.parse(rendered))
 
     layoutTemplate match
