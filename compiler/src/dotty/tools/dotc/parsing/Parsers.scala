@@ -3766,7 +3766,7 @@ object Parsers {
               if (name != nme.ERROR)
                 self = makeSelfDef(name, tpt).withSpan(first.span)
           }
-          in.token = EMPTY // hack to suppress INDENT insertion after `=>`
+          in.token = SELFARROW // suppresses INDENT insertion after `=>`
           in.nextToken()
         }
         else {
