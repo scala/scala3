@@ -13,7 +13,7 @@ import org.jsoup.Jsoup
 import scala.collection.JavaConverters._
 
 
-case class LazyEntry(val getKey: String, value: () => String) extends JMapEntry[String, Object]:
+case class LazyEntry(getKey: String, value: () => String) extends JMapEntry[String, Object]:
   lazy val getValue: Object = value()
   def setValue(x$0: Object): Object = ???
 
@@ -36,6 +36,8 @@ case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTempl
     val posts = children.map(_.lazyTemplateProperties(ctx))
     val site = templateFile.settings.getOrElse("site", Map.empty).asInstanceOf[Map[String, Object]]
     val sourceLinks = if !file.exists() then Nil else
+      // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
+      // toRealPath is used to turn symlinks into proper paths
       val actualPath = Paths.get("").toAbsolutePath.relativize(file.toPath.toRealPath())
       ctx.sourceLinks.pathTo(actualPath).map("viewSource" -> _ ) ++
         ctx.sourceLinks.pathTo(actualPath, operation = "edit").map("editSource" -> _ )

@@ -56,6 +56,7 @@ class SourceLinkTest:
     }
 
 class SourceLinksTest:
+  // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
   val projectRoot = Paths.get("").toAbsolutePath()
 
   val edit: Operation = "edit" // union types need explicit singletons

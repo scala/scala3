@@ -135,5 +135,6 @@ object SourceLinks:
     load(
       config.args.sourceLinks,
       config.args.revision,
+      // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
       Paths.get("").toAbsolutePath
     )
