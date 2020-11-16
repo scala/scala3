@@ -1566,7 +1566,10 @@ object Parsers {
       else t
 
     /** The block in a quote or splice */
-    def stagedBlock() = inDefScopeBraces(block(simplify = true))
+    def stagedBlock() =
+      val saved = lastStatOffset
+      try inBraces(block(simplify = true))
+      finally lastStatOffset = saved
 
     /** SimpleEpxr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
      *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
