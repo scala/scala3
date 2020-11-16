@@ -69,7 +69,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val scalaResourceInstaller = extend(
     _.extensionPoint(dokkaBase.getHtmlPreprocessors)
-      .fromInstance(new ScalaResourceInstaller())
+      .fromRecipe(ctx => new ScalaResourceInstaller(ctx.args))
       .after(dokkaBase.getCustomResourceInstaller)
   )
 
@@ -109,7 +109,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val ourRenderer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getRenderer)
-      .fromRecipe(ScalaHtmlRenderer(_))
+      .fromRecipe(ctx => ScalaHtmlRenderer(ctx, ctx.args))
       .overrideExtension(dokkaBase.getHtmlRenderer)
   )
 
@@ -169,9 +169,8 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
   )
 
   extension (ctx: DokkaContext):
-    def siteContext: Option[StaticSiteContext] = ctx.getConfiguration match
-      case d: DottyDokkaConfig => d.staticSiteContext
-      case _ => None
+    def siteContext: Option[StaticSiteContext] = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].staticSiteContext
+    def args: Args = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].docConfiguration.args
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/232): remove once problem is fixed in Dokka
 extension [T]  (builder: ExtensionBuilder[T]):

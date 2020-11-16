@@ -20,7 +20,7 @@ import util.Try
 
 import scala.collection.JavaConverters._
 
-class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
+class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args: Args):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
@@ -159,3 +159,8 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper]):
       JList(),
       (myTemplate.children.map(templateToPage)).asJava
     )
+
+  val projectWideProperties =
+    Seq("projectName" -> args.name) ++
+      args.projectVersion.map("projectVersion" -> _) ++
+      args.projectTitle.map("projectTitle" -> _)

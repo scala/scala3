@@ -34,6 +34,7 @@ case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTempl
   def resolveToHtml(ctx: StaticSiteContext): ResolvedPage =
     val posts = children.map(_.lazyTemplateProperties(ctx))
     val site = templateFile.settings.getOrElse("site", Map.empty).asInstanceOf[Map[String, Object]]
-    val updatedSettings = templateFile.settings + ("site" -> (site + ("posts" -> posts)))
+
+    val updatedSettings = templateFile.settings + ("site" -> (site + ("posts" -> posts))) ++ ctx.projectWideProperties
 
     templateFile.resolveInner(RenderingContext(updatedSettings, ctx.layouts))

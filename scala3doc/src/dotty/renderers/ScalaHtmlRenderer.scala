@@ -24,6 +24,7 @@ import dotty.dokka.site.PartiallyRenderedContent
 import scala.util.Try
 import org.jetbrains.dokka.base.renderers.html.SearchbarDataInstaller
 import org.jsoup.Jsoup
+import java.nio.file.Paths
 
 class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
   def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
@@ -41,7 +42,7 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
 
   def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
 
-class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
+class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx) {
 
   // TODO #239
   val hackScalaSearchbarDataInstaller: SearchbarDataInstaller = {
@@ -272,6 +273,12 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
       case _ =>
         (page.getName, false)
 
+    val projectLogo =
+      args.projectLogo.map { path =>
+        val fileName = Paths.get(path).getFileName()
+        span(img(src := resolveRoot(page, s"project-logo/$fileName")))
+      }.toSeq
+
     html(
       head(
         meta(charset := "utf-8"),
@@ -284,7 +291,13 @@ class ScalaHtmlRenderer(ctx: DokkaContext) extends HtmlRenderer(ctx) {
         if noFrame then raw(buildWithKotlinx(kotlinxContent)) else
           div(id := "container")(
             div(id := "leftColumn")(
-              div(id := "logo"),
+              div(id := "logo")(
+                projectLogo,
+                span(
+                  div(cls:="projectName")(args.name),
+                  args.projectVersion.map(v => div(cls:="projectVersion")(v)).toList
+                )
+              ),
               div(id := "paneSearch"),
               nav(id := "sideMenu"),
             ),
