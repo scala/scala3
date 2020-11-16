@@ -472,7 +472,6 @@ object Scanners {
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
           if currentRegion.isOutermost then
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
-//              report.error("Line is indented too far to the left", sourcePos())
           else if !isLeadingInfixOperator() && !statCtdTokens.contains(lastToken) then
             currentRegion match
               case r: Indented =>
