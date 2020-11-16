@@ -1506,8 +1506,7 @@ object Build {
               (`scala3-interfaces`/Compile/products).value,
               (`tasty-core-bootstrapped`/Compile/products).value,
               (`scala3-library-bootstrapped`/Compile/products).value,
-              // TODO we can't load stdlib from Tasty
-              // (`stdlib-bootstrapped`/Compile/products).value,
+              (`stdlib-bootstrapped`/Compile/products).value,
             ).flatten
 
             val roots = joinProducts(dottyJars)

@@ -104,7 +104,7 @@ trait TypesSupport:
       case r: Refinement => { //(parent, name, info)
         def getRefinementInformation(t: TypeRepr): List[TypeRepr] = t match {
           case r: Refinement => getRefinementInformation(r.parent) :+ r
-          case tr: TypeRef => List(tr)
+          case t => List(t)
         }
 
         def getParamBounds(t: PolyType): List[JProjection] = commas(

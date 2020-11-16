@@ -2001,7 +2001,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     object TypeBounds extends TypeBoundsModule:
       def apply(low: TypeRepr, hi: TypeRepr): TypeBounds = Types.TypeBounds(low, hi)
-      def unapply(x: TypeBounds): Option[(TypeRepr, TypeRepr)] = Some((x.low, x.hi))
+      def unapply(x: TypeBounds): Option[(TypeRepr, TypeRepr)] = Some((x.low.stripLazyRef, x.hi.stripLazyRef))
       def empty: TypeBounds = Types .TypeBounds.empty
       def upper(hi: TypeRepr): TypeBounds = Types .TypeBounds.upper(hi)
       def lower(lo: TypeRepr): TypeBounds = Types .TypeBounds.lower(lo)
@@ -2009,8 +2009,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     object TypeBoundsMethodsImpl extends TypeBoundsMethods:
       extension (self: TypeBounds):
-        def low: TypeRepr = self.lo
-        def hi: TypeRepr = self.hi
+        def low: TypeRepr = self.lo.stripLazyRef
+        def hi: TypeRepr = self.hi.stripLazyRef
       end extension
     end TypeBoundsMethodsImpl
 
