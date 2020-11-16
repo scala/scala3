@@ -224,7 +224,7 @@ class Definitions {
   @tu lazy val ScalaXmlPackageClass: Symbol = getPackageClassIfDefined("scala.xml")
 
   @tu lazy val CompiletimePackageObject: Symbol = requiredModule("scala.compiletime.package")
-    @tu lazy val Compiletime_code: Symbol = CompiletimePackageObject.requiredMethod("code")
+    @tu lazy val Compiletime_codeOf: Symbol = CompiletimePackageObject.requiredMethod("codeOf")
     @tu lazy val Compiletime_erasedValue  : Symbol = CompiletimePackageObject.requiredMethod("erasedValue")
     @tu lazy val Compiletime_error        : Symbol = CompiletimePackageObject.requiredMethod(nme.error)
     @tu lazy val Compiletime_requireConst: Symbol = CompiletimePackageObject.requiredMethod("requireConst")
