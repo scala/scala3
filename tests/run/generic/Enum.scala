@@ -1,11 +1,11 @@
 package generic
 
-trait Enum {
+trait EnumLike {
   def ordinal: Int
 }
 
 object runtime {
-  class EnumValues[E <: Enum] {
+  class EnumValues[E <: EnumLike] {
     private[this] var myMap: Map[Int, E] = Map()
     private[this] var fromNameCache: Map[String, E] = null
 
