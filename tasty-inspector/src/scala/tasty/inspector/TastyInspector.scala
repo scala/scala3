@@ -99,9 +99,11 @@ trait TastyInspector:
 
       override def run(implicit ctx: Context): Unit =
         if !alreadyRan then
-          val qctx = QuoteContextImpl()
-          self.finishProcessingCompilationUnits(using qctx)
-          alreadyRan = true
+          try
+            val qctx = QuoteContextImpl()
+            self.finishProcessingCompilationUnits(using qctx)
+          finally
+            alreadyRan = true
 
       var alreadyRan = false
     end TastyInspectorFinishPhase
