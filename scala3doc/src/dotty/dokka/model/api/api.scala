@@ -49,7 +49,7 @@ enum Modifier(val name: String, val prefix: Boolean):
   case Opaque extends Modifier("opaque", true)
   case Open extends Modifier("open", true)
 
-case class ExtensionTarget(name: String, signature: Signature, dri: DRI)
+case class ExtensionTarget(name: String, signature: Signature, dri: DRI, position: Long)
 case class ImplicitConversion(from: DRI, to: DRI)
 trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
 trait Classlike

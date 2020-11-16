@@ -168,7 +168,7 @@ case class TastyParser(qctx: QuoteContext, inspector: DokkaBaseTastyInspector, c
 
   private def errorMsg[T](a: Any, m: => String, e: Throwable): Option[T] =
     val msg = try m catch case e: Throwable => a.toString
-    println(s"ERROR: tree is faling: msg")
+    println(s"ERROR: tree is faling: $msg")
     e.printStackTrace()
     throw e
 

@@ -109,7 +109,12 @@ trait ClassLikeSupport:
   private def parseMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isSyntheticFunc && dd.symbol.isExtensionMethod =>
         dd.symbol.extendedSymbol.map { extSym =>
-          val target = ExtensionTarget(extSym.symbol.normalizedName, extSym.tpt.dokkaType.asSignature, extSym.tpt.symbol.dri)
+          val target = ExtensionTarget(
+            extSym.symbol.normalizedName, 
+            extSym.tpt.dokkaType.asSignature, 
+            extSym.tpt.symbol.dri, 
+            extSym.symbol.pos.start
+          )
           parseMethod(dd.symbol, kind = Kind.Extension(target))
         }
       // TODO check given methods?
