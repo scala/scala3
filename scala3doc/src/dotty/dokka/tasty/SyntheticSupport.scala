@@ -38,7 +38,7 @@ trait SyntheticsSupport:
     def getAllMembers: List[Symbol] = hackGetAllMembers(using qctx)(s)
 
   def isSyntheticField(c: Symbol) =
-    c.flags.is(Flags.CaseAccessor) || c.flags.is(Flags.Object)
+    c.flags.is(Flags.CaseAccessor) || (c.flags.is(Flags.Object) && !c.flags.is(Flags.Given))
 
   def isValidPos(pos: Position) =
     pos.exists && pos.start != pos.end
@@ -71,7 +71,7 @@ trait SyntheticsSupport:
     sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef)).allMembers.iterator.map(_.symbol)
       .collect {
          case sym if
-          !sym.is(dotc.core.Flags.ModuleVal) &&
+          (!sym.is(dotc.core.Flags.ModuleVal) || sym.is(dotc.core.Flags.Given)) &&
           !sym.flags.isAllOf(dotc.core.Flags.Enum | dotc.core.Flags.Case | dotc.core.Flags.JavaStatic) =>
               sym.asInstanceOf[Symbol]
       }.toList

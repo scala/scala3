@@ -17,13 +17,13 @@ class ImplicitMembersExtensionTransformer(ctx: DokkaContext) extends Documentabl
 
     def expandMember(outerMembers: Seq[Member])(c: Member): Member =
       val companion = c match
-        case classlike: DClass => ClasslikeExtension.getFrom(classlike).flatMap(_.companion).map(classlikeMap)
+        case classlike: DClass => ClasslikeExtension.getFrom(classlike).flatMap(_.companion).flatMap(classlikeMap.get)
         case _ => None
 
       val allParents = c.parents.flatMap(p => classlikeMap.get(p.dri))
 
       val parentCompanions = allParents.flatMap {
-          case cls: DClasslike => ClasslikeExtension.getFrom(cls).flatMap(_.companion).map(classlikeMap)
+          case cls: DClasslike => ClasslikeExtension.getFrom(cls).flatMap(_.companion).flatMap(classlikeMap.get)
           case _ => None
       }
 

@@ -49,6 +49,8 @@ object ScalaSignatureProvider:
         methodSignature(method, builder)
       case enumEntry: DClass if enumEntry.kind == Kind.EnumCase =>
         enumEntrySignature(enumEntry, builder)
+      case givenClazz: DClass if givenClazz.kind.isInstanceOf[Kind.Given] =>
+        givenClassSignature(givenClazz, builder)
       case clazz: DClass =>
         classSignature(clazz, builder)
       case enumProperty: DProperty if enumProperty.kind == Kind.EnumCase =>
@@ -97,6 +99,22 @@ object ScalaSignatureProvider:
       case extendType :: withTypes =>
         val extendPart = builder.text(" extends ").signature(extendType)
         withTypes.foldLeft(extendPart)((bdr, tpe) => bdr.text(" with ").signature(tpe))
+
+  private def givenClassSignature(clazz: DClass, builder: SignatureBuilder): SignatureBuilder =
+    val ext = clazz.get(ClasslikeExtension)
+    val prefixes = builder
+      .modifiersAndVisibility(clazz, "given")
+      .name(clazz.getName, clazz.getDri)
+      .generics(clazz)
+
+    val withGenerics = ext.constructor.toSeq.foldLeft(prefixes){ (bdr, elem) =>
+      bdr.functionParameters(elem)
+    }
+    clazz.kind match
+      case Kind.Given(Some(instance), _) => withGenerics
+        .text(" as ")
+        .signature(instance)
+      case _ => withGenerics
 
   private def classSignature(clazz: DClass, builder: SignatureBuilder): SignatureBuilder =
     val ext = clazz.get(ClasslikeExtension)
