@@ -3,6 +3,7 @@ package site
 
 import java.io.File
 import java.nio.file.Files
+import java.nio.file.Paths
 
 import org.jetbrains.dokka.base.renderers.html.{NavigationNode, NavigationPage}
 import org.jetbrains.dokka.model.Documentable
@@ -34,7 +35,12 @@ case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTempl
   def resolveToHtml(ctx: StaticSiteContext): ResolvedPage =
     val posts = children.map(_.lazyTemplateProperties(ctx))
     val site = templateFile.settings.getOrElse("site", Map.empty).asInstanceOf[Map[String, Object]]
+    val sourceLinks = if !file.exists() then Nil else
+      val actualPath = Paths.get("").toAbsolutePath.relativize(file.toPath.toRealPath())
+      ctx.sourceLinks.pathTo(actualPath).map("viewSource" -> _ ) ++
+        ctx.sourceLinks.pathTo(actualPath, operation = "edit").map("editSource" -> _ )
 
-    val updatedSettings = templateFile.settings + ("site" -> (site + ("posts" -> posts))) ++ ctx.projectWideProperties
+    val updatedSettings = templateFile.settings ++ ctx.projectWideProperties +
+      ("site" -> (site + ("posts" -> posts))) + ("urls" -> sourceLinks.toMap)
 
     templateFile.resolveInner(RenderingContext(updatedSettings, ctx.layouts))

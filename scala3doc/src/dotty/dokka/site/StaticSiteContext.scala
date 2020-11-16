@@ -20,7 +20,7 @@ import util.Try
 
 import scala.collection.JavaConverters._
 
-class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args: Args):
+class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args: Args, val sourceLinks: SourceLinks):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 

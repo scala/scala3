@@ -1458,7 +1458,7 @@ object Build {
           val projectVersion = version.value
           val sourcesAndRevision = s"-s github://lampepfl/dotty --revision master --projectVersion $projectVersion"
           run.in(Compile).toTask(
-            s""" -d output/$outDir -t $targets -n "$name" $sourcesAndRevision $params"""
+            s""" -d scala3doc/output/$outDir -t $targets -n "$name" $sourcesAndRevision $params"""
           )
       }
 
@@ -1492,11 +1492,12 @@ object Build {
           Compile / mainClass := Some("dotty.dokka.Main"),
           // There is a bug in dokka that prevents parallel tests withing the same jvm
           fork.in(test) := true,
+          baseDirectory.in(run) := baseDirectory.in(ThisBuild).value,
           generateSelfDocumentation := Def.taskDyn {
             generateDocumentation(
               classDirectory.in(Compile).value.getAbsolutePath,
             "scala3doc", "self",
-            "-p documentation --projectLogo documentation/logo.svg",
+            "-p scala3doc/documentation --projectLogo scala3doc/documentation/logo.svg",
             )
           }.value,
           generateScala3Documentation := Def.taskDyn {
@@ -1511,7 +1512,7 @@ object Build {
             val roots = joinProducts(dottyJars)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-            else generateDocumentation(roots, "Scala 3", "scala3", "-p scala3-docs --projectLogo scala3-docs/logo.svg")
+            else generateDocumentation(roots, "Scala 3", "scala3", "-p scala3doc/scala3-docs --projectLogo scala3doc/scala3-docs/logo.svg")
           }.value,
           generateTestcasesDocumentation := Def.taskDyn {
             generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "testcases")
