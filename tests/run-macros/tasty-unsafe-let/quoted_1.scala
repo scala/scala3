@@ -8,11 +8,11 @@ object Macros {
   private def impl[T: Type](rhs: Expr[T], body: Expr[T => Unit])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
 
-    val rhsTerm = rhs.unseal
+    val rhsTerm = Term.of(rhs)
 
     import qctx.reflect._
     ValDef.let(rhsTerm) { rhsId =>
-      Expr.betaReduce('{$body(${rhsId.asExpr.asInstanceOf[Expr[T]]})}).unseal // Dangerous uncheked cast!
+      Term.of(Expr.betaReduce('{$body(${rhsId.asExpr.asInstanceOf[Expr[T]]})})) // Dangerous uncheked cast!
     }.asExprOf[Unit]
   }
 

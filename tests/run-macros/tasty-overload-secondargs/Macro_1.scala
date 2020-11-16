@@ -23,12 +23,12 @@ object Macro:
 
     def mThenImpl[A:Type, B:Type, S<:(A=>B) :Type, R:Type](x:Expr[S])(using qctx: QuoteContext):Expr[R]=
        import qctx.reflect._
-       val fun = '{X}.unseal
+       val fun = Term.of('{X})
        val returnType = TypeRepr.of[(S) => ?]
        val firstPart = Select.overloaded(fun,"andThen",
                                  List(TypeIdent(defn.IntClass).tpe, TypeIdent(defn.IntClass).tpe),
                                  List(Literal(Constant.Int(1))),
                                  TypeRepr.of[(S) => R]
                        )
-       val r = Apply(firstPart,List(x.unseal))
+       val r = Apply(firstPart,List(Term.of(x)))
        r.asExprOf[R]

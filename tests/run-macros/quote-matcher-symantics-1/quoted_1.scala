@@ -21,7 +21,7 @@ object Macros {
 
       case _ =>
         import qctx.reflect._
-        Reporting.error("Expected explicit DSL", e.unseal.pos)
+        Reporting.error("Expected explicit DSL", Term.of(e).pos)
         '{ ??? }
 
     }

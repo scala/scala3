@@ -56,7 +56,7 @@ abstract class MacroStringInterpolator[T] {
 
   protected def getStaticStringContext(strCtxExpr: Expr[StringContext])(using qctx: QuoteContext) : StringContext = {
     import qctx.reflect._
-    strCtxExpr.unseal.underlyingArgument match {
+    Term.of(strCtxExpr).underlyingArgument match {
       case Select(Typed(Apply(_, List(Apply(_, List(Typed(Repeated(strCtxArgTrees, _), Inferred()))))), _), _) =>
         val strCtxArgs = strCtxArgTrees.map {
           case Literal(Constant.String(str)) => str
@@ -70,7 +70,7 @@ abstract class MacroStringInterpolator[T] {
 
   protected def getArgsList(argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext) : List[Expr[Any]] = {
     import qctx.reflect._
-    argsExpr.unseal.underlyingArgument match {
+    Term.of(argsExpr).underlyingArgument match {
       case Typed(Repeated(args, _), _) => args.map(_.asExpr)
       case tree => throw new NotStaticlyKnownError("Expected statically known argument list", tree.asExpr)
     }

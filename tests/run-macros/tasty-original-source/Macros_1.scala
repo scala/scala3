@@ -6,7 +6,7 @@ object Macros {
 
   private def impl(arg: Expr[Any])(using qctx: QuoteContext) : Expr[(String, Any)] = {
     import qctx.reflect._
-    val source = Expr(arg.unseal.underlyingArgument.pos.sourceCode.toString)
+    val source = Expr(Term.of(arg).underlyingArgument.pos.sourceCode.toString)
     '{Tuple2($source, $arg)}
   }
 

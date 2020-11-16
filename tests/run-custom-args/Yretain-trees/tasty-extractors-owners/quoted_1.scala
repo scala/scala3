@@ -12,7 +12,7 @@ object Macros {
 
     val output = myTraverser(buff)
 
-    val tree = x.unseal
+    val tree = Term.of(x)
     output.traverseTree(tree)
     '{print(${Expr(buff.result())})}
   }
