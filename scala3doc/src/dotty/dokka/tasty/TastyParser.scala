@@ -157,7 +157,7 @@ trait DokkaBaseTastyInspector:
 
 /** Parses a single Tasty compilation unit. */
 case class TastyParser(qctx: QuoteContext, inspector: DokkaBaseTastyInspector, config: DottyDokkaConfig)
-    extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport:
+    extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
   import qctx.reflect._
 
   def sourceSet = inspector.sourceSet
