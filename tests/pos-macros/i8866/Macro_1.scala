@@ -12,7 +12,7 @@ object OtherMacro {
 object Macro {
 
   def impl(using qctx: QuoteContext): Expr[Int] = {
-    import qctx.reflect._
+    import reflect._
 
     ValDef.let(
       Symbol.currentOwner,

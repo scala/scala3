@@ -7,7 +7,7 @@ class C extends B
 inline def test(): Unit = ${ testExpr }
 
 def testExpr(using QuoteContext): Expr[Unit] = {
-  import qctx.reflect._
+  import reflect._
 
   '{
     println(${Expr(TypeRepr.of[Object].baseClasses.toString)})

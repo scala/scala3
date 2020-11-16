@@ -20,7 +20,7 @@ object LineNumberMacro2 {
 object LineNumberMacro3 {
   import scala.quoted._
   def thisLineNumberExpr(using qctx: QuoteContext): Expr[Int] = {
-    import qctx.reflect._
+    import reflect._
     Expr(Position.ofMacroExpansion.startLine + 1)
   }
 }

@@ -26,7 +26,7 @@ class TestInspector() extends TastyInspector:
     inspectClass(root)
 
   private def inspectClass(using QuoteContext)(tree: qctx.reflect.Tree): Unit =
-    import qctx.reflect._
+    import reflect._
     tree match {
       case t: PackageClause =>
         t.stats.map( m => inspectClass(m) )

@@ -11,7 +11,7 @@ def mcrProxy(expr: Expr[Boolean])(using QuoteContext): Expr[Unit] = {
 }
 
 def mcrImpl[T](func: Expr[Seq[Box[T]] => Unit], expr: Expr[T])(using QuoteContext, Type[T]): Expr[Unit] = {
-  import qctx.reflect._
+  import reflect._
   val arg = Varargs(Seq('{(Box($expr))}))
   Expr.betaReduce('{$func($arg)})
 }

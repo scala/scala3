@@ -6,7 +6,7 @@ object Test {
 
   def impl[T](t: T)(using qctx: QuoteContext, tt: Type[T]): Expr[Any] = {
 
-    import qctx.reflect._
+    import reflect._
     import util._
 
     val foo = TypeRepr.of[Foo[String]]

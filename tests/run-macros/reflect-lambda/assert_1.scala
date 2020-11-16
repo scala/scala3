@@ -5,7 +5,7 @@ object lib {
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.reflect._
+    import reflect._
     import util._
 
     Term.of(cond).underlyingArgument match {

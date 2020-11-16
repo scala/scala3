@@ -17,7 +17,7 @@ object Macros {
 
   implicit def intIsEvalable: Valuable[Int] = new Valuable[Int] {
     override def value(e: Expr[Int])(using qctx: QuoteContext) : Option[Int] = {
-      import qctx.reflect._
+      import reflect._
 
       Term.of(e).tpe match {
         case pre: TermRef if pre.termSymbol.isValDef =>

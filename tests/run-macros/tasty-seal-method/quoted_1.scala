@@ -7,7 +7,7 @@ object Asserts {
 
   /** Replaces last argument list by 0s */
   def zeroLastArgsImpl(x: Expr[Int])(using qctx: QuoteContext) : Expr[Int] = {
-    import qctx.reflect._
+    import reflect._
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
     Term.of(x).underlyingArgument match {
       case Apply(fn, args) =>
@@ -29,7 +29,7 @@ object Asserts {
 
   /** Replaces all argument list by 0s */
   def zeroAllArgsImpl(x: Expr[Int])(using qctx: QuoteContext) : Expr[Int] = {
-    import qctx.reflect._
+    import reflect._
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
     def rec(term: Term): Term = term match {
       case Apply(fn, args) =>

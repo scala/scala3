@@ -5,7 +5,7 @@ object Macros {
   inline def matches[A, B](inline a: A, inline b: B): Unit = ${impl('a, 'b)}
 
   private def impl[A, B](a: Expr[A], b: Expr[B])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.reflect._
+    import reflect._
 
     val res = qctx.asInstanceOf[scala.quoted.internal.QuoteMatching].ExprMatch.unapply[Tuple, Tuple](a)(using b).map { tup =>
       tup.toArray.toList.map {

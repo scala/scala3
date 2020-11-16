@@ -33,7 +33,7 @@ object Eq {
   }
 
   given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
-    import qctx.reflect._
+    import reflect._
 
     val ev: Expr[Mirror.Of[T]] = Expr.summon(using Type.of[Mirror.Of[T]]).get
 

@@ -5,7 +5,7 @@ object Macros {
   inline def test(): String = ${ testImpl }
 
   private def testImpl(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.reflect._
+    import reflect._
     val classSym = TypeRepr.of[Function1].classSymbol.get
     classSym.classMethod("apply")
     classSym.classMethods

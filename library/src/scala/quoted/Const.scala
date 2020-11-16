@@ -15,7 +15,7 @@ object Const {
    *  ```
    */
   def unapply[T](expr: Expr[T])(using qctx: QuoteContext): Option[T] = {
-    import qctx.reflect._
+    import reflect._
     def rec(tree: Term): Option[T] = tree match {
       case Literal(c) => Some(c.value.asInstanceOf[T])
       case Block(Nil, e) => rec(e)

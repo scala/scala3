@@ -76,18 +76,18 @@ object Macros {
 
 object UnsafeExpr {
   def open[T1, R, X](f: Expr[T1 => R])(content: (Expr[R], [t] => Expr[t] => Expr[T1] => Expr[t]) => X)(using qctx: QuoteContext): X = {
-    import qctx.reflect._
+    import reflect._
     val (params, bodyExpr) = paramsAndBody[R](f)
     content(bodyExpr, [t] => (e: Expr[t]) => (v: Expr[T1]) => bodyFn[t](Term.of(e), params, List(Term.of(v))).asExpr.asInstanceOf[Expr[t]])
   }
   private def paramsAndBody[R](using qctx: QuoteContext)(f: Expr[Any]): (List[qctx.reflect.ValDef], Expr[R]) = {
-    import qctx.reflect._
+    import reflect._
     val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = Term.of(f).etaExpand(Symbol.currentOwner)
     (params, body.asExpr.asInstanceOf[Expr[R]])
   }
 
   private def bodyFn[t](using qctx: QuoteContext)(e: qctx.reflect.Term, params: List[qctx.reflect.ValDef], args: List[qctx.reflect.Term]): qctx.reflect.Term = {
-    import qctx.reflect._
+    import reflect._
     val map = params.map(_.symbol).zip(args).toMap
     new TreeMap {
       override def transformTerm(tree: Term)(using ctx: Context): Term =

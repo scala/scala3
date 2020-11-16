@@ -8,7 +8,7 @@ import scala.reflect.TypeTest
  *  It contains the low-level Typed AST API metaprogramming API.
  *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
  *
- *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import qctx.reflect._; ... }`.
+ *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import reflect._; ... }`.
  */
 trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
 
@@ -3552,7 +3552,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     *
     *  Usage:
     *  ```
-    *  import qctx.reflect._
+    *  import reflect._
     *  class MyTreeMap extends TreeMap {
     *    override def transformTree(tree: Tree)(using ctx: Context): Tree = ...
     *  }
@@ -3722,10 +3722,10 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
    *  to explicitly state that a context is nested as in the following example:
    *
    *  ```scala
-   *  def run(using qctx: QuoteContext)(tree: qctx.reflect.Tree): Unit =
+   *  def run(using qctx: QuoteContext)(tree: reflect.Tree): Unit =
    *    def nested()(using qctx.Nested): Expr[Int] = '{  ${ makeExpr(tree) } + 1  }
    *    '{  ${ nested() } + 2 }
-   *  def makeExpr(using qctx: QuoteContext)(tree: qctx.reflect.Tree): Expr[Int] = ???
+   *  def makeExpr(using qctx: QuoteContext)(tree: reflect.Tree): Expr[Int] = ???
    *  ```
    */
   type Nested = QuoteContext {

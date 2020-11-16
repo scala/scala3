@@ -5,7 +5,7 @@ object Macros {
   implicit inline def printType[T]: Unit = ${ impl[T] }
 
   def impl[T: Type](using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.reflect._
+    import reflect._
     '{
       println(${Expr(TypeTree.of[T].showExtractors)})
       println(${Expr(TypeRepr.of[T].showExtractors)})

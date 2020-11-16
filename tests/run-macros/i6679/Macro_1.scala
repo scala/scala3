@@ -1,7 +1,7 @@
 import scala.quoted._
 
 def makeMatch[A: Type](head : Expr[A])(using qctx : QuoteContext) : Expr[Unit] = {
-  import qctx.reflect._
+  import reflect._
 
   val sacrifice = '{ $head match { case _ => ??? } }
   Term.of(sacrifice)

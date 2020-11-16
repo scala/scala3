@@ -8,7 +8,7 @@ object scalatest {
   inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}
 
   def assertImpl(condition: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.reflect._
+    import reflect._
 
     val tree = Term.of(condition)
 

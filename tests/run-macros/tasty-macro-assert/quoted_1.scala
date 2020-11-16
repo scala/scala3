@@ -13,7 +13,7 @@ object Asserts {
     ${impl('cond)}
 
   def impl(cond: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.reflect._
+    import reflect._
 
     val tree = Term.of(cond)
 

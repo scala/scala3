@@ -9,13 +9,13 @@ object Macros {
     ${isSubTypeOfImpl[T, U]}
 
   def isTypeEqualImpl[T: Type, U: Type](using QuoteContext) : Expr[Boolean] = {
-    import qctx.reflect._
+    import reflect._
     val isTypeEqual = TypeRepr.of[T] =:= TypeRepr.of[U]
     Expr(isTypeEqual)
   }
 
   def isSubTypeOfImpl[T: Type, U: Type](using QuoteContext) : Expr[Boolean] = {
-    import qctx.reflect._
+    import reflect._
     val isTypeEqual = TypeRepr.of[T] <:< TypeRepr.of[U]
     Expr(isTypeEqual)
   }

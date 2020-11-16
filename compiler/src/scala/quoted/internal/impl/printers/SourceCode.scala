@@ -6,20 +6,20 @@ import scala.annotation.switch
 /** Printer for fully elaborated representation of the source code */
 object SourceCode {
 
-  def showTree(using QuoteContext)(tree: qctx.reflect.Tree)(syntaxHighlight: SyntaxHighlight): String =
+  def showTree(using qctx: QuoteContext)(tree: reflect.Tree)(syntaxHighlight: SyntaxHighlight): String =
     new SourceCodePrinter[qctx.type](syntaxHighlight).printTree(tree).result()
 
-  def showType(using QuoteContext)(tpe: qctx.reflect.TypeRepr)(syntaxHighlight: SyntaxHighlight): String =
+  def showType(using qctx: QuoteContext)(tpe: reflect.TypeRepr)(syntaxHighlight: SyntaxHighlight): String =
     new SourceCodePrinter[qctx.type](syntaxHighlight).printType(tpe)(using None).result()
 
-  def showConstant(using QuoteContext)(const: qctx.reflect.Constant)(syntaxHighlight: SyntaxHighlight): String =
+  def showConstant(using qctx: QuoteContext)(const: reflect.Constant)(syntaxHighlight: SyntaxHighlight): String =
     new SourceCodePrinter[qctx.type](syntaxHighlight).printConstant(const).result()
 
-  def showSymbol(using QuoteContext)(symbol: qctx.reflect.Symbol)(syntaxHighlight: SyntaxHighlight): String =
+  def showSymbol(using qctx: QuoteContext)(symbol: reflect.Symbol)(syntaxHighlight: SyntaxHighlight): String =
     symbol.fullName
 
-  def showFlags(using QuoteContext)(flags: qctx.reflect.Flags)(syntaxHighlight: SyntaxHighlight): String = {
-    import qctx.reflect._
+  def showFlags(using qctx: QuoteContext)(flags: reflect.Flags)(syntaxHighlight: SyntaxHighlight): String = {
+    import reflect._
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "abstract"
     if (flags.is(Flags.Artifact)) flagList += "artifact"
@@ -60,7 +60,7 @@ object SourceCode {
 
   private class SourceCodePrinter[QCtx <: QuoteContext & Singleton](syntaxHighlight: SyntaxHighlight)(using val qctx: QCtx) {
     import syntaxHighlight._
-    import qctx.reflect._
+    import reflect._
 
     private[this] val sb: StringBuilder = new StringBuilder
 

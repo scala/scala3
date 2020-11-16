@@ -4,7 +4,7 @@ object Macros {
 
 
   def impl(using QuoteContext): Unit = {
-    import qctx.reflect._
+    import reflect._
 
     def foo(tree: Tree, term: Term, typeTree: TypeTree, parent: Tree) = {
 

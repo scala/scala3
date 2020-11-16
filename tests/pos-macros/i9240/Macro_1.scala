@@ -3,7 +3,7 @@ import scala.quoted._
 inline def diveInto[T]: String = ${ diveIntoImpl[T]() }
 
 def diveIntoImpl[T]()(implicit qctx: QuoteContext, ttype: Type[T]): Expr[String] =
-  import qctx.reflect._
+  import reflect._
   Expr( unwindType(TypeRepr.of[T]) )
 
 def unwindType(using QuoteContext)(aType: qctx.reflect.TypeRepr): String =

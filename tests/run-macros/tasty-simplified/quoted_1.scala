@@ -6,7 +6,7 @@ object Macros {
   inline def simplified[T <: Tuple]: Seq[String] = ${ impl[T] }
 
   def impl[T: Type](using qctx: QuoteContext) : Expr[Seq[String]] = {
-    import qctx.reflect._
+    import reflect._
 
     def unpackTuple(tp: TypeRepr): List[TypeRepr] = {
       @tailrec

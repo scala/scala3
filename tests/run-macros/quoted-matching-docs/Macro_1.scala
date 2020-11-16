@@ -28,6 +28,6 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[I
 
 object UnsafeExpr {
   def underlyingArgument[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    import qctx.reflect._
+    import reflect._
     Term.of(expr).underlyingArgument.asExpr.asInstanceOf[Expr[T]]
 }

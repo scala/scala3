@@ -6,7 +6,7 @@ object Macro {
   }
   implicit inline def XmlQuote(inline sc: StringContext): StringContextOps = new StringContextOps(sc)
   def impl(sc: Expr[StringContext], args: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.reflect._
+    import reflect._
     Expr(Term.of(sc).underlyingArgument.showExtractors + "\n" + Term.of(args).underlyingArgument.showExtractors)
   }
 }

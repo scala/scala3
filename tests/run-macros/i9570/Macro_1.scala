@@ -8,7 +8,7 @@ object Macros {
     case object HNil extends HList
 
     private def sizeImpl(e: Expr[HList], n:Int)(using qctx:QuoteContext): Expr[Int] = {
-      import qctx.reflect._
+      import reflect._
       e match {
         case '{HCons($_,$t)} =>
         //case '{HCons($a,$t)} =>

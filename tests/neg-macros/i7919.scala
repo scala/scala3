@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Test {
   def staged[T](using qctx: QuoteContext) = {
-    import qctx.reflect._
+    import reflect._
     given typeT as Type[T] // error
     val tt = TypeRepr.of[T]
     '{ "in staged" }

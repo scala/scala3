@@ -9,7 +9,7 @@ object Macro {
     ${ fooImpl[T] }
 
   def fooImpl[T](implicit t: Type[T], qctx: QuoteContext): Expr[String] = {
-    import qctx.reflect._
+    import reflect._
     val sym = TypeTree.of[T].symbol
     if sym.isClassDef then '{ "symbol" }
     else if sym.isNoSymbol then '{ "no symbol" }

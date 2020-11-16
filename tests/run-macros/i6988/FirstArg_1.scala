@@ -9,7 +9,7 @@ object Macros {
   import scala.quoted._
 
   def argsImpl(using qctx: QuoteContext) : Expr[FirstArg] = {
-    import qctx.reflect._
+    import reflect._
 
     def enclosingClass(cur: Symbol = Symbol.currentOwner): Symbol =
       if (cur.isClassDef) cur

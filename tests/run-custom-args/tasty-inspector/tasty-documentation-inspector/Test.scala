@@ -16,7 +16,7 @@ object Test {
 class DocumentationInspector extends TastyInspector {
 
   protected def processCompilationUnit(using QuoteContext)(root: qctx.reflect.Tree): Unit = {
-    import qctx.reflect._
+    import reflect._
     object Traverser extends TreeTraverser {
 
       override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {

@@ -10,7 +10,7 @@ object Macro {
 object FIntepolator {
 
   def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.reflect._
+    import reflect._
     Reporting.error("there are no parts", Term.of(strCtxExpr).underlyingArgument.pos)
     '{ ($strCtxExpr).s($argsExpr: _*) }
   }

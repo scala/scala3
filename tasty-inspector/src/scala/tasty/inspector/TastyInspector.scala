@@ -20,7 +20,7 @@ trait TastyInspector:
   self =>
 
   /** Process a TASTy file using TASTy reflect */
-  protected def processCompilationUnit(using QuoteContext)(root: qctx.reflect.Tree): Unit
+  protected def processCompilationUnit(using QuoteContext)(root: reflect.Tree): Unit
 
   /** Called after all compilation units are processed */
   protected def postProcess(using QuoteContext): Unit = ()

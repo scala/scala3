@@ -17,7 +17,7 @@ object Test {
     println(Expr("string").show)
     println()
     println(Expr(classOf[String]).show)
-    println(Expr(summon[reflect.ClassTag[String]]).show)
+    println(Expr(summon[scala.reflect.ClassTag[String]]).show)
     println()
     println(Expr(Array("a")).show)
     println(Expr(Array(true)).show)

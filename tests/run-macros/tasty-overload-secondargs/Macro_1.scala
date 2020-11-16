@@ -22,7 +22,7 @@ object Macro:
     }
 
     def mThenImpl[A:Type, B:Type, S<:(A=>B) :Type, R:Type](x:Expr[S])(using qctx: QuoteContext):Expr[R]=
-       import qctx.reflect._
+       import reflect._
        val fun = Term.of('{X})
        val returnType = TypeRepr.of[(S) => ?]
        val firstPart = Select.overloaded(fun,"andThen",

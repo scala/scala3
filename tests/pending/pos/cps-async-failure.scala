@@ -4,7 +4,7 @@ import scala.quoted._
 trait App[F[_],CT]:
   this: Base[F,CT] =>
 
-  import qctx.reflect._
+  import reflect._
 
   trait AA
 

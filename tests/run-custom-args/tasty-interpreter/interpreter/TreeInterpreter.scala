@@ -4,7 +4,7 @@ import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
 
 abstract class TreeInterpreter[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) {
-  import qctx.reflect._
+  import reflect._
 
   final val LOG = false
 

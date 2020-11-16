@@ -14,7 +14,7 @@ object Expr {
    *   Some bindings may be elided as an early optimization.
    */
   def betaReduce[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    import qctx.reflect._
+    import reflect._
     Term.betaReduce(Term.of(expr)) match
       case Some(expr1) => expr1.asExpr.asInstanceOf[Expr[T]]
       case _ => expr
@@ -24,7 +24,7 @@ object Expr {
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using qctx: QuoteContext): Expr[T] = {
-    import qctx.reflect._
+    import reflect._
     Block(statements.map(Term.of), Term.of(expr)).asExpr.asInstanceOf[Expr[T]]
   }
 
@@ -210,7 +210,7 @@ object Expr {
    *  @param qctx current context
    */
   def summon[T](using tpe: Type[T])(using qctx: QuoteContext): Option[Expr[T]] = {
-    import qctx.reflect._
+    import reflect._
     Implicits.search(TypeRepr.of[T]) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None

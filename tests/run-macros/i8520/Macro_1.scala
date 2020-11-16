@@ -3,7 +3,7 @@ import scala.quoted._
 inline def test[T[_]]: Unit = ${ testExpr[T] }
 
 def testExpr[T[_]: Type](using QuoteContext): Expr[Unit] = {
-  import qctx.reflect._
+  import reflect._
   def variance(f: Flags) =
      if f.is(Flags.Covariant) then "+"
      else if f.is(Flags.Contravariant) then "-"
