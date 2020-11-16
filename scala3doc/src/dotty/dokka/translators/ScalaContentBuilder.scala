@@ -248,6 +248,14 @@ class ScalaPageContentBuilder(
 
     def signature(d: Documentable) = addChildren(signatureProvider.signature(d).asScala.toList)
 
+    private def buildSignature(d: Documentable, s: Signature) = signatureProvider.asInstanceOf[ScalaSignatureProvider].signature(d, s)
+
+    def signature(d: Documentable, s: Signature) = addChild(buildSignature(d, s))
+
+    def inlineSignature(d: Documentable, s: Signature) = addChildren(
+      buildSignature(d, s).getChildren.asScala.toSeq
+    )
+
     def defaultHeaders = List(
       contentForDRIs(
         dris = mainDRI,

@@ -31,6 +31,11 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
     def driLink(text: String, dri: DRI): SignatureBuilder = ContentNodeBuilder(builder.driLink(text, dri))
   }
 
+  def signature(d: Documentable, s: Signature) = signatureContent(d){ builder => 
+    val res = ContentNodeBuilder(builder).signature(s)
+    res.asInstanceOf[ContentNodeBuilder].builder
+  }
+
   override def signature(documentable: Documentable) =
     JList(signatureContent(documentable){ builder =>
       val withAnnotations = ContentNodeBuilder(builder).annotationsBlock(documentable)
