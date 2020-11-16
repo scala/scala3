@@ -624,7 +624,9 @@ class Typer extends Namer
           case Whole(16) => // cant parse hex literal as double
           case _         => return lit(doubleFromDigits(digits))
         }
-      else if (target.isValueType && isFullyDefined(target, ForceDegree.none)) {
+      else if genericNumberLiteralsEnabled
+          && target.isValueType && isFullyDefined(target, ForceDegree.none)
+      then
         // If expected type is defined with a FromDigits instance, use that one
         val fromDigitsCls = tree.kind match {
           case Whole(10) => defn.FromDigitsClass
@@ -645,7 +647,6 @@ class Typer extends Namer
             return typed(app, pt)
           case _ =>
         }
-      }
       // Otherwise convert to Int or Double according to digits format
       tree.kind match {
         case Whole(radix) => lit(intFromDigits(digits, radix))

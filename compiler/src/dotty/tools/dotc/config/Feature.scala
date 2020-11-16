@@ -12,6 +12,10 @@ import reporting.Message
 
 object Feature:
 
+  private val dependent = "dependent".toTermName
+  private val namedTypeArguments = "namedTypeArguments".toTermName
+  private val genericNumberLiterals = "genericNumberLiterals".toTermName
+
 /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
    *       -language:<prefix>feature
@@ -58,10 +62,13 @@ object Feature:
     enabled(nme.dynamics)
 
   def dependentEnabled(using Context) =
-    enabled(nme.dependent, defn.LanguageExperimentalModule.moduleClass)
+    enabled(dependent, defn.LanguageExperimentalModule.moduleClass)
 
   def namedTypeArgsEnabled(using Context) =
-    enabled(nme.namedTypeArguments, defn.LanguageExperimentalModule.moduleClass)
+    enabled(namedTypeArguments, defn.LanguageExperimentalModule.moduleClass)
+
+  def genericNumberLiteralsEnabled(using Context) =
+    enabled(genericNumberLiterals, defn.LanguageExperimentalModule.moduleClass)
 
   def scala2ExperimentalMacroEnabled(using Context) =
     enabled("macros".toTermName, defn.LanguageExperimentalModule.moduleClass)
