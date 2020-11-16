@@ -22,7 +22,9 @@ class LookupTestCases[Q <: QuoteContext](val q: QuoteContext) {
     )
 
     cases.foreach { case (query, Sym(sym)) =>
-      val Some((lookedUp, _)) = MemberLookup.lookupOpt(parseQuery(query), None)
+      val lookupRes = MemberLookup.lookupOpt(parseQuery(query), None)
+      assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
+      val Some((lookedUp, _)) = lookupRes
       assertSame(query, sym, lookedUp)
     }
   }

@@ -64,7 +64,7 @@ trait MemberLookup {
     import dotty.tools.dotc
     given dotc.core.Contexts.Context = rootContext.asInstanceOf
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
-    val members = sym.info.decls.iterator.filter(_.denot.isAbsent(false))
+    val members = sym.info.decls.iterator.filterNot(_.isAbsent(false))
     // println(s"members of ${sym.show} : ${members.map(_.show).mkString(", ")}")
     members.asInstanceOf[Iterator[Symbol]]
   }
