@@ -134,11 +134,13 @@ th {
   padding: 8px 8px 8px 8px;
   vertical-align: middle;
 }
-#logo img{
+
+#logo img {
   max-height: 54px;
   max-width: 54px;
   cursor: pointer;
 }
+
 #logo .projectName {
   color: var(--leftbar-fg);
   font-size: 28px;
