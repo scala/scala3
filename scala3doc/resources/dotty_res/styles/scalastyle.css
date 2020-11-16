@@ -145,6 +145,11 @@ th {
   margin-left: 42px;
   line-height: 42px;
 }
+
+.scala3doc_logo {
+  width: 116px;
+}
+
 .sideMenuPart {
   padding-left: 1em;
 }

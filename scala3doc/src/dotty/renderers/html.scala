@@ -76,6 +76,7 @@ object HTML:
   val title = Tag("title")
   val body = Tag("body")
   val nav = Tag("nav")
+  val img = Tag("img")
 
   val cls = Attr("class")
   val href = Attr("href")
@@ -90,6 +91,7 @@ object HTML:
   val name = Attr("name")
   val content = Attr("content")
   val testId = Attr("data-test-id")
+  val alt = Attr("alt")
 
   def raw(content: String): AppliedTag = AppliedTag(content)
 
