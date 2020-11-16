@@ -1456,7 +1456,7 @@ object Build {
     def asScala3doc: Project = {
       def generateDocumentation(targets: String, name: String, outDir: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
-          val sourcesAndRevision = s"-s github://lampepfl/dotty --revision master --projectVersion $projectVersion"
+          val sourcesAndRevision = s"-s github://lampepfl/dotty --projectVersion $projectVersion"
           run.in(Compile).toTask(
             s""" -d scala3doc/output/$outDir -t $targets -n "$name" $sourcesAndRevision $params"""
           )
@@ -1494,10 +1494,11 @@ object Build {
           fork.in(test) := true,
           baseDirectory.in(run) := baseDirectory.in(ThisBuild).value,
           generateSelfDocumentation := Def.taskDyn {
+            val revision = VersionUtil.gitHash
             generateDocumentation(
               classDirectory.in(Compile).value.getAbsolutePath,
-            "scala3doc", "self",
-            "-p scala3doc/documentation --projectLogo scala3doc/documentation/logo.svg",
+              "scala3doc", "self",
+              s"-p scala3doc/documentation --projectLogo scala3doc/documentation/logo.svg  --revision $revision",
             )
           }.value,
           generateScala3Documentation := Def.taskDyn {
@@ -1512,7 +1513,7 @@ object Build {
             val roots = joinProducts(dottyJars)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-            else generateDocumentation(roots, "Scala 3", "scala3", "-p scala3doc/scala3-docs --projectLogo scala3doc/scala3-docs/logo.svg")
+            else generateDocumentation(roots, "Scala 3", "scala3", "-p scala3doc/scala3-docs --projectLogo scala3doc/scala3-docs/logo.svg  --revision master")
           }.value,
           generateTestcasesDocumentation := Def.taskDyn {
             generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "testcases")
