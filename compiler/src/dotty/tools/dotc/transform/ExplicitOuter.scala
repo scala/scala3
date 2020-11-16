@@ -169,12 +169,14 @@ object ExplicitOuter {
   private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(using Context) = {
     val outerThis = owner.owner.enclosingClass.thisType
     val outerCls = outerClass(cls)
+    val prefix = owner.thisType.baseType(cls).normalizedPrefix
     val target =
       if (owner == cls)
         outerCls.appliedRef
       else
         outerThis.baseType(outerCls).orElse(
-  		    outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty)))
+          if prefix == NoPrefix then outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty))
+          else prefix.widen)
     val info = if (flags.is(Method)) ExprType(target) else target
     atPhaseNoEarlier(explicitOuterPhase.next) { // outer accessors are entered at explicitOuter + 1, should not be defined before.
       newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
