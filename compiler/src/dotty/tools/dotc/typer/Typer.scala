@@ -3483,28 +3483,41 @@ class Typer extends Namer
       }
 
       // try an extension method in scope
-      pt match {
+      pt match
         case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
+          val origCtx = ctx
           def tryExtension(using Context): Tree =
+            var tried: untpd.Tree = untpd.EmptyTree
             try
               findRef(selName, WildcardType, ExtensionMethod, tree.srcPos) match
                 case ref: TermRef =>
-                  extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
+                  tried = untpd.ref(ref).withSpan(tree.span)
+                  extMethodApply(tried, tree, mbrType)
                 case _ => findRef(selProto.extensionName, WildcardType, ExtensionMethod, tree.srcPos) match
                   case ref: TermRef =>
-                    extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
+                    tried = untpd.ref(ref).withSpan(tree.span)
+                    extMethodApply(tried, tree, mbrType)
                   case _ => EmptyTree
-            catch case ex: TypeError => errorTree(tree, ex, tree.srcPos)
+            catch case ex: TypeError =>
+              ex match
+                case ex: CyclicReference if ex.denot.is(Extension) && ex.denot.name == selName =>
+                  report.warning(
+                    em"""An extension method for `.$selName` was tried but could not be fully constructed
+                        |since there was a cyclic reference involving ${ex.denot.symbol.showLocated}""",
+                    tree.srcPos)(using origCtx)
+                case _ =>
+              if tried.isEmpty then EmptyTree
+              else errorTree(tried, ex, tree.srcPos)
+
           val nestedCtx = ctx.fresh.setNewTyperState()
-          val app = tryExtension(using nestedCtx)
-          if (!app.isEmpty && !nestedCtx.reporter.hasErrors) {
+          val tried = tryExtension(using nestedCtx)
+          if !tried.isEmpty && !nestedCtx.reporter.hasErrors then
             nestedCtx.typerState.commit()
-            return ExtMethodApply(app)
-          }
-          else if !app.isEmpty then
-            rememberSearchFailure(tree, SearchFailure(app.withType(FailedExtension(app, pt))))
+            return ExtMethodApply(tried)
+          else if !tried.isEmpty then
+            rememberSearchFailure(tree,
+              SearchFailure(tried.withType(FailedExtension(tried, pt))))
         case _ =>
-      }
 
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint
