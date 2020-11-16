@@ -133,9 +133,9 @@ class TemplateFileTests:
 
 
     val expected =
-      """<div id="root"><h1>Test page</h1>
+      """<div id="root"><h1><a href="#test-page" id="test-page" class="anchor"></a>Test page</h1>
         |<p>Hello world!!</p>
-        |<h2>Test page end</h2>
+        |<h2><a href="#test-page-end" id="test-page-end" class="anchor"></a>Test page end</h2>
         |</div>""".stripMargin
 
     testContent(
@@ -203,7 +203,9 @@ class TemplateFileTests:
       """# Hello {{ msg }}!""",
       ext = "md"
     ) { t =>
-      assertEquals("<h1>Hello there!</h1>", t.resolveInner(RenderingContext(Map("msg" -> "there"))).code.trim())
+      assertEquals(
+        """<h1><a href="#hello-there" id="hello-there" class="anchor"></a>Hello there!</h1>""",
+      t.resolveInner(RenderingContext(Map("msg" -> "there"))).code.trim())
     }
 
   @Test
@@ -212,7 +214,8 @@ class TemplateFileTests:
       """# Hello {{ msg }}!""",
       ext = "md"
     ) { t =>
-      assertEquals("<h1>Hello there!</h1>", t.resolveInner(RenderingContext(Map("msg" -> "there"))).code.trim())
+      assertEquals("""<h1><a href="#hello-there" id="hello-there" class="anchor"></a>Hello there!</h1>""",
+      t.resolveInner(RenderingContext(Map("msg" -> "there"))).code.trim())
     }
 
   @Test
