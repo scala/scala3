@@ -11,6 +11,8 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.fromtasty._
 import dotty.tools.dotc.util.ClasspathFromClassloader
+import dotty.tools.dotc.CompilationUnit
+import dotty.tools.unsupported
 
 import java.io.File.pathSeparator
 
@@ -21,7 +23,7 @@ trait TastyInspector:
   protected def processCompilationUnit(using QuoteContext)(root: qctx.reflect.Tree): Unit
 
   /** Called after all compilation units are processed */
-  protected def finishProcessingCompilationUnits(using QuoteContext): Unit = ()
+  protected def postProcess(using QuoteContext): Unit = ()
 
   /** Load and process TASTy files using TASTy reflect
    *
@@ -97,15 +99,13 @@ trait TastyInspector:
 
       override def phaseName: String = "tastyInspectorFinish"
 
-      override def run(implicit ctx: Context): Unit =
-        if !alreadyRan then
-          try
-            val qctx = QuoteContextImpl()
-            self.finishProcessingCompilationUnits(using qctx)
-          finally
-            alreadyRan = true
+      override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+        val qctx = QuoteContextImpl()
+        self.postProcess(using qctx)
+        units
 
-      var alreadyRan = false
+      override def run(implicit ctx: Context): Unit = unsupported("run")
+
     end TastyInspectorFinishPhase
 
     val currentClasspath = ClasspathFromClassloader(getClass.getClassLoader)
