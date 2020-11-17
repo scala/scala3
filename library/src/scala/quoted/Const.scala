@@ -23,7 +23,7 @@ object Const {
       case Inlined(_, Nil, e) => rec(e)
       case _  => None
     }
-    rec(expr.unseal)
+    rec(Term.of(expr))
   }
 
 }

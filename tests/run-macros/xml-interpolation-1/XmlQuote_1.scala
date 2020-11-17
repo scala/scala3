@@ -41,7 +41,7 @@ object XmlQuote {
       tree.symbol.fullName == "scala.StringContext$.apply"
 
     // XmlQuote.SCOps(StringContext.apply([p0, ...]: String*)
-    val parts = receiver.unseal.underlyingArgument match {
+    val parts = Term.of(receiver).underlyingArgument match {
       case Apply(conv, List(Apply(fun, List(Typed(Repeated(values, _), _)))))
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
@@ -53,7 +53,7 @@ object XmlQuote {
     }
 
     // [a0, ...]: Any*
-    val Typed(Repeated(args0, _), _) = args.unseal.underlyingArgument
+    val Typed(Repeated(args0, _), _) = Term.of(args).underlyingArgument
 
     val string = parts.mkString("??")
     '{new Xml(${Expr(string)}, ${liftListOfAny(args0)})}

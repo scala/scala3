@@ -127,7 +127,9 @@ final public class DelegatingReporter extends AbstractReporter {
           String lineContent = this.lineContent();
           int pointer = this.pointer().get();
           StringBuilder result = new StringBuilder();
-          for (int i = 0; i < pointer; i++)
+          // Don't crash if pointer is out-of-bounds (happens with some macros)
+          int fixedPointer = Math.min(pointer, lineContent.length());
+          for (int i = 0; i < fixedPointer; i++)
             result.append(lineContent.charAt(i) == '\t' ? '\t' : ' ');
           return Optional.of(result.toString());
         }

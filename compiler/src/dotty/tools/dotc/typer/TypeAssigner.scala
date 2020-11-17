@@ -173,11 +173,9 @@ trait TypeAssigner {
   /** The type of the selection in `tree`, where `qual1` is the typed qualifier part.
    *  The selection type is additionally checked for accessibility.
    */
-  def accessibleSelectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type = {
+  def accessibleSelectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type =
     val ownType = selectionType(tree, qual1)
-    if (tree.hasAttachment(desugar.SuppressAccessCheck)) ownType
-    else ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.srcPos)
-  }
+    ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.srcPos)
 
   /** Type assignment method. Each method takes as parameters
    *   - an untpd.Tree to which it assigns a type,

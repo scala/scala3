@@ -23,5 +23,6 @@ object Test extends App {
     def foo[T]: Show[T] = new Show[T](2)
   }
 
-  assert(a.foo[Int].i == 2) // error: no implicit argument of type Test.Context was found for parameter ctx
+  val b = a.foo[Int] // error: no implicit argument of type context found
+  assert(b.i == 1)   // error
 }

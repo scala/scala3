@@ -350,6 +350,9 @@ object TypeOps:
   def classBound(info: ClassInfo)(using Context): Type = {
     val cls = info.cls
     val parentType = info.parents.reduceLeft(TypeComparer.andType(_, _))
+    def isRefinable(sym: Symbol) =
+      !sym.is(Private) && !sym.isConstructor && !sym.isClass
+    val (refinableDecls, missingDecls) = info.decls.toList.partition(isRefinable)
 
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
@@ -360,8 +363,7 @@ object TypeOps:
       val isPolyFunctionApply = decl.name == nme.apply && (parent <:< defn.PolyFunctionType)
       val needsRefinement =
         isPolyFunctionApply
-        || !decl.isClass
-           && {
+        || {
             if inheritedInfo.exists then
               decl.info.widenExpr <:< inheritedInfo.widenExpr
               && !(inheritedInfo.widenExpr <:< decl.info.widenExpr)
@@ -369,8 +371,7 @@ object TypeOps:
               parent.derivesFrom(defn.SelectableClass)
           }
       if needsRefinement then
-        RefinedType(parent, decl.name, decl.info)
-          .showing(i"add ref $parent $decl --> " + result, typr)
+        RefinedType(parent, decl.name, avoid(decl.info, missingDecls))
       else parent
     }
 
@@ -378,8 +379,6 @@ object TypeOps:
       tp.subst(cls :: Nil, rt.recThis :: Nil).substThis(cls, rt.recThis)
     }
 
-    def isRefinable(sym: Symbol) = !sym.is(Private) && !sym.isConstructor
-    val refinableDecls = info.decls.filter(isRefinable)
     val raw = refinableDecls.foldLeft(parentType)(addRefinement)
     HKTypeLambda.fromParams(cls.typeParams, raw) match {
       case tl: HKTypeLambda => tl.derivedLambdaType(resType = close(tl.resType))

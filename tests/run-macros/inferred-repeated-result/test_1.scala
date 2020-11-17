@@ -5,7 +5,7 @@ object Macros {
   def impl[T](expr: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
     import qctx.reflect._
 
-    val tree = expr.unseal
+    val tree = Term.of(expr)
 
     val methods =
       tree.tpe.classSymbol.get.classMethods.map { m =>

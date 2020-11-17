@@ -23,11 +23,6 @@ object desugar {
   import untpd._
   import DesugarEnums._
 
-  /** If a Select node carries this attachment, suppress the check
-   *  that its type refers to an acessible symbol.
-   */
-  val SuppressAccessCheck: Property.Key[Unit] = Property.Key()
-
   /** An attachment for companion modules of classes that have a `derives` clause.
    *  The position value indicates the start position of the template of the
    *  deriving class.
@@ -427,6 +422,11 @@ object desugar {
         else originalTparams
       }
       else originalTparams
+
+    if mods.is(Trait) then
+      for vparams <- originalVparamss; vparam <- vparams do
+        if vparam.tpt.isInstanceOf[ByNameTypeTree] then
+          report.error(em"implementation restriction: traits cannot have by name parameters", vparam.srcPos)
 
     // Annotations on class _type_ parameters are set on the derived parameters
     // but not on the constructor parameters. The reverse is true for

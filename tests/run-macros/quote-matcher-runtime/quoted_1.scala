@@ -17,8 +17,8 @@ object Macros {
     }
 
     '{
-      println("Scrutinee: " + ${Expr(a.unseal.show)})
-      println("Pattern: " + ${Expr(b.unseal.show)})
+      println("Scrutinee: " + ${Expr(Term.of(a).show)})
+      println("Pattern: " + ${Expr(Term.of(b).show)})
       println("Result: " + ${Expr(res.toString)})
       println()
     }

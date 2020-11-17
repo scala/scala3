@@ -47,25 +47,20 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
   extension [T](self: scala.quoted.Expr[T]):
     def show: String =
-      reflect.TreeMethodsImpl.show(self.asReflectTree)
+      reflect.TreeMethodsImpl.show(reflect.Term.of(self))
 
     def showAnsiColored: String =
-      reflect.TreeMethodsImpl.showAnsiColored(self.asReflectTree)
+      reflect.TreeMethodsImpl.showAnsiColored(reflect.Term.of(self))
 
     def matches(that: scala.quoted.Expr[Any]): Boolean =
-      treeMatch(self.asReflectTree, that.asReflectTree).nonEmpty
-
-    def asReflectTree: reflect.Term =
-      val expr = self.asInstanceOf[ExprImpl]
-      expr.checkScopeId(QuoteContextImpl.this.hashCode)
-      expr.tree
+      treeMatch(reflect.Term.of(self), reflect.Term.of(that)).nonEmpty
 
   end extension
 
   extension [X](self: scala.quoted.Expr[Any]):
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
     def isExprOf(using scala.quoted.Type[X]): Boolean =
-      reflect.TypeReprMethodsImpl.<:<(self.asReflectTree.tpe)(reflect.TypeRepr.of[X])
+      reflect.TypeReprMethodsImpl.<:<(reflect.Term.of(self).tpe)(reflect.TypeRepr.of[X])
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
     def asExprOf(using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
@@ -74,7 +69,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       else
         throw Exception(
           s"""Expr cast exception: ${self.show}
-            |of type: ${reflect.TypeReprMethodsImpl.show(self.asReflectTree.tpe)}
+            |of type: ${reflect.TypeReprMethodsImpl.show(reflect.Term.of(self).tpe)}
             |did not conform to type: ${reflect.TypeReprMethodsImpl.show(reflect.TypeRepr.of[X])}
             |""".stripMargin
         )
@@ -89,7 +84,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     type Tree = tpd.Tree
 
-    object Tree extends TreeModule
+    object Tree extends TreeModule:
+        def of(expr: Expr[Any]): Tree = Term.of(expr)
+    end Tree
 
     object TreeMethodsImpl extends TreeMethods:
       extension (self: Tree):
@@ -328,6 +325,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     end TermTypeTest
 
     object Term extends TermModule:
+      def of(expr: Expr[Any]): Term =
+        val exprImpl = expr.asInstanceOf[ExprImpl]
+        exprImpl.checkScopeId(QuoteContextImpl.this.hashCode)
+        exprImpl.tree
+
       def betaReduce(tree: Term): Option[Term] =
         tree match
           case app @ tpd.Apply(tpd.Select(fn, nme.apply), args) if dotc.core.Symbols.defn.isFunctionType(fn.tpe) =>
@@ -2551,8 +2553,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
   object ExprMatch extends ExprMatchModule:
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
-      val scrutineeTree = QuoteContextImpl.this.asReflectTree(scrutinee)
-      val patternTree = QuoteContextImpl.this.asReflectTree(pattern)
+      val scrutineeTree = reflect.Term.of(scrutinee)
+      val patternTree = reflect.Term.of(pattern)
       treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
   end ExprMatch
 

@@ -8,7 +8,6 @@ private def sumExprShow(argsExpr: Expr[Seq[Int]]) (using QuoteContext): Expr[Str
   Expr(sumExpr(argsExpr).show)
 
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[Int] = {
-  import qctx.reflect._
   UnsafeExpr.underlyingArgument(argsExpr) match {
     case Varargs(Consts(args)) => // args is of type Seq[Int]
       Expr(args.sum) // precompute result of sum
@@ -29,5 +28,6 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[I
 
 object UnsafeExpr {
   def underlyingArgument[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
-    expr.unseal.underlyingArgument.asExpr.asInstanceOf[Expr[T]]
+    import qctx.reflect._
+    Term.of(expr).underlyingArgument.asExpr.asInstanceOf[Expr[T]]
 }

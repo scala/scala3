@@ -129,7 +129,10 @@ trait Reflection { reflection =>
 
   val Tree: TreeModule
 
-  trait TreeModule { this: Tree.type => }
+  trait TreeModule { this: Tree.type =>
+    /** Returns the Term representation this expression */
+    def of(expr: Expr[Any]): Tree
+  }
 
   given TreeMethods as TreeMethods = TreeMethodsImpl
   protected val TreeMethodsImpl: TreeMethods
@@ -371,6 +374,9 @@ trait Reflection { reflection =>
   val Term: TermModule
 
   trait TermModule { this: Term.type =>
+
+    /** Returns the Term representation this expression */
+    def of(expr: Expr[Any]): Term
 
     /** Returns a term that is functionally equivalent to `t`,
      *  however if `t` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`

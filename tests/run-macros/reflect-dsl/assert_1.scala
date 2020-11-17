@@ -12,7 +12,7 @@ object scalatest {
       case tp: MethodType => tp.isImplicit
       case _ => false
 
-    cond.unseal.underlyingArgument match {
+    Term.of(cond).underlyingArgument match {
       case t @ Apply(sel @ Select(lhs, op), rhs :: Nil) =>
         ValDef.let(lhs) { left =>
           ValDef.let(rhs) { right =>
@@ -22,7 +22,7 @@ object scalatest {
               val r = right.asExpr
               val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert($b) }
-              code.unseal
+              Term.of(code)
             }
           }
         }.asExprOf[Unit]
@@ -36,7 +36,7 @@ object scalatest {
               val r = right.asExpr
               val b = result.asExprOf[Boolean]
               val code = '{ scala.Predef.assert($b) }
-              code.unseal
+              Term.of(code)
             }
           }
         }.asExprOf[Unit]

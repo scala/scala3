@@ -9,7 +9,7 @@ object Asserts {
   def zeroLastArgsImpl(x: Expr[Int])(using qctx: QuoteContext) : Expr[Int] = {
     import qctx.reflect._
     // For simplicity assumes that all parameters are Int and parameter lists have no more than 3 elements
-    x.unseal.underlyingArgument match {
+    Term.of(x).underlyingArgument match {
       case Apply(fn, args) =>
         fn.tpe.widen match {
           case _: MethodType =>
@@ -35,15 +35,15 @@ object Asserts {
       case Apply(fn, args) =>
         val pre = rec(fn)
         args.size match {
-          case 0 => Expr.betaReduce('{ ${pre.etaExpand.asExprOf[() => Any]}() }).unseal
-          case 1 => Expr.betaReduce('{ ${pre.etaExpand.asExprOf[Int => Any]}(0) }).unseal
-          case 2 => Expr.betaReduce('{ ${pre.etaExpand.asExprOf[(Int, Int) => Any]}(0, 0) }).unseal
-          case 3 => Expr.betaReduce('{ ${pre.etaExpand.asExprOf[(Int, Int, Int) => Any]}(0, 0, 0) }).unseal
+          case 0 => Term.of(Expr.betaReduce('{ ${pre.etaExpand.asExprOf[() => Any]}() }))
+          case 1 => Term.of(Expr.betaReduce('{ ${pre.etaExpand.asExprOf[Int => Any]}(0) }))
+          case 2 => Term.of(Expr.betaReduce('{ ${pre.etaExpand.asExprOf[(Int, Int) => Any]}(0, 0) }))
+          case 3 => Term.of(Expr.betaReduce('{ ${pre.etaExpand.asExprOf[(Int, Int, Int) => Any]}(0, 0, 0) }))
         }
       case _ => term
     }
 
-    rec(x.unseal.underlyingArgument).asExprOf[Int]
+    rec(Term.of(x).underlyingArgument).asExprOf[Int]
   }
 
 }

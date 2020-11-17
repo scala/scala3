@@ -42,7 +42,7 @@ trees. For example the `Literal(_)` extractor used below.
 ```scala
 def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
   import qctx.reflect._
-  val xTree: Term = x.unseal
+  val xTree: Term = Term.of(x)
   xTree match {
     case Inlined(_, _, Literal(Constant(n: Int))) =>
       if (n <= 0) {
