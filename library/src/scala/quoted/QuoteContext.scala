@@ -174,7 +174,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     // CONTEXTS //
     //////////////
 
-    /** Compilation context */
+    /** Context containing information on the current owner */
     type Context <: AnyRef
 
     /** Context of the macro expansion */
@@ -230,6 +230,12 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
       /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
       extension [T](self: Tree)
         def asExprOf(using scala.quoted.Type[T]): scala.quoted.Expr[T]
+
+      extension [ThisTree <: Tree](self: ThisTree):
+        /** Changes the owner of the symbols in the tree */
+        def changeOwner(newOwner: Symbol): ThisTree
+      end extension
+
     }
 
     /** Tree representing a pacakage clause in the source code */
@@ -469,7 +475,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
         def underlying: Term
 
         /** Converts a partally applied term into a lambda expression */
-        def etaExpand: Term
+        def etaExpand(owner: Symbol): Term
 
         /** A unary apply node with given argument: `tree(arg)` */
         def appliedTo(arg: Term): Term
@@ -954,8 +960,24 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     val Lambda: LambdaModule
 
     trait LambdaModule { this: Lambda.type =>
+      /** Matches a lambda definition of the form
+       *  ```
+       *  Block((DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+       *  ```
+       *  Extracts the parameter definitions and body.
+       *
+       */
       def unapply(tree: Block): Option[(List[ValDef], Term)]
-      def apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block
+
+      /** Generates a lambda with the given method type.
+       *  ```
+       *  Block((DefDef(_, _, params :: Nil, _, Some(rhsFn(meth, paramRefs)))) :: Nil, Closure(meth, _))
+       *  ```
+       * @param owner: owner of the generated `meth` symbol
+       * @param tpe: Type of the definition
+       * @param rhsFn: Funtion that recieves the `meth` symbol and the a list of references to the `params`
+       */
+      def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block
     }
 
     given TypeTest[Tree, If] = IfTypeTest

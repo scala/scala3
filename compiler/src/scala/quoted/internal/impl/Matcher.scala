@@ -211,7 +211,7 @@ object Matcher {
             }
             val argTypes = args.map(x => x.tpe.widenTermRefExpr)
             val resType = pattern.tpe
-            val res = Lambda(MethodType(names)(_ => argTypes, _ => resType), bodyFn)
+            val res = Lambda(Symbol.currentOwner, MethodType(names)(_ => argTypes, _ => resType), (meth, x) => bodyFn(x).changeOwner(meth))
             matched(res.asExpr)
 
           //

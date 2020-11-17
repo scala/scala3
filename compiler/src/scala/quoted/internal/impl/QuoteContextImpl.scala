@@ -45,6 +45,9 @@ object QuoteContextImpl {
 
 class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickler, QuoteMatching:
 
+  private val yCheck: Boolean =
+    ctx.settings.Ycheck.value(using ctx).exists(x => x == "all" || x == "macros")
+
   extension [T](self: scala.quoted.Expr[T]):
     def show: String =
       reflect.TreeMethodsImpl.show(reflect.Term.of(self))
@@ -116,6 +119,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       extension [T](self: Tree)
         def asExprOf(using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
           QuoteContextImpl.this.asExprOf[T](self.asExpr)(using tp)
+      end extension
+
+      extension [ThisTree <: Tree](self: ThisTree):
+        def changeOwner(newOwner: Symbol): ThisTree =
+          tpd.TreeOps(self).changeNonLocalOwners(newOwner).asInstanceOf[ThisTree]
       end extension
 
     end TreeMethodsImpl
@@ -238,9 +246,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     object DefDef extends DefDefModule:
       def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef =
-        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => rhsFn(tparams)(vparamss).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => yCheckedOwners(rhsFn(tparams)(vparamss), symbol).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, rhs.getOrElse(tpd.EmptyTree))
+        tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
         Some((ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs)))
     end DefDef
@@ -264,9 +272,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     object ValDef extends ValDefModule:
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef =
-        tpd.ValDef(symbol.asTerm, rhs.getOrElse(tpd.EmptyTree))
+        tpd.ValDef(symbol.asTerm, yCheckedOwners(rhs, symbol).getOrElse(tpd.EmptyTree))
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef =
-        tpd.cpy.ValDef(original)(name.toTermName, tpt, rhs.getOrElse(tpd.EmptyTree))
+        tpd.cpy.ValDef(original)(name.toTermName, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])] =
         Some((vdef.name.toString, vdef.tpt, optional(vdef.rhs)))
 
@@ -357,15 +365,15 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
         def tpe: TypeRepr = self.tpe
         def underlyingArgument: Term = new tpd.TreeOps(self).underlyingArgument
         def underlying: Term = new tpd.TreeOps(self).underlying
-        def etaExpand: Term = self.tpe.widen match {
+        def etaExpand(owner: Symbol): Term = self.tpe.widen match {
           case mtpe: Types.MethodType if !mtpe.isParamDependent =>
             val closureResType = mtpe.resType match {
               case t: Types.MethodType => t.toFunctionType()
               case t => t
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
-            val closureMethod = dotc.core.Symbols.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand)
+            val closureMethod = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand(closureMethod))
           case _ => self
         }
 
@@ -727,9 +735,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     end ClosureMethodsImpl
 
     object Lambda extends LambdaModule:
-      def apply(tpe: MethodType, rhsFn: List[Tree] => Tree): Block =
-        val meth = dotc.core.Symbols.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, tpe)
-        tpd.Closure(meth, tss => changeOwnerOfTree(rhsFn(tss.head), meth))
+      def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
+        val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
+        tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head), meth))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
         case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
@@ -2201,14 +2209,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       def requiredModule(path: String): Symbol = dotc.core.Symbols.requiredModule(path)
       def requiredMethod(path: String): Symbol = dotc.core.Symbols.requiredMethod(path)
       def classSymbol(fullName: String): Symbol = dotc.core.Symbols.requiredClass(fullName)
-      def newMethod(parent: Symbol, name: String, tpe: TypeRepr): Symbol =
-        newMethod(parent, name, tpe, Flags.EmptyFlags, noSymbol)
-      def newMethod(parent: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
-        dotc.core.Symbols.newSymbol(parent, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin)
-      def newVal(parent: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
-        dotc.core.Symbols.newSymbol(parent, name.toTermName, flags, tpe, privateWithin)
-      def newBind(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol =
-        dotc.core.Symbols.newSymbol(parent, name.toTermName, flags | Case, tpe)
+      def newMethod(owner: Symbol, name: String, tpe: TypeRepr): Symbol =
+        newMethod(owner, name, tpe, Flags.EmptyFlags, noSymbol)
+      def newMethod(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
+        dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin)
+      def newVal(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
+        dotc.core.Symbols.newSymbol(owner, name.toTermName, flags, tpe, privateWithin)
+      def newBind(owner: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol =
+        dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | Case, tpe)
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
     end Symbol
 
@@ -2541,6 +2549,53 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     private def withDefaultPos[T <: Tree](fn: Context ?=> T): T =
       fn(using ctx.withSource(Position.ofMacroExpansion.source)).withSpan(Position.ofMacroExpansion.span)
+
+    /** Checks that all definitions in this tree have the expected owner.
+     *  Nested definitions are ignored and assumed to be correct by construction.
+     */
+    private def yCheckedOwners(tree: Option[Tree], owner: Symbol): tree.type =
+      if yCheck then
+        tree match
+          case Some(tree) =>
+            yCheckOwners(tree, owner)
+          case _ =>
+      tree
+
+    /** Checks that all definitions in this tree have the expected owner.
+     *  Nested definitions are ignored and assumed to be correct by construction.
+     */
+    private def yCheckedOwners(tree: Tree, owner: Symbol): tree.type =
+      if yCheck then
+        yCheckOwners(tree, owner)
+      tree
+
+    /** Checks that all definitions in this tree have the expected owner.
+     *  Nested definitions are ignored and assumed to be correct by construction.
+     */
+    private def yCheckOwners(tree: Tree, owner: Symbol): Unit =
+      new tpd.TreeTraverser {
+        def traverse(t: Tree)(using Context): Unit =
+          t match
+            case t: tpd.DefTree =>
+              val defOwner = t.symbol.owner
+              assert(defOwner == owner,
+                s"""Tree had an unexpected owner for ${t.symbol}
+                   |Expected: $owner (${owner.fullName})
+                   |But was: $defOwner (${defOwner.fullName})
+                   |
+                   |
+                   |The code of the definition of ${t.symbol} is
+                   |${TreeMethods.show(t)}
+                   |
+                   |which was found in the code
+                   |${TreeMethods.show(tree)}
+                   |
+                   |which has the AST representation
+                   |${TreeMethods.showExtractors(tree)}
+                   |
+                   |""".stripMargin)
+            case _ => traverseChildren(t)
+      }.traverse(tree)
 
   end reflect
 
