@@ -51,6 +51,11 @@ class TastyPrinter(bytes: Array[Byte]) {
       case _ =>
     }
     sb.append("\n\n")
+    unpickle(new LineSizesSectionUnpickler) match {
+      case Some(s) => sb.append(s)
+      case _ =>
+    }
+    sb.append("\n\n")
     unpickle(new CommentSectionUnpickler) match {
       case Some(s) => sb.append(s)
       case _ =>
@@ -141,12 +146,26 @@ class TastyPrinter(bytes: Array[Byte]) {
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
       sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
       val spans = new PositionUnpickler(reader, tastyName).spans
-      sb.append(s" position bytes:\n")
+      sb.append(" position bytes:\n")
       val sorted = spans.toSeq.sortBy(_._1.index)
       for ((addr, pos) <- sorted) {
         sb.append(treeStr("%10d".format(addr.index)))
         sb.append(s": ${offsetToInt(pos.start)} .. ${pos.end}\n")
       }
+      sb.result
+    }
+  }
+
+  class LineSizesSectionUnpickler extends SectionUnpickler[String]("LineSizes") {
+
+    private val sb: StringBuilder = new StringBuilder
+
+    def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+      sb.append(" ").append(reader.endAddr.index - reader.currentAddr.index)
+      sb.append(" line sizes bytes:\n")
+      val lineSizes = new LineSizesUnpickler(reader)
+      sb.append("   sizes: ")
+      sb.append(lineSizes.sizes.mkString(", "))
       sb.result
     }
   }

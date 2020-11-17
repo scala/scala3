@@ -25,7 +25,7 @@ extends SrcPos, interfaces.SourcePosition, Showable {
 
   def point: Int = span.point
 
-  def line: Int = if (source.length != 0) source.offsetToLine(point) else -1
+  def line: Int = source.offsetToLine(point)
 
   /** Extracts the lines from the underlying source file as `Array[Char]`*/
   def linesSlice: Array[Char] =
@@ -45,16 +45,16 @@ extends SrcPos, interfaces.SourcePosition, Showable {
   def beforeAndAfterPoint: (List[Int], List[Int]) =
     lineOffsets.partition(_ <= point)
 
-  def column: Int = if (source.content().length != 0) source.column(point) else -1
+  def column: Int = source.column(point)
 
   def start: Int = span.start
-  def startLine: Int = if (source.content().length != 0) source.offsetToLine(start) else -1
-  def startColumn: Int = if (source.content().length != 0) source.column(start) else -1
+  def startLine: Int = source.offsetToLine(start)
+  def startColumn: Int = source.column(start)
   def startColumnPadding: String = source.startColumnPadding(start)
 
   def end: Int = span.end
-  def endLine: Int = if (source.content().length != 0) source.offsetToLine(end) else -1
-  def endColumn: Int = if (source.content().length != 0) source.column(end) else -1
+  def endLine: Int = source.offsetToLine(end)
+  def endColumn: Int = source.column(end)
 
   def withOuter(outer: SourcePosition): SourcePosition = SourcePosition(source, span, outer)
   def withSpan(range: Span) = SourcePosition(source, range, outer)

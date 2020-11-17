@@ -74,6 +74,8 @@ class Pickler extends Phase {
           if tree.span.exists then
             new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots)
               .picklePositions(tree :: Nil, positionWarnings)
+            new LineSizesPickler(pickler)
+              .pickleLineNumbers(unit.source)
 
           if !ctx.settings.YdropComments.value then
             new CommentPickler(pickler, treePkl.buf.addrOfTree, treePkl.docString)

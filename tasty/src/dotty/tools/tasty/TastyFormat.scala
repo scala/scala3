@@ -50,6 +50,7 @@ Macro-format:
 Note: Unqualified names in the name table are strings. The context decides whether a name is
 a type-name or a term-name. The same string can represent both.
 
+
 Standard-Section: "ASTs" TopLevelStat*
 
   TopLevelStat  = PACKAGE        Length Path TopLevelStat*                         -- package path { topLevelStats }
@@ -226,6 +227,7 @@ Note: Tree tags are grouped into 5 categories that determine what follows, and t
   Category 4 (tags 110-127):  tag Nat AST
   Category 5 (tags 128-255):  tag Length <payload>
 
+
 Standard-Section: "Positions" Assoc*
 
   Assoc         = Header offset_Delta? offset_Delta? point_Delta?
@@ -244,7 +246,13 @@ Standard-Section: "Positions" Assoc*
 
 All elements of a position section are serialized as Ints
 
-Standard-Section: "Comments" Comment*
+
+Standard-Section: "LineSizes" LineSize*
+
+  LineSize       = Int                      // Size the i-th line not counting the trailing `\n`
+
+
+Standard Section: "Comments" Comment*
 
   Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
 
