@@ -1335,6 +1335,7 @@ object Build {
         (publishLocal in `tasty-core-bootstrapped`).value
         (publishLocal in `scala3-library-bootstrapped`).value
         (publishLocal in `scala3-doc-bootstrapped`).value
+        (publishLocal in `scala3doc`).value
         (publishLocal in `scala3-compiler-bootstrapped`).value
         (publishLocal in `sbt-dotty`).value
         (publishLocal in `scala3-bootstrapped`).value
@@ -1351,6 +1352,7 @@ object Build {
         TestFrameworks.JUnit,
         "--include-categories=dotty.communitybuild.TestCategory",
       ),
+      Compile/run := (Compile/run).dependsOn(prepareCommunityBuild).evaluated,
       (Test / testOnly) := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,
       (Test / test    ) := ((Test / test    ) dependsOn prepareCommunityBuild).value,
       javaOptions ++= {
