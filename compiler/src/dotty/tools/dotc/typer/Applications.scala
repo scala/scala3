@@ -2047,10 +2047,9 @@ trait Applications extends Compatibility {
             else WildcardType)
           /** Should we generate a partial function for the arg ? */
           def isPartial = untpd.functionWithUnknownParamType(arg) match
-            case Some(fn) =>
-              fn.isInstanceOf[untpd.Match] &&
+            case Some(_: untpd.Match) =>
               formalsForArg.exists(_.isRef(defn.PartialFunctionClass))
-            case None =>
+            case _ =>
               false
           val commonFormal =
             if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
