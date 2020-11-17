@@ -8,19 +8,19 @@ trait SyntheticsSupport:
   import qctx.reflect._
 
   extension (t: TypeRepr):
-    def isTupleType: Boolean = hackIsTupleType(qctx.reflect)(t)
+    def isTupleType: Boolean = hackIsTupleType(using qctx)(t)
 
-    def isCompiletimeAppliedType: Boolean = hackIsCompiletimeAppliedType(qctx.reflect)(t)
+    def isCompiletimeAppliedType: Boolean = hackIsCompiletimeAppliedType(using qctx)(t)
 
-    def hackIsTupleType(r: Reflection)(rtpe: r.TypeRepr): Boolean =
+    def hackIsTupleType(using QuoteContext)(rtpe: qctx.reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
-      given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+      given ctx as dotc.core.Contexts.Context = qctx.reflect.rootContext.asInstanceOf
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isTupleType(tpe)
 
-    def hackIsCompiletimeAppliedType(r: Reflection)(rtpe: r.TypeRepr): Boolean =
+    def hackIsCompiletimeAppliedType(using QuoteContext)(rtpe: qctx.reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
-      given ctx as dotc.core.Contexts.Context = r.rootContext.asInstanceOf
+      given ctx as dotc.core.Contexts.Context = qctx.reflect.rootContext.asInstanceOf
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isCompiletimeAppliedType(tpe.typeSymbol)
 
