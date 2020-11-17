@@ -146,7 +146,6 @@ object BootstrappedStdLibTASYyTest:
   def compileBlacklist = List[String](
     // See #10048
     // failed: java.lang.AssertionError: assertion failed: class Boolean
-    //   at dotty.DottyPredef$.assertFail(DottyPredef.scala:17)
     //   at dotty.tools.backend.jvm.BCodeHelpers$BCInnerClassGen.assertClassNotArrayNotPrimitive(BCodeHelpers.scala:247)
     //   at dotty.tools.backend.jvm.BCodeHelpers$BCInnerClassGen.getClassBTypeAndRegisterInnerClass(BCodeHelpers.scala:265)
     //   at dotty.tools.backend.jvm.BCodeHelpers$BCInnerClassGen.getClassBTypeAndRegisterInnerClass$(BCodeHelpers.scala:210)
