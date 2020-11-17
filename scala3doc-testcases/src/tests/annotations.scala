@@ -3,6 +3,8 @@ package annotations
 
 import scala.annotation.StaticAnnotation
 
+import java.lang.{Enum => _}
+import scala.reflect.Enum
 
 class SomeObject(val s: String)
 

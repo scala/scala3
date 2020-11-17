@@ -89,10 +89,11 @@ object Planet {
 ```
 
 ### Compatibility with Java Enums
-If you want to use the Scala-defined enums as Java enums, you can do so by extending `java.lang.Enum` class as follows:
+If you want to use the Scala-defined enums as Java enums, you can do so by extending
+the class `java.lang.Enum`, which is imported by default, as follows:
 
 ```scala
-enum Color extends java.lang.Enum[Color] { case Red, Green, Blue }
+enum Color extends Enum[Color] { case Red, Green, Blue }
 ```
 
 The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should be the same as the type of the enum.

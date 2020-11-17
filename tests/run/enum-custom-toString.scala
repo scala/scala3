@@ -6,7 +6,7 @@ enum EJ extends java.lang.Enum[EJ]:
   case B
   override def toString: String = "overridden"
 
-trait Mixin extends Enum:
+trait Mixin extends reflect.Enum:
   override def productPrefix: String = "noprefix"
   override def toString: String = "overridden"
 
@@ -36,7 +36,7 @@ enum EQ:
   case J           extends EQ with Mixin
   case K(arg: Int) extends EQ with Mixin
 
-abstract class Tag[T] extends Enum
+abstract class Tag[T] extends reflect.Enum
 object Tag:
   private final class IntTagImpl extends Tag[Int] with runtime.EnumValue:
     def ordinal = 0

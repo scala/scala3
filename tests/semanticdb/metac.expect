@@ -642,7 +642,7 @@ Uri => Enums.scala
 Text => empty
 Language => Scala
 Symbols => 181 entries
-Occurrences => 203 entries
+Occurrences => 201 entries
 
 Symbols:
 _empty_/Enums. => final object Enums
@@ -979,11 +979,9 @@ Occurrences:
 [56:20..56:26): Double -> scala/Double#
 [56:28..56:34): radius <- _empty_/Enums.Planet#radius.
 [56:36..56:42): Double -> scala/Double#
-[56:52..56:56): java -> java/
-[56:57..56:61): lang -> java/lang/
-[56:62..56:66): Enum -> java/lang/Enum#
-[56:67..56:73): Planet -> _empty_/Enums.Planet#
-[56:74..56:74): -> java/lang/Enum#`<init>`().
+[56:52..56:56): Enum -> java/lang/Enum#
+[56:57..56:63): Planet -> _empty_/Enums.Planet#
+[56:64..56:64): -> java/lang/Enum#`<init>`().
 [57:22..57:23): G <- _empty_/Enums.Planet#G.
 [58:8..58:22): surfaceGravity <- _empty_/Enums.Planet#surfaceGravity().
 [58:25..58:26): G -> _empty_/Enums.Planet#G.

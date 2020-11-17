@@ -8,7 +8,7 @@ import Shapes._
  *    case Blue
  *  }
  */
-sealed trait Color extends Enum
+sealed trait Color extends EnumLike
 
 object Color {
 

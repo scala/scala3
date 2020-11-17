@@ -12,7 +12,7 @@ import Shapes._
  *    case If(cond: Boolean, thenp: Tree[T], elsep: Tree[T])
  *  }
  */
-sealed trait Tree[TR] extends Enum
+sealed trait Tree[TR] extends EnumLike
 
 object Tree {
 
