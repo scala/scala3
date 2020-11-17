@@ -1,10 +1,25 @@
 #!/usr/bin/env bash
 
-function print-beginning {
-	cat << 'EOF'
+MYDIR="$(dirname "$(readlink -f "$0")")"
+
+
+function html-beginning {
+	cat << EOF
 <html>
     <body>
-        <p> Available projects: </p>
+EOF
+}
+
+function html-ending {
+cat << EOF
+	    </body>
+</html>
+EOF
+}
+
+function print-beginning {
+	cat << EOF
+        <p> $1 </p>
         <ul>
 EOF
 }
@@ -15,17 +30,23 @@ function print-list-element {
 EOF
 }
 
+function print-list-element-text {
+	cat << EOF
+		<li> $1 </li>
+EOF
+}
+
 function print-ending {
 	cat << 'EOF'
         </ul>
-    </body>
-</html>
 EOF
 }
 
 cd "$1" || exit
 
-print-beginning
+
+html-beginning
+print-beginning "Available project:"
 for f in *
 do
 	! [[ -d $f ]] && continue
@@ -40,3 +61,15 @@ do
 	print-list-element "$INDEX" "$f"
 done
 print-ending
+
+print-beginning "Links for manual testing:"
+while read line; do
+	print-list-element-text "$line"
+done < "$MYDIR/tocheck.txt"
+
+while read line; do
+	IFS=',' read INDEX f <<< "${line}"
+	print-list-element "$INDEX" "$f"
+done < "$MYDIR/linkstovisit.txt"
+print-ending
+html-ending
