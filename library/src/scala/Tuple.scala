@@ -1,7 +1,6 @@
 package scala
 import annotation.showAsInfix
 import compiletime._
-import internal._
 
 /** Tuple of arbitrary arity */
 sealed trait Tuple extends Product {

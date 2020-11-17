@@ -36,7 +36,7 @@ object Macros {
           TypeLambda(
             List("t"),
             _ => List(TypeBounds(TypeRepr.of[Nothing], TypeRepr.of[Any])),
-            tl => TypeRepr.of[scala.internal.MatchCase].appliedTo(List(TypeRepr.of[List].appliedTo(tl.param(0)), tl.param(0)))))
+            tl => TypeRepr.of[scala.runtime.MatchCase].appliedTo(List(TypeRepr.of[List].appliedTo(tl.param(0)), tl.param(0)))))
       )
 
     assert(x1T =:= TypeRepr.of[1])
@@ -53,4 +53,3 @@ object Macros {
     }
   }
 }
-
