@@ -49,14 +49,6 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
         report.throwError(msg, self)(using QuoteContext.this)
       unlift.fromExpr(self)(using QuoteContext.this).getOrElse(reportError)
 
-    /** View this expression `quoted.Expr[T]` as a `Term` */
-    @deprecated("Use reflect.Term.of", "")
-    def unseal: reflect.Term = self.asReflectTree // TODO remove
-
-    /** View this expression `quoted.Expr[T]` as a `Term` */
-    @deprecated("Use reflect.Term.of", "")
-    def asReflectTree: reflect.Term = // TODO remove
-      reflect.Term.of(self)
   end extension
 
   // Extension methods for `Expr[Any]` that take another explicit type parameter
