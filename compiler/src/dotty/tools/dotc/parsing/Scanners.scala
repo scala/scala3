@@ -470,16 +470,15 @@ object Scanners {
       else if indentIsSignificant then
         if nextWidth < lastWidth
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
-          if !currentRegion.isOutermost &&
-             !isLeadingInfixOperator() &&
-             !statCtdTokens.contains(lastToken) then
+          if currentRegion.isOutermost then
+            if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
+          else if !isLeadingInfixOperator() && !statCtdTokens.contains(lastToken) then
             currentRegion match
               case r: Indented =>
                 currentRegion = r.enclosing
                 insert(OUTDENT, offset)
               case r: InBraces if !closingRegionTokens.contains(token) =>
-                report.warning("Line is indented too far to the left, or a `}` is missing",
-                  source.atSpan(Span(offset)))
+                report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
               case _ =>
 
         else if lastWidth < nextWidth
@@ -1318,7 +1317,7 @@ object Scanners {
    /* Initialization: read first char, then first token */
     nextChar()
     nextToken()
-    currentRegion = Indented(indentWidth(offset), Set(), EMPTY, null)
+    currentRegion = topLevelRegion(indentWidth(offset))
   }
   // end Scanner
 
@@ -1358,6 +1357,8 @@ object Scanners {
    */
   case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null) extends Region:
     knownWidth = width
+
+  def topLevelRegion(width: IndentWidth) = Indented(width, Set(), EMPTY, null)
 
   enum IndentWidth {
     case Run(ch: Char, n: Int)
