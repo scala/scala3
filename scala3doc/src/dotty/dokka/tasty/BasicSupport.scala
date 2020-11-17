@@ -5,6 +5,7 @@ import org.jetbrains.dokka.model._
 import collection.JavaConverters._
 import dotty.dokka._
 import dotty.dokka.model.api.Annotation
+import doc.DocumentationNode
 import dotty.dokka.model.api.TastyDocumentableSource
 
 trait BasicSupport:
@@ -34,10 +35,11 @@ trait BasicSupport:
 
 
   extension (sym: Symbol):
-    def documentation(using cxt: Context) = sym.documentation match
-      case Some(comment) =>
+    def documentation(using cxt: Context): Map[SourceSetWrapper, DocumentationNode] =
+      qctx.reflect.SymbolMethods.documentation(sym) match
+        case Some(comment) =>
           Map(sourceSet -> parseComment(comment, sym.tree))
-      case None =>
+        case None =>
           Map.empty
 
     def source(using ctx: Context) =
