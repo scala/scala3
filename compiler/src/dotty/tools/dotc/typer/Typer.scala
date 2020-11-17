@@ -3501,7 +3501,7 @@ class Typer extends Namer
             catch case ex: TypeError =>
               ex match
                 case ex: CyclicReference if ex.denot.is(Extension) && ex.denot.name == selName =>
-                  report.warning(
+                  report.error(
                     em"""An extension method for `.$selName` was tried but could not be fully constructed
                         |since there was a cyclic reference involving ${ex.denot.symbol.showLocated}""",
                     tree.srcPos)(using origCtx)

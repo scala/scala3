@@ -1,4 +1,5 @@
--- [E008] Not Found Error: tests/neg/i7986.scala:3:61 ------------------------------------------------------------------
+-- Error: tests/neg/i7986.scala:3:56 -----------------------------------------------------------------------------------
 3 |extension (project: Project) def dependencies = project.name.dependencies // error, following a cyclic reference warning
-  |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^
-  |                                                value dependencies is not a member of String
+  |                                                ^^^^^^^^^^^^
+  |                              An extension method for `.dependencies` was tried but could not be fully constructed
+  |                              since there was a cyclic reference involving method dependencies
