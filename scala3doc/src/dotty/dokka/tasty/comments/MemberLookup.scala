@@ -64,9 +64,17 @@ trait MemberLookup {
     import dotty.tools.dotc
     given dotc.core.Contexts.Context = rootContext.asInstanceOf
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
-    val members = sym.info.decls.iterator.filterNot(_.isAbsent(false))
+    val members = sym.info.decls.iterator.filter(_.isCompleted)
     // println(s"members of ${sym.show} : ${members.map(_.show).mkString(", ")}")
     members.asInstanceOf[Iterator[Symbol]]
+  }
+
+  private def hackIsNotAbsent(using QuoteContext)(rsym: qctx.reflect.Symbol) = {
+    import qctx.reflect._
+    import dotty.tools.dotc
+    given dotc.core.Contexts.Context = rootContext.asInstanceOf
+    val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
+    sym.isCompleted
   }
 
   private def localLookup(using QuoteContext)(query: String, owner: qctx.reflect.Symbol): Option[qctx.reflect.Symbol] = {
@@ -116,7 +124,7 @@ trait MemberLookup {
     else
       owner.tree match {
         case tree: ClassDef =>
-          findMatch(tree.body.iterator.collect { case t: Definition => t.symbol })
+          findMatch(tree.body.iterator.collect { case t: Definition if hackIsNotAbsent(t.symbol) => t.symbol })
         case _ =>
           findMatch(hackMembersOf(owner))
       }
