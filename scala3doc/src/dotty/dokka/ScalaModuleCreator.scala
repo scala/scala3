@@ -10,7 +10,6 @@ import dotty.dokka.tasty.{DokkaTastyInspector, SbtDokkaTastyInspector}
 import org.jetbrains.dokka.pages._
 import dotty.dokka.model.api._
 import org.jetbrains.dokka.model._
-import org.jetbrains.dokka.links.DRI
 import org.jetbrains.dokka.base.parsers.MarkdownParser
 import collection.JavaConverters._
 import kotlin.coroutines.Continuation

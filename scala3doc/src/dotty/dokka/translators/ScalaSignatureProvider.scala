@@ -12,7 +12,6 @@ import org.jetbrains.dokka.base.translators.documentables._
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
-import org.jetbrains.dokka.links.DRI
 import dotty.dokka.model.api.{Kind, _}
 
 

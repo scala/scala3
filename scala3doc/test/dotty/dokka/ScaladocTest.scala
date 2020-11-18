@@ -26,7 +26,7 @@ abstract class ScaladocTest(val name: String):
       classpath =  System.getProperty("java.class.path"),
       None,
       output = getTempDir().getRoot,
-      projectVersion = "1.0",
+      projectVersion = Some("1.0"),
       projectTitle = None,
       projectLogo = None,
       defaultSyntax = None,

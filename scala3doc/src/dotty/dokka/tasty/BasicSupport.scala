@@ -1,6 +1,6 @@
-package dotty.dokka.tasty
+package dotty.dokka
+package tasty
 
-import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model._
 import collection.JavaConverters._
 import dotty.dokka._
@@ -46,8 +46,5 @@ trait BasicSupport:
 
     def getAnnotations(): List[Annotation] =
     sym.annots.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse
-
-  private val emptyDRI = DRI.Companion.getTopLevel
-
 
 

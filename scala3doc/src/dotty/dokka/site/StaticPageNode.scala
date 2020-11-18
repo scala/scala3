@@ -5,12 +5,9 @@ import java.io.File
 import java.nio.file.Files
 
 import org.jetbrains.dokka.base.renderers.html.{NavigationNode, NavigationPage}
-import org.jetbrains.dokka.links.DRI
 import org.jetbrains.dokka.model.Documentable
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.transformers.pages.PageTransformer
-
-case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTemplate], file: File)
 
 case class StaticPageNode(
                            template: TemplateFile,

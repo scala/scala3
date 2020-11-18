@@ -12,47 +12,52 @@ trait MemberLookup {
   def lookupOpt(using QuoteContext)(
     query: Query,
     ownerOpt: Option[qctx.reflect.Symbol],
-  ): Option[(qctx.reflect.Symbol, String)] = {
-    import qctx.reflect._
+  ): Option[(qctx.reflect.Symbol, String)] =
+    try
+      import qctx.reflect._
 
-    def nearestClass(sym: Symbol): Symbol =
-      if sym.isClassDef then sym else nearestClass(sym.owner)
+      def nearestClass(sym: Symbol): Symbol =
+        if sym.isClassDef then sym else nearestClass(sym.owner)
 
-    def nearestPackage(sym: Symbol): Symbol =
-      if sym.flags.is(Flags.Package) then sym else nearestPackage(sym.owner)
+      def nearestPackage(sym: Symbol): Symbol =
+        if sym.flags.is(Flags.Package) then sym else nearestPackage(sym.owner)
 
-    def nearestMembered(sym: Symbol): Symbol =
-      if sym.isClassDef || sym.flags.is(Flags.Package) then sym else nearestMembered(sym.owner)
+      def nearestMembered(sym: Symbol): Symbol =
+        if sym.isClassDef || sym.flags.is(Flags.Package) then sym else nearestMembered(sym.owner)
 
-    val res =
-      ownerOpt match {
-        case Some(owner) =>
-          val nearest = nearestMembered(owner)
-          val nearestCls = nearestClass(owner)
-          val nearestPkg = nearestPackage(owner)
-          query match {
-            case Query.StrictMemberId(id) => localLookup(id, nearest).map(_ -> id)
-            case Query.Id(id) =>
-              (localLookup(id, nearest) orElse localLookup(id, nearestPkg)).map(_ -> id)
-            case Query.QualifiedId(Query.Qual.This, _, rest) =>
-              downwardLookup(rest.asList, nearestCls).map(_ -> rest.join)
-            case Query.QualifiedId(Query.Qual.Package, _, rest) =>
-              downwardLookup(rest.asList, nearestPkg).map(_ -> rest.join)
-            case Query.QualifiedId(Query.Qual.Id(id), _, rest) if id == nearestCls.name =>
-              downwardLookup(rest.asList, nearestCls).map(_ -> rest.join)
-            case Query.QualifiedId(Query.Qual.Id(id), _, rest) if id == nearestPkg.name =>
-              downwardLookup(rest.asList, nearestPkg).map(_ -> rest.join)
-            case query: Query.QualifiedId => downwardLookup(query.asList, defn.RootPackage).map(_ -> query.join)
-          }
+      val res =
+        ownerOpt match {
+          case Some(owner) =>
+            val nearest = nearestMembered(owner)
+            val nearestCls = nearestClass(owner)
+            val nearestPkg = nearestPackage(owner)
+            query match {
+              case Query.StrictMemberId(id) => localLookup(id, nearest).map(_ -> id)
+              case Query.Id(id) =>
+                (localLookup(id, nearest) orElse localLookup(id, nearestPkg)).map(_ -> id)
+              case Query.QualifiedId(Query.Qual.This, _, rest) =>
+                downwardLookup(rest.asList, nearestCls).map(_ -> rest.join)
+              case Query.QualifiedId(Query.Qual.Package, _, rest) =>
+                downwardLookup(rest.asList, nearestPkg).map(_ -> rest.join)
+              case Query.QualifiedId(Query.Qual.Id(id), _, rest) if id == nearestCls.name =>
+                downwardLookup(rest.asList, nearestCls).map(_ -> rest.join)
+              case Query.QualifiedId(Query.Qual.Id(id), _, rest) if id == nearestPkg.name =>
+                downwardLookup(rest.asList, nearestPkg).map(_ -> rest.join)
+              case query: Query.QualifiedId => downwardLookup(query.asList, defn.RootPackage).map(_ -> query.join)
+            }
 
-        case None =>
-          downwardLookup(query.asList, defn.RootPackage).map(_ -> query.join)
-      }
+          case None =>
+            downwardLookup(query.asList, defn.RootPackage).map(_ -> query.join)
+        }
 
-    // println(s"looked up `$query` in ${owner.show}[${owner.flags.show}] as ${res.map(_.show)}")
+      // println(s"looked up `$query` in ${owner.show}[${owner.flags.show}] as ${res.map(_.show)}")
 
-    res
-  }
+      res
+    catch
+      case e: Exception =>
+        // TODO (https://github.com/lampepfl/scala3doc/issues/238): proper reporting
+        println(s"[WARN] Unable to find a link for ${query} ${ownerOpt.fold("")(o => "in " + o.name)}")
+        None
 
   private def hackMembersOf(using QuoteContext)(rsym: qctx.reflect.Symbol) = {
     import qctx.reflect._

@@ -2,7 +2,7 @@ package dotty.dokka
 package tasty
 
 import org.jetbrains.dokka.model._
-import org.jetbrains.dokka.links._
+import org.jetbrains.dokka.links.PointingToDeclaration
 import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.model.doc.DocumentationNode
 import dotty.dokka._

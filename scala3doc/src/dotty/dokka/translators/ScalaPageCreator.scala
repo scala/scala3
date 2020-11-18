@@ -16,9 +16,7 @@ import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.base.transformers.documentables.CallableExtensions
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import org.jetbrains.dokka.base.resolvers.anchors._
-import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
-import org.jetbrains.dokka.links.DRIKt.getParent
 import dotty.dokka.model.api._
 import dotty.dokka.model.api.Kind
 import dotty.dokka.model.api.Link

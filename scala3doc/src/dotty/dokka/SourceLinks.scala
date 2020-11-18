@@ -85,12 +85,12 @@ case class SourceLinks(links: Seq[SourceLink], projectRoot: Path):
     else resolveRelativePath(rawPath)
 
   def pathTo(member: Member): Option[String] =
-    member.sources.flatMap(s => pathTo(Paths.get(s.path), Option(s.lineNumber)))
+    member.sources.flatMap(s => pathTo(Paths.get(s.path), Option(s.lineNumber).map(_ + 1)))
 
 object SourceLinks:
 
   val usage =
-    """Source links provide a mapping between file in documentation and code repositry (usual)." +
+    """Source links provide a mapping between file in documentation and code repositry.
       |Accepted formats:
       |<sub-path>=<source-link>
       |<source-link>
@@ -135,5 +135,6 @@ object SourceLinks:
     load(
       config.args.sourceLinks,
       config.args.revision,
+      // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
       Paths.get("").toAbsolutePath
     )

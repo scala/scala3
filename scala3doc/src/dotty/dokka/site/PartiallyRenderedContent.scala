@@ -7,9 +7,12 @@ import org.jetbrains.dokka.pages.{ContentNode, DCI, Style}
 import org.jetbrains.dokka.base.resolvers.local.LocationProvider
 import com.vladsch.flexmark.convert.html.FlexmarkHtmlParser
 import org.jsoup.Jsoup
+import scala.collection.JavaConverters._
+import scala.util.Try
+import java.net.URL
 
 case class PartiallyRenderedContent(
-  template: TemplateFile,
+  template: LoadedTemplate,
   context: StaticSiteContext,
   override val getChildren: JList[ContentNode],
   override val getDci: DCI,
@@ -27,7 +30,13 @@ case class PartiallyRenderedContent(
 
   lazy val resolved = template.resolveToHtml(context)
 
-  def procsesHtml(linkTo: String => String): String =
+  def procsesHtml(linkTo: String => String, absoluteResource: String => String): String =
     val document = Jsoup.parse(resolved.code)
-    document.select("a").forEach(element => element.attr("href", linkTo(element.attr("href"))))// forrach does not work here
+    document.select("a").forEach(element => element.attr("href", linkTo(element.attr("href"))))
+    document.select("img").forEach { element =>
+      val link = element.attr("src")
+      Try(new URL(link)).getOrElse {
+        if(link.startsWith("/")) element.attr("src", absoluteResource(link.drop(1)))
+      }
+    }// forrach does not work here
     document.outerHtml()

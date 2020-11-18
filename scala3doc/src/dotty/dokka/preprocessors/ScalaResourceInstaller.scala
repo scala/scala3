@@ -5,13 +5,15 @@ import org.jetbrains.dokka.pages.{RootPageNode, RendererSpecificResourcePage, Re
 import scala.jdk.CollectionConverters._
 import com.fasterxml.jackson.databind.ObjectMapper
 import dotty.dokka.translators.FilterAttributes
+import java.nio.file.Paths
 
-class ScalaResourceInstaller extends PageTransformer:
+class ScalaResourceInstaller(args: Args) extends PageTransformer:
   private def dottyRes(resourceName: String) =
     new RendererSpecificResourcePage(resourceName, java.util.ArrayList(), RenderingStrategy$Copy(s"/dotty_res/$resourceName"))
 
   override def invoke(input: RootPageNode): RootPageNode =
-    val newResources = input.getChildren.asScala ++ Seq("fonts", "images", "styles", "scripts", "hljs").map(dottyRes) ++ Seq(dynamicJsData)
+    val defaultResources = input.getChildren.asScala ++ Seq("fonts", "images", "styles", "scripts", "hljs").map(dottyRes)
+    val newResources = projectLogo ++ defaultResources ++ Seq(dynamicJsData)
     input.modified(input.getName, newResources.asJava)
 
   private def dynamicJsData =
@@ -20,3 +22,9 @@ class ScalaResourceInstaller extends PageTransformer:
     val str = new ObjectMapper().writeValueAsString(data.transform((_, v) => v.asJava).asJava)
 
     new RendererSpecificResourcePage("scripts/data.js", java.util.ArrayList(), RenderingStrategy$Write(s"var scala3DocData = $str"))
+
+  private def projectLogo = args.projectLogo.toSeq.map { path =>
+      val fileName = Paths.get(path).getFileName()
+      val strategy = new RenderingStrategy$Copy(path)
+      new RendererSpecificResourcePage(s"project-logo/$fileName", JList(), strategy)
+  }

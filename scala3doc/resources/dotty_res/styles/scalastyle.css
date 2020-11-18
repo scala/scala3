@@ -129,22 +129,33 @@ th {
 #paneSearch {
   display: none;
 }
-#logo {
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-image: url(../images/dotty-logo-white.svg);
-  background-origin: content-box;
-  padding: 8px 0 8px 16px;
-  height: 42px;
+#logo>span {
+  display: inline-block;
+  padding: 8px 8px 8px 8px;
+  vertical-align: middle;
+}
+
+#logo img {
+  max-height: 54px;
+  max-width: 54px;
   cursor: pointer;
 }
-#logo::after {
+
+#logo .projectName {
   color: var(--leftbar-fg);
-  font-size: 22px;
-  content: "Scala3doc";
-  margin-left: 42px;
-  line-height: 42px;
+  font-size: 28px;
+  font-weight: bold;
 }
+
+#logo .projectVersion {
+  color: var(--leftbar-fg);
+  font-size: 12px;
+}
+
+.scala3doc_logo {
+  width: 116px;
+}
+
 .sideMenuPart {
   padding-left: 1em;
 }

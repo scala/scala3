@@ -17,9 +17,14 @@ case class DottyDokkaConfig(docConfiguration: DocConfiguration) extends DokkaCon
   override def getModuleName(): String = "ModuleName"
   override def getModuleVersion(): String = ""
 
-  lazy val staticSiteContext = docConfiguration.args.docsRoot.map(path => StaticSiteContext(File(path).getAbsoluteFile(), Set(mkSourceSet.asInstanceOf[SourceSetWrapper])))
-
   lazy val sourceLinks: SourceLinks = SourceLinks.load(docConfiguration)
+
+  lazy val staticSiteContext = docConfiguration.args.docsRoot.map(path => StaticSiteContext(
+      File(path).getAbsoluteFile(),
+      Set(mkSourceSet.asInstanceOf[SourceSetWrapper]),
+      docConfiguration.args,
+      sourceLinks
+    ))
 
   override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] = JList()
 

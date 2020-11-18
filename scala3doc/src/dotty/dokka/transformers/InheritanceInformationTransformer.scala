@@ -4,7 +4,6 @@ import org.jetbrains.dokka.transformers.documentation.DocumentableTransformer
 import org.jetbrains.dokka.model._
 import collection.JavaConverters._
 import org.jetbrains.dokka.plugability.DokkaContext
-import org.jetbrains.dokka.links.DRI
 import org.jetbrains.dokka.model.properties._
 
 import dotty.dokka.model._
