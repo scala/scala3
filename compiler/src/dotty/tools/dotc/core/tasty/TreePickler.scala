@@ -185,8 +185,12 @@ class TreePickler(pickler: TastyPickler) {
 
   private def pickleNewType(tpe: Type, richTypes: Boolean)(using Context): Unit = tpe match {
     case AppliedType(tycon, args) =>
-      writeByte(APPLIEDtype)
-      withLength { pickleType(tycon); args.foreach(pickleType(_)) }
+      if tycon.typeSymbol == defn.MatchCaseClass then
+        writeByte(MATCHCASEtype)
+        withLength { args.foreach(pickleType(_)) }
+      else
+        writeByte(APPLIEDtype)
+        withLength { pickleType(tycon); args.foreach(pickleType(_)) }
     case ConstantType(value) =>
       pickleConstant(value)
     case tpe: NamedType =>
