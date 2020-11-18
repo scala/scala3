@@ -61,14 +61,14 @@ class PackageHierarchyTransformer(context: DokkaContext) extends PageTransformer
       else buildPackageTree(depth - 1, rest, newProcessed ++ oldFilteredProcessed)
     }
 
-    val packagePagesWithTokens = packagePages.map(page => (("""\.""".r.split(page.getName)).toSeq, page))
+    if packagePages.isEmpty then page else {
+      val packagePagesWithTokens = packagePages.map(page => (("""\.""".r.split(page.getName)).toSeq, page))
 
-    val maxDepthElem = packagePagesWithTokens.maxBy( (tokens, page) => tokens.size )
+      val maxDepthElem = packagePagesWithTokens.maxBy( (tokens, page) => tokens.size )
 
-    page.modified(
-      page.getName,
-      (otherPages ++ buildPackageTree(maxDepthElem(0).size, packagePagesWithTokens, Seq.empty)).asJava
-    )
-
-
+      page.modified(
+        page.getName,
+        (otherPages ++ buildPackageTree(maxDepthElem(0).size, packagePagesWithTokens, Seq.empty)).asJava
+      )
+    }
   }

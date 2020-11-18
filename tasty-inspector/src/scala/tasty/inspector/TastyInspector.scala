@@ -110,7 +110,7 @@ trait TastyInspector:
 
     val currentClasspath = ClasspathFromClassloader(getClass.getClassLoader)
     val fullClasspath = (classpath :+ currentClasspath).mkString(pathSeparator)
-    val args = "-from-tasty" :: "-Yretain-trees" :: "-classpath" :: fullClasspath :: classes
+    val args = "-from-tasty" :: "-Ydebug-error" :: "-Yretain-trees" :: "-classpath" :: fullClasspath :: classes
     val reporter = (new InspectorDriver).process(args.toArray)
     reporter.hasErrors
 
