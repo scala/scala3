@@ -11,6 +11,8 @@ import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.fromtasty._
 import dotty.tools.dotc.util.ClasspathFromClassloader
+import dotty.tools.dotc.CompilationUnit
+import dotty.tools.unsupported
 
 import java.io.File.pathSeparator
 
@@ -19,6 +21,9 @@ trait TastyInspector:
 
   /** Process a TASTy file using TASTy reflect */
   protected def processCompilationUnit(using QuoteContext)(root: qctx.reflect.Tree): Unit
+
+  /** Called after all compilation units are processed */
+  protected def postProcess(using QuoteContext): Unit = ()
 
   /** Load and process TASTy files using TASTy reflect
    *
@@ -70,7 +75,8 @@ trait TastyInspector:
       override protected def transformPhases: List[List[Phase]] = Nil
 
       override protected def backendPhases: List[List[Phase]] =
-        List(new TastyInspectorPhase) ::  // Print all loaded classes
+        List(new TastyInspectorPhase) ::  // Perform a callback for each compilation unit
+        List(new TastyInspectorFinishPhase) :: // Perform a final callback
         Nil
 
       override def newRun(implicit ctx: Context): Run =
@@ -88,6 +94,19 @@ trait TastyInspector:
         self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.reflect.Tree])
 
     end TastyInspectorPhase
+
+    class TastyInspectorFinishPhase extends Phase:
+
+      override def phaseName: String = "tastyInspectorFinish"
+
+      override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+        val qctx = QuoteContextImpl()
+        self.postProcess(using qctx)
+        units
+
+      override def run(implicit ctx: Context): Unit = unsupported("run")
+
+    end TastyInspectorFinishPhase
 
     val currentClasspath = ClasspathFromClassloader(getClass.getClassLoader)
     val fullClasspath = (classpath :+ currentClasspath).mkString(pathSeparator)
