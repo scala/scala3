@@ -1503,9 +1503,9 @@ object Build {
           }.value,
           generateScala3Documentation := Def.taskDyn {
             val dottyJars: Seq[java.io.File] = Seq(
-              (`scala3-interfaces`/Compile/products).value,
-              (`tasty-core-bootstrapped`/Compile/products).value,
-              (`scala3-library-bootstrapped`/Compile/products).value,
+              // (`scala3-interfaces`/Compile/products).value,
+              // (`tasty-core-bootstrapped`/Compile/products).value,
+              // (`scala3-library-bootstrapped`/Compile/products).value,
               (`stdlib-bootstrapped`/Compile/products).value,
             ).flatten
 
