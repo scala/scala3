@@ -2442,6 +2442,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       def ModuleClass: Flags = dotc.core.Flags.ModuleClass
       def Mutable: Flags = dotc.core.Flags.Mutable
       def Object: Flags = dotc.core.Flags.Module
+      def Opaque: Flags = dotc.core.Flags.Opaque
       def Override: Flags = dotc.core.Flags.Override
       def Package: Flags = dotc.core.Flags.Package
       def Param: Flags = dotc.core.Flags.Param

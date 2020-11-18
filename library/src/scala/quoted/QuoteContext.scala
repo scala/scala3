@@ -3176,6 +3176,9 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
       /** Is this symbol an object or its class (used for a ValDef or a ClassDef extends Modifier respectively) */
       def Object: Flags
 
+      /** Is this symbol `opaque` */
+      def Opaque: Flags
+
       /** Is this symbol `override` */
       def Override: Flags
 
