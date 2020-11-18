@@ -25,7 +25,7 @@ git checkout "$GIT_HEAD"
 ### Generate the current snapshot of the website ###
 # this command will generate docs in $PWD/docs/_site
 SBT="$SCRIPT_DIR/sbt"
-"$SBT" "scala3-bootstrapped/genDocs $GENDOC_EXTRA_ARGS"
+"$SBT" "scala3doc/generateScala3Documentation docs/_site"
 
 # make sure that the previous command actually succeeded
 if [ ! -d "$SITE_OUT_DIR" ]; then
