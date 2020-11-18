@@ -58,3 +58,5 @@ class InheritedMembers extends SignatureTest("inheritedMembers2", SignatureTest.
   sourceFiles = List("inheritedMembers1", "inheritedMembers2"))
 
 class ComplexNames extends SignatureTest("complexNames", Seq("def"))
+
+class WrongDocumentationLinks extends SignatureTest("links", Seq("def"))

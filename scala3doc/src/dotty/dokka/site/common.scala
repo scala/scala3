@@ -13,6 +13,7 @@ import com.vladsch.flexmark.ext.tables.TablesExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.{AbstractYamlFrontMatterVisitor, YamlFrontMatterExtension}
 import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
 import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
+import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import org.jetbrains.dokka.model.doc.Text
 
 import scala.collection.JavaConverters._
@@ -24,7 +25,6 @@ val apiPageDRI: DRI = mkDRI(packageName = "api", extra = "__api__")
 val defaultMarkdownOptions: DataHolder =
   new MutableDataSet()
     .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
-    .set(Parser.INDENTED_CODE_BLOCK_PARSER, false)
     .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
     .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
     .set(EmojiExtension.ROOT_IMAGE_PATH, "https://github.global.ssl.fastly.net/images/icons/emoji/")
@@ -35,7 +35,8 @@ val defaultMarkdownOptions: DataHolder =
       AnchorLinkExtension.create(),
       EmojiExtension.create(),
       YamlFrontMatterExtension.create(),
-      StrikethroughExtension.create()
+      StrikethroughExtension.create(),
+      WikiLinkExtension.create()
     ))
 
 def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(

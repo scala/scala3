@@ -111,10 +111,7 @@ trait DokkaBaseTastyInspector:
         MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
       )
 
-    config.staticSiteContext.foreach { p =>
-      val previous = p.memberLinkResolver
-      p.memberLinkResolver = link => previous(link).orElse(driFor(link))
-    }
+    config.staticSiteContext.foreach(_.memberLinkResolver = driFor)
     topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
 
   def result(): List[DPackage] =

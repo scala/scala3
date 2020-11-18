@@ -1516,7 +1516,7 @@ object Build {
             else generateDocumentation(roots, "Scala 3", "scala3", "-p scala3doc/scala3-docs --projectLogo scala3doc/scala3-docs/logo.svg  --revision master")
           }.value,
           generateTestcasesDocumentation := Def.taskDyn {
-            generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "testcases")
+            generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "testcases", "--revision master")
           }.value,
           buildInfoKeys in Test := Seq[BuildInfoKey](
             Build.testcasesOutputDir.in(Test),
