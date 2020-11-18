@@ -5,7 +5,7 @@ object Test {
 
   class B
 
-  val x: C[C] = ??? // error: Type argument has not the same kind as its bound
+  val x: C[C] = ??? // error: Type argument does not have the same kind as its bound
   val y: C2[C] = ???
 
   def f[T] = ???
