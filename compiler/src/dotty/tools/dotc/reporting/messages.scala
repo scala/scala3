@@ -1254,7 +1254,8 @@ import transform.SymUtils._
           |
           |I found: $tree
           |But the part corresponding to `<skolem>` is not a reference that can be generated.
-          |This might be because resolution yielded as given instance a function that is not known to be pure."""
+          |This might be because resolution yielded as given instance a function that is not
+          |known to be total and side-effect free."""
     def explain =
       em"""The part of given resolution that corresponds to `<skolem>` produced a term that
           |is not a stable reference. Therefore a given instance could not be generated.
