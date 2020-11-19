@@ -1470,6 +1470,10 @@ object Build {
 
     def asScala3doc: Project = {
       def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
+          val frontEndDir = baseDirectory.value / "resources"
+          runProcess(Seq("npm", "install"), wait = true, directory = Some(frontEndDir))
+          runProcess(Seq("npm", "run", "build"), wait = true, directory = Some(frontEndDir))
+
           val projectVersion = version.value
           val sourcesAndRevision = s"-s github://lampepfl/dotty  --revision $ref --projectVersion $projectVersion"
           val cmd = s""" -d $outDir -t $targets -n "$name" $sourcesAndRevision $params"""
