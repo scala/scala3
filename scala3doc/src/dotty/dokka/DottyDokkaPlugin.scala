@@ -168,9 +168,9 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
       .overrideExtension(dokkaBase.getLocationProvider)
   )
 
-  extension (ctx: DokkaContext):
-    def siteContext: Option[StaticSiteContext] = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].staticSiteContext
-    def args: Args = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].docConfiguration.args
+extension (ctx: DokkaContext):
+  def siteContext: Option[StaticSiteContext] = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].staticSiteContext
+  def args: Args = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].docConfiguration.args
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/232): remove once problem is fixed in Dokka
 extension [T]  (builder: ExtensionBuilder[T]):

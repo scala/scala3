@@ -128,7 +128,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
 
     case Sidebar.Category(title, nested) =>
       // Add support for index.html/index.md files!
-      val fakeFile = new File(root, title)
+      val fakeFile = new File(new File(root, "docs"), title)
       LoadedTemplate(emptyTemplate(fakeFile, title), nested.map(loadSidebarContent), fakeFile)
 
   private def loadAllFiles() =
