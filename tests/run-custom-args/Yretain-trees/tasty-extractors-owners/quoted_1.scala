@@ -20,7 +20,7 @@ object Macros {
 
   def myTraverser(using qctx: QuoteContext)(buff: StringBuilder): qctx.reflect.TreeTraverser = new {
     import qctx.reflect._
-    override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
+    override def traverseTree(tree: Tree)(using Owner): Unit = {
       tree match {
         case tree @ DefDef(name, _, _, _, _) =>
           buff.append(name)

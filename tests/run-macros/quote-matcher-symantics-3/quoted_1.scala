@@ -82,7 +82,7 @@ object UnsafeExpr {
   }
   private def paramsAndBody[R](using qctx: QuoteContext)(f: Expr[Any]): (List[qctx.reflect.ValDef], Expr[R]) = {
     import qctx.reflect._
-    val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = Term.of(f).etaExpand(Symbol.currentOwner)
+    val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = Term.of(f).etaExpand
     (params, body.asExpr.asInstanceOf[Expr[R]])
   }
 
@@ -90,7 +90,7 @@ object UnsafeExpr {
     import qctx.reflect._
     val map = params.map(_.symbol).zip(args).toMap
     new TreeMap {
-      override def transformTerm(tree: Term)(using ctx: Context): Term =
+      override def transformTerm(tree: Term)(using Owner): Term =
         super.transformTerm(tree) match
           case tree: Ident => map.getOrElse(tree.symbol, tree)
           case tree => tree

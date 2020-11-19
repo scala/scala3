@@ -154,6 +154,8 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
    *                     +- RenameSelector
    *                     +- OmitSelector
    *
+   *  +- Owner
+   *
    *  +- Signature
    *
    *  +- Position
@@ -233,7 +235,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
 
       extension [ThisTree <: Tree](self: ThisTree):
         /** Changes the owner of the symbols in the tree */
-        def changeOwner(newOwner: Symbol): ThisTree
+        def adaptOwner(using newOwner: Owner): ThisTree
       end extension
 
     }
@@ -386,13 +388,13 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
       def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])]
 
       /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }` */
-      def let(name: String, rhs: Term)(body: Ident => Term): Term
+      def let(name: String, rhs: Term)(body: Ident => Term)(using owner: Owner): Term
 
       /** Creates a block `{ val x = <rhs: Term>; <body(x): Term> }` */
-      def let(rhs: Term)(body: Ident => Term): Term = let("x", rhs)(body)
+      def let(rhs: Term)(body: Ident => Term)(using owner: Owner): Term = let("x", rhs)(body)
 
       /** Creates a block `{ val x1 = <terms(0): Term>; ...; val xn = <terms(n-1): Term>; <body(List(x1, ..., xn)): Term> }` */
-      def let(terms: List[Term])(body: List[Ident] => Term): Term
+      def let(terms: List[Term])(body: List[Ident] => Term)(using owner: Owner): Term
     }
 
     given ValDefMethods as ValDefMethods = ValDefMethodsImpl
@@ -475,7 +477,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
         def underlying: Term
 
         /** Converts a partally applied term into a lambda expression */
-        def etaExpand(owner: Symbol): Term
+        def etaExpand(using owner: Owner): Term
 
         /** A unary apply node with given argument: `tree(arg)` */
         def appliedTo(arg: Term): Term
@@ -977,7 +979,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
        * @param tpe: Type of the definition
        * @param rhsFn: Funtion that recieves the `meth` symbol and the a list of references to the `params`
        */
-      def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block
+      def apply(tpe: MethodType, rhsFn: Owner ?=> List[Tree] => Tree)(using owner: Owner): Block
     }
 
     given TypeTest[Tree, If] = IfTypeTest
@@ -2661,6 +2663,38 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     protected val AmbiguousImplicitsTypeTest: TypeTest[ImplicitSearchResult, AmbiguousImplicits]
 
     /////////////
+    //  OWNER  //
+    /////////////
+
+    /** Contextual representation of the enclosing definition */
+    type Owner <: AnyRef
+
+    /** Provides contextually `Owner.spliceOwner` as deault `Owner` */
+    given Owner = Owner.spliceOwner
+
+    val Owner: OwnerModule
+
+    trait OwnerModule { this: Owner.type =>
+      /** Returns the current Owner in scope */
+      inline def current(using owner: Owner): owner.type = owner
+
+      /** Owner definition of the symbol */
+      def apply(sym: Symbol): Owner
+
+      /** Owner definition of the current splice */
+      def spliceOwner: Owner
+    }
+
+    given OwnerMethods as OwnerMethods = OwnerMethodsImpl
+    protected val OwnerMethodsImpl: OwnerMethods
+
+    trait OwnerMethods {
+      /** Symbol of the owner */
+      extension (self: Owner)
+        def symbol: Symbol
+    }
+
+    /////////////
     // SYMBOLS //
     /////////////
 
@@ -2672,9 +2706,6 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     val Symbol: SymbolModule
 
     trait SymbolModule { this: Symbol.type =>
-
-      /** Returns the symbol of the current enclosing definition */
-      def currentOwner(using ctx: Context): Symbol
 
       /** Get package symbol if package is either defined in current compilation run or present on classpath. */
       def requiredPackage(path: String): Symbol
@@ -2700,14 +2731,14 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
       *        direct or indirect children of the reflection context's owner.
       */
-      def newMethod(parent: Symbol, name: String, tpe: TypeRepr): Symbol
+      def newMethod(name: String, tpe: TypeRepr)(using owner: Owner): Symbol
 
       /** Works as the other newMethod, but with additional parameters.
       *
       *  @param flags extra flags to with which the symbol should be constructed
       *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
       */
-      def newMethod(parent: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol
+      def newMethod(name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol)(using owner: Owner): Symbol
 
       /** Generates a new val/var/lazy val symbol with the given parent, name and type.
       *
@@ -2722,7 +2753,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
       *        direct or indirect children of the reflection context's owner.
       */
-      def newVal(parent: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol
+      def newVal(name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol)(using owner: Owner): Symbol
 
       /** Generates a pattern bind symbol with the given parent, name and type.
       *
@@ -2734,7 +2765,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
       *  @note As a macro can only splice code into the point at which it is expanded, all generated symbols must be
       *        direct or indirect children of the reflection context's owner.
       */
-      def newBind(parent: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol
+      def newBind(name: String, flags: Flags, tpe: TypeRepr)(using owner: Owner): Symbol
 
       /** Definition not available */
       def noSymbol: Symbol
@@ -2769,8 +2800,6 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
 
         /** The position of this symbol */
         def pos: Position
-
-        def localContext: Context
 
         /** The documentation for this symbol, if any */
         def documentation: Option[Documentation]
@@ -3415,19 +3444,18 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     *  class MyTreeAccumulator[R <: scala.tasty.Reflection & Singleton](val reflect: R)
     *      extends scala.tasty.reflect.TreeAccumulator[X] {
     *    import reflect._
-    *    def foldTree(x: X, tree: Tree)(using ctx: Context): X = ...
+    *    def foldTree(x: X, tree: Tree)(using owner: Owner): X = ...
     *  }
     *  ```
     */
     trait TreeAccumulator[X]:
 
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
-      def foldTree(x: X, tree: Tree)(using ctx: Context): X
+      def foldTree(x: X, tree: Tree)(using owner: Owner): X
 
-      def foldTrees(x: X, trees: Iterable[Tree])(using ctx: Context): X = trees.foldLeft(x)(foldTree)
+      def foldTrees(x: X, trees: Iterable[Tree])(using owner: Owner): X = trees.foldLeft(x)(foldTree)
 
-      def foldOverTree(x: X, tree: Tree)(using ctx: Context): X = {
-        def localCtx(definition: Definition): Context = definition.symbol.localContext
+      def foldOverTree(x: X, tree: Tree)(using owner: Owner): X = {
         tree match {
           case Ident(_) =>
             x
@@ -3470,25 +3498,23 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
           case Inlined(call, bindings, expansion) =>
             foldTree(foldTrees(x, bindings), expansion)
           case vdef @ ValDef(_, tpt, rhs) =>
-            val ctx = localCtx(vdef)
-            given Context = ctx
+            given Owner =
+              if vdef.symbol.exists then Owner(vdef.symbol)
+              else owner // self type val
             foldTrees(foldTree(x, tpt), rhs)
           case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
-            val ctx = localCtx(ddef)
-            given Context = ctx
+            given Owner = Owner(ddef.symbol)
             foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams))(foldTrees), tpt), rhs)
           case tdef @ TypeDef(_, rhs) =>
-            val ctx = localCtx(tdef)
-            given Context = ctx
+            given Owner = Owner(tdef.symbol)
             foldTree(x, rhs)
           case cdef @ ClassDef(_, constr, parents, derived, self, body) =>
-            val ctx = localCtx(cdef)
-            given Context = ctx
+            given Owner = Owner(cdef.symbol)
             foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr), parents), derived), self), body)
           case Import(expr, _) =>
             foldTree(x, expr)
           case clause @ PackageClause(pid, stats) =>
-            foldTrees(foldTree(x, pid), stats)(using clause.symbol.localContext)
+            foldTrees(foldTree(x, pid), stats)(using Owner(clause.symbol))
           case Inferred() => x
           case TypeIdent(_) => x
           case TypeSelect(qualifier, _) => foldTree(x, qualifier)
@@ -3522,17 +3548,17 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     *  class MyTraverser[R <: scala.tasty.Reflection & Singleton](val reflect: R)
     *      extends scala.tasty.reflect.TreeTraverser {
     *    import reflect._
-    *    override def traverseTree(tree: Tree)(using ctx: Context): Unit = ...
+    *    override def traverseTree(tree: Tree)(using owner: Owner): Unit = ...
     *  }
     *  ```
     */
     trait TreeTraverser extends TreeAccumulator[Unit]:
 
-      def traverseTree(tree: Tree)(using ctx: Context): Unit = traverseTreeChildren(tree)
+      def traverseTree(tree: Tree)(using owner: Owner): Unit = traverseTreeChildren(tree)
 
-      def foldTree(x: Unit, tree: Tree)(using ctx: Context): Unit = traverseTree(tree)
+      def foldTree(x: Unit, tree: Tree)(using owner: Owner): Unit = traverseTree(tree)
 
-      protected def traverseTreeChildren(tree: Tree)(using ctx: Context): Unit = foldOverTree((), tree)
+      protected def traverseTreeChildren(tree: Tree)(using owner: Owner): Unit = foldOverTree((), tree)
 
     end TreeTraverser
 
@@ -3542,16 +3568,16 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     *  ```
     *  import qctx.reflect._
     *  class MyTreeMap extends TreeMap {
-    *    override def transformTree(tree: Tree)(using ctx: Context): Tree = ...
+    *    override def transformTree(tree: Tree)(using owner: Owner): Tree = ...
     *  }
     *  ```
     */
     trait TreeMap:
 
-      def transformTree(tree: Tree)(using ctx: Context): Tree = {
+      def transformTree(tree: Tree)(using owner: Owner): Tree = {
         tree match {
           case tree: PackageClause =>
-            PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(using tree.symbol.localContext))
+            PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(using Owner(tree.symbol)))
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
           case tree: Statement =>
@@ -3572,24 +3598,20 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
         }
       }
 
-      def transformStatement(tree: Statement)(using ctx: Context): Statement = {
-        def localCtx(definition: Definition): Context = definition.symbol.localContext
+      def transformStatement(tree: Statement)(using owner: Owner): Statement = {
         tree match {
           case tree: Term =>
             transformTerm(tree)
           case tree: ValDef =>
-            val ctx = localCtx(tree)
-            given Context = ctx
+            given Owner = Owner(tree.symbol)
             val tpt1 = transformTypeTree(tree.tpt)
             val rhs1 = tree.rhs.map(x => transformTerm(x))
             ValDef.copy(tree)(tree.name, tpt1, rhs1)
           case tree: DefDef =>
-            val ctx = localCtx(tree)
-            given Context = ctx
+            given Owner = Owner(tree.symbol)
             DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams), tree.paramss mapConserve (transformSubTrees(_)), transformTypeTree(tree.returnTpt), tree.rhs.map(x => transformTerm(x)))
           case tree: TypeDef =>
-            val ctx = localCtx(tree)
-            given Context = ctx
+            given Owner = Owner(tree.symbol)
             TypeDef.copy(tree)(tree.name, transformTree(tree.rhs))
           case tree: ClassDef =>
             ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
@@ -3598,7 +3620,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
         }
       }
 
-      def transformTerm(tree: Term)(using ctx: Context): Term = {
+      def transformTerm(tree: Term)(using owner: Owner): Term = {
         tree match {
           case Ident(name) =>
             tree
@@ -3639,11 +3661,11 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
           case Repeated(elems, elemtpt) =>
             Repeated.copy(tree)(transformTerms(elems), transformTypeTree(elemtpt))
           case Inlined(call, bindings, expansion) =>
-            Inlined.copy(tree)(call, transformSubTrees(bindings), transformTerm(expansion)/*()call.symbol.localContext)*/)
+            Inlined.copy(tree)(call, transformSubTrees(bindings), transformTerm(expansion))
         }
       }
 
-      def transformTypeTree(tree: TypeTree)(using ctx: Context): TypeTree = tree match {
+      def transformTypeTree(tree: TypeTree)(using owner: Owner): TypeTree = tree match {
         case Inferred() => tree
         case tree: TypeIdent => tree
         case tree: TypeSelect =>
@@ -3670,33 +3692,33 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
           TypeBlock.copy(tree)(tree.aliases, tree.tpt)
       }
 
-      def transformCaseDef(tree: CaseDef)(using ctx: Context): CaseDef = {
+      def transformCaseDef(tree: CaseDef)(using owner: Owner): CaseDef = {
         CaseDef.copy(tree)(transformTree(tree.pattern), tree.guard.map(transformTerm), transformTerm(tree.rhs))
       }
 
-      def transformTypeCaseDef(tree: TypeCaseDef)(using ctx: Context): TypeCaseDef = {
+      def transformTypeCaseDef(tree: TypeCaseDef)(using owner: Owner): TypeCaseDef = {
         TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern), transformTypeTree(tree.rhs))
       }
 
-      def transformStats(trees: List[Statement])(using ctx: Context): List[Statement] =
+      def transformStats(trees: List[Statement])(using owner: Owner): List[Statement] =
         trees mapConserve (transformStatement(_))
 
-      def transformTrees(trees: List[Tree])(using ctx: Context): List[Tree] =
+      def transformTrees(trees: List[Tree])(using owner: Owner): List[Tree] =
         trees mapConserve (transformTree(_))
 
-      def transformTerms(trees: List[Term])(using ctx: Context): List[Term] =
+      def transformTerms(trees: List[Term])(using owner: Owner): List[Term] =
         trees mapConserve (transformTerm(_))
 
-      def transformTypeTrees(trees: List[TypeTree])(using ctx: Context): List[TypeTree] =
+      def transformTypeTrees(trees: List[TypeTree])(using owner: Owner): List[TypeTree] =
         trees mapConserve (transformTypeTree(_))
 
-      def transformCaseDefs(trees: List[CaseDef])(using ctx: Context): List[CaseDef] =
+      def transformCaseDefs(trees: List[CaseDef])(using owner: Owner): List[CaseDef] =
         trees mapConserve (transformCaseDef(_))
 
-      def transformTypeCaseDefs(trees: List[TypeCaseDef])(using ctx: Context): List[TypeCaseDef] =
+      def transformTypeCaseDefs(trees: List[TypeCaseDef])(using owner: Owner): List[TypeCaseDef] =
         trees mapConserve (transformTypeCaseDef(_))
 
-      def transformSubTrees[Tr <: Tree](trees: List[Tr])(using ctx: Context): List[Tr] =
+      def transformSubTrees[Tr <: Tree](trees: List[Tr])(using owner: Owner): List[Tr] =
         transformTrees(trees).asInstanceOf[List[Tr]]
 
     end TreeMap

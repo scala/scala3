@@ -19,7 +19,7 @@ class DBInspector extends TastyInspector {
     import qctx.reflect._
     object Traverser extends TreeTraverser {
 
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
+      override def traverseTree(tree: Tree)(using Owner): Unit = tree match {
         case tree: Definition =>
           println(tree.showExtractors)
           super.traverseTree(tree)

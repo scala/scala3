@@ -188,7 +188,7 @@ case class TastyParser(qctx: QuoteContext, inspector: DokkaBaseTastyInspector, c
     object Traverser extends TreeTraverser:
       var seen: List[Tree] = Nil
 
-      override def traverseTree(tree: Tree)(using ctx: Context): Unit =
+      override def traverseTree(tree: Tree)(using Owner): Unit =
         seen = tree :: seen
         tree match {
           case pck: PackageClause =>
@@ -202,7 +202,7 @@ case class TastyParser(qctx: QuoteContext, inspector: DokkaBaseTastyInspector, c
         }
         seen = seen.tail
 
-    try Traverser.traverseTree(root)(using qctx.reflect.rootContext)
+    try Traverser.traverseTree(root)
     catch case e: Throwable =>
       println(s"Problem parsing ${root.pos}, documentation may not be generated.")
       e.printStackTrace()

@@ -1409,7 +1409,7 @@ object SourceCode {
     private[this] val namesIndex = collection.mutable.Map.empty[String, Int]
 
     private def splicedName(sym: Symbol): Option[String] = {
-      if sym.owner.isClassDef then None
+      if sym.maybeOwner.isClassDef then None
       else names.get(sym).orElse {
         val name0 = sym.name
         val index = namesIndex.getOrElse(name0, 1)

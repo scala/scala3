@@ -27,7 +27,7 @@ object X {
     val slowPath = Term.of('{ SlowPath })
     val fastPath = Term.of('{ FastPath })
     val transformer = new TreeMap() {
-      override def transformTerm(term:Term)(using ctx:Context):Term = {
+      override def transformTerm(term:Term)(using Owner):Term = {
         term match
           case Apply(sel@Select(o,m),args) =>
                 if ( o.tpe =:= slowPath.tpe && m=="sum" )

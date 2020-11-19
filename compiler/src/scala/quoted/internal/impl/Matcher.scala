@@ -199,7 +199,7 @@ object Matcher {
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
               val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
               new TreeMap {
-                override def transformTerm(tree: Term)(using ctx: Context): Term =
+                override def transformTerm(tree: Term)(using owner: Owner): Term =
                   tree match
                     case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
                     case tree => super.transformTerm(tree)
@@ -211,7 +211,7 @@ object Matcher {
             }
             val argTypes = args.map(x => x.tpe.widenTermRefExpr)
             val resType = pattern.tpe
-            val res = Lambda(Symbol.currentOwner, MethodType(names)(_ => argTypes, _ => resType), (meth, x) => bodyFn(x).changeOwner(meth))
+            val res = Lambda(MethodType(names)(_ => argTypes, _ => resType), x => bodyFn(x).adaptOwner)
             matched(res.asExpr)
 
           //
@@ -354,7 +354,7 @@ object Matcher {
       /** Return all free variables of the term defined in the pattern (i.e. defined in `Env`) */
       def freePatternVars(term: Term)(using ctx: Context, env: Env): Set[Symbol] =
         val accumulator = new TreeAccumulator[Set[Symbol]] {
-          def foldTree(x: Set[Symbol], tree: Tree)(using ctx: Context): Set[Symbol] =
+          def foldTree(x: Set[Symbol], tree: Tree)(using owner: Owner): Set[Symbol] =
             tree match
               case tree: Ident if env.contains(tree.symbol) => foldOverTree(x + tree.symbol, tree)
               case _ => foldOverTree(x, tree)

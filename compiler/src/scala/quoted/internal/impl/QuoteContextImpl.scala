@@ -122,7 +122,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       end extension
 
       extension [ThisTree <: Tree](self: ThisTree):
-        def changeOwner(newOwner: Symbol): ThisTree =
+        def adaptOwner(using newOwner: Symbol): ThisTree =
           tpd.TreeOps(self).changeNonLocalOwners(newOwner).asInstanceOf[ThisTree]
       end extension
 
@@ -278,13 +278,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])] =
         Some((vdef.name.toString, vdef.tpt, optional(vdef.rhs)))
 
-      def let(name: String, rhs: Term)(body: Ident => Term): Term =
-        val vdef = tpd.SyntheticValDef(name.toTermName, rhs)
+      def let(name: String, rhs: Term)(body: Ident => Term)(using owner: Owner): Term =
+        val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
         val ref = tpd.ref(vdef.symbol).asInstanceOf[Ident]
         Block(List(vdef), body(ref))
 
-      def let(terms: List[Term])(body: List[Ident] => Term): Term =
-        val vdefs = terms.map(term => tpd.SyntheticValDef("x".toTermName, term))
+      def let(terms: List[Term])(body: List[Ident] => Term)(using owner: Owner): Term =
+        val ctx1 = ctx.withOwner(owner)
+        val vdefs = terms.map(term => tpd.SyntheticValDef("x".toTermName, term)(using ctx1))
         val refs = vdefs.map(vdef => tpd.ref(vdef.symbol).asInstanceOf[Ident])
         Block(vdefs, body(refs))
     end ValDef
@@ -365,7 +366,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
         def tpe: TypeRepr = self.tpe
         def underlyingArgument: Term = new tpd.TreeOps(self).underlyingArgument
         def underlying: Term = new tpd.TreeOps(self).underlying
-        def etaExpand(owner: Symbol): Term = self.tpe.widen match {
+        def etaExpand(using owner: Owner): Term = self.tpe.widen match {
           case mtpe: Types.MethodType if !mtpe.isParamDependent =>
             val closureResType = mtpe.resType match {
               case t: Types.MethodType => t.toFunctionType()
@@ -373,7 +374,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand(closureMethod))
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand(using closureMethod))
           case _ => self
         }
 
@@ -735,9 +736,9 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     end ClosureMethodsImpl
 
     object Lambda extends LambdaModule:
-      def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
+      def apply(tpe: MethodType, rhsFn: Owner ?=> List[Tree] => Tree)(using owner: Owner): Block =
         val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
-        tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head), meth))
+        tpd.Closure(meth, tss => yCheckedOwners(rhsFn(using meth)(tss.head), meth))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
         case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
@@ -2200,22 +2201,35 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
           case _ => None
     end AmbiguousImplicitsTypeTest
 
+    type Owner = dotc.core.Symbols.Symbol
+
+    object Owner extends OwnerModule:
+      def apply(sym: Symbol): Owner =
+        assert(sym.exists, "Cannot convert NoSymbol into an Owner")
+        sym
+      def spliceOwner: Owner = ctx.owner
+    end Owner
+
+    object OwnerMethodsImpl extends OwnerMethods:
+      extension (self: Owner):
+        def symbol: Symbol = self
+    end OwnerMethodsImpl
+
     type Symbol = dotc.core.Symbols.Symbol
 
     object Symbol extends SymbolModule:
-      def currentOwner(using ctx: Context): Symbol = ctx.owner
       def requiredPackage(path: String): Symbol = dotc.core.Symbols.requiredPackage(path)
       def requiredClass(path: String): Symbol = dotc.core.Symbols.requiredClass(path)
       def requiredModule(path: String): Symbol = dotc.core.Symbols.requiredModule(path)
       def requiredMethod(path: String): Symbol = dotc.core.Symbols.requiredMethod(path)
       def classSymbol(fullName: String): Symbol = dotc.core.Symbols.requiredClass(fullName)
-      def newMethod(owner: Symbol, name: String, tpe: TypeRepr): Symbol =
-        newMethod(owner, name, tpe, Flags.EmptyFlags, noSymbol)
-      def newMethod(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
+      def newMethod(name: String, tpe: TypeRepr)(using owner: Owner): Symbol =
+        newMethod(name, tpe, Flags.EmptyFlags, noSymbol)
+      def newMethod(name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol)(using owner: Owner): Symbol =
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin)
-      def newVal(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
+      def newVal(name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol)(using owner: Owner): Symbol =
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags, tpe, privateWithin)
-      def newBind(owner: Symbol, name: String, flags: Flags, tpe: TypeRepr): Symbol =
+      def newBind(name: String, flags: Flags, tpe: TypeRepr)(using owner: Owner): Symbol =
         dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | Case, tpe)
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
     end Symbol
@@ -2593,6 +2607,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
                    |which has the AST representation
                    |${TreeMethods.showExtractors(tree)}
                    |
+                   |Owners can be adapted using `Tree.adaptOwner`.
                    |""".stripMargin)
             case _ => traverseChildren(t)
       }.traverse(tree)

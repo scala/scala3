@@ -9,7 +9,6 @@ object Macros {
 
     // simple smoke test
     val sym1 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
       "sym1",
       MethodType(List("a","b"))(
         _ => List(TypeRepr.of[Int], TypeRepr.of[Int]),
@@ -27,7 +26,6 @@ object Macros {
 
     // test for no argument list (no Apply node)
     val sym2 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
       "sym2",
       ByNameType(TypeRepr.of[Int]))
     assert(sym2.isDefDef)
@@ -43,7 +41,6 @@ object Macros {
 
    // test for multiple argument lists
    val sym3 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
       "sym3",
       MethodType(List("a"))(
         _ => List(TypeRepr.of[Int]),
@@ -63,7 +60,6 @@ object Macros {
 
     // test for recursive references
     val sym4 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
       "sym4",
       MethodType(List("x"))(
         _ => List(TypeRepr.of[Int]),
@@ -85,7 +81,6 @@ object Macros {
 
     // test for nested functions (one symbol is the other's parent, and we use a Closure)
     val sym5 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
       "sym5",
       MethodType(List("x"))(
         _ => List(TypeRepr.of[Int]),
@@ -98,11 +93,10 @@ object Macros {
           case List(List(x)) =>
             Some {
               val sym51 : Symbol = Symbol.newMethod(
-                sym5,
                 "sym51",
                 MethodType(List("x"))(
                   _ => List(TypeRepr.of[Int]),
-                  _ => TypeRepr.of[Int]))
+                  _ => TypeRepr.of[Int]))(using Owner(sym5))
               Block(
                 List(
                   DefDef(sym51, {
@@ -119,13 +113,11 @@ object Macros {
 
     // test mutually recursive definitions
     val sym6_1 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
       "sym6_1",
       MethodType(List("x"))(
         _ => List(TypeRepr.of[Int]),
         _ => TypeRepr.of[Int]))
     val sym6_2 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
       "sym6_2",
       MethodType(List("x"))(
         _ => List(TypeRepr.of[Int]),
@@ -166,7 +158,6 @@ object Macros {
 
     // test polymorphic methods by synthesizing an identity method
     val sym7 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
       "sym7",
       PolyType(List("T"))(
         tp => List(TypeBounds(TypeRepr.of[Nothing], TypeRepr.of[Any])),
