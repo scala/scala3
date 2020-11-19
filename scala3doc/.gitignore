@@ -1,4 +1,8 @@
 # root where we generate documentation
 output
 
+# generated resources
+resources/dotty_res/scripts/bundle.js
+resources/dotty_res/styles/main.css
+
 e2e/cypress/videos
