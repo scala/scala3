@@ -20,8 +20,15 @@ case class LazyEntry(getKey: String, value: () => String) extends JMapEntry[Stri
 case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTemplate], file: File):
 
   private def brief(ctx: StaticSiteContext): String =
-    val code = Jsoup.parse(resolveToHtml(ctx).code)
-    code.select("p").first().outerHtml()
+    try
+      val code = Jsoup.parse(resolveToHtml(ctx).code)
+      Option(code.select("p").first()).fold("...")(_.outerHtml())
+    catch
+      case e: Throwable =>
+        // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
+        println(s"[ERROR] Unable to process brief for ${templateFile.file}")
+        e.printStackTrace()
+        "..."
 
   def lazyTemplateProperties(ctx: StaticSiteContext): JMap[String, Object] = new java.util.AbstractMap[String, Object]():
     def entrySet(): JSet[JMapEntry[String, Object]] =
