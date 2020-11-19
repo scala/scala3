@@ -18,11 +18,16 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "(
-           github.event_name == 'push' &&
-           !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         ) ||
-         github.event_name == 'schedule')"
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_non_bootstrapped]')
+         )"
     steps:
       - name: Set JDK 15 as default
         run: echo "/usr/lib/jvm/java-15-openjdk-amd64/bin" >> $GITHUB_PATH
@@ -52,8 +57,16 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "!(github.event_name == 'push' &&
-           startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip test]')
+         )"
 
     steps:
       - name: Set JDK 15 as default
@@ -78,8 +91,16 @@ jobs:
 
   test_windows:
     runs-on: [self-hosted, Windows]
-    if: "!(github.event_name == 'push' &&
-           startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip test_windows]')
+         )"
 
     steps:
       - name: Git Checkout
@@ -101,6 +122,13 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule'
+         || github.event_name == 'push'
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip community_build]')
+         )"
 
     steps:
       - name: Checkout cleanup script
@@ -129,6 +157,13 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule'
+         || github.event_name == 'push'
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip community_build]')
+         )"
 
     steps:
       - name: Checkout cleanup script
@@ -157,11 +192,16 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: (
-          github.event_name == 'push' &&
-          startsWith(github.event.ref, 'refs/tags/')
-        ) ||
-        github.event_name == 'schedule'
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && startsWith(github.event.ref, 'refs/tags/')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_sbt]')
+         )"
 
     steps:
       - name: Checkout cleanup script
@@ -188,12 +228,17 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
 
-    if: "(
-          github.event_name == 'push' &&
-          startsWith(github.event.ref, 'refs/tags/') &&
-          !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         ) ||
-         github.event_name == 'schedule'"
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && startsWith(github.event.ref, 'refs/tags/')
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_java8]')
+         )"
 
     steps:
       - name: Set JDK 8 as default
@@ -225,7 +270,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [test_non_bootstrapped, test, community_build_a, community_build_b, test_sbt, test_java8]
-    if: github.event_name == 'schedule'
+    if: "github.event_name == 'schedule'"
     env:
       NIGHTLYBUILD: yes
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
@@ -259,7 +304,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_nightly]
-    if: github.event_name == 'schedule'
+    if: "github.event_name == 'schedule'"
     env:
       NIGHTLYBUILD: yes
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
@@ -300,9 +345,9 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [test_non_bootstrapped, test, community_build_a, community_build_b, test_sbt, test_java8]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+    if: "github.event_name == 'push'
+         && startsWith(github.event.ref, 'refs/tags/')
+         && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
     env:
       RELEASEBUILD: yes
@@ -382,9 +427,9 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_release]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+    if: "github.event_name == 'push'
+         && startsWith(github.event.ref, 'refs/tags/')
+         && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
     env:
       RELEASEBUILD: yes
@@ -426,8 +471,8 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [community_build_a, community_build_b, test_sbt]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+    if: "github.event_name == 'push'
+         && startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
     env:
       RELEASEBUILD: yes
