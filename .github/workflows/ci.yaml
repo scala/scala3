@@ -107,7 +107,7 @@ jobs:
         run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
         shell: cmd
 
-  community_build:
+  community_build_a:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-09-08
@@ -133,7 +133,35 @@ jobs:
         run: |
           git submodule sync
           git submodule update --init --recursive --jobs 7
-          ./project/scripts/sbt community-build/test
+          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
+
+  community_build_b:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-09-08
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+
+    steps:
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+
+      - name: Test
+        run: |
+          git submodule sync
+          git submodule update --init --recursive --jobs 7
+          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestB"
 
   test_sbt:
     runs-on: [self-hosted, Linux]
@@ -208,7 +236,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
+    needs: [test, test_bootstrapped, community_build_a, community_build_b, test_sbt, test_java8]
     if: github.event_name == 'schedule'
     env:
       NIGHTLYBUILD: yes
@@ -283,7 +311,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java8]
+    needs: [test, test_bootstrapped, community_build_a, community_build_b, test_sbt, test_java8]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
         !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
@@ -409,7 +437,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [community_build, test_sbt]
+    needs: [community_build_a, community_build_b, test_sbt]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
 
