@@ -44,19 +44,23 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
 
   lazy val mainPages: Seq[StaticPageNode] = templates.map(templateToPage)
 
+  val docsPath = root.toPath.resolve("docs")
+
   lazy val allPages: Seq[StaticPageNode] = sideBarConfig.fold(mainPages){ sidebar =>
     def flattenPages(p: StaticPageNode): Set[Path] =
       Set(p.template.file.toPath) ++ p.getChildren.asScala.collect { case p: StaticPageNode => flattenPages(p) }.flatten
 
     val mainFiles = mainPages.toSet.flatMap(flattenPages)
-    val docsPath = root.toPath.resolve("docs")
+
     val allPaths =
       if !Files.exists(docsPath) then Nil
       else Files.walk(docsPath, FileVisitOption.FOLLOW_LINKS).iterator().asScala.toList
 
     val orphanedFiles = allPaths.filterNot(mainFiles.contains).filter { p =>
         val name = p.getFileName.toString
-        name.endsWith(".md") || name.endsWith(".html")
+        def isSupported = name.endsWith(".md") || name.endsWith(".html")
+        def notIndex = name == "index.md" || name == "index.html"
+        isSupported && notIndex
     }
 
     val orphanedTemplates = orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
@@ -114,10 +118,14 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
   private def loadSidebarContent(entry: Sidebar): LoadedTemplate = entry match
     case Sidebar.Page(title, url) =>
       val isBlog = title == "Blog"
-      val path = if isBlog then "blog" else url.stripSuffix(".html") + ".md"
-      val file = root.toPath.resolve(path) // Add support for .html files!
-      val LoadedTemplate(template, children, tFile) = loadTemplate(file.toFile, isBlog).get // Add proper logging if file does not exisits
-      LoadedTemplate(template.copy(settings = template.settings + ("title" -> title)), children, tFile)
+      val path = if isBlog then "blog" else
+        if Files.exists(root.toPath.resolve(url)) then url
+        else url.stripSuffix(".html") + ".md"
+
+      val file = root.toPath.resolve(path).toFile
+      val LoadedTemplate(template, children, _) = loadTemplate(file, isBlog).get // Add proper logging if file does not exisits
+      LoadedTemplate(template.copy(settings = template.settings + ("title" -> title), file = file), children, file)
+
     case Sidebar.Category(title, nested) =>
       // Add support for index.html/index.md files!
       val fakeFile = new File(root, title)
