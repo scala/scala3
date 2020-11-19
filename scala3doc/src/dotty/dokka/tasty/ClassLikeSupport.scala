@@ -1,7 +1,6 @@
 package dotty.dokka.tasty
 
 import org.jetbrains.dokka.model.{TypeConstructor => DTypeConstructor, _}
-import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import collection.JavaConverters._

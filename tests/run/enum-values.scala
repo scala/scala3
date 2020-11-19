@@ -55,7 +55,7 @@ enum ClassOnly: // this should still generate the `ordinal` and `fromOrdinal` co
   def cantFind[T](companion: FromOrdinal[T], ordinal: Int): Unit =
     try
       companion.fromOrdinal(ordinal)
-      assertFail(s"$companion.fromOrdinal(${ordinal}) did not fail")
+      throw new AssertionError(s"$companion.fromOrdinal(${ordinal}) did not fail")
     catch
       case e: java.lang.reflect.InvocationTargetException => // TODO: maybe reflect.Selectable should catch this?
         assert(e.getCause.isInstanceOf[java.util.NoSuchElementException]

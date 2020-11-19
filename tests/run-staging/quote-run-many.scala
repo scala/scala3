@@ -8,7 +8,7 @@ object Test {
       val a = 3 + ${Expr(i)}
       2 + a
     }
-    for (i <- 0 to 100)
+    for (i <- 0 to 50)
       run(expr(i))
   }
 }

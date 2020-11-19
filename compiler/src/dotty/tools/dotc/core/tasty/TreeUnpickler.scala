@@ -373,6 +373,8 @@ class TreeUnpickler(reader: TastyReader,
               SuperType(readType(), readType())
             case MATCHtype =>
               MatchType(readType(), readType(), until(end)(readType()))
+            case MATCHCASEtype =>
+              defn.MatchCaseClass.typeRef.appliedTo(readType(), readType())
             case POLYtype =>
               readMethodic(_ => PolyType, _.toTypeName)
             case METHODtype =>

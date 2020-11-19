@@ -6,7 +6,6 @@ import org.jetbrains.dokka.transformers.sources._
 
 import org.jetbrains.dokka.DokkaConfiguration
 import org.jetbrains.dokka.model._
-import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.base.parsers._
 import org.jetbrains.dokka.plugability.DokkaContext
@@ -18,6 +17,9 @@ import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 import quoted.QuoteContext
 import scala.tasty.inspector.TastyInspector
 import dotty.dokka.model.api.withNewMembers
+import dotty.dokka.tasty.comments.MemberLookup
+import dotty.dokka.tasty.comments.QueryParser
+import scala.util.Try
 
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
   *
@@ -101,6 +103,15 @@ trait DokkaBaseTastyInspector:
 
   def processCompilationUnit(using qctx: QuoteContext)(root: qctx.reflect.Tree): Unit =
     val parser = new TastyParser(qctx, this, config)
+
+    def driFor(link: String): Option[DRI] =
+      val symOps = new SymOps[qctx.type](qctx)
+      import symOps._
+      Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
+        MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
+      )
+
+    config.staticSiteContext.foreach(_.memberLinkResolver = driFor)
     topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
 
   def result(): List[DPackage] =

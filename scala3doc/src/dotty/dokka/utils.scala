@@ -4,7 +4,6 @@ import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.base.signatures._
 import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.pages._
-import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.base.signatures.KotlinSignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.utilities.DokkaLogger

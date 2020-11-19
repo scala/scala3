@@ -13,7 +13,7 @@ import com.vladsch.flexmark.ext.tables.TablesExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.{AbstractYamlFrontMatterVisitor, YamlFrontMatterExtension}
 import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
 import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
-import org.jetbrains.dokka.links.{DRI, PointingToDeclaration}
+import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import org.jetbrains.dokka.model.doc.Text
 
 import scala.collection.JavaConverters._
@@ -25,20 +25,19 @@ val apiPageDRI: DRI = mkDRI(packageName = "api", extra = "__api__")
 val defaultMarkdownOptions: DataHolder =
   new MutableDataSet()
     .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
-    .set(
-      Parser.EXTENSIONS, List(
-        TablesExtension.create(),
-        TaskListExtension.create(),
-        AutolinkExtension.create(),
-        AnchorLinkExtension.create(),
-        EmojiExtension.create(),
-        YamlFrontMatterExtension.create(),
-        StrikethroughExtension.create()
-      ).asJava)
-    .set(
-      EmojiExtension.ROOT_IMAGE_PATH,
-      "https://github.global.ssl.fastly.net/images/icons/emoji/"
-    )
+    .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
+    .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
+    .set(EmojiExtension.ROOT_IMAGE_PATH, "https://github.global.ssl.fastly.net/images/icons/emoji/")
+    .set(Parser.EXTENSIONS, java.util.Arrays.asList(
+      TablesExtension.create(),
+      TaskListExtension.create(),
+      AutolinkExtension.create(),
+      AnchorLinkExtension.create(),
+      EmojiExtension.create(),
+      YamlFrontMatterExtension.create(),
+      StrikethroughExtension.create(),
+      WikiLinkExtension.create()
+    ))
 
 def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(
   file = file,
@@ -84,11 +83,11 @@ def loadTemplateFile(file: File): TemplateFile = {
     case elem: String => elem
     case other => throw new RuntimeException(s"Expected a string setting for $name in $file but got $other")
   }.map(_.stripPrefix("\"").stripSuffix("\""))
-  
+
   def listSetting(settings: Map[String, Object], name: String): Option[List[String]] = settings.get(name).map {
     case elems: List[_] => elems.zipWithIndex.map {
       case (s: String, _) => s
-      case (other, index) => 
+      case (other, index) =>
         throw new RuntimeException(s"Expected a string at index $index for $name in $file but got $other")
     }
     case elem: String => List(elem)

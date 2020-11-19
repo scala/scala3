@@ -1160,7 +1160,9 @@ object Build {
   val testcasesOutputDir = taskKey[String]("Root directory where tests classses are generated")
   val testcasesSourceRoot = taskKey[String]("Root directory where tests sources are generated")
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
+  // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScala3Documentation = taskKey[Unit]("Generate documentation for dotty lib")
+  val generateScala3StdlibDocumentation = taskKey[Unit]("Generate documentation for Scala3 standard library")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
   lazy val `scala3doc` = project.in(file("scala3doc")).asScala3doc
   lazy val `scala3doc-testcases` = project.in(file("scala3doc-testcases")).asScala3docTestcases
@@ -1455,10 +1457,11 @@ object Build {
 
     def asScala3doc: Project = {
       def generateDocumentation(targets: String, name: String, outDir: String, params: String = "") = Def.taskDyn {
-          val sourcesAndRevision = "-s github://lampepfl/dotty --revision master"
+          val projectVersion = version.value
+          val sourcesAndRevision = s"-s github://lampepfl/dotty --projectVersion $projectVersion"
           run.in(Compile).toTask(
-            s""" -d output/$outDir -t $targets -n "$name" $sourcesAndRevision $params"""
-            )
+            s""" -d scala3doc/output/$outDir -t $targets -n "$name" $sourcesAndRevision $params"""
+          )
       }
 
       def joinProducts(products: Seq[java.io.File]): String =
@@ -1491,25 +1494,40 @@ object Build {
           Compile / mainClass := Some("dotty.dokka.Main"),
           // There is a bug in dokka that prevents parallel tests withing the same jvm
           fork.in(test) := true,
+          baseDirectory.in(run) := baseDirectory.in(ThisBuild).value,
           generateSelfDocumentation := Def.taskDyn {
-            generateDocumentation(classDirectory.in(Compile).value.getAbsolutePath, "scala3doc", "self", "-p documentation")
+            val revision = VersionUtil.gitHash
+            generateDocumentation(
+              classDirectory.in(Compile).value.getAbsolutePath,
+              "scala3doc", "self",
+              s"-p scala3doc/documentation --projectLogo scala3doc/documentation/logo.svg  --revision $revision",
+            )
           }.value,
           generateScala3Documentation := Def.taskDyn {
             val dottyJars: Seq[java.io.File] = Seq(
               (`scala3-interfaces`/Compile/products).value,
-              (`tasty-core`/Compile/products).value,
-              (`scala3-library`/Compile/products).value,
-              // TODO we can't load stdlib from Tasty
-              // (`stdlib-bootstrapped`/Compile/products).value,
+              (`tasty-core-bootstrapped`/Compile/products).value,
+              (`scala3-library-bootstrapped`/Compile/products).value,
             ).flatten
 
             val roots = joinProducts(dottyJars)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-            else generateDocumentation(roots, "Scala 3", "scala3", "-p scala3-docs")
+            else generateDocumentation(roots, "Scala 3", "scala3", "-p scala3doc/scala3-docs --projectLogo scala3doc/scala3-docs/logo.svg  --revision master")
+          }.value,
+
+          generateScala3StdlibDocumentation:= Def.taskDyn {
+            val dottyJars: Seq[java.io.File] = Seq(
+              (`stdlib-bootstrapped`/Compile/products).value,
+            ).flatten
+
+            val roots = joinProducts(dottyJars)
+
+            if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
+            else generateDocumentation(roots, "Scala 3", "scala3-stdlib", "-p scala3doc/scala3-docs --syntax wiki --projectLogo scala3doc/scala3-docs/logo.svg  --revision master")
           }.value,
           generateTestcasesDocumentation := Def.taskDyn {
-            generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "testcases")
+            generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "testcases", "--revision master")
           }.value,
           buildInfoKeys in Test := Seq[BuildInfoKey](
             Build.testcasesOutputDir.in(Test),

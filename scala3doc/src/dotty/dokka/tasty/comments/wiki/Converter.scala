@@ -113,8 +113,20 @@ class Converter(val repr: Repr) extends BaseConverter {
           resolveLinkQuery(target, Some(body).filter(!_.isEmpty))
       })
 
-    case _: (Superscript | Subscript | RepresentationLink | HtmlTag) =>
-      sys.error("not yet supported: Superscript | Subscript | RepresentationLink | HtmlTag")
+    case Superscript(i) =>
+      def name = inl.getClass.getSimpleName
+      println(s"WARN: not yet supported: $name")
+      emitInline(i)
+
+    case Subscript(i) =>
+      def name = inl.getClass.getSimpleName
+      println(s"WARN: not yet supported: $name")
+      emitInline(i)
+
+    case _: (RepresentationLink | HtmlTag) =>
+      def name = inl.getClass.getSimpleName
+      println(s"WARN: not yet supported: $name")
+      name // doesn't compile if name is a val
   }
 
   def convertInline(inl: Inline): Seq[dkkd.DocTag] =

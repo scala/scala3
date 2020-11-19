@@ -66,7 +66,7 @@ class BankAccount:
       val b = myBalance()
       myBalance() = b - amount
       myBalance()
-    else assertFail("insufficient funds")
+    else throw new AssertionError("insufficient funds")
 end BankAccount
 
 @main def Test() =
