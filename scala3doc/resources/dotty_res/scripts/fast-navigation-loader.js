@@ -28,10 +28,11 @@ window.addEventListener('DOMContentLoaded', () => {
 })
 
 revealNavigationForCurrentPage = () => {
-  let pageId = document.getElementById("content").attributes["pageIds"].value.toString();
+  let pageIdParts = document.getElementById("content").attributes["pageIds"].value.toString().split("/")
   let parts = document.querySelectorAll(".sideMenuPart");
   let found = 0;
   do {
+      let pageId = pageIdParts.join("/")
       parts.forEach(part => {
           if (part.attributes['pageId'].value.indexOf(pageId) !== -1 && found === 0) {
               found = 1;
@@ -42,8 +43,8 @@ revealNavigationForCurrentPage = () => {
               revealParents(part)
           }
       });
-      pageId = pageId.substring(0, pageId.lastIndexOf("/"))
-  } while (pageId.indexOf("/") !== -1 && found === 0)
+      pageIdParts.pop()
+  } while (pageIdParts.length > 0)
 };
 
 revealParents = (part) => {

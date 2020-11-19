@@ -4,10 +4,11 @@ import scala.quoted._
 
 trait CB[T]:
  def map[S](f: T=>S): CB[S] = ???
+ def flatMap[S](f: T=>CB[S]): CB[S] = ???
 
-class MyArr[A]:
- def map1[B](f: A=>B):MyArr[B] = ???
- def map1Out[B](f: A=> CB[B]): CB[MyArr[B]] = ???
+class MyArr[AK,AV]:
+ def map1[BK,BV](f: ((AK,AV)) => (BK, BV)):MyArr[BK,BV] = ???
+ def map1Out[BK, BV](f: ((AK,AV)) => CB[(BK,BV)]): CB[MyArr[BK,BV]] = ???
 
 def await[T](x:CB[T]):T = ???
 
@@ -25,18 +26,41 @@ object X:
 
    def transform(term:Term):Term =
      term match
-        case ap@Apply(TypeApply(Select(obj,"map1"),targs),args) =>
+        case Apply(TypeApply(Select(obj,"map1"),targs),args) =>
              val nArgs = args.map(x => shiftLambda(x))
              val nSelect = Select.unique(obj, "map1Out")
              Apply(TypeApply(nSelect,targs),nArgs)
-             //Apply.copy(ap)(TypeApply(nSelect,targs),nArgs)
         case Apply(TypeApply(Ident("await"),targs),args) => args.head
-        case Apply(x,y) =>
-             Apply(x, y.map(transform))
+        case a@Apply(x,List(y,z)) =>
+                 val mty=MethodType(List("y1"))( _ => List(y.tpe.widen), _ => TypeRepr.of[CB].appliedTo(a.tpe.widen))
+                 val mtz=MethodType(List("z1"))( _ => List(z.tpe.widen), _ => a.tpe.widen)
+                 Apply(
+                   TypeApply(Select.unique(transform(y),"flatMap"),
+                             List(Inferred(a.tpe.widen))
+                            ),
+                   List(
+                     Lambda(Symbol.currentOwner, mty, (meth, yArgs) =>
+                       Apply(
+                          TypeApply(Select.unique(transform(z),"map"),
+                             List(Inferred(a.tpe.widen))
+                          ),
+                          List(
+                            Lambda(Symbol.currentOwner, mtz, (_, zArgs) => {
+                              val termYArgs = yArgs.asInstanceOf[List[Term]]
+                              val termZArgs = zArgs.asInstanceOf[List[Term]]
+                              Apply(x,List(termYArgs.head,termZArgs.head))
+                            })
+                          )
+                       ).changeOwner(meth)
+                     )
+                   )
+                 )
         case Block(stats, last) => Block(stats, transform(last))
         case Inlined(x,List(),body) => transform(body)
         case l@Literal(x) =>
-          Term.of('{ CBM.pure(${term.asExpr}) })
+           l.asExpr match
+             case '{ $l: lit } =>
+                Term.of('{ CBM.pure(${term.asExprOf[lit]}) })
         case other =>
              throw RuntimeException(s"Not supported $other")
 
@@ -46,8 +70,9 @@ object X:
             val paramTypes = params.map(_.tpt.tpe)
             val paramNames = params.map(_.name)
             val mt = MethodType(paramNames)(_ => paramTypes, _ => TypeRepr.of[CB].appliedTo(body.tpe.widen) )
-            val r = Lambda(Symbol.currentOwner, mt, (newMeth, args) => changeArgs(params,args,transform(body).changeOwner(newMeth)) )
-            r
+            Lambda(Symbol.currentOwner, mt, (meth, args) => changeArgs(params,args,transform(body)).changeOwner(meth) )
+          case Block(stats, last) =>
+            Block(stats, shiftLambda(last))
           case _ =>
             throw RuntimeException("lambda expected")
 
@@ -64,4 +89,5 @@ object X:
          }
          changes.transformTerm(body)
 
-   transform(Term.of(f)).asExprOf[CB[T]]
+   val r = transform(Term.of(f)).asExprOf[CB[T]]
+   r
