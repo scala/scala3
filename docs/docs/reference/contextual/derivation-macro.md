@@ -44,7 +44,7 @@ from the signature. The body of the `derived` method is shown below:
 given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
   import qctx.reflect._
 
-  val ev: Expr[Mirror.Of[T]] = Expr.summon(using Type.of[Mirror.Of[T]]).get
+  val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
 
   ev match {
     case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
@@ -179,7 +179,7 @@ object Eq {
   given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
     import qctx.reflect._
 
-    val ev: Expr[Mirror.Of[T]] = Expr.summon(using Type.of[Mirror.Of[T]]).get
+    val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
 
     ev match {
       case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
