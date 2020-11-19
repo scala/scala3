@@ -24,9 +24,15 @@ class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
           else {
             val path = jpath.asScala.toList
             val start = if (path.head == "--root--") List("docs") else path.take(1)
-            val pageName = page.template.file.getName
-            val dotIndex = pageName.lastIndexOf('.')
-            val newName = if (dotIndex < 0) pageName else pageName.substring(0, dotIndex)
+            // Dokka has a bug in location provider that does not properly handles relative paths for leaf nodes
+            // This forces us to not change default paths on non-leaf nodes
+            val newName = if page.getChildren.size() > 0 then path.last else
+              val pageName = page.template.file.getName
+              val dotIndex = pageName.lastIndexOf('.')
+              if (dotIndex < 0) pageName else pageName.substring(0, dotIndex)
+
+            println(s"Using $newName for ${page.template.file} orignally: $path")
+
             (start ++ path.drop(1).dropRight(1) ++ List(newName)).asJava
           }
         case page: ContentPage if page.getDri.contains(docsDRI) =>
