@@ -327,4 +327,10 @@ object projects:
     sbtTestCommand = "testIfRelevant"
   )
 
+  lazy val scalaParallelCollections = SbtCommunityProject(
+    project        = "scala-parallel-collections",
+    sbtTestCommand = "test",
+    dependencies     = List(scalacheck)
+  )
+
 end projects

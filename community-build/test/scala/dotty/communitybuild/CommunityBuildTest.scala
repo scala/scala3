@@ -114,6 +114,7 @@ class CommunityBuildTestB extends CommunityBuildTest:
   @Test def minitest = projects.minitest.run()
   @Test def munit = projects.munit.run()
   @Test def scalap = projects.scalap.run()
+  @Test def scalaParallelCollections = projects.scalaParallelCollections.run()
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
   @Test def ScalaPB = projects.ScalaPB.run()
   @Test def scalaXml = projects.scalaXml.run()
