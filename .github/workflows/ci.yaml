@@ -10,7 +10,7 @@ env:
   DOTTY_CI_RUN: true
 
 jobs:
-  test:
+  test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
@@ -18,9 +18,11 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "!(github.event_name == 'push' &&
-           startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
-
+    if: "(
+           github.event_name == 'push' &&
+           !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         ) ||
+         github.event_name == 'schedule')"
     steps:
       - name: Set JDK 15 as default
         run: echo "/usr/lib/jvm/java-15-openjdk-amd64/bin" >> $GITHUB_PATH
@@ -42,7 +44,7 @@ jobs:
           ./project/scripts/sbt ";compile ;test"
           ./project/scripts/cmdTests
 
-  test_bootstrapped:
+  test:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
@@ -74,23 +76,7 @@ jobs:
           ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
           ./project/scripts/bootstrapCmdTests
 
-  ## Only run bootstrapped tests for Windows since that's a superset of the
-  ## non-bootstrapped tests and bootstrapping issues should be caught by
-  ## the non-bootstrapped Linux runner.
-  # test-windows:
-  #   runs-on: [self-hosted, Windows]
-  #   if: "!(github.event_name == 'push' &&
-  #          startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
-
-  #   steps:
-  #     - name: Git Checkout
-  #       uses: actions/checkout@v2
-
-  #     - name: Test
-  #       run: sbt ";compile ;test"
-  #       shell: cmd
-
-  test_bootstrapped-windows:
+  test_windows:
     runs-on: [self-hosted, Windows]
     if: "!(github.event_name == 'push' &&
            startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
@@ -193,7 +179,7 @@ jobs:
       - name: Test
         run: ./project/scripts/sbt sbt-dotty/scripted
 
-  test_bootstrapped_java8:
+  test_java8:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
@@ -238,7 +224,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test, test_bootstrapped, community_build_a, community_build_b, test_sbt, test_bootstrapped_java8]
+    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, test_sbt, test_java8]
     if: github.event_name == 'schedule'
     env:
       NIGHTLYBUILD: yes
@@ -313,7 +299,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test, test_bootstrapped, community_build_a, community_build_b, test_sbt, test_bootstrapped_java8]
+    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, test_sbt, test_java8]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
         !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
