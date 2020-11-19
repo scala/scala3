@@ -337,6 +337,21 @@ object Inliner {
     def codeOf(arg: Tree, pos: SrcPos)(using Context): Tree =
       Literal(Constant(arg.show)).withSpan(pos.span)
   }
+
+  extension (tp: Type) {
+
+    /** same as widenTermRefExpr, but preserves modules and singleton enum values */
+    private final def widenInlineScrutinee(using Context): Type = tp.stripTypeVar match {
+      case tp: TermRef  =>
+        val sym = tp.termSymbol
+        if sym.isAllOf(EnumCase, butNot=JavaDefined) || sym.is(Module) then tp
+        else if !tp.isOverloaded then tp.underlying.widenExpr.widenInlineScrutinee
+        else tp
+      case _ => tp
+    }
+
+  }
+
 }
 
 /** Produces an inlined version of `call` via its `inlined` method.
@@ -1003,7 +1018,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       	 *  scrutinee as RHS and type that corresponds to RHS.
       	 */
         def newTermBinding(sym: TermSymbol, rhs: Tree): Unit = {
-          val copied = sym.copy(info = rhs.tpe.widenTermRefExpr, coord = sym.coord, flags = sym.flags &~ Case).asTerm
+          val copied = sym.copy(info = rhs.tpe.widenInlineScrutinee, coord = sym.coord, flags = sym.flags &~ Case).asTerm
           caseBindingMap += ((sym, ValDef(copied, constToLiteral(rhs)).withSpan(sym.span)))
         }
 
@@ -1121,7 +1136,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
                 def reduceSubPatterns(pats: List[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
                   case (Nil, Nil) => true
                   case (pat :: pats1, selector :: selectors1) =>
-                    val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenTermRefExpr).asTerm
+                    val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenInlineScrutinee).asTerm
                     val rhs = constToLiteral(selector)
                     elem.defTree = rhs
                     caseBindingMap += ((NoSymbol, ValDef(elem, rhs).withSpan(elem.span)))
