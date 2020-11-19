@@ -335,7 +335,17 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                && ctx.compilationUnit.source.exists
                && sym != defn.SourceFileAnnot
             then
-              sym.addAnnotation(Annotation.makeSourceFile(ctx.compilationUnit.source.file.path))
+              def sourcerootPath =
+                java.nio.file.Paths.get(ctx.settings.sourceroot.value)
+                .toAbsolutePath
+                .normalize
+              val file = ctx.compilationUnit.source.file
+              val jpath = file.jpath
+              val relativePath =
+                if jpath eq null then file.path // repl and other custom tests use abstract files with no path
+                else if jpath.isAbsolute then sourcerootPath.relativize(jpath.normalize).toString
+                else jpath.normalize.toString
+              sym.addAnnotation(Annotation.makeSourceFile(relativePath))
           else (tree.rhs, sym.info) match
             case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
               VarianceChecker.checkLambda(rhs, bounds)
