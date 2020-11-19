@@ -193,7 +193,7 @@ jobs:
       - name: Test
         run: ./project/scripts/sbt sbt-dotty/scripted
 
-  test_java8:
+  test_bootstrapped_java8:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
@@ -226,7 +226,9 @@ jobs:
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
-        run: ./project/scripts/sbt ";compile ;test"
+        run: |
+          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+          ./project/scripts/bootstrapCmdTests
 
   publish_nightly:
     runs-on: [self-hosted, Linux]
@@ -236,7 +238,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test, test_bootstrapped, community_build_a, community_build_b, test_sbt, test_java8]
+    needs: [test, test_bootstrapped, community_build_a, community_build_b, test_sbt, test_bootstrapped_java8]
     if: github.event_name == 'schedule'
     env:
       NIGHTLYBUILD: yes
@@ -311,7 +313,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test, test_bootstrapped, community_build_a, community_build_b, test_sbt, test_java8]
+    needs: [test, test_bootstrapped, community_build_a, community_build_b, test_sbt, test_bootstrapped_java8]
     if: github.event_name == 'push' &&
         startsWith(github.event.ref, 'refs/tags/') &&
         !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
