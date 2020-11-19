@@ -13,12 +13,13 @@ package scala
  *  `applyDynamic` is invoked for selections with arguments `v.m(...)`.
  *  If there's only one kind of selection, the method supporting the
  *  other may be omitted. The `applyDynamic` can also have a second parameter
- *  list of class tag arguments, i.e. it may alternatively have the signature
+ *  list of `java.lang.Class` arguments, i.e. it may alternatively have the
+ *  signature
  *
- *    def applyDynamic(name: String, paramClasses: ClassTag[_]*)(args: Any*): Any
+ *    def applyDynamic(name: String, paramClasses: Class[_]*)(args: Any*): Any
  *
- *  In this case the call will synthesize `ClassTag` arguments for all formal parameter
- *  types of the method in the structural type.
+ *  In this case the call will synthesize `Class` arguments for the erasure of
+ *  all formal parameter types of the method in the structural type.
  */
 trait Selectable extends Any
 

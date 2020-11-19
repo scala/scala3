@@ -9,7 +9,7 @@ object Test {
     val receiver: Any = ???
     reflectiveSelectable(receiver).selectDynamic("foo") // OK
     reflectiveSelectable(receiver).applyDynamic("foo")() // OK
-    reflectiveSelectable(receiver).applyDynamic("foo", ClassTag(classOf[String]), ClassTag(classOf[List[_]]))("bar", Nil) // OK
+    reflectiveSelectable(receiver).applyDynamic("foo", classOf[String], classOf[List[_]])("bar", Nil) // OK
   }
 
   def badReceider(): Unit = {
@@ -25,21 +25,21 @@ object Test {
     reflectiveSelectable(receiver).applyDynamic(methodName)() // error
   }
 
-  def nonLiteralClassTag(): Unit = {
+  def nonLiteralClassOf(): Unit = {
     val receiver: Any = ???
-    val myClassTag: ClassTag[String] = ClassTag(classOf[String])
-    reflectiveSelectable(receiver).applyDynamic("foo", myClassTag, ClassTag(classOf[List[_]]))("bar", Nil) // error
+    val myClassOf: Class[String] = classOf[String]
+    reflectiveSelectable(receiver).applyDynamic("foo", myClassOf, classOf[List[_]])("bar", Nil) // error
   }
 
-  def classTagVarArgs(): Unit = {
+  def classOfVarArgs(): Unit = {
     val receiver: Any = ???
-    val classTags: List[ClassTag[_]] = List(ClassTag(classOf[String]), ClassTag(classOf[List[_]]))
-    reflectiveSelectable(receiver).applyDynamic("foo", classTags: _*)("bar", Nil) // error
+    val classOfs: List[Class[_]] = List(classOf[String], classOf[List[_]])
+    reflectiveSelectable(receiver).applyDynamic("foo", classOfs: _*)("bar", Nil) // error
   }
 
   def argsVarArgs(): Unit = {
     val receiver: Any = ???
     val args: List[Any] = List("bar", Nil)
-    reflectiveSelectable(receiver).applyDynamic("foo", ClassTag(classOf[String]), ClassTag(classOf[List[_]]))(args: _*) // error
+    reflectiveSelectable(receiver).applyDynamic("foo", classOf[String], classOf[List[_]])(args: _*) // error
   }
 }

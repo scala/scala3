@@ -163,13 +163,11 @@ class ReflectiveCallTestScala3 {
     assertEquals("undefined any-string 5 Some(5) None",
         foo.foo((), "any-string", 5, Some[Int](5), None))
 
-    // The following calls do not compile in Dotty because
-    //   No ClassTag available for Null/Nothing
+    assertEquals("null", foo.nullMeth(null))
 
-    //assertEquals("null", foo.nullMeth(null))
-    //// Make sure that a call to nothingMeth can link
-    //if (Math.random() > 2) // always false
-    //  foo.nothingMeth(???)
+    // Make sure that a call to nothingMeth can link
+    if (Math.random() > 2) // always false
+      foo.nothingMeth(???)
   }
 
 }
