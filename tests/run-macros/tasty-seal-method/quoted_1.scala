@@ -14,10 +14,10 @@ object Asserts {
         fn.tpe.widen match {
           case _: MethodType =>
             args.size match {
-              case 0 => Expr.betaReduce('{ ${fn.etaExpand.asExprOf[() => Int]}() })
-              case 1 => Expr.betaReduce('{ ${fn.etaExpand.asExprOf[Int => Int]}(0) })
-              case 2 => Expr.betaReduce('{ ${fn.etaExpand.asExprOf[(Int, Int) => Int]}(0, 0) })
-              case 3 => Expr.betaReduce('{ ${fn.etaExpand.asExprOf[(Int, Int, Int) => Int]}(0, 0, 0) })
+              case 0 => Expr.betaReduce('{ ${fn.etaExpand(Symbol.currentOwner).asExprOf[() => Int]}() })
+              case 1 => Expr.betaReduce('{ ${fn.etaExpand(Symbol.currentOwner).asExprOf[Int => Int]}(0) })
+              case 2 => Expr.betaReduce('{ ${fn.etaExpand(Symbol.currentOwner).asExprOf[(Int, Int) => Int]}(0, 0) })
+              case 3 => Expr.betaReduce('{ ${fn.etaExpand(Symbol.currentOwner).asExprOf[(Int, Int, Int) => Int]}(0, 0, 0) })
             }
         }
       case _ => x
@@ -35,10 +35,10 @@ object Asserts {
       case Apply(fn, args) =>
         val pre = rec(fn)
         args.size match {
-          case 0 => Term.of(Expr.betaReduce('{ ${pre.etaExpand.asExprOf[() => Any]}() }))
-          case 1 => Term.of(Expr.betaReduce('{ ${pre.etaExpand.asExprOf[Int => Any]}(0) }))
-          case 2 => Term.of(Expr.betaReduce('{ ${pre.etaExpand.asExprOf[(Int, Int) => Any]}(0, 0) }))
-          case 3 => Term.of(Expr.betaReduce('{ ${pre.etaExpand.asExprOf[(Int, Int, Int) => Any]}(0, 0, 0) }))
+          case 0 => Term.of(Expr.betaReduce('{ ${pre.etaExpand(Symbol.currentOwner).asExprOf[() => Any]}() }))
+          case 1 => Term.of(Expr.betaReduce('{ ${pre.etaExpand(Symbol.currentOwner).asExprOf[Int => Any]}(0) }))
+          case 2 => Term.of(Expr.betaReduce('{ ${pre.etaExpand(Symbol.currentOwner).asExprOf[(Int, Int) => Any]}(0, 0) }))
+          case 3 => Term.of(Expr.betaReduce('{ ${pre.etaExpand(Symbol.currentOwner).asExprOf[(Int, Int, Int) => Any]}(0, 0, 0) }))
         }
       case _ => term
     }

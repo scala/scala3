@@ -82,7 +82,7 @@ object UnsafeExpr {
   }
   private def paramsAndBody[R](using qctx: QuoteContext)(f: Expr[Any]): (List[qctx.reflect.ValDef], Expr[R]) = {
     import qctx.reflect._
-    val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = Term.of(f).etaExpand
+    val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = Term.of(f).etaExpand(Symbol.currentOwner)
     (params, body.asExpr.asInstanceOf[Expr[R]])
   }
 
