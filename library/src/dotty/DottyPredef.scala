@@ -79,7 +79,6 @@ object DottyPredef {
    *
    *  Note that `.nn` performs a checked cast, so if invoked on a null value it'll throw an NPE.
    */
-  extension [T](x: T | Null) def nn: x.type & T =
-    if (x == null) throw new NullPointerException("tried to cast away nullability, but value is null")
-    else x.asInstanceOf[x.type & T]
+  extension [T](x: T | Null) inline def nn: x.type & T =
+    scala.runtime.Scala3RunTime.nn(x)
 }
