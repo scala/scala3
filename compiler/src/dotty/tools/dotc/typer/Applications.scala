@@ -724,7 +724,7 @@ trait Applications extends Compatibility {
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
-      typedArgBuf.trimEnd(n)
+      typedArgBuf.dropRightInPlace(n)
       val elemtpt = TypeTree(elemFormal)
       typedArgBuf += seqToRepeated(SeqLiteral(args, elemtpt))
     }

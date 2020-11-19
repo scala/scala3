@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core
 
 import java.security.MessageDigest
+import java.nio.CharBuffer
 import scala.io.Codec
 import Int.MaxValue
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
@@ -32,17 +33,18 @@ object NameOps {
     def apply(s: String): String = {
       val marker = "$$$$"
 
-      val MaxNameLength = (CLASSFILE_NAME_CHAR_LIMIT - 6) min
+      val MaxNameLength = (CLASSFILE_NAME_CHAR_LIMIT - 6).min(
         2 * (CLASSFILE_NAME_CHAR_LIMIT - 6 - 2 * marker.length - 32)
+      )
 
       def toMD5(s: String, edge: Int): String = {
-        val prefix = s take edge
-        val suffix = s takeRight edge
+        val prefix = s.take(edge)
+        val suffix = s.takeRight(edge)
 
         val cs = s.toArray
-        val bytes = Codec toUTF8 cs
-        md5 update bytes
-        val md5chars = (md5.digest() map (b => (b & 0xFF).toHexString)).mkString
+        val bytes = Codec.toUTF8(CharBuffer.wrap(cs))
+        md5.update(bytes)
+        val md5chars = md5.digest().map(b => (b & 0xFF).toHexString).mkString
 
         prefix + marker + md5chars + marker + suffix
       }

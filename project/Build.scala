@@ -72,8 +72,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.3"
-    case Bootstrapped => "2.13.3"
+    case NonBootstrapped => "2.13.4"
+    case Bootstrapped => "2.13.4"
   }
 
   val dottyOrganization = "org.scala-lang"
