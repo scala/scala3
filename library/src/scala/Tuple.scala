@@ -142,18 +142,6 @@ object Tuple {
     }
   }
 
-  /**
-   * Use this type to widen a self-type to a tuple. E.g.
-   * ```
-   * val x: (1, 3) = (1, 3)
-   * val y: Widen[x.type] = x
-   * ```
-   */
-  type Widen[Tup <: Tuple] <: Tuple = Tup match {
-    case EmptyTuple => EmptyTuple
-    case h *: t => h *: t
-  }
-
   /** Given two tuples, `A1 *: ... *: An * At` and `B1 *: ... *: Bn *: Bt`
    *  where at least one of `At` or `Bt` is `EmptyTuple` or `Tuple`,
    *  returns the tuple type `(A1, B1) *: ... *: (An, Bn) *: Ct`
