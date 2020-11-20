@@ -1,5 +1,5 @@
 package scala.quoted
-package internal.impl
+package runtime.impl
 
 import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
@@ -16,8 +16,8 @@ import dotty.tools.dotc.core.Decorators._
 
 import dotty.tools.dotc.quoted.{MacroExpansion, PickledQuotes, QuoteUtils}
 
-import scala.quoted.internal.{QuoteUnpickler, QuoteMatching}
-import scala.quoted.internal.impl.printers._
+import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
+import scala.quoted.runtime.impl.printers._
 
 import scala.reflect.TypeTest
 
@@ -2626,7 +2626,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     def isTypeHoleDef(tree: Tree): Boolean =
       tree match
         case tree: TypeDef =>
-          tree.symbol.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_patternTypeAnnot)
+          tree.symbol.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternTypeAnnot)
         case _ => false
 
     def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
@@ -2651,8 +2651,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     val qctx1 = QuoteContextImpl()(using ctx1)
 
     val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1) {
-      def patternHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole.asInstanceOf
-      def higherOrderHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_higherOrderHole.asInstanceOf
+      def patternHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole.asInstanceOf
+      def higherOrderHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.QuotedRuntimePatterns_higherOrderHole.asInstanceOf
     }
 
     val matchings =
@@ -2665,7 +2665,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       // After matching and doing all subtype checks, we have to approximate all the type bindings
       // that we have found, seal them in a quoted.Type and add them to the result
       def typeHoleApproximation(sym: Symbol) =
-        ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_fromAboveAnnot)).asInstanceOf[qctx1.reflect.TypeRepr].asType
+        ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)).asInstanceOf[qctx1.reflect.TypeRepr].asType
       matchings.map { tup =>
         Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
       }

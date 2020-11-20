@@ -916,7 +916,7 @@ object desugar {
   def quotedPatternTypeDef(tree: TypeDef)(using Context): TypeDef = {
     assert(ctx.mode.is(Mode.QuotedPattern))
     if tree.name.isVarPattern && !tree.isBackquoted then
-      val patternTypeAnnot = New(ref(defn.InternalQuotedPatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)
+      val patternTypeAnnot = New(ref(defn.QuotedRuntimePatterns_patternTypeAnnot.typeRef)).withSpan(tree.span)
       val mods = tree.mods.withAddedAnnotation(patternTypeAnnot)
       tree.withMods(mods)
     else if tree.name.startsWith("$") && !tree.isBackquoted then

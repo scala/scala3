@@ -10,7 +10,7 @@ import scala.reflect.TypeTest
  *
  *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import qctx.reflect._; ... }`.
  */
-trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
+trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
   // Extension methods for `Expr[T]`
   extension [T](self: Expr[T]):

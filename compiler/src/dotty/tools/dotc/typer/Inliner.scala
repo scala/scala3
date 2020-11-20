@@ -1264,7 +1264,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
-        case res: Apply if res.symbol == defn.InternalQuoted_exprSplice
+        case res: Apply if res.symbol == defn.QuotedRuntime_exprSplice
                         && level == 0
                         && !suppressInline =>
           val expanded = expandMacro(res.args.head, tree.span)

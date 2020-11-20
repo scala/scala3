@@ -1,9 +1,9 @@
-package scala.quoted.internal
+package scala.quoted.runtime
 
 import scala.quoted.{QuoteContext, Expr, Type}
 
 /** Part of the QuoteContext interface that needs to be implemented by the compiler but is not visible to users */
-trait QuoteMatching {
+trait QuoteMatching:
 
   val ExprMatch: ExprMatchModule
 
@@ -20,7 +20,7 @@ trait QuoteMatching {
     *       will return `None` due to the missmatch of types in the hole
     *
     *  Holes:
-    *    - scala.quoted.internal.Patterns.patternHole[T]: hole that matches an expression `x` of type `Expr[U]`
+    *    - scala.quoted.runtime.Patterns.patternHole[T]: hole that matches an expression `x` of type `Expr[U]`
     *                                            if `U <:< T` and returns `x` as part of the match.
     *
     *  @param scrutinee `Expr[Any]` on which we are pattern matching
@@ -46,4 +46,3 @@ trait QuoteMatching {
      */
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: Type[?])(using pattern: Type[?]): Option[Tup]
   }
-}

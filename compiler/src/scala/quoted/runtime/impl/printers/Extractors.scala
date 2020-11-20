@@ -1,5 +1,5 @@
 package scala.quoted
-package internal.impl.printers
+package runtime.impl.printers
 
 import scala.quoted._
 

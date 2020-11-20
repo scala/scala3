@@ -1,5 +1,5 @@
 package scala.quoted
-package internal.impl
+package runtime.impl
 
 import scala.annotation.internal.sharable
 import scala.annotation.{Annotation, compileTimeOnly}
