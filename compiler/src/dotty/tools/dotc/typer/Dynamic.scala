@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.TypeErasure
 import util.Spans._
 import core.Symbols._
 import core.Definitions
@@ -149,14 +150,14 @@ trait Dynamic {
    *  x1.applyDynamic("a")(a11, ..., a1n, ..., aN1, ..., aNn)
    *    .asInstanceOf[R]
    *  ```
-   *  If this call resolves to an `applyDynamic` method that takes a `ClassTag[?]*` as second
+   *  If this call resolves to an `applyDynamic` method that takes a `Class[?]*` as second
    *  parameter, we further rewrite this call to
    *  scala```
-   *  x1.applyDynamic("a", CT11, ..., CT1n, ..., CTN1, ... CTNn)
+   *  x1.applyDynamic("a", c11, ..., c1n, ..., cN1, ... cNn)
    *                  (a11, ..., a1n, ..., aN1, ..., aNn)
    *    .asInstanceOf[R]
    *  ```
-   *  where CT11, ..., CTNn are the class tags representing the erasure of T11, ..., TNn.
+   *  where c11, ..., cNn are the classOf constants representing the erasures of T11, ..., TNn.
    *
    *  It's an error if U is neither a value nor a method type, or a dependent method
    *  type.
@@ -164,7 +165,7 @@ trait Dynamic {
   def handleStructural(tree: Tree)(using Context): Tree = {
     val (fun @ Select(qual, name), targs, vargss) = decomposeCall(tree)
 
-    def structuralCall(selectorName: TermName, ctags: => List[Tree]) = {
+    def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {
       val selectable = adapt(qual, defn.SelectableClass.typeRef)
 
       // ($qual: Selectable).$selectorName("$name")
@@ -177,27 +178,27 @@ trait Dynamic {
         if (vargss.isEmpty) base
         else untpd.Apply(base, vargss.flatten.map(untpd.TypedSplice(_)))
 
-      // If function is an `applyDynamic` that takes a ClassTag* parameter,
-      // add `ctags`.
-      def addClassTags(tree: Tree): Tree = tree match
+      // If function is an `applyDynamic` that takes a Class* parameter,
+      // add `classOfs`.
+      def addClassOfs(tree: Tree): Tree = tree match
         case Apply(fn: Apply, args) =>
-          cpy.Apply(tree)(addClassTags(fn), args)
+          cpy.Apply(tree)(addClassOfs(fn), args)
         case Apply(fn @ Select(_, nme.applyDynamic), nameArg :: _ :: Nil) =>
           fn.tpe.widen match
             case mt: MethodType => mt.paramInfos match
-              case _ :: ctagsParam :: Nil
-              if ctagsParam.isRepeatedParam
-                 && ctagsParam.argInfos.head.isRef(defn.ClassTagClass) =>
-                  val ctagType = defn.ClassTagClass.typeRef.appliedTo(TypeBounds.empty)
+              case _ :: classOfsParam :: Nil
+              if classOfsParam.isRepeatedParam
+                 && classOfsParam.argInfos.head.isRef(defn.ClassClass) =>
+                  val jlClassType = defn.ClassClass.typeRef.appliedTo(TypeBounds.empty)
                   cpy.Apply(tree)(fn,
-                    nameArg :: seqToRepeated(SeqLiteral(ctags, TypeTree(ctagType))) :: Nil)
+                    nameArg :: seqToRepeated(SeqLiteral(classOfs, TypeTree(jlClassType))) :: Nil)
               case _ => tree
             case other => tree
         case _ => tree
-      addClassTags(typed(scall))
+      addClassOfs(typed(scall))
     }
 
-    def fail(name: Name, reason: String) =
+    def fail(reason: String): Tree =
       errorTree(tree, em"Structural access not allowed on method $name because it $reason")
 
     fun.tpe.widen match {
@@ -215,18 +216,21 @@ trait Dynamic {
         }
 
         if (isDependentMethod(tpe))
-          fail(name, i"has a method type with inter-parameter dependencies")
+          fail(i"has a method type with inter-parameter dependencies")
         else {
-          def ctags = tpe.paramInfoss.flatten.map(pt =>
-            implicitArgTree(defn.ClassTagClass.typeRef.appliedTo(pt.widenDealias :: Nil), fun.span.endPos))
-          structuralCall(nme.applyDynamic, ctags).cast(tpe.finalResultType)
+          def classOfs =
+            if tpe.paramInfoss.nestedExists(!TypeErasure.hasStableErasure(_)) then
+              fail(i"has a parameter type with an unstable erasure") :: Nil
+            else
+              TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos.map(clsOf(_))
+          structuralCall(nme.applyDynamic, classOfs).cast(tpe.finalResultType)
         }
 
       // (@allanrenucci) I think everything below is dead code
       case _: PolyType =>
-        fail(name, "is polymorphic")
+        fail("is polymorphic")
       case tpe =>
-        fail(name, i"has an unsupported type: $tpe")
+        fail(i"has an unsupported type: $tpe")
     }
   }
 }

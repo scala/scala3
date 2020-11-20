@@ -6,40 +6,34 @@ object Test {
    * ensuring that the error cases we test are actually testing the right things.
    */
   def sanityCheck(): Unit = {
-    val receiver: Any = ???
-    reflectiveSelectable(receiver).selectDynamic("foo") // OK
-    reflectiveSelectable(receiver).applyDynamic("foo")() // OK
-    reflectiveSelectable(receiver).applyDynamic("foo", ClassTag(classOf[String]), ClassTag(classOf[List[_]]))("bar", Nil) // OK
-  }
-
-  def badReceider(): Unit = {
     val receiver: ReflectSel = ???
-    receiver.selectDynamic("foo") // error
-    receiver.applyDynamic("foo")() // error
+    receiver.selectDynamic("foo") // OK
+    receiver.applyDynamic("foo")() // OK
+    receiver.applyDynamic("foo", classOf[String], classOf[List[_]])("bar", Nil) // OK
   }
 
   def nonLiteralMethodName(): Unit = {
-    val receiver: Any = ???
+    val receiver: ReflectSel = ???
     val methodName: String = "foo"
-    reflectiveSelectable(receiver).selectDynamic(methodName) // error
-    reflectiveSelectable(receiver).applyDynamic(methodName)() // error
+    receiver.selectDynamic(methodName) // error
+    receiver.applyDynamic(methodName)() // error
   }
 
-  def nonLiteralClassTag(): Unit = {
-    val receiver: Any = ???
-    val myClassTag: ClassTag[String] = ClassTag(classOf[String])
-    reflectiveSelectable(receiver).applyDynamic("foo", myClassTag, ClassTag(classOf[List[_]]))("bar", Nil) // error
+  def nonLiteralClassOf(): Unit = {
+    val receiver: ReflectSel = ???
+    val myClassOf: Class[String] = classOf[String]
+    receiver.applyDynamic("foo", myClassOf, classOf[List[_]])("bar", Nil) // error
   }
 
-  def classTagVarArgs(): Unit = {
-    val receiver: Any = ???
-    val classTags: List[ClassTag[_]] = List(ClassTag(classOf[String]), ClassTag(classOf[List[_]]))
-    reflectiveSelectable(receiver).applyDynamic("foo", classTags: _*)("bar", Nil) // error
+  def classOfVarArgs(): Unit = {
+    val receiver: ReflectSel = ???
+    val classOfs: List[Class[_]] = List(classOf[String], classOf[List[_]])
+    receiver.applyDynamic("foo", classOfs: _*)("bar", Nil) // error
   }
 
   def argsVarArgs(): Unit = {
-    val receiver: Any = ???
+    val receiver: ReflectSel = ???
     val args: List[Any] = List("bar", Nil)
-    reflectiveSelectable(receiver).applyDynamic("foo", ClassTag(classOf[String]), ClassTag(classOf[List[_]]))(args: _*) // error
+    receiver.applyDynamic("foo", classOf[String], classOf[List[_]])(args: _*) // error
   }
 }

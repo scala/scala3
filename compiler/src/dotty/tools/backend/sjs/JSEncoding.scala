@@ -231,13 +231,8 @@ object JSEncoding {
   }
 
   /** Computes the type ref for a type, to be used in a method signature. */
-  private def paramOrResultTypeRef(tpe: Type)(using Context): jstpe.TypeRef = {
-    toTypeRef(tpe) match {
-      case jstpe.ClassRef(ScalaRuntimeNullClassName)    => jstpe.NullRef
-      case jstpe.ClassRef(ScalaRuntimeNothingClassName) => jstpe.NothingRef
-      case otherTypeRef                                 => otherTypeRef
-    }
-  }
+  private def paramOrResultTypeRef(tpe: Type)(using Context): jstpe.TypeRef =
+    toParamOrResultTypeRef(toTypeRef(tpe))
 
   def encodeLocalSym(sym: Symbol)(
       implicit ctx: Context, pos: ir.Position, localNames: LocalNameGenerator): js.LocalIdent = {
@@ -282,6 +277,15 @@ object JSEncoding {
       ScalaRuntimeNullClassName
     else
       ClassName(sym1.javaClassName)
+  }
+
+  /** Converts a general TypeRef to a TypeRef to be used in a method signature. */
+  def toParamOrResultTypeRef(typeRef: jstpe.TypeRef): jstpe.TypeRef = {
+    typeRef match {
+      case jstpe.ClassRef(ScalaRuntimeNullClassName)    => jstpe.NullRef
+      case jstpe.ClassRef(ScalaRuntimeNothingClassName) => jstpe.NothingRef
+      case _                                            => typeRef
+    }
   }
 
   def toIRTypeAndTypeRef(tp: Type)(using Context): (jstpe.Type, jstpe.TypeRef) = {

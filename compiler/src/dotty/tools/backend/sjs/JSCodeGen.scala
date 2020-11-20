@@ -3199,26 +3199,24 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   /** Gen JS code for an asInstanceOf cast (for reference types only) */
-  private def genAsInstanceOf(value: js.Tree, to: Type)(
-      implicit pos: Position): js.Tree = {
+  private def genAsInstanceOf(value: js.Tree, to: Type)(implicit pos: Position): js.Tree =
+    genAsInstanceOf(value, toIRType(to))
 
-    val sym = to.typeSymbol
-
-    if (sym == defn.ObjectClass || sym.isJSType) {
-      /* asInstanceOf[Object] always succeeds, and
-       * asInstanceOf to a raw JS type is completely erased.
-       */
-      value
-    } else if (sym == defn.NullClass) {
-      js.If(
-          js.BinaryOp(js.BinaryOp.===, value, js.Null()),
-          js.Null(),
-          genThrowClassCastException())(
-          jstpe.NullType)
-    } else if (sym == defn.NothingClass) {
-      js.Block(value, genThrowClassCastException())
-    } else {
-      js.AsInstanceOf(value, toIRType(to))
+  /** Gen JS code for an asInstanceOf cast (for reference types only) */
+  private def genAsInstanceOf(value: js.Tree, to: jstpe.Type)(implicit pos: Position): js.Tree = {
+    to match {
+      case jstpe.AnyType =>
+        value
+      case jstpe.NullType =>
+        js.If(
+            js.BinaryOp(js.BinaryOp.===, value, js.Null()),
+            js.Null(),
+            genThrowClassCastException())(
+            jstpe.NullType)
+      case jstpe.NothingType =>
+        js.Block(value, genThrowClassCastException())
+      case _ =>
+        js.AsInstanceOf(value, to)
     }
   }
 
@@ -3558,48 +3556,56 @@ class JSCodeGen()(using genCtx: Context) {
    *  {{{
    *  reflectiveSelectable(structural).selectDynamic("foo")
    *  reflectiveSelectable(structural).applyDynamic("bar",
-   *    ClassTag(classOf[Int]), ClassTag(classOf[String])
+   *    classOf[Int], classOf[String]
    *  )(
    *    6, "hello"
    *  )
    *  }}}
    *
-   *  and eventually reach the back-end as
+   *  When the original `structural` value is already of a subtype of
+   *  `scala.reflect.Selectable`, there is no conversion involved. There could
+   *  also be any other arbitrary conversion, such as the deprecated bridge for
+   *  Scala 2's `import scala.language.reflectiveCalls`. In general, the shape
+   *  is therefore the following, for some `selectable: reflect.Selectable`:
    *
    *  {{{
-   *  reflectiveSelectable(structural).selectDynamic("foo") // same as above
-   *  reflectiveSelectable(structural).applyDynamic("bar",
-   *    wrapRefArray([ ClassTag(classOf[Int]), ClassTag(classOf[String]) : ClassTag ]
+   *  selectable.selectDynamic("foo")
+   *  selectable.applyDynamic("bar",
+   *    classOf[Int], classOf[String]
+   *  )(
+   *    6, "hello"
+   *  )
+   *  }}}
+   *
+   *  and eventually reaches the back-end as
+   *
+   *  {{{
+   *  selectable.selectDynamic("foo") // same as above
+   *  selectable.applyDynamic("bar",
+   *    wrapRefArray([ classOf[Int], classOf[String] : jl.Class ]
    *  )(
    *    genericWrapArray([ Int.box(6), "hello" : Object ])
    *  )
    *  }}}
    *
-   *  If we use the deprecated `import scala.language.reflectiveCalls`, the
-   *  wrapper for the receiver `structural` are the following instead:
-   *
-   *  {{{
-   *  reflectiveSelectableFromLangReflectiveCalls(structural)(
-   *    using scala.languageFeature.reflectiveCalls)
-   *  }}}
-   *
-   *  (in which case we don't care about the contextual argument).
-   *
    *  In SJSIR, they must be encoded as follows:
    *
    *  {{{
-   *  structural.foo;R()
-   *  structural.bar;I;Ljava.lang.String;R(
+   *  selectable.selectedValue;O().foo;R()
+   *  selectable.selectedValue;O().bar;I;Ljava.lang.String;R(
    *    Int.box(6).asInstanceOf[int],
    *    "hello".asInstanceOf[java.lang.String]
    *  )
    *  }}}
    *
+   *  where `selectedValue;O()` is declared in `scala.reflect.Selectable` and
+   *  holds the actual instance on which to perform the reflective operations.
+   *  For the typical use case from the first snippet, it returns `structural`.
+   *
    *  This means that we must deconstruct the elaborated calls to recover:
    *
-   *  - the original receiver `structural`
    *  - the method name as a compile-time string `foo` or `bar`
-   *  - the `tp: Type`s that have been wrapped in `ClassTag(classOf[tp])`, as a
+   *  - the `tp: Type`s that have been wrapped in `classOf[tp]`, as a
    *    compile-time List[Type], from which we'll derive `jstpe.Type`s for the
    *    `asInstanceOf`s and `jstpe.TypeRef`s for the `MethodName.reflectiveProxy`
    *  - the actual arguments as a compile-time `List[Tree]`
@@ -3609,26 +3615,10 @@ class JSCodeGen()(using genCtx: Context) {
    */
   private def genReflectiveCall(tree: Apply, isSelectDynamic: Boolean): js.Tree = {
     implicit val pos = tree.span
-    val Apply(fun @ Select(receiver0, _), args) = tree
+    val Apply(fun @ Select(receiver, _), args) = tree
 
-    /* Extract the real receiver, which is the first argument to one of the
-     * implicit conversions scala.reflect.Selectable.reflectiveSelectable or
-     * scala.Selectable.reflectiveSelectableFromLangReflectiveCalls.
-     */
-    val receiver = receiver0 match {
-      case Apply(fun1, receiver :: _)
-          if fun1.symbol == jsdefn.ReflectSelectable_reflectiveSelectable ||
-              fun1.symbol == jsdefn.Selectable_reflectiveSelectableFromLangReflectiveCalls =>
-        genExpr(receiver)
-
-      case _ =>
-        report.error(
-            "The receiver of Selectable.selectDynamic or Selectable.applyDynamic " +
-            "must be a call to the (implicit) method scala.reflect.Selectable.reflectiveSelectable. " +
-            "Other uses are not supported in Scala.js.",
-            tree.sourcePos)
-        js.Undefined()
-    }
+    val selectedValueTree = js.Apply(js.ApplyFlags.empty, genExpr(receiver),
+        js.MethodIdent(selectedValueMethodName), Nil)(jstpe.AnyType)
 
     // Extract the method name as a String
     val methodNameStr = args.head match {
@@ -3648,27 +3638,19 @@ class JSCodeGen()(using genCtx: Context) {
     } else {
       // Extract the param type refs and actual args from the 2nd and 3rd argument to applyDynamic
       args.tail match {
-        case WrapArray(classTagsArray: JavaSeqLiteral) :: WrapArray(actualArgsAnyArray: JavaSeqLiteral) :: Nil =>
-          // Extract jstpe.Type's and jstpe.TypeRef's from the ClassTag.apply(_) trees
-          val formalParamTypesAndTypeRefs = classTagsArray.elems.map {
-            // ClassTag.apply(classOf[tp]) -> tp
-            case Apply(fun, Literal(const) :: Nil)
-                if fun.symbol == defn.ClassTagModule_apply && const.tag == Constants.ClazzTag =>
+        case WrapArray(classOfsArray: JavaSeqLiteral) :: WrapArray(actualArgsAnyArray: JavaSeqLiteral) :: Nil =>
+          // Extract jstpe.Type's and jstpe.TypeRef's from the classOf[_] trees
+          val formalParamTypesAndTypeRefs = classOfsArray.elems.map {
+            // classOf[tp] -> tp
+            case Literal(const) if const.tag == Constants.ClazzTag =>
               toIRTypeAndTypeRef(const.typeValue)
-            // ClassTag.SpecialType -> erasure(SepecialType.typeRef) (e.g., ClassTag.Any -> Object)
-            case Apply(Select(classTagModule, name), Nil)
-                if classTagModule.symbol == defn.ClassTagModule &&
-                    defn.SpecialClassTagClasses.exists(_.name == name.toTypeName) =>
-              toIRTypeAndTypeRef(TypeErasure.erasure(
-                  defn.SpecialClassTagClasses.find(_.name == name.toTypeName).get.typeRef))
             // Anything else is invalid
-            case classTag =>
+            case otherTree =>
               report.error(
-                  "The ClassTags passed to Selectable.applyDynamic must be " +
-                  "literal ClassTag(classOf[T]) expressions " +
-                  "(typically compiler-generated). " +
+                  "The java.lang.Class[_] arguments passed to Selectable.applyDynamic must be " +
+                  "literal classOf[T] expressions (typically compiler-generated). " +
                   "Other uses are not supported in Scala.js.",
-                  classTag.sourcePos)
+                  otherTree.sourcePos)
               (jstpe.AnyType, jstpe.ClassRef(jsNames.ObjectClass))
           }
 
@@ -3676,10 +3658,10 @@ class JSCodeGen()(using genCtx: Context) {
           val actualArgs = actualArgsAnyArray.elems.zip(formalParamTypesAndTypeRefs).map {
             (actualArgAny, formalParamTypeAndTypeRef) =>
               val genActualArgAny = genExpr(actualArgAny)
-              js.AsInstanceOf(genActualArgAny, formalParamTypeAndTypeRef._1)(genActualArgAny.pos)
+              genAsInstanceOf(genActualArgAny, formalParamTypeAndTypeRef._1)(genActualArgAny.pos)
           }
 
-          (formalParamTypesAndTypeRefs.map(_._2), actualArgs)
+          (formalParamTypesAndTypeRefs.map(pair => toParamOrResultTypeRef(pair._2)), actualArgs)
 
         case _ =>
           report.error(
@@ -3692,7 +3674,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     val methodName = MethodName.reflectiveProxy(methodNameStr, formalParamTypeRefs)
 
-    js.Apply(js.ApplyFlags.empty, receiver, js.MethodIdent(methodName), actualArgs)(jstpe.AnyType)
+    js.Apply(js.ApplyFlags.empty, selectedValueTree, js.MethodIdent(methodName), actualArgs)(jstpe.AnyType)
   }
 
   /** Gen actual actual arguments to Scala method call.
@@ -4306,10 +4288,13 @@ object JSCodeGen {
   private val NullPointerExceptionClass = ClassName("java.lang.NullPointerException")
   private val JSObjectClassName = ClassName("scala.scalajs.js.Object")
 
+  private val ObjectClassRef = jstpe.ClassRef(ir.Names.ObjectClass)
+
   private val newSimpleMethodName = SimpleMethodName("new")
 
-  private val ObjectArgConstructorName =
-    MethodName.constructor(List(jstpe.ClassRef(ir.Names.ObjectClass)))
+  private val selectedValueMethodName = MethodName("selectedValue", Nil, ObjectClassRef)
+
+  private val ObjectArgConstructorName = MethodName.constructor(List(ObjectClassRef))
 
   private val thisOriginalName = OriginalName("this")
 

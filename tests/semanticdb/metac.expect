@@ -50,7 +50,7 @@ Uri => Advanced.scala
 Text => empty
 Language => Scala
 Symbols => 34 entries
-Occurrences => 91 entries
+Occurrences => 90 entries
 
 Symbols:
 advanced/C# => class C
@@ -161,7 +161,6 @@ Occurrences:
 [28:12..28:13): s -> advanced/Test.s.
 [28:14..28:16): s3 -> advanced/Structural#s3().
 [28:16..28:16): -> scala/reflect/Selectable#applyDynamic().
-[28:18..28:18): -> scala/reflect/ClassTag.apply().
 [28:19..28:22): ??? -> scala/Predef.`???`().
 [30:6..30:7): e <- advanced/Test.e.
 [30:14..30:23): Wildcards -> advanced/Wildcards#

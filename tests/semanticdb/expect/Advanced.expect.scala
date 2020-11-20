@@ -26,7 +26,7 @@ object Test/*<-advanced::Test.*/ {
   val s2/*<-advanced::Test.s2.*/ = s/*->advanced::Test.s.*/.s2/*->advanced::Structural#s2().*/
   val s2x/*<-advanced::Test.s2x.*/ = /*->scala::reflect::Selectable.reflectiveSelectable().*/s/*->advanced::Test.s.*/.s2/*->advanced::Structural#s2().*//*->scala::reflect::Selectable#selectDynamic().*/.x
   val s3/*<-advanced::Test.s3.*/ = s/*->advanced::Test.s.*/.s3/*->advanced::Structural#s3().*/
-  val s3x/*<-advanced::Test.s3x.*/ = /*->scala::reflect::Selectable.reflectiveSelectable().*/s/*->advanced::Test.s.*/.s3/*->advanced::Structural#s3().*//*->scala::reflect::Selectable#applyDynamic().*/.m/*->scala::reflect::ClassTag.apply().*/(???/*->scala::Predef.`???`().*/)
+  val s3x/*<-advanced::Test.s3x.*/ = /*->scala::reflect::Selectable.reflectiveSelectable().*/s/*->advanced::Test.s.*/.s3/*->advanced::Structural#s3().*//*->scala::reflect::Selectable#applyDynamic().*/.m(???/*->scala::Predef.`???`().*/)
 
   val e/*<-advanced::Test.e.*/ = new Wildcards/*->advanced::Wildcards#*/
   val e1/*<-advanced::Test.e1.*/ = e/*->advanced::Test.e.*/.e1/*->advanced::Wildcards#e1().*/

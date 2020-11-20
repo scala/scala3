@@ -35,13 +35,17 @@ def selectDynamic(name: String): T
 ```
 Often, the return type `T` is `Any`.
 
-The `applyDynamic` method is used for selections that are applied to arguments. It takes a method name and possibly `ClassTag`s representing its parameters types as well as the arguments to pass to the function.
+Unlike `scala.Dynamic`, there is no special meaning for an `updateDynamic` method.
+However, we reserve the right to give it meaning in the future.
+Consequently, it is recommended not to define any member called `updateDynamic` in `Selectable`s.
+
+The `applyDynamic` method is used for selections that are applied to arguments. It takes a method name and possibly `Class`es representing its parameters types as well as the arguments to pass to the function.
 Its signature should be of one of the two following forms:
 ```scala
 def applyDynamic(name: String)(args: Any*): T
-def applyDynamic(name: String, ctags: ClassTag[?]*)(args: Any*): T
+def applyDynamic(name: String, ctags: Class[?]*)(args: Any*): T
 ```
-Both versions are passed the actual arguments in the `args` parameter. The second version takes in addition a vararg argument of class tags that identify the method's parameter classes. Such an argument is needed
+Both versions are passed the actual arguments in the `args` parameter. The second version takes in addition a vararg argument of `java.lang.Class`es that identify the method's parameter classes. Such an argument is needed
 if `applyDynamic` is implemented using Java reflection, but it could be
 useful in other cases as well. `selectDynamic` and `applyDynamic` can also take additional context parameters in using clauses. These are resolved in the normal way at the callsite.
 
@@ -58,13 +62,13 @@ and `Rs` are structural refinement declarations, and given `v.a` of type `U`, we
   v.applyDynamic("a")(a11, ..., a1n, ..., aN1, ..., aNn)
     .asInstanceOf[R]
   ```
-  If this call resolves to an `applyDynamic` method of the second form that takes a `ClassTag[?]*` argument, we further rewrite this call to
+  If this call resolves to an `applyDynamic` method of the second form that takes a `Class[?]*` argument, we further rewrite this call to
   ```scala
-  v.applyDynamic("a", CT11, ..., CT1n, ..., CTN1, ... CTNn)(
+  v.applyDynamic("a", c11, ..., c1n, ..., cN1, ... cNn)(
     a11, ..., a1n, ..., aN1, ..., aNn)
     .asInstanceOf[R]
   ```
-   where each `CT_ij` is the class tag of the type of the formal parameter `Tij`
+   where each `c_ij` is the literal `java.lang.Class[?]` of the type of the formal parameter `Tij`, i.e., `classOf[Tij]`.
 
 - If `U` is neither a value nor a method type, or a dependent method
   type, an error is emitted.
