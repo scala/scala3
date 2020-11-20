@@ -1,29 +1,15 @@
 ---
-title: Dottydoc Specific Tags and Behavior
+title: Scala3doc-specific Tags and Features
 ---
 
 # {{page.title}}
 
-Scala3doc extends markdown with some unique behaviors such as linking to API. This can be used from within static documentation and blog posts to provide blend-in content.
+Scala3doc extends Markdown with additional features, such as linking
+to API definitions. This can be used from within static documentation and blog
+posts to provide blend-in content.
 
 ## Linking to API
 
-If you for instance, want to link to `scala.collection.immutable.Seq` in a
-markdown file, you can simply use the canonical path in your url:
-
-```markdown
-[Seq](scala.collection.immutable.Seq)
-```
-
-Linking to members is done in the same fashion:
-
-```markdown
-[Seq](scala.collection.immutable.Seq.isEmpty)
-```
-
-Scala3doc denotes objects by ending their names in "$". To select `List.range`
-you'd therefore write:
-
-```markdown
-[List.range](scala.collection.immutable.List$.range)
-```
+Scala3doc allows linking to API documentation with Wiki-style links. Linking to
+`scala.collection.immutable.List` is as simple as
+`[[scala.collection.immutable.List]]`. For more information on the exact syntax, see [doc comment documentation](./docComments.html#definition-links).

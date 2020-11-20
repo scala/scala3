@@ -4,16 +4,42 @@ title: API Documentation
 
 # {{ page.title }}
 
-Scala3doc main feature is to create API documentation based on [doc comments](https://docs.scala-lang.org/style/scaladoc.html) known from scaladoc as well well as new syntax introduced in Scala 3.
+Scala3doc's main feature is creating API documentation from code comments.
 
-## New syntax
+By default, the code comments are understood as Markdown, though we also support
+Scaladoc's old [Wiki syntax](https://docs.scala-lang.org/style/scaladoc.html).
 
-### Links
+## Syntax
 
-The goal with the link syntax was to be as Scaladoc-compatible as possible,
-while also making the links a bit more pleasant to type and read.
-For the time being, Scala3doc mostly keeps Scaladoc's definition link syntax. We
-did, however, implement some improvements to it:
+### Definition links
+
+Our definition link syntax is quite close to Scaladoc's syntax, though we have made some
+quality-of-life improvements.
+
+#### Basic syntax
+
+A definition link looks as follows: `[[scala.collection.immutable.List]]`.
+
+Which is to say, a definition link is a sequence of identifiers separated by
+`.`. The identifiers can be separated with `#` as well for Scaladoc compatibility.
+
+By default, an identifier `id` references the first (in source order) entity
+named `id`. An identifier can end with `$`, which forces it to refer to a value
+(an object, a value, a given); an identifier can also end with `!`, which forces
+it to refer to a type (a class, a type alias, a type member).
+
+The links are resolved relative to the current location in source. That is, when
+documenting a class, the links are relative to the entity enclosing the class (a
+package, a class, an object); the same applies to documenting definitions.
+
+Special characters in links can be backslash-escaped, which makes them part of
+identifiers instead. For example, `` [[scala.collection.immutable\.List]] ``
+references the class named `` `immutable.List` `` in package `scala.collection`.
+
+#### New syntax
+
+We have extended Scaladoc definition links to make them a bit more pleasant to
+write and read in source. The new syntax features are:
 
 1. `package` can be used as a prefix to reference the enclosing package
     Example:
@@ -51,7 +77,7 @@ did, however, implement some improvements to it:
     Scaladoc required backslash-escaping to reference such identifiers. Instead,
     Scala3doc allows using the familiar Scala backtick quotation.
 
-### Why keep the Wiki syntax?
+#### Why keep the Wiki syntax for links?
 
 There are a few reasons why we've kept the Wiki syntax for documentation links
 instead of reusing the Markdown syntax. Those are:
