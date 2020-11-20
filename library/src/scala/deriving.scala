@@ -36,7 +36,7 @@ object deriving {
       type MirroredType = this.type
       type MirroredElemTypes = EmptyTuple
       type MirroredElemLabels = EmptyTuple
-      def fromProduct(p: scala.Product) = this
+      def fromProduct(p: scala.Product): MirroredMonoType = this
     }
 
     /** A proxy for Scala 2 singletons, which do not inherit `Singleton` directly */
@@ -45,7 +45,7 @@ object deriving {
       type MirroredType = value.type
       type MirroredElemTypes = EmptyTuple
       type MirroredElemLabels = EmptyTuple
-      def fromProduct(p: scala.Product) = value
+      def fromProduct(p: scala.Product): MirroredMonoType = value
     }
 
     type Of[T]        = Mirror { type MirroredType = T; type MirroredMonoType = T ; type MirroredElemTypes <: Tuple }
@@ -57,16 +57,16 @@ object deriving {
   class ArrayProduct(val elems: Array[AnyRef]) extends Product {
     def this(size: Int) = this(new Array[AnyRef](size))
     def canEqual(that: Any): Boolean = true
-    def productElement(n: Int) = elems(n)
-    def productArity = elems.length
+    def productElement(n: Int): Any = elems(n)
+    def productArity: Int = elems.length
     override def productIterator: Iterator[Any] = elems.iterator
-    def update(n: Int, x: Any) = elems(n) = x.asInstanceOf[AnyRef]
+    def update(n: Int, x: Any): Unit = elems(n) = x.asInstanceOf[AnyRef]
   }
 
   /** The empty product */
   object EmptyProduct extends ArrayProduct(Array.emptyObjectArray)
 
   /** Helper method to select a product element */
-  def productElement[T](x: Any, idx: Int) =
+  def productElement[T](x: Any, idx: Int): T =
     x.asInstanceOf[Product].productElement(idx).asInstanceOf[T]
 }
