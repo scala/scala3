@@ -155,7 +155,7 @@ class ReplCompilerTests extends ReplTest {
     fromInitialState { implicit state => run("given Int = 10") }
     .andThen         { implicit state =>
       assertEquals(
-        "def given_Int: Int",
+        "lazy val given_Int: Int",
         storedOutput().trim
       )
       run("implicitly[Int]")
