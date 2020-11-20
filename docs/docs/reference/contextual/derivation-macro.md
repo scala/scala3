@@ -91,7 +91,7 @@ The implementation of `summonAll` as a macro can be show below assuming that we
 have the given instances for our primitive types:
 
 ```scala
-  def summonAll[T: Type](using qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
+  def summonAll[T: Type](using qctx: QuoteContext): List[Expr[Eq[_]]] = Type.of[T] match {
     case '[String *: tpes] => '{ summon[Eq[String]] }  :: summonAll[tpes]
     case '[Int *: tpes]    => '{ summon[Eq[Int]] }     :: summonAll[tpes]
     case '[tpe *: tpes]   => derived[tpe] :: summonAll[tpes]
@@ -169,7 +169,7 @@ object Eq {
       def eqv(x: T, y: T): Boolean = body(x, y)
     }
 
-  def summonAll[T: Type](using qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
+  def summonAll[T: Type](using qctx: QuoteContext): List[Expr[Eq[_]]] = Type.of[T] match {
     case '[String *: tpes] => '{ summon[Eq[String]] }  :: summonAll[tpes]
     case '[Int *: tpes]    => '{ summon[Eq[Int]] }     :: summonAll[tpes]
     case '[tpe *: tpes]   => derived[tpe] :: summonAll[tpes]
@@ -217,7 +217,7 @@ object Eq {
 }
 
 object Macro3 {
-  extension [T](inline x: T) 
+  extension [T](inline x: T)
     inline def === (inline y: T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
 
   implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
