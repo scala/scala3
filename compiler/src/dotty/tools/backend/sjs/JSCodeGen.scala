@@ -1048,9 +1048,6 @@ class JSCodeGen()(using genCtx: Context) {
           "Malformed parameter list: " + vparamss)
       val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
 
-      val isJSClassConstructor =
-        sym.isClassConstructor && currentClassSym.isNonNativeJSClass
-
       val methodName = encodeMethodSym(sym)
       val originalName = originalNameOfMethod(sym)
 
@@ -1089,18 +1086,17 @@ class JSCodeGen()(using genCtx: Context) {
         }
 
         val methodDef = {
-          if (isJSClassConstructor) {
+          if (sym.isClassConstructor) {
             val body0 = genStat(rhs)
-            val body1 =
-              if (!sym.isPrimaryConstructor) body0
-              else moveAllStatementsAfterSuperConstructorCall(body0)
-            js.MethodDef(js.MemberFlags.empty, methodName, originalName,
-                jsParams, jstpe.NoType, Some(body1))(optimizerHints, None)
-          } else if (sym.isClassConstructor) {
+            val body1 = {
+              val needsMove = currentClassSym.isNonNativeJSClass && sym.isPrimaryConstructor
+              if (needsMove) moveAllStatementsAfterSuperConstructorCall(body0)
+              else body0
+            }
             val namespace = js.MemberNamespace.Constructor
             js.MethodDef(js.MemberFlags.empty.withNamespace(namespace),
-                methodName, originalName, jsParams, jstpe.NoType,
-                Some(genStat(rhs)))(optimizerHints, None)
+                methodName, originalName, jsParams, jstpe.NoType, Some(body1))(
+                optimizerHints, None)
           } else {
             val namespace = if (isMethodStaticInIR(sym)) {
               if (sym.isPrivate) js.MemberNamespace.PrivateStatic
