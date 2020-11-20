@@ -27,11 +27,8 @@ object Eql {
   given eqlString as Eql[String, String] = derived
 
   // The next three definitions can go into the companion objects of classes
-  // Seq, Set, and Proxy. For now they are here in order not to have to touch the
+  // Seq and Set. For now they are here in order not to have to touch the
   // source code of these classes
   given eqlSeq[T, U](using eq: Eql[T, U]) as Eql[Seq[T], Seq[U]] = derived
   given eqlSet[T, U](using eq: Eql[T, U]) as Eql[Set[T], Set[U]] = derived
-
-  // true asymmetry, modeling the (somewhat problematic) nature of equals on Proxies
-  given eqlProxy as Eql[Proxy, AnyRef]  = derived
 }
