@@ -13,39 +13,6 @@ object DottyPredef {
       scala.runtime.Scala3RunTime.assertFailed()
   }
 
-  inline final def implicitly[T](implicit ev: T): T = ev
-
-  /** Used to mark code blocks as being expressions, instead of being taken as part of anonymous classes and the like.
-   *  This is just a different name for [[identity]].
-   *
-   *  @example Separating code blocks from `new`:
-   *           {{{
-   *             val x = new AnyRef
-   *             {
-   *               val y = ...
-   *               println(y)
-   *             }
-   *             // the { ... } block is seen as the body of an anonymous class
-   *
-   *             val x = new AnyRef
-   *
-   *             {
-   *               val y = ...
-   *               println(y)
-   *             }
-   *             // an empty line is a brittle "fix"
-   *
-   *             val x = new AnyRef
-   *             locally {
-   *               val y = ...
-   *               println(y)
-   *             }
-   *             // locally guards the block and helps communicate intent
-   *           }}}
-   *  @group utilities
-   */
-  inline def locally[T](inline body: T): T = body
-
   /**
    * Retrieve the single value of a type with a unique inhabitant.
    *

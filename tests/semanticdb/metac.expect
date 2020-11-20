@@ -2776,7 +2776,7 @@ Occurrences:
 [20:8..20:18): number1Var -> example/ValPattern#number1Var().
 [21:8..21:15): leftVar -> example/ValPattern#leftVar().
 [22:8..22:16): rightVar -> example/ValPattern#rightVar().
-[25:4..25:11): locally -> dotty/DottyPredef.locally().
+[25:4..25:11): locally -> scala/Predef.locally().
 [26:11..26:15): left <- local0
 [26:17..26:22): right <- local1
 [26:27..26:27): -> scala/Tuple2.apply().
@@ -3151,7 +3151,7 @@ Occurrences:
 [0:8..0:15): example <- example/
 [2:7..2:17): local-file <- example/`local-file`#
 [3:2..3:2): <- example/`local-file`#`<init>`().
-[3:2..3:9): locally -> dotty/DottyPredef.locally().
+[3:2..3:9): locally -> scala/Predef.locally().
 [4:8..4:13): local <- local0
 [5:4..5:9): local -> local0
 [5:10..5:11): + -> scala/Int#`+`(+4).

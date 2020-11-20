@@ -73,7 +73,9 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       }
   }
 
-  @Test def inlineLocally = {
+  /** Disabled since locally comes from Predef now
+  @Test
+  def inlineLocally = {
     val source =
          """
          |class Foo {
@@ -103,6 +105,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
         diffInstructions(instructions1, instructions2))
     }
   }
+  */
 
   @Test def inlineNn = {
     val source =
