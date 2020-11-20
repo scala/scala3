@@ -12,6 +12,7 @@ import ast.{tpd, untpd, Trees}
 import Trees._
 import scala.util.control.NonFatal
 import util.Spans.Span
+import Nullables._
 
 /** A version of Typer that keeps all symbols defined and referenced in a
  *  previously typed tree.
@@ -53,13 +54,15 @@ class ReTyper extends Typer with ReChecking {
 
   override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree = {
     assertTyped(tree)
+
     val tpt1 = checkSimpleKinded(typedType(tree.tpt))
     val expr1 = tree.expr match {
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
         tree.expr.withType(tpt1.tpe)
       case _ => typed(tree.expr)
     }
-    untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
+    val result = untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
+    if ctx.mode.isExpr then result.withNotNullInfo(expr1.notNullInfo) else result
   }
 
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =

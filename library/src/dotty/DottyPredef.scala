@@ -3,15 +3,11 @@ package dotty
 object DottyPredef {
   import compiletime.summonFrom
 
-  inline final def assert(inline assertion: Boolean, inline message: => Any): Unit = {
-    if (!assertion)
-      scala.runtime.Scala3RunTime.assertFailed(message)
-  }
+  inline def assert(inline assertion: Boolean, inline message: => Any): Unit =
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed(message)
 
-  transparent inline final def assert(inline assertion: Boolean): Unit = {
-    if (!assertion)
-      scala.runtime.Scala3RunTime.assertFailed()
-  }
+  inline def assert(inline assertion: Boolean): Unit =
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed()
 
   /**
    * Retrieve the single value of a type with a unique inhabitant.
