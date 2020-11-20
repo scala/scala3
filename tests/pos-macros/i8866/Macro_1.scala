@@ -15,6 +15,7 @@ object Macro {
     import qctx.reflect._
 
     ValDef.let(
+      Symbol.currentOwner,
       Select.unique(
         Term.of('{ OtherMacro }),
         "apply"

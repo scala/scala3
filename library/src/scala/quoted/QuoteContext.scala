@@ -386,13 +386,14 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
       def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])]
 
       /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }` */
-      def let(name: String, rhs: Term)(body: Ident => Term): Term
+      def let(owner: Symbol, name: String, rhs: Term)(body: Ident => Term): Term
 
       /** Creates a block `{ val x = <rhs: Term>; <body(x): Term> }` */
-      def let(rhs: Term)(body: Ident => Term): Term = let("x", rhs)(body)
+      def let(owner: Symbol, rhs: Term)(body: Ident => Term): Term =
+        let(owner, "x", rhs)(body)
 
       /** Creates a block `{ val x1 = <terms(0): Term>; ...; val xn = <terms(n-1): Term>; <body(List(x1, ..., xn)): Term> }` */
-      def let(terms: List[Term])(body: List[Ident] => Term): Term
+      def let(owner: Symbol, terms: List[Term])(body: List[Ident] => Term): Term
     }
 
     given ValDefMethods as ValDefMethods = ValDefMethodsImpl
@@ -2672,6 +2673,17 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     val Symbol: SymbolModule
 
     trait SymbolModule { this: Symbol.type =>
+
+      /** Symbol of the definition that encloses the current splicing context.
+       *
+       *  For example, the following call to `spliceOwner` would return the symbol `x`.
+       *  ```
+       *  val x = ${ ... Symbol.spliceOwner ... }
+       *  ```
+       *
+       *   For a macro splice, it is the symbol of the definition where the macro expansion happens.
+       */
+      def spliceOwner: Symbol
 
       /** Returns the symbol of the current enclosing definition */
       def currentOwner(using ctx: Context): Symbol
