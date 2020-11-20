@@ -137,7 +137,7 @@ object Matcher {
 
     extension (scrutinees: List[Tree]):
       /** Check that all trees match with =?= and concatenate the results with &&& */
-      private def =?= (patterns: List[Tree])(using Context, Env): Matching =
+      private def =?= (patterns: List[Tree])(using Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
     extension (scrutinee0: Tree):
@@ -149,7 +149,7 @@ object Matcher {
        *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
        *  @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
        */
-      private def =?= (pattern0: Tree)(using Context, Env): Matching = {
+      private def =?= (pattern0: Tree)(using Env): Matching = {
 
         /* Match block flattening */ // TODO move to cases
         /** Normalize the tree */
@@ -299,7 +299,7 @@ object Matcher {
           /* Match val */
           case (ValDef(_, tpt1, rhs1), ValDef(_, tpt2, rhs2)) if checkValFlags() =>
             def rhsEnv = summon[Env] + (scrutinee.symbol -> pattern.symbol)
-            tpt1 =?= tpt2 &&& treeOptMatches(rhs1, rhs2)(using summon[Context], rhsEnv)
+            tpt1 =?= tpt2 &&& treeOptMatches(rhs1, rhs2)(using rhsEnv)
 
           /* Match def */
           case (DefDef(_, typeParams1, paramss1, tpt1, Some(rhs1)), DefDef(_, typeParams2, paramss2, tpt2, Some(rhs2))) =>
@@ -348,11 +348,11 @@ object Matcher {
 
     private object ClosedPatternTerm {
       /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
-      def unapply(term: Term)(using Context, Env): Option[term.type] =
+      def unapply(term: Term)(using Env): Option[term.type] =
         if freePatternVars(term).isEmpty then Some(term) else None
 
       /** Return all free variables of the term defined in the pattern (i.e. defined in `Env`) */
-      def freePatternVars(term: Term)(using ctx: Context, env: Env): Set[Symbol] =
+      def freePatternVars(term: Term)(using env: Env): Set[Symbol] =
         val accumulator = new TreeAccumulator[Set[Symbol]] {
           def foldTree(x: Set[Symbol], tree: Tree)(owner: Symbol): Set[Symbol] =
             tree match
@@ -363,7 +363,7 @@ object Matcher {
     }
 
     private object IdentArgs {
-      def unapply(args: List[Term])(using Context): Option[List[Ident]] =
+      def unapply(args: List[Term]): Option[List[Ident]] =
         args.foldRight(Option(List.empty[Ident])) {
           case (id: Ident, Some(acc)) => Some(id :: acc)
           case (Block(List(DefDef("$anonfun", Nil, List(params), Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
@@ -373,7 +373,7 @@ object Matcher {
         }
     }
 
-    private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree])(using Context, Env): Matching = {
+    private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree])(using Env): Matching = {
       (scrutinee, pattern) match {
         case (Some(x), Some(y)) => x =?= y
         case (None, None) => matched

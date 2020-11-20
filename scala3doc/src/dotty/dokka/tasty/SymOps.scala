@@ -15,11 +15,11 @@ class SymOps[Q <: QuoteContext](val q: Q):
 
   given Q = q
   extension (sym: Symbol):
-    def packageName(using ctx: Context): String =
+    def packageName: String =
       if (sym.isPackageDef) sym.fullName
       else sym.maybeOwner.packageName
 
-    def topLevelEntryName(using ctx: Context): Option[String] = if (sym.isPackageDef) None else
+    def topLevelEntryName: Option[String] = if (sym.isPackageDef) None else
       if (sym.owner.isPackageDef) Some(sym.name) else sym.owner.topLevelEntryName
 
     def getVisibility(): Visibility =
@@ -50,7 +50,7 @@ class SymOps[Q <: QuoteContext](val q: Q):
     // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
     def hackIsOpen: Boolean = {
       import dotty.tools.dotc
-      given dotc.core.Contexts.Context = qctx.reflect.rootContext.asInstanceOf
+      given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
       val symbol = sym.asInstanceOf[dotc.core.Symbols.Symbol]
       symbol.is(dotc.core.Flags.Open)
     }

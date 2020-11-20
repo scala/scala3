@@ -170,17 +170,6 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    */
   trait Reflection { self: reflect.type =>
 
-    //////////////
-    // CONTEXTS //
-    //////////////
-
-    /** Context containing information on the current owner */
-    type Context <: AnyRef
-
-    /** Context of the macro expansion */
-    def rootContext: Context // TODO: Should this be moved to QuoteContext?
-    given Context = rootContext // TODO: Should be an implicit converion from QuoteContext to Context
-
     ///////////////
     //   TREES   //
     ///////////////
