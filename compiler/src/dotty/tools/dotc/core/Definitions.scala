@@ -843,10 +843,10 @@ class Definitions {
   @tu lazy val EqlClass: ClassSymbol = requiredClass("scala.Eql")
     def Eql_eqlAny(using Context): TermSymbol = EqlClass.companionModule.requiredMethod(nme.eqlAny)
 
-  @tu lazy val TypeBoxClass: ClassSymbol = requiredClass("scala.internal.TypeBox")
+  @tu lazy val TypeBoxClass: ClassSymbol = requiredClass("scala.runtime.TypeBox")
     @tu lazy val TypeBox_CAP: TypeSymbol = TypeBoxClass.requiredType(tpnme.CAP)
 
-  @tu lazy val MatchCaseClass: ClassSymbol = requiredClass("scala.internal.MatchCase")
+  @tu lazy val MatchCaseClass: ClassSymbol = requiredClass("scala.runtime.MatchCase")
   @tu lazy val NotClass: ClassSymbol = requiredClass("scala.util.Not")
     @tu lazy val Not_value: Symbol = NotClass.companionModule.requiredMethod(nme.value)
 
