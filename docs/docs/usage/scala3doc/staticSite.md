@@ -5,10 +5,10 @@ title: Static docucmentation
 # {{ page.title}}
 
 Scala3doc is able to generate static sites, known from [Jekyll](http://jekyllrb.com/) or [Docusaurus](https://docusaurus.io/).
-Having a combined tool allows to provide interaction between static documentation and API thus allowing the two to blend naturally.
+Having a combined tool allows to provide interaction between static documentation and API, thus allowing the two to blend naturally.
 
 Creating a site is just as simple as in Jekyll. The site root contains the
-layout of the site and all files placed here will be either considered static,
+layout of the site and all files placed there will be either considered static,
 or processed for template expansion.
 
 The files that are considered for template expansion must end in `*.{html,md}`
@@ -22,7 +22,7 @@ A simple "hello world" site could look something like this:
 └── index.html
 ```
 
-This will give you a site with the following files in genrated documentation:
+This will give you a site with the following files in generated documentation:
 
 ```
 index.html
@@ -40,20 +40,20 @@ documentation.
 In Scala3doc, all templates can contain YAML front-matter. The front-matter
 is parsed and put into the `page` variable available in templates via Liquid.
 
-Scala3doc uses some predefied properties to controls some aspect of page.
+Scala3doc uses some predefined properties to controls some aspect of page.
 
 Predefined properties:
 
  - **title** provide page title that will be used in navigation and html metadata.
- - **extraCss** additional `.css` files that will be included in this page. Paths should be relative to documentation root. **This setting is not exported to template engine**
- - **extraJs** additional `.js` files that will be included in this page. Paths should be relative to documentation root. **This setting is not exported to template engine**
- - **hasFrame** when set to `false` page will not include default layout (navigation, breadcrumbs etc.) but only token html wrapper to provide metadata and resources (js and css files). **This setting is not exported to template engine**
-- **layout** - predefined layout to use, see below. **This setting is not exported to template engine**
+ - **extraCss** additional `.css` files that will be included in this page. Paths should be relative to documentation root. **This setting is not exported to template engine.**
+ - **extraJs** additional `.js` files that will be included in this page. Paths should be relative to documentation root. **This setting is not exported to template engine.**
+ - **hasFrame** when set to `false` page will not include default layout (navigation, breadcrumbs etc.) but only token html wrapper to provide metadata and resources (js and css files). **This setting is not exported to template engine.**
+- **layout** - predefined layout to use, see below. **This setting is not exported to template engine.**
 
 
 ## Using existing Templates and Layouts
 
-To perform template expansion, Dottydoc looks at `layout` in the front-matter.
+To perform template expansion, Dottydoc looks at the `layout` field in the front-matter.
 Here's a simple example of the templating system in action, `index.html`:
 
 ```html
@@ -94,7 +94,7 @@ Layouts must be placed in a `_layouts` directory in the site root:
 
 Sidebar
 =======
-Scala3doc by default use layout of files in `docs` directory to create table of content. There is also ability to override it by providing a `sidebar.yml` file in the site root:
+Scala3doc by default uses layout of files in `docs` directory to create table of content. There is also ability to override it by providing a `sidebar.yml` file in the site root:
 
 ```yaml
 sidebar:
