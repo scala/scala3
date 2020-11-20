@@ -107,7 +107,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
    *           +- TypeTree ----+- Inferred
    *           |               +- TypeIdent
    *           |               +- TypeSelect
-   *           |               +- Projection
+   *           |               +- TypeProjection
    *           |               +- Singleton
    *           |               +- Refined
    *           |               +- Applied
@@ -1323,28 +1323,28 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     end TypeSelectMethods
 
     /** Type tree representing a selection of definition with a given name on a given type prefix */
-    type Projection <: TypeTree
+    type TypeProjection <: TypeTree
 
-    given TypeTest[Tree, Projection] = ProjectionTypeTest
-    protected val ProjectionTypeTest: TypeTest[Tree, Projection]
+    given TypeTest[Tree, TypeProjection] = TypeProjectionTypeTest
+    protected val TypeProjectionTypeTest: TypeTest[Tree, TypeProjection]
 
-    val Projection: ProjectionModule
+    val TypeProjection: TypeProjectionModule
 
-    trait ProjectionModule { this: Projection.type =>
+    trait TypeProjectionModule { this: TypeProjection.type =>
       // TODO def apply(qualifier: TypeTree, name: String): Project
-      def copy(original: Tree)(qualifier: TypeTree, name: String): Projection
-      def unapply(x: Projection): Option[(TypeTree, String)]
+      def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection
+      def unapply(x: TypeProjection): Option[(TypeTree, String)]
     }
 
-    given ProjectionMethods as ProjectionMethods = ProjectionMethodsImpl
-    protected val ProjectionMethodsImpl: ProjectionMethods
+    given TypeProjectionMethods as TypeProjectionMethods = TypeProjectionMethodsImpl
+    protected val TypeProjectionMethodsImpl: TypeProjectionMethods
 
-    trait ProjectionMethods:
-      extension (self: Projection):
+    trait TypeProjectionMethods:
+      extension (self: TypeProjection):
         def qualifier: TypeTree
         def name: String
       end extension
-    end ProjectionMethods
+    end TypeProjectionMethods
 
     /** Type tree representing a singleton type */
     type Singleton <: TypeTree
@@ -3494,7 +3494,7 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
           case Inferred() => x
           case TypeIdent(_) => x
           case TypeSelect(qualifier, _) => foldTree(x, qualifier)(owner)
-          case Projection(qualifier, _) => foldTree(x, qualifier)(owner)
+          case TypeProjection(qualifier, _) => foldTree(x, qualifier)(owner)
           case Singleton(ref) => foldTree(x, ref)(owner)
           case Refined(tpt, refinements) => foldTrees(foldTree(x, tpt)(owner), refinements)(owner)
           case Applied(tpt, args) => foldTrees(foldTree(x, tpt)(owner), args)(owner)
@@ -3646,8 +3646,8 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
         case tree: TypeIdent => tree
         case tree: TypeSelect =>
           TypeSelect.copy(tree)(tree.qualifier, tree.name)
-        case tree: Projection =>
-          Projection.copy(tree)(tree.qualifier, tree.name)
+        case tree: TypeProjection =>
+          TypeProjection.copy(tree)(tree.qualifier, tree.name)
         case tree: Annotated =>
           Annotated.copy(tree)(tree.arg, tree.annotation)
         case tree: Singleton =>
