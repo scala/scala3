@@ -14,10 +14,6 @@ object equality {
   implicit def eqNum: Eql[Num, Num] = Eql.derived
   implicit def eqOption[T, U](implicit e: Eql[T, U]): Eql[Option[T], Option[U]] = Eql.derived
 
-  case class PString(a: String) extends Proxy {
-    def self = a
-  }
-
 /*
   implicit def eqString: Eql[String, String] = Eql.derived
   implicit def eqInt: Eql[Int, Int] = Eql.derived
@@ -84,9 +80,6 @@ object equality {
     i == bi
     bi == i
 
-    val ps = PString("hello")
-    ps == "world"
-
     n match {
       case None =>   // error
     }
@@ -110,7 +103,6 @@ object equality {
     1 == "abc" // error
     "abc" == bi // error
     bi == "abc" // error
-    "world" == ps // error
 
     val s1 = Set(1, 2, 3)
     val s2 = Set()
