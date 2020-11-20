@@ -1,7 +1,7 @@
 package scala
 
 import annotation.implicitNotFound
-import scala.collection.{GenSeq, Set}
+import scala.collection.{Seq, Set}
 
 /** A marker trait indicating that values of type `L` can be compared to values of type `R`. */
 @implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
@@ -29,7 +29,7 @@ object Eql {
   // The next three definitions can go into the companion objects of classes
   // Seq, Set, and Proxy. For now they are here in order not to have to touch the
   // source code of these classes
-  given eqlSeq[T, U](using eq: Eql[T, U]) as Eql[GenSeq[T], GenSeq[U]] = derived
+  given eqlSeq[T, U](using eq: Eql[T, U]) as Eql[Seq[T], Seq[U]] = derived
   given eqlSet[T, U](using eq: Eql[T, U]) as Eql[Set[T], Set[U]] = derived
 
   // true asymmetry, modeling the (somewhat problematic) nature of equals on Proxies
