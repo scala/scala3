@@ -1159,6 +1159,7 @@ object Build {
 
   val testcasesOutputDir = taskKey[String]("Root directory where tests classses are generated")
   val testcasesSourceRoot = taskKey[String]("Root directory where tests sources are generated")
+  val testDocumentationRoot = taskKey[String]("Root directory where tests documentation are stored")
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScala3Documentation = taskKey[Unit]("Generate documentation for dotty lib")
@@ -1532,7 +1533,9 @@ object Build {
           buildInfoKeys in Test := Seq[BuildInfoKey](
             Build.testcasesOutputDir.in(Test),
             Build.testcasesSourceRoot.in(Test),
+            Build.testDocumentationRoot,
           ),
+          testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
           buildInfoPackage in Test := "dotty.dokka",
           BuildInfoPlugin.buildInfoScopedSettings(Test),
           BuildInfoPlugin.buildInfoDefaultSettings,

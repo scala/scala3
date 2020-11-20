@@ -78,13 +78,13 @@ case class Args(
   tastyRoots: Seq[File],
   classpath: String,
   output: File,
-  docsRoot: Option[String],
-  projectVersion: Option[String],
-  projectTitle: Option[String],
-  projectLogo: Option[String],
-  defaultSyntax: Option[Args.CommentSyntax],
-  sourceLinks: List[String],
-  revision: Option[String]
+  docsRoot: Option[String] = None,
+  projectVersion: Option[String] = None,
+  projectTitle: Option[String] = None,
+  projectLogo: Option[String] = None,
+  defaultSyntax: Option[Args.CommentSyntax] = None,
+  sourceLinks: List[String] = Nil,
+  revision: Option[String] = None
 )
 
 object Args:
@@ -121,12 +121,8 @@ enum DocConfiguration extends BaseDocConfiguration:
   * - [](package.DottyDokkaConfig) is our config for Dokka.
   */
 object Main:
-  def main(args: Array[String]): Unit =
+  def main(parsedArgs: Args): Unit =
     try
-      val rawArgs = new RawArgs
-      new CmdLineParser(rawArgs).parseArgument(args:_*)
-      val parsedArgs = rawArgs.toArgs
-
       val (files, dirs) = parsedArgs.tastyRoots.partition(_.isFile)
       val (providedTastyFiles, jars) = files.toList.map(_.getAbsolutePath).partition(_.endsWith(".tasty"))
       jars.foreach(j => if(!j.endsWith(".jar")) sys.error(s"Provided file $j is not jar not tasty file") )
@@ -147,11 +143,17 @@ object Main:
       new DokkaGenerator(new DottyDokkaConfig(config), DokkaConsoleLogger.INSTANCE).generate()
 
       println("Done")
-
-      // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
-      sys.exit(0)
     catch
       case a: Exception =>
         a.printStackTrace()
         // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
         sys.exit(1)
+
+  def main(args: Array[String]): Unit =
+      val rawArgs = new RawArgs
+      new CmdLineParser(rawArgs).parseArgument(args:_*)
+      main(rawArgs.toArgs)
+      // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
+      sys.exit(0)
+
+
