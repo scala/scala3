@@ -4,8 +4,10 @@ title: Scala3doc
 
 ![Scala3doc logo](/images/scala3doc-logo.png)
 
-Scala3doc is a doctool dedicated to work with Scala 3.0. Beside basic features similar to `javadoc` or `scaladoc`. As you probably guessed, this
-whole site was created using scala3doc.
+Scala3doc is tool to generate documentation for your Scala 3 projects. It provies similar features to `javadoc` or `scaladoc` as well as `jekyll` or `docusaurus`.
+
+As you probably guessed, this whole site was created using scala3doc.
+
 
 {% for post in site.posts %}
 ## [{{ post.title }}](/{{ post.url }})
@@ -20,5 +22,5 @@ whole site was created using scala3doc.
 
 We would love to have your feedback on what you think would be good in order to
 render the documentation you want! Perhaps you would like to render method
-definitions or members? Let us know by filing
+definitions or members? Do you want to have runnable code samples? Let us know by filing
 [issues](https://github.com/lampepfl/dotty/issues/new)!

@@ -4,8 +4,8 @@ title: Static docucmentation
 
 # {{ page.title}}
 
-Scala3doc has similar functionalites to [Jekyll](http://jekyllrb.com/) to allow users to documentation in form of static sit alongside your APIs. Moreover having a combined tool allows provide reach interaction between those to such as linking thus allowing the two to
-blend naturally.
+Scala3doc is able to generate static sites, known from [Jekyll](http://jekyllrb.com/) or [Docusaurus](https://docusaurus.io/).
+Having a combined tool allows to provide interaction between static documentation and API thus allowing the two to blend naturally.
 
 Creating a site is just as simple as in Jekyll. The site root contains the
 layout of the site and all files placed here will be either considered static,
@@ -42,13 +42,13 @@ is parsed and put into the `page` variable available in templates via Liquid.
 
 Scala3doc uses some predefied properties to controls some aspect of page.
 
-Predefiend properties:
+Predefined properties:
 
  - **title** provide page title that will be used in navigation and html metadata.
  - **extraCss** additional `.css` files that will be included in this page. Paths should be relative to documentation root. **This setting is not exported to template engine**
  - **extraJs** additional `.js` files that will be included in this page. Paths should be relative to documentation root. **This setting is not exported to template engine**
- - **hasFrame** when set to `false` page will not include default layout (navigation, breadcrumbs etc.) but only token html wrapper to provide metadata and resources (js and css files)
-- **layout** - predefined layout to use, see below
+ - **hasFrame** when set to `false` page will not include default layout (navigation, breadcrumbs etc.) but only token html wrapper to provide metadata and resources (js and css files). **This setting is not exported to template engine**
+- **layout** - predefined layout to use, see below. **This setting is not exported to template engine**
 
 
 ## Using existing Templates and Layouts
@@ -114,7 +114,7 @@ The `sidebar` key is mandatory, as well as `title` for each element. The
 default table of contents allows you to have subsections - albeit the current
 depth limit is 2 however it accepts both files and directories and latter can be used to provide deeper structures.
 
-The items which have the `subsection` does not accepts `url` section.
+The items which have on the `subsection` level does not accepts `url`.
 
 ```
 ├── blog

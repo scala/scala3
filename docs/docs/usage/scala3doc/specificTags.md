@@ -4,7 +4,7 @@ title: Dottydoc Specific Tags and Behavior
 
 # {{page.title}}
 
-Scala3doc extemds markdown with some unique behaviours such as linking to API. This can be used from within static documentation and blogpost to provide blend-in content.
+Scala3doc extends markdown with some unique behaviors such as linking to API. This can be used from within static documentation and blog posts to provide blend-in content.
 
 ## Linking to API
 
