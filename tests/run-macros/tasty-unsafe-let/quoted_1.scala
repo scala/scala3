@@ -11,7 +11,7 @@ object Macros {
     val rhsTerm = Term.of(rhs)
 
     import qctx.reflect._
-    ValDef.let(rhsTerm) { rhsId =>
+    ValDef.let(Symbol.spliceOwner, rhsTerm) { rhsId =>
       Term.of(Expr.betaReduce('{$body(${rhsId.asExpr.asInstanceOf[Expr[T]]})})) // Dangerous uncheked cast!
     }.asExprOf[Unit]
   }

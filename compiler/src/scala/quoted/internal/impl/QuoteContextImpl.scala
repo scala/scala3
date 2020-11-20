@@ -278,13 +278,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])] =
         Some((vdef.name.toString, vdef.tpt, optional(vdef.rhs)))
 
-      def let(name: String, rhs: Term)(body: Ident => Term): Term =
-        val vdef = tpd.SyntheticValDef(name.toTermName, rhs)
+      def let(owner: Symbol, name: String, rhs: Term)(body: Ident => Term): Term =
+        val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
         val ref = tpd.ref(vdef.symbol).asInstanceOf[Ident]
         Block(List(vdef), body(ref))
 
-      def let(terms: List[Term])(body: List[Ident] => Term): Term =
-        val vdefs = terms.map(term => tpd.SyntheticValDef("x".toTermName, term))
+      def let(owner: Symbol, terms: List[Term])(body: List[Ident] => Term): Term =
+        val ctx1 = ctx.withOwner(owner)
+        val vdefs = terms.map(term => tpd.SyntheticValDef("x".toTermName, term)(using ctx1))
         val refs = vdefs.map(vdef => tpd.ref(vdef.symbol).asInstanceOf[Ident])
         Block(vdefs, body(refs))
     end ValDef
@@ -2203,6 +2204,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Symbol = dotc.core.Symbols.Symbol
 
     object Symbol extends SymbolModule:
+      def spliceOwner: Symbol = ctx.owner
       def currentOwner(using ctx: Context): Symbol = ctx.owner
       def requiredPackage(path: String): Symbol = dotc.core.Symbols.requiredPackage(path)
       def requiredClass(path: String): Symbol = dotc.core.Symbols.requiredClass(path)
