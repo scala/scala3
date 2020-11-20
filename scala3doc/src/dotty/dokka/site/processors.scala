@@ -100,7 +100,7 @@ class SitePagesCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSitePro
     val rootContent = indexes.headOption.fold(ctx.asContent(Text(), mkDRI(extra = "root_content")).get(0))(_.getContent)
 
     val root = AContentPage(
-      input.getName,
+      ctx.args.projectTitle.getOrElse(ctx.args.name),
       (List(modifiedModuleRoot.modified("API", modifiedModuleRoot.getChildren)) ++ children).asJava,
       rootContent,
       JSet(docsDRI),

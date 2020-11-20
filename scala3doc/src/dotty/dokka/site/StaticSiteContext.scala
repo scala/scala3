@@ -20,7 +20,7 @@ import util.Try
 
 import scala.collection.JavaConverters._
 
-class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args: Args, val sourceLinks: SourceLinks):
+class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], val args: Args, val sourceLinks: SourceLinks):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
@@ -81,16 +81,15 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
         val topLevelFiles = if isBlog then Seq(from, new File(from, "_posts")) else Seq(from)
         val allFiles = topLevelFiles.filter(_.isDirectory).flatMap(_.listFiles())
         val (indexes, children) = allFiles.flatMap(loadTemplate(_)).partition(_.templateFile.isIndexPage())
-        if (indexes.size > 1)
-          // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
-          println(s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}")
+
         def loadIndexPage(): TemplateFile =
-          val indexFiles = from.listFiles { file =>file.getName == "index.md" || file.getName == "index.html" }
-          indexFiles.size match
-            case 0 => emptyTemplate(from, from.getName)
-            case 1 => loadTemplateFile(indexFiles.head).copy(file = from)
+          val indexFiles = from.listFiles { file => file.getName == "index.md" || file.getName == "index.html" }
+          indexes match
+            case Nil => emptyTemplate(from, from.getName)
+            case Seq(loadedTemplate) => loadedTemplate.templateFile.copy(file = from)
             case _ =>
-              val msg = s"ERROR: Multiple index pages found under ${from.toPath}"
+              // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
+              val msg = s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}"
               throw new java.lang.RuntimeException(msg)
 
         val templateFile = if (from.isDirectory) loadIndexPage() else loadTemplateFile(from)
@@ -101,7 +100,15 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
             pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse("1900-01-01") // blogs without date are last
           children.sortBy(dateFrom).reverse
 
-        Some(LoadedTemplate(templateFile, processedChildren.toList, from))
+        val processedTemplate = // Set provided name as arg in page for `docs`
+          if from.getParentFile.toPath == docsPath && templateFile.isIndexPage() then
+            // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
+            if templateFile.title != "index" then println(s"[WARN] title in $from will be overriden")
+            val projectTitle = args.projectTitle.getOrElse(args.name)
+            templateFile.copy(title = projectTitle)
+          else templateFile
+
+        Some(LoadedTemplate(processedTemplate, processedChildren.toList, from))
       catch
           case e: RuntimeException =>
             // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
