@@ -5,13 +5,12 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack",
-    "dev": "concurrently \"http-server ../output\" \"webpack --watch\""
+    "build": "webpack --mode production",
+    "serve": "http-server ../output"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "concurrently": "^5.3.0",
     "css-loader": "^5.0.0",
     "filemanager-webpack-plugin": "^3.0.0-alpha.5",
     "http-server": "^0.12.3",

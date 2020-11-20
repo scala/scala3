@@ -8,5 +8,5 @@
 ### Running tests locally
 
 - generate the test docs: `sbt scala3doc/generateTestcasesDocumentation`
-- run the web server in the `npm run serve`
+- run the web server: `npm run serve`
 - run `npm run cypress:open` to see the cypress UI or `npm run cypress:run` to run tests headlessly

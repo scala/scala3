@@ -42,9 +42,13 @@ the documentation won't work completely if you don't.
 
 Make sure you have installed `node`
 
-- Go to `resources` folder and run: `npm i`
-- Start development server and weback in watch mode: `npm run dev`
-- Finally, run `sbt scala3/generateTestcasesDocumentation` when you want to preview newest changes
+Frontend resources should be built automatically after running any `sbt` task that uses
+`generateDocumentation`, such as `sbt scala3/generateTestcasesDocumentation`
+
+You can also do it manually by running `npm i` and `npm run build`in the `resources` folder.
+To see the changes you still need to copy sources to `output` folder, this is normally done automatically by the `sbt` task.
+
+You might want to turn on sourcemaps for local development.
 
 ## CLI Documentation
 
