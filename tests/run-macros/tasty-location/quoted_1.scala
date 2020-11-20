@@ -13,7 +13,7 @@ object Location {
       if (sym == defn.RootClass || sym == defn.EmptyPackageClass) acc
       else listOwnerNames(sym.owner, sym.name :: acc)
 
-    val list = listOwnerNames(Symbol.currentOwner, Nil)
+    val list = listOwnerNames(Symbol.spliceOwner, Nil)
     '{new Location(${Expr(list)})}
   }
 

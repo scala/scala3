@@ -2205,7 +2205,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     object Symbol extends SymbolModule:
       def spliceOwner: Symbol = ctx.owner
-      def currentOwner(using ctx: Context): Symbol = ctx.owner
       def requiredPackage(path: String): Symbol = dotc.core.Symbols.requiredPackage(path)
       def requiredClass(path: String): Symbol = dotc.core.Symbols.requiredClass(path)
       def requiredModule(path: String): Symbol = dotc.core.Symbols.requiredModule(path)
@@ -2244,8 +2243,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
         def fullName: String = self.denot.fullName.toString
         def pos: Position = self.sourcePos
 
-        def localContext: Context =
-          if self.exists then ctx.withOwner(self) else ctx
         def documentation: Option[Documentation] =
           import dotc.core.Comments.CommentsContext
           val docCtx = ctx.docCtx.getOrElse {

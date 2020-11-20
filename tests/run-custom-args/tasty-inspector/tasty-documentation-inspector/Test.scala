@@ -19,15 +19,15 @@ class DocumentationInspector extends TastyInspector {
     import qctx.reflect._
     object Traverser extends TreeTraverser {
 
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
+      override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {
         case tree: Definition =>
           tree.symbol.documentation match {
             case Some(doc) => println(doc.raw)
             case None => println()
           }
-          super.traverseTree(tree)
+          super.traverseTree(tree)(owner)
         case tree =>
-          super.traverseTree(tree)
+          super.traverseTree(tree)(owner)
       }
 
     }
