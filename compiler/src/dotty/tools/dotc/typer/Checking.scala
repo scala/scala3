@@ -737,7 +737,7 @@ trait Checking {
         defn.ObjectType
     }
 
-  /** If `sym` is an implicit conversion, check that implicit conversions are enabled.
+  /** If `sym` is an old-style implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(GivenOrImplicit)
    */
   def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = {
@@ -750,10 +750,7 @@ trait Checking {
 
     sym.info.stripPoly match {
       case mt @ MethodType(_ :: Nil)
-      if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's a conversion
-        check()
-      case AppliedType(tycon, _)
-      if tycon.derivesFrom(defn.ConversionClass) && !sym.is(Synthetic) =>
+      if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's an old-styleconversion
         check()
       case _ =>
     }

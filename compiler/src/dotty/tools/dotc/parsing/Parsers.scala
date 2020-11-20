@@ -3536,13 +3536,18 @@ object Parsers {
           then paramClauses(givenOnly = true)
           else Nil
         newLinesOpt()
-        if !name.isEmpty || !tparams.isEmpty || !vparamss.isEmpty then
+        val noParams = tparams.isEmpty && vparamss.isEmpty
+        if !(name.isEmpty && noParams) then
           accept(nme.as)
         val parents = constrApps(commaOK = true, templateCanFollow = true)
         if in.token == EQUALS && parents.length == 1 && parents.head.isType then
           accept(EQUALS)
           mods1 |= Final
-          DefDef(name, tparams, vparamss, parents.head, subExpr())
+          if noParams && !mods.is(Inline) then
+            mods1 |= Lazy
+            ValDef(name, parents.head, subExpr())
+          else
+            DefDef(name, tparams, vparamss, parents.head, subExpr())
         else
           possibleTemplateStart()
           val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
