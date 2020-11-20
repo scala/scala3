@@ -31,7 +31,7 @@ case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTempl
         "..."
 
   def lazyTemplateProperties(ctx: StaticSiteContext): JMap[String, Object] = new java.util.AbstractMap[String, Object]():
-    def entrySet(): JSet[JMapEntry[String, Object]] =
+    lazy val entrySet: JSet[JMapEntry[String, Object]] =
       val site = templateFile.settings.getOrElse("page", Map.empty).asInstanceOf[Map[String, Object]]
       site.asJava.entrySet() ++ JSet(
         LazyEntry("url", () => ctx.relativePath(LoadedTemplate.this).toString),

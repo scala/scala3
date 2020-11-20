@@ -56,15 +56,16 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
       if !Files.exists(docsPath) then Nil
       else Files.walk(docsPath, FileVisitOption.FOLLOW_LINKS).iterator().asScala.toList
 
-    val orphanedFiles = allPaths.filterNot(mainFiles.contains).filter { p =>
+    val orphanedFiles = allPaths.filterNot { p =>
+       def name = p.getFileName.toString
+       def isMain = name == "index.html" || name == "index.md"
+       mainFiles.contains(p) || (isMain && mainFiles.contains(p.getParent))
+    }.filter { p =>
         val name = p.getFileName.toString
-        def isSupported = name.endsWith(".md") || name.endsWith(".html")
-        def notIndex = name == "index.md" || name == "index.html"
-        isSupported && notIndex
+        name.endsWith(".md") || name.endsWith(".html")
     }
 
     val orphanedTemplates = orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
-
     mainPages ++ orphanedTemplates.map(templateToPage)
   }
 
