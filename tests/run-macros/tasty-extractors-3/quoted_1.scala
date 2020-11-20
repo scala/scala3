@@ -11,22 +11,22 @@ object Macros {
 
     val buff = new StringBuilder
     val traverser = new TreeTraverser {
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
+      override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {
         case tree: TypeBoundsTree =>
           buff.append(tree.tpe.showExtractors)
           buff.append("\n\n")
-          traverseTreeChildren(tree)
+          traverseTreeChildren(tree)(owner)
         case tree: TypeTree =>
           buff.append(tree.tpe.showExtractors)
           buff.append("\n\n")
-          traverseTreeChildren(tree)
+          traverseTreeChildren(tree)(owner)
         case _ =>
-          super.traverseTree(tree)
+          super.traverseTree(tree)(owner)
       }
     }
 
     val tree = Term.of(x)
-    traverser.traverseTree(tree)
+    traverser.traverseTree(tree)(Symbol.spliceOwner)
     '{print(${Expr(buff.result())})}
   }
 }

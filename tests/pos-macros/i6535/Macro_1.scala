@@ -11,10 +11,10 @@ object scalatest {
 
     Term.of(cond).underlyingArgument match {
       case t @ Apply(Select(lhs, op), rhs :: Nil) =>
-        let(Symbol.currentOwner, lhs) { left =>
-          let(Symbol.currentOwner, rhs) { right =>
+        let(Symbol.spliceOwner, lhs) { left =>
+          let(Symbol.spliceOwner, rhs) { right =>
             val app = Select.overloaded(left, op, Nil, right :: Nil)
-            let(Symbol.currentOwner, app) { result =>
+            let(Symbol.spliceOwner, app) { result =>
               val l = left.asExpr
               val r = right.asExpr
               val b = result.asExprOf[Boolean]

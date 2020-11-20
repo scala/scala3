@@ -9,7 +9,7 @@ object Macros {
 
     // simple smoke test
     val sym1 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Symbol.spliceOwner,
       "sym1",
       MethodType(List("a","b"))(
         _ => List(TypeRepr.of[Int], TypeRepr.of[Int]),
@@ -27,7 +27,7 @@ object Macros {
 
     // test for no argument list (no Apply node)
     val sym2 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Symbol.spliceOwner,
       "sym2",
       ByNameType(TypeRepr.of[Int]))
     assert(sym2.isDefDef)
@@ -43,7 +43,7 @@ object Macros {
 
    // test for multiple argument lists
    val sym3 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Symbol.spliceOwner,
       "sym3",
       MethodType(List("a"))(
         _ => List(TypeRepr.of[Int]),
@@ -63,7 +63,7 @@ object Macros {
 
     // test for recursive references
     val sym4 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Symbol.spliceOwner,
       "sym4",
       MethodType(List("x"))(
         _ => List(TypeRepr.of[Int]),
@@ -85,7 +85,7 @@ object Macros {
 
     // test for nested functions (one symbol is the other's parent, and we use a Closure)
     val sym5 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Symbol.spliceOwner,
       "sym5",
       MethodType(List("x"))(
         _ => List(TypeRepr.of[Int]),
@@ -119,13 +119,13 @@ object Macros {
 
     // test mutually recursive definitions
     val sym6_1 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Symbol.spliceOwner,
       "sym6_1",
       MethodType(List("x"))(
         _ => List(TypeRepr.of[Int]),
         _ => TypeRepr.of[Int]))
     val sym6_2 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Symbol.spliceOwner,
       "sym6_2",
       MethodType(List("x"))(
         _ => List(TypeRepr.of[Int]),
@@ -166,7 +166,7 @@ object Macros {
 
     // test polymorphic methods by synthesizing an identity method
     val sym7 : Symbol = Symbol.newMethod(
-      Symbol.currentOwner,
+      Symbol.spliceOwner,
       "sym7",
       PolyType(List("T"))(
         tp => List(TypeBounds(TypeRepr.of[Nothing], TypeRepr.of[Any])),

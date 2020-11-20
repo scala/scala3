@@ -199,11 +199,11 @@ object Matcher {
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
               val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
               new TreeMap {
-                override def transformTerm(tree: Term)(using ctx: Context): Term =
+                override def transformTerm(tree: Term)(owner: Symbol): Term =
                   tree match
                     case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
-                    case tree => super.transformTerm(tree)
-              }.transformTree(scrutinee)
+                    case tree => super.transformTerm(tree)(owner)
+              }.transformTree(scrutinee)(Symbol.spliceOwner)
             }
             val names = args.map {
               case Block(List(DefDef("$anonfun", _, _, _, Some(Apply(Ident(name), _)))), _) => name
@@ -211,7 +211,7 @@ object Matcher {
             }
             val argTypes = args.map(x => x.tpe.widenTermRefExpr)
             val resType = pattern.tpe
-            val res = Lambda(Symbol.currentOwner, MethodType(names)(_ => argTypes, _ => resType), (meth, x) => bodyFn(x).changeOwner(meth))
+            val res = Lambda(Symbol.spliceOwner, MethodType(names)(_ => argTypes, _ => resType), (meth, x) => bodyFn(x).changeOwner(meth))
             matched(res.asExpr)
 
           //
@@ -354,12 +354,12 @@ object Matcher {
       /** Return all free variables of the term defined in the pattern (i.e. defined in `Env`) */
       def freePatternVars(term: Term)(using ctx: Context, env: Env): Set[Symbol] =
         val accumulator = new TreeAccumulator[Set[Symbol]] {
-          def foldTree(x: Set[Symbol], tree: Tree)(using ctx: Context): Set[Symbol] =
+          def foldTree(x: Set[Symbol], tree: Tree)(owner: Symbol): Set[Symbol] =
             tree match
-              case tree: Ident if env.contains(tree.symbol) => foldOverTree(x + tree.symbol, tree)
-              case _ => foldOverTree(x, tree)
+              case tree: Ident if env.contains(tree.symbol) => foldOverTree(x + tree.symbol, tree)(owner)
+              case _ => foldOverTree(x, tree)(owner)
         }
-        accumulator.foldTree(Set.empty, term)
+        accumulator.foldTree(Set.empty, term)(Symbol.spliceOwner)
     }
 
     private object IdentArgs {

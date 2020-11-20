@@ -2685,9 +2685,6 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
        */
       def spliceOwner: Symbol
 
-      /** Returns the symbol of the current enclosing definition */
-      def currentOwner(using ctx: Context): Symbol
-
       /** Get package symbol if package is either defined in current compilation run or present on classpath. */
       def requiredPackage(path: String): Symbol
 
@@ -2781,8 +2778,6 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
 
         /** The position of this symbol */
         def pos: Position
-
-        def localContext: Context
 
         /** The documentation for this symbol, if any */
         def documentation: Option[Documentation]
@@ -3427,101 +3422,96 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     *  class MyTreeAccumulator[R <: scala.tasty.Reflection & Singleton](val reflect: R)
     *      extends scala.tasty.reflect.TreeAccumulator[X] {
     *    import reflect._
-    *    def foldTree(x: X, tree: Tree)(using ctx: Context): X = ...
+    *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ...
     *  }
     *  ```
     */
     trait TreeAccumulator[X]:
 
       // Ties the knot of the traversal: call `foldOver(x, tree))` to dive in the `tree` node.
-      def foldTree(x: X, tree: Tree)(using ctx: Context): X
+      def foldTree(x: X, tree: Tree)(owner: Symbol): X
 
-      def foldTrees(x: X, trees: Iterable[Tree])(using ctx: Context): X = trees.foldLeft(x)(foldTree)
+      def foldTrees(x: X, trees: Iterable[Tree])(owner: Symbol): X = trees.foldLeft(x)((acc, y) => foldTree(acc, y)(owner))
 
-      def foldOverTree(x: X, tree: Tree)(using ctx: Context): X = {
-        def localCtx(definition: Definition): Context = definition.symbol.localContext
+      def foldOverTree(x: X, tree: Tree)(owner: Symbol): X = {
         tree match {
           case Ident(_) =>
             x
           case Select(qualifier, _) =>
-            foldTree(x, qualifier)
+            foldTree(x, qualifier)(owner)
           case This(qual) =>
             x
           case Super(qual, _) =>
-            foldTree(x, qual)
+            foldTree(x, qual)(owner)
           case Apply(fun, args) =>
-            foldTrees(foldTree(x, fun), args)
+            foldTrees(foldTree(x, fun)(owner), args)(owner)
           case TypeApply(fun, args) =>
-            foldTrees(foldTree(x, fun), args)
+            foldTrees(foldTree(x, fun)(owner), args)(owner)
           case Literal(const) =>
             x
           case New(tpt) =>
-            foldTree(x, tpt)
+            foldTree(x, tpt)(owner)
           case Typed(expr, tpt) =>
-            foldTree(foldTree(x, expr), tpt)
+            foldTree(foldTree(x, expr)(owner), tpt)(owner)
           case NamedArg(_, arg) =>
-            foldTree(x, arg)
+            foldTree(x, arg)(owner)
           case Assign(lhs, rhs) =>
-            foldTree(foldTree(x, lhs), rhs)
+            foldTree(foldTree(x, lhs)(owner), rhs)(owner)
           case Block(stats, expr) =>
-            foldTree(foldTrees(x, stats), expr)
+            foldTree(foldTrees(x, stats)(owner), expr)(owner)
           case If(cond, thenp, elsep) =>
-            foldTree(foldTree(foldTree(x, cond), thenp), elsep)
+            foldTree(foldTree(foldTree(x, cond)(owner), thenp)(owner), elsep)(owner)
           case While(cond, body) =>
-            foldTree(foldTree(x, cond), body)
+            foldTree(foldTree(x, cond)(owner), body)(owner)
           case Closure(meth, tpt) =>
-            foldTree(x, meth)
+            foldTree(x, meth)(owner)
           case Match(selector, cases) =>
-            foldTrees(foldTree(x, selector), cases)
+            foldTrees(foldTree(x, selector)(owner), cases)(owner)
           case Return(expr, _) =>
-            foldTree(x, expr)
+            foldTree(x, expr)(owner)
           case Try(block, handler, finalizer) =>
-            foldTrees(foldTrees(foldTree(x, block), handler), finalizer)
+            foldTrees(foldTrees(foldTree(x, block)(owner), handler)(owner), finalizer)(owner)
           case Repeated(elems, elemtpt) =>
-            foldTrees(foldTree(x, elemtpt), elems)
+            foldTrees(foldTree(x, elemtpt)(owner), elems)(owner)
           case Inlined(call, bindings, expansion) =>
-            foldTree(foldTrees(x, bindings), expansion)
+            foldTree(foldTrees(x, bindings)(owner), expansion)(owner)
           case vdef @ ValDef(_, tpt, rhs) =>
-            val ctx = localCtx(vdef)
-            given Context = ctx
-            foldTrees(foldTree(x, tpt), rhs)
+            val owner = vdef.symbol
+            foldTrees(foldTree(x, tpt)(owner), rhs)(owner)
           case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
-            val ctx = localCtx(ddef)
-            given Context = ctx
-            foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams))(foldTrees), tpt), rhs)
+            val owner = ddef.symbol
+            foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams)(owner))((acc, y) => foldTrees(acc, y)(owner)), tpt)(owner), rhs)(owner)
           case tdef @ TypeDef(_, rhs) =>
-            val ctx = localCtx(tdef)
-            given Context = ctx
-            foldTree(x, rhs)
+            val owner = tdef.symbol
+            foldTree(x, rhs)(owner)
           case cdef @ ClassDef(_, constr, parents, derived, self, body) =>
-            val ctx = localCtx(cdef)
-            given Context = ctx
-            foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr), parents), derived), self), body)
+            val owner = cdef.symbol
+            foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr)(owner), parents)(owner), derived)(owner), self)(owner), body)(owner)
           case Import(expr, _) =>
-            foldTree(x, expr)
+            foldTree(x, expr)(owner)
           case clause @ PackageClause(pid, stats) =>
-            foldTrees(foldTree(x, pid), stats)(using clause.symbol.localContext)
+            foldTrees(foldTree(x, pid)(owner), stats)(clause.symbol)
           case Inferred() => x
           case TypeIdent(_) => x
-          case TypeSelect(qualifier, _) => foldTree(x, qualifier)
-          case Projection(qualifier, _) => foldTree(x, qualifier)
-          case Singleton(ref) => foldTree(x, ref)
-          case Refined(tpt, refinements) => foldTrees(foldTree(x, tpt), refinements)
-          case Applied(tpt, args) => foldTrees(foldTree(x, tpt), args)
-          case ByName(result) => foldTree(x, result)
-          case Annotated(arg, annot) => foldTree(foldTree(x, arg), annot)
-          case LambdaTypeTree(typedefs, arg) => foldTree(foldTrees(x, typedefs), arg)
-          case TypeBind(_, tbt) => foldTree(x, tbt)
-          case TypeBlock(typedefs, tpt) => foldTree(foldTrees(x, typedefs), tpt)
+          case TypeSelect(qualifier, _) => foldTree(x, qualifier)(owner)
+          case Projection(qualifier, _) => foldTree(x, qualifier)(owner)
+          case Singleton(ref) => foldTree(x, ref)(owner)
+          case Refined(tpt, refinements) => foldTrees(foldTree(x, tpt)(owner), refinements)(owner)
+          case Applied(tpt, args) => foldTrees(foldTree(x, tpt)(owner), args)(owner)
+          case ByName(result) => foldTree(x, result)(owner)
+          case Annotated(arg, annot) => foldTree(foldTree(x, arg)(owner), annot)(owner)
+          case LambdaTypeTree(typedefs, arg) => foldTree(foldTrees(x, typedefs)(owner), arg)(owner)
+          case TypeBind(_, tbt) => foldTree(x, tbt)(owner)
+          case TypeBlock(typedefs, tpt) => foldTree(foldTrees(x, typedefs)(owner), tpt)(owner)
           case MatchTypeTree(boundopt, selector, cases) =>
-            foldTrees(foldTree(boundopt.fold(x)(foldTree(x, _)), selector), cases)
+            foldTrees(foldTree(boundopt.fold(x)(y => foldTree(x, y)(owner)), selector)(owner), cases)(owner)
           case WildcardTypeTree() => x
-          case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo), hi)
-          case CaseDef(pat, guard, body) => foldTree(foldTrees(foldTree(x, pat), guard), body)
-          case TypeCaseDef(pat, body) => foldTree(foldTree(x, pat), body)
-          case Bind(_, body) => foldTree(x, body)
-          case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun), implicits), patterns)
-          case Alternatives(patterns) => foldTrees(x, patterns)
+          case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo)(owner), hi)(owner)
+          case CaseDef(pat, guard, body) => foldTree(foldTrees(foldTree(x, pat)(owner), guard)(owner), body)(owner)
+          case TypeCaseDef(pat, body) => foldTree(foldTree(x, pat)(owner), body)(owner)
+          case Bind(_, body) => foldTree(x, body)(owner)
+          case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun)(owner), implicits)(owner), patterns)(owner)
+          case Alternatives(patterns) => foldTrees(x, patterns)(owner)
         }
       }
     end TreeAccumulator
@@ -3534,17 +3524,17 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     *  class MyTraverser[R <: scala.tasty.Reflection & Singleton](val reflect: R)
     *      extends scala.tasty.reflect.TreeTraverser {
     *    import reflect._
-    *    override def traverseTree(tree: Tree)(using ctx: Context): Unit = ...
+    *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ...
     *  }
     *  ```
     */
     trait TreeTraverser extends TreeAccumulator[Unit]:
 
-      def traverseTree(tree: Tree)(using ctx: Context): Unit = traverseTreeChildren(tree)
+      def traverseTree(tree: Tree)(owner: Symbol): Unit = traverseTreeChildren(tree)(owner)
 
-      def foldTree(x: Unit, tree: Tree)(using ctx: Context): Unit = traverseTree(tree)
+      def foldTree(x: Unit, tree: Tree)(owner: Symbol): Unit = traverseTree(tree)(owner)
 
-      protected def traverseTreeChildren(tree: Tree)(using ctx: Context): Unit = foldOverTree((), tree)
+      protected def traverseTreeChildren(tree: Tree)(owner: Symbol): Unit = foldOverTree((), tree)(owner)
 
     end TreeTraverser
 
@@ -3554,108 +3544,104 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
     *  ```
     *  import qctx.reflect._
     *  class MyTreeMap extends TreeMap {
-    *    override def transformTree(tree: Tree)(using ctx: Context): Tree = ...
+    *    override def transformTree(tree: Tree)(owner: Symbol): Tree = ...
     *  }
     *  ```
     */
     trait TreeMap:
 
-      def transformTree(tree: Tree)(using ctx: Context): Tree = {
+      def transformTree(tree: Tree)(owner: Symbol): Tree = {
         tree match {
           case tree: PackageClause =>
-            PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(using tree.symbol.localContext))
+            PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(tree.symbol))
           case tree: Import =>
-            Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
+            Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
           case tree: Statement =>
-            transformStatement(tree)
-          case tree: TypeTree => transformTypeTree(tree)
+            transformStatement(tree)(owner)
+          case tree: TypeTree => transformTypeTree(tree)(owner)
           case tree: TypeBoundsTree => tree // TODO traverse tree
           case tree: WildcardTypeTree => tree // TODO traverse tree
           case tree: CaseDef =>
-            transformCaseDef(tree)
+            transformCaseDef(tree)(owner)
           case tree: TypeCaseDef =>
-            transformTypeCaseDef(tree)
+            transformTypeCaseDef(tree)(owner)
           case pattern: Bind =>
             Bind.copy(pattern)(pattern.name, pattern.pattern)
           case pattern: Unapply =>
-            Unapply.copy(pattern)(transformTerm(pattern.fun), transformSubTrees(pattern.implicits), transformTrees(pattern.patterns))
+            Unapply.copy(pattern)(transformTerm(pattern.fun)(owner), transformSubTrees(pattern.implicits)(owner), transformTrees(pattern.patterns)(owner))
           case pattern: Alternatives =>
-            Alternatives.copy(pattern)(transformTrees(pattern.patterns))
+            Alternatives.copy(pattern)(transformTrees(pattern.patterns)(owner))
         }
       }
 
-      def transformStatement(tree: Statement)(using ctx: Context): Statement = {
-        def localCtx(definition: Definition): Context = definition.symbol.localContext
+      def transformStatement(tree: Statement)(owner: Symbol): Statement = {
         tree match {
           case tree: Term =>
-            transformTerm(tree)
+            transformTerm(tree)(owner)
           case tree: ValDef =>
-            val ctx = localCtx(tree)
-            given Context = ctx
-            val tpt1 = transformTypeTree(tree.tpt)
-            val rhs1 = tree.rhs.map(x => transformTerm(x))
+            val owner = tree.symbol
+            val tpt1 = transformTypeTree(tree.tpt)(owner)
+            val rhs1 = tree.rhs.map(x => transformTerm(x)(owner))
             ValDef.copy(tree)(tree.name, tpt1, rhs1)
           case tree: DefDef =>
-            val ctx = localCtx(tree)
-            given Context = ctx
-            DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams), tree.paramss mapConserve (transformSubTrees(_)), transformTypeTree(tree.returnTpt), tree.rhs.map(x => transformTerm(x)))
+            val owner = tree.symbol
+            DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams)(owner), tree.paramss mapConserve (x => transformSubTrees(x)(owner)), transformTypeTree(tree.returnTpt)(owner), tree.rhs.map(x => transformTerm(x)(owner)))
           case tree: TypeDef =>
-            val ctx = localCtx(tree)
-            given Context = ctx
-            TypeDef.copy(tree)(tree.name, transformTree(tree.rhs))
+            val owner = tree.symbol
+            TypeDef.copy(tree)(tree.name, transformTree(tree.rhs)(owner))
           case tree: ClassDef =>
             ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
           case tree: Import =>
-            Import.copy(tree)(transformTerm(tree.expr), tree.selectors)
+            Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
         }
       }
 
-      def transformTerm(tree: Term)(using ctx: Context): Term = {
+      def transformTerm(tree: Term)(owner: Symbol): Term = {
         tree match {
           case Ident(name) =>
             tree
           case Select(qualifier, name) =>
-            Select.copy(tree)(transformTerm(qualifier), name)
+            Select.copy(tree)(transformTerm(qualifier)(owner), name)
           case This(qual) =>
             tree
           case Super(qual, mix) =>
-            Super.copy(tree)(transformTerm(qual), mix)
+            Super.copy(tree)(transformTerm(qual)(owner), mix)
           case Apply(fun, args) =>
-            Apply.copy(tree)(transformTerm(fun), transformTerms(args))
+            Apply.copy(tree)(transformTerm(fun)(owner), transformTerms(args)(owner))
           case TypeApply(fun, args) =>
-            TypeApply.copy(tree)(transformTerm(fun), transformTypeTrees(args))
+            TypeApply.copy(tree)(transformTerm(fun)(owner), transformTypeTrees(args)(owner))
           case Literal(const) =>
             tree
           case New(tpt) =>
-            New.copy(tree)(transformTypeTree(tpt))
+            New.copy(tree)(transformTypeTree(tpt)(owner))
           case Typed(expr, tpt) =>
-            Typed.copy(tree)(transformTerm(expr), transformTypeTree(tpt))
+            Typed.copy(tree)(transformTerm(expr)(owner), transformTypeTree(tpt)(owner))
           case tree: NamedArg =>
-            NamedArg.copy(tree)(tree.name, transformTerm(tree.value))
+            NamedArg.copy(tree)(tree.name, transformTerm(tree.value)(owner))
           case Assign(lhs, rhs) =>
-            Assign.copy(tree)(transformTerm(lhs), transformTerm(rhs))
+            Assign.copy(tree)(transformTerm(lhs)(owner), transformTerm(rhs)(owner))
           case Block(stats, expr) =>
-            Block.copy(tree)(transformStats(stats), transformTerm(expr))
+            Block.copy(tree)(transformStats(stats)(owner), transformTerm(expr)(owner))
           case If(cond, thenp, elsep) =>
-            If.copy(tree)(transformTerm(cond), transformTerm(thenp), transformTerm(elsep))
+            If.copy(tree)(transformTerm(cond)(owner), transformTerm(thenp)(owner), transformTerm(elsep)(owner))
           case Closure(meth, tpt) =>
-            Closure.copy(tree)(transformTerm(meth), tpt)
+            Closure.copy(tree)(transformTerm(meth)(owner), tpt)
           case Match(selector, cases) =>
-            Match.copy(tree)(transformTerm(selector), transformCaseDefs(cases))
+            Match.copy(tree)(transformTerm(selector)(owner), transformCaseDefs(cases)(owner))
           case Return(expr, from) =>
-            Return.copy(tree)(transformTerm(expr), from)
+            Return.copy(tree)(transformTerm(expr)(owner), from)
           case While(cond, body) =>
-            While.copy(tree)(transformTerm(cond), transformTerm(body))
+            While.copy(tree)(transformTerm(cond)(owner), transformTerm(body)(owner))
           case Try(block, cases, finalizer) =>
-            Try.copy(tree)(transformTerm(block), transformCaseDefs(cases), finalizer.map(x => transformTerm(x)))
+            Try.copy(tree)(transformTerm(block)(owner), transformCaseDefs(cases)(owner), finalizer.map(x => transformTerm(x)(owner)))
           case Repeated(elems, elemtpt) =>
-            Repeated.copy(tree)(transformTerms(elems), transformTypeTree(elemtpt))
+            Repeated.copy(tree)(transformTerms(elems)(owner), transformTypeTree(elemtpt)(owner))
           case Inlined(call, bindings, expansion) =>
-            Inlined.copy(tree)(call, transformSubTrees(bindings), transformTerm(expansion)/*()call.symbol.localContext)*/)
+            Inlined.copy(tree)(call, transformSubTrees(bindings)(owner), transformTerm(expansion)(owner))
         }
       }
 
-      def transformTypeTree(tree: TypeTree)(using ctx: Context): TypeTree = tree match {
+      def transformTypeTree(tree: TypeTree)(owner: Symbol): TypeTree = tree match {
         case Inferred() => tree
         case tree: TypeIdent => tree
         case tree: TypeSelect =>
@@ -3665,51 +3651,51 @@ trait QuoteContext { self: internal.QuoteUnpickler & internal.QuoteMatching =>
         case tree: Annotated =>
           Annotated.copy(tree)(tree.arg, tree.annotation)
         case tree: Singleton =>
-          Singleton.copy(tree)(transformTerm(tree.ref))
+          Singleton.copy(tree)(transformTerm(tree.ref)(owner))
         case tree: Refined =>
-          Refined.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.refinements).asInstanceOf[List[Definition]])
+          Refined.copy(tree)(transformTypeTree(tree.tpt)(owner), transformTrees(tree.refinements)(owner).asInstanceOf[List[Definition]])
         case tree: Applied =>
-          Applied.copy(tree)(transformTypeTree(tree.tpt), transformTrees(tree.args))
+          Applied.copy(tree)(transformTypeTree(tree.tpt)(owner), transformTrees(tree.args)(owner))
         case tree: MatchTypeTree =>
-          MatchTypeTree.copy(tree)(tree.bound.map(b => transformTypeTree(b)), transformTypeTree(tree.selector), transformTypeCaseDefs(tree.cases))
+          MatchTypeTree.copy(tree)(tree.bound.map(b => transformTypeTree(b)(owner)), transformTypeTree(tree.selector)(owner), transformTypeCaseDefs(tree.cases)(owner))
         case tree: ByName =>
-          ByName.copy(tree)(transformTypeTree(tree.result))
+          ByName.copy(tree)(transformTypeTree(tree.result)(owner))
         case tree: LambdaTypeTree =>
-          LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams), transformTree(tree.body))
+          LambdaTypeTree.copy(tree)(transformSubTrees(tree.tparams)(owner), transformTree(tree.body)(owner))
         case tree: TypeBind =>
           TypeBind.copy(tree)(tree.name, tree.body)
         case tree: TypeBlock =>
           TypeBlock.copy(tree)(tree.aliases, tree.tpt)
       }
 
-      def transformCaseDef(tree: CaseDef)(using ctx: Context): CaseDef = {
-        CaseDef.copy(tree)(transformTree(tree.pattern), tree.guard.map(transformTerm), transformTerm(tree.rhs))
+      def transformCaseDef(tree: CaseDef)(owner: Symbol): CaseDef = {
+        CaseDef.copy(tree)(transformTree(tree.pattern)(owner), tree.guard.map(x => transformTerm(x)(owner)), transformTerm(tree.rhs)(owner))
       }
 
-      def transformTypeCaseDef(tree: TypeCaseDef)(using ctx: Context): TypeCaseDef = {
-        TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern), transformTypeTree(tree.rhs))
+      def transformTypeCaseDef(tree: TypeCaseDef)(owner: Symbol): TypeCaseDef = {
+        TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern)(owner), transformTypeTree(tree.rhs)(owner))
       }
 
-      def transformStats(trees: List[Statement])(using ctx: Context): List[Statement] =
-        trees mapConserve (transformStatement(_))
+      def transformStats(trees: List[Statement])(owner: Symbol): List[Statement] =
+        trees mapConserve (x => transformStatement(x)(owner))
 
-      def transformTrees(trees: List[Tree])(using ctx: Context): List[Tree] =
-        trees mapConserve (transformTree(_))
+      def transformTrees(trees: List[Tree])(owner: Symbol): List[Tree] =
+        trees mapConserve (x => transformTree(x)(owner))
 
-      def transformTerms(trees: List[Term])(using ctx: Context): List[Term] =
-        trees mapConserve (transformTerm(_))
+      def transformTerms(trees: List[Term])(owner: Symbol): List[Term] =
+        trees mapConserve (x => transformTerm(x)(owner))
 
-      def transformTypeTrees(trees: List[TypeTree])(using ctx: Context): List[TypeTree] =
-        trees mapConserve (transformTypeTree(_))
+      def transformTypeTrees(trees: List[TypeTree])(owner: Symbol): List[TypeTree] =
+        trees mapConserve (x => transformTypeTree(x)(owner))
 
-      def transformCaseDefs(trees: List[CaseDef])(using ctx: Context): List[CaseDef] =
-        trees mapConserve (transformCaseDef(_))
+      def transformCaseDefs(trees: List[CaseDef])(owner: Symbol): List[CaseDef] =
+        trees mapConserve (x => transformCaseDef(x)(owner))
 
-      def transformTypeCaseDefs(trees: List[TypeCaseDef])(using ctx: Context): List[TypeCaseDef] =
-        trees mapConserve (transformTypeCaseDef(_))
+      def transformTypeCaseDefs(trees: List[TypeCaseDef])(owner: Symbol): List[TypeCaseDef] =
+        trees mapConserve (x => transformTypeCaseDef(x)(owner))
 
-      def transformSubTrees[Tr <: Tree](trees: List[Tr])(using ctx: Context): List[Tr] =
-        transformTrees(trees).asInstanceOf[List[Tr]]
+      def transformSubTrees[Tr <: Tree](trees: List[Tr])(owner: Symbol): List[Tr] =
+        transformTrees(trees)(owner).asInstanceOf[List[Tr]]
 
     end TreeMap
 

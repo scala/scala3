@@ -66,7 +66,7 @@ object X:
         case Apply(Select(obj,"=="),List(b)) =>
              val tb = transform(b).asExprOf[CB[Int]]
              val mt = MethodType(List("p"))(_ => List(b.tpe.widen), _ => TypeRepr.of[Boolean])
-             val mapLambda = Lambda(Symbol.currentOwner, mt, (_, x) => Select.overloaded(obj,"==",List(),List(x.head.asInstanceOf[Term]))).asExprOf[Int=>Boolean]
+             val mapLambda = Lambda(Symbol.spliceOwner, mt, (_, x) => Select.overloaded(obj,"==",List(),List(x.head.asInstanceOf[Term]))).asExprOf[Int=>Boolean]
              Term.of('{ CBM.map($tb)($mapLambda) })
         case Block(stats, last) => Block(stats, transform(last))
         case Inlined(x,List(),body) => transform(body)
@@ -81,7 +81,7 @@ object X:
             val paramTypes = params.map(_.tpt.tpe)
             val paramNames = params.map(_.name)
             val mt = MethodType(paramNames)(_ => paramTypes, _ => TypeRepr.of[CB].appliedTo(body.tpe.widen) )
-            val r = Lambda(Symbol.currentOwner, mt, (meth, args) => changeArgs(params,args,transform(body)).changeOwner(meth) )
+            val r = Lambda(Symbol.spliceOwner, mt, (meth, args) => changeArgs(params,args,transform(body)).changeOwner(meth) )
             r
           case _ =>
             throw RuntimeException("lambda expected")
@@ -92,11 +92,11 @@ object X:
              case (m, (oldParam, newParam: Tree)) => throw RuntimeException("Term expected")
          }
          val changes = new TreeMap() {
-             override def transformTerm(tree:Term)(using Context): Term =
+             override def transformTerm(tree:Term)(owner: Symbol): Term =
                tree match
-                 case ident@Ident(name) => association.getOrElse(ident.symbol, super.transformTerm(tree))
-                 case _ => super.transformTerm(tree)
+                 case ident@Ident(name) => association.getOrElse(ident.symbol, super.transformTerm(tree)(owner))
+                 case _ => super.transformTerm(tree)(owner)
          }
-         changes.transformTerm(body)
+         changes.transformTerm(body)(Symbol.spliceOwner)
 
    transform(Term.of(f)).asExprOf[CB[T]]
