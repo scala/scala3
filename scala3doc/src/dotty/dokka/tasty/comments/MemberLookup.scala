@@ -62,7 +62,7 @@ trait MemberLookup {
   private def hackMembersOf(using QuoteContext)(rsym: qctx.reflect.Symbol) = {
     import qctx.reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = rootContext.asInstanceOf
+    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     val members = sym.info.decls.iterator.filter(_.isCompleted)
     // println(s"members of ${sym.show} : ${members.map(_.show).mkString(", ")}")
@@ -70,9 +70,8 @@ trait MemberLookup {
   }
 
   private def hackIsNotAbsent(using QuoteContext)(rsym: qctx.reflect.Symbol) = {
-    import qctx.reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = rootContext.asInstanceOf
+    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     sym.isCompleted
   }

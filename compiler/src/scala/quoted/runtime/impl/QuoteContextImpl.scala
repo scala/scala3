@@ -26,10 +26,10 @@ object QuoteContextImpl {
   type ScopeId = Int
 
   def apply()(using Context): QuoteContext =
-    new QuoteContextImpl(ctx)
+    new QuoteContextImpl
 
   def showDecompiledTree(tree: tpd.Tree)(using Context): String = {
-    val qctx: QuoteContextImpl = new QuoteContextImpl(MacroExpansion.context(tree))
+    val qctx: QuoteContextImpl = new QuoteContextImpl(using MacroExpansion.context(tree))
     if ctx.settings.color.value == "always" then
       qctx.reflect.TreeMethodsImpl.temporaryShowAnsiColored(tree)
     else
@@ -43,7 +43,7 @@ object QuoteContextImpl {
 
 }
 
-class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickler, QuoteMatching:
+class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, QuoteUnpickler, QuoteMatching:
 
   private val yCheck: Boolean =
     ctx.settings.Ycheck.value(using ctx).exists(x => x == "all" || x == "macros")
@@ -80,10 +80,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
   end extension
 
   object reflect extends Reflection:
-
-    def rootContext: Context = ctx
-
-    type Context = dotc.core.Contexts.Context
 
     type Tree = tpd.Tree
 
@@ -2483,7 +2479,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
     object Position extends PositionModule:
       def ofMacroExpansion: dotc.util.SourcePosition =
-        MacroExpansion.position.getOrElse(dotc.util.SourcePosition(rootContext.source, dotc.util.Spans.NoSpan))
+        MacroExpansion.position.getOrElse(dotc.util.SourcePosition(ctx.source, dotc.util.Spans.NoSpan))
     end Position
 
     object PositionMethodsImpl extends PositionMethods:
@@ -2599,11 +2595,11 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
   end reflect
 
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
-    val tree = PickledQuotes.unpickleTerm(pickled, typeHole, termHole)(using reflect.rootContext)
+    val tree = PickledQuotes.unpickleTerm(pickled, typeHole, termHole)
     new ExprImpl(tree, hash).asInstanceOf[scala.quoted.Expr[T]]
 
   def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?]): scala.quoted.Type[T] =
-    val tree = PickledQuotes.unpickleTypeTree(pickled, typeHole, termHole)(using reflect.rootContext)
+    val tree = PickledQuotes.unpickleTypeTree(pickled, typeHole, termHole)
     new TypeImpl(tree, hash).asInstanceOf[scala.quoted.Type[T]]
 
   object ExprMatch extends ExprMatchModule:
@@ -2622,7 +2618,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
 
   private def treeMatch(scrutinee: reflect.Tree, pattern: reflect.Tree): Option[Tuple] = {
     import reflect._
-    given Context = rootContext
     def isTypeHoleDef(tree: Tree): Boolean =
       tree match
         case tree: TypeDef =>

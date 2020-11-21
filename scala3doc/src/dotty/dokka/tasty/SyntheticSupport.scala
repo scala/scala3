@@ -14,13 +14,13 @@ trait SyntheticsSupport:
 
     def hackIsTupleType(using QuoteContext)(rtpe: qctx.reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
-      given ctx as dotc.core.Contexts.Context = qctx.reflect.rootContext.asInstanceOf
+      given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isTupleType(tpe)
 
     def hackIsCompiletimeAppliedType(using QuoteContext)(rtpe: qctx.reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
-      given ctx as dotc.core.Contexts.Context = qctx.reflect.rootContext.asInstanceOf
+      given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isCompiletimeAppliedType(tpe.typeSymbol)
 
@@ -55,7 +55,7 @@ trait SyntheticsSupport:
   def hackIsInfix(using QuoteContext)(rsym: qctx.reflect.Symbol): Boolean = {
     import qctx.reflect._
     import dotty.tools.dotc
-    given ctx as dotc.core.Contexts.Context = rootContext.asInstanceOf
+    given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     ctx.definitions.isInfix(sym)
   }
@@ -66,7 +66,7 @@ trait SyntheticsSupport:
   def hackGetAllMembers(using QuoteContext)(rsym: qctx.reflect.Symbol): List[qctx.reflect.Symbol] = {
     import qctx.reflect._
     import dotty.tools.dotc
-    given ctx as dotc.core.Contexts.Context = rootContext.asInstanceOf
+    given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef)).allMembers.iterator.map(_.symbol)
       .collect {
@@ -80,7 +80,7 @@ trait SyntheticsSupport:
   def hackGetSupertypes(using QuoteContext)(rdef: qctx.reflect.ClassDef) = {
     import qctx.reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = qctx.reflect.rootContext.asInstanceOf
+    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
     val classdef = rdef.asInstanceOf[dotc.ast.tpd.TypeDef]
     val ref = classdef.symbol.info.asInstanceOf[dotc.core.Types.ClassInfo].appliedRef
     val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] =
@@ -93,7 +93,7 @@ trait SyntheticsSupport:
   def typeForClass(c: ClassDef): TypeRepr =
     import qctx.reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = rootContext.asInstanceOf
+    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
     val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
     cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[TypeRepr]
 

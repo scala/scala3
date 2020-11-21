@@ -125,9 +125,9 @@ trait ClassLikeSupport:
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
         Some(parseTypeDef(td))
 
-      case vd: ValDef if !isSyntheticField(vd.symbol) 
-        && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) 
-        && vd.symbol.isGiven => 
+      case vd: ValDef if !isSyntheticField(vd.symbol)
+        && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
+        && vd.symbol.isGiven =>
           val classDef = Some(vd.tpt.tpe).flatMap(_.classSymbol.map(_.tree.asInstanceOf[ClassDef]))
           Some(classDef.filter(_.symbol.flags.is(Flags.ModuleClass)).fold[Member](parseValDef(vd))(parseGivenClasslike(_)))
 
@@ -213,12 +213,12 @@ trait ClassLikeSupport:
         parseMethod(d, constructorWithoutParamLists(c), paramModifierFunc.getOrElse(s => c.getParameterModifier(s)))
       )
 
-  def parseClasslike(classDef: ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass = classDef match
+  def parseClasslike(classDef: ClassDef, signatureOnly: Boolean = false): DClass = classDef match
     case c: ClassDef if classDef.symbol.flags.is(Flags.Object) => parseObject(c, signatureOnly)
     case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) => parseEnum(c, signatureOnly)
     case clazz => DClass(classDef)(signatureOnly = signatureOnly)
 
-  def parseObject(classDef: ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass =
+  def parseObject(classDef: ClassDef, signatureOnly: Boolean = false): DClass =
     DClass(classDef)(
       name = classDef.name.stripSuffix("$"),
       // All objects are final so we do not need final modifer!
@@ -227,7 +227,7 @@ trait ClassLikeSupport:
     )
 
     // TODO check withNewExtras?
-  def parseEnum(classDef: ClassDef, signatureOnly: Boolean = false)(using ctx: Context): DClass =
+  def parseEnum(classDef: ClassDef, signatureOnly: Boolean = false): DClass =
     val extraModifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Sealed).filter(_ != Modifier.Abstract)
     val companion = classDef.symbol.getCompanionSymbol.map(_.tree.asInstanceOf[ClassDef]).get
 
