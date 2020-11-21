@@ -10,6 +10,7 @@ import Names.Name
 import TastyUnpickler._
 import util.Spans.offsetToInt
 import printing.Highlighting._
+import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 
 object TastyPrinter:
   def show(bytes: Array[Byte])(using Context): String =
@@ -57,7 +58,7 @@ class TastyPrinter(bytes: Array[Byte]) {
     sb.result
   }
 
-  class TreeSectionUnpickler extends SectionUnpickler[String](TreePickler.sectionName) {
+  class TreeSectionUnpickler extends SectionUnpickler[String](ASTsSection) {
     import dotty.tools.tasty.TastyFormat._
 
     private val sb: StringBuilder = new StringBuilder
@@ -133,7 +134,7 @@ class TastyPrinter(bytes: Array[Byte]) {
     }
   }
 
-  class PositionSectionUnpickler extends SectionUnpickler[String]("Positions") {
+  class PositionSectionUnpickler extends SectionUnpickler[String](PositionsSection) {
 
     private val sb: StringBuilder = new StringBuilder
 
@@ -150,7 +151,7 @@ class TastyPrinter(bytes: Array[Byte]) {
     }
   }
 
-  class CommentSectionUnpickler extends SectionUnpickler[String]("Comments") {
+  class CommentSectionUnpickler extends SectionUnpickler[String](CommentsSection) {
 
     private val sb: StringBuilder = new StringBuilder
 

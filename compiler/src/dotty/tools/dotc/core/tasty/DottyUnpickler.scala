@@ -11,6 +11,7 @@ import Names.SimpleName
 import TreeUnpickler.UnpickleMode
 
 import dotty.tools.tasty.TastyReader
+import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 
 object DottyUnpickler {
 
@@ -18,17 +19,17 @@ object DottyUnpickler {
   class BadSignature(msg: String) extends RuntimeException(msg)
 
   class TreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], commentUnpickler: Option[CommentUnpickler])
-  extends SectionUnpickler[TreeUnpickler](TreePickler.sectionName) {
+  extends SectionUnpickler[TreeUnpickler](ASTsSection) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): TreeUnpickler =
       new TreeUnpickler(reader, nameAtRef, posUnpickler, commentUnpickler)
   }
 
-  class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {
+  class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler](PositionsSection) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): PositionUnpickler =
       new PositionUnpickler(reader, nameAtRef)
   }
 
-  class CommentsSectionUnpickler extends SectionUnpickler[CommentUnpickler]("Comments") {
+  class CommentsSectionUnpickler extends SectionUnpickler[CommentUnpickler](CommentsSection) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): CommentUnpickler =
       new CommentUnpickler(reader)
   }
