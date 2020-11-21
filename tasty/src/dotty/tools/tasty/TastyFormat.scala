@@ -228,7 +228,9 @@ Note: Tree tags are grouped into 5 categories that determine what follows, and t
   Category 5 (tags 128-255):  tag Length <payload>
 
 
-Standard-Section: "Positions" Assoc*
+Standard-Section: "Positions" LinesSizes Assoc*
+
+  LinesSizes    = Int Int*                 // Number of lines followed by the size of each line not counting the trailing `\n`
 
   Assoc         = Header offset_Delta? offset_Delta? point_Delta?
                 | SOURCE nameref_Int
@@ -247,11 +249,6 @@ Standard-Section: "Positions" Assoc*
 All elements of a position section are serialized as Ints
 
 
-Standard-Section: "LineSizes" LineSize*
-
-  LineSize       = Int                      // Size the i-th line not counting the trailing `\n`
-
-
 Standard Section: "Comments" Comment*
 
   Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
@@ -262,8 +259,8 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 25
-  val MinorVersion: Int = 1
+  val MajorVersion: Int = 26
+  val MinorVersion: Int = 0
 
   final val ASTsSection = "ASTs"
   final val PositionsSection = "Positions"

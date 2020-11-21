@@ -129,7 +129,15 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     if lineIndicesCache eq null then
       lineIndicesCache = calculateLineIndicesFromContents()
     lineIndicesCache
-  def setLineIndices(indices: Array[Int]): Unit =
+  def setLineIndicesFromLineSizes(sizes: Array[Int]): Unit =
+    val lines = sizes.length
+    val indices = new Array[Int](lines + 1)
+    var i = 0
+    val penultimate = lines - 1
+    while i < penultimate do
+      indices(i + 1) = indices(i) + sizes(i) + 1 // `+1` for the '\n' at the end of the line
+      i += 1
+    indices(lines) = indices(penultimate) + sizes(penultimate) // last line does not end with '\n'
     lineIndicesCache = indices
 
   /** Map line to offset of first character in line */

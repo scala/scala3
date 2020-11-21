@@ -32,7 +32,21 @@ class PositionPickler(
     (addrDelta << 3) | (toInt(hasStartDelta) << 2) | (toInt(hasEndDelta) << 1) | toInt(hasPoint)
   }
 
-  def picklePositions(roots: List[Tree], warnings: mutable.ListBuffer[String]): Unit = {
+  def picklePositions(source: SourceFile, roots: List[Tree], warnings: mutable.ListBuffer[String]): Unit = {
+    /** Pickle the number of lines followed by the length of each line */
+    def pickleLineOffsetts(): Unit = {
+      val content = source.content()
+      buf.writeInt(content.count(_ == '\n') + 1) // number of lines
+      var lastIndex = content.indexOf('\n', 0)
+      buf.writeInt(lastIndex) // size of first line
+      while lastIndex != -1 do
+        val nextIndex = content.indexOf('\n', lastIndex + 1)
+        val end = if nextIndex != -1 then nextIndex else content.length
+        buf.writeInt(end - lastIndex - 1) // size of the next line
+        lastIndex = nextIndex
+    }
+    pickleLineOffsetts()
+
     var lastIndex = 0
     var lastSpan = Span(0, 0)
     def pickleDeltas(index: Int, span: Span) = {

@@ -47,15 +47,13 @@ import scala.annotation.constructorOnly
 import scala.annotation.internal.sharable
 
 /** Unpickler for typed trees
- *  @param reader                the reader from which to unpickle
- *  @param posUnpicklerOpt       the unpickler for positions, if it exists
- *  @param lineSizesUnpicklerOpt the unpickler for line sizes, if it exists
- *  @param commentUnpicklerOpt   the unpickler for comments, if it exists
+ *  @param reader              the reader from which to unpickle
+ *  @param posUnpicklerOpt     the unpickler for positions, if it exists
+ *  @param commentUnpicklerOpt the unpickler for comments, if it exists
  */
 class TreeUnpickler(reader: TastyReader,
                     nameAtRef: NameTable,
                     posUnpicklerOpt: Option[PositionUnpickler],
-                    lineSizesUnpicklerOpt: Option[LineSizesUnpickler],
                     commentUnpicklerOpt: Option[CommentUnpickler]) {
   import TreeUnpickler._
   import tpd._
@@ -1366,9 +1364,9 @@ class TreeUnpickler(reader: TastyReader,
       val path = sourcePathAt(addr)
       if (path.nonEmpty) {
         val sourceFile = ctx.getSource(path)
-        lineSizesUnpicklerOpt match
-          case Some(lineSizesUnpickler) =>
-            sourceFile.setLineIndices(lineSizesUnpickler.lineIndices)
+        posUnpicklerOpt match
+          case Some(posUnpickler) =>
+            sourceFile.setLineIndicesFromLineSizes(posUnpickler.lineSizes)
           case _ =>
         pickling.println(i"source change at $addr: $path")
         ctx.withSource(sourceFile)
