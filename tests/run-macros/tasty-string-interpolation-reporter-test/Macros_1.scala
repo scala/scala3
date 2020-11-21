@@ -18,7 +18,7 @@ object TestFooErrors { // Defined in tests
 
 object Macro {
 
-  def foo(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
+  def foo(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] = {
     (sc, argsExpr) match {
       case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
         val reporter = new Reporter {
@@ -31,7 +31,7 @@ object Macro {
     }
   }
 
-  def fooErrors(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[List[(Int, Int, Int, String)]] = {
+  def fooErrors(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[List[(Int, Int, Int, String)]] = {
     (sc, argsExpr) match {
       case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
         val errors = List.newBuilder[Expr[(Int, Int, Int, String)]]
@@ -50,7 +50,7 @@ object Macro {
   }
 
 
-  private def fooCore(parts: Seq[Expr[String]], args: Seq[Expr[Any]], reporter: Reporter)(using QuoteContext): Expr[String] = {
+  private def fooCore(parts: Seq[Expr[String]], args: Seq[Expr[Any]], reporter: Reporter)(using Quotes): Expr[String] = {
     for ((part, idx) <- parts.zipWithIndex) {
       val Const(v: String) = part
       if (v.contains("#"))

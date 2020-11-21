@@ -2,7 +2,7 @@ object Macros {
   import scala.quoted._
 
   inline def go[T](inline t: T) = ${ impl('t) }
-  def impl[T](expr: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
+  def impl[T](expr: Expr[T])(using Quotes) : Expr[Unit] = {
     import qctx.reflect._
 
     val tree = Term.of(expr)

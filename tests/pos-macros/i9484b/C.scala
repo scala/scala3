@@ -2,5 +2,5 @@ import scala.quoted._
 
 object C {
   inline def m: Any = ${ mExpr }
-  def mExpr(using qctx: QuoteContext): Expr[Any] = '{ () }
+  def mExpr(using Quotes): Expr[Any] = '{ () }
 }

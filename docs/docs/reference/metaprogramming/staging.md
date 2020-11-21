@@ -60,15 +60,15 @@ The framework as discussed so far allows code to be staged, i.e. be prepared
 to be executed at a later stage. To run that code, there is another method
 in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
 to `T` but only `$` is subject to the PCP, whereas `run` is just a normal method.
-Run provides a `QuoteContext` that can be used to show the expression in the scope of `run`.
-On the other hand `withQuoteContext` provides a `QuoteContext` without evaluating the expression.
+Run provides a `Quotes` that can be used to show the expression in the scope of `run`.
+On the other hand `withQuotes` provides a `Quotes` without evaluating the expression.
 
 ```scala
 package scala.quoted.staging
 
-def run[T](expr: QuoteContext ?=> Expr[T])(using toolbox: Toolbox): T = ...
+def run[T](expr: Quotes ?=> Expr[T])(using toolbox: Toolbox): T = ...
 
-def withQuoteContext[T](thunk: QuoteContext ?=> T)(using toolbox: Toolbox): T = ...
+def withQuotes[T](thunk: Quotes ?=> T)(using toolbox: Toolbox): T = ...
 ```
 
 ## Create a new Dotty project with staging enabled

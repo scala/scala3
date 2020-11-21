@@ -49,12 +49,12 @@ trait QuotesAndSplices {
         report.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.srcPos)
       case _ =>
     }
-    val qctx = inferImplicitArg(defn.QuoteContextClass.typeRef, tree.span)
+    val qctx = inferImplicitArg(defn.QuotesClass.typeRef, tree.span)
 
     if qctx.tpe.isInstanceOf[SearchFailureType] then
-      report.error(missingArgMsg(qctx, defn.QuoteContextClass.typeRef, ""), ctx.source.atSpan(tree.span))
+      report.error(missingArgMsg(qctx, defn.QuotesClass.typeRef, ""), ctx.source.atSpan(tree.span))
     else if !qctx.tpe.isStable then
-      report.error(em"Quotes require stable QuoteContext, but found non stable $qctx", qctx.srcPos)
+      report.error(em"Quotes require stable Quotes, but found non stable $qctx", qctx.srcPos)
 
     val tree1 =
       if ctx.mode.is(Mode.Pattern) then
@@ -65,7 +65,7 @@ trait QuotesAndSplices {
         else report.warning(msg, tree.srcPos)
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_of.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
       else
-        typedApply(untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.quoted), pt)(using pushQuoteContext(qctx)).select(nme.apply).appliedTo(qctx)
+        typedApply(untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.quoted), pt)(using pushQuotes(qctx)).select(nme.apply).appliedTo(qctx)
     tree1.withSpan(tree.span)
   }
 
@@ -103,7 +103,7 @@ trait QuotesAndSplices {
         markAsMacro(ctx)
       }
 
-      val (outerQctx, ctx1) = popQuoteContext()
+      val (outerQctx, ctx1) = popQuotes()
 
       val internalSplice =
         outerQctx match

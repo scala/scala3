@@ -4,8 +4,8 @@ import scala.quoted.staging._
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
 
-  def main(args: Array[String]): Unit = withQuoteContext {
-    val q = '{(using qctx: QuoteContext) =>
+  def main(args: Array[String]): Unit = withQuotes {
+    val q = '{(using q: Quotes) =>
       val a = '{4}
       '{${a}}
     }

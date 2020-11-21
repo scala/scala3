@@ -11,7 +11,7 @@ object FileName {
   def fileNameFromString(s: String): Either[String, FileName] =
     Right(FileName.unsafe(s))
 
-  def createFileName(fileName: Expr[String])(using qctx: QuoteContext): Expr[FileName] =
+  def createFileName(fileName: Expr[String])(using Quotes): Expr[FileName] =
     fileName match {
       case e@Const(s) =>
         fileNameFromString(s) match {

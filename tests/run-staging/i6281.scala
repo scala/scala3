@@ -26,7 +26,7 @@ object Test extends App {
     def reflect[A](using Type[A]) = m => m
   }
   // for reify, we need type tags for E and also strangely for L.
-  implicit def cons [E, L <: HList](using Effects[L])(using Type[E])(using Type[L])(using QuoteContext): Effects[E :: L] =  new Effects[E :: L] {
+  implicit def cons [E, L <: HList](using Effects[L])(using Type[E])(using Type[L])(using Quotes): Effects[E :: L] =  new Effects[E :: L] {
     def reify[A](using Type[A])   = m => '{ k => ${ Effects[L].reify[E] {   m(   a =>    Effects[L].reflect[E]('{k($a)})) } }}
     def reflect[A](using Type[A]) = m =>    k =>    Effects[L].reflect[E] { '{ $m(a => ${ Effects[L].reify[E](   k('a)) }) } }
   }
@@ -35,11 +35,11 @@ object Test extends App {
   type RS = Boolean :: RS2
   type RS2 = Int :: String :: HNil
 
-  def m(using QuoteContext): STM[Int, RS] = k => k('{42})
+  def m(using Quotes): STM[Int, RS] = k => k('{42})
 
   implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
 
-  withQuoteContext {
+  withQuotes {
      println(Effects[RS].reify[Int] { m }.show)
 
      val effects = cons[Boolean, RS2](using cons[Int, String :: HNil](using cons[String, HNil](using empty)))

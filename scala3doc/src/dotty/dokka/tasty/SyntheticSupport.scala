@@ -12,15 +12,15 @@ trait SyntheticsSupport:
 
     def isCompiletimeAppliedType: Boolean = hackIsCompiletimeAppliedType(using qctx)(t)
 
-    def hackIsTupleType(using QuoteContext)(rtpe: qctx.reflect.TypeRepr): Boolean =
+    def hackIsTupleType(using Quotes)(rtpe: qctx.reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
-      given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
+      given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isTupleType(tpe)
 
-    def hackIsCompiletimeAppliedType(using QuoteContext)(rtpe: qctx.reflect.TypeRepr): Boolean =
+    def hackIsCompiletimeAppliedType(using Quotes)(rtpe: qctx.reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
-      given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
+      given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isCompiletimeAppliedType(tpe.typeSymbol)
 
@@ -52,10 +52,10 @@ trait SyntheticsSupport:
     }
 
   // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
-  def hackIsInfix(using QuoteContext)(rsym: qctx.reflect.Symbol): Boolean = {
+  def hackIsInfix(using Quotes)(rsym: qctx.reflect.Symbol): Boolean = {
     import qctx.reflect._
     import dotty.tools.dotc
-    given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
+    given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     ctx.definitions.isInfix(sym)
   }
@@ -63,10 +63,10 @@ trait SyntheticsSupport:
   They are valdefs that describe case companion objects and cases from enum.
   TASTY crashed when calling _.tree on them.
   */
-  def hackGetAllMembers(using QuoteContext)(rsym: qctx.reflect.Symbol): List[qctx.reflect.Symbol] = {
+  def hackGetAllMembers(using Quotes)(rsym: qctx.reflect.Symbol): List[qctx.reflect.Symbol] = {
     import qctx.reflect._
     import dotty.tools.dotc
-    given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
+    given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef)).allMembers.iterator.map(_.symbol)
       .collect {
@@ -77,10 +77,10 @@ trait SyntheticsSupport:
       }.toList
   }
 
-  def hackGetSupertypes(using QuoteContext)(rdef: qctx.reflect.ClassDef) = {
+  def hackGetSupertypes(using Quotes)(rdef: qctx.reflect.ClassDef) = {
     import qctx.reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
+    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val classdef = rdef.asInstanceOf[dotc.ast.tpd.TypeDef]
     val ref = classdef.symbol.info.asInstanceOf[dotc.core.Types.ClassInfo].appliedRef
     val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] =
@@ -88,12 +88,12 @@ trait SyntheticsSupport:
     baseTypes.asInstanceOf[List[(Symbol, TypeRepr)]]
   }
 
-  def getSupertypes(using QuoteContext)(c: ClassDef) = hackGetSupertypes(c).tail
+  def getSupertypes(using Quotes)(c: ClassDef) = hackGetSupertypes(c).tail
 
   def typeForClass(c: ClassDef): TypeRepr =
     import qctx.reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
+    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
     cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[TypeRepr]
 

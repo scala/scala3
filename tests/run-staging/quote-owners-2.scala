@@ -10,7 +10,7 @@ object Test {
     '{ println($q) }
   }
 
-  def f(t: Type[List[Int]])(using QuoteContext): Expr[Int] = '{
+  def f(t: Type[List[Int]])(using Quotes): Expr[Int] = '{
     def ff: Int = {
       val a: t.Underlying = {
         type T = t.Underlying
@@ -22,5 +22,5 @@ object Test {
     ff
   }
 
-  def g[T](a: Type[T])(using QuoteContext): Type[List[T]] = Type.of[List[a.Underlying]]
+  def g[T](a: Type[T])(using Quotes): Type[List[T]] = Type.of[List[a.Underlying]]
 }

@@ -14,7 +14,7 @@ final class TypeImpl(val typeTree: tpd.Tree, val scopeId: Int) extends Type[?] {
   }
 
   /** View this expression `quoted.Type[T]` as a `TypeTree` */
-  def unseal(using qctx: QuoteContext): qctx.reflect.TypeTree =
+  def unseal(using Quotes): qctx.reflect.TypeTree =
     checkScopeId(qctx.hashCode)
     typeTree.asInstanceOf[qctx.reflect.TypeTree]
 

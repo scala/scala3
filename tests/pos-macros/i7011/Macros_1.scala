@@ -2,7 +2,7 @@ import scala.quoted._
 
 inline def mcr(body: => Any): Unit = ${mcrImpl('body)}
 
-def mcrImpl[T](body: Expr[Any])(using QuoteContext) : Expr[Any] = {
+def mcrImpl[T](body: Expr[Any])(using Quotes) : Expr[Any] = {
   import qctx.reflect._
 
   val bTree = Term.of(body)

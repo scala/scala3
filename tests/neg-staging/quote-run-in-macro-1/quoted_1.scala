@@ -5,7 +5,7 @@ object Macros {
 
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   inline def foo(i: => Int): Int = ${ fooImpl('i) }
-  def fooImpl(i: Expr[Int])(using QuoteContext): Expr[Int] = {
+  def fooImpl(i: Expr[Int])(using Quotes): Expr[Int] = {
     val y: Int = run(i)
     Expr(y)
   }

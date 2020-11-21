@@ -1,6 +1,6 @@
 import scala.quoted._
 
-def makeMatch[A: Type](head : Expr[A])(using qctx : QuoteContext) : Expr[Unit] = {
+def makeMatch[A: Type](head : Expr[A])(using qctx : Quotes) : Expr[Unit] = {
   import qctx.reflect._
 
   val sacrifice = '{ $head match { case _ => ??? } }
@@ -9,6 +9,6 @@ def makeMatch[A: Type](head : Expr[A])(using qctx : QuoteContext) : Expr[Unit] =
   '{ println("Ok") }
 }
 
-def mm(implicit qctx : QuoteContext) = makeMatch('{42})
+def mm(implicit qctx : Quotes) = makeMatch('{42})
 
 inline def f = ${ mm }

@@ -1,6 +1,6 @@
 import scala.quoted._
 
-def test[T: Type](x: Expr[Any])(using QuoteContext): Unit =
+def test[T: Type](x: Expr[Any])(using Quotes): Unit =
 
   x match
     case '{ $x: T } => // match using outer `T`

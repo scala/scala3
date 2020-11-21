@@ -24,7 +24,7 @@ object Index {
 
   implicit inline def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ${succImpl[K, H, T]}
 
-  def succImpl[K, H, T](implicit qctx: QuoteContext, k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
+  def succImpl[K, H, T](implicit qctx: Quotes, k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
     import qctx.reflect._
 
     def name(tp: TypeRepr): String = tp match {

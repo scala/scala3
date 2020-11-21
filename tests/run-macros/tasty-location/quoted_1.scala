@@ -6,7 +6,7 @@ object Location {
 
   implicit inline def location: Location = ${impl}
 
-  def impl(using qctx: QuoteContext) : Expr[Location] = {
+  def impl(using Quotes) : Expr[Location] = {
     import qctx.reflect._
 
     def listOwnerNames(sym: Symbol, acc: List[String]): List[String] =

@@ -1,12 +1,12 @@
 import scala.quoted._
 object Test {
 
-  def x(using QuoteContext) = '{1 + 2}
+  def x(using Quotes) = '{1 + 2}
 
   def f(x: Int) = x
   def g(x: Int, y: Int) = x * y
 
-  def res(using QuoteContext): quoted.Expr[Int] = x match {
+  def res(using Quotes): quoted.Expr[Int] = x match {
     case '{1 + 2} => '{0}
     case '{f($y)} => y
     case '{g($y, $z)} => '{$y * $z}

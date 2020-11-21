@@ -4,12 +4,12 @@ import scala.quoted._
 
 trait MemberLookup {
 
-  def lookup(using QuoteContext)(
+  def lookup(using Quotes)(
     query: Query,
     owner: qctx.reflect.Symbol,
   ): Option[(qctx.reflect.Symbol, String)] = lookupOpt(query, Some(owner))
 
-  def lookupOpt(using QuoteContext)(
+  def lookupOpt(using Quotes)(
     query: Query,
     ownerOpt: Option[qctx.reflect.Symbol],
   ): Option[(qctx.reflect.Symbol, String)] =
@@ -59,24 +59,24 @@ trait MemberLookup {
         println(s"[WARN] Unable to find a link for ${query} ${ownerOpt.fold("")(o => "in " + o.name)}")
         None
 
-  private def hackMembersOf(using QuoteContext)(rsym: qctx.reflect.Symbol) = {
+  private def hackMembersOf(using Quotes)(rsym: qctx.reflect.Symbol) = {
     import qctx.reflect._
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
+    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     val members = sym.info.decls.iterator.filter(_.isCompleted)
     // println(s"members of ${sym.show} : ${members.map(_.show).mkString(", ")}")
     members.asInstanceOf[Iterator[Symbol]]
   }
 
-  private def hackIsNotAbsent(using QuoteContext)(rsym: qctx.reflect.Symbol) = {
+  private def hackIsNotAbsent(using Quotes)(rsym: qctx.reflect.Symbol) = {
     import dotty.tools.dotc
-    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
+    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     sym.isCompleted
   }
 
-  private def localLookup(using QuoteContext)(query: String, owner: qctx.reflect.Symbol): Option[qctx.reflect.Symbol] = {
+  private def localLookup(using Quotes)(query: String, owner: qctx.reflect.Symbol): Option[qctx.reflect.Symbol] = {
     import qctx.reflect._
 
     inline def whenExists(s: Symbol)(otherwise: => Option[Symbol]): Option[Symbol] =
@@ -129,7 +129,7 @@ trait MemberLookup {
       }
   }
 
-  private def downwardLookup(using QuoteContext)(query: List[String], owner: qctx.reflect.Symbol): Option[qctx.reflect.Symbol] =
+  private def downwardLookup(using Quotes)(query: List[String], owner: qctx.reflect.Symbol): Option[qctx.reflect.Symbol] =
     query match {
       case Nil => None
       case q :: Nil => localLookup(q, owner)

@@ -2,8 +2,8 @@ import scala.quoted._
 
 object SourceFiles {
 
-  type Macro[X] = QuoteContext ?=> Expr[X]
-  def tastyContext(using qctx: QuoteContext): QuoteContext = qctx
+  type Macro[X] = Quotes ?=> Expr[X]
+  def tastyContext(using Quotes): Quotes = qctx
 
   implicit inline def getThisFile: String =
     ${getThisFileImpl}

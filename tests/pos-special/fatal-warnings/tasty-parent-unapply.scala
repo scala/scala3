@@ -3,7 +3,7 @@ import scala.quoted._
 object Macros {
 
 
-  def impl(using QuoteContext): Unit = {
+  def impl(using Quotes): Unit = {
     import qctx.reflect._
 
     def foo(tree: Tree, term: Term, typeTree: TypeTree, parent: Tree) = {

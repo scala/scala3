@@ -5,7 +5,7 @@ object Foo {
   inline def inspectBody(inline i: Int): String =
     ${ inspectBodyImpl('i) }
 
-  def inspectBodyImpl(x: Expr[Int])(using qctx: QuoteContext) : Expr[String] = {
+  def inspectBodyImpl(x: Expr[Int])(using Quotes) : Expr[String] = {
     import qctx.reflect._
     Term.of(x) match {
       case Inlined(None, Nil, arg) => Expr(arg.symbol.tree.showExtractors)

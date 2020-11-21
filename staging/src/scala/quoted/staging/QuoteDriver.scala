@@ -22,7 +22,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
 
   private[this] val contextBase: ContextBase = new ContextBase
 
-  def run[T](exprBuilder: QuoteContext => Expr[T], settings: Toolbox.Settings): T =
+  def run[T](exprBuilder: Quotes => Expr[T], settings: Toolbox.Settings): T =
     val outDir: AbstractFile =
       settings.outDir match
         case Some(out) =>

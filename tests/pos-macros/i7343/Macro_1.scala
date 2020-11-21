@@ -1,7 +1,7 @@
-import scala.quoted.{ QuoteContext, Expr }
+import scala.quoted.{ Quotes, Expr }
 
 trait M {
   def f: Any
 }
 
-inline def g(em: Expr[M])(using QuoteContext) = '{$em.f}
+inline def g(em: Expr[M])(using Quotes) = '{$em.f}

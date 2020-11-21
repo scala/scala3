@@ -12,7 +12,7 @@ object Asserts {
   inline def macroAssert(inline cond: Boolean): Unit =
     ${impl('cond)}
 
-  def impl(cond: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
+  def impl(cond: Expr[Boolean])(using Quotes) : Expr[Unit] = {
     import qctx.reflect._
 
     val tree = Term.of(cond)

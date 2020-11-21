@@ -21,7 +21,7 @@ object Macro:
        mThenImpl[A,B,PartialFunction[A,B],Option[B]]('x)
     }
 
-    def mThenImpl[A:Type, B:Type, S<:(A=>B) :Type, R:Type](x:Expr[S])(using qctx: QuoteContext):Expr[R]=
+    def mThenImpl[A:Type, B:Type, S<:(A=>B) :Type, R:Type](x:Expr[S])(using Quotes):Expr[R]=
        import qctx.reflect._
        val fun = Term.of('{X})
        val returnType = TypeRepr.of[(S) => ?]

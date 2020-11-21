@@ -6,10 +6,10 @@ object Macro {
   inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int])(inline f: Int => Unit): Unit = // or f: Int => Unit
     ${unrolledForeachImpl('unrollSize, 'seq, 'f)}
 
-  private def unrolledForeachImpl(unrollSizeExpr: Expr[Int], seq: Expr[Array[Int]], f: Expr[Int => Unit]) (using QuoteContext): Expr[Unit] =
+  private def unrolledForeachImpl(unrollSizeExpr: Expr[Int], seq: Expr[Array[Int]], f: Expr[Int => Unit]) (using Quotes): Expr[Unit] =
     unrolledForeachImpl(unrollSizeExpr.unliftOrError, seq, f)
 
-  private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit])(using QuoteContext): Expr[Unit] = '{
+  private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit])(using Quotes): Expr[Unit] = '{
     val size = $seq.length
     assert(size % (${Expr(unrollSize)}) == 0) // for simplicity of the implementation
     var i = 0

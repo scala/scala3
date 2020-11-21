@@ -1,12 +1,12 @@
 package dotty.dokka.tasty.comments
 
-import scala.quoted.QuoteContext
+import scala.quoted.Quotes
 
 import org.junit.{Test, Rule}
 import org.junit.Assert.{assertSame, assertTrue}
 import dotty.dokka.BuildInfo
 
-class LookupTestCases[Q <: QuoteContext](val q: QuoteContext) {
+class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
   def testAll(): Unit = {
     testOwnerlessLookup()
@@ -105,12 +105,12 @@ class MemberLookupTests {
     class Inspector extends TastyInspector:
       var alreadyRan: Boolean = false
 
-      override def processCompilationUnit(using ctx: quoted.QuoteContext)(root: ctx.reflect.Tree): Unit =
+      override def processCompilationUnit(using ctx: quoted.Quotes)(root: ctx.reflect.Tree): Unit =
         if !alreadyRan then
           this.test()
           alreadyRan = true
 
-      def test()(using q: QuoteContext): Unit = {
+      def test()(using q: Quotes): Unit = {
         import dotty.dokka.tasty.comments.MemberLookup
 
         val cases = LookupTestCases[q.type](q)

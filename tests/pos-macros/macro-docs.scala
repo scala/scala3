@@ -24,7 +24,7 @@ object MacrosMD_Liftable {
     }
   }
 
-  def showExpr[T](expr: Expr[T])(using QuoteContext): Expr[String] = {
+  def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] = {
     val code: String = expr.show
     Expr(code)
   }

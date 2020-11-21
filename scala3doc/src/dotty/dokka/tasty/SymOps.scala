@@ -10,7 +10,7 @@ import dotty.dokka.model.api.Modifier
 
 import scala.quoted._
 
-class SymOps[Q <: QuoteContext](val q: Q):
+class SymOps[Q <: Quotes](val q: Q):
   import q.reflect._
 
   given Q = q

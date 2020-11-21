@@ -6,7 +6,7 @@ object Other {
 
 object Macro {
 
-  def impl(using qctx: QuoteContext): Expr[Int] = {
+  def impl(using Quotes): Expr[Int] = {
     import qctx.reflect._
 
     ValDef.let(

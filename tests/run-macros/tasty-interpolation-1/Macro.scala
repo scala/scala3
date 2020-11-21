@@ -14,24 +14,24 @@ object Macro {
 }
 
 object SIntepolator extends MacroStringInterpolator[String] {
-  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using QuoteContext): Expr[String] =
+  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
     '{(${Expr(strCtx)}).s(${Expr.ofList(args)}: _*)}
 }
 
 object RawIntepolator extends MacroStringInterpolator[String] {
-  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using QuoteContext): Expr[String] =
+  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
     '{(${Expr(strCtx)}).raw(${Expr.ofList(args)}: _*)}
 }
 
 object FooIntepolator extends MacroStringInterpolator[String] {
-  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using QuoteContext): Expr[String] =
+  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
     '{(${Expr(strCtx)}).s(${Expr.ofList(args.map(_ => '{"foo"}))}: _*)}
 }
 
 // TODO put this class in the stdlib or separate project?
 abstract class MacroStringInterpolator[T] {
 
-  final def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[T] = {
+  final def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes) : Expr[T] = {
     try interpolate(strCtxExpr, argsExpr)
     catch {
       case ex: NotStaticlyKnownError =>
@@ -49,12 +49,12 @@ abstract class MacroStringInterpolator[T] {
     }
   }
 
-  protected def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) (using QuoteContext): Expr[T] =
+  protected def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) (using Quotes): Expr[T] =
     interpolate(getStaticStringContext(strCtxExpr), getArgsList(argsExpr))
 
-  protected def interpolate(strCtx: StringContext, argExprs: List[Expr[Any]]) (using QuoteContext): Expr[T]
+  protected def interpolate(strCtx: StringContext, argExprs: List[Expr[Any]]) (using Quotes): Expr[T]
 
-  protected def getStaticStringContext(strCtxExpr: Expr[StringContext])(using qctx: QuoteContext) : StringContext = {
+  protected def getStaticStringContext(strCtxExpr: Expr[StringContext])(using Quotes) : StringContext = {
     import qctx.reflect._
     Term.of(strCtxExpr).underlyingArgument match {
       case Select(Typed(Apply(_, List(Apply(_, List(Typed(Repeated(strCtxArgTrees, _), Inferred()))))), _), _) =>
@@ -68,7 +68,7 @@ abstract class MacroStringInterpolator[T] {
     }
   }
 
-  protected def getArgsList(argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext) : List[Expr[Any]] = {
+  protected def getArgsList(argsExpr: Expr[Seq[Any]])(using Quotes) : List[Expr[Any]] = {
     import qctx.reflect._
     Term.of(argsExpr).underlyingArgument match {
       case Typed(Repeated(args, _), _) => args.map(_.asExpr)

@@ -1,6 +1,6 @@
 import scala.quoted._
-class Foo(using QuoteContext) {
-  inline def foo(x: Expr[String])(using QuoteContext) = '{ println(${x}) }
+class Foo(using Quotes) {
+  inline def foo(x: Expr[String])(using Quotes) = '{ println(${x}) }
 
   foo('{"abc"})
 }

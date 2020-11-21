@@ -6,7 +6,7 @@ object Location {
 
   implicit inline def location: Location = ${impl}
 
-  def impl(using QuoteContext): Expr[Location] = {
+  def impl(using Quotes): Expr[Location] = {
     val list = Expr(List("a", "b", "c", "d", "e", "f"))
     '{new Location(${list})}
   }

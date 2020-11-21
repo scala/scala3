@@ -7,13 +7,13 @@ import scala.quoted._
 object CompileTime {
 
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprQuote`")
-  def exprQuote[T](x: T): QuoteContext ?=> Expr[T] = ???
+  def exprQuote[T](x: T): Quotes ?=> Expr[T] = ???
 
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprSplice`")
-  def exprSplice[T](x: QuoteContext ?=> Expr[T]): T = ???
+  def exprSplice[T](x: Quotes ?=> Expr[T]): T = ???
 
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.exprNestedSplice`")
-  def exprNestedSplice[T](ctx: QuoteContext)(x: ctx.Nested ?=> Expr[T]): T = ???
+  def exprNestedSplice[T](ctx: Quotes)(x: ctx.Nested ?=> Expr[T]): T = ???
 
   @compileTimeOnly("Illegal reference to `scala.internal.quoted.CompileTime.quoteTypeTag`")
   class quoteTypeTag extends Annotation

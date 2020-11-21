@@ -1,6 +1,6 @@
 import scala.quoted._
 
-class Test(using QuoteContext) {
+class Test(using Quotes) {
 
   def f[T](x: Expr[T])(implicit t: Type[T]) = '{
     val y: T = $x

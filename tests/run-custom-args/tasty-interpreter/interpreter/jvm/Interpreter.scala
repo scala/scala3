@@ -4,7 +4,7 @@ package jvm
 import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
 
-class Interpreter[QCtx <: QuoteContext & Singleton](using qctx0: QCtx) extends TreeInterpreter[QCtx] {
+class Interpreter[QCtx <: Quotes & Singleton](using qctx0: QCtx) extends TreeInterpreter[QCtx] {
   import qctx.reflect._
 
   // All references are represented by themselves and values are boxed

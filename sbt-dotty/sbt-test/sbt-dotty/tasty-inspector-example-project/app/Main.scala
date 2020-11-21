@@ -10,7 +10,7 @@ import java.nio.file.{Path, Files, Paths, FileSystems}
 object Main extends App {
 
   val inspector = new TastyInspector {
-    protected def processCompilationUnit(using QuoteContext)(root: qctx.reflect.Tree): Unit = {
+    protected def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit = {
 
       import qctx.reflect._
       val tastyStr = root.show

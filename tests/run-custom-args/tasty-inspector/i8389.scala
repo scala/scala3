@@ -10,7 +10,7 @@ import scala.tasty.inspector._
 
   // in dotty-example-project
   val inspector = new TastyInspector {
-    protected def processCompilationUnit(using QuoteContext)(tree: qctx.reflect.Tree): Unit = {
+    protected def processCompilationUnit(using Quotes)(tree: qctx.reflect.Tree): Unit = {
       println(tree.show)
     }
   }

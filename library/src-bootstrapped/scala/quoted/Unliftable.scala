@@ -8,7 +8,7 @@ trait Unliftable[T] {
    *  Returns `None` if the expression does not contain a value or contains side effects.
    *  Otherwise returns the `Some` of the value.
    */
-  def fromExpr(x: Expr[T]): QuoteContext ?=> Option[T]
+  def fromExpr(x: Expr[T]): Quotes ?=> Option[T]
 
 }
 

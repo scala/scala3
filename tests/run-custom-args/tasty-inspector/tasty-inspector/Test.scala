@@ -15,7 +15,7 @@ object Test {
 
 class DBInspector extends TastyInspector {
 
-  protected def processCompilationUnit(using QuoteContext)(root: qctx.reflect.Tree): Unit = {
+  protected def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit = {
     import qctx.reflect._
     object Traverser extends TreeTraverser {
 

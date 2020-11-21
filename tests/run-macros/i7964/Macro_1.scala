@@ -7,7 +7,7 @@ enum Num { // TODO derive a quoted.Unliftable
 
 inline def foo(inline num: Num): Int = ${ fooExpr('num) }
 
-private def fooExpr(numExpr: Expr[Num]) (using QuoteContext): Expr[Int] =
+private def fooExpr(numExpr: Expr[Num]) (using Quotes): Expr[Int] =
   val num = numExpr match {
     case '{ Num.One } => Num.One
     case '{ Num.Two } => Num.Two

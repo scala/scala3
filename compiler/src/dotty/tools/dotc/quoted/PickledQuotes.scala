@@ -19,7 +19,7 @@ import dotty.tools.dotc.report
 
 import scala.reflect.ClassTag
 
-import scala.quoted.QuoteContext
+import scala.quoted.Quotes
 import scala.quoted.runtime.impl._
 
 import scala.collection.mutable
@@ -41,19 +41,19 @@ object PickledQuotes {
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(using Context): Tree = {
     val expr1 = expr.asInstanceOf[ExprImpl]
-    expr1.checkScopeId(QuoteContextImpl.scopeId)
+    expr1.checkScopeId(QuotesImpl.scopeId)
     changeOwnerOfTree(expr1.tree, ctx.owner)
   }
 
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(tpe: quoted.Type[?])(using Context): Tree = {
     val tpe1 = tpe.asInstanceOf[TypeImpl]
-    tpe1.checkScopeId(QuoteContextImpl.scopeId)
+    tpe1.checkScopeId(QuotesImpl.scopeId)
     changeOwnerOfTree(tpe1.typeTree, ctx.owner)
   }
 
   /** Unpickle the tree contained in the TastyExpr */
-  def unpickleTerm(pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?])(using Context): Tree = {
+  def unpickleTerm(pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?])(using Context): Tree = {
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = false))
     val Inlined(call, Nil, expnasion) = unpickled
     val inlineCtx = inlineContext(call)
@@ -63,22 +63,22 @@ object PickledQuotes {
   }
 
   /** Unpickle the tree contained in the TastyType */
-  def unpickleTypeTree(pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?])(using Context): Tree = {
+  def unpickleTypeTree(pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?])(using Context): Tree = {
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = true))
     spliceTypes(unpickled, typeHole, termHole)
   }
 
   /** Replace all term holes with the spliced terms */
-  private def spliceTerms(tree: Tree, typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.QuoteContext) => scala.quoted.Expr[?])(using Context): Tree = {
+  private def spliceTerms(tree: Tree, typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?])(using Context): Tree = {
     val evaluateHoles = new TreeMap {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args) =>
           val reifiedArgs = args.map { arg =>
-            if (arg.isTerm) (using qctx: QuoteContext) => new ExprImpl(arg, QuoteContextImpl.scopeId)
-            else new TypeImpl(arg, QuoteContextImpl.scopeId)
+            if (arg.isTerm) (using q: Quotes) => new ExprImpl(arg, QuotesImpl.scopeId)
+            else new TypeImpl(arg, QuotesImpl.scopeId)
           }
           if isTerm then
-            val quotedExpr = termHole(idx, reifiedArgs, QuoteContextImpl())
+            val quotedExpr = termHole(idx, reifiedArgs, QuotesImpl())
             val filled = PickledQuotes.quotedExprToTree(quotedExpr)
 
             // We need to make sure a hole is created with the source file of the surrounding context, even if
@@ -123,7 +123,7 @@ object PickledQuotes {
   }
 
   /** Replace all type holes generated with the spliced types */
-  private def spliceTypes(tree: Tree, typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Int], scala.quoted.QuoteContext) => Any)(using Context): Tree = {
+  private def spliceTypes(tree: Tree, typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Int], scala.quoted.Quotes) => Any)(using Context): Tree = {
     tree match
       case Block(stat :: rest, expr1) if stat.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
         val typeSpliceMap = (stat :: rest).iterator.map {

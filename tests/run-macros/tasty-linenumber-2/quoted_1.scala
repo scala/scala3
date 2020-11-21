@@ -8,7 +8,7 @@ object LineNumber {
 
   implicit inline def line: LineNumber = ${lineImpl}
 
-  def lineImpl(using QuoteContext) : Expr[LineNumber] = {
+  def lineImpl(using Quotes) : Expr[LineNumber] = {
     import qctx.reflect._
     '{new LineNumber(${Expr(Position.ofMacroExpansion.startLine)})}
   }

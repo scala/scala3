@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Lib {
 
-  def impl[T: Type](arg: Expr[T])(using QuoteContext): Expr[T] = {
+  def impl[T: Type](arg: Expr[T])(using Quotes): Expr[T] = {
     arg match {
       case e @ '{ $x: Boolean } =>
         e: Expr[T & Boolean]

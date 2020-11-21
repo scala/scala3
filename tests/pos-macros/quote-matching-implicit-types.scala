@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Foo {
 
-  def f(e: Expr[Any])(using QuoteContext): Unit = e match {
+  def f(e: Expr[Any])(using Quotes): Unit = e match {
     case '{ foo[t]($x) } => bar(x)
     case '{ foo[t]($x) } if bar(x) => ()
     case '{ foo[t]($x) } => '{ foo($x) }

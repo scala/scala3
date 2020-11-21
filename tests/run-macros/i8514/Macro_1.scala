@@ -6,7 +6,7 @@ class C extends B
 
 inline def test(): Unit = ${ testExpr }
 
-def testExpr(using QuoteContext): Expr[Unit] = {
+def testExpr(using Quotes): Expr[Unit] = {
   import qctx.reflect._
 
   '{
