@@ -13,5 +13,5 @@ object Test extends App {
 
   val label = Bippy("bippy!")
   println(label == label)
-  println(label == "bippy!")
+  println((label: Any) == ("bippy!": Any))
 }

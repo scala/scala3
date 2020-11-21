@@ -174,7 +174,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       tp match
         case tp: TypeRef =>
           tp.prefix match
-            case NoPrefix if level > levelOf(tp.symbol) && !tp.typeSymbol.hasAnnotation(defn.InternalQuoted_SplicedTypeAnnot) =>
+            case NoPrefix if level > levelOf(tp.symbol) && !tp.typeSymbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
               val tp1 = tp.dealias
               if tp1 != tp then apply(tp1)
               else tryHeal(tp.symbol, tp, pos)
@@ -279,7 +279,7 @@ object PCPCheckAndHeal {
         flags = Synthetic,
         info = TypeAlias(splicedTree.tpe.select(tpnme.Underlying)),
         coord = span).asType
-      local.addAnnotation(Annotation(defn.InternalQuoted_SplicedTypeAnnot))
+      local.addAnnotation(Annotation(defn.QuotedRuntime_SplicedTypeAnnot))
       ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
     }
 

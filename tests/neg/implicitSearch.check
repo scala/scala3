@@ -10,4 +10,4 @@
 -- Error: tests/neg/implicitSearch.scala:15:38 -------------------------------------------------------------------------
 15 |    listOrd(listOrd(implicitly[Ord[T]] /*not found*/)) // error
    |                                      ^
-   |  no implicit argument of type Test.Ord[T] was found for parameter ev of method implicitly in object DottyPredef
+   |        no implicit argument of type Test.Ord[T] was found for parameter e of method implicitly in object Predef

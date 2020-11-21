@@ -43,7 +43,7 @@ case class SbtDokkaTastyInspector(
   import dotty.tools.dotc.core.Mode
   import dotty.tools.dotc.core.Phases.Phase
   import dotty.tools.dotc.fromtasty._
-  import scala.quoted.internal.impl.QuoteContextImpl
+  import scala.quoted.runtime.impl.QuoteContextImpl
 
 
   val parser: Parser = null
@@ -188,12 +188,12 @@ case class TastyParser(qctx: QuoteContext, inspector: DokkaBaseTastyInspector, c
     object Traverser extends TreeTraverser:
       var seen: List[Tree] = Nil
 
-      override def traverseTree(tree: Tree)(using ctx: Context): Unit =
+      override def traverseTree(tree: Tree)(owner: Symbol): Unit =
         seen = tree :: seen
         tree match {
           case pck: PackageClause =>
             docs += parsePackage(pck)
-            super.traverseTree(tree)
+            super.traverseTree(tree)(owner)
           case packageObject: ClassDef if(packageObject.symbol.name.contains("package$")) =>
             docs += parsePackageObject(packageObject)
           case clazz: ClassDef if clazz.symbol.shouldDocumentClasslike =>
@@ -202,7 +202,7 @@ case class TastyParser(qctx: QuoteContext, inspector: DokkaBaseTastyInspector, c
         }
         seen = seen.tail
 
-    try Traverser.traverseTree(root)(using qctx.reflect.rootContext)
+    try Traverser.traverseTree(root)(Symbol.spliceOwner)
     catch case e: Throwable =>
       println(s"Problem parsing ${root.pos}, documentation may not be generated.")
       e.printStackTrace()

@@ -1,5 +1,5 @@
 package scala.quoted
-package internal.impl
+package runtime.impl
 
 import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
@@ -16,8 +16,8 @@ import dotty.tools.dotc.core.Decorators._
 
 import dotty.tools.dotc.quoted.{MacroExpansion, PickledQuotes, QuoteUtils}
 
-import scala.quoted.internal.{QuoteUnpickler, QuoteMatching}
-import scala.quoted.internal.impl.printers._
+import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
+import scala.quoted.runtime.impl.printers._
 
 import scala.reflect.TypeTest
 
@@ -278,13 +278,14 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])] =
         Some((vdef.name.toString, vdef.tpt, optional(vdef.rhs)))
 
-      def let(name: String, rhs: Term)(body: Ident => Term): Term =
-        val vdef = tpd.SyntheticValDef(name.toTermName, rhs)
+      def let(owner: Symbol, name: String, rhs: Term)(body: Ident => Term): Term =
+        val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
         val ref = tpd.ref(vdef.symbol).asInstanceOf[Ident]
         Block(List(vdef), body(ref))
 
-      def let(terms: List[Term])(body: List[Ident] => Term): Term =
-        val vdefs = terms.map(term => tpd.SyntheticValDef("x".toTermName, term))
+      def let(owner: Symbol, terms: List[Term])(body: List[Ident] => Term): Term =
+        val ctx1 = ctx.withOwner(owner)
+        val vdefs = terms.map(term => tpd.SyntheticValDef("x".toTermName, term)(using ctx1))
         val refs = vdefs.map(vdef => tpd.ref(vdef.symbol).asInstanceOf[Ident])
         Block(vdefs, body(refs))
     end ValDef
@@ -1055,27 +1056,27 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       end extension
     end TypeSelectMethodsImpl
 
-    type Projection = tpd.Select
+    type TypeProjection = tpd.Select
 
-    object ProjectionTypeTest extends TypeTest[Tree, Projection]:
-      def unapply(x: Tree): Option[Projection & x.type] = x match
+    object TypeProjectionTypeTest extends TypeTest[Tree, TypeProjection]:
+      def unapply(x: Tree): Option[TypeProjection & x.type] = x match
         case tpt: (tpd.Select & x.type) if tpt.isType && tpt.qualifier.isType => Some(tpt)
         case _ => None
-    end ProjectionTypeTest
+    end TypeProjectionTypeTest
 
-    object Projection extends ProjectionModule:
-      def copy(original: Tree)(qualifier: TypeTree, name: String): Projection =
+    object TypeProjection extends TypeProjectionModule:
+      def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
-      def unapply(x: Projection): Option[(TypeTree, String)] =
+      def unapply(x: TypeProjection): Option[(TypeTree, String)] =
         Some((x.qualifier, x.name.toString))
-    end Projection
+    end TypeProjection
 
-    object ProjectionMethodsImpl extends ProjectionMethods:
-      extension (self: Projection):
+    object TypeProjectionMethodsImpl extends TypeProjectionMethods:
+      extension (self: TypeProjection):
         def qualifier: TypeTree = self.qualifier
         def name: String = self.name.toString
       end extension
-    end ProjectionMethodsImpl
+    end TypeProjectionMethodsImpl
 
     type Singleton = tpd.SingletonTypeTree
 
@@ -2203,7 +2204,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     type Symbol = dotc.core.Symbols.Symbol
 
     object Symbol extends SymbolModule:
-      def currentOwner(using ctx: Context): Symbol = ctx.owner
+      def spliceOwner: Symbol = ctx.owner
       def requiredPackage(path: String): Symbol = dotc.core.Symbols.requiredPackage(path)
       def requiredClass(path: String): Symbol = dotc.core.Symbols.requiredClass(path)
       def requiredModule(path: String): Symbol = dotc.core.Symbols.requiredModule(path)
@@ -2242,8 +2243,6 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
         def fullName: String = self.denot.fullName.toString
         def pos: Position = self.sourcePos
 
-        def localContext: Context =
-          if self.exists then ctx.withOwner(self) else ctx
         def documentation: Option[Documentation] =
           import dotc.core.Comments.CommentsContext
           val docCtx = ctx.docCtx.getOrElse {
@@ -2627,7 +2626,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     def isTypeHoleDef(tree: Tree): Boolean =
       tree match
         case tree: TypeDef =>
-          tree.symbol.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_patternTypeAnnot)
+          tree.symbol.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternTypeAnnot)
         case _ => false
 
     def extractTypeHoles(pat: Term): (Term, List[Symbol]) =
@@ -2652,8 +2651,8 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
     val qctx1 = QuoteContextImpl()(using ctx1)
 
     val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1) {
-      def patternHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_patternHole.asInstanceOf
-      def higherOrderHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.InternalQuotedPatterns_higherOrderHole.asInstanceOf
+      def patternHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole.asInstanceOf
+      def higherOrderHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.QuotedRuntimePatterns_higherOrderHole.asInstanceOf
     }
 
     val matchings =
@@ -2666,7 +2665,7 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       // After matching and doing all subtype checks, we have to approximate all the type bindings
       // that we have found, seal them in a quoted.Type and add them to the result
       def typeHoleApproximation(sym: Symbol) =
-        ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.InternalQuotedPatterns_fromAboveAnnot)).asInstanceOf[qctx1.reflect.TypeRepr].asType
+        ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)).asInstanceOf[qctx1.reflect.TypeRepr].asType
       matchings.map { tup =>
         Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
       }

@@ -1,5 +1,5 @@
 package scala.quoted
-package internal.impl
+package runtime.impl
 
 import dotty.tools.dotc.ast.tpd
 

@@ -14,9 +14,9 @@ object scalatest {
 
     Term.of(cond).underlyingArgument match {
       case Apply(sel @ Select(lhs, op), rhs :: Nil) =>
-        ValDef.let(lhs) { left =>
-          ValDef.let(rhs) { right =>
-            ValDef.let(Apply(Select.copy(sel)(left, op), right :: Nil)) { result =>
+        ValDef.let(Symbol.spliceOwner, lhs) { left =>
+          ValDef.let(Symbol.spliceOwner, rhs) { right =>
+            ValDef.let(Symbol.spliceOwner, Apply(Select.copy(sel)(left, op), right :: Nil)) { result =>
               val l = left.asExpr
               val r = right.asExpr
               val b = result.asExprOf[Boolean]
@@ -27,9 +27,9 @@ object scalatest {
         }.asExprOf[Unit]
       case Apply(f @ Apply(sel @ Select(Apply(qual, lhs :: Nil), op), rhs :: Nil), implicits)
       if isImplicitMethodType(f.tpe) =>
-        ValDef.let(lhs) { left =>
-          ValDef.let(rhs) { right =>
-            ValDef.let(Apply(Apply(Select.copy(sel)(Apply(qual, left :: Nil), op), right :: Nil), implicits)) { result =>
+        ValDef.let(Symbol.spliceOwner, lhs) { left =>
+          ValDef.let(Symbol.spliceOwner, rhs) { right =>
+            ValDef.let(Symbol.spliceOwner, Apply(Apply(Select.copy(sel)(Apply(qual, left :: Nil), op), right :: Nil), implicits)) { result =>
               val l = left.asExpr
               val r = right.asExpr
               val b = result.asExprOf[Boolean]

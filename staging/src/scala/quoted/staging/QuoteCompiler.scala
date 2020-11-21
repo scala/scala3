@@ -21,7 +21,7 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{Path, VirtualFile}
 
-import scala.quoted.internal.impl.QuoteContextImpl
+import scala.quoted.runtime.impl.QuoteContextImpl
 
 import scala.annotation.tailrec
 import scala.concurrent.Promise

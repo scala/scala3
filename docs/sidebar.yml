@@ -101,8 +101,6 @@ sidebar:
               url: docs/reference/other-new-features/parameter-untupling.html
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
-            - title: Tupled Function
-              url: docs/reference/other-new-features/tupled-function.html
             - title: threadUnsafe Annotation
               url: docs/reference/other-new-features/threadUnsafe-annotation.html
             - title: targetName Annotation

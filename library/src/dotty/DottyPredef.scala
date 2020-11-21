@@ -3,48 +3,11 @@ package dotty
 object DottyPredef {
   import compiletime.summonFrom
 
-  inline final def assert(inline assertion: Boolean, inline message: => Any): Unit = {
-    if (!assertion)
-      scala.runtime.Scala3RunTime.assertFailed(message)
-  }
+  inline def assert(inline assertion: Boolean, inline message: => Any): Unit =
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed(message)
 
-  transparent inline final def assert(inline assertion: Boolean): Unit = {
-    if (!assertion)
-      scala.runtime.Scala3RunTime.assertFailed()
-  }
-
-  inline final def implicitly[T](implicit ev: T): T = ev
-
-  /** Used to mark code blocks as being expressions, instead of being taken as part of anonymous classes and the like.
-   *  This is just a different name for [[identity]].
-   *
-   *  @example Separating code blocks from `new`:
-   *           {{{
-   *             val x = new AnyRef
-   *             {
-   *               val y = ...
-   *               println(y)
-   *             }
-   *             // the { ... } block is seen as the body of an anonymous class
-   *
-   *             val x = new AnyRef
-   *
-   *             {
-   *               val y = ...
-   *               println(y)
-   *             }
-   *             // an empty line is a brittle "fix"
-   *
-   *             val x = new AnyRef
-   *             locally {
-   *               val y = ...
-   *               println(y)
-   *             }
-   *             // locally guards the block and helps communicate intent
-   *           }}}
-   *  @group utilities
-   */
-  inline def locally[T](inline body: T): T = body
+  inline def assert(inline assertion: Boolean): Unit =
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed()
 
   /**
    * Retrieve the single value of a type with a unique inhabitant.
@@ -79,7 +42,6 @@ object DottyPredef {
    *
    *  Note that `.nn` performs a checked cast, so if invoked on a null value it'll throw an NPE.
    */
-  extension [T](x: T | Null) def nn: x.type & T =
-    if (x == null) throw new NullPointerException("tried to cast away nullability, but value is null")
-    else x.asInstanceOf[x.type & T]
+  extension [T](x: T | Null) inline def nn: x.type & T =
+    scala.runtime.Scala3RunTime.nn(x)
 }

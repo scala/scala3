@@ -27,7 +27,7 @@ import scala.reflect.ClassTag
 import dotty.tools.dotc.quoted.{PickledQuotes, QuoteUtils}
 
 import scala.quoted.QuoteContext
-import scala.quoted.internal.impl._
+import scala.quoted.runtime.impl._
 
 /** Utility class to splice quoted expressions */
 object Splicer {
@@ -62,7 +62,7 @@ object Splicer {
       catch {
         case ex: CompilationUnit.SuspendException =>
           throw ex
-        case ex: scala.quoted.internal.StopMacroExpansion if ctx.reporter.hasErrors =>
+        case ex: scala.quoted.runtime.StopMacroExpansion if ctx.reporter.hasErrors =>
            // errors have been emitted
           EmptyTree
         case ex: StopInterpretation =>
@@ -145,7 +145,7 @@ object Splicer {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
-        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
+        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
           // OK
 
         case Apply(Select(TypeApply(fn, List(quoted)), nme.apply), _)if fn.symbol == defn.QuotedTypeModule_of =>
@@ -222,7 +222,7 @@ object Splicer {
       }
 
     def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
-      case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
+      case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
         val quoted1 = quoted match {
           case quoted: Ident if quoted.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
@@ -419,7 +419,7 @@ object Splicer {
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
           ex.getTargetException match {
-            case ex: scala.quoted.internal.StopMacroExpansion =>
+            case ex: scala.quoted.runtime.StopMacroExpansion =>
               throw ex
             case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
               if (ctx.settings.XprintSuspension.value)

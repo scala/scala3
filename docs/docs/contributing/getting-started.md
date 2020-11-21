@@ -64,6 +64,19 @@ or via bash:
 ```bash
 $ scala
 ```
+Publish to local repository
+---------------------------------
+To test our cloned compiler on local projects:
+
+```bash
+$ sbt publishLocal
+```
+Then in the `build.sbt` file of a test project:
+
+```bash
+ThisBuild / scalaVersion := "<dotty-version>-bin-SNAPSHOT"
+```
+where `dotty-version` can be found in the file `project/Build.scala`, like `3.0.0-M2`
 
 
 Generating Documentation

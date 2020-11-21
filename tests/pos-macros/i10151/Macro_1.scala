@@ -39,13 +39,13 @@ object X:
                              List(Inferred(a.tpe.widen))
                             ),
                    List(
-                     Lambda(Symbol.currentOwner, mty, (meth, yArgs) =>
+                     Lambda(Symbol.spliceOwner, mty, (meth, yArgs) =>
                        Apply(
                           TypeApply(Select.unique(transform(z),"map"),
                              List(Inferred(a.tpe.widen))
                           ),
                           List(
-                            Lambda(Symbol.currentOwner, mtz, (_, zArgs) => {
+                            Lambda(Symbol.spliceOwner, mtz, (_, zArgs) => {
                               val termYArgs = yArgs.asInstanceOf[List[Term]]
                               val termZArgs = zArgs.asInstanceOf[List[Term]]
                               Apply(x,List(termYArgs.head,termZArgs.head))
@@ -70,7 +70,7 @@ object X:
             val paramTypes = params.map(_.tpt.tpe)
             val paramNames = params.map(_.name)
             val mt = MethodType(paramNames)(_ => paramTypes, _ => TypeRepr.of[CB].appliedTo(body.tpe.widen) )
-            Lambda(Symbol.currentOwner, mt, (meth, args) => changeArgs(params,args,transform(body)).changeOwner(meth) )
+            Lambda(Symbol.spliceOwner, mt, (meth, args) => changeArgs(params,args,transform(body)).changeOwner(meth) )
           case Block(stats, last) =>
             Block(stats, shiftLambda(last))
           case _ =>
@@ -82,12 +82,12 @@ object X:
              case (m, (oldParam, newParam: Tree)) => throw RuntimeException("Term expected")
          }
          val changes = new TreeMap() {
-             override def transformTerm(tree:Term)(using Context): Term =
+             override def transformTerm(tree:Term)(owner: Symbol): Term =
                tree match
-                 case ident@Ident(name) => association.getOrElse(ident.symbol, super.transformTerm(tree))
-                 case _ => super.transformTerm(tree)
+                 case ident@Ident(name) => association.getOrElse(ident.symbol, super.transformTerm(tree)(owner))
+                 case _ => super.transformTerm(tree)(owner)
          }
-         changes.transformTerm(body)
+         changes.transformTerm(body)(Symbol.spliceOwner)
 
    val r = transform(Term.of(f)).asExprOf[CB[T]]
    r

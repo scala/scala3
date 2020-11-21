@@ -1,7 +1,6 @@
 package scala
 import annotation.showAsInfix
 import compiletime._
-import internal._
 
 /** Tuple of arbitrary arity */
 sealed trait Tuple extends Product {
@@ -248,9 +247,16 @@ object Tuple {
 /** A tuple of 0 elements */
 type EmptyTuple = EmptyTuple.type
 
-/** A tuple of 0 elements; the canonical representation of a [[scala.Product0]]. */
-object EmptyTuple extends Tuple with Product0 {
+/** A tuple of 0 elements. */
+object EmptyTuple extends Tuple {
+  override def productArity: Int = 0
+
+  @throws(classOf[IndexOutOfBoundsException])
+  override def productElement(n: Int): Any =
+    throw new IndexOutOfBoundsException(n.toString())
+
   def canEqual(that: Any): Boolean = this == that
+
   override def toString(): String = "()"
 }
 

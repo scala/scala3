@@ -46,7 +46,7 @@ object X:
             val paramTypes = params.map(_.tpt.tpe)
             val paramNames = params.map(_.name)
             val mt = MethodType(paramNames)(_ => paramTypes, _ => TypeRepr.of[CB].appliedTo(body.tpe.widen) )
-            val r = Lambda(Symbol.currentOwner, mt, (newMeth, args) => changeArgs(params,args,transform(body).changeOwner(newMeth)) )
+            val r = Lambda(Symbol.spliceOwner, mt, (newMeth, args) => changeArgs(params,args,transform(body).changeOwner(newMeth)) )
             r
           case _ =>
             throw RuntimeException("lambda expected")
@@ -57,11 +57,11 @@ object X:
              case (m, (oldParam, newParam: Tree)) => throw RuntimeException("Term expected")
          }
          val changes = new TreeMap() {
-             override def transformTerm(tree:Term)(using Context): Term =
+             override def transformTerm(tree:Term)(owner: Symbol): Term =
                tree match
-                 case ident@Ident(name) => association.getOrElse(ident.symbol, super.transformTerm(tree))
-                 case _ => super.transformTerm(tree)
+                 case ident@Ident(name) => association.getOrElse(ident.symbol, super.transformTerm(tree)(owner))
+                 case _ => super.transformTerm(tree)(owner)
          }
-         changes.transformTerm(body)
+         changes.transformTerm(body)(Symbol.spliceOwner)
 
    transform(Term.of(f)).asExprOf[CB[T]]

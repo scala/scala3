@@ -1,5 +1,5 @@
 package scala.quoted
-package internal.impl.printers
+package runtime.impl.printers
 
 import scala.quoted._
 
@@ -131,7 +131,7 @@ object Extractors {
         this += "TypeIdent(\"" += name += "\")"
       case TypeSelect(qualifier, name) =>
         this += "TypeSelect(" += qualifier += ", \"" += name += "\")"
-      case Projection(qualifier, name) =>
+      case TypeProjection(qualifier, name) =>
         this += "Projection(" += qualifier += ", \"" += name += "\")"
       case Singleton(ref) =>
         this += "Singleton(" += ref += ")"

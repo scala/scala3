@@ -13,14 +13,14 @@ object Macros {
     val output = myTraverser(buff)
 
     val tree = Term.of(x)
-    output.traverseTree(tree)
+    output.traverseTree(tree)(Symbol.spliceOwner)
     '{print(${Expr(buff.result())})}
   }
 
 
   def myTraverser(using qctx: QuoteContext)(buff: StringBuilder): qctx.reflect.TreeTraverser = new {
     import qctx.reflect._
-    override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = {
+    override def traverseTree(tree: Tree)(owner: Symbol): Unit = {
       tree match {
         case tree @ DefDef(name, _, _, _, _) =>
           buff.append(name)
@@ -34,7 +34,7 @@ object Macros {
           buff.append("\n\n")
         case _ =>
       }
-      traverseTreeChildren(tree)
+      traverseTreeChildren(tree)(owner)
     }
   }
 

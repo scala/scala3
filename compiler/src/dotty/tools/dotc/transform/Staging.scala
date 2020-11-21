@@ -49,7 +49,7 @@ class Staging extends MacroTransform {
                 else i"${sym.name}.this"
               val errMsg = s"\nin ${ctx.owner.fullName}"
               assert(
-                ctx.owner.hasAnnotation(defn.InternalQuoted_SplicedTypeAnnot) ||
+                ctx.owner.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) ||
                 (sym.isType && levelOf(sym) > 0),
                 em"""access to $symStr from wrong staging level:
                     | - the definition is at level ${levelOf(sym)},

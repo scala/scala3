@@ -175,8 +175,8 @@ differences.
   `Selectable` is a trait which declares the access operations.
 
 - Two access operations, `selectDynamic` and `applyDynamic` are shared
-  between both approaches. In `Selectable`, `applyDynamic` also takes
-  `ClassTag` indicating the method's formal parameter types. `Dynamic`
-  comes with `updateDynamic`.
+  between both approaches. In `Selectable`, `applyDynamic` also may also take
+  `java.lang.Class` arguments indicating the method's formal parameter types.
+  `Dynamic` comes with `updateDynamic`.
 
 [More details](structural-types-spec.md)

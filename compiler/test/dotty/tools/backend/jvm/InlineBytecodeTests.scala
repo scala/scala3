@@ -73,7 +73,9 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       }
   }
 
-  @Test def inlineLocally = {
+  /** Disabled since locally comes from Predef now
+  @Test
+  def inlineLocally = {
     val source =
          """
          |class Foo {
@@ -100,6 +102,31 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       assert(instructions1 == instructions2,
         "`locally` was not properly inlined in `meth1`\n" +
+        diffInstructions(instructions1, instructions2))
+    }
+  }
+  */
+
+  @Test def inlineNn = {
+    val source =
+      s"""
+         |class Foo {
+         |  def meth1(x: Int | Null): Int = x.nn
+         |  def meth2(x: Int | Null): Int = scala.runtime.Scala3RunTime.nn(x)
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("Foo.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val meth1 = getMethod(clsNode, "meth1")
+      val meth2 = getMethod(clsNode, "meth2")
+
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
+
+      assert(instructions1 == instructions2,
+        "`nn` was not properly inlined in `meth1`\n" +
         diffInstructions(instructions1, instructions2))
     }
   }

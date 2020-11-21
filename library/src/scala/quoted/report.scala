@@ -15,12 +15,12 @@ object report:
   /** Report an error at the position of the macro expansion and throws a StopMacroExpansion */
   def throwError(msg: => String)(using qctx: QuoteContext): Nothing = {
     error(msg)
-    throw new internal.StopMacroExpansion
+    throw new runtime.StopMacroExpansion
   }
   /** Report an error at the on the position of `expr` and throws a StopMacroExpansion */
   def throwError(msg: => String, expr: Expr[Any])(using qctx: QuoteContext): Nothing = {
     error(msg, expr)
-    throw new internal.StopMacroExpansion
+    throw new runtime.StopMacroExpansion
   }
 
   /** Report a warning */
