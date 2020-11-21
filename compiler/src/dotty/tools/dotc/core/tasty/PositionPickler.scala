@@ -3,7 +3,7 @@ package dotc
 package core
 package tasty
 
-import dotty.tools.tasty.TastyFormat.SOURCE
+import dotty.tools.tasty.TastyFormat.{SOURCE, PositionsSection}
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer._
 
@@ -23,7 +23,7 @@ class PositionPickler(
 
   import ast.tpd._
   val buf: TastyBuffer = new TastyBuffer(5000)
-  pickler.newSection("Positions", buf)
+  pickler.newSection(PositionsSection, buf)
 
   private val pickledIndices = new mutable.BitSet
 

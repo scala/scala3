@@ -20,10 +20,9 @@ import printing.Texts._
 import util.SourceFile
 import annotation.constructorOnly
 import collection.mutable
+import dotty.tools.tasty.TastyFormat.ASTsSection
 
 object TreePickler {
-
-  val sectionName = "ASTs"
 
   case class Hole(isTermHole: Boolean, idx: Int, args: List[tpd.Tree])(implicit @constructorOnly src: SourceFile) extends tpd.Tree {
     override def isTerm: Boolean = isTermHole
@@ -36,7 +35,7 @@ object TreePickler {
 
 class TreePickler(pickler: TastyPickler) {
   val buf: TreeBuffer = new TreeBuffer
-  pickler.newSection(TreePickler.sectionName, buf)
+  pickler.newSection(ASTsSection, buf)
   import TreePickler._
   import buf._
   import pickler.nameBuffer.nameIndex

@@ -11,6 +11,7 @@ import StdNames.nme
 import TastyUnpickler._
 import util.Spans.offsetToInt
 import printing.Highlighting._
+import dotty.tools.tasty.TastyFormat.ASTsSection
 
 /** Reads the package and class name of the class contained in this TASTy */
 class TastyClassName(bytes: Array[Byte]) {
@@ -21,7 +22,7 @@ class TastyClassName(bytes: Array[Byte]) {
   /** Returns a tuple with the package and class names */
   def readName(): Option[(TermName, TermName)] = unpickle(new TreeSectionUnpickler)
 
-  class TreeSectionUnpickler extends SectionUnpickler[(TermName, TermName)](TreePickler.sectionName) {
+  class TreeSectionUnpickler extends SectionUnpickler[(TermName, TermName)](ASTsSection) {
     import dotty.tools.tasty.TastyFormat._
     def unpickle(reader: TastyReader, tastyName: NameTable): (TermName, TermName) = {
       import reader._
