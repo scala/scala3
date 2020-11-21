@@ -799,11 +799,11 @@ class Definitions {
 
   @tu lazy val QuoteContextClass: ClassSymbol = requiredClass("scala.quoted.QuoteContext")
 
-  @tu lazy val QuoteUnpicklerClass: ClassSymbol = requiredClass("scala.quoted.internal.QuoteUnpickler")
+  @tu lazy val QuoteUnpicklerClass: ClassSymbol = requiredClass("scala.quoted.runtime.QuoteUnpickler")
     @tu lazy val QuoteUnpickler_unpickleExpr: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleExpr")
     @tu lazy val QuoteUnpickler_unpickleType: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleType")
 
-  @tu lazy val QuoteMatchingClass: ClassSymbol = requiredClass("scala.quoted.internal.QuoteMatching")
+  @tu lazy val QuoteMatchingClass: ClassSymbol = requiredClass("scala.quoted.runtime.QuoteMatching")
     @tu lazy val QuoteMatching_ExprMatch: Symbol = QuoteMatchingClass.requiredMethod("ExprMatch")
     @tu lazy val QuoteMatching_TypeMatch: Symbol = QuoteMatchingClass.requiredMethod("TypeMatch")
 
@@ -818,19 +818,19 @@ class Definitions {
     @tu lazy val LiftableModule_CharLiftable: Symbol = LiftableModule.requiredMethod("CharLiftable")
     @tu lazy val LiftableModule_StringLiftable: Symbol = LiftableModule.requiredMethod("StringLiftable")
 
-  @tu lazy val InternalQuotedModule: Symbol = requiredModule("scala.quoted.internal.Expr")
-    @tu lazy val InternalQuoted_exprQuote  : Symbol = InternalQuotedModule.requiredMethod("quote")
-    @tu lazy val InternalQuoted_exprSplice : Symbol = InternalQuotedModule.requiredMethod("splice")
-    @tu lazy val InternalQuoted_exprNestedSplice : Symbol = InternalQuotedModule.requiredMethod("nestedSplice")
+  @tu lazy val QuotedRuntimeModule: Symbol = requiredModule("scala.quoted.runtime.Expr")
+    @tu lazy val QuotedRuntime_exprQuote  : Symbol = QuotedRuntimeModule.requiredMethod("quote")
+    @tu lazy val QuotedRuntime_exprSplice : Symbol = QuotedRuntimeModule.requiredMethod("splice")
+    @tu lazy val QuotedRuntime_exprNestedSplice : Symbol = QuotedRuntimeModule.requiredMethod("nestedSplice")
 
-  @tu lazy val InternalQuoted_SplicedTypeAnnot: ClassSymbol = requiredClass("scala.quoted.internal.SplicedType")
+  @tu lazy val QuotedRuntime_SplicedTypeAnnot: ClassSymbol = requiredClass("scala.quoted.runtime.SplicedType")
 
-  @tu lazy val InternalQuotedPatterns: Symbol = requiredModule("scala.quoted.internal.Patterns")
-    @tu lazy val InternalQuotedPatterns_patternHole: Symbol = InternalQuotedPatterns.requiredMethod("patternHole")
-    @tu lazy val InternalQuotedPatterns_patternHigherOrderHole: Symbol = InternalQuotedPatterns.requiredMethod("patternHigherOrderHole")
-    @tu lazy val InternalQuotedPatterns_higherOrderHole: Symbol = InternalQuotedPatterns.requiredMethod("higherOrderHole")
-    @tu lazy val InternalQuotedPatterns_patternTypeAnnot: ClassSymbol = InternalQuotedPatterns.requiredClass("patternType")
-    @tu lazy val InternalQuotedPatterns_fromAboveAnnot: ClassSymbol = InternalQuotedPatterns.requiredClass("fromAbove")
+  @tu lazy val QuotedRuntimePatterns: Symbol = requiredModule("scala.quoted.runtime.Patterns")
+    @tu lazy val QuotedRuntimePatterns_patternHole: Symbol = QuotedRuntimePatterns.requiredMethod("patternHole")
+    @tu lazy val QuotedRuntimePatterns_patternHigherOrderHole: Symbol = QuotedRuntimePatterns.requiredMethod("patternHigherOrderHole")
+    @tu lazy val QuotedRuntimePatterns_higherOrderHole: Symbol = QuotedRuntimePatterns.requiredMethod("higherOrderHole")
+    @tu lazy val QuotedRuntimePatterns_patternTypeAnnot: ClassSymbol = QuotedRuntimePatterns.requiredClass("patternType")
+    @tu lazy val QuotedRuntimePatterns_fromAboveAnnot: ClassSymbol = QuotedRuntimePatterns.requiredClass("fromAbove")
 
   @tu lazy val QuotedTypeClass: ClassSymbol = requiredClass("scala.quoted.Type")
     @tu lazy val QuotedType_splice: Symbol = QuotedTypeClass.requiredType(tpnme.Underlying)

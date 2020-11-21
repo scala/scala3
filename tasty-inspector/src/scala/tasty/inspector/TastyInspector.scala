@@ -1,7 +1,7 @@
 package scala.tasty.inspector
 
 import scala.quoted._
-import scala.quoted.internal.impl.QuoteContextImpl
+import scala.quoted.runtime.impl.QuoteContextImpl
 
 import dotty.tools.dotc.Compiler
 import dotty.tools.dotc.Driver

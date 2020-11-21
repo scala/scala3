@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.tasty.TastyPrinter
 import dotty.tools.io.File
 
-import scala.quoted.internal.impl.QuoteContextImpl
+import scala.quoted.runtime.impl.QuoteContextImpl
 
 /** Phase that prints the trees in all loaded compilation units.
  *
