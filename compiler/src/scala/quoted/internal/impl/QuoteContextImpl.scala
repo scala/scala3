@@ -1056,27 +1056,27 @@ class QuoteContextImpl private (ctx: Context) extends QuoteContext, QuoteUnpickl
       end extension
     end TypeSelectMethodsImpl
 
-    type Projection = tpd.Select
+    type TypeProjection = tpd.Select
 
-    object ProjectionTypeTest extends TypeTest[Tree, Projection]:
-      def unapply(x: Tree): Option[Projection & x.type] = x match
+    object TypeProjectionTypeTest extends TypeTest[Tree, TypeProjection]:
+      def unapply(x: Tree): Option[TypeProjection & x.type] = x match
         case tpt: (tpd.Select & x.type) if tpt.isType && tpt.qualifier.isType => Some(tpt)
         case _ => None
-    end ProjectionTypeTest
+    end TypeProjectionTypeTest
 
-    object Projection extends ProjectionModule:
-      def copy(original: Tree)(qualifier: TypeTree, name: String): Projection =
+    object TypeProjection extends TypeProjectionModule:
+      def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
-      def unapply(x: Projection): Option[(TypeTree, String)] =
+      def unapply(x: TypeProjection): Option[(TypeTree, String)] =
         Some((x.qualifier, x.name.toString))
-    end Projection
+    end TypeProjection
 
-    object ProjectionMethodsImpl extends ProjectionMethods:
-      extension (self: Projection):
+    object TypeProjectionMethodsImpl extends TypeProjectionMethods:
+      extension (self: TypeProjection):
         def qualifier: TypeTree = self.qualifier
         def name: String = self.name.toString
       end extension
-    end ProjectionMethodsImpl
+    end TypeProjectionMethodsImpl
 
     type Singleton = tpd.SingletonTypeTree
 

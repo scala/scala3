@@ -1003,7 +1003,7 @@ object SourceCode {
       case TypeSelect(qual, name) =>
         printTree(qual) += "." += highlightTypeDef(name)
 
-      case Projection(qual, name) =>
+      case TypeProjection(qual, name) =>
         printTypeTree(qual) += "#" += highlightTypeDef(name)
 
       case Singleton(ref) =>
