@@ -795,28 +795,28 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
       end extension
     end MatchMethodsImpl
 
-    type GivenMatch = tpd.Match
+    type SummonFrom = tpd.Match
 
-    object GivenMatchTypeTest extends TypeTest[Tree, GivenMatch]:
-      def unapply(x: Tree): Option[GivenMatch & x.type] = x match
+    object SummonFromTypeTest extends TypeTest[Tree, SummonFrom]:
+      def unapply(x: Tree): Option[SummonFrom & x.type] = x match
         case x: (tpd.Match & x.type) if x.selector.isEmpty => Some(x)
         case _ => None
-    end GivenMatchTypeTest
+    end SummonFromTypeTest
 
-    object GivenMatch extends GivenMatchModule:
-      def apply(cases: List[CaseDef]): GivenMatch =
+    object SummonFrom extends SummonFromModule:
+      def apply(cases: List[CaseDef]): SummonFrom =
         withDefaultPos(tpd.Match(tpd.EmptyTree, cases))
-      def copy(original: Tree)(cases: List[CaseDef]): GivenMatch =
+      def copy(original: Tree)(cases: List[CaseDef]): SummonFrom =
         tpd.cpy.Match(original)(tpd.EmptyTree, cases)
-      def unapply(x: GivenMatch): Option[List[CaseDef]] =
+      def unapply(x: SummonFrom): Option[List[CaseDef]] =
         Some(x.cases)
-    end GivenMatch
+    end SummonFrom
 
-    object GivenMatchMethodsImpl extends GivenMatchMethods:
-      extension (self: GivenMatch):
+    object SummonFromMethodsImpl extends SummonFromMethods:
+      extension (self: SummonFrom):
         def cases: List[CaseDef] = self.cases
       end extension
-    end GivenMatchMethodsImpl
+    end SummonFromMethodsImpl
 
     type Try = tpd.Try
 
