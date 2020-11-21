@@ -1561,6 +1561,8 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val TypeBoundsTree: TypeBoundsTreeModule
 
     trait TypeBoundsTreeModule { this: TypeBoundsTree.type =>
+      def apply(low: TypeTree, hi: TypeTree): TypeBoundsTree
+      def copy(original: Tree)(low: TypeTree, hi: TypeTree): TypeBoundsTree
       def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)]
     }
 
@@ -1587,6 +1589,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val WildcardTypeTree: WildcardTypeTreeModule
 
     trait WildcardTypeTreeModule { this: WildcardTypeTree.type =>
+      def apply(tpe: TypeRepr): WildcardTypeTree
       /** Matches a TypeBoundsTree containing wildcard type bounds */
       def unapply(x: WildcardTypeTree): Boolean
     }
@@ -3548,8 +3551,9 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case tree: Statement =>
             transformStatement(tree)(owner)
           case tree: TypeTree => transformTypeTree(tree)(owner)
-          case tree: TypeBoundsTree => tree // TODO traverse tree
-          case tree: WildcardTypeTree => tree // TODO traverse tree
+          case tree: TypeBoundsTree =>
+            TypeBoundsTree.copy(tree)(transformTypeTree(tree.low)(owner), transformTypeTree(tree.hi)(owner))
+          case tree: WildcardTypeTree => tree
           case tree: CaseDef =>
             transformCaseDef(tree)(owner)
           case tree: TypeCaseDef =>

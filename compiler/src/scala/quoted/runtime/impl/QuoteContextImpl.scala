@@ -1298,6 +1298,10 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
     end TypeBoundsTreeTypeTest
 
     object TypeBoundsTree extends TypeBoundsTreeModule:
+      def apply(low: TypeTree, hi: TypeTree): TypeBoundsTree =
+        withDefaultPos(tpd.TypeBoundsTree(low, hi))
+      def copy(original: Tree)(low: TypeTree, hi: TypeTree): TypeBoundsTree =
+        tpd.cpy.TypeBoundsTree(original)(low, hi, tpd.EmptyTree)
       def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)] =
         Some((x.low, x.hi))
     end TypeBoundsTree
@@ -1323,6 +1327,7 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
     end WildcardTypeTreeTypeTest
 
     object WildcardTypeTree extends WildcardTypeTreeModule:
+      def apply(tpe: TypeRepr): WildcardTypeTree = withDefaultPos(tpd.Underscore(tpe))
       def unapply(x: WildcardTypeTree): Boolean = true
     end WildcardTypeTree
 
