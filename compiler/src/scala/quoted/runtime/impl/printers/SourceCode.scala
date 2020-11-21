@@ -486,8 +486,8 @@ object SourceCode {
         this += highlightKeyword(" match")
         inBlock(printCases(cases, lineBreak()))
 
-      case GivenMatch(cases) =>
-        this += highlightKeyword("given match")  // TODO: drop
+      case SummonFrom(cases) =>
+        this += highlightKeyword("summonFrom ")
         inBlock(printCases(cases, lineBreak()))
 
       case Try(body, cases, finallyOpt) =>

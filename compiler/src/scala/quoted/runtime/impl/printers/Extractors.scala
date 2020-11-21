@@ -95,8 +95,8 @@ object Extractors {
         this += "Closure(" += meth += ", " += tpt += ")"
       case Match(selector, cases) =>
         this += "Match(" += selector += ", " ++= cases += ")"
-      case GivenMatch(cases) =>
-        this += "GivenMatch(" ++= cases += ")"
+      case SummonFrom(cases) =>
+        this += "SummonFrom(" ++= cases += ")"
       case Return(expr, from) =>
         this += "Return(" += expr += ", " += from += ")"
       case While(cond, body) =>

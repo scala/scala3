@@ -95,7 +95,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |                             +- Closure
    *           |                             +- If
    *           |                             +- Match
-   *           |                             +- GivenMatch
+   *           |                             +- SummonFrom
    *           |                             +- Try
    *           |                             +- Return
    *           |                             +- Repeated
@@ -578,7 +578,6 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       */
       def unique(qualifier: Term, name: String): Select
 
-      // TODO rename, this returns an Apply and not a Select
       /** Call an overloaded method with the given type and term parameters */
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Apply
 
@@ -1031,34 +1030,34 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end MatchMethods
 
-    /** Tree representing a pattern match `given match { ... }` in the source code */  // TODO: drop
-    type GivenMatch <: Term
+    /** Tree representing a summoning match `summonFrom { ... }` in the source code */
+    type SummonFrom <: Term
 
-    given TypeTest[Tree, GivenMatch] = GivenMatchTypeTest
-    protected val GivenMatchTypeTest: TypeTest[Tree, GivenMatch]
+    given TypeTest[Tree, SummonFrom] = SummonFromTypeTest
+    protected val SummonFromTypeTest: TypeTest[Tree, SummonFrom]
 
     /** Scala implicit `match` term */
-    val GivenMatch: GivenMatchModule
+    val SummonFrom: SummonFromModule
 
-    trait GivenMatchModule { this: GivenMatch.type =>
+    trait SummonFromModule { this: SummonFrom.type =>
 
       /** Creates a pattern match `given match { <cases: List[CaseDef]> }` */
-      def apply(cases: List[CaseDef]): GivenMatch
+      def apply(cases: List[CaseDef]): SummonFrom
 
-      def copy(original: Tree)(cases: List[CaseDef]): GivenMatch
+      def copy(original: Tree)(cases: List[CaseDef]): SummonFrom
 
       /** Matches a pattern match `given match { <cases: List[CaseDef]> }` */
-      def unapply(x: GivenMatch): Option[List[CaseDef]]
+      def unapply(x: SummonFrom): Option[List[CaseDef]]
     }
 
-    given GivenMatchMethods as GivenMatchMethods = GivenMatchMethodsImpl
-    protected val GivenMatchMethodsImpl: GivenMatchMethods
+    given SummonFromMethods as SummonFromMethods = SummonFromMethodsImpl
+    protected val SummonFromMethodsImpl: SummonFromMethods
 
-    trait GivenMatchMethods:
-      extension (self: GivenMatch):
+    trait SummonFromMethods:
+      extension (self: SummonFrom):
         def cases: List[CaseDef]
       end extension
-    end GivenMatchMethods
+    end SummonFromMethods
 
     /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
     type Try <: Term
