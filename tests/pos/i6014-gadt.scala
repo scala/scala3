@@ -10,14 +10,11 @@ object Test1 {
 }
 
 object Test2 {
-  inline def summon[T] = summonFrom {
-    case t: T => t
-  }
 
   class Foo[F[_]]
 
   inline def bar[T] = inline erasedValue[T] match {
-    case _: Foo[f] => summon[f[Int]]
+    case _: Foo[f] => summonInline[f[Int]]
   }
 
   implicit val li: List[Int] = List(1, 2, 3)
@@ -25,16 +22,13 @@ object Test2 {
 }
 
 object Test3 {
-  inline def summon[T] = summonFrom {
-    case t: T => t
-  }
 
   type K1Top = [t] =>> Any
 
   class Foo[F[X] <: K1Top[X]]
 
   inline def bar[T] = inline erasedValue[T] match {
-    case _: Foo[f] => summon[f[Int]]
+    case _: Foo[f] => summonInline[f[Int]]
   }
 
   implicit val li: List[Int] = List(1, 2, 3)
@@ -42,14 +36,11 @@ object Test3 {
 }
 
 object Test4 {
-  inline def summon[T] = summonFrom {
-    case t: T => t
-  }
 
   class Foo[F[t] >: List[t]]
 
   inline def bar[T] = inline erasedValue[T] match {
-    case _: Foo[f] => summon[f[Int]]
+    case _: Foo[f] => summonInline[f[Int]]
   }
 
   implicit val li: List[Int] = List(1, 2, 3)

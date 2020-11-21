@@ -31,13 +31,12 @@ object typeclasses {
   }
 
   object Eq {
-    import scala.compiletime.{erasedValue, summonFrom}
+    import scala.compiletime.{erasedValue, summonInline, summonFrom}
     import compiletime._
     import scala.deriving._
 
-    inline def tryEql[TT](x: TT, y: TT): Boolean = summonFrom {
-      case eq: Eq[TT] => eq.eql(x, y)
-    }
+    inline def tryEql[TT](x: TT, y: TT): Boolean =
+      summonInline[Eq[TT]].eql(x, y)
 
     inline def eqlElems[Elems <: Tuple](n: Int)(x: Any, y: Any): Boolean =
       inline erasedValue[Elems] match {
@@ -86,15 +85,14 @@ object typeclasses {
   }
 
   object Pickler {
-    import scala.compiletime.{erasedValue, constValue, summonFrom}
+    import scala.compiletime.{erasedValue, constValue, summonInline, summonFrom}
     import compiletime._
     import deriving._
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-    inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonFrom {
-      case pkl: Pickler[T] => pkl.pickle(buf, x)
-    }
+    inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit =
+      summonInline[Pickler[T]].pickle(buf, x)
 
     inline def pickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Any): Unit =
       inline erasedValue[Elems] match {
@@ -115,9 +113,8 @@ object typeclasses {
         case _: EmptyTuple =>
       }
 
-    inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonFrom {
-      case pkl: Pickler[T] => pkl.unpickle(buf)
-    }
+    inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T =
+      summonInline[Pickler[T]].unpickle(buf)
 
     inline def unpickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], elems: ArrayProduct): Unit =
       inline erasedValue[Elems] match {

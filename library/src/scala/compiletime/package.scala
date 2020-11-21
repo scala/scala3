@@ -123,6 +123,18 @@ package object compiletime {
     case t: T => t
   }
 
+  /** Summon a given value of type `T` in a `Some`, otherwise returns `None`.
+   *  The summoning is delayed until the call has been fully inlined.
+   *  The resulting option can be passed to an `inline summonInlineOpt[T] match`.
+   *
+   *  @tparam T the type of the value to be summoned
+   *  @return the given value typed as the provided type parameter
+   */
+   transparent inline def summonInlineOpt[T]: Option[T] = summonFrom {
+    case t: T => Some(t)
+    case _ => None
+  }
+
   /** Given a tuple T, summons each of its member types and returns them in
    *  a Tuple.
    *

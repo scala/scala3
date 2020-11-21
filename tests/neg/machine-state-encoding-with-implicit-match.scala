@@ -1,5 +1,5 @@
 import scala.annotation.implicitNotFound
-import scala.compiletime.summonFrom
+import scala.compiletime.summonInline
 
 sealed trait State
 final class On extends State
@@ -18,11 +18,13 @@ object IsOn {
 }
 
 class Machine[S <: State] {
-  transparent inline def turnOn()(using s: IsOff[S]): Machine[On] = summonFrom {
-    case _: IsOff[Off]  => new Machine[On]
+  transparent inline def turnOn()(using s: IsOff[S]): Machine[On] = {
+    summonInline[IsOff[Off]]
+    new Machine[On]
   }
-  transparent inline def turnOff()(using s: IsOn[S]): Machine[Off] = summonFrom {
-    case _: IsOn[On]    => new Machine[Off]
+  transparent inline def turnOff()(using s: IsOn[S]): Machine[Off] = {
+    summonInline[IsOn[On]]
+    new Machine[Off]
   }
 }
 

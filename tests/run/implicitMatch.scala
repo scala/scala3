@@ -1,15 +1,15 @@
 object Test extends App {
   import collection.immutable.TreeSet
   import collection.immutable.HashSet
-  import compiletime.summonFrom
+  import compiletime.summonInlineOpt
 
-  inline def f1[T]() = summonFrom {
-    case ord: Ordering[T] => new TreeSet[T]
+  inline def f1[T]() = inline summonInlineOpt[Ordering[T]] match {
+    case Some(ord as given Ordering[T]) => new TreeSet[T]
     case _ => new HashSet[T]
   }
 
-  inline def f2[T]() = summonFrom {
-    case _: Ordering[T] => new TreeSet[T]
+  inline def f2[T]() = inline summonInlineOpt[Ordering[T]] match {
+    case Some(given Ordering[T]) => new TreeSet[T]
     case _ => new HashSet[T]
   }
 
@@ -17,9 +17,12 @@ object Test extends App {
   class B
   implicit val b: B = new B
 
-  inline def g = summonFrom {
-    case _: A => println("A")
-    case _: B => println("B")
+  inline def g = inline summonInlineOpt[A] match {
+    case _: Some[A] => println("A")
+    case _ =>
+      inline summonInlineOpt[B] match {
+        case _: Some[B] => println("B")
+      }
   }
 
   implicitly[Ordering[String]]

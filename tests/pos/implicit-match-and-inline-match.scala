@@ -5,8 +5,8 @@ object `implicit-match-and-inline-match` {
   implicit val ibox: Box[Int] = Box(0)
 
   object a {
-    inline def isTheBoxInScopeAnInt = summonFrom {
-      case _: Box[t] => inline erasedValue[t] match {
+    inline def isTheBoxInScopeAnInt = inline summonInlineOpt[Box[_]] match {
+      case Some(_: Box[t]) => inline erasedValue[t] match {
         case _: Int => true
       }
     }
@@ -14,8 +14,8 @@ object `implicit-match-and-inline-match` {
   }
 
   object b {
-    inline def isTheBoxInScopeAnInt = summonFrom {
-      case _: Box[t] => inline 0 match {
+    inline def isTheBoxInScopeAnInt = inline summonInlineOpt[Box[_]] match {
+      case Some(_: Box[t]) => inline 0 match {
         case _: t => true
       }
     }

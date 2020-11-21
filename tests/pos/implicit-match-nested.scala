@@ -1,5 +1,5 @@
 object `implicit-match-nested` {
-  import compiletime.summonFrom
+  import compiletime._
 
   case class A[T]()
   case class B[T]()
@@ -9,11 +9,8 @@ object `implicit-match-nested` {
   implicit val b2: B[String] = B[String]()
 
   transparent inline def locateB: B[_] =
-    summonFrom {
-      case _: A[t] =>
-        summonFrom {
-          case b: B[`t`] => b
-        }
+    inline summonInlineOpt[A[_]] match {
+      case Some(_: A[t]) => summonInline[B[t]]
     }
 
   locateB

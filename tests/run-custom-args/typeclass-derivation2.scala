@@ -224,7 +224,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  import scala.compiletime.{erasedValue, error, summonFrom}
+  import scala.compiletime.{erasedValue, error}
   import TypeLevel._
 
   inline def tryEql[T](x: T, y: T) = summonInline[Eq[T]].eql(x, y)
@@ -373,7 +373,7 @@ trait Show[T] {
   def show(x: T): String
 }
 object Show {
-  import scala.compiletime.{erasedValue, error, summonFrom}
+  import scala.compiletime.{erasedValue, error}
   import TypeLevel._
 
   inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)

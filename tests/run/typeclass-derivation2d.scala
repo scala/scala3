@@ -342,7 +342,7 @@ trait Show[T] {
   def show(x: T): String
 }
 object Show {
-  import scala.compiletime.{erasedValue, constValue, summonFrom, summonInline}
+  import scala.compiletime.{erasedValue, constValue, summonInline}
 
   inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
@@ -370,11 +370,7 @@ object Show {
   inline def showCases[Alts <: Tuple](n: Int)(x: Any, ord: Int): String =
     inline erasedValue[Alts] match {
       case _: (alt *: alts1) =>
-        if (ord == n)
-          summonFrom {
-            case m: Mirror.ProductOf[`alt`] =>
-              showCase(x, m)
-          }
+        if (ord == n) showCase(x, summonInline[Mirror.ProductOf[`alt`]])
         else showCases[alts1](n + 1)(x, ord)
       case _: EmptyTuple =>
         throw new MatchError(x)

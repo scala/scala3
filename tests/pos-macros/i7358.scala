@@ -7,8 +7,8 @@ transparent inline def summonT[Tp <: Tuple](using QuoteContext): Tuple = inline 
   case _ : EmptyTuple => Tuple()
   case _ : (hd *: tl) => {
     type H = hd
-    summonFrom {
-      case given Type[H] => summon[Type[H]] *: summonT[tl]
+    inline summonInlineOpt[Type[H]] match {
+      case Some(given Type[H]) => summon[Type[H]] *: summonT[tl]
     }
   }
 }

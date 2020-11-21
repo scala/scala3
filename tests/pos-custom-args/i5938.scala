@@ -1,13 +1,10 @@
-import compiletime.summonFrom
+import compiletime._
 
 trait Link[T, A]
 
 inline def link[T] =
-  summonFrom {
-    case _: Link[T, s] =>
-      summonFrom {
-        case stuff: s => stuff
-      }
+  inline summonInline[Link[T, _]] match {
+    case Some(_: Link[T, s]) => summonInline[s]
   }
 
 class Foo

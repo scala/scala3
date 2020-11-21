@@ -19,14 +19,11 @@ implicit object FooAssoc extends Assoc[Foo] {
   def foo(t: Foo): Int = t.i
 }
 
-import compiletime.summonFrom
+import compiletime.{summonInline, summonInlineOpt}
 
 transparent inline def link[T]: Any =
-  summonFrom {
-    case _: Link[T, s] =>
-      summonFrom {
-        case stuff: s => stuff
-      }
+  inline summonInlineOpt[Link[T, _]] match {
+    case Some(_: Link[T, s]) => summonInline[s]
   }
 
 object Test {
