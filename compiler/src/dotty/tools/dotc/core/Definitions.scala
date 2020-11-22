@@ -186,14 +186,6 @@ class Definitions {
     cls
   }
 
-  /** If `sym` is a patched library class, the source file of its patch class,
-   *  otherwise `NoSource`
-   */
-  def patchSource(sym: Symbol): SourceFile =
-    if sym == ScalaPredefModuleClass then ScalaPredefModuleClassPatch.source
-    else if sym == LanguageModuleClass then LanguageModuleClassPatch.source
-    else NoSource
-
   @tu lazy val RootClass: ClassSymbol = newPackageSymbol(
     NoSymbol, nme.ROOT, (root, rootcls) => ctx.base.rootLoader(root)).moduleClass.asClass
   @tu lazy val RootPackage: TermSymbol = newSymbol(
@@ -264,13 +256,6 @@ class Definitions {
    */
   @tu lazy val ScalaShadowingPackage: TermSymbol = requiredPackage(nme.scalaShadowing)
 
-  /** The `scala.runtime.stdLibPacthes` package is contains objects
-   *  that contain defnitions that get added as members to standard library
-   *  objects with the same name.
-   */
-  @tu lazy val StdLibPatchesPackage: TermSymbol = requiredPackage("scala.runtime.stdLibPatches")
-  @tu lazy val ScalaPredefModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.Predef").moduleClass
-  @tu lazy val LanguageModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.language").moduleClass
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -1118,6 +1103,55 @@ class Definitions {
       || sym.owner == CompiletimeOpsPackageObjectBoolean.moduleClass && compiletimePackageBooleanTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsPackageObjectString.moduleClass && compiletimePackageStringTypes.contains(sym.name)
     )
+
+  // ----- Scala-2 library patches --------------------------------------
+
+  /** The `scala.runtime.stdLibPacthes` package contains objects
+   *  that contain defnitions that get added as members to standard library
+   *  objects with the same name.
+   */
+  @tu lazy val StdLibPatchesPackage: TermSymbol = requiredPackage("scala.runtime.stdLibPatches")
+  @tu private lazy val ScalaPredefModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.Predef").moduleClass
+  @tu private lazy val LanguageModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.language").moduleClass
+
+  /** If `sym` is a patched library class, the source file of its patch class,
+   *  otherwise `NoSource`
+   */
+  def patchSource(sym: Symbol)(using Context): SourceFile =
+    if sym == ScalaPredefModuleClass then ScalaPredefModuleClassPatch.source
+    else if sym == LanguageModuleClass then LanguageModuleClassPatch.source
+    else NoSource
+
+  /** A finalizer that patches standard library classes.
+   *  It copies all non-private, non-synthetic definitions from `patchCls`
+   *  to `denot` while changing their owners to `denot`. Before that it deletes
+   *  any definitions of `denot` that have the same name as one of the copied
+   *  definitions.
+   *
+   *  To avpid running into cycles on bootstrap, patching happens only if `patchCls`
+   *  is read from a classfile.
+   */
+  def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
+
+    def patchWith(patchCls: Symbol) =
+      denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
+      val scope = denot.info.decls.openForMutations
+      if patchCls.exists then
+        val patches = patchCls.info.decls.filter(patch =>
+          !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
+        for patch <- patches do
+          val e = scope.lookupEntry(patch.name)
+          if e != null then scope.unlink(e)
+        for patch <- patches do
+          patch.ensureCompleted()
+          patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
+          scope.enter(patch)
+
+    if denot.name == tpnme.Predef.moduleClassName && denot.symbol == ScalaPredefModuleClass then
+      patchWith(ScalaPredefModuleClassPatch)
+    else if denot.name == tpnme.language.moduleClassName && denot.symbol == LanguageModuleClass then
+      patchWith(LanguageModuleClassPatch)
+  end patchStdLibClass
 
   // ----- Symbol sets ---------------------------------------------------
 
