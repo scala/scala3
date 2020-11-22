@@ -1127,16 +1127,17 @@ class Definitions {
    *  any definitions of `denot` that have the same name as one of the copied
    *  definitions.
    *
+   *  If an object is present in both the original class and the patch class,
+   *  it is not overwritten. Instead its members are copied recursively.
+   *
    *  To avpid running into cycles on bootstrap, patching happens only if `patchCls`
    *  is read from a classfile.
    */
   def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
 
-    def recurse(patch: Symbol) =
-      patch.name.toString.startsWith("experimental")
-
     def patch2(denot: ClassDenotation, patchCls: Symbol): Unit =
       val scope = denot.info.decls.openForMutations
+      def recurse(patch: Symbol) = patch.is(Module) && scope.lookup(patch.name).exists
       if patchCls.exists then
         val patches = patchCls.info.decls.filter(patch =>
           !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
