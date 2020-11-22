@@ -112,8 +112,9 @@ object Scala2Unpickler {
     denot.info = tempInfo.finalized(normalizedParents)
     denot.ensureTypeParamsInCorrectOrder()
     if denot.name == tpnme.Predef.moduleClassName && denot.symbol == defn.ScalaPredefModuleClass then
-      denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
       patchStdLibClass(denot, defn.ScalaPredefModuleClassPatch)
+    else if denot.name == tpnme.language.moduleClassName && denot.symbol == defn.LanguageModuleClass then
+      patchStdLibClass(denot, defn.LanguageModuleClassPatch)
   }
 
   /** A finalizer that patches standard library classes.
@@ -126,6 +127,7 @@ object Scala2Unpickler {
    *  is read from a classfile.
    */
   private def patchStdLibClass(denot: ClassDenotation, patchCls: Symbol)(using Context): Unit =
+    denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
     val scope = denot.info.decls.openForMutations
     if patchCls.exists then
       val patches = patchCls.info.decls.filter(patch =>

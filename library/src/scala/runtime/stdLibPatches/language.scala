@@ -1,6 +1,6 @@
 package scala.runtime.stdLibPatches
 
-/** Scala 3 additions to the `scala.language` object.
+/** Scala 3 additions and replacements to the `scala.language` object.
  */
 object language:
 
@@ -17,6 +17,23 @@ object language:
    *  @group experimental
    */
   object experimental:
+
+    /** Where enabled, Scala 2 macro definitions are allowed. Scala 2 macro implementations and
+     *  macro applications are unaffected; they can be used anywhere. A Scala 2 macro definition
+     *  must be accompanied by a Scala 3 macro definition with the same signature.
+     *
+     *  '''Why introduce the feature?''' Scala 2 macros promise to make the language more regular,
+     *  replacing ad-hoc language constructs with a general powerful abstraction
+     *  capability that can express them. Macros are also a more disciplined and
+     *  powerful replacement for compiler plugins.
+     *
+     *  '''Why control it?''' For their very power, macros can lead to code that is hard
+     *  to debug and understand.
+     *
+     *  This is not required by Scala 3 macros as `inline` controls the basic generative macros.
+     *  More add-hoc macros must contain the import of reflection in thier code, making this import redundant.
+     */
+    implicit lazy val macros: languageFeature.experimental.macros = languageFeature.experimental.macros
 
     /** Experimental support for richer dependent types */
     object dependent

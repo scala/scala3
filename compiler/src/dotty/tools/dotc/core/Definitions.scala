@@ -191,6 +191,7 @@ class Definitions {
    */
   def patchSource(sym: Symbol): SourceFile =
     if sym == ScalaPredefModuleClass then ScalaPredefModuleClassPatch.source
+    else if sym == LanguageModuleClass then LanguageModuleClassPatch.source
     else NoSource
 
   @tu lazy val RootClass: ClassSymbol = newPackageSymbol(
@@ -259,8 +260,17 @@ class Definitions {
    *  or classes with the same name. But their binary artifacts are
    *  in `scalaShadowing` so they don't clash with the same-named `scala`
    *  members at runtime.
+   *  It is used only for non-bootstrapped code
    */
   @tu lazy val ScalaShadowingPackage: TermSymbol = requiredPackage(nme.scalaShadowing)
+
+  /** The `scala.runtime.stdLibPacthes` package is contains objects
+   *  that contain defnitions that get added as members to standard library
+   *  objects with the same name.
+   */
+  @tu lazy val StdLibPatchesPackage: TermSymbol = requiredPackage("scala.runtime.stdLibPatches")
+  @tu lazy val ScalaPredefModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.Predef").moduleClass
+  @tu lazy val LanguageModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.language").moduleClass
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -493,10 +503,7 @@ class Definitions {
     @tu lazy val Predef_classOf  : Symbol = ScalaPredefModule.requiredMethod(nme.classOf)
     @tu lazy val Predef_identity : Symbol = ScalaPredefModule.requiredMethod(nme.identity)
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
-
   @tu lazy val ScalaPredefModuleClass: ClassSymbol = ScalaPredefModule.moduleClass.asClass
-  @tu lazy val ScalaPredefModuleClassPatch: Symbol =
-    getModuleIfDefined("scala.runtime.stdLibPatches.Predef").moduleClass
 
   @tu lazy val SubTypeClass: ClassSymbol = requiredClass("scala.<:<")
   @tu lazy val SubType_refl: Symbol = SubTypeClass.companionModule.requiredMethod(nme.refl)

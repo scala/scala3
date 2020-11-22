@@ -417,13 +417,6 @@ class TreeChecker extends Phase with SymTransformer {
       assert(tree.qual.tpe.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
 
-    /** Definition of `sym` should be excluded from checks.
-     *  We need to do that for stdlib patch classes, since their symbols have been
-     *  appropriated by other stdlib classes.
-     */
-    private def exclude(sym: Symbol)(using Context): Boolean =
-      sym == defn.ScalaPredefModuleClassPatch
-
     private def checkOwner(tree: untpd.Tree)(using Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
@@ -452,14 +445,12 @@ class TreeChecker extends Phase with SymTransformer {
 
       val symbolsNotDefined = decls -- defined - constr.symbol
 
-      if exclude(cls) then
-        promote(cdef)
-      else
-        assert(symbolsNotDefined.isEmpty,
-          i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
-          i"expected: ${decls.toList}%, %\n" +
-          i"defined: ${defined}%, %")
-        super.typedClassDef(cdef, cls)
+      assert(symbolsNotDefined.isEmpty,
+        i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
+        i"expected: ${decls.toList}%, %\n" +
+        i"defined: ${defined}%, %")
+
+      super.typedClassDef(cdef, cls)
     }
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
@@ -548,6 +539,12 @@ class TreeChecker extends Phase with SymTransformer {
       assert((tree.cond ne EmptyTree) || ctx.phase.refChecked, i"invalid empty condition in while at $tree")
       super.typedWhileDo(tree)
     }
+
+    override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
+      if tree.symbol == defn.StdLibPatchesPackage then
+        promote(tree) // don't check stdlib patches, since their symbols were highjacked by stdlib classes
+      else
+        super.typedPackageDef(tree)
 
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
       tree
