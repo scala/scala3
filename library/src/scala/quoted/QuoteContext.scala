@@ -3199,6 +3199,9 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is this symbol `opaque` */
       def Opaque: Flags
 
+      /** Is this symbol `open` */
+      def Open: Flags
+
       /** Is this symbol `override` */
       def Override: Flags
 

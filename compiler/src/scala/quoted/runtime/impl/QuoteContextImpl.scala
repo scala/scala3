@@ -2451,6 +2451,7 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
       def Mutable: Flags = dotc.core.Flags.Mutable
       def Object: Flags = dotc.core.Flags.Module
       def Opaque: Flags = dotc.core.Flags.Opaque
+      def Open: Flags = dotc.core.Flags.Open
       def Override: Flags = dotc.core.Flags.Override
       def Package: Flags = dotc.core.Flags.Package
       def Param: Flags = dotc.core.Flags.Param

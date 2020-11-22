@@ -47,13 +47,6 @@ class SymOps[Q <: QuoteContext](val q: Q):
         case (None, None, (false, false, false)) => Visibility.Unrestricted
         case _ => throw new Exception(s"Visibility for symbol $sym cannot be determined")
 
-    // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
-    def hackIsOpen: Boolean = {
-      import dotty.tools.dotc
-      given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuoteContextImpl].ctx
-      val symbol = sym.asInstanceOf[dotc.core.Symbols.Symbol]
-      symbol.is(dotc.core.Flags.Open)
-    }
 
     // Order here determines order in documenation
     def getExtraModifiers(): Seq[Modifier] = Seq(
@@ -64,10 +57,10 @@ class SymOps[Q <: QuoteContext](val q: Q):
         Flags.Implicit -> Modifier.Implicit,
         Flags.Inline -> Modifier.Inline,
         Flags.Lazy -> Modifier.Lazy,
+        Flags.Open -> Modifier.Open,
         Flags.Override -> Modifier.Override,
         Flags.Case -> Modifier.Case,
         ).collect { case (flag, mod) if sym.flags.is(flag) => mod }
-          ++ (if(sym.hackIsOpen) Seq(Modifier.Open) else Nil)
 
     def isHiddenByVisibility: Boolean =
       import VisibilityScope._
