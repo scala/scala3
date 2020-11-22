@@ -16,7 +16,7 @@ object Varargs {
    *  ```
    */
   def apply[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[Seq[T]] = {
-    import qctx.reflect._
+    import quotes.reflect._
     Repeated(xs.map(Term.of).toList, TypeTree.of[T]).asExpr.asInstanceOf[Expr[Seq[T]]]
   }
 
@@ -33,7 +33,7 @@ object Varargs {
    *  ```
    */
   def unapply[T](expr: Expr[Seq[T]])(using Quotes): Option[Seq[Expr[T]]] = {
-    import qctx.reflect._
+    import quotes.reflect._
     def rec(tree: Term): Option[Seq[Expr[T]]] = tree match {
       case Typed(Repeated(elems, _), _) => Some(elems.map(x => x.asExpr.asInstanceOf[Expr[T]]))
       case Block(Nil, e) => rec(e)

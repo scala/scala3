@@ -5,7 +5,7 @@ trait Show[T] {
 }
 
 def showInterpolatorImpl(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] =
-  import qctx.reflect._
+  import quotes.reflect._
   Term.of(argsExpr) match
     case '{ $arg: $t } => // error
     case '[ Int ] => // error

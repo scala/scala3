@@ -20,7 +20,7 @@ object Macros {
         '{ $sym.times(${lift(x)}, ${lift(y)}) }
 
       case _ =>
-        import qctx.reflect._
+        import quotes.reflect._
         Reporting.error("Expected explicit DSL", Term.of(e).pos)
         '{ ??? }
 

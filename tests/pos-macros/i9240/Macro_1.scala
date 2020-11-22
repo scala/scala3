@@ -3,11 +3,11 @@ import scala.quoted._
 inline def diveInto[T]: String = ${ diveIntoImpl[T]() }
 
 def diveIntoImpl[T]()(implicit qctx: Quotes, ttype: Type[T]): Expr[String] =
-  import qctx.reflect._
+  import quotes.reflect._
   Expr( unwindType(TypeRepr.of[T]) )
 
-def unwindType(using Quotes)(aType: qctx.reflect.TypeRepr): String =
-  import qctx.reflect._
+def unwindType(using Quotes)(aType: quotes.reflect.TypeRepr): String =
+  import quotes.reflect._
 
   aType match {
     case AppliedType(t,tob) =>

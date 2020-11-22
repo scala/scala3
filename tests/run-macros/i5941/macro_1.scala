@@ -12,7 +12,7 @@ object Lens {
   }
 
   def impl[S: Type, T: Type](getter: Expr[S => T])(using Quotes) : Expr[Lens[S, T]] = {
-    import qctx.reflect._
+    import quotes.reflect._
     import util._
 
     // obj.copy(a = obj.a.copy(b = a.b.copy(c = v)))
@@ -85,7 +85,7 @@ object Iso {
   }
 
   def impl[S: Type, A: Type](using Quotes) : Expr[Iso[S, A]] = {
-    import qctx.reflect._
+    import quotes.reflect._
     import util._
 
     val tpS = TypeRepr.of[S]
@@ -124,7 +124,7 @@ object Iso {
   }
 
   def implUnit[S: Type](using Quotes) : Expr[Iso[S, 1]] = {
-    import qctx.reflect._
+    import quotes.reflect._
     import util._
 
     val tpS = TypeRepr.of[S]
@@ -196,7 +196,7 @@ object Prism {
   }
 
   def impl[S: Type, A <: S : Type](using Quotes) : Expr[Prism[S, A]] = {
-    import qctx.reflect._
+    import quotes.reflect._
     import util._
 
     '{

@@ -37,12 +37,12 @@ class TestInspector_Children() extends TastyInspector:
 
   var kids: List[String] = Nil
 
-  protected def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit =
-    import qctx.reflect._
+  protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit =
+    import quotes.reflect._
     inspectClass(root)
 
-  private def inspectClass(using Quotes)(tree: qctx.reflect.Tree): Unit =
-    import qctx.reflect._
+  private def inspectClass(using Quotes)(tree: quotes.reflect.Tree): Unit =
+    import quotes.reflect._
     tree match {
       case t: PackageClause =>
         t.stats.map( m => inspectClass(m) )

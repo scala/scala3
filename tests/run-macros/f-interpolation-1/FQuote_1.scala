@@ -9,7 +9,7 @@ object FQuote {
   }
 
   /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(using Quotes) : Expr[String] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>

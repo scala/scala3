@@ -5,20 +5,20 @@ import scala.quoted._
 
 object Extractors {
 
-  def showTree(using Quotes)(tree: qctx.reflect.Tree): String =
-    new ExtractorsPrinter[qctx.type]().visitTree(tree).result()
+  def showTree(using Quotes)(tree: quotes.reflect.Tree): String =
+    new ExtractorsPrinter[quotes.type]().visitTree(tree).result()
 
-  def showType(using Quotes)(tpe: qctx.reflect.TypeRepr): String =
-    new ExtractorsPrinter[qctx.type]().visitType(tpe).result()
+  def showType(using Quotes)(tpe: quotes.reflect.TypeRepr): String =
+    new ExtractorsPrinter[quotes.type]().visitType(tpe).result()
 
-  def showConstant(using Quotes)(const: qctx.reflect.Constant): String =
-    new ExtractorsPrinter[qctx.type]().visitConstant(const).result()
+  def showConstant(using Quotes)(const: quotes.reflect.Constant): String =
+    new ExtractorsPrinter[quotes.type]().visitConstant(const).result()
 
-  def showSymbol(using Quotes)(symbol: qctx.reflect.Symbol): String =
-    new ExtractorsPrinter[qctx.type]().visitSymbol(symbol).result()
+  def showSymbol(using Quotes)(symbol: quotes.reflect.Symbol): String =
+    new ExtractorsPrinter[quotes.type]().visitSymbol(symbol).result()
 
-  def showFlags(using Quotes)(flags: qctx.reflect.Flags): String = {
-    import qctx.reflect._
+  def showFlags(using Quotes)(flags: quotes.reflect.Flags): String = {
+    import quotes.reflect._
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "Flags.Abstract"
     if (flags.is(Flags.Artifact)) flagList += "Flags.Artifact"
@@ -57,8 +57,8 @@ object Extractors {
     flagList.result().mkString(" | ")
   }
 
-  private class ExtractorsPrinter[QCtx <: Quotes & Singleton](using val qctx: QCtx) { self =>
-    import qctx.reflect._
+  private class ExtractorsPrinter[Q <: Quotes & Singleton](using val quotes: Q) { self =>
+    import quotes.reflect._
 
     private val sb: StringBuilder = new StringBuilder
 

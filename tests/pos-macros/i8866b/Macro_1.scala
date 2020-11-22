@@ -7,7 +7,7 @@ object Other {
 object Macro {
 
   def impl(using Quotes): Expr[Int] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     ValDef.let(
       Symbol.spliceOwner,

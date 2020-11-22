@@ -14,7 +14,7 @@ object Expr {
    *   Some bindings may be elided as an early optimization.
    */
   def betaReduce[T](expr: Expr[T])(using Quotes): Expr[T] =
-    import qctx.reflect._
+    import quotes.reflect._
     Term.betaReduce(Term.of(expr)) match
       case Some(expr1) => expr1.asExpr.asInstanceOf[Expr[T]]
       case _ => expr
@@ -24,7 +24,7 @@ object Expr {
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using Quotes): Expr[T] = {
-    import qctx.reflect._
+    import quotes.reflect._
     Block(statements.map(Term.of), Term.of(expr)).asExpr.asInstanceOf[Expr[T]]
   }
 
@@ -40,7 +40,7 @@ object Expr {
    *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
    *  ```
    */
-  def ofSeq[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: Quotes): Expr[Seq[T]] =
+  def ofSeq[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[Seq[T]] =
     Varargs(xs)
 
   /** Lifts this list of expressions into an expression of a list
@@ -208,11 +208,9 @@ object Expr {
    * `None` if implicit resolution failed.
    *
    *  @tparam T type of the implicit parameter
-   *  @param tpe quoted type of the implicit parameter
-   *  @param qctx current context
    */
   def summon[T](using Type[T])(using Quotes): Option[Expr[T]] = {
-    import qctx.reflect._
+    import quotes.reflect._
     Implicits.search(TypeRepr.of[T]) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None

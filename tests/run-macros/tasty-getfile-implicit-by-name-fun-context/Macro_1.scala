@@ -8,6 +8,6 @@ object SourceFiles {
     ${getThisFileImpl}
 
   def getThisFileImpl: Macro[String] =
-    Expr(qctx.reflect.Source.path.getFileName.toString)
+    Expr(quotes.reflect.Source.path.getFileName.toString)
 
 }

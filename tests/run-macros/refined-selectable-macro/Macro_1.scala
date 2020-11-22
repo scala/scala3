@@ -15,7 +15,7 @@ object Macro {
   }
 
   private def toTupleImpl(s: Expr[Selectable])(using qctx:Quotes) : Expr[Tuple] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     val repr = Term.of(s).tpe.widenTermRefExpr.dealias
 
@@ -49,7 +49,7 @@ object Macro {
   }
 
   private def fromTupleImpl[T: Type](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T])(using qctx:Quotes) : Expr[Any] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     val repr = Term.of(s).tpe.widenTermRefExpr.dealias
 

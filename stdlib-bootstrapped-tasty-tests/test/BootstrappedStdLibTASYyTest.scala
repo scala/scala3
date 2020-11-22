@@ -102,7 +102,7 @@ object BootstrappedStdLibTASYyTest:
 
   def loadWithTastyInspector(blacklisted: Set[String]): Unit =
     val inspector = new scala.tasty.inspector.TastyInspector {
-      def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit =
+      def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit =
         root.showExtractors // Check that we can traverse the full tree
         ()
     }
