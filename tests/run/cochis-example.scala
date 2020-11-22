@@ -1,5 +1,5 @@
 
-import Predef.{$conforms => _}
+import Predef.{assert, $conforms => _}
 trait A {
   given id[X] as (X => X) = x => x
   def trans[X](x: X)(using f: X => X) = f(x)  // (2)

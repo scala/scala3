@@ -9,7 +9,7 @@ import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
 import Denotations.SingleDenotation
-import util.SimpleIdentityMap
+import util.{SimpleIdentityMap, SourceFile, NoSource}
 import typer.ImportInfo.RootRef
 
 import scala.annotation.tailrec
@@ -185,6 +185,13 @@ class Definitions {
     if (cls.linkedClass.exists) cls.linkedClass.markAbsent()
     cls
   }
+
+  /** If `sym` is a patched library class, the source file of its patch class,
+   *  otherwise `NoSource`
+   */
+  def patchSource(sym: Symbol): SourceFile =
+    if sym == ScalaPredefModuleClass then ScalaPredefModuleClassPatch.source
+    else NoSource
 
   @tu lazy val RootClass: ClassSymbol = newPackageSymbol(
     NoSymbol, nme.ROOT, (root, rootcls) => ctx.base.rootLoader(root)).moduleClass.asClass
@@ -481,12 +488,15 @@ class Definitions {
     newPermanentSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
   def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
 
-
   @tu lazy val ScalaPredefModule: Symbol = requiredModule("scala.Predef")
     @tu lazy val Predef_conforms : Symbol = ScalaPredefModule.requiredMethod(nme.conforms_)
     @tu lazy val Predef_classOf  : Symbol = ScalaPredefModule.requiredMethod(nme.classOf)
     @tu lazy val Predef_identity : Symbol = ScalaPredefModule.requiredMethod(nme.identity)
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
+
+  @tu lazy val ScalaPredefModuleClass: ClassSymbol = ScalaPredefModule.moduleClass.asClass
+  @tu lazy val ScalaPredefModuleClassPatch: Symbol =
+    getModuleIfDefined("scala.runtime.stdLibPatches.Predef").moduleClass
 
   @tu lazy val SubTypeClass: ClassSymbol = requiredClass("scala.<:<")
   @tu lazy val SubType_refl: Symbol = SubTypeClass.companionModule.requiredMethod(nme.refl)
@@ -510,7 +520,7 @@ class Definitions {
   // will return "null" when called recursively, see #1856.
   def DottyPredefModule: Symbol = {
     if (myDottyPredefModule == null) {
-      myDottyPredefModule = requiredModule("dotty.DottyPredef")
+      myDottyPredefModule = getModuleIfDefined("dotty.DottyPredef")
       assert(myDottyPredefModule != null)
     }
     myDottyPredefModule
@@ -782,6 +792,7 @@ class Definitions {
   @tu lazy val Mirror_SingletonProxyClass: ClassSymbol = requiredClass("scala.deriving.Mirror.SingletonProxy")
 
   @tu lazy val LanguageModule: Symbol = requiredModule("scala.language")
+  @tu lazy val LanguageModuleClass: Symbol = LanguageModule.moduleClass.asClass
   @tu lazy val LanguageExperimentalModule: Symbol = requiredModule("scala.language.experimental")
   @tu lazy val NonLocalReturnControlClass: ClassSymbol = requiredClass("scala.runtime.NonLocalReturnControl")
   @tu lazy val SelectableClass: ClassSymbol = requiredClass("scala.Selectable")

@@ -417,6 +417,13 @@ class TreeChecker extends Phase with SymTransformer {
       assert(tree.qual.tpe.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
       super.typedSuper(tree, pt)
 
+    /** Definition of `sym` should be excluded from checks.
+     *  We need to do that for stdlib patch classes, since their symbols have been
+     *  appropriated by other stdlib classes.
+     */
+    private def exclude(sym: Symbol)(using Context): Boolean =
+      sym == defn.ScalaPredefModuleClassPatch
+
     private def checkOwner(tree: untpd.Tree)(using Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
@@ -445,12 +452,14 @@ class TreeChecker extends Phase with SymTransformer {
 
       val symbolsNotDefined = decls -- defined - constr.symbol
 
-      assert(symbolsNotDefined.isEmpty,
+      if exclude(cls) then
+        promote(cdef)
+      else
+        assert(symbolsNotDefined.isEmpty,
           i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
           i"expected: ${decls.toList}%, %\n" +
           i"defined: ${defined}%, %")
-
-      super.typedClassDef(cdef, cls)
+        super.typedClassDef(cdef, cls)
     }
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =

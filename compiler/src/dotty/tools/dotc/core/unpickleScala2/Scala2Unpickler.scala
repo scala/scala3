@@ -111,7 +111,32 @@ object Scala2Unpickler {
 
     denot.info = tempInfo.finalized(normalizedParents)
     denot.ensureTypeParamsInCorrectOrder()
+    if denot.name == tpnme.Predef.moduleClassName && denot.symbol == defn.ScalaPredefModuleClass then
+      denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
+      patchStdLibClass(denot, defn.ScalaPredefModuleClassPatch)
   }
+
+  /** A finalizer that patches standard library classes.
+   *  It copies all non-private, non-synthetic definitions from `patchCls`
+   *  to `denot` while changing their owners to `denot`. Before that it deletes
+   *  any definitions of `denot` that have the same name as one of the copied
+   *  definitions.
+   *
+   *  To avpid running into cycles on bootstrap, patching happens only if `patchCls`
+   *  is read from a classfile.
+   */
+  private def patchStdLibClass(denot: ClassDenotation, patchCls: Symbol)(using Context): Unit =
+    val scope = denot.info.decls.openForMutations
+    if patchCls.exists then
+      val patches = patchCls.info.decls.filter(patch =>
+        !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
+      for patch <- patches do
+        val e = scope.lookupEntry(patch.name)
+        if e != null then scope.unlink(e)
+      for patch <- patches do
+        patch.ensureCompleted()
+        patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
+        scope.enter(patch)
 }
 
 /** Unpickle symbol table information descending from a class and/or module root
