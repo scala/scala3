@@ -106,9 +106,7 @@ object Extractors {
       case Repeated(elems, elemtpt) =>
         this += "Repeated(" ++= elems += ", " += elemtpt += ")"
       case Inlined(call, bindings, expansion) =>
-        this += "Inlined("
-        visitOption(call, visitTree)
-        this += ", " ++= bindings += ", " += expansion += ")"
+        this += "Inlined(" += call += ", " ++= bindings += ", " += expansion += ")"
       case ValDef(name, tpt, rhs) =>
         this += "ValDef(\"" += name += "\", " += tpt += ", " += rhs += ")"
       case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
@@ -165,6 +163,8 @@ object Extractors {
         this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
       case Alternatives(patterns) =>
         this += "Alternative(" ++= patterns += ")"
+      case EmptyTree() =>
+        this += "EmptyTree()"
     }
 
     def visitConstant(x: Constant): this.type = x match {

@@ -13,7 +13,7 @@ object Foo {
       else '{"NO DEFINTION"}
 
     Term.of(x) match {
-      case Inlined(None, Nil, arg) => definitionString(arg.symbol)
+      case Inlined(EmptyTree(), Nil, arg) => definitionString(arg.symbol)
       case arg => definitionString(arg.symbol) // TODO should all by name parameters be in an inline node
     }
   }

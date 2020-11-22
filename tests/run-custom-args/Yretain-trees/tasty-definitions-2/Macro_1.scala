@@ -8,7 +8,7 @@ object Foo {
   def inspectBodyImpl(x: Expr[Int])(using qctx: QuoteContext) : Expr[String] = {
     import qctx.reflect._
     Term.of(x) match {
-      case Inlined(None, Nil, arg) => Expr(arg.symbol.tree.showExtractors)
+      case Inlined(EmptyTree(), Nil, arg) => Expr(arg.symbol.tree.showExtractors)
       case arg => Expr(arg.symbol.tree.showExtractors) // TODO should all by name parameters be in an inline node?
     }
   }

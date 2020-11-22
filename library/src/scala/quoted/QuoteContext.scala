@@ -127,6 +127,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           +- Bind
    *           +- Unapply
    *           +- Alternatives
+   *           +- EmptyTree
    *
    *
    *  +- TypeRepr -+- ConstantType
@@ -208,6 +209,12 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Shows the tree as fully typed source code colored with ANSI */
         def showAnsiColored: String
+
+        /** Is this an EmptyTree? */
+        def isEmpty: Boolean
+
+        /** Is this is not an EmptyTree? */
+        def nonEmpty: Boolean = !self.isEmpty
 
         /** Does this tree represent a valid expression? */
         def isExpr: Boolean
@@ -342,9 +349,9 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val DefDef: DefDefModule
 
     trait DefDefModule { this: DefDef.type =>
-      def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef
-      def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef
-      def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])]
+      def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Tree): DefDef
+      def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Tree): DefDef
+      def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Tree)]
     }
 
     given DefDefMethods as DefDefMethods = DefDefMethodsImpl
@@ -355,7 +362,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def typeParams: List[TypeDef]
         def paramss: List[List[ValDef]]
         def returnTpt: TypeTree
-        def rhs: Option[Term]
+        def rhs: Tree
       end extension
     end DefDefMethods
 
@@ -370,9 +377,9 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val ValDef: ValDefModule
 
     trait ValDefModule { this: ValDef.type =>
-      def apply(symbol: Symbol, rhs: Option[Term]): ValDef
-      def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
-      def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])]
+      def apply(symbol: Symbol, rhs: Tree): ValDef
+      def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Tree): ValDef
+      def unapply(vdef: ValDef): Option[(String, TypeTree, Tree)]
 
       /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }` */
       def let(owner: Symbol, name: String, rhs: Term)(body: Ident => Term): Term
@@ -391,7 +398,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait ValDefMethods:
       extension (self: ValDef):
         def tpt: TypeTree
-        def rhs: Option[Term]
+        def rhs: Tree
       end extension
     end ValDefMethods
 
@@ -1070,13 +1077,13 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     trait TryModule { this: Try.type =>
 
-      /** Create a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
-      def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
+      /** Create a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Tree>` */
+      def apply(expr: Term, cases: List[CaseDef], finalizer: Tree): Try
 
-      def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
+      def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Tree): Try
 
-      /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
-      def unapply(x: Try): Option[(Term, List[CaseDef], Option[Term])]
+      /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Tree>` */
+      def unapply(x: Try): Option[(Term, List[CaseDef], Tree)]
     }
 
     given TryMethods as TryMethods = TryMethodsImpl
@@ -1086,7 +1093,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: Try):
         def body: Term
         def cases: List[CaseDef]
-        def finalizer: Option[Term]
+        def finalizer: Tree
       end extension
     end TryMethods
 
@@ -1153,9 +1160,9 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val Inlined: InlinedModule
 
     trait InlinedModule { this: Inlined.type =>
-      def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
-      def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
-      def unapply(x: Inlined): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)]
+      def apply(call: Tree, bindings: List[Definition], expansion: Term): Inlined
+      def copy(original: Tree)(call: Tree, bindings: List[Definition], expansion: Term): Inlined
+      def unapply(x: Inlined): Option[(Tree, List[Definition], Term)]
     }
 
     given InlinedMethods as InlinedMethods = InlinedMethodsImpl
@@ -1163,7 +1170,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     trait InlinedMethods:
       extension (self: Inlined):
-        def call: Option[Tree /* Term | TypeTree */]
+        def call: Tree
         def bindings: List[Definition]
         def body: Term
       end extension
@@ -1438,9 +1445,9 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val MatchTypeTree: MatchTypeTreeModule
 
     trait MatchTypeTreeModule { this: MatchTypeTree.type =>
-      def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
-      def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
-      def unapply(x: MatchTypeTree): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])]
+      def apply(bound: TypeTree, selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
+      def copy(original: Tree)(bound: TypeTree, selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
+      def unapply(x: MatchTypeTree): Option[(TypeTree, TypeTree, List[TypeCaseDef])]
     }
 
     given MatchTypeTreeMethods as MatchTypeTreeMethods = MatchTypeTreeMethodsImpl
@@ -1448,7 +1455,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     trait MatchTypeTreeMethods:
       extension (self: MatchTypeTree):
-        def bound: Option[TypeTree]
+        def bound: TypeTree
         def selector: TypeTree
         def cases: List[TypeCaseDef]
       end extension
@@ -1613,9 +1620,9 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val CaseDef: CaseDefModule
 
     trait CaseDefModule { this: CaseDef.type =>
-      def apply(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
-      def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
-      def unapply(x: CaseDef): Option[(Tree, Option[Term], Term)]
+      def apply(pattern: Tree, guard: Tree, rhs: Term): CaseDef
+      def copy(original: Tree)(pattern: Tree, guard: Tree, rhs: Term): CaseDef
+      def unapply(x: CaseDef): Option[(Tree, Tree, Term)]
     }
 
     given CaseDefMethods as CaseDefMethods = CaseDefMethodsImpl
@@ -1624,7 +1631,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait CaseDefMethods:
       extension (self: CaseDef):
         def pattern: Tree
-        def guard: Option[Term]
+        def guard: Tree
         def rhs: Term
       end extension
     end CaseDefMethods
@@ -1726,6 +1733,18 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def patterns: List[Tree]
       end extension
     end AlternativesMethods
+
+    type EmptyTree <: Tree
+
+    given TypeTest[Tree, EmptyTree] = EmptyTreeTypeTest
+    protected val EmptyTreeTypeTest: TypeTest[Tree, EmptyTree]
+
+    val EmptyTree: EmptyTreeModule
+
+    trait EmptyTreeModule { this: EmptyTree.type =>
+      def apply(): EmptyTree
+      def unapply(x: EmptyTree): Boolean
+    }
 
     //////////////////////
     // IMPORT SELECTORS //
@@ -3464,17 +3483,17 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case Return(expr, _) =>
             foldTree(x, expr)(owner)
           case Try(block, handler, finalizer) =>
-            foldTrees(foldTrees(foldTree(x, block)(owner), handler)(owner), finalizer)(owner)
+            foldTree(foldTrees(foldTree(x, block)(owner), handler)(owner), finalizer)(owner)
           case Repeated(elems, elemtpt) =>
             foldTrees(foldTree(x, elemtpt)(owner), elems)(owner)
           case Inlined(call, bindings, expansion) =>
             foldTree(foldTrees(x, bindings)(owner), expansion)(owner)
           case vdef @ ValDef(_, tpt, rhs) =>
             val owner = vdef.symbol
-            foldTrees(foldTree(x, tpt)(owner), rhs)(owner)
+            foldTree(foldTree(x, tpt)(owner), rhs)(owner)
           case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
             val owner = ddef.symbol
-            foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams)(owner))((acc, y) => foldTrees(acc, y)(owner)), tpt)(owner), rhs)(owner)
+            foldTree(foldTree(vparamss.foldLeft(foldTrees(x, tparams)(owner))((acc, y) => foldTrees(acc, y)(owner)), tpt)(owner), rhs)(owner)
           case tdef @ TypeDef(_, rhs) =>
             val owner = tdef.symbol
             foldTree(x, rhs)(owner)
@@ -3497,15 +3516,16 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case LambdaTypeTree(typedefs, arg) => foldTree(foldTrees(x, typedefs)(owner), arg)(owner)
           case TypeBind(_, tbt) => foldTree(x, tbt)(owner)
           case TypeBlock(typedefs, tpt) => foldTree(foldTrees(x, typedefs)(owner), tpt)(owner)
-          case MatchTypeTree(boundopt, selector, cases) =>
-            foldTrees(foldTree(boundopt.fold(x)(y => foldTree(x, y)(owner)), selector)(owner), cases)(owner)
+          case MatchTypeTree(bound, selector, cases) =>
+            foldTrees(foldTree(foldTree(x, bound)(owner), selector)(owner), cases)(owner)
           case WildcardTypeTree() => x
           case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo)(owner), hi)(owner)
-          case CaseDef(pat, guard, body) => foldTree(foldTrees(foldTree(x, pat)(owner), guard)(owner), body)(owner)
+          case CaseDef(pat, guard, body) => foldTree(foldTree(foldTree(x, pat)(owner), guard)(owner), body)(owner)
           case TypeCaseDef(pat, body) => foldTree(foldTree(x, pat)(owner), body)(owner)
           case Bind(_, body) => foldTree(x, body)(owner)
           case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun)(owner), implicits)(owner), patterns)(owner)
           case Alternatives(patterns) => foldTrees(x, patterns)(owner)
+          case _: EmptyTree => x
         }
       }
     end TreeAccumulator
@@ -3566,6 +3586,8 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             Unapply.copy(pattern)(transformTerm(pattern.fun)(owner), transformSubTrees(pattern.implicits)(owner), transformTrees(pattern.patterns)(owner))
           case pattern: Alternatives =>
             Alternatives.copy(pattern)(transformTrees(pattern.patterns)(owner))
+          case tree: EmptyTree =>
+            tree
         }
       }
 
@@ -3576,11 +3598,11 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case tree: ValDef =>
             val owner = tree.symbol
             val tpt1 = transformTypeTree(tree.tpt)(owner)
-            val rhs1 = tree.rhs.map(x => transformTerm(x)(owner))
+            val rhs1 = transformTree(tree.rhs)(owner)
             ValDef.copy(tree)(tree.name, tpt1, rhs1)
           case tree: DefDef =>
             val owner = tree.symbol
-            DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams)(owner), tree.paramss mapConserve (x => transformSubTrees(x)(owner)), transformTypeTree(tree.returnTpt)(owner), tree.rhs.map(x => transformTerm(x)(owner)))
+            DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams)(owner), tree.paramss mapConserve (x => transformSubTrees(x)(owner)), transformTypeTree(tree.returnTpt)(owner), transformTree(tree.rhs)(owner))
           case tree: TypeDef =>
             val owner = tree.symbol
             TypeDef.copy(tree)(tree.name, transformTree(tree.rhs)(owner))
@@ -3628,7 +3650,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case While(cond, body) =>
             While.copy(tree)(transformTerm(cond)(owner), transformTerm(body)(owner))
           case Try(block, cases, finalizer) =>
-            Try.copy(tree)(transformTerm(block)(owner), transformCaseDefs(cases)(owner), finalizer.map(x => transformTerm(x)(owner)))
+            Try.copy(tree)(transformTerm(block)(owner), transformCaseDefs(cases)(owner), transformTree(finalizer)(owner))
           case Repeated(elems, elemtpt) =>
             Repeated.copy(tree)(transformTerms(elems)(owner), transformTypeTree(elemtpt)(owner))
           case Inlined(call, bindings, expansion) =>
@@ -3652,7 +3674,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         case tree: Applied =>
           Applied.copy(tree)(transformTypeTree(tree.tpt)(owner), transformTrees(tree.args)(owner))
         case tree: MatchTypeTree =>
-          MatchTypeTree.copy(tree)(tree.bound.map(b => transformTypeTree(b)(owner)), transformTypeTree(tree.selector)(owner), transformTypeCaseDefs(tree.cases)(owner))
+          MatchTypeTree.copy(tree)(transformTypeTree(tree.bound)(owner), transformTypeTree(tree.selector)(owner), transformTypeCaseDefs(tree.cases)(owner))
         case tree: ByName =>
           ByName.copy(tree)(transformTypeTree(tree.result)(owner))
         case tree: LambdaTypeTree =>
@@ -3663,13 +3685,11 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           TypeBlock.copy(tree)(tree.aliases, tree.tpt)
       }
 
-      def transformCaseDef(tree: CaseDef)(owner: Symbol): CaseDef = {
-        CaseDef.copy(tree)(transformTree(tree.pattern)(owner), tree.guard.map(x => transformTerm(x)(owner)), transformTerm(tree.rhs)(owner))
-      }
+      def transformCaseDef(tree: CaseDef)(owner: Symbol): CaseDef =
+        CaseDef.copy(tree)(transformTree(tree.pattern)(owner), transformTree(tree.guard)(owner), transformTerm(tree.rhs)(owner))
 
-      def transformTypeCaseDef(tree: TypeCaseDef)(owner: Symbol): TypeCaseDef = {
+      def transformTypeCaseDef(tree: TypeCaseDef)(owner: Symbol): TypeCaseDef =
         TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern)(owner), transformTypeTree(tree.rhs)(owner))
-      }
 
       def transformStats(trees: List[Statement])(owner: Symbol): List[Statement] =
         trees mapConserve (x => transformStatement(x)(owner))

@@ -25,11 +25,11 @@ trait ExprMap:
         tree match {
           case tree: ValDef =>
             val owner = tree.symbol
-            val rhs1 = tree.rhs.map(x => transformTerm(x, tree.tpt.tpe)(owner))
+            val rhs1 = transformTermTree(tree.rhs, tree.tpt.tpe)(owner)
             ValDef.copy(tree)(tree.name, tree.tpt, rhs1)
           case tree: DefDef =>
             val owner = tree.symbol
-            DefDef.copy(tree)(tree.name, tree.typeParams, tree.paramss, tree.returnTpt, tree.rhs.map(x => transformTerm(x, tree.returnTpt.tpe)(owner)))
+            DefDef.copy(tree)(tree.name, tree.typeParams, tree.paramss, tree.returnTpt, transformTermTree(tree.rhs, tree.returnTpt.tpe)(owner))
           case tree: TypeDef =>
             tree
           case tree: ClassDef =>
@@ -85,12 +85,16 @@ trait ExprMap:
         case While(cond, body) =>
           While.copy(tree)(transformTerm(cond, TypeRepr.of[Boolean])(owner), transformTerm(body, TypeRepr.of[Any])(owner))
         case Try(block, cases, finalizer) =>
-          Try.copy(tree)(transformTerm(block, tpe)(owner), transformCaseDefs(cases, TypeRepr.of[Any])(owner), finalizer.map(x => transformTerm(x, TypeRepr.of[Any])(owner)))
+          Try.copy(tree)(transformTerm(block, tpe)(owner), transformCaseDefs(cases, TypeRepr.of[Any])(owner), transformTermTree(finalizer, TypeRepr.of[Any])(owner))
         case Repeated(elems, elemtpt) =>
           Repeated.copy(tree)(transformTerms(elems, elemtpt.tpe)(owner), elemtpt)
         case Inlined(call, bindings, expansion) =>
           Inlined.copy(tree)(call, transformDefinitions(bindings)(owner), transformTerm(expansion, tpe)(owner))
       }
+
+      def transformTermTree(tree: Tree, tpe: TypeRepr)(owner: Symbol): Tree = tree match
+        case tree: Term => transformTerm(tree, tpe)(owner)
+        case tree: EmptyTree => tree
 
       def transformTerm(tree: Term, tpe: TypeRepr)(owner: Symbol): Term =
         tree match
@@ -110,7 +114,7 @@ trait ExprMap:
       def transformTypeTree(tree: TypeTree)(owner: Symbol): TypeTree = tree
 
       def transformCaseDef(tree: CaseDef, tpe: TypeRepr)(owner: Symbol): CaseDef =
-        CaseDef.copy(tree)(tree.pattern, tree.guard.map(x => transformTerm(x, TypeRepr.of[Boolean])(owner)), transformTerm(tree.rhs, tpe)(owner))
+        CaseDef.copy(tree)(tree.pattern, transformTermTree(tree.guard, TypeRepr.of[Boolean])(owner), transformTerm(tree.rhs, tpe)(owner))
 
       def transformTypeCaseDef(tree: TypeCaseDef)(owner: Symbol): TypeCaseDef =
         TypeCaseDef.copy(tree)(transformTypeTree(tree.pattern)(owner), transformTypeTree(tree.rhs)(owner))

@@ -20,7 +20,7 @@ object Macros {
       DefDef(sym1, {
         case List() => {
           case List(List(a, b)) =>
-            Some(Term.of('{ ${ a.asExpr.asInstanceOf[Expr[Int]] } - ${ b.asExpr.asInstanceOf[Expr[Int]] } }))
+            Term.of('{ ${ a.asExpr.asInstanceOf[Expr[Int]] } - ${ b.asExpr.asInstanceOf[Expr[Int]] } })
         }
       }),
       Term.of('{ assert(${ Apply(Ref(sym1), List(Literal(Constant.Int(2)), Literal(Constant.Int(3)))).asExpr.asInstanceOf[Expr[Int]] } == -1) }))
@@ -36,7 +36,7 @@ object Macros {
       DefDef(sym2, {
         case List() => {
           case List() =>
-            Some(Literal(Constant.Int(2)))
+            Literal(Constant.Int(2))
         }
       }),
       Term.of('{ assert(${ Ref(sym2).asExpr.asInstanceOf[Expr[Int]] } == 2) }))
@@ -55,8 +55,7 @@ object Macros {
     val sym3Statements : List[Statement] = List(
       DefDef(sym3, {
         case List() => {
-          case List(List(a), List(b)) =>
-            Some(a)
+          case List(List(a), List(b)) => a
         }
       }),
       Term.of('{ assert(${ Apply(Apply(Ref(sym3), List(Literal(Constant.Int(3)))), List(Literal(Constant.Int(3)))).asExpr.asInstanceOf[Expr[Int]] } == 3) }))
@@ -74,11 +73,11 @@ object Macros {
       DefDef(sym4, {
         case List() => {
           case List(List(x)) =>
-            Some(Term.of('{
+            Term.of('{
               if ${ x.asExpr.asInstanceOf[Expr[Int]] } == 0
               then 0
               else ${ Apply(Ref(sym4), List(Term.of('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - 1 }))).asExpr.asInstanceOf[Expr[Int]] }
-            }))
+            })
         }
       }),
       Term.of('{ assert(${ Apply(Ref(sym4), List(Literal(Constant.Int(4)))).asExpr.asInstanceOf[Expr[Int]] } == 0) }))
@@ -96,7 +95,6 @@ object Macros {
       DefDef(sym5, {
         case List() => {
           case List(List(x)) =>
-            Some {
               val sym51 : Symbol = Symbol.newMethod(
                 sym5,
                 "sym51",
@@ -108,11 +106,10 @@ object Macros {
                   DefDef(sym51, {
                     case List() => {
                       case List(List(xx)) =>
-                        Some(Term.of('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - ${ xx.asExpr.asInstanceOf[Expr[Int]] } }))
+                        Term.of('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - ${ xx.asExpr.asInstanceOf[Expr[Int]] } })
                     }
                   })),
                 Closure(Ref(sym51), None))
-            }
         }
       }),
       Term.of('{ assert(${ Apply(Ref(sym5), List(Literal(Constant.Int(5)))).asExpr.asInstanceOf[Expr[Int=>Int]] }(4) == 1) }))
@@ -138,27 +135,23 @@ object Macros {
       DefDef(sym6_1, {
         case List() => {
           case List(List(x)) =>
-            Some {
               Term.of('{
                 println(s"sym6_1: ${ ${ x.asExpr.asInstanceOf[Expr[Int]] } }")
                 if ${ x.asExpr.asInstanceOf[Expr[Int]] } == 0
                 then 0
                 else ${ Apply(Ref(sym6_2), List(Term.of('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - 1 }))).asExpr.asInstanceOf[Expr[Int]] }
               })
-            }
         }
       }),
       DefDef(sym6_2, {
         case List() => {
           case List(List(x)) =>
-            Some {
               Term.of('{
                 println(s"sym6_2: ${ ${ x.asExpr.asInstanceOf[Expr[Int]] } }")
                 if ${ x.asExpr.asInstanceOf[Expr[Int]] } == 0
                 then 0
                 else ${ Apply(Ref(sym6_1), List(Term.of('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - 1 }))).asExpr.asInstanceOf[Expr[Int]] }
               })
-            }
         }
 
       }),
@@ -179,7 +172,7 @@ object Macros {
       DefDef(sym7, {
         case List(t) => {
           case List(List(x)) =>
-            Some(Typed(x, Inferred(t)))
+            Typed(x, Inferred(t))
         }
       }),
       Term.of('{ assert(${ Apply(TypeApply(Ref(sym7), List(Inferred(TypeRepr.of[Int]))), List(Literal(Constant.Int(7)))).asExpr.asInstanceOf[Expr[Int]] } == 7) }))

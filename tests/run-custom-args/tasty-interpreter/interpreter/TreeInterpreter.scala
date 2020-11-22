@@ -27,10 +27,10 @@ abstract class TreeInterpreter[QCtx <: QuoteContext & Singleton](using val qctx:
     // TODO
     // withLocalValue(`this`, inst) {
       sym.tree match
-        case ddef: DefDef =>
-          val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
+        case DefDef(_, _, paramss, _, rhs: Term) =>
+          val syms = paramss.headOption.getOrElse(Nil).map(_.symbol)
           withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
-            eval(ddef.rhs.get)
+            eval(rhs)
           }
     // }
   }
@@ -44,10 +44,10 @@ abstract class TreeInterpreter[QCtx <: QuoteContext & Singleton](using val qctx:
     }
     val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
     fn.symbol.tree match
-      case ddef: DefDef =>
-        val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
+      case DefDef(_, _, paramss, _, rhs: Term) =>
+        val syms = paramss.headOption.getOrElse(Nil).map(_.symbol)
         withLocalValues(syms, evaluatedArgs) {
-          eval(ddef.rhs.get)
+          eval(rhs)
         }
   }
 
@@ -67,7 +67,7 @@ abstract class TreeInterpreter[QCtx <: QuoteContext & Singleton](using val qctx:
 
   def interpretBlock(stats: List[Statement], expr: Term): Result = {
     val newEnv = stats.foldLeft(implicitly[Env])((accEnv, stat) => stat match {
-      case ValDef(name, tpt, Some(rhs)) =>
+      case ValDef(name, tpt, rhs: Term) =>
         def evalRhs = eval(rhs)(using accEnv)
         val evalRef: LocalValue =
           if (stat.symbol.flags.is(Flags.Lazy)) LocalValue.lazyValFrom(evalRhs)

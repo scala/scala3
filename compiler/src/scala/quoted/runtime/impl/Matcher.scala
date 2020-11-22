@@ -206,7 +206,7 @@ object Matcher {
               }.transformTree(scrutinee)(Symbol.spliceOwner)
             }
             val names = args.map {
-              case Block(List(DefDef("$anonfun", _, _, _, Some(Apply(Ident(name), _)))), _) => name
+              case Block(List(DefDef("$anonfun", _, _, _, Apply(Ident(name), _))), _) => name
               case arg => arg.symbol.name
             }
             val argTypes = args.map(x => x.tpe.widenTermRefExpr)
@@ -299,10 +299,10 @@ object Matcher {
           /* Match val */
           case (ValDef(_, tpt1, rhs1), ValDef(_, tpt2, rhs2)) if checkValFlags() =>
             def rhsEnv = summon[Env] + (scrutinee.symbol -> pattern.symbol)
-            tpt1 =?= tpt2 &&& treeOptMatches(rhs1, rhs2)(using rhsEnv)
+            tpt1 =?= tpt2 &&& withEnv(rhsEnv)(rhs1 =?= rhs2)
 
           /* Match def */
-          case (DefDef(_, typeParams1, paramss1, tpt1, Some(rhs1)), DefDef(_, typeParams2, paramss2, tpt2, Some(rhs2))) =>
+          case (DefDef(_, typeParams1, paramss1, tpt1, rhs1), DefDef(_, typeParams2, paramss2, tpt2, rhs2)) =>
             def rhsEnv =
               val oldEnv: Env = summon[Env]
               val newEnv: List[(Symbol, Symbol)] =
@@ -321,6 +321,9 @@ object Matcher {
 
           case (NamedArg(name1, arg1), NamedArg(name2, arg2)) if name1 == name2 =>
             arg1 =?= arg2
+
+          case (EmptyTree(), EmptyTree()) =>
+            matched
 
           // No Match
           case _ =>
@@ -366,7 +369,7 @@ object Matcher {
       def unapply(args: List[Term]): Option[List[Ident]] =
         args.foldRight(Option(List.empty[Ident])) {
           case (id: Ident, Some(acc)) => Some(id :: acc)
-          case (Block(List(DefDef("$anonfun", Nil, List(params), Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
+          case (Block(List(DefDef("$anonfun", Nil, List(params), Inferred(), Apply(id: Ident, args))), Closure(Ident("$anonfun"), None)), Some(acc))
               if params.zip(args).forall(_.symbol == _.symbol) =>
             Some(id :: acc)
           case _ => None

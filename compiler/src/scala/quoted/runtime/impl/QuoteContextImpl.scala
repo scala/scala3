@@ -97,6 +97,7 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
           SourceCode.showTree(using QuoteContextImpl.this)(self)(SyntaxHighlight.plain)
         def showAnsiColored: String =
           SourceCode.showTree(using QuoteContextImpl.this)(self)(SyntaxHighlight.ANSI)
+        def isEmpty: Boolean = self.isEmpty
         def isExpr: Boolean =
           self match
             case TermTypeTest(self) =>
@@ -241,12 +242,12 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
     end DefDefTypeTest
 
     object DefDef extends DefDefModule:
-      def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef =
-        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => yCheckedOwners(rhsFn(tparams)(vparamss), symbol).getOrElse(tpd.EmptyTree)))
-      def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
-      def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
-        Some((ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs)))
+      def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Tree): DefDef =
+        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => yCheckedOwners(rhsFn(tparams)(vparamss), symbol)))
+      def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Tree): DefDef =
+        tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, yCheckedOwners(rhs, original.symbol))
+      def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Tree)] =
+        Some((ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, ddef.rhs))
     end DefDef
 
     object DefDefMethodsImpl extends DefDefMethods:
@@ -254,7 +255,7 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
         def typeParams: List[TypeDef] = self.tparams
         def paramss: List[List[ValDef]] = self.vparamss
         def returnTpt: TypeTree = self.tpt
-        def rhs: Option[Term] = optional(self.rhs)
+        def rhs: Tree = self.rhs
       end extension
     end DefDefMethodsImpl
 
@@ -267,12 +268,12 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
     end ValDefTypeTest
 
     object ValDef extends ValDefModule:
-      def apply(symbol: Symbol, rhs: Option[Term]): ValDef =
-        tpd.ValDef(symbol.asTerm, yCheckedOwners(rhs, symbol).getOrElse(tpd.EmptyTree))
-      def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef =
-        tpd.cpy.ValDef(original)(name.toTermName, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
-      def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])] =
-        Some((vdef.name.toString, vdef.tpt, optional(vdef.rhs)))
+      def apply(symbol: Symbol, rhs: Tree): ValDef =
+        tpd.ValDef(symbol.asTerm, yCheckedOwners(rhs, symbol))
+      def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Tree): ValDef =
+        tpd.cpy.ValDef(original)(name.toTermName, tpt, yCheckedOwners(rhs, original.symbol))
+      def unapply(vdef: ValDef): Option[(String, TypeTree, Tree)] =
+        Some((vdef.name.toString, vdef.tpt, vdef.rhs))
 
       def let(owner: Symbol, name: String, rhs: Term)(body: Ident => Term): Term =
         val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
@@ -289,7 +290,7 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
     object ValDefMethodsImpl extends ValDefMethods:
       extension (self: ValDef):
         def tpt: TypeTree = self.tpt
-        def rhs: Option[Term] = optional(self.rhs)
+        def rhs: Tree = self.rhs
       end extension
     end ValDefMethodsImpl
 
@@ -507,12 +508,14 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
       def copy(original: Tree)(qual: Option[String]): This =
         tpd.cpy.This(original)(qual.map(x => untpd.Ident(x.toTypeName)).getOrElse(untpd.EmptyTypeIdent))
       def unapply(x: This): Option[Option[String]] =
-        Some(optional(x.qual).map(_.name.toString))
+        Some(if x.qual.isEmpty then None else Some(x.qual.name.toString))
     end This
 
     object ThisMethodsImpl extends ThisMethods:
       extension (self: This):
-        def id: Option[String] = optional(self.qual).map(_.name.toString)
+        def id: Option[String] =
+          if self.qual.isEmpty then None
+          else Some(self.qual.name.toString)
       end extension
     end ThisMethodsImpl
 
@@ -737,8 +740,8 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
         tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head), meth))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
-        case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
-        if ddef.symbol == meth.symbol =>
+        case Block((ddef @ DefDef(_, _, params :: Nil, _, body)) :: Nil, Closure(meth, _))
+        if ddef.symbol == meth.symbol && body.nonEmpty =>
           Some((params, body))
         case _ => None
       }
@@ -827,19 +830,19 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
     end TryTypeTest
 
     object Try extends TryModule:
-      def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        withDefaultPos(tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree)))
-      def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        tpd.cpy.Try(original)(expr, cases, finalizer.getOrElse(tpd.EmptyTree))
-      def unapply(x: Try): Option[(Term, List[CaseDef], Option[Term])] =
-        Some((x.body, x.cases, optional(x.finalizer)))
+      def apply(expr: Term, cases: List[CaseDef], finalizer: Tree): Try =
+        withDefaultPos(tpd.Try(expr, cases, finalizer))
+      def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Tree): Try =
+        tpd.cpy.Try(original)(expr, cases, finalizer)
+      def unapply(x: Try): Option[(Term, List[CaseDef], Tree)] =
+        Some((x.body, x.cases, x.finalizer))
     end Try
 
     object TryMethodsImpl extends TryMethods:
       extension (self: Try):
         def body: Term = self.expr
         def cases: List[CaseDef] = self.cases
-        def finalizer: Option[Term] = optional(self.finalizer)
+        def finalizer: Tree = self.finalizer
       end extension
     end TryMethodsImpl
 
@@ -900,17 +903,17 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
     end InlinedTypeTest
 
     object Inlined extends InlinedModule:
-      def apply(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion))
-      def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
-      def unapply(x: Inlined): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
-        Some((optional(x.call), x.bindings, x.body))
+      def apply(call: Tree, bindings: List[Definition], expansion: Term): Inlined =
+        withDefaultPos(tpd.Inlined(call, bindings.map { case b: tpd.MemberDef => b }, expansion))
+      def copy(original: Tree)(call: Tree, bindings: List[Definition], expansion: Term): Inlined =
+        tpd.cpy.Inlined(original)(call, bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
+      def unapply(x: Inlined): Option[(Tree, List[Definition], Term)] =
+        Some((x.call, x.bindings, x.body))
     end Inlined
 
     object InlinedMethodsImpl extends InlinedMethods:
       extension (self: Inlined):
-        def call: Option[Tree] = optional(self.call)
+        def call: Tree = self.call
         def bindings: List[Definition] = self.bindings
         def body: Term = self.expansion
       end extension
@@ -1176,17 +1179,17 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
     end MatchTypeTreeTypeTest
 
     object MatchTypeTree extends MatchTypeTreeModule:
-      def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
-        withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases))
-      def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
-        tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
-      def unapply(x: MatchTypeTree): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-        Some((optional(x.bound), x.selector, x.cases))
+      def apply(bound: TypeTree, selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
+        withDefaultPos(tpd.MatchTypeTree(bound, selector, cases))
+      def copy(original: Tree)(bound: TypeTree, selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
+        tpd.cpy.MatchTypeTree(original)(bound, selector, cases)
+      def unapply(x: MatchTypeTree): Option[(TypeTree, TypeTree, List[TypeCaseDef])] =
+        Some((x.bound, x.selector, x.cases))
     end MatchTypeTree
 
     object MatchTypeTreeMethodsImpl extends MatchTypeTreeMethods:
       extension (self: MatchTypeTree):
-        def bound: Option[TypeTree] = optional(self.bound)
+        def bound: TypeTree = self.bound
         def selector: TypeTree = self.selector
         def cases: List[TypeCaseDef] = self.cases
       end extension
@@ -1346,18 +1349,18 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
     end CaseDefTypeTest
 
     object CaseDef extends CaseDefModule:
-      def apply(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef =
-        tpd.CaseDef(pattern, guard.getOrElse(tpd.EmptyTree), rhs)
-      def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef =
-        tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), rhs)
-      def unapply(x: CaseDef): Option[(Tree, Option[Term], Term)] =
-        Some((x.pat, optional(x.guard), x.body))
+      def apply(pattern: Tree, guard: Tree, rhs: Term): CaseDef =
+        tpd.CaseDef(pattern, guard, rhs)
+      def copy(original: Tree)(pattern: Tree, guard: Tree, rhs: Term): CaseDef =
+        tpd.cpy.CaseDef(original)(pattern, guard, rhs)
+      def unapply(x: CaseDef): Option[(Tree, Tree, Term)] =
+        Some((x.pat, x.guard, x.body))
     end CaseDef
 
     object CaseDefMethodsImpl extends CaseDefMethods:
       extension (self: CaseDef):
         def pattern: Tree = self.pat
-        def guard: Option[Term] = optional(self.guard)
+        def guard: Tree = self.guard
         def rhs: Term = self.body
       end extension
     end CaseDefMethodsImpl
@@ -1465,6 +1468,19 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
         def patterns: List[Tree] = self.trees
       end extension
     end AlternativesMethodsImpl
+
+    type EmptyTree = tpd.EmptyTree.type
+
+    object EmptyTreeTypeTest extends TypeTest[Tree, EmptyTree]:
+      def unapply(x: Tree): Option[EmptyTree & x.type] =
+        if x eq tpd.EmptyTree then Some(x.asInstanceOf[EmptyTree & x.type])
+        else None
+    end EmptyTreeTypeTest
+
+    object EmptyTree extends EmptyTreeModule:
+      def apply(): EmptyTree = tpd.EmptyTree
+      def unapply(x: EmptyTree): Boolean = true
+    end EmptyTree
 
     type ImportSelector = untpd.ImportSelector
 
@@ -2550,17 +2566,6 @@ class QuoteContextImpl private (using val ctx: Context) extends QuoteContext, Qu
 
     private def withDefaultPos[T <: Tree](fn: Context ?=> T): T =
       fn(using ctx.withSource(Position.ofMacroExpansion.source)).withSpan(Position.ofMacroExpansion.span)
-
-    /** Checks that all definitions in this tree have the expected owner.
-     *  Nested definitions are ignored and assumed to be correct by construction.
-     */
-    private def yCheckedOwners(tree: Option[Tree], owner: Symbol): tree.type =
-      if yCheck then
-        tree match
-          case Some(tree) =>
-            yCheckOwners(tree, owner)
-          case _ =>
-      tree
 
     /** Checks that all definitions in this tree have the expected owner.
      *  Nested definitions are ignored and assumed to be correct by construction.

@@ -269,13 +269,10 @@ object SourceCode {
         val name1 = splicedName(vdef.symbol).getOrElse(name)
         this += highlightValDef(name1) += ": "
         printTypeTree(tpt)
-        rhs match {
-          case Some(tree) =>
-            this += " = "
-            printTree(tree)
-          case None =>
-            this
-        }
+        if rhs.nonEmpty then
+          this += " = "
+          printTree(rhs)
+        this
 
       case While(cond, body) =>
         (cond, body) match {
@@ -312,12 +309,9 @@ object SourceCode {
           this += ": "
           printTypeTree(tpt)
         }
-        rhs match {
-          case Some(tree) =>
-            this += " = "
-            printTree(tree)
-          case None =>
-        }
+        if rhs.nonEmpty then
+          this += " = "
+          printTree(rhs)
         this
 
       case Ident("_") =>
@@ -430,7 +424,7 @@ object SourceCode {
           case Types.Repeated(_) =>
             printTree(term)
             term match {
-              case Repeated(_, _) | Inlined(None, Nil, Repeated(_, _))  => this
+              case Repeated(_, _) | Inlined(EmptyTree(), Nil, Repeated(_, _))  => this
               case _ => this += ": " += highlightTypeDef("_*")
             }
           case _ =>
@@ -490,20 +484,16 @@ object SourceCode {
         this += highlightKeyword("summonFrom ")
         inBlock(printCases(cases, lineBreak()))
 
-      case Try(body, cases, finallyOpt) =>
+      case Try(body, cases, fin) =>
         this += highlightKeyword("try ")
         printTree(body)
-        if (cases.nonEmpty) {
+        if cases.nonEmpty then
           this += highlightKeyword(" catch")
           inBlock(printCases(cases, lineBreak()))
-        }
-        finallyOpt match {
-          case Some(t) =>
-            this += highlightKeyword(" finally ")
-            printTree(t)
-          case None =>
-            this
-        }
+        if !fin.isEmpty then
+          this += highlightKeyword(" finally ")
+          printTree(fin)
+        this
 
       case Return(expr, from) =>
         this += "return "
@@ -780,7 +770,7 @@ object SourceCode {
           inSquare(printSeparated(tparams))
           if (isMember) {
             body match {
-              case MatchTypeTree(Some(bound), _, _) =>
+              case MatchTypeTree(bound, _, _) if !bound.isEmpty =>
                 this +=  " <: "
                 printTypeTree(bound)
               case _ =>
@@ -861,12 +851,9 @@ object SourceCode {
     private def printCaseDef(caseDef: CaseDef): this.type = {
       this += highlightValDef("case ")
       printPattern(caseDef.pattern)
-      caseDef.guard match {
-        case Some(t) =>
-          this += " if "
-          printTree(t)
-        case None =>
-      }
+      if !caseDef.guard.isEmpty then
+        this += " if "
+        printTree(caseDef.guard)
       this += highlightValDef(" =>")
       indented {
         caseDef.rhs match {

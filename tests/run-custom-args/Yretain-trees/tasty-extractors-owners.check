@@ -1,27 +1,27 @@
 foo
-ValDef("macro", Inferred(), None)
+ValDef("macro", Inferred(), EmptyTree())
 
 bar
-DefDef("foo", Nil, Nil, Inferred(), None)
+DefDef("foo", Nil, Nil, Inferred(), EmptyTree())
 
 bar2
-DefDef("foo", Nil, Nil, Inferred(), None)
+DefDef("foo", Nil, Nil, Inferred(), EmptyTree())
 
 foo2
-ValDef("macro", Inferred(), None)
+ValDef("macro", Inferred(), EmptyTree())
 
 baz
-ValDef("foo2", Inferred(), None)
+ValDef("foo2", Inferred(), EmptyTree())
 
 baz2
-ValDef("foo2", Inferred(), None)
+ValDef("foo2", Inferred(), EmptyTree())
 
 <init>
-ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Inferred()), Nil, None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
+ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), EmptyTree()), List(Inferred()), Nil, None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Nil, Inferred(), EmptyTree()), ValDef("b2", Inferred(), EmptyTree())))
 
 b
-ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Inferred()), Nil, None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
+ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), EmptyTree()), List(Inferred()), Nil, None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Nil, Inferred(), EmptyTree()), ValDef("b2", Inferred(), EmptyTree())))
 
 b2
-ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Inferred()), Nil, None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
+ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), EmptyTree()), List(Inferred()), Nil, None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Nil, Inferred(), EmptyTree()), ValDef("b2", Inferred(), EmptyTree())))
 
