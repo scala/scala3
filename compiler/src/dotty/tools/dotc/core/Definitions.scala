@@ -256,7 +256,6 @@ class Definitions {
    */
   @tu lazy val ScalaShadowingPackage: TermSymbol = requiredPackage(nme.scalaShadowing)
 
-
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
    *  which would result in a double binding assertion failure.
@@ -1133,19 +1132,28 @@ class Definitions {
    */
   def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
 
-    def patchWith(patchCls: Symbol) =
-      denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
+    def recurse(patch: Symbol) =
+      patch.name.toString.startsWith("experimental")
+
+    def patch2(denot: ClassDenotation, patchCls: Symbol): Unit =
       val scope = denot.info.decls.openForMutations
       if patchCls.exists then
         val patches = patchCls.info.decls.filter(patch =>
           !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
-        for patch <- patches do
+        for patch <- patches if !recurse(patch) do
           val e = scope.lookupEntry(patch.name)
           if e != null then scope.unlink(e)
         for patch <- patches do
           patch.ensureCompleted()
-          patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
-          scope.enter(patch)
+          if !recurse(patch) then
+            patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
+            scope.enter(patch)
+          else if patch.isClass then
+            patch2(scope.lookup(patch.name).asClass, patch)
+
+    def patchWith(patchCls: Symbol) =
+      denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
+      patch2(denot, patchCls)
 
     if denot.name == tpnme.Predef.moduleClassName && denot.symbol == ScalaPredefModuleClass then
       patchWith(ScalaPredefModuleClassPatch)
