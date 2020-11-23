@@ -98,12 +98,12 @@ trait ClassLikeSupport:
   private val conversionSymbol = Symbol.requiredClass("scala.Conversion")
 
   def extractImplicitConversion(tpe: TypeRepr): Option[ImplicitConversion] =
-      if tpe.derivesFrom(conversionSymbol) then None
-      else tpe.baseType(conversionSymbol) match
+      if tpe.derivesFrom(conversionSymbol) then tpe.baseType(conversionSymbol) match
         case AppliedType(tpe, List(from: TypeRepr, to: TypeRepr)) =>
           Some(ImplicitConversion(from.typeSymbol.dri, to.typeSymbol.dri))
         case _ =>
           None
+      else None
 
   private def parseMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isSyntheticFunc && dd.symbol.isExtensionMethod =>
@@ -147,6 +147,7 @@ trait ClassLikeSupport:
     val parsedClasslike = parseClasslike(c)
     val parentTpe = c.parents(0) match {
       case t: TypeTree => Some(t.tpe)
+      case t: Term => Some(t.tpe)
       case _ => None
     }
     val modifiedClasslikeExtension = ClasslikeExtension.getFrom(parsedClasslike).map(_.copy(
@@ -261,6 +262,13 @@ trait ClassLikeSupport:
       else if methodSymbol.flags.is(Flags.Implicit) then extractImplicitConversion(method.returnTpt.tpe) match
         case Some(conversion) if paramLists.size == 0 || (paramLists.size == 1 && paramLists.head.size == 0) =>
           Kind.Implicit(Kind.Def, Some(conversion))
+        case None if paramLists.size == 1 && paramLists(0).size == 1 =>
+          Kind.Implicit(Kind.Def, Some(
+            ImplicitConversion(
+              paramLists(0)(0).tpt.tpe.typeSymbol.dri,
+              method.returnTpt.tpe.typeSymbol.dri
+            )
+          ))
         case _ =>
           Kind.Implicit(Kind.Def, None)
       else kind
