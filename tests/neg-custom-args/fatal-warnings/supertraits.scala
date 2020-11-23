@@ -1,4 +1,3 @@
-import annotation.mixin
 transparent sealed trait TA
 transparent sealed trait TB
 trait S

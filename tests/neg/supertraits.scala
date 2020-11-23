@@ -1,4 +1,3 @@
-import annotation.mixin
 transparent trait S
 trait A
 class B extends A, S
