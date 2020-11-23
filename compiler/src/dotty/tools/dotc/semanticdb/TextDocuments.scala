@@ -12,7 +12,7 @@ object TextDocuments {
   }
   val defaultInstance: TextDocuments = TextDocuments(Nil)
 }
-final case class TextDocuments(documents: Seq[TextDocument]) extends SemanticdbMessage[TextDocuments] derives Eql {
+final case class TextDocuments(documents: Seq[TextDocument]) extends SemanticdbMessage[TextDocuments] derives CanEqual {
   @sharable
   private var __serializedSizeCachedValue: Int = 0
   private def __computeSerializedValue(): Int = {

@@ -35,7 +35,7 @@ enum Captured[T] {
   case Case3          extends Captured[T] // error: illegal reference to type parameter T from enum case
 }
 
-enum Option[+T] derives Eql {
+enum Option[+T] derives CanEqual {
   case Some[T](x: T) extends Option[T]
   case None
 }

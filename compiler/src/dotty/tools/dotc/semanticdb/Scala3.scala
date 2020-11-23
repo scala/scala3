@@ -25,7 +25,7 @@ object Scala3:
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
 
-  enum SymbolKind derives Eql:
+  enum SymbolKind derives CanEqual:
     kind =>
 
     case Val, Var, Setter, Abstract

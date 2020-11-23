@@ -1,7 +1,7 @@
 object lst:
   opaque type Lst[+T] = Any
   object Lst:
-    given lstEql[T, U] as Eql[Lst[T], Lst[U]] = Eql.derived
+    given lstCanEqual[T, U] as CanEqual[Lst[T], Lst[U]] = CanEqual.derived
     val Empty: Lst[Nothing] = ???
 end lst
 
