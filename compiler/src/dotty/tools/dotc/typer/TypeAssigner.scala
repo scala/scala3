@@ -12,6 +12,7 @@ import config.Printers.typr
 import ast.Trees._
 import NameOps._
 import ProtoTypes._
+import Inferencing.couldInstantiateTypeVar
 import collection.mutable
 import reporting._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
@@ -159,6 +160,9 @@ trait TypeAssigner {
       TryDynamicCallType
     else if (qualType.isErroneous || name.toTermName == nme.ERROR)
       UnspecifiedErrorType
+    else if couldInstantiateTypeVar(qualType) then
+      // try again with more defined qualifier type
+      selectionType(tree, qual1)
     else if (name == nme.CONSTRUCTOR)
       errorType(ex"$qualType does not have a constructor", tree.srcPos)
     else {
