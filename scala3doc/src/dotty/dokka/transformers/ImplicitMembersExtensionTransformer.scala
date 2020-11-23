@@ -17,14 +17,14 @@ class ImplicitMembersExtensionTransformer(ctx: DokkaContext) extends Documentabl
     val logger = context.getLogger
 
     def retrieveCompanion(m: Member) = m match {
-        case classlike: DClass => 
-          val comp = ClasslikeExtension.getFrom(classlike).flatMap(_.companion)
-          comp.flatMap { dri =>
-            val res = classlikeMap.get(dri)
-            if res.isEmpty then logger.warn(s"Companion for class ${classlike.name} exists but is missing in classlike map")
-            res
-          }
-        case _ => None
+      case classlike: DClass =>
+        val comp = ClasslikeExtension.getFrom(classlike).flatMap(_.companion)
+        comp.flatMap { dri =>
+          val res = classlikeMap.get(dri)
+          if res.isEmpty then logger.warn(s"Companion for class ${classlike.name} exists but is missing in classlike map")
+          res
+        }
+      case _ => None
     }
 
     def expandMember(outerMembers: Seq[Member])(c: Member): Member =
