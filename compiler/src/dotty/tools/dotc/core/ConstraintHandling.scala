@@ -286,35 +286,35 @@ trait ConstraintHandling {
     }
   }
 
-  /** If `tp` is an intersection such that some operands are mixin trait instances
-   *  and others are not, replace as many mixin trait instances as possible with Any
+  /** If `tp` is an intersection such that some operands are transparent trait instances
+   *  and others are not, replace as many transparent trait instances as possible with Any
    *  as long as the result is still a subtype of `bound`. But fall back to the
    *  original type if the resulting widened type is a supertype of all dropped
-   *  types (since in this case the type was not a true intersection of mixin traits
+   *  types (since in this case the type was not a true intersection of transparent traits
    *  and other types to start with).
    */
-  def dropMixinTraits(tp: Type, bound: Type)(using Context): Type =
+  def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
     var kept: Set[Type] = Set()      // types to keep since otherwise bound would not fit
     var dropped: List[Type] = List() // the types dropped so far, last one on top
 
-    def dropOneMixinTrait(tp: Type): Type =
+    def dropOneTransparentTrait(tp: Type): Type =
       val tpd = tp.dealias
-      if tpd.typeSymbol.isMixinTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
+      if tpd.typeSymbol.isTransparentTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
         dropped = tpd :: dropped
         defn.AnyType
       else tpd match
         case AndType(tp1, tp2) =>
-          val tp1w = dropOneMixinTrait(tp1)
+          val tp1w = dropOneTransparentTrait(tp1)
           if tp1w ne tp1 then tp1w & tp2
           else
-            val tp2w = dropOneMixinTrait(tp2)
+            val tp2w = dropOneTransparentTrait(tp2)
             if tp2w ne tp2 then tp1 & tp2w
             else tpd
         case _ =>
           tp
 
     def recur(tp: Type): Type =
-      val tpw = dropOneMixinTrait(tp)
+      val tpw = dropOneTransparentTrait(tp)
       if tpw eq tp then tp
       else if tpw <:< bound then recur(tpw)
       else
@@ -324,7 +324,7 @@ trait ConstraintHandling {
 
     val tpw = recur(tp)
     if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then tp else tpw
-  end dropMixinTraits
+  end dropTransparentTraits
 
   /** Widen inferred type `inst` with upper `bound`, according to the following rules:
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
@@ -332,7 +332,7 @@ trait ConstraintHandling {
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
    *      of all common base types, provided the result is a subtype of `bound`.
-   *   3. drop mixin traits from intersections (see @dropMixinTraits)
+   *   3. drop transparent traits from intersections (see @dropTransparentTraits)
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *  Also, if the result of these widenings is a TypeRef to a module class,
@@ -357,7 +357,7 @@ trait ConstraintHandling {
 
     val wideInst =
       if isSingleton(bound) then inst
-      else dropMixinTraits(widenOr(widenSingle(inst)), bound)
+      else dropTransparentTraits(widenOr(widenSingle(inst)), bound)
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)

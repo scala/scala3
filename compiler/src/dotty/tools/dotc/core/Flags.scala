@@ -579,4 +579,5 @@ object Flags {
   val SyntheticParam: FlagSet                = Synthetic | Param
   val SyntheticTermParam: FlagSet            = Synthetic | TermParam
   val SyntheticTypeParam: FlagSet            = Synthetic | TypeParam
+  val TransparentTrait: FlagSet              = Trait | Transparent
 }
