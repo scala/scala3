@@ -2,7 +2,7 @@ package scala.tasty.interpreter.jvm
 
 import scala.quoted._
 
-class JVMReflection[QCtx <: QuoteContext & Singleton](using val tasty: QCtx) {
+class JVMReflection[QCtx <: Quotes & Singleton](using val tasty: QCtx) {
   import qctx.reflect._
 
   import java.lang.reflect.{InvocationTargetException, Method}

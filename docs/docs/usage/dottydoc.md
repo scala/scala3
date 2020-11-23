@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dottydoc
+title: Dottydoc [Legacy]
 ---
 
 Dottydoc is a tool to generate a combined documentation and API reference for

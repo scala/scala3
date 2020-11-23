@@ -23,14 +23,19 @@ object ScalaCommentToContentConverter extends DocTagToContentConverter {
         title = docTag.getParams.asScala.get("title")
       ))
       List(res).asJava
-    case h: Html => List(
-      HtmlContentNode(
-        h.getChildren.asScala.collect{case c: Text => c}.head.getBody,
-        dci,
-        sourceSets.asScala.toSet.toDisplay.asScala.toSet,
-        styles.asScala.toSet
-      )
-    ).asJava
+
+    case h: Html =>
+      val children = h.getChildren
+      require(children.size() == 1)
+      require(children.get(0).isInstanceOf[Text])
+      List(
+        HtmlContentNode(
+          children.get(0).asInstanceOf[Text].getBody,
+          dci,
+          sourceSets.asScala.toSet.toDisplay.asScala.toSet,
+          styles.asScala.toSet
+        )
+      ).asJava
     case other => super.buildContent(other, dci, sourceSets, styles, extra)
   }
 

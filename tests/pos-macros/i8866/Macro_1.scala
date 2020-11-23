@@ -2,7 +2,7 @@ import scala.quoted._
 
 object OtherMacro {
 
-  def impl(using qctx: QuoteContext): Expr[Int] =
+  def impl(using Quotes): Expr[Int] =
     '{ 42 }
 
   inline def apply = ${ OtherMacro.impl }
@@ -11,7 +11,7 @@ object OtherMacro {
 
 object Macro {
 
-  def impl(using qctx: QuoteContext): Expr[Int] = {
+  def impl(using Quotes): Expr[Int] = {
     import qctx.reflect._
 
     ValDef.let(

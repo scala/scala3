@@ -3,7 +3,7 @@ import scala.quoted._
 object scalatest {
   inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}
 
-  def assertImpl(condition: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
+  def assertImpl(condition: Expr[Boolean])(using Quotes) : Expr[Unit] = {
     import qctx.reflect._
     val tree = Term.of(condition)
     def exprStr: String = condition.show

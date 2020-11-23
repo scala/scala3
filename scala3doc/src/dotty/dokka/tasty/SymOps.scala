@@ -10,16 +10,16 @@ import dotty.dokka.model.api.Modifier
 
 import scala.quoted._
 
-class SymOps[Q <: QuoteContext](val q: Q):
+class SymOps[Q <: Quotes](val q: Q):
   import q.reflect._
 
   given Q = q
   extension (sym: Symbol):
-    def packageName(using ctx: Context): String =
+    def packageName: String =
       if (sym.isPackageDef) sym.fullName
       else sym.maybeOwner.packageName
 
-    def topLevelEntryName(using ctx: Context): Option[String] = if (sym.isPackageDef) None else
+    def topLevelEntryName: Option[String] = if (sym.isPackageDef) None else
       if (sym.owner.isPackageDef) Some(sym.name) else sym.owner.topLevelEntryName
 
     def getVisibility(): Visibility =
@@ -47,13 +47,6 @@ class SymOps[Q <: QuoteContext](val q: Q):
         case (None, None, (false, false, false)) => Visibility.Unrestricted
         case _ => throw new Exception(s"Visibility for symbol $sym cannot be determined")
 
-    // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension
-    def hackIsOpen: Boolean = {
-      import dotty.tools.dotc
-      given dotc.core.Contexts.Context = qctx.reflect.rootContext.asInstanceOf
-      val symbol = sym.asInstanceOf[dotc.core.Symbols.Symbol]
-      symbol.is(dotc.core.Flags.Open)
-    }
 
     // Order here determines order in documenation
     def getExtraModifiers(): Seq[Modifier] = Seq(
@@ -64,10 +57,10 @@ class SymOps[Q <: QuoteContext](val q: Q):
         Flags.Implicit -> Modifier.Implicit,
         Flags.Inline -> Modifier.Inline,
         Flags.Lazy -> Modifier.Lazy,
+        Flags.Open -> Modifier.Open,
         Flags.Override -> Modifier.Override,
         Flags.Case -> Modifier.Case,
         ).collect { case (flag, mod) if sym.flags.is(flag) => mod }
-          ++ (if(sym.hackIsOpen) Seq(Modifier.Open) else Nil)
 
     def isHiddenByVisibility: Boolean =
       import VisibilityScope._

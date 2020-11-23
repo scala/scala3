@@ -26,7 +26,7 @@ import scala.reflect.ClassTag
 
 import dotty.tools.dotc.quoted.{PickledQuotes, QuoteUtils}
 
-import scala.quoted.QuoteContext
+import scala.quoted.Quotes
 import scala.quoted.runtime.impl._
 
 /** Utility class to splice quoted expressions */
@@ -51,8 +51,8 @@ object Splicer {
             val interpreter = new Interpreter(pos, classLoader)
 
             // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
-            val interpretedExpr = interpreter.interpret[QuoteContext => scala.quoted.Expr[Any]](tree)
-            val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContextImpl())))
+            val interpretedExpr = interpreter.interpret[Quotes => scala.quoted.Expr[Any]](tree)
+            val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuotesImpl())))
 
             checkEscapedVariables(interpretedTree, macroOwner)
           } finally {
@@ -325,10 +325,10 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(tree, ctx.owner)).withSpan(tree.span), QuoteContextImpl.scopeId)
+      new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(tree, ctx.owner)).withSpan(tree.span), QuotesImpl.scopeId)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
-      new TypeImpl(QuoteUtils.changeOwnerOfTree(tree, ctx.owner), QuoteContextImpl.scopeId)
+      new TypeImpl(QuoteUtils.changeOwnerOfTree(tree, ctx.owner), QuotesImpl.scopeId)
 
     private def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]

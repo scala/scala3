@@ -1,3 +1,3 @@
-import scala.quoted.{ QuoteContext, Expr }
+import scala.quoted.{ Quotes, Expr }
 
-def h(m: Expr[M])(using QuoteContext): Expr[Any] = g(m)
+def h(m: Expr[M])(using Quotes): Expr[Any] = g(m)

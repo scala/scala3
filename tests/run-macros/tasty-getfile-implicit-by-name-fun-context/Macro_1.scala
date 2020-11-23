@@ -2,7 +2,7 @@ import scala.quoted._
 
 object SourceFiles {
 
-  type Macro[X] = (=> QuoteContext) ?=> Expr[X]
+  type Macro[X] = (=> Quotes) ?=> Expr[X]
 
   implicit inline def getThisFile: String =
     ${getThisFileImpl}

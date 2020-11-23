@@ -18,7 +18,7 @@ object Async {
   }
 
 
-  def checkPrintTypeImpl[F[_]:Type,T:Type](f: Expr[T])(using qctx: QuoteContext): Expr[Unit] =
+  def checkPrintTypeImpl[F[_]:Type,T:Type](f: Expr[T])(using Quotes): Expr[Unit] =
     import qctx.reflect._
 
     val fu = Term.of(f)

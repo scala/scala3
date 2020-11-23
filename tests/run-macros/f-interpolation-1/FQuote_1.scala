@@ -8,7 +8,7 @@ object FQuote {
     inline def ff(args: => Any*): String = ${impl('this, 'args)}
   }
 
-  /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[String] = {
+  /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(using Quotes) : Expr[String] = {
     import qctx.reflect._
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {

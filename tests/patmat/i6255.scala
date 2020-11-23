@@ -1,5 +1,5 @@
 class Foo {
-  def foo(x: quoted.Expr[Int])(using scala.quoted.QuoteContext): Unit = x match {
+  def foo(x: quoted.Expr[Int])(using scala.quoted.Quotes): Unit = x match {
     case '{ 1 } =>
     case '{ 2 } =>
     case _ =>

@@ -10,7 +10,7 @@ import com.vladsch.flexmark.util.options.MutableDataSet
 
 import scala.quoted._
 
-class Repr(val qctx: QuoteContext)(val sym: qctx.reflect.Symbol)
+class Repr(val qctx: Quotes)(val sym: qctx.reflect.Symbol)
 
 case class Comment (
   body:                    dkkd.DocTag,

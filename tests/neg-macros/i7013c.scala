@@ -1,6 +1,6 @@
 import quoted._
 
-def foo()(using QuoteContext) = {
+def foo()(using Quotes) = {
   type C
   Type[C] // error
 }

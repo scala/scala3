@@ -10,7 +10,7 @@ object Macros {
 
   class TestAnnotation extends scala.annotation.Annotation
 
-  def theTestBlockImpl(using qctx : QuoteContext) : Expr[Unit] = {
+  def theTestBlockImpl(using qctx : Quotes) : Expr[Unit] = {
     import qctx.reflect._
 
     val x1T = ConstantType(Constant.Int(1))

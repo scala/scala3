@@ -34,13 +34,13 @@ trait BasicSupport:
 
 
   extension (sym: Symbol):
-    def documentation(using cxt: Context) = sym.documentation match
+    def documentation = sym.documentation match
       case Some(comment) =>
           Map(sourceSet -> parseComment(comment, sym.tree))
       case None =>
           Map.empty
 
-    def source(using ctx: Context) =
+    def source =
       val path = Some(sym.pos.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath).map(_.toString)
       path.map(TastyDocumentableSource(_, sym.pos.startLine))
 

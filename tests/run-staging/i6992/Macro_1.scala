@@ -8,7 +8,7 @@ object macros {
 
   class Foo { val x = 10 }
 
-  def mcrImpl(body: Expr[Any])(using ctx: QuoteContext): Expr[Any] =
+  def mcrImpl(body: Expr[Any])(using ctx: Quotes): Expr[Any] =
     MyTest.mcrImpl(body)
 }
 
@@ -18,7 +18,7 @@ package scala {
 
    given Toolbox = Toolbox.make(getClass.getClassLoader)
 
-    def mcrImpl(body: Expr[Any])(using ctx: QuoteContext): Expr[Any] = {
+    def mcrImpl(body: Expr[Any])(using ctx: Quotes): Expr[Any] = {
       import ctx.reflect._
       try {
         body match {

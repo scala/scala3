@@ -4,7 +4,7 @@ import scala.quoted.staging._
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = withQuotes {
     def powerCode(n: Int, x: Expr[Double]): Expr[Double] =
       if (n == 0) '{1.0}
       else if (n == 1) x

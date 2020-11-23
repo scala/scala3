@@ -4,7 +4,7 @@ object Macros {
 
   inline def lift[A]: String = ${ matchesExpr[A] }
 
-  private def matchesExpr[A](using tp: Type[A])(using QuoteContext): Expr[String] = {
+  private def matchesExpr[A](using tp: Type[A])(using Quotes): Expr[String] = {
     def lift[T](using tp: Type[T]): String = tp match {
       case '[Int] => "%Int%"
       case '[List[t]] => s"%List[${lift[t]}]%"

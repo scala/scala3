@@ -7,7 +7,7 @@ import Nat._
  object Macros:
    import quoted._
 
-   def toIntImpl(nat: Expr[Nat])(using QuoteContext): Expr[Int] =
+   def toIntImpl(nat: Expr[Nat])(using Quotes): Expr[Int] =
 
      def inner(nat: Expr[Nat], acc: Int): Int = nat match
        case '{ Succ($nat) } => inner(nat, acc + 1)
@@ -15,9 +15,9 @@ import Nat._
 
      Expr(inner(nat, 0))
 
-   def natZero(using QuoteContext): Expr[Nat.Zero.type] = '{Zero}
+   def natZero(using Quotes): Expr[Nat.Zero.type] = '{Zero}
 
-   def toNatImpl(int: Expr[Int])(using QuoteContext): Expr[Nat] =
+   def toNatImpl(int: Expr[Int])(using Quotes): Expr[Nat] =
 
      // it seems even with the bound that the arg will always widen to Expr[Nat] unless explicit
 

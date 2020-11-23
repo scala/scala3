@@ -15,7 +15,9 @@ sidebar:
           url: docs/usage/language-versions.html
         - title: cbt-projects
           url: docs/usage/cbt-projects.html
-        - title: Dottydoc
+        - title: Scala3doc
+          url: docs/usage/scala3doc
+        - title: Dottydoc [Legacy]
           url: docs/usage/dottydoc.html
     - title: Reference
       subsection:

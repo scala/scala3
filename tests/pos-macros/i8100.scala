@@ -4,7 +4,7 @@ class M {
   type E
 }
 
-def f[T: Type](using QuoteContext) =
+def f[T: Type](using Quotes) =
   Expr.summon[M] match
     case Some('{ $mm : tt }) =>
       '{

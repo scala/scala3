@@ -3,10 +3,10 @@ import scala.quoted._
 
 object Macros {
 
-  def power_s(x: Expr[Double], n: Expr[Int]) (using QuoteContext): Expr[Double] =
+  def power_s(x: Expr[Double], n: Expr[Int]) (using Quotes): Expr[Double] =
     power_s(x, n.unliftOrError)
 
-  def power_s(x: Expr[Double], n: Int) (using QuoteContext): Expr[Double] =
+  def power_s(x: Expr[Double], n: Int) (using Quotes): Expr[Double] =
     if (n == 0) '{1.0}
     else if (n % 2 == 1) '{ $x * ${power_s(x, n - 1)} }
     else '{ val y = $x * $x; ${power_s('y, n / 2)} }
@@ -19,7 +19,7 @@ object Macros {
   inline def rewrite(expr: => Double): Double = ${rewrite('expr)}
 
   // simple, 1-level, non-recursive rewriter for exponents
-  def rewrite(expr: Expr[Double]) (using QuoteContext): Expr[Double] = {
+  def rewrite(expr: Expr[Double]) (using Quotes): Expr[Double] = {
     val res = expr match {
       // product rule
       case '{ power2($a, $x) * power2($b, $y)} if a.matches(b) => '{ power2($a, $x + $y) }

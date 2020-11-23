@@ -1,5 +1,5 @@
 import scala.quoted._
-def test(using QuoteContext): Unit = {
+def test(using Quotes): Unit = {
   def f = {
     {
       Type.of[String]

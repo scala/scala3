@@ -1,4 +1,4 @@
-((qctx: scala.quoted.QuoteContext) ?=> {
-  val a: scala.quoted.Expr[scala.Int] = scala.quoted.runtime.Expr.quote[scala.Int](4).apply(using qctx)
-  ((qctx2: scala.quoted.QuoteContext) ?=> ((evidence$3: qctx2.Nested) ?=> a).asInstanceOf[scala.ContextFunction1[scala.quoted.QuoteContext, scala.quoted.Expr[scala.Int]]].apply(using qctx2)).apply(using qctx)
+((q: scala.quoted.Quotes) ?=> {
+  val a: scala.quoted.Expr[scala.Int] = scala.quoted.runtime.Expr.quote[scala.Int](4).apply(using q)
+  ((q2: scala.quoted.Quotes) ?=> ((evidence$3: q2.Nested) ?=> a).asInstanceOf[scala.ContextFunction1[scala.quoted.Quotes, scala.quoted.Expr[scala.Int]]].apply(using q2)).apply(using q)
 })

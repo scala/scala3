@@ -8,7 +8,7 @@ object FirstArg {
 object Macros {
   import scala.quoted._
 
-  def argsImpl(using qctx: QuoteContext) : Expr[FirstArg] = {
+  def argsImpl(using Quotes) : Expr[FirstArg] = {
     import qctx.reflect._
 
     def enclosingClass(cur: Symbol = Symbol.spliceOwner): Symbol =

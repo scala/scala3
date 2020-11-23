@@ -3,7 +3,7 @@ import scala.quoted._
 
 inline def f: Any = ${ fImpl }
 
-private def fImpl(using qctx: QuoteContext): Expr[Unit] = {
+private def fImpl(using Quotes): Expr[Unit] = {
   import qctx.reflect._
   Implicits.search(TypeRepr.of[A]) match {
     case x: ImplicitSearchSuccess =>

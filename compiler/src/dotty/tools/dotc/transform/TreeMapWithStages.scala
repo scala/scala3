@@ -109,7 +109,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
           try dropEmptyBlocks(quotedTree) match {
             case Spliced(t) =>
               // '{ $x } --> x
-              // and adapt the refinment of `QuoteContext { type tasty: ... } ?=> Expr[T]`
+              // and adapt the refinment of `Quotes { type tasty: ... } ?=> Expr[T]`
               transform(t).asInstance(tree.tpe)
             case _ => transformQuotation(quotedTree, tree)
           }

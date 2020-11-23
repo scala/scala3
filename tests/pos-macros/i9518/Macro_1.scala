@@ -5,7 +5,7 @@ trait CB[T]
 
 inline def shift : Unit = ${ shiftTerm }
 
-def shiftTerm(using QuoteContext): Expr[Unit] = {
+def shiftTerm(using Quotes): Expr[Unit] = {
   import qctx.reflect._
   val nTree = Term.of('{ ??? : CB[Int] })
   val tp1 = TypeRepr.of[CB[Int]]

@@ -4,7 +4,7 @@ object Macros {
 
   inline def testDefinitions(): Unit = ${testDefinitionsImpl}
 
-  def testDefinitionsImpl(using qctx: QuoteContext) : Expr[Unit] = {
+  def testDefinitionsImpl(using Quotes) : Expr[Unit] = {
     import qctx.reflect._
 
     val buff = List.newBuilder[String]

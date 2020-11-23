@@ -6,7 +6,7 @@ import scala.quoted.staging._
 object Test {
   def main(args: Array[String]): Unit = {
     given Toolbox = Toolbox.make(getClass.getClassLoader)
-    def runAndPrint[T](expr: QuoteContext ?=> Expr[T]): Unit = println(run(expr))
+    def runAndPrint[T](expr: Quotes ?=> Expr[T]): Unit = println(run(expr))
 
     runAndPrint(Expr(true))
     runAndPrint(Expr('a'))
@@ -23,7 +23,7 @@ object Test {
 
     println("======")
 
-    withQuoteContext {
+    withQuotes {
       def show[T](expr: Expr[T]): Unit = println(expr.show)
 
       show(Expr(true))

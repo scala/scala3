@@ -4,7 +4,7 @@ object Macros {
 
   inline def inspect[T](x: T): Unit = ${ impl('x) }
 
-  def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
+  def impl[T](x: Expr[T])(using Quotes) : Expr[Unit] = {
     import qctx.reflect._
     val tree = Term.of(x)
     '{

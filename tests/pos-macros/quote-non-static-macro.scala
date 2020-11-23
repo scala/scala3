@@ -14,5 +14,5 @@ object Foo {
   object Quox {
     inline def foo: Unit = ${Foo.impl}
   }
-  def impl(using QuoteContext): Expr[Unit] = '{}
+  def impl(using Quotes): Expr[Unit] = '{}
 }

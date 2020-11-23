@@ -7,5 +7,5 @@ abstract class Type[T <: AnyKind] private[scala]:
 
 object Type:
   @compileTimeOnly("Reference to `scala.quoted.Type.apply` was not handled by PickleQuotes")
-  given of[T <: AnyKind] as (QuoteContext ?=> Type[T]) = ???
-  given apply[T <: AnyKind] as (QuoteContext ?=> Type[T]) = ???
+  given of[T <: AnyKind] as (Quotes ?=> Type[T]) = ???
+  given apply[T <: AnyKind] as (Quotes ?=> Type[T]) = ???

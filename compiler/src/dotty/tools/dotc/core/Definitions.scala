@@ -797,7 +797,7 @@ class Definitions {
   @tu lazy val QuotedExprClass: ClassSymbol = requiredClass("scala.quoted.Expr")
   @tu lazy val QuotedExprModule: Symbol = QuotedExprClass.companionModule
 
-  @tu lazy val QuoteContextClass: ClassSymbol = requiredClass("scala.quoted.QuoteContext")
+  @tu lazy val QuotesClass: ClassSymbol = requiredClass("scala.quoted.Quotes")
 
   @tu lazy val QuoteUnpicklerClass: ClassSymbol = requiredClass("scala.quoted.runtime.QuoteUnpickler")
     @tu lazy val QuoteUnpickler_unpickleExpr: Symbol = QuoteUnpicklerClass.requiredMethod("unpickleExpr")

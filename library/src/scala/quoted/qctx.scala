@@ -1,4 +1,4 @@
 package scala.quoted
 
-/** Current QuoteContext in scope */
-def qctx(using qctx: QuoteContext): qctx.type = qctx
+/** Current Quotes in scope */
+def qctx(using q: Quotes): q.type = q

@@ -3,7 +3,7 @@ import scala.quoted.staging._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    def a(using QuoteContext) = '{ // '
+    def a(using Quotes) = '{ // '
      class Foo(x: Int) {
         override def toString(): String = s"Foo($x)"
         def foo1: Int = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x
@@ -62,7 +62,7 @@ object Test {
 
     given Toolbox = Toolbox.make(getClass.getClassLoader)
 
-    withQuoteContext {
+    withQuotes {
       a.show // Force unpiclking of the expression
     }
   }

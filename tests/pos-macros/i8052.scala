@@ -8,7 +8,7 @@ object Macro2 {
   }
 
   object TC {
-    def derived[T: Type](ev: Expr[Mirror.Of[T]])(using qctx: QuoteContext): Expr[TC[T]] = '{
+    def derived[T: Type](ev: Expr[Mirror.Of[T]])(using Quotes): Expr[TC[T]] = '{
       new TC[T] {
         def encode(): Unit = ${
           ev match {

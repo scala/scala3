@@ -8,7 +8,7 @@ object Macros {
 
  inline def coroutine[T](inline body: Any): Coroutine[T] = ${ coroutineImpl('{body}) }
 
- def coroutineImpl[T: Type](expr: Expr[_ <: Any])(using QuoteContext): Expr[Coroutine[T]] = {
+ def coroutineImpl[T: Type](expr: Expr[_ <: Any])(using Quotes): Expr[Coroutine[T]] = {
    import qctx.reflect._
 
    '{

@@ -8,9 +8,9 @@ import scala.reflect.TypeTest
  *  It contains the low-level Typed AST API metaprogramming API.
  *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
  *
- *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import qctx.reflect._; ... }`.
+ *  @param tasty Typed AST API. Usage: `def f(qctx: Quotes) = { import qctx.reflect._; ... }`.
  */
-trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
+trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
   // Extension methods for `Expr[T]`
   extension [T](self: Expr[T]):
@@ -35,29 +35,29 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Returns `None` if the expression does not contain a value or contains side effects.
      *  Otherwise returns the `Some` of the value.
      */
-    def unlift(using unlift: Unliftable[T]): Option[T] =
-      unlift.fromExpr(self)(using QuoteContext.this)
+    def unlift(using Unliftable[T]): Option[T] =
+      summon[Unliftable[T]].fromExpr(self)(using Quotes.this)
 
     /** Return the unlifted value of this expression.
      *
      *  Emits an error and throws if the expression does not contain a value or contains side effects.
      *  Otherwise returns the value.
      */
-    def unliftOrError(using unlift: Unliftable[T]): T =
+    def unliftOrError(using Unliftable[T]): T =
       def reportError =
         val msg = s"Expected a known value. \n\nThe value of: ${self.show}\ncould not be unlifted using $unlift"
-        report.throwError(msg, self)(using QuoteContext.this)
-      unlift.fromExpr(self)(using QuoteContext.this).getOrElse(reportError)
+        report.throwError(msg, self)(using Quotes.this)
+      summon[Unliftable[T]].fromExpr(self)(using Quotes.this).getOrElse(reportError)
 
   end extension
 
   // Extension methods for `Expr[Any]` that take another explicit type parameter
   extension [X](self: Expr[Any]):
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
-    def isExprOf(using tp: scala.quoted.Type[X]): Boolean
+    def isExprOf(using Type[X]): Boolean
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-    def asExprOf(using tp: scala.quoted.Type[X]): scala.quoted.Expr[X]
+    def asExprOf(using Type[X]): Expr[X]
   end extension
 
   /** Low-level Typed AST API metaprogramming API.
@@ -95,7 +95,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |                             +- Closure
    *           |                             +- If
    *           |                             +- Match
-   *           |                             +- GivenMatch
+   *           |                             +- SummonFrom
    *           |                             +- Try
    *           |                             +- Return
    *           |                             +- Repeated
@@ -170,17 +170,6 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    */
   trait Reflection { self: reflect.type =>
 
-    //////////////
-    // CONTEXTS //
-    //////////////
-
-    /** Context containing information on the current owner */
-    type Context <: AnyRef
-
-    /** Context of the macro expansion */
-    def rootContext: Context // TODO: Should this be moved to QuoteContext?
-    given Context = rootContext // TODO: Should be an implicit converion from QuoteContext to Context
-
     ///////////////
     //   TREES   //
     ///////////////
@@ -224,12 +213,12 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def isExpr: Boolean
 
         /** Convert this tree to an `quoted.Expr[Any]` if the tree is a valid expression or throws */
-        def asExpr: scala.quoted.Expr[Any]
+        def asExpr: Expr[Any]
       end extension
 
       /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
       extension [T](self: Tree)
-        def asExprOf(using scala.quoted.Type[T]): scala.quoted.Expr[T]
+        def asExprOf(using Type[T]): Expr[T]
 
       extension [ThisTree <: Tree](self: ThisTree):
         /** Changes the owner of the symbols in the tree */
@@ -589,7 +578,6 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       */
       def unique(qualifier: Term, name: String): Select
 
-      // TODO rename, this returns an Apply and not a Select
       /** Call an overloaded method with the given type and term parameters */
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Apply
 
@@ -1042,34 +1030,34 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end MatchMethods
 
-    /** Tree representing a pattern match `given match { ... }` in the source code */  // TODO: drop
-    type GivenMatch <: Term
+    /** Tree representing a summoning match `summonFrom { ... }` in the source code */
+    type SummonFrom <: Term
 
-    given TypeTest[Tree, GivenMatch] = GivenMatchTypeTest
-    protected val GivenMatchTypeTest: TypeTest[Tree, GivenMatch]
+    given TypeTest[Tree, SummonFrom] = SummonFromTypeTest
+    protected val SummonFromTypeTest: TypeTest[Tree, SummonFrom]
 
     /** Scala implicit `match` term */
-    val GivenMatch: GivenMatchModule
+    val SummonFrom: SummonFromModule
 
-    trait GivenMatchModule { this: GivenMatch.type =>
+    trait SummonFromModule { this: SummonFrom.type =>
 
       /** Creates a pattern match `given match { <cases: List[CaseDef]> }` */
-      def apply(cases: List[CaseDef]): GivenMatch
+      def apply(cases: List[CaseDef]): SummonFrom
 
-      def copy(original: Tree)(cases: List[CaseDef]): GivenMatch
+      def copy(original: Tree)(cases: List[CaseDef]): SummonFrom
 
       /** Matches a pattern match `given match { <cases: List[CaseDef]> }` */
-      def unapply(x: GivenMatch): Option[List[CaseDef]]
+      def unapply(x: SummonFrom): Option[List[CaseDef]]
     }
 
-    given GivenMatchMethods as GivenMatchMethods = GivenMatchMethodsImpl
-    protected val GivenMatchMethodsImpl: GivenMatchMethods
+    given SummonFromMethods as SummonFromMethods = SummonFromMethodsImpl
+    protected val SummonFromMethodsImpl: SummonFromMethods
 
-    trait GivenMatchMethods:
-      extension (self: GivenMatch):
+    trait SummonFromMethods:
+      extension (self: SummonFrom):
         def cases: List[CaseDef]
       end extension
-    end GivenMatchMethods
+    end SummonFromMethods
 
     /** Tree representing a try catch `try x catch { ... } finally { ... }` in the source code */
     type Try <: Term
@@ -1247,7 +1235,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     trait TypeTreeModule { this: TypeTree.type =>
       /** Returns the tree of type or kind (TypeTree) of T */
-      def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeTree
+      def of[T <: AnyKind](using Type[T]): TypeTree
     }
 
     given TypeTreeMethods as TypeTreeMethods = TypeTreeMethodsImpl
@@ -1572,6 +1560,8 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val TypeBoundsTree: TypeBoundsTreeModule
 
     trait TypeBoundsTreeModule { this: TypeBoundsTree.type =>
+      def apply(low: TypeTree, hi: TypeTree): TypeBoundsTree
+      def copy(original: Tree)(low: TypeTree, hi: TypeTree): TypeBoundsTree
       def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)]
     }
 
@@ -1598,6 +1588,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val WildcardTypeTree: WildcardTypeTreeModule
 
     trait WildcardTypeTreeModule { this: WildcardTypeTree.type =>
+      def apply(tpe: TypeRepr): WildcardTypeTree
       /** Matches a TypeBoundsTree containing wildcard type bounds */
       def unapply(x: WildcardTypeTree): Boolean
     }
@@ -1831,7 +1822,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     trait TypeReprModule { this: TypeRepr.type =>
       /** Returns the type or kind (TypeRepr) of T */
-      def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeRepr
+      def of[T <: AnyKind](using Type[T]): TypeRepr
 
       /** Returns the type constructor of the runtime (erased) class */
       def typeConstructorOf(clazz: Class[?]): TypeRepr
@@ -1861,7 +1852,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *      '{ val x: t = ... }
         *  ```
         */
-        def asType: scala.quoted.Type[?]
+        def asType: Type[?]
 
         /** Is `self` type the same as `that` type?
         *  This is the case iff `self <:< that` and `that <:< self`.
@@ -3208,6 +3199,9 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is this symbol `opaque` */
       def Opaque: Flags
 
+      /** Is this symbol `open` */
+      def Open: Flags
+
       /** Is this symbol `override` */
       def Override: Flags
 
@@ -3419,9 +3413,8 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```
-    *  class MyTreeAccumulator[R <: scala.tasty.Reflection & Singleton](val reflect: R)
-    *      extends scala.tasty.reflect.TreeAccumulator[X] {
-    *    import reflect._
+    *  import qctx.reflect._
+    *  class MyTreeAccumulator extends TreeAccumulator[X] {
     *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ...
     *  }
     *  ```
@@ -3521,9 +3514,8 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```
-    *  class MyTraverser[R <: scala.tasty.Reflection & Singleton](val reflect: R)
-    *      extends scala.tasty.reflect.TreeTraverser {
-    *    import reflect._
+    *  import qctx.relfect._
+    *  class MyTraverser extends TreeTraverser {
     *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ...
     *  }
     *  ```
@@ -3559,8 +3551,9 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case tree: Statement =>
             transformStatement(tree)(owner)
           case tree: TypeTree => transformTypeTree(tree)(owner)
-          case tree: TypeBoundsTree => tree // TODO traverse tree
-          case tree: WildcardTypeTree => tree // TODO traverse tree
+          case tree: TypeBoundsTree =>
+            TypeBoundsTree.copy(tree)(transformTypeTree(tree.low)(owner), transformTypeTree(tree.hi)(owner))
+          case tree: WildcardTypeTree => tree
           case tree: CaseDef =>
             transformCaseDef(tree)(owner)
           case tree: TypeCaseDef =>
@@ -3701,20 +3694,20 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
   }
 
-  /** Type of a QuoteContext provided by a splice within a quote that took this context.
+  /** Type of a Quotes provided by a splice within a quote that took this context.
    *  It is only required if working with the reflection API.
    *
    *  Usually it is infered by the quotes an splices typing. But sometimes it is necessary
    *  to explicitly state that a context is nested as in the following example:
    *
    *  ```scala
-   *  def run(using qctx: QuoteContext)(tree: qctx.reflect.Tree): Unit =
+   *  def run(using Quotes)(tree: qctx.reflect.Tree): Unit =
    *    def nested()(using qctx.Nested): Expr[Int] = '{  ${ makeExpr(tree) } + 1  }
    *    '{  ${ nested() } + 2 }
-   *  def makeExpr(using qctx: QuoteContext)(tree: qctx.reflect.Tree): Expr[Int] = ???
+   *  def makeExpr(using Quotes)(tree: qctx.reflect.Tree): Expr[Int] = ???
    *  ```
    */
-  type Nested = QuoteContext {
+  type Nested = Quotes {
     val reflect: self.reflect.type
   }
 

@@ -1,4 +1,4 @@
-def f(using scala.quoted.QuoteContext) =
+def f(using scala.quoted.Quotes) =
     '{
         val x = ${
           ???

@@ -6,5 +6,5 @@ object Q {
 
 object Q2 {
   val m = C.m
-  def fExpr(f: Expr[Any])(using QuoteContext): Expr[Any] = '{ () }
+  def fExpr(f: Expr[Any])(using Quotes): Expr[Any] = '{ () }
 }

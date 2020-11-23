@@ -5,7 +5,7 @@ object Macros {
   inline def let[T](rhs: => T)(inline body: T => Unit): Unit =
     ${ impl('rhs, 'body) }
 
-  private def impl[T: Type](rhs: Expr[T], body: Expr[T => Unit])(using qctx: QuoteContext) : Expr[Unit] = {
+  private def impl[T: Type](rhs: Expr[T], body: Expr[T => Unit])(using Quotes) : Expr[Unit] = {
     import qctx.reflect._
 
     val rhsTerm = Term.of(rhs)

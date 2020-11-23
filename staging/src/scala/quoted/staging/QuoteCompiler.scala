@@ -21,11 +21,11 @@ import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{Path, VirtualFile}
 
-import scala.quoted.runtime.impl.QuoteContextImpl
+import scala.quoted.runtime.impl.QuotesImpl
 
 import scala.annotation.tailrec
 import scala.concurrent.Promise
-import scala.quoted.{Expr, QuoteContext, Type}
+import scala.quoted.{Expr, Quotes, Type}
 
 /** Compiler that takes the contents of a quoted expression `expr` and produces
  *  a class file with `class ' { def apply: Object = expr }`.
@@ -70,7 +70,7 @@ private class QuoteCompiler extends Compiler:
 
           val quoted =
             given Context = unitCtx.withOwner(meth)
-            val qctx = QuoteContextImpl()
+            val qctx = QuotesImpl()
             val quoted = PickledQuotes.quotedExprToTree(exprUnit.exprBuilder.apply(qctx))
             checkEscapedVariables(quoted, meth)
           end quoted
@@ -104,7 +104,7 @@ private class QuoteCompiler extends Compiler:
     /** Unpickle and optionally compile the expression.
      *  Returns either `Left` with name of the classfile generated or `Right` with the value contained in the expression.
      */
-    def compileExpr(exprBuilder:  QuoteContext => Expr[_]): Either[String, Any] =
+    def compileExpr(exprBuilder:  Quotes => Expr[_]): Either[String, Any] =
       val units = new ExprCompilationUnit(exprBuilder) :: Nil
       compileUnits(units)
       result

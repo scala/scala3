@@ -1,6 +1,6 @@
 import scala.quoted._
 class Foo {
-  def f(using QuoteContext): Expr[Any] = {
+  def f(using Quotes): Expr[Any] = {
     '{
       type X = Int // Level 1
       val x: X = ???

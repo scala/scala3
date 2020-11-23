@@ -7,7 +7,7 @@ def plus(x: Int, y: Int): Int = x + y
 def times(x: Int, y: Int): Int = x * y
 def power(x: Int, y: Int): Int = if y == 0 then 1 else times(x, power(x, y - 1))
 
-private def rewriteMacro[T: Type](x: Expr[T])(using QuoteContext): Expr[T] = {
+private def rewriteMacro[T: Type](x: Expr[T])(using Quotes): Expr[T] = {
   val rewriter = Rewriter().withFixPoint.withPost(
     Transformation.safe[Int] {
       case '{ plus($x, $y) } =>
@@ -56,7 +56,7 @@ object Transformation {
 }
 
 class CheckedTransformation(transform: PartialFunction[Expr[Any], Expr[Any]]) extends Transformation {
-  def apply[T: Type](e: Expr[T])(using QuoteContext): Expr[T] = {
+  def apply[T: Type](e: Expr[T])(using Quotes): Expr[T] = {
     transform.applyOrElse(e, identity) match {
       case '{ $e2: T } => e2
       case '{ $e2: t } =>
@@ -76,7 +76,7 @@ class CheckedTransformation(transform: PartialFunction[Expr[Any], Expr[Any]]) ex
 }
 
 class SafeTransformation[U: Type](transform: PartialFunction[Expr[U], Expr[U]]) extends Transformation {
-  def apply[T: Type](e: Expr[T])(using QuoteContext): Expr[T] = {
+  def apply[T: Type](e: Expr[T])(using Quotes): Expr[T] = {
     e match {
       case '{ $e: U } => transform.applyOrElse(e, identity) match { case '{ $e2: T } => e2 }
       case e => e
@@ -85,7 +85,7 @@ class SafeTransformation[U: Type](transform: PartialFunction[Expr[U], Expr[U]]) 
 }
 
 abstract class Transformation {
-  def apply[T: Type](e: Expr[T])(using QuoteContext): Expr[T]
+  def apply[T: Type](e: Expr[T])(using Quotes): Expr[T]
 }
 
 private object Rewriter {
@@ -101,7 +101,7 @@ private class Rewriter private (preTransform: List[Transformation] = Nil, postTr
   def withPost(transform: Transformation): Rewriter =
     new Rewriter(preTransform, transform :: postTransform, fixPoint)
 
-  def transform[T](e: Expr[T])(using QuoteContext, Type[T]): Expr[T] = {
+  def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = {
     val e2 = preTransform.foldLeft(e)((ei, transform) => transform(ei))
     val e3 = transformChildren(e2)
     val e4 = postTransform.foldLeft(e3)((ei, transform) => transform(ei))

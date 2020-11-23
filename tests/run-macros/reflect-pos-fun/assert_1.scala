@@ -4,7 +4,7 @@ object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition) }
 
-  def assertImpl(cond: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
+  def assertImpl(cond: Expr[Boolean])(using Quotes) : Expr[Unit] = {
     import qctx.reflect._
     import util._
 

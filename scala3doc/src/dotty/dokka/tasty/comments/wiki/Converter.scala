@@ -115,18 +115,21 @@ class Converter(val repr: Repr) extends BaseConverter {
 
     case Superscript(i) =>
       def name = inl.getClass.getSimpleName
-      println(s"WARN: not yet supported: $name")
+      println(s"WARN: Wiki syntax tag not yet fully supported: $name")
       emitInline(i)
 
     case Subscript(i) =>
       def name = inl.getClass.getSimpleName
-      println(s"WARN: not yet supported: $name")
+      println(s"WARN: Wiki syntax tag not yet fully supported: $name")
       emitInline(i)
 
-    case _: (RepresentationLink | HtmlTag) =>
-      def name = inl.getClass.getSimpleName
-      println(s"WARN: not yet supported: $name")
-      name // doesn't compile if name is a val
+    case HtmlTag(content) =>
+      emit(dkkd.Html(List(dkk.text(content)).asJava, kt.emptyMap))
+
+    case _: RepresentationLink =>
+      val name = inl.getClass.getSimpleName
+      println(s"WARN: Wiki syntax tag not yet supported: $name")
+      emit(dkk.text(name))
   }
 
   def convertInline(inl: Inline): Seq[dkkd.DocTag] =

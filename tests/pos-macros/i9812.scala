@@ -5,4 +5,4 @@ sealed abstract class SomeEnum
 object SomeEnum:
   final val Foo = new SomeEnum {}
 
-def quoteFoo: QuoteContext ?=> Expr[SomeEnum.Foo.type] = '{SomeEnum.Foo}
+def quoteFoo: Quotes ?=> Expr[SomeEnum.Foo.type] = '{SomeEnum.Foo}

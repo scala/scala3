@@ -78,6 +78,7 @@ object Build {
 
   val dottyOrganization = "org.scala-lang"
   val dottyGithubUrl = "https://github.com/lampepfl/dotty"
+  val dottyGithubRawUserContentUrl = "https://raw.githubusercontent.com/lampepfl/dotty"
 
 
   val isRelease = sys.env.get("RELEASEBUILD") == Some("yes")
@@ -772,6 +773,17 @@ object Build {
         ("org.scala-js" %% "scalajs-library" % scalaJSVersion).withDottyCompat(scalaVersion.value),
       unmanagedSourceDirectories in Compile :=
         (unmanagedSourceDirectories in (`scala3-library-bootstrapped`, Compile)).value,
+
+      // Configure the source maps to point to GitHub for releases
+      scalacOptions ++= {
+        if (isRelease) {
+          val baseURI = (baseDirectory in LocalRootProject).value.toURI
+          val dottyVersion = version.value
+          Seq(s"-scalajs-mapSourceURI:$baseURI->$dottyGithubRawUserContentUrl/v$dottyVersion/")
+        } else {
+          Nil
+        }
+      },
 
       // Make sure `scala3-bootstrapped/test` doesn't fail on this project for no reason
       test in Test := {},

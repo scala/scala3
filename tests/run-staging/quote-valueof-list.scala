@@ -5,7 +5,7 @@ object Test {
 
   given Toolbox = Toolbox.make(getClass.getClassLoader)
 
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = withQuotes {
 
     implicit def UnliftableInt: Unliftable[Int] = new {
       def fromExpr(n: Expr[Int]) = n match {

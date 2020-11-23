@@ -4,7 +4,7 @@ object Macros:
   implicit inline def identityMaped[T](x: => T): T = ${ MacrosImpl.impl('x) }
 
 object MacrosImpl:
-  def impl[T: Type](x: Expr[T])(using qctx: QuoteContext) : Expr[T] = {
+  def impl[T: Type](x: Expr[T])(using Quotes) : Expr[T] = {
     import qctx.reflect._
     val identityMap = new TreeMap { }
     val transformed = identityMap.transformTerm(Term.of(x))(Symbol.spliceOwner).asExprOf[T]

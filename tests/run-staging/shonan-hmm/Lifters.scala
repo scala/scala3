@@ -5,7 +5,7 @@ import scala.reflect.ClassTag
 import scala.quoted._
 
 object Lifters {
-  implicit def LiftedClassTag[T: Type: ClassTag] (using QuoteContext): Expr[ClassTag[T]] = {
+  implicit def LiftedClassTag[T: Type: ClassTag] (using Quotes): Expr[ClassTag[T]] = {
     '{ ClassTag(${Expr(summon[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]])}) }
   }
 
@@ -23,7 +23,7 @@ object Lifters {
     }
   }
 
-  private def initArray[T : Liftable : Type](arr: Array[T], array: Expr[Array[T]])(using QuoteContext): Expr[Array[T]] = {
+  private def initArray[T : Liftable : Type](arr: Array[T], array: Expr[Array[T]])(using Quotes): Expr[Array[T]] = {
     UnrolledExpr.block(
       arr.zipWithIndex.map {
         case (x, i) => '{ $array(${Expr(i)}) = ${Expr(x)} }

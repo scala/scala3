@@ -3,7 +3,7 @@ package test
 import scala.quoted._
 import scala.compiletime._
 
-transparent inline def summonT[Tp <: Tuple](using QuoteContext): Tuple = inline erasedValue[Tp] match {
+transparent inline def summonT[Tp <: Tuple](using Quotes): Tuple = inline erasedValue[Tp] match {
   case _ : EmptyTuple => Tuple()
   case _ : (hd *: tl) => {
     type H = hd
@@ -13,4 +13,4 @@ transparent inline def summonT[Tp <: Tuple](using QuoteContext): Tuple = inline 
   }
 }
 
-def test[T : Type](using QuoteContext) = summonT[Tuple1[List[T]]]
+def test[T : Type](using Quotes) = summonT[Tuple1[List[T]]]

@@ -17,9 +17,9 @@ object StagingContext {
   private val QuotationLevel = new Property.Key[Int]
 
   /** A key to be used in a context property that tracks the quoteation stack.
-   *  Stack containing the QuoteContext references recieved by the surrounding quotes.
+   *  Stack containing the Quotes references recieved by the surrounding quotes.
    */
-  private val QuoteContextStack = new Property.Key[List[tpd.Tree]]
+  private val QuotesStack = new Property.Key[List[tpd.Tree]]
 
   private val TaggedTypes = new Property.Key[PCPCheckAndHeal.QuoteTypeTags]
 
@@ -31,11 +31,11 @@ object StagingContext {
   def quoteContext(using Context): Context =
     ctx.fresh.setProperty(QuotationLevel, level + 1)
 
-  /** Context with an incremented quotation level and pushes a refecence to a QuoteContext on the quote context stack */
-  def pushQuoteContext(qctxRef: tpd.Tree)(using Context): Context =
-    val old = ctx.property(QuoteContextStack).getOrElse(List.empty)
+  /** Context with an incremented quotation level and pushes a refecence to a Quotes on the quote context stack */
+  def pushQuotes(qctxRef: tpd.Tree)(using Context): Context =
+    val old = ctx.property(QuotesStack).getOrElse(List.empty)
     ctx.fresh.setProperty(QuotationLevel, level + 1)
-             .setProperty(QuoteContextStack, qctxRef :: old)
+             .setProperty(QuotesStack, qctxRef :: old)
 
   /** Context with a decremented quotation level. */
   def spliceContext(using Context): Context =
@@ -50,12 +50,12 @@ object StagingContext {
   /** Context with a decremented quotation level and pops the Some of top of the quote context stack or None if the stack is empty.
    *  The quotation stack could be empty if we are in a top level splice or an eroneous splice directly witin a top level splice.
    */
-  def popQuoteContext()(using Context): (Option[tpd.Tree], Context) =
+  def popQuotes()(using Context): (Option[tpd.Tree], Context) =
     val ctx1 = ctx.fresh.setProperty(QuotationLevel, level - 1)
     val head =
-      ctx.property(QuoteContextStack) match
+      ctx.property(QuotesStack) match
         case Some(x :: xs) =>
-          ctx1.setProperty(QuoteContextStack, xs)
+          ctx1.setProperty(QuotesStack, xs)
           Some(x)
         case _ =>
           None // Splice at level 0 or lower

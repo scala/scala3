@@ -2,7 +2,7 @@ import quoted._
 
 class Foo {
   class Bar
-  def foo()(using QuoteContext) = {
+  def foo()(using Quotes) = {
     Type[Bar] // error
   }
 }

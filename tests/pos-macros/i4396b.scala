@@ -1,4 +1,4 @@
 import scala.quoted._
-def test(using QuoteContext) = {
+def test(using Quotes) = {
   '{ case class Foo() }
 }

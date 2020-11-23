@@ -21,7 +21,7 @@ object Macros {
   }
 
   object Macros3 {
-    def monoImpl(using quoted.QuoteContext) = '{()}
+    def monoImpl(using quoted.Quotes) = '{()}
   }
 
 }

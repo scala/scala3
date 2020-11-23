@@ -4,7 +4,7 @@ object api {
   extension (inline x: String) inline def reflect : String =
     ${ reflImpl('x) }
 
-  private def reflImpl(x: Expr[String])(using qctx: QuoteContext) : Expr[String] = {
+  private def reflImpl(x: Expr[String])(using Quotes) : Expr[String] = {
     import qctx.reflect._
     Expr(x.show)
   }
@@ -12,7 +12,7 @@ object api {
   extension (x: => String) inline def reflectColor : String =
     ${ reflImplColor('x) }
 
-  private def reflImplColor(x: Expr[String])(using qctx: QuoteContext) : Expr[String] = {
+  private def reflImplColor(x: Expr[String])(using Quotes) : Expr[String] = {
     import qctx.reflect._
     Expr(x.showAnsiColored)
   }

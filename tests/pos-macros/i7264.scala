@@ -1,6 +1,6 @@
 import scala.quoted._
 class Foo {
-  def f[T2](t: Type[T2])(using QuoteContext) = t match {
+  def f[T2](t: Type[T2])(using Quotes) = t match {
     case '[ *:[Int, t2] ] =>
       Type.of[ *:[Int, t2] ]
   }

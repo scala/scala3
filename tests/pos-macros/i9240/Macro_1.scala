@@ -2,11 +2,11 @@ import scala.quoted._
 
 inline def diveInto[T]: String = ${ diveIntoImpl[T]() }
 
-def diveIntoImpl[T]()(implicit qctx: QuoteContext, ttype: Type[T]): Expr[String] =
+def diveIntoImpl[T]()(implicit qctx: Quotes, ttype: Type[T]): Expr[String] =
   import qctx.reflect._
   Expr( unwindType(TypeRepr.of[T]) )
 
-def unwindType(using QuoteContext)(aType: qctx.reflect.TypeRepr): String =
+def unwindType(using Quotes)(aType: qctx.reflect.TypeRepr): String =
   import qctx.reflect._
 
   aType match {
