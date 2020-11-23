@@ -209,6 +209,21 @@ object SourceFile {
     val src = new SourceFile(new VirtualFile(name, content.getBytes(StandardCharsets.UTF_8)), scala.io.Codec.UTF8)
     src._maybeInComplete = maybeIncomplete
     src
+
+  def relativePath(source: SourceFile)(using Context): String = {
+    def sourcerootPath =
+      java.nio.file.Paths.get(ctx.settings.sourceroot.value)
+      .toAbsolutePath
+      .normalize
+    val file = source.file
+    val jpath = file.jpath
+    if jpath eq null then
+      file.path // repl and other custom tests use abstract files with no path
+    else if jpath.isAbsolute then
+      sourcerootPath.relativize(jpath.normalize).toString
+    else
+      jpath.normalize.toString
+  }
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

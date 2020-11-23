@@ -335,21 +335,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                && ctx.compilationUnit.source.exists
                && sym != defn.SourceFileAnnot
             then
-              def sourcerootPath =
-                java.nio.file.Paths.get(ctx.settings.sourceroot.value)
-                .toAbsolutePath
-                .normalize
-              val file = ctx.compilationUnit.source.file
-              val jpath = file.jpath
-              val relativePath =
-                if jpath eq null then file.path // repl and other custom tests use abstract files with no path
-                else if jpath.isAbsolute then
-                  val cunitPath = jpath.normalize
-                  // On Windows we can only relativize paths if root component matches
-                  // (see implementation of sun.nio.fs.WindowsPath#relativize)
-                  try sourcerootPath.relativize(cunitPath).toString
-                  catch case _: IllegalArgumentException => cunitPath.toString
-                else jpath.normalize.toString
+              val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source)
               sym.addAnnotation(Annotation.makeSourceFile(relativePath))
           else (tree.rhs, sym.info) match
             case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
