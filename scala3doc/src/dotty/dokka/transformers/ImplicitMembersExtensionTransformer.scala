@@ -51,7 +51,7 @@ class ImplicitMembersExtensionTransformer(ctx: DokkaContext) extends Documentabl
                   case Origin.InheritedFrom(_, _) => true
                   case _ => false
                 )
-                newMembers.map(_.withOrigin(Origin.ImplicitlyAddedBy(owner.name, owner.dri)))
+                newMembers.map(_.withOrigin(Origin.ImplicitlyAddedBy(m.name, m.dri)))
               }
             case _ =>
               Nil

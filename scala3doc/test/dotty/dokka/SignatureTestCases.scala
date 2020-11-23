@@ -1,5 +1,7 @@
 package dotty.dokka
 
+import dotty.dokka.model.api._
+
 class GenericSignaftures extends SignatureTest("genericSignatures", Seq("class"))
 
 class ObjectSignatures extends SignatureTest("objectSignatures", Seq("object"))
@@ -60,3 +62,24 @@ class InheritedMembers extends SignatureTest("inheritedMembers2", SignatureTest.
 class ComplexNames extends SignatureTest("complexNames", Seq("def"))
 
 class WrongDocumentationLinks extends SignatureTest("links", Seq("def"))
+
+class ImplicitConversionsTest1 extends SignatureTest(
+  "implicitConversions2",
+  SignatureTest.all,
+  sourceFiles = List("implicitConversions2"),
+  filterFunc = (member) => member.name == "ClassWithConversionWithOneParam"
+)
+
+class ImplicitConversionsTest2 extends SignatureTest(
+  "implicitConversions2",
+  SignatureTest.all,
+  sourceFiles = List("implicitConversions2"),
+  filterFunc = (member) => member.name == "ClassWithConversionFromVal"
+)
+
+class ImplicitConversionsTest3 extends SignatureTest(
+  "implicitConversions2",
+  SignatureTest.all,
+  sourceFiles = List("implicitConversions2"),
+  filterFunc = (member) => member.name == "ClassWithConversionWithProperType"
+)
