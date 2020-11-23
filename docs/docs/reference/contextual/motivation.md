@@ -60,8 +60,8 @@ This section also contains pages describing other language features that are rel
 
  - [Context Bounds](./context-bounds.md), which carry over unchanged.
  - [Extension Methods](./extension-methods.md) replace implicit classes in a way that integrates better with type classes.
- - [Implementing Type classes](type-classes.md) demonstrates how some common type classes can be implemented using the new constructs.
- - [Type class Derivation](./derivation.md) introduces constructs to automatically derive type class instances for ADTs.
+ - [Implementing Type Classes](type-classes.md) demonstrates how some common type classes can be implemented using the new constructs.
+ - [Type Class Derivation](./derivation.md) introduces constructs to automatically derive type class instances for ADTs.
  - [Multiversal Equality](./multiversal-equality.md) introduces a special type class to support type safe equality.
  - [Context Functions](./context-functions.md) provide a way to abstract over context parameters.
  - [By-Name Context Parameters](./by-name-context-parameters.md) are an essential tool to define recursive synthesized values without looping.

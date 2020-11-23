@@ -115,7 +115,7 @@ Structural calls like this tend to be much slower than normal method calls. The 
 `reflectiveSelectable` conversion. However, to warn against inefficient
 dispatch, Scala 2 requires a language import `import scala.language.reflectiveCalls`.
 
-Before resorting to structural calls with Java reflection one should consider alternatives. For instance, sometimes a more a modular _and_ efficient architecture can be obtained using typeclasses.
+Before resorting to structural calls with Java reflection one should consider alternatives. For instance, sometimes a more a modular _and_ efficient architecture can be obtained using type classes.
 
 ## Extensibility
 
