@@ -74,7 +74,7 @@ def loadTemplateFile(file: File): TemplateFile = {
   def getSettingValue(k: String, v: JList[String]): String | List[String] =
     if v.size == 1 then v.get(0) else v.asScala.toList
 
-  val globalKeys = Set("extraJS", "extraCSS", "layout", "hasFrame", "name")
+  val globalKeys = Set("extraJS", "extraCSS", "layout", "hasFrame", "name", "title")
   val allSettings = yamlCollector.getData.asScala.toMap.transform(getSettingValue)
   val (global, inner) = allSettings.partition((k,_) => globalKeys.contains(k))
   val settings = Map("page" -> inner)
