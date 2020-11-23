@@ -1174,7 +1174,7 @@ object Build {
   val testDocumentationRoot = taskKey[String]("Root directory where tests documentation are stored")
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
-  val generateScala3Documentation = taskKey[Unit]("Generate documentation for dotty lib")
+  val generateScala3Documentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateScala3StdlibDocumentation = taskKey[Unit]("Generate documentation for Scala3 standard library")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
   lazy val `scala3doc` = project.in(file("scala3doc")).asScala3doc
@@ -1469,12 +1469,11 @@ object Build {
       enablePlugins(JmhPlugin)
 
     def asScala3doc: Project = {
-      def generateDocumentation(targets: String, name: String, outDir: String, params: String = "") = Def.taskDyn {
+      def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
-          val sourcesAndRevision = s"-s github://lampepfl/dotty --projectVersion $projectVersion"
-          run.in(Compile).toTask(
-            s""" -d scala3doc/output/$outDir -t $targets -n "$name" $sourcesAndRevision $params"""
-          )
+          val sourcesAndRevision = s"-s github://lampepfl/dotty  --revision $ref --projectVersion $projectVersion"
+          val cmd = s""" -d $outDir -t $targets -n "$name" $sourcesAndRevision $params"""
+          run.in(Compile).toTask(cmd)
       }
 
       def joinProducts(products: Seq[java.io.File]): String =
@@ -1509,14 +1508,17 @@ object Build {
           fork.in(test) := true,
           baseDirectory.in(run) := baseDirectory.in(ThisBuild).value,
           generateSelfDocumentation := Def.taskDyn {
-            val revision = VersionUtil.gitHash
             generateDocumentation(
               classDirectory.in(Compile).value.getAbsolutePath,
-              "scala3doc", "self",
-              s"-p scala3doc/documentation --projectLogo scala3doc/documentation/logo.svg  --revision $revision",
-            )
+              "scala3doc", "scala3doc/output/self", VersionUtil.gitHash,
+              "-p scala3doc/documentation --projectLogo scala3doc/documentation/logo.svg")
           }.value,
-          generateScala3Documentation := Def.taskDyn {
+
+          generateScala3Documentation := Def.inputTaskDyn {
+            val dottydocExtraArgs = spaceDelimited("[output]").parsed
+            val dest = file(dottydocExtraArgs.headOption.getOrElse("scala3doc/output/scala3")).getAbsoluteFile
+            val majorVersion = (scalaBinaryVersion in LocalProject("scala3-library-bootstrapped")).value
+
             val dottyJars: Seq[java.io.File] = Seq(
               (`scala3-interfaces`/Compile/products).value,
               (`tasty-core-bootstrapped`/Compile/products).value,
@@ -1526,8 +1528,16 @@ object Build {
             val roots = joinProducts(dottyJars)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-            else generateDocumentation(roots, "Scala 3", "scala3", "-p scala3doc/scala3-docs --projectLogo scala3doc/scala3-docs/logo.svg  --revision master")
-          }.value,
+            else Def.task{
+              IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
+
+              // This file is used by GitHub Pages when the page is available in a custom domain
+              IO.write(dest / "CNAME", "dotty.epfl.ch")
+            }.dependsOn(generateDocumentation(
+              roots, "Scala 3", dest.getAbsolutePath, "master",
+              "-p scala3doc/scala3-docs --projectLogo scala3doc/scala3-docs/logo.svg"))
+          }.evaluated,
+
 
           generateScala3StdlibDocumentation:= Def.taskDyn {
             val dottyJars: Seq[java.io.File] = Seq(
@@ -1537,11 +1547,16 @@ object Build {
             val roots = joinProducts(dottyJars)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-            else generateDocumentation(roots, "Scala 3", "scala3-stdlib", "-p scala3doc/scala3-docs --syntax wiki --projectLogo scala3doc/scala3-docs/logo.svg  --revision master")
+            else generateDocumentation(
+              roots, "Scala 3", "scala3doc/output/scala3-stdlib", "maser",
+              "-p scala3doc/scala3-docs --syntax wiki --projectLogo scala3doc/scala3-docs/logo.svg "
+            )
           }.value,
+
           generateTestcasesDocumentation := Def.taskDyn {
-            generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "testcases", "--revision master")
+            generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "scala3doc/output/testcases", "master")
           }.value,
+
           buildInfoKeys in Test := Seq[BuildInfoKey](
             Build.testcasesOutputDir.in(Test),
             Build.testcasesSourceRoot.in(Test),
