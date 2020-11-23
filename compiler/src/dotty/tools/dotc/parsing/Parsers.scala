@@ -2807,11 +2807,7 @@ object Parsers {
         }
         else
           mods
-      val result = normalize(loop(start))
-      for case mod @ Mod.Transparent() <- result.mods do
-        if !result.is(Inline) then
-          syntaxError(em"`transparent` can only be used in conjunction with `inline`", mod.span)
-      result
+      normalize(loop(start))
     }
 
     val funTypeArgMods: BitSet = BitSet(ERASED)

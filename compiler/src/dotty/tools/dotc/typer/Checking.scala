@@ -449,6 +449,11 @@ object Checking {
       if (sym.isType)
         fail(TypesAndTraitsCantBeImplicit())
     }
+    if sym.is(Transparent) then
+      if sym.isType then
+        if !sym.is(Trait) then fail(em"`transparent` can only be used for traits")
+      else
+        if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods")
     if (!sym.isClass && sym.is(Abstract))
       fail(OnlyClassesCanBeAbstract(sym))
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)

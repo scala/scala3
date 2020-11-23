@@ -667,15 +667,13 @@ class TreeUnpickler(reader: TastyReader,
           case PARAMalias => addFlag(SuperParamAlias)
           case EXPORTED => addFlag(Exported)
           case OPEN => addFlag(Open)
+          case TRANSPARENT => addFlag(Transparent)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readWithin
           case PROTECTEDqualified =>
             addFlag(Protected)
             privateWithin = readWithin
-          case SUPERTRAIT =>
-            readByte()
-            annotFns = (_ => Annotation(defn.MixinAnnot)) :: annotFns
           case ANNOTATION =>
             annotFns = readAnnot :: annotFns
           case tag =>

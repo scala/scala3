@@ -712,6 +712,7 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Local)) writeModTag(LOCAL)
     if (flags.is(Synthetic)) writeModTag(SYNTHETIC)
     if (flags.is(Artifact)) writeModTag(ARTIFACT)
+    if flags.is(Transparent) then writeModTag(TRANSPARENT)
     if (isTerm) {
       if (flags.is(Implicit)) writeModTag(IMPLICIT)
       if (flags.is(Given)) writeModTag(GIVEN)

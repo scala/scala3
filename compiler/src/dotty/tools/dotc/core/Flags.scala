@@ -342,6 +342,9 @@ object Flags {
   /** Symbol is a Java default method */
   val (_, DefaultMethod @ _, _) = newFlags(38, "<defaultmethod>")
 
+  /** Symbol is a transparent inline method or trait */
+  val (Transparent @ _, _, _) = newFlags(39, "transparent")
+
   /** Symbol is an enum class or enum case (if used with case) */
   val (Enum @ _, EnumVal @ _, _) = newFlags(40, "enum")
 
@@ -419,7 +422,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic)
+    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent)
 
   val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
@@ -449,7 +452,7 @@ object Flags {
    *  is completed)
    */
   val AfterLoadFlags: FlagSet = commonFlags(
-    FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined)
+    FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined, Transparent)
 
   /** A value that's unstable unless complemented with a Stable flag */
   val UnstableValueFlags: FlagSet = Mutable | Method
@@ -499,7 +502,7 @@ object Flags {
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
     Override | Final | Method | Implicit | Given | Lazy |
-    Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased
+    Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased | Transparent
 
   /** Flags that can apply to a module class */
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
