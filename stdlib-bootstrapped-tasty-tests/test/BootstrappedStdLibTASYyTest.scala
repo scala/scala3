@@ -105,6 +105,9 @@ object BootstrappedStdLibTASYyTest:
       def processCompilationUnit(using QuoteContext)(root: qctx.reflect.Tree): Unit =
         root.showExtractors // Check that we can traverse the full tree
         ()
+      override def postProcess(using QuoteContext): Unit =
+        val sym = qctx.reflect.Symbol.classSymbol("scala.concurrent.Await")
+        sym.flags
     }
     val tastyFiles = scalaLibTastyPaths.filterNot(blacklisted)
     val hasErrors = inspector.inspectTastyFiles(tastyFiles.map(x => scalaLibClassesPath.resolve(x).toString))
