@@ -39,7 +39,8 @@ references the class named `` `immutable.List` `` in package `scala.collection`.
 #### New syntax
 
 We have extended Scaladoc definition links to make them a bit more pleasant to
-write and read in source. The new syntax features are:
+write and read in source. The aim was also to bring the link and Scala syntax
+closer together. The new features are:
 
 1. `package` can be used as a prefix to reference the enclosing package
     Example:
@@ -53,9 +54,8 @@ write and read in source. The new syntax features are:
       def bar = "bar".
     }
     ```
-    Links to the enclosing package in Scaladoc required mentioning the complete
-    package name. Using the `package` keyword (similarly to how one would use
-    `this` in expressions) helps make such links shorter.
+    The `package` keyword helps make links to the enclosing package shorter
+    and a bit more resistant to name refactorings.
 1. `this` can be used as a prefix to reference the enclosing classlike
     Example:
     ```
