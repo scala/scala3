@@ -12,10 +12,10 @@ object JsonEncoder {
 
   inline def encodeElem[T](elem: T): String = summonInline[JsonEncoder[T]].encode(elem)
 
-  inline def encodeElems[Elems <: Tuple](idx: Int)(value: Any): List[String] =
+  inline def encodeElems[Elems <: Tuple](idx: Int)(value: Product): List[String] =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
-        encodeElem[elem](productElement[elem](value, idx)) :: encodeElems[elems1](idx + 1)(value)
+        encodeElem[elem](value.productElement(idx).asInstanceOf[elem]) :: encodeElems[elems1](idx + 1)(value)
       case _ => Nil
     }
 
@@ -25,8 +25,9 @@ object JsonEncoder {
         case m: Mirror.SumOf[T] =>
           "not supporting this case yet"
         case m: Mirror.ProductOf[T] =>
-          val elems = encodeElems[m.MirroredElemTypes](0)(value)
-          val labels = value.asInstanceOf[Product].productElementNames
+          val valueProduct = value.asInstanceOf[Product]
+          val elems = encodeElems[m.MirroredElemTypes](0)(valueProduct)
+          val labels = valueProduct.productElementNames
           val keyValues = labels.zip(elems).map((k, v) => s"$k: $v")
           "{" + (keyValues).mkString(", ") + "}"
         case other =>
