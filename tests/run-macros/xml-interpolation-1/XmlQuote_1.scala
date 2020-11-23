@@ -12,7 +12,7 @@ object XmlQuote {
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          (using qctx: QuoteContext) : Expr[Xml] = {
+          (using Quotes) : Expr[Xml] = {
     import qctx.reflect._
 
     // for debugging purpose

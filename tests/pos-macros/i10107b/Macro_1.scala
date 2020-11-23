@@ -1,7 +1,7 @@
 import scala.quoted._
 
 inline def isTrue: Boolean = ${ isTrueImpl }
-def isTrueImpl(using qctx: QuoteContext) = {
+def isTrueImpl(using Quotes) = {
   Expr(true)
 }
 

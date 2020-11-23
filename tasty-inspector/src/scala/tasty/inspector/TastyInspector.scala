@@ -1,7 +1,7 @@
 package scala.tasty.inspector
 
 import scala.quoted._
-import scala.quoted.runtime.impl.QuoteContextImpl
+import scala.quoted.runtime.impl.QuotesImpl
 
 import dotty.tools.dotc.Compiler
 import dotty.tools.dotc.Driver
@@ -20,10 +20,10 @@ trait TastyInspector:
   self =>
 
   /** Process a TASTy file using TASTy reflect */
-  protected def processCompilationUnit(using QuoteContext)(root: qctx.reflect.Tree): Unit
+  protected def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit
 
   /** Called after all compilation units are processed */
-  protected def postProcess(using QuoteContext): Unit = ()
+  protected def postProcess(using Quotes): Unit = ()
 
   /** Load and process TASTy files using TASTy reflect
    *
@@ -90,7 +90,7 @@ trait TastyInspector:
       override def phaseName: String = "tastyInspector"
 
       override def run(implicit ctx: Context): Unit =
-        val qctx = QuoteContextImpl()
+        val qctx = QuotesImpl()
         self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.reflect.Tree])
 
     end TastyInspectorPhase
@@ -100,7 +100,7 @@ trait TastyInspector:
       override def phaseName: String = "tastyInspectorFinish"
 
       override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-        val qctx = QuoteContextImpl()
+        val qctx = QuotesImpl()
         self.postProcess(using qctx)
         units
 

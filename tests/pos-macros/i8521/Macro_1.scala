@@ -3,7 +3,7 @@ import scala.quoted._
 object Foo {
   inline def foo[T <: AnyKind]: String = ${ bar[T] }
 
-  def bar[T <: AnyKind : Type](using qctx: QuoteContext): Expr[String] = {
+  def bar[T <: AnyKind : Type](using Quotes): Expr[String] = {
     import qctx.reflect._
 
     def packageToName(sym: Symbol): Unit = {

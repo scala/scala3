@@ -6,7 +6,7 @@ object Macros {
   inline def foreach2(start: Int, end: Int, f: => Int => Unit): String = ${impl('start, 'end, 'f)}
   inline def foreach3(start: Int, end: Int, inline f: Int => Unit): String = ${impl('start, 'end, 'f)}
 
-  def impl(start: Expr[Int], end: Expr[Int], f: Expr[Int => Unit])(using qctx: QuoteContext) : Expr[String] = {
+  def impl(start: Expr[Int], end: Expr[Int], f: Expr[Int => Unit])(using Quotes) : Expr[String] = {
     import qctx.reflect._
     val res = '{
       var i = $start

@@ -2,7 +2,7 @@ import scala.quoted._
 
 object MacroRuntime {
 
-   def impl()(using qctx: QuoteContext): Expr[Unit] = {
+   def impl()(using Quotes): Expr[Unit] = {
       '{ ??? }
    }
 

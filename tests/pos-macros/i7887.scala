@@ -1,4 +1,4 @@
-def typed[A](using t: quoted.Type[A], qctx: quoted.QuoteContext): Unit = {
+def typed[A](using t: quoted.Type[A], qctx: quoted.Quotes): Unit = {
   import qctx.reflect._
   '{
     type T = A

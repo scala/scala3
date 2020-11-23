@@ -3,7 +3,7 @@ import scala.quoted._
 
 object Exp {
 
-  private def compileImpl(e: Expr[Int], env: Map[String, Expr[Int]])(using QuoteContext): Expr[Int] = {
+  private def compileImpl(e: Expr[Int], env: Map[String, Expr[Int]])(using Quotes): Expr[Int] = {
     e match {
       case '{$s:Int}  => s
       case exp =>
@@ -11,7 +11,7 @@ object Exp {
     }
   }
 
-  private def compileUnlift(e: Expr[Int])(using QuoteContext): Expr[Int] = {
+  private def compileUnlift(e: Expr[Int])(using Quotes): Expr[Int] = {
     val environment = Map[String, Expr[Int]]()
     compileImpl(e, environment)
   }

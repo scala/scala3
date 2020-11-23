@@ -1,8 +1,8 @@
 import scala.quoted._
 
-def test(using QuoteContext) = {
+def test(using Quotes) = {
 
-  given QuoteContext = ???
+  given Quotes = ???
 
   implicit def IntIsLiftable: Liftable[Int] = new {
     def toExpr(n: Int) = n match {

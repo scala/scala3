@@ -7,7 +7,7 @@ abstract class Test {
   val getT: Type[T] = T // need this to avoid getting `null`
   given Type[T] = getT
 
-  def foo(using QuoteContext): Expr[Any] = {
+  def foo(using Quotes): Expr[Any] = {
 
     val r = '{Option.empty[T]} // error: is not stable
 

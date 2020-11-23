@@ -20,7 +20,7 @@ guarantees and may fail at macro expansion time, hence additional explicit
 checks must be done.
 
 To provide reflection capabilities in macros we need to add an implicit
-parameter of type `scala.quoted.QuoteContext` and import `qctx.reflect._` from it in
+parameter of type `scala.quoted.Quotes` and import `qctx.reflect._` from it in
 the scope where it is used.
 
 ```scala
@@ -28,7 +28,7 @@ import scala.quoted._
 
 inline def natConst(inline x: Int): Int = ${natConstImpl('{x})}
 
-def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
+def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
   import qctx.reflect._
   ...
 }
@@ -40,7 +40,7 @@ def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
 trees. For example the `Literal(_)` extractor used below.
 
 ```scala
-def natConstImpl(x: Expr[Int])(using qctx: QuoteContext): Expr[Int] = {
+def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
   import qctx.reflect._
   val xTree: Term = Term.of(x)
   xTree match {
@@ -75,7 +75,7 @@ such as the start line, the end line or even the source code at the expansion
 point.
 
 ```scala
-def macroImpl()(qctx: QuoteContext): Expr[Unit] = {
+def macroImpl()(qctx: Quotes): Expr[Unit] = {
   import qctx.reflect._
   val pos = rootPosition
 

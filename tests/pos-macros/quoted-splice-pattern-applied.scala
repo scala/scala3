@@ -1,6 +1,6 @@
 import scala.quoted._
 
-def f(x: Expr[Int])(using QuoteContext) = x match {
+def f(x: Expr[Int])(using Quotes) = x match {
   case '{ ${f}($a: Int): Int } =>
     val f1: Expr[Int => Int] = f
     val a1: Expr[Int] = a

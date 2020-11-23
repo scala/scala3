@@ -206,7 +206,7 @@ no code that can be executed at runtime. That is why we define an intermediary c
 method in the `FromDigits` given instance. That method is defined in terms of a macro
 implementation method `fromDigitsImpl`. Here is its definition:
 ```scala
-  private def fromDigitsImpl(digits: Expr[String])(using ctx: QuoteContext): Expr[BigFloat] =
+  private def fromDigitsImpl(digits: Expr[String])(using ctx: Quotes): Expr[BigFloat] =
     digits match {
       case Const(ds) =>
         try {

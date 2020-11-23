@@ -4,7 +4,7 @@ import scala.reflect.ClassTag
 
 object Test {
   given Toolbox = Toolbox.make(this.getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = withQuotes {
     val '[List[Int]] = Type.of[List[Int]]
 
     Type.of[List[Int]] match

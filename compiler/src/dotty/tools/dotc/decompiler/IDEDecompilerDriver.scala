@@ -7,7 +7,7 @@ import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.tasty.TastyHTMLPrinter
 import dotty.tools.dotc.reporting._
 
-import scala.quoted.runtime.impl.QuoteContextImpl
+import scala.quoted.runtime.impl.QuotesImpl
 
 /**
   * Decompiler to be used with IDEs
@@ -35,7 +35,7 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
       run.printSummary()
       val unit = ctx.run.units.head
 
-      val decompiled = QuoteContextImpl.showDecompiledTree(unit.tpdTree)
+      val decompiled = QuotesImpl.showDecompiledTree(unit.tpdTree)
       val tree = new TastyHTMLPrinter(unit.pickled.head._2()).showContents()
 
       reporter.removeBufferedMessages.foreach(message => System.err.println(message))

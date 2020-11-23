@@ -6,7 +6,7 @@ object SummonJsonEncoderTest {
 
   inline def encodeAndMessAroundType[T](value: =>T): String = ${ encodeAndMessAroundTypeImpl('value) }
 
-  def encodeAndMessAroundTypeImpl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[String] = {
+  def encodeAndMessAroundTypeImpl[T: Type](value: Expr[T])(using Quotes): Expr[String] = {
     import qctx.reflect._
 
     val mirrorExpr = Expr.summon[Mirror.Of[T]] match {

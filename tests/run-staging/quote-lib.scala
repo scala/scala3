@@ -10,7 +10,7 @@ import liftable.Exprs._
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = withQuotes {
     val liftedUnit: Expr[Unit] = '{}
 
     letVal('{1})(a => '{ $a + 1 }).show
@@ -115,7 +115,7 @@ package liftable {
 
   object Exprs {
     implicit class LiftExprOps[T](x: T) extends AnyVal {
-      def toExpr(using Liftable[T], QuoteContext): Expr[T] =
+      def toExpr(using Liftable[T], Quotes): Expr[T] =
         summon[Liftable[T]].toExpr(x)
     }
   }
@@ -127,30 +127,30 @@ package liftable {
   }
 
   object Lets {
-    def letVal[T: Type, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit qctx: QuoteContext): Expr[U] =
+    def letVal[T: Type, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit qctx: Quotes): Expr[U] =
       '{ val letVal: T = $expr; ${ body('letVal) } }
-    def letLazyVal[T: Type, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit qctx: QuoteContext): Expr[U] =
+    def letLazyVal[T: Type, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit qctx: Quotes): Expr[U] =
       '{ lazy val letLazyVal: T = $expr; ${ body('letLazyVal) } }
-    def letDef[T: Type, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit qctx: QuoteContext): Expr[U] =
+    def letDef[T: Type, U: Type](expr: Expr[T])(body: Expr[T] => Expr[U])(implicit qctx: Quotes): Expr[U] =
       '{ def letDef: T = $expr; ${ body('letDef) } }
   }
 
   object Loops {
-    def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit])(using QuoteContext): Expr[Unit] = '{ while ($cond) $body }
-    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean])(using QuoteContext): Expr[Unit] = '{ while { $body ; $cond } do () }
+    def liftedWhile(cond: Expr[Boolean])(body: Expr[Unit])(using Quotes): Expr[Unit] = '{ while ($cond) $body }
+    def liftedDoWhile(body: Expr[Unit])(cond: Expr[Boolean])(using Quotes): Expr[Unit] = '{ while { $body ; $cond } do () }
   }
 
 
   object Lists {
 
     implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: Type[T]) {
-      def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: QuoteContext): Expr[U] =
+      def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: Quotes): Expr[U] =
         '{ ($list).foldLeft[U]($acc)($f) }
-      def foreach(f: Expr[T => Unit])(using QuoteContext): Expr[Unit] =
+      def foreach(f: Expr[T => Unit])(using Quotes): Expr[Unit] =
         '{ ($list).foreach($f) }
     }
 
-    implicit class UnrolledOps[T: Liftable](list: List[T])(implicit t: Type[T], qctx: QuoteContext) {
+    implicit class UnrolledOps[T: Liftable](list: List[T])(implicit t: Type[T], qctx: Quotes) {
       def unrolledFoldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U]): Expr[U] = list match {
         case x :: xs => xs.unrolledFoldLeft('{ ($f).apply($acc, ${Expr(x)}) })(f)
         case Nil => acc

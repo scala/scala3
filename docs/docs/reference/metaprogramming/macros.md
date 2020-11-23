@@ -36,12 +36,12 @@ import scala.quoted._
 inline def assert(inline expr: Boolean): Unit =
   ${ assertImpl('expr) }
 
-def assertImpl(expr: Expr[Boolean])(using QuoteContext) = '{
+def assertImpl(expr: Expr[Boolean])(using Quotes) = '{
   if (!$expr)
     throw new AssertionError(s"failed assertion: ${${ showExpr(expr) }}")
 }
 
-def showExpr(expr: Expr[Boolean])(using QuoteContext): Expr[String] =
+def showExpr(expr: Expr[Boolean])(using Quotes): Expr[String] =
   '{ "<some source code>" } // Better implementation later in this document
 ```
 
@@ -139,10 +139,10 @@ It is possible to convert any `Expr[T => R]` into `Expr[T] => Expr[R]` and back.
 These conversions can be implemented as follows:
 
 ```scala
-def to[T: Type, R: Type](f: Expr[T] => Expr[R])(using QuoteContext): Expr[T => R] =
+def to[T: Type, R: Type](f: Expr[T] => Expr[R])(using Quotes): Expr[T => R] =
   '{ (x: T) => ${ f('x) } }
 
-def from[T: Type, R: Type](f: Expr[T => R])(using QuoteContext): Expr[T] => Expr[R] =
+def from[T: Type, R: Type](f: Expr[T => R])(using Quotes): Expr[T] => Expr[R] =
   (x: Expr[T]) => '{ $f($x) }
 ```
 
@@ -187,7 +187,7 @@ Indeed, the definition of `to` above uses `T` in the next stage, there is a
 quote but no splice between the parameter binding of `T` and its
 usage. But the code can be rewritten by adding a binding of a `Type[T]` tag:
 ```scala
-def to[T, R](f: Expr[T] => Expr[R])(using Type[T], Type[R], QuoteContext): Expr[T => R] =
+def to[T, R](f: Expr[T] => Expr[R])(using Type[T], Type[R], Quotes): Expr[T => R] =
   '{ (x: T) => ${ f('x) } }
 ```
 In this version of `to`, the type of `x` is now the result of
@@ -199,12 +199,12 @@ reference to a type `T` in subsequent phases to a type-splice, by rewriting `T` 
 For instance, the user-level definition of `to`:
 
 ```scala
-def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], QuoteContext): Expr[T => R] =
+def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], Quotes): Expr[T => R] =
   '{ (x: T) => ${ f('x) } }
 ```
 would be rewritten to
 ```scala
-def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], QuoteContext): Expr[T => R] =
+def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], Quotes): Expr[T => R] =
   '{ (x: t.Underlying }) => ${ f('x) } }
 ```
 The `summon` query succeeds because there is a given instance of
@@ -239,7 +239,7 @@ The compiler takes an environment that maps variable names to Scala `Expr`s.
 ```scala
 import scala.quoted._
 
-def compile(e: Exp, env: Map[String, Expr[Int]])(using QuoteContext): Expr[Int] = e match {
+def compile(e: Exp, env: Map[String, Expr[Int]])(using Quotes): Expr[Int] = e match {
   case Num(n) =>
     Expr(n)
   case Plus(e1, e2) =>
@@ -266,7 +266,7 @@ package quoted
 
 object Expr {
   ...
-  def apply[T: Liftable](x: T)(using QuoteContext): Expr[T] = summon[Liftable[T]].toExpr(x)
+  def apply[T: Liftable](x: T)(using Quotes): Expr[T] = summon[Liftable[T]].toExpr(x)
   ...
 }
 ```
@@ -320,7 +320,7 @@ analogue of lifting.
 
 Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
 ```scala
-def showExpr[T](expr: Expr[T])(using QuoteContext): Expr[String] = {
+def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] = {
   val code: String = expr.show
   Expr(code)
 }
@@ -371,7 +371,7 @@ object Macros {
   inline def assert(inline expr: Boolean): Unit =
     ${ assertImpl('expr) }
 
-  def assertImpl(expr: Expr[Boolean])(using QuoteContext) =
+  def assertImpl(expr: Expr[Boolean])(using Quotes) =
     val failMsg: Expr[String] = Expr("failed assertion: " + expr.show)
     '{ if !($expr) then throw new AssertionError($failMsg) }
 }
@@ -438,12 +438,12 @@ implementation of the `power` function that makes use of a statically known expo
 ```scala
 inline def power(x: Double, inline n: Int) = ${ powerCode('x, 'n) }
 
-private def powerCode(x: Expr[Double], n: Expr[Int])(using QuoteContext): Expr[Double] =
+private def powerCode(x: Expr[Double], n: Expr[Int])(using Quotes): Expr[Double] =
   n.unlift match
     case Some(m) => powerCode(x, m)
     case None => '{ Math.pow($x, $y) }
 
-private def powerCode(x: Expr[Double], n: Int)(using QuoteContext): Expr[Double] =
+private def powerCode(x: Expr[Double], n: Int)(using Quotes): Expr[Double] =
   if (n == 0) '{ 1.0 }
   else if (n == 1) x
   else if (n % 2 == 0) '{ val y = $x * $x; ${ powerCode('y, n / 2) } }
@@ -499,7 +499,7 @@ function `f` and one `sum` that performs a sum by delegating to `map`.
 
 ```scala
 object Macros {
-  def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])(using Type[T], QuoteContext): Expr[Unit] = '{
+  def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])(using Type[T], Quotes): Expr[Unit] = '{
     var i: Int = 0
     while (i < ($arr).length) {
       val element: T = ($arr)(i)
@@ -508,7 +508,7 @@ object Macros {
     }
   }
 
-  def sum(arr: Expr[Array[Int]])(using QuoteContext): Expr[Int] = '{
+  def sum(arr: Expr[Array[Int]])(using Quotes): Expr[Int] = '{
     var sum = 0
     ${ map(arr, x => '{sum += $x}) }
     sum
@@ -583,7 +583,7 @@ in a quote context. For this we simply provide `scala.quoted.Expr.summon`:
 ```scala
 inline def setFor[T]: Set[T] = ${ setForExpr[T] }
 
-def setForExpr[T: Type](using QuoteContext): Expr[Set[T]] = {
+def setForExpr[T: Type](using Quotes): Expr[Set[T]] = {
   Expr.summon[Ordering[T]] match {
     case Some(ord) => '{ new TreeSet[T]()($ord) }
     case _ => '{ new HashSet[T] }
@@ -600,7 +600,7 @@ inline method that can calculate either a value of type `Int` or a value of type
 ```scala
 transparent inline def defaultOf(inline str: String) = ${ defaultOfImpl('str) }
 
-def defaultOfImpl(strExpr: Expr[String])(using QuoteContext): Expr[Any] =
+def defaultOfImpl(strExpr: Expr[String])(using Quotes): Expr[Any] =
   strExpr.unliftOrError match
     case "int" => '{1}
     case "string" => '{"a"}
@@ -636,7 +636,7 @@ It is possible to deconstruct or extract values out of `Expr` using pattern matc
 These could be used in the following way to optimize any call to `sum` that has statically known values.
 ```scala
 inline def sum(inline args: Int*): Int = ${ sumExpr('args) }
-private def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match {
+private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match {
   case Varargs(Consts(args)) => // args is of type Seq[Int]
     Expr(args.sum) // precompute result of sum
   case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
@@ -669,7 +669,7 @@ optimize {
 ```scala
 def sum(args: Int*): Int = args.sum
 inline def optimize(inline arg: Int): Int = ${ optimizeExpr('arg) }
-private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body match {
+private def optimizeExpr(body: Expr[Int])(using Quotes): Expr[Int] = body match {
   // Match a call to sum without any arguments
   case '{ sum() } => Expr(0)
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
@@ -678,7 +678,7 @@ private def optimizeExpr(body: Expr[Int])(using QuoteContext): Expr[Int] = body 
   case '{ sum(${Varargs(args)}: _*) } => sumExpr(args)
   case body => body
 }
-private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
+private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] = {
     def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match {
       case '{ sum(${Varargs(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
       case arg => Seq(arg)
@@ -701,7 +701,7 @@ private def sumExpr(args1: Seq[Expr[Int]])(using QuoteContext): Expr[Int] = {
 Sometimes it is necessary to get a more precise type for an expression. This can be achived using the following pattern match.
 
 ```scala
-def f(exp: Expr[Any])(using QuoteContext) =
+def f(exp: Expr[Any])(using Quotes) =
   expr match
     case '{ $x: t } =>
       // If the pattern match succeeds, then there is some type `t` such that
@@ -716,7 +716,7 @@ This might be used to then perform an implicit search as in:
 ```scala
 extension (inline sc: StringContext) inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
-private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using QuoteContext): Expr[String] = {
+private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] = {
   argsExpr match {
     case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {
@@ -761,7 +761,7 @@ the subexpression of type `Expr[Int]` is bound to `body` as an `Expr[Int => Int]
 ```scala
 inline def eval(inline e: Int): Int = ${ evalExpr('e) }
 
-private def evalExpr(e: Expr[Int])(using QuoteContext): Expr[Int] = {
+private def evalExpr(e: Expr[Int])(using Quotes): Expr[Int] = {
   e match {
     case '{ val y: Int = $x; $body(y): Int } =>
       // body: Expr[Int => Int] where the argument represents references to y

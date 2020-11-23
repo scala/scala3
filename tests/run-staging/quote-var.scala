@@ -4,18 +4,18 @@ import scala.quoted.staging._
 object Test {
 
   sealed trait Var {
-    def get(using QuoteContext): Expr[String]
-    def update(x: Expr[String])(using QuoteContext): Expr[Unit]
+    def get(using Quotes): Expr[String]
+    def update(x: Expr[String])(using Quotes): Expr[Unit]
   }
 
   object Var {
-    def apply(init: Expr[String])(body: Var => Expr[String])(using QuoteContext): Expr[String] = '{
+    def apply(init: Expr[String])(body: Var => Expr[String])(using Quotes): Expr[String] = '{
       var x = $init
       ${
         body(
           new Var {
-            def get(using QuoteContext): Expr[String] = 'x
-            def update(e: Expr[String])(using QuoteContext): Expr[Unit] = '{ x = $e }
+            def get(using Quotes): Expr[String] = 'x
+            def update(e: Expr[String])(using Quotes): Expr[Unit] = '{ x = $e }
           }
         )
       }
@@ -23,7 +23,7 @@ object Test {
   }
 
 
-  def test1()(using QuoteContext): Expr[String] = Var('{"abc"}) { x =>
+  def test1()(using Quotes): Expr[String] = Var('{"abc"}) { x =>
     '{
       ${ x.update('{"xyz"}) }
       ${ x.get }

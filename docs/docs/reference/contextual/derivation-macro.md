@@ -25,7 +25,7 @@ we need to implement a method `Eq.derived` on the companion object of `Eq` that
 produces a quoted instance for `Eq[T]`. Here is a possible signature,
 
 ```scala
-given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]]
+given derived[T: Type](using Quotes) as Expr[Eq[T]]
 ```
 
 and for comparison reasons we give the same signature we had with `inline`:
@@ -41,7 +41,7 @@ from the signature. The body of the `derived` method is shown below:
 
 
 ```scala
-given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
+given derived[T: Type](using Quotes) as Expr[Eq[T]] = {
   import qctx.reflect._
 
   val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
@@ -91,7 +91,7 @@ The implementation of `summonAll` as a macro can be show below assuming that we
 have the given instances for our primitive types:
 
 ```scala
-  def summonAll[T: Type](using qctx: QuoteContext): List[Expr[Eq[_]]] = Type.of[T] match {
+  def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] = Type.of[T] match {
     case '[String *: tpes] => '{ summon[Eq[String]] }  :: summonAll[tpes]
     case '[Int *: tpes]    => '{ summon[Eq[Int]] }     :: summonAll[tpes]
     case '[tpe *: tpes]   => derived[tpe] :: summonAll[tpes]
@@ -169,14 +169,14 @@ object Eq {
       def eqv(x: T, y: T): Boolean = body(x, y)
     }
 
-  def summonAll[T: Type](using qctx: QuoteContext): List[Expr[Eq[_]]] = Type.of[T] match {
+  def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] = Type.of[T] match {
     case '[String *: tpes] => '{ summon[Eq[String]] }  :: summonAll[tpes]
     case '[Int *: tpes]    => '{ summon[Eq[Int]] }     :: summonAll[tpes]
     case '[tpe *: tpes]   => derived[tpe] :: summonAll[tpes]
     case '[EmptyTuple] => Nil
   }
 
-  given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
+  given derived[T: Type](using q: Quotes) as Expr[Eq[T]] = {
     import qctx.reflect._
 
     val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get

@@ -28,6 +28,6 @@ object Test {
     impl(1)
   }
 
-  def impl(i: Int)(using QuoteContext): Expr[Unit] = '{}
+  def impl(i: Int)(using Quotes): Expr[Unit] = '{}
 
 }

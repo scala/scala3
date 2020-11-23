@@ -6,7 +6,7 @@ object Macros {
 
   inline def lift[T](sym: Symantics[T])(inline a: DSL): T = ${impl[T]('sym, 'a)}
 
-  private def impl[T: Type](sym: Expr[Symantics[T]], a: Expr[DSL])(using qctx: QuoteContext): Expr[T] = {
+  private def impl[T: Type](sym: Expr[Symantics[T]], a: Expr[DSL])(using Quotes): Expr[T] = {
 
     def lift(e: Expr[DSL]): Expr[T] = e match {
 

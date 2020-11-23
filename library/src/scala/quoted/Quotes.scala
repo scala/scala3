@@ -8,9 +8,9 @@ import scala.reflect.TypeTest
  *  It contains the low-level Typed AST API metaprogramming API.
  *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
  *
- *  @param tasty Typed AST API. Usage: `def f(qctx: QuoteContext) = { import qctx.reflect._; ... }`.
+ *  @param tasty Typed AST API. Usage: `def f(qctx: Quotes) = { import qctx.reflect._; ... }`.
  */
-trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
+trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
   // Extension methods for `Expr[T]`
   extension [T](self: Expr[T]):
@@ -35,29 +35,29 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Returns `None` if the expression does not contain a value or contains side effects.
      *  Otherwise returns the `Some` of the value.
      */
-    def unlift(using unlift: Unliftable[T]): Option[T] =
-      unlift.fromExpr(self)(using QuoteContext.this)
+    def unlift(using Unliftable[T]): Option[T] =
+      summon[Unliftable[T]].fromExpr(self)(using Quotes.this)
 
     /** Return the unlifted value of this expression.
      *
      *  Emits an error and throws if the expression does not contain a value or contains side effects.
      *  Otherwise returns the value.
      */
-    def unliftOrError(using unlift: Unliftable[T]): T =
+    def unliftOrError(using Unliftable[T]): T =
       def reportError =
         val msg = s"Expected a known value. \n\nThe value of: ${self.show}\ncould not be unlifted using $unlift"
-        report.throwError(msg, self)(using QuoteContext.this)
-      unlift.fromExpr(self)(using QuoteContext.this).getOrElse(reportError)
+        report.throwError(msg, self)(using Quotes.this)
+      summon[Unliftable[T]].fromExpr(self)(using Quotes.this).getOrElse(reportError)
 
   end extension
 
   // Extension methods for `Expr[Any]` that take another explicit type parameter
   extension [X](self: Expr[Any]):
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
-    def isExprOf(using tp: scala.quoted.Type[X]): Boolean
+    def isExprOf(using Type[X]): Boolean
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-    def asExprOf(using tp: scala.quoted.Type[X]): scala.quoted.Expr[X]
+    def asExprOf(using Type[X]): Expr[X]
   end extension
 
   /** Low-level Typed AST API metaprogramming API.
@@ -213,12 +213,12 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def isExpr: Boolean
 
         /** Convert this tree to an `quoted.Expr[Any]` if the tree is a valid expression or throws */
-        def asExpr: scala.quoted.Expr[Any]
+        def asExpr: Expr[Any]
       end extension
 
       /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
       extension [T](self: Tree)
-        def asExprOf(using scala.quoted.Type[T]): scala.quoted.Expr[T]
+        def asExprOf(using Type[T]): Expr[T]
 
       extension [ThisTree <: Tree](self: ThisTree):
         /** Changes the owner of the symbols in the tree */
@@ -1235,7 +1235,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     trait TypeTreeModule { this: TypeTree.type =>
       /** Returns the tree of type or kind (TypeTree) of T */
-      def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeTree
+      def of[T <: AnyKind](using Type[T]): TypeTree
     }
 
     given TypeTreeMethods as TypeTreeMethods = TypeTreeMethodsImpl
@@ -1822,7 +1822,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     trait TypeReprModule { this: TypeRepr.type =>
       /** Returns the type or kind (TypeRepr) of T */
-      def of[T <: AnyKind](using tp: scala.quoted.Type[T]): TypeRepr
+      def of[T <: AnyKind](using Type[T]): TypeRepr
 
       /** Returns the type constructor of the runtime (erased) class */
       def typeConstructorOf(clazz: Class[?]): TypeRepr
@@ -1852,7 +1852,7 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *      '{ val x: t = ... }
         *  ```
         */
-        def asType: scala.quoted.Type[?]
+        def asType: Type[?]
 
         /** Is `self` type the same as `that` type?
         *  This is the case iff `self <:< that` and `that <:< self`.
@@ -3694,20 +3694,20 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
   }
 
-  /** Type of a QuoteContext provided by a splice within a quote that took this context.
+  /** Type of a Quotes provided by a splice within a quote that took this context.
    *  It is only required if working with the reflection API.
    *
    *  Usually it is infered by the quotes an splices typing. But sometimes it is necessary
    *  to explicitly state that a context is nested as in the following example:
    *
    *  ```scala
-   *  def run(using qctx: QuoteContext)(tree: qctx.reflect.Tree): Unit =
+   *  def run(using Quotes)(tree: qctx.reflect.Tree): Unit =
    *    def nested()(using qctx.Nested): Expr[Int] = '{  ${ makeExpr(tree) } + 1  }
    *    '{  ${ nested() } + 2 }
-   *  def makeExpr(using qctx: QuoteContext)(tree: qctx.reflect.Tree): Expr[Int] = ???
+   *  def makeExpr(using Quotes)(tree: qctx.reflect.Tree): Expr[Int] = ???
    *  ```
    */
-  type Nested = QuoteContext {
+  type Nested = Quotes {
     val reflect: self.reflect.type
   }
 

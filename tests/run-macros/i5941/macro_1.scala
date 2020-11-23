@@ -11,7 +11,7 @@ object Lens {
     def set(t: T, s: S): S = _set(t)(s)
   }
 
-  def impl[S: Type, T: Type](getter: Expr[S => T])(using qctx: QuoteContext) : Expr[Lens[S, T]] = {
+  def impl[S: Type, T: Type](getter: Expr[S => T])(using Quotes) : Expr[Lens[S, T]] = {
     import qctx.reflect._
     import util._
 
@@ -84,7 +84,7 @@ object Iso {
     def to(s: S): A = _to(s)
   }
 
-  def impl[S: Type, A: Type](using qctx: QuoteContext) : Expr[Iso[S, A]] = {
+  def impl[S: Type, A: Type](using Quotes) : Expr[Iso[S, A]] = {
     import qctx.reflect._
     import util._
 
@@ -123,7 +123,7 @@ object Iso {
     }
   }
 
-  def implUnit[S: Type](using qctx: QuoteContext) : Expr[Iso[S, 1]] = {
+  def implUnit[S: Type](using Quotes) : Expr[Iso[S, 1]] = {
     import qctx.reflect._
     import util._
 
@@ -160,7 +160,7 @@ object Iso {
   }
 
   // TODO: require whitebox macro
-  def implFields[S: Type](using qctx: QuoteContext) : Expr[Iso[S, Any]] = ???
+  def implFields[S: Type](using Quotes) : Expr[Iso[S, Any]] = ???
 }
 
 object GenIso {
@@ -195,7 +195,7 @@ object Prism {
     def apply(a: A): S = app(a)
   }
 
-  def impl[S: Type, A <: S : Type](using qctx: QuoteContext) : Expr[Prism[S, A]] = {
+  def impl[S: Type, A <: S : Type](using Quotes) : Expr[Prism[S, A]] = {
     import qctx.reflect._
     import util._
 

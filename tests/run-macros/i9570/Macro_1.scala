@@ -7,7 +7,7 @@ object Macros {
     case class HCons[+HD, TL <: HList](hd: HD, tl: TL) extends HList
     case object HNil extends HList
 
-    private def sizeImpl(e: Expr[HList], n:Int)(using qctx:QuoteContext): Expr[Int] = {
+    private def sizeImpl(e: Expr[HList], n:Int)(using qctx:Quotes): Expr[Int] = {
       import qctx.reflect._
       e match {
         case '{HCons($_,$t)} =>

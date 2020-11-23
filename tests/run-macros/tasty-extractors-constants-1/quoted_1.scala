@@ -6,7 +6,7 @@ object Macros {
 
   implicit inline def testMacro: Unit = ${impl}
 
-  def impl(using QuoteContext): Expr[Unit] = {
+  def impl(using Quotes): Expr[Unit] = {
 
     val buff = new StringBuilder
     def stagedPrintln(x: Any): Unit = buff append java.util.Objects.toString(x) append "\n"

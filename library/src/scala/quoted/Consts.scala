@@ -8,14 +8,14 @@ object Consts {
    *  Usage:
    *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
-   *  def sumExpr(argsExpr: Expr[Seq[Int]])(usingusing QuoteContext): Expr[Int] = argsExpr match
+   *  def sumExpr(argsExpr: Expr[Seq[Int]])(usingusing Quotes): Expr[Int] = argsExpr match
    *    case Varargs(Consts(args)) =>
    *      // args: Seq[Int]
    *      ...
    *  }
    *  ```
    */
-  def unapply[T](exprs: Seq[Expr[T]])(using qctx: QuoteContext): Option[Seq[T]] =
+  def unapply[T](exprs: Seq[Expr[T]])(using Quotes): Option[Seq[T]] =
     exprs.foldRight(Option(List.empty[T])) { (elem, acc) =>
       (elem, acc) match {
         case (Const(value), Some(lst)) => Some(value :: lst)

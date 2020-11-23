@@ -4,10 +4,10 @@ inline def sum(args: Int*): Int = ${ sumExpr('args) }
 
 inline def sumShow(args: Int*): String = ${ sumExprShow('args) }
 
-private def sumExprShow(argsExpr: Expr[Seq[Int]]) (using QuoteContext): Expr[String] =
+private def sumExprShow(argsExpr: Expr[Seq[Int]]) (using Quotes): Expr[String] =
   Expr(sumExpr(argsExpr).show)
 
-private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[Int] = {
+private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes) : Expr[Int] = {
   UnsafeExpr.underlyingArgument(argsExpr) match {
     case Varargs(Consts(args)) => // args is of type Seq[Int]
       Expr(args.sum) // precompute result of sum
@@ -27,7 +27,7 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using qctx: QuoteContext) : Expr[I
 }
 
 object UnsafeExpr {
-  def underlyingArgument[T](expr: Expr[T])(using qctx: QuoteContext): Expr[T] =
+  def underlyingArgument[T](expr: Expr[T])(using Quotes): Expr[T] =
     import qctx.reflect._
     Term.of(expr).underlyingArgument.asExpr.asInstanceOf[Expr[T]]
 }

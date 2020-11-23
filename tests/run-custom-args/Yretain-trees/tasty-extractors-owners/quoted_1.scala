@@ -5,7 +5,7 @@ object Macros {
   implicit inline def printOwners[T](inline x: T): Unit =
     ${ impl('x) }
 
-  def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
+  def impl[T](x: Expr[T])(using Quotes) : Expr[Unit] = {
     import qctx.reflect._
 
     val buff = new StringBuilder
@@ -18,7 +18,7 @@ object Macros {
   }
 
 
-  def myTraverser(using qctx: QuoteContext)(buff: StringBuilder): qctx.reflect.TreeTraverser = new {
+  def myTraverser(using Quotes)(buff: StringBuilder): qctx.reflect.TreeTraverser = new {
     import qctx.reflect._
     override def traverseTree(tree: Tree)(owner: Symbol): Unit = {
       tree match {

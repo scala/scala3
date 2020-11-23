@@ -11,7 +11,7 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.tasty.TastyPrinter
 import dotty.tools.io.File
 
-import scala.quoted.runtime.impl.QuoteContextImpl
+import scala.quoted.runtime.impl.QuotesImpl
 
 /** Phase that prints the trees in all loaded compilation units.
  *
@@ -45,7 +45,7 @@ class DecompilationPrinter extends Phase {
     else {
       val unitFile = unit.source.toString.replace("\\", "/").replace(".class", ".tasty")
       out.println(s"/** Decompiled from $unitFile */")
-      out.println(QuoteContextImpl.showDecompiledTree(unit.tpdTree))
+      out.println(QuotesImpl.showDecompiledTree(unit.tpdTree))
     }
   }
 }

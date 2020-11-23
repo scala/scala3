@@ -7,7 +7,7 @@ def plus(x: Int, y: Int): Int = x + y
 def times(x: Int, y: Int): Int = x * y
 def power(x: Int, y: Int): Int = if y == 0 then 1 else times(x, power(x, y - 1))
 
-private def rewriteMacro[T: Type](x: Expr[T])(using QuoteContext): Expr[T] = {
+private def rewriteMacro[T: Type](x: Expr[T])(using Quotes): Expr[T] = {
   val rewriter = Rewriter(
     postTransform = List(
       Transformation[Int] {
@@ -50,7 +50,7 @@ object Transformation {
     new Transformation(transform)
 }
 class Transformation[T: Type](transform: PartialFunction[Expr[T], Expr[T]]) {
-  def apply[U: Type](e: Expr[U])(using QuoteContext): Expr[U] = {
+  def apply[U: Type](e: Expr[U])(using Quotes): Expr[U] = {
     e match {
       case '{ $e: T } => transform.applyOrElse(e, identity) match { case '{ $e2: U } => e2 }
       case e => e
@@ -64,7 +64,7 @@ private object Rewriter {
 }
 
 private class Rewriter(preTransform: List[Transformation[_]] = Nil, postTransform: List[Transformation[_]] = Nil, fixPoint: Boolean) extends ExprMap {
-  def transform[T](e: Expr[T])(using QuoteContext, Type[T]): Expr[T] = {
+  def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = {
     val e2 = preTransform.foldLeft(e)((ei, transform) => transform(ei))
     val e3 = transformChildren(e2)
     val e4 = postTransform.foldLeft(e3)((ei, transform) => transform(ei))

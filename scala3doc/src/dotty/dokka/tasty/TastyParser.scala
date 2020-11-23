@@ -14,7 +14,7 @@ import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.properties.PropertyContainerKt._
 import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 
-import quoted.QuoteContext
+import quoted.Quotes
 import scala.tasty.inspector.TastyInspector
 import dotty.dokka.model.api.withNewMembers
 import dotty.dokka.tasty.comments.MemberLookup
@@ -43,7 +43,7 @@ case class SbtDokkaTastyInspector(
   import dotty.tools.dotc.core.Mode
   import dotty.tools.dotc.core.Phases.Phase
   import dotty.tools.dotc.fromtasty._
-  import scala.quoted.runtime.impl.QuoteContextImpl
+  import scala.quoted.runtime.impl.QuotesImpl
 
 
   val parser: Parser = null
@@ -87,7 +87,7 @@ case class SbtDokkaTastyInspector(
     override def phaseName: String = "tastyInspector"
 
     override def run(implicit ctx: Context): Unit =
-      val qctx = QuoteContextImpl()
+      val qctx = QuotesImpl()
       self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.reflect.Tree])
 
   end TastyInspectorPhase
@@ -101,11 +101,11 @@ trait DokkaBaseTastyInspector:
 
   private val topLevels = Seq.newBuilder[Documentable]
 
-  def processCompilationUnit(using qctx: QuoteContext)(root: qctx.reflect.Tree): Unit =
-    val parser = new TastyParser(qctx, this, config)
+  def processCompilationUnit(using q: Quotes)(root: q.reflect.Tree): Unit =
+    val parser = new TastyParser(q, this, config)
 
     def driFor(link: String): Option[DRI] =
-      val symOps = new SymOps[qctx.type](qctx)
+      val symOps = new SymOps[q.type](q)
       import symOps._
       Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
         MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
@@ -167,7 +167,7 @@ trait DokkaBaseTastyInspector:
     )
 
 /** Parses a single Tasty compilation unit. */
-case class TastyParser(qctx: QuoteContext, inspector: DokkaBaseTastyInspector, config: DottyDokkaConfig)
+case class TastyParser(qctx: Quotes, inspector: DokkaBaseTastyInspector, config: DottyDokkaConfig)
     extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
   import qctx.reflect._
 

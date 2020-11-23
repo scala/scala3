@@ -4,7 +4,7 @@ import scala.quoted.staging._
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = withQuotes {
     assert('{1} matches '{1})
     assert('{println("foo")} matches '{println("foo")})
     assert('{println("foo")} matches '{println(${Expr("foo")})})

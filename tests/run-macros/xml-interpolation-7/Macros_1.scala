@@ -24,7 +24,7 @@ object XmlQuote {
   // extension (inline ctx: SCOps.StringContext) inline def unapplySeq(...): Xml = ...
 
 
-  def impl(receiver: Expr[XMLOps.StringContext], args: Expr[Seq[Any]])(using QuoteContext): Expr[Xml] = {
+  def impl(receiver: Expr[XMLOps.StringContext], args: Expr[Seq[Any]])(using Quotes): Expr[Xml] = {
     val string = receiver match {
       case '{ XMLOps.xml(${Unlifted(sc)}) } => sc.parts.mkString("??")
     }

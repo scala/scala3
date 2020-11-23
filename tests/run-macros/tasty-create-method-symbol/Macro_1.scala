@@ -4,7 +4,7 @@ object Macros {
 
   inline def theTestBlock : Unit = ${ theTestBlockImpl }
 
-  def theTestBlockImpl(using qctx: QuoteContext) : Expr[Unit] = {
+  def theTestBlockImpl(using q: Quotes) : Expr[Unit] = {
     import qctx.reflect._
 
     // simple smoke test

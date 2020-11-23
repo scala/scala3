@@ -22,7 +22,7 @@ object X {
     transformImpl[A]('x)
  }
 
- def transformImpl[A:Type](x:Expr[A])(using qctx: QuoteContext):Expr[A] = {
+ def transformImpl[A:Type](x:Expr[A])(using Quotes):Expr[A] = {
     import qctx.reflect._
     val slowPath = Term.of('{ SlowPath })
     val fastPath = Term.of('{ FastPath })

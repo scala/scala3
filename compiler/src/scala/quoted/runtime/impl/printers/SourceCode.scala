@@ -6,19 +6,19 @@ import scala.annotation.switch
 /** Printer for fully elaborated representation of the source code */
 object SourceCode {
 
-  def showTree(using QuoteContext)(tree: qctx.reflect.Tree)(syntaxHighlight: SyntaxHighlight): String =
+  def showTree(using Quotes)(tree: qctx.reflect.Tree)(syntaxHighlight: SyntaxHighlight): String =
     new SourceCodePrinter[qctx.type](syntaxHighlight).printTree(tree).result()
 
-  def showType(using QuoteContext)(tpe: qctx.reflect.TypeRepr)(syntaxHighlight: SyntaxHighlight): String =
+  def showType(using Quotes)(tpe: qctx.reflect.TypeRepr)(syntaxHighlight: SyntaxHighlight): String =
     new SourceCodePrinter[qctx.type](syntaxHighlight).printType(tpe)(using None).result()
 
-  def showConstant(using QuoteContext)(const: qctx.reflect.Constant)(syntaxHighlight: SyntaxHighlight): String =
+  def showConstant(using Quotes)(const: qctx.reflect.Constant)(syntaxHighlight: SyntaxHighlight): String =
     new SourceCodePrinter[qctx.type](syntaxHighlight).printConstant(const).result()
 
-  def showSymbol(using QuoteContext)(symbol: qctx.reflect.Symbol)(syntaxHighlight: SyntaxHighlight): String =
+  def showSymbol(using Quotes)(symbol: qctx.reflect.Symbol)(syntaxHighlight: SyntaxHighlight): String =
     symbol.fullName
 
-  def showFlags(using QuoteContext)(flags: qctx.reflect.Flags)(syntaxHighlight: SyntaxHighlight): String = {
+  def showFlags(using Quotes)(flags: qctx.reflect.Flags)(syntaxHighlight: SyntaxHighlight): String = {
     import qctx.reflect._
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "abstract"
@@ -58,7 +58,7 @@ object SourceCode {
     flagList.result().mkString("/*", " ", "*/")
   }
 
-  private class SourceCodePrinter[QCtx <: QuoteContext & Singleton](syntaxHighlight: SyntaxHighlight)(using val qctx: QCtx) {
+  private class SourceCodePrinter[QCtx <: Quotes & Singleton](syntaxHighlight: SyntaxHighlight)(using val qctx: QCtx) {
     import syntaxHighlight._
     import qctx.reflect._
 

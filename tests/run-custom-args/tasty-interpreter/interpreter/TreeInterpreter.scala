@@ -3,7 +3,7 @@ package scala.tasty.interpreter
 import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
 
-abstract class TreeInterpreter[QCtx <: QuoteContext & Singleton](using val qctx: QCtx) {
+abstract class TreeInterpreter[QCtx <: Quotes & Singleton](using val qctx: QCtx) {
   import qctx.reflect._
 
   final val LOG = false

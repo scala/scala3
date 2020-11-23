@@ -7,7 +7,7 @@ import language.experimental.namedTypeArguments
   */
 object Test {
 
-  type E[T] = QuoteContext ?=> Expr[T]
+  type E[T] = Quotes ?=> Expr[T]
 
   /*** Producer represents a linear production of values with a loop structure.
     *
@@ -204,7 +204,7 @@ object Test {
       * @return     a new stream consisting of all elements of the input stream that do satisfy the given
       *             predicate `pred`.
       */
-    def filter(pred: (Expr[A] => Expr[Boolean]))(using QuoteContext): Stream[A] = {
+    def filter(pred: (Expr[A] => Expr[Boolean]))(using Quotes): Stream[A] = {
       val filterStream = (a: Expr[A]) =>
         new Producer[Expr[A]] {
 
@@ -304,7 +304,7 @@ object Test {
       * @tparam A      the type of the producer's elements.
       * @return        a linear or nested stream aware of the variable reference to decrement.
       */
-    private def takeRaw[A: Type](n: Expr[Int], stream: StagedStream[A])(using QuoteContext): StagedStream[A] = {
+    private def takeRaw[A: Type](n: Expr[Int], stream: StagedStream[A])(using Quotes): StagedStream[A] = {
       stream match {
         case linear: Linear[A] => {
           val enhancedProducer: Producer[(Var[Int], A)] = addCounter[A](n, linear.producer)
@@ -333,9 +333,9 @@ object Test {
      }
 
     /** A stream containing the first `n` elements of this stream. */
-    def take(n: Expr[Int])(using QuoteContext): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
+    def take(n: Expr[Int])(using Quotes): Stream[A] = Stream(takeRaw[Expr[A]](n, stream))
 
-    private def zipRaw[A: Type, B: Type](stream1: StagedStream[Expr[A]], stream2: StagedStream[B])(using QuoteContext): StagedStream[(Expr[A], B)] = {
+    private def zipRaw[A: Type, B: Type](stream1: StagedStream[Expr[A]], stream2: StagedStream[B])(using Quotes): StagedStream[(Expr[A], B)] = {
       (stream1, stream2) match {
 
         case (Linear(producer1), Linear(producer2)) =>
@@ -403,7 +403,7 @@ object Test {
       * @tparam A
       * @return
       */
-    private def makeLinear[A: Type](stream: StagedStream[Expr[A]])(using QuoteContext): Producer[Expr[A]] = {
+    private def makeLinear[A: Type](stream: StagedStream[Expr[A]])(using Quotes): Producer[Expr[A]] = {
       stream match {
         case Linear(producer) => producer
         case Nested(producer, nestedf) => {
@@ -506,7 +506,7 @@ object Test {
       }
     }
 
-    private def pushLinear[A, B, C](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C]))(using QuoteContext): StagedStream[(A, C)] = {
+    private def pushLinear[A, B, C](producer: Producer[A], nestedProducer: Producer[B], nestedf: (B => StagedStream[C]))(using Quotes): StagedStream[(A, C)] = {
       val newProducer = new Producer[(Var[Boolean], producer.St, B)] {
 
         type St = (Var[Boolean], producer.St, nestedProducer.St)
@@ -564,14 +564,14 @@ object Test {
     }
 
     /** zip **/
-    def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B])(using QuoteContext): Stream[C] = {
+    def zip[B: Type, C: Type](f: (Expr[A] => Expr[B] => Expr[C]), stream2: Stream[B])(using Quotes): Stream[C] = {
       val Stream(stream_b) = stream2
       Stream(mapRaw[(Expr[A], Expr[B]), Expr[C]]((t => k => k(f(t._1)(t._2))), zipRaw[A, Expr[B]](stream, stream_b)))
     }
   }
 
   object Stream {
-    def of[A: Type](arr: Expr[Array[A]])(using QuoteContext): Stream[A] = {
+    def of[A: Type](arr: Expr[Array[A]])(using Quotes): Stream[A] = {
       val prod = new Producer[Expr[A]] {
         type St = (Var[Int], Var[Int], Expr[Array[A]])
 
@@ -606,52 +606,52 @@ object Test {
     }
   }
 
-  def test1()(using QuoteContext) = Stream
+  def test1()(using Quotes) = Stream
     .of('{Array(1, 2, 3)})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test2()(using QuoteContext) = Stream
+  def test2()(using Quotes) = Stream
     .of('{Array(1, 2, 3)})
     .map((a: Expr[Int]) => '{ $a * 2 })
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test3()(using QuoteContext) = Stream
+  def test3()(using Quotes) = Stream
     .of('{Array(1, 2, 3)})
     .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d * $dp }))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test4()(using QuoteContext) = Stream
+  def test4()(using Quotes) = Stream
     .of('{Array(1, 2, 3)})
     .filter((d: Expr[Int]) => '{ $d % 2 == 0 })
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test5()(using QuoteContext) = Stream
+  def test5()(using Quotes) = Stream
     .of('{Array(1, 2, 3)})
     .take('{2})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test6()(using QuoteContext) = Stream
+  def test6()(using Quotes) = Stream
     .of('{Array(1, 1, 1)})
     .flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).take('{2}))
     .take('{5})
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test7()(using QuoteContext) = Stream
+  def test7()(using Quotes) = Stream
     .of('{Array(1, 2, 3)})
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test8()(using QuoteContext) = Stream
+  def test8()(using Quotes) = Stream
     .of('{Array(1, 2, 3)})
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })))
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test9()(using QuoteContext) = Stream
+  def test9()(using Quotes) = Stream
     .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}) )
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
 
-  def test10()(using QuoteContext) = Stream
+  def test10()(using Quotes) = Stream
     .of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp }))
     .zip(((a : Expr[Int]) => (b : Expr[Int]) => '{ $a + $b }), Stream.of('{Array(1, 2, 3)}).flatMap((d: Expr[Int]) => Stream.of('{Array(1, 2, 3)}).map((dp: Expr[Int]) => '{ $d + $dp })) )
     .fold('{0}, ((a: Expr[Int], b : Expr[Int]) => '{ $a + $b }))
@@ -681,18 +681,18 @@ object Test {
 }
 
 sealed trait Var[T] {
-  def get(using qctx: QuoteContext): Expr[T]
-  def update(e: Expr[T])(using qctx: QuoteContext): Expr[Unit]
+  def get(using Quotes): Expr[T]
+  def update(e: Expr[T])(using Quotes): Expr[Unit]
 }
 
 object Var {
-  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(using qctx: QuoteContext): Expr[U] = '{
+  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(using Quotes): Expr[U] = '{
     var x = $init
     ${
       body(
         new Var[T] {
-          def get(using qctx: QuoteContext): Expr[T] = 'x
-          def update(e: Expr[T])(using qctx: QuoteContext): Expr[Unit] = '{ x = $e }
+          def get(using Quotes): Expr[T] = 'x
+          def update(e: Expr[T])(using Quotes): Expr[Unit] = '{ x = $e }
         }
       )
     }

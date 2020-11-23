@@ -96,7 +96,7 @@ import scala.annotation.{Annotation, compileTimeOnly}
  */
 object Matcher {
 
-  abstract class QuoteMatcher[QCtx <: QuoteContext & Singleton](val qctx: QCtx) {
+  abstract class QuoteMatcher[QCtx <: Quotes & Singleton](val qctx: QCtx) {
 
     // TODO improve performance
 

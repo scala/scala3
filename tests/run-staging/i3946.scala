@@ -3,8 +3,8 @@ import scala.quoted.staging._
 object Test {
   def main(args: Array[String]): Unit = {
     given Toolbox = Toolbox.make(getClass.getClassLoader)
-    def u(using QuoteContext): Expr[Unit] = '{}
-    println(withQuoteContext(u.show))
+    def u(using Quotes): Expr[Unit] = '{}
+    println(withQuotes(u.show))
     println(run(u))
   }
 }

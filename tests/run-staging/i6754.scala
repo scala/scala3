@@ -12,8 +12,8 @@ package scala {
     implicit val tbx: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
 
     def myTest() = {
-      def y(using QuoteContext): Expr[Unit] = '{
-        def x(using QuoteContext): Expr[Unit] = '{println("bar")}
+      def y(using Quotes): Expr[Unit] = '{
+        def x(using Quotes): Expr[Unit] = '{println("bar")}
         println("foo")
         run(x)
       }

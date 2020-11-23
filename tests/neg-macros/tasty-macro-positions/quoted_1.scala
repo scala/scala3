@@ -4,7 +4,7 @@ object Macros {
 
   inline def fun(x: Any): Unit = ${ impl('x) }
 
-  def impl(x: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
+  def impl(x: Expr[Any])(using Quotes) : Expr[Unit] = {
     import qctx.reflect._
     val pos = Term.of(x).underlyingArgument.pos
     Reporting.error("here is the the argument is " + Term.of(x).underlyingArgument.show, pos)

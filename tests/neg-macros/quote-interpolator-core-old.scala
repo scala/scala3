@@ -11,12 +11,12 @@ object FInterpolation {
     // ...
   }
 
-  private def liftSeq(args: Seq[Expr[Any]])(using QuoteContext): Expr[Seq[Any]] = args match {
+  private def liftSeq(args: Seq[Expr[Any]])(using Quotes): Expr[Seq[Any]] = args match {
     case x :: xs  => '{ ($x) +: ${liftSeq(xs)}  }
     case Nil => '{Seq(): Seq[Any]}
   }
 
-  def fInterpolation(sc: StringContext, args: Seq[Expr[Any]])(using QuoteContext): Expr[String] = {
+  def fInterpolation(sc: StringContext, args: Seq[Expr[Any]])(using Quotes): Expr[String] = {
     val str: Expr[String] = Expr(sc.parts.mkString(""))
     val args1: Expr[Seq[Any]] = liftSeq(args)
     '{ $str.format($args1: _*) }

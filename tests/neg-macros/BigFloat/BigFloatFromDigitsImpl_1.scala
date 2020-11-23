@@ -4,7 +4,7 @@ import scala.util.FromDigits
 import scala.quoted._
 
 object BigFloatFromDigitsImpl:
-  def apply(digits: Expr[String])(using QuoteContext): Expr[BigFloat] =
+  def apply(digits: Expr[String])(using Quotes): Expr[BigFloat] =
     digits match
       case Const(ds) =>
         try

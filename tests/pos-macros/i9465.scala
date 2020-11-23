@@ -6,7 +6,7 @@ trait Coll[A] {
 }
 
 object QuoteTest {
-  def compile(expr: Expr[Any])(using QuoteContext): Expr[Any] = expr match {
+  def compile(expr: Expr[Any])(using Quotes): Expr[Any] = expr match {
     case '{ (??? : Coll[y]).map[b] } => ???
   }
 }
