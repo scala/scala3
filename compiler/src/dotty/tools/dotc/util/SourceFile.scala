@@ -219,10 +219,8 @@ object SourceFile {
     val jpath = file.jpath
     if jpath eq null then
       file.path // repl and other custom tests use abstract files with no path
-    else if jpath.isAbsolute then
-      sourcerootPath.relativize(jpath.normalize).toString
     else
-      jpath.normalize.toString
+      sourcerootPath.relativize(jpath.toAbsolutePath.normalize).toString
   }
 }
 

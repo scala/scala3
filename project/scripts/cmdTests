@@ -37,14 +37,20 @@ grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tm
 echo "testing that paths SourceFile annotations are relativized"
 clear_out "$OUT"
 "$SBT" "scalac -d $OUT/out.jar -sourceroot tests/pos $(pwd)/tests/pos/i10430/lib.scala $(pwd)/tests/pos/i10430/app.scala"
-"$SBT" "scalac -decompile -color:never $OUT/out.jar" > "$tmp"
-grep -qe ": lib.scala" "$tmp"
-grep -qe ": app.scala" "$tmp"
-grep -qe "[lib.scala]" "$tmp"
-grep -qe "[app.scala]" "$tmp"
-grep -v "tests/pos/i10430/lib.scala" "$tmp"
-grep -v "tests/pos/i10430/app.scala" "$tmp"
-
+"$SBT" "scalac -decompile -print-tasty -color:never $OUT/out.jar" > "$tmp"
+cat "$tmp" # for debugging
+grep -q ": i10430/lib.scala" "$tmp"
+grep -q ": i10430/app.scala" "$tmp"
+grep -q "[i10430/lib.scala]" "$tmp"
+grep -q "[i10430/app.scala]" "$tmp"
+if grep -q "tests/pos/i10430/lib.scala" "$tmp"; then
+  echo "incorrect source file path in tasty"
+  exit 1
+fi
+if grep -q "tests/pos/i10430/app.scala" "$tmp"; then
+  echo "incorrect source file path in tasty"
+  exit 1
+fi
 
 echo "testing sbt scalac with suspension"
 clear_out "$OUT"
