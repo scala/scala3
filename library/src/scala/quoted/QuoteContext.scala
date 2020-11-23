@@ -3413,9 +3413,8 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```
-    *  class MyTreeAccumulator[R <: scala.tasty.Reflection & Singleton](val reflect: R)
-    *      extends scala.tasty.reflect.TreeAccumulator[X] {
-    *    import reflect._
+    *  import qctx.reflect._
+    *  class MyTreeAccumulator extends TreeAccumulator[X] {
     *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ...
     *  }
     *  ```
@@ -3515,9 +3514,8 @@ trait QuoteContext { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```
-    *  class MyTraverser[R <: scala.tasty.Reflection & Singleton](val reflect: R)
-    *      extends scala.tasty.reflect.TreeTraverser {
-    *    import reflect._
+    *  import qctx.relfect._
+    *  class MyTraverser extends TreeTraverser {
     *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ...
     *  }
     *  ```
