@@ -19,7 +19,7 @@ import util.Spans._
 class PositionPickler(
     pickler: TastyPickler,
     addrOfTree: PositionPickler.TreeToAddr,
-    treeAnnots: untpd.MemberDef => List[tpd.Tree]) {
+    treeAnnots: untpd.MemberDef => List[tpd.Tree])(using Context) {
 
   import ast.tpd._
   val buf: TastyBuffer = new TastyBuffer(5000)
@@ -67,21 +67,10 @@ class PositionPickler(
         // specialization.
     }
 
-    def pickleSource(source: SourceFile): Unit = {
+    def pickleSource(source: SourceFile)(using Context): Unit = {
       buf.writeInt(SOURCE)
-      val pathName = source.path
-      val pickledPath =
-        val originalPath = java.nio.file.Paths.get(pathName.toString).normalize()
-        if originalPath.isAbsolute then
-          val path = originalPath.toAbsolutePath().normalize()
-          val cwd = java.nio.file.Paths.get("").toAbsolutePath().normalize()
-          try cwd.relativize(path)
-          catch case _: IllegalArgumentException =>
-            warnings += "Could not relativize path for pickling: " + originalPath
-            originalPath
-        else
-          originalPath
-      buf.writeInt(pickler.nameBuffer.nameIndex(pickledPath.toString.toTermName).index)
+      val relativePath = SourceFile.relativePath(source)
+      buf.writeInt(pickler.nameBuffer.nameIndex(relativePath.toTermName).index)
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span
@@ -105,7 +94,7 @@ class PositionPickler(
       case _ => false
     }
 
-    def traverse(x: Any, current: SourceFile): Unit = x match {
+    def traverse(x: Any, current: SourceFile)(using Context): Unit = x match {
       case x: untpd.Tree =>
         if (x.span.exists) {
           val addr = addrOfTree(x)
