@@ -20,71 +20,71 @@ class BootstrappedStdLibTASYyTest:
   @Test def testTastyInspector: Unit =
     loadWithTastyInspector(loadBlacklisted)
 
-  /** Test that we can load and compile trees from TASTy in a Jar */
-  @Test def testFromTastyInJar: Unit =
-    compileFromTastyInJar(loadBlacklisted.union(compileBlacklisted))
+  // /** Test that we can load and compile trees from TASTy in a Jar */
+  // @Test def testFromTastyInJar: Unit =
+  //   compileFromTastyInJar(loadBlacklisted.union(compileBlacklisted))
 
-  /** Test that we can load and compile trees from TASTy */
-  @Test def testFromTasty: Unit =
-    compileFromTasty(loadBlacklisted.union(compileBlacklisted))
+  // /** Test that we can load and compile trees from TASTy */
+  // @Test def testFromTasty: Unit =
+  //   compileFromTasty(loadBlacklisted.union(compileBlacklisted))
 
-  @Test def blacklistNoDuplicates =
-    def testDup(name: String, list: List[String], set: Set[String]) =
-      assert(list.size == set.size,
-        list.diff(set.toSeq).mkString(s"`$name` has duplicate entries:\n  ", "\n  ", "\n\n"))
-    testDup("loadBlacklist", loadBlacklist, loadBlacklisted)
-    testDup("compileBlacklist", compileBlacklist, compileBlacklisted)
+  // @Test def blacklistNoDuplicates =
+  //   def testDup(name: String, list: List[String], set: Set[String]) =
+  //     assert(list.size == set.size,
+  //       list.diff(set.toSeq).mkString(s"`$name` has duplicate entries:\n  ", "\n  ", "\n\n"))
+  //   testDup("loadBlacklist", loadBlacklist, loadBlacklisted)
+  //   testDup("compileBlacklist", compileBlacklist, compileBlacklisted)
 
-  @Test def blacklistsNoIntersection =
-    val intersection = loadBlacklisted & compileBlacklisted
-    assert(intersection.isEmpty,
-      intersection.mkString(
-        "`compileBlacklist` contains names that are already in `loadBlacklist`: \n  ", "\n  ", "\n\n"))
+  // @Test def blacklistsNoIntersection =
+  //   val intersection = loadBlacklisted & compileBlacklisted
+  //   assert(intersection.isEmpty,
+  //     intersection.mkString(
+  //       "`compileBlacklist` contains names that are already in `loadBlacklist`: \n  ", "\n  ", "\n\n"))
 
-  @Test def blacklistsOnlyContainsClassesThatExist =
-    val scalaLibTastyPathsSet = scalaLibTastyPaths.toSet
-    val intersection = loadBlacklisted & compileBlacklisted
-    assert(loadBlacklisted.diff(scalaLibTastyPathsSet).isEmpty,
-      loadBlacklisted.diff(scalaLibTastyPathsSet).mkString(
-        "`loadBlacklisted` contains names that are not in `scalaLibTastyPaths`: \n  ", "\n  ", "\n\n"))
-    assert(compileBlacklisted.diff(scalaLibTastyPathsSet).isEmpty,
-      compileBlacklisted.diff(scalaLibTastyPathsSet).mkString(
-        "`loadBlacklisted` contains names that are not in `scalaLibTastyPaths`: \n  ", "\n  ", "\n\n"))
+  // @Test def blacklistsOnlyContainsClassesThatExist =
+  //   val scalaLibTastyPathsSet = scalaLibTastyPaths.toSet
+  //   val intersection = loadBlacklisted & compileBlacklisted
+  //   assert(loadBlacklisted.diff(scalaLibTastyPathsSet).isEmpty,
+  //     loadBlacklisted.diff(scalaLibTastyPathsSet).mkString(
+  //       "`loadBlacklisted` contains names that are not in `scalaLibTastyPaths`: \n  ", "\n  ", "\n\n"))
+  //   assert(compileBlacklisted.diff(scalaLibTastyPathsSet).isEmpty,
+  //     compileBlacklisted.diff(scalaLibTastyPathsSet).mkString(
+  //       "`loadBlacklisted` contains names that are not in `scalaLibTastyPaths`: \n  ", "\n  ", "\n\n"))
 
-  @Ignore
-  @Test def testLoadBacklistIsMinimal =
-    var shouldBeWhitelisted = List.empty[String]
-    val size = loadBlacklisted.size
-    for (notBlacklisted, i) <- loadBlacklist.zipWithIndex do
-      val blacklist = loadBlacklisted - notBlacklisted
-      println(s"Trying withouth $notBlacklisted in the blacklist  (${i+1}/$size)")
-      try {
-        loadWithTastyInspector(blacklist)
-        shouldBeWhitelisted = notBlacklisted :: shouldBeWhitelisted
-      }
-      catch {
-        case ex: Throwable => // ok
-      }
-    assert(shouldBeWhitelisted.isEmpty,
-      shouldBeWhitelisted.mkString("Some classes do not need to be blacklisted in `loadBlacklisted`\n  ", "\n  ", "\n\n"))
+  // @Ignore
+  // @Test def testLoadBacklistIsMinimal =
+  //   var shouldBeWhitelisted = List.empty[String]
+  //   val size = loadBlacklisted.size
+  //   for (notBlacklisted, i) <- loadBlacklist.zipWithIndex do
+  //     val blacklist = loadBlacklisted - notBlacklisted
+  //     println(s"Trying withouth $notBlacklisted in the blacklist  (${i+1}/$size)")
+  //     try {
+  //       loadWithTastyInspector(blacklist)
+  //       shouldBeWhitelisted = notBlacklisted :: shouldBeWhitelisted
+  //     }
+  //     catch {
+  //       case ex: Throwable => // ok
+  //     }
+  //   assert(shouldBeWhitelisted.isEmpty,
+  //     shouldBeWhitelisted.mkString("Some classes do not need to be blacklisted in `loadBlacklisted`\n  ", "\n  ", "\n\n"))
 
-  @Ignore
-  @Test def testCompileBlacklistIsMinimal =
-    var shouldBeWhitelisted = List.empty[String]
-    val size = compileBlacklisted.size
-    val blacklist0 = loadBlacklisted.union(compileBlacklisted)
-    for (notBlacklisted, i) <- compileBlacklist.zipWithIndex do
-      val blacklist = blacklist0 - notBlacklisted
-      println(s"Trying withouth $notBlacklisted in the blacklist (${i+1}/$size)")
-      try {
-        compileFromTastyInJar(blacklist)
-        shouldBeWhitelisted = notBlacklisted :: shouldBeWhitelisted
-      }
-      catch {
-        case ex: Throwable => // ok
-      }
-    assert(shouldBeWhitelisted.isEmpty,
-      shouldBeWhitelisted.mkString("Some classes do not need to be blacklisted in `compileBlacklisted`\n  ", "\n  ", "\n\n"))
+  // @Ignore
+  // @Test def testCompileBlacklistIsMinimal =
+  //   var shouldBeWhitelisted = List.empty[String]
+  //   val size = compileBlacklisted.size
+  //   val blacklist0 = loadBlacklisted.union(compileBlacklisted)
+  //   for (notBlacklisted, i) <- compileBlacklist.zipWithIndex do
+  //     val blacklist = blacklist0 - notBlacklisted
+  //     println(s"Trying withouth $notBlacklisted in the blacklist (${i+1}/$size)")
+  //     try {
+  //       compileFromTastyInJar(blacklist)
+  //       shouldBeWhitelisted = notBlacklisted :: shouldBeWhitelisted
+  //     }
+  //     catch {
+  //       case ex: Throwable => // ok
+  //     }
+  //   assert(shouldBeWhitelisted.isEmpty,
+  //     shouldBeWhitelisted.mkString("Some classes do not need to be blacklisted in `compileBlacklisted`\n  ", "\n  ", "\n\n"))
 
 end BootstrappedStdLibTASYyTest
 
