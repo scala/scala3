@@ -295,7 +295,9 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
               div(id := "logo")(
                 projectLogo,
                 span(
-                  div(cls:="projectName")(args.name),
+                  div(cls:="projectName")(args.name)
+                ),
+                span(
                   args.projectVersion.map(v => div(cls:="projectVersion")(v)).toList
                 )
               ),
