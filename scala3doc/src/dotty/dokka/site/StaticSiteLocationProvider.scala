@@ -20,23 +20,40 @@ class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
     private def updatePageEntry(page: PageNode, jpath: JList[String]): JList[String] =
       page match
         case page: StaticPageNode =>
-          if (page.getDri.contains(docsRootDRI)) JList("index")
-          else {
-            val path = jpath.asScala.toList
-            val start = if (path.head == "--root--") List("docs") else path.take(1)
+          ctx.siteContext.fold(jpath) { context =>
+            val rawFilePath = context.root.toPath.relativize(page.template.file.toPath)
             val pageName = page.template.file.getName
             val dotIndex = pageName.lastIndexOf('.')
-            val newName = if (dotIndex < 0) pageName else pageName.substring(0, dotIndex)
-            (start ++ path.drop(1).dropRight(1) ++ List(newName)).asJava
+            val newPath =
+              if (dotIndex < 0) rawFilePath.resolve("index")
+              else rawFilePath.resolveSibling(pageName.substring(0, dotIndex))
+
+            newPath.iterator.asScala.map(_.toString).toList.asJava
           }
+
         case page: ContentPage if page.getDri.contains(docsDRI) =>
-           JList("docs")
+           JList("docs", "index")
         case page: ContentPage if page.getDri.contains(apiPageDRI) =>
           JList("api", "index")
         case _ if jpath.size() > 1 && jpath.get(0) ==   "--root--" && jpath.get(1) == "-a-p-i" =>
           (List("api") ++ jpath.asScala.drop(2)).asJava
+
+        case _: org.jetbrains.dokka.pages.ModulePage if ctx.siteContext.isEmpty =>
+          JList("index")
         case _ =>
           jpath
 
     override val getPathsIndex: JMap[PageNode, JList[String]] =
       super.getPathsIndex.asScala.mapValuesInPlace(updatePageEntry).asJava
+
+
+    override def pathTo(node: PageNode, context: PageNode): String =
+      val nodePaths = getPathsIndex.get(node).asScala
+      val contextPaths = Option(context).fold(Nil)(getPathsIndex.get(_).asScala.dropRight(1))
+      val commonPaths = nodePaths.zip(contextPaths).takeWhile{ case (a, b) => a == b }.size
+
+      val contextPath = contextPaths.drop(commonPaths).map(_ => "..")
+      val nodePath = nodePaths.drop(commonPaths) match
+          case l if l.isEmpty => Seq("index")
+          case l => l
+      (contextPath ++ nodePath).mkString("/")

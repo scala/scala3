@@ -28,6 +28,7 @@ val defaultMarkdownOptions: DataHolder =
     .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
     .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
     .set(EmojiExtension.ROOT_IMAGE_PATH, "https://github.global.ssl.fastly.net/images/icons/emoji/")
+    .set(WikiLinkExtension.LINK_ESCAPE_CHARS, "")
     .set(Parser.EXTENSIONS, java.util.Arrays.asList(
       TablesExtension.create(),
       TaskListExtension.create(),
