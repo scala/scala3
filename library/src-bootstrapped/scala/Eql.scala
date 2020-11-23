@@ -20,15 +20,15 @@ object CanEqual {
    *  synthesize implicit arguments as solutions to `CanEqual[T, U]` queries if
    *  the rules of multiversal equality require it.
    */
-  def eqlAny[L, R]: CanEqual[L, R] = derived
+  def canEqualAny[L, R]: CanEqual[L, R] = derived
 
   // Instances of `CanEqual` for common Java types
-  given eqlNumber as CanEqual[Number, Number] = derived
-  given eqlString as CanEqual[String, String] = derived
+  given canEqualNumber as CanEqual[Number, Number] = derived
+  given canEqualString as CanEqual[String, String] = derived
 
   // The next three definitions can go into the companion objects of classes
   // Seq and Set. For now they are here in order not to have to touch the
   // source code of these classes
-  given eqlSeq[T, U](using eq: CanEqual[T, U]) as CanEqual[Seq[T], Seq[U]] = derived
-  given eqlSet[T, U](using eq: CanEqual[T, U]) as CanEqual[Set[T], Set[U]] = derived
+  given canEqualSeq[T, U](using eq: CanEqual[T, U]) as CanEqual[Seq[T], Seq[U]] = derived
+  given canEqualSet[T, U](using eq: CanEqual[T, U]) as CanEqual[Set[T], Set[U]] = derived
 }
