@@ -29,7 +29,7 @@ trait ClassLikeSupport:
   object DClass:
     def apply[T >: DClass](classDef: ClassDef)(
       dri: DRI = classDef.symbol.dri,
-      name: String = classDef.name,
+      name: String = classDef.symbol.normalizedName,
       signatureOnly: Boolean = false,
       modifiers: Seq[Modifier] = classDef.symbol.getExtraModifiers(),
     ): DClass =
@@ -108,7 +108,12 @@ trait ClassLikeSupport:
   private def parseMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isSyntheticFunc && dd.symbol.isExtensionMethod =>
         dd.symbol.extendedSymbol.map { extSym =>
-          val target = ExtensionTarget(extSym.symbol.name, extSym.tpt.dokkaType.asSignature, extSym.tpt.symbol.dri)
+          val target = ExtensionTarget(
+            extSym.symbol.normalizedName, 
+            extSym.tpt.dokkaType.asSignature, 
+            extSym.tpt.symbol.dri, 
+            extSym.symbol.pos.start
+          )
           parseMethod(dd.symbol, kind = Kind.Extension(target))
         }
       // TODO check given methods?
@@ -163,7 +168,7 @@ trait ClassLikeSupport:
   private def parseInheritedMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
     case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
     case other => parseMember(other)
-  ).map(_.withOrigin(Origin.InheritedFrom(s.symbol.owner.name, s.symbol.owner.dri)))
+  ).map(_.withOrigin(Origin.InheritedFrom(s.symbol.owner.normalizedName, s.symbol.owner.dri)))
 
   extension (c: ClassDef):
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
@@ -196,7 +201,7 @@ trait ClassLikeSupport:
     }.toList
 
     def getParameterModifier(parameter: Symbol): String =
-      val fieldSymbol = c.symbol.field(parameter.name)
+      val fieldSymbol = c.symbol.field(parameter.normalizedName)
       if fieldSymbol.flags.is(Flags.Mutable) then "var "
       else if fieldSymbol.flags.is(Flags.ParamAccessor) && !c.symbol.flags.is(Flags.Case) && !fieldSymbol.flags.is(Flags.Private) then "val "
       else ""
@@ -220,7 +225,6 @@ trait ClassLikeSupport:
 
   def parseObject(classDef: ClassDef, signatureOnly: Boolean = false): DClass =
     DClass(classDef)(
-      name = classDef.name.stripSuffix("$"),
       // All objects are final so we do not need final modifer!
       modifiers = classDef.symbol.getExtraModifiers().filter(_ != Modifier.Final),
       signatureOnly = signatureOnly
@@ -265,11 +269,7 @@ trait ClassLikeSupport:
           Kind.Implicit(Kind.Def, None)
       else kind
 
-    val name = methodKind match
-      case Kind.Constructor => "this"
-      case Kind.Given(_, _) => methodSymbol.name.stripPrefix("given_")
-      case Kind.Extension(_) => methodSymbol.name.stripPrefix("extension_")
-      case _ => methodSymbol.name
+    val name = method.symbol.normalizedName
 
     new DFunction(
       methodSymbol.dri,
@@ -301,7 +301,7 @@ trait ClassLikeSupport:
   def parseArgument(argument: ValDef, prefix: Symbol => String, isExtendedSymbol: Boolean = false, isGrouped: Boolean = false): DParameter =
     new DParameter(
       argument.symbol.dri,
-      prefix(argument.symbol) + argument.symbol.name,
+      prefix(argument.symbol) + argument.symbol.normalizedName,
       argument.symbol.documentation.asJava,
       null,
       argument.tpt.dokkaType,
@@ -319,7 +319,7 @@ trait ClassLikeSupport:
       else ""
 
     new DTypeParameter(
-      Invariance(TypeParameter(argument.symbol.dri, variancePrefix + argument.symbol.name, null)),
+      Invariance(TypeParameter(argument.symbol.dri, variancePrefix + argument.symbol.normalizedName, null)),
       argument.symbol.documentation.asJava,
       null,
       JList(argument.rhs.dokkaType),
@@ -342,7 +342,7 @@ trait ClassLikeSupport:
 
     new DProperty(
       typeDef.symbol.dri,
-      typeDef.name,
+      typeDef.symbol.normalizedName,
       /*documentation =*/ typeDef.symbol.documentation.asJava,
       /*expectPresentInSet =*/ null, // unused
       /*sources =*/ JMap(),
@@ -373,7 +373,7 @@ trait ClassLikeSupport:
 
     new DProperty(
       valDef.symbol.dri,
-      valDef.name,
+      valDef.symbol.normalizedName,
       /*documentation =*/ valDef.symbol.documentation.asJava,
       /*expectPresentInSet =*/ null, // unused
       /*sources =*/ JMap(),

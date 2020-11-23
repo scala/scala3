@@ -168,7 +168,7 @@ trait DokkaBaseTastyInspector:
 
 /** Parses a single Tasty compilation unit. */
 case class TastyParser(qctx: QuoteContext, inspector: DokkaBaseTastyInspector, config: DottyDokkaConfig)
-    extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport:
+    extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
   import qctx.reflect._
 
   def sourceSet = inspector.sourceSet
@@ -179,7 +179,7 @@ case class TastyParser(qctx: QuoteContext, inspector: DokkaBaseTastyInspector, c
 
   private def errorMsg[T](a: Any, m: => String, e: Throwable): Option[T] =
     val msg = try m catch case e: Throwable => a.toString
-    println(s"ERROR: tree is faling: msg")
+    println(s"ERROR: tree is faling: $msg")
     e.printStackTrace()
     throw e
 

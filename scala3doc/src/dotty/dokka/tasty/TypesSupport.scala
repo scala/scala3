@@ -61,7 +61,7 @@ trait TypesSupport:
 
   private def link(symbol: Symbol): List[JProjection] = {
     val suffix = if symbol.isValDef then texts(".type") else Nil
-    (new TypeParameter(symbol.dri, symbol.name, null)) :: suffix
+    (new TypeParameter(symbol.dri, symbol.normalizedName, null)) :: suffix
   }
 
   private def commas(lists: List[List[JProjection]]) = lists match

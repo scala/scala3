@@ -315,12 +315,20 @@ class ScalaPageCreator(
             case _ => withNamedTags
           }
 
+          val withExtensionInformation = d.kind match {
+            case Kind.Extension(on) => 
+              val sourceSets = d.getSourceSets.asScala.toSet
+              withCompanion.cell(sourceSets = sourceSets)(_.text("Extension"))
+                .cell(sourceSets = sourceSets)(_.text(s"This function is an extension on (${on.name}: ").inlineSignature(d, on.signature).text(")"))
+            case _ => withCompanion
+          }
+
           d match
-            case null => withCompanion
+            case null => withExtensionInformation
             case m: Member =>
               sourceLinks.pathTo(m).fold(withCompanion){ link =>
                 val sourceSets = m.getSourceSets.asScala.toSet
-                withCompanion.cell(sourceSets = sourceSets)(_.text("Source"))
+                withExtensionInformation.cell(sourceSets = sourceSets)(_.text("Source"))
                   .cell(sourceSets = sourceSets)(_.resolvedLink("(source)", link))
               }
         }
