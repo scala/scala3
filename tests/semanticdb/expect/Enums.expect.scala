@@ -8,7 +8,7 @@ object Enums/*<-_empty_::Enums.*/:
   enum Directions/*<-_empty_::Enums.Directions#*/:
     case North/*<-_empty_::Enums.Directions.North.*/, East/*<-_empty_::Enums.Directions.East.*/, South/*<-_empty_::Enums.Directions.South.*/, West/*<-_empty_::Enums.Directions.West.*/
 
-  enum Suits/*<-_empty_::Enums.Suits#*/ derives /*->scala::Eql.derived.*/Eql:
+  enum Suits/*<-_empty_::Enums.Suits#*/ derives /*->scala::CanEqual.derived.*/CanEqual:
     case Hearts/*<-_empty_::Enums.Suits.Hearts.*/, Spades/*<-_empty_::Enums.Suits.Spades.*/, Clubs/*<-_empty_::Enums.Suits.Clubs.*/, Diamonds/*<-_empty_::Enums.Suits.Diamonds.*/
 
   object Suits/*<-_empty_::Enums.Suits.*/:

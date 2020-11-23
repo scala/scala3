@@ -755,7 +755,7 @@ _empty_/Enums.Suits.Clubs. => case val static enum method Clubs
 _empty_/Enums.Suits.Diamonds. => case val static enum method Diamonds
 _empty_/Enums.Suits.Hearts. => case val static enum method Hearts
 _empty_/Enums.Suits.Spades. => case val static enum method Spades
-_empty_/Enums.Suits.derived$Eql(). => implicit method derived$Eql
+_empty_/Enums.Suits.derived$CanEqual(). => implicit method derived$CanEqual
 _empty_/Enums.Suits.fromOrdinal(). => method fromOrdinal
 _empty_/Enums.Suits.fromOrdinal().(ordinal) => param ordinal
 _empty_/Enums.Suits.isBlack(). => method isBlack
@@ -844,7 +844,7 @@ Occurrences:
 [8:29..8:33): West <- _empty_/Enums.Directions.West.
 [10:7..10:12): Suits <- _empty_/Enums.Suits#
 [10:21..10:21): <- _empty_/Enums.Suits#`<init>`().
-[10:21..10:21): -> scala/Eql.derived.
+[10:21..10:21): -> scala/CanEqual.derived.
 [11:9..11:15): Hearts <- _empty_/Enums.Suits.Hearts.
 [11:17..11:23): Spades <- _empty_/Enums.Suits.Spades.
 [11:25..11:30): Clubs <- _empty_/Enums.Suits.Clubs.

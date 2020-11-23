@@ -8,7 +8,7 @@ object Enums:
   enum Directions:
     case North, East, South, West
 
-  enum Suits derives Eql:
+  enum Suits derives CanEqual:
     case Hearts, Spades, Clubs, Diamonds
 
   object Suits:
