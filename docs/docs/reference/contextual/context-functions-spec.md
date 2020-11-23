@@ -17,7 +17,7 @@ Context function types associate to the right, e.g.
 
 Context function types are shorthands for class types that define `apply`
 methods with context parameters. Specifically, the `N`-ary function type
-`T1, ..., TN => R` is a shorthand for the class type
+`T1, ..., TN ?=> R` is a shorthand for the class type
 `ContextFunctionN[T1 , ... , TN, R]`. Such class types are assumed to have the following definitions, for any value of `N >= 1`:
 ```scala
 package scala
