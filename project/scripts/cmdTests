@@ -33,10 +33,18 @@ clear_out "$OUT"
 "$SBT" ";scalac -d $OUT/out.jar $SOURCE; scalac -decompile -color:never $OUT/out.jar" > "$tmp"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
 
+
 echo "testing that paths SourceFile annotations are relativized"
 clear_out "$OUT"
-"$SBT" ";scalac -d $OUT/out.jar $(pwd)/$SOURCE; scalac -decompile -color:never $OUT/out.jar" > "$tmp"
-grep -qe "SourceFile(\"$SOURCE\")" "$tmp"
+"$SBT" "scalac -d $OUT/out.jar -sourceroot tests/pos $(pwd)/tests/pos/i10430/lib.scala $(pwd)/tests/pos/i10430/app.scala"
+"$SBT" "scalac -decompile -color:never $OUT/out.jar" > "$tmp"
+grep -qe ": lib.scala" "$tmp"
+grep -qe ": app.scala" "$tmp"
+grep -qe "[lib.scala]" "$tmp"
+grep -qe "[app.scala]" "$tmp"
+grep -v "tests/pos/i10430/lib.scala" "$tmp"
+grep -v "tests/pos/i10430/app.scala" "$tmp"
+
 
 echo "testing sbt scalac with suspension"
 clear_out "$OUT"

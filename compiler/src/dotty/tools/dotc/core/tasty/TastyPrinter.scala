@@ -152,6 +152,16 @@ class TastyPrinter(bytes: Array[Byte]) {
         sb.append(treeStr("%10d".format(addr.index)))
         sb.append(s": ${offsetToInt(pos.start)} .. ${pos.end}\n")
       }
+
+      val sources = posUnpickler.sourcePaths
+      sb.append(s"\n source paths:\n")
+      val sortedPath = sources.toSeq.sortBy(_._1.index)
+      for ((addr, path) <- sortedPath) {
+        sb.append(treeStr("%10d: ".format(addr.index)))
+        sb.append(path)
+        sb.append("\n")
+      }
+
       sb.result
     }
   }
