@@ -1,4 +1,4 @@
-import annotation.{infix, targetName}
+import annotation.targetName
 object Test extends App {
 
   case class Rational(n: Int, d: Int) {

@@ -1,5 +1,4 @@
 // Compile with -strict -Xfatal-warnings -deprecation
-import scala.annotation.infix
 class C:
   infix def op(x: Int): Int = ???
   def meth(x: Int): Int = ???

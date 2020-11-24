@@ -1,5 +1,4 @@
 import scala.compiletime.ops.int._
-import scala.annotation.infix
 
 object Test {
   class Vec[S <: Int] {

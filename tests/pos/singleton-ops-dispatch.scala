@@ -1,5 +1,4 @@
 import scala.compiletime.ops._
-import scala.annotation.infix
 
 object Test {
   infix type +[X <: Int | String, Y <: Int | String] = (X, Y) match {

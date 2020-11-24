@@ -1,7 +1,5 @@
 package scala.compiletime
 
-import scala.annotation.infix
-
 package object ops {
   object any {
     /** Equality comparison of two singleton types.
