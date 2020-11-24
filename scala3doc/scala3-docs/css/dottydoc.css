@@ -179,7 +179,7 @@ main .content-primary h4 {
 .breadcrumbs {
   position: absolute;
 }
-.breadcrumbs a:hover {
+.breadcrumbs a:hover, .breadcrumbs a:active, .breadcrumbs a:focus {
   color: #3094b0;
   text-decoration: none;
 }
