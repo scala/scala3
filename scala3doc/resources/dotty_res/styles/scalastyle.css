@@ -61,10 +61,13 @@ body {
 main {
   min-height: calc(100vh - var(--footer-height) - 24px);
 }
-#content {
-  margin-left: var(--side-width);
-  padding: var(--content-padding);
-  padding-bottom: calc(24px + var(--footer-height));
+@media(min-width: 576px) {
+
+  #content {
+    margin-left: var(--side-width);
+    padding: var(--content-padding);
+    padding-bottom: calc(24px + var(--footer-height));
+  }
 }
 
 /* Text */
