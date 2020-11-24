@@ -201,7 +201,7 @@ object Test {
     val rand = java.util.Random()
     val c = new C()
     val readers =
-      for i <- 0 until 1000 yield
+      for i <- 0 until 500 yield
         new Thread {
           override def run() = {
             Thread.sleep(rand.nextInt(50))

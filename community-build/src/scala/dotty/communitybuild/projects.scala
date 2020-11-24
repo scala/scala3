@@ -297,7 +297,7 @@ object projects:
 
   lazy val scalaParserCombinators = SbtCommunityProject(
     project          = "scala-parser-combinators",
-    sbtTestCommand   = "parserCombinators/test",
+    sbtTestCommand   = "parserCombinatorsJVM/test",
   )
 
   lazy val dottyCpsAsync = SbtCommunityProject(

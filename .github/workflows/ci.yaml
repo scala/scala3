@@ -10,20 +10,27 @@ env:
   DOTTY_CI_RUN: true
 
 jobs:
-  test:
+  test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "!(github.event_name == 'push' &&
-           startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
-
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_non_bootstrapped]')
+         )"
     steps:
-      - name: Set JDK 14 as default
-        run: echo "/usr/lib/jvm/java-14-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 15 as default
+        run: echo "/usr/lib/jvm/java-15-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -42,20 +49,28 @@ jobs:
           ./project/scripts/sbt ";compile ;test"
           ./project/scripts/cmdTests
 
-  test_bootstrapped:
+  test:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "!(github.event_name == 'push' &&
-           startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip test]')
+         )"
 
     steps:
-      - name: Set JDK 14 as default
-        run: echo "/usr/lib/jvm/java-14-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 15 as default
+        run: echo "/usr/lib/jvm/java-15-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -74,26 +89,18 @@ jobs:
           ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
           ./project/scripts/bootstrapCmdTests
 
-  ## Only run bootstrapped tests for Windows since that's a superset of the
-  ## non-bootstrapped tests and bootstrapping issues should be caught by
-  ## the non-bootstrapped Linux runner.
-  # test-windows:
-  #   runs-on: [self-hosted, Windows]
-  #   if: "!(github.event_name == 'push' &&
-  #          startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
-
-  #   steps:
-  #     - name: Git Checkout
-  #       uses: actions/checkout@v2
-
-  #     - name: Test
-  #       run: sbt ";compile ;test"
-  #       shell: cmd
-
-  test_bootstrapped-windows:
+  test_windows:
     runs-on: [self-hosted, Windows]
-    if: "!(github.event_name == 'push' &&
-           startsWith(github.event.ref, 'refs/tags/sbt-dotty-'))"
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip test_windows]')
+         )"
 
     steps:
       - name: Git Checkout
@@ -110,11 +117,18 @@ jobs:
   community_build_a:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule'
+         || github.event_name == 'push'
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip community_build]')
+         )"
 
     steps:
       - name: Checkout cleanup script
@@ -138,11 +152,18 @@ jobs:
   community_build_b:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule'
+         || github.event_name == 'push'
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip community_build]')
+         )"
 
     steps:
       - name: Checkout cleanup script
@@ -166,16 +187,21 @@ jobs:
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: (
-          github.event_name == 'push' &&
-          startsWith(github.event.ref, 'refs/tags/')
-        ) ||
-        github.event_name == 'schedule'
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && startsWith(github.event.ref, 'refs/tags/')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_sbt]')
+         )"
 
     steps:
       - name: Checkout cleanup script
@@ -196,18 +222,23 @@ jobs:
   test_java8:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
 
-    if: "(
-          github.event_name == 'push' &&
-          startsWith(github.event.ref, 'refs/tags/') &&
-          !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         ) ||
-         github.event_name == 'schedule'"
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && startsWith(github.event.ref, 'refs/tags/')
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_java8]')
+         )"
 
     steps:
       - name: Set JDK 8 as default
@@ -226,18 +257,20 @@ jobs:
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
-        run: ./project/scripts/sbt ";compile ;test"
+        run: |
+          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+          ./project/scripts/bootstrapCmdTests
 
   publish_nightly:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test, test_bootstrapped, community_build_a, community_build_b, test_sbt, test_java8]
-    if: github.event_name == 'schedule'
+    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, test_sbt, test_java8]
+    if: "github.event_name == 'schedule'"
     env:
       NIGHTLYBUILD: yes
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
@@ -265,13 +298,13 @@ jobs:
   nightly_documentation:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_nightly]
-    if: github.event_name == 'schedule'
+    if: "github.event_name == 'schedule'"
     env:
       NIGHTLYBUILD: yes
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
@@ -306,15 +339,15 @@ jobs:
   publish_release:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test, test_bootstrapped, community_build_a, community_build_b, test_sbt, test_java8]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, test_sbt, test_java8]
+    if: "github.event_name == 'push'
+         && startsWith(github.event.ref, 'refs/tags/')
+         && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
     env:
       RELEASEBUILD: yes
@@ -388,15 +421,15 @@ jobs:
   release_documentation:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_release]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+    if: "github.event_name == 'push'
+         && startsWith(github.event.ref, 'refs/tags/')
+         && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
     env:
       RELEASEBUILD: yes
@@ -432,14 +465,14 @@ jobs:
   publish_sbt_release:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-09-08
+      image: lampepfl/dotty:2020-11-19
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [community_build_a, community_build_b, test_sbt]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+    if: "github.event_name == 'push'
+         && startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
     env:
       RELEASEBUILD: yes
