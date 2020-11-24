@@ -1,7 +1,7 @@
 package dotty.tools
 package dottydoc
 
-import dotty.dokka.{Args, RawArgs, DocConfiguration, DottyDokkaConfig}
+import dotty.dokka.{Args, DocConfiguration, DottyDokkaConfig, Scala3Args}
 
 import org.jetbrains.dokka._
 import org.jetbrains.dokka.utilities._
@@ -32,49 +32,18 @@ object Main extends Driver {
     * how they're split).
     */
   override def process(args: Array[String], rootCtx: Context): Reporter = {
-    // split args into ours and Dotty's
-    val (dokkaStrArgs, compilerArgs) = {
-      args.partitionMap { arg =>
-        // our options start with this magic prefix, inserted by the SBT plugin
-        val magicPrefix = "--+DOC+"
-        if arg startsWith magicPrefix then
-          Left(arg stripPrefix magicPrefix)
-        else
-          Right(arg)
-      }
-    }
 
-    val (filesToCompile, ctx) = setup(compilerArgs, rootCtx)
+
+    val (filesToCompile, ctx) = setup(args, rootCtx)
     given Context = ctx
 
-    // parse Dokka args
-    // note: all required args should be set with SBT settings,
-    // to make it easier to set and override them
-    val dokkaArgs = {
-      val dokkaRawArgs = new RawArgs
-      val requiredArgs = Seq(
-        "--tastyRoots", "", // hack, value is not used in SBT but required in CLI
-        // we extract some settings from Dotty options since that's how SBT passes them
-        "--name", ctx.settings.projectName.value,
-        "--projectTitle", ctx.settings.projectName.value,
-        "--dest", ctx.settings.outputDir.value.toString,
-      )
-
-      val allArgs = requiredArgs ++ dokkaStrArgs
-      println(s"Running scala3doc with arguments: $allArgs")
-      val parser = org.kohsuke.args4j.CmdLineParser(dokkaRawArgs)
-      try {
-        parser.parseArgument(allArgs : _*)
-      } catch {
-        case ex: org.kohsuke.args4j.CmdLineException =>
-          // compiler errors are reported in SBT
-          dotc.report.error(s"Error when parsing Scala3doc options: ${ex.getMessage}")
-          throw ex
-      }
-      dokkaRawArgs.toArgs
+    val argDefinition = new Scala3Args() {
+        protected def defaultName(): String = ctx.settings.projectName.value
+        protected def defaultTastFiles(): List[File] = Nil
+        protected def defaultDest(): File = File(ctx.settings.outputDir.value.toString)
     }
 
-    val config = DocConfiguration.Sbt(dokkaArgs, filesToCompile, ctx)
+    val config = DocConfiguration.Sbt(argDefinition.extract(args.toList), filesToCompile, ctx)
     val dokkaCfg = new DottyDokkaConfig(config)
     new DokkaGenerator(dokkaCfg, DokkaConsoleLogger.INSTANCE).generate()
 

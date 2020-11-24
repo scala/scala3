@@ -12,66 +12,93 @@ import collection.immutable.ArraySeq
 import scala.tasty.inspector.TastyInspector
 import java.nio.file.Files
 
-import org.kohsuke.args4j.{CmdLineParser, Option => COption}
-import org.kohsuke.args4j.spi.StringArrayOptionHandler
+import dotty.tools.dotc.config.Settings._
 
-class RawArgs:
-    @COption(name="--tastyRoots", required = true, aliases = Array("-t"), usage="Roots where tools should look for tasty files")
-    protected var tastyRoots: String = null
+abstract class Scala3Args extends SettingGroup:
+  val tastyRoots: Setting[String] =
+    StringSetting("--tastyRoots", "tastyRoots", "Roots where tools should look for tasty files", "", aliases = List("-t"))
+  val tastyRootsAlias: Setting[String] =
+    StringSetting("-t", "tastyRoots", "Roots where tools should look for tasty files", "", aliases = List("-t"))
 
-    @COption(name="--dest",required = true, aliases = Array("-d"), usage="Output to generate documentation to")
-    protected var output: String = "output"
+  val dest: Setting[String] =
+    StringSetting("--dest", "dest", "Output to generate documentation to", "", aliases = List("-d"))
+  val destAlias: Setting[String] =
+    StringSetting("-d", "dest", "Output to generate documentation to", "")
 
-    @COption(name="--classpath", aliases = Array("--cp", "-c"), usage="Classpath to load dependencies from")
-    protected var classpath: String = System.getProperty("java.class.path")
+  val classpath: Setting[String] =
+    StringSetting("--classpath", "classpath", "Classpath to load dependencies from", "", aliases = List("--cp", "-c"))
+  val classpathAlias1: Setting[String] =
+    StringSetting("--cp", "classpath", "Classpath to load dependencies from", "", aliases = List("--cp", "-c"))
+  val classpathAlias2: Setting[String] =
+    StringSetting("-c", "classpath", "Classpath to load dependencies from", "", aliases = List("--cp", "-c"))
 
-    @COption(name="--name", required = true, aliases = Array("-n"), usage="Name of module in generated documentation")
-    protected var name: String = "main"
+  val name: Setting[String] =
+    StringSetting("--name", "name", "Name of module in generated documentation", "", aliases = List("-n"))
+  val nameAlias: Setting[String] =
+    StringSetting("-n", "name", "Name of module in generated documentation", "")
 
-    @COption(name="--docs", aliases = Array("-p"), usage="Root of project docs")
-    private var docsRoot: String =  null
+  val docsRoot: Setting[String] =
+    StringSetting("--docs", "docs", "Root of project docs", "", aliases = List("-p"))
+  val docsRootAlias: Setting[String] =
+    StringSetting("-p", "docs", "Root of project docs", "", aliases = List("-p"))
 
-    @COption(name="--sources", handler = classOf[StringArrayOptionHandler], aliases = Array("-s"), usage = "Links to source files provided in convention: local_directory=remote_directory#line_suffix")
-    private var sourceLinks: JList[String] = null
 
-    @COption(name="--projectTitle")
-    protected var projectTitle: String = null
+  val sourceLinks: Setting[String] =
+    StringSetting("--sources", "sources", "Links to source files provided in convention: local_directory=remote_directory#line_suffix", "")
+  val sourceLinksAlias: Setting[String] =
+    StringSetting("-s", "sources", "Links to source files provided in convention: local_directory=remote_directory#line_suffix", "")
 
-    @COption(name="--projectVersion")
-    protected var projectVersion: String = null
+  val projectTitle: Setting[String] =
+    StringSetting("--projectTitle", "projectTitle", "Title of the project used in documentation", "")
 
-    @COption(name="--projectLogo")
-    protected var projectLogo: String = null
+  val projectVersion: Setting[String] =
+    StringSetting("--projectVersion", "projectVersion", "Version of the project used in documentation", "")
 
-    @COption(name="--syntax")
-    protected var syntax: String = null
+  val projectLogo: Setting[String] =
+    StringSetting("--projectLogo", "projectLogo", "Relative path to logo of the project", "")
 
-    @COption(name="--revision")
-    protected var revision: String = null
+  val revision: Setting[String] =
+    StringSetting("--revision", "revision", "Revision (branch or ref) used to build project project", "")
 
-    def toArgs =
-      val parsedSyntax = syntax match
-        case null => None
-        case other =>
-          Args.CommentSyntax.fromString(other) match
-            case None =>
-              sys.error(s"unrecognized value for --syntax option: $other")
-            case some => some
+  val syntax: Setting[String] =
+    StringSetting("--syntax", "syntax", "Syntax of the comment used", "")
 
-      Args(
-        name,
-        tastyRoots.split(File.pathSeparatorChar).toList.map(new File(_)),
-        classpath,
-        new File(output),
-        Option(docsRoot),
-        Option(projectVersion),
-        Option(projectTitle),
-        Option(projectLogo),
-        parsedSyntax,
-        Option(sourceLinks).map(_.asScala.toList).getOrElse(List.empty),
-        Option(revision)
-      )
+  protected def defaultName(): String
+  protected def defaultTastFiles(): List[File]
+  protected def defaultDest(): File
 
+  def extract(args: List[String]) =
+    val initialSummary = ArgsSummary(defaultState, args, errors = Nil, warnings = Nil)
+    val res = processArguments(initialSummary, processAll = true, skipped = Nil)
+    // TODO!
+    if res.errors.nonEmpty then sys.error(s"Unable to parse arguments:\n ${res.errors.mkString("\n")}")
+
+    val parsedSyntax = syntax.valueIn(res.sstate) match
+      case "" => None
+      case other =>
+        Args.CommentSyntax.fromString(other) match
+          case None =>
+            sys.error(s"unrecognized value for --syntax option: $other")
+          case some => some
+
+    def parseOptionalArg(args: Setting[String]*) =
+      args.map(_.valueIn(res.sstate)).find(_ != "")
+
+    def parseTastyRoots(roots: String) = roots.split(File.pathSeparatorChar).toList.map(new File(_))
+
+    Args(
+      parseOptionalArg(name, nameAlias).getOrElse(defaultName()),
+      parseOptionalArg(tastyRoots, tastyRootsAlias).fold(defaultTastFiles())(parseTastyRoots),
+      parseOptionalArg(classpath, classpathAlias1, classpathAlias2).getOrElse(System.getProperty("java.class.path")),
+      parseOptionalArg(dest, destAlias).fold(defaultDest())(new File(_)),
+      parseOptionalArg(docsRoot, docsRootAlias),
+      parseOptionalArg(projectVersion),
+      parseOptionalArg(projectTitle),
+      parseOptionalArg(projectLogo),
+      parsedSyntax,
+      parseOptionalArg(sourceLinks, sourceLinksAlias).fold(Nil)(_.split(",").toList), // TODO!
+      parseOptionalArg(revision)
+    )
 
 case class Args(
   name: String,
@@ -150,9 +177,12 @@ object Main:
         sys.exit(1)
 
   def main(args: Array[String]): Unit =
-      val rawArgs = new RawArgs
-      new CmdLineParser(rawArgs).parseArgument(args:_*)
-      main(rawArgs.toArgs)
+      val argDefinition = new Scala3Args {
+        protected def defaultName(): String = sys.error(s"Argument '${name.name}' is required")
+        protected def defaultTastFiles(): List[File] = sys.error(s"Argument '${tastyRoots.name}' is required")
+        protected def defaultDest(): File = sys.error(s"Argument '${dest.name}' is required")
+      }
+      main(argDefinition.extract(args.toList))
       // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
       sys.exit(0)
 
