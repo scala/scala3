@@ -166,6 +166,7 @@ object desugar {
     val mods = vdef.mods
 
     val valName = normalizeName(vdef, tpt).asTermName
+    val vdef1 = cpy.ValDef(vdef)(name = valName)
 
     if (isSetterNeeded(vdef)) {
       // TODO: copy of vdef as getter needed?
@@ -182,9 +183,9 @@ object desugar {
         tpt      = TypeTree(defn.UnitType),
         rhs      = setterRhs
       ).withMods((mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
-      Thicket(vdef, setter)
+      Thicket(vdef1, setter)
     }
-    else vdef
+    else vdef1
   }
 
   def makeImplicitParameters(tpts: List[Tree], implicitFlag: FlagSet, forPrimaryConstructor: Boolean = false)(using Context): List[ValDef] =
