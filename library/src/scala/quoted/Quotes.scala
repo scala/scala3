@@ -156,6 +156,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *  +- ImportSelector -+- SimpleSelector
    *                     +- RenameSelector
    *                     +- OmitSelector
+   *                     +- GivenSelector
    *
    *  +- Signature
    *
@@ -1738,12 +1739,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *   * SimpleSelector: `.bar` in `import foo.bar`
     *   * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
     *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
+    *   * GivneSelector: `.given`/`.{given T}` in `import foo.given`/`import foo.{given T}`
     */
     type ImportSelector <: AnyRef
 
     val ImportSelector: ImportSelectorModule
 
     trait ImportSelectorModule { this: ImportSelector.type => }
+
+    /** Simple import selector: `.bar` in `import foo.bar` */
+    type SimpleSelector <: ImportSelector
 
     given TypeTest[ImportSelector, SimpleSelector] = SimpleSelectorTypeTest
     protected val SimpleSelectorTypeTest: TypeTest[ImportSelector, SimpleSelector]
@@ -1753,9 +1758,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait SimpleSelectorModule { this: SimpleSelector.type =>
       def unapply(x: SimpleSelector): Option[String]
     }
-
-    /** Simple import selector: `.bar` in `import foo.bar` */
-    type SimpleSelector <: ImportSelector
 
     given SimpleSelectorMethods as SimpleSelectorMethods = SimpleSelectorMethodsImpl
     protected val SimpleSelectorMethodsImpl: SimpleSelectorMethods
@@ -1779,9 +1781,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(x: RenameSelector): Option[(String, String)]
     }
 
-    /** Omit import selector: `.{bar => _}` in `import foo.{bar => _}` */
-    type OmitSelector <: ImportSelector
-
     given RenameSelectorMethods as RenameSelectorMethods = RenameSelectorMethodsImpl
     protected val RenameSelectorMethodsImpl: RenameSelectorMethods
 
@@ -1793,6 +1792,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def toPos: Position
       end extension
     end RenameSelectorMethods
+
+    /** Omit import selector: `.{bar => _}` in `import foo.{bar => _}` */
+    type OmitSelector <: ImportSelector
 
     given TypeTest[ImportSelector, OmitSelector] = OmitSelectorTypeTest
     protected val OmitSelectorTypeTest: TypeTest[ImportSelector, OmitSelector]
@@ -1811,6 +1813,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def name: String
         def namePos: Position
     end OmitSelectorMethods
+
+    /** Omit import selector: `.given`/`.{given T}` in `import foo.given`/`import foo.{given T}` */
+    type GivenSelector <: ImportSelector
+
+    given TypeTest[ImportSelector, GivenSelector] = GivenSelectorTypeTest
+    protected val GivenSelectorTypeTest: TypeTest[ImportSelector, GivenSelector]
+
+    val GivenSelector: GivenSelectorModule
+
+    trait GivenSelectorModule { this: GivenSelector.type =>
+      def unapply(x: GivenSelector): Option[Option[TypeTree]]
+    }
+
+    given GivenSelectorMethods as GivenSelectorMethods = GivenSelectorMethodsImpl
+    protected val GivenSelectorMethodsImpl: GivenSelectorMethods
+
+    trait GivenSelectorMethods:
+      extension (self: GivenSelector):
+        def bound: Option[TypeTree]
+    end GivenSelectorMethods
 
     ///////////////
     //   TYPES   //

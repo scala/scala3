@@ -1474,7 +1474,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object SimpleSelectorTypeTest extends TypeTest[ImportSelector, SimpleSelector]:
       def unapply(x: ImportSelector): Option[SimpleSelector & x.type] = x match
-        case x: (untpd.ImportSelector & x.type) if x.renamed.isEmpty => Some(x)
+        case x: (untpd.ImportSelector & x.type) if x.renamed.isEmpty && !x.isGiven => Some(x)
         case _ => None // TODO: handle import bounds
     end SimpleSelectorTypeTest
 
@@ -1533,6 +1533,29 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def namePos: Position = self.imported.sourcePos
       end extension
     end OmitSelectorMethodsImpl
+
+    type GivenSelector = untpd.ImportSelector
+
+    object GivenSelectorTypeTest extends TypeTest[ImportSelector, GivenSelector]:
+      def unapply(x: ImportSelector): Option[GivenSelector & x.type] = x match {
+        case self: (untpd.ImportSelector & x.type) if x.isGiven => Some(self)
+        case _ => None
+      }
+    end GivenSelectorTypeTest
+
+    object GivenSelector extends GivenSelectorModule:
+      def unapply(x: GivenSelector): Option[Option[TypeTree]] =
+        Some(GivenSelectorMethodsImpl.bound(x))
+    end GivenSelector
+
+    object GivenSelectorMethodsImpl extends GivenSelectorMethods:
+      extension (self: GivenSelector):
+        def bound: Option[TypeTree] =
+          self.bound match
+            case untpd.TypedSplice(tpt) => Some(tpt)
+            case _ => None
+      end extension
+    end GivenSelectorMethodsImpl
 
     type TypeRepr = dotc.core.Types.Type
 
