@@ -4,15 +4,19 @@
 @import url("https://fonts.googleapis.com/css?family=Kalam:300,400,700");
 
 :root {
-  --leftbar-bg: #15414C;
+  /* Side bar */
   --logo-bg: #15414C;
-  --content-padding: 0px;
-  --title-fg: #DC322F;
-  --pre-bg: #fdfdf7;
-  --active-tab-color: #5CC6E4;
   --leftbar-fg: rgba(255, 255, 255, 0.5);
+  --leftbar-bg: #15414C;
   --leftbar-hover-bg: #002B3B;
   --leftbar-hover-fg: #fff;
+  --active-tab-color: #5CC6E4;
+
+  /* Main pane */
+  --title-fg: #DC322F;
+  --content-padding: 0px;
+  --pre-bg: #fdfdf7;
+  --link-fg: #23aad1;
 }
 
 html, body {
@@ -29,6 +33,12 @@ html, body {
 /* simulating container layout from docs.scala-lang */
 #logo {
   padding: 1em 0.5em;
+}
+
+#leftColumn {
+  -webkit-box-shadow: rgba(0, 43, 54, 0.1) 0.3em 0em 0.5em;
+  -moz-box-shadow: rgba(0, 43, 54, 0.1) 0.3em 0em 0.5em;
+  box-shadow: rgba(0, 43, 54, 0.2) 0.3em 0em 0.5em;
 }
 
 main.container {
@@ -260,14 +270,28 @@ h5:hover a.anchor:hover {
 
 /* footer */
 footer {
-  color: grey;
+  background: #D0D6D6;
 }
+
 footer img#author-img {
   width: auto;
   height: auto;
   max-width:100px;
   max-height:100px;
   border-radius: 50%;
+}
+
+footer span.go-to-top-icon {
+  background: none;
+}
+footer a {
+  color: #15414C;
+  font-weight: 600;
+  transition: color .4s ease-out;
+}
+footer a:hover {
+  color: #456c75;
+  text-decoration: none;
 }
 
 /* api docs */
