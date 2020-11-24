@@ -146,10 +146,14 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], val a
 
   def driForLink(template: TemplateFile, link: String): Option[DRI] =
     val pathDri = Try {
-      val path =
+      val baseFile =
         if link.startsWith("/") then root.toPath.resolve(link.drop(1))
-        else template.file.toPath.getParent().resolve(link)
-      if Files.exists(path) then Some(driFor(path)) else None
+        else template.file.toPath.getParent().resolve(link).normalize()
+
+      val baseFileName = baseFile.getFileName.toString
+      val mdFile = baseFile.resolveSibling(baseFileName.stripSuffix(".html") + ".md")
+
+      Seq(baseFile, mdFile).find(Files.exists(_)).map(driFor)
     }.toOption.flatten
     pathDri.orElse(memberLinkResolver(link))
 
