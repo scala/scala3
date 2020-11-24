@@ -883,7 +883,7 @@ trait Implicits:
               else s"parameter $paramName" } of $methodStr"
     }
 
-  /** An Eql[T, U] instance is assumed
+  /** A CanEqual[T, U] instance is assumed
    *   - if one of T, U is an error type, or
    *   - if one of T, U is a subtype of the lifted version of the other,
    *     unless strict equality is set.
@@ -913,8 +913,8 @@ trait Implicits:
   /** Check that equality tests between types `ltp` and `rtp` make sense */
   def checkCanEqual(ltp: Type, rtp: Type, span: Span)(using Context): Unit =
     if (!ctx.isAfterTyper && !assumedCanEqual(ltp, rtp)) {
-      val res = implicitArgTree(defn.EqlClass.typeRef.appliedTo(ltp, rtp), span)
-      implicits.println(i"Eql witness found for $ltp / $rtp: $res: ${res.tpe}")
+      val res = implicitArgTree(defn.CanEqualClass.typeRef.appliedTo(ltp, rtp), span)
+      implicits.println(i"CanEqual witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
 
   /** Find an implicit parameter or conversion.
@@ -1047,7 +1047,7 @@ trait Implicits:
     private def nestedContext() =
       ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
-    private def isCoherent = pt.isRef(defn.EqlClass)
+    private def isCoherent = pt.isRef(defn.CanEqualClass)
 
     val wideProto = pt.widenExpr
 

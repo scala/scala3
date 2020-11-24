@@ -46,7 +46,7 @@ object Types {
 
   @sharable private var nextId = 0
 
-  implicit def eqType: Eql[Type, Type] = Eql.derived
+  implicit def eqType: CanEqual[Type, Type] = CanEqual.derived
 
   /** Main class representing types.
    *

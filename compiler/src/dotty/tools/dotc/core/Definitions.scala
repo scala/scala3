@@ -842,8 +842,10 @@ class Definitions {
 
   @tu lazy val TastyReflectionClass: ClassSymbol = requiredClass("scala.tasty.Reflection")
 
-  @tu lazy val EqlClass: ClassSymbol = requiredClass("scala.Eql")
-    def Eql_eqlAny(using Context): TermSymbol = EqlClass.companionModule.requiredMethod(nme.eqlAny)
+  @tu lazy val CanEqualClass: ClassSymbol = getClassIfDefined("scala.Eql").orElse(requiredClass("scala.CanEqual")).asClass
+    def CanEqual_canEqualAny(using Context): TermSymbol =
+      val methodName = if CanEqualClass.name == tpnme.Eql then nme.eqlAny else nme.canEqualAny
+      CanEqualClass.companionModule.requiredMethod(methodName)
 
   @tu lazy val TypeBoxClass: ClassSymbol = requiredClass("scala.runtime.TypeBox")
     @tu lazy val TypeBox_CAP: TypeSymbol = TypeBoxClass.requiredType(tpnme.CAP)

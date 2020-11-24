@@ -7,6 +7,10 @@ import scala.collection.{Seq, Set}
 @implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
 sealed trait Eql[-L, -R]
 
+type CanEqual[L, R] = Eql[L, R]
+
+lazy val CanEqual = Eql
+
 /** Companion object containing a few universally known `Eql` instances.
  *  Eql instances involving primitive types or the Null type are handled directly in
  *  the compiler (see Implicits.synthesizedEql), so they are not included here.

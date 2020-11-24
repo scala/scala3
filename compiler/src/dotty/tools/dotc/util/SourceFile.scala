@@ -183,7 +183,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   override def toString: String = file.toString
 }
 object SourceFile {
-  implicit def eqSource: Eql[SourceFile, SourceFile] = Eql.derived
+  implicit def eqSource: CanEqual[SourceFile, SourceFile] = CanEqual.derived
 
   implicit def fromContext(using Context): SourceFile = ctx.source
 
