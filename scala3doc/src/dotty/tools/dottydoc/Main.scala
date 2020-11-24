@@ -33,20 +33,13 @@ object Main extends Driver {
     * how they're split).
     */
   override def process(args: Array[String], rootCtx: Context): Reporter = {
+    given Context = rootCtx
 
+    val argDefinition = new Scala3Args(error(_))
+    val parsedArgs = argDefinition.extract(args.toList)
 
-    val (filesToCompile, ctx) = setup(args, rootCtx)
-    given Context = ctx
+    dotty.dokka.Main.main(parsedArgs)
 
-    val argDefinition = new Scala3Args(error(_)) {
-        protected def defaultName(): String = ctx.settings.projectName.value
-        protected def defaultTastFiles(): List[File] = Nil
-        protected def defaultDest(): File = File(ctx.settings.outputDir.value.toString)
-    }
-
-    val config = DocConfiguration.Sbt(argDefinition.extract(args.toList), filesToCompile, ctx)
-    val dokkaCfg = new DottyDokkaConfig(config)
-    new DokkaGenerator(dokkaCfg, DokkaConsoleLogger.INSTANCE).generate()
 
     rootCtx.reporter
   }

@@ -1485,7 +1485,7 @@ object Build {
       def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
           val sourcesAndRevision = s"-s github://lampepfl/dotty  --revision $ref --projectVersion $projectVersion"
-          val cmd = s""" -d $outDir -t $targets -n "$name" $sourcesAndRevision $params"""
+          val cmd = s""" -d $outDir -n "$name" $sourcesAndRevision $params $targets"""
           run.in(Compile).toTask(cmd)
       }
 
@@ -1538,7 +1538,7 @@ object Build {
               (`scala3-library-bootstrapped`/Compile/products).value,
             ).flatten
 
-            val roots = joinProducts(dottyJars)
+            val roots = dottyJars.mkString(" ")
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
             else Def.task{

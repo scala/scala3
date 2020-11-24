@@ -362,11 +362,9 @@ object DottyPlugin extends AutoPlugin {
       useScala3doc := false,
       scala3docOptions := Nil,
       Compile / doc / scalacOptions := {
-        // We are passing scala3doc argument list as single argument to scala instance starting with magic prefix "--+DOC+"
-        val s3dOpts = scala3docOptions.value.map("--+DOC+" + _)
         val s3cOpts = (Compile / doc / scalacOptions).value
         if (isDotty.value && useScala3doc.value) {
-           s3dOpts ++ s3cOpts
+           scala3docOptions.value ++ s3cOpts
         } else {
           s3cOpts
         }

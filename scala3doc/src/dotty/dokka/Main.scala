@@ -14,12 +14,7 @@ import java.nio.file.Files
 
 import dotty.tools.dotc.config.Settings._
 
-abstract class Scala3Args(reportError: String => Unit) extends SettingGroup:
-  private val tastyRootsUsage = "Roots where tools should look for tasty files. Directories and jars are accepted"
-  val tastyRoots: Setting[String] =
-    StringSetting("--tastyRoots", "tastyRoots", tastyRootsUsage, "", aliases = List("-t"))
-  val tastyRootsAlias: Setting[String] =
-    StringSetting("-t", "tastyRoots", tastyRootsUsage, "", aliases = List("-t"))
+class Scala3Args(reportError: String => Unit) extends SettingGroup:
 
   val dest: Setting[String] =
     StringSetting("--dest", "dest", "Output to generate documentation to", "", aliases = List("-d"))
@@ -29,7 +24,7 @@ abstract class Scala3Args(reportError: String => Unit) extends SettingGroup:
   val classpath: Setting[String] =
     StringSetting("--classpath", "classpath", "Classpath to load dependencies from", "", aliases = List("--cp", "-c"))
   val classpathAlias1: Setting[String] =
-    StringSetting("--cp", "classpath", "Classpath to load dependencies from", "", aliases = List("--cp", "-c"))
+    StringSetting("-classpath", "classpath", "Classpath to load dependencies from", "", aliases = List("--cp", "-c"))
   val classpathAlias2: Setting[String] =
     StringSetting("-c", "classpath", "Classpath to load dependencies from", "", aliases = List("--cp", "-c"))
 
@@ -71,9 +66,7 @@ abstract class Scala3Args(reportError: String => Unit) extends SettingGroup:
   val syntax: Setting[String] =
     StringSetting("--syntax", "syntax", "Syntax of the comment used", "")
 
-  protected def defaultName(): String
-  protected def defaultTastFiles(): List[File]
-  protected def defaultDest(): File
+  protected def defaultDest(): File = sys.error(s"Argument '${dest.name}' is required")
 
   def extract(args: List[String]) =
     val initialSummary = ArgsSummary(defaultState, args, errors = Nil, warnings = Nil)
@@ -95,11 +88,13 @@ abstract class Scala3Args(reportError: String => Unit) extends SettingGroup:
 
     def parseTastyRoots(roots: String) = roots.split(File.pathSeparatorChar).toList.map(new File(_))
 
+    val tastyRoots = res.arguments.map(new File(_)) // check provided files
+
     Args(
-      parseOptionalArg(name, nameAlias).getOrElse(defaultName()),
-      parseOptionalArg(tastyRoots, tastyRootsAlias).fold(defaultTastFiles())(parseTastyRoots),
+      parseOptionalArg(name, nameAlias).getOrElse("root"),
+      tastyRoots,
       parseOptionalArg(classpath, classpathAlias1, classpathAlias2).getOrElse(System.getProperty("java.class.path")),
-      parseOptionalArg(dest, destAlias).fold(defaultDest())(new File(_)),
+      parseOptionalArg(dest, destAlias).fold(defaultDest())(File(_)),
       parseOptionalArg(docsRoot, docsRootAlias),
       parseOptionalArg(projectVersion, projectVersionAlias),
       parseOptionalArg(projectTitle, projectTitleAlias),
@@ -158,40 +153,35 @@ enum DocConfiguration extends BaseDocConfiguration:
   */
 object Main:
   def main(parsedArgs: Args): Unit =
+    val (files, dirs) = parsedArgs.tastyRoots.partition(_.isFile)
+    val (providedTastyFiles, jars) = files.toList.map(_.getAbsolutePath).partition(_.endsWith(".tasty"))
+    jars.foreach(j => if(!j.endsWith(".jar")) sys.error(s"Provided file $j is not jar not tasty file") )
+
+    def listTastyFiles(f: File): Seq[String] =
+      val (files, dirs) = Option(f.listFiles()).toArray.flatten.partition(_.isFile)
+      ArraySeq.unsafeWrapArray(
+        files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
+      )
+    val tastyFiles = providedTastyFiles ++ dirs.flatMap(listTastyFiles)
+
+    val config = DocConfiguration.Standalone(parsedArgs, tastyFiles, jars)
+
+    if (parsedArgs.output.exists()) IO.delete(parsedArgs.output)
+
+    new DokkaGenerator(new DottyDokkaConfig(config), DokkaConsoleLogger.INSTANCE).generate()
+    println("Done")
+
+
+  def main(args: Array[String]): Unit =
     try
-      val (files, dirs) = parsedArgs.tastyRoots.partition(_.isFile)
-      val (providedTastyFiles, jars) = files.toList.map(_.getAbsolutePath).partition(_.endsWith(".tasty"))
-      jars.foreach(j => if(!j.endsWith(".jar")) sys.error(s"Provided file $j is not jar not tasty file") )
-
-
-      def listTastyFiles(f: File): Seq[String] =
-        val (files, dirs) = f.listFiles().partition(_.isFile)
-        ArraySeq.unsafeWrapArray(
-          files.filter(_.getName.endsWith(".tasty")).map(_.toString) ++ dirs.flatMap(listTastyFiles)
-        )
-      val tastyFiles = providedTastyFiles ++ dirs.flatMap(listTastyFiles)
-
-      val config = DocConfiguration.Standalone(parsedArgs, tastyFiles, jars)
-
-      if (parsedArgs.output.exists()) IO.delete(parsedArgs.output)
-
-      new DokkaGenerator(new DottyDokkaConfig(config), DokkaConsoleLogger.INSTANCE).generate()
-
-      println("Done")
+      val argDefinition = new Scala3Args(sys.error)
+      main(argDefinition.extract(args.toList))
+      // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
+      sys.exit(0)
     catch
       case a: Exception =>
         a.printStackTrace()
         // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
         sys.exit(1)
-
-  def main(args: Array[String]): Unit =
-      val argDefinition = new Scala3Args(sys.error) {
-        protected def defaultName(): String = sys.error(s"Argument '${name.name}' is required")
-        protected def defaultTastFiles(): List[File] = sys.error(s"Argument '${tastyRoots.name}' is required")
-        protected def defaultDest(): File = sys.error(s"Argument '${dest.name}' is required")
-      }
-      main(argDefinition.extract(args.toList))
-      // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
-      sys.exit(0)
 
 
