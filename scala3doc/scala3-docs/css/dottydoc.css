@@ -1,12 +1,199 @@
+@charset "UTF-8";
+@import url("https://fonts.googleapis.com/css?family=Lato:300,400,400i,700i,900");
+@import url("https://fonts.googleapis.com/css?family=Roboto+Slab:400,700");
+@import url("https://fonts.googleapis.com/css?family=Kalam:300,400,700");
+
+:root {
+  --leftbar-bg: #15414C;
+  --logo-bg: #15414C;
+  --content-padding: 0px;
+  --title-fg: #DC322F;
+  --pre-bg: #fdfdf7;
+  --active-tab-color: #5CC6E4;
+  --leftbar-fg: rgba(255, 255, 255, 0.5);
+  --leftbar-hover-bg: #002B3B;
+  --leftbar-hover-fg: #fff;
+}
+
 html, body {
   font-weight: 300;
   height: 100%;
+  font-family: "Lato", sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #4A5659;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* simulating container layout from docs.scala-lang */
+#logo {
+  padding: 1em 0.5em;
 }
 
 main.container {
   min-height: 100vh;
   padding: 15px 15px;
   padding-bottom: 45px; /* prevents the content to be hidden by the gitter sidecar */
+}
+
+#content {
+  padding-bottom: 0;
+}
+
+main .content {
+  position: relative;
+  top: -80px;
+}
+
+footer {
+  margin-top: 0;
+  /* background: #002B36; */
+}
+
+#inner-main .inner-box {
+  padding: 30px;
+}
+
+.title-page {
+  min-height: 200px;
+}
+
+.wrap {
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 20px;
+}
+
+.byline {
+  margin-bottom: 0.5em;
+  margin-top: -0.5em;
+}
+
+/* adjusting colors to color scheme from docs.scala-lang */
+.title-page {
+  background: #5CC6E4;
+}
+
+#logo {
+  background: var(--logo-bg);
+}
+#logo .projectName {
+  color: #fff;
+}
+
+/* links and buttons */
+
+.content-primary a {
+  color: #23aad1;
+  text-decoration: none;
+  transition: all 350ms ease;
+}
+.content-primary a:active, .content-primary a:focus, .content-primary a:hover {
+  color: #DC322F;
+  text-decoration: underline;
+}
+
+.byline a {
+  color: #bfe9f5;
+}
+
+.search button {
+  background: rgba(0,0,0,0.1);
+  box-shadow: none;
+  position: absolute;
+  top: 1em;
+  right: 42px;
+}
+
+.search button:hover {
+  fill: rgba(255,255,255,0.8);
+  background: rgba(0,0,0,0.15);
+}
+
+.popup-wrapper {
+  top: 7em; /* this is the position where it _should_ be */
+}
+
+.sideMenuPart a {
+  font-weight: 700;
+  transition: all 350ms ease;
+}
+
+.sideMenuPart a:hover {
+  text-decoration: none;
+}
+
+#inner-main {
+  background: #F0F3F3;
+}
+
+#inner-main .inner-box {
+  background: #fff;
+  border-radius: 3px;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  -ms-border-radius: 3px;
+  -o-border-radius: 3px;
+  -webkit-box-shadow: rgba(0, 43, 54, 0.04) 0 2px 1px;
+  -moz-box-shadow: rgba(0, 43, 54, 0.04) 0 2px 1px;
+  box-shadow: rgba(0, 43, 54, 0.04) 0 2px 1px;
+}
+
+/* main text headers */
+main .content-primary h1,
+main .content-primary h2,
+main .content-primary h3 {
+  font-family: "Roboto Slab", serif;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+main .content-primary h1,
+main .content-primary h2 {
+  color: #DC322F;
+  margin-bottom: 24px;
+}
+
+main .content-primary h4 {
+  font-size: 1.063rem;
+  font-family: "Lato", sans-serif;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #073642;
+  margin-bottom: 18px;
+}
+
+/* we do not have supertitles, so using for breadcrumbs instead */
+.breadcrumbs {
+  position: absolute;
+}
+.breadcrumbs a:hover {
+  color: #3094b0;
+  text-decoration: none;
+}
+.titles .supertitle, .breadcrumbs {
+  text-transform: uppercase;
+  font-weight: 900;
+  font-size: 20px;
+  color: #2c90ad;
+}
+
+.titles h1 {
+    font-size: 1.875rem;
+    font-weight: 900;
+    font-family: "Lato", sans-serif;
+    padding-top: 40px;
+    text-transform: uppercase;
+    text-shadow: rgba(0, 43, 54, 0.1) 2px 2px 0;
+    color: #fff;
+}
+
+main .content-primary h3 {
+  font-size: 1.25rem;
+  color: #073642;
+  margin-bottom: 18px;
 }
 
 .container img {
@@ -25,9 +212,6 @@ main > h1 {
   margin-bottom: 20px;
 }
 
-.byline, .byline a {
-  color: grey;
-}
 .byline .author {
   display: block;
 }
@@ -185,11 +369,12 @@ pre, code {
   font-variant-ligatures: none;
 }
 pre {
-  padding: 0;
+  padding: 20px;
   font-size: 13px;
   background: var(--pre-bg);
   border-radius: 2px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid #e7e7d6;
+  margin-bottom: 36px;
 }
 
 /* admonitions */

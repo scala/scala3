@@ -1,15 +1,29 @@
 ---
 layout: main
 ---
-<main class="container">
-    <header>
+
+<section class="title-page">
+  <div class="wrap">
+    <div class="content-title-documentation">
+      <div class="titles">
         <h1>{{ page.title }}</h1>
-        <div class="byline">
-            <a href="{{ urls.editSource }}">
-                <i class="far fa-edit"></i>
-                Edit this page on GitHub
-            </a>
-        </div>
-    </header>
-    {{ content }}
-</main>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="content">
+  <div class="wrap">
+    <div class="byline">
+        <a href="{{ urls.editSource }}">
+            <i class="far fa-edit"></i>
+            Edit this page on GitHub
+        </a>
+    </div>
+    <div class="content-primary">
+      <div class="inner-box">
+        {{ content }}
+      </div>
+    </div>
+  </div>
+</section>
