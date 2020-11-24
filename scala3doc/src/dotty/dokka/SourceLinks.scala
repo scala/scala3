@@ -90,7 +90,8 @@ case class SourceLinks(links: Seq[SourceLink], projectRoot: Path):
 object SourceLinks:
 
   val usage =
-    """Source links provide a mapping between file in documentation and code repositry.
+    """Source links provide a mapping between file in documentation and code repository.
+      |
       |Accepted formats:
       |<sub-path>=<source-link>
       |<source-link>

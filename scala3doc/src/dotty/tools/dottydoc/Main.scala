@@ -11,6 +11,7 @@ import dotc.core.Contexts._
 import dotc.reporting.Reporter
 import dotc.{ Compiler, Driver }
 import dotc.config._
+import dotty.tools.dotc.report.error
 
 import dotty.tools.dotc.config.Settings.Setting.value
 
@@ -37,7 +38,7 @@ object Main extends Driver {
     val (filesToCompile, ctx) = setup(args, rootCtx)
     given Context = ctx
 
-    val argDefinition = new Scala3Args() {
+    val argDefinition = new Scala3Args(error(_)) {
         protected def defaultName(): String = ctx.settings.projectName.value
         protected def defaultTastFiles(): List[File] = Nil
         protected def defaultDest(): File = File(ctx.settings.outputDir.value.toString)

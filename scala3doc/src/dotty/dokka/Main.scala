@@ -14,11 +14,12 @@ import java.nio.file.Files
 
 import dotty.tools.dotc.config.Settings._
 
-abstract class Scala3Args extends SettingGroup:
+abstract class Scala3Args(reportError: String => Unit) extends SettingGroup:
+  private val tastyRootsUsage = "Roots where tools should look for tasty files. Directories and jars are accepted"
   val tastyRoots: Setting[String] =
-    StringSetting("--tastyRoots", "tastyRoots", "Roots where tools should look for tasty files", "", aliases = List("-t"))
+    StringSetting("--tastyRoots", "tastyRoots", tastyRootsUsage, "", aliases = List("-t"))
   val tastyRootsAlias: Setting[String] =
-    StringSetting("-t", "tastyRoots", "Roots where tools should look for tasty files", "", aliases = List("-t"))
+    StringSetting("-t", "tastyRoots", tastyRootsUsage, "", aliases = List("-t"))
 
   val dest: Setting[String] =
     StringSetting("--dest", "dest", "Output to generate documentation to", "", aliases = List("-d"))
@@ -42,17 +43,24 @@ abstract class Scala3Args extends SettingGroup:
   val docsRootAlias: Setting[String] =
     StringSetting("-p", "docs", "Root of project docs", "", aliases = List("-p"))
 
-
   val sourceLinks: Setting[String] =
-    StringSetting("--sources", "sources", "Links to source files provided in convention: local_directory=remote_directory#line_suffix", "")
-  val sourceLinksAlias: Setting[String] =
-    StringSetting("-s", "sources", "Links to source files provided in convention: local_directory=remote_directory#line_suffix", "")
+    StringSetting("--sources", "sources", SourceLinks.usage, "")
+  val sourceLinksAlias1: Setting[String] =
+    StringSetting("-s", "sources", SourceLinks.usage, "")
+  val sourceLinksAlias2: Setting[String] =
+    StringSetting("-doc-source-url", "sources", SourceLinks.usage, "")
 
   val projectTitle: Setting[String] =
     StringSetting("--projectTitle", "projectTitle", "Title of the project used in documentation", "")
+  val projectTitleAlias: Setting[String] =
+    StringSetting("-doc-title", "projectTitle", "Title of the project used in documentation", "")
+
 
   val projectVersion: Setting[String] =
     StringSetting("--projectVersion", "projectVersion", "Version of the project used in documentation", "")
+  val projectVersionAlias: Setting[String] =
+    StringSetting("-doc-version", "projectVersion", "Version of the project used in documentation", "")
+
 
   val projectLogo: Setting[String] =
     StringSetting("--projectLogo", "projectLogo", "Relative path to logo of the project", "")
@@ -70,15 +78,16 @@ abstract class Scala3Args extends SettingGroup:
   def extract(args: List[String]) =
     val initialSummary = ArgsSummary(defaultState, args, errors = Nil, warnings = Nil)
     val res = processArguments(initialSummary, processAll = true, skipped = Nil)
-    // TODO!
-    if res.errors.nonEmpty then sys.error(s"Unable to parse arguments:\n ${res.errors.mkString("\n")}")
+
+    if res.errors.nonEmpty then reportError(s"Unable to parse arguments:\n ${res.errors.mkString("\n")}")
 
     val parsedSyntax = syntax.valueIn(res.sstate) match
       case "" => None
       case other =>
         Args.CommentSyntax.fromString(other) match
           case None =>
-            sys.error(s"unrecognized value for --syntax option: $other")
+            reportError(s"unrecognized value for --syntax option: $other")
+            None
           case some => some
 
     def parseOptionalArg(args: Setting[String]*) =
@@ -92,11 +101,11 @@ abstract class Scala3Args extends SettingGroup:
       parseOptionalArg(classpath, classpathAlias1, classpathAlias2).getOrElse(System.getProperty("java.class.path")),
       parseOptionalArg(dest, destAlias).fold(defaultDest())(new File(_)),
       parseOptionalArg(docsRoot, docsRootAlias),
-      parseOptionalArg(projectVersion),
-      parseOptionalArg(projectTitle),
+      parseOptionalArg(projectVersion, projectVersionAlias),
+      parseOptionalArg(projectTitle, projectTitleAlias),
       parseOptionalArg(projectLogo),
       parsedSyntax,
-      parseOptionalArg(sourceLinks, sourceLinksAlias).fold(Nil)(_.split(",").toList), // TODO!
+      parseOptionalArg(sourceLinks, sourceLinksAlias1, sourceLinksAlias2).fold(Nil)(_.split(",").toList),
       parseOptionalArg(revision)
     )
 
@@ -166,7 +175,6 @@ object Main:
 
       if (parsedArgs.output.exists()) IO.delete(parsedArgs.output)
 
-      // TODO #20 pass options, classpath etc.
       new DokkaGenerator(new DottyDokkaConfig(config), DokkaConsoleLogger.INSTANCE).generate()
 
       println("Done")
@@ -177,7 +185,7 @@ object Main:
         sys.exit(1)
 
   def main(args: Array[String]): Unit =
-      val argDefinition = new Scala3Args {
+      val argDefinition = new Scala3Args(sys.error) {
         protected def defaultName(): String = sys.error(s"Argument '${name.name}' is required")
         protected def defaultTastFiles(): List[File] = sys.error(s"Argument '${tastyRoots.name}' is required")
         protected def defaultDest(): File = sys.error(s"Argument '${dest.name}' is required")
