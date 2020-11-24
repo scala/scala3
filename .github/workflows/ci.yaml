@@ -372,7 +372,7 @@ jobs:
       - name: Publish Release
         run: |
           ./project/scripts/sbt dist/packArchive
-          sha256sum dist/target/dotty-* > dist/target/sha256sum.txt
+          sha256sum dist/target/scala3-* > dist/target/sha256sum.txt
           ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
           echo "name=RELEASE_TAG::${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
 
@@ -386,7 +386,7 @@ jobs:
           release_name: ${{ github.ref }}
           body:
           draft: false
-          prerelease: ${{ contains(env.RELEASE_TAG, 'RC') }}
+          prerelease: ${{ contains(env.RELEASE_TAG, 'M') }}
 
       - name: Upload zip archive to GitHub Release
         uses: actions/upload-release-asset@v1
@@ -394,8 +394,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/dotty-${{ env.RELEASE_TAG }}.zip
-          asset_name: dotty-${{ env.RELEASE_TAG }}.zip
+          asset_path: ./dist/target/scala3-${{ env.RELEASE_TAG }}.zip
+          asset_name: scala3-${{ env.RELEASE_TAG }}.zip
           asset_content_type: application/zip
 
       - name: Upload tar.gz archive to GitHub Release
@@ -404,8 +404,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/dotty-${{ env.RELEASE_TAG }}.tar.gz
-          asset_name: dotty-${{ env.RELEASE_TAG }}.tar.gz
+          asset_path: ./dist/target/scala3-${{ env.RELEASE_TAG }}.tar.gz
+          asset_name: scala3-${{ env.RELEASE_TAG }}.tar.gz
           asset_content_type: application/gzip
 
       - name: Upload SHA256 sum of the release artefacts to GitHub Release
