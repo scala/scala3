@@ -3,8 +3,8 @@ import scala.quoted._
 object MacroRuntime {
 
    def impl()(using Quotes): Expr[Unit] = {
-      import qctx.reflect._
-      error("some error", rootPosition)
+      import quotes.reflect._
+      Reporting.error("some error", Position.ofMacroExpansion)
       '{ println("Implementation in MacroCompileError") }
    }
 
