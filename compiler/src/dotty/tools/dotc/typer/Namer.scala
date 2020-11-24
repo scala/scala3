@@ -1199,6 +1199,7 @@ class Namer { typer: Typer =>
       cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
       if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
       processExports(using localCtx)
+      defn.patchStdLibClass(denot.asClass)
     }
   }
 

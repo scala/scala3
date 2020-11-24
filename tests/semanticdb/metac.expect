@@ -91,11 +91,11 @@ local10 => val local e3x
 Occurrences:
 [0:8..0:16): advanced <- advanced/
 [2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:33): higherKinds -> scalaShadowing/language.higherKinds.
+[2:13..2:21): language -> scala/language.
+[2:22..2:33): higherKinds -> scala/language.higherKinds.
 [3:7..3:12): scala -> scala/
-[3:13..3:21): language -> scalaShadowing/language.
-[3:22..3:37): reflectiveCalls -> scalaShadowing/language.reflectiveCalls.
+[3:13..3:21): language -> scala/language.
+[3:22..3:37): reflectiveCalls -> scala/language.reflectiveCalls.
 [5:7..5:12): scala -> scala/
 [5:13..5:20): reflect -> scala/reflect/
 [5:21..5:31): Selectable -> scala/reflect/Selectable.
@@ -224,9 +224,9 @@ Occurrences:
 [3:13..3:23): annotation -> scala/annotation/
 [3:24..3:28): meta -> scala/annotation/meta/
 [4:7..4:12): scala -> scala/
-[4:13..4:21): language -> scalaShadowing/language.
-[4:22..4:34): experimental -> scalaShadowing/language.experimental.
-[4:35..4:41): macros -> scalaShadowing/language.experimental.macros.
+[4:13..4:21): language -> scala/language.
+[4:22..4:34): experimental -> scala/language.experimental.
+[4:35..4:41): macros -> scala/language.experimental.macros.
 [6:1..6:16): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
 [7:6..7:17): Annotations <- annot/Annotations#
 [7:17..7:17): <- annot/Annotations#`<init>`().
@@ -298,8 +298,8 @@ local1 => final class $anon
 Occurrences:
 [0:8..0:15): example <- example/
 [1:7..1:12): scala -> scala/
-[1:13..1:21): language -> scalaShadowing/language.
-[1:22..1:33): higherKinds -> scalaShadowing/language.higherKinds.
+[1:13..1:21): language -> scala/language.
+[1:22..1:33): higherKinds -> scala/language.higherKinds.
 [3:6..3:15): Anonymous <- example/Anonymous#
 [4:2..4:2): <- example/Anonymous#`<init>`().
 [4:8..4:17): Anonymous -> example/Anonymous#
@@ -454,9 +454,9 @@ local3 => val local local
 Occurrences:
 [0:8..0:15): classes <- classes/
 [1:7..1:12): scala -> scala/
-[1:13..1:21): language -> scalaShadowing/language.
-[1:22..1:34): experimental -> scalaShadowing/language.experimental.
-[1:35..1:41): macros -> scalaShadowing/language.experimental.macros.
+[1:13..1:21): language -> scala/language.
+[1:22..1:34): experimental -> scala/language.experimental.
+[1:35..1:41): macros -> scala/language.experimental.macros.
 [2:6..2:8): C1 <- classes/C1#
 [2:8..2:8): <- classes/C1#`<init>`().
 [2:13..2:15): x1 <- classes/C1#x1.
@@ -1373,8 +1373,8 @@ example/ImplicitConversion.newAny2stringadd. => final object newAny2stringadd
 Occurrences:
 [0:8..0:15): example <- example/
 [2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:41): implicitConversions -> scalaShadowing/language.implicitConversions.
+[2:13..2:21): language -> scala/language.
+[2:22..2:41): implicitConversions -> scala/language.implicitConversions.
 [4:6..4:24): ImplicitConversion <- example/ImplicitConversion#
 [5:2..5:2): <- example/ImplicitConversion#`<init>`().
 [5:9..5:27): ImplicitConversion -> example/ImplicitConversion.
@@ -1481,11 +1481,11 @@ Occurrences:
 [2:24..2:28): meta -> scala/annotation/meta/
 [2:29..2:34): param -> scala/annotation/meta/param.
 [3:7..3:12): scala -> scala/
-[3:13..3:21): language -> scalaShadowing/language.
-[3:22..3:34): existentials -> scalaShadowing/language.existentials.
+[3:13..3:21): language -> scala/language.
+[3:22..3:34): existentials -> scala/language.existentials.
 [4:7..4:12): scala -> scala/
-[4:13..4:21): language -> scalaShadowing/language.
-[4:22..4:33): higherKinds -> scalaShadowing/language.higherKinds.
+[4:13..4:21): language -> scala/language.
+[4:22..4:33): higherKinds -> scala/language.higherKinds.
 [5:7..5:12): types -> types/
 [5:13..5:17): Test -> types/Test.
 [7:6..7:21): InstrumentTyper <- example/InstrumentTyper#
@@ -1937,8 +1937,8 @@ Occurrences:
 [2:18..2:26): Ordering -> scala/math/Ordering.
 [2:18..2:26): Ordering -> scala/math/Ordering#
 [3:7..3:12): scala -> scala/
-[3:13..3:21): language -> scalaShadowing/language.
-[3:22..3:34): existentials -> scalaShadowing/language.existentials.
+[3:13..3:21): language -> scala/language.
+[3:22..3:34): existentials -> scala/language.existentials.
 [5:6..5:13): Methods <- example/Methods#
 [5:13..5:13): <- example/Methods#`<init>`().
 [5:14..5:15): T <- example/Methods#[T]
@@ -2496,8 +2496,8 @@ local9 => param b
 Occurrences:
 [0:8..0:15): example <- example/
 [2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:41): implicitConversions -> scalaShadowing/language.implicitConversions.
+[2:13..2:21): language -> scala/language.
+[2:22..2:41): implicitConversions -> scala/language.implicitConversions.
 [4:6..4:15): Synthetic <- example/Synthetic#
 [5:2..5:2): <- example/Synthetic#`<init>`().
 [5:2..5:6): List -> scala/package.List.
@@ -3362,9 +3362,9 @@ local1 => case val method t
 Occurrences:
 [0:8..0:13): flags <- flags/
 [2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:34): experimental -> scalaShadowing/language.experimental.
-[2:35..2:41): macros -> scalaShadowing/language.experimental.macros.
+[2:13..2:21): language -> scala/language.
+[2:22..2:34): experimental -> scala/language.experimental.
+[2:35..2:41): macros -> scala/language.experimental.macros.
 [4:15..5:3): <- flags/p/package.
 [5:2..5:3): p -> flags/p/
 [5:19..5:20): x <- flags/p/package.x.
@@ -3601,11 +3601,11 @@ types/ann2#`<init>`(). => primary ctor <init>
 Occurrences:
 [0:8..0:13): types <- types/
 [2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:34): existentials -> scalaShadowing/language.existentials.
+[2:13..2:21): language -> scala/language.
+[2:22..2:34): existentials -> scala/language.existentials.
 [3:7..3:12): scala -> scala/
-[3:13..3:21): language -> scalaShadowing/language.
-[3:22..3:33): higherKinds -> scalaShadowing/language.higherKinds.
+[3:13..3:21): language -> scala/language.
+[3:22..3:33): higherKinds -> scala/language.higherKinds.
 [5:6..5:9): ann <- types/ann#
 [5:9..5:9): <- types/ann#`<init>`().
 [5:10..5:11): T <- types/ann#[T]

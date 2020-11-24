@@ -9,7 +9,7 @@ import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
 import Denotations.SingleDenotation
-import util.SimpleIdentityMap
+import util.{SimpleIdentityMap, SourceFile, NoSource}
 import typer.ImportInfo.RootRef
 
 import scala.annotation.tailrec
@@ -252,6 +252,7 @@ class Definitions {
    *  or classes with the same name. But their binary artifacts are
    *  in `scalaShadowing` so they don't clash with the same-named `scala`
    *  members at runtime.
+   *  It is used only for non-bootstrapped code
    */
   @tu lazy val ScalaShadowingPackage: TermSymbol = requiredPackage(nme.scalaShadowing)
 
@@ -481,12 +482,12 @@ class Definitions {
     newPermanentSymbol(ScalaPackageClass, tpnme.IMPLICITkw, EmptyFlags, TypeBounds.empty).entered
   def ImplicitScrutineeTypeRef: TypeRef = ImplicitScrutineeTypeSym.typeRef
 
-
   @tu lazy val ScalaPredefModule: Symbol = requiredModule("scala.Predef")
     @tu lazy val Predef_conforms : Symbol = ScalaPredefModule.requiredMethod(nme.conforms_)
     @tu lazy val Predef_classOf  : Symbol = ScalaPredefModule.requiredMethod(nme.classOf)
     @tu lazy val Predef_identity : Symbol = ScalaPredefModule.requiredMethod(nme.identity)
     @tu lazy val Predef_undefined: Symbol = ScalaPredefModule.requiredMethod(nme.???)
+  @tu lazy val ScalaPredefModuleClass: ClassSymbol = ScalaPredefModule.moduleClass.asClass
 
   @tu lazy val SubTypeClass: ClassSymbol = requiredClass("scala.<:<")
   @tu lazy val SubType_refl: Symbol = SubTypeClass.companionModule.requiredMethod(nme.refl)
@@ -510,7 +511,7 @@ class Definitions {
   // will return "null" when called recursively, see #1856.
   def DottyPredefModule: Symbol = {
     if (myDottyPredefModule == null) {
-      myDottyPredefModule = requiredModule("dotty.DottyPredef")
+      myDottyPredefModule = getModuleIfDefined("dotty.DottyPredef")
       assert(myDottyPredefModule != null)
     }
     myDottyPredefModule
@@ -782,6 +783,7 @@ class Definitions {
   @tu lazy val Mirror_SingletonProxyClass: ClassSymbol = requiredClass("scala.deriving.Mirror.SingletonProxy")
 
   @tu lazy val LanguageModule: Symbol = requiredModule("scala.language")
+  @tu lazy val LanguageModuleClass: Symbol = LanguageModule.moduleClass.asClass
   @tu lazy val LanguageExperimentalModule: Symbol = requiredModule("scala.language.experimental")
   @tu lazy val NonLocalReturnControlClass: ClassSymbol = requiredClass("scala.runtime.NonLocalReturnControl")
   @tu lazy val SelectableClass: ClassSymbol = requiredClass("scala.Selectable")
@@ -1100,6 +1102,65 @@ class Definitions {
       || sym.owner == CompiletimeOpsPackageObjectBoolean.moduleClass && compiletimePackageBooleanTypes.contains(sym.name)
       || sym.owner == CompiletimeOpsPackageObjectString.moduleClass && compiletimePackageStringTypes.contains(sym.name)
     )
+
+  // ----- Scala-2 library patches --------------------------------------
+
+  /** The `scala.runtime.stdLibPacthes` package contains objects
+   *  that contain defnitions that get added as members to standard library
+   *  objects with the same name.
+   */
+  @tu lazy val StdLibPatchesPackage: TermSymbol = requiredPackage("scala.runtime.stdLibPatches")
+  @tu private lazy val ScalaPredefModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.Predef").moduleClass
+  @tu private lazy val LanguageModuleClassPatch: Symbol = getModuleIfDefined("scala.runtime.stdLibPatches.language").moduleClass
+
+  /** If `sym` is a patched library class, the source file of its patch class,
+   *  otherwise `NoSource`
+   */
+  def patchSource(sym: Symbol)(using Context): SourceFile =
+    if sym == ScalaPredefModuleClass then ScalaPredefModuleClassPatch.source
+    else if sym == LanguageModuleClass then LanguageModuleClassPatch.source
+    else NoSource
+
+  /** A finalizer that patches standard library classes.
+   *  It copies all non-private, non-synthetic definitions from `patchCls`
+   *  to `denot` while changing their owners to `denot`. Before that it deletes
+   *  any definitions of `denot` that have the same name as one of the copied
+   *  definitions.
+   *
+   *  If an object is present in both the original class and the patch class,
+   *  it is not overwritten. Instead its members are copied recursively.
+   *
+   *  To avpid running into cycles on bootstrap, patching happens only if `patchCls`
+   *  is read from a classfile.
+   */
+  def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
+
+    def patch2(denot: ClassDenotation, patchCls: Symbol): Unit =
+      val scope = denot.info.decls.openForMutations
+      def recurse(patch: Symbol) = patch.is(Module) && scope.lookup(patch.name).exists
+      if patchCls.exists then
+        val patches = patchCls.info.decls.filter(patch =>
+          !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
+        for patch <- patches if !recurse(patch) do
+          val e = scope.lookupEntry(patch.name)
+          if e != null then scope.unlink(e)
+        for patch <- patches do
+          patch.ensureCompleted()
+          if !recurse(patch) then
+            patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
+            scope.enter(patch)
+          else if patch.isClass then
+            patch2(scope.lookup(patch.name).asClass, patch)
+
+    def patchWith(patchCls: Symbol) =
+      denot.sourceModule.info = denot.typeRef // we run into a cyclic reference when patching if this line is omitted
+      patch2(denot, patchCls)
+
+    if denot.name == tpnme.Predef.moduleClassName && denot.symbol == ScalaPredefModuleClass then
+      patchWith(ScalaPredefModuleClassPatch)
+    else if denot.name == tpnme.language.moduleClassName && denot.symbol == LanguageModuleClass then
+      patchWith(LanguageModuleClassPatch)
+  end patchStdLibClass
 
   // ----- Symbol sets ---------------------------------------------------
 

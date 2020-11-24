@@ -446,9 +446,9 @@ class TreeChecker extends Phase with SymTransformer {
       val symbolsNotDefined = decls -- defined - constr.symbol
 
       assert(symbolsNotDefined.isEmpty,
-          i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
-          i"expected: ${decls.toList}%, %\n" +
-          i"defined: ${defined}%, %")
+        i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
+        i"expected: ${decls.toList}%, %\n" +
+        i"defined: ${defined}%, %")
 
       super.typedClassDef(cdef, cls)
     }
@@ -539,6 +539,12 @@ class TreeChecker extends Phase with SymTransformer {
       assert((tree.cond ne EmptyTree) || ctx.phase.refChecked, i"invalid empty condition in while at $tree")
       super.typedWhileDo(tree)
     }
+
+    override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
+      if tree.symbol == defn.StdLibPatchesPackage then
+        promote(tree) // don't check stdlib patches, since their symbols were highjacked by stdlib classes
+      else
+        super.typedPackageDef(tree)
 
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
       tree

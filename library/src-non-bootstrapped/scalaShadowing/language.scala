@@ -225,9 +225,6 @@ object language {
     object genericNumberLiterals
   }
 
-  /** Where imported, a backwards compatibility mode for Scala2 is enabled */
-  object Scala2Compat
-
   /** Where imported, auto-tupling is disabled */
   object noAutoTupling
 

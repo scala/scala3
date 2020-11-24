@@ -940,6 +940,7 @@ class TreeUnpickler(reader: TastyReader,
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
+      defn.patchStdLibClass(cls)
       setSpan(start,
         untpd.Template(constr, mappedParents, Nil, self, lazyStats)
           .withType(localDummy.termRef))

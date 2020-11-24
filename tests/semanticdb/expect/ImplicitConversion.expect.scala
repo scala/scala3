@@ -1,6 +1,6 @@
 package example
 
-import scala.language/*->scalaShadowing::language.*/.implicitConversions/*->scalaShadowing::language.implicitConversions.*/
+import scala.language/*->scala::language.*/.implicitConversions/*->scala::language.implicitConversions.*/
 
 class ImplicitConversion/*<-example::ImplicitConversion#*/ {
   import ImplicitConversion/*->example::ImplicitConversion.*/._

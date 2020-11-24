@@ -428,23 +428,21 @@ object Symbols {
     private var mySource: SourceFile = NoSource
 
     final def sourceOfClass(using Context): SourceFile = {
-      if (!mySource.exists && !denot.is(Package))
+      if !mySource.exists && !denot.is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
-        mySource = {
-          val file = associatedFile
-          if (file != null && file.extension != "class") ctx.getSource(file)
-          else {
-            def sourceFromTopLevel(using Context) =
-              denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match {
-                case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match {
+        val file = associatedFile
+        if file != null && file.extension != "class" then
+          mySource = ctx.getSource(file)
+        else
+          mySource = defn.patchSource(this)
+          if !mySource.exists then
+            mySource = atPhaseNoLater(flattenPhase) {
+              denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
+                case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match
                   case Some(Constant(path: String)) => ctx.getSource(path)
                   case none => NoSource
-                }
                 case none => NoSource
-              }
-            atPhaseNoLater(flattenPhase)(sourceFromTopLevel)
-          }
-        }
+            }
       mySource
     }
 
@@ -879,6 +877,13 @@ object Symbols {
     val name = path.toTermName
     staticRef(name).requiredSymbol("object", name)(_.is(Module)).asTerm
   }
+
+  /** Get module symbol if the module is either defined in current compilation run
+   *  or present on classpath. Returns NoSymbol otherwise.
+   */
+  def getModuleIfDefined(path: PreName)(using Context): Symbol =
+    staticRef(path.toTermName, generateStubs = false)
+      .disambiguate(_.is(Module)).symbol
 
   def requiredModuleRef(path: PreName)(using Context): TermRef = requiredModule(path).termRef
 
