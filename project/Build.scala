@@ -55,7 +55,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 object Build {
   val referenceVersion = "3.0.0-M2-bin-20201112-462a72f-NIGHTLY"
 
-  val baseVersion = "3.0.0-M3"
+  val baseVersion = "3.0.0-RC1"
   val baseSbtDottyVersion = "0.4.7"
 
   // Versions used by the vscode extension to create a new project
