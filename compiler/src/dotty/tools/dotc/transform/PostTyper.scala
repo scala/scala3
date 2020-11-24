@@ -343,7 +343,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               val jpath = file.jpath
               val relativePath =
                 if jpath eq null then file.path // repl and other custom tests use abstract files with no path
-                else if jpath.isAbsolute then sourcerootPath.relativize(jpath.normalize).toString
+                else if jpath.isAbsolute then
+                  val cunitPath = jpath.normalize
+                  // On Windows we can only relativize paths if root component matches
+                  // (see implementation of sun.nio.fs.WindowsPath#relativize)
+                  try sourcerootPath.relativize(cunitPath).toString
+                  catch case _: IllegalArgumentException => cunitPath.toString
                 else jpath.normalize.toString
               sym.addAnnotation(Annotation.makeSourceFile(relativePath))
           else (tree.rhs, sym.info) match
