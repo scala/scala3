@@ -156,11 +156,11 @@ object FromDigits {
     x
   }
 
-  given BigIntFromDigits as FromDigits.WithRadix[BigInt] {
+  given BigIntFromDigits as WithRadix[BigInt] {
     def fromDigits(digits: String, radix: Int): BigInt = BigInt(digits, radix)
   }
 
-  given BigDecimalFromDigits as FromDigits.Floating[BigDecimal] {
+  given BigDecimalFromDigits as Floating[BigDecimal] {
     def fromDigits(digits: String): BigDecimal = BigDecimal(digits)
   }
 }
