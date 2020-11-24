@@ -104,8 +104,9 @@ end CommunityBuildTestA
 class CommunityBuildTestB extends CommunityBuildTest:
   @Test def algebra = projects.algebra.run()
   @Test def betterfiles = projects.betterfiles.run()
-  @Test def catsEffect2 = projects.catsEffect2.run()
-  @Test def catsEffect3 = projects.catsEffect3.run()
+  // temporarily disabled due to lampepfl/dotty#10478
+  //@Test def catsEffect2 = projects.catsEffect2.run()
+  //@Test def catsEffect3 = projects.catsEffect3.run()
   // Temporarily disabled until problem discovered in comments to #9449 is fixed
   // @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
   @Test def effpi = projects.effpi.run()
