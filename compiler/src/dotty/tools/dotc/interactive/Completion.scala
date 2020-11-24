@@ -13,11 +13,12 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn}
+import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, newSymbol}
 import dotty.tools.dotc.core.Scopes
 import dotty.tools.dotc.core.StdNames.{nme, tpnme}
+import dotty.tools.dotc.core.TypeComparer
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{NameFilter, NamedType, NoType, Type}
+import dotty.tools.dotc.core.Types.{ExprType, MethodType, NameFilter, NamedType, NoType, PolyType, Type}
 import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.util.{NameTransformer, NoSourcePosition, SourcePosition}
 
@@ -118,7 +119,7 @@ object Completion {
 
     if (buffer.mode != Mode.None)
       path match {
-        case Select(qual, _) :: _                              => buffer.addMemberCompletions(qual)
+        case Select(qual, _) :: _                              => buffer.addSelectionCompletions(path, qual)
         case Import(expr, _) :: _                              => buffer.addMemberCompletions(expr) // TODO: distinguish given from plain imports
         case (_: untpd.ImportSelector) :: Import(expr, _) :: _ => buffer.addMemberCompletions(expr)
         case _                                                 => buffer.addScopeCompletions
@@ -213,6 +214,66 @@ object Completion {
           implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState())
             .foreach(addAccessibleMembers)
       }
+
+    def addExtensionCompletions(path: List[Tree], qual: Tree)(using Context): Unit =
+      def applyExtensionReceiver(methodSymbol: Symbol, methodName: TermName): Symbol = {
+        val newMethodType = methodSymbol.info match {
+          case mt: MethodType =>
+            mt.resultType match {
+              case resType: MethodType => resType
+              case resType => ExprType(resType)
+            }
+          case pt: PolyType =>
+            PolyType(pt.paramNames)(_ => pt.paramInfos, _ => pt.resultType.resultType)
+        }
+
+        newSymbol(owner = qual.symbol, methodName, methodSymbol.flags, newMethodType)
+      }
+
+      val matchingNamePrefix = completionPrefix(path, pos)
+
+      def extractDefinedExtensionMethods(types: Seq[Type]) =
+        types
+          .flatMap(_.membersBasedOnFlags(required = ExtensionMethod, excluded = EmptyFlags))
+          .collect{ denot =>
+            denot.name.toTermName match {
+              case name if name.startsWith(matchingNamePrefix) => (denot.symbol, name)
+            }
+          }
+
+      // There are four possible ways for an extension method to be applicable:
+
+      // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
+      val extMethodsInScope =
+        val buf = completionBuffer(path, pos)
+        buf.addScopeCompletions
+        buf.completions.mappings.toList.flatMap {
+          case (termName, symbols) => symbols.map(s => (s, termName))
+        }
+
+      // 2. The extension method is a member of some given instance that is visible at the point of the reference.
+      val givensInScope = ctx.implicits.eligible(defn.AnyType).map(_.implicitRef.underlyingRef)
+      val extMethodsFromGivensInScope = extractDefinedExtensionMethods(givensInScope)
+
+      // 3. The reference is of the form r.m and the extension method is defined in the implicit scope of the type of r.
+      val implicitScopeCompanions = ctx.run.implicitScope(qual.tpe).companionRefs.showAsList
+      val extMethodsFromImplicitScope = extractDefinedExtensionMethods(implicitScopeCompanions)
+
+      // 4. The reference is of the form r.m and the extension method is defined in some given instance in the implicit scope of the type of r.
+      val givensInImplicitScope = implicitScopeCompanions.flatMap(_.membersBasedOnFlags(required = Given, excluded = EmptyFlags)).map(_.symbol.info)
+      val extMethodsFromGivensInImplicitScope = extractDefinedExtensionMethods(givensInImplicitScope)
+
+      val availableExtMethods = extMethodsFromGivensInImplicitScope ++ extMethodsFromImplicitScope ++ extMethodsFromGivensInScope ++ extMethodsInScope
+      val extMethodsWithAppliedReceiver = availableExtMethods.collect {
+        case (symbol, termName) if ctx.typer.isApplicableExtensionMethod(symbol.termRef, qual.tpe) =>
+          applyExtensionReceiver(symbol, termName)
+      }
+
+      for (symbol <- extMethodsWithAppliedReceiver) do add(symbol, symbol.name)
+
+    def addSelectionCompletions(path: List[Tree], qual: Tree)(using Context): Unit =
+      addExtensionCompletions(path, qual)
+      addMemberCompletions(qual)
 
     /**
      * If `sym` exists, no symbol with the same name is already included, and it satisfies the
