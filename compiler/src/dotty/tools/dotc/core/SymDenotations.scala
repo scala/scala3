@@ -1111,8 +1111,8 @@ object SymDenotations {
 
     final def isTransparentTrait(using Context): Boolean =
       isAllOf(TransparentTrait)
-      || isClass
-          && (hasAnnotation(defn.MixinAnnot) || defn.assumedMixinTraits.contains(symbol.asClass))
+      || defn.assumedTransparentTraits.contains(symbol)
+      || isClass && hasAnnotation(defn.TransparentTraitAnnot)
 
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(using Context): Symbol = {

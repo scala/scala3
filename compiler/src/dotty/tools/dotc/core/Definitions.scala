@@ -912,7 +912,7 @@ class Definitions {
   @tu lazy val InvariantBetweenAnnot: ClassSymbol = requiredClass("scala.annotation.internal.InvariantBetween")
   @tu lazy val MainAnnot: ClassSymbol = requiredClass("scala.main")
   @tu lazy val MigrationAnnot: ClassSymbol = requiredClass("scala.annotation.migration")
-  @tu lazy val MixinAnnot: ClassSymbol = requiredClass("scala.annotation.mixin")
+  @tu lazy val TransparentTraitAnnot: ClassSymbol = requiredClass("scala.annotation.transparentTrait")
   @tu lazy val NativeAnnot: ClassSymbol = requiredClass("scala.native")
   @tu lazy val RepeatedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Repeated")
   @tu lazy val SourceFileAnnot: ClassSymbol = requiredClass("scala.annotation.internal.SourceFile")
@@ -1507,8 +1507,8 @@ class Definitions {
   def isInfix(sym: Symbol)(using Context): Boolean =
     (sym eq Object_eq) || (sym eq Object_ne)
 
-  @tu lazy val assumedMixinTraits =
-    Set(ComparableClass, ProductClass, SerializableClass,
+  @tu lazy val assumedTransparentTraits =
+    Set[Symbol](ComparableClass, ProductClass, SerializableClass,
       // add these for now, until we had a chance to retrofit 2.13 stdlib
       // we should do a more through sweep through it then.
       requiredClass("scala.collection.SortedOps"),
