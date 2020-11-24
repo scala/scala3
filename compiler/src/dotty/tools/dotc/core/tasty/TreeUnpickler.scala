@@ -668,6 +668,7 @@ class TreeUnpickler(reader: TastyReader,
           case EXPORTED => addFlag(Exported)
           case OPEN => addFlag(Open)
           case TRANSPARENT => addFlag(Transparent)
+          case INFIX => addFlag(Infix)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readWithin

@@ -357,14 +357,16 @@ object Flags {
   /** An opaque type alias or a class containing one */
   val (Opaque @ _, _, _) = newFlags(43, "opaque")
 
+  /** An infix method or type */
+  val (Infix @ _, _, _) = newFlags(44, "infix")
 
   // ------------ Flags following this one are not pickled ----------------------------------
 
   /** Symbol is not a member of its owner */
-  val (NonMember @ _, _, _) = newFlags(45, "<non-member>")
+  val (NonMember @ _, _, _) = newFlags(49, "<non-member>")
 
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
-  val (Touched @ _, _, _) = newFlags(48, "<touched>")
+  val (Touched @ _, _, _) = newFlags(50, "<touched>")
 
   /** Class has been lifted out to package level, local value has been lifted out to class level */
   val (Lifted @ _, _, _) = newFlags(51, "<lifted>")

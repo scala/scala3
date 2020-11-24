@@ -213,6 +213,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case class Inline()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Inline)
 
     case class Transparent()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Transparent)
+
+    case class Infix()(implicit @constructorOnly src: SourceFile) extends Mod(Flags.Infix)
   }
 
   /** Modifiers and annotations for definitions

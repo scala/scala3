@@ -288,5 +288,5 @@ object Tokens extends TokensCommon {
 
   final val endMarkerTokens = identifierTokens | BitSet(IF, WHILE, FOR, MATCH, TRY, NEW, GIVEN, VAL, THIS)
 
-  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent)
+  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)
 }

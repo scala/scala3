@@ -2732,6 +2732,7 @@ object Parsers {
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
           case nme.transparent => Mod.Transparent()
+          case nme.infix => Mod.Infix()
         }
     }
 

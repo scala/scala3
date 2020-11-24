@@ -13,7 +13,7 @@ object ExtMethods:
 
   extension (x: String) def < (y: String) = x.compareTo(y) < 0
   extension [Elem](x: Elem) def #: (xs: Seq[Elem]) = x +: xs
-  extension (x: Number) @infix def min (y: Number) = x
+  extension (x: Number) infix def min (y: Number) = x
 
   assert("a" < "bb")
   val xs = 1 #: Vector(2, 3)
