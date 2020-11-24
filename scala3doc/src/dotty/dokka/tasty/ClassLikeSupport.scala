@@ -123,6 +123,17 @@ trait ClassLikeSupport:
           .map { _ =>
             parseMethod(dd.symbol, kind = Kind.Given(getGivenInstance(dd).map(_.asSignature), None))
           }
+          
+      case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported =>
+        val exportedTarget = dd.rhs.flatMap { 
+          case a: Apply => Some(a.fun)
+          case _ => None
+        }.map { 
+          case s: Select => s
+        } 
+        val functionName = exportedTarget.fold("instance")(_.name)
+        val instanceName = exportedTarget.fold("function")(_.qualifier.asInstanceOf[Select].name)
+        Some(parseMethod(dd.symbol, kind = Kind.Exported).withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dd.symbol.dri)))
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isGiven && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod =>
         Some(parseMethod(dd.symbol))
@@ -184,7 +195,6 @@ trait ClassLikeSupport:
         case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd
         case other => other
       }
-
       c.membersToDocument.flatMap(parseMember) ++
         inherited.flatMap(s => parseInheritedMember(s))
     }

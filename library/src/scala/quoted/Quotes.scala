@@ -3154,6 +3154,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is this symbol `erased` */
       def Erased: Flags
 
+      /** Is this symbol exported from provided instance */
+      def Exported: Flags
+
       /** Is this symbol a `def` defined in an `extension` */
       def ExtensionMethod: Flags
 

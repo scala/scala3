@@ -2436,6 +2436,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def EmptyFlags = dotc.core.Flags.EmptyFlags
       def Enum: Flags = dotc.core.Flags.Enum
       def Erased: Flags = dotc.core.Flags.Erased
+      def Exported: Flags = dotc.core.Flags.Exported
       def ExtensionMethod: Flags = dotc.core.Flags.ExtensionMethod
       def FieldAccessor: Flags = dotc.core.Flags.Accessor
       def Final: Flags = dotc.core.Flags.Final

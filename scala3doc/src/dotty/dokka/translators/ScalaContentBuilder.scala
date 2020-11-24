@@ -489,6 +489,7 @@ class ScalaPageContentBuilder(
         val originInfo = documentable.origin match {
           case Origin.ImplicitlyAddedBy(name, dri) => Signature("Implicitly added by ", SLink(name, dri))
           case Origin.ExtensionFrom(name, dri) => Signature("Extension method from ", SLink(name, dri))
+          case Origin.ExportedFrom(name, dri) => Signature("Exported from ", SLink(name, dri))
           case _ => Nil
         }
 

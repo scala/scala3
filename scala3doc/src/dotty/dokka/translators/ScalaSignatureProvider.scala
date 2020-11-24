@@ -49,6 +49,8 @@ object ScalaSignatureProvider:
         extensionSignature(extension, builder)
       case method: DFunction if method.kind.isInstanceOf[Kind.Given] =>
         givenMethodSignature(method, builder)
+      case exprt: DFunction if exprt.kind == Kind.Exported =>
+        exportedMethodSignature(exprt, builder)
       case method: DFunction =>
         methodSignature(method, builder)
       case enumEntry: DClass if enumEntry.kind == Kind.EnumCase =>
@@ -138,14 +140,14 @@ object ScalaSignatureProvider:
     } else {
       extension.getParameters.asScala(0)
     }
-    val withSinature = builder
+    val withSignature = builder
       .modifiersAndVisibility(extension, "def")
       .name(extension.getName, extension.getDri)
       .generics(extension)
       .functionParameters(extension)
 
-    if extension.isConstructor then withSinature
-    else withSinature.text(":").text(" ").typeSignature(extension.getType)
+    if extension.isConstructor then withSignature
+    else withSignature.text(":").text(" ").typeSignature(extension.getType)
 
   private def givenMethodSignature(method: DFunction, builder: SignatureBuilder): SignatureBuilder = method.kind match
     case Kind.Given(Some(instance), _) =>
@@ -156,6 +158,8 @@ object ScalaSignatureProvider:
     case _ =>
       builder.text("given ").name(method.getName, method.getDri)
 
+  private def exportedMethodSignature(method: DFunction, builder: SignatureBuilder): SignatureBuilder = 
+    methodSignature(method, builder)
 
   private def methodSignature(method: DFunction, builder: SignatureBuilder): SignatureBuilder =
     val bdr = builder
