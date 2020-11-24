@@ -11,7 +11,7 @@ object BigFloatFromDigitsImpl:
           val BigFloat(m, e) = BigFloat(ds)
           '{BigFloat(${Expr(m)}, ${Expr(e)})}
         catch case ex: FromDigits.FromDigitsException =>
-          report.error(ex.getMessage)
+          quotes.reflect.report.error(ex.getMessage)
           '{BigFloat(0, 0)}
       case digits =>
         '{BigFloat($digits)}

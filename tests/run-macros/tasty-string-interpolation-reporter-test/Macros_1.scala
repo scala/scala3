@@ -24,7 +24,7 @@ object Macro {
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
             import quotes.reflect._
-            Reporting.error(msg, Term.of(parts(partIdx)).pos)
+            report.error(msg, Term.of(parts(partIdx)).pos)
           }
         }
         fooCore(parts, args, reporter)

@@ -39,7 +39,7 @@ object Macros {
 
       case _ =>
         import quotes.reflect._
-        Reporting.error("Expected explicit DSL " + e.show, Term.of(e).pos)
+        report.error("Expected explicit DSL " + e.show, Term.of(e).pos)
         ???
     }
 
@@ -53,7 +53,7 @@ object Macros {
         )
       case _ =>
         import quotes.reflect._
-        Reporting.error("Expected explicit DSL => DSL "  + e.show, Term.of(e).pos)
+        report.error("Expected explicit DSL => DSL "  + e.show, Term.of(e).pos)
         ???
     }
 

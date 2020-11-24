@@ -4,6 +4,7 @@ import scala.quoted._
 extension (sc: StringContext) inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] = {
+  import quotes.reflect.report
   argsExpr match {
     case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {

@@ -64,6 +64,7 @@ object Macros {
       case FromEnv(expr) => expr.asInstanceOf[Expr[R[T]]]
 
       case _ =>
+        import quotes.reflect.report
         report.error("Expected explicit value but got: " + e.show, e)
         '{ ??? }
 

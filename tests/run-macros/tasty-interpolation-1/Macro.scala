@@ -1,7 +1,6 @@
 
 import scala.quoted._
 import scala.language.implicitConversions
-import scala.quoted.report.error
 
 object Macro {
 
@@ -32,6 +31,7 @@ object FooIntepolator extends MacroStringInterpolator[String] {
 abstract class MacroStringInterpolator[T] {
 
   final def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes) : Expr[T] = {
+    import quotes.reflect.report.error
     try interpolate(strCtxExpr, argsExpr)
     catch {
       case ex: NotStaticlyKnownError =>

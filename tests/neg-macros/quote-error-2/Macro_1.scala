@@ -7,6 +7,6 @@ object Macro_1 {
 
   def msg(b: Boolean)(using Quotes): Expr[String] =
     if (b) '{"foo(true)"}
-    else { report.error("foo cannot be called with false"); '{ ??? } }
+    else { quotes.reflect.report.error("foo cannot be called with false"); '{ ??? } }
 
 }
