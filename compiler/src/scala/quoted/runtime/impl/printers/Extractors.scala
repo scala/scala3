@@ -237,6 +237,7 @@ object Extractors {
       case SimpleSelector(id) => this += "SimpleSelector(" += id += ")"
       case RenameSelector(id1, id2) => this += "RenameSelector(" += id1 += ", " += id2 += ")"
       case OmitSelector(id) => this += "OmitSelector(" += id += ")"
+      case GivenSelector(bound) => this += "GivenSelector(" += bound += ")"
     }
 
     def visitSymbol(x: Symbol): this.type =

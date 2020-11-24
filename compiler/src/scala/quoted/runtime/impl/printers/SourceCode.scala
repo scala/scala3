@@ -1226,6 +1226,13 @@ object SourceCode {
       case SimpleSelector(name) => this += name
       case OmitSelector(name) => this += name += " => _"
       case RenameSelector(name, newName) => this += name += " => " += newName
+      case GivenSelector(bound) =>
+        bound match
+          case Some(tpt) =>
+            this += "given "
+            printTree(tpt)
+          case _ =>
+            this += "given"
     }
 
     private def printDefinitionName(tree: Definition): this.type = tree match {
