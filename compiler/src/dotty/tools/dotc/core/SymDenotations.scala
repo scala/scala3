@@ -1109,9 +1109,10 @@ object SymDenotations {
     final def isEffectivelySealed(using Context): Boolean =
       isOneOf(FinalOrSealed) || isClass && !isOneOf(EffectivelyOpenFlags)
 
-    final def isMixinTrait(using Context): Boolean =
-      isClass
-      && (hasAnnotation(defn.MixinAnnot) || defn.assumedMixinTraits.contains(symbol.asClass))
+    final def isTransparentTrait(using Context): Boolean =
+      isAllOf(TransparentTrait)
+      || defn.assumedTransparentTraits.contains(symbol)
+      || isClass && hasAnnotation(defn.TransparentTraitAnnot)
 
     /** The class containing this denotation which has the given effective name. */
     final def enclosingClassNamed(name: Name)(using Context): Symbol = {

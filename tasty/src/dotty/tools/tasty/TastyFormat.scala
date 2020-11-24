@@ -255,7 +255,7 @@ object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion: Int = 25
-  val MinorVersion: Int = 0
+  val MinorVersion: Int = 1
 
   final val ASTsSection = "ASTs"
   final val PositionsSection = "Positions"
@@ -370,7 +370,8 @@ object TastyFormat {
   final val OPEN = 40
   final val PARAMEND = 41
   final val PARAMalias = 42
-  final val SUPERTRAIT = 43  // TODO: remove
+  final val TRANSPARENT = 43
+  final val INFIX = 44
 
   // Cat. 2:    tag Nat
 
@@ -485,7 +486,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
-    firstSimpleTreeTag <= tag && tag <= SUPERTRAIT ||
+    firstSimpleTreeTag <= tag && tag <= INFIX ||
     firstNatTreeTag <= tag && tag <= RENAMED ||
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -514,7 +515,8 @@ object TastyFormat {
        | STATIC
        | OBJECT
        | TRAIT
-       | SUPERTRAIT
+       | TRANSPARENT
+       | INFIX
        | ENUM
        | LOCAL
        | SYNTHETIC
@@ -575,7 +577,8 @@ object TastyFormat {
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"
-    case SUPERTRAIT => "SUPERTRAIT"
+    case TRANSPARENT => "TRANSPARENT"
+    case INFIX => "INFIX"
     case ENUM => "ENUM"
     case LOCAL => "LOCAL"
     case SYNTHETIC => "SYNTHETIC"

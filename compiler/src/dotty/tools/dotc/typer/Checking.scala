@@ -449,6 +449,11 @@ object Checking {
       if (sym.isType)
         fail(TypesAndTraitsCantBeImplicit())
     }
+    if sym.is(Transparent) then
+      if sym.isType then
+        if !sym.is(Trait) then fail(em"`transparent` can only be used for traits")
+      else
+        if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods")
     if (!sym.isClass && sym.is(Abstract))
       fail(OnlyClassesCanBeAbstract(sym))
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
@@ -781,7 +786,7 @@ trait Checking {
   }
 
   /** Check that `tree` is a valid infix operation. That is, if the
-   *  operator is alphanumeric, it must be declared `@infix`.
+   *  operator is alphanumeric, it must be declared `infix`.
    */
   def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = {
     tree.op match {
@@ -802,7 +807,7 @@ trait Checking {
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
             report.deprecationWarning(
-              i"""Alphanumeric $kind $name is not declared @infix; it should not be used as infix operator.
+              i"""Alphanumeric $kind $name is not declared `infix`; it should not be used as infix operator.
                  |The operation can be rewritten automatically to `$name` under -deprecation -rewrite.
                  |Or rewrite to ${alternative(name)} manually.""",
               tree.op.srcPos)

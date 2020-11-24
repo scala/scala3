@@ -1,7 +1,5 @@
 package scala.compiletime
 
-import scala.annotation.infix
-
 package object ops {
   object any {
     /** Equality comparison of two singleton types.
@@ -11,7 +9,7 @@ package object ops {
      * val eq3: "1" == "1" = true
      * ```
      */
-    @infix type ==[X, Y] <: Boolean
+    type ==[X, Y] <: Boolean
 
     /** Inequality comparison of two singleton types.
      * ```scala
@@ -20,7 +18,7 @@ package object ops {
      * val eq3: "1" != "1" = false
      * ```
      */
-    @infix type !=[X, Y] <: Boolean
+    type !=[X, Y] <: Boolean
   }
 
   object string {
@@ -29,7 +27,7 @@ package object ops {
      *  val hello: "hello " + "world" = "hello world"
      *  ```
      */
-    @infix type +[X <: String, Y <: String] <: String
+    type +[X <: String, Y <: String] <: String
   }
 
   object int {
@@ -38,63 +36,63 @@ package object ops {
      *  val sum: 2 + 2 = 4
      *  ```
      */
-    @infix type +[X <: Int, Y <: Int] <: Int
+    type +[X <: Int, Y <: Int] <: Int
 
     /** Subtraction of two `Int` singleton types.
      *  ```scala
      *  val sub: 4 - 2 = 2
      *  ```
      */
-    @infix type -[X <: Int, Y <: Int] <: Int
+    type -[X <: Int, Y <: Int] <: Int
 
     /** Multiplication of two `Int` singleton types.
      *  ```scala
      *  val mul: 4 * 2 = 8
      *  ```
      */
-    @infix type *[X <: Int, Y <: Int] <: Int
+    type *[X <: Int, Y <: Int] <: Int
 
     /** Integer division of two `Int` singleton types.
      *  ```scala
      *  val div: 5 / 2 = 2
      *  ```
      */
-    @infix type /[X <: Int, Y <: Int] <: Int
+    type /[X <: Int, Y <: Int] <: Int
 
     /** Remainder of the division of `X` by `Y`.
      *  ```scala
      *  val mod: 5 % 2 = 1
      *  ```
      */
-    @infix type %[X <: Int, Y <: Int] <: Int
+    type %[X <: Int, Y <: Int] <: Int
 
     /** Binary left shift of `X` by `Y`.
      *  ```scala
      *  val lshift: 1 << 2 = 4
      *  ```
      */
-    @infix type <<[X <: Int, Y <: Int] <: Int
+    type <<[X <: Int, Y <: Int] <: Int
 
     /** Binary right shift of `X` by `Y`.
      *  ```scala
      *  val rshift: 10 >> 1 = 5
      *  ```
      */
-    @infix type >>[X <: Int, Y <: Int] <: Int
+    type >>[X <: Int, Y <: Int] <: Int
 
     /** Binary right shift of `X` by `Y`, filling the left with zeros.
      *  ```scala
      *  val rshiftzero: 10 >>> 1 = 5
      *  ```
      */
-    @infix type >>>[X <: Int, Y <: Int] <: Int
+    type >>>[X <: Int, Y <: Int] <: Int
 
     /** Bitwise xor of `X` and `Y`.
      *  ```scala
      *  val xor: 10 ^ 30 = 20
      *  ```
      */
-    @infix type ^[X <: Int, Y <: Int] <: Int
+    type ^[X <: Int, Y <: Int] <: Int
 
     /** Less-than comparison of two `Int` singleton types.
      *  ```scala
@@ -102,7 +100,7 @@ package object ops {
      *  val lt2: 2 < 4 = true
      *  ```
      */
-    @infix type <[X <: Int, Y <: Int] <: Boolean
+    type <[X <: Int, Y <: Int] <: Boolean
 
     /** Greater-than comparison of two `Int` singleton types.
      *  ```scala
@@ -110,7 +108,7 @@ package object ops {
      *  val gt2: 2 > 2 = false
      *  ```
      */
-    @infix type >[X <: Int, Y <: Int] <: Boolean
+    type >[X <: Int, Y <: Int] <: Boolean
 
     /** Greater-or-equal comparison of two `Int` singleton types.
      *  ```scala
@@ -118,7 +116,7 @@ package object ops {
      *  val ge2: 2 >= 3 = false
      *  ```
      */
-    @infix type >=[X <: Int, Y <: Int] <: Boolean
+    type >=[X <: Int, Y <: Int] <: Boolean
 
     /** Less-or-equal comparison of two `Int` singleton types.
      *  ```scala
@@ -126,7 +124,7 @@ package object ops {
      *  val lt2: 2 <= 2 = true
      *  ```
      */
-    @infix type <=[X <: Int, Y <: Int] <: Boolean
+    type <=[X <: Int, Y <: Int] <: Boolean
 
     /** Bitwise and of `X` and `Y`.
      *  ```scala
@@ -196,7 +194,7 @@ package object ops {
      * val b: false ^ true = true
      * ```
      */
-    @infix type ^[X <: Boolean, Y <: Boolean] <: Boolean
+    type ^[X <: Boolean, Y <: Boolean] <: Boolean
 
     /** Conjunction of two `Boolean` singleton types.
      *  ```scala
@@ -204,7 +202,7 @@ package object ops {
      *  val b: false && true = false
      *  ```
      */
-    @infix type &&[X <: Boolean, Y <: Boolean] <: Boolean
+    type &&[X <: Boolean, Y <: Boolean] <: Boolean
 
     /** Disjunction of two `Boolean` singleton types.
      * ```scala
@@ -212,6 +210,6 @@ package object ops {
      * val b: false || false = false
      * ```
      */
-    @infix type ||[X <: Boolean, Y <: Boolean] <: Boolean
+    type ||[X <: Boolean, Y <: Boolean] <: Boolean
   }
 }

@@ -241,7 +241,7 @@ object SymUtils:
 
     /** Is symbol assumed or declared as an infix symbol? */
     def isDeclaredInfix(using Context): Boolean =
-      self.hasAnnotation(defn.InfixAnnot)
+      self.is(Infix)
       || defn.isInfix(self)
       || self.name.isUnapplyName
         && self.owner.is(Module)

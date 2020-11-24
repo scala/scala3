@@ -1,7 +1,6 @@
 // Compile with -strict -Xfatal-warnings -deprecation
-import scala.annotation.infix
 class C:
-  @infix def op(x: Int): Int = ???
+  infix def op(x: Int): Int = ???
   def meth(x: Int): Int = ???
   def matching(x: Int => Int) = ???
   def +(x: Int): Int = ???
@@ -9,7 +8,7 @@ class C:
 object C:
   given AnyRef:
     extension (x: C)
-      @infix def iop (y: Int) = ???
+      infix def iop (y: Int) = ???
       def mop (y: Int) = ???
       def ++ (y: Int) = ???
 
@@ -34,25 +33,25 @@ def test() = {
     case x => x
   }
 
-  @infix class Or[X, Y]
+  infix class Or[X, Y]
   class AndC[X, Y]
-  @infix type And[X, Y] = AndC[X, Y]
-  @infix type &&[X, Y] = AndC[X, Y]
+  infix type And[X, Y] = AndC[X, Y]
+  infix type &&[X, Y] = AndC[X, Y]
 
   class Map[X, Y]
 
   val x1: Int Map String = ???     // error
-  val x2: Int Or String = ???      // OK since Or is declared `@infix`
+  val x2: Int Or String = ???      // OK since Or is declared `infix`
   val x3: Int AndC String = ???    // error
   val x4: Int `AndC` String = ???  // OK
   val x5: Int And String = ???     // OK
   val x6: Int && String = ???
 
   case class Pair[T](x: T, y: T)
-  @infix case class Q[T](x: T, y: T)
+  infix case class Q[T](x: T, y: T)
 
   object PP {
-    @infix def unapply[T](x: Pair[T]): Option[(T, T)] = Some((x.x, x.y))
+    infix def unapply[T](x: Pair[T]): Option[(T, T)] = Some((x.x, x.y))
   }
 
   val p = Pair(1, 2)

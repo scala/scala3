@@ -342,6 +342,9 @@ object Flags {
   /** Symbol is a Java default method */
   val (_, DefaultMethod @ _, _) = newFlags(38, "<defaultmethod>")
 
+  /** Symbol is a transparent inline method or trait */
+  val (Transparent @ _, _, _) = newFlags(39, "transparent")
+
   /** Symbol is an enum class or enum case (if used with case) */
   val (Enum @ _, EnumVal @ _, _) = newFlags(40, "enum")
 
@@ -354,14 +357,16 @@ object Flags {
   /** An opaque type alias or a class containing one */
   val (Opaque @ _, _, _) = newFlags(43, "opaque")
 
+  /** An infix method or type */
+  val (Infix @ _, _, _) = newFlags(44, "infix")
 
   // ------------ Flags following this one are not pickled ----------------------------------
 
   /** Symbol is not a member of its owner */
-  val (NonMember @ _, _, _) = newFlags(45, "<non-member>")
+  val (NonMember @ _, _, _) = newFlags(49, "<non-member>")
 
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
-  val (Touched @ _, _, _) = newFlags(48, "<touched>")
+  val (Touched @ _, _, _) = newFlags(50, "<touched>")
 
   /** Class has been lifted out to package level, local value has been lifted out to class level */
   val (Lifted @ _, _, _) = newFlags(51, "<lifted>")
@@ -419,7 +424,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic)
+    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent)
 
   val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
@@ -449,7 +454,7 @@ object Flags {
    *  is completed)
    */
   val AfterLoadFlags: FlagSet = commonFlags(
-    FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined)
+    FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined, Transparent)
 
   /** A value that's unstable unless complemented with a Stable flag */
   val UnstableValueFlags: FlagSet = Mutable | Method
@@ -499,7 +504,7 @@ object Flags {
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
     Override | Final | Method | Implicit | Given | Lazy |
-    Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased
+    Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased | Transparent
 
   /** Flags that can apply to a module class */
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
@@ -576,4 +581,5 @@ object Flags {
   val SyntheticParam: FlagSet                = Synthetic | Param
   val SyntheticTermParam: FlagSet            = Synthetic | TermParam
   val SyntheticTypeParam: FlagSet            = Synthetic | TypeParam
+  val TransparentTrait: FlagSet              = Trait | Transparent
 }
