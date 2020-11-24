@@ -7,7 +7,7 @@ object Macros {
   inline def foreach3(start: Int, end: Int, inline f: Int => Unit): String = ${impl('start, 'end, 'f)}
 
   def impl(start: Expr[Int], end: Expr[Int], f: Expr[Int => Unit])(using Quotes) : Expr[String] = {
-    import qctx.reflect._
+    import quotes.reflect._
     val res = '{
       var i = $start
       val j = $end

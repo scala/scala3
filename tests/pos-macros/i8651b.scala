@@ -9,7 +9,7 @@ object Macros {
  inline def coroutine[T](inline body: Any): Coroutine[T] = ${ coroutineImpl('{body}) }
 
  def coroutineImpl[T: Type](expr: Expr[_ <: Any])(using Quotes): Expr[Coroutine[T]] = {
-   import qctx.reflect._
+   import quotes.reflect._
 
    '{
      new Coroutine[T] {

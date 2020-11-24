@@ -2,13 +2,16 @@ package scala.quoted
 
 import scala.reflect.TypeTest
 
+/** Current Quotes in scope */
+inline def quotes(using q: Quotes): q.type = q
+
 /** Quotation context provided by a macro expansion or in the scope of `scala.quoted.run`.
  *  Used to perform all operations on quoted `Expr` or `Type`.
  *
  *  It contains the low-level Typed AST API metaprogramming API.
  *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
  *
- *  @param tasty Typed AST API. Usage: `def f(qctx: Quotes) = { import qctx.reflect._; ... }`.
+ *  @param tasty Typed AST API. Usage: `def f(qctx: Quotes) = { import quotes.reflect._; ... }`.
  */
 trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
@@ -3534,7 +3537,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```
-    *  import qctx.reflect._
+    *  import quotes.reflect._
     *  class MyTreeMap extends TreeMap {
     *    override def transformTree(tree: Tree)(owner: Symbol): Tree = ...
     *  }

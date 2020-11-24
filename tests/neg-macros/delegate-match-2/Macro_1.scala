@@ -4,7 +4,7 @@ import scala.quoted._
 inline def f: Any = ${ fImpl }
 
 private def fImpl (using Quotes) : Expr[Unit] = {
-  import qctx.reflect._
+  import quotes.reflect._
   Implicits.search(TypeRepr.of[A]) match {
     case x: ImplicitSearchSuccess =>
       '{}

@@ -22,11 +22,11 @@ object Test {
 
 class TestInspector() extends TastyInspector:
 
-  protected def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit =
+  protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit =
     inspectClass(root)
 
-  private def inspectClass(using Quotes)(tree: qctx.reflect.Tree): Unit =
-    import qctx.reflect._
+  private def inspectClass(using Quotes)(tree: quotes.reflect.Tree): Unit =
+    import quotes.reflect._
     tree match {
       case t: PackageClause =>
         t.stats.map( m => inspectClass(m) )

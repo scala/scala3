@@ -3,7 +3,7 @@ import scala.quoted._
 object Main {
 
   def myMacroImpl(body: Expr[_])(using Quotes) : Expr[_] = {
-    import qctx.reflect._
+    import quotes.reflect._
     val bodyTerm = Term.of(underlyingArgument(body))
     val showed = bodyTerm.show
     '{
@@ -17,6 +17,6 @@ object Main {
   }
 
   def underlyingArgument[T](expr: Expr[T])(using Quotes): Expr[T] =
-    import qctx.reflect._
+    import quotes.reflect._
     Term.of(expr).underlyingArgument.asExpr.asInstanceOf[Expr[T]]
 }

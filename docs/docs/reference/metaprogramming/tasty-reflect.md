@@ -20,7 +20,7 @@ guarantees and may fail at macro expansion time, hence additional explicit
 checks must be done.
 
 To provide reflection capabilities in macros we need to add an implicit
-parameter of type `scala.quoted.Quotes` and import `qctx.reflect._` from it in
+parameter of type `scala.quoted.Quotes` and import `quotes.reflect._` from it in
 the scope where it is used.
 
 ```scala
@@ -29,19 +29,19 @@ import scala.quoted._
 inline def natConst(inline x: Int): Int = ${natConstImpl('{x})}
 
 def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
-  import qctx.reflect._
+  import quotes.reflect._
   ...
 }
 ```
 
 ### Extractors
 
-`import qctx.reflect._` will provide all extractors and methods on TASTy Reflect
+`import quotes.reflect._` will provide all extractors and methods on TASTy Reflect
 trees. For example the `Literal(_)` extractor used below.
 
 ```scala
 def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
-  import qctx.reflect._
+  import quotes.reflect._
   val xTree: Term = Term.of(x)
   xTree match {
     case Inlined(_, _, Literal(Constant(n: Int))) =>
@@ -59,9 +59,9 @@ def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
 ```
 
 To easily know which extractors are needed, the `showExtractors` method on a
-`qctx.reflect.Term` returns the string representation of the extractors.
+`quotes.reflect.Term` returns the string representation of the extractors.
 
-The methods `qctx.reflect.Term.{asExpr, asExprOf}` provide a way to go back to a `quoted.Expr`.
+The methods `quotes.reflect.Term.{asExpr, asExprOf}` provide a way to go back to a `quoted.Expr`.
 Note that `asExpr` returns a `Expr[Any]`.
 On the other hand `asExprOf[T]` returns a `Expr[T]`, if the type does not conform to it an exception will be thrown at runtime.
 
@@ -75,8 +75,8 @@ such as the start line, the end line or even the source code at the expansion
 point.
 
 ```scala
-def macroImpl()(qctx: Quotes): Expr[Unit] = {
-  import qctx.reflect._
+def macroImpl()(quotes: Quotes): Expr[Unit] = {
+  import quotes.reflect._
   val pos = rootPosition
 
   val path = pos.sourceFile.jpath.toString

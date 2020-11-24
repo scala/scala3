@@ -5,7 +5,7 @@ object Macros:
 
 object MacrosImpl:
   def impl[T: Type](x: Expr[T])(using Quotes) : Expr[T] = {
-    import qctx.reflect._
+    import quotes.reflect._
     val identityMap = new TreeMap { }
     val transformed = identityMap.transformTerm(Term.of(x))(Symbol.spliceOwner).asExprOf[T]
     transformed

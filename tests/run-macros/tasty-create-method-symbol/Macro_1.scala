@@ -5,7 +5,7 @@ object Macros {
   inline def theTestBlock : Unit = ${ theTestBlockImpl }
 
   def theTestBlockImpl(using q: Quotes) : Expr[Unit] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     // simple smoke test
     val sym1 : Symbol = Symbol.newMethod(

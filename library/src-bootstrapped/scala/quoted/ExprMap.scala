@@ -7,7 +7,7 @@ trait ExprMap:
 
   /** Map subexpressions an expression `e` with a type `T` */
   def transformChildren[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = {
-    import qctx.reflect._
+    import quotes.reflect._
     final class MapChildren() {
 
       def transformStatement(tree: Statement)(owner: Symbol): Statement = {
@@ -102,7 +102,7 @@ trait ExprMap:
             type X
             val expr = tree.asExpr.asInstanceOf[Expr[X]]
             val t = tpe.asType.asInstanceOf[Type[X]]
-            val transformedExpr = transform(expr)(using qctx, t)
+            val transformedExpr = transform(expr)(using quotes, t)
             Term.of(transformedExpr)
           case _ =>
             transformTermChildren(tree, tpe)(owner)

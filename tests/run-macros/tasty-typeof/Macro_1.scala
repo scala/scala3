@@ -5,7 +5,7 @@ object Macros {
   inline def testTypeOf(): Unit = ${ testTypeOfImpl }
 
   private def testTypeOfImpl(using Quotes) : Expr[Unit] = {
-    import qctx.reflect._
+    import quotes.reflect._
     '{
       assert(${Expr(TypeRepr.of[Unit] =:= TypeRepr.of[Unit])}, "Unit")
       assert(${Expr(TypeRepr.of[Byte] =:= TypeRepr.of[Byte])}, "Byte")

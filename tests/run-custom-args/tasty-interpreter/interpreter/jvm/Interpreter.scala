@@ -4,13 +4,13 @@ package jvm
 import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
 
-class Interpreter[QCtx <: Quotes & Singleton](using qctx0: QCtx) extends TreeInterpreter[QCtx] {
-  import qctx.reflect._
+class Interpreter[Q <: Quotes & Singleton](using q0: Q) extends TreeInterpreter[Q] {
+  import q.reflect._
 
   // All references are represented by themselves and values are boxed
   type AbstractAny = Any
 
-  val jvmReflection = new JVMReflection(using qctx)
+  val jvmReflection = new JVMReflection(using q)
 
   def interpretNew(fn: Tree, argss: List[List[Term]]): Result = {
     if (fn.symbol.isDefinedInCurrentRun) {

@@ -22,7 +22,7 @@ object X:
  }
 
  def processImpl[T:Type](f:Expr[T])(using Quotes):Expr[CB[T]] =
-   import qctx.reflect._
+   import quotes.reflect._
 
    def transform(term:Term):Term =
      term match

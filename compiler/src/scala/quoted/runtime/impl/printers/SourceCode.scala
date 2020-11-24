@@ -6,20 +6,20 @@ import scala.annotation.switch
 /** Printer for fully elaborated representation of the source code */
 object SourceCode {
 
-  def showTree(using Quotes)(tree: qctx.reflect.Tree)(syntaxHighlight: SyntaxHighlight): String =
-    new SourceCodePrinter[qctx.type](syntaxHighlight).printTree(tree).result()
+  def showTree(using Quotes)(tree: quotes.reflect.Tree)(syntaxHighlight: SyntaxHighlight): String =
+    new SourceCodePrinter[quotes.type](syntaxHighlight).printTree(tree).result()
 
-  def showType(using Quotes)(tpe: qctx.reflect.TypeRepr)(syntaxHighlight: SyntaxHighlight): String =
-    new SourceCodePrinter[qctx.type](syntaxHighlight).printType(tpe)(using None).result()
+  def showType(using Quotes)(tpe: quotes.reflect.TypeRepr)(syntaxHighlight: SyntaxHighlight): String =
+    new SourceCodePrinter[quotes.type](syntaxHighlight).printType(tpe)(using None).result()
 
-  def showConstant(using Quotes)(const: qctx.reflect.Constant)(syntaxHighlight: SyntaxHighlight): String =
-    new SourceCodePrinter[qctx.type](syntaxHighlight).printConstant(const).result()
+  def showConstant(using Quotes)(const: quotes.reflect.Constant)(syntaxHighlight: SyntaxHighlight): String =
+    new SourceCodePrinter[quotes.type](syntaxHighlight).printConstant(const).result()
 
-  def showSymbol(using Quotes)(symbol: qctx.reflect.Symbol)(syntaxHighlight: SyntaxHighlight): String =
+  def showSymbol(using Quotes)(symbol: quotes.reflect.Symbol)(syntaxHighlight: SyntaxHighlight): String =
     symbol.fullName
 
-  def showFlags(using Quotes)(flags: qctx.reflect.Flags)(syntaxHighlight: SyntaxHighlight): String = {
-    import qctx.reflect._
+  def showFlags(using Quotes)(flags: quotes.reflect.Flags)(syntaxHighlight: SyntaxHighlight): String = {
+    import quotes.reflect._
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "abstract"
     if (flags.is(Flags.Artifact)) flagList += "artifact"
@@ -58,9 +58,9 @@ object SourceCode {
     flagList.result().mkString("/*", " ", "*/")
   }
 
-  private class SourceCodePrinter[QCtx <: Quotes & Singleton](syntaxHighlight: SyntaxHighlight)(using val qctx: QCtx) {
+  private class SourceCodePrinter[Q <: Quotes & Singleton](syntaxHighlight: SyntaxHighlight)(using val quotes: Q) {
     import syntaxHighlight._
-    import qctx.reflect._
+    import quotes.reflect._
 
     private[this] val sb: StringBuilder = new StringBuilder
 

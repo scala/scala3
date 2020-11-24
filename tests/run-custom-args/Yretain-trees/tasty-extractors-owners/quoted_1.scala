@@ -6,7 +6,7 @@ object Macros {
     ${ impl('x) }
 
   def impl[T](x: Expr[T])(using Quotes) : Expr[Unit] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     val buff = new StringBuilder
 
@@ -18,8 +18,8 @@ object Macros {
   }
 
 
-  def myTraverser(using Quotes)(buff: StringBuilder): qctx.reflect.TreeTraverser = new {
-    import qctx.reflect._
+  def myTraverser(using Quotes)(buff: StringBuilder): quotes.reflect.TreeTraverser = new {
+    import quotes.reflect._
     override def traverseTree(tree: Tree)(owner: Symbol): Unit = {
       tree match {
         case tree @ DefDef(name, _, _, _, _) =>

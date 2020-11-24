@@ -6,7 +6,7 @@ object Foo {
     ${ inspectBodyImpl('i) }
 
   def inspectBodyImpl(x: Expr[Int])(using Quotes) : Expr[String] = {
-    import qctx.reflect._
+    import quotes.reflect._
     Term.of(x) match {
       case Inlined(None, Nil, arg) => Expr(arg.symbol.tree.showExtractors)
       case arg => Expr(arg.symbol.tree.showExtractors) // TODO should all by name parameters be in an inline node?

@@ -24,70 +24,70 @@ object Liftable {
   /** Default liftable for Boolean */
   given BooleanLiftable[T <: Boolean] as Liftable[T] {
     def toExpr(x: T) =
-      import qctx.reflect._
+      import quotes.reflect._
       Literal(Constant.Boolean(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default liftable for Byte */
   given ByteLiftable[T <: Byte] as Liftable[T] {
     def toExpr(x: T) =
-      import qctx.reflect._
+      import quotes.reflect._
       Literal(Constant.Byte(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default liftable for Short */
   given ShortLiftable[T <: Short] as Liftable[T] {
     def toExpr(x: T) =
-      import qctx.reflect._
+      import quotes.reflect._
       Literal(Constant.Short(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default liftable for Int */
   given IntLiftable[T <: Int] as Liftable[T] {
     def toExpr(x: T) =
-      import qctx.reflect._
+      import quotes.reflect._
       Literal(Constant.Int(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default liftable for Long */
   given LongLiftable[T <: Long] as Liftable[T] {
     def toExpr(x: T) =
-      import qctx.reflect._
+      import quotes.reflect._
       Literal(Constant.Long(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default liftable for Float */
   given FloatLiftable[T <: Float] as Liftable[T] {
     def toExpr(x: T) =
-      import qctx.reflect._
+      import quotes.reflect._
       Literal(Constant.Float(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default liftable for Double */
   given DoubleLiftable[T <: Double] as Liftable[T] {
     def toExpr(x: T) =
-      import qctx.reflect._
+      import quotes.reflect._
       Literal(Constant.Double(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default liftable for Char */
   given CharLiftable[T <: Char] as Liftable[T] {
     def toExpr(x: T) =
-      import qctx.reflect._
+      import quotes.reflect._
       Literal(Constant.Char(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default liftable for String */
   given StringLiftable[T <: String] as Liftable[T] {
     def toExpr(x: T) =
-      import qctx.reflect._
+      import quotes.reflect._
       Literal(Constant.String(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default liftable for Class[T] */
   given ClassLiftable[T] as Liftable[Class[T]] = new Liftable[Class[T]] {
     def toExpr(x: Class[T]) = {
-      import qctx.reflect._
+      import quotes.reflect._
       Ref(defn.Predef_classOf).appliedToType(TypeRepr.typeConstructorOf(x)).asExpr.asInstanceOf[Expr[Class[T]]]
     }
   }

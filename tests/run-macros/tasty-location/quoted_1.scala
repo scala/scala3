@@ -7,7 +7,7 @@ object Location {
   implicit inline def location: Location = ${impl}
 
   def impl(using Quotes) : Expr[Location] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     def listOwnerNames(sym: Symbol, acc: List[String]): List[String] =
       if (sym == defn.RootClass || sym == defn.EmptyPackageClass) acc

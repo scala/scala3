@@ -11,7 +11,7 @@ object Macros {
   class TestAnnotation extends scala.annotation.Annotation
 
   def theTestBlockImpl(using qctx : Quotes) : Expr[Unit] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     val x1T = ConstantType(Constant.Int(1))
     val x2T = OrType(ConstantType(Constant.Int(1)), ConstantType(Constant.Int(2)))

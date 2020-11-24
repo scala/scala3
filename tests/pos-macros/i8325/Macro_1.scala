@@ -12,7 +12,7 @@ object A:
   def pure[A](a:A):A = ???
 
   def transformImplExpr[A:Type](using Quotes)(expr: Expr[A]): Expr[A] = {
-     import qctx.reflect._
+     import quotes.reflect._
      Term.of(expr) match {
          case Inlined(x,y,z) => transformImplExpr(z.asExpr.asInstanceOf[Expr[A]])
          case Apply(fun,args) =>  '{  A.pure(${Apply(fun,args).asExpr.asInstanceOf[Expr[A]]}) }
