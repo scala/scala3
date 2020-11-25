@@ -231,6 +231,11 @@ object NameOps {
     def isFunction: Boolean =
       (name eq tpnme.FunctionXXL) || checkedFunArity(functionSuffixStart) >= 0
 
+    /** Is a function name
+     *    - FunctionN for N >= 0
+     */
+    def isPlainFunction: Boolean = functionArity >= 0
+
     /** Is an context function name, i.e one of ContextFunctionN or ErasedContextFunctionN for N >= 0
      */
     def isContextFunction: Boolean =
@@ -276,8 +281,10 @@ object NameOps {
       case nme.clone_ => nme.clone_
     }
 
+    /** This method is to be used on **type parameters** from a class, since
+     *  this method does sorting based on their names
+     */
     def specializedFor(classTargs: List[Type], classTargsNames: List[Name], methodTargs: List[Type], methodTarsNames: List[Name])(using Context): N = {
-
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
 
@@ -285,6 +292,22 @@ object NameOps {
         methodTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.separator ++
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
+
+    /** Use for specializing function names ONLY and use it if you are **not**
+     *  creating specialized name from type parameters. The order of names will
+     *  be:
+     *
+     *  `<return type><first type><second type><...>`
+     */
+    def specializedFunction(ret: Type, args: List[Type])(using Context): Name =
+      val sb = new StringBuilder
+      sb.append(name.toString)
+      sb.append(nme.specializedTypeNames.prefix.toString)
+      sb.append(nme.specializedTypeNames.separator)
+      sb.append(defn.typeTag(ret).toString)
+      args.foreach { arg => sb.append(defn.typeTag(arg)) }
+      sb.append(nme.specializedTypeNames.suffix)
+      termName(sb.toString)
 
     /** If name length exceeds allowable limit, replace part of it by hash */
     def compactified(using Context): TermName = termName(compactify(name.toString))

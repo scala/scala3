@@ -21,6 +21,8 @@ import scala.tools.asm.{ClassWriter, ClassReader}
 import scala.tools.asm.tree._
 import java.io.{File => JFile, InputStream}
 
+import org.junit.Assert._
+
 trait DottyBytecodeTest {
   import AsmNode._
   import ASMConverters._
@@ -72,6 +74,14 @@ trait DottyBytecodeTest {
     val cn = new ClassNode()
     cr.accept(cn, if (skipDebugInfo) ClassReader.SKIP_DEBUG else 0)
     cn
+  }
+
+  /** Finds a class with `cls` as name in `dir`, throws if it can't find it */
+  def findClass(cls: String, dir: AbstractFile) = {
+    val clsIn = dir.lookupName(s"$cls.class", directory = false).input
+    val clsNode = loadClassNode(clsIn)
+    assert(clsNode.name == cls, s"inspecting wrong class: ${clsNode.name}")
+    clsNode
   }
 
   protected def getMethod(classNode: ClassNode, name: String): MethodNode =
@@ -212,6 +222,52 @@ trait DottyBytecodeTest {
       s"Wrong number of null checks ($actualChecks), expected: $expectedChecks"
     )
   }
+
+  def assertBoxing(nodeName: String, methods: java.lang.Iterable[MethodNode])(implicit source: String): Unit =
+    methods.asScala.find(_.name == nodeName)
+    .map { node =>
+      val (ins, boxed) = boxingInstructions(node)
+      if (!boxed) fail("No boxing in:\n" + boxingError(ins, source))
+    }
+    .getOrElse(fail("Could not find constructor for object `Test`"))
+
+  private def boxingError(ins: List[_], source: String) =
+    s"""|----------------------------------
+        |${ins.mkString("\n")}
+        |----------------------------------
+        |From code:
+        |$source
+        |----------------------------------""".stripMargin
+
+
+  protected def assertNoBoxing(nodeName: String, methods: java.lang.Iterable[MethodNode])(implicit source: String): Unit =
+    methods.asScala.find(_.name == nodeName)
+    .map { node =>
+      val (ins, boxed) = boxingInstructions(node)
+      if (boxed) fail(boxingError(ins, source))
+    }
+    .getOrElse(fail("Could not find constructor for object `Test`"))
+
+  protected def boxingInstructions(method: MethodNode): (List[_], Boolean) = {
+    val ins = instructionsFromMethod(method)
+    val boxed = ins.exists {
+      case Invoke(op, owner, name, desc, itf) =>
+        owner.toLowerCase.contains("box") || name.toLowerCase.contains("box")
+      case _ => false
+    }
+
+    (ins, boxed)
+  }
+
+  protected def hasInvokeStatic(method: MethodNode): Boolean = {
+    val ins = instructionsFromMethod(method)
+    ins.exists {
+      case Invoke(op, owner, name, desc, itf) =>
+        op == 184
+      case _ => false
+    }
+  }
+
 }
 object DottyBytecodeTest {
   extension [T](l: List[T]) def stringLines = l.mkString("\n")
