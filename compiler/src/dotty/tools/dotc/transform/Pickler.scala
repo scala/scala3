@@ -72,7 +72,8 @@ class Pickler extends Phase {
         Future {
           treePkl.compactify()
           if tree.span.exists then
-            new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots)
+            val reference = ctx.settings.sourceroot.value
+            new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference)
               .picklePositions(unit.source, tree :: Nil, positionWarnings)
 
           if !ctx.settings.YdropComments.value then

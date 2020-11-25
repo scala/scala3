@@ -9,6 +9,6 @@ class TestFile(val file: String) extends AnyVal {
 }
 
 object TestFile {
-  lazy val testDir: Path = Paths.get("../out/ide-tests").toAbsolutePath
+  lazy val testDir: Path = Paths.get("../out/ide-tests").toAbsolutePath.normalize
   lazy val sourceDir: Path = testDir.resolve("src")
 }

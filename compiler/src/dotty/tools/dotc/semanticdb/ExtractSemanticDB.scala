@@ -5,26 +5,23 @@ package semanticdb
 import core._
 import Phases._
 import ast.tpd._
+import ast.untpd.given
 import ast.Trees.mods
 import Contexts._
 import Symbols._
 import Flags._
 import Names.Name
 import StdNames.nme
+import NameOps._
 import util.Spans.Span
 import util.{SourceFile, SourcePosition}
+import transform.SymUtils._
+
 import scala.jdk.CollectionConverters._
-import collection.mutable
-import java.nio.file.Paths
-
-import dotty.tools.dotc.transform.SymUtils._
-
-import PartialFunction.condOpt
-
-import ast.untpd.given
-import NameOps._
-
+import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
+import scala.PartialFunction.condOpt
+
 
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
@@ -590,37 +587,29 @@ object ExtractSemanticDB:
   import java.nio.file.Path
   import scala.collection.JavaConverters._
   import java.nio.file.Files
+  import java.nio.file.Paths
 
   val name: String = "extractSemanticDB"
 
   def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
-    def commonPrefix[T](z: T)(i1: Iterable[T], i2: Iterable[T])(app: (T, T) => T): T =
-      (i1 lazyZip i2).takeWhile(p => p(0) == p(1)).map(_(0)).foldLeft(z)(app)
-    val sourcePath = absolutePath(source.file.jpath)
-    val sourceRoot =
-      // Here if `sourceRoot` and `sourcePath` do not share a common prefix then `relPath` will not be normalised,
-      // containing ../.. etc, which is problematic when appending to `/META-INF/semanticdb/` and will not be accepted
-      // by Files.createDirectories on JDK 11.
-      val sourceRoot0 = absolutePath(Paths.get(ctx.settings.sourceroot.value))
-      commonPrefix(sourcePath.getRoot)(sourcePath.asScala, sourceRoot0.asScala)(_ resolve _)
     val semanticdbTarget =
       val semanticdbTargetSetting = ctx.settings.semanticdbTarget.value
       absolutePath(
         if semanticdbTargetSetting.isEmpty then ctx.settings.outputDir.value.jpath
         else Paths.get(semanticdbTargetSetting)
       )
-    val relPath = sourceRoot.relativize(sourcePath)
+    val relPath = SourceFile.relativePath(source, ctx.settings.sourceroot.value)
     val outpath = semanticdbTarget
       .resolve("META-INF")
       .resolve("semanticdb")
       .resolve(relPath)
-      .resolveSibling(sourcePath.getFileName().toString() + ".semanticdb")
+      .resolveSibling(source.name + ".semanticdb")
     Files.createDirectories(outpath.getParent())
     val doc: TextDocument = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
-      uri = Tools.mkURIstring(relPath),
+      uri = Tools.mkURIstring(Paths.get(relPath)),
       text = "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,

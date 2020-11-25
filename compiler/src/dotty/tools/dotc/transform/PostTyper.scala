@@ -335,7 +335,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                && ctx.compilationUnit.source.exists
                && sym != defn.SourceFileAnnot
             then
-              val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source)
+              val reference = ctx.settings.sourceroot.value
+              val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
               sym.addAnnotation(Annotation.makeSourceFile(relativePath))
           else (tree.rhs, sym.info) match
             case (rhs: LambdaTypeTree, bounds: TypeBounds) =>

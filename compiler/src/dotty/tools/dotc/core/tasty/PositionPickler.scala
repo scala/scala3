@@ -8,20 +8,21 @@ import dotty.tools.tasty.TastyBuffer
 import TastyBuffer._
 
 import ast._
-import ast.Trees._
-import ast.Trees.WithLazyField
+import Trees.WithLazyField
 import util.{SourceFile, NoSource}
 import core._
-import Contexts._, Symbols._, Annotations._, Decorators._
+import Annotations._, Decorators._
 import collection.mutable
 import util.Spans._
 
 class PositionPickler(
     pickler: TastyPickler,
     addrOfTree: PositionPickler.TreeToAddr,
-    treeAnnots: untpd.MemberDef => List[tpd.Tree])(using Context) {
+    treeAnnots: untpd.MemberDef => List[tpd.Tree],
+    relativePathReference: String){
 
   import ast.tpd._
+
   val buf: TastyBuffer = new TastyBuffer(5000)
   pickler.newSection(PositionsSection, buf)
 
@@ -67,9 +68,9 @@ class PositionPickler(
         // specialization.
     }
 
-    def pickleSource(source: SourceFile)(using Context): Unit = {
+    def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
-      val relativePath = SourceFile.relativePath(source)
+      val relativePath = SourceFile.relativePath(source, relativePathReference)
       buf.writeInt(pickler.nameBuffer.nameIndex(relativePath.toTermName).index)
     }
 
@@ -94,7 +95,7 @@ class PositionPickler(
       case _ => false
     }
 
-    def traverse(x: Any, current: SourceFile)(using Context): Unit = x match {
+    def traverse(x: Any, current: SourceFile): Unit = x match {
       case x: untpd.Tree =>
         if (x.span.exists) {
           val addr = addrOfTree(x)
