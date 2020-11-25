@@ -443,11 +443,11 @@ object Parsers {
 
     /** Convert tree to formal parameter list
     */
-    def convertToParams(tree: Tree): List[ValDef] = tree match {
+    def convertToParams(tree: Tree, mods: Modifiers): List[ValDef] = tree match {
       case Parens(t) =>
-        convertToParam(t) :: Nil
+        convertToParam(t, mods) :: Nil
       case Tuple(ts) =>
-        ts.map(convertToParam(_))
+        ts.map(convertToParam(_, mods))
       case t: Typed =>
         report.errorOrMigrationWarning(
           em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
@@ -455,23 +455,23 @@ object Parsers {
         if migrateTo3 then
           patch(source, t.span.startPos, "(")
           patch(source, t.span.endPos, ")")
-        convertToParam(t) :: Nil
+        convertToParam(t, mods) :: Nil
       case t =>
-        convertToParam(t) :: Nil
+        convertToParam(t, mods) :: Nil
     }
 
     /** Convert tree to formal parameter
     */
-    def convertToParam(tree: Tree, expected: String = "formal parameter"): ValDef = tree match {
+    def convertToParam(tree: Tree, mods: Modifiers, expected: String = "formal parameter"): ValDef = tree match {
       case id @ Ident(name) =>
-        makeParameter(name.asTermName, TypeTree(), EmptyModifiers, isBackquoted = isBackquoted(id)).withSpan(tree.span)
+        makeParameter(name.asTermName, TypeTree(), mods, isBackquoted = isBackquoted(id)).withSpan(tree.span)
       case Typed(id @ Ident(name), tpt) =>
-        makeParameter(name.asTermName, tpt, EmptyModifiers, isBackquoted = isBackquoted(id)).withSpan(tree.span)
+        makeParameter(name.asTermName, tpt, mods, isBackquoted = isBackquoted(id)).withSpan(tree.span)
       case Typed(Splice(Ident(name)), tpt) =>
-        makeParameter(("$" + name).toTermName, tpt, EmptyModifiers).withSpan(tree.span)
+        makeParameter(("$" + name).toTermName, tpt, mods).withSpan(tree.span)
       case _ =>
         syntaxError(s"not a legal $expected", tree.span)
-        makeParameter(nme.ERROR, tree, EmptyModifiers)
+        makeParameter(nme.ERROR, tree, mods)
     }
 
     /** Convert (qual)ident to type identifier
@@ -1920,9 +1920,10 @@ object Parsers {
         finally placeholderParams = saved
 
         val t = expr1(location)
-        if (in.token == ARROW) {
+        if (in.token == ARROW || in.token == CTXARROW) {
           placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
-          wrapPlaceholders(closureRest(start, location, convertToParams(t)))
+          val paramMods = if in.token == CTXARROW then Modifiers(Given) else EmptyModifiers
+          wrapPlaceholders(closureRest(start, location, convertToParams(t, paramMods)))
         }
         else if (isWildcard(t)) {
           placeholderParams = placeholderParams ::: saved
@@ -2124,7 +2125,7 @@ object Parsers {
     /** FunParams         ::=  Bindings
      *                     |   id
      *                     |   `_'
-     *  Bindings          ::=  `(' [[‘using’] [‘erased’] Binding {`,' Binding}] `)'
+     *  Bindings          ::=  `(' [[‘erased’] Binding {`,' Binding}] `)'
      */
     def funParams(mods: Modifiers, location: Location): List[Tree] =
       if in.token == LPAREN then

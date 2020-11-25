@@ -28,7 +28,7 @@ trait ContextFunctionN[-T1 , ... , -TN, +R] {
 Context function types erase to normal function types, so these classes are
 generated on the fly for typechecking, but not realized in actual code.
 
-Context function literals `(using x1: T1, ..., xn: Tn) => e` map
+Context function literals `(x1: T1, ..., xn: Tn) ?=> e` map
 context parameters `xi` of types `Ti` to the result of evaluating the expression `e`.
 The scope of each context parameter `xi` is `e`. The parameters must have pairwise distinct names.
 
@@ -54,7 +54,7 @@ Note: The closing paragraph of the
 [Anonymous Functions section](https://www.scala-lang.org/files/archive/spec/2.12/06-expressions.html#anonymous-functions)
 of Scala 2.12 is subsumed by context function types and should be removed.
 
-Context function literals `(using x1: T1, ..., xn: Tn) => e` are
+Context function literals `(x1: T1, ..., xn: Tn) ?=> e` are
 automatically created for any expression `e` whose expected type is
 `scala.ContextFunctionN[T1, ..., Tn, R]`, unless `e` is
 itself a context function literal. This is analogous to the automatic
