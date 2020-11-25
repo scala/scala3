@@ -58,8 +58,8 @@ object Test extends App {
     object Bifunctor {
       given [C] as Bifunctor[[T, U] =>> C] {}
       given Bifunctor[[T, U] =>> Tuple1[U]] {}
-      given t2 as Bifunctor[[T, U] =>> (T, U)] {}
-      given t3 [T] as Bifunctor[[U, V] =>> (T, U, V)] {}
+      given Bifunctor[[T, U] =>> (T, U)] as t2 {}
+      given [T] => Bifunctor[[U, V] =>> (T, U, V)] as t3 {}
 
       def derived[F[_, _]](using m: Mirror { type MirroredType[X, Y] = F[X, Y] ; type MirroredElemTypes[_, _] }, r: Bifunctor[m.MirroredElemTypes]): Bifunctor[F] = ???
     }

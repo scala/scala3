@@ -3,7 +3,7 @@ object XObject {
 
   def anX: X = 5
 
-  given ops as Object {
+  given Object as ops {
     extension (x: X) def + (y: X): X = x + y
   }
 }
@@ -13,7 +13,7 @@ object MyXObject {
 
   def anX: MyX = XObject.anX
 
-  given ops as Object {
+  given Object as ops {
     extension (x: MyX) def + (y: MyX): MyX = x + y // error: warring: Infinite recursive call
   }
 }

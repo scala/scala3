@@ -9,7 +9,7 @@ class Foo
 object test:
 
   given box[A](using Show[A]) as Show[Box[A]] = _.toString
-  given foo as Show[Foo] = _.toString
+  given Show[Foo] as foo = _.toString
 
   def run(s: Box[Box[Foo]]): Unit =
     val x = summon[Show[Box[Box[Foo]]]]

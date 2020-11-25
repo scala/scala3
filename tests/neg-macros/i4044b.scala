@@ -4,13 +4,13 @@ def test(using Quotes) = {
 
   '{
     val qctx: Quotes = ???
-    given x1 as qctx.type = qctx
+    given qctx.type as x1 = qctx
 
     val b = '{3}
 
     '{
       val qctx: Quotes = ???
-      given x2 as qctx.type = qctx
+      given qctx.type as x2 = qctx
 
       b // error
       ${b}

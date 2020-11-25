@@ -7,7 +7,7 @@ trait TokenParser[Token, R]
 package p1 {
 
   object TextParser {
-    given TP as TokenParser[Char, Position[CharSequence]] {}
+    given TokenParser[Char, Position[CharSequence]] as tp {}
 
     def f
       (using TokenParser[Char, Position[CharSequence]]) = ???
@@ -23,13 +23,13 @@ package p1 {
     def main(args: Array[String]): Unit = {
       import TextParser.{given, _}
 
-      val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
+      val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.tp
       val tp_i = summon[TokenParser[Char, Position[CharSequence]]]
       val co_i = summon[Conversion[Char, Position[CharSequence]]]
       val co_x : Position[CharSequence] = 'x'
 
       {
-        given XXX as Conversion[Char, Position[CharSequence]] = co_i
+        given Conversion[Char, Position[CharSequence]] as xxx = co_i
         val co_y : Position[CharSequence] = 'x'
       }
     }
@@ -74,7 +74,7 @@ package p3 {
         val co_x : Position[CharSequence] = 'x'
 
         {
-          given XXX as Conversion[Char, Position[CharSequence]] = co_i
+          given Conversion[Char, Position[CharSequence]] as xxx = co_i
           val co_y : Position[CharSequence] = 'x'
         }
       }
@@ -84,7 +84,7 @@ package p3 {
 package p4 {
   class TC
 
-  given a as TC
+  given TC as a
 
   given b[X[_], Y] as TC
 

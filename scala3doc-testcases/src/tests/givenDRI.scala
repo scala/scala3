@@ -23,12 +23,12 @@ given [S <: C] as A[S]
 class R:
   def a = 1
 
-given R as A[Int]:
+given A[Int] as r:
   def a = 2
 
 class S:
   class R:
     def a = 3
 
-  given R as A[Int]:
+  given A[Int] as r:
     def a = 5

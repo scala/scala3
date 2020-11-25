@@ -26,7 +26,7 @@ end Common
 
 object Instances extends Common:
 
-  given intOrd as Ord[Int]:
+  given Ord[Int] as intOrd:
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
@@ -49,7 +49,7 @@ object Instances extends Common:
     def second = xs.tail.head
     def third = xs.tail.tail.head
 
-  given listMonad as Monad[List]:
+  given Monad[List] as listMonad:
     extension [A, B](xs: List[A]) def flatMap (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
@@ -123,7 +123,7 @@ object Instances extends Common:
   class Token(str: String)
 
   object Token:
-    given StringToToken as Conversion[String, Token]:
+    given Conversion[String, Token] as stringToToken:
       def apply(str: String): Token = new Token(str)
 
   val x: Token = "if"
@@ -231,9 +231,9 @@ object Completions:
     //
     //   CompletionArg.from(statusCode)
 
-    given fromString as Conversion[String, CompletionArg] = Error(_)
-    given fromFuture as Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    given fromStatusCode as Conversion[Future[StatusCode], CompletionArg] = Status(_)
+    given Conversion[String, CompletionArg] as fromString = Error(_)
+    given Conversion[Future[HttpResponse], CompletionArg] as fromFuture = Response(_)
+    given Conversion[Future[StatusCode], CompletionArg] as fromStatusCode = Status(_)
   import CompletionArg._
 
   def complete[T](arg: CompletionArg) = arg match

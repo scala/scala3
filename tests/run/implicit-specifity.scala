@@ -2,13 +2,13 @@ case class Show[T](val i: Int)
 object Show {
   def apply[T](implicit st: Show[T]): Int = st.i
 
-  given showInt as Show[Int] = new Show[Int](0)
+  given Show[Int] as showInt = new Show[Int](0)
   given fallback[T] as Show[T] = new Show[T](1)
 }
 
 class Generic
 object Generic {
-  given gen as Generic = new Generic
+  given Generic as gen = new Generic
   given showGen[T](using Generic) as Show[T] = new Show[T](2)
 }
 

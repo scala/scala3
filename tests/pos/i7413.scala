@@ -11,7 +11,7 @@ trait Greeter:
 case class MyFixture(name: String, greeter: Greeter)
 
 object Test1:
-  given conv as Conversion[0, Greeter]:
+  given Conversion[0, Greeter] as conv:
     def apply(x: 0): Greeter = ???
   val g: Greeter = 0
 

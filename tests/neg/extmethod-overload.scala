@@ -1,9 +1,9 @@
 object Test {
-  given a as AnyRef:
+  given AnyRef as a:
     extension (x: Int) {
       def |+| (y: Int) = x + y
     }
-  given b as AnyRef:
+  given AnyRef as b:
     extension (x: Int) {
       def |+| (y: String) = x + y.length
     }

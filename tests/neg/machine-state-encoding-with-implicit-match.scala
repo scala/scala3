@@ -8,13 +8,13 @@ final class Off extends State
 @implicitNotFound("State must be Off")
 class IsOff[S <: State]
 object IsOff {
-  given isOff as IsOff[Off] = new IsOff[Off]
+  given IsOff[Off] as isOff = new IsOff[Off]
 }
 
 @implicitNotFound("State must be On")
 class IsOn[S <: State]
 object IsOn {
-  given isOn as IsOn[On] = new IsOn[On]
+  given IsOn[On] as isOn = new IsOn[On]
 }
 
 class Machine[S <: State] {

@@ -1,5 +1,5 @@
 type Foo
-given myFoo1 as (Foo { type X = Int }) = ???
+given (Foo { type X = Int }) as myFoo1 = ???
 
 type Bar = Foo { type X = Int }
-given myFoo2 as Bar = ???
+given Bar as myFoo2 = ???

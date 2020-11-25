@@ -46,7 +46,7 @@ object Test extends App {
   trait Monoid[T] extends SemiGroup[T]:
     def unit: T
 
-  given StringMonoid as Monoid[String]:
+  given Monoid[String] as stringMonoid:
     extension (x: String) def combine(y: String): String = x.concat(y)
     def unit: String = ""
 
@@ -99,7 +99,7 @@ object Test extends App {
     def pure[A](x: A): F[A]
   end Monad
 
-  given listMonad as Monad[List]:
+  given Monad[List] as listMonad:
     extension [A, B](xs: List[A]) def flatMap (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =

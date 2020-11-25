@@ -3,7 +3,7 @@ trait Y
 object test:
   def f(using x: X) = ???
   object instances {
-    given y as Y = ???
+    given Y as y = ???
   }
   locally {
     given xFromY(using y: Y) as X = ???

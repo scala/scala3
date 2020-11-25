@@ -22,7 +22,7 @@ object Test extends App {
 
   locally{
     println("= new")
-    given t as TC = new TC
+    given TC as t = new TC
     summon[TC]
     summon[TC]
   }
@@ -34,7 +34,7 @@ object Test extends App {
 
   locally{
     println("= new VC")
-    given t as TV = new TV(new TC)
+    given TV as t = new TV(new TC)
     summon[TV]
     summon[TV]
   }
@@ -46,7 +46,7 @@ object Test extends App {
   val tcc = new TCC
   locally {
     println("= x.y")
-    given t as TC = tcc.tc
+    given TC as t = tcc.tc
     summon[TC]
     summon[TC]
   }

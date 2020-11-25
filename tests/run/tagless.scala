@@ -230,7 +230,7 @@ object Test extends App {
   import IExp._
 
   // Going from type class encoding to ADT encoding
-  given initialize as Exp[IExp] {
+  given Exp[IExp] as initialize {
     def lit(i: Int): IExp = Lit(i)
     def neg(t: IExp): IExp = Neg(t)
     def add(l: IExp, r: IExp): IExp = Add(l, r)

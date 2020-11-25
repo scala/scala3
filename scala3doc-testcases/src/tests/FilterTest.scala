@@ -65,9 +65,9 @@ class FilterTestBase:
   given Map[String, Double] = Map.empty
 
   /** doc */
-  protected given namedSet as Set[String | Int] = Set(1, "ala")
+  protected given Set[String | Int] as namedSet = Set(1, "ala")
   /** doc */
-  given namedMap as Map[String, Double] = Map.empty
+  given Map[String, Double] as namedMap = Map.empty
 
 class FilterTest extends FilterTestBase with FilterTestBaseTrait:
   /** doc */
@@ -116,9 +116,9 @@ class FilterTest extends FilterTestBase with FilterTestBaseTrait:
   given List[String] = "ula" :: Nil
 
   /** doc */
-  given namedList as List[String] = "ula" :: Nil
+  given List[String] as namedList = "ula" :: Nil
   /** doc */
-  protected given namedSeq as Seq[String | Int | Double] = List(1)
+  protected given Seq[String | Int | Double] as namedSeq = List(1)
 
 extension (e: FilterTest):
   def extensionMethod(name: FilterTest): FilterTest = ???

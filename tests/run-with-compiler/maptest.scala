@@ -14,7 +14,7 @@ object Generator:
     val rand = new java.util.Random
     def generate = rand.nextInt()
 
-  given booleans as Generator[Boolean] =
+  given Generator[Boolean] as booleans =
     integers.map(x => x > 0)
 
   def range(end: Int): Generator[Int] =
@@ -24,7 +24,7 @@ object Generator:
     case Lookup, Update, Remove
   export Op._
 
-  given ops as Generator[Op] =
+  given Generator[Op] as ops =
     range(10).map {
       case 0 | 1 | 2 | 3 => Lookup
       case 4 | 5 | 6 | 7 => Update

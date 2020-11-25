@@ -27,7 +27,7 @@ object Typeable:
   class instanceOf[T: Typeable]:
     def unapply(x: Any): Option[T] = Typeable[T].cast(x)
 
-  given int as Typeable[Int]:
+  given Typeable[Int] as int:
     def cast(x: Any): Option[Int] = x match
       case x: Int => Some(x)
       case _ => None

@@ -7,4 +7,4 @@ def foo(implicit a: A, b: B, c: C) = "foo"
 
 given A, B {}
 
-given ops as A with B {}
+given A with B as ops {}

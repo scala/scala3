@@ -39,11 +39,11 @@ object JsonEncoder {
     def encode(list: List[T]) = s"[${ list.map(v => encoder.encode(v)).mkString(", ") }]"
   }
 
-  given intEncoder as JsonEncoder[Int] {
+  given JsonEncoder[Int] as intEncoder {
     def encode(value: Int) = value + ""
   }
 
-  given stringEncoder as JsonEncoder[String] {
+  given JsonEncoder[String] as stringEncoder {
     def encode(value: String) = value
   }
 }

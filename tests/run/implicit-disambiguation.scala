@@ -9,7 +9,7 @@ class C extends A {
 }
 object M {
   def f(using B, C): String = {
-    given a as A = summon[B]
+    given A as a = summon[B]
     summon[A].show
   }
 }
