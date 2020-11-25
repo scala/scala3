@@ -2062,82 +2062,82 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Constant extends ConstantModule:
 
-      object Boolean extends ConstantBooleanModule:
+      object Boolean extends BooleanModule:
         def apply(x: Boolean): Constant = dotc.core.Constants.Constant(x)
         def unapply(constant: Constant): Option[Boolean] =
           if constant.tag == dotc.core.Constants.BooleanTag then Some(constant.booleanValue)
           else None
       end Boolean
 
-      object Byte extends ConstantByteModule:
+      object Byte extends ByteModule:
         def apply(x: Byte): Constant = dotc.core.Constants.Constant(x)
         def unapply(constant: Constant): Option[Byte] =
           if constant.tag == dotc.core.Constants.ByteTag then Some(constant.byteValue)
           else None
       end Byte
 
-      object Short extends ConstantShortModule:
+      object Short extends ShortModule:
         def apply(x: Short): Constant = dotc.core.Constants.Constant(x)
         def unapply(constant: Constant): Option[Short] =
           if constant.tag == dotc.core.Constants.ShortTag then Some(constant.shortValue)
           else None
       end Short
 
-      object Int extends ConstantIntModule:
+      object Int extends IntModule:
         def apply(x: Int): Constant = dotc.core.Constants.Constant(x)
         def unapply(constant: Constant): Option[Int] =
           if constant.tag == dotc.core.Constants.IntTag then Some(constant.intValue)
           else None
       end Int
 
-      object Long extends ConstantLongModule:
+      object Long extends LongModule:
         def apply(x: Long): Constant = dotc.core.Constants.Constant(x)
         def unapply(constant: Constant): Option[Long] =
           if constant.tag == dotc.core.Constants.LongTag then Some(constant.longValue)
           else None
       end Long
 
-      object Float extends ConstantFloatModule:
+      object Float extends FloatModule:
         def apply(x: Float): Constant = dotc.core.Constants.Constant(x)
         def unapply(constant: Constant): Option[Float] =
           if constant.tag == dotc.core.Constants.FloatTag then Some(constant.floatValue)
           else None
       end Float
 
-      object Double extends ConstantDoubleModule:
+      object Double extends DoubleModule:
         def apply(x: Double): Constant = dotc.core.Constants.Constant(x)
         def unapply(constant: Constant): Option[Double] =
           if constant.tag == dotc.core.Constants.DoubleTag then Some(constant.doubleValue)
           else None
       end Double
 
-      object Char extends ConstantCharModule:
+      object Char extends CharModule:
         def apply(x: Char): Constant = dotc.core.Constants.Constant(x)
         def unapply(constant: Constant): Option[Char] =
           if constant.tag == dotc.core.Constants.CharTag then Some(constant.charValue)
           else None
       end Char
 
-      object String extends ConstantStringModule:
+      object String extends StringModule:
         def apply(x: String): Constant = dotc.core.Constants.Constant(x)
         def unapply(constant: Constant): Option[String] =
           if constant.tag == dotc.core.Constants.StringTag then Some(constant.stringValue)
           else None
       end String
 
-      object Unit extends ConstantUnitModule:
+      object Unit extends UnitModule:
         def apply(): Constant = dotc.core.Constants.Constant(())
         def unapply(constant: Constant): Boolean =
           constant.tag == dotc.core.Constants.UnitTag
       end Unit
 
-      object Null extends ConstantNullModule:
+      object Null extends NullModule:
         def apply(): Constant = dotc.core.Constants.Constant(null)
         def unapply(constant: Constant): Boolean =
           constant.tag == dotc.core.Constants.NullTag
       end Null
 
-      object ClassOf extends ConstantClassOfModule:
+      object ClassOf extends ClassOfModule:
         def apply(x: TypeRepr): Constant =
           // TODO check that the type is a valid class when creating this constant or let Ycheck do it?
           dotc.core.Constants.Constant(x)
@@ -2397,7 +2397,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end SignatureMethodsImpl
 
-    object defn extends DefnModule:
+    object defn extends defnModule:
       def RootPackage: Symbol = dotc.core.Symbols.defn.RootPackage
       def RootClass: Symbol = dotc.core.Symbols.defn.RootClass
       def EmptyPackageClass: Symbol = dotc.core.Symbols.defn.EmptyPackageClass
@@ -2541,7 +2541,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def path: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
     end Source
 
-    object report extends ReportModule:
+    object report extends reportModule:
 
       def error(msg: String): Unit =
         dotc.report.error(msg, Position.ofMacroExpansion)
