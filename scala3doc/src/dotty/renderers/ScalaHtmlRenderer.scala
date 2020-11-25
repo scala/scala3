@@ -245,8 +245,6 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
       ).toString()
     )
 
-  private val HashRegex = "([^#]+)(#.+)".r
-
   override def buildPageContent(context: FlowContent, page: ContentPage): Unit =
     page match
       case s: StaticPageNode if !s.hasFrame() =>
@@ -254,23 +252,13 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
 
     page.getContent match
       case prc: PartiallyRenderedContent =>
-        def tryAsDri(str: String) =
-          val (path, prefix) = str match
-            case HashRegex(path, prefix) => (path, prefix)
-            case _ => (str, "")
-
-          // TODO (https://github.com/lampepfl/scala3doc/issues/238) proper warnings about unresolved links
-          prc.context.driForLink(prc.template.templateFile, path)
-            .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
-            .map(_ + prefix)
-            .getOrElse {
-              println(s"[WARN] ${prc.template.file}: Unable to resolve link '$str'")
-              str
-            }
-
         def processLocalLink(str: String): String =
-          if str.startsWith("#") || str.isEmpty then str
-          else Try(URL(str)).map(_ => str).getOrElse(tryAsDri(str))
+          Try(URL(str)).map(_ => str).getOrElse{
+          // TODO (https://github.com/lampepfl/scala3doc/issues/238) error handling
+            prc.context.driForLink(prc.template.templateFile, str)
+              .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
+              .getOrElse(str)
+          }
 
         val html = prc.procsesHtml(processLocalLink, resolveLink(page))
         withHtml(context, html)
@@ -339,7 +327,14 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
             )
           ),
           script(`type` := "text/javascript", src := resolveRoot(page, "scripts/pages.js")),
-          script(`type` := "text/javascript", src := resolveRoot(page, "scripts/main.js"))
+          script(`type` := "text/javascript", src := resolveRoot(page, "scripts/main.js")),
+          script(`type` := "text/javascript", src := "https://scastie.scala-lang.org/embedded.js"),
+          script(`type` := "text/javascript")(raw(
+          """window.addEventListener('load', function() {
+            |scastie.Embedded('.language-scala', { targetType: 'dotty', isWorksheetMode: false });
+            |});
+            |""".stripMargin
+          ))
       )
     ).toString
 
