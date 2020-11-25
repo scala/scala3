@@ -59,7 +59,7 @@ sidebar:
               url: docs/reference/contextual/extension-methods.html
             - title: Implementing Type classes
               url: docs/reference/contextual/type-classes.html
-            - title: Type class Derivation
+            - title: Type Class Derivation
               url: docs/reference/contextual/derivation.html
             - title: Multiversal Equality
               url: docs/reference/contextual/multiversal-equality.html

@@ -125,7 +125,7 @@ implicit class CircleDecorator(c: Circle) extends AnyVal {
 
 Abstract extension methods in traits that are implemented in given instances have no direct counterpart in Scala-2. The only way to simulate these is to make implicit classes available through imports. The Simulacrum macro library can automate this process in some cases.
 
-### Type class Derivation
+### Type Class Derivation
 
 Type class derivation has no direct counterpart in the Scala 2 language. Comparable functionality can be achieved by macro-based libraries such as Shapeless, Magnolia, or scalaz-deriving.
 

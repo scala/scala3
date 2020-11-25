@@ -3,7 +3,7 @@ trait ~>[F[_], G[_]] {
   def apply[A](fa: F[A]): G[A]
 }
 
-/** Higher-kinded pattern functor typeclass. */
+/** Higher-kinded pattern functor type class. */
 trait HFunctor[H[f[_], i]] {
   def hmap[A[_], B[_]](nt: A ~> B): ([x] =>> H[A,x]) ~> ([x] =>> H[B,x])
 }
