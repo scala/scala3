@@ -1,27 +1,16 @@
 package dotty.tools
 package dottydoc
 
-import dotty.dokka.{Args, DocConfiguration, DottyDokkaConfig, Scala3Args}
 
-import org.jetbrains.dokka._
-import org.jetbrains.dokka.utilities._
-import org.jetbrains.dokka.plugability._
-
-import dotc.core.Contexts._
 import dotc.reporting.Reporter
-import dotc.{ Compiler, Driver }
-import dotc.config._
-import dotty.tools.dotc.report.error
-
-import dotty.tools.dotc.config.Settings.Setting.value
-
-import java.io.File
+import dotc.Driver
+import dotc.core.Contexts.Context
 
 /** Main object for SBT.
   *
   * See [[this.process]].
   */
-object Main extends Driver {
+object Main extends Driver:
 
   /** Actual entrypoint from SBT.
     *
@@ -32,16 +21,5 @@ object Main extends Driver {
     * `args` contains arguments both for us and for the compiler (see code on
     * how they're split).
     */
-  override def process(args: Array[String], rootCtx: Context): Reporter = {
-    given Context = rootCtx
-
-    val argDefinition = new Scala3Args(error(_))
-    val parsedArgs = argDefinition.extract(args.toList)
-
-    dotty.dokka.Main.main(parsedArgs)
-
-
-    rootCtx.reporter
-  }
-
-}
+  override def process(args: Array[String], rootCtx: Context): Reporter =
+    dotty.dokka.Scala3doc.run(args)(using rootCtx)

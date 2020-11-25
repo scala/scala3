@@ -161,6 +161,10 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
 
     case _: mda.SoftLineBreak => emit(dkkd.Br.INSTANCE)
 
+    // TODO (https://github.com/lampepfl/scala3doc/issues/205): for now just silent the warnigs
+    case _:mda.HtmlInline | _: mda.LinkRef | _: mda.HtmlEntity =>
+      emit(dkk.text(MarkdownParser.renderToText(n)))
+
     case _ =>
       println(s"WARN: Encountered unrecognised Markdown node `${n.getNodeName}`, please open an issue.")
       emit(dkk.text(MarkdownParser.renderToText(n)))

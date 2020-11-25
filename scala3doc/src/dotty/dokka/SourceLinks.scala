@@ -132,10 +132,10 @@ object SourceLinks:
 
     SourceLinks(mappings.collect {case (_, Right(link)) => link}, projectRoot)
 
-  def load(config: DocConfiguration): SourceLinks =
+  def load(args: Scala3doc.Args): SourceLinks =
     load(
-      config.args.sourceLinks,
-      config.args.revision,
+      args.sourceLinks,
+      args.revision,
       // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
       Paths.get("").toAbsolutePath
     )

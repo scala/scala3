@@ -19,6 +19,7 @@ object DottyPlugin extends AutoPlugin {
     val isDottyJS = settingKey[Boolean]("Is this project compiled with Dotty and Scala.js?")
 
     val useScala3doc = settingKey[Boolean]("Use Scala3doc as the documentation tool")
+    val tastyFiles = taskKey[Seq[File]]("List all testy files")
     val scala3docOptions = settingKey[Seq[String]]("Options for Scala3doc")
 
     // NOTE:
@@ -441,13 +442,15 @@ object DottyPlugin extends AutoPlugin {
   }
 
   private val docSettings = inTask(doc)(Seq(
+    tastyFiles := {
+      val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
+      (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
+    },
     sources := Def.taskDyn {
       val old = sources.value
 
       if (isDotty.value) Def.task {
-        val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
-        val tastyFiles = (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
-        old ++ tastyFiles
+        old ++ tastyFiles.value
       } else Def.task {
         old
       }

@@ -1484,8 +1484,8 @@ object Build {
     def asScala3doc: Project = {
       def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
-          val sourcesAndRevision = s"-s github://lampepfl/dotty  --revision $ref --projectVersion $projectVersion"
-          val cmd = s""" -d $outDir -n "$name" $sourcesAndRevision $params $targets"""
+          val sourcesAndRevision = s"-source-links github://lampepfl/dotty  -revision $ref -project-version $projectVersion"
+          val cmd = s""" -d $outDir -project "$name" $sourcesAndRevision $params $targets"""
           run.in(Compile).toTask(cmd)
       }
 
@@ -1524,7 +1524,7 @@ object Build {
             generateDocumentation(
               classDirectory.in(Compile).value.getAbsolutePath,
               "scala3doc", "scala3doc/output/self", VersionUtil.gitHash,
-              "-p scala3doc/documentation --projectLogo scala3doc/documentation/logo.svg")
+              "-siteroot scala3doc/documentation -project-logo scala3doc/documentation/logo.svg")
           }.value,
 
           generateScala3Documentation := Def.inputTaskDyn {
@@ -1548,7 +1548,7 @@ object Build {
               IO.write(dest / "CNAME", "dotty.epfl.ch")
             }.dependsOn(generateDocumentation(
               roots, "Scala 3", dest.getAbsolutePath, "master",
-              "-p scala3doc/scala3-docs --projectLogo scala3doc/scala3-docs/logo.svg"))
+              "-siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg"))
           }.evaluated,
 
 
@@ -1562,7 +1562,7 @@ object Build {
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
             else generateDocumentation(
               roots, "Scala 3", "scala3doc/output/scala3-stdlib", "maser",
-              "-p scala3doc/scala3-docs --syntax wiki --projectLogo scala3doc/scala3-docs/logo.svg "
+              "-siteroot scala3doc/scala3-docs -comment-syntax wiki -projec-logo scala3doc/scala3-docs/logo.svg "
             )
           }.value,
 

@@ -4,7 +4,7 @@ import scala.jdk.CollectionConverters._
 
 import org.jetbrains.dokka.model.{doc => dkkd}
 
-import dotty.dokka.Args.CommentSyntax
+import dotty.dokka.Scala3doc.CommentSyntax
 import dotty.dokka.ScalaTagWrapper
 import comments.{kt, dkk}
 
@@ -34,12 +34,12 @@ trait ScaladocSupport { self: TastyParser =>
     val commentSyntax =
       preparsed.syntax.headOption match {
         case Some(commentSetting) =>
-          CommentSyntax.fromString(commentSetting).getOrElse {
+          CommentSyntax.parse(commentSetting).getOrElse {
             println(s"WARN: not a valid comment syntax: $commentSetting")
             println(s"WARN: Defaulting to Markdown syntax.")
-            CommentSyntax.Markdown
+            CommentSyntax.default
           }
-        case None => defaultCommentSyntax
+        case None => self.config.args.defaultSyntax
       }
 
     val parser = commentSyntax match {
@@ -98,7 +98,4 @@ trait ScaladocSupport { self: TastyParser =>
 
     new dkkd.DocumentationNode(bld.build())
   }
-
-  private val defaultCommentSyntax =
-    self.config.docConfiguration.args.defaultSyntax getOrElse CommentSyntax.Markdown
 }

@@ -14,7 +14,7 @@ import org.jetbrains.dokka.base.parsers._
 import org.jetbrains.dokka.plugability.DokkaContext
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties.PropertyContainer
-import dotty.dokka.tasty.{DokkaTastyInspector, SbtDokkaTastyInspector}
+import dotty.dokka.tasty.DokkaTastyInspector
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.utilities.DokkaLogger
 import org.jetbrains.dokka.base.signatures.SignatureProvider
@@ -170,7 +170,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
 extension (ctx: DokkaContext):
   def siteContext: Option[StaticSiteContext] = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].staticSiteContext
-  def args: Args = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].docConfiguration.args
+  def args: Scala3doc.Args = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].args
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/232): remove once problem is fixed in Dokka
 extension [T]  (builder: ExtensionBuilder[T]):

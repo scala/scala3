@@ -20,18 +20,11 @@ abstract class ScaladocTest(val name: String):
     folder.create()
     folder
 
-  private def args = Args(
+  private def args = Scala3doc.Args(
       name = "test",
-      tastyRoots = Nil ,
-      classpath =  System.getProperty("java.class.path"),
-      None,
+      tastyFiles = tastyFiles.map(new File(_)),
       output = getTempDir().getRoot,
-      projectVersion = Some("1.0"),
-      projectTitle = None,
-      projectLogo = None,
-      defaultSyntax = None,
-      sourceLinks = Nil,
-      revision = None
+      projectVersion = Some("1.0")
     )
 
   private def tastyFiles =
@@ -53,7 +46,7 @@ abstract class ScaladocTest(val name: String):
   @Test
   def executeTest =
     DokkaTestGenerator(
-      DottyDokkaConfig(DocConfiguration.Standalone(args, tastyFiles, Nil)),
+      DottyDokkaConfig(args),
       TestLogger(DokkaConsoleLogger.INSTANCE),
       assertions.asTestMethods,
       Nil.asJava
