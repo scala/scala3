@@ -16,6 +16,7 @@ import ValueClasses.isDerivedValueClass
 import Decorators._
 import Constants.Constant
 import Annotations.Annotation
+import Phases._
 import ast.tpd.Literal
 
 import language.implicitConversions
@@ -166,6 +167,11 @@ object SymUtils:
         else thisName.fieldName
       self.owner.info.decl(fieldName).suchThat(!_.is(Method)).symbol
     }
+
+    def isConstExprFinalVal(using Context): Boolean =
+      atPhaseNoLater(erasurePhase) {
+        self.is(Final) && self.info.resultType.isInstanceOf[ConstantType]
+      }
 
     def isField(using Context): Boolean =
       self.isTerm && !self.is(Method)
