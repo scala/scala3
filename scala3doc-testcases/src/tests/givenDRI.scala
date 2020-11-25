@@ -10,15 +10,15 @@ given A[String]
 
 given A[Seq[String]]
 
-given [T: A] as A[Option[T]]
+given [T: A] => A[Option[T]]
 
-given [T: B] as A[T]
+given [T: B] => A[T]
 
-given [C] as A[C]
+given [C] => A[C]
 
 given A[C]
 
-given [S <: C] as A[S]
+given [S <: C] => A[S]
 
 class R:
   def a = 1

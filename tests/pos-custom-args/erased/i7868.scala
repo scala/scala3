@@ -21,7 +21,7 @@ object Coproduct {
           as At[Head +: Tail, Value, S[NextIndex]]:
       val cast: Value <:< Head +: Tail = atNext.cast
 
-    given [A](using A) as (() => A)= { () => summon[A]}
+    given [A] => (A) => (() => A)= { () => summon[A]}
   }
 
   def upCast[A, B](a: A)(using erased evidence: (A <:< B) ): B = a.asInstanceOf[B]

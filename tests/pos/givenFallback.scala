@@ -1,6 +1,6 @@
 trait TC[T] { def x: Int; def y: Int = 0 }
 
-given [T] as TC[T] {
+given [T] => TC[T] {
   inline val x = 1
 }
 

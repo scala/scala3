@@ -17,7 +17,7 @@ object MacrosMD_Liftable {
     }
   }
 
-  given [T: Liftable : Type] as Liftable[List[T]] {
+  given [T: Liftable : Type] => Liftable[List[T]] {
     def toExpr(xs: List[T]) = xs match {
       case head :: tail => '{ ${ Expr(head) } :: ${ toExpr(tail) } }
       case Nil => '{ Nil: List[T] }
