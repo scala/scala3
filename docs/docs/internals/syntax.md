@@ -322,7 +322,7 @@ ClosureMods       ::=  { ‘implicit’ | ‘given’}
 
 ### Bindings and Imports
 ```ebnf
-Bindings          ::=  ‘(’ [[‘using’] Binding {‘,’ Binding}] ‘)’
+Bindings          ::=  ‘(’ [Binding {‘,’ Binding}] ‘)’
 Binding           ::=  (id | ‘_’) [‘:’ Type]                                    ValDef(_, id, tpe, EmptyTree)
 
 Modifier          ::=  LocalModifier

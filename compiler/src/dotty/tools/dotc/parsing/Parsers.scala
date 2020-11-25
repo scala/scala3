@@ -1502,7 +1502,7 @@ object Parsers {
     def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): ValDef =
       atSpan(start) {
         accept(COLON)
-        makeParameter(name, typ(), mods | Param)
+        makeParameter(name, typ(), mods)
       }
 
     /**  FunParamClause ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
