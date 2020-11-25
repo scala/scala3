@@ -126,7 +126,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     if (sym.is(Accessor, butNot = Deferred) && ownerIsTrait) {
       val sym1 =
-        if (sym.is(Lazy)) sym
+        if (sym.is(Lazy) || sym.symbol.isConstExprFinalVal) sym
         else sym.copySymDenotation(initFlags = sym.flags &~ (ParamAccessor | Inline) | Deferred)
       sym1.ensureNotPrivate
     }
@@ -166,7 +166,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   private def needsTraitSetter(sym: Symbol)(using Context): Boolean =
     sym.isGetter && !wasOneOf(sym, DeferredOrLazy | ParamAccessor)
       && atPhase(thisPhase) { !sym.setter.exists }
-      && !sym.info.resultType.isInstanceOf[ConstantType]
+      && !sym.isConstExprFinalVal
 
   private def makeTraitSetter(getter: TermSymbol)(using Context): Symbol =
     getter.copy(
@@ -251,7 +251,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               cls.srcPos)
           EmptyTree
 
-      for (getter <- mixin.info.decls.toList if getter.isGetter && !wasOneOf(getter, Deferred)) yield {
+      for
+        getter <- mixin.info.decls.toList
+        if getter.isGetter && !wasOneOf(getter, Deferred) && !getter.isConstExprFinalVal
+      yield
         if (isCurrent(getter) || getter.name.is(ExpandedName)) {
           val rhs =
             if (wasOneOf(getter, ParamAccessor))
@@ -266,7 +269,6 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           transformFollowing(DefDef(mkForwarderSym(getter.asTerm), rhs))
         }
         else EmptyTree
-      }
     }
 
     def setters(mixin: ClassSymbol): List[Tree] =
