@@ -16,9 +16,16 @@ import NameKinds.TraitSetterName
 import NameOps._
 import Flags._
 import Decorators._
+import StdNames.nme
+
+import util.Store
 
 object Memoize {
   val name: String = "memoize"
+
+  private final class MyState {
+    val classesThatNeedReleaseFence = new util.HashSet[Symbol]
+  }
 }
 
 /** Provides the implementations of all getters and setters, introducing
@@ -37,9 +44,16 @@ object Memoize {
  *      --> <accessor> <mods> def x_=(y: T): Unit = x = y
  */
 class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
+  import Memoize.MyState
   import ast.tpd._
 
   override def phaseName: String = Memoize.name
+
+  private var MyState: Store.Location[MyState] = _
+  private def myState(using Context): MyState = ctx.store(MyState)
+
+  override def initContext(ctx: FreshContext): Unit =
+    MyState = ctx.addLocation[MyState]()
 
   /* Makes sure that, after getters and constructors gen, there doesn't
    * exist non-deferred definitions that are not implemented. */
@@ -68,6 +82,17 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
    *  that defines it.
    */
   override def runsAfter: Set[String] = Set(Mixin.name)
+
+  override def prepareForUnit(tree: Tree)(using Context): Context =
+    ctx.fresh.updateStore(MyState, new MyState())
+
+  override def transformTemplate(tree: Template)(using Context): Tree =
+    val cls = ctx.owner.asClass
+    if myState.classesThatNeedReleaseFence.contains(cls) then
+      val releaseFenceCall = ref(defn.staticsMethodRef(nme.releaseFence)).appliedToNone
+      cpy.Template(tree)(tree.constr, tree.parents, Nil, tree.self, tree.body :+ releaseFenceCall)
+    else
+      tree
 
   override def transformDefDef(tree: DefDef)(using Context): Tree = {
     val sym = tree.symbol
@@ -154,7 +179,11 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
           // See tests/run/traitValOverriddenByParamAccessor.scala
           tree
         else
-          field.setFlag(Mutable) // Necessary for vals mixed in from traits
+          if !field.is(Mutable) then
+            // This is a val mixed in from a trait.
+            // We make it mutable, and mark the class as needing a releaseFence() in the constructor
+            field.setFlag(Mutable)
+            myState.classesThatNeedReleaseFence += sym.owner
           val initializer =
             if (isErasableBottomField(field, tree.vparamss.head.head.tpt.tpe.classSymbol)) Literal(Constant(()))
             else Assign(ref(field), adaptToField(field, ref(tree.vparamss.head.head.symbol)))
