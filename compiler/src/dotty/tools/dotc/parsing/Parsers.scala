@@ -2310,7 +2310,7 @@ object Parsers {
       possibleTemplateStart()
       val parents =
         if in.isNestedStart then Nil
-        else constrApps(commaOK = false, templateCanFollow = true)
+        else constrApps(commaOK = false)
       colonAtEOLOpt()
       possibleTemplateStart(isNew = true)
       parents match {
@@ -3493,7 +3493,7 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          constrApps(commaOK = true, templateCanFollow = false)
+          constrApps(commaOK = true)
         }
         else Nil
       Template(constr, parents, Nil, EmptyValDef, Nil)
@@ -3537,7 +3537,7 @@ object Parsers {
         val noParams = tparams.isEmpty && vparamss.isEmpty
         if !(name.isEmpty && noParams) then
           accept(nme.as)
-        val parents = constrApps(commaOK = true, templateCanFollow = true)
+        val parents = constrApps(commaOK = true)
         if in.token == EQUALS && parents.length == 1 && parents.head.isType then
           accept(EQUALS)
           mods1 |= Final
@@ -3617,19 +3617,12 @@ object Parsers {
 
     /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
      */
-    def constrApps(commaOK: Boolean, templateCanFollow: Boolean): List[Tree] =
+    def constrApps(commaOK: Boolean): List[Tree] =
       val t = constrApp()
       val ts =
-        if in.token == WITH then
+        if in.token == WITH || commaOK && in.token == COMMA then
           in.nextToken()
-          newLineOptWhenFollowedBy(LBRACE)
-          if templateCanFollow && (in.token == LBRACE || in.token == INDENT) then
-            Nil
-          else
-            constrApps(commaOK, templateCanFollow)
-        else if commaOK && in.token == COMMA then
-          in.nextToken()
-          constrApps(commaOK, templateCanFollow)
+          constrApps(commaOK)
         else Nil
       t :: ts
 
@@ -3646,7 +3639,7 @@ object Parsers {
               in.sourcePos())
             Nil
           }
-          else constrApps(commaOK = true, templateCanFollow = true)
+          else constrApps(commaOK = true)
         }
         else Nil
       newLinesOptWhenFollowedBy(nme.derives)
