@@ -3719,21 +3719,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
   }
 
-  /** Type of a Quotes provided by a splice within a quote that took this context.
-   *  It is only required if working with the reflection API.
-   *
-   *  Usually it is infered by the quotes an splices typing. But sometimes it is necessary
-   *  to explicitly state that a context is nested as in the following example:
-   *
-   *  ```scala
-   *  def run(using Quotes)(tree: qctx.reflect.Tree): Unit =
-   *    def nested()(using qctx.Nested): Expr[Int] = '{  ${ makeExpr(tree) } + 1  }
-   *    '{  ${ nested() } + 2 }
-   *  def makeExpr(using Quotes)(tree: qctx.reflect.Tree): Expr[Int] = ???
-   *  ```
-   */
-  type Nested = Quotes {
-    val reflect: self.reflect.type
-  }
+  /** Type of a `Quotes` provided by a splice within a quote that took this context. */
+  type Nested = Quotes
 
 }
