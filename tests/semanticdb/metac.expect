@@ -936,7 +936,7 @@ Occurrences:
 [46:34..46:35): C -> _empty_/Enums.`<:<`.Refl#[C]
 [46:35..46:35): -> _empty_/Enums.`<:<`#`<init>`().
 [48:9..48:12): <:< <- _empty_/Enums.`<:<`.
-[49:10..49:17): [T] as  <- _empty_/Enums.`<:<`.given_T().
+[49:10..49:17): [T] =>  <- _empty_/Enums.`<:<`.given_T().
 [49:11..49:12): T <- _empty_/Enums.`<:<`.given_T().[T]
 [49:18..49:19): T -> _empty_/Enums.`<:<`.given_T().[T]
 [49:20..49:23): <:< -> _empty_/Enums.`<:<`#
@@ -1316,10 +1316,10 @@ Occurrences:
 [22:51..22:52): x -> a/b/Givens.given_Monoid_String.combine().(x)
 [22:53..22:54): + -> java/lang/String#`+`().
 [22:55..22:56): y -> a/b/Givens.given_Monoid_String.combine().(y)
-[24:15..24:25): int2String <- a/b/Givens.int2String().
-[24:29..24:39): Conversion -> scala/Conversion#
-[24:40..24:43): Int -> scala/Int#
-[24:45..24:51): String -> scala/Predef.String#
+[24:15..24:25): Conversion <- a/b/Givens.int2String().
+[24:15..24:25): Conversion -> scala/Conversion#
+[24:26..24:29): Int -> scala/Int#
+[24:31..24:37): String -> scala/Predef.String#
 [24:57..24:65): toString -> scala/Any#toString().
 [26:6..26:9): foo <- a/b/Givens.foo().
 [26:10..26:11): A <- a/b/Givens.foo().[A]
