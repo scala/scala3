@@ -27,7 +27,7 @@ final case class CONS[+T](head: T, tail: Lst[T]) extends Lst[T]
 case object NIL extends Lst[Nothing]
 
 given IntLiftable[T <: Int] as Liftable[T]:
-  def toExpr(x: T): Quotes ?=> Expr[T] = (using qctx) => {
+  def toExpr(x: T): Quotes ?=> Expr[T] = qctx ?=> {
     import quotes.reflect._
     Literal(Constant.Int(x)).asExpr.asInstanceOf[Expr[T]]
   }

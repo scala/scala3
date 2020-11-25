@@ -78,12 +78,12 @@ object Instances extends Common:
     println(minimum(xs))
 
   case class Context(value: String)
-  val c0: Context ?=> String = (using ctx) => ctx.value
-  val c1: Context ?=> String = (using ctx: Context) => ctx.value
+  val c0: Context ?=> String = ctx ?=> ctx.value
+  val c1: Context ?=> String = (ctx: Context) ?=> ctx.value
 
   class A
   class B
-  val ab: (x: A, y: B) ?=> Int = (using a: A, b: B) => 22
+  val ab: (x: A, y: B) ?=> Int = (a: A, b: B) ?=> 22
 
   trait TastyAPI:
     type Symbol
