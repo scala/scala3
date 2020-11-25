@@ -958,8 +958,9 @@ object Parsers {
             val suffixIsUpper = Character.isUpperCase(suffixName.head)
             if prefixIsUpper && !suffixIsUpper then false
             else if !prefixIsUpper && suffixIsUpper then true
-            else syntaxError(
-              em"ambiguous syntax for given definition; make sure exactly one of $prefixName, $suffixName is capitalized")
+            else
+              syntaxError(
+                em"ambiguous syntax for given definition; make sure exactly one of $prefixName, $suffixName is capitalized")
               true
     end followingIsGivenSig
 
@@ -1440,7 +1441,7 @@ object Parsers {
 
       val t =
         if in.token == LPAREN then
-          typAfterParens(functionRest)
+          afterArguments(x => infixTypeRest(refinedTypeRest(withTypeRest(x))), functionRest)
         else if (in.token == LBRACKET) {
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == TLARROW)
@@ -1480,14 +1481,14 @@ object Parsers {
         buf += following()
       buf.toList
 
-    def typAfterParens(parseRest: (List[Tree], Modifiers) => Tree) =
+    def afterArguments[T](parseSimple: Tree => T, parseFn: (List[Tree], Modifiers) => T): T =
       val start = in.offset
       in.nextToken()
       var imods = Modifiers()
       var isValParamList = false
       if in.token == RPAREN then
         in.nextToken()
-        parseRest(Nil, imods)
+        parseFn(Nil, imods)
       else
         openParens.change(LPAREN, 1)
         imods = modifiers(funTypeArgMods)
@@ -1503,7 +1504,7 @@ object Parsers {
         openParens.change(LPAREN, -1)
         accept(RPAREN)
         if isValParamList || in.token == ARROW || in.token == CTXARROW then
-          parseRest(ts, imods)
+          parseFn(ts, imods)
         else
           val ts1 =
             for t <- ts yield
@@ -1514,12 +1515,8 @@ object Parsers {
                 case _ =>
                   t
           val tuple = atSpan(start) { makeTupleOrParens(ts1) }
-          infixTypeRest(
-            refinedTypeRest(
-              withTypeRest(
-                annotTypeRest(
-                  simpleTypeRest(tuple)))))
-    end typAfterParens
+          parseSimple(annotTypeRest(simpleTypeRest(tuple)))
+    end afterArguments
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef =
       TypeDef(name, WildcardTypeBoundsTree()).withFlags(Param)
@@ -3562,13 +3559,13 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef          ::=  [GivenSig] Type ‘=’ Expr
-     *                      |  [GivenSig] ConstrApps [TemplateBody]
-     *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘as’
+    /** GivenDef          ::=  [GivenParams] Type ['as' id] ‘=’ Expr
+     *                      |  [GivenParams] ConstrApps ['as' id] [TemplateBody]
+     *  GivenParams       ::=  [DefTypeParamClause '=>'] {FunArgTypes '=>'}
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
-      val nameStart = in.offset
+      val start = in.offset
       val (name, tparams, vparamss, parents) = if followingIsGivenSig() then
         val name = if isIdent then ident() else EmptyTermName
         val tparams = typeParamClauseOpt(ParamOwner.Def)
@@ -3580,6 +3577,36 @@ object Parsers {
         newLinesOpt()
         accept(nme.as)
         val parents = constrApps(commaOK = true)
+        (name, tparams, vparamss, parents)
+      else if true then
+        val tparams = typeParamClauseOpt(ParamOwner.Def)
+        if tparams.nonEmpty then accept(ARROW)
+        var counter = 0
+        def nextIdx = { counter += 1; counter }
+        def givenHeadRest(params: List[Tree], mods: Modifiers): (List[List[ValDef]], List[Tree]) =
+          accept(ARROW)
+          val vparams = params match
+            case (_: ValDef) :: _ =>
+              params.asInstanceOf[List[ValDef]].map(_.withFlags(Given))
+            case _ =>
+              params.map(makeSyntheticParameter(nextIdx, _, Param | Synthetic | Given))
+          val (vparamss1, parents) = givenHead()
+          (vparams :: vparamss1, parents)
+        def givenHeadFinish(t: Tree): (List[List[ValDef]], List[Tree]) =
+          (Nil, constrAppsRest(constrAppRest(t), commaOK = true))
+        def givenHead(): (List[List[ValDef]], List[Tree]) =
+          if in.token == LPAREN then
+            afterArguments(givenHeadFinish, givenHeadRest)
+          else
+            val constr = constrOrSimpleType()
+            if in.token == ARROW then givenHeadRest(constr :: Nil, EmptyModifiers)
+            else givenHeadFinish(constr)
+        val (vparamss, parents) = givenHead()
+        val name =
+          if in.isIdent(nme.as) then
+            in.nextToken()
+            ident()
+          else EmptyTermName
         (name, tparams, vparamss, parents)
       else
         (EmptyTermName, Nil, Nil, constrApps(commaOK = true))
@@ -3662,7 +3689,9 @@ object Parsers {
     /** ConstrApp  ::=  SimpleType1 {Annotation} {ParArgumentExprs}
      */
     val constrApp: () => Tree = () =>
-      val t = constrOrSimpleType()
+      constrAppRest(constrOrSimpleType())
+
+    def constrAppRest(t: Tree): Tree =
       if in.token == LPAREN then parArgumentExprss(wrapNew(t)) else t
 
     /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
