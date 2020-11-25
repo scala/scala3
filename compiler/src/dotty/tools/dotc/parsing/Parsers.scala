@@ -944,7 +944,7 @@ object Parsers {
           else if knownTypeNames.contains(suffixName.toTypeName) then
             true
           else if knownTypeNames.contains(prefixName.toTypeName) then
-            true
+            false
           else
             // we have one of the following
             //
@@ -3587,7 +3587,7 @@ object Parsers {
           accept(ARROW)
           val vparams = params match
             case (_: ValDef) :: _ =>
-              params.asInstanceOf[List[ValDef]].map(_.withFlags(Given))
+              params.asInstanceOf[List[ValDef]].map(_.withFlags(Param | Given))
             case _ =>
               params.map(makeSyntheticParameter(nextIdx, _, Param | Synthetic | Given))
           val (vparamss1, parents) = givenHead()
