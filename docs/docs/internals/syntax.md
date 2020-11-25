@@ -185,9 +185,9 @@ Types             ::=  Type {‘,’ Type}
 
 ### Expressions
 ```ebnf
-Expr              ::=  FunParams ‘=>’ Expr                                      Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr                            Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                     |  Expr1
-BlockResult       ::=  FunParams ‘=>’ Block
+BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
                     |  Expr1
 FunParams         ::=  Bindings
                     |  id

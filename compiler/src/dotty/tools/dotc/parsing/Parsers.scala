@@ -1502,7 +1502,7 @@ object Parsers {
     def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): ValDef =
       atSpan(start) {
         accept(COLON)
-        makeParameter(name, typ(), mods)
+        makeParameter(name, typ(), mods | Param)
       }
 
     /**  FunParamClause ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
@@ -1864,14 +1864,14 @@ object Parsers {
       accept(altToken)
       t
 
-    /** Expr              ::=  [`implicit'] FunParams ‘=>’ Expr
+    /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
      *                      |  Expr1
      *  FunParams         ::=  Bindings
      *                      |  id
      *                      |  `_'
      *  ExprInParens      ::=  PostfixExpr `:' Type
      *                      |  Expr
-     *  BlockResult       ::=  [‘implicit’] FunParams ‘=>’ Block
+     *  BlockResult       ::=  [‘implicit’] FunParams (‘=>’ | ‘?=>’) Block
      *                      |  Expr1
      *  Expr1             ::=  [‘inline’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
      *                      |  [‘inline’] `if' Expr `then' Expr [[semi] else Expr]
@@ -2186,7 +2186,7 @@ object Parsers {
 
     def closureRest(start: Int, location: Location, params: List[Tree]): Tree =
       atSpan(start, in.offset) {
-        accept(ARROW)
+        if in.token == CTXARROW then in.nextToken() else accept(ARROW)
         Function(params, if (location == Location.InBlock) block() else expr())
       }
 
@@ -3773,7 +3773,7 @@ object Parsers {
             case Typed(tree @ This(EmptyTypeIdent), tpt) =>
               self = makeSelfDef(nme.WILDCARD, tpt).withSpan(first.span)
             case _ =>
-              val ValDef(name, tpt, _) = convertToParam(first, "self type clause")
+              val ValDef(name, tpt, _) = convertToParam(first, EmptyModifiers, "self type clause")
               if (name != nme.ERROR)
                 self = makeSelfDef(name, tpt).withSpan(first.span)
           }
