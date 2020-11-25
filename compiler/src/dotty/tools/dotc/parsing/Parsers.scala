@@ -1360,8 +1360,8 @@ object Parsers {
      */
     def typ(): Tree = {
       val start = in.offset
-      var imods = Modifiers()
-      def functionRest(params: List[Tree]): Tree =
+      def functionRest(params: List[Tree], mods: Modifiers): Tree =
+        var imods = mods
         atSpan(start, in.offset) {
           if in.token == TLARROW then
             if !imods.flags.isEmpty || params.isEmpty then
@@ -1389,61 +1389,11 @@ object Parsers {
             Function(params, t)
           }
         }
-      def funArgTypesRest(first: Tree, following: () => Tree) = {
-        val buf = new ListBuffer[Tree] += first
-        while (in.token == COMMA) {
-          in.nextToken()
-          buf += following()
-        }
-        buf.toList
-      }
-      var isValParamList = false
 
       val t =
-        if (in.token == LPAREN) {
-          in.nextToken()
-          if (in.token == RPAREN) {
-            in.nextToken()
-            functionRest(Nil)
-          }
-          else {
-            openParens.change(LPAREN, 1)
-            imods = modifiers(funTypeArgMods)
-            val paramStart = in.offset
-            val ts = funArgType() match {
-              case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
-                isValParamList = true
-                funArgTypesRest(
-                    typedFunParam(paramStart, name.toTermName, imods),
-                    () => typedFunParam(in.offset, ident(), imods))
-              case t =>
-                funArgTypesRest(t, funArgType)
-            }
-            openParens.change(LPAREN, -1)
-            accept(RPAREN)
-            if isValParamList || in.token == ARROW || in.token == CTXARROW then
-              functionRest(ts)
-            else {
-              val ts1 =
-                for (t <- ts) yield
-                  t match {
-                    case t@ByNameTypeTree(t1) =>
-                      syntaxError(ByNameParameterNotSupported(t), t.span)
-                      t1
-                    case _ =>
-                      t
-                  }
-              val tuple = atSpan(start) { makeTupleOrParens(ts1) }
-              infixTypeRest(
-                refinedTypeRest(
-                  withTypeRest(
-                    annotTypeRest(
-                      simpleTypeRest(tuple)))))
-            }
-          }
-        }
+        if in.token == LPAREN then
+          typAfterParens(functionRest)
         else if (in.token == LBRACKET) {
-          val start = in.offset
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == TLARROW)
             atSpan(start, in.skipToken())(LambdaTypeTree(tparams, toplevelTyp()))
@@ -1465,15 +1415,63 @@ object Parsers {
         else infixType()
 
       in.token match {
-        case ARROW | CTXARROW => functionRest(t :: Nil)
+        case ARROW | CTXARROW => functionRest(t :: Nil, Modifiers())
         case MATCH => matchType(t)
         case FORSOME => syntaxError(ExistentialTypesNoLongerSupported()); t
         case _ =>
-          if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
-            syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
+          //if (imods.is(Erased) && !t.isInstanceOf[FunctionWithMods])
+          //  syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
           t
       }
     }
+
+    def funArgTypesRest(first: Tree, following: () => Tree): List[Tree] =
+      val buf = new ListBuffer[Tree] += first
+      while in.token == COMMA do
+        in.nextToken()
+        buf += following()
+      buf.toList
+
+    def typAfterParens(parseRest: (List[Tree], Modifiers) => Tree) =
+      val start = in.offset
+      in.nextToken()
+      var imods = Modifiers()
+      var isValParamList = false
+      if in.token == RPAREN then
+        in.nextToken()
+        parseRest(Nil, imods)
+      else
+        openParens.change(LPAREN, 1)
+        imods = modifiers(funTypeArgMods)
+        val paramStart = in.offset
+        val ts = funArgType() match
+          case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
+            isValParamList = true
+            funArgTypesRest(
+                typedFunParam(paramStart, name.toTermName, imods),
+                () => typedFunParam(in.offset, ident(), imods))
+          case t =>
+            funArgTypesRest(t, funArgType)
+        openParens.change(LPAREN, -1)
+        accept(RPAREN)
+        if isValParamList || in.token == ARROW || in.token == CTXARROW then
+          parseRest(ts, imods)
+        else
+          val ts1 =
+            for t <- ts yield
+              t match
+                case t@ByNameTypeTree(t1) =>
+                  syntaxError(ByNameParameterNotSupported(t), t.span)
+                  t1
+                case _ =>
+                  t
+          val tuple = atSpan(start) { makeTupleOrParens(ts1) }
+          infixTypeRest(
+            refinedTypeRest(
+              withTypeRest(
+                annotTypeRest(
+                  simpleTypeRest(tuple)))))
+    end typAfterParens
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef =
       TypeDef(name, WildcardTypeBoundsTree()).withFlags(Param)
@@ -3607,24 +3605,30 @@ object Parsers {
 
 /* -------- TEMPLATES ------------------------------------------- */
 
+    def constrOrSimpleType() =
+      rejectWildcardType(
+        annotTypeRest(simpleType1()),
+        fallbackTree = Ident(tpnme.ERROR))
+          // Using Ident(tpnme.ERROR) to avoid causing cascade errors on non-user-written code
+
     /** ConstrApp  ::=  SimpleType1 {Annotation} {ParArgumentExprs}
      */
     val constrApp: () => Tree = () =>
-      val t = rejectWildcardType(annotTypeRest(simpleType1()),
-        fallbackTree = Ident(tpnme.ERROR))
-        // Using Ident(tpnme.ERROR) to avoid causing cascade errors on non-user-written code
+      val t = constrOrSimpleType()
       if in.token == LPAREN then parArgumentExprss(wrapNew(t)) else t
 
     /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
      */
     def constrApps(commaOK: Boolean): List[Tree] =
-      val t = constrApp()
+      constrAppsRest(constrApp(), commaOK)
+
+    def constrAppsRest(app: Tree, commaOK: Boolean): List[Tree] =
       val ts =
         if in.token == WITH || commaOK && in.token == COMMA then
           in.nextToken()
           constrApps(commaOK)
         else Nil
-      t :: ts
+      app :: ts
 
     /** Template          ::=  InheritClauses [TemplateBody]
      *  InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
