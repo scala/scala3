@@ -69,7 +69,12 @@ class ReadTasty extends Phase {
           def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol
           compilationUnit(clsd.classSymbol).orElse(compilationUnit(moduleClass))
         case _ =>
-          cannotUnpickle(s"no class file was found")
+          staticRef(className.moduleClassName) match {
+            case clsd: ClassDenotation =>
+              compilationUnit(clsd.classSymbol)
+            case denot =>
+              cannotUnpickle(s"no class file was found for denot: $denot")
+          }
       }
     case unit =>
      Some(unit)
