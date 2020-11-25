@@ -3568,11 +3568,9 @@ object Parsers {
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
-      val hasGivenSig = followingIsGivenSig()
       val nameStart = in.offset
-      val name = if isIdent && hasGivenSig then ident() else EmptyTermName
-
-      val gdef =
+      val (name, tparams, vparamss, parents) = if followingIsGivenSig() then
+        val name = if isIdent then ident() else EmptyTermName
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         newLineOpt()
         val vparamss =
@@ -3580,14 +3578,16 @@ object Parsers {
           then paramClauses(givenOnly = true)
           else Nil
         newLinesOpt()
-        val noParams = tparams.isEmpty && vparamss.isEmpty
-        if !(name.isEmpty && noParams) then
-          accept(nme.as)
+        accept(nme.as)
         val parents = constrApps(commaOK = true)
+        (name, tparams, vparamss, parents)
+      else
+        (EmptyTermName, Nil, Nil, constrApps(commaOK = true))
+      val gdef =
         if in.token == EQUALS && parents.length == 1 && parents.head.isType then
           accept(EQUALS)
           mods1 |= Final
-          if noParams && !mods.is(Inline) then
+          if tparams.isEmpty && vparamss.isEmpty && !mods.is(Inline) then
             mods1 |= Lazy
             ValDef(name, parents.head, subExpr())
           else
