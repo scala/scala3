@@ -220,7 +220,11 @@ object SourceFile {
     if jpath eq null then
       file.path // repl and other custom tests use abstract files with no path
     else
-      sourcerootPath.relativize(jpath.toAbsolutePath.normalize).toString
+      val normalizedPath = jpath.normalize
+      // On Windows we can only relativize paths if root component matches
+      // (see implementation of sun.nio.fs.WindowsPath#relativize)
+      try sourcerootPath.relativize(normalizedPath).toString
+      catch case _: IllegalArgumentException => normalizedPath.toString
   }
 }
 
