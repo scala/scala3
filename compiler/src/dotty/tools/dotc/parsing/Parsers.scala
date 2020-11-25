@@ -80,6 +80,9 @@ object Parsers {
   private val InCase: Region => Region = Scanners.InCase
   private val InCond: Region => Region = Scanners.InBraces
 
+  // TRANSITION
+  val knownTypeNames: Set[TypeName] = Set(tpnme.AnyRef, tpnme.Object)
+
   abstract class ParserCommon(val source: SourceFile)(using Context) {
 
     val in: ScannerCommon
@@ -897,23 +900,68 @@ object Parsers {
         followedByToken(LARROW) // `<-` comes before possible statement starts
     }
 
-    /** Are the next token the "GivenSig" part of a given definition,
+    /** Are the next token the "GivenSig" part of an old-style given definition,
      *  i.e. an identifier followed by type and value parameters, followed by `:`?
-     *  @pre  The current token is an identifier
      */
-    def followingIsGivenSig() =
+    def followingIsGivenSig() = // TRANSITION
       val lookahead = in.LookaheadScanner()
+      var prefixName = EmptyTermName
       if lookahead.isIdent then
+        prefixName = lookahead.name
         lookahead.nextToken()
+      var isOldStyle: Boolean = false
+      def isParamStart = lookahead.token == LPAREN || lookahead.token == LBRACKET
       def skipParams(): Unit =
-        if lookahead.token == LPAREN || lookahead.token == LBRACKET then
-          lookahead.skipParens()
+        if isParamStart then
+          val opening = lookahead.token
+          lookahead.nextToken()
+          if prefixName.isEmpty
+             && (opening == LBRACKET || lookahead.isIdent(nme.using))
+          then isOldStyle = true
+          lookahead.skipParensRest(opening)
           skipParams()
         else if lookahead.isNewLine then
           lookahead.nextToken()
           skipParams()
+      val prefixHasParams = isParamStart
       skipParams()
-      lookahead.isIdent(nme.as)
+      if !lookahead.isIdent(nme.as) then false
+      else
+        lookahead.nextToken()
+        if isOldStyle || !lookahead.isIdent then
+          true
+        else
+          val suffixName = lookahead.name
+          lookahead.nextToken()
+          if isParamStart || lookahead.token == DOT then
+            true
+          else if prefixName.isEmpty then
+            // we have `given (...) as bar with no `using`; it must be new style
+            false
+          else if !prefixHasParams && prefixName == suffixName then
+            // we have `given foo as foo`, so it does not matter how we interpret it
+            true
+          else if knownTypeNames.contains(suffixName.toTypeName) then
+            true
+          else if knownTypeNames.contains(prefixName.toTypeName) then
+            true
+          else
+            // we have one of the following
+            //
+            //   1.   given foo as bar
+            //   2.   given foo[...]... as bar
+            //   3.   given foo(...)... as bar
+            //
+            // Decide on the case of the names; lowercase means bound name
+
+            val prefixIsUpper = Character.isUpperCase(prefixName.head)
+            val suffixIsUpper = Character.isUpperCase(suffixName.head)
+            if prefixIsUpper && !suffixIsUpper then false
+            else if !prefixIsUpper && suffixIsUpper then true
+            else syntaxError(
+              em"ambiguous syntax for given definition; make sure exactly one of $prefixName, $suffixName is capitalized")
+              true
+    end followingIsGivenSig
 
     def followingIsExtension() =
       val next = in.lookahead.token

@@ -890,6 +890,9 @@ object Scanners {
     final def skipParens(multiple: Boolean = true): Unit =
       val opening = token
       nextToken()
+      skipParensRest(opening, multiple) // TRANSITION
+
+    final def skipParensRest(opening: Token, multiple: Boolean = true): Unit =
       while token != EOF && token != opening + 1 do
         if token == opening && multiple then skipParens() else nextToken()
       nextToken()

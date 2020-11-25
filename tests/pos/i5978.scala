@@ -84,9 +84,9 @@ package p3 {
 package p4 {
   class TC
 
-  given A as TC
+  given a as TC
 
-  given B[X[_], Y] as TC
+  given b[X[_], Y] as TC
 
-  given C(using TC) as TC
+  given c(using TC) as TC
 }

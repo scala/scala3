@@ -2,8 +2,8 @@ trait RunDSL
 
 val rdsl = new RunDSL {}
 
-given RunNNFExpr[B] as RunDSL = rdsl
+given runNNFExpr[B] as RunDSL = rdsl
 
-given RunNNFImpl[B] as RunDSL {
+given runNNFImpl[B] as RunDSL {
   //override def runDSL(b: NNF[B]): B = b.terminal
 }
