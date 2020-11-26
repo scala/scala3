@@ -3,10 +3,10 @@ package scala.quoted
 trait ExprMap:
 
   /** Map an expression `e` with a type `T` */
-  def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T]
+  def transform[T](e: Expr[T])(using q: Quotes, t: Type[T]): Expr[T]
 
   /** Map subexpressions an expression `e` with a type `T` */
-  def transformChildren[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = {
+  def transformChildren[T](e: Expr[T])(using q: Quotes, t: Type[T]): Expr[T] = {
     import quotes.reflect._
     final class MapChildren() {
 

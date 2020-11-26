@@ -12,8 +12,8 @@ object Unlifted {
    *  }
    *  ```
    */
-  def unapply[T](expr: Expr[T])(using Unliftable[T])(using Quotes): Option[T] =
-    summon[Unliftable[T]].fromExpr(expr)
+  def unapply[T](expr: Expr[T])(using u: Unliftable[T])(using q: Quotes): Option[T] =
+    u.fromExpr(expr)
 
   /** Matches literal sequence of literal constant value expressions and return a sequence of values.
    *
@@ -27,7 +27,7 @@ object Unlifted {
    *  }
    *  ```
    */
-  def unapply[T](exprs: Seq[Expr[T]])(using unlift: Unliftable[T], qctx: Quotes): Option[Seq[T]] =
+  def unapply[T](exprs: Seq[Expr[T]])(using u: Unliftable[T], q: Quotes): Option[Seq[T]] =
     exprs.foldRight(Option(List.empty[T])) { (elem, acc) =>
       (elem, acc) match {
         case (Unlifted(value), Some(lst)) => Some(value :: lst)

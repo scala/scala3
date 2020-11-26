@@ -12,11 +12,11 @@ end Type
 object Type:
 
   /** Show a source code like representation of this type without syntax highlight */
-  def show[T](using Type[T])(using Quotes): String =
+  def show[T](using t: Type[T])(using q: Quotes): String =
     quotes.reflect.TypeTree.of[T].show
 
   /** Shows the tree as fully typed source code colored with ANSI */
-  def showAnsiColored[T](using Type[T])(using Quotes): String =
+  def showAnsiColored[T](using t: Type[T])(using q: Quotes): String =
     quotes.reflect.TypeTree.of[T].showAnsiColored
 
   /** Return a quoted.Type with the given type */

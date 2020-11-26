@@ -15,7 +15,7 @@ object Varargs {
    *  '{ List(${Varargs(List(1, 2, 3))}: _*) } // equvalent to '{ List(1, 2, 3) }
    *  ```
    */
-  def apply[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[Seq[T]] = {
+  def apply[T](xs: Seq[Expr[T]])(using t: Type[T])(using q: Quotes): Expr[Seq[T]] = {
     import quotes.reflect._
     Repeated(xs.map(Term.of).toList, TypeTree.of[T]).asExpr.asInstanceOf[Expr[Seq[T]]]
   }
@@ -32,7 +32,7 @@ object Varargs {
    *  }
    *  ```
    */
-  def unapply[T](expr: Expr[Seq[T]])(using Quotes): Option[Seq[Expr[T]]] = {
+  def unapply[T](expr: Expr[Seq[T]])(using q: Quotes): Option[Seq[Expr[T]]] = {
     import quotes.reflect._
     def rec(tree: Term): Option[Seq[Expr[T]]] = tree match {
       case Typed(Repeated(elems, _), _) => Some(elems.map(x => x.asExpr.asInstanceOf[Expr[T]]))

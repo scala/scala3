@@ -38,7 +38,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Returns `None` if the expression does not contain a value or contains side effects.
      *  Otherwise returns the `Some` of the value.
      */
-    def unlift(using Unliftable[T]): Option[T] =
+    def unlift(using u: Unliftable[T]): Option[T] =
       summon[Unliftable[T]].fromExpr(self)(using Quotes.this)
 
     /** Return the unlifted value of this expression.
@@ -46,7 +46,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Emits an error and throws if the expression does not contain a value or contains side effects.
      *  Otherwise returns the value.
      */
-    def unliftOrError(using Unliftable[T]): T =
+    def unliftOrError(using u: Unliftable[T]): T =
       def reportError =
         val msg = s"Expected a known value. \n\nThe value of: ${self.show}\ncould not be unlifted using $unlift"
         reflect.report.throwError(msg, self)
@@ -57,10 +57,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
   // Extension methods for `Expr[Any]` that take another explicit type parameter
   extension [X](self: Expr[Any]):
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
-    def isExprOf(using Type[X]): Boolean
+    def isExprOf(using t: Type[X]): Boolean
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-    def asExprOf(using Type[X]): Expr[X]
+    def asExprOf(using t: Type[X]): Expr[X]
   end extension
 
   /** Low-level Typed AST API metaprogramming API.
@@ -230,7 +230,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
       extension [T](self: Tree)
-        def asExprOf(using Type[T]): Expr[T]
+        def asExprOf(using t: Type[T]): Expr[T]
 
       extension [ThisTree <: Tree](self: ThisTree):
         /** Changes the owner of the symbols in the tree */
@@ -1514,7 +1514,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val TypeTree` */
     trait TypeTreeModule { this: TypeTree.type =>
       /** Returns the tree of type or kind (TypeTree) of T */
-      def of[T <: AnyKind](using Type[T]): TypeTree
+      def of[T <: AnyKind](using t: Type[T]): TypeTree
     }
 
     /** Makes extension methods on `TypeTree` available without any imports */
@@ -2341,7 +2341,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val TypeRepr` */
     trait TypeReprModule { this: TypeRepr.type =>
       /** Returns the type or kind (TypeRepr) of T */
-      def of[T <: AnyKind](using Type[T]): TypeRepr
+      def of[T <: AnyKind](using t: Type[T]): TypeRepr
 
       /** Returns the type constructor of the runtime (erased) class */
       def typeConstructorOf(clazz: Class[?]): TypeRepr
