@@ -58,6 +58,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
   val cleanUpEmptyModules = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getPreMergeDocumentableTransformer)
       .fromInstance(_.asScala.filterNot(_.getName.isEmpty).asJava)
+      .overrideExtension(dokkaBase.getModulesAndPackagesDocumentation)
   )
 
   val ourSignatureProvider = extend(
@@ -99,6 +100,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     _.extensionPoint(CoreExtensions.INSTANCE.getPageTransformer)
       .fromRecipe(PackageHierarchyTransformer(_))
       .before(dokkaBase.getRootCreator)
+      .overrideExtension(dokkaBase.getDefaultSamplesTransformer)
   )
 
   val inheritanceTransformer = extend(
