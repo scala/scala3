@@ -211,7 +211,14 @@ object Build {
         }
       // Do not cut off the bottom of large stack traces (default is 1024)
       "-XX:MaxJavaStackTraceDepth=1000000" :: agentOptions ::: ciOptions
-    }
+    },
+
+    excludeLintKeys ++= Set(
+      // We set these settings in `commonSettings`, if a project
+      // uses `commonSettings` but overrides `unmanagedSourceDirectories`,
+      // sbt will complain if we don't exclude them here.
+      Keys.scalaSource, Keys.javaSource
+    ),
   )
 
   lazy val disableDocSetting =
@@ -1197,6 +1204,12 @@ object Build {
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config",
       sbtTestDirectory := baseDirectory.value / "sbt-test",
+
+      // The batch mode accidentally became the default with no way to disable
+      // it in sbt 1.4 (https://github.com/sbt/sbt/issues/5913#issuecomment-716003195).
+      // We enable it explicitly here to make it clear that we're using it.
+      scriptedBatchExecution := true,
+
       scriptedLaunchOpts ++= Seq(
         "-Dplugin.version=" + version.value,
         "-Dplugin.scalaVersion=" + dottyVersion,

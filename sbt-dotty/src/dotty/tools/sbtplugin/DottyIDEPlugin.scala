@@ -394,6 +394,10 @@ object DottyIDEPlugin extends AutoPlugin {
 
   ) ++ addCommandAlias("launchIDE", ";configureIDE;runCode")
 
+  override def globalSettings: Seq[Setting[_]] = Seq(
+    excludeLintKeys += excludeFromIDE
+  )
+
   // Ported from Bloop
   /**
    * Detect the eligible configuration dependencies from a given configuration.
