@@ -19,7 +19,6 @@ import reporting.ProperDefinitionNotFound
    * @author Felix Mulder
    */
   class CommentExpander {
-    // import dotc.config.Printers.dottydoc
     import scala.collection.mutable
 
     def expand(sym: Symbol, site: Symbol)(using Context): String = {
@@ -193,8 +192,8 @@ import reporting.ProperDefinitionNotFound
                 val sectionTextBounds = extractSectionText(parent, section)
                 cleanupSectionText(parent.substring(sectionTextBounds._1, sectionTextBounds._2))
               case None =>
-                // dottydoc.println(s"""${sym.span}: the """" + getSectionHeader + "\" annotation of the " + sym +
-                //     " comment contains @inheritdoc, but the corresponding section in the parent is not defined.")
+                println(s"""${sym.span}: the """" + getSectionHeader + "\" annotation of the " + sym +
+                    " comment contains @inheritdoc, but the corresponding section in the parent is not defined.")
                 "<invalid inheritdoc annotation>"
             }
 
@@ -257,8 +256,6 @@ import reporting.ProperDefinitionNotFound
                 }
               case "" => idx += 1
               case vname  =>
-                val res = 
-                // println(s"CommentExpander: looking up `$vname` at `$site`")
                 lookupVariable(vname, site) match {
                   case Some(replacement) => replaceWith(replacement)
                   case None              => ;
@@ -290,7 +287,6 @@ import reporting.ProperDefinitionNotFound
         }
       } map {
         case (key, Trim(value)) =>
-
           variableName(key) -> value.replaceAll("\\s+\\*+$", "")
       }
     }
@@ -375,11 +371,10 @@ object CommentExpander {
       Comment(comment.span, comment.raw, Some(expandedComment), Nil, tplExp.defs(sym))
     }
     docCtx.addDocstring(sym, Some(newComment))
-    if tplExp.defs.size != 1 then
-      println(s"Unusual defs size for $sym / $owner")
     newComment
   }
 
+  /** Expands comment of `sym`, but only after expanding all comments necessary to perform that. */
   private def expandComment(sym: Symbol)(using Context)(using docCtx: ContextDocstrings): Option[Comment] =
     if (sym eq NoSymbol) None
     else docCtx.docstring(sym) match

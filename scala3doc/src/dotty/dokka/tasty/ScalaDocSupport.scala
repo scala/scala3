@@ -20,7 +20,6 @@ trait ScaladocSupport { self: TastyParser =>
         import dotty.tools.dotc
         given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
 
-        // println(s"Expanding comment for sym: ${tree.symbol.show}")
         val sym = tree.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
 
         comments.CommentExpander.cookComment(sym)(using ctx)
