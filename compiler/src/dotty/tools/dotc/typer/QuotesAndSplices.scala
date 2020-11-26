@@ -60,7 +60,7 @@ trait QuotesAndSplices {
       if ctx.mode.is(Mode.Pattern) then
         typedQuotePattern(tree, pt, qctx)
       else if tree.quoted.isType then
-        val msg = em"Consider using canonical type constructor scala.quoted.Type[${tree.quoted}] instead"
+        val msg = em"Consider using canonical type constructor scala.quoted.Type.of[${tree.quoted}] instead"
         if sourceVersion.isAtLeast(`3.1-migration`) then report.error(msg, tree.srcPos)
         else report.warning(msg, tree.srcPos)
         typedTypeApply(untpd.TypeApply(untpd.ref(defn.QuotedTypeModule_of.termRef), tree.quoted :: Nil), pt)(using quoteContext).select(nme.apply).appliedTo(qctx)
