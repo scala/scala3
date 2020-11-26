@@ -54,8 +54,9 @@ trait Deriving {
         // If we set the Synthetic flag here widenGiven will widen too far and the
         // derived instance will have too low a priority to be selected over a freshly
         // derived instance at the summoning site.
+        val flags = if info.isInstanceOf[MethodOrPoly] then Given | Method else Given | Lazy
         synthetics +=
-          newSymbol(ctx.owner, instanceName, Given | Method, info, coord = pos.span)
+          newSymbol(ctx.owner, instanceName, flags, info, coord = pos.span)
             .entered
     }
 
@@ -95,10 +96,12 @@ trait Deriving {
 
       def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type]): Unit = {
         val resultType = typeClassType.appliedTo(instanceTypes)
-        val methodOrExpr =
-          if (evidenceParamInfos.isEmpty) ExprType(resultType)
+        val monoInfo =
+          if evidenceParamInfos.isEmpty then resultType
           else ImplicitMethodType(evidenceParamInfos.map(typeClassType.appliedTo), resultType)
-        val derivedInfo = if (derivedParams.isEmpty) methodOrExpr else PolyType.fromParams(derivedParams, methodOrExpr)
+        val derivedInfo =
+          if derivedParams.isEmpty then monoInfo
+          else PolyType.fromParams(derivedParams, monoInfo)
         addDerivedInstance(originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
       }
 
@@ -292,7 +295,8 @@ trait Deriving {
       }
 
       def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
-        tpd.polyDefDef(sym.asTerm, typeclassInstance(sym))
+        if sym.is(Method) then tpd.polyDefDef(sym.asTerm, typeclassInstance(sym))
+        else tpd.ValDef(sym.asTerm, typeclassInstance(sym)(Nil)(Nil))
       }
 
       synthetics.map(syntheticDef).toList
