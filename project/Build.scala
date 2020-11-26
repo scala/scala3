@@ -1484,6 +1484,7 @@ object Build {
     def asScala3doc: Project = {
       def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
+          IO.createDirectory(file(outDir))
           val sourcesAndRevision = s"-source-links github://lampepfl/dotty  -revision $ref -project-version $projectVersion"
           val cmd = s""" -d $outDir -project "$name" $sourcesAndRevision $params $targets"""
           run.in(Compile).toTask(cmd)
