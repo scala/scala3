@@ -1,9 +1,11 @@
-package dotty.tools
-package dotc
-package core
+package dotty.dokka.tasty.comments
+
+import dotty.tools._
+import dotc._
+import core._
 
 import ast.{ untpd, tpd }
-import Decorators._, Symbols._, Contexts._
+import Decorators._, Symbols._, Contexts._, Comments.{_, given}
 import util.{SourceFile, ReadOnlyMap}
 import util.Spans._
 import util.CommentParsing._
@@ -11,139 +13,13 @@ import util.Property.Key
 import parsing.Parsers.Parser
 import reporting.ProperDefinitionNotFound
 
-object Comments {
-  val ContextDoc: Key[ContextDocstrings] = new Key[ContextDocstrings]
-
-  /** Decorator for getting docbase out of context */
-  given CommentsContext as AnyRef:
-    extension (c: Context) def docCtx: Option[ContextDocstrings] = c.property(ContextDoc)
-
-  /** Context for Docstrings, contains basic functionality for getting
-    * docstrings via `Symbol` and expanding templates
-    */
-  class ContextDocstrings {
-
-    private val _docstrings: MutableSymbolMap[Comment] = MutableSymbolMap[Comment](512) // FIXME: 2nd [Comment] needed or "not a class type"
-
-    val templateExpander: CommentExpander = new CommentExpander
-
-    def docstrings: ReadOnlyMap[Symbol, Comment] = _docstrings
-
-    def docstring(sym: Symbol): Option[Comment] = _docstrings.get(sym)
-
-    def addDocstring(sym: Symbol, doc: Option[Comment]): Unit =
-      doc.foreach(d => _docstrings.update(sym, d))
-  }
-
-  /**
-   * A `Comment` contains the unformatted docstring, it's position and potentially more
-   * information that is populated when the comment is "cooked".
-   *
-   * @param span     The position span of this `Comment`.
-   * @param raw      The raw comment, as seen in the source code, without any expansion.
-   * @param expanded If this comment has been expanded, it's expansion, otherwise `None`.
-   * @param usecases The usecases for this comment.
-   */
-  final case class Comment(
-    span: Span,
-    raw: String,
-    expanded: Option[String],
-    usecases: List[UseCase],
-    variables: Map[String, String],
-  ) {
-
-    /** Has this comment been cooked or expanded? */
-    def isExpanded: Boolean = expanded.isDefined
-
-    /** The body of this comment, without the `@usecase` and `@define` sections, after expansion. */
-    lazy val expandedBody: Option[String] =
-      expanded.map(removeSections(_, "@usecase", "@define"))
-
-    val isDocComment: Boolean = Comment.isDocComment(raw)
-
-    /**
-     * Expands this comment by giving its content to `f`, and then parsing the `@usecase` sections.
-     * Typically, `f` will take care of expanding the variables.
-     *
-     * @param f The expansion function.
-     * @return The expanded comment, with the `usecases` populated.
-     */
-    def expand(f: String => String)(using Context): Comment = {
-      val expandedComment = f(raw)
-      val useCases = Comment.parseUsecases(expandedComment, span)
-      Comment(span, raw, Some(expandedComment), useCases, Map.empty)
-    }
-  }
-
-  object Comment {
-
-    def isDocComment(comment: String): Boolean = comment.startsWith("/**")
-
-    def apply(span: Span, raw: String): Comment =
-      Comment(span, raw, None, Nil, Map.empty)
-
-    private def parseUsecases(expandedComment: String, span: Span)(using Context): List[UseCase] =
-      if (!isDocComment(expandedComment))
-        Nil
-      else
-        tagIndex(expandedComment)
-          .filter { startsWithTag(expandedComment, _, "@usecase") }
-          .map { case (start, end) => decomposeUseCase(expandedComment, span, start, end) }
-
-    /** Turns a usecase section into a UseCase, with code changed to:
-     *  {{{
-     *  // From:
-     *  def foo: A
-     *  // To:
-     *  def foo: A = ???
-     *  }}}
-     */
-    private def decomposeUseCase(body: String, span: Span, start: Int, end: Int)(using Context): UseCase = {
-      def subPos(start: Int, end: Int) =
-        if (span == NoSpan) NoSpan
-        else {
-          val start1 = span.start + start
-          val end1 = span.end + end
-          span withStart start1 withPoint start1 withEnd end1
-        }
-
-      val codeStart = skipWhitespace(body, start + "@usecase".length)
-      val codeEnd   = skipToEol(body, codeStart)
-      val code      = body.substring(codeStart, codeEnd) + " = ???"
-      val codePos   = subPos(codeStart, codeEnd)
-
-      UseCase(code, codePos)
-    }
-  }
-
-  final case class UseCase(code: String, codePos: Span, untpdCode: untpd.Tree, tpdCode: Option[tpd.DefDef]) {
-    def typed(tpdCode: tpd.DefDef): UseCase = copy(tpdCode = Some(tpdCode))
-  }
-
-  object UseCase {
-    def apply(code: String, codePos: Span)(using Context): UseCase = {
-      val tree = {
-        val tree = new Parser(SourceFile.virtual("<usecase>", code)).localDef(codePos.start)
-        tree match {
-          case tree: untpd.DefDef =>
-            val newName = ctx.compilationUnit.freshNames.newName(tree.name, NameKinds.DocArtifactName)
-            untpd.cpy.DefDef(tree)(name = newName)
-          case _ =>
-            report.error(ProperDefinitionNotFound(), ctx.source.atSpan(codePos))
-            tree
-        }
-      }
-      UseCase(code, codePos, tree, None)
-    }
-  }
-
   /**
    * Port of DocComment.scala from nsc
    * @author Martin Odersky
    * @author Felix Mulder
    */
   class CommentExpander {
-    import dotc.config.Printers.dottydoc
+    // import dotc.config.Printers.dottydoc
     import scala.collection.mutable
 
     def expand(sym: Symbol, site: Symbol)(using Context): String = {
@@ -203,7 +79,7 @@ object Comments {
         case None =>
           // SI-8210 - The warning would be false negative when this symbol is a setter
           if (ownComment.indexOf("@inheritdoc") != -1 && ! sym.isSetter)
-            dottydoc.println(s"${sym.span}: the comment for ${sym} contains @inheritdoc, but no parent comment is available to inherit from.")
+            println(s"${sym.span}: the comment for ${sym} contains @inheritdoc, but no parent comment is available to inherit from.")
           ownComment.replace("@inheritdoc", "<invalid inheritdoc annotation>")
         case Some(sc) =>
           if (ownComment == "") sc
@@ -317,8 +193,8 @@ object Comments {
                 val sectionTextBounds = extractSectionText(parent, section)
                 cleanupSectionText(parent.substring(sectionTextBounds._1, sectionTextBounds._2))
               case None =>
-                dottydoc.println(s"""${sym.span}: the """" + getSectionHeader + "\" annotation of the " + sym +
-                    " comment contains @inheritdoc, but the corresponding section in the parent is not defined.")
+                // dottydoc.println(s"""${sym.span}: the """" + getSectionHeader + "\" annotation of the " + sym +
+                //     " comment contains @inheritdoc, but the corresponding section in the parent is not defined.")
                 "<invalid inheritdoc annotation>"
             }
 
@@ -381,10 +257,12 @@ object Comments {
                 }
               case "" => idx += 1
               case vname  =>
+                val res = 
+                // println(s"CommentExpander: looking up `$vname` at `$site`")
                 lookupVariable(vname, site) match {
                   case Some(replacement) => replaceWith(replacement)
-                  case None              =>
-                    dottydoc.println(s"Variable $vname undefined in comment for $sym in $site")
+                  case None              => ;
+                    println(s"Variable $vname undefined in comment for $sym in $site")
                 }
             }
           }
@@ -412,6 +290,7 @@ object Comments {
         }
       } map {
         case (key, Trim(value)) =>
+
           variableName(key) -> value.replaceAll("\\s+\\*+$", "")
       }
     }
@@ -419,7 +298,13 @@ object Comments {
     /** Maps symbols to the variable -> replacement maps that are defined
      *  in their doc comments
      */
-    private val defs = mutable.HashMap[Symbol, Map[String, String]]() withDefaultValue Map()
+    val defs = mutable.HashMap[Symbol, Map[String, String]]() withDefaultValue Map()
+
+    def lookupDefs(sym: Symbol)(using Context): Map[String, String] =
+      ctx.docCtx.map(_.docstring(sym) match {
+        case Some(cmt) if cmt.isExpanded => cmt.variables
+        case _ => defs(sym)
+      }) getOrElse Map()
 
     /** Lookup definition of variable.
      *
@@ -433,7 +318,7 @@ object Comments {
           if (site.flags.is(Flags.Module)) site :: site.info.baseClasses
           else site.info.baseClasses
 
-        searchList collectFirst { case x if defs(x) contains vble => defs(x)(vble) } match {
+        searchList collectFirst { case x if lookupDefs(x) contains vble => lookupDefs(x)(vble) } match {
           case Some(str) if str startsWith "$" => lookupVariable(str.tail, site)
           case res                             => res orElse lookupVariable(vble, site.owner)
         }
@@ -457,4 +342,49 @@ object Comments {
 
     class ExpansionLimitExceeded(str: String) extends Exception
   }
+
+object CommentExpander {
+  def cookComment(sym: Symbol, owner: Symbol)(using Context): Option[Comment] =
+    ctx.docCtx.flatMap { docCtx =>
+      expand(sym, owner)(using ctx)(using docCtx)
+    }
+
+  private def expand(sym: Symbol, owner: Symbol)(using Context)(using docCtx: ContextDocstrings): Option[Comment] =
+    docCtx.docstring(sym).flatMap {
+      case cmt if cmt.isExpanded =>
+        Some(cmt)
+      case _ =>
+        expandComment(sym).map { expanded =>
+          val commentWithUsecases = expanded
+          docCtx.addDocstring(sym, Some(commentWithUsecases))
+          commentWithUsecases
+        }
+    }
+
+  private def expandComment(sym: Symbol, owner: Symbol, comment: Comment)(using Context)(using docCtx: ContextDocstrings): Comment = {
+    val tplExp = new CommentExpander
+    tplExp.defineVariables(sym)
+    val newComment = {
+      val expandedComment = tplExp.expandedDocComment(sym, owner, comment.raw)
+      Comment(comment.span, comment.raw, Some(expandedComment), Nil, tplExp.defs(sym))
+    }
+    docCtx.addDocstring(sym, Some(newComment))
+    if tplExp.defs.size != 1 then
+      println(s"Unusual defs size for $sym / $owner")
+    newComment
+  }
+
+  private def expandComment(sym: Symbol)(using Context)(using docCtx: ContextDocstrings): Option[Comment] =
+    if (sym eq NoSymbol) None
+    else docCtx.docstring(sym) match
+      case Some(cmt) if !cmt.isExpanded =>
+        expandComment(sym.owner)
+        if sym.isClass then
+          for ptype <- sym.info.asInstanceOf[Types.ClassInfo].classParents do
+            expandComment(ptype.classSymbol)
+        Some(expandComment(sym, sym.owner, cmt))
+      case _ =>
+        None
+    end if
 }
+

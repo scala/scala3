@@ -10,6 +10,8 @@ package tests
   * This is an *important* _test_ class.
   * Important enough to get multiple sentences in its summary.
   *
+  * Here is foo: $foo
+  *
   * And `this` is inline code.
   *
   * And this is the **strong** __emphasis__ test.
@@ -56,16 +58,24 @@ package tests
   * @version 1.0.0
   * @result A class doesn't actually have a result.
   * @constructor A class has a constructor, and this one is important.
+  *
+  * @define foo Foo expanded.
   */
 class A {
 
-  /** This is a method.
+  /** This is my method.
     *
     * This is a link: [[AA]].
     *
     * This is another link: [[AA$]].
     *
     * And yet another: [[B]].
+    */
+  final def myMethod(s: String): String = s
+
+  /** This is a method.
+    *
+    * This is foo: $foo
     */
   def method(s: String): String = s
 
@@ -84,6 +94,8 @@ object A
   * === So important it gets three headers ===
   *
   * This is an ''important'' '''test''' __class__. And `this` is inline code.
+  *
+  * Here is foo: $foo
   *
   * While
   * {{{
@@ -104,9 +116,15 @@ object A
   *
   * And this is his companion: [[tests.A$]].
   * @syntax wiki
+  * @define foo Bar, actually.
   */
 class B extends A {
-  /** This is a method. */
+  /** @inheritdoc */ override def method(s: String): String = s
+
+  /** This is a method.
+    *
+    * And this is my foo: $foo
+    */
   def otherMethod(s: String): String = s
 
   class BB
