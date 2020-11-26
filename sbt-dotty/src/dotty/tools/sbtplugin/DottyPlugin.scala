@@ -446,16 +446,10 @@ object DottyPlugin extends AutoPlugin {
       val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
       (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
     },
-    sources := Def.taskDyn {
-      val old = sources.value
-
-      if (isDotty.value) Def.task {
-        old ++ tastyFiles.value
-      } else Def.task {
-        old
-      }
+    sources ++= Def.taskDyn[Seq[File]] {
+      if (isDotty.value) Def.task { tastyFiles.value } 
+      else Def.task { Nil }
     }.value,
-
     scalacOptions ++= {
       if (isDotty.value) {
         val projectName =
