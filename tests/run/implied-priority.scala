@@ -134,7 +134,7 @@ object HigherPriority {
 }
 
 object fallback5 {
-  given [T](using ev: E[T] = new E[T]("fallback")) as (E[T] & HigherPriority.Type) = HigherPriority.inject(ev)
+  given [T] => (ev: E[T] = new E[T]("fallback")) => (E[T] & HigherPriority.Type) = HigherPriority.inject(ev)
 }
 
 def test5 = {

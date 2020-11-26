@@ -968,6 +968,10 @@ object Parsers {
       val next = in.lookahead.token
       next == LBRACKET || next == LPAREN
 
+    def followingIsParam(): Boolean =
+      startParamTokens.contains(in.token)
+      || isIdent && (in.name == nme.inline || in.lookahead.token == COLON)
+
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
     var opStack: List[OpInfo] = Nil
@@ -1441,7 +1445,8 @@ object Parsers {
 
       val t =
         if in.token == LPAREN then
-          afterArguments(x => infixTypeRest(refinedTypeRest(withTypeRest(x))), functionRest)
+          def normalTypeRest(t: Tree) = infixTypeRest(refinedTypeRest(withTypeRest(t)))
+          maybeParams(typedFunParams, normalTypeRest, functionRest)
         else if (in.token == LBRACKET) {
           val tparams = typeParamClause(ParamOwner.TypeParam)
           if (in.token == TLARROW)
@@ -1474,14 +1479,18 @@ object Parsers {
       }
     }
 
-    def funArgTypesRest(first: Tree, following: () => Tree): List[Tree] =
-      val buf = new ListBuffer[Tree] += first
-      while in.token == COMMA do
-        in.nextToken()
-        buf += following()
-      buf.toList
-
-    def afterArguments[T](parseSimple: Tree => T, parseFn: (List[Tree], Modifiers) => T): T =
+    /** Either a parameter list, which then needs to be followed by `=>` or
+     *  a type or constructor application.
+     *
+     *   @param  parseParams  The parsing method for the parameters inside `(...)`
+     *   @param  parseSimple  The parsing continuation if the prefix is not a parameter list
+     *                        or the prefix is not followed by `=>` or `?=>`
+     *   @param  parseFn      The parsing continuation to follow otherwise.
+     */
+    def maybeParams[T](
+        parseParams: Modifiers => List[ValDef],
+        parseSimple: Tree => T,
+        parseFn: (List[Tree], Modifiers) => T): T =
       val start = in.offset
       in.nextToken()
       var imods = Modifiers()
@@ -1493,17 +1502,11 @@ object Parsers {
         openParens.change(LPAREN, 1)
         imods = modifiers(funTypeArgMods)
         val paramStart = in.offset
-        val ts = funArgType() match
-          case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
-            isValParamList = true
-            funArgTypesRest(
-                typedFunParam(paramStart, name.toTermName, imods),
-                () => typedFunParam(in.offset, ident(), imods))
-          case t =>
-            funArgTypesRest(t, funArgType)
+        val isParams = followingIsParam()
+        val ts = if isParams then parseParams(imods) else funArgTypes()
         openParens.change(LPAREN, -1)
         accept(RPAREN)
-        if isValParamList || in.token == ARROW || in.token == CTXARROW then
+        if isParams || in.token == ARROW || in.token == CTXARROW then
           parseFn(ts, imods)
         else
           val ts1 =
@@ -1516,7 +1519,7 @@ object Parsers {
                   t
           val tuple = atSpan(start) { makeTupleOrParens(ts1) }
           parseSimple(annotTypeRest(simpleTypeRest(tuple)))
-    end afterArguments
+    end maybeParams
 
     private def makeKindProjectorTypeDef(name: TypeName): TypeDef =
       TypeDef(name, WildcardTypeBoundsTree()).withFlags(Param)
@@ -1548,10 +1551,12 @@ object Parsers {
         makeParameter(name, typ(), mods)
       }
 
+    def typedFunParams(mods: Modifiers = EmptyModifiers): List[ValDef] =
+      commaSeparated(() => typedFunParam(in.offset, ident(), mods))
+
     /**  FunParamClause ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
      */
-    def funParamClause(): List[ValDef] =
-      inParens(commaSeparated(() => typedFunParam(in.offset, ident())))
+    def funParamClause(): List[ValDef] = inParens(typedFunParams())
 
     def funParamClauses(): List[List[ValDef]] =
       if in.token == LPAREN then funParamClause() :: funParamClauses() else Nil
@@ -1795,6 +1800,10 @@ object Parsers {
     val funArgType: () => Tree = () =>
       if (in.token == ARROW) atSpan(in.skipToken()) { ByNameTypeTree(typ()) }
       else typ()
+
+    /** FunArgTypes ::=  FunArgType { `,` FunArgType}
+     */
+    def funArgTypes(): List[Tree] = commaSeparated(funArgType)
 
     /** ParamType ::= [`=>'] ParamValueType
      */
@@ -2965,28 +2974,23 @@ object Parsers {
      *
      *  Param             ::=  id `:' ParamType [`=' Expr]
      *
+     *  The method here does not parse the outer `(...)` or any "head" modifiers
+     *  in `erased`, `using`, `given`;  this has to be done in the caller.
      *  @return   the list of parameter definitions
      */
-    def paramClause(nparams: Int,                            // number of parameters preceding this clause
+    def paramClause(hmods: Modifiers,                        // parsed modifiers at start of clause
+                    nparams: Int = 0,                        // number of parameters preceding this clause
                     ofClass: Boolean = false,                // owner is a class
                     ofCaseClass: Boolean = false,            // owner is a case class
                     prefix: Boolean = false,                 // clause precedes name of an extension method
                     givenOnly: Boolean = false,              // only given parameters allowed
                     firstClause: Boolean = false             // clause is the first in regular list of clauses
-                   ): List[ValDef] = {
-      var impliedMods: Modifiers = EmptyModifiers
-
-      def addParamMod(mod: () => Mod) = impliedMods = addMod(impliedMods, atSpan(in.skipToken()) { mod() })
-
-      def paramMods() =
-        if in.token == IMPLICIT then addParamMod(() => Mod.Implicit())
-        else
-          if isIdent(nme.using) then addParamMod(() => Mod.Given())
-          if in.token == ERASED then addParamMod(() => Mod.Erased())
+                   ): List[ValDef] =
+      var headMods: Modifiers = hmods
 
       def param(): ValDef = {
         val start = in.offset
-        var mods = impliedMods.withAnnotations(annotations())
+        var mods = headMods.withAnnotations(annotations())
         if (ofClass) {
           mods = addFlag(modifiers(start = mods), ParamAccessor)
           mods =
@@ -2997,7 +3001,7 @@ object Parsers {
               val mod = atSpan(in.skipToken()) { Mod.Var() }
               addMod(mods, mod)
             else
-              if (!(mods.flags &~ (ParamAccessor | Inline | impliedMods.flags)).isEmpty)
+              if (!(mods.flags &~ (ParamAccessor | Inline | headMods.flags)).isEmpty)
                 syntaxError("`val` or `var` expected")
               if (firstClause && ofCaseClass) mods
               else mods | PrivateLocal
@@ -3016,8 +3020,8 @@ object Parsers {
           val default =
             if (in.token == EQUALS) { in.nextToken(); subExpr() }
             else EmptyTree
-          if (impliedMods.mods.nonEmpty)
-            impliedMods = impliedMods.withMods(Nil) // keep only flags, so that parameter positions don't overlap
+          if (headMods.mods.nonEmpty)
+            headMods = headMods.withMods(Nil) // keep only flags, so that parameter positions don't overlap
           ValDef(name, tpt, default).withMods(mods)
         }
       }
@@ -3034,26 +3038,21 @@ object Parsers {
           checkVarArgsRules(rest)
       }
 
-      // begin paramClause
-      inParens {
-        if in.token == RPAREN && !prefix && !impliedMods.is(Given) then Nil
-        else
-          val clause =
-            if prefix then param() :: Nil
+      if in.token == RPAREN && !prefix && headMods.flags.isEmpty then
+        Nil
+      else
+        val clause =
+          if prefix then param() :: Nil
+          else
+            if givenOnly && !headMods.is(Given) then
+              syntaxError("`using` expected")
+            if !headMods.is(Given) || followingIsParam() then
+              commaSeparated(param)
             else
-              paramMods()
-              if givenOnly && !impliedMods.is(Given) then
-                syntaxError("`using` expected")
-              val isParams =
-                !impliedMods.is(Given)
-                || startParamTokens.contains(in.token)
-                || isIdent && (in.name == nme.inline || in.lookahead.token == COLON)
-              if isParams then commaSeparated(() => param())
-              else contextTypes(ofClass, nparams)
-          checkVarArgsRules(clause)
-          clause
-      }
-    }
+              contextTypes(ofClass, nparams)
+        checkVarArgsRules(clause)
+        clause
+    end paramClause
 
     /** ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
      *  DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
@@ -3067,13 +3066,22 @@ object Parsers {
       def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
         if in.token == LPAREN then
-          val paramsStart = in.offset
-          val params = paramClause(
-              nparams,
-              ofClass = ofClass,
-              ofCaseClass = ofCaseClass,
-              givenOnly = givenOnly,
-              firstClause = firstClause)
+          val params = inParens {
+            var headMods: Modifiers = EmptyModifiers
+            def addParamMod(mod: () => Mod) =
+              headMods = addMod(headMods, atSpan(in.skipToken()) { mod() })
+            if in.token == IMPLICIT then addParamMod(() => Mod.Implicit())
+            else
+              if isIdent(nme.using) then addParamMod(() => Mod.Given())
+              if in.token == ERASED then addParamMod(() => Mod.Erased())
+            paramClause(
+                headMods,
+                nparams,
+                ofClass = ofClass,
+                ofCaseClass = ofCaseClass,
+                givenOnly = givenOnly,
+                firstClause = firstClause)
+          }
           val lastClause = params.nonEmpty && params.head.mods.flags.is(Implicit)
           params :: (
             if lastClause then Nil
@@ -3596,12 +3604,13 @@ object Parsers {
           (Nil, constrAppsRest(constrAppRest(t), commaOK = true))
         def givenHead(): (List[List[ValDef]], List[Tree]) =
           if in.token == LPAREN then
-            afterArguments(givenHeadFinish, givenHeadRest)
+            maybeParams(paramClause(_), givenHeadFinish, givenHeadRest)
           else
             val constr = constrOrSimpleType()
             if in.token == ARROW then givenHeadRest(constr :: Nil, EmptyModifiers)
             else givenHeadFinish(constr)
         val (vparamss, parents) = givenHead()
+        newLinesOptWhenFollowedBy(nme.as)
         val name =
           if in.isIdent(nme.as) then
             in.nextToken()
@@ -3637,7 +3646,7 @@ object Parsers {
     def extension(): ExtMethods =
       val start = in.skipToken()
       val tparams = typeParamClauseOpt(ParamOwner.Def)
-      val extParams = paramClause(0, prefix = true)
+      val extParams = inParens(paramClause(EmptyModifiers, prefix = true))
       val givenParamss = paramClauses(givenOnly = true)
       in.observeColonEOL()
       if (in.token == COLONEOL) in.nextToken()
