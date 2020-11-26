@@ -562,6 +562,7 @@ object StdNames {
     val reflect: N              = "reflect"
     val reflectiveSelectable: N = "reflectiveSelectable"
     val reify : N               = "reify"
+    val releaseFence : N        = "releaseFence"
     val rootMirror : N          = "rootMirror"
     val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
