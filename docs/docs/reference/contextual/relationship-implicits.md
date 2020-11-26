@@ -14,7 +14,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
  1. Given instances without parameters are mapped to implicit objects. E.g.,
 
     ```scala
-    given intOrd as Ord[Int] { ... }
+    given Ord[Int] as intOrd { ... }
     ```
 
     maps to
@@ -26,13 +26,13 @@ Given instances can be mapped to combinations of implicit objects, classes and i
  2. Parameterized givens are mapped to combinations of classes and implicit methods. E.g.,
 
     ```scala
-      given listOrd[T](using ord: Ord[T]) as Ord[List[T]] { ... }
+      given [T] => (ord: Ord[T]) => Ord[List[T]] as listOrd { ... }
     ```
 
     maps to
 
     ```scala
-    class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
+    class listOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
     final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
     ```
 
@@ -43,7 +43,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
 Examples:
 
 ```scala
-given global as ExecutionContext = new ForkJoinContext()
+given ExecutionContext as global = [new ForkJoinContext()]
 
 val ctx: Context
 given Context = ctx
@@ -56,13 +56,25 @@ final implicit lazy val global: ExecutionContext = new ForkJoinContext()
 final implicit def given_Context = ctx
 ```
 
-### Anonymous Given Instances
-
-Anonymous given instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` givens above were left out, the following names would be synthesized instead:
+Alias givens with that define a by-name type starting with `=>` are always kept as defs.
+Example:
 
 ```scala
-given given_Ord_Int as Ord[Int] { ... }
-given given_Ord_List_T[T](using ord: Ord[T]) as Ord[List[T]] { ... }
+given => ExecutionContext =
+  println("new execution context created")
+  new ForkJoinContext()
+summon[ExecutionContext]
+summon[ExecutionContext]
+```
+In this code fragment, "new execution context created" is printed twice.
+
+### Anonymous Given Instances
+
+Anonymous given instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `listOrd` givens above were left out, the following names would be synthesized instead:
+
+```scala
+given Ord[Int] as given_Ord_Int { ... }
+given [T] => Ord[T] => Ord[List[T]] as given_Ord_List_T { ... }
 ```
 
 The synthesized type names are formed from
@@ -150,7 +162,7 @@ implicit def stringToToken(str: String): Token = new Keyword(str)
 one can write
 
 ```scala
-given stringToToken as Conversion[String, Token] {
+given Conversion[String, Token] as stringToToken {
   def apply(str: String): Token = KeyWord(str)
 }
 ```
@@ -158,7 +170,7 @@ given stringToToken as Conversion[String, Token] {
 or
 
 ```scala
-given stringToToken as Conversion[String, Token] = KeyWord(_)
+given Conversion[String, Token] as stringToToken = KeyWord(_)
 ```
 
 ### Implicit Classes

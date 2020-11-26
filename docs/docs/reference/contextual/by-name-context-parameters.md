@@ -10,9 +10,9 @@ trait Codec[T] {
   def write(x: T): Unit
 }
 
-given intCodec as Codec[Int] = ???
+given Codec[Int] as intCodec = ???
 
-given optionCodec[T](using ev: => Codec[T]) as Codec[Option[T]] {
+given [T] => (ev: => Codec[T]) => Codec[Option[T]] as optionCodec {
   def write(xo: Option[T]) = xo match {
     case Some(x) => ev.write(x)
     case None =>
@@ -36,7 +36,7 @@ The precise steps for synthesizing an argument for a by-name context parameter o
  1. Create a new given of type `T`:
 
     ```scala
-    given lv as T = ???
+    given T as lv = ???
     ```
     where `lv` is an arbitrary fresh name.
 
@@ -46,7 +46,7 @@ The precise steps for synthesizing an argument for a by-name context parameter o
 
 
     ```scala
-    { given lv as T = E; lv }
+    { given T as lv = E; lv }
     ```
 
     Otherwise, return `E` unchanged.

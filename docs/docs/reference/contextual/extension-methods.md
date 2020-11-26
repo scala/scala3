@@ -194,7 +194,7 @@ trait SafeDiv:
 By the second rule, an extension method can be made available by defining a given instance containing it, like this:
 
 ```scala
-given ops1 as IntOps // brings safeMod into scope
+given IntOps as ops1 // brings safeMod into scope
 
 1.safeMod(2)
 ```
@@ -209,7 +209,7 @@ object List:
   extension [T](xs: List[List[T]])
     def flatten: List[T] = xs.foldLeft(Nil: List[T])(_ ++ _)
 
-  given [T: Ordering] as Ordering[List[T]]:
+  given [T: Ordering] => Ordering[List[T]]:
     extension (xs: List[T])
       def < (ys: List[T]): Boolean = ...
 end List

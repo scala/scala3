@@ -13,7 +13,7 @@ Context functions are written using `?=>` as the "arrow" sign.
 They are applied to synthesized arguments, in
 the same way methods with context parameters are applied. For instance:
 ```scala
-  given ec as ExecutionContext = ...
+  given ExecutionContext as ec = ...
 
   def f(x: Int): ExecutionContext ?=> Int = ...
 
@@ -86,13 +86,13 @@ with context function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
   def table(init: Table ?=> Unit) = {
-    given t as Table // note the use of a creator application; same as: given t as Table = new Table
+    given Table as t // note the use of a creator application; same as: given t as Table = new Table
     init
     t
   }
 
   def row(init: Row ?=> Unit)(using t: Table) = {
-    given r as Row
+    given Row as r
     init
     t.add(r)
   }

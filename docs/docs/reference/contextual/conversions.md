@@ -37,7 +37,7 @@ If such an instance `C` is found, the expression `e` is replaced by `C.apply(e)`
 primitive number types to subclasses of `java.lang.Number`. For instance, the
 conversion from `Int` to `java.lang.Integer` can be defined as follows:
 ```scala
-given int2Integer as Conversion[Int, java.lang.Integer] =
+given Conversion[Int, java.lang.Integer] as int2Integer =
  java.lang.Integer.valueOf(_)
 ```
 
@@ -59,9 +59,9 @@ object Completions {
     //
     //   CompletionArg.fromStatusCode(statusCode)
 
-    given fromString     as Conversion[String, CompletionArg]               = Error(_)
-    given fromFuture     as Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    given fromStatusCode as Conversion[Future[StatusCode], CompletionArg]   = Status(_)
+    given Conversion[String, CompletionArg]               as fromString     = Error(_)
+    given Conversion[Future[HttpResponse], CompletionArg] as fromFuture     = Response(_)
+    given Conversion[Future[StatusCode], CompletionArg]   as fromStatusCode = Status(_)
   }
   import CompletionArg._
 

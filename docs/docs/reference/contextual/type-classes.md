@@ -158,7 +158,7 @@ end Monad
 A `List` can be turned into a monad via this `given` instance:
 
 ```scala
-given listMonad as Monad[List]:
+given Monad[List]:
   def pure[A](x: A): List[A] =
     List(x)
   extension [A, B](xs: List[A])
@@ -175,7 +175,7 @@ it explicitly.
 `Option` is an other type having the same kind of behaviour:
 
 ```scala
-given optionMonad as Monad[Option]:
+given Monad[Option]:
   def pure[A](x: A): Option[A] =
     Option(x)
   extension [A, B](xo: Option[A])
@@ -222,7 +222,7 @@ type ConfigDependent[Result] = Config => Result
 The monad instance will look like this:
 
 ```scala
-given configDependentMonad as Monad[ConfigDependent]:
+given Monad[ConfigDependent] as configDependentMonad:
 
   def pure[A](x: A): ConfigDependent[A] =
     config => x
@@ -243,7 +243,7 @@ type ConfigDependent = [Result] =>> Config => Result
 Using this syntax would turn the previous `configDependentMonad` into:
 
 ```scala
-given configDependentMonad as Monad[[Result] =>> Config => Result]
+given Monad[[Result] =>> Config => Result] as configDependentMonad
 
   def pure[A](x: A): Config => A =
     config => x
@@ -258,7 +258,7 @@ end configDependentMonad
 It is likely that we would like to use this pattern with other kinds of environments than our `Config` trait. The Reader monad allows us to abstract away `Config` as a type _parameter_, named `Ctx` in the following definition:
 
 ```scala
-given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
+given [Ctx] => Monad[[X] =>> Ctx => X] as readerMonad:
 
   def pure[A](x: A): Ctx => A =
     ctx => x
