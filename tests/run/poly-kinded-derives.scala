@@ -6,8 +6,8 @@ object Test extends App {
     object Show {
       given Show[Int] {}
       given [T] => (st: Show[T]) => Show[Tuple1[T]]
-      given t2[T, U](using st: Show[T], su: Show[U]) as Show[(T, U)]
-      given t3 [T, U, V](using st: Show[T], su: Show[U], sv: Show[V]) as Show[(T, U, V)]
+      given [T, U] => (st: Show[T], su: Show[U]) => Show[(T, U)] as t2
+      given [T, U, V] => (Show[T], Show[U], Show[V]) => Show[(T, U, V)] as t3
 
       def derived[T](using m: Mirror.Of[T], r: Show[m.MirroredElemTypes]): Show[T] = new Show[T] {}
     }

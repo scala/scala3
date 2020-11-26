@@ -12,7 +12,7 @@ object Coproduct {
 
   object At {
 
-    given atHead[Head, Tail] as At[Head +: Tail, Head, 0] {
+    given [Head, Tail] => At[Head +: Tail, Head, 0] as atHead {
       def cast: Head <:< Head +: Tail = summon[Head <:< Head +: Tail]
     }
 

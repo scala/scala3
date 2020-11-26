@@ -20,11 +20,11 @@ class GivenClass {
             if (x < y) -1 else if (x > y) +1 else 0
     }
 
-    given asd(using int: Int) as B
+    given (int: Int) => B as asd
 
-    given asd2[T] as C[T]
+    given [T] => C[T] as asd2
 
-    given listOrd[T](using ord: Ord[T]) as Ord[List[T]] {
+    given [T] => (ord: Ord[T]) => Ord[List[T]] as listOrd {
 
         def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match
             case (Nil, Nil) => 0

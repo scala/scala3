@@ -4,7 +4,7 @@ trait Show[-A]:
 given Show[String] = x => x
 given Show[Int] = _.toString
 
-given showEither[A,B](using sA: Show[A])(using Show[B]) as Show[Either[A,B]] =
+given [A,B] => Show[A] => Show[B] => Show[Either[A,B]] as showEither =
   _.fold(a => s"Left(${summon[Show[A]].show(a)})", b => s"Right(${summon[Show[B]].show(b)})")
 given [A,B] => (sA: Show[A]) => (sB: Show[B]) => Show[(A,B)] = (a,b) => s"(${sA.show(a)}), ${sB.show(b)})"
 

@@ -32,7 +32,7 @@ object Eq {
     case '[EmptyTuple] => Nil
   }
 
-  given derived[T: Type](using q: Quotes) as Expr[Eq[T]] = {
+  given [T: Type] => (q: Quotes) => Expr[Eq[T]] as derived = {
     import quotes.reflect._
 
     val ev: Expr[Mirror.Of[T]] = Expr.summon(using Type.of[Mirror.Of[T]]).get

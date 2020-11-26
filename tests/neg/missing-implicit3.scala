@@ -3,7 +3,7 @@ package ord
 trait Ord[A]
 
 object Ord {
-  given ordered[A](using A => java.lang.Comparable[? >: A]) as Ord[A] = ???
+  given [A] => (A => java.lang.Comparable[? >: A]) => Ord[A] as ordered = ???
 }
 
 def sort[A: Ord](as: List[A]): List[A] = ???

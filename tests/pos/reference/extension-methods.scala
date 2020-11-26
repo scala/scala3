@@ -90,7 +90,7 @@ object ExtMethods:
     extension [T](xs: Lst[Lst[T]])
       def flatten: Lst[T] = xs.foldLeft(Lst())(_ ++ _)
 
-    given ord[T: Ord] as Ord[Lst[T]]:
+    given [T: Ord] => Ord[Lst[T]] as ord:
       extension (xs: Lst[T])
         def less (ys: Lst[T]): Boolean = ???
   end Lst

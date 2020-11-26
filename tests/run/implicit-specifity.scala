@@ -3,19 +3,19 @@ object Show {
   def apply[T](implicit st: Show[T]): Int = st.i
 
   given Show[Int] as showInt = new Show[Int](0)
-  given fallback[T] as Show[T] = new Show[T](1)
+  given [T] => Show[T] as fallback = new Show[T](1)
 }
 
 class Generic
 object Generic {
   given Generic as gen = new Generic
-  given showGen[T](using Generic) as Show[T] = new Show[T](2)
+  given [T] => Generic => Show[T] as showGen = new Show[T](2)
 }
 
 class Generic2
 object Generic2 {
   opaque type HiPriority = AnyRef
-  given showGen[T] as (Show[T] & HiPriority) = new Show[T](2).asInstanceOf
+  given [T] => (Show[T] & HiPriority) as showGen = new Show[T](2).asInstanceOf
 }
 
 class SubGen extends Generic
@@ -27,11 +27,11 @@ object Contextual {
 
   given ctx as Context
 
-  given showGen[T](using Generic) as Show[T] = new Show[T](2)
+  given [T] => Generic => Show[T] as showGen = new Show[T](2)
 
-  given showGen[T](using Generic, Context) as Show[T] = new Show[T](3)
+  given [T] => (Generic, Context) => Show[T] as showGen = new Show[T](3)
 
-  given showGen[T](using SubGen) as Show[T] = new Show[T](4)
+  given [T] => SubGen => Show[T] as showGen = new Show[T](4)
 }
 
 object Test extends App {

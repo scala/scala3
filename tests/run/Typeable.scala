@@ -33,7 +33,7 @@ object Typeable:
       case _ => None
     def describe = "Int"
 
-  given list[T: Typeable] as Typeable[List[T]]:
+  given [T: Typeable] => Typeable[List[T]] as list:
     def cast(x: Any): Option[List[T]] = x match
       case x: List[_] if x.forall(Typeable[T].cast(_).isDefined) => Some(x.asInstanceOf[List[T]])
       case _ => None

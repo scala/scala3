@@ -1,4 +1,4 @@
 object Test extends App {
-  given f[H](using h: H) as H = h
+  given [H] => (h: H) => H as f = h
   summon[Int]  // error
 }

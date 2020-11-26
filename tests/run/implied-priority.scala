@@ -11,11 +11,11 @@ class Arg[T]  // An argument that we use as a given for some given instances bel
  * Traditional scheme: prioritize with location in class hierarchy
  */
 class LowPriorityImplicits {
-  given t1[T] as E[T]("low")
+  given [T] => E[T]("low") as t1
 }
 
 object NormalImplicits extends LowPriorityImplicits {
-  given t2[T](using Arg[T]) as E[T]("norm")
+  given [T] => Arg[T] => E[T]("norm") as t2
 }
 
 def test1 = {
@@ -38,8 +38,8 @@ object Priority {
 }
 
 object Impl2 {
-  given t1[T](using Priority.Low) as E[T]("low")
-  given t2[T](using Priority.High)(using Arg[T]) as E[T]("norm")
+  given [T] => Priority.Low => E[T]("low") as t1
+  given [T] => Priority.High => Arg[T] => E[T]("norm") as t2
 }
 
 def test2 = {
@@ -60,7 +60,7 @@ def test2 = {
  * an alternative without implicit arguments would override all of them.
  */
 object Impl2a {
-  given t3[T] as E[T]("hi")
+  given [T] => E[T]("hi") as t3
 }
 
 def test2a = {
@@ -75,13 +75,13 @@ def test2a = {
  * result type of the given instance, e.g. like this:
  */
 object Impl3 {
-  given t1[T] as E[T]("low")
+  given [T] => E[T]("low") as t1
 }
 
 object Override {
   trait HighestPriority  // A marker trait to indicate a higher priority
 
-  given over[T] as E[T]("hi"), HighestPriority
+  given [T] => E[T]("hi"), HighestPriority as over
 }
 
 def test3 = {
@@ -103,7 +103,7 @@ def test3 = {
 object Impl4 {
   given t1 as E[String]("string")
 
-  given t2[T](using Arg[T]) as E[T]("generic")
+  given [T] => Arg[T] => E[T]("generic") as t2
 }
 
 object fallback4 {

@@ -12,11 +12,15 @@ package p1 {
     def f
       (using TokenParser[Char, Position[CharSequence]]) = ???
 
-    given FromCharToken(using T: TokenParser[Char, Position[CharSequence]])
+    given (T: TokenParser[Char, Position[CharSequence]])
 
       // skipping newlines is OK here
 
-      as Conversion[Char, Position[CharSequence]] = ???
+      => Conversion[Char, Position[CharSequence]]
+
+      // skipping newlines is OK here as well
+
+      as FromCharToken = ???
   }
 
   object Testcase {
@@ -86,7 +90,7 @@ package p4 {
 
   given TC as a
 
-  given b[X[_], Y] as TC
+  given [X[_], Y] => TC as b
 
-  given c(using TC) as TC
+  given (TC) => TC as c
 }

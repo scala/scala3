@@ -6,12 +6,12 @@ object test:
     given Y as y = ???
   }
   locally {
-    given xFromY(using y: Y) as X = ???
+    given (y: Y) => X as xFromY = ???
     f(using xFromY) // error
   }
   locally {
     object instances2 {
-      given xFromY(using Y) as X = ???
+      given (Y) => X as xFromY = ???
     }
     f // error
   }

@@ -1,4 +1,4 @@
-given foo(using x: Int) as AnyRef:
+given (x: Int) => AnyRef as foo:
   type T = x.type
 
 // #7859

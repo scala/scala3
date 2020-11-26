@@ -30,7 +30,7 @@ object Instances extends Common:
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given listOrd[T](using Ord[T]) as Ord[List[T]]:
+  given [T] => Ord[T] => Ord[List[T]] as listOrd:
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -55,7 +55,7 @@ object Instances extends Common:
     def pure[A](x: A): List[A] =
       List(x)
 
-  given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
+  given [Ctx] => Monad[[X] =>> Ctx => X] as readerMonad:
     extension [A, B](r: Ctx => A) def flatMap (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -111,11 +111,11 @@ object Instances extends Common:
         println(summon[Context].value)
       }
       locally {
-        given d[T] as D[T]
+        given [T] => D[T] as d
         println(summon[D[Int]])
       }
       locally {
-        given (using Context) as D[Int]
+        given Context => D[Int]
         println(summon[D[Int]])
       }
   end C

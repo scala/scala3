@@ -15,18 +15,18 @@ class Foo[T](val i: Int)
 object Foo {
   def apply[T](using fooT: Foo[T]): Int = fooT.i
 
-  given foo[T](using Low) as Foo[T](0)
-  given foobar[T](using Low) as Foo[Bar[T]](1)
-  given foobarbaz(using Low) as Foo[Bar[Baz]](2)
+  given [T] => Low => Foo[T](0) as foo
+  given [T] => Low => Foo[Bar[T]](1) as foobar
+  given Low => Foo[Bar[Baz]](2) as foobarbaz
 }
 class Bar[T]
 object Bar {
-  given foobar[T](using Medium) as Foo[Bar[T]](3)
-  given foobarbaz(using Medium) as Foo[Bar[Baz]](4)
+  given [T] => Medium => Foo[Bar[T]](3) as foobar
+  given Medium => Foo[Bar[Baz]](4) as foobarbaz
 }
 class Baz
 object Baz {
-  given baz(using High) as Foo[Bar[Baz]](5)
+  given High => Foo[Bar[Baz]](5) as baz
 }
 
 class Arg
@@ -35,24 +35,24 @@ given Arg
 
 class Bam(val str: String)
 
-given lo(using Low) as Bam("lo")
+given Low => Bam("lo") as lo
 
-given hi(using High)(using Arg) as Bam("hi")
+given High => Arg => Bam("hi") as hi
 
 class Bam2(val str: String)
 
-given lo2(using Low) as Bam2("lo")
+given Low => Bam2("lo") as lo2
 
-given mid2(using High)(using Arg) as Bam2("mid")
+given High => (Arg) => Bam2("mid") as mid2
 
 given hi2 as Bam2("hi")
 
 class Arg2
 class Red(val str: String)
 
-given normal(using Arg2) as Red("normal")
+given Arg2 => Red("normal") as normal
 
-given reduced(using ev: Arg2 | Low) as Red("reduced")
+given (ev: Arg2 | Low) => Red("reduced") as reduced
 
 object Test extends App {
   assert(Foo[Int] == 0)

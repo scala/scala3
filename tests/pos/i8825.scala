@@ -17,8 +17,8 @@ object Length {
   def instance[L <: HList, Out0 <: Nat]: Aux[L, Out0] = new Length[L] { type Out = Out0 }
 
   given Aux[HNil, Zero] as hnilLength = instance
-  given hconsLength[H, T <: HList] (using length: Length[T]) as Aux[HCons[H, T], Succ[length.Out]] = instance // (*)
-  //given hconsLength[H, T <: HList, N <: Nat] (using length: Aux[T, N]) as Aux[HCons[H, T], Succ[N]] = instance // (**)
+  given [H, T <: HList] => (length: Length[T]) => Aux[HCons[H, T], Succ[length.Out]] as hconsLength = instance // (*)
+  //given [H, T <: HList, N <: Nat] (using length: Aux[T, N]) => Aux[HCons[H, T], Succ[N]] as hconsLength = instance // (**)
 }
 
 val test = summon[Length.Aux[HCons[Int, HNil], One]]
