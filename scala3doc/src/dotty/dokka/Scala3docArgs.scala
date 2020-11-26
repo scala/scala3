@@ -76,7 +76,7 @@ object Scala3docArgs:
     )
 
     def defaultDest(): File =
-      report.error("Destenation is missing, please provide '-d' parameter poitning to director here docs should be created")
+      report.error("Destenation is missing, please provide '-d' parameter pointing to directory here docs should be created")
       File("output")
 
     val parseSyntax = syntax.nonDefault.fold(CommentSyntax.default){ str =>
