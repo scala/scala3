@@ -73,10 +73,7 @@ class A {
     */
   final def myMethod(s: String): String = s
 
-  /** This is a method.
-    *
-    * This is foo: $foo
-    */
+  /** This is foo: $foo */
   def method(s: String): String = s
 
   class AA
@@ -121,10 +118,7 @@ object A
 class B extends A {
   /** @inheritdoc */ override def method(s: String): String = s
 
-  /** This is a method.
-    *
-    * And this is my foo: $foo
-    */
+  /** This is my foo: $foo */
   def otherMethod(s: String): String = s
 
   class BB
@@ -145,7 +139,8 @@ object B {
   val Z: Int = 0
 }
 
-class C {
+/** This is foo: $foo */
+class C extends A {
   object CC
   class CC
 }
@@ -215,6 +210,5 @@ class Methods:
   */
 object O:
 
-  /** This is foo: $foo
-    */
+  /** This is foo: $foo */
   def method(s: String) = s

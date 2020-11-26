@@ -22,10 +22,8 @@ trait ScaladocSupport { self: TastyParser =>
 
         // println(s"Expanding comment for sym: ${tree.symbol.show}")
         val sym = tree.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
-        val owner =
-          if tree.symbol.isClassDef then sym else sym.owner
 
-        comments.CommentExpander.cookComment(sym, owner)(using ctx)
+        comments.CommentExpander.cookComment(sym)(using ctx)
           .get.asInstanceOf[Documentation]
       else
         commentPre

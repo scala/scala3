@@ -344,6 +344,12 @@ import reporting.ProperDefinitionNotFound
   }
 
 object CommentExpander {
+
+  // TODO: handle package / non-class top-level definitions (possibly just return their comments?)
+  def cookComment(sym: Symbol)(using Context): Option[Comment] =
+    val owner = if sym.isClass then sym else sym.owner
+    cookComment(sym, owner)
+
   def cookComment(sym: Symbol, owner: Symbol)(using Context): Option[Comment] =
     ctx.docCtx.flatMap { docCtx =>
       expand(sym, owner)(using ctx)(using docCtx)
