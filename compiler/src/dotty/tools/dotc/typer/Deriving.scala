@@ -95,10 +95,13 @@ trait Deriving {
 
       def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type]): Unit = {
         val resultType = typeClassType.appliedTo(instanceTypes)
-        val methodOrExpr =
-          if (evidenceParamInfos.isEmpty) ExprType(resultType)
+        val monoInfo =
+          if evidenceParamInfos.isEmpty then
+            if derivedParams.isEmpty then ExprType(resultType) else resultType
           else ImplicitMethodType(evidenceParamInfos.map(typeClassType.appliedTo), resultType)
-        val derivedInfo = if (derivedParams.isEmpty) methodOrExpr else PolyType.fromParams(derivedParams, methodOrExpr)
+        val derivedInfo =
+          if derivedParams.isEmpty then monoInfo
+          else PolyType.fromParams(derivedParams, monoInfo)
         addDerivedInstance(originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
       }
 
