@@ -210,3 +210,11 @@ class Methods:
  def primitives(a: Int, b: Double, c: Short): Byte = 0
  def strings(a: String): String = ""
  def arrays(a: Array[String], b: Array[Int]): Array[Double] = ???
+
+/** @define foo O's foo.
+  */
+object O:
+
+  /** This is foo: $foo
+    */
+  def method(s: String) = s
