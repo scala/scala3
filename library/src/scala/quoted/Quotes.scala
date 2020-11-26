@@ -204,9 +204,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Extension methods of `Tree` */
     trait TreeMethods {
-      // Dodo: Drop once extension methods have stabilized
-      def temporaryShowAnsiColored(self: Tree): String = self.showAnsiColored
-      def temporaryShow(self: Tree): String = self.show
 
       extension (self: Tree):
         /** Position in the source code */

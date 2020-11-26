@@ -28,13 +28,11 @@ object QuotesImpl {
   def apply()(using Context): Quotes =
     new QuotesImpl
 
-  def showDecompiledTree(tree: tpd.Tree)(using Context): String = {
+  def showDecompiledTree(tree: tpd.Tree)(using Context): String =
+    import qctx.reflect.TreeMethodsImpl.{showAnsiColored, show}
     val qctx: QuotesImpl = new QuotesImpl(using MacroExpansion.context(tree))
-    if ctx.settings.color.value == "always" then
-      qctx.reflect.TreeMethodsImpl.temporaryShowAnsiColored(tree)
-    else
-      qctx.reflect.TreeMethodsImpl.temporaryShow(tree)
-  }
+    if ctx.settings.color.value == "always" then showAnsiColored(tree)
+    else show(tree)
 
   // TODO Explore more fine grained scope ids.
   //      This id can only differentiate scope extrusion from one compiler instance to another.
