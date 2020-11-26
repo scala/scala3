@@ -125,7 +125,8 @@ final case class SbtCommunityProject(
   override val publishCommand = if sbtPublishCommand eq null then null else s"$baseCommand$sbtPublishCommand"
   override val docCommand =
     if sbtDocCommand eq null then null else
-      s"$baseCommand;set every useScala3doc := true $sbtDocCommand"
+      val cmd = if sbtDocCommand.startsWith(";") then sbtDocCommand else s";$sbtDocCommand"
+      s"$baseCommand set every useScala3doc := true $cmd "
 
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
@@ -212,40 +213,51 @@ object projects:
   lazy val intent = SbtCommunityProject(
     project       = "intent",
     sbtTestCommand   = "test",
+    sbtDocCommand = "doc"
   )
 
   lazy val algebra = SbtCommunityProject(
     project       = "algebra",
     sbtTestCommand   = "coreJVM/compile",
+    sbtDocCommand = "coreJVM/doc"
   )
 
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
     sbtTestCommand   = "jvm/test;js/test",
-    sbtPublishCommand = "jvm/publishLocal;js/publishLocal"
+    sbtPublishCommand = "jvm/publishLocal;js/publishLocal",
+    sbtDocCommand = "jvm/doc"
   )
 
   lazy val scalatest = SbtCommunityProject(
     project       = "scalatest",
     sbtTestCommand   = "scalacticDotty/clean;scalacticTestDotty/test; scalatestTestDotty/test",
-    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal"
+    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal",
+    sbtDocCommand = ";scalacticDotty/clean ;scalacticDotty/doc; scalatestDotty/doc"
+    // cannot take signature of (test: org.scalatest.concurrent.ConductorFixture#OneArgTest):
+    // org.scalatest.Outcome
+    // Problem parsing scalatest.dotty/target/scala-3.0.0-M2/src_managed/main/org/scalatest/concurrent/ConductorFixture.scala:[602..624..3843], documentation may not be generated.
+    // dotty.tools.dotc.core.MissingType:
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
     project = "scalatestplus-scalacheck",
     sbtTestCommand = "scalatestPlusScalaCheckJVM/test",
     sbtPublishCommand = "scalatestPlusScalaCheckJVM/publishLocal",
+    sbtDocCommand = "scalatestPlusScalaCheckJVM/doc",
     dependencies = List(scalatest, scalacheck)
   )
 
   lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
     sbtTestCommand   = "xml/test",
+    sbtDocCommand = "xml/doc"
   )
 
   lazy val scalap = SbtCommunityProject(
     project       = "scalap",
     sbtTestCommand   = "scalap/compile",
+    sbtDocCommand = "scalap/doc"
   )
 
   lazy val betterfiles = SbtCommunityProject(
@@ -257,17 +269,21 @@ object projects:
   lazy val ScalaPB = SbtCommunityProject(
     project       = "ScalaPB",
     sbtTestCommand   = "dotty-community-build/compile",
+    sbtDocCommand = "dotty-community-build/doc"
   )
 
   lazy val minitest = SbtCommunityProject(
     project       = "minitest",
     sbtTestCommand   = "test",
+    sbtDocCommand = "dotty-community-build/doc",
     dependencies = List(scalacheck)
   )
 
   lazy val fastparse = SbtCommunityProject(
     project       = "fastparse",
     sbtTestCommand   = "dotty-community-build/compile;dotty-community-build/test:compile",
+    // Problem parsing perftests/bench2/src/perftests/PythonParse.scala:[0..18..694]
+    // sbtDocCommand = "dotty-community-build/doc"
   )
 
   lazy val stdLib213 = SbtCommunityProject(
@@ -275,16 +291,20 @@ object projects:
     extraSbtArgs  = List("-Dscala.build.compileWithDotty=true"),
     sbtTestCommand   = """library/compile""",
     sbtPublishCommand = """set publishArtifact in (library, Compile, packageDoc) := false ;library/publishLocal""",
+    // sbtDocCommand = "library/doc" // Does no compile? No idea :/
   )
+
 
   lazy val shapeless = SbtCommunityProject(
     project       = "shapeless",
     sbtTestCommand   = "test",
+    sbtDocCommand = "doc"
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
     project       = "xml-interpolator",
     sbtTestCommand   = "test",
+    sbtDocCommand = "doc", // Again we've got problem with extensions
   )
 
   lazy val effpi = SbtCommunityProject(
@@ -300,6 +320,7 @@ object projects:
     // sbtTestCommand   = "set ThisBuild / useEffpiPlugin := false; effpi/test:compile; plugin/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
 
     sbtTestCommand   = "set ThisBuild / useEffpiPlugin := false; effpi/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
+    sbtDocCommand    = "set ThisBuild / useEffpiPlugin := false; effpi/doc; benchmarks/doc; examples/doc; pluginBenchmarks/doc",
   )
 
   // TODO @odersky? It got broken by #5458
@@ -311,19 +332,20 @@ object projects:
   lazy val sconfig = SbtCommunityProject(
     project       = "sconfig",
     sbtTestCommand   = "sconfigJVM/test",
+    sbtDocCommand = "sconfigJVM/doc",
   )
 
   lazy val zio = SbtCommunityProject(
     project = "zio",
     sbtTestCommand = "testJVMDotty",
+    // sbtDocCommand  = "coreJVM/doc",
+    // Fails on tasty unpickling https://github.com/lampepfl/dotty/issues/10499
   )
 
   lazy val munit = SbtCommunityProject(
-    project = "munit",
-    sbtTestCommand  = "testsJVM/test;testsJS/test;",
-    // Hardcode the version to avoid having to deal with something set by sbt-dynver
-    sbtPublishCommand   = s"""set every version := "${Versions.munit}"; munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal""",
-    dependencies = List(scalacheck)
+    project          = "munit",
+    sbtTestCommand   = "testsJVM/test",
+    sbtDocCommand   = "munitJVM/doc",
   )
 
   lazy val scodecBits = SbtCommunityProject(
@@ -331,50 +353,60 @@ object projects:
     sbtTestCommand   = "coreJVM/test;coreJS/test",
     // Hardcode the version to avoid having to deal with something set by sbt-git
     sbtPublishCommand = s"""set every version := "${Versions.scodecBits}"; coreJVM/publishLocal;coreJS/publishLocal""",
+    sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit)
   )
 
   lazy val scodec = SbtCommunityProject(
     project          = "scodec",
     sbtTestCommand   = "unitTests/test",
+    // Adds <empty> package
+    sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit, scodecBits)
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
     project          = "scala-parser-combinators",
     sbtTestCommand   = "parserCombinatorsJVM/test",
+    sbtDocCommand   = "parserCombinatorsJVM/doc",
   )
 
   lazy val dottyCpsAsync = SbtCommunityProject(
     project          = "dotty-cps-async",
     sbtTestCommand   = "test",
+    sbtDocCommand = "doc",
   )
 
   lazy val scalaz = SbtCommunityProject(
     project          = "scalaz",
     sbtTestCommand   = "rootJVM/test",
-    // has doc/sources set to Nil
+    sbtDocCommand = "rootJVM/doc",
     dependencies     = List(scalacheck)
   )
 
   lazy val endpoints4s = SbtCommunityProject(
     project        = "endpoints4s",
-    sbtTestCommand = "json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile"
+    sbtTestCommand = "json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile",
+    sbtDocCommand = ";json-schemaJVM/doc ;algebraJVM/doc; openapiJVM/doc; http4s-server/doc ;http4s-client/doc ;play-server/doc ;play-client/doc ;akka-http-server/doc ;akka-http-client/doc",
   )
 
   lazy val catsEffect2 = SbtCommunityProject(
     project        = "cats-effect-2",
-    sbtTestCommand = "test"
+    sbtTestCommand = "test",
+    sbtDocCommand = ";coreJVM/doc ;lawsJVM/doc",
   )
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
-    sbtTestCommand = "testIfRelevant"
+    sbtTestCommand = "testIfRelevant",
+    // The problem is that testIfRelevant does not compile and project does not compile
+    // sbtDocCommand = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
   )
 
   lazy val scalaParallelCollections = SbtCommunityProject(
     project        = "scala-parallel-collections",
     sbtTestCommand = "test",
+    sbtDocCommand = "doc",
     dependencies     = List(scalacheck)
   )
 
@@ -407,9 +439,7 @@ object projects:
     "scalatest" -> scalatest,
     "scalatestplusScalacheck" -> scalatestplusScalacheck,
     "scalaXml" -> scalaXml,
-    "scopt" -> scopt,
     "scalap" -> scalap,
-    "squants" -> squants,
     "betterfiles" -> betterfiles,
     "ScalaPB" -> ScalaPB,
     "minitest" -> minitest,
@@ -429,7 +459,8 @@ object projects:
     "endpoints4s" -> endpoints4s,
     "catsEffect2" -> catsEffect2,
     "catsEffect3" -> catsEffect3,
-    "scalaCollectionCompat" -> scalaCollectionCompat
+    "scalaCollectionCompat" -> scalaCollectionCompat,
+    "scalaParallelCollections" -> scalaParallelCollections,
   )
   def apply(key: String) = projectMap(key)
 
