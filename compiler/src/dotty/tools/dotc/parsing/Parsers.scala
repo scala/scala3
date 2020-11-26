@@ -3567,13 +3567,15 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef          ::=  [GivenParams] Type ['as' id] ‘=’ Expr
+    /** GivenDef          ::=  [GivenParams | `=>`] Type ['as' id] ‘=’ Expr
      *                      |  [GivenParams] ConstrApps ['as' id] [TemplateBody]
-     *  GivenParams       ::=  [DefTypeParamClause '=>'] {FunArgTypes '=>'}
+     *  GivenParams       ::=  [DefTypeParamClause '=>'] {GivenParamClause '=>'}
+     *  GivenParamClause  ::=  `(` DefParams `)` |  FunArgTypes
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
       val start = in.offset
+      var defOnly = false
       val (name, tparams, vparamss, parents) = if followingIsGivenSig() then
         val name = if isIdent then ident() else EmptyTermName
         val tparams = typeParamClauseOpt(ParamOwner.Def)
@@ -3588,28 +3590,35 @@ object Parsers {
         (name, tparams, vparamss, parents)
       else if true then
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        if tparams.nonEmpty then accept(ARROW)
-        var counter = 0
-        def nextIdx = { counter += 1; counter }
-        def givenHeadRest(params: List[Tree], mods: Modifiers): (List[List[ValDef]], List[Tree]) =
-          accept(ARROW)
-          val vparams = params match
-            case (_: ValDef) :: _ =>
-              params.asInstanceOf[List[ValDef]].map(_.withFlags(Param | Given))
-            case _ =>
-              params.map(makeSyntheticParameter(nextIdx, _, Param | Synthetic | Given))
-          val (vparamss1, parents) = givenHead()
-          (vparams :: vparamss1, parents)
-        def givenHeadFinish(t: Tree): (List[List[ValDef]], List[Tree]) =
-          (Nil, constrAppsRest(constrAppRest(t), commaOK = true))
-        def givenHead(): (List[List[ValDef]], List[Tree]) =
-          if in.token == LPAREN then
-            maybeParams(paramClause(_), givenHeadFinish, givenHeadRest)
+        val (vparamss, parents) =
+          if tparams.isEmpty && in.token == ARROW then
+            defOnly = true
+            in.nextToken()
+            (Nil, constrApps(commaOK = true))
           else
-            val constr = constrOrSimpleType()
-            if in.token == ARROW then givenHeadRest(constr :: Nil, EmptyModifiers)
-            else givenHeadFinish(constr)
-        val (vparamss, parents) = givenHead()
+            if tparams.nonEmpty then accept(ARROW)
+            var counter = 0
+            def nextIdx = { counter += 1; counter }
+            def givenHeadRest(params: List[Tree], mods: Modifiers): (List[List[ValDef]], List[Tree]) =
+              accept(ARROW)
+              val vparams = params match
+                case (_: ValDef) :: _ =>
+                  params.asInstanceOf[List[ValDef]].map(_.withFlags(Param | Given))
+                case _ =>
+                  params.map(makeSyntheticParameter(nextIdx, _, Param | Synthetic | Given))
+              val (vparamss1, parents) = givenHead()
+              (vparams :: vparamss1, parents)
+            def givenHeadFinish(t: Tree): (List[List[ValDef]], List[Tree]) =
+              (Nil, constrAppsRest(constrAppRest(t), commaOK = true))
+            def givenHead(): (List[List[ValDef]], List[Tree]) =
+              if in.token == LPAREN then
+                maybeParams(paramClause(_), givenHeadFinish, givenHeadRest)
+              else
+                val constr = constrOrSimpleType()
+                if in.token == ARROW then givenHeadRest(constr :: Nil, EmptyModifiers)
+                else givenHeadFinish(constr)
+            givenHead()
+          end if
         newLinesOptWhenFollowedBy(nme.as)
         val name =
           if in.isIdent(nme.as) then
@@ -3620,10 +3629,12 @@ object Parsers {
       else
         (EmptyTermName, Nil, Nil, constrApps(commaOK = true))
       val gdef =
-        if in.token == EQUALS && parents.length == 1 && parents.head.isType then
+        if defOnly || in.token == EQUALS then
+          if parents.length != 1 || !parents.head.isType then
+            syntaxError(em"Given parent is not a type. It cannot be defined with an alias")
           accept(EQUALS)
           mods1 |= Final
-          if tparams.isEmpty && vparamss.isEmpty && !mods.is(Inline) then
+          if tparams.isEmpty && vparamss.isEmpty && !mods.is(Inline) && !defOnly then
             mods1 |= Lazy
             ValDef(name, parents.head, subExpr())
           else
