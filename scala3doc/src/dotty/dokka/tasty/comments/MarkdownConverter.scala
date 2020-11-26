@@ -162,7 +162,7 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
     case _: mda.SoftLineBreak => emit(dkkd.Br.INSTANCE)
 
     // TODO (https://github.com/lampepfl/scala3doc/issues/205): for now just silent the warnigs
-    case _:mda.HtmlInline | _: mda.LinkRef | _: mda.HtmlEntity =>
+    case _:mda.HtmlInline | _: mda.LinkRef | _: mda.HtmlEntity | _: mda.HtmlBlock | _: com.vladsch.flexmark.ext.emoji.Emoji =>
       emit(dkk.text(MarkdownParser.renderToText(n)))
 
     case _ =>
@@ -185,7 +185,7 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
         case Some((sym, targetText)) =>
           dkkd.DocumentationLink(sym.dri, resolveBody(default = targetText), kt.emptyMap)
         case None =>
-          println(s"WARN: Definition lookup for following query failed: $queryStr")
+          // println(s"WARN: Definition lookup for following query failed: $queryStr")
           dkkd.A(resolveBody(default = query.join), Map("title" -> s"Definition was not found: $queryStr", "href" -> "#").asJava)
       }
     }
