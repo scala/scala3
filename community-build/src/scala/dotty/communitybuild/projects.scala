@@ -30,6 +30,13 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
   exitCode
 
 
+/** Versions of published projects, needs to be updated when a project in the build is updated. */
+object Versions:
+  val scalacheck = "1.15.2-SNAPSHOT"
+  val scalatest = "3.2.3"
+  val munit = "0.7.19+7-3ce72dda-SNAPSHOT"
+  val scodecBits = "1.1-17-c6dbf21"
+
 sealed trait CommunityProject:
   private var published = false
 
@@ -73,10 +80,22 @@ final case class SbtCommunityProject(
     sbtPublishCommand: String = null) extends CommunityProject:
   override val binaryName: String = "sbt"
 
+  // A project in the community build can depend on an arbitrary version of
+  // another project in the build, so we force the use of the version that is
+  // actually in the community build.
   val dependencyOverrides = List(
     // dependencyOverrides doesn't seem to understand `%%%`
-    """"org.scalacheck" %% "scalacheck" % "1.15.2-SNAPSHOT"""",
-    """"org.scalacheck" %% "scalacheck_sjs1" % "1.15.2-SNAPSHOT""""
+    s""""org.scalacheck" %% "scalacheck" % "${Versions.scalacheck}"""",
+    s""""org.scalacheck" %% "scalacheck_sjs1" % "${Versions.scalacheck}"""",
+    s""""org.scalatest" %% "scalatest" % "${Versions.scalatest}"""",
+    s""""org.scalatest" %% "scalatest_sjs1" % "${Versions.scalatest}"""",
+    s""""org.scalameta" %% "munit" % "${Versions.munit}"""",
+    s""""org.scalameta" %% "munit_sjs1" % "${Versions.munit}"""",
+    s""""org.scalameta" %% "munit-scalacheck" % "${Versions.munit}"""",
+    s""""org.scalameta" %% "munit-scalacheck_sjs1" % "${Versions.munit}"""",
+    s""""org.scalameta" %% "junit-interface" % "${Versions.munit}"""",
+    s""""org.scodec" %% "scodec-bits" % "${Versions.scodecBits}"""",
+    s""""org.scodec" %% "scodec-bits_sjs1" % "${Versions.scodecBits}"""",
   )
 
   private val baseCommand =
@@ -127,19 +146,19 @@ object projects:
   lazy val ujson = MillCommunityProject(
     project = "upickle",
     baseCommand = s"ujson.jvm[$compilerVersion]",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, geny)
+    dependencies = List(geny)
   )
 
   lazy val upickle = MillCommunityProject(
     project = "upickle",
     baseCommand = s"upickle.jvm[$compilerVersion]",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, geny, utest)
+    dependencies = List(geny, utest)
   )
 
   lazy val upickleCore = MillCommunityProject(
     project = "upickle",
     baseCommand = s"core.jvm[$compilerVersion]",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, geny, utest)
+    dependencies = List(geny, utest)
   )
 
   lazy val geny = MillCommunityProject(
@@ -280,21 +299,23 @@ object projects:
   )
 
   lazy val munit = SbtCommunityProject(
-    project          = "munit",
-    sbtTestCommand   = "testsJVM/test",
+    project = "munit",
+    sbtTestCommand  = "testsJVM/test;testsJS/test;",
+    sbtPublishCommand   = "munitJVM/publishLocal;munitJS/publishLocal;munitScalacheckJVM/publishLocal;munitScalacheckJS/publishLocal;junit/publishLocal",
+    dependencies = List(scalacheck)
   )
 
   lazy val scodecBits = SbtCommunityProject(
     project          = "scodec-bits",
-    sbtTestCommand   = "coreJVM/test",
-    sbtPublishCommand = "coreJVM/publishLocal",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck)
+    sbtTestCommand   = "coreJVM/test;coreJS/test",
+    sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
+    dependencies = List(munit)
   )
 
   lazy val scodec = SbtCommunityProject(
     project          = "scodec",
     sbtTestCommand   = "unitTests/test",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, scodecBits)
+    dependencies = List(munit, scodecBits)
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
