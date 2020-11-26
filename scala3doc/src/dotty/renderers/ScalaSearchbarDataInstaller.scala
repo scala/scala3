@@ -22,11 +22,10 @@ class ScalaSearchbarDataInstaller(val ctx: DokkaContext) extends SearchbarDataIn
 
   case class PageEntry(val name: String, val signature: String, val link: String, val pkg: String)
 
-  // We need to use there mutable, concurrent collections because Dokka renders content concurrently 
+  // We need to use there mutable, concurrent collections because Dokka renders content concurrently
   // and adds entry to searchbar on start of processing page
   val pages = TrieMap[String, PageEntry]()
 
-  val signatureProvider = querySingle[DokkaBase, SignatureProvider](ctx, _.getSignatureProvider)
 
   override def processPage(page: ContentPage, link: String) =
     Option(page.getDocumentable) match {
@@ -37,23 +36,16 @@ class ScalaSearchbarDataInstaller(val ctx: DokkaContext) extends SearchbarDataIn
       }
     }
 
-  def flattenToText(node: ContentNode): String = {
-    def getContentTextNodes(node: ContentNode, sourceSetRestriciton: DisplaySourceSet): List[ContentText] = node match {
-      case t: ContentText => List(t)
-      case c: ContentComposite if c.getDci.getKind != ContentKind.Annotations => c.getChildren.asScala
-        .filter(_.getSourceSets.asScala.contains(sourceSetRestriciton))
-        .flatMap(getContentTextNodes(_, sourceSetRestriciton))
-        .toList
-      case _ => List.empty
-    }
-
-    val sourceSetRestriciton = node.getSourceSets.asScala.find(_.getPlatform == Platform.common).getOrElse(node.getSourceSets.asScala.head)
-    getContentTextNodes(node, sourceSetRestriciton).map(_.getText).mkString("")
-  }
+  def flattenToText(signature: Signature): String =
+    signature.map {
+      case Link(name, dri) => name
+      case s: String => s
+    }.mkString
 
   def processMember(member: Member, link: String) = {
-    val memberSignature = flattenToText(signatureProvider.signature(member).get(0))
-    val memberPackage = (Option(member.dri.getPackageName) ++ Option(member.dri.getClassNames) ++ Option(member.dri.getCallable)).mkString(".")
+    val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
+    val memberSignature = flattenToText(Seq(signatureBuilder.preName.head) ++ Seq(Link(member.name, member.dri)) ++ signatureBuilder.names.reverse)
+    val memberPackage = Option(member.dri.getPackageName).mkString
     pages.addOne(memberSignature + link, PageEntry(member.name, memberSignature, link, memberPackage))
   }
 
