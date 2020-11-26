@@ -12,6 +12,7 @@ object FileName {
     Right(FileName.unsafe(s))
 
   def createFileName(fileName: Expr[String])(using Quotes): Expr[FileName] =
+    import quotes.reflect.report
     fileName match {
       case e@Const(s) =>
         fileNameFromString(s) match {
@@ -25,4 +26,3 @@ object FileName {
         report.throwError(s"$fileName is not a valid file name. It must be a literal string", fileName)
     }
 }
-

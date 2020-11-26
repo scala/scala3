@@ -2541,19 +2541,49 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def path: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
     end Source
 
-    object Reporting extends ReportingModule:
-      def error(msg: => String, pos: Position): Unit =
+    object report extends ReportModule:
+
+      def error(msg: String): Unit =
+        dotc.report.error(msg, Position.ofMacroExpansion)
+
+      def error(msg: String, expr: Expr[Any]): Unit =
+        dotc.report.error(msg, Term.of(expr).pos)
+
+      def error(msg: String, pos: Position): Unit =
         dotc.report.error(msg, pos)
 
-      def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
+      def error(msg: String, sourceFile: SourceFile, start: Int, end: Int): Unit =
         dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
 
-      def warning(msg: => String, pos: Position): Unit =
+      def throwError(msg: String): Nothing =
+        error(msg)
+        throw new scala.quoted.runtime.StopMacroExpansion
+
+      def throwError(msg: String, expr: Expr[Any]): Nothing =
+        error(msg, expr)
+        throw new scala.quoted.runtime.StopMacroExpansion
+
+      def throwError(msg: String, pos: Position): Nothing =
+        error(msg, pos)
+        throw new scala.quoted.runtime.StopMacroExpansion
+
+      def throwError(msg: String, sourceFile: SourceFile, start: Int, end: Int): Nothing =
+        error(msg, sourceFile, start, end)
+        throw new scala.quoted.runtime.StopMacroExpansion
+
+      def warning(msg: String): Unit =
+        dotc.report.warning(msg, Position.ofMacroExpansion)
+
+      def warning(msg: String, expr: Expr[Any]): Unit =
+        dotc.report.warning(msg, Term.of(expr).pos)
+
+      def warning(msg: String, pos: Position): Unit =
         dotc.report.warning(msg, pos)
 
-      def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
+      def warning(msg: String, sourceFile: SourceFile, start: Int, end: Int): Unit =
         dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
-    end Reporting
+
+    end report
 
     type Documentation = dotc.core.Comments.Comment
 

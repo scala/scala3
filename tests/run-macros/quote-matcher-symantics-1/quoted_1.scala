@@ -21,7 +21,7 @@ object Macros {
 
       case _ =>
         import quotes.reflect._
-        Reporting.error("Expected explicit DSL", Term.of(e).pos)
+        report.error("Expected explicit DSL", Term.of(e).pos)
         '{ ??? }
 
     }

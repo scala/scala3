@@ -7,8 +7,8 @@ object Macros {
   def impl(x: Expr[Any])(using Quotes) : Expr[Unit] = {
     import quotes.reflect._
     val pos = Term.of(x).underlyingArgument.pos
-    Reporting.error("here is the the argument is " + Term.of(x).underlyingArgument.show, pos)
-    Reporting.error("here (+5) is the the argument is " + Term.of(x).underlyingArgument.show, pos.sourceFile, pos.start + 5, pos.end + 5)
+    report.error("here is the the argument is " + Term.of(x).underlyingArgument.show, pos)
+    report.error("here (+5) is the the argument is " + Term.of(x).underlyingArgument.show, pos.sourceFile, pos.start + 5, pos.end + 5)
     '{}
   }
 

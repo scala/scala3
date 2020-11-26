@@ -49,7 +49,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     def unliftOrError(using Unliftable[T]): T =
       def reportError =
         val msg = s"Expected a known value. \n\nThe value of: ${self.show}\ncould not be unlifted using $unlift"
-        report.throwError(msg, self)(using Quotes.this)
+        reflect.report.throwError(msg, self)
       summon[Unliftable[T]].fromExpr(self)(using Quotes.this).getOrElse(reportError)
 
   end extension
@@ -3381,24 +3381,47 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     // REPORTING //
     ///////////////
 
-    val Reporting: ReportingModule
+    val report: ReportModule
 
-    /** Module containg error and waring reporiting.
-    *
-    *  Also see scala.quoted.report
-    */
-    trait ReportingModule { self: Reporting.type =>
-      /** Emits an error message */
-      def error(msg: => String, pos: Position): Unit
+    /** Module containg error and waring reporiting. */
+    trait ReportModule { self: report.type =>
 
-      /** Emits an error at a specific range of a file */
-      def error(msg: => String, source: SourceFile, start: Int, end: Int): Unit
+      /** Report an error at the position of the macro expansion */
+      def error(msg: String): Unit
 
-      /** Emits an error message */
-      def warning(msg: => String, pos: Position): Unit
+      /** Report an error at the position of `expr` */
+      def error(msg: String, expr: Expr[Any]): Unit
 
-      /** Emits a warning at a specific range of a file */
-      def warning(msg: => String, source: SourceFile, start: Int, end: Int): Unit
+      /** Report an error message at the given position */
+      def error(msg: String, pos: Position): Unit
+
+      /** Report an error at a specific range of a file. The positions must be contained in the file. */
+      def error(msg: String, source: SourceFile, start: Int, end: Int): Unit
+
+      /** Report an error at the position of the macro expansion and throws a StopMacroExpansion */
+      def throwError(msg: String): Nothing
+
+      /** Report an error at the position of `expr` */
+      def throwError(msg: String, expr: Expr[Any]): Nothing
+
+      /** Report an error message at the given position and throws a StopMacroExpansion */
+      def throwError(msg: String, pos: Position): Nothing
+
+      /** Report an error at a specific range of a file and throws a StopMacroExpansion. The positions must be contained in the file. */
+      def throwError(msg: String, source: SourceFile, start: Int, end: Int): Nothing
+
+      /** Report a warning at the position of the macro expansion */
+      def warning(msg: String): Unit
+
+      /** Report a warning at the on the position of `expr` */
+      def warning(msg: String, expr: Expr[Any]): Unit
+
+      /** Report an warning message at the given position */
+      def warning(msg: String, pos: Position): Unit
+
+      /** Emits a warning at a specific range of a file. The positions must be contained in the file. */
+      def warning(msg: String, source: SourceFile, start: Int, end: Int): Unit
+
     }
 
 

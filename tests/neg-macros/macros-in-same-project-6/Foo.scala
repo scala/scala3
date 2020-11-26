@@ -6,7 +6,7 @@ object Foo {
 
   def aMacroImplementation(using Quotes) : Expr[Unit] = {
     import quotes.reflect._
-    Reporting.error("some error", Position.ofMacroExpansion)
+    report.error("some error", Position.ofMacroExpansion)
     throw new NoClassDefFoundError("Bar$")
   }
 }

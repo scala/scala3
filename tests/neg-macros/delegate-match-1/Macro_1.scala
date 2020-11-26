@@ -9,13 +9,13 @@ private def fImpl(using Quotes): Expr[Unit] = {
     case x: ImplicitSearchSuccess =>
       '{}
     case x: DivergingImplicit => '{}
-      Reporting.error("DivergingImplicit\n" + x.explanation, Position.ofMacroExpansion)
+      report.error("DivergingImplicit\n" + x.explanation, Position.ofMacroExpansion)
       '{}
     case x: NoMatchingImplicits =>
-      Reporting.error("NoMatchingImplicits\n" + x.explanation, Position.ofMacroExpansion)
+      report.error("NoMatchingImplicits\n" + x.explanation, Position.ofMacroExpansion)
       '{}
     case x: AmbiguousImplicits =>
-      Reporting.error("AmbiguousImplicits\n" + x.explanation, Position.ofMacroExpansion)
+      report.error("AmbiguousImplicits\n" + x.explanation, Position.ofMacroExpansion)
       '{}
   }
 }
