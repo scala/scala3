@@ -71,13 +71,16 @@ class CacheAliasImplicits extends MiniPhase with IdentityDenotTransformer { this
         case _ => false
       }
     }
-    if (isCached) {
-      sym.copySymDenotation(
-        initFlags = sym.flags &~ Method | Lazy,
-        info = sym.info.widenExpr)
-      .installAfter(thisPhase)
-      cpy.ValDef(tree)(tree.name, tree.tpt, tree.rhs)
-    }
+    if isCached then
+      if true then
+        println(i"NOT CACHING $tree")
+        tree
+      else
+        sym.copySymDenotation(
+          initFlags = sym.flags &~ Method | Lazy,
+          info = sym.info.widenExpr)
+        .installAfter(thisPhase)
+        cpy.ValDef(tree)(tree.name, tree.tpt, tree.rhs)
     else tree
   }
 
