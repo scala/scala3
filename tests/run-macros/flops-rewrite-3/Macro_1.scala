@@ -101,7 +101,7 @@ private class Rewriter private (preTransform: List[Transformation] = Nil, postTr
   def withPost(transform: Transformation): Rewriter =
     new Rewriter(preTransform, transform :: postTransform, fixPoint)
 
-  def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = {
+  def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
     val e2 = preTransform.foldLeft(e)((ei, transform) => transform(ei))
     val e3 = transformChildren(e2)
     val e4 = postTransform.foldLeft(e3)((ei, transform) => transform(ei))

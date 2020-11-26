@@ -3,10 +3,10 @@ package scala.quoted
 trait ExprMap:
 
   /** Map an expression `e` with a type `T` */
-  def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T]
+  def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T]
 
   /** Map subexpressions an expression `e` with a type `T` */
-  def transformChildren[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = {
+  def transformChildren[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
     import quotes.reflect._
     final class MapChildren() {
 
@@ -99,10 +99,13 @@ trait ExprMap:
           case _: Inlined =>
             transformTermChildren(tree, tpe)(owner)
           case _ if tree.isExpr =>
+            // WARNING: Never do a cast like this in user code (accepable within the stdlib).
+            // In theory we should use `tree.asExpr match { case '{ $expr: t } => Term.of(transform(expr)) }`
+            // This is to avoid conflicts when re-boostrapping the library.
             type X
             val expr = tree.asExpr.asInstanceOf[Expr[X]]
             val t = tpe.asType.asInstanceOf[Type[X]]
-            val transformedExpr = transform(expr)(using quotes, t)
+            val transformedExpr = transform(expr)(using t)
             Term.of(transformedExpr)
           case _ =>
             transformTermChildren(tree, tpe)(owner)

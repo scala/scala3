@@ -64,7 +64,7 @@ private object Rewriter {
 }
 
 private class Rewriter(preTransform: List[Transformation[_]] = Nil, postTransform: List[Transformation[_]] = Nil, fixPoint: Boolean) extends ExprMap {
-  def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = {
+  def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
     val e2 = preTransform.foldLeft(e)((ei, transform) => transform(ei))
     val e3 = transformChildren(e2)
     val e4 = postTransform.foldLeft(e3)((ei, transform) => transform(ei))
