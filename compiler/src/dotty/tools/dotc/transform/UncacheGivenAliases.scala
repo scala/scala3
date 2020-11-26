@@ -14,7 +14,7 @@ import core.TypeErasure.erasure
 import ast.tpd
 
 object UncacheGivenAliases:
-  val name: String = "uncacheAliasImplicits"
+  val name: String = "uncacheGivenAliases"
 
 /** This phase optimizes alias givens represented as lazy vals to be uncached
  *  if that does not change runtime behavior. A definition does not need to be
@@ -62,6 +62,5 @@ class UncacheGivenAliases extends MiniPhase with IdentityDenotTransformer:
       cpy.DefDef(tree)(tree.name, Nil, Nil, tree.tpt, tree.rhs)
     else tree
 end UncacheGivenAliases
-
 
 
