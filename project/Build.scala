@@ -1563,7 +1563,7 @@ object Build {
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
             else generateDocumentation(
               roots, "Scala 3", "scala3doc/output/scala3-stdlib", "maser",
-              "-siteroot scala3doc/scala3-docs -comment-syntax wiki -projec-logo scala3doc/scala3-docs/logo.svg "
+              "-siteroot scala3doc/scala3-docs -comment-syntax wiki -project-logo scala3doc/scala3-docs/logo.svg "
             )
           }.value,
 

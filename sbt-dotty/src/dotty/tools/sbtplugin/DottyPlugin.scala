@@ -20,7 +20,6 @@ object DottyPlugin extends AutoPlugin {
 
     val useScala3doc = settingKey[Boolean]("Use Scala3doc as the documentation tool")
     val tastyFiles = taskKey[Seq[File]]("List all testy files")
-    val scala3docOptions = settingKey[Seq[String]]("Options for Scala3doc")
 
     // NOTE:
     // - this is a def to support `scalaVersion := dottyLatestNightlyBuild`
@@ -361,15 +360,6 @@ object DottyPlugin extends AutoPlugin {
       // Configuration for the doctool
       resolvers ++= (if(!useScala3doc.value) Nil else Seq(Resolver.jcenterRepo)),
       useScala3doc := false,
-      scala3docOptions := Nil,
-      Compile / doc / scalacOptions := {
-        val s3cOpts = (Compile / doc / scalacOptions).value
-        if (isDotty.value && useScala3doc.value) {
-           scala3docOptions.value ++ s3cOpts
-        } else {
-          s3cOpts
-        }
-      },
       // We need to add doctool classes to the classpath so they can be called
       scalaInstance in doc := Def.taskDyn {
         if (isDotty.value)
@@ -447,7 +437,7 @@ object DottyPlugin extends AutoPlugin {
       (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
     },
     sources ++= Def.taskDyn[Seq[File]] {
-      if (isDotty.value) Def.task { tastyFiles.value } 
+      if (isDotty.value) Def.task { tastyFiles.value }
       else Def.task { Nil }
     }.value,
     scalacOptions ++= {
