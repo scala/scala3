@@ -13,6 +13,7 @@ import dotty.tools.dotc.fromtasty._
 import dotty.tools.dotc.util.ClasspathFromClassloader
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.unsupported
+import dotty.tools.dotc.report
 
 import java.io.File.pathSeparator
 
@@ -57,12 +58,38 @@ trait TastyInspector:
     val files = tastyFiles ::: jars
     files.nonEmpty && inspectFiles(dependenciesClasspath, files)
 
-  private def inspectFiles(classpath: List[String], classes: List[String]): Boolean =
-    if (classes.isEmpty)
-      throw new IllegalArgumentException("Parameter classes should no be empty")
+  /** Load and process TASTy files using TASTy reflect and provided context
+   *
+   *  Used in doctool to reuse reporter and setup provided by sbt
+   *
+   *  @param classes List of paths of `.tasty` and `.jar` files (no validation is performed)
+   *  @param classpath Classpath with extra dependencies needed to load class in the `.tasty` files
+   */
+  protected def inspectFilesInContext(classpath: List[String], classes: List[String])(using Context): Unit =
+    if (classes.isEmpty) report.error("Parameter classes should no be empty")
+    inspectorDriver().process(inspectorArgs(classpath, classes), summon[Context])
 
+
+  private def inspectorDriver() =
     class InspectorDriver extends Driver:
       override protected def newCompiler(implicit ctx: Context): Compiler = new TastyFromClass
+
+    class TastyInspectorPhase extends Phase:
+      override def phaseName: String = "tastyInspector"
+
+      override def run(implicit ctx: Context): Unit =
+        val qctx = QuotesImpl()
+        self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.reflect.Tree])
+
+    class TastyInspectorFinishPhase extends Phase:
+      override def phaseName: String = "tastyInspectorFinish"
+
+      override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+        val qctx = QuotesImpl()
+        self.postProcess(using qctx)
+        units
+
+      override def run(implicit ctx: Context): Unit = unsupported("run")
 
     class TastyFromClass extends TASTYCompiler:
 
@@ -83,35 +110,19 @@ trait TastyInspector:
         reset()
         new TASTYRun(this, ctx.fresh.addMode(Mode.ReadPositions).addMode(Mode.ReadComments))
 
-    end TastyFromClass
+    new InspectorDriver
 
-    class TastyInspectorPhase extends Phase:
-
-      override def phaseName: String = "tastyInspector"
-
-      override def run(implicit ctx: Context): Unit =
-        val qctx = QuotesImpl()
-        self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.reflect.Tree])
-
-    end TastyInspectorPhase
-
-    class TastyInspectorFinishPhase extends Phase:
-
-      override def phaseName: String = "tastyInspectorFinish"
-
-      override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-        val qctx = QuotesImpl()
-        self.postProcess(using qctx)
-        units
-
-      override def run(implicit ctx: Context): Unit = unsupported("run")
-
-    end TastyInspectorFinishPhase
-
+  private def inspectorArgs(classpath: List[String], classes: List[String]): Array[String] =
     val currentClasspath = ClasspathFromClassloader(getClass.getClassLoader)
     val fullClasspath = (classpath :+ currentClasspath).mkString(pathSeparator)
-    val args = "-from-tasty" :: "-Yretain-trees" :: "-classpath" :: fullClasspath :: classes
-    val reporter = (new InspectorDriver).process(args.toArray)
+    ("-from-tasty" :: "-Yretain-trees" :: "-classpath" :: fullClasspath :: classes).toArray
+
+
+  private def inspectFiles(classpath: List[String], classes: List[String]): Boolean =
+    if (classes.isEmpty)
+      throw new IllegalArgumentException("Parameter classes should no be empty")
+
+    val reporter = inspectorDriver().process(inspectorArgs(classpath, classes))
     reporter.hasErrors
 
   end inspectFiles
