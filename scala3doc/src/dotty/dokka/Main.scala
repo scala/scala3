@@ -9,7 +9,6 @@ import java.util.jar._
 import collection.JavaConverters._
 import collection.immutable.ArraySeq
 
-import scala.tasty.inspector.TastyInspector
 import java.nio.file.Files
 
 import dotty.tools.dotc.config.Settings._
