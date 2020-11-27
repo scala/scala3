@@ -3625,6 +3625,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           */
         def paramSymss: List[List[Symbol]]
 
+        /** Returns all symbols overridden by this symbol. */
+        def allOverriddenSymbols: Iterator[Symbol]
+
         /** The primary constructor of a class or trait, `noSymbol` if not applicable. */
         def primaryConstructor: Symbol
 

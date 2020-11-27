@@ -101,7 +101,7 @@ object Matcher {
     // TODO improve performance
 
     // TODO use flag from qctx.reflect. Maybe -debug or add -debug-macros
-    private final val debug = false
+    private inline val debug = false
 
     import qctx.reflect._
     import Matching._
@@ -231,7 +231,7 @@ object Matcher {
             scrutinee =?= expr2
 
           /* Match selection */
-          case (ref: Ref, Select(qual2, _)) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>
+          case (ref: Ref, Select(qual2, _)) if symbolMatch(scrutinee.symbol, pattern.symbol) =>
             ref match
               case Select(qual1, _) => qual1 =?= qual2
               case ref: Ident =>
@@ -240,7 +240,7 @@ object Matcher {
                   case _ => matched
 
           /* Match reference */
-          case (_: Ref, _: Ident) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>
+          case (_: Ref, _: Ident) if symbolMatch(scrutinee.symbol, pattern.symbol) =>
             matched
 
           /* Match application */
@@ -329,22 +329,29 @@ object Matcher {
                 s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                    |Scrutinee
                    |  ${scrutinee.show}
-                   |
-                   |${scrutinee.showExtractors}
-                   |
                    |did not match pattern
                    |  ${pattern.show}
                    |
-                   |${pattern.showExtractors}
-                   |
                    |with environment: ${summon[Env]}
                    |
+                   |Scrutinee: ${scrutinee.showExtractors}
+                   |Pattern: ${pattern.showExtractors}
                    |
                    |""".stripMargin)
             notMatched
         }
       }
     end extension
+
+    /** Does the scrutenne symbol match the pattern symbol? It matches if:
+     *   - They are the same symbol
+     *   - The scrutinee has is in the environment and they are equivalent
+     *   - The scrutinee overrides the symbol of the pattern
+     */
+    private def symbolMatch(scrutinee: Symbol, pattern: Symbol)(using Env): Boolean =
+      scrutinee == pattern
+      || summon[Env].get(scrutinee).contains(pattern)
+      || scrutinee.allOverriddenSymbols.contains(pattern)
 
     private object ClosedPatternTerm {
       /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
