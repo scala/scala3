@@ -50,7 +50,13 @@ class A:
   var varInt: Int = 1
   var var1: 1 = 1
 
+object X:
+  def x: Int = 1
+  val x2: 1 = 1
+  var x3: Int = 1
+
 class B:
   val a = new A
   export a._
+  export X._
 

@@ -125,22 +125,17 @@ trait ClassLikeSupport:
           }
           
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported =>
-        val exportedTarget = dd.rhs.flatMap { 
-          case a: Apply => Some(a.fun)
-          case s: Select => Some(s)
-          case _ => None
-        }.map { 
+        val exportedTarget = dd.rhs.collect { 
+          case a: Apply => a.fun.asInstanceOf[Select]
           case s: Select => s
-        } 
-        val functionName = exportedTarget.fold("instance")(_.name)
-        val instanceName = exportedTarget.fold("function")(_.qualifier.asInstanceOf[Select].name)
-        val dri = dd.rhs.flatMap {
-          case a: Apply => None
-          case s: Select => 
-            val dri = s.symbol.dri 
-            dri.getCallable match
-              case null => None
-              case _ => Some(dri)
+        }
+        val functionName = exportedTarget.fold("function")(_.name)
+        val instanceName = exportedTarget.collect {
+          case Select(qualifier: Select, _) => qualifier.name
+          case Select(qualifier: Ident, _) => qualifier.tpe.typeSymbol.name
+        }.getOrElse("instance")
+        val dri = dd.rhs.collect {
+          case s: Select if s.symbol.isDefDef => s.symbol.dri 
         }.orElse(exportedTarget.map(_.qualifier.tpe.typeSymbol.dri))
         Some(parseMethod(dd.symbol, kind = Kind.Exported).withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dri)))
 
