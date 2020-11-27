@@ -90,7 +90,10 @@ object Summarization {
           val thisRef = ThisRef()(expr)
           val enclosing = cls.owner.lexicallyEnclosingClass.asClass
           val (pots, effs) = resolveThis(enclosing, thisRef, cur, expr)
-          if pots.isEmpty then (Potentials.empty, effs)
+          val summary = Summary.empty.withEffs(effs)
+          if pots.isEmpty then
+            if env.checkGlobal then summary + LocalHot(cls)(expr)
+            else summary
           else {
             assert(pots.size == 1)
             (Warm(cls, pots.head)(expr).toPots, effs)
@@ -98,13 +101,17 @@ object Summarization {
         }
         else {
           val (pots, effs) = analyze(tref.prefix, expr)
+          val summary = Summary.empty.withEffs(effs)
           if pots.isEmpty then
-            val summary = Summary.empty.withEffs(effs)
             if env.checkGlobal then summary + LocalHot(cls)(expr)
             else summary
           else {
             assert(pots.size == 1)
-            (Warm(cls, pots.head)(expr).toPots, effs)
+            val pot = pots.head
+            if env.checkGlobal && Potentials.isGlobalPath(pot) then
+              summary + LocalHot(cls)(expr)
+            else
+              summary + Warm(cls, pot)(expr)
           }
         }
 

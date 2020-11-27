@@ -20,6 +20,13 @@ object Potentials {
   def show(pots: Potentials)(using Context): String =
     pots.map(_.show).mkString(", ")
 
+  /** Does the given potential represent a static path */
+  def isGlobalPath(pot: Potential): Boolean =
+    pot match
+    case _: Global => true
+    case FieldReturn(pot, _) => isGlobalPath(pot)
+    case _ => false
+
   /** A potential represents an aliasing of a value that is possibly under initialization */
   sealed trait Potential {
     /** Length of the potential. Used for widening */
