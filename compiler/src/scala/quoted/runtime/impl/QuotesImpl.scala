@@ -92,9 +92,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def showExtractors: String =
           Extractors.showTree(using QuotesImpl.this)(self)
         def show: String =
-          SourceCode.showTree(using QuotesImpl.this)(self)(SyntaxHighlight.plain)
+          SourceCode.showTree(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = true)
+        def showShort: String =
+          SourceCode.showTree(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = false)
         def showAnsiColored: String =
-          SourceCode.showTree(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI)
+          SourceCode.showTree(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI, fullNames = true)
         def isExpr: Boolean =
           self match
             case TermTypeTest(self) =>
@@ -1588,10 +1590,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           Extractors.showType(using QuotesImpl.this)(self)
 
         def show: String =
-          SourceCode.showType(using QuotesImpl.this)(self)(SyntaxHighlight.plain)
+          SourceCode.showType(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = true)
+
+        def showShort: String =
+          SourceCode.showType(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = false)
 
         def showAnsiColored: String =
-          SourceCode.showType(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI)
+          SourceCode.showType(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI, fullNames = true)
 
         def seal: scala.quoted.Type[_] = self.asType
 
@@ -2152,9 +2157,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def showExtractors: String =
           Extractors.showConstant(using QuotesImpl.this)(self)
         def show: String =
-          SourceCode.showConstant(using QuotesImpl.this)(self)(SyntaxHighlight.plain)
+          SourceCode.showConstant(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = true)
+        def showShort: String =
+          SourceCode.showConstant(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = false)
         def showAnsiColored: String =
-          SourceCode.showConstant(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI)
+          SourceCode.showConstant(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI, fullNames = true)
       end extension
     end ConstantMethodsImpl
 

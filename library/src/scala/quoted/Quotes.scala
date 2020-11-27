@@ -218,6 +218,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Shows the tree as fully typed source code */
         def show: String
 
+        /** Shows the tree as without package prefix*/
+        def showShort: String
+
         /** Shows the tree as fully typed source code colored with ANSI */
         def showAnsiColored: String
 
@@ -2363,6 +2366,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Shows the tree as fully typed source code */
         def show: String
 
+        /** Shows the tree as without package prefix*/
+        def showShort: String
+
         /** Shows the tree as fully typed source code colored with ANSI */
         def showAnsiColored: String
 
@@ -3292,6 +3298,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Shows the tree as extractors */
         def showExtractors: String
+
+        /** Shows the tree as without package prefix*/
+        def showShort: String
 
         /** Shows the tree as fully typed source code */
         def show: String

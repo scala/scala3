@@ -15,6 +15,10 @@ object Type:
   def show[T](using Type[T])(using Quotes): String =
     quotes.reflect.TypeTree.of[T].show
 
+  /** Show a source code like representation of this type without syntax highlight */
+  def showShort[T](using Type[T])(using Quotes): String =
+    quotes.reflect.TypeTree.of[T].showShort
+
   /** Shows the tree as fully typed source code colored with ANSI */
   def showAnsiColored[T](using Type[T])(using Quotes): String =
     quotes.reflect.TypeTree.of[T].showAnsiColored

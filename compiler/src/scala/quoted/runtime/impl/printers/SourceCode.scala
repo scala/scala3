@@ -6,14 +6,14 @@ import scala.annotation.switch
 /** Printer for fully elaborated representation of the source code */
 object SourceCode {
 
-  def showTree(using Quotes)(tree: quotes.reflect.Tree)(syntaxHighlight: SyntaxHighlight): String =
-    new SourceCodePrinter[quotes.type](syntaxHighlight).printTree(tree).result()
+  def showTree(using Quotes)(tree: quotes.reflect.Tree)(syntaxHighlight: SyntaxHighlight, fullNames: Boolean): String =
+    new SourceCodePrinter[quotes.type](syntaxHighlight, fullNames).printTree(tree).result()
 
-  def showType(using Quotes)(tpe: quotes.reflect.TypeRepr)(syntaxHighlight: SyntaxHighlight): String =
-    new SourceCodePrinter[quotes.type](syntaxHighlight).printType(tpe)(using None).result()
+  def showType(using Quotes)(tpe: quotes.reflect.TypeRepr)(syntaxHighlight: SyntaxHighlight, fullNames: Boolean): String =
+    new SourceCodePrinter[quotes.type](syntaxHighlight, fullNames).printType(tpe)(using None).result()
 
-  def showConstant(using Quotes)(const: quotes.reflect.Constant)(syntaxHighlight: SyntaxHighlight): String =
-    new SourceCodePrinter[quotes.type](syntaxHighlight).printConstant(const).result()
+  def showConstant(using Quotes)(const: quotes.reflect.Constant)(syntaxHighlight: SyntaxHighlight, fullNames: Boolean): String =
+    new SourceCodePrinter[quotes.type](syntaxHighlight, fullNames).printConstant(const).result()
 
   def showSymbol(using Quotes)(symbol: quotes.reflect.Symbol)(syntaxHighlight: SyntaxHighlight): String =
     symbol.fullName
@@ -58,7 +58,7 @@ object SourceCode {
     flagList.result().mkString("/*", " ", "*/")
   }
 
-  private class SourceCodePrinter[Q <: Quotes & Singleton](syntaxHighlight: SyntaxHighlight)(using val quotes: Q) {
+  private class SourceCodePrinter[Q <: Quotes & Singleton](syntaxHighlight: SyntaxHighlight, fullNames: Boolean)(using val quotes: Q) {
     import syntaxHighlight._
     import quotes.reflect._
 
@@ -1073,41 +1073,45 @@ object SourceCode {
 
       case tpe: TypeRef =>
         val sym = tpe.typeSymbol
-        tpe.qualifier match {
-          case ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
-          case NoPrefix() =>
-            if (sym.owner.flags.is(Flags.Package)) {
-              // TODO should these be in the prefix? These are at least `scala`, `java` and `scala.collection`.
-              val packagePath = sym.owner.fullName.stripPrefix("<root>").stripPrefix("<empty>").stripPrefix(".")
-              if (packagePath != "")
-                this += packagePath += "."
-            }
-          case prefix: TermRef if prefix.termSymbol.isClassDef =>
-            printType(prefix)
-            this += "#"
-          case prefix: TypeRef if prefix.typeSymbol.isClassDef =>
-            printType(prefix)
-            this += "#"
-          case ThisType(TermRef(cdef, _)) if elideThis.nonEmpty && cdef == elideThis.get =>
-          case ThisType(TypeRef(cdef, _)) if elideThis.nonEmpty && cdef == elideThis.get =>
-          case prefix: TypeRepr =>
-            printType(prefix)
-            this += "."
-        }
+        if fullNames then
+          tpe.qualifier match {
+            case ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
+            case NoPrefix() =>
+              if (sym.owner.flags.is(Flags.Package)) {
+                // TODO should these be in the prefix? These are at least `scala`, `java` and `scala.collection`.
+                val packagePath = sym.owner.fullName.stripPrefix("<root>").stripPrefix("<empty>").stripPrefix(".")
+                if (packagePath != "")
+                  this += packagePath += "."
+              }
+            case prefix: TermRef if prefix.termSymbol.isClassDef =>
+              printType(prefix)
+              this += "#"
+            case prefix: TypeRef if prefix.typeSymbol.isClassDef =>
+              printType(prefix)
+              this += "#"
+            case ThisType(TermRef(cdef, _)) if elideThis.nonEmpty && cdef == elideThis.get =>
+            case ThisType(TypeRef(cdef, _)) if elideThis.nonEmpty && cdef == elideThis.get =>
+            case prefix: TypeRepr =>
+              printType(prefix)
+              this += "."
+          }
         this += highlightTypeDef(sym.name.stripSuffix("$"))
 
       case TermRef(prefix, name) =>
-        prefix match {
-          case NoPrefix() =>
-              this += highlightTypeDef(name)
-          case ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
-              this += highlightTypeDef(name)
-          case _ =>
-            printType(prefix)
-            if (name != "package")
-              this += "." += highlightTypeDef(name)
-            this
-        }
+        if fullNames then
+          prefix match {
+            case NoPrefix() =>
+                this += highlightTypeDef(name)
+            case ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
+                this += highlightTypeDef(name)
+            case _ =>
+              printType(prefix)
+              if (name != "package")
+                this += "." += highlightTypeDef(name)
+              this
+          }
+        else
+          this += highlightTypeDef(name)
 
       case tpe @ Refinement(_, _, _) =>
         printRefinement(tpe)
@@ -1157,12 +1161,14 @@ object SourceCode {
             printFullClassName(tp)
             this += highlightTypeDef(".this")
           case TypeRef(prefix, name) if name.endsWith("$") =>
-            prefix match {
-              case NoPrefix() =>
-              case ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
-              case _ =>
-                printType(prefix)
-                this += "."
+            if (fullNames){
+              prefix match {
+                case NoPrefix() =>
+                case ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
+                case _ =>
+                  printType(prefix)
+                  this += "."
+              }
             }
             this += highlightTypeDef(name.stripSuffix("$"))
           case _ =>
@@ -1378,7 +1384,7 @@ object SourceCode {
 
     private def printFullClassName(tp: TypeRepr): Unit = {
       def printClassPrefix(prefix: TypeRepr): Unit = prefix match {
-        case TypeRef(prefix2, name) =>
+        case TypeRef(prefix2, name) if fullNames =>
           printClassPrefix(prefix2)
           this += name += "."
         case _ =>
