@@ -37,7 +37,7 @@ object Potentials {
      *
      *  The method performs prefix substitution
      */
-     def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
+    def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
       val effs = env.summaryOf(cls).effectsOf(sym)
       this match
@@ -139,6 +139,9 @@ object Potentials {
   /** Reference to a global object */
   case class Global(tmref: TermRef)(val source: Tree) extends Refinable {
     def show(using Context): String = tmref.show
+
+    def moduleClass(using Context): ClassSymbol =
+      tmref.symbol.moduleClass.asClass
   }
 
   /** The potential of a locally hot object

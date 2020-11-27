@@ -36,10 +36,10 @@ object Checking {
     fieldsInited: mutable.Set[Symbol],
     parentsInited: mutable.Set[ClassSymbol],
     env: Env,
-    superCallFinished: Boolean = false         // whether super call has finished, used in singleton objects
+    var superCallFinished: Boolean = false         // whether super call has finished, used in singleton objects
   ) {
 
-    def isGlobalObject: Boolean = thisClass.is(Flags.Module) && thisClass.isStatic
+    def isGlobalObject(using Context): Boolean = thisClass.is(Flags.Module) && thisClass.isStatic
 
     def withVisited(eff: Effect): State = {
       visited = visited + eff
@@ -59,7 +59,8 @@ object Checking {
     }
   }
 
-  private implicit def theEnv(implicit state: State): Env = state.env
+  given theEnv(using State) as Env = summon[State].env
+  given theCtx(using State) as Context = summon[State].env.ctx
 
   /** Check that the given concrete class may be initialized safely
    *
@@ -226,8 +227,8 @@ object Checking {
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
               else Errors.empty
 
-            case Global(tmref) =>
-              if !state.isGlobalObject || tmref.symbol.moduleClass != state.thisClass then
+            case obj @ Global(tmref) =>
+              if !state.isGlobalObject || obj.moduleClass != state.thisClass then
                 Errors.empty
               else
                 val target = resolve(state.thisClass, field)
@@ -289,7 +290,7 @@ object Checking {
               if !state.isGlobalObject then
                 Errors.empty
               else
-                val target = resolve(tmref.symbol.modueClass, sym)
+                val target = resolve(pot.moduleClass, sym)
                 if (!target.is(Flags.Method))
                   check(FieldAccess(pot, target)(eff.source))
                 else if (target.isInternal) {
@@ -298,15 +299,15 @@ object Checking {
                 }
                 else CallUnknown(target, eff.source, state2.path).toErrors
 
-            case _: LocalHot =>
+            case lhot: LocalHot =>
               if !state.isGlobalObject then
                 Errors.empty
               else
-                val target = resolve(tmref.symbol.modueClass, sym)
+                val target = resolve(lhot.classSymbol, sym)
                 if (!target.is(Flags.Method))
                   check(FieldAccess(pot, target)(eff.source))
                 else if (target.isInternal) {
-                  val effs = pot.effectsOf(target)
+                  val effs = lhot.effectsOf(target)
                   effs.flatMap { check(_) }
                 }
                 else CallUnknown(target, eff.source, state2.path).toErrors
@@ -327,7 +328,7 @@ object Checking {
           }
 
         case AccessGlobal(pot) =>
-          if !state.isGlobalObject || tmref.symbol.modueClass != state.thisClass then
+          if !state.isGlobalObject || pot.moduleClass != state.thisClass then
             Errors.empty
           else if state.superCallFinished then
             Errors.empty
@@ -368,6 +369,16 @@ object Checking {
             if (target.isInternal) (warm.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
+          case lhot: LocalHot =>
+            val target = resolve(lhot.classSymbol, sym)
+            if (target.isInternal) (lhot.potentialsOf(target), Effects.empty)
+            else Summary.empty
+
+          case obj @ Global(tmref) =>
+            val target = resolve(obj.moduleClass, sym)
+            if (target.isInternal) (obj.potentialsOf(target), Effects.empty)
+            else Summary.empty
+
           case _: Cold =>
             Summary.empty // error already reported, ignore
 
@@ -397,6 +408,16 @@ object Checking {
             if (target.isInternal) (warm.potentialsOf(target), Effects.empty)
             else (Cold()(pot.source).toPots, Effects.empty)
 
+          case lhot: LocalHot =>
+            val target = resolve(lhot.classSymbol, sym)
+            if (target.isInternal) (lhot.potentialsOf(target), Effects.empty)
+            else (Cold()(pot.source).toPots, Effects.empty)
+
+          case obj @ Global(tmref) =>
+            val target = resolve(obj.moduleClass, sym)
+            if (target.isInternal) (obj.potentialsOf(target), Effects.empty)
+            else (Cold()(pot.source).toPots, Effects.empty)
+
           case _: Cold =>
             Summary.empty // error already reported, ignore
 
@@ -424,7 +445,7 @@ object Checking {
             (pots2, effs)
         }
 
-      case _: ThisRef | _: Fun | _: Warm | _: Cold =>
+      case _: ThisRef | _: Fun | _: Warm | _: Cold | _: Global | _: LocalHot =>
         (Set(pot), Effects.empty)
 
       case SuperRef(pot1, supercls) =>

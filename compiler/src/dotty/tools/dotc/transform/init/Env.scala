@@ -18,7 +18,7 @@ import scala.collection.mutable
 
 import Effects._, Potentials._, Summary._
 
-implicit def theCtx(implicit env: Env): Context = env.ctx
+given theCtx(using Env) as Context = summon[Env].ctx
 
 case class Env(ctx: Context) {
   private implicit def self: Env = this
