@@ -8,38 +8,38 @@ package scala.util
  *  putting them in different traits we can instead define the following:
  *
  *     given i1: D(using ev: C) = ...
- *     given i2: D(using ev: Not[C]) = ...
+ *     given i2: D(using ev: NotGiven[C]) = ...
  *
- *  `Not` is treated specially in implicit search, similar to the way logical negation
- *  is treated in Prolog: The implicit search for `Not[C]` succeeds if and only if the implicit
+ *  `NotGiven` is treated specially in implicit search, similar to the way logical negation
+ *  is treated in Prolog: The implicit search for `NotGiven[C]` succeeds if and only if the implicit
  *  search for `C` fails.
  *
  *  In Scala 2 this form of negation can be simulated by setting up a conditional
  *  ambiguous implicit and an unconditional fallback, the way it is done with the
  *  `default`, `amb1` and `amb2` methods below. Due to the way these two methods are
- *  defined, `Not` is also usable from Scala 2.
+ *  defined, `NotGiven` is also usable from Scala 2.
  *
  *  In Dotty, ambiguity is a global error, and therefore cannot be used to implement negation.
- *  Instead, `Not` is treated natively in implicit search.
+ *  Instead, `NotGiven` is treated natively in implicit search.
  */
-final class Not[+T] private ()
+final class NotGiven[+T] private ()
 
-trait LowPriorityNot {
+trait LowPriorityNotGiven {
 
   /** A fallback method used to emulate negation in Scala 2 */
-  given default[T]: Not[T] = Not.value
+  given default[T]: NotGiven[T] = NotGiven.value
 }
-object Not extends LowPriorityNot {
+object NotGiven extends LowPriorityNotGiven {
 
-  /** A value of type `Not` to signal a successful search for `Not[C]` (i.e. a failing
+  /** A value of type `NotGiven` to signal a successful search for `NotGiven[C]` (i.e. a failing
    *  search for `C`). A reference to this value will be explicitly constructed by Dotty's
    *  implicit search algorithm
    */
-  def value: Not[Nothing] = new Not[Nothing]()
+  def value: NotGiven[Nothing] = new NotGiven[Nothing]()
 
   /** One of two ambiguous methods used to emulate negation in Scala 2 */
-  given amb1[T](using ev: T): Not[T] = ???
+  given amb1[T](using ev: T): NotGiven[T] = ???
 
   /** One of two ambiguous methods used to emulate negation in Scala 2 */
-  given amb2[T](using ev: T): Not[T] = ???
+  given amb2[T](using ev: T): NotGiven[T] = ???
 }
