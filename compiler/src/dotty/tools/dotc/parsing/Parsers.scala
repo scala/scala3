@@ -2657,12 +2657,12 @@ object Parsers {
         ascription(p, location)
       else p
 
-    /**  Pattern2    ::=  [id `as'] InfixPattern
+    /**  Pattern2    ::=  InfixPattern [`as' id]
      */
-    val pattern2: () => Tree = () => infixPattern() match {
-      case p @ Ident(name) if in.token == AT || in.isIdent(nme.as) =>
-        if in.token == AT && sourceVersion.isAtLeast(`3.1`) then
-          deprecationWarning(s"`@` bindings have been deprecated; use `as` instead", in.offset)
+    val pattern2: () => Tree = () => infixPattern() match
+      case p @ Ident(name) if in.token == AT =>
+        if sourceVersion.isAtLeast(`3.1`) then
+          deprecationWarning(s"`<name> @ <pattern>` bindings have been deprecated; use `<apttern> as <name>` instead", in.offset)
 
         val offset = in.skipToken()
         infixPattern() match {
@@ -2678,8 +2678,18 @@ object Parsers {
         warnMigration(p)
         atSpan(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
-        p
-    }
+        if in.isIdent(nme.as) then
+          in.nextToken()
+          atSpan(startOffset(p), in.offset) {
+            p match
+              case p @ Bind(nme.WILDCARD, pt: Typed) if p.mods.is(Given) =>
+                Bind(ident(), pt).withMods(p.mods)
+              case _ =>
+                Bind(ident(), p)
+          }
+        else
+          p
+    end pattern2
 
     private def warnMigration(p: Tree) =
       if sourceVersion.isAtLeast(`3.1`) then

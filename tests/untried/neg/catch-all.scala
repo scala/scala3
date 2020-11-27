@@ -11,9 +11,9 @@ object CatchAll {
 
   try { "okay" } catch { case `t` => }
 
-  try { "okay" } catch { case x @ T => }
+  try { "okay" } catch { case T as x => }
 
-  try { "okay" } catch { case x @ `t` => }
+  try { "okay" } catch { case `t` as x => }
 
   try { "okay" } catch { case _: Throwable => }
 

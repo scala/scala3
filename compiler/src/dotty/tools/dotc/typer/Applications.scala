@@ -600,7 +600,7 @@ trait Applications extends Compatibility {
             args match {
               case arg :: Nil if isVarArg(arg) =>
                 addTyped(arg, formal)
-              case (arg as Typed(Literal(Constant(null)), _)) :: Nil if ctx.isAfterTyper =>
+              case (arg @ Typed(Literal(Constant(null)), _)) :: Nil if ctx.isAfterTyper =>
                 addTyped(arg, formal)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head

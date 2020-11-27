@@ -215,7 +215,7 @@ object CollectionStrawMan4 {
 
   object ListBuffer extends IterableFactory[ListBuffer] {
     def fromIterable[B](coll: Iterable[B]): ListBuffer[B] = coll match {
-      case pd @ View.Partitioned(partition: View.Partition[B]) =>
+      case View.Partitioned(partition: View.Partition[B]) as pd =>
         partition.distribute(new ListBuffer[B]())
         new ListBuffer[B] ++= pd.forced.get
       case _ =>
@@ -266,7 +266,7 @@ object CollectionStrawMan4 {
         Array.copy(fst.elems, fst.start, elems, 0, fst.length)
         Array.copy(snd.elems, snd.start, elems, fst.length, snd.length)
         new ArrayBuffer(elems, elems.length)
-      case pd @ View.Partitioned(partition: View.Partition[B]) =>
+      case View.Partitioned(partition: View.Partition[B]) as pd =>
         partition.distribute(new ArrayBuffer[B]())
         pd.forced.get.asInstanceOf[ArrayBuffer[B]]
       case c if c.knownLength >= 0 =>

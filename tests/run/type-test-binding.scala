@@ -26,7 +26,7 @@ object Test {
 
   def test(foo: Foo): Unit = {
     foo.x match {
-      case x @ foo.Z(i) => // `x` is refined to type `foo.Y`
+      case foo.Z(i) as x => // `x` is refined to type `foo.Y`
         foo.f(x)
         println(i)
     }

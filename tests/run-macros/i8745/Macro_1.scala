@@ -9,7 +9,7 @@ object Macro {
   inline def mac(inline tree: String): String = ${ macImpl('tree) }
   def macImpl(tree: Expr[String])(using Quotes): Expr[String] = {
     tree match {
-        case vv @ '{ ($s: Trait).fun($arg) } => arg
+        case '{ ($s: Trait).fun($arg) } as vv => arg
         case _ => Expr("not matched")
     }
   }

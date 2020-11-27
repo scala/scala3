@@ -8,7 +8,7 @@ object scalatest {
     import quotes.reflect._
 
     Term.of(cond).underlyingArgument match {
-      case app @ Apply(select @ Select(lhs, op), rhs :: Nil) =>
+      case Apply(Select(lhs, op) as select, rhs :: Nil) as app =>
         val cond = Apply(Select.copy(select)(lhs, "exists"), rhs :: Nil).asExprOf[Boolean]
         '{ scala.Predef.assert($cond) }
       case _ =>

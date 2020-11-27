@@ -1,7 +1,7 @@
 object Fail {
   def f(m: Option[Int]): Unit = {
      m match {
-      case x as Some[_] =>       // error: unbound wildcard type
+      case Some[_] as x =>       // error: unbound wildcard type
       case _           =>
     }
   }

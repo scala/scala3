@@ -31,19 +31,19 @@ extension (ref: AnyRef) def aliases(compare: AnyRef) = assert(ref eq compare, co
   val read = use(ByteArrayInputStream(buf.toByteArray))
   val in   = use(ObjectInputStream(read))
 
-  val Seq(Red as _, Green as _, Blue as _, Indigo as _) = (1 to 4).map(_ => in.readObject)
+  val Seq(_ as Red, _ as Green, _ as Blue, _ as Indigo) = (1 to 4).map(_ => in.readObject)
   Red    aliases JColor.Red
   Green  aliases SColor.Green
   Blue   aliases SColorTagged.Blue
   Indigo aliases SColorTagged.Indigo
 
-  val Seq(A as _, C as _, G as _, T as _) = (1 to 4).map(_ => in.readObject)
+  val Seq(_ as A, _ as C, _ as G, _ as T) = (1 to 4).map(_ => in.readObject)
   A aliases Nucleobase.A
   C aliases Nucleobase.C
   G aliases Nucleobase.G
   T aliases Nucleobase.T
 
-  val Seq(IntTag as _, UnitTag as _) = (1 to 2).map(_ => in.readObject)
+  val Seq(_ as IntTag, _ as UnitTag) = (1 to 2).map(_ => in.readObject)
   IntTag  aliases MyClassTag.IntTag
   UnitTag aliases MyClassTag.UnitTag
 

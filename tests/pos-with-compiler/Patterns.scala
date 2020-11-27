@@ -13,7 +13,7 @@ object Patterns {
   }
   d match {
     case WildcardType(bounds: TypeBounds) => bounds.lo
-    case a @ Assign(Ident(id), rhs) => id
+    case Assign(Ident(id), rhs) as a => id
     case a: Object => a
   }
 
@@ -42,7 +42,7 @@ object Patterns {
       case List(x, z) => x
       case List(x) => x
       case List() => ""
-      case x @ _ => "wildcard"
+      case _ as x => "wildcard"
     }
     val yy: String = y
   }

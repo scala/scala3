@@ -190,7 +190,7 @@ object CollectionStrawMan1 {
         Array.copy(fst.elems, fst.start, elems, 0, fst.remaining)
         Array.copy(snd.elems, snd.start, elems, fst.remaining, snd.remaining)
         new ArrayBuffer(elems, elems.length)
-      case it @ Iterator.Partition(underlying, _, buf, _) =>
+      case Iterator.Partition(underlying, _, buf, _) as it =>
         while (underlying.hasNext) it.distribute()
         buf.asInstanceOf[ArrayBuffer[B]]
       case it if it.remaining >= 0 =>

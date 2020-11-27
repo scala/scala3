@@ -114,7 +114,7 @@ abstract class TreeInterpreter[Q <: Quotes & Singleton](using val q: Q) {
           case Select(prefix, "isInstanceOf") => log("interpretIsInstanceOf", tree)(interpretIsInstanceOf(eval(prefix), targs.head))
           case Select(prefix, "asInstanceOf") => log("interpretAsInstanceOf", tree)(interpretAsInstanceOf(eval(prefix), targs.head))
           case Select(prefix, "==") => log("interpretEqEq", tree)(interpretEqEq(eval(prefix), eval(argss.head.head)))
-          case Select(prefix, name @ ("+" | "-" | "*" | "<" | ">" | "<=" | "=>")) if isNumericPrimitive(prefix.tpe) =>
+          case Select(prefix, ("+" | "-" | "*" | "<" | ">" | "<=" | "=>") as name) if isNumericPrimitive(prefix.tpe) =>
             val lhs = eval(prefix)
             val rhs = eval(argss.head.head)
             name match {
@@ -126,12 +126,12 @@ abstract class TreeInterpreter[Q <: Quotes & Singleton](using val q: Q) {
               case "<=" => log("interpretPrivitiveLtEq", tree)(interpretPrivitiveLtEq(lhs, rhs))
               case ">=" => log("interpretPrivitiveGtEq", tree)(interpretPrivitiveGtEq(lhs, rhs))
             }
-          case Select(prefix, name @ ("/" | "%")) if isIntegralPrimitive(prefix.tpe) =>
+          case Select(prefix, ("/" | "%") as name) if isIntegralPrimitive(prefix.tpe) =>
             def lhs = eval(prefix)
             def rhs = eval(argss.head.head)
             if (name == "/") log("interpretPrivitiveQuot", tree)(interpretPrivitiveQuot(lhs, rhs))
             else log("interpretPrivitiveRem", tree)(interpretPrivitiveRem(lhs, rhs))
-          case Select(prefix, name @ "/") if isFractionalPrimitive(prefix.tpe) =>
+          case Select(prefix, "/" as name) if isFractionalPrimitive(prefix.tpe) =>
             def lhs = eval(prefix)
             def rhs = eval(argss.head.head)
             log("interpretPrivitiveDiv", tree)(interpretPrivitiveDiv(lhs, rhs))

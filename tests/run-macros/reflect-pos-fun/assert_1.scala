@@ -9,7 +9,7 @@ object scalatest {
     import util._
 
     Term.of(cond).underlyingArgument match {
-      case t @ Apply(TypeApply(Select(lhs, op), targs), rhs) =>
+      case Apply(TypeApply(Select(lhs, op), targs), rhs) as t =>
         ValDef.let(Symbol.spliceOwner, lhs) { left =>
           ValDef.let(Symbol.spliceOwner, rhs) { rs =>
             val app = Select.overloaded(left, op, targs.map(_.tpe), rs)

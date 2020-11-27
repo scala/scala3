@@ -32,7 +32,7 @@ object Test {
     }
 
     def divOpt(a: Nat, b: Nat): Option[(Nat, Nat)] = b match {
-      case SuccRefine(s as Succ(_)) => Some(safeDiv(a, s))
+      case SuccRefine(Succ(_) as s) => Some(safeDiv(a, s))
       case _ => None
     }
 
@@ -97,7 +97,7 @@ object CaseNums extends Numbers {
 
   object SuccRefine extends SuccRefineExtractor {
     def unapply(nat: Nat): Option[Succ] = nat match {
-      case succ as SuccClass(_) => Some(succ)
+      case SuccClass(_) as succ => Some(succ)
       case _ => None
     }
   }

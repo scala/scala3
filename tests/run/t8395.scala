@@ -1,6 +1,6 @@
  object Test {
   def baz(x: Object) = {
-    val s as (_s: String) = x
+    val (_s: String) as s = x
     x
   }
   def main(args: Array[String]): Unit = {

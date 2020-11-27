@@ -8,7 +8,7 @@ object Test extends App {
   inline def defaultValue[T] <: Option[Any] = inline compiletime.erasedValue[T] match {
     case _: Byte => Some(0: Byte)
     case c: Char => Some(0: Char)
-    case d @ (_: Short) => Some(0: Short)
+    case (_: Short) as d => Some(0: Short)
     case _: Int => Some(0)
     case _: Long => Some(0L)
     case _: Float => Some(0.0f)

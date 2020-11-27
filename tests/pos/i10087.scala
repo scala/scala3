@@ -8,6 +8,6 @@ def f4[T](x: Ordering[T]) = {
   val xs = List(x, x, x)
   for given Ordering[T] <- xs
   yield new TreeSet[T]
-  for x as given Ordering[T] <- xs
+  for given Ordering[T] as x <- xs
   yield new TreeSet[T]
 }

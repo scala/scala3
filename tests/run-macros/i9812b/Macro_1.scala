@@ -35,7 +35,7 @@ given [T <: Int] => Liftable[T] as intLiftable:
 given [T: Type: Liftable] => (ev1: => Liftable[CONS[T]], ev2: => Liftable[NIL.type]) => Liftable[Lst[T]] as liftLst:
   def toExpr(xs: Lst[T]): Quotes ?=> Expr[Lst[T]] = xs match
     case NIL               => ev2.toExpr(NIL)
-    case cons @ CONS(_, _) => ev1.toExpr(cons)
+    case CONS(_, _) as cons => ev1.toExpr(cons)
 
 given [T: Type: Liftable] => (Liftable[Lst[T]]) => Liftable[CONS[T]] as liftCONS:
   def toExpr(x: CONS[T]): Quotes ?=> Expr[CONS[T]] = '{CONS(${Lift(x.head)}, ${Lift(x.tail)})}

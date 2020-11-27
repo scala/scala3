@@ -11,7 +11,7 @@ object Test {
     def divOpt(m: Nat, n: Nat): Option[(Nat, Nat)] = {
       n match {
         case Zero => None
-        case s @ Succ(_) => Some(safeDiv(m, s))
+        case Succ(_) as s => Some(safeDiv(m, s))
       }
     }
     val two = Succ(Succ(Zero))

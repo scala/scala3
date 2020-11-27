@@ -145,7 +145,7 @@ object AnonymousInstances extends Common:
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given [T: Ord] => Ord[List[T]]:
+  given [T] => Ord[T] => Ord[List[T]]:
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1

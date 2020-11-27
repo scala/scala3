@@ -47,7 +47,7 @@ trait ExprMap:
           tree
         case Super(qual, mix) =>
           tree
-        case tree as Apply(fun, args) =>
+        case tree @ Apply(fun, args) =>
           val MethodType(_, tpes, _) = fun.tpe.widen
           Apply.copy(tree)(transformTerm(fun, TypeRepr.of[Any])(owner), transformTerms(args, tpes)(owner))
         case TypeApply(fun, args) =>

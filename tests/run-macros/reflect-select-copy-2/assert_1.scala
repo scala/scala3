@@ -13,7 +13,7 @@ object scalatest {
       case _ => false
 
     Term.of(cond).underlyingArgument match {
-      case Apply(sel @ Select(lhs, op), rhs :: Nil) =>
+      case Apply(Select(lhs, op) as sel, rhs :: Nil) =>
         ValDef.let(Symbol.spliceOwner, lhs) { left =>
           ValDef.let(Symbol.spliceOwner, rhs) { right =>
             ValDef.let(Symbol.spliceOwner, Apply(Select.copy(sel)(left, op), right :: Nil)) { result =>

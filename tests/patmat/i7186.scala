@@ -118,7 +118,7 @@ object printMips {
             s"$indent.globl $id$endl"
           case Label(Scoped(Identifier(i),-1)) =>
             s"$i:$endl"
-          case Label(s @ Scoped(Identifier(i), id)) =>
+          case Label(Scoped(Identifier(i), id) as s) =>
             s"${getScopedLabel(s)}: #debug: $i~$id$endl"
           case ControlLabel(id) =>
             s"${evalLabels(id)}:$endl"
