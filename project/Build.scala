@@ -1491,7 +1491,7 @@ object Build {
       }
 
       def joinProducts(products: Seq[java.io.File]): String =
-        products.iterator.map(_.getAbsolutePath.toString).mkString(java.io.File.pathSeparator)
+        products.iterator.map(_.getAbsolutePath.toString).mkString(" ")
 
       val dokkaVersion = "1.4.10.2"
 
@@ -1539,7 +1539,7 @@ object Build {
               (`scala3-library-bootstrapped`/Compile/products).value,
             ).flatten
 
-            val roots = dottyJars.mkString(" ")
+            val roots = joinProducts(dottyJars)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
             else Def.task{
@@ -1555,6 +1555,7 @@ object Build {
 
           generateScala3StdlibDocumentation:= Def.taskDyn {
             val dottyJars: Seq[java.io.File] = Seq(
+              (`scala3-library-bootstrapped`/Compile/products).value,
               (`stdlib-bootstrapped`/Compile/products).value,
             ).flatten
 

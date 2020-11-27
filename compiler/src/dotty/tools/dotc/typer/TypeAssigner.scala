@@ -299,6 +299,12 @@ trait TypeAssigner {
           else fntpe.resultType
         else
           errorType(i"wrong number of arguments at ${ctx.phase.prev} for $fntpe: ${fn.tpe}, expected: ${fntpe.paramInfos.length}, found: ${args.length}", tree.srcPos)
+      case t if args.isEmpty =>
+        // NOTE this case is necessary when loading the stdlib from Tasty. Our extensions are compiled with stdlib loaded
+        // from Scala2 classfiles while they are loaded with stdlib loaded from Tasty. This results in `def toString` being
+        // typed as MethodType in the first case and ExprType in the second case. In the second case (and, I think, only then)
+        // we need to handle ExprType being present here.
+        t
       case t =>
         if (ctx.settings.Ydebug.value) new FatalError("").printStackTrace()
         errorType(err.takesNoParamsStr(fn, ""), tree.srcPos)
