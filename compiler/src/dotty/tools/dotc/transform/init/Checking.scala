@@ -83,14 +83,14 @@ object Checking {
           val (pots, effs) = Summarization.analyze(vdef.rhs)
           theEnv.summaryOf(cls).cacheFor(vdef.symbol, (pots, effs))
           if (!vdef.symbol.is(Flags.Lazy)) {
-            checkEffectsIn(effs, cls)
+            checkEffects(effs)
             traceIndented(vdef.symbol.show + " initialized", init)
             state.fieldsInited += vdef.symbol
           }
 
         case tree =>
           val (_, effs) = Summarization.analyze(tree)
-          checkEffectsIn(effs, cls)
+          checkEffects(effs)
       }
     }
 
@@ -121,7 +121,7 @@ object Checking {
 
       (stats :+ expr).foreach { stat =>
         val (_, effs) = Summarization.analyze(stat)(theEnv.withOwner(ctor))
-        checkEffectsIn(effs, cls)
+        checkEffects(effs)
       }
     }
 
@@ -158,7 +158,7 @@ object Checking {
     tpl.body.foreach { checkClassBodyStat(_) }
   }
 
-  private def checkEffectsIn(effs: Effects, cls: ClassSymbol)(implicit state: State): Unit = traceOp("checking effects " + Effects.show(effs), init) {
+  private def checkEffects(effs: Effects)(implicit state: State): Unit = traceOp("checking effects " + Effects.show(effs), init) {
     for {
       eff <- effs
       error <- check(eff)
