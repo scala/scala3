@@ -56,6 +56,11 @@ object Effects {
     def show(using Context): String = potential.show + "." + method.name.show + "!"
   }
 
+  /** Accessing a global object */
+  case class AccessGlobal(potential: Global)(val source: Tree) extends Effect {
+    def show(using Context): String = potential.tmref.name.show + "!"
+  }
+
   // ------------------ operations on effects ------------------
 
   extension (eff: Effect) def toEffs: Effects = Effects.empty + eff
@@ -73,6 +78,8 @@ object Effects {
       case MethodCall(pot, sym) =>
         val pot1 = Potentials.asSeenFrom(pot, thisValue)
         MethodCall(pot1, sym)(eff.source)
+
+      case _: AccessGlobal => eff
     } }
 
   def asSeenFrom(effs: Effects, thisValue: Potential)(implicit env: Env): Effects =

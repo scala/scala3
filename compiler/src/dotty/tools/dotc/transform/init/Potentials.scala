@@ -144,6 +144,20 @@ object Potentials {
     def show(using Context): String = "Cold"
   }
 
+  /** Reference to a global object */
+  case class Global(tmref: TermRef)(val source: Tree) extends Potential {
+    def show(using Context): String = tmref.show
+  }
+
+  /** The potential of a locally hot object
+   *
+   *  A locally hot object may potentially reference a global object which is
+   *  potentially under initialization
+   */
+  case class LocalHot(classSymbol: ClassSymbol)(val source: Tree) extends Potential {
+    def show(using Context): String = "LocalHot[" + classSymbol.name.show + "]"
+  }
+
   /** A function when called will produce the `effects` and return the `potentials` */
   case class Fun(potentials: Potentials, effects: Effects)(val source: Tree) extends Potential {
     override def size: Int = 1
@@ -216,7 +230,7 @@ object Potentials {
         val outer3 = asSeenFrom(outer2, thisValue2)
         Warm(cls, outer3)(pot.source)
 
-      case _: Cold =>
+      case _: Cold | _: LocalHot | _: Global =>
         pot
 
       case SuperRef(potThis, supercls) =>
