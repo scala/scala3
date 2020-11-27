@@ -35,8 +35,11 @@ object Checking {
     thisClass: ClassSymbol,                    // the concrete class of `this`
     fieldsInited: mutable.Set[Symbol],
     parentsInited: mutable.Set[ClassSymbol],
-    env: Env
+    env: Env,
+    superCallFinished: Boolean = false         // whether super call has finished, used in singleton objects
   ) {
+
+    def isGlobalObject: Boolean = thisClass.is(Flags.Module) && thisClass.isStatic
 
     def withVisited(eff: Effect): State = {
       visited = visited + eff
@@ -147,6 +150,9 @@ object Checking {
           checkConstructor(cls.primaryConstructor, ref.tpe, ref)
     }
 
+    if cls == state.thisClass then
+      state.superCallFinished = true
+
     // check class body
     tpl.body.foreach { checkClassBodyStat(_) }
   }
@@ -185,6 +191,14 @@ object Checking {
               else
                 Errors.empty
 
+            case Global(tmref) =>
+              if !state.isGlobalObject then Errors.empty
+              else ??? // check all public members
+
+            case LocalHot(cls) =>
+              if !state.isGlobalObject then Errors.empty
+              else ??? // check all public members
+
             case pot =>
               val (pots, effs) = expand(pot)
               val effs2 = pots.map(Promote(_)(eff.source))
@@ -211,6 +225,18 @@ object Checking {
               val target = resolve(cls, field)
               if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
               else Errors.empty
+
+            case Global(tmref) =>
+              if !state.isGlobalObject || tmref.symbol != state.thisClass then
+                Errors.empty
+              else
+                val target = resolve(state.thisClass, field)
+                if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
+                else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state2.path).toErrors
+                else Errors.empty
+
+            case _: LocalHot =>
+              Errors.empty
 
             case _: Cold =>
               AccessCold(field, eff.source, state2.path).toErrors
@@ -271,6 +297,15 @@ object Checking {
               val effs2 = pots.map(MethodCall(_, sym)(eff.source))
               (effs2 ++ effs).flatMap(check(_))
           }
+
+        case AccessGlobal(pot) =>
+          if !state.isGlobalObject || tmref.symbol != state.thisClass then
+            Errors.empty
+          else if state.superCallFinished then
+            Errors.empty
+          else
+            AccessNonInit(pot.tmref.symbol, state2.path).toErrors
+
       }
     }
 
