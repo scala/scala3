@@ -33,23 +33,35 @@ object Potentials {
     def source: Tree
   }
 
-  /** The object pointed by `this` */
-  case class ThisRef()(val source: Tree) extends Potential {
-    def show(using Context): String = "this"
-
+  sealed trait Refinable extends Potential {
     /** Effects of a method call or a lazy val access
+     *
+     *  The method performs prefix substitution
      */
     def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
-      env.summaryOf(cls).effectsOf(sym)
+      val effs = env.summaryOf(cls).effectsOf(sym)
+      this match
+      case _: ThisRef => effs
+      case _ =>  Effects.asSeenFrom(effs, this)
     }
 
     /** Potentials of a field, a method call or a lazy val access
+     *
+     *  The method performs prefix substitution
      */
     def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
-      env.summaryOf(cls).potentialsOf(sym)
+      val pots = env.summaryOf(cls).potentialsOf(sym)
+      this match
+      case _: ThisRef => pots
+      case _ => Potentials.asSeenFrom(pots, this)
     }
+  }
+
+  /** The object pointed by `this` */
+  case class ThisRef()(val source: Tree) extends Refinable {
+    def show(using Context): String = "this"
   }
 
   /** The object pointed by `C.super.this`, mainly used for override resolution */
@@ -65,29 +77,9 @@ object Potentials {
    *  @param classSymbol  The concrete class of the object
    *  @param outer        The potential for `this` of the enclosing class
    */
-  case class Warm(classSymbol: ClassSymbol, outer: Potential)(val source: Tree) extends Potential {
+  case class Warm(classSymbol: ClassSymbol, outer: Potential)(val source: Tree) extends Refinable {
     override def level: Int = 1 + outer.level
     def show(using Context): String = "Warm[" + classSymbol.show + ", outer = " + outer.show + "]"
-
-    /** Effects of a method call or a lazy val access
-     *
-     *  The method performs prefix substitution
-     */
-    def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
-      val cls = sym.owner.asClass
-      val effs = env.summaryOf(cls).effectsOf(sym)
-      Effects.asSeenFrom(effs, this)
-    }
-
-    /** Potentials of a field, a method call or a lazy val access
-     *
-     *  The method performs prefix substitution
-     */
-    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
-      val cls = sym.owner.asClass
-      val pots = env.summaryOf(cls).potentialsOf(sym)
-      Potentials.asSeenFrom(pots, this)
-    }
 
     def resolveOuter(cls: ClassSymbol)(implicit env: Env): Potentials =
       env.resolveOuter(this, cls)
@@ -118,7 +110,7 @@ object Potentials {
   case class Outer(pot: Potential, classSymbol: ClassSymbol)(val source: Tree) extends Potential {
     // be lenient with size of outer selection, no worry for non-termination
     override def size: Int = pot.size
-    override def level: Int = pot.size
+    override def level: Int = pot.level
     def show(using Context): String = pot.show + ".outer[" + classSymbol.show + "]"
   }
 
@@ -127,7 +119,7 @@ object Potentials {
     assert(field != NoSymbol)
 
     override def size: Int = potential.size + 1
-    override def level: Int = potential.size
+    override def level: Int = potential.level
     def show(using Context): String = potential.show + "." + field.name.show
   }
 
@@ -136,7 +128,7 @@ object Potentials {
     assert(method != NoSymbol)
 
     override def size: Int = potential.size + 1
-    override def level: Int = potential.size
+    override def level: Int = potential.level
     def show(using Context): String = potential.show + "." + method.name.show
   }
 
@@ -164,20 +156,20 @@ object Potentials {
   extension (pot: Potential) def toPots: Potentials = Potentials.empty + pot
 
   extension (ps: Potentials) def select (symbol: Symbol, source: Tree)(using Context): Summary =
-    ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
+    ps.foldLeft(Summary.empty) { case (Summary(pots, effs), pot) =>
       // max potential length
       // TODO: it can be specified on a project basis via compiler options
       if (pot.size > 2)
-        (pots, effs + Promote(pot)(source))
+        summary + Promote(pot)(pot.source)
       else if (symbol.isConstructor)
-        (pots + pot, effs + MethodCall(pot, symbol)(source))
+        Summary(pots + pot, effs + MethodCall(pot, symbol)(source))
       else if (symbol.isOneOf(Flags.Method | Flags.Lazy))
-          (
+          Summary(
             pots + MethodReturn(pot, symbol)(source),
             effs + MethodCall(pot, symbol)(source)
           )
       else
-        (pots + FieldReturn(pot, symbol)(source), effs + FieldAccess(pot, symbol)(source))
+        Summary(pots + FieldReturn(pot, symbol)(source), effs + FieldAccess(pot, symbol)(source))
     }
 
   extension (ps: Potentials) def promote(source: Tree): Effects = ps.map(Promote(_)(source))
@@ -206,13 +198,11 @@ object Potentials {
 
       case Warm(cls, outer2) =>
         // widening to terminate
-        val thisValue2 = thisValue match {
-          case Warm(cls, outer) if outer.level > 2 =>
-            Warm(cls, Cold()(outer2.source))(thisValue.source)
-
-          case _  =>
+        val thisValue2 =
+          if thisValue.level + outer2.level > 4 then
+            Cold()(outer2.source)
+          else
             thisValue
-        }
 
         val outer3 = asSeenFrom(outer2, thisValue2)
         Warm(cls, outer3)(pot.source)

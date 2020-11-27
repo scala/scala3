@@ -310,24 +310,13 @@ class CompilationTests {
   }.checkRuns()
 
   // initialization tests
-  @Test def checkInitNeg: Unit = {
+  @Test def checkInit: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
     val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
-    compileFilesInDir("tests/init/neg/", options)
-  }.checkExpectedErrors()
-
-  @Test def checkInitCrash: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("checkInit")
-    val options = defaultOptions.and("-Ycheck-init")
-    compileFilesInDir("tests/init/crash", options)
-  }.checkCompile()
-
-  @Test def checkInitPos: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("checkInit")
-    val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
-    compileFilesInDir("tests/init/pos", options)
-  }.checkCompile()
-
+    compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
+    compileFilesInDir("tests/init/pos", options).checkCompile()
+    compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
+  }
 }
 
 object CompilationTests extends ParallelTesting {
