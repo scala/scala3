@@ -52,8 +52,8 @@ which means that the alternative `c` would be chosen as solution!
 Scala 2's somewhat puzzling behavior with respect to ambiguity has been exploited to implement
 the analogue of a "negated" search in implicit resolution, where a query `Q1` fails if some other
 query `Q2` succeeds and `Q1` succeeds if `Q2` fails. With the new cleaned up behavior these
-techniques no longer work. But there is now a new special type `scala.implicits.Not` which
-implements negation directly. For any query type `Q`: `Not[Q]` succeeds if and only if the
+techniques no longer work. But there is now a new special type `scala.util.NotGiven` which
+implements negation directly. For any query type `Q`: `NotGiven[Q]` succeeds if and only if the
 implicit search for `Q` fails.
 
 ### Dependent function types [#3464](https://github.com/lampepfl/dotty/pull/3464)
