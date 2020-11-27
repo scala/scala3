@@ -42,16 +42,19 @@ scala> red.ordinal
 val res0: Int = 0
 ```
 
-The companion object of an enum also defines two utility methods.
+The companion object of an enum also defines three utility methods.
 The `valueOf` method obtains an enum value
 by its name. The `values` method returns all enum values
-defined in an enumeration in an `Array`.
+defined in an enumeration in an `Array`. The `fromOrdinal`
+method obtains an enum value from its ordinal (Int) value.
 
 ```scala
 scala> Color.valueOf("Blue")
 val res0: Color = Blue
 scala> Color.values
 val res1: Array[Color] = Array(Red, Green, Blue)
+scala> Color.fromOrdinal(0)
+val res2: Color = Red
 ```
 
 ### User-defined members of enums
