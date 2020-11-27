@@ -89,3 +89,6 @@ community-build/sbt-scalajs-sbt
 # Vulpix output files
 *.check.out
 !/dist/bin/
+
+# Bloop
+.bsp
