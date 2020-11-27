@@ -227,7 +227,7 @@ object Checking {
               else Errors.empty
 
             case Global(tmref) =>
-              if !state.isGlobalObject || tmref.symbol != state.thisClass then
+              if !state.isGlobalObject || tmref.symbol.moduleClass != state.thisClass then
                 Errors.empty
               else
                 val target = resolve(state.thisClass, field)
@@ -280,8 +280,36 @@ object Checking {
                 val effs = warm.effectsOf(target)
                 effs.flatMap { check(_) }
               }
-              else if (!sym.isConstructor) CallUnknown(target, eff.source, state2.path).toErrors
-              else Errors.empty
+              else if (!sym.isConstructor)
+                CallUnknown(target, eff.source, state2.path).toErrors
+              else
+                Errors.empty
+
+            case pot @ Global(tmref) =>
+              if !state.isGlobalObject then
+                Errors.empty
+              else
+                val target = resolve(tmref.symbol.modueClass, sym)
+                if (!target.is(Flags.Method))
+                  check(FieldAccess(pot, target)(eff.source))
+                else if (target.isInternal) {
+                  val effs = pot.effectsOf(target)
+                  effs.flatMap { check(_) }
+                }
+                else CallUnknown(target, eff.source, state2.path).toErrors
+
+            case _: LocalHot =>
+              if !state.isGlobalObject then
+                Errors.empty
+              else
+                val target = resolve(tmref.symbol.modueClass, sym)
+                if (!target.is(Flags.Method))
+                  check(FieldAccess(pot, target)(eff.source))
+                else if (target.isInternal) {
+                  val effs = pot.effectsOf(target)
+                  effs.flatMap { check(_) }
+                }
+                else CallUnknown(target, eff.source, state2.path).toErrors
 
             case _: Cold =>
               CallCold(sym, eff.source, state2.path).toErrors
@@ -299,7 +327,7 @@ object Checking {
           }
 
         case AccessGlobal(pot) =>
-          if !state.isGlobalObject || tmref.symbol != state.thisClass then
+          if !state.isGlobalObject || tmref.symbol.modueClass != state.thisClass then
             Errors.empty
           else if state.superCallFinished then
             Errors.empty

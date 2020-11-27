@@ -32,23 +32,35 @@ object Potentials {
     def source: Tree
   }
 
-  /** The object pointed by `this` */
-  case class ThisRef()(val source: Tree) extends Potential {
-    def show(using Context): String = "this"
-
+  sealed trait Refinable extends Potential {
     /** Effects of a method call or a lazy val access
+     *
+     *  The method performs prefix substitution
      */
-    def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
+     def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
-      env.summaryOf(cls).effectsOf(sym)
+      val effs = env.summaryOf(cls).effectsOf(sym)
+      this match
+      case _: ThisRef => effs
+      case _ =>  Effects.asSeenFrom(effs, this)
     }
 
     /** Potentials of a field, a method call or a lazy val access
+     *
+     *  The method performs prefix substitution
      */
     def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
-      env.summaryOf(cls).potentialsOf(sym)
+      val pots = env.summaryOf(cls).potentialsOf(sym)
+      this match
+      case _: ThisRef => pots
+      case _ => Potentials.asSeenFrom(pots, this)
     }
+  }
+
+  /** The object pointed by `this` */
+  case class ThisRef()(val source: Tree) extends Refinable {
+    def show(using Context): String = "this"
   }
 
   /** The object pointed by `C.super.this`, mainly used for override resolution */
@@ -64,29 +76,9 @@ object Potentials {
    *  @param classSymbol  The concrete class of the object
    *  @param outer        The potential for `this` of the enclosing class
    */
-  case class Warm(classSymbol: ClassSymbol, outer: Potential)(val source: Tree) extends Potential {
+  case class Warm(classSymbol: ClassSymbol, outer: Potential)(val source: Tree) extends Refinable {
     override def level: Int = 1 + outer.level
     def show(using Context): String = "Warm[" + classSymbol.show + ", outer = " + outer.show + "]"
-
-    /** Effects of a method call or a lazy val access
-     *
-     *  The method performs prefix substitution
-     */
-    def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
-      val cls = sym.owner.asClass
-      val effs = env.summaryOf(cls).effectsOf(sym)
-      Effects.asSeenFrom(effs, this)
-    }
-
-    /** Potentials of a field, a method call or a lazy val access
-     *
-     *  The method performs prefix substitution
-     */
-    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
-      val cls = sym.owner.asClass
-      val pots = env.summaryOf(cls).potentialsOf(sym)
-      Potentials.asSeenFrom(pots, this)
-    }
 
     def resolveOuter(cls: ClassSymbol)(implicit env: Env): Potentials =
       env.resolveOuter(this, cls)
@@ -145,7 +137,7 @@ object Potentials {
   }
 
   /** Reference to a global object */
-  case class Global(tmref: TermRef)(val source: Tree) extends Potential {
+  case class Global(tmref: TermRef)(val source: Tree) extends Refinable {
     def show(using Context): String = tmref.show
   }
 
@@ -154,7 +146,7 @@ object Potentials {
    *  A locally hot object may potentially reference a global object which is
    *  potentially under initialization
    */
-  case class LocalHot(classSymbol: ClassSymbol)(val source: Tree) extends Potential {
+  case class LocalHot(classSymbol: ClassSymbol)(val source: Tree) extends Refinable {
     def show(using Context): String = "LocalHot[" + classSymbol.name.show + "]"
   }
 
