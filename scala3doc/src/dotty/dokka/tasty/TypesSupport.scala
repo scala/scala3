@@ -215,9 +215,12 @@ trait TypesSupport:
         //     case _ =>
         //     throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
         // }
-      case tr @ TermRef(qual, typeName) => qual match {
-        case _ => link(tr.termSymbol)
-      }
+      case tr @ TermRef(qual, typeName) => 
+        tr.termSymbol.tree match
+          case vd: ValDef => inner(vd.tpt.tpe)
+          case _          => link(tr.termSymbol)
+        
+
         // convertTypeOrBoundsToReference(reflect)(qual) match {
         //     case TypeReference(label, link, xs, _) => TypeReference(typeName + "$", link + "/" + label, xs)
         //     case EmptyReference => TypeReference(typeName, "", Nil)

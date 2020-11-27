@@ -74,7 +74,7 @@ enum Origin:
   case InheritedFrom(name: String, dri: DRI)
   case ImplicitlyAddedBy(name: String, dri: DRI)
   case ExtensionFrom(name: String, dri: DRI)
-  case ExportedFrom(name: String, dri: DRI)
+  case ExportedFrom(name: String, dri: Option[DRI])
   case DefinedWithin
 
 case class Annotation(val dri: DRI, val params: List[Annotation.AnnotationParameter])
