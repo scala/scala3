@@ -44,7 +44,13 @@ object Comments {
    * @param expanded If this comment has been expanded, it's expansion, otherwise `None`.
    * @param usecases The usecases for this comment.
    */
-  final case class Comment(span: Span, raw: String, expanded: Option[String], usecases: List[UseCase]) {
+  final case class Comment(
+    span: Span,
+    raw: String,
+    expanded: Option[String],
+    usecases: List[UseCase],
+    variables: Map[String, String],
+  ) {
 
     /** Has this comment been cooked or expanded? */
     def isExpanded: Boolean = expanded.isDefined
@@ -65,7 +71,7 @@ object Comments {
     def expand(f: String => String)(using Context): Comment = {
       val expandedComment = f(raw)
       val useCases = Comment.parseUsecases(expandedComment, span)
-      Comment(span, raw, Some(expandedComment), useCases)
+      Comment(span, raw, Some(expandedComment), useCases, Map.empty)
     }
   }
 
@@ -74,7 +80,7 @@ object Comments {
     def isDocComment(comment: String): Boolean = comment.startsWith("/**")
 
     def apply(span: Span, raw: String): Comment =
-      Comment(span, raw, None, Nil)
+      Comment(span, raw, None, Nil, Map.empty)
 
     private def parseUsecases(expandedComment: String, span: Span)(using Context): List[UseCase] =
       if (!isDocComment(expandedComment))

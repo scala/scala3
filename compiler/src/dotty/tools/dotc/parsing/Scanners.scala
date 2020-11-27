@@ -190,11 +190,7 @@ object Scanners {
     private def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
       def nextPos: Int = (lookahead.getc(): @switch) match {
-        case ' ' | '\t' => nextPos
-        case CR | LF | FF =>
-          // if we encounter line delimiting whitespace we don't count it, since
-          // it seems not to affect positions in source
-          nextPos - 1
+        case ' ' | '\t' | CR | LF | FF => nextPos
         case _ => lookahead.charOffset - 1
       }
       docstringMap = docstringMap + (nextPos -> comment)
@@ -854,6 +850,9 @@ object Scanners {
 
           if (comment.isDocComment)
             addComment(comment)
+          else
+            // "forward" doc comments over normal ones
+            getDocComment(start).foreach(addComment)
         }
 
         true

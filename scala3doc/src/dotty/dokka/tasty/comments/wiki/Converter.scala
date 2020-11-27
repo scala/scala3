@@ -115,12 +115,12 @@ class Converter(val repr: Repr) extends BaseConverter {
 
     case Superscript(i) =>
       def name = inl.getClass.getSimpleName
-      println(s"WARN: Wiki syntax tag not yet fully supported: $name")
+      // println(s"WARN: Wiki syntax tag not yet fully supported: $name")
       emitInline(i)
 
     case Subscript(i) =>
       def name = inl.getClass.getSimpleName
-      println(s"WARN: Wiki syntax tag not yet fully supported: $name")
+      // println(s"WARN: Wiki syntax tag not yet fully supported: $name")
       emitInline(i)
 
     case HtmlTag(content) =>
@@ -128,7 +128,7 @@ class Converter(val repr: Repr) extends BaseConverter {
 
     case _: RepresentationLink =>
       val name = inl.getClass.getSimpleName
-      println(s"WARN: Wiki syntax tag not yet supported: $name")
+      // println(s"WARN: Wiki syntax tag not yet supported: $name")
       emit(dkk.text(name))
   }
 
