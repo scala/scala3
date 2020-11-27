@@ -69,7 +69,7 @@ package b {
       }
     }
 
-    r { (using qctx) =>
+    r { qctx ?=>
       var escaped: qctx.Expr[Double] = ???
       q{ (x: Double) =>
         s{
@@ -127,7 +127,7 @@ package c {
       }
     }
 
-    r { (using qctx) =>
+    r { qctx ?=>
       var escaped: qctx.Expr[Double] = ???
       q{ (x: Double) =>
         s{

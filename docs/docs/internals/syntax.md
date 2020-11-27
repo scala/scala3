@@ -185,9 +185,9 @@ Types             ::=  Type {‘,’ Type}
 
 ### Expressions
 ```ebnf
-Expr              ::=  FunParams ‘=>’ Expr                                      Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr                            Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
                     |  Expr1
-BlockResult       ::=  FunParams ‘=>’ Block
+BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
                     |  Expr1
 FunParams         ::=  Bindings
                     |  id
@@ -322,7 +322,7 @@ ClosureMods       ::=  { ‘implicit’ | ‘given’}
 
 ### Bindings and Imports
 ```ebnf
-Bindings          ::=  ‘(’ [[‘using’] Binding {‘,’ Binding}] ‘)’
+Bindings          ::=  ‘(’ [Binding {‘,’ Binding}] ‘)’
 Binding           ::=  (id | ‘_’) [‘:’ Type]                                    ValDef(_, id, tpe, EmptyTree)
 
 Modifier          ::=  LocalModifier

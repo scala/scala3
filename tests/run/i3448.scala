@@ -5,7 +5,7 @@ object Test extends App {
 
   val x: IF[Int] = implicitly[C].x
 
-  val xs0: List[IF[Int]] = List((using _) => x)
+  val xs0: List[IF[Int]] = List(_ ?=> x)
   val xs: List[IF[Int]] = List(x)
   val ys: IF[List[Int]] = xs.map(x => x)
   val zs = ys(using C(22))

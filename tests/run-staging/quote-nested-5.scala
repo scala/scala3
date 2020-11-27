@@ -5,9 +5,9 @@ object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuotes {
 
-    val q = '{(using q: Quotes) =>
+    val q = '{(q: Quotes) ?=>
       val a = '{4}
-      ${'{(using q2: Quotes) =>
+      ${'{(q2: Quotes) ?=>
         '{${a}}
       }}
 

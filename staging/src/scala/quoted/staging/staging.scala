@@ -7,7 +7,7 @@ package object staging:
    *
    *  Usage:
    *  ```
-   *  val e: T = run { // (using Quotes) =>
+   *  val e: T = run { // (quotes: Quotes) ?=>
    *    expr
    *  }
    *  ```
@@ -23,7 +23,7 @@ package object staging:
    *
    *  Usage:
    *  ```
-   *  val e: T = withQuotes { // (using Quotes) =>
+   *  val e: T = withQuotes { // (quotes: Quotes) ?=>
    *    thunk
    *  }
    *  ```

@@ -443,11 +443,11 @@ object Parsers {
 
     /** Convert tree to formal parameter list
     */
-    def convertToParams(tree: Tree): List[ValDef] = tree match {
+    def convertToParams(tree: Tree, mods: Modifiers): List[ValDef] = tree match {
       case Parens(t) =>
-        convertToParam(t) :: Nil
+        convertToParam(t, mods) :: Nil
       case Tuple(ts) =>
-        ts.map(convertToParam(_))
+        ts.map(convertToParam(_, mods))
       case t: Typed =>
         report.errorOrMigrationWarning(
           em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
@@ -455,23 +455,23 @@ object Parsers {
         if migrateTo3 then
           patch(source, t.span.startPos, "(")
           patch(source, t.span.endPos, ")")
-        convertToParam(t) :: Nil
+        convertToParam(t, mods) :: Nil
       case t =>
-        convertToParam(t) :: Nil
+        convertToParam(t, mods) :: Nil
     }
 
     /** Convert tree to formal parameter
     */
-    def convertToParam(tree: Tree, expected: String = "formal parameter"): ValDef = tree match {
+    def convertToParam(tree: Tree, mods: Modifiers, expected: String = "formal parameter"): ValDef = tree match {
       case id @ Ident(name) =>
-        makeParameter(name.asTermName, TypeTree(), EmptyModifiers, isBackquoted = isBackquoted(id)).withSpan(tree.span)
+        makeParameter(name.asTermName, TypeTree(), mods, isBackquoted = isBackquoted(id)).withSpan(tree.span)
       case Typed(id @ Ident(name), tpt) =>
-        makeParameter(name.asTermName, tpt, EmptyModifiers, isBackquoted = isBackquoted(id)).withSpan(tree.span)
+        makeParameter(name.asTermName, tpt, mods, isBackquoted = isBackquoted(id)).withSpan(tree.span)
       case Typed(Splice(Ident(name)), tpt) =>
-        makeParameter(("$" + name).toTermName, tpt, EmptyModifiers).withSpan(tree.span)
+        makeParameter(("$" + name).toTermName, tpt, mods).withSpan(tree.span)
       case _ =>
         syntaxError(s"not a legal $expected", tree.span)
-        makeParameter(nme.ERROR, tree, EmptyModifiers)
+        makeParameter(nme.ERROR, tree, mods)
     }
 
     /** Convert (qual)ident to type identifier
@@ -1864,14 +1864,14 @@ object Parsers {
       accept(altToken)
       t
 
-    /** Expr              ::=  [`implicit'] FunParams ‘=>’ Expr
+    /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
      *                      |  Expr1
      *  FunParams         ::=  Bindings
      *                      |  id
      *                      |  `_'
      *  ExprInParens      ::=  PostfixExpr `:' Type
      *                      |  Expr
-     *  BlockResult       ::=  [‘implicit’] FunParams ‘=>’ Block
+     *  BlockResult       ::=  [‘implicit’] FunParams (‘=>’ | ‘?=>’) Block
      *                      |  Expr1
      *  Expr1             ::=  [‘inline’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
      *                      |  [‘inline’] `if' Expr `then' Expr [[semi] else Expr]
@@ -1920,9 +1920,10 @@ object Parsers {
         finally placeholderParams = saved
 
         val t = expr1(location)
-        if (in.token == ARROW) {
+        if (in.token == ARROW || in.token == CTXARROW) {
           placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
-          wrapPlaceholders(closureRest(start, location, convertToParams(t)))
+          val paramMods = if in.token == CTXARROW then Modifiers(Given) else EmptyModifiers
+          wrapPlaceholders(closureRest(start, location, convertToParams(t, paramMods)))
         }
         else if (isWildcard(t)) {
           placeholderParams = placeholderParams ::: saved
@@ -2124,7 +2125,7 @@ object Parsers {
     /** FunParams         ::=  Bindings
      *                     |   id
      *                     |   `_'
-     *  Bindings          ::=  `(' [[‘using’] [‘erased’] Binding {`,' Binding}] `)'
+     *  Bindings          ::=  `(' [[‘erased’] Binding {`,' Binding}] `)'
      */
     def funParams(mods: Modifiers, location: Location): List[Tree] =
       if in.token == LPAREN then
@@ -2185,7 +2186,7 @@ object Parsers {
 
     def closureRest(start: Int, location: Location, params: List[Tree]): Tree =
       atSpan(start, in.offset) {
-        accept(ARROW)
+        if in.token == CTXARROW then in.nextToken() else accept(ARROW)
         Function(params, if (location == Location.InBlock) block() else expr())
       }
 
@@ -2309,7 +2310,7 @@ object Parsers {
       possibleTemplateStart()
       val parents =
         if in.isNestedStart then Nil
-        else constrApps(commaOK = false, templateCanFollow = true)
+        else constrApps(commaOK = false)
       colonAtEOLOpt()
       possibleTemplateStart(isNew = true)
       parents match {
@@ -3492,7 +3493,7 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          constrApps(commaOK = true, templateCanFollow = false)
+          constrApps(commaOK = true)
         }
         else Nil
       Template(constr, parents, Nil, EmptyValDef, Nil)
@@ -3536,7 +3537,7 @@ object Parsers {
         val noParams = tparams.isEmpty && vparamss.isEmpty
         if !(name.isEmpty && noParams) then
           accept(nme.as)
-        val parents = constrApps(commaOK = true, templateCanFollow = true)
+        val parents = constrApps(commaOK = true)
         if in.token == EQUALS && parents.length == 1 && parents.head.isType then
           accept(EQUALS)
           mods1 |= Final
@@ -3616,19 +3617,12 @@ object Parsers {
 
     /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
      */
-    def constrApps(commaOK: Boolean, templateCanFollow: Boolean): List[Tree] =
+    def constrApps(commaOK: Boolean): List[Tree] =
       val t = constrApp()
       val ts =
-        if in.token == WITH then
+        if in.token == WITH || commaOK && in.token == COMMA then
           in.nextToken()
-          newLineOptWhenFollowedBy(LBRACE)
-          if templateCanFollow && (in.token == LBRACE || in.token == INDENT) then
-            Nil
-          else
-            constrApps(commaOK, templateCanFollow)
-        else if commaOK && in.token == COMMA then
-          in.nextToken()
-          constrApps(commaOK, templateCanFollow)
+          constrApps(commaOK)
         else Nil
       t :: ts
 
@@ -3645,7 +3639,7 @@ object Parsers {
               in.sourcePos())
             Nil
           }
-          else constrApps(commaOK = true, templateCanFollow = true)
+          else constrApps(commaOK = true)
         }
         else Nil
       newLinesOptWhenFollowedBy(nme.derives)
@@ -3772,7 +3766,7 @@ object Parsers {
             case Typed(tree @ This(EmptyTypeIdent), tpt) =>
               self = makeSelfDef(nme.WILDCARD, tpt).withSpan(first.span)
             case _ =>
-              val ValDef(name, tpt, _) = convertToParam(first, "self type clause")
+              val ValDef(name, tpt, _) = convertToParam(first, EmptyModifiers, "self type clause")
               if (name != nme.ERROR)
                 self = makeSelfDef(name, tpt).withSpan(first.span)
           }

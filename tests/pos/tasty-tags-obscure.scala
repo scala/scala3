@@ -1,7 +1,7 @@
 object ObscureTasty:
 
   def foo(f: [t] => List[t] ?=> Unit) = ???
-  def test1 = foo([t] => (using a: List[t]) => ()) // POLYtype => GIVENMETHODType
+  def test1 = foo([t] => (a: List[t]) ?=> ()) // POLYtype => GIVENMETHODType
   def bar(f: [t] => List[t] => Unit) = ???
   def test2 = bar([t] => (a: List[t]) => ()) // POLYtype => METHODType
 
