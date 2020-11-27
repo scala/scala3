@@ -22,11 +22,11 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
 
   def ensureDefined(): Unit = {
     if (!isDefined) {
-      val lines = readInt()
+      val lines = readNat()
       myLineSizes = new Array[Int](lines)
       var i = 0
       while i < lines do
-        myLineSizes(i) += readInt()
+        myLineSizes(i) += readNat()
         i += 1
 
       mySpans = util.HashMap[Addr, Span]()

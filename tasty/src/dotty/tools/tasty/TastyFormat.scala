@@ -230,7 +230,7 @@ Note: Tree tags are grouped into 5 categories that determine what follows, and t
 
 Standard-Section: "Positions" LinesSizes Assoc*
 
-  LinesSizes    = Int Int*                 // Number of lines followed by the size of each line not counting the trailing `\n`
+  LinesSizes    = Nat Nat*                 // Number of lines followed by the size of each line not counting the trailing `\n`
 
   Assoc         = Header offset_Delta? offset_Delta? point_Delta?
                 | SOURCE nameref_Int
