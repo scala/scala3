@@ -46,13 +46,13 @@ def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
   xTree match {
     case Inlined(_, _, Literal(Constant(n: Int))) =>
       if (n <= 0) {
-        Reporting.error("Parameter must be natural number")
+        report.error("Parameter must be natural number")
         '{0}
       } else {
         xTree.asExprOf[Int]
       }
     case _ =>
-      Reporting.error("Parameter must be a known constant")
+      report.error("Parameter must be a known constant")
       '{0}
   }
 }
