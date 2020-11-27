@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.NameKinds._
+import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Contexts._
@@ -577,6 +578,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
            * trait method. This is required for super calls to this method, which
            * go through the static forwarder in order to work around limitations
            * of the JVM.
+           *
+           * For the $init$ method, we must not leave it as a default method, but
+           * instead we must put the whole body in the static method. If we leave
+           * it as a default method, Java classes cannot extend Scala classes that
+           * extend several Scala traits, since they then inherit unrelated default
+           * $init$ methods. See #8599. scalac does the same thing.
+           *
            * In theory, this would go in a separate MiniPhase, but it would have to
            * sit in a MegaPhase of its own between GenSJSIR and GenBCode, so the cost
            * is not worth it. We directly do it in this back-end instead, which also
@@ -586,9 +594,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           val needsStaticImplMethod =
             claszSymbol.isInterface && !dd.rhs.isEmpty && !sym.isPrivate && !sym.isStaticMember
           if needsStaticImplMethod then
-            genStaticForwarderForDefDef(dd)
-
-          genDefDef(dd)
+            if sym.name == nme.TRAIT_CONSTRUCTOR then
+              genTraitConstructorDefDef(dd)
+            else
+              genStaticForwarderForDefDef(dd)
+              genDefDef(dd)
+          else
+            genDefDef(dd)
 
         case tree: Template =>
           val body =
@@ -629,6 +641,42 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     } // end of method initJMethod
 
+    private def genTraitConstructorDefDef(dd: DefDef): Unit =
+      val statifiedDef = makeStatifiedDefDef(dd)
+      genDefDef(statifiedDef)
+
+    /** Creates a copy of the given DefDef that is static and where an explicit
+     *  self parameter represents the original `this` value.
+     *
+     *  Example: from
+     *  {{{
+     *  trait Enclosing {
+     *    def foo(x: Int): String = this.toString() + x
+     *  }
+     *  }}}
+     *  the statified version of `foo` would be
+     *  {{{
+     *  static def foo($self: Enclosing, x: Int): String = $self.toString() + x
+     *  }}}
+     */
+    private def makeStatifiedDefDef(dd: DefDef): DefDef =
+      val origSym = dd.symbol.asTerm
+      val newSym = makeStatifiedDefSymbol(origSym, origSym.name)
+      tpd.DefDef(newSym, { paramRefss =>
+        val selfParamRef :: regularParamRefs = paramRefss.head
+        val enclosingClass = origSym.owner.asClass
+        new TreeTypeMap(
+          typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)
+            .subst(dd.vparamss.head.map(_.symbol), regularParamRefs.map(_.symbol.termRef)),
+          treeMap = {
+            case tree: This if tree.symbol == enclosingClass => selfParamRef
+            case tree => tree
+          },
+          oldOwners = origSym :: Nil,
+          newOwners = newSym :: Nil
+        ).transform(dd.rhs)
+      })
+
     private def genStaticForwarderForDefDef(dd: DefDef): Unit =
       val forwarderDef = makeStaticForwarder(dd)
       genDefDef(forwarderDef)
@@ -646,20 +694,23 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     private def makeStaticForwarder(dd: DefDef): DefDef =
       val origSym = dd.symbol.asTerm
-      val name = traitSuperAccessorName(origSym)
-      val info = origSym.info match
-        case mt: MethodType =>
-          MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
-      val sym = origSym.copy(
-        name = name.toTermName,
-        flags = Method | JavaStatic,
-        info = info
-      )
-      tpd.DefDef(sym.asTerm, { paramss =>
+      val name = traitSuperAccessorName(origSym).toTermName
+      val sym = makeStatifiedDefSymbol(origSym, name)
+      tpd.DefDef(sym, { paramss =>
         val params = paramss.head
         tpd.Apply(params.head.select(origSym), params.tail)
           .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
       })
+
+    private def makeStatifiedDefSymbol(origSym: TermSymbol, name: TermName): TermSymbol =
+      val info = origSym.info match
+        case mt: MethodType =>
+          MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
+      origSym.copy(
+        name = name.toTermName,
+        flags = Method | JavaStatic,
+        info = info
+      ).asTerm
 
     def genDefDef(dd: DefDef): Unit = {
       val rhs = dd.rhs
