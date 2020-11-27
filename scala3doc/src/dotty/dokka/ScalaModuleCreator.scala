@@ -13,19 +13,14 @@ import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.base.parsers.MarkdownParser
 import collection.JavaConverters._
 import kotlin.coroutines.Continuation
+import dotty.tools.dotc.core.Contexts._
 
-object ScalaModuleProvider extends SourceToDocumentableTranslator:
+class ScalaModuleProvider(using DocContext) extends SourceToDocumentableTranslator:
    override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =
     cxt.getConfiguration match
       case dottyConfig: DottyDokkaConfig =>
         val parser = new MarkdownParser(_ => null)
-        val inspector = DokkaTastyInspector(sourceSet, parser, dottyConfig)
-        val filePaths = dottyConfig.args.tastyFiles.map(_.getAbsolutePath)
-        val (tastyFiles, jars) = filePaths.toList.partition(_.endsWith(".tasty"))
-        val classpath = dottyConfig.args.classpath.split(java.io.File.pathSeparator).toList
-
-        inspector.inspectAllTastyFiles(tastyFiles, jars, classpath)
-        val result = inspector.result()
+        val result = DokkaTastyInspector(sourceSet, parser, dottyConfig).result()
 
         def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.allMembers.flatMap(flattenMember)
 

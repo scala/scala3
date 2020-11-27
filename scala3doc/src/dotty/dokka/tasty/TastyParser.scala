@@ -43,6 +43,12 @@ case class DokkaTastyInspector(sourceSet: SourceSetWrapper, parser: Parser, conf
     topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
 
   def result(): List[DPackage] =
+    topLevels.clear()
+    val filePaths = config.args.tastyFiles.map(_.getAbsolutePath).toList
+    val classpath = config.args.classpath.split(java.io.File.pathSeparator).toList
+
+    inspectFilesInContext(classpath, filePaths)(using config.docContext)
+
     val all = topLevels.result()
     val packages = all
       .filter(_.isInstanceOf[DPackage])

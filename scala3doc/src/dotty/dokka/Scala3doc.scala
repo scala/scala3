@@ -9,16 +9,14 @@ import java.util.jar._
 import collection.JavaConverters._
 import collection.immutable.ArraySeq
 
-import scala.tasty.inspector.TastyInspector
 import java.nio.file.Files
 
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.CommonScalaSettings
 import dotty.tools.dotc.report
-import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.reporting.Reporter
 
-class Scala3DocDokkaLogger(using Context) extends DokkaLogger:
+class Scala3DocDokkaLogger(using DocContext) extends DokkaLogger:
   def debug(msg: String): Unit = report.debuglog(msg)
 
   // We do not want errors from dokka (that are) not critical to fail our runs
@@ -66,7 +64,7 @@ object Scala3doc:
     revision: Option[String] = None
   )
 
-  def run(args: Array[String])(using Context): Reporter =
+  def run(args: Array[String])(using DocContext): Reporter =
     val parsedArgs = Scala3docArgs.extract(args.toList)
 
     def listTastyFiles(f: File): Seq[File] =
@@ -76,7 +74,7 @@ object Scala3doc:
       )
     val tastyFiles = parsedArgs.tastyFiles ++ parsedArgs.tastyDirs.flatMap(listTastyFiles)
 
-    val reporter = summon[Context].reporter
+    val reporter = summon[DocContext].reporter
     if !reporter.hasErrors then
       val updatedArgs = parsedArgs.copy(tastyDirs = Nil, tastyFiles = tastyFiles)
 
@@ -87,7 +85,7 @@ object Scala3doc:
     else report.error("Failure")
     reporter
 
-  private [dokka] def run(args: Args, logger: DokkaLogger = DokkaConsoleLogger.INSTANCE) =
-    new DokkaGenerator(new DottyDokkaConfig(args), logger).generate()
+  private [dokka] def run(args: Args, logger: DokkaLogger = DokkaConsoleLogger.INSTANCE)(using DocContext) =
+    new DokkaGenerator(new DottyDokkaConfig(args, summon[DocContext]), logger).generate()
 
 

@@ -6,7 +6,7 @@ import java.io.File
 import collection.JavaConverters._
 import dotty.dokka.site.StaticSiteContext
 
-case class DottyDokkaConfig(args: Scala3doc.Args) extends DokkaConfiguration:
+case class DottyDokkaConfig(args: Scala3doc.Args, docContext: DocContext) extends DokkaConfiguration:
   override def getOutputDir: File = args.output
   override def getCacheRoot: File = null
   override def getOfflineMode: Boolean = false
