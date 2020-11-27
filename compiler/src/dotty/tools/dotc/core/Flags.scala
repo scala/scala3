@@ -293,7 +293,14 @@ object Flags {
    */
   val (Abstract @ _, _, _) = newFlags(23, "abstract")
 
-  /** Lazy val or method is known or assumed to be stable and realizable */
+  /** Lazy val or method is known or assumed to be stable and realizable.
+   *
+   *  For a trait constructor, this is set if and only if owner.is(NoInits),
+   *  including for Java interfaces and for Scala 2 traits. It will be used by
+   *
+   *  - the purity analysis used by the inliner to decide whether it is safe to elide, and
+   *  - the TASTy reader of Scala 2.13, to determine whether there is a $init$ method.
+   */
   val (_, StableRealizable @ _, _) = newFlags(24, "<stable>")
 
   /** A case parameter accessor */
@@ -319,7 +326,9 @@ object Flags {
 
   /** Variable is accessed from nested function
    *    /
-   *  Trait does not have fields or initialization code.
+   *  Trait does not have own fields or initialization code or class does not
+   *  have own or inherited initialization code.
+   *
    *  Warning: NoInits is set during regular typer pass, should be tested only after typer.
    */
   val (_, Captured @ _, NoInits @ _) = newFlags(32, "<captured>", "<noinits>")
@@ -536,7 +545,6 @@ object Flags {
   val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam           // term symbols without right-hand sides
   val DeferredOrTypeParam: FlagSet           = Deferred | TypeParam                           // type symbols without right-hand sides
   val EnumValue: FlagSet                     = Enum | StableRealizable                        // A Scala enum value
-  val StableOrErased: FlagSet                = Erased | StableRealizable                      // Assumed to be pure
   val FinalOrInline: FlagSet                 = Final | Inline
   val FinalOrModuleClass: FlagSet            = Final | ModuleClass                            // A module class or a final class
   val EffectivelyFinalFlags: FlagSet         = Final | Private

@@ -1197,7 +1197,10 @@ class Namer { typer: Typer =>
       cls.info = avoidPrivateLeaks(cls)
       cls.baseClasses.foreach(_.invalidateBaseTypeCache()) // we might have looked before and found nothing
       cls.setNoInitsFlags(parentsKind(parents), untpd.bodyKind(rest))
-      if (cls.isNoInitsClass) cls.primaryConstructor.setFlag(StableRealizable)
+      val ctorStable =
+        if cls.is(Trait) then cls.is(NoInits)
+        else cls.isNoInitsRealClass
+      if ctorStable then cls.primaryConstructor.setFlag(StableRealizable)
       processExports(using localCtx)
       defn.patchStdLibClass(denot.asClass)
     }

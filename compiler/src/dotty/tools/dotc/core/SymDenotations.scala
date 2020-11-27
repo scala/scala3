@@ -725,11 +725,11 @@ object SymDenotations {
       isType || is(StableRealizable) || exists && !isUnstableValue
     }
 
-    /** Is this a denotation of a class that does not have - either direct or inherited -
+    /** Is this a denotation of a real class that does not have - either direct or inherited -
      *  initialization code?
      */
-    def isNoInitsClass(using Context): Boolean =
-      isClass &&
+    def isNoInitsRealClass(using Context): Boolean =
+      isRealClass &&
       (asClass.baseClasses.forall(_.is(NoInits)) || defn.isAssuredNoInits(symbol))
 
     /** Is this a "real" method? A real method is a method which is:
