@@ -132,7 +132,7 @@ trait ClassLikeSupport:
         val functionName = exportedTarget.fold("function")(_.name)
         val instanceName = exportedTarget.collect {
           case Select(qualifier: Select, _) => qualifier.name
-          case Select(qualifier: Ident, _) => qualifier.tpe.typeSymbol.name
+          case Select(qualifier: Ident, _) => qualifier.tpe.typeSymbol.normalizedName
         }.getOrElse("instance")
         val dri = dd.rhs.collect {
           case s: Select if s.symbol.isDefDef => s.symbol.dri 
