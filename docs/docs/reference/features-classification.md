@@ -73,7 +73,7 @@ These constructs are restricted to make the language safer.
  - [Given Imports](contextual/import-delegate.md): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](dropped-features/type-projection.md): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal Equality](contextual/multiversal-equality.md) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
- - [@infix](https://github.com/lampepfl/dotty/pull/5975)
+ - [infix](https://github.com/lampepfl/dotty/pull/5975)
  makes method application syntax uniform across code bases.
 
 Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other constructs in the list above are available only under `-source 3.0-migration`.
