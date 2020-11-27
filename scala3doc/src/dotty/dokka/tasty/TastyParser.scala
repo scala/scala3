@@ -33,17 +33,21 @@ case class DokkaTastyInspector(
   private val topLevels = Seq.newBuilder[Documentable]
 
   def processCompilationUnit(using q: Quotes)(root: q.reflect.Tree): Unit =
-    val parser = new TastyParser(q, this, config)
+    // NOTE we avoid documenting definitions in the magical stdLibPatches directory;
+    // the symbols there are "patched" through dark Dotty magic onto other stdlib
+    // definitions, so if we documented their origin, we'd get defs with duplicate DRIs
+    if !root.symbol.show.startsWith("scala.runtime.stdLibPatches") then
+      val parser = new TastyParser(q, this, config)
 
-    def driFor(link: String): Option[DRI] =
-      val symOps = new SymOps[q.type](q)
-      import symOps._
-      Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
-        MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
-      )
+      def driFor(link: String): Option[DRI] =
+        val symOps = new SymOps[q.type](q)
+        import symOps._
+        Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
+          MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
+        )
 
-    config.staticSiteContext.foreach(_.memberLinkResolver = driFor)
-    topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
+      config.staticSiteContext.foreach(_.memberLinkResolver = driFor)
+      topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
 
   def result(): List[DPackage] =
     topLevels.clear()
