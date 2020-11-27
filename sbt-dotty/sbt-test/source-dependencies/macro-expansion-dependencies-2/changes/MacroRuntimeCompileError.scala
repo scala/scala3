@@ -4,7 +4,7 @@ object MacroRuntime {
 
    def impl()(using q: Quotes): Expr[Unit] = {
       import quotes.reflect._
-      Reporting.error("some error", Position.ofMacroExpansion)
+      report.error("some error", Position.ofMacroExpansion)
       '{ println("Implementation in MacroCompileError") }
    }
 
