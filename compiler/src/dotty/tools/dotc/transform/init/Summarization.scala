@@ -98,7 +98,10 @@ object Summarization {
         }
         else {
           val (pots, effs) = analyze(tref.prefix, expr)
-          if (pots.isEmpty) Summary.empty.withEffs(effs)
+          if pots.isEmpty then
+            val summary = Summary.empty.withEffs(effs)
+            if env.checkGlobal then summary + LocalHot(cls)(expr)
+            else summary
           else {
             assert(pots.size == 1)
             (Warm(cls, pots.head)(expr).toPots, effs)
@@ -218,6 +221,12 @@ object Summarization {
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         Summary.empty
 
+      case tmref: TermRef
+      if env.checkGlobal && tmref.symbol.is(Flags.Module) && tmref.symbol.isStatic =>
+        val cls = tmref.symbol.moduleClass
+        val pot = Global(tmref)(source)
+        Summary.empty + pot + AccessGlobal(pot) + MethodCall(pot, cls.primaryConstructor)(source)
+
       case tmref: TermRef =>
         val (pots, effs) = analyze(tmref.prefix, source)
         if (env.ignoredMethods.contains(tmref.symbol)) (Potentials.empty, effs)
@@ -266,7 +275,12 @@ object Summarization {
     else {
       val enclosing = cur.owner.lexicallyEnclosingClass.asClass
       // Dotty uses O$.this outside of the object O
-      if (enclosing.is(Flags.Package) && cls.is(Flags.Module)) return Summary.empty
+      if (enclosing.is(Flags.Package) && cls.is(Flags.Module))
+        if env.checkGlobal then
+          val pot = Global(cls.sourceModule.termRef)(source)
+          Summary.empty + pot + AccessGlobal(pot) + MethodCall(pot, cls.primaryConstructor)(source)
+        else
+          return Summary.empty
 
       assert(!enclosing.is(Flags.Package), "enclosing = " + enclosing.show + ", cls = " + cls.show + ", pot = " + pot.show + ", cur = " + cur.show)
       val pot2 = Outer(pot, cur)(pot.source)

@@ -57,7 +57,9 @@ object Effects {
   }
 
   /** Accessing a global object */
-  case class AccessGlobal(potential: Global)(val source: Tree) extends Effect {
+  case class AccessGlobal(potential: Global) extends Effect {
+    val source = potential.source
+
     def show(using Context): String = potential.tmref.name.show + "!"
   }
 

@@ -36,6 +36,8 @@ case class Env(ctx: Context) {
 
   def withOwner(owner: Symbol) = this.copy(ctx = this.ctx.withOwner(owner))
 
+  def checkGlobal: Boolean = true
+
   /** Whether values of a given type is always fully initialized?
    *
    *  It's true for primitive values
