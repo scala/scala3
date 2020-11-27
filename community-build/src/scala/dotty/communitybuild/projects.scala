@@ -114,7 +114,7 @@ object projects:
 
   lazy val oslib = MillCommunityProject(
     project = "os-lib",
-    baseCommand = s"os[$compilerVersion]",
+    baseCommand = s"os.jvm[$compilerVersion]",
     dependencies = List(utest, sourcecode)
   )
 
