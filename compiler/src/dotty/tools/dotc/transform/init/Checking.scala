@@ -80,17 +80,17 @@ object Checking {
     def checkClassBodyStat(tree: Tree)(implicit state: State): Unit = traceOp("checking " + tree.show, init) {
       tree match {
         case vdef : ValDef =>
-          val (pots, effs) = Summarization.analyze(vdef.rhs)
-          theEnv.summaryOf(cls).cacheFor(vdef.symbol, (pots, effs))
+          val summary = Summarization.analyze(vdef.rhs)
+          theEnv.summaryOf(cls).cacheFor(vdef.symbol, summary)
           if (!vdef.symbol.is(Flags.Lazy)) {
-            checkEffects(effs)
+            checkEffects(summary.effs)
             traceIndented(vdef.symbol.show + " initialized", init)
             state.fieldsInited += vdef.symbol
           }
 
         case tree =>
-          val (_, effs) = Summarization.analyze(tree)
-          checkEffects(effs)
+          val summary = Summarization.analyze(tree)
+          checkEffects(summary.effs)
       }
     }
 
@@ -120,8 +120,8 @@ object Checking {
       }
 
       (stats :+ expr).foreach { stat =>
-        val (_, effs) = Summarization.analyze(stat)(theEnv.withOwner(ctor))
-        checkEffects(effs)
+        val summary = Summarization.analyze(stat)(theEnv.withOwner(ctor))
+        checkEffects(summary.effs)
       }
     }
 
@@ -201,7 +201,7 @@ object Checking {
               else ??? // check all public members
 
             case pot =>
-              val (pots, effs) = expand(pot)
+              val Summary(pots, effs) = expand(pot)
               val effs2 = pots.map(Promote(_)(eff.source))
               (effs2 ++ effs).flatMap(check(_))
           }
@@ -246,7 +246,7 @@ object Checking {
               throw new Exception("Unexpected effect " + eff.show)
 
             case pot =>
-              val (pots, effs) = expand(pot)
+              val Summary(pots, effs) = expand(pot)
               val effs2 = pots.map(FieldAccess(_, field)(eff.source))
               (effs2 ++ effs).flatMap(check(_))
 
@@ -322,7 +322,7 @@ object Checking {
               // curried, tupled, toString are harmless
 
             case pot =>
-              val (pots, effs) = expand(pot)
+              val Summary(pots, effs) = expand(pot)
               val effs2 = pots.map(MethodCall(_, sym)(eff.source))
               (effs2 ++ effs).flatMap(check(_))
           }
@@ -338,93 +338,95 @@ object Checking {
       }
     }
 
-  private def expand(pot: Potential)(implicit state: State): Summary = trace("expand " + pot.show, init, sum => Summary.show(sum.asInstanceOf[Summary])) {
+  private def expand(pot: Potential)(implicit state: State): Summary = trace("expand " + pot.show, init, _.asInstanceOf[Summary].show) {
     pot match {
       case MethodReturn(pot1, sym) =>
         pot1 match {
           case thisRef: ThisRef =>
             val target = resolve(state.thisClass, sym)
-            if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
+            if (target.isInternal) Summary(thisRef.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
           case SuperRef(thisRef: ThisRef, supercls) =>
             val target = resolveSuper(state.thisClass, supercls, sym)
-            if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
+            if (target.isInternal) Summary(thisRef.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
 
           case Fun(pots, effs) =>
             val name = sym.name.toString
-            if (name == "apply") (pots, Effects.empty)
-            else if (name == "tupled") (Set(pot1), Effects.empty)
+            if (name == "apply") Summary(pots, Effects.empty)
+            else if (name == "tupled") Summary(Set(pot1), Effects.empty)
             else if (name == "curried") {
               val arity = defn.functionArity(sym.info.finalResultType)
-              val pots = (1 until arity).foldLeft(Set(pot1)) { (acc, i) => Set(Fun(acc, Effects.empty)(pot1.source)) }
-              (pots, Effects.empty)
+              val pots = (1 until arity).foldLeft(Set(pot1)) { (acc, i) =>
+                Set(Fun(acc, Effects.empty)(pot1.source))
+              }
+              Summary(pots, Effects.empty)
             }
             else Summary.empty
 
           case warm : Warm =>
             val target = resolve(warm.classSymbol, sym)
-            if (target.isInternal) (warm.potentialsOf(target), Effects.empty)
+            if (target.isInternal) Summary(warm.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
           case lhot: LocalHot =>
             val target = resolve(lhot.classSymbol, sym)
-            if (target.isInternal) (lhot.potentialsOf(target), Effects.empty)
+            if (target.isInternal) Summary(lhot.potentialsOf(target), Effects.empty)
             else Summary.empty
 
           case obj @ Global(tmref) =>
             val target = resolve(obj.moduleClass, sym)
-            if (target.isInternal) (obj.potentialsOf(target), Effects.empty)
+            if (target.isInternal) Summary(obj.potentialsOf(target), Effects.empty)
             else Summary.empty
 
           case _: Cold =>
             Summary.empty // error already reported, ignore
 
           case _ =>
-            val (pots, effs) = expand(pot1)
-            val (pots2, effs2) = pots.select(sym, pot.source)
-            (pots2, effs ++ effs2)
+            val Summary(pots, effs) = expand(pot1)
+            val Summary(pots2, effs2) = pots.select(sym, pot.source)
+            Summary(pots2, effs ++ effs2)
         }
 
       case FieldReturn(pot1, sym) =>
         pot1 match {
           case thisRef: ThisRef =>
             val target = resolve(state.thisClass, sym)
-            if (sym.isInternal) (thisRef.potentialsOf(target), Effects.empty)
-            else (Cold()(pot.source).toPots, Effects.empty)
+            if (sym.isInternal) Summary(thisRef.potentialsOf(target), Effects.empty)
+            else Summary(Cold()(pot.source))
 
           case SuperRef(thisRef: ThisRef, supercls) =>
             val target = resolveSuper(state.thisClass, supercls, sym)
-            if (target.isInternal) (thisRef.potentialsOf(target), Effects.empty)
-            else (Cold()(pot.source).toPots, Effects.empty)
+            if (target.isInternal) Summary(thisRef.potentialsOf(target), Effects.empty)
+            else Summary(Cold()(pot.source))
 
           case _: Fun =>
             throw new Exception("Unexpected code reached")
 
           case warm: Warm =>
             val target = resolve(warm.classSymbol, sym)
-            if (target.isInternal) (warm.potentialsOf(target), Effects.empty)
-            else (Cold()(pot.source).toPots, Effects.empty)
+            if (target.isInternal) Summary(warm.potentialsOf(target), Effects.empty)
+            else Summary(Cold()(pot.source))
 
           case lhot: LocalHot =>
             val target = resolve(lhot.classSymbol, sym)
-            if (target.isInternal) (lhot.potentialsOf(target), Effects.empty)
-            else (Cold()(pot.source).toPots, Effects.empty)
+            if (target.isInternal) Summary(lhot.potentialsOf(target), Effects.empty)
+            else Summary(Cold()(pot.source))
 
           case obj @ Global(tmref) =>
             val target = resolve(obj.moduleClass, sym)
-            if (target.isInternal) (obj.potentialsOf(target), Effects.empty)
-            else (Cold()(pot.source).toPots, Effects.empty)
+            if (target.isInternal) Summary(obj.potentialsOf(target), Effects.empty)
+            else Summary(Cold()(pot.source))
 
           case _: Cold =>
             Summary.empty // error already reported, ignore
 
           case _ =>
-            val (pots, effs) = expand(pot1)
-            val (pots2, effs2) = pots.select(sym, pot.source)
-            (pots2, effs ++ effs2)
+            val Summary(pots, effs) = expand(pot1)
+            val Summary(pots2, effs2) = pots.select(sym, pot.source)
+            Summary(pots2, effs ++ effs2)
         }
 
       case Outer(pot1, cls) =>
@@ -437,21 +439,21 @@ object Checking {
             throw new Exception("Unexpected code reached")
 
           case warm: Warm =>
-            (warm.resolveOuter(cls), Effects.empty)
+            Summary(warm.resolveOuter(cls))
 
           case _ =>
-            val (pots, effs) = expand(pot1)
+            val Summary(pots, effs) = expand(pot1)
             val pots2 = pots.map { Outer(_, cls)(pot.source): Potential }
-            (pots2, effs)
+            Summary(pots2, effs)
         }
 
       case _: ThisRef | _: Fun | _: Warm | _: Cold | _: Global | _: LocalHot =>
-        (Set(pot), Effects.empty)
+        Summary(pot)
 
       case SuperRef(pot1, supercls) =>
-        val (pots, effs) = expand(pot1)
+        val Summary(pots, effs) = expand(pot1)
         val pots2 = pots.map { SuperRef(_, supercls)(pot.source): Potential }
-        (pots2, effs)
+        Summary(pots2, effs)
     }
   }
 }

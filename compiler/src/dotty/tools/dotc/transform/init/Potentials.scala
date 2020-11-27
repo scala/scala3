@@ -179,20 +179,20 @@ object Potentials {
   extension (pot: Potential) def toPots: Potentials = Potentials.empty + pot
 
   extension (ps: Potentials) def select (symbol: Symbol, source: Tree)(using Context): Summary =
-    ps.foldLeft(Summary.empty) { case ((pots, effs), pot) =>
+    ps.foldLeft(Summary.empty) { case (Summary(pots, effs), pot) =>
       // max potential length
       // TODO: it can be specified on a project basis via compiler options
       if (pot.size > 2)
-        (pots, effs + Promote(pot)(source))
+        Summary(pots, effs + Promote(pot)(source))
       else if (symbol.isConstructor)
-        (pots + pot, effs + MethodCall(pot, symbol)(source))
+        Summary(pots + pot, effs + MethodCall(pot, symbol)(source))
       else if (symbol.isOneOf(Flags.Method | Flags.Lazy))
-          (
+          Summary(
             pots + MethodReturn(pot, symbol)(source),
             effs + MethodCall(pot, symbol)(source)
           )
       else
-        (pots + FieldReturn(pot, symbol)(source), effs + FieldAccess(pot, symbol)(source))
+        Summary(pots + FieldReturn(pot, symbol)(source), effs + FieldAccess(pot, symbol)(source))
     }
 
   extension (ps: Potentials) def promote(source: Tree): Effects = ps.map(Promote(_)(source))
