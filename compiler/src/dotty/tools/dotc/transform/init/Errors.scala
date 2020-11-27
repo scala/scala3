@@ -12,8 +12,8 @@ import Types._, Symbols._, Contexts._
 import Effects._, Potentials._
 
 object Errors {
-  type Errors = Set[Error]
-  val empty: Errors = Set.empty
+  type Errors = List[Error]
+  val empty: Errors = Nil
 
   def show(errs: Errors)(using Context): String =
     errs.map(_.show).mkString(", ")
@@ -26,7 +26,7 @@ object Errors {
     def issue(using Context): Unit =
       report.warning(show + stacktrace, source.srcPos)
 
-    def toErrors: Errors = Set(this)
+    def toErrors: Errors = this :: Nil
 
     def stacktrace(using Context): String = if (trace.isEmpty) "" else " Calling trace:\n" + {
       var indentCount = 0
@@ -55,7 +55,7 @@ object Errors {
      */
     def flatten: Errors = this match {
       case unsafe: UnsafePromotion => unsafe.errors.flatMap(_.flatten)
-      case _ => Set(this)
+      case _ => this :: Nil
     }
   }
 
@@ -63,7 +63,7 @@ object Errors {
   case class AccessNonInit(field: Symbol, trace: Vector[Tree]) extends Error {
     def source: Tree = trace.last
     def show(using Context): String =
-      "Access non-initialized field " + field.name.show + "."
+      "Access non-initialized " + field.show + "."
 
     override def issue(using Context): Unit =
       report.warning(show + stacktrace, field.srcPos)

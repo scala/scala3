@@ -18,19 +18,20 @@ import scala.collection.mutable
 
 import Effects._, Potentials._, Summary._
 
-implicit def theCtx(implicit env: Env): Context = env.ctx
+given theCtx(using Env): Context = summon[Env].ctx
 
 case class Env(ctx: Context) {
   private implicit def self: Env = this
 
-  // Methods that should be ignored in the checking
-  lazy val ignoredMethods: Set[Symbol] = Set(
-    defn.Any_getClass,
-    defn.Any_isInstanceOf,
-    defn.Object_eq,
-    defn.Object_ne,
-    defn.Object_synchronized
-  )
+  /** Can the method call be ignored? */
+  def canIgnoreMethod(symbol: Symbol): Boolean =
+    !symbol.exists || // possible with outer selection, tests/init/crash/i1990b.scala
+    canIgnoreClass(symbol.owner)
+
+  def canIgnoreClass(cls: Symbol): Boolean =
+    cls == defn.AnyClass ||
+    cls == defn.AnyValClass ||
+    cls == defn.ObjectClass
 
   def withCtx(newCtx: Context): Env = this.copy(ctx = newCtx)
 

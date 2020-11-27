@@ -88,7 +88,6 @@ The checker reports:
   |   -> val f: () => String = () => this.message	[ features-high-order.scala:2 ]
   |    -> def message: String = b	                [ features-high-order.scala:8 ]
 ```
-
 ## Design Goals
 
 We establish the following design goals:
@@ -161,10 +160,9 @@ as it may indirectly reach uninitialized fields.
 
 Monotonicity is based on a well-known technique called _heap monotonic
 typestate_ to ensure soundness in the presence of aliasing
-[1]. Roughly, it means initialization state should not go backwards.
+[1]. Roughly speaking, it means initialization state should not go backwards.
 
-Scopability means that access to partially constructed objects should be
-controlled by static scoping. Control effects like coroutines, delimited
+Scopability means that there are no side channels to access to partially constructed objects. Control effects like coroutines, delimited
 control, resumable exceptions may break the property, as they can transport a
 value upper in the stack (not in scope) to be reachable from the current scope.
 Static fields can also serve as a teleport thus breaks this property.  In the
@@ -247,7 +245,7 @@ We can impose the following rules to enforce modularity:
 
 ## Theory
 
-The theory is based on type-and-effect systems [2]. We introduce two concepts,
+The theory is based on type-and-effect systems [2, 3]. We introduce two concepts,
 _effects_ and _potentials_:
 
 ```
@@ -292,6 +290,8 @@ the initialization and there is no leaking of values under initialization.
 Virtual method calls on `this` is not a problem,
 as they can always be resolved statically.
 
+For a more detailed introduction of the theory, please refer to the paper _a type-and-effect system for safe initialization_ [3].
+
 ## Back Doors
 
 Occasionally you may want to suppress warnings reported by the
@@ -301,11 +301,13 @@ mark some fields as lazy.
 
 ## Caveats
 
-The system cannot handle static fields, nor does it provide safety
-guarantee when extending Java or Scala 2 classes. Calling methods of
-Java or Scala 2 is always safe.
+- The system cannot provide safety guarantee when extending Java or Scala 2 classes.
+- Safe initialization of global objects is only partially checked.
 
 ## References
 
-- Fähndrich, M. and Leino, K.R.M., 2003, July. _Heap monotonic typestates_. In International Workshop on Aliasing, Confinement and Ownership in object-oriented programming (IWACO).
-- Lucassen, J.M. and Gifford, D.K., 1988, January. _Polymorphic effect systems_. In Proceedings of the 15th ACM SIGPLAN-SIGACT symposium on Principles of programming languages (pp. 47-57). ACM.
+1. Manuel Fähndrich and K. Rustan M. Leino. 2003. _Heap monotonic typestates_. In International Workshop on Aliasing, Confinement and Ownership in object-oriented programming (IWACO).
+
+2. J. M. Lucassen and D. K. Gifford. 1988. _Polymorphic effect systems_. POPL, 1988.
+
+3. Fengyun Liu, Ondřej Lhoták, Aggelos Biboudis, Paolo G. Giarrusso, and Martin Odersky. 2020. _A type-and-effect system for object initialization_. OOPSLA, 2020.
