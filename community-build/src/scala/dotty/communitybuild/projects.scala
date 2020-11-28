@@ -340,4 +340,9 @@ object projects:
     sbtTestCommand = "compat30/test",
   )
 
+  lazy val verify = SbtCommunityProject(
+    project        = "verify",
+    sbtTestCommand = "verifyJVM/test",
+  )
+
 end projects
