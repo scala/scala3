@@ -1285,7 +1285,7 @@ object Parsers {
         if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
         else
           in.nextToken()
-          if in.token != INDENT then
+          if in.token != INDENT && in.token != LBRACE then
             syntaxErrorOrIncomplete(i"indented definitions expected, ${in}")
       else
         newLineOptWhenFollowedBy(LBRACE)
