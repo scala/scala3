@@ -387,6 +387,17 @@ xs.map:
       y * y
 ```
 
-Colons at the end of lines are their own token, distinct from normal `:`.
-The Scala grammar is changed in this variant so that colons at end of lines are accepted at all points
-where an opening brace enclosing a function argument is legal. Special provisions are taken so that method result types can still use a colon on the end of a line, followed by the actual type on the next.
+The colon is usable not only for lambdas and by-name parameters, but
+also even for ordinary parameters:
+
+```scala
+credentials ++ :
+  val file = Path.userHome / ".credentials"
+  if file.exists
+  then Seq(Credentials(file))
+  else Seq()
+```
+
+How does this syntax variant work? Colons at the end of lines are their own token, distinct from normal `:`.
+The Scala grammar is changed so that colons at end of lines are accepted at all points
+where an opening brace enclosing an argument is legal. Special provisions are taken so that method result types can still use a colon on the end of a line, followed by the actual type on the next.
