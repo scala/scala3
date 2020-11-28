@@ -7,6 +7,7 @@ import org.jetbrains.dokka.base.resolvers.local.LocationProviderFactory
 import org.jetbrains.dokka.pages.ContentPage
 import org.jetbrains.dokka.pages.PageNode
 import org.jetbrains.dokka.pages.RootPageNode
+import org.jetbrains.dokka.pages.ModulePage
 import org.jetbrains.dokka.plugability.DokkaContext
 
 import scala.collection.JavaConverters._
@@ -16,13 +17,13 @@ import java.nio.file.Path
 class StaticSiteLocationProviderFactory(private val ctx: DokkaContext) extends LocationProviderFactory:
   override def getLocationProvider(pageNode: RootPageNode): LocationProvider =
     try new StaticSiteLocationProvider(ctx, pageNode)
-    catch 
+    catch
       case e: Error =>
         // TODO (https://github.com/lampepfl/scala3doc/issues/238) error handling
         e.printStackTrace()
         // We encounter bug in Kotlin coroutines (race) when this method throws exception
         // In such case we want to return null to trigger NPE in other piece of code to fail properly coroutine context
-        // Making generated DRIs not-unique will reproduce this behavior 
+        // Making generated DRIs not-unique will reproduce this behavior
         null
 
 class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
@@ -30,7 +31,7 @@ class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
     private def updatePageEntry(page: PageNode, jpath: JList[String]): JList[String] =
       page match
         case page: StaticPageNode =>
-          ctx.siteContext.fold(jpath) { context =>
+          ctx.config.staticSiteContext.fold(jpath) { context =>
             val rawFilePath = context.root.toPath.relativize(page.template.file.toPath)
             val pageName = page.template.file.getName
             val dotIndex = pageName.lastIndexOf('.')
@@ -60,7 +61,7 @@ class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
         case _ if jpath.size() > 1 && jpath.get(0) ==   "--root--" && jpath.get(1) == "-a-p-i" =>
           (List("api") ++ jpath.asScala.drop(2)).asJava
 
-        case _: org.jetbrains.dokka.pages.ModulePage if ctx.siteContext.isEmpty =>
+        case _: ModulePage if ctx.config.staticSiteContext.isEmpty =>
           JList("index")
         case _ =>
           jpath

@@ -96,8 +96,8 @@ class SymOps[Q <: Quotes](val q: Q):
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri: DRI =
-      if sym == Symbol.noSymbol then emptyDRI 
-      else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri 
+      if sym == Symbol.noSymbol then topLevelDri
+      else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri
       else
         val pointsTo =
           if (!sym.isTypeDef) PointingToDeclaration.INSTANCE
@@ -117,5 +117,3 @@ class SymOps[Q <: Quotes](val q: Q):
           // For some reason it contains `$$$` instrad of symbol name
           s"${sym.name}${sym.show}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )
-
-  private val emptyDRI =  DRI.Companion.getTopLevel
