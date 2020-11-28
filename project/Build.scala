@@ -337,7 +337,8 @@ object Build {
         scalaLibrary,
         dottyLibrary,
         dottyCompiler,
-        allJars
+        allJars,
+        appConfiguration.value
       )
     },
     // sbt-dotty defines `scalaInstance in doc` so we need to override it manually
