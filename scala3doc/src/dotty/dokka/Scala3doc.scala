@@ -26,9 +26,12 @@ class Scala3DocDokkaLogger(using DocContext) extends DokkaLogger:
 
   def info(msg: String): Unit = report.inform(msg)
   def progress(msg: String): Unit = report.informProgress(msg)
+
+  private val dokkaAlphaWarning = "Dokka 1.4.* is an alpha project"
   def warn(msg: String): Unit =
-    warnings += 1
-    report.warning(msg)
+    if msg != dokkaAlphaWarning then
+      warnings += 1
+      report.warning(msg)
 
   private var errors = 0
   private var warnings = 0
@@ -80,12 +83,12 @@ object Scala3doc:
 
       if (parsedArgs.output.exists()) IO.delete(parsedArgs.output)
 
-      run(updatedArgs, new Scala3DocDokkaLogger)
+      run(updatedArgs)
       report.inform("Done")
     else report.error("Failure")
     reporter
 
-  private [dokka] def run(args: Args, logger: DokkaLogger = DokkaConsoleLogger.INSTANCE)(using DocContext) =
-    new DokkaGenerator(new DottyDokkaConfig(args, summon[DocContext]), logger).generate()
+  private [dokka] def run(args: Args)(using DocContext) =
+    new DokkaGenerator(new DottyDokkaConfig(args, summon[DocContext]), new Scala3DocDokkaLogger).generate()
 
 

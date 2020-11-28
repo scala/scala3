@@ -9,7 +9,7 @@ import org.junit.Assert._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.nio.charset.Charset
-
+import dotty.tools.dotc.core.Contexts._
 
 class SiteGeneratationTest:
   val projectName = "Test Project Name"
@@ -24,10 +24,10 @@ class SiteGeneratationTest:
           docsRoot = Some(base.toAbsolutePath.toString),
           projectVersion = Some(projectVersion),
         )
-      Scala3doc.run(args)
+      Scala3doc.run(args)(using testContext)
       op(dest)
 
-    finally println(dest.toFile) // IO.delete(dest.toFile)
+    finally IO.delete(dest.toFile)
 
   val testDocPath = Paths.get(BuildInfo.testDocumentationRoot)
 
