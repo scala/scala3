@@ -36,7 +36,8 @@ object Checking {
     fieldsInited: mutable.Set[Symbol],
     parentsInited: mutable.Set[ClassSymbol],
     env: Env,
-    var superCallFinished: Boolean = false         // whether super call has finished, used in singleton objects
+    var superCallFinished: Boolean = false,                       // whether super call has finished, used in singleton objects
+    safePromoted: mutable.Set[Potential] = mutable.Set.empty      // potentials that can be safely promoted
   ) {
 
     def isGlobalObject(using Context): Boolean = thisClass.is(Flags.Module) && thisClass.isStatic
@@ -210,7 +211,16 @@ object Checking {
         case Promote(pot) =>
           pot match {
             case pot: ThisRef =>
-              PromoteThis(pot, eff.source, state2.path).toErrors
+              val classRef = state.thisClass.typeRef
+              val sum = classRef.fields.foldLeft(0) { (sum, denot) =>
+                if denot.symbol.is(Flags.Lazy) then sum
+                else sum + 1
+              }
+              if sum < state.fieldsInited.size then
+                PromoteThis(pot, eff.source, state2.path).toErrors
+              else
+                state.safePromoted += pot
+                Errors.empty
 
             case _: Cold =>
               PromoteCold(eff.source, state2.path).toErrors
@@ -221,7 +231,9 @@ object Checking {
               else
                 val errs = state.test { checkPromotion(pot, eff.source) }
                 if errs.nonEmpty then UnsafePromotion(pot, eff.source, state2.path, errs).toErrors
-                else Errors.empty
+                else
+                  state.safePromoted += pot
+                  Errors.empty
 
             case Fun(pots, effs) =>
               val errs1 = state.test {
@@ -243,15 +255,21 @@ object Checking {
               if !state.isGlobalObject then Errors.empty
               else
                 val errs = state.test { checkPromotion(obj, eff.source) }
-                if errs.nonEmpty then UnsafePromotion(obj, eff.source, state2.path, errs).toErrors
-                else Errors.empty
+                if errs.nonEmpty then
+                  UnsafePromotion(obj, eff.source, state2.path, errs).toErrors
+                else
+                  state.safePromoted += pot
+                  Errors.empty
 
             case lhot @ LocalHot(cls) =>
               if !state.isGlobalObject then Errors.empty
               else
                 val errs = state.test { checkPromotion(lhot, eff.source) }
-                if errs.nonEmpty then UnsafePromotion(lhot, eff.source, state2.path, errs).toErrors
-                else Errors.empty
+                if errs.nonEmpty then
+                  UnsafePromotion(lhot, eff.source, state2.path, errs).toErrors
+                else
+                  state.safePromoted += pot
+                  Errors.empty
 
             case pot =>
               val Summary(pots, effs) = expand(pot)
