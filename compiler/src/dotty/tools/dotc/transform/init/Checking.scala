@@ -258,7 +258,7 @@ object Checking {
               val target = resolve(state.thisClass, sym)
               if (!target.isOneOf(Flags.Method | Flags.Lazy))
                 check(FieldAccess(pot, target)(eff.source))
-              else if (target.isInternal) {
+              else if (target.hasSource) {
                 val effs = thisRef.effectsOf(target)
                 effs.flatMap { check(_) }
               }
@@ -268,7 +268,7 @@ object Checking {
               val target = resolveSuper(state.thisClass, supercls, sym)
               if (!target.is(Flags.Method))
                 check(FieldAccess(pot, target)(eff.source))
-              else if (target.isInternal) {
+              else if (target.hasSource) {
                 val effs = thisRef.effectsOf(target)
                 effs.flatMap { check(_) }
               }
@@ -277,7 +277,7 @@ object Checking {
             case warm @ Warm(cls, outer) =>
               val target = resolve(cls, sym)
 
-              if (target.isInternal) {
+              if (target.hasSource) {
                 val effs = warm.effectsOf(target)
                 effs.flatMap { check(_) }
               }
@@ -293,7 +293,7 @@ object Checking {
                 val target = resolve(pot.moduleClass, sym)
                 if (!target.is(Flags.Method))
                   check(FieldAccess(pot, target)(eff.source))
-                else if (target.isInternal) {
+                else if (target.hasSource) {
                   val effs = pot.effectsOf(target)
                   effs.flatMap { check(_) }
                 }
@@ -306,7 +306,7 @@ object Checking {
                 val target = resolve(lhot.classSymbol, sym)
                 if (!target.is(Flags.Method))
                   check(FieldAccess(pot, target)(eff.source))
-                else if (target.isInternal) {
+                else if (target.hasSource) {
                   val effs = lhot.effectsOf(target)
                   effs.flatMap { check(_) }
                 }
@@ -344,12 +344,12 @@ object Checking {
         pot1 match {
           case thisRef: ThisRef =>
             val target = resolve(state.thisClass, sym)
-            if (target.isInternal) Summary(thisRef.potentialsOf(target), Effects.empty)
+            if (target.hasSource) Summary(thisRef.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
           case SuperRef(thisRef: ThisRef, supercls) =>
             val target = resolveSuper(state.thisClass, supercls, sym)
-            if (target.isInternal) Summary(thisRef.potentialsOf(target), Effects.empty)
+            if (target.hasSource) Summary(thisRef.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
 
@@ -368,17 +368,17 @@ object Checking {
 
           case warm : Warm =>
             val target = resolve(warm.classSymbol, sym)
-            if (target.isInternal) Summary(warm.potentialsOf(target), Effects.empty)
+            if (target.hasSource) Summary(warm.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
           case lhot: LocalHot =>
             val target = resolve(lhot.classSymbol, sym)
-            if (target.isInternal) Summary(lhot.potentialsOf(target), Effects.empty)
+            if (target.hasSource) Summary(lhot.potentialsOf(target), Effects.empty)
             else Summary.empty
 
           case obj @ Global(tmref) =>
             val target = resolve(obj.moduleClass, sym)
-            if (target.isInternal) Summary(obj.potentialsOf(target), Effects.empty)
+            if (target.hasSource) Summary(obj.potentialsOf(target), Effects.empty)
             else Summary.empty
 
           case _: Cold =>
@@ -394,12 +394,12 @@ object Checking {
         pot1 match {
           case thisRef: ThisRef =>
             val target = resolve(state.thisClass, sym)
-            if (sym.isInternal) Summary(thisRef.potentialsOf(target), Effects.empty)
+            if (sym.hasSource) Summary(thisRef.potentialsOf(target), Effects.empty)
             else Summary(Cold()(pot.source))
 
           case SuperRef(thisRef: ThisRef, supercls) =>
             val target = resolveSuper(state.thisClass, supercls, sym)
-            if (target.isInternal) Summary(thisRef.potentialsOf(target), Effects.empty)
+            if (target.hasSource) Summary(thisRef.potentialsOf(target), Effects.empty)
             else Summary(Cold()(pot.source))
 
           case _: Fun =>
@@ -407,17 +407,17 @@ object Checking {
 
           case warm: Warm =>
             val target = resolve(warm.classSymbol, sym)
-            if (target.isInternal) Summary(warm.potentialsOf(target), Effects.empty)
+            if (target.hasSource) Summary(warm.potentialsOf(target), Effects.empty)
             else Summary(Cold()(pot.source))
 
           case lhot: LocalHot =>
             val target = resolve(lhot.classSymbol, sym)
-            if (target.isInternal) Summary(lhot.potentialsOf(target), Effects.empty)
+            if (target.hasSource) Summary(lhot.potentialsOf(target), Effects.empty)
             else Summary(Cold()(pot.source))
 
           case obj @ Global(tmref) =>
             val target = resolve(obj.moduleClass, sym)
-            if (target.isInternal) Summary(obj.potentialsOf(target), Effects.empty)
+            if (target.hasSource) Summary(obj.potentialsOf(target), Effects.empty)
             else Summary(Cold()(pot.source))
 
           case _: Cold =>
