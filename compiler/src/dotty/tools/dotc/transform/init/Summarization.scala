@@ -41,7 +41,7 @@ object Summarization {
 
       case Select(qualifier, name) =>
         val Summary(pots, effs) = analyze(qualifier)
-        if (env.ignoredMethods.contains(expr.symbol)) Summary(effs)
+        if (env.canIgnoreMethod(expr.symbol)) Summary(effs)
         else if (!expr.symbol.exists) { // polymorphic function apply and structural types
           Summary(pots.promote(expr) ++ effs)
         }
@@ -55,7 +55,7 @@ object Summarization {
 
       case Apply(fun, args) =>
         val summary = analyze(fun)
-        val ignoredCall = env.ignoredMethods.contains(expr.symbol)
+        val ignoredCall = env.canIgnoreMethod(expr.symbol)
 
         val argTps = fun.tpe.widen match
           case mt: MethodType => mt.paramInfos
@@ -240,7 +240,7 @@ object Summarization {
 
       case tmref: TermRef =>
         val Summary(pots, effs) = analyze(tmref.prefix, source)
-        if (env.ignoredMethods.contains(tmref.symbol)) Summary(effs)
+        if (env.canIgnoreMethod(tmref.symbol)) Summary(effs)
         else {
           val summary = pots.select(tmref.symbol, source)
           summary ++ effs

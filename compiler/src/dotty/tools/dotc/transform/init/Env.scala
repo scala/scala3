@@ -23,20 +23,18 @@ given theCtx(using Env) as Context = summon[Env].ctx
 case class Env(ctx: Context) {
   private implicit def self: Env = this
 
-  // Methods that should be ignored in the checking
-  lazy val ignoredMethods: Set[Symbol] = Set(
-    defn.Any_getClass,
-    defn.Any_isInstanceOf,
-    defn.Object_eq,
-    defn.Object_ne,
-    defn.Object_synchronized
-  )
+  /** Can the method call be ignored? */
+  def canIgnoreMethod(symbol: Symbol): Boolean =
+    val owner = symbol.owner
+    owner == defn.AnyClass ||
+    owner == defn.ObjectClass ||
+    owner == defn.TupleClass
 
   def withCtx(newCtx: Context): Env = this.copy(ctx = newCtx)
 
   def withOwner(owner: Symbol) = this.copy(ctx = this.ctx.withOwner(owner))
 
-  def checkGlobal: Boolean = true
+  def checkGlobal: Boolean = false
 
   /** Whether values of a given type is always fully initialized?
    *

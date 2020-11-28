@@ -186,8 +186,9 @@ object Checking {
 
     classRef.membersBasedOnFlags(Flags.Method, accessibleFlags).foreach { denot =>
       val m = denot.symbol
-      buffer += MethodCall(pot, m)(source)
-      buffer += Promote(MethodReturn(pot, m)(source))(source)
+      if !theEnv.canIgnoreMethod(m) then
+        buffer += MethodCall(pot, m)(source)
+        buffer += Promote(MethodReturn(pot, m)(source))(source)
     }
 
     classRef.memberClasses.foreach { denot =>
