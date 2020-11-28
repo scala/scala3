@@ -29,6 +29,7 @@ object Checking {
    *      }
    *
    */
+
   case class State(
     private var visited: Set[Effect],          // effects that have been checked
     path: Vector[Tree],                        // the path that leads to the current effect
@@ -36,9 +37,19 @@ object Checking {
     fieldsInited: mutable.Set[Symbol],
     parentsInited: mutable.Set[ClassSymbol],
     env: Env,
-    var superCallFinished: Boolean = false,                       // whether super call has finished, used in singleton objects
-    safePromoted: mutable.Set[Potential] = mutable.Set.empty      // potentials that can be safely promoted
+    var superCallFinished: Boolean = false,                         // whether super call has finished, used in singleton objects
+    safePromoted: mutable.Set[Potential] = mutable.Set.empty,       // potentials that can be safely promoted
   ) {
+    given State = this
+
+    /** This method allows hijacking the checking logic */
+    def check(eff: Effect): Errors =
+      trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
+        val state: State = this.withVisited(eff)
+
+        if (this.hasVisited(eff)) Errors.empty
+        else Checking.doCheck(eff)
+      }
 
     def isGlobalObject(using Context): Boolean = thisClass.is(Flags.Module) && thisClass.isStatic
 
@@ -69,7 +80,7 @@ object Checking {
    *  However, summarization can be done lazily on-demand to improve
    *  performance.
    */
-  def checkClassBody(cdef: TypeDef)(implicit state: State): Unit = {
+  def checkClassBody(cdef: TypeDef)(using state: State): Unit = {
     traceIndented("\n\n>>>> checking " + cdef.symbol.show, init)
 
     val cls = cdef.symbol.asClass
@@ -78,7 +89,7 @@ object Checking {
     // mark current class as initialized, required for linearization
     state.parentsInited += cls
 
-    def checkClassBodyStat(tree: Tree)(implicit state: State): Unit = traceOp("checking " + tree.show, init) {
+    def checkClassBodyStat(tree: Tree)(using state: State): Unit = traceOp("checking " + tree.show, init) {
       tree match {
         case vdef : ValDef =>
           val summary = Summarization.analyze(vdef.rhs)
@@ -99,16 +110,17 @@ object Checking {
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
 
-    def checkConstructor(ctor: Symbol, tp: Type, source: Tree)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
+    def checkConstructor(ctor: Symbol, tp: Type, source: Tree)(using state: State): Unit = traceOp("checking " + ctor.show, init) {
       val cls = ctor.owner
       val classDef = cls.defTree
       if (!classDef.isEmpty) {
-        if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])(state.withOwner(cls))
-        else checkSecondaryConstructor(ctor)(state.withOwner(cls))
+        given State = state.withOwner(cls)
+        if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])
+        else checkSecondaryConstructor(ctor)
       }
     }
 
-    def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
+    def checkSecondaryConstructor(ctor: Symbol)(using state: State): Unit = traceOp("checking " + ctor.show, init) {
       val Block(ctorCall :: stats, expr) = ctor.defTree.asInstanceOf[DefDef].rhs
       val cls = ctor.owner.asClass
 
@@ -159,14 +171,14 @@ object Checking {
     tpl.body.foreach { checkClassBodyStat(_) }
   }
 
-  private def checkEffects(effs: Effects)(implicit state: State): Unit = traceOp("checking effects " + Effects.show(effs), init) {
+  private def checkEffects(effs: Effects)(using state: State): Unit = traceOp("checking effects " + Effects.show(effs), init) {
     for {
       eff <- effs
-      error <- check(eff)
+      error <- state.check(eff)
     } error.issue
   }
 
-  private def checkPromotion(pot: Refinable, source: Tree)(implicit state: State): Errors =
+  private def checkPromotion(pot: Refinable, source: Tree)(using state: State): Errors =
     val buffer = new mutable.ArrayBuffer[Effect]
     val classRef =
       pot match
@@ -175,18 +187,21 @@ object Checking {
       case warm: Warm => warm.classSymbol.typeRef
       case _: ThisRef => ??? // impossible
 
-    val accessibleFlags = Flags.Deferred | Flags.Private | Flags.Protected
+    val excludedFlags = Flags.Deferred | Flags.Private | Flags.Protected
 
     classRef.fields.foreach { denot =>
       val f = denot.symbol
-      if f.isOneOf(accessibleFlags) then
+      if !f.isOneOf(excludedFlags) then
         buffer += Promote(FieldReturn(pot, f)(source))(source)
         buffer += FieldAccess(pot, f)(source)
     }
 
-    classRef.membersBasedOnFlags(Flags.Method, accessibleFlags).foreach { denot =>
+    val methods = classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred)
+    println("methods in " + classRef.show + ": " + methods.map(_.show).mkString(", "))
+
+    classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred).foreach { denot =>
       val m = denot.symbol
-      if !theEnv.canIgnoreMethod(m) then
+      if !m.isConstructor && !theEnv.canIgnoreMethod(m) then
         buffer += MethodCall(pot, m)(source)
         buffer += Promote(MethodReturn(pot, m)(source))(source)
     }
@@ -201,216 +216,217 @@ object Checking {
       buffer += Promote(potInner)(source)
     }
 
-    buffer.toList.flatMap(eff => check(eff))
+    buffer.toList.flatMap(eff => state.check(eff))
 
-  private def check(eff: Effect)(implicit state: State): Errors =
-    if (state.hasVisited(eff)) Errors.empty
-    else trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
-      implicit val state2: State = state.withVisited(eff)
+  private def doCheck(eff: Effect)(using state: State): Errors =
+    eff match {
+      case Promote(pot) =>
+        pot match {
+          case pot: ThisRef =>
+            val classRef = state.thisClass.typeRef
+            val sum = classRef.fields.foldLeft(0) { (sum, denot) =>
+              if denot.symbol.isOneOf(Flags.Lazy | Flags.Deferred) then sum
+              else sum + 1
+            }
+            if sum < state.fieldsInited.size then
+              throw new Exception(s"$sum fields in " + state.thisClass + ", but " + state.fieldsInited.size + " initialized")
+            else if sum > state.fieldsInited.size then
+              PromoteThis(pot, eff.source, state.path).toErrors
+            else
+              state.safePromoted += pot
+              Errors.empty
 
-      eff match {
-        case Promote(pot) =>
-          pot match {
-            case pot: ThisRef =>
-              val classRef = state.thisClass.typeRef
-              val sum = classRef.fields.foldLeft(0) { (sum, denot) =>
-                if denot.symbol.is(Flags.Lazy) then sum
-                else sum + 1
-              }
-              if sum < state.fieldsInited.size then
-                PromoteThis(pot, eff.source, state2.path).toErrors
+          case _: Cold =>
+            PromoteCold(eff.source, state.path).toErrors
+
+          case pot @ Warm(cls, outer) =>
+            // Use the assumption that `Promote(pot)` eagerly in the visited set is unsound.
+            // It can only be safely used for checking the expanded effects.
+            // tests/init/neg/hybrid2.scala
+            val errors = state.test { state.check(Promote(outer)(eff.source)) }
+            if (errors.isEmpty) Errors.empty
+            else
+              val errs = state.test { checkPromotion(pot, eff.source) }
+              if errs.nonEmpty then UnsafePromotion(pot, eff.source, state.path, errs).toErrors
               else
                 state.safePromoted += pot
                 Errors.empty
 
-            case _: Cold =>
-              PromoteCold(eff.source, state2.path).toErrors
+          case Fun(pots, effs) =>
+            val errs1 = state.test {
+              effs.toList.flatMap { state.check(_) }
+            }
 
-            case pot @ Warm(cls, outer) =>
-              val errors = state.test { check(Promote(outer)(eff.source)) }
-              if (errors.isEmpty) Errors.empty
-              else
-                val errs = state.test { checkPromotion(pot, eff.source) }
-                if errs.nonEmpty then UnsafePromotion(pot, eff.source, state2.path, errs).toErrors
-                else
-                  state.safePromoted += pot
-                  Errors.empty
-
-            case Fun(pots, effs) =>
-              val errs1 = state.test {
-                effs.toList.flatMap { check(_) }
+            val errs2 = state.test {
+              pots.toList.flatMap { pot =>
+                state.copy(path = Vector.empty).check(Promote(pot)(eff.source))
               }
+            }
 
-              val errs2 = state.test {
-                pots.toList.flatMap { pot =>
-                  check(Promote(pot)(eff.source))(state.copy(path = Vector.empty))
-                }
-              }
-
-              if (errs1.nonEmpty || errs2.nonEmpty)
-                UnsafePromotion(pot, eff.source, state2.path, errs1 ++ errs2).toErrors
-              else
-                Errors.empty
-
-            case obj @ Global(tmref) =>
-              if !state.isGlobalObject then Errors.empty
-              else
-                val errs = state.test { checkPromotion(obj, eff.source) }
-                if errs.nonEmpty then
-                  UnsafePromotion(obj, eff.source, state2.path, errs).toErrors
-                else
-                  state.safePromoted += pot
-                  Errors.empty
-
-            case lhot @ LocalHot(cls) =>
-              if !state.isGlobalObject then Errors.empty
-              else
-                val errs = state.test { checkPromotion(lhot, eff.source) }
-                if errs.nonEmpty then
-                  UnsafePromotion(lhot, eff.source, state2.path, errs).toErrors
-                else
-                  state.safePromoted += pot
-                  Errors.empty
-
-            case pot =>
-              val Summary(pots, effs) = expand(pot)
-              val effs2 = pots.map(Promote(_)(eff.source))
-              (effs2 ++ effs).toList.flatMap(check(_))
-          }
-
-        case FieldAccess(pot, field) =>
-
-          pot match {
-            case _: ThisRef =>
-              val target = resolve(state.thisClass, field)
-              if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
-              else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state2.path).toErrors
-              else Errors.empty
-
-            case SuperRef(_: ThisRef, supercls) =>
-              val target = resolveSuper(state.thisClass, supercls, field)
-              if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
-              else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state2.path).toErrors
-              else Errors.empty
-
-            case Warm(cls, outer) =>
-              // all fields of warm values are initialized
-              val target = resolve(cls, field)
-              if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
-              else Errors.empty
-
-            case obj @ Global(tmref) =>
-              if !state.isGlobalObject || obj.moduleClass != state.thisClass then
-                Errors.empty
-              else
-                val target = resolve(state.thisClass, field)
-                if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
-                else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state2.path).toErrors
-                else Errors.empty
-
-            case _: LocalHot =>
+            if (errs1.nonEmpty || errs2.nonEmpty)
+              UnsafePromotion(pot, eff.source, state.path, errs1 ++ errs2).toErrors
+            else
               Errors.empty
 
-            case _: Cold =>
-              AccessCold(field, eff.source, state2.path).toErrors
-
-            case Fun(pots, effs) =>
-              throw new Exception("Unexpected effect " + eff.show)
-
-            case pot =>
-              val Summary(pots, effs) = expand(pot)
-              val effs2 = pots.map(FieldAccess(_, field)(eff.source))
-              (effs2 ++ effs).toList.flatMap(check(_))
-
-          }
-
-        case MethodCall(pot, sym) =>
-          pot match {
-            case thisRef: ThisRef =>
-              val target = resolve(state.thisClass, sym)
-              if (!target.isOneOf(Flags.Method | Flags.Lazy))
-                check(FieldAccess(pot, target)(eff.source))
-              else if (target.hasSource) {
-                val effs = thisRef.effectsOf(target).toList
-                effs.flatMap { check(_) }
-              }
-              else CallUnknown(target, eff.source, state2.path).toErrors
-
-            case SuperRef(thisRef: ThisRef, supercls) =>
-              val target = resolveSuper(state.thisClass, supercls, sym)
-              if (!target.is(Flags.Method))
-                check(FieldAccess(pot, target)(eff.source))
-              else if (target.hasSource) {
-                val effs = thisRef.effectsOf(target).toList
-                effs.flatMap { check(_) }
-              }
-              else CallUnknown(target, eff.source, state2.path).toErrors
-
-            case warm @ Warm(cls, outer) =>
-              val target = resolve(cls, sym)
-
-              if (target.hasSource) {
-                val effs = warm.effectsOf(target).toList
-                effs.flatMap { check(_) }
-              }
-              else if (!sym.isConstructor)
-                CallUnknown(target, eff.source, state2.path).toErrors
+          case obj @ Global(tmref) =>
+            if !state.isGlobalObject then Errors.empty
+            else
+              val errs = state.test { checkPromotion(obj, eff.source) }
+              if errs.nonEmpty then
+                UnsafePromotion(obj, eff.source, state.path, errs).toErrors
               else
+                state.safePromoted += pot
                 Errors.empty
 
-            case pot @ Global(tmref) =>
-              if !state.isGlobalObject then
-                Errors.empty
+          case lhot @ LocalHot(cls) =>
+            if !state.isGlobalObject then Errors.empty
+            else
+              val errs = state.test { checkPromotion(lhot, eff.source) }
+              if errs.nonEmpty then
+                UnsafePromotion(lhot, eff.source, state.path, errs).toErrors
               else
-                val target = resolve(pot.moduleClass, sym)
-                if (!target.is(Flags.Method))
-                  check(FieldAccess(pot, target)(eff.source))
-                else if (target.hasSource) {
-                  val effs = pot.effectsOf(target).toList
-                  effs.flatMap { check(_) }
-                }
-                else CallUnknown(target, eff.source, state2.path).toErrors
-
-            case lhot: LocalHot =>
-              if !state.isGlobalObject then
+                state.safePromoted += pot
                 Errors.empty
-              else
-                val target = resolve(lhot.classSymbol, sym)
-                if (!target.is(Flags.Method))
-                  check(FieldAccess(pot, target)(eff.source))
-                else if (target.hasSource) {
-                  val effs = lhot.effectsOf(target).toList
-                  effs.flatMap { check(_) }
-                }
-                else CallUnknown(target, eff.source, state2.path).toErrors
 
-            case _: Cold =>
-              CallCold(sym, eff.source, state2.path).toErrors
+          case pot =>
+            val Summary(pots, effs) = expand(pot)
+            val effs2 = pots.map(Promote(_)(eff.source))
+            (effs2 ++ effs).toList.flatMap(state.check(_))
+        }
 
-            case Fun(pots, effs) =>
-              // TODO: assertion might be false, due to SAM
-              if (sym.name.toString == "apply") effs.toList.flatMap { check(_) }
+      case FieldAccess(pot, field) =>
+
+        pot match {
+          case _: ThisRef =>
+            val target = resolve(state.thisClass, field)
+            if (target.is(Flags.Lazy)) state.check(MethodCall(pot, target)(eff.source))
+            else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state.path).toErrors
+            else Errors.empty
+
+          case SuperRef(_: ThisRef, supercls) =>
+            val target = resolveSuper(state.thisClass, supercls, field)
+            if (target.is(Flags.Lazy)) state.check(MethodCall(pot, target)(eff.source))
+            else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state.path).toErrors
+            else Errors.empty
+
+          case Warm(cls, outer) =>
+            // all fields of warm values are initialized
+            val target = resolve(cls, field)
+            if (target.is(Flags.Lazy)) state.check(MethodCall(pot, target)(eff.source))
+            else Errors.empty
+
+          case obj @ Global(tmref) =>
+            if !state.isGlobalObject || obj.moduleClass != state.thisClass then
+              Errors.empty
+            else
+              val target = resolve(state.thisClass, field)
+              if (target.is(Flags.Lazy)) state.check(MethodCall(pot, target)(eff.source))
+              else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state.path).toErrors
               else Errors.empty
-              // curried, tupled, toString are harmless
 
-            case pot =>
-              val Summary(pots, effs) = expand(pot)
-              val effs2 = pots.map(MethodCall(_, sym)(eff.source))
-              (effs2 ++ effs).toList.flatMap(check(_))
-          }
-
-        case AccessGlobal(pot) =>
-          if !state.isGlobalObject || pot.moduleClass != state.thisClass then
+          case _: LocalHot =>
             Errors.empty
-          else if state.superCallFinished then
-            Errors.empty
-          else
-            AccessNonInit(pot.tmref.symbol, state2.path).toErrors
 
-      }
+          case _: Cold =>
+            AccessCold(field, eff.source, state.path).toErrors
+
+          case Fun(pots, effs) =>
+            throw new Exception("Unexpected effect " + eff.show)
+
+          case pot =>
+            val Summary(pots, effs) = expand(pot)
+            val effs2 = pots.map(FieldAccess(_, field)(eff.source))
+            (effs2 ++ effs).toList.flatMap(state.check(_))
+
+        }
+
+      case MethodCall(pot, sym) =>
+        pot match {
+          case thisRef: ThisRef =>
+            val target = resolve(state.thisClass, sym)
+            if (!target.isOneOf(Flags.Method | Flags.Lazy))
+              state.check(FieldAccess(pot, target)(eff.source))
+            else if (target.hasSource) {
+              val effs = thisRef.effectsOf(target).toList
+              effs.flatMap { state.check(_) }
+            }
+            else CallUnknown(target, eff.source, state.path).toErrors
+
+          case SuperRef(thisRef: ThisRef, supercls) =>
+            val target = resolveSuper(state.thisClass, supercls, sym)
+            if (!target.is(Flags.Method))
+              state.check(FieldAccess(pot, target)(eff.source))
+            else if (target.hasSource) {
+              val effs = thisRef.effectsOf(target).toList
+              effs.flatMap { state.check(_) }
+            }
+            else CallUnknown(target, eff.source, state.path).toErrors
+
+          case warm @ Warm(cls, outer) =>
+            val target = resolve(cls, sym)
+
+            if (target.hasSource) {
+              val effs = warm.effectsOf(target).toList
+              effs.flatMap { state.check(_) }
+            }
+            else if (!sym.isConstructor)
+              CallUnknown(target, eff.source, state.path).toErrors
+            else
+              Errors.empty
+
+          case pot @ Global(tmref) =>
+            if !state.isGlobalObject then
+              Errors.empty
+            else
+              val target = resolve(pot.moduleClass, sym)
+              if (!target.is(Flags.Method))
+                state.check(FieldAccess(pot, target)(eff.source))
+              else if (target.hasSource) {
+                val effs = pot.effectsOf(target).toList
+                effs.flatMap { state.check(_) }
+              }
+              else CallUnknown(target, eff.source, state.path).toErrors
+
+          case lhot: LocalHot =>
+            if !state.isGlobalObject then
+              Errors.empty
+            else
+              val target = resolve(lhot.classSymbol, sym)
+              if (!target.is(Flags.Method))
+                state.check(FieldAccess(pot, target)(eff.source))
+              else if (target.hasSource) {
+                val effs = lhot.effectsOf(target).toList
+                effs.flatMap { state.check(_) }
+              }
+              else CallUnknown(target, eff.source, state.path).toErrors
+
+          case _: Cold =>
+            CallCold(sym, eff.source, state.path).toErrors
+
+          case Fun(pots, effs) =>
+            // TODO: assertion might be false, due to SAM
+            if (sym.name.toString == "apply") effs.toList.flatMap { state.check(_) }
+            else Errors.empty
+            // curried, tupled, toString are harmless
+
+          case pot =>
+            val Summary(pots, effs) = expand(pot)
+            val effs2 = pots.map(MethodCall(_, sym)(eff.source))
+            (effs2 ++ effs).toList.flatMap(state.check(_))
+        }
+
+      case AccessGlobal(pot) =>
+        if !state.isGlobalObject || pot.moduleClass != state.thisClass then
+          Errors.empty
+        else if state.superCallFinished then
+          Errors.empty
+        else
+          AccessNonInit(pot.tmref.symbol, state.path).toErrors
+
     }
 
-  private def expand(pot: Potential)(implicit state: State): Summary = trace("expand " + pot.show, init, _.asInstanceOf[Summary].show) {
+
+  private def expand(pot: Potential)(using state: State): Summary = trace("expand " + pot.show, init, _.asInstanceOf[Summary].show) {
     pot match {
       case MethodReturn(pot1, sym) =>
         pot1 match {
