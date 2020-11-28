@@ -174,7 +174,7 @@ object Potentials {
 
   extension (ps: Potentials) def promote(source: Tree): Effects = ps.map(Promote(_)(source))
 
-  def asSeenFrom(pot: Potential, thisValue: Potential)(implicit env: Env): Potential = trace(pot.show + " asSeenFrom " + thisValue.show, init, pot => pot.asInstanceOf[Potential].show) {
+  def asSeenFrom(pot: Potential, thisValue: Potential)(implicit env: Env): Potential = trace(pot.show + " asSeenFrom " + thisValue.show, init, _.asInstanceOf[Potential].show) {
     pot match {
       case MethodReturn(pot1, sym) =>
         val pot = asSeenFrom(pot1, thisValue)
