@@ -205,9 +205,11 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  PostfixExpr [Ascription]
+                    |  StructuralInstance
                     |  ‘inline’ InfixExpr MatchClause
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
+StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ TemplateBody]      New templ
 Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
 PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
 InfixExpr         ::=  PrefixExpr
@@ -396,9 +398,8 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody                   EnumDef(mods, name, tparams, template)
-GivenDef          ::=  [GivenSig] Type ‘=’ Expr
-                    |  [GivenSig] ConstrApps [TemplateBody]
-GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘as’       -- one of `id`, `DefParamClause`, `UsingParamClause` must appear
+GivenDef          ::=  [GivenSig] (Type [‘=’ Expr] | StructuralInstance)
+GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’       -- one of `id`, `DefParamClause`, `UsingParamClause` must be present
 Extension         ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
                        {UsingParamClause}] ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’

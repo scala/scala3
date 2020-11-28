@@ -499,8 +499,7 @@ val multiplication: 3 * 5 = 15
 ```
 
 Many of these singleton operation types are meant to be used infix (as in [SLS §
-3.2.8](https://www.scala-lang.org/files/archive/spec/2.12/03-types.html#infix-types)),
-and are annotated accordingly with [`infix`] modifiers.
+3.2.8](https://www.scala-lang.org/files/archive/spec/2.12/03-types.html#infix-types)).
 
 Since type aliases have the same precedence rules as their term-level
 equivalents, the operations compose with the expected precedence rules:
@@ -519,7 +518,9 @@ match type can dispatch to the correct implementation:
 ```scala
 import scala.compiletime.ops._
 
-infix type +[X <: Int | String, Y <: Int | String] = (X, Y) match {
+import scala.annotation.infix
+
+type +[X <: Int | String, Y <: Int | String] = (X, Y) match {
   case (Int, Int) => int.+[X, Y]
   case (String, String) => string.+[X, Y]
 }

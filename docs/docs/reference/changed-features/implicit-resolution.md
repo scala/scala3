@@ -41,10 +41,10 @@ no longer applies.
 **3.** Package prefixes no longer contribute to the implicit search scope of a type. Example:
 ```scala
   package p
-  given a as A
+  given a: A = A()
 
   object o {
-    given b as B
+    given b: B = B()
     type C
   }
 ```

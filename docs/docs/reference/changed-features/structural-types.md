@@ -131,7 +131,7 @@ than other classes. Here is an example:
 trait Vehicle extends reflect.Selectable {
   val wheels: Int
 }
-val i3 = new Vehicle { // i3: Vehicle { val range: Int }
+val i3 = Vehicle with { // i3: Vehicle { val range: Int }
   val wheels = 4
   val range = 240
 }

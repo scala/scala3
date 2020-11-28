@@ -69,9 +69,9 @@ def f(u: Universe)(using ctx: u.Context)(using s: ctx.Symbol, k: ctx.Kind) = ...
 Multiple using clauses are matched left-to-right in applications. Example:
 ```scala
 object global extends Universe { type Context = ... }
-given ctx  as global.Context { type Symbol = ...; type Kind = ... }
-given sym  as ctx.Symbol
-given kind as ctx.Kind
+given ctx  : global.Context with { type Symbol = ...; type Kind = ... }
+given sym  : ctx.Symbol
+given kind : ctx.Kind
 ```
 Then the following calls are all valid (and normalize to the last one)
 ```scala

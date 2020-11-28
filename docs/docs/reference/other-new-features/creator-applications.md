@@ -41,3 +41,60 @@ caused numerous problems, including
  - overloading ambiguities
  - overriding errors
  - shadowing of user-defined `apply` methods by more specific auto-generated ones.
+
+### Structural Instances
+
+Structural instances are a replacement for anonymous classes.
+Example:
+```scala
+trait Person {
+  def name: String
+  def age: Int
+}
+// Anonymous class
+new Person {
+  def name = "Lara"
+  def age = 22
+}
+// Structural instance
+Person with {
+  def name = "Lara"
+  def age = 22
+}
+```
+A structural instance expression consists of the implemented class(es) or trait(s) (`Person` in the code above), followed by the reserved word `with` and definitions that implement or override class members.
+
+Structural instances can be have more than one parent. In this case,
+
+
+### Translation
+
+Structural instances map to expressions with `new` as follows.
+
+A structural instance with a single parent `T` and empty definitions
+```scala
+T(args) with { }
+```
+maps to
+```
+new T(args)
+```
+
+A structural instance with multiple parents and/or non-empty definitions
+
+```scala
+T(args1) with U(args2) with { defs }
+```
+maps to
+```
+{ class $anon extends T(args1), U(args2) { defs} ; new $anon }
+```
+This means that every instance creation expression can be written without `new`, using either a creator application or, where this is not possible, a structural instance expression.
+
+### Syntax
+
+```
+Expr1               ::=  ... | StructuralInstance
+StructuralInstance  ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody
+```
+
