@@ -6,7 +6,7 @@ class C:
   def +(x: Int): Int = ???
 
 object C:
-  given AnyRef:
+  given AnyRef with
     extension (x: C)
       infix def iop (y: Int) = ???
       def mop (y: Int) = ???

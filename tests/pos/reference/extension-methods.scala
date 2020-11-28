@@ -70,7 +70,7 @@ object ExtMethods:
   end SafeDiv
 
   def test1 =
-    given ops1 as IntOps // brings safeMod into scope
+    given ops1: IntOps with {} // brings safeMod into scope
     1.safeMod(2)
 
   class Lst[T](xs: T*):
@@ -81,7 +81,7 @@ object ExtMethods:
   trait Ord[T]:
     extension (x: T) def less (y: T): Boolean
   object Ord:
-    given Ord[Int]:
+    given Ord[Int] with
       extension (x: Int) def less (y: Int): Boolean = x < y
   end Ord
 
@@ -90,7 +90,7 @@ object ExtMethods:
     extension [T](xs: Lst[Lst[T]])
       def flatten: Lst[T] = xs.foldLeft(Lst())(_ ++ _)
 
-    given ord[T: Ord] as Ord[Lst[T]]:
+    given ord[T: Ord]: Ord[Lst[T]] with
       extension (xs: Lst[T])
         def less (ys: Lst[T]): Boolean = ???
   end Lst

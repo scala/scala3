@@ -121,14 +121,14 @@ abstract class TokensCommon {
   def isKeyword(token: Token): Boolean = keywords contains token
 
   /** parentheses */
-  final val LPAREN = 90;           enter(LPAREN, "'('")
-  final val RPAREN = 91;           enter(RPAREN, "')'")
-  final val LBRACKET = 92;         enter(LBRACKET, "'['")
-  final val RBRACKET = 93;         enter(RBRACKET, "']'")
-  final val LBRACE = 94;           enter(LBRACE, "'{'")
-  final val RBRACE = 95;           enter(RBRACE, "'}'")
-  final val INDENT = 96;           enter(INDENT, "indent")
-  final val OUTDENT = 97;          enter(OUTDENT, "unindent")
+  final val LPAREN = 91;           enter(LPAREN, "'('")
+  final val RPAREN = 92;           enter(RPAREN, "')'")
+  final val LBRACKET = 93;         enter(LBRACKET, "'['")
+  final val RBRACKET = 94;         enter(RBRACKET, "']'")
+  final val LBRACE = 95;           enter(LBRACE, "'{'")
+  final val RBRACE = 96;           enter(RBRACE, "'}'")
+  final val INDENT = 97;           enter(INDENT, "indent")
+  final val OUTDENT = 98;          enter(OUTDENT, "unindent")
 
   final val firstParen = LPAREN
   final val lastParen = OUTDENT
@@ -204,10 +204,11 @@ object Tokens extends TokensCommon {
   final val QUOTE = 87;            enter(QUOTE, "'")
 
   final val COLONEOL = 88;         enter(COLONEOL, ":", ": at eol")
-  final val SELFARROW = 89;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
+  final val WITHEOL = 89;          enter(WITHEOL, "with", "with at eol")
+  final val SELFARROW = 90;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
 
   /** XML mode */
-  final val XMLSTART = 98;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
+  final val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, CTXARROW)
@@ -276,7 +277,7 @@ object Tokens extends TokensCommon {
   final val closingRegionTokens = BitSet(RBRACE, RPAREN, RBRACKET, CASE) | statCtdTokens
 
   final val canStartIndentTokens: BitSet =
-    statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR, IF)
+    statCtdTokens | BitSet(COLONEOL, WITHEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR, IF)
       // `if` is excluded because it often comes after `else` which makes for awkward indentation rules  TODO: try to do without the exception
 
   /** Faced with the choice between a type and a formal parameter, the following

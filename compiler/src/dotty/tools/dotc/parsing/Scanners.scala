@@ -150,6 +150,7 @@ object Scanners {
     private[Scanners] var allowLeadingInfixOperators = true
 
     var debugTokenStream = false
+    val showLookAheadOnDebug = false
 
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
@@ -315,7 +316,8 @@ object Scanners {
     }
 
     final def printState() =
-      if debugTokenStream then print("[" + show + "]")
+      if debugTokenStream && (showLookAheadOnDebug || !isInstanceOf[LookaheadScanner]) then
+        print(s"[$show${if isInstanceOf[LookaheadScanner] then "(LA)" else ""}]")
 
     /** Insert `token` at assumed `offset` in front of current one. */
     def insert(token: Token, offset: Int) = {
@@ -505,12 +507,15 @@ object Scanners {
          |Previous indent : $lastWidth
          |Latest indent   : $nextWidth"""
 
-    def observeColonEOL(): Unit =
-      if token == COLON then
+    private def switchAtEOL(testToken: Token, eolToken: Token): Unit =
+      if token == testToken then
         lookAhead()
         val atEOL = isAfterLineEnd || token == EOF
         reset()
-        if atEOL then token = COLONEOL
+        if atEOL then token = eolToken
+
+    def observeColonEOL(): Unit = switchAtEOL(COLON, COLONEOL)
+    def observeWithEOL(): Unit = switchAtEOL(WITH, WITHEOL)
 
     def observeIndented(): Unit =
       if indentSyntax && isNewLine then

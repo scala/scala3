@@ -18,10 +18,10 @@ object Givens:
     def empty: A
     extension (x: A) def combine(y: A): A
 
-  given Monoid[String]:
+  given Monoid[String] with
     def empty = ""
     extension (x: String) def combine(y: String) = x + y
 
-  inline given int2String as Conversion[Int, String] = _.toString
+  inline given int2String: Conversion[Int, String] = _.toString
 
   def foo[A](using A: Monoid[A]): A = A.combine(A.empty)(A.empty)

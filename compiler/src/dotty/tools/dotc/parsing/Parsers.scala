@@ -913,7 +913,7 @@ object Parsers {
           lookahead.nextToken()
           skipParams()
       skipParams()
-      lookahead.isIdent(nme.as)
+      lookahead.token == COLON || lookahead.isIdent(nme.as)
 
     def followingIsExtension() =
       val next = in.lookahead.token
@@ -1281,7 +1281,7 @@ object Parsers {
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
-      if in.token == COLONEOL then
+      if in.token == COLONEOL || in.token == WITHEOL then
         if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
         else
           in.nextToken()
@@ -3516,6 +3516,17 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
+    def givenConstrApps(): List[Tree] =
+      val t = constrApp()
+      if in.token == WITH then
+        in.observeWithEOL() // converts token to WITHEOL if at end of line
+        if in.token == WITH && in.lookahead.token != LBRACE then
+          in.nextToken()
+          t :: givenConstrApps()
+        else t :: Nil
+      else
+        t :: Nil
+
     /** GivenDef          ::=  [GivenSig] Type ‘=’ Expr
      *                      |  [GivenSig] ConstrApps [TemplateBody]
      *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘as’
@@ -3535,10 +3546,13 @@ object Parsers {
           else Nil
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
+        val newSyntax = in.token == COLON
         if !(name.isEmpty && noParams) then
-          accept(nme.as)
-        val parents = constrApps(commaOK = true)
-        if in.token == EQUALS && parents.length == 1 && parents.head.isType then
+          if isIdent(nme.as) then in.nextToken()
+          else accept(COLON)
+        val parents = givenConstrApps()
+        val parentsIsType = parents.length == 1 && parents.head.isType
+        if in.token == EQUALS && parentsIsType then
           accept(EQUALS)
           mods1 |= Final
           if noParams && !mods.is(Inline) then
@@ -3546,12 +3560,24 @@ object Parsers {
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, tparams, vparamss, parents.head, subExpr())
+        else if newSyntax && in.token != WITH && in.token != WITHEOL &&  parentsIsType then
+          if name.isEmpty then
+            syntaxError(em"anonymous given cannot be abstract")
+          DefDef(name, tparams, vparamss, parents.head, EmptyTree)
         else
-          possibleTemplateStart()
           val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
           val vparamss1 = vparamss.map(_.map(vparam =>
             vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
-          val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
+          val constr = makeConstructor(tparams1, vparamss1)
+          val templ =
+            if newSyntax || in.token == WITHEOL || in.token == WITH then
+              if in.token != WITHEOL then accept(WITH)
+              possibleTemplateStart()
+              val (self, stats) = templateBody()
+              Template(constr, parents, Nil, self, stats)
+            else
+              possibleTemplateStart()
+              templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
           if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
       end gdef
