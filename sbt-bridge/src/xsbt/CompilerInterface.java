@@ -20,16 +20,9 @@ import java.net.URLClassLoader;
 
 public final class CompilerInterface {
   public CachedCompiler newCompiler(String[] options, Output output, Logger initialLog, Reporter initialDelegate) {
-    // The classloader that sbt uses to load the compiler bridge is broken
-    // (see CompilerClassLoader#fixBridgeLoader for details). To workaround
-    // this we construct our own ClassLoader and then run the following code
-    // with it:
-    //   new CachedCompilerImpl(options, output)
-
     try {
       ClassLoader bridgeLoader = this.getClass().getClassLoader();
-      ClassLoader fixedLoader = CompilerClassLoader.fixBridgeLoader(bridgeLoader);
-      Class<?> cciClass = fixedLoader.loadClass("xsbt.CachedCompilerImpl");
+      Class<?> cciClass = bridgeLoader.loadClass("xsbt.CachedCompilerImpl");
       return (CachedCompiler) cciClass.getConstructors()[0].newInstance(options, output);
     } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
       throw new RuntimeException(e);

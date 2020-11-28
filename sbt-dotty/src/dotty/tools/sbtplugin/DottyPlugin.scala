@@ -8,10 +8,15 @@ import sbt.librarymanagement.{
   VersionNumber
 }
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.inc.classpath.ClassLoaderCache
 import xsbti.compile._
+import xsbti.AppConfiguration
 import java.net.URLClassLoader
 import java.util.Optional
+import java.util.{Enumeration, Collections}
+import java.net.URL
 import scala.util.Properties.isJavaAtLeast
+
 
 object DottyPlugin extends AutoPlugin {
   object autoImport {
@@ -521,15 +526,34 @@ object DottyPlugin extends AutoPlugin {
       scalaLibraryJar,
       dottyLibraryJar,
       compilerJar,
-      allJars
+      allJars,
+      appConfiguration.value
     )
   }
 
   // Adapted from private mkScalaInstance in sbt
   def makeScalaInstance(
-    state: State, dottyVersion: String, scalaLibrary: File, dottyLibrary: File, compiler: File, all: Seq[File]
+    state: State, dottyVersion: String, scalaLibrary: File, dottyLibrary: File, compiler: File, all: Seq[File], appConfiguration: AppConfiguration
   ): ScalaInstance = {
-    val libraryLoader = state.classLoaderCache(List(dottyLibrary, scalaLibrary))
+    /**
+      * The compiler bridge must load the xsbti classes from the sbt
+      * classloader, and similarly the Scala repl must load the sbt provided
+      * jline terminal. To do so we add the `appConfiguration` loader in
+      * the parent hierarchy of the scala 3 instance loader.
+      *
+      * The [[TopClassLoader]] ensures that the xsbti and jline classes
+      * only are loaded from the sbt loader. That is necessary because
+      * the sbt class loader contains the Scala 2.12 library and compiler
+      * bridge.
+      */
+    val topLoader = new TopClassLoader(appConfiguration.provider.loader)
+
+    val libraryJars = Array(dottyLibrary, scalaLibrary)
+    val libraryLoader = state.classLoaderCache.cachedCustomClassloader(
+      libraryJars.toList,
+      () => new URLClassLoader(libraryJars.map(_.toURI.toURL), topLoader)
+    )
+
     class DottyLoader
         extends URLClassLoader(all.map(_.toURI.toURL).toArray, libraryLoader)
     val fullLoader = state.classLoaderCache.cachedCustomClassloader(
@@ -540,10 +564,25 @@ object DottyPlugin extends AutoPlugin {
       dottyVersion,
       fullLoader,
       libraryLoader,
-      Array(dottyLibrary, scalaLibrary),
+      libraryJars,
       compiler,
       all.toArray,
       None)
+  }
+}
 
+private class TopClassLoader(sbtLoader: ClassLoader) extends ClassLoader(null) {
+  private val sharedPrefixes = List(
+    "xsbti.",
+    "org.jline."
+  )
+
+  override protected def loadClass(name: String, resolve: Boolean): Class[_] = {
+    if (sharedPrefixes.exists(name.startsWith(_))) {
+      val c = sbtLoader.loadClass(name)
+      if (resolve) resolveClass(c)
+      c
+    }
+    else super.loadClass(name, resolve)
   }
 }
