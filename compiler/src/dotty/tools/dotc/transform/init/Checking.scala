@@ -345,7 +345,7 @@ object Checking {
 
           case _ =>
             val Summary(pots, effs) = expand(pot1)
-            val Summary(pots2, effs2) = pots.select(sym, pot.source)
+            val Summary(pots2, effs2) = pots.select(sym, pot.source, selectEffect = false)
             Summary(pots2, effs ++ effs2)
         }
 
@@ -374,7 +374,7 @@ object Checking {
 
           case _ =>
             val Summary(pots, effs) = expand(pot1)
-            val Summary(pots2, effs2) = pots.select(sym, pot.source)
+            val Summary(pots2, effs2) = pots.select(sym, pot.source, selectEffect = false)
             Summary(pots2, effs ++ effs2)
         }
 
