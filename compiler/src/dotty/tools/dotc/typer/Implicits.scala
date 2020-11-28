@@ -1072,7 +1072,7 @@ trait Implicits:
       else ViewProto(wildApprox(argument.tpe.widen), wildApprox(pt))
         // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
-    val isNot: Boolean = wildProto.classSymbol == defn.NotClass
+    val isNotGiven: Boolean = wildProto.classSymbol == defn.NotGivenClass
 
     /** Try to type-check implicit reference, after checking that this is not
       * a diverging search
@@ -1201,10 +1201,10 @@ trait Implicits:
         }
 
       def negateIfNot(result: SearchResult) =
-        if (isNot)
+        if (isNotGiven)
           result match {
             case _: SearchFailure =>
-              SearchSuccess(ref(defn.Not_value), defn.Not_value.termRef, 0)(
+              SearchSuccess(ref(defn.NotGiven_value), defn.NotGiven_value.termRef, 0)(
                 ctx.typerState.fresh().setCommittable(true),
                 ctx.gadt
               )
@@ -1220,7 +1220,7 @@ trait Implicits:
              |According to the new implicit resolution rules this is no longer possible;
              |the search will fail with a global ambiguity error instead.
              |
-             |Consider using the scala.util.Not class to implement similar functionality.""",
+             |Consider using the scala.util.NotGiven class to implement similar functionality.""",
              ctx.source.atSpan(span))
 
       /** A relation that influences the order in which implicits are tried.
