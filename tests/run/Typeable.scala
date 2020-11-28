@@ -27,13 +27,13 @@ object Typeable:
   class instanceOf[T: Typeable]:
     def unapply(x: Any): Option[T] = Typeable[T].cast(x)
 
-  given int as Typeable[Int]:
+  given int: Typeable[Int] with
     def cast(x: Any): Option[Int] = x match
       case x: Int => Some(x)
       case _ => None
     def describe = "Int"
 
-  given list[T: Typeable] as Typeable[List[T]]:
+  given list[T: Typeable]: Typeable[List[T]] with
     def cast(x: Any): Option[List[T]] = x match
       case x: List[_] if x.forall(Typeable[T].cast(_).isDefined) => Some(x.asInstanceOf[List[T]])
       case _ => None

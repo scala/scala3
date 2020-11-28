@@ -2,7 +2,7 @@ object Test extends App {
 
   class TC
 
-  given stringListOps(using TC) as Object {
+  given stringListOps(using TC): Object with {
     type T = List[String]
     extension (x: T) def foo(y: T) = (x ++ y, summon[TC])
     extension (x: T) def bar(y: Int) = (x(0)(y), summon[TC])

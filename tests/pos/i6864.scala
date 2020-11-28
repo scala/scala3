@@ -14,4 +14,4 @@ trait C
 trait Baz[A]
 
 given C
-given [A] as Baz[A]
+given [A]: Baz[A] with {}

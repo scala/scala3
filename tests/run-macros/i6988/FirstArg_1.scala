@@ -2,7 +2,7 @@ package foo
 
 case class FirstArg(value: Any, source: String)
 object FirstArg {
-  inline given create as FirstArg = ${Macros.argsImpl}
+  inline given create: FirstArg = ${Macros.argsImpl}
 }
 
 object Macros {

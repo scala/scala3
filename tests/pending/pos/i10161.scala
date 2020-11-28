@@ -11,8 +11,8 @@ object Incompat3 {
   trait Context { type Out }
 
   object Context {
-    given foo(using ctx: Context) as Option[ctx.Out] = ???
+    given foo(using ctx: Context): Option[ctx.Out] = ???
 
-    given bar(using ctx: Context) as (Option[ctx.Out], String) = (foo, "foo")
+    given bar(using ctx: Context): (Option[ctx.Out], String) = (foo, "foo")
   }
 }

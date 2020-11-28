@@ -7,7 +7,7 @@ object Test {
   }
 
   def foo: A & B = o
-  given o as (A & B) = foo
+  given o: (A & B) = foo
 
   def xToString(x: o.X): String = x  // error
 

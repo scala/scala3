@@ -7,11 +7,11 @@ trait Eq[T] {
 }
 
 object Eq {
-  given Eq[String] {
+  given Eq[String] with {
     def eqv(x: String, y: String) = x == y
   }
 
-  given Eq[Int] {
+  given Eq[Int] with {
     def eqv(x: Int, y: Int) = x == y
   }
 
@@ -32,7 +32,7 @@ object Eq {
     case '[EmptyTuple] => Nil
   }
 
-  given derived[T: Type](using q: Quotes) as Expr[Eq[T]] = {
+  given derived[T: Type](using q: Quotes): Expr[Eq[T]] = {
     import quotes.reflect._
 
     val ev: Expr[Mirror.Of[T]] = Expr.summon(using Type.of[Mirror.Of[T]]).get

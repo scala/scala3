@@ -26,7 +26,7 @@ end Common
 
 object Instances extends Common:
 
-  given intOrd as Ord[Int]:
+  given intOrd: Ord[Int] with
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 

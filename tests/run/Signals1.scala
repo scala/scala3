@@ -43,7 +43,7 @@ package frp:
     end Var
 
     opaque type Caller = AbstractSignal[?]
-    given noCaller as Caller = new AbstractSignal[Nothing]:
+    given noCaller: Caller = new AbstractSignal[Nothing]:
       override def eval = ???
       override def computeValue() = ()
 

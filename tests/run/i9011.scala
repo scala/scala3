@@ -10,7 +10,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  given Eq[Int] {
+  given Eq[Int] with {
     def eqv(x: Int, y: Int) = x == y
   }
 
@@ -40,7 +40,7 @@ object Eq {
         }
     }
 
-  inline given derived[T](using m: Mirror.Of[T]) as Eq[T] = {
+  inline given derived[T](using m: Mirror.Of[T]): Eq[T] = {
     val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match {
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)

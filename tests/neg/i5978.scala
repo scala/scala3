@@ -5,7 +5,7 @@ opaque type Position[Buffer] = Int
 trait TokenParser[Token, R]
 
 object TextParser {
-  given TP as TokenParser[Char, Position[CharSequence]] {}
+  given TP: TokenParser[Char, Position[CharSequence]] with {}
 
   given FromCharToken(using T: TokenParser[Char, Position[CharSequence]])
     as Conversion[Char, Position[CharSequence]] = ???
@@ -21,7 +21,7 @@ object Testcase {
     val co_x : Position[CharSequence] = 'x'                   // error
 
     {
-      given XXX as Conversion[Char, Position[CharSequence]] = co_i
+      given XXX: Conversion[Char, Position[CharSequence]] = co_i
       val co_y : Position[CharSequence] = 'x'
     }
   }

@@ -17,7 +17,7 @@ enum ExprF[R[_],I] {
 
 /** Companion. */
 object ExprF {
-  given hfunctor as HFunctor[ExprF] {
+  given hfunctor: HFunctor[ExprF] with {
     def hmap[A[_], B[_]](nt: A ~> B): ([x] =>> ExprF[A,x]) ~> ([x] =>> ExprF[B,x]) = {
       new ~>[[x] =>> ExprF[A,x], [x] =>> ExprF[B,x]] {
         def apply[I](fa: ExprF[A,I]): ExprF[B,I] = fa match {

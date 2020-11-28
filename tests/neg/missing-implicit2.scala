@@ -3,15 +3,15 @@ trait Y
 object test:
   def f(using x: X) = ???
   object instances {
-    given y as Y = ???
+    given y: Y = ???
   }
   locally {
-    given xFromY(using y: Y) as X = ???
+    given xFromY(using y: Y): X = ???
     f(using xFromY) // error
   }
   locally {
     object instances2 {
-      given xFromY(using Y) as X = ???
+      given xFromY(using Y): X = ???
     }
     f // error
   }
