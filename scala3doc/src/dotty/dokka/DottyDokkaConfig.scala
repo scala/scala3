@@ -19,6 +19,8 @@ case class DottyDokkaConfig(args: Scala3doc.Args, docContext: DocContext) extend
 
   lazy val sourceLinks: SourceLinks = SourceLinks.load(args)
 
+  lazy val displaySourceSets = getSourceSets.toDisplaySourceSet
+
   lazy val staticSiteContext = args.docsRoot.map(path => StaticSiteContext(
       File(path).getAbsoluteFile(),
       Set(mkSourceSet.asInstanceOf[SourceSetWrapper]),
