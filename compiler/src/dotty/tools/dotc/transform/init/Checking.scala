@@ -227,7 +227,7 @@ object Checking {
       val cls = denot.symbol.asClass
       val potInner =
         pot match
-        case warm: Warm => Warm(cls, pot)(source)
+        case warm: Warm => Potentials.asSeenFrom(Warm(cls, ThisRef()(source))(source), pot)
         case _ => LocalHot(cls)(source)
       buffer += MethodCall(potInner, cls.primaryConstructor)(source)
       buffer += Promote(potInner)(source)

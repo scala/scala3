@@ -116,7 +116,7 @@ object Potentials {
   case class Outer(pot: Potential, classSymbol: ClassSymbol)(val source: Tree) extends Potential {
     // be lenient with size of outer selection, no worry for non-termination
     override def size: Int = pot.size
-    override def level: Int = pot.size
+    override def level: Int = pot.level
     def show(using Context): String = pot.show + ".outer[" + classSymbol.show + "]"
   }
 
@@ -125,7 +125,7 @@ object Potentials {
     assert(field != NoSymbol)
 
     override def size: Int = potential.size + 1
-    override def level: Int = potential.size
+    override def level: Int = potential.level
     def show(using Context): String = potential.show + "." + field.name.show
   }
 
@@ -134,7 +134,7 @@ object Potentials {
     assert(method != NoSymbol)
 
     override def size: Int = potential.size + 1
-    override def level: Int = potential.size
+    override def level: Int = potential.level
     def show(using Context): String = potential.show + "." + method.name.show
   }
 
@@ -224,13 +224,11 @@ object Potentials {
 
       case Warm(cls, outer2) =>
         // widening to terminate
-        val thisValue2 = thisValue match {
-          case Warm(cls, outer) if outer.level > 2 =>
-            Warm(cls, Cold()(outer2.source))(thisValue.source)
-
-          case _  =>
+        val thisValue2 =
+          if thisValue.level + outer2.level > 4 then
+            Cold()(outer2.source)
+          else
             thisValue
-        }
 
         val outer3 = asSeenFrom(outer2, thisValue2)
         Warm(cls, outer3)(pot.source)
