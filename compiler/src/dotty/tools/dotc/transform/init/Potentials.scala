@@ -183,7 +183,7 @@ object Potentials {
       // max potential length
       // TODO: it can be specified on a project basis via compiler options
       if (pot.size > 2)
-        summary + Promote(pot)(source)
+        summary + Promote(pot)(pot.source)
       else if (symbol.isConstructor)
         val res = summary + pot
         if selectEffect then res + MethodCall(pot, symbol)(source)
