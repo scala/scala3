@@ -233,7 +233,7 @@ object Summarization {
         Summary.empty
 
       case tmref: TermRef
-      if env.checkGlobal && tmref.symbol.is(Flags.Module) && tmref.symbol.isStatic =>
+      if env.checkGlobal && tmref.symbol.is(Flags.Module, butNot = Flags.Package) && tmref.symbol.isStatic =>
         val cls = tmref.symbol.moduleClass
         if cls.primaryConstructor.exists then
           val pot = Global(tmref)(source)
@@ -293,7 +293,7 @@ object Summarization {
       if (enclosing.is(Flags.Package) && cls.is(Flags.Module))
         if env.checkGlobal && cls.primaryConstructor.exists then  // ctor may not exist, tests/init/neg/inner19
           val pot = Global(cls.sourceModule.termRef)(source)
-          Summary(pot) + AccessGlobal(pot) + MethodCall(pot, cls.primaryConstructor)(source)
+          return Summary(pot) + AccessGlobal(pot) + MethodCall(pot, cls.primaryConstructor)(source)
         else
           return Summary.empty
 
