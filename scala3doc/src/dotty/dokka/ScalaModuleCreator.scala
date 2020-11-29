@@ -17,8 +17,7 @@ import dotty.tools.dotc.core.Contexts._
 
 class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTranslator:
    override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =
-    val parser = new MarkdownParser(_ => null)
-    val result = DokkaTastyInspector(sourceSet, parser).result()
+    val result = DokkaTastyInspector(new MarkdownParser(_ => null)).result()
 
     def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.allMembers.flatMap(flattenMember)
 

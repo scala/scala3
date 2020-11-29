@@ -25,7 +25,7 @@ trait PackageSupport:
           JList(),
           documentation.asJava,
           null,
-          sourceSet.toSet,
+          ctx.sourceSet.toSet,
           PropertyContainer.Companion.empty()
         )
     }
@@ -41,7 +41,7 @@ trait PackageSupport:
               JList(),
               pckObj.symbol.documentation.asJava,
               null,
-              sourceSet.toSet,
+              ctx.sourceSet.toSet,
               PropertyContainer.Companion.empty()
                 .plus(clazz.get(CompositeMemberExtension))
             )
