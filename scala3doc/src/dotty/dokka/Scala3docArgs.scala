@@ -13,8 +13,6 @@ import java.nio.file.Files
 
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.CommonScalaSettings
-import dotty.tools.dotc.report
-import dotty.tools.dotc.core.Contexts._
 import dotty.dokka.Scala3doc._
 
 class Scala3docArgs extends SettingGroup with CommonScalaSettings:
@@ -37,7 +35,7 @@ class Scala3docArgs extends SettingGroup with CommonScalaSettings:
     StringSetting("-revision", "revision", "Revision (branch or ref) used to build project project", "")
 
 object Scala3docArgs:
-  def extract(args: List[String])(using Context) =
+  def extract(args: List[String])(using CompilerContext) =
     val inst = new Scala3docArgs
     import inst._
     val initialSummary =

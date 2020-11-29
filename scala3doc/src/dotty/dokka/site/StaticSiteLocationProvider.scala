@@ -42,7 +42,8 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
                 case regex(year, month, day, name) =>
                   rawFilePath.getParent.resolveSibling(Paths.get(year, month, day, name))
                 case _ =>
-                  println(s"Blog file at path: $rawFilePath doesn't match desired format.")
+                  val msg = s"Relative path for blog: $rawFilePath doesn't match `yyy-mm-dd-name.md` format."
+                  report.warn(msg, page.template.file)
                   rawFilePath.resolveSibling(pageName.substring(0, dotIndex))
               }
               blogPostPath.iterator.asScala.map(_.toString).toList.asJava

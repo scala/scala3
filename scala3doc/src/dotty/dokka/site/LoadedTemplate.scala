@@ -17,7 +17,10 @@ case class LazyEntry(getKey: String, value: () => String) extends JMapEntry[Stri
   lazy val getValue: Object = value()
   def setValue(x$0: Object): Object = ???
 
-case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTemplate], file: File):
+case class LoadedTemplate(
+  templateFile: TemplateFile,
+  children: List[LoadedTemplate],
+  file: File):
 
   private def brief(ctx: StaticSiteContext): String =
     try
@@ -25,9 +28,8 @@ case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTempl
       Option(code.select("p").first()).fold("...")(_.outerHtml())
     catch
       case e: Throwable =>
-        // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
-        println(s"[ERROR] Unable to process brief for ${templateFile.file}")
-        e.printStackTrace()
+        val msg = s"[ERROR] Unable to process brief for ${templateFile.file}"
+        report.error(msg, templateFile.file, e)(using ctx.outerCtx)
         "..."
 
   def lazyTemplateProperties(ctx: StaticSiteContext): JMap[String, Object] = new java.util.AbstractMap[String, Object]():

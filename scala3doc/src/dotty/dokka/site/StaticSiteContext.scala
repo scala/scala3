@@ -20,14 +20,20 @@ import util.Try
 
 import scala.collection.JavaConverters._
 
-class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], val args: Scala3doc.Args, val sourceLinks: SourceLinks):
+class StaticSiteContext(
+  val root: File,
+  sourceSets: Set[SourceSetWrapper],
+  val args: Scala3doc.Args, val sourceLinks: SourceLinks)(using val outerCtx: CompilerContext):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
-  def indexPage():Option[StaticPageNode] =
+  def indexPage(): Option[StaticPageNode] =
     val files = List(new File(root, "index.html"), new File(root, "index.md")).filter { _.exists() }
-    // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
-    if (files.size > 1) println(s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}")
+
+    if files.size > 1 then
+      val msg = s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}"
+      report.error(msg)
+
     files.flatMap(loadTemplate(_, isBlog = false)).headOption.map(templateToPage)
 
   lazy val layouts: Map[String, TemplateFile] =
@@ -102,8 +108,9 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], val a
 
         val processedTemplate = // Set provided name as arg in page for `docs`
           if from.getParentFile.toPath == docsPath && templateFile.isIndexPage() then
-            // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
-            if templateFile.title != "index" then println(s"[WARN] title in $from will be overriden")
+            if templateFile.title != "index" then
+              report.warn("Property `title` will be overriden by project name", from)
+
             templateFile.copy(title = args.name)
           else templateFile
 

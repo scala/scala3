@@ -39,8 +39,10 @@ class SitePagesCreator(using ctx: DocContext) extends BaseStaticSiteProcessor:
     val apiRoot = mkRootPage(input, contentPage)
     val (indexes, children) = ctx.allPages.partition(f =>
       f.template.isIndexPage() && f.template.file.toPath.getParent() == ctx.docsPath )
-    // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
-    if (indexes.size > 1) println(s"ERROR: Multiple index pages found ${indexes.map(_.template.file)}")
+
+    if (indexes.size > 1)
+      val msg = s"ERROR: Multiple index pages for doc found ${indexes.map(_.template.file)}"
+      report.error(msg)
 
     def emptyContent = ctx.asContent(Text(), mkDRI(extra = "root_content")).get(0)
 

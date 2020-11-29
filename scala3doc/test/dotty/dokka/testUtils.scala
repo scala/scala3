@@ -13,7 +13,7 @@ case class ReportedDiagnostics(errors: List[Diagnostic], warnings: List[Diagnost
   def infoMsgs = infos.map(_.msg.rawMessage)
 
 
-extension (c: Context) def reportedDiagnostics: ReportedDiagnostics =
+extension (c: CompilerContext) def reportedDiagnostics: ReportedDiagnostics =
   val t = c.reporter.asInstanceOf[TestReporter]
   ReportedDiagnostics(t.errors.result, t.warnings.result, t.infos.result)
 

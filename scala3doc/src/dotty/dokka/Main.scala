@@ -13,7 +13,6 @@ import java.nio.file.Files
 
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.CommonScalaSettings
-import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Contexts._
 
 /** Main class for the doctool.
