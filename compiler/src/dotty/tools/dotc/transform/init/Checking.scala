@@ -141,11 +141,14 @@ object Checking {
           checkSecondaryConstructor(ctor)
       }
 
-      (stats :+ expr).foreach { stat =>
-        val summary = Summarization.analyze(stat)(theEnv.withOwner(ctor))
+      checkStats(stats :+ expr, ctor)
+    }
+
+    def checkStats(stats: List[Tree], owner: Symbol)(using state: State): Unit =
+      stats.foreach { stat =>
+        val summary = Summarization.analyze(stat)(theEnv.withOwner(owner))
         checkEffects(summary.effs)
       }
-    }
 
     cls.paramAccessors.foreach { acc =>
       if (!acc.is(Flags.Method)) {
@@ -155,16 +158,19 @@ object Checking {
     }
 
     tpl.parents.foreach {
-      case tree @ Block(_, parent) =>
-        val (ctor, _, _) = decomposeCall(parent)
+      case tree @ Block(stats, parent) =>
+        val (ctor, _, argss) = decomposeCall(parent)
+        if theEnv.isFullMode then checkStats((stats :: argss).flatten, cls)
         checkConstructor(ctor.symbol, parent.tpe, tree)
 
-      case tree @ Apply(Block(_, parent), _) =>
-        val (ctor, _, _) = decomposeCall(parent)
+      case tree @ Apply(Block(stats, parent), args) =>
+        val (ctor, _, argss) = decomposeCall(parent)
+        if theEnv.isFullMode then checkStats((stats :: argss).flatten, cls)
         checkConstructor(ctor.symbol, tree.tpe, tree)
 
       case parent : Apply =>
         val (ctor, _, argss) = decomposeCall(parent)
+        if theEnv.isFullMode then checkStats(argss.flatten, cls)
         checkConstructor(ctor.symbol, parent.tpe, parent)
 
       case ref =>
@@ -203,13 +209,13 @@ object Checking {
         val errors = state.check(MethodCall(pot, sym)(source))
         if errors.nonEmpty then return errors
 
-      // if sym.name.isTermName && !sym.isOneOf(Flags.Method | Flags.Private) && sym.hasSource then
-      //   val errors = state.check(Promote(FieldReturn(pot, sym)(source))(source))
-      //   if errors.nonEmpty then return errors
+      if sym.name.isTermName && !sym.isOneOf(Flags.Method | Flags.Private) && sym.hasSource then
+        val errors = state.check(Promote(FieldReturn(pot, sym)(source))(source))
+        if errors.nonEmpty then return errors
     }
 
     // best-effort in fast mode
-    // if !theEnv.isFullMode then return Errors.empty
+    if !theEnv.isFullMode then return Errors.empty
 
     val excludedFlags = Flags.Deferred | Flags.Private | Flags.Protected
 

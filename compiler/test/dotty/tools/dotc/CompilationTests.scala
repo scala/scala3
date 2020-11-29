@@ -321,7 +321,6 @@ class CompilationTests {
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
     compileFilesInDir("tests/init/full/neg", options).checkExpectedErrors()
     compileFilesInDir("tests/init/pos", options).checkCompile()
-    compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
   }
 }
 
