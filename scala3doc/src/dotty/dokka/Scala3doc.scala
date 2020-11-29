@@ -11,14 +11,12 @@ import collection.immutable.ArraySeq
 
 import java.nio.file.Files
 
-import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.CommonScalaSettings
-import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Reporter
 
 
-class Scala3DocDokkaLogger(using Context) extends DokkaLogger:
+class Scala3DocDokkaLogger(using CompilerContext) extends DokkaLogger:
   def debug(msg: String): Unit = report.debuglog(msg)
 
   // We do not want errors from dokka (that are) not critical to fail our runs
@@ -69,7 +67,7 @@ object Scala3doc:
     revision: Option[String] = None
   )
 
-  def run(args: Array[String])(using ctx: Context): Reporter =
+  def run(args: Array[String])(using ctx: CompilerContext): Reporter =
     val parsedArgs = Scala3docArgs.extract(args.toList)
 
     def listTastyFiles(f: File): Seq[File] =
@@ -90,7 +88,7 @@ object Scala3doc:
     ctx.reporter
 
 
-  private [dokka] def run(args: Args)(using ctx: Context) =
+  private [dokka] def run(args: Args)(using ctx: CompilerContext) =
     val docContext = new DocContext(args, ctx)
     new DokkaGenerator(docContext, docContext.logger).generate()
 

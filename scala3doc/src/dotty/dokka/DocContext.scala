@@ -7,14 +7,47 @@ import java.io.File
 import collection.JavaConverters._
 import dotty.dokka.site.StaticSiteContext
 import dotty.tools.dotc.core.Contexts._
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 
-given compilerContext(using docContext: DocContext) as Context =
+type CompilerContext = dotty.tools.dotc.core.Contexts.Context
+
+given compilerContext(using docContext: DocContext) as CompilerContext =
   docContext.compilerContext
 
 given docContextFromDokka(using dokkaContext: DokkaContext) as DocContext =
   dokkaContext.getConfiguration.asInstanceOf[DocContext]
 
-case class DocContext(args: Scala3doc.Args, compilerContext: Context)
+val report = dotty.tools.dotc.report
+
+def throwableToString(t: Throwable)(using CompilerContext): String =
+  if ctx.settings.verbose.value then
+    val os = new ByteArrayOutputStream
+    t.printStackTrace(new PrintStream(os))
+    os.toString()
+  else s"${t.getClass.getName}: ${t.getMessage}"
+
+// TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
+private def createMessage(
+  msg: String, file: File, e: Throwable | Null)(using CompilerContext): String =
+    val localizedMessage = s"$file: $msg"
+    e match
+      case null => localizedMessage
+      case throwable: Throwable =>
+         s"$localizedMessage \ncaused by: ${throwableToString(throwable)}"
+
+extension (r: report.type):
+  def error(m: String, f: File, e: Throwable | Null = null)(using CompilerContext): Unit =
+    r.error(createMessage(m, f, e))
+
+  def warn(m: String, f: File, e: Throwable)(using CompilerContext): Unit =
+    r.warning(createMessage(m, f, e))
+
+  def warn(m: String, f: File)(using CompilerContext): Unit =
+    r.warning(createMessage(m, f, null))
+
+
+case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
   extends DokkaConfiguration:
     override def getOutputDir: File = args.output
     override def getCacheRoot: File = null
@@ -26,7 +59,7 @@ case class DocContext(args: Scala3doc.Args, compilerContext: Context)
     override def getModuleName(): String = "ModuleName"
     override def getModuleVersion(): String = ""
 
-    lazy val sourceLinks: SourceLinks = SourceLinks.load(args)
+    lazy val sourceLinks: SourceLinks = SourceLinks.load(using this)
 
     lazy val displaySourceSets = getSourceSets.toDisplaySourceSet
 
@@ -37,7 +70,7 @@ case class DocContext(args: Scala3doc.Args, compilerContext: Context)
         Set(mkSourceSet.asInstanceOf[SourceSetWrapper]),
         args,
         sourceLinks
-      ))
+      )(using compilerContext))
 
     override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] =
       JList()

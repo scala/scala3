@@ -8,14 +8,13 @@ import org.junit.Assert
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.nio.charset.Charset
-import dotty.tools.dotc.core.Contexts._
 
 class ReportingTest:
   import Scala3doc.Args
 
   private def checkReportedDiagnostics(
     newArgs: Args => Args = identity,
-    ctx: Context = testContext)(
+    ctx: CompilerContext = testContext)(
     op: ReportedDiagnostics => Unit): Unit =
 
     val dest = Files.createTempDirectory("test-doc")

@@ -13,7 +13,6 @@ import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.base.parsers.MarkdownParser
 import collection.JavaConverters._
 import kotlin.coroutines.Continuation
-import dotty.tools.dotc.core.Contexts._
 
 class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTranslator:
    override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =

@@ -105,15 +105,21 @@ case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using val c
     extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
   import qctx.reflect._
 
-  def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch case e: Throwable => errorMsg(tree, tree.symbol.show, e)
-  def processTreeOpt[T](tree: Tree)(op: => Option[T]): Option[T] = try op catch case e: Throwable => errorMsg(tree, tree.symbol.show, e)
-  def processSymbol[T](sym: Symbol)(op: => T): Option[T] = try Option(op) catch case e: Throwable => errorMsg(sym, sym.show, e)
+  def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch
+    case e: Exception  =>
+      report.error(throwableToString(e), tree.pos)
+      None
+  def processTreeOpt[T](tree: Tree)(op: => Option[T]): Option[T] = try op catch
+    case e: Exception =>
+      report.error(throwableToString(e), tree.pos)
+      None
 
-  private def errorMsg[T](a: Any, m: => String, e: Throwable): Option[T] =
-    val msg = try m catch case e: Throwable => a.toString
-    println(s"ERROR: tree is faling: $msg")
-    e.printStackTrace()
-    throw e
+  def processSymbol[T](sym: Symbol)(op: => T): Option[T] = try Option(op) catch
+    case t: Throwable =>
+      try report.error(throwableToString(t), sym.tree.pos) catch
+        case _: Throwable =>
+          report.error(s"Failed to process ${sym.show}:\n${throwableToString(t)}")
+      None
 
   def parseRootTree(root: Tree): Seq[Documentable] =
     val docs = Seq.newBuilder[Documentable]

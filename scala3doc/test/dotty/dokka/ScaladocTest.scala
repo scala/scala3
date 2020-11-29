@@ -11,7 +11,6 @@ import scala.jdk.CollectionConverters.{ListHasAsScala, SeqHasAsJava}
 import org.junit.{Test, Rule}
 import org.junit.rules.{TemporaryFolder, ErrorCollector}
 import java.io.File
-import dotty.tools.dotc.core.Contexts._
 
 abstract class ScaladocTest(val name: String):
   def assertions: Seq[Assertion]

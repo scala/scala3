@@ -9,7 +9,6 @@ import org.junit.Assert._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.nio.charset.Charset
-import dotty.tools.dotc.core.Contexts._
 
 class SiteGeneratationTest:
   val projectName = "Test Project Name"
