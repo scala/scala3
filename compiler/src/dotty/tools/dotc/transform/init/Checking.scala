@@ -31,7 +31,8 @@ object Checking {
    */
 
   case class State(
-    private var visited: Set[Effect],          // effects that have been checked
+    var checking: Set[Effect],         // effects that are being checked
+    var checked: Set[Effect],          // effects that have been checked
     path: Vector[Tree],                        // the path that leads to the current effect
     thisClass: ClassSymbol,                    // the concrete class of `this`
     fieldsInited: mutable.Set[Symbol],
@@ -39,35 +40,44 @@ object Checking {
     env: Env,
     var superCallFinished: Boolean = false,                         // whether super call has finished, used in singleton objects
     safePromoted: mutable.Set[Potential] = mutable.Set.empty,       // potentials that can be safely promoted
+    checkFun: (Effect, State) => Errors = defaultCheck              // check function to be used
   ) {
-    given State = this
 
-    /** This method allows hijacking the checking logic */
-    def check(eff: Effect): Errors =
-      trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
-        val state: State = this.withVisited(eff)
-
-        if (this.hasVisited(eff)) Errors.empty
-        else Checking.doCheck(eff)
-      }
+    def check(eff: Effect)(using state: State): Errors = checkFun(eff, state)
 
     def isGlobalObject(using Context): Boolean = thisClass.is(Flags.Module) && thisClass.isStatic
-
-    def withVisited(eff: Effect): State = {
-      visited = visited + eff
-      copy(path = this.path :+ eff.source)
-    }
-
-    def hasVisited(eff: Effect): Boolean =
-      visited.contains(eff)
 
     def withOwner(sym: Symbol): State = copy(env = env.withOwner(sym))
 
     def test(op: State ?=> Errors): Errors = {
-      val saved = visited
+      val savedChecked = checked
+      val savedChecking = checking
       val errors = op(using this)
-      visited = saved
+      checked = savedChecked
+      checking = savedChecking
       errors
+    }
+  }
+
+  /** Enable hijacking checking logic
+   *
+   *  This function should not be called directly
+   */
+  private val defaultCheck: (Effect, State) => Errors = { (eff: Effect, state: State) =>
+    given State = state
+    trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
+      if (state.checked.contains(eff) || state.checking.contains(eff)) {
+        traceIndented("Already checked " + eff.show, init)
+        Errors.empty
+      }
+      else {
+        state.checking = state.checking + eff
+        val state2: State = state.copy(path = state.path :+ eff.source)
+        val errors = Checking.doCheck(eff)(using state2)
+        state.checking -= eff
+        state.checked  += eff
+        errors
+      }
     }
   }
 
@@ -197,7 +207,7 @@ object Checking {
     }
 
     val methods = classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred)
-    println("methods in " + classRef.show + ": " + methods.map(_.show).mkString(", "))
+    // println("methods in " + classRef.show + ": " + methods.map(_.show).mkString(", "))
 
     classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred).foreach { denot =>
       val m = denot.symbol
@@ -240,11 +250,33 @@ object Checking {
             PromoteCold(eff.source, state.path).toErrors
 
           case pot @ Warm(cls, outer) =>
+            import scala.util.control.NonLocalReturns._
+
             // Use the assumption that `Promote(pot)` eagerly in the visited set is unsound.
             // It can only be safely used for checking the expanded effects.
             // tests/init/neg/hybrid2.scala
-            val errors = state.test { state.check(Promote(outer)(eff.source)) }
-            if (errors.isEmpty) Errors.empty
+            var eagerlyUsed: Boolean = false
+            var capException: ReturnThrowable[Errors] = null
+            val checkFun =  { (eff2: Effect, state2: State) =>
+              if eff == eff2 then
+                traceIndented("Eagerly using " + eff.show + ", will check thoroughly", init)
+                eagerlyUsed = true
+                throwReturn(Errors.empty)(using capException)
+              else
+                state.check(eff2)(using state2)
+            }
+
+            val state2 = state.copy(
+              checking = Set(eff), // important to be empty as eager usage might be hidden under a visited node
+              checkFun = checkFun
+            )
+
+            val errors = returning {
+              capException = summon[ReturnThrowable[Errors]]
+              state2.check(Promote(outer)(eff.source))(using state2)
+            }
+
+            if (errors.isEmpty && !eagerlyUsed) Errors.empty
             else
               val errs = state.test { checkPromotion(pot, eff.source) }
               if errs.nonEmpty then UnsafePromotion(pot, eff.source, state.path, errs).toErrors
