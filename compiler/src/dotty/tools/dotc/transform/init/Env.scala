@@ -30,6 +30,7 @@ case class Env(ctx: Context) {
 
   def canIgnoreClass(cls: Symbol): Boolean =
     cls == defn.AnyClass ||
+    cls == defn.AnyValClass ||
     cls == defn.ObjectClass
 
   def withCtx(newCtx: Context): Env = this.copy(ctx = newCtx)

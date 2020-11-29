@@ -312,8 +312,10 @@ object Summarization {
       val effs = analyze(Block(tpl.body, unitLiteral))._2
 
       def parentArgEffsWithInit(stats: List[Tree], ctor: Symbol, source: Tree): Effects =
-        val initCall = MethodCall(ThisRef()(source), ctor)(source)
-        stats.foldLeft(Set(initCall)) { (acc, stat) =>
+        val init =
+          if env.canIgnoreMethod(ctor) then Effects.empty
+          else Effects.empty + MethodCall(ThisRef()(source), ctor)(source)
+        stats.foldLeft(init) { (acc, stat) =>
           val summary = Summarization.analyze(stat)
           acc ++ summary.effs
         }
@@ -335,7 +337,7 @@ object Summarization {
           case ref =>
             val tref: TypeRef = ref.tpe.typeConstructor.asInstanceOf
             val cls = tref.classSymbol.asClass
-            if (cls == defn.AnyClass || cls == defn.AnyValClass) Effects.empty
+            if env.canIgnoreClass(cls) then Effects.empty
             else {
               val ctor = cls.primaryConstructor
               val prefixEff =
