@@ -25,7 +25,7 @@ import dotty.tools.dotc.core.Contexts._
   *
   * - [](package.DottyDokkaPlugin) is our class that Dokka calls back and which
   *   actually generates the documentation.
-  * - [](package.DottyDokkaConfig) is our config for Dokka.
+  * - [](package.DocContext) is our config for Dokka
   */
 object Main:
   def main(args: Array[String]): Unit =

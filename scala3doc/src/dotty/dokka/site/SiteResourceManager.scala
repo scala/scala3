@@ -10,8 +10,7 @@ import org.jetbrains.dokka.pages._
 import scala.collection.JavaConverters._
 import dotty.dokka.model.api._
 
-class SiteResourceManager(ctx: Option[StaticSiteContext])
-  extends BaseStaticSiteProcessor(ctx):
+class SiteResourceManager(using ctx: DocContext) extends BaseStaticSiteProcessor:
     private def listResources(nodes: Seq[PageNode]): Set[String] =
       nodes.flatMap {
         case it: AContentPage =>
@@ -32,7 +31,7 @@ class SiteResourceManager(ctx: Option[StaticSiteContext])
           files.map(p => rootPath.relativize(p).toString).toList
 
       val resources = images ++ listResources(input.getChildren.asScala.toList)
-      println(s"#### $resources")
+
       val resourcePages = resources.map { path =>
         val strategy = new RenderingStrategy.Copy(rootPath.resolve(path).toString)
         new RendererSpecificResourcePage(path, JList(), strategy)

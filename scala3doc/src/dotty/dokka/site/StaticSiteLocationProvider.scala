@@ -14,9 +14,9 @@ import scala.collection.JavaConverters._
 import java.nio.file.Paths
 import java.nio.file.Path
 
-class StaticSiteLocationProviderFactory(private val ctx: DokkaContext) extends LocationProviderFactory:
+class StaticSiteLocationProviderFactory(using ctx: DokkaContext) extends LocationProviderFactory:
   override def getLocationProvider(pageNode: RootPageNode): LocationProvider =
-    try new StaticSiteLocationProvider(ctx, pageNode)
+    try new StaticSiteLocationProvider(pageNode)
     catch
       case e: Error =>
         // TODO (https://github.com/lampepfl/scala3doc/issues/238) error handling
@@ -26,12 +26,12 @@ class StaticSiteLocationProviderFactory(private val ctx: DokkaContext) extends L
         // Making generated DRIs not-unique will reproduce this behavior
         null
 
-class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
+class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext)
   extends DokkaLocationProvider(pageNode, ctx, ".html"):
     private def updatePageEntry(page: PageNode, jpath: JList[String]): JList[String] =
       page match
         case page: StaticPageNode =>
-          ctx.config.staticSiteContext.fold(jpath) { context =>
+          summon[DocContext].staticSiteContext.fold(jpath) { context =>
             val rawFilePath = context.root.toPath.relativize(page.template.file.toPath)
             val pageName = page.template.file.getName
             val dotIndex = pageName.lastIndexOf('.')
@@ -61,7 +61,7 @@ class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
         case _ if jpath.size() > 1 && jpath.get(0) ==   "--root--" && jpath.get(1) == "-a-p-i" =>
           (List("api") ++ jpath.asScala.drop(2)).asJava
 
-        case _: ModulePage if ctx.config.staticSiteContext.isEmpty =>
+        case _: ModulePage if summon[DocContext].staticSiteContext.isEmpty =>
           JList("index")
         case _ =>
           jpath

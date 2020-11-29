@@ -5,7 +5,6 @@ import org.jetbrains.dokka.base.translators.documentables.{DefaultPageCreator, P
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.transformers.documentation.DocumentableToPageTranslator
-import org.jetbrains.dokka.utilities.DokkaLogger
 import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.pages._
 import collection.JavaConverters._
@@ -24,9 +23,8 @@ case class DocumentableGroup(name: Option[String | Documentable], documenables: 
 
 class ScalaPageContentBuilder(
   val commentsConverter: CommentsToContentConverter,
-  val signatureProvider: SignatureProvider,
-  val logger: DokkaLogger
-) {
+  val signatureProvider: SignatureProvider
+)(using DocContext) {
 
   def contentForDRI(
     dri: DRI,

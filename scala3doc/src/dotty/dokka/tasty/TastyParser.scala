@@ -25,15 +25,12 @@ import scala.util.Try
   *
   * Delegates most of the work to [[TastyParser]] [[dotty.dokka.tasty.TastyParser]].
   */
-case class DokkaTastyInspector(
-  sourceSet: SourceSetWrapper,
-  parser: Parser,
-  config: DottyDokkaConfig) extends DocTastyInspector:
+case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends DocTastyInspector:
 
   private val topLevels = Seq.newBuilder[Documentable]
 
   def processCompilationUnit(using q: Quotes)(root: q.reflect.Tree): Unit =
-    val parser = new TastyParser(q, this, config)
+    val parser = new TastyParser(q, this)
 
     def driFor(link: String): Option[DRI] =
       val symOps = new SymOps[q.type](q)
@@ -42,15 +39,15 @@ case class DokkaTastyInspector(
         MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
       )
 
-    config.staticSiteContext.foreach(_.memberLinkResolver = driFor)
+    ctx.staticSiteContext.foreach(_.memberLinkResolver = driFor)
     topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
 
   def result(): List[DPackage] =
     topLevels.clear()
-    val filePaths = config.args.tastyFiles.map(_.getAbsolutePath).toList
-    val classpath = config.args.classpath.split(java.io.File.pathSeparator).toList
+    val filePaths = ctx.args.tastyFiles.map(_.getAbsolutePath).toList
+    val classpath = ctx.args.classpath.split(java.io.File.pathSeparator).toList
 
-    inspectFilesInContext(classpath, filePaths)(using config.docContext)
+    inspectFilesInContext(classpath, filePaths)
 
     val all = topLevels.result()
     val packages = all
@@ -104,7 +101,7 @@ case class DokkaTastyInspector(
     )
 
 /** Parses a single Tasty compilation unit. */
-case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector, config: DottyDokkaConfig)
+case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using DocContext)
     extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
   import qctx.reflect._
 

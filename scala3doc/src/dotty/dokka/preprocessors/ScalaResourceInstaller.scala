@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import dotty.dokka.translators.FilterAttributes
 import java.nio.file.Paths
 
-class ScalaResourceInstaller(args: Scala3doc.Args) extends PageTransformer:
+class ScalaResourceInstaller(using ctx: DocContext) extends PageTransformer:
   private def dottyRes(resourceName: String) =
     new RendererSpecificResourcePage(resourceName, java.util.ArrayList(), RenderingStrategy$Copy(s"/dotty_res/$resourceName"))
 
@@ -23,7 +23,7 @@ class ScalaResourceInstaller(args: Scala3doc.Args) extends PageTransformer:
 
     new RendererSpecificResourcePage("scripts/data.js", java.util.ArrayList(), RenderingStrategy$Write(s"var scala3DocData = $str"))
 
-  private def projectLogo = args.projectLogo.toSeq.map { path =>
+  private def projectLogo = ctx.args.projectLogo.toSeq.map { path =>
       val fileName = Paths.get(path).getFileName()
       val strategy = new RenderingStrategy$Copy(path)
       new RendererSpecificResourcePage(s"project-logo/$fileName", JList(), strategy)

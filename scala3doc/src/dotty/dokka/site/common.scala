@@ -117,10 +117,10 @@ def loadTemplateFile(file: File): TemplateFile = {
 
 def Text(msg: String = "") = new Text(msg, JList(), JMap())
 
-abstract class BaseStaticSiteProcessor(staticSiteContext: Option[StaticSiteContext])
+abstract class BaseStaticSiteProcessor(using ctx: DocContext)
   extends PageTransformer:
     final override def invoke(input: RootPageNode): RootPageNode =
-      staticSiteContext.fold(input)(transform(input, _))
+      ctx.staticSiteContext.fold(input)(transform(input, _))
 
     protected def transform(input: RootPageNode, ctx: StaticSiteContext): RootPageNode
 

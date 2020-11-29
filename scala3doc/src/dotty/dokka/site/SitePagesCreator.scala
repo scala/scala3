@@ -9,10 +9,8 @@ import org.jetbrains.dokka.model.Documentable
 import org.jetbrains.dokka.pages._
 
 import scala.collection.JavaConverters._
-import dotty.dokka.model.api._
 
-
-class SitePagesCreator(ctx: Option[StaticSiteContext]) extends BaseStaticSiteProcessor(ctx):
+class SitePagesCreator(using ctx: DocContext) extends BaseStaticSiteProcessor:
   private def mkRootPage(input: RootPageNode, children: List[PageNode]): AContentPage =
     input match
       case input: ContentPage =>
