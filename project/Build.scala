@@ -1309,11 +1309,9 @@ object Build {
         // (publishLocal in `scala3-staging`).value
         val pluginText =
           s"""updateOptions in Global ~= (_.withLatestSnapshots(false))
-             |addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")""".stripMargin
+             |addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")
+             |addSbtPlugin("org.scala-js" % "sbt-scalajs" % "$scalaJSVersion")""".stripMargin
         IO.write(baseDirectory.value / "sbt-dotty-sbt", pluginText)
-        val scalaJSPluginText =
-          s"""addSbtPlugin("org.scala-js" % "sbt-scalajs" % "$scalaJSVersion")\n"""
-        IO.write(baseDirectory.value / "sbt-scalajs-sbt", scalaJSPluginText)
         IO.write(baseDirectory.value / "scala3-bootstrapped.version", dottyVersion)
       },
       testOptions in Test += Tests.Argument(

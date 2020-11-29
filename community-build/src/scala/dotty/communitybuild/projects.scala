@@ -15,9 +15,6 @@ lazy val sbtPluginFilePath: String =
   new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
   communitybuildDir.resolve("sbt-dotty-sbt").toAbsolutePath().toString()
 
-lazy val sbtScalaJSPluginFilePath: String =
-  communitybuildDir.resolve("sbt-scalajs-sbt").toAbsolutePath().toString()
-
 def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
 
 /** Executes shell command, returns false in case of error. */
@@ -75,7 +72,6 @@ final case class SbtCommunityProject(
     project: String,
     sbtTestCommand: String,
     extraSbtArgs: List[String] = Nil,
-    forceUpgradeSbtScalajsPlugin: Boolean = false,
     dependencies: List[CommunityProject] = Nil,
     sbtPublishCommand: String = null) extends CommunityProject:
   override val binaryName: String = "sbt"
@@ -111,14 +107,11 @@ final case class SbtCommunityProject(
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
-    val scalaJSPluginArgs =
-      if (forceUpgradeSbtScalajsPlugin) List(s"--addPluginSbtFile=$sbtScalaJSPluginFilePath")
-      else Nil
     extraSbtArgs ++ sbtProps ++ List(
       "-sbt-version", "1.4.4",
        "-Dsbt.supershell=false",
       s"--addPluginSbtFile=$sbtPluginFilePath"
-    ) ++ scalaJSPluginArgs
+    )
 
 object projects:
   lazy val utest = MillCommunityProject(
@@ -341,8 +334,7 @@ object projects:
 
   lazy val catsEffect2 = SbtCommunityProject(
     project        = "cats-effect-2",
-    sbtTestCommand = "test",
-    forceUpgradeSbtScalajsPlugin = true
+    sbtTestCommand = "test"
   )
 
   lazy val catsEffect3 = SbtCommunityProject(
