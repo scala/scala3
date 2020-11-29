@@ -338,8 +338,11 @@ object Summarization {
             if (cls == defn.AnyClass || cls == defn.AnyValClass) Effects.empty
             else {
               val ctor = cls.primaryConstructor
-              Summarization.analyze(New(ref.tpe))(env.withOwner(ctor.owner))._2 +
-                MethodCall(ThisRef()(ref), ctor)(ref)
+              val prefixEff =
+                if tref.prefix == NoPrefix then Effects.empty
+                else Summarization.analyze(New(ref.tpe))(env.withOwner(ctor.owner)).effs
+
+              prefixEff +  MethodCall(ThisRef()(ref), ctor)(ref)
             }
         })
       }
