@@ -443,7 +443,7 @@ object Checking {
       fail(ParamsNoInline(sym.owner))
     if sym.isInlineMethod && !sym.is(Deferred) && sym.allOverriddenSymbols.nonEmpty then
       checkInlineOverrideParameters(sym)
-    if (sym.isOneOf(GivenOrImplicit)) {
+    if (sym.is(Implicit)) {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
       if (sym.isType)

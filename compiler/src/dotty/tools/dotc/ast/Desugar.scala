@@ -800,10 +800,12 @@ object desugar {
             Nil
         }
       }
+      val classMods = if mods.is(Given) then mods &~ Given | Synthetic else mods
       cpy.TypeDef(cdef: TypeDef)(
         name = className,
         rhs = cpy.Template(impl)(constr, parents1, clsDerived, self1,
-          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths)): TypeDef
+          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths)
+      ).withMods(classMods)
     }
 
     // install the watch on classTycon

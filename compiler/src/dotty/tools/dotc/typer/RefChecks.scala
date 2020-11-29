@@ -503,7 +503,9 @@ object RefChecks {
         def prelude = (
           if (clazz.isAnonymousClass || clazz.is(Module)) "object creation impossible"
           else if (mustBeMixin) s"$clazz needs to be a mixin"
-          else s"$clazz needs to be abstract") + ", since"
+          else if clazz.is(Synthetic) then "instance cannot be created"
+          else s"$clazz needs to be abstract"
+          ) + ", since"
 
         if (abstractErrors.isEmpty) abstractErrors ++= List(prelude, msg)
         else abstractErrors += msg
