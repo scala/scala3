@@ -5,7 +5,7 @@ class A {
     val a = f
   }
 
-  println(new B)              // error
+  println(new B)              // leak is OK, accessing `f` is reported below
 }
 
 class C extends A {

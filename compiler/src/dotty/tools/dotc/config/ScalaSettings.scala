@@ -173,7 +173,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Disable kind polymorphism.")
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YerasedTerms: Setting[Boolean] = BooleanSetting("-Yerased-terms", "Allows the use of erased terms.")
-  val YcheckInit: Setting[Boolean] = BooleanSetting("-Ycheck-init", "Check initialization of objects")
+  val YcheckInit: Setting[String] = ChoiceSetting("-Ycheck-init", "mode", "Check initialization of objects: fast | full", List("fast", "full"), "")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
 
   /** Area-specific debug output */

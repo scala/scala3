@@ -92,7 +92,7 @@ object Summarization {
           val Summary(pots, effs) = resolveThis(enclosing, thisRef, cur, expr)
           val summary = Summary(effs)
           if pots.isEmpty then
-            if env.checkGlobal then summary + LocalHot(cls)(expr)
+            if env.isFullMode then summary + LocalHot(cls)(expr)
             else summary
           else {
             assert(pots.size == 1)
@@ -102,13 +102,13 @@ object Summarization {
         else {
           val summary = analyze(tref.prefix, expr)
           if summary.pots.isEmpty then
-            if env.checkGlobal then summary + LocalHot(cls)(expr)
+            if env.isFullMode then summary + LocalHot(cls)(expr)
             else summary
           else {
             assert(summary.pots.size == 1)
             val pot = summary.pots.head
             val res = summary.dropPotentials
-            if env.checkGlobal && Potentials.isGlobalPath(pot) then
+            if env.isFullMode && Potentials.isGlobalPath(pot) then
               res + LocalHot(cls)(expr)
             else
               res + Warm(cls, pot)(expr)
@@ -233,7 +233,7 @@ object Summarization {
         Summary.empty
 
       case tmref: TermRef
-      if env.checkGlobal && tmref.symbol.is(Flags.Module, butNot = Flags.Package) && tmref.symbol.isStatic =>
+      if env.isFullMode && tmref.symbol.is(Flags.Module, butNot = Flags.Package) && tmref.symbol.isStatic =>
         val cls = tmref.symbol.moduleClass
         if cls.primaryConstructor.exists then
           val pot = Global(tmref)(source)
@@ -291,7 +291,7 @@ object Summarization {
       val enclosing = cur.owner.lexicallyEnclosingClass.asClass
       // Dotty uses O$.this outside of the object O
       if (enclosing.is(Flags.Package) && cls.is(Flags.Module))
-        if env.checkGlobal && cls.primaryConstructor.exists then  // ctor may not exist, tests/init/neg/inner19
+        if env.isFullMode && cls.primaryConstructor.exists then  // ctor may not exist, tests/init/neg/inner19
           val pot = Global(cls.sourceModule.termRef)(source)
           return Summary(pot) + AccessGlobal(pot) + MethodCall(pot, cls.primaryConstructor)(source)
         else

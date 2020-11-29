@@ -31,8 +31,7 @@ object Checking {
    */
 
   case class State(
-    var checking: Set[Effect],         // effects that are being checked
-    var checked: Set[Effect],          // effects that have been checked
+    var checked: Set[Effect],          // effects that have been checked or are being checked
     path: Vector[Tree],                        // the path that leads to the current effect
     thisClass: ClassSymbol,                    // the concrete class of `this`
     fieldsInited: mutable.Set[Symbol],
@@ -51,10 +50,8 @@ object Checking {
 
     def test(op: State ?=> Errors): Errors = {
       val savedChecked = checked
-      val savedChecking = checking
       val errors = op(using this)
       checked = savedChecked
-      checking = savedChecking
       errors
     }
   }
@@ -66,24 +63,19 @@ object Checking {
   private val defaultCheck: (Effect, State) => Errors = { (eff: Effect, state: State) =>
     given State = state
     trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
-      if (state.checked.contains(eff) || state.checking.contains(eff)) {
+      if (state.checked.contains(eff)) {
         traceIndented("Already checked " + eff.show, init)
         Errors.empty
       }
       else {
-        state.checking = state.checking + eff
+        state.checked = state.checked + eff
         val state2: State = state.copy(path = state.path :+ eff.source)
-        val errors =
-          eff match {
-            case eff: Promote      => Checking.checkPromote(eff)(using state2)
-            case eff: FieldAccess  => Checking.checkFieldAccess(eff)(using state2)
-            case eff: MethodCall   => Checking.checkMethodCall(eff)(using state2)
-            case eff: AccessGlobal => Checking.checkAccessGlobal(eff)(using state2)
-          }
-
-        state.checking -= eff
-        state.checked  += eff
-        errors
+        eff match {
+          case eff: Promote      => Checking.checkPromote(eff)(using state2)
+          case eff: FieldAccess  => Checking.checkFieldAccess(eff)(using state2)
+          case eff: MethodCall   => Checking.checkMethodCall(eff)(using state2)
+          case eff: AccessGlobal => Checking.checkAccessGlobal(eff)(using state2)
+        }
       }
     }
   }
@@ -204,13 +196,20 @@ object Checking {
       case warm: Warm => warm.classSymbol.typeRef
       case _: ThisRef => ??? // impossible
 
-    // Fast check of public methods directly defined in class
+    // Fast check of public term members directly defined in class
     // If errors found, there is no need to go further
-    classRef.decls.foreach { m =>
-      if m.is(Flags.Method, butNot = Flags.Private) && m.hasSource then
-        val errors = state.check(MethodCall(pot, m)(source))
+    classRef.decls.foreach { sym =>
+      if sym.is(Flags.Method, butNot = Flags.Private) && !sym.isConstructor && sym.hasSource then
+        val errors = state.check(MethodCall(pot, sym)(source))
         if errors.nonEmpty then return errors
+
+      // if sym.name.isTermName && !sym.isOneOf(Flags.Method | Flags.Private) && sym.hasSource then
+      //   val errors = state.check(Promote(FieldReturn(pot, sym)(source))(source))
+      //   if errors.nonEmpty then return errors
     }
+
+    // best-effort in fast mode
+    // if !theEnv.isFullMode then return Errors.empty
 
     val excludedFlags = Flags.Deferred | Flags.Private | Flags.Protected
 

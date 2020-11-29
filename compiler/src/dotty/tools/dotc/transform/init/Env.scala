@@ -37,7 +37,7 @@ case class Env(ctx: Context) {
 
   def withOwner(owner: Symbol) = this.copy(ctx = this.ctx.withOwner(owner))
 
-  def checkGlobal: Boolean = false
+  def isFullMode: Boolean = ctx.settings.YcheckInit.value == "full"
 
   /** Whether values of a given type is always fully initialized?
    *
