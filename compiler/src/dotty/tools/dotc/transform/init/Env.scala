@@ -25,10 +25,12 @@ case class Env(ctx: Context) {
 
   /** Can the method call be ignored? */
   def canIgnoreMethod(symbol: Symbol): Boolean =
-    val owner = symbol.owner
-    owner == defn.AnyClass ||
-    owner == defn.ObjectClass ||
-    owner == defn.TupleClass
+    !symbol.exists || // possible with outer selection, tests/init/crash/i1990b.scala
+    canIgnoreClass(symbol.owner)
+
+  def canIgnoreClass(cls: Symbol): Boolean =
+    cls == defn.AnyClass ||
+    cls == defn.ObjectClass
 
   def withCtx(newCtx: Context): Env = this.copy(ctx = newCtx)
 

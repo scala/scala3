@@ -5,7 +5,7 @@ class A {
     val a = f
   }
 
-  println(new B)       // error
+  println(new B)              // error
 }
 
 class C extends A {

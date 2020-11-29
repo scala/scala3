@@ -235,8 +235,12 @@ object Summarization {
       case tmref: TermRef
       if env.checkGlobal && tmref.symbol.is(Flags.Module) && tmref.symbol.isStatic =>
         val cls = tmref.symbol.moduleClass
-        val pot = Global(tmref)(source)
-        Summary(pot) + AccessGlobal(pot) + MethodCall(pot, cls.primaryConstructor)(source)
+        if cls.primaryConstructor.exists then
+          val pot = Global(tmref)(source)
+          Summary(pot) + AccessGlobal(pot) + MethodCall(pot, cls.primaryConstructor)(source)
+        else
+          // Integer$
+          Summary.empty
 
       case tmref: TermRef =>
         val Summary(pots, effs) = analyze(tmref.prefix, source)
@@ -287,7 +291,7 @@ object Summarization {
       val enclosing = cur.owner.lexicallyEnclosingClass.asClass
       // Dotty uses O$.this outside of the object O
       if (enclosing.is(Flags.Package) && cls.is(Flags.Module))
-        if env.checkGlobal then
+        if env.checkGlobal && cls.primaryConstructor.exists then  // ctor may not exist, tests/init/neg/inner19
           val pot = Global(cls.sourceModule.termRef)(source)
           Summary(pot) + AccessGlobal(pot) + MethodCall(pot, cls.primaryConstructor)(source)
         else
