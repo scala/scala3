@@ -418,7 +418,7 @@ object Checking {
             val effs = pot.effectsOf(target).toList
             effs.flatMap { state.check(_) }
           }
-          else CallUnknown(target, eff.source, state.path).toErrors
+          else Errors.empty
 
       case lhot: LocalHot =>
         if !state.isGlobalObject then
@@ -431,7 +431,7 @@ object Checking {
             val effs = lhot.effectsOf(target).toList
             effs.flatMap { state.check(_) }
           }
-          else CallUnknown(target, eff.source, state.path).toErrors
+          else Errors.empty
 
       case _: Cold =>
         CallCold(sym, eff.source, state.path).toErrors
