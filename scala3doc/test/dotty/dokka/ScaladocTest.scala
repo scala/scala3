@@ -36,7 +36,7 @@ abstract class ScaladocTest(val name: String):
   @Test
   def executeTest =
     DokkaTestGenerator(
-      DottyDokkaConfig(args, testContext),
+      DocContext(args, testContext),
       TestLogger(new Scala3DocDokkaLogger(using testContext)),
       assertions.asTestMethods,
       Nil.asJava

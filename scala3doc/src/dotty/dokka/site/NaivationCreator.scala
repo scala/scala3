@@ -9,7 +9,7 @@ import org.jetbrains.dokka.transformers.pages.PageTransformer
 
 import scala.collection.JavaConverters._
 
-class NavigationCreator(ctx: DottyDokkaConfig) extends PageTransformer:
+class NavigationCreator(using ctx: DocContext) extends PageTransformer:
 
   private def processApiPages(pages: List[PageNode]): JList[NavigationNode] =
     def flatMapPackages(pn: PageNode): List[NavigationNode] =

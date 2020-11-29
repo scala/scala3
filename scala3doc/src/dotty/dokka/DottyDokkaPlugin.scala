@@ -49,7 +49,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
   // Just turn off another translator since multiple overrides does not work
   val disableDescriptorTranslator = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getSourceToDocumentableTranslator)
-    .fromRecipe(ctx => new ScalaModuleProvider(using ctx.config.docContext))
+    .fromRecipe { case ctx as given DokkaContext => new ScalaModuleProvider }
     .overrideExtension(dokkaBase.getDescriptorToDocumentableTranslator)
     .name("disableDescriptorTranslator")
   )
@@ -63,14 +63,14 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val ourSignatureProvider = extend(
     _.extensionPoint(dokkaBase.getSignatureProvider)
-      .fromRecipe(ctx =>
-        new ScalaSignatureProvider(ctx.single(dokkaBase.getCommentsToContentConverter), ctx.getLogger)
-      ).overrideExtension(dokkaBase.getKotlinSignatureProvider)
+      .fromRecipe{ case ctx as given DokkaContext =>
+        new ScalaSignatureProvider(ctx.single(dokkaBase.getCommentsToContentConverter))
+      }.overrideExtension(dokkaBase.getKotlinSignatureProvider)
   )
 
   val scalaResourceInstaller = extend(
     _.extensionPoint(dokkaBase.getHtmlPreprocessors)
-      .fromRecipe(ctx => new ScalaResourceInstaller(ctx.config.args))
+      .fromRecipe{ case ctx as given DokkaContext => new ScalaResourceInstaller }
       .after(dokkaBase.getCustomResourceInstaller)
   )
 
@@ -83,17 +83,14 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val scalaDocumentableToPageTranslator = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableToPageTranslator)
-      .fromRecipe(ctx =>
+      .fromRecipe { case ctx as given DokkaContext =>
           new DocumentableToPageTranslator {
             override def invoke(module: DModule): ModulePageNode = ScalaPageCreator(
               ctx.single(dokkaBase.getCommentsToContentConverter),
-              ctx.single(dokkaBase.getSignatureProvider),
-              ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].sourceLinks,
-              ctx.getLogger
+              ctx.single(dokkaBase.getSignatureProvider)
             ).pageForModule(module)
           }
-      )
-      .overrideExtension(dokkaBase.getDocumentableToPageTranslator)
+      }.overrideExtension(dokkaBase.getDocumentableToPageTranslator)
   )
 
   val packageHierarchyTransformer = extend(
@@ -111,7 +108,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val ourRenderer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getRenderer)
-      .fromRecipe(ctx => ScalaHtmlRenderer(ctx, ctx.config.args))
+      .fromRecipe { case ctx as given DokkaContext => new ScalaHtmlRenderer }
       .overrideExtension(dokkaBase.getHtmlRenderer)
   )
 
@@ -129,7 +126,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val customDocumentationProvider = extend(
     _.extensionPoint(dokkaBase.getHtmlPreprocessors)
-      .fromRecipe(c => SitePagesCreator(c.config.staticSiteContext))
+      .fromRecipe{ case c as given DokkaContext => new SitePagesCreator }
       .name("customDocumentationProvider")
       .ordered(
         before = Seq(
@@ -144,7 +141,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val customNavigation = extend(
     _.extensionPoint(dokkaBase.getHtmlPreprocessors)
-      .fromRecipe(c => NavigationCreator(c.config)) // Adding a parameter to constuctor to NavigationCreator failed inc compilation
+      .fromRecipe{ case c as given DokkaContext => new NavigationCreator }
       .name("customNavigation")
       .ordered(
         before = Seq(
@@ -158,7 +155,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val customDocumentationResources = extend(
     _.extensionPoint(dokkaBase.getHtmlPreprocessors)
-    .fromRecipe(c => SiteResourceManager(c.config.staticSiteContext))
+    .fromRecipe{ case c as given DokkaContext => new SiteResourceManager }
       .name("customDocumentationResources")
       .after(
         scalaEmbeddedResourceAppender.getValue,
@@ -168,12 +165,9 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val locationProvider = extend(
     _.extensionPoint(dokkaBase.getLocationProviderFactory)
-      .fromRecipe(StaticSiteLocationProviderFactory(_))
+      .fromRecipe { case c as given DokkaContext => new StaticSiteLocationProviderFactory }
       .overrideExtension(dokkaBase.getLocationProvider)
   )
-
-extension (ctx: DokkaContext):
-  def config = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig]
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/232): remove once problem is fixed in Dokka
 extension [T]  (builder: ExtensionBuilder[T]):

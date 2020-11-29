@@ -15,10 +15,10 @@ import kotlin.jvm.functions.Function2
 import dotty.dokka.model.api.{Kind, _}
 
 
-class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logger: DokkaLogger) extends SignatureProvider with ScalaSignatureUtils:
-  private val default = new KotlinSignatureProvider(contentConverter, logger)
+class ScalaSignatureProvider(contentConverter: CommentsToContentConverter)(using ctx: DocContext)
+  extends SignatureProvider with ScalaSignatureUtils:
   private val styles = Set(TextStyle.Monospace).asInstanceOf[Set[Style]]
-  private val contentBuilder = new ScalaPageContentBuilder(contentConverter, this, logger)
+  private val contentBuilder = new ScalaPageContentBuilder(contentConverter, this)
 
   private def signatureContent(d: Documentable)(
     func: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
@@ -30,7 +30,7 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
     def driLink(text: String, dri: DRI): SignatureBuilder = ContentNodeBuilder(builder.driLink(text, dri))
   }
 
-  def signature(d: Member, s: Signature) = signatureContent(d){ builder => 
+  def signature(d: Member, s: Signature) = signatureContent(d){ builder =>
     val res = ContentNodeBuilder(builder).signature(s)
     res.asInstanceOf[ContentNodeBuilder].builder
   }

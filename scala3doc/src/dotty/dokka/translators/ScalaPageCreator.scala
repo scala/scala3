@@ -26,11 +26,11 @@ type DocBuilder = ScalaPageContentBuilder#ScalaDocumentableContentBuilder
 class ScalaPageCreator(
   commentsToContentConverter: CommentsToContentConverter,
   signatureProvider: SignatureProvider,
-  sourceLinks: SourceLinks,
-  val logger: DokkaLogger
-) extends DefaultPageCreator(commentsToContentConverter, signatureProvider, logger):
+)(using ctx: DocContext)
+  extends DefaultPageCreator(commentsToContentConverter, signatureProvider, ctx.logger):
 
-  private val contentBuilder = ScalaPageContentBuilder(commentsToContentConverter, signatureProvider, logger)
+  private val contentBuilder =
+    ScalaPageContentBuilder(commentsToContentConverter, signatureProvider)
 
   override def pageForModule(m: DModule): ModulePageNode = super.pageForModule(m)
 
@@ -316,7 +316,7 @@ class ScalaPageCreator(
           }
 
           val withExtensionInformation = d.kind match {
-            case Kind.Extension(on) => 
+            case Kind.Extension(on) =>
               val sourceSets = d.getSourceSets.asScala.toSet
               withCompanion.cell(sourceSets = sourceSets)(_.text("Extension"))
                 .cell(sourceSets = sourceSets)(_.text(s"This function is an extension on (${on.name}: ").inlineSignature(d, on.signature).text(")"))
@@ -326,7 +326,7 @@ class ScalaPageCreator(
           d match
             case null => withExtensionInformation
             case m: Member =>
-              sourceLinks.pathTo(m).fold(withCompanion){ link =>
+              ctx.sourceLinks.pathTo(m).fold(withCompanion){ link =>
                 val sourceSets = m.getSourceSets.asScala.toSet
                 withExtensionInformation.cell(sourceSets = sourceSets)(_.text("Source"))
                   .cell(sourceSets = sourceSets)(_.resolvedLink("(source)", link))
