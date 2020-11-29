@@ -241,17 +241,16 @@ object Checking {
     pot match {
       case pot: ThisRef =>
         val classRef = state.thisClass.typeRef
-        val sum = classRef.fields.foldLeft(0) { (sum, denot) =>
-          if denot.symbol.isOneOf(Flags.Lazy | Flags.Deferred) then sum
-          else sum + 1
+        val allInit = classRef.fields.forall { denot =>
+          val sym = denot.symbol
+          sym.isOneOf(Flags.Lazy | Flags.Deferred) || state.fieldsInited.contains(sym)
         }
-        if sum < state.fieldsInited.size then
-          throw new Exception(s"$sum fields in " + state.thisClass + ", but " + state.fieldsInited.size + " initialized")
-        else if sum > state.fieldsInited.size then
-          PromoteThis(pot, eff.source, state.path).toErrors
-        else
+
+        if allInit then
           state.safePromoted += pot
           Errors.empty
+        else
+          PromoteThis(pot, eff.source, state.path).toErrors
 
       case _: Cold =>
         PromoteCold(eff.source, state.path).toErrors
