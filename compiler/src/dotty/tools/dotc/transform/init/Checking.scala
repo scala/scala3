@@ -204,11 +204,19 @@ object Checking {
       case warm: Warm => warm.classSymbol.typeRef
       case _: ThisRef => ??? // impossible
 
+    // Fast check of public methods directly defined in class
+    // If errors found, there is no need to go further
+    classRef.decls.foreach { m =>
+      if m.is(Flags.Method, butNot = Flags.Private) && m.hasSource then
+        val errors = state.check(MethodCall(pot, m)(source))
+        if errors.nonEmpty then return errors
+    }
+
     val excludedFlags = Flags.Deferred | Flags.Private | Flags.Protected
 
     classRef.fields.foreach { denot =>
       val f = denot.symbol
-      if !f.isOneOf(excludedFlags) then
+      if !f.isOneOf(excludedFlags) && f.hasSource then
         buffer += Promote(FieldReturn(pot, f)(source))(source)
         buffer += FieldAccess(pot, f)(source)
     }
@@ -218,19 +226,20 @@ object Checking {
 
     classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred).foreach { denot =>
       val m = denot.symbol
-      if !m.isConstructor && !theEnv.canIgnoreMethod(m) then
+      if !m.isConstructor && m.hasSource && !theEnv.canIgnoreMethod(m) then
         buffer += MethodCall(pot, m)(source)
         buffer += Promote(MethodReturn(pot, m)(source))(source)
     }
 
     classRef.memberClasses.foreach { denot =>
       val cls = denot.symbol.asClass
-      val potInner =
-        pot match
-        case warm: Warm => Potentials.asSeenFrom(Warm(cls, ThisRef()(source))(source), pot)
-        case _ => LocalHot(cls)(source)
-      buffer += MethodCall(potInner, cls.primaryConstructor)(source)
-      buffer += Promote(potInner)(source)
+      if cls.hasSource then
+        val potInner =
+          pot match
+          case warm: Warm => Potentials.asSeenFrom(Warm(cls, ThisRef()(source))(source), pot)
+          case _ => LocalHot(cls)(source)
+        buffer += MethodCall(potInner, cls.primaryConstructor)(source)
+        buffer += Promote(potInner)(source)
     }
 
     buffer.toList.flatMap(eff => state.check(eff))
@@ -261,12 +270,12 @@ object Checking {
         // Use the assumption that `Promote(pot)` eagerly in the visited set is unsound.
         // It can only be safely used for checking the expanded effects.
         // tests/init/neg/hybrid2.scala
-        var promoted: Boolean = false
+        var promotedErrors: Errors = null
         val checkFun =  { (eff2: Effect, state2: State) =>
           if eff == eff2 then
             traceIndented("Eagerly using " + eff.show + ", check thoroughly", init)
-            promoted = true
-            promote(pot, eff.source)
+            promotedErrors = promote(pot, eff.source)
+            promotedErrors
           else
             state.check(eff2)(using state2)
         }
@@ -278,7 +287,9 @@ object Checking {
           state.safePromoted += pot
           Errors.empty
         else
-          val errs = if promoted then errors else state.test { promote(pot, eff.source) }
+          val errs =
+            if promotedErrors != null then promotedErrors
+            else state.test { promote(pot, eff.source) }
           if errs.nonEmpty then UnsafePromotion(pot, eff.source, state.path, errs).toErrors
           else
             state.safePromoted += pot
