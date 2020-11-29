@@ -131,7 +131,7 @@ object Summarization {
         Summary(Fun(pots, effs)(expr))
 
       case Block(stats, expr) =>
-        val effs = stats.foldLeft(Effects.empty) { (acc, stat) => acc ++ analyze(stat)._2 }
+        val effs = stats.foldLeft(Effects.empty) { (acc, stat) => acc ++ analyze(stat).effs }
         val Summary(pots2, effs2) = analyze(expr)
         Summary(pots2, effs ++ effs2)
 
@@ -186,7 +186,7 @@ object Summarization {
 
       case Inlined(call, bindings, expansion) =>
         val effs = bindings.foldLeft(Effects.empty) { (acc, mdef) =>
-          acc ++ analyze(mdef)._2
+          acc ++ analyze(mdef).effs
         }
         analyze(expansion) ++ effs
 
@@ -309,7 +309,7 @@ object Summarization {
     if (ctor.isPrimaryConstructor) {
       val cls = ctor.owner.asClass
       val tpl = ctor.owner.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-      val effs = analyze(Block(tpl.body, unitLiteral))._2
+      val effs = analyze(Block(tpl.body, unitLiteral)).effs
 
       def parentArgEffsWithInit(stats: List[Tree], ctor: Symbol, source: Tree): Effects =
         val init =
