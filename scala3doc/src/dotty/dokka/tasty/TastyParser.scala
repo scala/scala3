@@ -71,7 +71,7 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
             JList(),
             f.getDocumentation,
             null,
-            sourceSet.toSet,
+            JSet(ctx.sourceSet),
             f.getExtra
           ).withNewMembers(entries.filterNot(_.isInstanceOf[DPackage]).toList).asInstanceOf[DPackage]
         )
@@ -80,7 +80,7 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
     }.toList
 
   extension (self: DPackage) def mergeWith(other: DPackage): DPackage =
-    def nodes(p: DPackage): JList[TagWrapper] = p.getDocumentation.get(sourceSet) match
+    def nodes(p: DPackage): JList[TagWrapper] = p.getDocumentation.get(ctx.sourceSet) match
       case null => JList[TagWrapper]()
       case node => node.getChildren
 
@@ -91,9 +91,9 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
         (self.getProperties.asScala ++ other.getProperties.asScala).asJava,
         JList(), // WARNING Merging is done before collecting classlikes, if it changes it needs to be refactored
         JList(),
-        sourceSet.toMap(DocumentationNode(nodes(self) ++ nodes(other))),
+        ctx.sourceSet.toMap(DocumentationNode(nodes(self) ++ nodes(other))),
         null,
-        sourceSet.toSet,
+        ctx.sourceSet.toSet,
         PropertyContainer.Companion.empty()
       ),
       self,
@@ -101,11 +101,9 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
     )
 
 /** Parses a single Tasty compilation unit. */
-case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using DocContext)
+case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using val ctx: DocContext)
     extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
   import qctx.reflect._
-
-  def sourceSet = inspector.sourceSet
 
   def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch case e: Throwable => errorMsg(tree, tree.symbol.show, e)
   def processTreeOpt[T](tree: Tree)(op: => Option[T]): Option[T] = try op catch case e: Throwable => errorMsg(tree, tree.symbol.show, e)

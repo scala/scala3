@@ -48,7 +48,15 @@ class TestReporter extends ConsoleReporter:
       warnings += dia
       super.doReport(dia)
 
+def testArgs(files: Seq[File] = Nil, dest: File = new File("notUsed")) = Scala3doc.Args(
+          name = "Test Project Name",
+          output = dest,
+          tastyFiles = files
+        )
+
 def testContext = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
+
+def testDocContext = DocContext(testArgs(), testContext)
 
 def tastyFiles(name: String) =
   def listFilesSafe(dir: File) = Option(dir.listFiles).getOrElse {

@@ -20,12 +20,8 @@ class ReportingTest:
 
     val dest = Files.createTempDirectory("test-doc")
     try
-      val args = Args(
-          name = "Test Project Name",
-          output = dest.toFile,
-          tastyFiles = tastyFiles("nested") // Random package
-        )
-      Scala3doc.run(newArgs(args))(using ctx)
+      // We are using random package
+      Scala3doc.run(newArgs(testArgs(tastyFiles("nested"), dest.toFile)))(using ctx)
       op(ctx.reportedDiagnostics)
 
     finally IO.delete(dest.toFile)

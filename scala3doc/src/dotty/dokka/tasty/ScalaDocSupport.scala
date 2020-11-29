@@ -39,7 +39,7 @@ trait ScaladocSupport { self: TastyParser =>
             println(s"WARN: Defaulting to Markdown syntax.")
             CommentSyntax.default
           }
-        case None => self.config.args.defaultSyntax
+        case None => ctx.args.defaultSyntax
       }
 
     val parser = commentSyntax match {

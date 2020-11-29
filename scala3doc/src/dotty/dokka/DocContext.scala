@@ -42,7 +42,7 @@ case class DocContext(args: Scala3doc.Args, compilerContext: Context)
     override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] =
       JList()
 
-    lazy val mkSourceSet: DokkaSourceSet =
+    val mkSourceSet: DokkaSourceSet =
       new DokkaSourceSetImpl(
         /*displayName=*/ args.name,
         /*sourceSetID=*/ new DokkaSourceSetID(args.name, "main"),
@@ -68,3 +68,5 @@ case class DocContext(args: Scala3doc.Args, compilerContext: Context)
         /*suppressedFiles=*/  JSet(),
         /*suppressedFiles=*/  Platform.jvm
       ).asInstanceOf[DokkaSourceSet] // Why I do need to cast here? Kotlin magic?
+
+    val sourceSet = mkSourceSet.asInstanceOf[SourceSetWrapper]
