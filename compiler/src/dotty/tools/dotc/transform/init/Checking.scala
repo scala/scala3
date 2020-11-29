@@ -195,7 +195,7 @@ object Checking {
     } error.issue
   }
 
-  private def promote(pot: Refinable, source: Tree)(using state: State): Errors =
+  private def promote(pot: Refinable, source: Tree)(using state: State): Errors = trace("promoting " + pot.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
     val buffer = new mutable.ArrayBuffer[Effect]
     val classRef =
       pot match
@@ -234,6 +234,7 @@ object Checking {
     }
 
     buffer.toList.flatMap(eff => state.check(eff))
+  }
 
   private def checkPromote(eff: Promote)(using state: State): Errors =
     val pot = eff.potential
@@ -261,30 +262,24 @@ object Checking {
         // Use the assumption that `Promote(pot)` eagerly in the visited set is unsound.
         // It can only be safely used for checking the expanded effects.
         // tests/init/neg/hybrid2.scala
-        var eagerlyUsed: Boolean = false
-        var capException: ReturnThrowable[Errors] = null
+        var promoted: Boolean = false
         val checkFun =  { (eff2: Effect, state2: State) =>
           if eff == eff2 then
-            traceIndented("Eagerly using " + eff.show + ", will check thoroughly", init)
-            eagerlyUsed = true
-            throwReturn(Errors.empty)(using capException)
+            traceIndented("Eagerly using " + eff.show + ", check thoroughly", init)
+            promoted = true
+            promote(pot, eff.source)
           else
             state.check(eff2)(using state2)
         }
 
-        val state2 = state.copy(
-          checking = Set(eff), // important to be empty as eager usage might be hidden under a visited node
-          checkFun = checkFun
-        )
+        val state2 = state.copy(checkFun = checkFun)
+        val errors = state2.check(Promote(outer)(eff.source))(using state2)
 
-        val errors = returning {
-          capException = summon[ReturnThrowable[Errors]]
-          state2.check(Promote(outer)(eff.source))(using state2)
-        }
-
-        if (errors.isEmpty && !eagerlyUsed) Errors.empty
+        if (errors.isEmpty)
+          state.safePromoted += pot
+          Errors.empty
         else
-          val errs = state.test { promote(pot, eff.source) }
+          val errs = if promoted then errors else state.test { promote(pot, eff.source) }
           if errs.nonEmpty then UnsafePromotion(pot, eff.source, state.path, errs).toErrors
           else
             state.safePromoted += pot
