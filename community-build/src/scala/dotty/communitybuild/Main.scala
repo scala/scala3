@@ -53,13 +53,14 @@ object Main:
         val (failed, withDocs) = paths.partition{ case (_, paths) => paths.isEmpty }
 
         val indexFile = withDocs.map { case (name, paths) =>
-          paths.map(p => s"""<a href="$name/$p">$p</a></br>\n""")
+          paths.map(p => s"""<a href="$name/$p/index.html">$p</a></br>\n""")
             .mkString(s"<h1>$name</h1>","\n", "\n")
         }.mkString("<html><body>\n", "\n", "\n</html></body>")
 
         Files.write(dest.resolve("index.html"), indexFile.getBytes)
 
-        if ignored.nonEmpty then println(s"Ignored project without doc command: $ignored")
+        if ignored.nonEmpty then
+          println(s"Ignored project without doc command: ${ignored.map(_.project)}")
 
         if failed.nonEmpty then
           println(s"Documentation not found for ${failed.map(_._1).mkString(", ")}")

@@ -1,6 +1,6 @@
 package dotty.dokka.tasty.util
 
-import dotty.dokka.BuildInfo
+import dotty.dokka.test.BuildInfo
 
 object TestUtils {
   def listOurClasses(): List[String] = {

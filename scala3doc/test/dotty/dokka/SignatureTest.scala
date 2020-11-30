@@ -3,6 +3,7 @@ package dotty.dokka
 import scala.io.Source
 import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
+import dotty.dokka.test.BuildInfo
 
 import org.jetbrains.dokka.pages.{RootPageNode, PageNode, ContentPage, ContentText, ContentNode, ContentComposite}
 

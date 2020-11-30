@@ -143,7 +143,7 @@ object projects:
 
   private def forceDoc(projects: String*) =
     projects.map(project =>
-      s""";set $project/Compile/doc/sources ++= file("a.scala") +: ($project/Compile/doc/tastyFiles).value ;$project/doc"""
+      s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/tastyFiles).value ;$project/doc"""
     ).mkString(" ")
 
   private def aggregateDoc(in: String)(projects: String*) =
