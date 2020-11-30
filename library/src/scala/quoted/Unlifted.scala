@@ -34,6 +34,6 @@ object Unlifted {
       iter.next() match
         case Unlifted(value) => builder += value
         case _ => return None
-    Some(builder.result)
+    Some(builder.result())
 
 }
