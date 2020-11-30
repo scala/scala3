@@ -4490,7 +4490,7 @@ object Types {
         myReduced =
           trace(i"reduce match type $this $hashCode", typr, show = true) {
             def matchCases(cmp: TrackingTypeComparer): Type =
-              try cmp.matchCases(scrutinee.normalized, cases)
+              try cmp.matchCases(scrutinee.dealias.normalized, cases)
               catch case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)
               finally updateReductionContext(cmp.footprint)
