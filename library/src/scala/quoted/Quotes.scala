@@ -152,9 +152,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *               +- ThisType
    *               +- RecursiveThis
    *               +- RecursiveType
-   *               +- LambdaType -+- MethodType
-   *               |              +- PolyType
-   *               |              +- TypeLambda
+   *               +- MethodType
+   *               +- PolyType
+   *               +- TypeLambda
    *               +- TypeBounds
    *               +- NoPrefix
    *
@@ -2847,7 +2847,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ParamRef` */
     trait ParamRefModule { this: ParamRef.type =>
-      def unapply(x: ParamRef): Option[(LambdaType, Int)]
+      def unapply(x: ParamRef): Option[(TypeRepr, Int)]
     }
 
     /** Makes extension methods on `ParamRef` available without any imports */
@@ -2859,7 +2859,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `ParamRef` */
     trait ParamRefMethods:
       extension (self: ParamRef):
-        def binder: LambdaType
+        def binder: TypeRepr
         def paramNum: Int
       end extension
     end ParamRefMethods
@@ -2966,12 +2966,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end RecursiveTypeMethods
 
-    // TODO: remove LambdaType and use union types (MethodType | PolyType | TypeLambda)
-    /** Common abstraction for lambda types (MethodType, PolyType and TypeLambda). */
-    type LambdaType <: TypeRepr
-
     /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
-    type MethodType <: LambdaType
+    type MethodType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodType` */
     given MethodTypeTypeTest as TypeTest[TypeRepr, MethodType] = MethodTypeTypeTestImpl
@@ -3007,7 +3003,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end MethodTypeMethods
 
     /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
-    type PolyType <: LambdaType
+    type PolyType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `PolyType` */
     given PolyTypeTypeTest as TypeTest[TypeRepr, PolyType] = PolyTypeTypeTestImpl
@@ -3041,7 +3037,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end PolyTypeMethods
 
     /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
-    type TypeLambda <: LambdaType
+    type TypeLambda <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeLambda` */
     given TypeLambdaTypeTest as TypeTest[TypeRepr, TypeLambda] = TypeLambdaTypeTestImpl
