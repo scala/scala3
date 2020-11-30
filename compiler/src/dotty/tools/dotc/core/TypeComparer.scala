@@ -1257,7 +1257,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val savedSuccessCount = successCount
       try
         recCount += 1
-        if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
+        if recCount >= Config.LogPendingSubTypesThreshold && !ctx.settings.YnoDeepSubtypes.value then monitored = true
         val result = if monitored then monitoredIsSubType else firstTry
         recCount -= 1
         if !result then
