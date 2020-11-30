@@ -69,8 +69,8 @@ object Scala3docArgs:
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
 
-    val (existing, nonExisting) =
-      summary.arguments.map(File(_)).partition(_.exists)
+    val inFiles = summary.arguments.map(File(_)).filter(_.getName != "___fake___.scala")
+    val (existing, nonExisting) = inFiles.partition(_.exists)
 
     if nonExisting.nonEmpty then report.warning(
       s"Scala3doc will ignore following nonexisiten paths: ${nonExisting.mkString(", ")}"

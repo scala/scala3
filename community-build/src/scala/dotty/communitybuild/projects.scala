@@ -141,6 +141,16 @@ final case class SbtCommunityProject(
 
 object projects:
 
+  private def forceDoc(projects: String*) =
+    projects.map(project =>
+      s""";set $project/Compile/doc/sources ++= file("a.scala") +: ($project/Compile/doc/tastyFiles).value ;$project/doc"""
+    ).mkString(" ")
+
+  private def aggregateDoc(in: String)(projects: String*) =
+    val tastyFiles =
+      (in +: projects).map(p => s"($p/Compile/doc/tastyFiles).value").mkString(" ++ ")
+    s""";set $in/Compile/doc/sources ++= file("a.scala") +: ($tastyFiles) ;$in/doc"""
+
   lazy val utest = MillCommunityProject(
     project = "utest",
     baseCommand = s"utest.jvm[$compilerVersion]",
@@ -219,14 +229,14 @@ object projects:
   lazy val algebra = SbtCommunityProject(
     project       = "algebra",
     sbtTestCommand   = "coreJVM/compile",
-    sbtDocCommand = "coreJVM/doc"
+    sbtDocCommand = forceDoc("coreJVM")
   )
 
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
     sbtTestCommand   = "jvm/test;js/test",
     sbtPublishCommand = "jvm/publishLocal;js/publishLocal",
-    sbtDocCommand = "jvm/doc"
+    sbtDocCommand = forceDoc("jvm")
   )
 
   lazy val scalatest = SbtCommunityProject(
@@ -269,13 +279,17 @@ object projects:
   lazy val ScalaPB = SbtCommunityProject(
     project       = "ScalaPB",
     sbtTestCommand   = "dotty-community-build/compile",
-    sbtDocCommand = "dotty-community-build/doc"
+    // aggregateDoc("runtimeJVM")("scalapbc", "grpcRuntime", "compilerPlugin") fails with
+    // module class ScalaPbCodeGenerator$ has non-class parent: TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module protocbridge),ProtocCodeGenerator)
+    // Also it seems that we do not handle correctly aggreagation projects
+    // sbtDocCommand = "dotty-community-build/doc"
+    sbtDocCommand = forceDoc("scalapbc", "grpcRuntime","runtimeJVM", "compilerPlugin")
   )
 
   lazy val minitest = SbtCommunityProject(
     project       = "minitest",
     sbtTestCommand   = "test",
-    sbtDocCommand = "dotty-community-build/doc",
+    sbtDocCommand = aggregateDoc("lawsJVM")("minitestJVM"),
     dependencies = List(scalacheck)
   )
 
@@ -298,7 +312,7 @@ object projects:
   lazy val shapeless = SbtCommunityProject(
     project       = "shapeless",
     sbtTestCommand   = "test",
-    sbtDocCommand = "doc"
+    sbtDocCommand = forceDoc("typeable", "deriving", "data")
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -332,13 +346,15 @@ object projects:
   lazy val sconfig = SbtCommunityProject(
     project       = "sconfig",
     sbtTestCommand   = "sconfigJVM/test",
-    sbtDocCommand = "sconfigJVM/doc",
+    // sbtDocCommand = "sconfigJVM/doc", // Fails with:
+    // Problem parsing sconfig/sharedScala3/src/main/scala/org/ekrich/config/ConfigSyntax.scala:[73..92..1340], documentation may not be generated.
+    // scala.MatchError: ValDef(JSON,TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class ekrich)),module config),class ConfigSyntax)],Apply(Ident($new),List(Literal(Constant(0)), Literal(Constant(JSON))))) (of class dotty.tools.dotc.ast.Trees$ValDef)
   )
 
   lazy val zio = SbtCommunityProject(
     project = "zio",
     sbtTestCommand = "testJVMDotty",
-    // sbtDocCommand  = "coreJVM/doc",
+    // sbtDocCommand  = forceDoc("coreJVM"),
     // Fails on tasty unpickling https://github.com/lampepfl/dotty/issues/10499
   )
 
@@ -368,19 +384,33 @@ object projects:
   lazy val scalaParserCombinators = SbtCommunityProject(
     project          = "scala-parser-combinators",
     sbtTestCommand   = "parserCombinatorsJVM/test",
-    sbtDocCommand   = "parserCombinatorsJVM/doc",
+    sbtDocCommand   = forceDoc("parserCombinatorsJVM"),
   )
 
   lazy val dottyCpsAsync = SbtCommunityProject(
     project          = "dotty-cps-async",
     sbtTestCommand   = "test",
-    sbtDocCommand = "doc",
+    // Does not compile (before reaches doc)
+    // sbtDocCommand = "cpsJVM/doc",
   )
 
   lazy val scalaz = SbtCommunityProject(
     project          = "scalaz",
     sbtTestCommand   = "rootJVM/test",
-    sbtDocCommand = "rootJVM/doc",
+
+    // sbtDocCommand = forceDoc("coreJVM"), // Fails with:
+    // [error] class scalaz.Conts cannot be unpickled because no class file was found
+    // [error] class scalaz.ContsT cannot be unpickled because no class file was found
+    // [error] class scalaz.IndexedCont cannot be unpickled because no class file was found
+
+    // aggregateDoc("rootJVM")("effectJVM", "iterateeJVM"), // Fails With
+    // [error] Caused by: java.lang.AssertionError: assertion failed:
+    // trait MonadIO has non-class parent: AppliedType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scalaz),Monad),List(TypeRef(ThisType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class scalaz)),module effect),trait MonadIO)),type F)))
+
+    // sbtDocCommand = forceDoc("iterateeJVM"), // Fails with
+    // [error] class scalaz.iteratee.Iteratee cannot be unpickled because no class file was found
+
+    sbtDocCommand = forceDoc("effectJVM"),
     dependencies     = List(scalacheck)
   )
 
@@ -393,7 +423,8 @@ object projects:
   lazy val catsEffect2 = SbtCommunityProject(
     project        = "cats-effect-2",
     sbtTestCommand = "test",
-    sbtDocCommand = ";coreJVM/doc ;lawsJVM/doc",
+    // Currently is excluded from community build
+    // sbtDocCommand = ";coreJVM/doc ;lawsJVM/doc",
   )
 
   lazy val catsEffect3 = SbtCommunityProject(
@@ -406,8 +437,8 @@ object projects:
   lazy val scalaParallelCollections = SbtCommunityProject(
     project        = "scala-parallel-collections",
     sbtTestCommand = "test",
-    sbtDocCommand = "doc",
-    dependencies     = List(scalacheck)
+    sbtDocCommand  = forceDoc("core"),
+    dependencies   = List(scalacheck)
   )
 
   lazy val scalaCollectionCompat = SbtCommunityProject(

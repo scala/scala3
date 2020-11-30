@@ -1594,9 +1594,12 @@ object Build {
             Build.testcasesSourceRoot.in(Test),
             Build.testDocumentationRoot,
           ),
+          Compile / buildInfoKeys := Seq[BuildInfoKey](version),
+          Compile / buildInfoPackage := "dotty.dokka",
           testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
           buildInfoPackage in Test := "dotty.dokka",
           BuildInfoPlugin.buildInfoScopedSettings(Test),
+          BuildInfoPlugin.buildInfoScopedSettings(Compile),
           BuildInfoPlugin.buildInfoDefaultSettings,
           // Uncomment to debug dokka processing (require to run debug in listen mode on 5005 port)
           // javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:5005,suspend=y"
