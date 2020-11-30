@@ -15,7 +15,7 @@ import org.jetbrains.dokka.model.properties.PropertyContainerKt._
 import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 
 import quoted.Quotes
-import scala.tasty.inspector.TastyInspector
+import scala.tasty.inspector.DocTastyInspector
 import dotty.dokka.model.api.withNewMembers
 import dotty.dokka.tasty.comments.MemberLookup
 import dotty.dokka.tasty.comments.QueryParser
@@ -25,7 +25,10 @@ import scala.util.Try
   *
   * Delegates most of the work to [[TastyParser]] [[dotty.dokka.tasty.TastyParser]].
   */
-case class DokkaTastyInspector(sourceSet: SourceSetWrapper, parser: Parser, config: DottyDokkaConfig) extends TastyInspector:
+case class DokkaTastyInspector(
+  sourceSet: SourceSetWrapper,
+  parser: Parser,
+  config: DottyDokkaConfig) extends DocTastyInspector:
 
   private val topLevels = Seq.newBuilder[Documentable]
 

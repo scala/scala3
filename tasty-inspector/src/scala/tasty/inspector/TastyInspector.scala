@@ -65,7 +65,7 @@ trait TastyInspector:
    *  @param classes List of paths of `.tasty` and `.jar` files (no validation is performed)
    *  @param classpath Classpath with extra dependencies needed to load class in the `.tasty` files
    */
-  protected def inspectFilesInContext(classpath: List[String], classes: List[String])(using Context): Unit =
+  protected[inspector] def inspectFilesInContext(classpath: List[String], classes: List[String])(using Context): Unit =
     if (classes.isEmpty) report.error("Parameter classes should no be empty")
     inspectorDriver().process(inspectorArgs(classpath, classes), summon[Context])
 
