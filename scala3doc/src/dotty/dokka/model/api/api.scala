@@ -181,6 +181,15 @@ extension (members: Seq[Member]) def byInheritance =
 extension (module: DModule)
   def driMap: Map[DRI, Member] = ModuleExtension.getFrom(module).fold(Map.empty)(_.driMap)
 
+extension (dri: DRI):
+  def withNoOrigin = DRI(
+    dri.getPackageName,
+    dri.getClassNames,
+    dri.getCallable,
+    dri.getTarget,
+    Option(dri.getExtra).fold(null)(e => raw"\[origin:(.*)\]".r.replaceAllIn(e, ""))
+  )
+
 case class TastyDocumentableSource(val path: String, val lineNumber: Int)
 
 type DocPart = DocTag

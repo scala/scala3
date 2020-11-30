@@ -111,6 +111,14 @@ class SymOps[Q <: Quotes](val q: Q):
           else if (sym.maybeOwner.isDefDef) Some(sym.owner)
           else None
 
+        val originPath = {
+            import q.reflect._
+            import dotty.tools.dotc
+            given ctx as dotc.core.Contexts.Context = q.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+            val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
+            Option(csym.associatedFile).map(_.path).fold("")(p => s"[origin:$p]")
+        }
+
         new DRI(
           sym.packageName,
           sym.topLevelEntryName.orNull, // TODO do we need any of this fields?
@@ -118,5 +126,5 @@ class SymOps[Q <: Quotes](val q: Q):
           pointsTo,
           // sym.show returns the same signature for def << = 1 and def >> = 2.
           // For some reason it contains `$$$` instrad of symbol name
-          s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
+          s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]$originPath"
         )
