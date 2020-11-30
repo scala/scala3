@@ -75,6 +75,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
   val synthMbr: SyntheticMembers = new SyntheticMembers(thisPhase)
+  val beanProps: BeanProperties = new BeanProperties(thisPhase)
 
   private def newPart(tree: Tree): Option[New] = methPart(tree) match {
     case Select(nu: New, _) => Some(nu)
@@ -322,8 +323,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           withNoCheckNews(templ.parents.flatMap(newPart)) {
             forwardParamAccessors(templ)
             synthMbr.addSyntheticMembers(
+              beanProps.addBeanMethods(
                 superAcc.wrapTemplate(templ)(
                   super.transform(_).asInstanceOf[Template]))
+            )
           }
         case tree: ValDef =>
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
