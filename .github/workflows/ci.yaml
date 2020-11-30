@@ -91,9 +91,9 @@ jobs:
 
   test_windows_fast:
     runs-on: [self-hosted, Windows]
-    if: "github.event_name == 'schedule'
-         || (
+    if: "(
            github.event_name == 'push'
+           && github.ref != 'master'
            && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
          )
          || (
