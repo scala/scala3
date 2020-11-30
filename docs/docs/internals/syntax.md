@@ -209,7 +209,7 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ‘inline’ InfixExpr MatchClause
 Ascription        ::=  ‘:’ InfixType                                            Typed(expr, tp)
                     |  ‘:’ Annotation {Annotation}                              Typed(expr, Annotated(EmptyTree, annot)*)
-StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ TemplateBody]      New templ
+StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody        New templ
 Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
 PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
 InfixExpr         ::=  PrefixExpr

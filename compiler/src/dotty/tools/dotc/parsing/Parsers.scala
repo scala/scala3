@@ -3516,20 +3516,8 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    def givenConstrApps(): List[Tree] =
-      val t = constrApp()
-      if in.token == WITH then
-        in.observeWithEOL() // converts token to WITHEOL if at end of line
-        if in.token == WITH && in.lookahead.token != LBRACE then
-          in.nextToken()
-          t :: givenConstrApps()
-        else t :: Nil
-      else
-        t :: Nil
-
-    /** GivenDef          ::=  [GivenSig] Type ‘=’ Expr
-     *                      |  [GivenSig] ConstrApps [TemplateBody]
-     *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘as’
+    /** GivenDef          ::=  [GivenSig] (Type [‘=’ Expr] | StructuralInstance)
+     *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘:’
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
@@ -3550,7 +3538,7 @@ object Parsers {
         if !(name.isEmpty && noParams) then
           if isIdent(nme.as) then in.nextToken()
           else accept(COLON)
-        val parents = givenConstrApps()
+        val parents = constrApp() :: withConstrApps()
         val parentsIsType = parents.length == 1 && parents.head.isType
         if in.token == EQUALS && parentsIsType then
           accept(EQUALS)
@@ -3560,7 +3548,7 @@ object Parsers {
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, tparams, vparamss, parents.head, subExpr())
-        else if newSyntax && in.token != WITH && in.token != WITHEOL &&  parentsIsType then
+        else if newSyntax && in.token != WITH && in.token != WITHEOL && parentsIsType then
           if name.isEmpty then
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, tparams, vparamss, parents.head, EmptyTree)
@@ -3571,10 +3559,7 @@ object Parsers {
           val constr = makeConstructor(tparams1, vparamss1)
           val templ =
             if newSyntax || in.token == WITHEOL || in.token == WITH then
-              if in.token != WITHEOL then accept(WITH)
-              possibleTemplateStart()
-              val (self, stats) = templateBody()
-              Template(constr, parents, Nil, self, stats)
+              withTemplate(constr, parents)
             else
               possibleTemplateStart()
               templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
@@ -3652,6 +3637,18 @@ object Parsers {
         else Nil
       t :: ts
 
+
+    /** `{`with` ConstrApp} but no EOL allowed after `with`.
+     */
+    def withConstrApps(): List[Tree] =
+      if in.token == WITH then
+        in.observeWithEOL() // converts token to WITHEOL if at end of line
+        if in.token == WITH && in.lookahead.token != LBRACE then
+          in.nextToken()
+          constrApp() :: withConstrApps()
+        else Nil
+      else Nil
+
     /** Template          ::=  InheritClauses [TemplateBody]
      *  InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
      */
@@ -3716,6 +3713,14 @@ object Parsers {
         in.nextToken()
         template(emptyConstructor)
       r
+
+    /** with Template, with EOL <indent> interpreted */
+    def withTemplate(constr: DefDef, parents: List[Tree]): Template =
+      if in.token != WITHEOL then accept(WITH)
+      possibleTemplateStart() // consumes a WITHEOL token
+      val (self, stats) = templateBody()
+      Template(constr, parents, Nil, self, stats)
+        .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))
 
 /* -------- STATSEQS ------------------------------------------- */
 
