@@ -93,7 +93,7 @@ jobs:
     runs-on: [self-hosted, Windows]
     if: "(
            github.event_name == 'push'
-           && github.ref != 'master'
+           && github.ref != 'refs/heads/master'
            && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
          )
          || (
@@ -119,10 +119,6 @@ jobs:
          || (
            github.event_name == 'push'
            && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         )
-         || (
-           github.event_name == 'push'
-           && github.ref == 'master'
          )"
 
     steps:
