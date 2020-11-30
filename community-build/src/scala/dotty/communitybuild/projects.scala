@@ -27,12 +27,17 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
   exitCode
 
 
-/** Versions of published projects, needs to be updated when a project in the build is updated. */
+/** Versions of published projects, needs to be updated when a project in the build is updated.
+ *
+ *  TODO: instead of harcoding these numbers, we could get them from the
+ *  projects themselves. This likely requires injecting a custom task in the
+ *  projects to output the version number to a file.
+ */
 object Versions:
   val scalacheck = "1.15.2-SNAPSHOT"
   val scalatest = "3.2.3"
-  val munit = "0.7.19+7-3ce72dda-SNAPSHOT"
-  val scodecBits = "1.1-17-c6dbf21"
+  val munit = "0.7.19+DOTTY-SNAPSHOT"
+  val scodecBits = "1.1+DOTTY-SNAPSHOT"
 
 sealed trait CommunityProject:
   private var published = false
@@ -294,14 +299,16 @@ object projects:
   lazy val munit = SbtCommunityProject(
     project = "munit",
     sbtTestCommand  = "testsJVM/test;testsJS/test;",
-    sbtPublishCommand   = "munitJVM/publishLocal;munitJS/publishLocal;munitScalacheckJVM/publishLocal;munitScalacheckJS/publishLocal;junit/publishLocal",
+    // Hardcode the version to avoid having to deal with something set by sbt-dynver
+    sbtPublishCommand   = s"""set every version := "${Versions.munit}"; munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal""",
     dependencies = List(scalacheck)
   )
 
   lazy val scodecBits = SbtCommunityProject(
     project          = "scodec-bits",
     sbtTestCommand   = "coreJVM/test;coreJS/test",
-    sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
+    // Hardcode the version to avoid having to deal with something set by sbt-git
+    sbtPublishCommand = s"""set every version := "${Versions.scodecBits}"; coreJVM/publishLocal;coreJS/publishLocal""",
     dependencies = List(munit)
   )
 
