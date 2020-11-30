@@ -22,7 +22,7 @@ object Test {
       val large = (BigInt(1) << 100).asInstanceOf[Succ]
       large match {
         case Zero() => println("test fail")
-        case s as Succ(pred) =>
+        case s @ Succ(pred) =>
           println("test OK")
           println(s"Succ(${pred.pred}) = $s")
       }
@@ -52,7 +52,7 @@ object Test {
 
     three match {
       case Zero() => println("test3 fail")
-      case s as Succ(pred) =>
+      case s @ Succ(pred) =>
         println("test3 OK")
         println(s"Succ($pred) = ${s.value}")
     }

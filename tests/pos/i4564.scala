@@ -10,7 +10,7 @@ object ClashNoSig { // ok
   def unapply(x: ClashNoSig) = x
 
   ClashNoSig(2) match {
-    case c as ClashNoSig(y) => c.copy(y + c._1)
+    case c @ ClashNoSig(y) => c.copy(y + c._1)
   }
 }
 case class ClashNoSig private (x: Int) {

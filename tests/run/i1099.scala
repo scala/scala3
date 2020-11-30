@@ -8,7 +8,7 @@ object Test {
   // This is what `foo` expands to
   def foo2[T](x: Any)(implicit ev: ClassTag[T]) =
     x match {
-      case t as ev(_) => true
+      case t @ ev(_) => true
       case _   => false
     }
   def main(args: Array[String]): Unit = {

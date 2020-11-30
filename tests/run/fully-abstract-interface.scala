@@ -20,7 +20,7 @@ object Test {
     const1 match {
       case AppliedOp(_, _, _) =>
         println("test1 fail")
-      case c as Constant(n) =>
+      case c @ Constant(n) =>
         println("test1 OK")
         println(s"$n = ${c.eval}")
     }
@@ -41,9 +41,9 @@ object Test {
     println(applied.eval)
 
     applied match {
-      case c as Constant(n) =>
+      case c @ Constant(n) =>
         println("test3 fail")
-      case a as AppliedOp(op, x, y) =>
+      case a @ AppliedOp(op, x, y) =>
         println("test3 OK")
         println(s"AppliedOp($op, $x, $y) = ${a.eval}")
     }
@@ -304,7 +304,7 @@ object ListImplementation extends Arithmetic {
   def opClassTag: ClassTag[Op] = new ClassTag[Constant] {
     def runtimeClass: Class[_] = classOf[List[_]]
     override def unapply(x: Any): Option[List[Any]] = x match {
-      case op as (("+" | "*") :: Nil) =>
+      case op @ (("+" | "*") :: Nil) =>
       // Test that it is:
       //   type Op <: List[Any] // List(id: "+" | "*")
       Some(op)

@@ -2608,10 +2608,7 @@ object Parsers {
     /**  Pattern2    ::=  [id `as'] InfixPattern
      */
     val pattern2: () => Tree = () => infixPattern() match {
-      case p @ Ident(name) if in.token == AT || in.isIdent(nme.as) =>
-        if in.token == AT && sourceVersion.isAtLeast(`3.1`) then
-          deprecationWarning(s"`@` bindings have been deprecated; use `as` instead", in.offset)
-
+      case p @ Ident(name) if in.token == AT =>
         val offset = in.skipToken()
         infixPattern() match {
           case pt @ Ident(tpnme.WILDCARD_STAR) =>  // compatibility for Scala2 `x @ _*` syntax
@@ -2638,8 +2635,7 @@ object Parsers {
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), in.canStartExprTokens, simplePattern,
-        isOperator = in.name != nme.raw.BAR && in.name != nme.as)
+      infixOps(simplePattern(), in.canStartExprTokens, simplePattern, isOperator = in.name != nme.raw.BAR)
 
     /** SimplePattern    ::= PatVar
      *                    |  Literal

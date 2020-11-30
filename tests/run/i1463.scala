@@ -8,7 +8,7 @@ object Test {
 
   def f0(x: Any) = x match { case Bob2 => Bob2 }
   def f1(x: Any) = x match { case Bob => Bob }
-  // def f2(x: Any): Bob.type = x match { case x as Bob => x } // should not type check
+  // def f2(x: Any): Bob.type = x match { case x @ Bob => x } // should not type check
 
   def main(args: Array[String]): Unit = {
     assert(f0(Bob2) eq Bob2)

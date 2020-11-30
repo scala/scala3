@@ -480,7 +480,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
           else args.map(arg => erase(arg, inArray = false))
         tp.derivedAppliedType(erase(tycon, inArray), args2)
 
-      case tp as OrType(tp1, tp2) =>
+      case tp @ OrType(tp1, tp2) =>
         OrType(erase(tp1, inArray), erase(tp2, inArray), tp.isSoft)
 
       case AndType(tp1, tp2) =>

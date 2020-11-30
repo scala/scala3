@@ -630,7 +630,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             }
         }
         compareTypeLambda
-      case tp2 as OrType(tp21, tp22) =>
+      case tp2 @ OrType(tp21, tp22) =>
         compareAtoms(tp1, tp2) match
           case Some(b) => return b
           case _ =>
@@ -970,7 +970,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        *  corresponding arguments are subtypes relative to their variance (see `isSubArgs`).
        */
       def isMatchingApply(tp1: Type): Boolean = tp1 match {
-        case tp1 as AppliedType(tycon1, args1) =>
+        case tp1 @ AppliedType(tycon1, args1) =>
           // We intentionally do not automatically dealias `tycon1` or `tycon2` here.
           // `TypeApplications#appliedTo` already takes care of dealiasing type
           // constructors when this can be done without affecting type
