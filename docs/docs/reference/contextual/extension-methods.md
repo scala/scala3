@@ -40,7 +40,7 @@ extension (x: String)
 extension (x: Elem)
   def +: (xs: Seq[Elem]): Seq[Elem] = ...
 extension (x: Number)
-  @infix def min (y: Number): Number = ...
+  infix def min (y: Number): Number = ...
 
 "ab" < "c"
 1 +: List(2, 3)
@@ -52,7 +52,7 @@ The three definitions above translate to
 ```scala
 <extension> def < (x: String)(y: String): Boolean = ...
 <extension> def +: (xs: Seq[Elem])(x: Elem): Seq[Elem] = ...
-@infix <extension> def min(x: Number)(y: Number): Number = ...
+infix <extension> def min(x: Number)(y: Number): Number = ...
 ```
 
 Note the swap of the two parameters `x` and `xs` when translating
@@ -113,6 +113,7 @@ extension (ss: Seq[String]):
 ```
 
 The same can be written with braces as follows (note that indented regions can still be used inside braces):
+
 ```scala
 extension (ss: Seq[String]) {
 
@@ -239,11 +240,13 @@ The following two rewritings are tried in order:
     from `T` to a type containing `m`. If there is more than one way of rewriting, an ambiguity error results.
 
 An extension method can also be referenced using a simple identifier without a preceding expression. If an identifier `g` appears in the body of an extension method `f` and refers to an extension method `g` that is defined in the same collective extension
+
 ```scala
 extension (x: T)
   def f ... = ... g ...
   def g ...
 ```
+
 the identifier is rewritten to `x.g`. This is also the case if `f` and `g` are the same method. Example:
 
 ```scala
@@ -260,7 +263,6 @@ def position(s: String)(ch: Char, n: Int): Int =
   if n < s.length && s(n) != ch then position(s)(ch, n + 1)
   else n
 ```
-
 
 ### Syntax
 
