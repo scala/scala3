@@ -43,6 +43,7 @@ object FilterAttributes:
         case Origin.InheritedFrom(name, _) => Map("inherited" -> name)
         case Origin.ImplicitlyAddedBy(name, _) => Map("implicitly" -> s"by $name")
         case Origin.ExtensionFrom(name, _) => Map("extension" -> s"from $name")
+        case Origin.ExportedFrom(name, _) => Map("export" -> s"from $name")
         case _ => Map.empty
     case null =>
       Map.empty

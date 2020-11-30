@@ -63,6 +63,7 @@ enum Kind(val name: String){
   case Constructor extends Kind("def")
   case Var extends Kind("var")
   case Val extends Kind("val")
+  case Exported extends Kind("export")
   case Type(concreate: Boolean, opaque: Boolean) extends Kind("Type") // should we handle opaque as modifier?
   case Given(as: Option[Signature], conversion: Option[ImplicitConversion]) extends Kind("Given") with ImplicitConversionProvider
   case Implicit(kind: Kind, conversion: Option[ImplicitConversion]) extends Kind(kind.name)  with ImplicitConversionProvider
@@ -73,6 +74,7 @@ enum Origin:
   case InheritedFrom(name: String, dri: DRI)
   case ImplicitlyAddedBy(name: String, dri: DRI)
   case ExtensionFrom(name: String, dri: DRI)
+  case ExportedFrom(name: String, dri: Option[DRI])
   case DefinedWithin
 
 case class Annotation(val dri: DRI, val params: List[Annotation.AnnotationParameter])

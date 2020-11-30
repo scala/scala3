@@ -351,6 +351,7 @@ class ScalaPageCreator(
       val (definedTypes, inheritedTypes) = s.membersBy(_.kind.isInstanceOf[Kind.Type])
       val (definedGivens, inheritedGives) = s.membersBy(_.kind.isInstanceOf[Kind.Given])
       val (definedExtensions, inheritedExtensions) = s.membersBy(_.kind.isInstanceOf[Kind.Extension])
+      val exports = s.allMembers.filter(_.kind == Kind.Exported)
       val (definedImplicits, inheritedImplicits) = s.membersBy(_.kind.isInstanceOf[Kind.Implicit])
 
       b
@@ -380,6 +381,9 @@ class ScalaPageCreator(
         .documentableTab("Implicits")(
           DocumentableGroup(Some("Defined implicits"), definedImplicits),
           DocumentableGroup(Some("Inherited implicits"), inheritedImplicits)
+        )
+        .documentableTab("Exports")(
+          DocumentableGroup(Some("Defined exports"), exports)
         )
 
 
