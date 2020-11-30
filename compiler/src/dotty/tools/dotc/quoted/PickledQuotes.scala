@@ -168,7 +168,7 @@ object PickledQuotes {
     if tree.span.exists then
       val positionWarnings = new mutable.ListBuffer[String]()
       new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots)
-        .picklePositions(tree :: Nil, positionWarnings)
+        .picklePositions(ctx.compilationUnit.source, tree :: Nil, positionWarnings)
       positionWarnings.foreach(report.warning(_))
 
     val pickled = pickler.assembleParts()

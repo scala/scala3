@@ -82,7 +82,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   def apply(idx: Int): Char = content().apply(idx)
 
-  def length: Int = content().length
+  def length: Int =
+    if lineIndicesCache ne null then lineIndicesCache.last
+    else content().length
 
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
@@ -105,7 +107,8 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
     SourcePosition(underlying, position.span shift start)
 
-  private def calculateLineIndices(cs: Array[Char]) = {
+  private def calculateLineIndicesFromContents() = {
+    val cs = content()
     val buf = new ArrayBuffer[Int]
     buf += 0
     var i = 0
@@ -120,7 +123,22 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     buf += cs.length // sentinel, so that findLine below works smoother
     buf.toArray
   }
-  private lazy val lineIndices: Array[Int] = calculateLineIndices(content())
+
+  private var lineIndicesCache: Array[Int] = _
+  private def lineIndices: Array[Int] =
+    if lineIndicesCache eq null then
+      lineIndicesCache = calculateLineIndicesFromContents()
+    lineIndicesCache
+  def setLineIndicesFromLineSizes(sizes: Array[Int]): Unit =
+    val lines = sizes.length
+    val indices = new Array[Int](lines + 1)
+    var i = 0
+    val penultimate = lines - 1
+    while i < penultimate do
+      indices(i + 1) = indices(i) + sizes(i) + 1 // `+1` for the '\n' at the end of the line
+      i += 1
+    indices(lines) = indices(penultimate) + sizes(penultimate) // last line does not end with '\n'
+    lineIndicesCache = indices
 
   /** Map line to offset of first character in line */
   def lineToOffset(index: Int): Int = lineIndices(index)

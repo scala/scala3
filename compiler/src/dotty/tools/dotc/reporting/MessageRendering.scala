@@ -147,7 +147,7 @@ trait MessageRendering {
     val sb = mutable.StringBuilder()
     val posString = posStr(pos, diagnosticLevel, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
-    if (pos.exists && pos.source.file.exists) {
+    if (pos.exists) {
       val pos1 = pos.nonInlined
       val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
       val marker = columnMarker(pos1, offset, diagnosticLevel)

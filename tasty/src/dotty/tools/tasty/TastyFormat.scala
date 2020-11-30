@@ -50,6 +50,7 @@ Macro-format:
 Note: Unqualified names in the name table are strings. The context decides whether a name is
 a type-name or a term-name. The same string can represent both.
 
+
 Standard-Section: "ASTs" TopLevelStat*
 
   TopLevelStat  = PACKAGE        Length Path TopLevelStat*                         -- package path { topLevelStats }
@@ -226,7 +227,10 @@ Note: Tree tags are grouped into 5 categories that determine what follows, and t
   Category 4 (tags 110-127):  tag Nat AST
   Category 5 (tags 128-255):  tag Length <payload>
 
-Standard-Section: "Positions" Assoc*
+
+Standard-Section: "Positions" LinesSizes Assoc*
+
+  LinesSizes    = Nat Nat*                 // Number of lines followed by the size of each line not counting the trailing `\n`
 
   Assoc         = Header offset_Delta? offset_Delta? point_Delta?
                 | SOURCE nameref_Int
@@ -244,7 +248,8 @@ Standard-Section: "Positions" Assoc*
 
 All elements of a position section are serialized as Ints
 
-Standard-Section: "Comments" Comment*
+
+Standard Section: "Comments" Comment*
 
   Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
 
@@ -254,8 +259,8 @@ Standard-Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 25
-  val MinorVersion: Int = 1
+  val MajorVersion: Int = 26
+  val MinorVersion: Int = 0
 
   final val ASTsSection = "ASTs"
   final val PositionsSection = "Positions"
