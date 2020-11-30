@@ -89,7 +89,7 @@ jobs:
           ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
           ./project/scripts/bootstrapCmdTests
 
-  test_windows:
+  test_windows_fast:
     runs-on: [self-hosted, Windows]
     if: "github.event_name == 'schedule'
          || (
@@ -99,7 +99,30 @@ jobs:
          || (
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip test_windows]')
+         )"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Test
+        run: sbt ";scala3-bootstrapped/compile"
+        shell: cmd
+
+      - name: Scala.js Test
+        run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
+        shell: cmd
+
+  test_windows_full:
+    runs-on: [self-hosted, Windows]
+    if: "github.event_name == 'schedule'
+         || (
+           github.event_name == 'push'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'push'
+           && github.ref == 'master'
          )"
 
     steps:
