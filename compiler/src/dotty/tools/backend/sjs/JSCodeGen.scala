@@ -1122,8 +1122,9 @@ class JSCodeGen()(using genCtx: Context) {
    *  type is Unit, then the body is emitted as a statement. Otherwise, it is
    *  emitted as an expression.
    *
-   *  Methods Scala.js-defined JS classes are compiled as static methods taking
-   *  an explicit parameter for their `this` value.
+   *  Instance methods in non-native JS classes are compiled as static methods
+   *  taking an explicit parameter for their `this` value. Static methods in
+   *  non-native JS classes are compiled as is, like methods in Scala classes.
    */
   private def genMethodDef(namespace: js.MemberNamespace, methodName: js.MethodIdent,
       originalName: OriginalName, paramsSyms: List[Symbol], resultIRType: jstpe.Type,
@@ -1137,13 +1138,11 @@ class JSCodeGen()(using genCtx: Context) {
       else genExpr(tree)
     }
 
-    if (!currentClassSym.isNonNativeJSClass) {
+    if (namespace.isStatic || !currentClassSym.isNonNativeJSClass) {
       val flags = js.MemberFlags.empty.withNamespace(namespace)
       js.MethodDef(flags, methodName, originalName, jsParams, resultIRType, Some(genBody()))(
             optimizerHints, None)
     } else {
-      assert(!namespace.isStatic, tree.span)
-
       val thisLocalIdent = freshLocalIdent("this")
       withScopedVars(
         thisLocalVarIdent := Some(thisLocalIdent)
