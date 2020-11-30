@@ -65,12 +65,14 @@ is treated as a quote `'{x}`. See the Syntax section below for details.
 
 Quotes and splices are duals of each other. For arbitrary
 expressions `e` and types `T` we have:
-```
+
+```scala
 ${'{e}} = e
 '{${e}} = e
 ${'[T]} = T
 '[${T}] = T
 ```
+
 ### Types for Quotations
 
 The type signatures of quotes and splices can be described using
@@ -202,11 +204,14 @@ For instance, the user-level definition of `to`:
 def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], Quotes): Expr[T => R] =
   '{ (x: T) => ${ f('x) } }
 ```
+
 would be rewritten to
+
 ```scala
 def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], Quotes): Expr[T => R] =
-  '{ (x: t.Underlying }) => ${ f('x) } }
+  '{ (x: t.Underlying) => ${ f('x) } }
 ```
+
 The `summon` query succeeds because there is a given instance of
 type `Type[T]` available (namely the given parameter corresponding
 to the context bound `: Type`), and the reference to that value is
@@ -327,7 +332,6 @@ def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] = {
 ```
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
 the result back to an `Expr[String]` using `Expr.apply`.
-
 
 ### Lifting Types
 
@@ -612,6 +616,7 @@ val b: String = defaultOf("string")
 ```
 
 ### Defining a macro and using it in a single project
+
 It is possible to define macros and use them in the same project as long as the implementation
 of the macros does not have run-time dependencies on code in the file where it is used.
 It might still have compile-time dependencies on types and quoted code that refers to the use-site file.
@@ -621,7 +626,6 @@ try to expand a macro but fail because the macro has not been compiled yet are s
 If there are any suspended files when the compilation ends, the compiler will automatically restart
 compilation of the suspended files using the output of the previous (partial) compilation as macro classpath.
 In case all files are suspended due to cyclic dependencies the compilation will fail with an error.
-
 
 ### Pattern matching on quoted expressions
 
@@ -712,7 +716,6 @@ def f(exp: Expr[Any])(using Quotes) =
 
 This might be used to then perform an implicit search as in:
 
-
 ```scala
 extension (inline sc: StringContext) inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
@@ -744,7 +747,8 @@ trait Show[-T] {
 
 Quote pattern matching also provides higher-order patterns to match open terms. If a quoted term contains a definition,
 then the rest of the quote can refer to this definition.
-```
+
+```scala
 '{
   val x: Int = 4
   x * x
@@ -785,6 +789,6 @@ eval { // expands to the code: (16: Int)
 We can also close over several bindings using `$b(a1, a2, ..., an)`.
 To match an actual application we can use braces on the function part `${b}(a1, a2, ..., an)`.
 
-
 ### More details
+
 [More details](./macros-spec.md)
