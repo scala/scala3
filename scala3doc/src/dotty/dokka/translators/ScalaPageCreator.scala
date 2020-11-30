@@ -43,6 +43,8 @@ class ScalaPageCreator(
     p.allMembers.filter(_.origin == Origin.DefinedWithin).collect {
       case f: DFunction => updatePageNameForMember(pageForFunction(f), f)
       case c: DClass => updatePageNameForMember(pageForDClass(c), c)
+      case p: DProperty if p.kind.isInstanceOf[Kind.Type] => updatePageNameForMember(pageForProperty(p), p)
+      //Currently only types because of dri conflict for all properties
     }
 
   override def pageForPackage(p: DPackage): PackagePageNode =
