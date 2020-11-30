@@ -5,8 +5,8 @@ class Test extends App:
   import scala.compiletime.summonFrom
 
   transparent inline def setFor[T]: Set[T] = summonFrom {
-    case ord as given Ordering[T] => new TreeSet[T]
-    case _                        => new HashSet[T]
+    case ord @ given Ordering[T] => new TreeSet[T]
+    case _                       => new HashSet[T]
   }
 
   summon[Ordering[String]]

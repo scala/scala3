@@ -92,13 +92,13 @@ Since `mkAnnotations` is `transparent`, the type of an application is the type o
 
 ## Pattern-Bound Given Instances
 
-Given instances can also appear as pattern bound-variables. Example:
+Given instances can also appear in patterns. Example:
 
 ```scala
 for given Context <- applicationContexts do
 
 pair match
-  case (ctx as given Context, y) => ...
+  case (ctx @ given Context, y) => ...
 ```
 In the first fragment above, anonymous given instances for class `Context` are established by enumerating over `applicationContexts`. In the second fragment, a given `Context`
 instance named `ctx` is established by matching against the first half of the `pair` selector.

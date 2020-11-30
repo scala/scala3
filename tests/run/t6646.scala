@@ -8,8 +8,8 @@ object Test {
     val l = List(PrimaryKey, NoNull, lower)
 
     // withFilter must be generated in these
-    for (option as NoNull <- l) println("Found " + option)
-    for (option as `lower` <- l) println("Found " + option)
+    for (option @ NoNull <- l) println("Found " + option)
+    for (option @ `lower` <- l) println("Found " + option)
     for ((`lower`, i) <- l.zipWithIndex) println("Found " + i)
 
     // no withFilter

@@ -6,7 +6,7 @@ class Test {
     val a: PartialFunction[Int, String] = { case Foo(x) => x }
     val b: PartialFunction[Int, String] = { case x => x.toString }
 
-    val e: PartialFunction[String, String] = { case x as "abc" => x }
+    val e: PartialFunction[String, String] = { case x @ "abc" => x }
     val f: PartialFunction[String, String] = x => x match { case "abc" => x }
     val g: PartialFunction[String, String] = x => x match { case "abc" if x.isEmpty => x }
 

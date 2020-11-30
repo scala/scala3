@@ -1,3 +1,3 @@
 class Test {
-  val A as List() = List()
+  val A @ List() = List()
 }

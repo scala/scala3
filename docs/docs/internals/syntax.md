@@ -269,7 +269,7 @@ TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [nl]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }                                Alternative(pats)
 Pattern1          ::=  Pattern2 [‘:’ RefinedType]                               Bind(name, Typed(Ident(wildcard), tpe))
-Pattern2          ::=  [id ‘as’] InfixPattern                                   Bind(name, pat)
+Pattern2          ::=  [id ‘@’] InfixPattern                                    Bind(name, pat)
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                  InfixOp(pat, op, pat)
 SimplePattern     ::=  PatVar                                                   Ident(wildcard)
                     |  Literal                                                  Bind(name, Ident(wildcard))
