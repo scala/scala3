@@ -27,12 +27,13 @@ object Unlifted {
    *  }
    *  ```
    */
-  def unapply[T](exprs: Seq[Expr[T]])(using unlift: Unliftable[T], qctx: Quotes): Option[Seq[T]] =
-    exprs.foldRight(Option(List.empty[T])) { (elem, acc) =>
-      (elem, acc) match {
-        case (Unlifted(value), Some(lst)) => Some(value :: lst)
-        case (_, _) => None
-      }
-    }
+  def unapply[T](exprs: Seq[Expr[T]])(using Unliftable[T])(using Quotes): Option[Seq[T]] =
+    val builder = Seq.newBuilder[T]
+    val iter = exprs.iterator
+    while iter.hasNext do
+      iter.next() match
+        case Unlifted(value) => builder += value
+        case _ => return None
+    Some(builder.result())
 
 }
