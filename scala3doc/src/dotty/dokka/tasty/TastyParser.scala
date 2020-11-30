@@ -15,7 +15,7 @@ import org.jetbrains.dokka.model.properties.PropertyContainerKt._
 import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 
 import quoted.Quotes
-import scala.tasty.inspector.TastyInspector
+import scala.tasty.inspector.DocTastyInspector
 import dotty.dokka.model.api.withNewMembers
 import dotty.dokka.tasty.comments.MemberLookup
 import dotty.dokka.tasty.comments.QueryParser
@@ -25,79 +25,10 @@ import scala.util.Try
   *
   * Delegates most of the work to [[TastyParser]] [[dotty.dokka.tasty.TastyParser]].
   */
-case class DokkaTastyInspector(sourceSet: SourceSetWrapper, parser: Parser, config: DottyDokkaConfig) extends DokkaBaseTastyInspector with TastyInspector
-
-import dotty.tools.dotc.core.Contexts.{Context => DottyContext}
-case class SbtDokkaTastyInspector(
+case class DokkaTastyInspector(
   sourceSet: SourceSetWrapper,
-  config: DottyDokkaConfig,
-  filesToDocument: List[String],
-  rootCtx: DottyContext,
-) extends DokkaBaseTastyInspector:
-  self =>
-
-  import dotty.tools.dotc.Compiler
-  import dotty.tools.dotc.Driver
-  import dotty.tools.dotc.Run
-  import dotty.tools.dotc.core.Contexts.Context
-  import dotty.tools.dotc.core.Mode
-  import dotty.tools.dotc.core.Phases.Phase
-  import dotty.tools.dotc.fromtasty._
-  import scala.quoted.runtime.impl.QuotesImpl
-
-
-  val parser: Parser = null
-
-  def run(): List[DPackage] = {
-    val driver = new InspectorDriver
-    driver.run(filesToDocument)(rootCtx)
-    result()
-  }
-
-  class InspectorDriver extends Driver:
-    override protected def newCompiler(implicit ctx: Context): Compiler = new TastyFromClass
-
-    def run(filesToDocument: List[String])(implicit ctx: Context): Unit =
-      doCompile(newCompiler, filesToDocument)
-
-  end InspectorDriver
-
-  class TastyFromClass extends TASTYCompiler:
-
-    override protected def frontendPhases: List[List[Phase]] =
-      List(new ReadTasty) :: // Load classes from tasty
-      Nil
-
-    override protected def picklerPhases: List[List[Phase]] = Nil
-
-    override protected def transformPhases: List[List[Phase]] = Nil
-
-    override protected def backendPhases: List[List[Phase]] =
-      List(new TastyInspectorPhase) ::  // Print all loaded classes
-      Nil
-
-    override def newRun(implicit ctx: Context): Run =
-      reset()
-      new TASTYRun(this, ctx.fresh.addMode(Mode.ReadPositions).addMode(Mode.ReadComments))
-
-  end TastyFromClass
-
-  class TastyInspectorPhase extends Phase:
-
-    override def phaseName: String = "tastyInspector"
-
-    override def run(implicit ctx: Context): Unit =
-      val qctx = QuotesImpl()
-      self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.reflect.Tree])
-
-  end TastyInspectorPhase
-
-end SbtDokkaTastyInspector
-
-trait DokkaBaseTastyInspector:
-  val sourceSet: SourceSetWrapper
-  val parser: Parser
-  val config: DottyDokkaConfig
+  parser: Parser,
+  config: DottyDokkaConfig) extends DocTastyInspector:
 
   private val topLevels = Seq.newBuilder[Documentable]
 
@@ -115,6 +46,12 @@ trait DokkaBaseTastyInspector:
     topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
 
   def result(): List[DPackage] =
+    topLevels.clear()
+    val filePaths = config.args.tastyFiles.map(_.getAbsolutePath).toList
+    val classpath = config.args.classpath.split(java.io.File.pathSeparator).toList
+
+    inspectFilesInContext(classpath, filePaths)(using config.docContext)
+
     val all = topLevels.result()
     val packages = all
       .filter(_.isInstanceOf[DPackage])
@@ -167,7 +104,7 @@ trait DokkaBaseTastyInspector:
     )
 
 /** Parses a single Tasty compilation unit. */
-case class TastyParser(qctx: Quotes, inspector: DokkaBaseTastyInspector, config: DottyDokkaConfig)
+case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector, config: DottyDokkaConfig)
     extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
   import qctx.reflect._
 

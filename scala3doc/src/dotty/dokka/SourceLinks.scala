@@ -90,7 +90,8 @@ case class SourceLinks(links: Seq[SourceLink], projectRoot: Path):
 object SourceLinks:
 
   val usage =
-    """Source links provide a mapping between file in documentation and code repositry.
+    """Source links provide a mapping between file in documentation and code repository.
+      |
       |Accepted formats:
       |<sub-path>=<source-link>
       |<source-link>
@@ -131,10 +132,10 @@ object SourceLinks:
 
     SourceLinks(mappings.collect {case (_, Right(link)) => link}, projectRoot)
 
-  def load(config: DocConfiguration): SourceLinks =
+  def load(args: Scala3doc.Args): SourceLinks =
     load(
-      config.args.sourceLinks,
-      config.args.revision,
+      args.sourceLinks,
+      args.revision,
       // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
       Paths.get("").toAbsolutePath
     )

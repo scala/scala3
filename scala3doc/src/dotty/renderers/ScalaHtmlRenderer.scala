@@ -42,7 +42,7 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
 
   def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
 
-class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx) {
+class ScalaHtmlRenderer(ctx: DokkaContext, args: Scala3doc.Args) extends HtmlRenderer(ctx) {
 
   // TODO #239
   val hackScalaSearchbarDataInstaller: SearchbarDataInstaller = {

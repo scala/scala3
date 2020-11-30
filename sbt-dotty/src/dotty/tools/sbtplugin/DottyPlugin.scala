@@ -19,7 +19,7 @@ object DottyPlugin extends AutoPlugin {
     val isDottyJS = settingKey[Boolean]("Is this project compiled with Dotty and Scala.js?")
 
     val useScala3doc = settingKey[Boolean]("Use Scala3doc as the documentation tool")
-    val scala3docOptions = settingKey[Seq[String]]("Options for Scala3doc")
+    val tastyFiles = taskKey[Seq[File]]("List all testy files")
 
     // NOTE:
     // - this is a def to support `scalaVersion := dottyLatestNightlyBuild`
@@ -360,17 +360,6 @@ object DottyPlugin extends AutoPlugin {
       // Configuration for the doctool
       resolvers ++= (if(!useScala3doc.value) Nil else Seq(Resolver.jcenterRepo)),
       useScala3doc := false,
-      scala3docOptions := Nil,
-      Compile / doc / scalacOptions := {
-        // We are passing scala3doc argument list as single argument to scala instance starting with magic prefix "--+DOC+"
-        val s3dOpts = scala3docOptions.value.map("--+DOC+" + _)
-        val s3cOpts = (Compile / doc / scalacOptions).value
-        if (isDotty.value && useScala3doc.value) {
-           s3dOpts ++ s3cOpts
-        } else {
-          s3cOpts
-        }
-      },
       // We need to add doctool classes to the classpath so they can be called
       scalaInstance in doc := Def.taskDyn {
         if (isDotty.value)
@@ -443,18 +432,14 @@ object DottyPlugin extends AutoPlugin {
   }
 
   private val docSettings = inTask(doc)(Seq(
-    sources := Def.taskDyn {
-      val old = sources.value
-
-      if (isDotty.value) Def.task {
-        val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
-        val tastyFiles = (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
-        old ++ tastyFiles
-      } else Def.task {
-        old
-      }
+    tastyFiles := {
+      val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
+      (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
+    },
+    sources := Def.taskDyn[Seq[File]] {
+      if (isDotty.value) Def.task { tastyFiles.value }
+      else Def.task { sources.value }
     }.value,
-
     scalacOptions ++= {
       if (isDotty.value) {
         val projectName =

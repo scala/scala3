@@ -14,7 +14,7 @@ import org.jetbrains.dokka.base.parsers._
 import org.jetbrains.dokka.plugability.DokkaContext
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.properties.PropertyContainer
-import dotty.dokka.tasty.{DokkaTastyInspector, SbtDokkaTastyInspector}
+import dotty.dokka.tasty.DokkaTastyInspector
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.utilities.DokkaLogger
 import org.jetbrains.dokka.base.signatures.SignatureProvider
@@ -49,7 +49,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
   // Just turn off another translator since multiple overrides does not work
   val disableDescriptorTranslator = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getSourceToDocumentableTranslator)
-    .fromInstance(ScalaModuleProvider)
+    .fromRecipe(ctx => new ScalaModuleProvider(using ctx.docContext))
     .overrideExtension(dokkaBase.getDescriptorToDocumentableTranslator)
     .name("disableDescriptorTranslator")
   )
@@ -58,6 +58,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
   val cleanUpEmptyModules = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getPreMergeDocumentableTransformer)
       .fromInstance(_.asScala.filterNot(_.getName.isEmpty).asJava)
+      .overrideExtension(dokkaBase.getModulesAndPackagesDocumentation)
   )
 
   val ourSignatureProvider = extend(
@@ -99,6 +100,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     _.extensionPoint(CoreExtensions.INSTANCE.getPageTransformer)
       .fromRecipe(PackageHierarchyTransformer(_))
       .before(dokkaBase.getRootCreator)
+      .overrideExtension(dokkaBase.getDefaultSamplesTransformer)
   )
 
   val inheritanceTransformer = extend(
@@ -170,7 +172,8 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
 extension (ctx: DokkaContext):
   def siteContext: Option[StaticSiteContext] = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].staticSiteContext
-  def args: Args = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].docConfiguration.args
+  def args: Scala3doc.Args = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].args
+  def docContext = ctx.getConfiguration.asInstanceOf[DottyDokkaConfig].docContext
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/232): remove once problem is fixed in Dokka
 extension [T]  (builder: ExtensionBuilder[T]):

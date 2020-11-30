@@ -96,7 +96,9 @@ class SymOps[Q <: Quotes](val q: Q):
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri: DRI =
-      if sym == Symbol.noSymbol then emptyDRI else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri else
+      if sym == Symbol.noSymbol then emptyDRI 
+      else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri 
+      else
         val pointsTo =
           if (!sym.isTypeDef) PointingToDeclaration.INSTANCE
           else PointingToGenericParameters(sym.owner.typeMembers.indexOf(sym))
@@ -110,8 +112,10 @@ class SymOps[Q <: Quotes](val q: Q):
           sym.packageName,
           sym.topLevelEntryName.orNull, // TODO do we need any of this fields?
           method.map(s => new org.jetbrains.dokka.links.Callable(s.name, null, JList())).orNull,
-          pointsTo, // TODO different targets?
-          s"${sym.show}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
+          pointsTo,
+          // sym.show returns the same signature for def << = 1 and def >> = 2.
+          // For some reason it contains `$$$` instrad of symbol name
+          s"${sym.name}${sym.show}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )
 
   private val emptyDRI =  DRI.Companion.getTopLevel

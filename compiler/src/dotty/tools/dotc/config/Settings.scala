@@ -234,7 +234,7 @@ object Settings {
      *
      *  to get their arguments.
      */
-    protected[config] def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary = {
+    def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary = {
       def stateWithArgs(args: List[String]) = ArgsSummary(state.sstate, args, state.errors, state.warnings)
       state.arguments match {
         case Nil =>
@@ -269,8 +269,8 @@ object Settings {
     def BooleanSetting(name: String, descr: String, initialValue: Boolean = false): Setting[Boolean] =
       publish(Setting(name, descr, initialValue))
 
-    def StringSetting(name: String, helpArg: String, descr: String, default: String): Setting[String] =
-      publish(Setting(name, descr, default, helpArg))
+    def StringSetting(name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(name, descr, default, helpArg, aliases = aliases))
 
     def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String): Setting[String] =
       publish(Setting(name, descr, default, helpArg, choices))

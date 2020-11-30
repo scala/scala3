@@ -11,6 +11,7 @@ import scala.jdk.CollectionConverters.{ListHasAsScala, SeqHasAsJava}
 import org.junit.{Test, Rule}
 import org.junit.rules.{TemporaryFolder, ErrorCollector}
 import java.io.File
+import dotty.tools.dotc.core.Contexts._
 
 abstract class ScaladocTest(val name: String):
   def assertions: Seq[Assertion]
@@ -20,30 +21,12 @@ abstract class ScaladocTest(val name: String):
     folder.create()
     folder
 
-  private def args = Args(
+  private def args = Scala3doc.Args(
       name = "test",
-      tastyRoots = Nil ,
-      classpath =  System.getProperty("java.class.path"),
-      None,
+      tastyFiles = tastyFiles(name),
       output = getTempDir().getRoot,
-      projectVersion = Some("1.0"),
-      projectTitle = None,
-      projectLogo = None,
-      defaultSyntax = None,
-      sourceLinks = Nil,
-      revision = None
+      projectVersion = Some("1.0")
     )
-
-  private def tastyFiles =
-    def listFilesSafe(dir: File) = Option(dir.listFiles).getOrElse {
-      throw AssertionError(s"$dir not found. The test name is incorrect or scala3doc-testcases were not recompiled.")
-    }
-    def collectFiles(dir: File): List[String] = listFilesSafe(dir).toList.flatMap {
-        case f if f.isDirectory => collectFiles(f)
-        case f if f.getName endsWith ".tasty" => f.getAbsolutePath :: Nil
-        case _ => Nil
-      }
-    collectFiles(File(s"${BuildInfo.test_testcasesOutputDir}/tests/$name"))
 
   @Rule
   def collector = _collector
@@ -53,8 +36,8 @@ abstract class ScaladocTest(val name: String):
   @Test
   def executeTest =
     DokkaTestGenerator(
-      DottyDokkaConfig(DocConfiguration.Standalone(args, tastyFiles, Nil)),
-      TestLogger(DokkaConsoleLogger.INSTANCE),
+      DottyDokkaConfig(args, testContext),
+      TestLogger(new Scala3DocDokkaLogger(using testContext)),
       assertions.asTestMethods,
       Nil.asJava
     ).generate()

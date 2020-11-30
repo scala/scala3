@@ -9,29 +9,25 @@ import org.junit.Assert._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.nio.charset.Charset
-
+import dotty.tools.dotc.core.Contexts._
 
 class SiteGeneratationTest:
   val projectName = "Test Project Name"
-  val projectTitle = "Test Project Title"
   val projectVersion = "1.0.1-M1"
 
   private def withGeneratedSite(base: Path)(op: Path => Unit) =
     val dest = Files.createTempDirectory("test-doc")
     try
-      val args = Args(
+      val args = Scala3doc.Args(
           name = projectName,
-          tastyRoots = Nil ,
-          classpath = System.getProperty("java.class.path"),
           output = dest.toFile,
           docsRoot = Some(base.toAbsolutePath.toString),
           projectVersion = Some(projectVersion),
-          projectTitle = Some(projectTitle)
         )
-      Main.main(args)
+      Scala3doc.run(args)(using testContext)
       op(dest)
 
-    finally println(dest.toFile) // IO.delete(dest.toFile)
+    finally IO.delete(dest.toFile)
 
   val testDocPath = Paths.get(BuildInfo.testDocumentationRoot)
 
@@ -65,11 +61,11 @@ class SiteGeneratationTest:
     }
 
     checkFile("index.html")(title = "Basic test", header = "Header")
-    checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectTitle))
-    checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectTitle))
-    checkFile("docs/dir/index.html")(title = "A directory", header = "A directory", parents = Seq(projectTitle))
+    checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
+    checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
+    checkFile("docs/dir/index.html")(title = "A directory", header = "A directory", parents = Seq(projectName))
     checkFile("docs/dir/nested.html")(
-      title = "Nested in a directory", header = "Nested in a directory", parents = Seq(projectTitle, "A directory"))
+      title = "Nested in a directory", header = "Nested in a directory", parents = Seq(projectName, "A directory"))
 
-    checkFile("docs/index.html")(title = projectTitle, header = s"$projectTitle in header")
+    checkFile("docs/index.html")(title = projectName, header = s"$projectName in header")
   }

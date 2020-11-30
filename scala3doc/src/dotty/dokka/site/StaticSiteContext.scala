@@ -20,7 +20,7 @@ import util.Try
 
 import scala.collection.JavaConverters._
 
-class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], val args: Args, val sourceLinks: SourceLinks):
+class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], val args: Scala3doc.Args, val sourceLinks: SourceLinks):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
@@ -104,8 +104,7 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], val a
           if from.getParentFile.toPath == docsPath && templateFile.isIndexPage() then
             // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
             if templateFile.title != "index" then println(s"[WARN] title in $from will be overriden")
-            val projectTitle = args.projectTitle.getOrElse(args.name)
-            templateFile.copy(title = projectTitle)
+            templateFile.copy(title = args.name)
           else templateFile
 
         Some(LoadedTemplate(processedTemplate, processedChildren.toList, from))
@@ -182,5 +181,4 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], val a
 
   val projectWideProperties =
     Seq("projectName" -> args.name) ++
-      args.projectVersion.map("projectVersion" -> _) ++
-      args.projectTitle.map("projectTitle" -> _)
+      args.projectVersion.map("projectVersion" -> _)
