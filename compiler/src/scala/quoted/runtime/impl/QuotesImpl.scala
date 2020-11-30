@@ -2348,6 +2348,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def paramSymss: List[List[Symbol]] = self.denot.paramSymss
         def primaryConstructor: Symbol = self.denot.primaryConstructor
+        def allOverriddenSymbols: Iterator[Symbol] = self.denot.allOverriddenSymbols
 
         def caseFields: List[Symbol] =
           if !self.isClass then Nil
