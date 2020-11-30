@@ -2176,4 +2176,9 @@ trait Applications extends Compatibility {
       report.error(em"not an extension method: $methodRef", receiver.srcPos)
     app
   }
+
+  def isApplicableExtensionMethod(ref: TermRef, receiver: Type)(using Context) =
+    ref.symbol.is(ExtensionMethod)
+    && !receiver.isBottomType
+    && isApplicableMethodRef(ref, receiver :: Nil, WildcardType)
 }
