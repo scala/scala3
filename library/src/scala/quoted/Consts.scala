@@ -14,6 +14,8 @@ object Consts {
    *      ...
    *  }
    *  ```
+   *
+   *  To directly unlift all expressions in a sequence `exprs: Seq[Expr[T]]` consider using `exprs.map(_.unlift)`/`exprs.map(_.unliftOrError)` insead.
    */
   def unapply[T](exprs: Seq[Expr[T]])(using Quotes): Option[Seq[T]] =
     exprs.foldRight(Option(List.empty[T])) { (elem, acc) =>
