@@ -14,9 +14,6 @@ trait Unliftable[T] {
 
 object Unliftable {
 
-  /** Default unliftable for Unit */
-  given UnitUnliftable as Unliftable[Unit] = new PrimitiveUnliftable
-
   /** Default unliftable for Boolean */
   given BooleanUnliftable as Unliftable[Boolean] = new PrimitiveUnliftable
 
@@ -44,7 +41,7 @@ object Unliftable {
   /** Default unliftable for String */
   given StringUnliftable as Unliftable[String] = new PrimitiveUnliftable
 
-  private class PrimitiveUnliftable[T <: Unit | Null | Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Unliftable[T] {
+  private class PrimitiveUnliftable[T <: Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Unliftable[T] {
     /** Lift a quoted primitive value `'{ n }` into `n` */
     def fromExpr(x: Expr[T]) = Const.unapply(x)
   }
