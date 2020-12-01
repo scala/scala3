@@ -1,6 +1,6 @@
 package scala.quoted
 
-/** A type class for types that can be turned from a `quoted.Expr[T]` to a `T`.
+/** A type class for types that can convert a `quoted.Expr[T]` to a `T`.
  *
  *  - Converts expression containg literal values to their values:
  *    - `'{1}` -> `1`, `'{2}` -> `2`, ...
