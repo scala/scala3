@@ -178,7 +178,12 @@ object Scanners {
         error(s"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
     }
 
-    /** All doc comments kept by their end position in a `Map` */
+    /** All doc comments kept by their end position in a `Map`.
+      *
+      * Note: the map is necessary since the comments are looked up after an
+      * entire definition is parsed, and a definition can contain nested
+      * definitions with their own docstrings.
+      */
     private var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
     /* A Buffer for comment positions */
