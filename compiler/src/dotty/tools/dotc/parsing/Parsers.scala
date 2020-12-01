@@ -27,7 +27,7 @@ import util.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
-import config.Feature.{sourceVersion, migrateTo3}
+import config.Feature.{sourceVersion, migrateTo3, dependentEnabled}
 import config.SourceVersion._
 import config.SourceVersion
 
@@ -1613,7 +1613,7 @@ object Parsers {
         typeIdent()
       else
         def singletonArgs(t: Tree): Tree =
-          if in.token == LPAREN
+          if in.token == LPAREN && dependentEnabled
           then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton))))
           else t
         singletonArgs(simpleType1())

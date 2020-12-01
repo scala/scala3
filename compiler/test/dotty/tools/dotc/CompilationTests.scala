@@ -163,6 +163,7 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-Yerased-terms")),
       compileFile("tests/neg-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
+      compileFile("tests/neg-custom-args/deptypes.scala", defaultOptions.and("-language:experimental.dependent")),
     ).checkExpectedErrors()
   }
 
