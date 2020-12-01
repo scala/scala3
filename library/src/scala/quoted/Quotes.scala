@@ -3624,6 +3624,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Returns all symbols overridden by this symbol. */
         def allOverriddenSymbols: Iterator[Symbol]
 
+        /** The symbol overriding this symbol in given subclass `ofclazz`.
+         *
+         *  @param ofclazz is a subclass of this symbol's owner
+         */
+        def overridingSymbol(ofclazz: Symbol): Symbol
+
         /** The primary constructor of a class or trait, `noSymbol` if not applicable. */
         def primaryConstructor: Symbol
 
