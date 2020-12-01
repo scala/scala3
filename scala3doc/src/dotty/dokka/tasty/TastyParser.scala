@@ -107,18 +107,18 @@ case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using val c
 
   def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch
     case e: Exception  =>
-      report.error(throwableToString(e), tree.pos)
+      report.warning(throwableToString(e), tree.pos)
       None
   def processTreeOpt[T](tree: Tree)(op: => Option[T]): Option[T] = try op catch
     case e: Exception =>
-      report.error(throwableToString(e), tree.pos)
+      report.warning(throwableToString(e), tree.pos)
       None
 
   def processSymbol[T](sym: Symbol)(op: => T): Option[T] = try Option(op) catch
     case t: Throwable =>
-      try report.error(throwableToString(t), sym.tree.pos) catch
+      try report.warning(throwableToString(t), sym.tree.pos) catch
         case _: Throwable =>
-          report.error(s"Failed to process ${sym.show}:\n${throwableToString(t)}")
+          report.warning(s"Failed to process ${sym.show}:\n${throwableToString(t)}")
       None
 
   def parseRootTree(root: Tree): Seq[Documentable] =

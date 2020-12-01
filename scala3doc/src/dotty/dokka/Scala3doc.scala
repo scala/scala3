@@ -67,8 +67,9 @@ object Scala3doc:
     revision: Option[String] = None
   )
 
-  def run(args: Array[String])(using ctx: CompilerContext): Reporter =
-    val parsedArgs = Scala3docArgs.extract(args.toList)
+  def run(args: Array[String], rootContext: CompilerContext): Reporter =
+    val (parsedArgs, ctx) = Scala3docArgs.extract(args.toList, rootContext)
+    given CompilerContext = ctx
 
     def listTastyFiles(f: File): Seq[File] =
       val (files, dirs) = Option(f.listFiles()).toArray.flatten.partition(_.isFile)

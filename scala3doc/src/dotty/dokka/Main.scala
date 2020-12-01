@@ -30,7 +30,7 @@ object Main:
   def main(args: Array[String]): Unit =
     try
       // We should create our own context here...
-      val reporter = Scala3doc.run(args)(using (new ContextBase).initialCtx)
+      val reporter = Scala3doc.run(args, (new ContextBase).initialCtx)
       // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
       sys.exit(if reporter.hasErrors then 1 else 0)
     catch

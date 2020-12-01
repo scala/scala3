@@ -34,17 +34,17 @@ class Scala3docArgs extends SettingGroup with CommonScalaSettings:
   val revision: Setting[String] =
     StringSetting("-revision", "revision", "Revision (branch or ref) used to build project project", "")
 
+  def scala3docSpecificSettings: Set[Setting[_]] = Set(sourceLinks, syntax, revision)
+
 object Scala3docArgs:
-  def extract(args: List[String])(using CompilerContext) =
+  def extract(args: List[String], rootCtx: CompilerContext):(Scala3doc.Args, CompilerContext) =
     val inst = new Scala3docArgs
     import inst._
     val initialSummary =
       ArgsSummary(defaultState, args, errors = Nil, warnings = Nil)
     val summary =
       processArguments(initialSummary, processAll = true, skipped = Nil)
-
-    summary.warnings.foreach(report.warning(_))
-    summary.errors.foreach(report.error(_))
+    val newContext = rootCtx.fresh
 
     extension[T](arg: Setting[T]):
       def get = arg.valueIn(summary.sstate)
@@ -52,6 +52,19 @@ object Scala3docArgs:
         if arg.get == arg.default then default else arg.get
       def nonDefault =
         if arg.get == arg.default then None else Some(arg.get)
+
+    def setInGlobal[T](s: Setting[T]) =
+      s.nonDefault.foreach { newValue =>
+        newContext.settings.allSettings.find(_ == s).fold(
+          report.warning(s"Unable to set ${s.name} in global context")
+        )(s => newContext.setSetting(s.asInstanceOf[Setting[T]], newValue))
+      }
+
+    allSettings.filterNot(scala3docSpecificSettings.contains).foreach(setInGlobal)
+
+    given CompilerContext = newContext
+    summary.warnings.foreach(report.warning(_))
+    summary.errors.foreach(report.error(_))
 
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
@@ -91,7 +104,7 @@ object Scala3docArgs:
     report.inform(
       s"Generating documenation $printableProjectName in $destFile")
 
-    Args(
+    val docArgs = Args(
       projectName.withDefault("root"),
       dirs,
       validFiles,
@@ -104,3 +117,4 @@ object Scala3docArgs:
       sourceLinks.nonDefault.fold(Nil)(_.split(",").toList),
       revision.nonDefault
     )
+    (docArgs, newContext)

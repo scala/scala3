@@ -265,7 +265,7 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
             .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
             .map(_ + prefix)
             .getOrElse {
-              println(s"[WARN] ${prc.template.file}: Unable to resolve link '$str'")
+              report.warn(s"Unable to resolve link '$str'", prc.template.file)
               str
             }
 
