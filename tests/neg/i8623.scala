@@ -6,7 +6,7 @@ trait QC:
       def pos: Tree = ???
 
 def test =
-  given [T] as QC = ???
+  given [T]: QC = ???
   def unseal(using qctx: QC): qctx.tasty.Tree = ???
   unseal.pos  // error
 

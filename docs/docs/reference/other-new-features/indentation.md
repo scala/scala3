@@ -131,7 +131,7 @@ enum Color:
 type T = A:
   def f: Int
 
-given [T](using Ord[T]) as Ord[List[T]]:
+given [T](using Ord[T]): Ord[List[T]] with
   def compare(x: List[T], y: List[T]) = ???
 
 extension (xs: List[Int])

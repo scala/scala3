@@ -6,9 +6,9 @@ object Prefix:
   type UpperBoundedType <: String
   type FullyBoundedType >: String <: String
 
-  given A as Show[AbstractType]
-  given B as Show[UpperBoundedType]
-  given C as Show[FullyBoundedType]
+  given A: Show[AbstractType] with {}
+  given B: Show[UpperBoundedType] with {}
+  given C: Show[FullyBoundedType] with {}
 
 @main def Test =
   summon[Show[Prefix.AbstractType]]

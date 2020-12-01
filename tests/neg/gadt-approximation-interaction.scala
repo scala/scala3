@@ -28,7 +28,7 @@ object GivenLookup {
 
   class Tag[T]
 
-  given ti as Tag[Int]
+  given ti: Tag[Int] with {}
 
   def foo[T](t: T, ev: T SUB Int) =
     ev match { case SUB.Refl() =>

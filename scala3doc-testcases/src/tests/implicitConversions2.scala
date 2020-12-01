@@ -29,7 +29,7 @@ class OuterClass //unexpected
       = ???
   }
 
-  given conversionFromVal as Conversion[ClassWithConversionFromVal, Methods] //unexpected
+  given conversionFromVal: Conversion[ClassWithConversionFromVal, Methods] with //unexpected
   {
     def apply(a: ClassWithConversionFromVal): Methods //unexpected
     = ???

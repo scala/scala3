@@ -14,26 +14,26 @@ Given instances can be mapped to combinations of implicit objects, classes and i
  1. Given instances without parameters are mapped to implicit objects. E.g.,
 
     ```scala
-    given intOrd as Ord[Int] { ... }
+    given intOrd: Ord[Int] with { ... }
     ```
 
     maps to
 
     ```scala
-    implicit object IntOrd extends Ord[Int] { ... }
+    implicit object intOrd extends Ord[Int] { ... }
     ```
 
  2. Parameterized givens are mapped to combinations of classes and implicit methods. E.g.,
 
     ```scala
-      given listOrd[T](using ord: Ord[T]) as Ord[List[T]] { ... }
+      given listOrd[T](using ord: Ord[T]): Ord[List[T]] with { ... }
     ```
 
     maps to
 
     ```scala
-    class ListOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
-    final implicit def ListOrd[T](implicit ord: Ord[T]): ListOrd[T] = new ListOrd[T]
+    class listOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
+    final implicit def listOrd[T](implicit ord: Ord[T]): listOrd[T] = new listOrd[T]
     ```
 
  3. Alias givens map to implicit methods or implicit lazy vals. If an alias has neither type nor context parameters,
@@ -43,7 +43,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
 Examples:
 
 ```scala
-given global as ExecutionContext = new ForkJoinContext()
+given global: ExecutionContext = new ForkJoinContext()
 
 val ctx: Context
 given Context = ctx
@@ -61,8 +61,8 @@ final implicit def given_Context = ctx
 Anonymous given instances get compiler synthesized names, which are generated in a reproducible way from the implemented type(s). For example, if the names of the `IntOrd` and `ListOrd` givens above were left out, the following names would be synthesized instead:
 
 ```scala
-given given_Ord_Int as Ord[Int] { ... }
-given given_Ord_List_T[T](using ord: Ord[T]) as Ord[List[T]] { ... }
+given given_Ord_Int: Ord[Int] with { ... }
+given given_Ord_List_T[T](using ord: Ord[T]): Ord[List[T]] with { ... }
 ```
 
 The synthesized type names are formed from
@@ -150,15 +150,14 @@ implicit def stringToToken(str: String): Token = new Keyword(str)
 one can write
 
 ```scala
-given stringToToken as Conversion[String, Token] {
+given stringToToken: Conversion[String, Token] with
   def apply(str: String): Token = KeyWord(str)
-}
 ```
 
 or
 
 ```scala
-given stringToToken as Conversion[String, Token] = KeyWord(_)
+given stringToToken: Conversion[String, Token] = KeyWord(_)
 ```
 
 ### Implicit Classes

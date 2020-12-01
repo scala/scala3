@@ -10,11 +10,11 @@ object Generator:
   val NumLimit = 300
   val Iterations = 10000
 
-  given integers as Generator[Int]:
+  given integers: Generator[Int] with
     val rand = new java.util.Random
     def generate = rand.nextInt()
 
-  given booleans as Generator[Boolean] =
+  given booleans: Generator[Boolean] =
     integers.map(x => x > 0)
 
   def range(end: Int): Generator[Int] =
@@ -24,7 +24,7 @@ object Generator:
     case Lookup, Update, Remove
   export Op._
 
-  given ops as Generator[Op] =
+  given ops: Generator[Op] =
     range(10).map {
       case 0 | 1 | 2 | 3 => Lookup
       case 4 | 5 | 6 | 7 => Update

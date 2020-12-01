@@ -133,38 +133,32 @@ should produce the `BigFloat` number `BigFloat(-123, 997)`:
 The companion object of `BigFloat` defines an `apply` constructor method to construct a `BigFloat`
 from a `digits` string. Here is a possible implementation:
 ```scala
-object BigFloat {
+object BigFloat:
   import scala.util.FromDigits
 
-  def apply(digits: String): BigFloat = {
-    val (mantissaDigits, givenExponent) = digits.toUpperCase.split('E') match {
+  def apply(digits: String): BigFloat =
+    val (mantissaDigits, givenExponent) = digits.toUpperCase.split('E') match
       case Array(mantissaDigits, edigits) =>
         val expo =
           try FromDigits.intFromDigits(edigits)
-          catch {
-            case ex: FromDigits.NumberTooLarge =>
-              throw FromDigits.NumberTooLarge(s"exponent too large: $edigits")
-          }
+          catch case ex: FromDigits.NumberTooLarge =>
+            throw FromDigits.NumberTooLarge(s"exponent too large: $edigits")
         (mantissaDigits, expo)
       case Array(mantissaDigits) =>
         (mantissaDigits, 0)
-    }
-    val (intPart, exponent) = mantissaDigits.split('.') match {
+    val (intPart, exponent) = mantissaDigits.split('.') match
       case Array(intPart, decimalPart) =>
         (intPart ++ decimalPart, givenExponent - decimalPart.length)
       case Array(intPart) =>
         (intPart, givenExponent)
-    }
     BigFloat(BigInt(intPart), exponent)
-  }
 ```
 To accept `BigFloat` literals, all that's needed in addition is a `given` instance of type
 `FromDigits.Floating[BigFloat]`:
 ```scala
-  given FromDigits as FromDigits.Floating[BigFloat] {
+  given FromDigits: FromDigits.Floating[BigFloat] with
     def fromDigits(digits: String) = apply(digits)
-  }
-} // end BigFloat
+end BigFloat
 ```
 Note that the `apply` method does not check the format of the `digits` argument. It is
 assumed that only valid arguments are passed. For calls coming from the compiler

@@ -936,13 +936,13 @@ Occurrences:
 [46:34..46:35): C -> _empty_/Enums.`<:<`.Refl#[C]
 [46:35..46:35): -> _empty_/Enums.`<:<`#`<init>`().
 [48:9..48:12): <:< <- _empty_/Enums.`<:<`.
-[49:10..49:17): [T] as  <- _empty_/Enums.`<:<`.given_T().
+[49:10..49:17): [T]: (T <- _empty_/Enums.`<:<`.given_T().
 [49:11..49:12): T <- _empty_/Enums.`<:<`.given_T().[T]
-[49:18..49:19): T -> _empty_/Enums.`<:<`.given_T().[T]
-[49:20..49:23): <:< -> _empty_/Enums.`<:<`#
-[49:24..49:25): T -> _empty_/Enums.`<:<`.given_T().[T]
-[49:29..49:33): Refl -> _empty_/Enums.`<:<`.Refl.
-[49:33..49:33): -> _empty_/Enums.`<:<`.Refl.apply().
+[49:16..49:17): T -> _empty_/Enums.`<:<`.given_T().[T]
+[49:18..49:21): <:< -> _empty_/Enums.`<:<`#
+[49:22..49:23): T -> _empty_/Enums.`<:<`.given_T().[T]
+[49:27..49:31): Refl -> _empty_/Enums.`<:<`.Refl.
+[49:31..49:31): -> _empty_/Enums.`<:<`.Refl.apply().
 [51:13..51:14): A <- _empty_/Enums.unwrap().[A]
 [51:16..51:17): B <- _empty_/Enums.unwrap().[B]
 [51:19..51:22): opt <- _empty_/Enums.unwrap().(opt)
@@ -1304,7 +1304,7 @@ Occurrences:
 [18:33..18:34): y <- a/b/Givens.Monoid#combine().(y)
 [18:36..18:37): A -> a/b/Givens.Monoid#[A]
 [18:40..18:41): A -> a/b/Givens.Monoid#[A]
-[20:8..21:3): <- a/b/Givens.given_Monoid_String.
+[20:8..20:27): Monoid[String] with <- a/b/Givens.given_Monoid_String.
 [20:8..20:14): Monoid -> a/b/Givens.Monoid#
 [20:15..20:21): String -> scala/Predef.String#
 [21:8..21:13): empty <- a/b/Givens.given_Monoid_String.empty().
@@ -1317,10 +1317,10 @@ Occurrences:
 [22:53..22:54): + -> java/lang/String#`+`().
 [22:55..22:56): y -> a/b/Givens.given_Monoid_String.combine().(y)
 [24:15..24:25): int2String <- a/b/Givens.int2String().
-[24:29..24:39): Conversion -> scala/Conversion#
-[24:40..24:43): Int -> scala/Int#
-[24:45..24:51): String -> scala/Predef.String#
-[24:57..24:65): toString -> scala/Any#toString().
+[24:27..24:37): Conversion -> scala/Conversion#
+[24:38..24:41): Int -> scala/Int#
+[24:43..24:49): String -> scala/Predef.String#
+[24:55..24:63): toString -> scala/Any#toString().
 [26:6..26:9): foo <- a/b/Givens.foo().
 [26:10..26:11): A <- a/b/Givens.foo().[A]
 [26:19..26:20): A <- a/b/Givens.foo().(A)

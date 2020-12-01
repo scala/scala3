@@ -26,11 +26,11 @@ end Common
 
 object Instances extends Common:
 
-  given intOrd as Ord[Int]:
+  given intOrd: Ord[Int] with
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given listOrd[T](using Ord[T]) as Ord[List[T]]:
+  given listOrd[T](using Ord[T]): Ord[List[T]] with
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -49,13 +49,13 @@ object Instances extends Common:
     def second = xs.tail.head
     def third = xs.tail.tail.head
 
-  given listMonad as Monad[List]:
+  given listMonad: Monad[List] with
     extension [A, B](xs: List[A]) def flatMap (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
-  given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
+  given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
     extension [A, B](r: Ctx => A) def flatMap (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -89,12 +89,11 @@ object Instances extends Common:
     type Symbol
     trait SymDeco:
       extension (sym: Symbol) def name: String
-    def symDeco: SymDeco
-    given SymDeco = symDeco
+    given symDeco: SymDeco
 
   object TastyImpl extends TastyAPI:
     type Symbol = String
-    val symDeco = new SymDeco:
+    given symDeco: SymDeco with
       extension (sym: Symbol) def name = sym
 
   class D[T]
@@ -111,11 +110,11 @@ object Instances extends Common:
         println(summon[Context].value)
       }
       locally {
-        given d[T] as D[T]
+        given d[T]: D[T] with {}
         println(summon[D[Int]])
       }
       locally {
-        given (using Context) as D[Int]
+        given (using Context): D[Int] with {}
         println(summon[D[Int]])
       }
   end C
@@ -123,7 +122,7 @@ object Instances extends Common:
   class Token(str: String)
 
   object Token:
-    given StringToToken as Conversion[String, Token]:
+    given StringToToken: Conversion[String, Token] with
       def apply(str: String): Token = new Token(str)
 
   val x: Token = "if"
@@ -141,11 +140,11 @@ object PostConditions:
 end PostConditions
 
 object AnonymousInstances extends Common:
-  given Ord[Int]:
+  given Ord[Int] with
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  given [T: Ord] as Ord[List[T]]:
+  given [T: Ord]: Ord[List[T]] with
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -162,10 +161,11 @@ object AnonymousInstances extends Common:
   extension [T](xs: List[T])
     def second = xs.tail.head
 
-  given [From, To](using c: Convertible[From, To]) as Convertible[List[From], List[To]]:
+  given [From, To](using c: Convertible[From, To])
+      : Convertible[List[From], List[To]] with
     extension (x: List[From]) def convert: List[To] = x.map(c.convert)
 
-  given Monoid[String]:
+  given Monoid[String] with
     extension (x: String) def combine(y: String): String = x.concat(y)
     def unit: String = ""
 
@@ -231,9 +231,9 @@ object Completions:
     //
     //   CompletionArg.from(statusCode)
 
-    given fromString as Conversion[String, CompletionArg] = Error(_)
-    given fromFuture as Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    given fromStatusCode as Conversion[Future[StatusCode], CompletionArg] = Status(_)
+    given fromString    : Conversion[String, CompletionArg] = Error(_)
+    given fromFuture    : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+    given fromStatusCode: Conversion[Future[StatusCode], CompletionArg] = Status(_)
   import CompletionArg._
 
   def complete[T](arg: CompletionArg) = arg match

@@ -2,7 +2,7 @@ package tests
 
 package implicitConversions
 
-given Conversion[A, B] {
+given Conversion[A, B] with {
   def apply(a: A): B = ???
 }
 

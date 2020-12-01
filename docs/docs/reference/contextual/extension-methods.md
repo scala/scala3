@@ -52,7 +52,7 @@ The three definitions above translate to
 ```scala
 <extension> def < (x: String)(y: String): Boolean = ...
 <extension> def +: (xs: Seq[Elem])(x: Elem): Seq[Elem] = ...
-infix <extension> def min(x: Number)(y: Number): Number = ...
+<extension> infix def min(x: Number)(y: Number): Number = ...
 ```
 
 Note the swap of the two parameters `x` and `xs` when translating
@@ -195,7 +195,7 @@ trait SafeDiv:
 By the second rule, an extension method can be made available by defining a given instance containing it, like this:
 
 ```scala
-given ops1 as IntOps // brings safeMod into scope
+given ops1: IntOps with {}  // brings safeMod into scope
 
 1.safeMod(2)
 ```
@@ -210,7 +210,7 @@ object List:
   extension [T](xs: List[List[T]])
     def flatten: List[T] = xs.foldLeft(Nil: List[T])(_ ++ _)
 
-  given [T: Ordering] as Ordering[List[T]]:
+  given [T: Ordering]: Ordering[List[T]] with
     extension (xs: List[T])
       def < (ys: List[T]): Boolean = ...
 end List

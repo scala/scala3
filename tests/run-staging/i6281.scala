@@ -21,7 +21,7 @@ object Test extends App {
     def reify[A](using Type[A]): STM[A, L] => Expr[Stm[A, L]]
     def reflect[A](using Type[A]): Expr[Stm[A, L]] => STM[A, L]
   }
-  given empty as Effects[HNil] {
+  given empty: Effects[HNil] with {
     def reify[A](using Type[A]) = m => m
     def reflect[A](using Type[A]) = m => m
   }

@@ -35,15 +35,15 @@ object JsonEncoder {
       }
   }
 
-  given listEncoder[T](using encoder: JsonEncoder[T]) as JsonEncoder[List[T]] {
+  given listEncoder[T](using encoder: JsonEncoder[T]): JsonEncoder[List[T]] with {
     def encode(list: List[T]) = s"[${ list.map(v => encoder.encode(v)).mkString(", ") }]"
   }
 
-  given intEncoder as JsonEncoder[Int] {
+  given intEncoder: JsonEncoder[Int] with {
     def encode(value: Int) = value + ""
   }
 
-  given stringEncoder as JsonEncoder[String] {
+  given stringEncoder: JsonEncoder[String] with {
     def encode(value: String) = value
   }
 }
