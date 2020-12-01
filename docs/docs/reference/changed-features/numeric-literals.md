@@ -207,8 +207,8 @@ method in the `FromDigits` given instance. That method is defined in terms of a 
 implementation method `fromDigitsImpl`. Here is its definition:
 ```scala
   private def fromDigitsImpl(digits: Expr[String])(using ctx: Quotes): Expr[BigFloat] =
-    digits match {
-      case Const(ds) =>
+    digits.unlift match {
+      case Some(ds) =>
         try {
           val BigFloat(m, e) = apply(ds)
           '{BigFloat(${Expr(m)}, ${Expr(e)})}
@@ -218,7 +218,7 @@ implementation method `fromDigitsImpl`. Here is its definition:
             ctx.error(ex.getMessage)
             '{BigFloat(0, 0)}
         }
-      case digits =>
+      case None =>
         '{apply($digits)}
     }
 } // end BigFloat

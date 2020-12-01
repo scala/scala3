@@ -13,8 +13,8 @@ object FileName {
 
   def createFileName(fileName: Expr[String])(using Quotes): Expr[FileName] =
     import quotes.reflect.report
-    fileName match {
-      case e@Const(s) =>
+    fileName.unlift match {
+      case Some(s) =>
         fileNameFromString(s) match {
             case Right(fn) =>
               '{FileName.unsafe(${Expr(fn.name)})} // Or `Expr(fn)` if there is a `Liftable[FileName]`
