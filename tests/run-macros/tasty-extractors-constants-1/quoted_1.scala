@@ -14,7 +14,7 @@ object Macros {
     Expr(3) match { case Const(n) => stagedPrintln(n) }
     '{4} match { case Const(n) => stagedPrintln(n) }
     '{"abc"} match { case Const(n) => stagedPrintln(n) }
-    '{null} match { case Const(n) => stagedPrintln(n) }
+    '{null} match { case '{null} => stagedPrintln(null) }
 
     '{new Object} match { case Const(n) => println(n); case _ => stagedPrintln("OK") }
 

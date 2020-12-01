@@ -38,7 +38,7 @@ Some(Some(3))
 Some(None)
 Some(Some(3))
 Some(Some(3))
-Some(None)
+None
 
 Some(Left(1))
 Some(Right(2))
