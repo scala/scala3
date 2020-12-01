@@ -841,6 +841,16 @@ object Build {
     settings(
       moduleName := "scala-library",
       javaOptions := (javaOptions in `scala3-compiler-bootstrapped`).value,
+      Compile/scalacOptions += "-Yerased-terms",
+      Compile/scalacOptions ++= {
+        Seq(
+          "-sourcepath",
+          Seq(
+            (Compile/sourceManaged).value / "scala-library-src",
+            (Compile/sourceManaged).value / "dotty-library-src",
+          ).mkString(File.pathSeparator),
+        )
+      },
       scalacOptions -= "-Xfatal-warnings",
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
@@ -869,6 +879,31 @@ object Build {
 
           ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
         } (Set(scalaLibrarySourcesJar)).toSeq
+      }.taskValue,
+      sourceGenerators in Compile += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val trgDir = (sourceManaged in Compile).value / "dotty-library-src"
+
+        // NOTE `sourceDirectory` is used for actual copying,
+        // but `sources` are used as cache keys
+        val dottyLibSourceDir = (`scala3-library-bootstrapped`/sourceDirectory).value
+        val dottyLibSources = (`scala3-library-bootstrapped`/Compile/sources).value
+
+        val cachedFun = FileFunction.cached(
+          cacheDir / s"copyDottyLibrarySrc",
+          FilesInfo.lastModified,
+          FilesInfo.exists,
+        ) { _ =>
+          s.log.info(s"Copying scala3-library sources from $dottyLibSourceDir to $trgDir...")
+          if (trgDir.exists) IO.delete(trgDir)
+          // IO.createDirectory(trgDir)
+          IO.copyDirectory(dottyLibSourceDir, trgDir)
+
+          ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
+        }
+
+        cachedFun(dottyLibSources.toSet).toSeq
       }.taskValue,
       sources in Compile ~= (_.filterNot(file =>
         // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
@@ -1555,8 +1590,9 @@ object Build {
 
           generateScala3StdlibDocumentation:= Def.taskDyn {
             val dottyJars: Seq[java.io.File] = Seq(
-              (`scala3-library-bootstrapped`/Compile/products).value,
               (`stdlib-bootstrapped`/Compile/products).value,
+              (`scala3-interfaces`/Compile/products).value,
+              (`tasty-core-bootstrapped`/Compile/products).value,
             ).flatten
 
             val roots = joinProducts(dottyJars)
