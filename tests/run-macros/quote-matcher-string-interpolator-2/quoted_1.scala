@@ -9,8 +9,8 @@ object Macros {
   private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(using Quotes): Expr[String] = {
     (self, args) match {
       case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args1)) =>
-        val strParts = parts.map { case Const(str) => str.reverse }
-        val strArgs = args1.map { case Const(str) => str }
+        val strParts = parts.map(_.unliftOrError.reverse)
+        val strArgs = args1.map(_.unliftOrError)
         Expr(StringContext(strParts: _*).s(strArgs: _*))
       case _ => ???
     }

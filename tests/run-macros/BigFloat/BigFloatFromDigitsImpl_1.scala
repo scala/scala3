@@ -5,8 +5,8 @@ import scala.quoted._
 
 object BigFloatFromDigitsImpl:
   def apply(digits: Expr[String])(using Quotes): Expr[BigFloat] =
-    digits match
-      case Const(ds) =>
+    digits.unlift match
+      case Some(ds) =>
         try
           val BigFloat(m, e) = BigFloat(ds)
           '{BigFloat(${Expr(m)}, ${Expr(e)})}
@@ -14,5 +14,5 @@ object BigFloatFromDigitsImpl:
           import quotes.reflect.report
           report.error(ex.getMessage)
           '{BigFloat(0, 0)}
-      case digits =>
+      case None =>
         '{BigFloat($digits)}

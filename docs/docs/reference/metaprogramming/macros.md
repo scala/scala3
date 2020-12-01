@@ -633,25 +633,20 @@ It is possible to deconstruct or extract values out of `Expr` using pattern matc
 
 `scala.quoted` contains objects that can help extracting values from `Expr`.
 
-* `scala.quoted.Const`/`scala.quoted.Consts`: matches an expression of a literal value (or list of values) and returns the value (or list of values).
 * `scala.quoted.Unlifted`: matches an expression of a value (or list of values) and returns the value (or list of values).
+* `scala.quoted.Const`/`scala.quoted.Consts`: Same as `Unlifted` but only works on primitive values.
 * `scala.quoted.Varargs`: matches an explicit sequence of expresions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
+
 
 These could be used in the following way to optimize any call to `sum` that has statically known values.
 ```scala
 inline def sum(inline args: Int*): Int = ${ sumExpr('args) }
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match {
-  case Varargs(Consts(args)) => // args is of type Seq[Int]
+  case Varargs(Unlifted(args)) => // args is of type Seq[Int]
     Expr(args.sum) // precompute result of sum
   case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
-    val staticSum: Int = argExprs.map {
-      case Const(arg) => arg
-      case _ => 0
-    }.sum
-    val dynamicSum: Seq[Expr[Int]] = argExprs.filter {
-      case Const(_) => false
-      case arg => true
-    }
+    val staticSum: Int = argExprs.map(_.unlift.getOrElse(0))
+    val dynamicSum: Seq[Expr[Int]] = argExprs.filter(_.unlift.isEmpty)
     dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
   case _ =>
     '{ $argsExpr.sum }
@@ -688,14 +683,8 @@ private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] = {
       case arg => Seq(arg)
     }
     val args2 = args1.flatMap(flatSumArgs)
-    val staticSum: Int = args2.map {
-      case Const(arg) => arg
-      case _ => 0
-    }.sum
-    val dynamicSum: Seq[Expr[Int]] = args2.filter {
-      case Const(_) => false
-      case arg => true
-    }
+    val staticSum: Int = args2.map(_.unlift.getOrElse(0)).sum
+    val dynamicSum: Seq[Expr[Int]] = args2.filter(_.unlift.isEmpty)
     dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
 }
 ```
@@ -771,8 +760,8 @@ private def evalExpr(e: Expr[Int])(using Quotes): Expr[Int] = {
       // body: Expr[Int => Int] where the argument represents references to y
       evalExpr(Expr.betaReduce(body)(evalExpr(x)))
     case '{ ($x: Int) * ($y: Int) } =>
-      (x, y) match
-        case (Const(a), Const(b)) => Expr(a * b)
+      (x.unlift, y.unlift) match
+        case (Some(a), Some(b)) => Expr(a * b)
         case _ => e
     case _ => e
   }
