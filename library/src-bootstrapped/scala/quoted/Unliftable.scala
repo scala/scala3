@@ -83,7 +83,7 @@ object Unliftable {
     def fromExpr(expr: Expr[T]) =
       import quotes.reflect._
       def rec(tree: Term): Option[T] = tree match {
-        case Literal(c) => Some(c.value.asInstanceOf[T])
+        case Literal(c) if c.value != null => Some(c.value.asInstanceOf[T])
         case Block(Nil, e) => rec(e)
         case Typed(e, _) => rec(e)
         case Inlined(_, Nil, e) => rec(e)
