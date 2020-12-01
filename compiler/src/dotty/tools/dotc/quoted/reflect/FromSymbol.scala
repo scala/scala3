@@ -8,6 +8,7 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Decorators._
 
 object FromSymbol {
 
@@ -18,6 +19,7 @@ object FromSymbol {
     else if (sym.isType && sym.is(Case)) typeBindFromSym(sym.asType)
     else if (sym.isType) typeDefFromSym(sym.asType)
     else if (sym.is(Method)) defDefFromSym(sym.asTerm)
+    else if (sym.is(ModuleVal)) valDefFromSym(sym.asTerm)
     else if (sym.is(Case)) bindFromSym(sym.asTerm)
     else valDefFromSym(sym.asTerm)
   }
