@@ -29,8 +29,22 @@ object Expr {
   }
 
   /** Lift a value into an expression containing the construction of that value */
-  def apply[T](x: T)(using lift: Liftable[T])(using Quotes): Expr[T] =
-    lift.toExpr(x)
+  def apply[T](x: T)(using Liftable[T])(using Quotes): Expr[T] =
+    scala.Predef.summon[Liftable[T]].toExpr(x)
+
+  /** Matches expressions containing values and extracts the value.
+   *
+   *  Usage:
+   *  ```
+   *  case '{ ... ${expr @ Expr(value)}: T ...} =>
+   *    // expr: Expr[T]
+   *    // value: T
+   *  ```
+   *
+   *  To directly unlift an expression `expr: Expr[T]` consider using `expr.unlift`/`expr.unliftOrError` insead.
+   */
+  def unapply[T](x: Expr[T])(using Unliftable[T])(using Quotes): Option[T] =
+    scala.Predef.summon[Unliftable[T]].fromExpr(x)
 
   /** Lifts this sequence of expressions into an expression of a sequence
    *
