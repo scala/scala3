@@ -4,15 +4,19 @@ package scala.quoted
 object Const {
 
   /** Matches expressions containing literal constant values and extracts the value.
-   *  It may match expressions of type Boolean, Byte, Short, Int, Long,
-   *  Float, Double, Char, String, ClassTag, scala.Symbol, Null and Unit.
+   *
+   *  - Converts expression containg literal values to their values:
+   *    - `'{1}` -> `1`, `'{2}` -> `2`, ...
+   *    - For all primitive types and `String`
    *
    *  Usage:
    *  ```
-   *  (x: Expr[B]) match {
-   *    case Const(value: B) => ...
-   *  }
+   *  case '{ ... ${expr @ Const(value)}: T ...} =>
+   *    // expr: Expr[T]
+   *    // value: T
    *  ```
+   *
+   *  To directly unlift an expression `expr: Expr[T]` consider using `expr.unlift`/`expr.unliftOrError` insead.
    */
   def unapply[T](expr: Expr[T])(using Quotes): Option[T] = {
     import quotes.reflect._
