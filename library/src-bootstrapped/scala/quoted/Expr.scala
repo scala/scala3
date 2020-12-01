@@ -32,7 +32,7 @@ object Expr {
     Block(statements.map(Term.of), Term.of(expr)).asExpr.asInstanceOf[Expr[T]]
   }
 
-  /** Creates an expression that will construct the value `x` */
+  /** Lift a value into an expression containing the construction of that value */
   def apply[T](x: T)(using ToExpr[T])(using Quotes): Expr[T] =
     scala.Predef.summon[ToExpr[T]].apply(x)
 

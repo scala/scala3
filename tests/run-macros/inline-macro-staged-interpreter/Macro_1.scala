@@ -11,8 +11,8 @@ object E {
 
   implicit def ev1[T: Type]: FromExpr[E[T]] = new FromExpr { // TODO use type class derivation
     def unapply(x: Expr[E[T]])(using Quotes) = (x match {
-      case '{ I(${Const(n)}) } => Some(I(n))
-      case '{ D(${Const(n)}) } => Some(D(n))
+      case '{ I(${Expr(n)}) } => Some(I(n))
+      case '{ D(${Expr(n)}) } => Some(D(n))
       case '{ Plus[Int](${Value(x)}, ${Value(y)})(using $op) } => Some(Plus(x, y)(using Plus2.IPlus))
       case '{ Plus[Double](${Value(x)}, ${Value(y)})(using $op) } => Some(Plus(x, y)(using Plus2.DPlus))
       case '{ Times[Int](${Value(x)}, ${Value(y)})(using $op) } => Some(Times(x, y)(using Times2.ITimes))

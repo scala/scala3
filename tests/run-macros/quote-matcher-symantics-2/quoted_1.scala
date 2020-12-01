@@ -21,7 +21,7 @@ object Macros {
 
     def lift(e: Expr[DSL])(implicit env: Map[Int, Expr[T]]): Expr[T] = e match {
 
-      case '{ LitDSL(${Const(c)}) } => sym.value(c)
+      case '{ LitDSL(${Expr(c)}) } => sym.value(c)
 
       case '{ ($x: DSL) + ($y: DSL) } => sym.plus(lift(x), lift(y))
 
@@ -35,7 +35,7 @@ object Macros {
           lift(close(body1)(nEnvVar))(env + (i -> lift(value)))
         }
 
-      case '{ envVar(${Const(i)}) } => env(i)
+      case '{ envVar(${Expr(i)}) } => env(i)
 
       case _ =>
         import quotes.reflect._

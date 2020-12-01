@@ -18,15 +18,15 @@ object Macros {
     object FromEnv {
       def unapply[T](e: Expr[Any])(using env: Env): Option[Expr[R[T]]] =
         e match
-          case '{envVar[t](${Const(id)})} =>
+          case '{envVar[t](${Expr(id)})} =>
             env.get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
           case _ =>
             None
     }
 
     def lift[T: Type](e: Expr[T])(using env: Env): Expr[R[T]] = ((e: Expr[Any]) match {
-      case Const(e: Int) => '{ $sym.int(${Expr(e)}).asInstanceOf[R[T]] }
-      case Const(e: Boolean) => '{ $sym.bool(${Expr(e)}).asInstanceOf[R[T]] }
+      case '{ ${Expr(e)}: Int } => '{ $sym.int(${Expr(e)}).asInstanceOf[R[T]] }
+      case '{ ${Expr(e)}: Boolean } => '{ $sym.bool(${Expr(e)}).asInstanceOf[R[T]] }
 
       case '{ ($x: Int) + ($y: Int) } =>
         '{ $sym.add(${lift(x)}, ${lift(y)}).asInstanceOf[R[T]] }

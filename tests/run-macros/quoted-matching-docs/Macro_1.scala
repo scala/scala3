@@ -9,7 +9,7 @@ private def sumExprShow(argsExpr: Expr[Seq[Int]]) (using Quotes): Expr[String] =
 
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes) : Expr[Int] = {
   UnsafeExpr.underlyingArgument(argsExpr) match {
-    case Varargs(Consts(args)) => // args is of type Seq[Int]
+    case Varargs(Exprs(args)) => // args is of type Seq[Int]
       Expr(args.sum) // precompute result of sum
     case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
       val staticSum: Int = argExprs.map(_.value.getOrElse(0)).sum

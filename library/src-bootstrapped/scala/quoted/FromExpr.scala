@@ -136,8 +136,8 @@ object FromExpr {
    */
   given StringContextFromExpr: FromExpr[StringContext] with {
     def unapply(x: Expr[StringContext])(using Quotes) = x match {
-      case '{ new StringContext(${Varargs(Consts(args))}: _*) } => Some(StringContext(args: _*))
-      case '{     StringContext(${Varargs(Consts(args))}: _*) } => Some(StringContext(args: _*))
+      case '{ new StringContext(${Varargs(Exprs(args))}: _*) } => Some(StringContext(args: _*))
+      case '{     StringContext(${Varargs(Exprs(args))}: _*) } => Some(StringContext(args: _*))
       case _ => None
     }
   }
