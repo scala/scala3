@@ -18,8 +18,12 @@ object language:
    */
   object experimental:
 
-    /** Experimental support for richer dependent types */
-    object dependent
+    /* Experimental support for richer dependent types (disabled for now)
+     * One can still run the compiler with support for parsing singleton applications
+     * using command line option `-language:experimental.dependent`.
+     * But one cannot use a feature import for this as long as this entry is commented out.
+     */
+    //object dependent
 
     /** Experimental support for named type arguments */
     object namedTypeArguments
