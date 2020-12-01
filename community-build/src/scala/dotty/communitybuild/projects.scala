@@ -15,9 +15,6 @@ lazy val sbtPluginFilePath: String =
   new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
   communitybuildDir.resolve("sbt-dotty-sbt").toAbsolutePath().toString()
 
-lazy val sbtScalaJSPluginFilePath: String =
-  communitybuildDir.resolve("sbt-scalajs-sbt").toAbsolutePath().toString()
-
 def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
 
 /** Executes shell command, returns false in case of error. */
@@ -29,6 +26,18 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
   val exitCode = process.waitFor()
   exitCode
 
+
+/** Versions of published projects, needs to be updated when a project in the build is updated.
+ *
+ *  TODO: instead of harcoding these numbers, we could get them from the
+ *  projects themselves. This likely requires injecting a custom task in the
+ *  projects to output the version number to a file.
+ */
+object Versions:
+  val scalacheck = "1.15.2-SNAPSHOT"
+  val scalatest = "3.2.3"
+  val munit = "0.7.19+DOTTY-SNAPSHOT"
+  val scodecBits = "1.1+DOTTY-SNAPSHOT"
 
 sealed trait CommunityProject:
   private var published = false
@@ -68,15 +77,26 @@ final case class SbtCommunityProject(
     project: String,
     sbtTestCommand: String,
     extraSbtArgs: List[String] = Nil,
-    forceUpgradeSbtScalajsPlugin: Boolean = false,
     dependencies: List[CommunityProject] = Nil,
     sbtPublishCommand: String = null) extends CommunityProject:
   override val binaryName: String = "sbt"
 
+  // A project in the community build can depend on an arbitrary version of
+  // another project in the build, so we force the use of the version that is
+  // actually in the community build.
   val dependencyOverrides = List(
     // dependencyOverrides doesn't seem to understand `%%%`
-    """"org.scalacheck" %% "scalacheck" % "1.15.2-SNAPSHOT"""",
-    """"org.scalacheck" %% "scalacheck_sjs1" % "1.15.2-SNAPSHOT""""
+    s""""org.scalacheck" %% "scalacheck" % "${Versions.scalacheck}"""",
+    s""""org.scalacheck" %% "scalacheck_sjs1" % "${Versions.scalacheck}"""",
+    s""""org.scalatest" %% "scalatest" % "${Versions.scalatest}"""",
+    s""""org.scalatest" %% "scalatest_sjs1" % "${Versions.scalatest}"""",
+    s""""org.scalameta" %% "munit" % "${Versions.munit}"""",
+    s""""org.scalameta" %% "munit_sjs1" % "${Versions.munit}"""",
+    s""""org.scalameta" %% "munit-scalacheck" % "${Versions.munit}"""",
+    s""""org.scalameta" %% "munit-scalacheck_sjs1" % "${Versions.munit}"""",
+    s""""org.scalameta" %% "junit-interface" % "${Versions.munit}"""",
+    s""""org.scodec" %% "scodec-bits" % "${Versions.scodecBits}"""",
+    s""""org.scodec" %% "scodec-bits_sjs1" % "${Versions.scodecBits}"""",
   )
 
   private val baseCommand =
@@ -92,14 +112,11 @@ final case class SbtCommunityProject(
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
-    val scalaJSPluginArgs =
-      if (forceUpgradeSbtScalajsPlugin) List(s"--addPluginSbtFile=$sbtScalaJSPluginFilePath")
-      else Nil
     extraSbtArgs ++ sbtProps ++ List(
       "-sbt-version", "1.4.4",
        "-Dsbt.supershell=false",
       s"--addPluginSbtFile=$sbtPluginFilePath"
-    ) ++ scalaJSPluginArgs
+    )
 
 object projects:
   lazy val utest = MillCommunityProject(
@@ -127,19 +144,19 @@ object projects:
   lazy val ujson = MillCommunityProject(
     project = "upickle",
     baseCommand = s"ujson.jvm[$compilerVersion]",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, geny)
+    dependencies = List(geny)
   )
 
   lazy val upickle = MillCommunityProject(
     project = "upickle",
     baseCommand = s"upickle.jvm[$compilerVersion]",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, geny, utest)
+    dependencies = List(geny, utest)
   )
 
   lazy val upickleCore = MillCommunityProject(
     project = "upickle",
     baseCommand = s"core.jvm[$compilerVersion]",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, geny, utest)
+    dependencies = List(geny, utest)
   )
 
   lazy val geny = MillCommunityProject(
@@ -280,21 +297,25 @@ object projects:
   )
 
   lazy val munit = SbtCommunityProject(
-    project          = "munit",
-    sbtTestCommand   = "testsJVM/test",
+    project = "munit",
+    sbtTestCommand  = "testsJVM/test;testsJS/test;",
+    // Hardcode the version to avoid having to deal with something set by sbt-dynver
+    sbtPublishCommand   = s"""set every version := "${Versions.munit}"; munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal""",
+    dependencies = List(scalacheck)
   )
 
   lazy val scodecBits = SbtCommunityProject(
     project          = "scodec-bits",
-    sbtTestCommand   = "coreJVM/test",
-    sbtPublishCommand = "coreJVM/publishLocal",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck)
+    sbtTestCommand   = "coreJVM/test;coreJS/test",
+    // Hardcode the version to avoid having to deal with something set by sbt-git
+    sbtPublishCommand = s"""set every version := "${Versions.scodecBits}"; coreJVM/publishLocal;coreJS/publishLocal""",
+    dependencies = List(munit)
   )
 
   lazy val scodec = SbtCommunityProject(
     project          = "scodec",
     sbtTestCommand   = "unitTests/test",
-    dependencies = List(scalatest, scalacheck, scalatestplusScalacheck, scodecBits)
+    dependencies = List(munit, scodecBits)
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
@@ -320,8 +341,7 @@ object projects:
 
   lazy val catsEffect2 = SbtCommunityProject(
     project        = "cats-effect-2",
-    sbtTestCommand = "test",
-    forceUpgradeSbtScalajsPlugin = true
+    sbtTestCommand = "test"
   )
 
   lazy val catsEffect3 = SbtCommunityProject(
