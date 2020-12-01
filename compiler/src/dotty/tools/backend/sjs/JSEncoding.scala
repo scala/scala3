@@ -19,6 +19,8 @@ import NameOps._
 import Names._
 import StdNames._
 
+import dotty.tools.dotc.transform.sjs.JSSymUtils._
+
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe}
 import org.scalajs.ir.Names.{LocalName, LabelName, FieldName, SimpleMethodName, MethodName, ClassName}
@@ -28,7 +30,6 @@ import org.scalajs.ir.UTF8String
 
 import ScopedVar.withScopedVars
 import JSDefinitions._
-import JSInterop._
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -199,7 +200,7 @@ object JSEncoding {
 
     val paramTypeRefs0 = tpe.firstParamTypes.map(paramOrResultTypeRef(_))
 
-    val hasExplicitThisParameter = isScalaJSDefinedJSClass(sym.owner)
+    val hasExplicitThisParameter = !sym.is(JavaStatic) && sym.owner.isNonNativeJSClass
     val paramTypeRefs =
       if (!hasExplicitThisParameter) paramTypeRefs0
       else encodeClassRef(sym.owner) :: paramTypeRefs0
@@ -243,7 +244,7 @@ object JSEncoding {
 
   def encodeClassType(sym: Symbol)(using Context): jstpe.Type = {
     if (sym == defn.ObjectClass) jstpe.AnyType
-    else if (isJSType(sym)) jstpe.AnyType
+    else if (sym.isJSType) jstpe.AnyType
     else {
       assert(sym != defn.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
@@ -303,7 +304,7 @@ object JSEncoding {
 
       case typeRef: jstpe.ClassRef =>
         val sym = typeRefInternal._2
-        if (sym == defn.ObjectClass || isJSType(sym))
+        if (sym == defn.ObjectClass || sym.isJSType)
           jstpe.AnyType
         else if (sym == defn.NothingClass)
           jstpe.NothingType
