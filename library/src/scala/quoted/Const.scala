@@ -21,7 +21,12 @@ object Const {
   def unapply[T](expr: Expr[T])(using Quotes): Option[T] = {
     import quotes.reflect._
     def rec(tree: Term): Option[T] = tree match {
-      case Literal(c) => Some(c.value.asInstanceOf[T])
+      case Literal(c) =>
+        c match
+          case Constant.Null() => None
+          case Constant.Unit() => None
+          case Constant.ClassOf(_) => None
+          case _ => Some(c.value.asInstanceOf[T])
       case Block(Nil, e) => rec(e)
       case Typed(e, _) => rec(e)
       case Inlined(_, Nil, e) => rec(e)

@@ -80,7 +80,16 @@ object Unliftable {
 
   /** Lift a quoted primitive value `'{ x }` into `x` */
   private class PrimitiveUnliftable[T <: Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Unliftable[T] {
-    def fromExpr(x: Expr[T]) = Const.unapply(x)
+    def fromExpr(expr: Expr[T]) =
+      import quotes.reflect._
+      def rec(tree: Term): Option[T] = tree match {
+        case Literal(c) => Some(c.value.asInstanceOf[T])
+        case Block(Nil, e) => rec(e)
+        case Typed(e, _) => rec(e)
+        case Inlined(_, Nil, e) => rec(e)
+        case _  => None
+      }
+      rec(Term.of(expr))
   }
 
   /** Default unliftable for Option
