@@ -4,11 +4,20 @@ import org.jetbrains.dokka._
 import org.jetbrains.dokka.DokkaSourceSetImpl
 import org.jetbrains.dokka.plugability.DokkaContext
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
+
 import collection.JavaConverters._
 import dotty.dokka.site.StaticSiteContext
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.io.VirtualFile
+import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.Spans
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import scala.io.Codec
 
 type CompilerContext = dotty.tools.dotc.core.Contexts.Context
 
@@ -20,12 +29,25 @@ given docContextFromDokka(using dokkaContext: DokkaContext) as DocContext =
 
 val report = dotty.tools.dotc.report
 
+def relativePath(p: Path)(using Context): Path =
+  val root = Paths.get("").toAbsolutePath()
+  val absPath = p.toAbsolutePath
+  println(Seq(p, absPath, absPath.startsWith(root), root.relativize(absPath)))
+  if absPath.startsWith(root) then root.relativize(p.toAbsolutePath()) else p
+
+
 def throwableToString(t: Throwable)(using CompilerContext): String =
-  if ctx.settings.verbose.value then
-    val os = new ByteArrayOutputStream
-    t.printStackTrace(new PrintStream(os))
-    os.toString()
-  else s"${t.getClass.getName}: ${t.getMessage}"
+  val os = new ByteArrayOutputStream
+  t.printStackTrace(new PrintStream(os))
+  val stLinkes = os.toString().linesIterator
+  if ctx.settings.verbose.value then stLinkes.mkString("\n")
+  else stLinkes.take(5).mkString("\n")
+
+private def sourcePostionFor(f: File)(using CompilerContext) =
+    val relPath = relativePath(f.toPath)
+    val virtualFile = new VirtualFile(relPath.toString, relPath.toString)
+    val sourceFile = new SourceFile(virtualFile, Codec.UTF8)
+    SourcePosition(sourceFile, Spans.NoSpan)
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
 private def createMessage(
@@ -38,13 +60,13 @@ private def createMessage(
 
 extension (r: report.type):
   def error(m: String, f: File, e: Throwable | Null = null)(using CompilerContext): Unit =
-    r.error(createMessage(m, f, e))
+    r.error(createMessage(m, f, e), sourcePostionFor(f))
 
   def warn(m: String, f: File, e: Throwable)(using CompilerContext): Unit =
-    r.warning(createMessage(m, f, e))
+    r.warning(createMessage(m, f, e), sourcePostionFor(f))
 
   def warn(m: String, f: File)(using CompilerContext): Unit =
-    r.warning(createMessage(m, f, null))
+    r.warning(createMessage(m, f, null), sourcePostionFor(f))
 
 
 case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
