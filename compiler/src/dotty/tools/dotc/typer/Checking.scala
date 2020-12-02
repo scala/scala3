@@ -719,11 +719,28 @@ trait Checking {
     recur(pat, pt)
   }
 
-  /** Check that `path` is a legal prefix for an import or export clause */
-  def checkLegalImportPath(path: Tree)(using Context): Unit = {
-    checkStable(path.tpe, path.srcPos, "import prefix")
+  private def checkLegalImportOrExportPath(path: Tree, kind: String)(using Context): Unit = {
+    checkStable(path.tpe, path.srcPos, kind)
     if (!ctx.isAfterTyper) Checking.checkRealizable(path.tpe, path.srcPos)
   }
+
+  /** Check that `path` is a legal prefix for an import clause */
+  def checkLegalImportPath(path: Tree)(using Context): Unit = {
+    checkLegalImportOrExportPath(path, "import prefix")
+  }
+
+  /** Check that `path` is a legal prefix for an export clause */
+  def checkLegalExportPath(path: Tree, selectors: List[untpd.ImportSelector])(using Context): Unit =
+    checkLegalImportOrExportPath(path, "export prefix")
+    if
+      selectors.exists(_.isWildcard)
+      && path.tpe.classSymbol.is(PackageClass)
+    then
+      // we restrict wildcard export from package as incremental compilation does not yet
+      // register a dependency on "all members of a package" - see https://github.com/sbt/zinc/issues/226
+      report.error(
+        em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix " +
+          "for a wildcard export, as it is a package.", path.srcPos)
 
  /**  Check that `tp` is a class type.
   *   Also, if `traitReq` is true, check that `tp` is a trait.

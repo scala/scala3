@@ -945,7 +945,7 @@ class Namer { typer: Typer =>
         val buf = new mutable.ListBuffer[tpd.MemberDef]
         val Export(expr, selectors) = exp
         val path = typedAheadExpr(expr, AnySelectionProto)
-        checkLegalImportPath(path)
+        checkLegalExportPath(path, selectors)
         lazy val wildcardBound = importBound(selectors, isGiven = false)
         lazy val givenBound = importBound(selectors, isGiven = true)
 

@@ -2235,29 +2235,26 @@ class Typer extends Namer
   def localDummy(cls: ClassSymbol, impl: untpd.Template)(using Context): Symbol =
     newLocalDummy(cls, impl.span)
 
-  inline def typedImportOrExport[T <: ImportOrExport[Untyped]](imp: T)(
-    inline mkTree: (Tree, List[untpd.ImportSelector]) => imp.ThisTree[Type])(using Context): imp.ThisTree[Type] = {
-    val expr1 = typedExpr(imp.expr, AnySelectionProto)
-    checkLegalImportPath(expr1)
-    val selectors1: List[untpd.ImportSelector] = imp.selectors.mapConserve { sel =>
+  inline private def typedSelectors(selectors: List[untpd.ImportSelector])(using Context): List[untpd.ImportSelector] =
+    selectors.mapConserve { sel =>
       if sel.bound.isEmpty then sel
       else cpy.ImportSelector(sel)(
         sel.imported, sel.renamed, untpd.TypedSplice(typedType(sel.bound)))
         .asInstanceOf[untpd.ImportSelector]
     }
-    mkTree(expr1, selectors1)
-  }
 
   def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import = {
-    typedImportOrExport(imp)((expr1, selectors1) =>
-      assignType(cpy.Import(imp)(expr1, selectors1), sym)
-    )
+    val expr1 = typedExpr(imp.expr, AnySelectionProto)
+    checkLegalImportPath(expr1)
+    val selectors1 = typedSelectors(imp.selectors)
+    assignType(cpy.Import(imp)(expr1, selectors1), sym)
   }
 
   def typedExport(exp: untpd.Export)(using Context): Export = {
-    typedImportOrExport(exp)((expr1, selectors1) =>
-      assignType(cpy.Export(exp)(expr1, selectors1))
-    )
+    val expr1 = typedExpr(exp.expr, AnySelectionProto)
+    // already called `checkLegalExportPath` in Namer
+    val selectors1 = typedSelectors(exp.selectors)
+    assignType(cpy.Export(exp)(expr1, selectors1))
   }
 
   def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
