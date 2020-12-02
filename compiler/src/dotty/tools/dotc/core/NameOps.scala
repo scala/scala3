@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import java.security.MessageDigest
@@ -9,7 +10,7 @@ import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
 import util.Chars.{isOperatorPart, digit2int}
 import Definitions._
 import nme._
-import Decorators.concat
+import Decorators._
 
 object NameOps {
 
@@ -69,7 +70,7 @@ object NameOps {
     def isLocalDummyName: Boolean = name startsWith str.LOCALDUMMY_PREFIX
     def isReplWrapperName: Boolean = name.toString contains str.REPL_SESSION_LINE
     def isReplAssignName: Boolean = name.toString contains str.REPL_ASSIGN_SUFFIX
-    def isSetterName: Boolean = name endsWith str.SETTER_SUFFIX
+    def isSetterName: Boolean = name.endsWith(str.SETTER_SUFFIX) || name.is(SyntheticSetterName)
     def isScala2LocalSuffix: Boolean = testSimple(_.endsWith(" "))
     def isSelectorName: Boolean = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
     def isAnonymousClassName: Boolean = name.startsWith(str.ANON_CLASS)
@@ -347,17 +348,21 @@ object NameOps {
 
     def setterName: TermName = name.exclude(FieldName) ++ str.SETTER_SUFFIX
 
+    def syntheticSetterName = SyntheticSetterName(name.exclude(FieldName))
+
     def getterName: TermName =
-      name.exclude(FieldName).mapLast(n =>
+      val name1 = name.exclude(FieldName)
+      if name1.is(SyntheticSetterName) then name1.exclude(SyntheticSetterName)
+      else name1.mapLast(n =>
         if (n.endsWith(str.SETTER_SUFFIX)) n.take(n.length - str.SETTER_SUFFIX.length).asSimpleName
         else n)
 
     def fieldName: TermName =
       if (name.isSetterName)
-        if (name.is(TraitSetterName)) {
-          val TraitSetterName(_, original) = name
-          original.fieldName
-        }
+        if name.is(SyntheticSetterName) then
+          name.exclude(SyntheticSetterName)
+            .replace { case TraitSetterName(_, original) => original }
+            .fieldName
         else getterName.fieldName
       else FieldName(name.toSimpleName)
 

@@ -25,7 +25,7 @@ object Mixin {
   def traitSetterName(getter: TermSymbol)(using Context): TermName =
     getter.ensureNotPrivate.name
       .expandedName(getter.owner, TraitSetterName)
-      .asTermName.setterName
+      .asTermName.syntheticSetterName
 }
 
 /** This phase performs the following transformations:
