@@ -5,23 +5,38 @@ import scala.annotation.{Annotation, compileTimeOnly}
 @compileTimeOnly("Illegal reference to `scala.quoted.runtime.Patterns`")
 object Patterns {
 
-  /** A splice in a quoted pattern is desugared by the compiler into a call to this method */
+  /** A splice in a quoted pattern is desugared by the compiler into a call to this method.
+   *
+   *  Calling this method in source has undefined behaviour at compile-time
+   */
   @compileTimeOnly("Illegal reference to `scala.quoted.runtime.Patterns.patternHole`")
   def patternHole[T]: T = ???
 
+  /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method.
+   *
+   *  Calling this method in source has undefined behaviour at compile-time
+   */
   @compileTimeOnly("Illegal reference to `scala.quoted.runtime.Patterns.patternHigherOrderHole`")
-  /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
   def patternHigherOrderHole[U](pat: Any, args: Any*): U = ???
 
+  /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method.
+   *
+   *  Calling this method in source has undefined behaviour at compile-time
+   */
   @compileTimeOnly("Illegal reference to `scala.quoted.runtime.Patterns.higherOrderHole`")
-  /** A higher order splice in a quoted pattern is desugared by the compiler into a call to this method */
   def higherOrderHole[U](args: Any*): U = ???
 
-  /** A splice of a name in a quoted pattern is that marks the definition of a type splice */
+  /** A splice of a name in a quoted pattern is that marks the definition of a type splice.
+   *
+   *  Adding this annotation in source has undefined behaviour at compile-time
+   */
   @compileTimeOnly("Illegal reference to `scala.quoted.runtime.Patterns.patternType`")
   class patternType extends Annotation
 
-  /** A type pattern that must be aproximated from above */
+  /** A type pattern that must be aproximated from above
+   *
+   *  Adding this annotation in source has undefined behaviour at compile-time
+   */
   @compileTimeOnly("Illegal reference to `scala.quoted.runtime.Patterns.fromAbove`")
   class fromAbove extends Annotation
 
