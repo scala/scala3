@@ -5,6 +5,7 @@ class JavaTest {
     A a = new A();
     System.out.println(a.getX());
     System.out.println(a.isY());
+    System.out.println(new T2().getX());
 
     System.out.println(Arrays.asList(a.getClass().getMethod("getRetainingAnnotation").getAnnotations()));
 
