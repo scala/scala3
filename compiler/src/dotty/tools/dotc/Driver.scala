@@ -9,10 +9,11 @@ import core.Contexts._
 import core.{MacroClassLoader, Mode, TypeError}
 import core.StdNames.nme
 import dotty.tools.dotc.ast.Positioned
-import dotty.tools.io.File
+import dotty.tools.io.{File, AbstractFile}
 import reporting._
 import core.Decorators._
 import config.Feature
+import util.SourceFile
 
 import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}
@@ -31,26 +32,14 @@ class Driver {
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
-  protected def doCompile(compiler: Compiler, fileNames: List[String])(using Context): Reporter =
-    if (fileNames.nonEmpty)
+  protected def doCompile(compiler: Compiler, fileNames: List[String])(using ctx: Context): Reporter =
+    if fileNames.nonEmpty then
       try
         val run = compiler.newRun
         run.compile(fileNames)
-
-        def finish(run: Run)(using Context): Unit =
-          run.printSummary()
-          if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
-            val suspendedUnits = run.suspendedUnits.toList
-            if (ctx.settings.XprintSuspension.value)
-              report.echo(i"compiling suspended $suspendedUnits%, %")
-            val run1 = compiler.newRun
-            for unit <- suspendedUnits do unit.suspended = false
-            run1.compileUnits(suspendedUnits)
-            finish(run1)(using MacroClassLoader.init(ctx.fresh))
-
-        finish(run)
+        finish(compiler, run)
       catch
-        case ex: FatalError  =>
+        case ex: FatalError =>
           report.error(ex.getMessage) // signals that we should fail compilation.
         case ex: TypeError =>
           println(s"${ex.toMessage} while compiling ${fileNames.mkString(", ")}")
@@ -59,7 +48,34 @@ class Driver {
           println(s"$ex while compiling ${fileNames.mkString(", ")}")
           throw ex
     ctx.reporter
-  end doCompile
+
+  protected def doCompileFiles(compiler: Compiler,  files: List[AbstractFile])(using Context): Reporter =
+    if files.nonEmpty then
+      try
+        val run = compiler.newRun
+        run.compileFiles(files)
+        finish(compiler, run)
+      catch
+        case ex: FatalError =>
+          report.error(ex.getMessage) // signals that we should fail compilation.
+        case ex: TypeError =>
+          println(s"${ex.toMessage} while compiling ${files.map(_.path).mkString(", ")}")
+          throw ex
+        case ex: Throwable =>
+          println(s"$ex while compiling ${files.map(_.path).mkString(", ")}")
+          throw ex
+    ctx.reporter
+
+  protected def finish(compiler: Compiler, run: Run)(using Context): Unit =
+    run.printSummary()
+    if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
+      val suspendedUnits = run.suspendedUnits.toList
+      if (ctx.settings.XprintSuspension.value)
+        report.echo(i"compiling suspended $suspendedUnits%, %")
+      val run1 = compiler.newRun
+      for unit <- suspendedUnits do unit.suspended = false
+      run1.compileUnits(suspendedUnits)
+      finish(compiler, run1)(using MacroClassLoader.init(ctx.fresh))
 
   protected def initCtx: Context = (new ContextBase).initialCtx
 

@@ -33,6 +33,12 @@ object CompilerCommand {
 
   def versionMsg: String = s"Scala compiler $versionString -- $copyrightString"
 
+  def shouldStopWithInfo(using ctx: Context) = {
+    val settings = ctx.settings
+    import settings._
+    Set(help, Xhelp, Yhelp, showPlugins, XshowPhases) exists (_.value)
+  }
+
   /** Distill arguments into summary detailing settings, errors and files to compiler */
   def distill(args: Array[String])(using Context): ArgsSummary = {
     /**
@@ -109,11 +115,6 @@ object CompilerCommand {
     def usageMessage    = createUsageMsg("where possible standard", shouldExplain = false, isStandard)
     def xusageMessage   = createUsageMsg("Possible advanced", shouldExplain = true, isAdvanced)
     def yusageMessage   = createUsageMsg("Possible private", shouldExplain = true, isPrivate)
-
-    def shouldStopWithInfo = {
-      import settings._
-      Set(help, Xhelp, Yhelp, showPlugins, XshowPhases) exists (_.value)
-    }
 
     def phasesMessage: String = {
       (new Compiler()).phases.map {

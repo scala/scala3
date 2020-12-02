@@ -3,10 +3,7 @@
  */
 package xsbt;
 
-import xsbti.AnalysisCallback;
-import xsbti.Logger;
-import xsbti.Reporter;
-import xsbti.Severity;
+import xsbti.*;
 import xsbti.compile.*;
 
 import java.io.File;
@@ -14,25 +11,22 @@ import java.io.File;
 import dotty.tools.dotc.core.Contexts.Context;
 import dotty.tools.dotc.core.Contexts.ContextBase;
 import dotty.tools.dotc.Main;
-import dotty.tools.dotc.interfaces.*;
-
-import java.net.URLClassLoader;
+import dotty.tools.xsbt.InterfaceCompileFailed;
+import dotty.tools.xsbt.DelegatingReporter;
 
 public class CachedCompilerImpl implements CachedCompiler {
   private final String[] args;
-  private final Output output;
   private final String[] outputArgs;
 
   public CachedCompilerImpl(String[] args, Output output) {
     super();
     this.args = args;
-    this.output = output;
 
     if (!(output instanceof SingleOutput))
       throw new IllegalArgumentException("output should be a SingleOutput, was a " + output.getClass().getName());
 
     this.outputArgs =
-      new String[] { "-d", ((SingleOutput) output).getOutputDirectory().getAbsolutePath().toString() };
+      new String[] { "-d", ((SingleOutput) output).getOutputDirectory().getAbsolutePath() };
   }
 
   public String[] commandArguments(File[] sources) {
@@ -54,7 +48,8 @@ public class CachedCompilerImpl implements CachedCompiler {
     return result;
   }
 
-  synchronized public void run(File[] sources, DependencyChanges changes, AnalysisCallback callback, Logger log, Reporter delegate, CompileProgress progress) {
+  synchronized public void run(File[] sources, DependencyChanges changes, AnalysisCallback callback, Logger log,
+    Reporter delegate, CompileProgress progress) {
     log.debug(() -> {
       String msg = "Calling Dotty compiler with arguments  (CompilerInterface):";
       for (String arg : args)
@@ -68,7 +63,7 @@ public class CachedCompilerImpl implements CachedCompiler {
 
     dotty.tools.dotc.reporting.Reporter reporter = Main.process(commandArguments(sources), ctx);
     if (reporter.hasErrors()) {
-      throw new InterfaceCompileFailed(args, new Problem[0]);
+      throw new InterfaceCompileFailed(args, new Problem[0], "Compilation failed");
     }
   }
 }

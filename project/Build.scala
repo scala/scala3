@@ -490,7 +490,7 @@ object Build {
       // get libraries onboard
       libraryDependencies ++= Seq(
         "org.scala-lang.modules" % "scala-asm" % "7.3.1-scala-1", // used by the backend
-        Dependencies.`compiler-interface`,
+        Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.15.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.15.0",
         "org.jline" % "jline-terminal-jna" % "3.15.0" // needed for Windows
@@ -953,12 +953,14 @@ object Build {
       sources in Test := Seq(),
       scalaSource in Compile := baseDirectory.value,
       javaSource  in Compile := baseDirectory.value,
+      resourceDirectory in Compile := baseDirectory.value.getParentFile / "resources",
 
       // Referring to the other project using a string avoids an infinite loop
       // when sbt reads the settings.
       test in Test := (test in (LocalProject("scala3-sbt-bridge-tests"), Test)).value,
 
-      libraryDependencies += Dependencies.`compiler-interface` % Provided
+      // The `newCompilerInterface` is backward compatible with the `oldCompilerInterface`
+      libraryDependencies += Dependencies.newCompilerInterface % Provided
     )
 
   // We use a separate project for the bridge tests since they can only be run
@@ -973,8 +975,7 @@ object Build {
 
       // Tests disabled until zinc-api-info cross-compiles with 2.13,
       // alternatively we could just copy in sources the part of zinc-api-info we need.
-      sources in Test := Seq(),
-      // libraryDependencies += (Dependencies.`zinc-api-info` % Test).withDottyCompat(scalaVersion.value)
+      sources in Test := Seq()
     )
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
@@ -1239,7 +1240,7 @@ object Build {
       // Keep in sync with inject-sbt-dotty.sbt
       libraryDependencies ++= Seq(
         Dependencies.`jackson-databind`,
-        Dependencies.`compiler-interface`
+        Dependencies.newCompilerInterface
       ),
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config",
