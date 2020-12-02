@@ -1580,7 +1580,7 @@ object Build {
               IO.write(dest / "CNAME", "dotty.epfl.ch")
             }.dependsOn(generateDocumentation(
               roots, "Scala 3", dest.getAbsolutePath, "master",
-              "-siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg"))
+              "-comment-syntax wiki -siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg"))
           }.evaluated,
 
           generateTestcasesDocumentation := Def.taskDyn {
