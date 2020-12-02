@@ -41,6 +41,7 @@ object Versions:
   val scalatest = "3.2.3"
   val munit = "0.7.19+DOTTY-SNAPSHOT"
   val scodecBits = "1.1+DOTTY-SNAPSHOT"
+  val simulacrumScalafix = "0.5.1-SNAPSHOT"
 
 sealed trait CommunityProject:
   private var published = false
@@ -123,6 +124,8 @@ final case class SbtCommunityProject(
     s""""org.typelevel" %% "discipline-munit_sjs1" % "${Versions.disciplineMunit}"""",
     s""""org.typelevel" %% "discipline-specs2" % "${Versions.disciplineSpecs2}"""",
     s""""org.typelevel" %% "discipline-specs2_sjs1" % "${Versions.disciplineSpecs2}"""",
+    s""""org.typelevel" %% "simulacrum-scalafix-annotations" % "${Versions.simulacrumScalafix}"""",
+    s""""org.typelevel" %% "simulacrum-scalafix-annotations_sjs1" % "${Versions.simulacrumScalafix}"""",
   )
 
   private val baseCommand =
@@ -483,6 +486,12 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline)
+  )
+
+  lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
+    project = "simulacrum-scalafix",
+    sbtTestCommand = "annotation/test:compile;annotationJS/test:compile",
+    sbtPublishCommand = "annotation/publishLocal;annotationJS/publishLocal",
   )
 
 end projects

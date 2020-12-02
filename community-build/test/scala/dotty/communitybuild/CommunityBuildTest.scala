@@ -127,6 +127,7 @@ class CommunityBuildTestB extends CommunityBuildTest:
   @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()
   @Test def shapeless = projects.shapeless.run()
+  @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
   @Test def stdLib213 = projects.stdLib213.run()
   @Test def verify = projects.verify.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()

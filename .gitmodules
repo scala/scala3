@@ -129,3 +129,6 @@
 [submodule "community-build/community-projects/discipline-specs2"]
 	path = community-build/community-projects/discipline-specs2
 	url = https://github.com/dotty-staging/discipline-specs2.git
+[submodule "community-build/community-projects/simulacrum-scalafix"]
+	path = community-build/community-projects/simulacrum-scalafix
+	url = https://github.com/dotty-staging/simulacrum-scalafix.git
