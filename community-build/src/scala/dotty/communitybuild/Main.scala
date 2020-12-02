@@ -26,7 +26,7 @@ object Main:
       case "publish" :: name :: Nil =>
       case "doc" :: "all" :: destStr :: Nil =>
         val dest = Paths.get(destStr)
-        s"rm -rf $destStr".!
+        Seq("rm", "-rf", "destStr").!
         Files.createDirectory(dest)
         val (toRun, ignored) =
           allProjects.map(projects.projectMap).partition(_.docCommand != null)
@@ -44,7 +44,7 @@ object Main:
             val destFileName =
               docsPath.subpath(2, docsPath.getNameCount).toString.replace('/', '_')
 
-            s"cp -r $docsPath $projectDest/$destFileName".!
+            Seq("cp", "-r", docsPath.toString, projectDest.resolve(destFileName).toString).!
             destFileName
           }
           name -> docsFiles
@@ -70,7 +70,7 @@ object Main:
         val missing = names.filterNot(projects.projectMap.contains)
         if missing.nonEmpty then
           println(s"Missing projects: ${missing.mkString(", ")}. All projects: ${allProjects.mkString(", ")}")
-          sys.exit(0)
+          sys.exit(1)
 
         val failed = names.filter{ p =>
           val docsRoots = generateDocs(projects.projectMap(p))
@@ -79,7 +79,7 @@ object Main:
         }
         if failed.nonEmpty then
           println(s"Documentation not found for ${failed.mkString(", ")}")
-          sys.exit(0)
+          sys.exit(1)
 
       case args =>
         println("USAGE: <COMMAND> <PROJECT NAME>")
@@ -88,5 +88,5 @@ object Main:
         allProjects.foreach { k =>
           println(s"\t$k")
         }
-        sys.exit(0)
+        sys.exit(1)
 

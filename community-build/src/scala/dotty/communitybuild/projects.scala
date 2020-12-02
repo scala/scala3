@@ -126,7 +126,7 @@ final case class SbtCommunityProject(
   override val docCommand =
     if sbtDocCommand eq null then null else
       val cmd = if sbtDocCommand.startsWith(";") then sbtDocCommand else s";$sbtDocCommand"
-      s"$baseCommand set every useScala3doc := true $cmd "
+      s"$baseCommand set every useScala3doc := true; set every doc/logLevel := Level.Warn $cmd "
 
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
@@ -243,7 +243,7 @@ object projects:
     project       = "scalatest",
     sbtTestCommand   = "scalacticDotty/clean;scalacticTestDotty/test; scalatestTestDotty/test",
     sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal",
-    sbtDocCommand = ";scalacticDotty/clean ;scalacticDotty/doc; scalatestDotty/doc"
+    sbtDocCommand = ";scalacticDotty/doc" // fails with missing type ;scalatestDotty/doc"
     // cannot take signature of (test: org.scalatest.concurrent.ConductorFixture#OneArgTest):
     // org.scalatest.Outcome
     // Problem parsing scalatest.dotty/target/scala-3.0.0-M2/src_managed/main/org/scalatest/concurrent/ConductorFixture.scala:[602..624..3843], documentation may not be generated.
@@ -361,6 +361,8 @@ object projects:
   lazy val munit = SbtCommunityProject(
     project          = "munit",
     sbtTestCommand   = "testsJVM/test",
+    // Hardcode the version to avoid having to deal with something set by sbt-dynver
+    sbtPublishCommand   = s"""set every version := "${Versions.munit}"; munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal""",
     sbtDocCommand   = "munitJVM/doc",
   )
 
