@@ -15,7 +15,7 @@ object Comments {
   val ContextDoc: Key[ContextDocstrings] = new Key[ContextDocstrings]
 
   /** Decorator for getting docbase out of context */
-  given CommentsContext as AnyRef:
+  given CommentsContext: AnyRef with
     extension (c: Context) def docCtx: Option[ContextDocstrings] = c.property(ContextDoc)
 
   /** Context for Docstrings, contains basic functionality for getting

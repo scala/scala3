@@ -18,7 +18,7 @@ trait ScaladocSupport { self: TastyParser =>
     val commentNode =
       if tree.symbol.isClassDef || tree.symbol.owner.isClassDef then
         import dotty.tools.dotc
-        given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+        given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
 
         val sym = tree.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
 

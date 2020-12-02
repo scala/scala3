@@ -125,11 +125,11 @@ trait Deriving {
         //
         //     ADT: C[A, B]               (A, B have same kinds at T, U)
         //
-        //          given derived$TC      as TC[              C         ]  // a "natural" instance
+        //          given derived$TC      : TC[              C         ]  // a "natural" instance
         //
         //     ADT: C[A]                  (A has same kind as U)
         //
-        //          given derived$TC      as TC[[t, u] =>>    C[      u]]
+        //          given derived$TC      : TC[[t, u] =>>    C[      u]]
         //
         // (b) The type class and all ADT type parameters are of kind *
         //

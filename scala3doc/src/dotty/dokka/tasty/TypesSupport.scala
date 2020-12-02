@@ -35,7 +35,7 @@ trait TypesSupport:
     }.flatten.map(_.dokkaType)
   }
 
-  given TreeSyntax as AnyRef:
+  given TreeSyntax: AnyRef with
     extension (tpeTree: Tree):
       def dokkaType: Bound =
         val data = tpeTree match
@@ -45,7 +45,7 @@ trait TypesSupport:
 
         new GenericTypeConstructor(tpeTree.symbol.dri, data.asJava, null)
 
-  given TypeSyntax as AnyRef:
+  given TypeSyntax: AnyRef with
     extension (tpe: TypeRepr):
       def dokkaType: Bound =
         val data = inner(tpe)
@@ -215,11 +215,11 @@ trait TypesSupport:
         //     case _ =>
         //     throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
         // }
-      case tr @ TermRef(qual, typeName) => 
+      case tr @ TermRef(qual, typeName) =>
         tr.termSymbol.tree match
           case vd: ValDef => inner(vd.tpt.tpe)
           case _          => link(tr.termSymbol)
-        
+
 
         // convertTypeOrBoundsToReference(reflect)(qual) match {
         //     case TypeReference(label, link, xs, _) => TypeReference(typeName + "$", link + "/" + label, xs)
@@ -246,7 +246,7 @@ trait TypesSupport:
         inner(sc) ++ texts(" match {\n") ++ casesTexts ++ texts("}")
 
       case ParamRef(TypeLambda(names, _, _), i) => texts(names.apply(i))
-      
+
       case ParamRef(m: MethodType, i) => texts(m.paramNames(i))
 
       case RecursiveType(tp) => inner(tp)

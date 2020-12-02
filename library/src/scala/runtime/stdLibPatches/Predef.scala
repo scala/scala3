@@ -29,7 +29,7 @@ object Predef:
   /** Summon a given value of type `T`. Usually, the argument is not passed explicitly.
    *
    *  @tparam T the type of the value to be summoned
-   *  @return the given value typed as the provided type parameter
+   *  @return the given value typed: the provided type parameter
    */
   inline def summon[T](using x: T): x.type = x
 

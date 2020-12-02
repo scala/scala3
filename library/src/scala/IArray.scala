@@ -11,7 +11,7 @@ object opaques:
   private[scala] type Sup[A] >: IArray[A] <: Array[_ <: A]
 
   /** Defines extension methods for immutable arrays */
-  given arrayOps as Object {
+  given arrayOps: Object with {
 
     /** The selection operation on an immutable array.
       *
@@ -266,7 +266,7 @@ object IArray {
   import opaques.Sup
 
   // A convenience to avoid having to cast everything by hand
-  private given [A] as Conversion[Array[A], IArray[A]] = identity[Sub[A]]
+  private given [A]: Conversion[Array[A], IArray[A]] = identity[Sub[A]]
 
   /** Convert an array into an immutable array without copying, the original array
    *   must _not_ be mutated after this or the guaranteed immutablity of IArray will

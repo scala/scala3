@@ -353,7 +353,7 @@ object ExplicitOuter {
    */
   class OuterOps(val ictx: Context) extends AnyVal {
     /** The context of all operations of this class */
-    given [Dummy] as Context = ictx
+    given [Dummy]: Context = ictx
 
     /** If `cls` has an outer parameter add one to the method type `tp`. */
     def addParam(cls: ClassSymbol, tp: Type): Type =

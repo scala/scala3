@@ -38,7 +38,7 @@ class Definitions {
   import Definitions._
 
   private var initCtx: Context = _
-  private given currentContext[Dummy_so_its_a_def] as Context = initCtx
+  private given currentContext[Dummy_so_its_a_def]: Context = initCtx
 
   private def newPermanentSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type) =
     newSymbol(owner, name, flags | Permanent, info)
