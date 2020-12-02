@@ -841,6 +841,16 @@ object Build {
     settings(
       moduleName := "scala-library",
       javaOptions := (javaOptions in `scala3-compiler-bootstrapped`).value,
+      Compile/scalacOptions += "-Yerased-terms",
+      Compile/scalacOptions ++= {
+        Seq(
+          "-sourcepath",
+          Seq(
+            (Compile/sourceManaged).value / "scala-library-src",
+            (Compile/sourceManaged).value / "dotty-library-src",
+          ).mkString(File.pathSeparator),
+        )
+      },
       scalacOptions -= "-Xfatal-warnings",
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
@@ -869,6 +879,30 @@ object Build {
 
           ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
         } (Set(scalaLibrarySourcesJar)).toSeq
+      }.taskValue,
+      sourceGenerators in Compile += Def.task {
+        val s = streams.value
+        val cacheDir = s.cacheDirectory
+        val trgDir = (sourceManaged in Compile).value / "dotty-library-src"
+
+        // NOTE `sourceDirectory` is used for actual copying,
+        // but `sources` are used as cache keys
+        val dottyLibSourceDir = (`scala3-library-bootstrapped`/sourceDirectory).value
+        val dottyLibSources = (`scala3-library-bootstrapped`/Compile/sources).value
+
+        val cachedFun = FileFunction.cached(
+          cacheDir / s"copyDottyLibrarySrc",
+          FilesInfo.lastModified,
+          FilesInfo.exists,
+        ) { _ =>
+          s.log.info(s"Copying scala3-library sources from $dottyLibSourceDir to $trgDir...")
+          if (trgDir.exists) IO.delete(trgDir)
+          IO.copyDirectory(dottyLibSourceDir, trgDir)
+
+          ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
+        }
+
+        cachedFun(dottyLibSources.toSet).toSeq
       }.taskValue,
       sources in Compile ~= (_.filterNot(file =>
         // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
@@ -1182,7 +1216,6 @@ object Build {
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScala3Documentation = inputKey[Unit]("Generate documentation for dotty lib")
-  val generateScala3StdlibDocumentation = taskKey[Unit]("Generate documentation for Scala3 standard library")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
   lazy val `scala3doc` = project.in(file("scala3doc")).asScala3doc
   lazy val `scala3doc-testcases` = project.in(file("scala3doc-testcases")).asScala3docTestcases
@@ -1489,7 +1522,7 @@ object Build {
       }
 
       def joinProducts(products: Seq[java.io.File]): String =
-        products.iterator.map(_.getAbsolutePath.toString).mkString(java.io.File.pathSeparator)
+        products.iterator.map(_.getAbsolutePath.toString).mkString(" ")
 
       val dokkaVersion = "1.4.10.2"
 
@@ -1532,12 +1565,12 @@ object Build {
             val majorVersion = (scalaBinaryVersion in LocalProject("scala3-library-bootstrapped")).value
 
             val dottyJars: Seq[java.io.File] = Seq(
+              (`stdlib-bootstrapped`/Compile/products).value,
               (`scala3-interfaces`/Compile/products).value,
               (`tasty-core-bootstrapped`/Compile/products).value,
-              (`scala3-library-bootstrapped`/Compile/products).value,
             ).flatten
 
-            val roots = dottyJars.mkString(" ")
+            val roots = joinProducts(dottyJars)
 
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
             else Def.task{
@@ -1547,23 +1580,8 @@ object Build {
               IO.write(dest / "CNAME", "dotty.epfl.ch")
             }.dependsOn(generateDocumentation(
               roots, "Scala 3", dest.getAbsolutePath, "master",
-              "-siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg"))
+              "-comment-syntax wiki -siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg"))
           }.evaluated,
-
-
-          generateScala3StdlibDocumentation:= Def.taskDyn {
-            val dottyJars: Seq[java.io.File] = Seq(
-              (`stdlib-bootstrapped`/Compile/products).value,
-            ).flatten
-
-            val roots = joinProducts(dottyJars)
-
-            if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-            else generateDocumentation(
-              roots, "Scala 3", "scala3doc/output/scala3-stdlib", "maser",
-              "-siteroot scala3doc/scala3-docs -comment-syntax wiki -project-logo scala3doc/scala3-docs/logo.svg "
-            )
-          }.value,
 
           generateTestcasesDocumentation := Def.taskDyn {
             generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "scala3doc/output/testcases", "master")

@@ -69,11 +69,13 @@ trait ClassLikeSupport:
 
       val fullExtra =
         if (signatureOnly) baseExtra
-        else baseExtra.plus(CompositeMemberExtension(
-          classDef.extractMembers,
-          classDef.getParents.map(_.dokkaType.asSignature),
-          supertypes,
-          Nil))
+        else
+          baseExtra.plus(CompositeMemberExtension(
+            classDef.extractPatchedMembers,
+            classDef.getParents.map(_.dokkaType.asSignature),
+            supertypes,
+            Nil))
+        end if
 
       new DClass(
           dri,
@@ -201,6 +203,31 @@ trait ClassLikeSupport:
       }
       c.membersToDocument.flatMap(parseMember) ++
         inherited.flatMap(s => parseInheritedMember(s))
+    }
+
+    /** Extracts members while taking Dotty logic for patching the stdlib into account. */
+    def extractPatchedMembers: Seq[Member] = {
+      val ownMembers = c.extractMembers
+      def extractPatchMembers(sym: Symbol) = {
+        // NOTE for some reason scala.language$.experimental$ class doesn't show up here, so we manually add the name
+        val ownMemberDRIs = ownMembers.iterator.map(_.name).toSet + "experimental$"
+        sym.tree.asInstanceOf[ClassDef]
+          .membersToDocument.filterNot(m => ownMemberDRIs.contains(m.symbol.name))
+          .flatMap(parseMember)
+      }
+      c.symbol.show match {
+        case "scala.Predef$" =>
+          ownMembers ++
+          extractPatchMembers(qctx.reflect.Symbol.requiredClass("scala.runtime.stdLibPatches.Predef$"))
+        case "scala.language$" =>
+          ownMembers ++
+          extractPatchMembers(qctx.reflect.Symbol.requiredModule("scala.runtime.stdLibPatches.language").moduleClass)
+        case "scala.language$.experimental$" =>
+          ownMembers ++
+          extractPatchMembers(qctx.reflect.Symbol.requiredModule("scala.runtime.stdLibPatches.language.experimental").moduleClass)
+        case _ => ownMembers
+      }
+
     }
 
     def getParents: List[Tree] =
@@ -417,4 +444,3 @@ trait ClassLikeSupport:
           valDef.symbol.source
       ))
     )
-

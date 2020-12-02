@@ -176,6 +176,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *  +- Flags
    *
    *  ```
+   *
+   * @syntax markdown
    */
   trait Reflection { self: reflect.type =>
 

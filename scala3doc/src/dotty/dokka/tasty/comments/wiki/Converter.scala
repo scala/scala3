@@ -31,13 +31,16 @@ class Converter(val repr: Repr) extends BaseConverter {
     block match {
       case Title(text, level) =>
         val content = convertInline(text)
+        // NOTE: these aren't strictly necessary, but if you inline them, incremental compilation will break
+        val jContent = content.asJava : java.util.List[_ <: dkkd.DocTag]
+        val jAtt = kt.emptyMap[String, String]
         emit(level match {
-          case 1 => dkkd.H1(content.asJava, kt.emptyMap)
-          case 2 => dkkd.H2(content.asJava, kt.emptyMap)
-          case 3 => dkkd.H3(content.asJava, kt.emptyMap)
-          case 4 => dkkd.H4(content.asJava, kt.emptyMap)
-          case 5 => dkkd.H5(content.asJava, kt.emptyMap)
-          case 6 => dkkd.H6(content.asJava, kt.emptyMap)
+          case 1 => dkkd.H1(jContent, jAtt)
+          case 2 => dkkd.H2(jContent, jAtt)
+          case 3 => dkkd.H3(jContent, jAtt)
+          case 4 => dkkd.H4(jContent, jAtt)
+          case 5 => dkkd.H5(jContent, jAtt)
+          case 6 => dkkd.H6(jContent, jAtt)
         })
 
       case Paragraph(text) =>
