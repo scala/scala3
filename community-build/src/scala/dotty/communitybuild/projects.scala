@@ -346,7 +346,8 @@ object projects:
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
-    sbtTestCommand = "testIfRelevant"
+    sbtTestCommand = "test",
+    dependencies   = List(scalacheck)
   )
 
   lazy val scalaParallelCollections = SbtCommunityProject(
