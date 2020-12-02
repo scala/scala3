@@ -150,18 +150,21 @@ class StaticSiteContext(
     dir("docs").flatMap(_.listFiles()).flatMap(loadTemplate(_, isBlog = false))
       ++ dir("blog").flatMap(loadTemplate(_, isBlog = true))
 
-  def driForLink(template: TemplateFile, link: String): Option[DRI] =
-    val pathDri = Try {
+  def driForLink(template: TemplateFile, link: String): Seq[DRI] =
+    val pathsDri: Option[Seq[DRI]] = Try {
       val baseFile =
         if link.startsWith("/") then root.toPath.resolve(link.drop(1))
         else template.file.toPath.getParent().resolve(link).normalize()
 
       val baseFileName = baseFile.getFileName.toString
       val mdFile = baseFile.resolveSibling(baseFileName.stripSuffix(".html") + ".md")
+      def trySuffix(pref: String) =
+       if baseFileName == pref then Seq(baseFile.getParent) else Nil
+      val strippedIndexes = trySuffix("index.html") ++ trySuffix("index.md")
 
-      Seq(baseFile, mdFile).find(Files.exists(_)).map(driFor)
-    }.toOption.flatten
-    pathDri.orElse(memberLinkResolver(link))
+      (Seq(baseFile, mdFile) ++ strippedIndexes).filter(Files.exists(_)).map(driFor)
+    }.toOption
+    pathsDri.getOrElse(memberLinkResolver(link).toList)
 
   def driFor(dest: Path): DRI = mkDRI(s"_.${root.toPath.relativize(dest)}")
 
