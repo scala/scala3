@@ -413,12 +413,8 @@ object RefChecks {
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
         overrideError("needs `abstract override` modifiers")
       else if (member.is(Override) && other.is(Accessor) &&
-        other.accessedFieldOrGetter.is(Mutable, butNot = Lazy)) {
-        // !?! this is not covered by the spec. We need to resolve this either by changing the spec or removing the test here.
-        // !!! is there a !?! convention? I'm !!!ing this to make sure it turns up on my searches.
-        if (!ctx.settings.YoverrideVars.value)
-          overrideError("cannot override a mutable variable")
-      }
+        other.accessedFieldOrGetter.is(Mutable, butNot = Lazy))
+        overrideError("cannot override a mutable variable")
       else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
         !member.is(Deferred) && !other.is(Deferred) &&

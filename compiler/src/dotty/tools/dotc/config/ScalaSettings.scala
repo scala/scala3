@@ -137,7 +137,6 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   }
 
   /** -Y "Private" settings */
-  val YoverrideVars: Setting[Boolean] = BooleanSetting("-Yoverride-vars", "Allow vars to be overridden.")
   val Yhelp: Setting[Boolean] = BooleanSetting("-Y", "Print a synopsis of private options.")
   val Ycheck: Setting[List[String]] = PhasesSetting("-Ycheck", "Check the tree at the end of")
   val YcheckMods: Setting[Boolean] = BooleanSetting("-Ycheck-mods", "Check that symbols and their defining trees have modifiers in sync.")
