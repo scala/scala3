@@ -28,58 +28,58 @@ object Unliftable {
    *  - Unlifts `'{false}` into `Some(false)`
    *  - Otherwise unlifts to `None`
    */
-  given BooleanUnliftable as Unliftable[Boolean] = new PrimitiveUnliftable
+  given BooleanUnliftable[T <: Boolean] as Unliftable[T] = new PrimitiveUnliftable
 
   /** Default unliftable for Byte
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Byte`
    *  - Otherwise unlifts to `None`
    */
-  given ByteUnliftable as Unliftable[Byte] = new PrimitiveUnliftable
+  given ByteUnliftable[T <: Byte] as Unliftable[T] = new PrimitiveUnliftable
 
   /** Default unliftable for Short
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Short`
    *  - Otherwise unlifts to `None`
    */
-  given ShortUnliftable as Unliftable[Short] = new PrimitiveUnliftable
+  given ShortUnliftable[T <: Short] as Unliftable[T] = new PrimitiveUnliftable
 
   /** Default unliftable for Int
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Int`
    *  - Otherwise unlifts to `None`
    */
-  given IntUnliftable as Unliftable[Int] = new PrimitiveUnliftable
+  given IntUnliftable[T <: Int] as Unliftable[T] = new PrimitiveUnliftable
 
   /** Default unliftable for Long
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Long`
    *  - Otherwise unlifts to `None`
    */
-  given LongUnliftable as Unliftable[Long] = new PrimitiveUnliftable
+  given LongUnliftable[T <: Long] as Unliftable[T] = new PrimitiveUnliftable
 
   /** Default unliftable for Float
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Float`
    *  - Otherwise unlifts to `None`
    */
-  given FloatUnliftable as Unliftable[Float] = new PrimitiveUnliftable
+  given FloatUnliftable[T <: Float] as Unliftable[T] = new PrimitiveUnliftable
 
   /** Default unliftable for Double
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Double`
    *  - Otherwise unlifts to `None`
    */
-  given DoubleUnliftable as Unliftable[Double] = new PrimitiveUnliftable
+  given DoubleUnliftable[T <: Double] as Unliftable[T] = new PrimitiveUnliftable
 
   /** Default unliftable for Char
    *  - Unlifts `'{c}` into `Some(c)` for a literal `c` of type `Char`
    *  - Otherwise unlifts to `None`
    */
-  given CharUnliftable as Unliftable[Char] = new PrimitiveUnliftable
+  given CharUnliftable[T <: Char] as Unliftable[T] = new PrimitiveUnliftable
 
   /** Default unliftable for String
    *  - Unlifts `'{str}` into `Some(str)` for a literal `str` of type `String`
    *  - Otherwise unlifts to `None`
    */
-  given StringUnliftable as Unliftable[String] = new PrimitiveUnliftable
+  given StringUnliftable[T <: String] as Unliftable[T] = new PrimitiveUnliftable
 
   /** Lift a quoted primitive value `'{ x }` into `x` */
-  private class PrimitiveUnliftable[T <: Int | Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Unliftable[T] {
+  private class PrimitiveUnliftable[T <: Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends Unliftable[T] {
     def fromExpr(expr: Expr[T]) =
       import quotes.reflect._
       def rec(tree: Term): Option[T] = tree match {
