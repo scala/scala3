@@ -240,11 +240,11 @@ class Definitions {
     @tu lazy val CompiletimeTesting_ErrorKind: Symbol = requiredModule("scala.compiletime.testing.ErrorKind")
       @tu lazy val CompiletimeTesting_ErrorKind_Parser: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Parser")
       @tu lazy val CompiletimeTesting_ErrorKind_Typer: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Typer")
-  @tu lazy val CompiletimeOpsPackageObject: Symbol = requiredModule("scala.compiletime.ops.package")
-    @tu lazy val CompiletimeOpsPackageObjectAny: Symbol = requiredModule("scala.compiletime.ops.package.any")
-    @tu lazy val CompiletimeOpsPackageObjectInt: Symbol = requiredModule("scala.compiletime.ops.package.int")
-    @tu lazy val CompiletimeOpsPackageObjectString: Symbol = requiredModule("scala.compiletime.ops.package.string")
-    @tu lazy val CompiletimeOpsPackageObjectBoolean: Symbol = requiredModule("scala.compiletime.ops.package.boolean")
+  @tu lazy val CompiletimeOpsPackage: Symbol = requiredPackage("scala.compiletime.ops")
+    @tu lazy val CompiletimeOpsAny: Symbol = requiredModule("scala.compiletime.ops.any")
+    @tu lazy val CompiletimeOpsInt: Symbol = requiredModule("scala.compiletime.ops.int")
+    @tu lazy val CompiletimeOpsString: Symbol = requiredModule("scala.compiletime.ops.string")
+    @tu lazy val CompiletimeOpsBoolean: Symbol = requiredModule("scala.compiletime.ops.boolean")
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -1088,10 +1088,10 @@ class Definitions {
     compiletimePackageOpTypes.contains(sym.name)
     && (
          sym.owner == CompiletimePackageObject.moduleClass && sym.name == tpnme.S
-      || sym.owner == CompiletimeOpsPackageObjectAny.moduleClass && compiletimePackageAnyTypes.contains(sym.name)
-      || sym.owner == CompiletimeOpsPackageObjectInt.moduleClass && compiletimePackageIntTypes.contains(sym.name)
-      || sym.owner == CompiletimeOpsPackageObjectBoolean.moduleClass && compiletimePackageBooleanTypes.contains(sym.name)
-      || sym.owner == CompiletimeOpsPackageObjectString.moduleClass && compiletimePackageStringTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsAny.moduleClass && compiletimePackageAnyTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsInt.moduleClass && compiletimePackageIntTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsBoolean.moduleClass && compiletimePackageBooleanTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsString.moduleClass && compiletimePackageStringTypes.contains(sym.name)
     )
 
   // ----- Scala-2 library patches --------------------------------------
