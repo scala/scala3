@@ -77,11 +77,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   def enumValueSymbols(using Context): List[Symbol] = { initSymbols; myEnumValueSymbols }
   def nonJavaEnumValueSymbols(using Context): List[Symbol] = { initSymbols; myNonJavaEnumValueSymbols }
 
-  private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol = {
+  private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol =
     val existing = sym.matchingMember(clazz.thisType)
-    if (existing != sym && !existing.is(Deferred)) existing
-    else NoSymbol
-  }
+    if existing != sym && !existing.is(Deferred) then existing else NoSymbol
 
   private def synthesizeDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Context ?=> Tree)(using Context): Tree =
     DefDef(sym, rhsFn(_)(using ctx.withOwner(sym))).withSpan(ctx.owner.span.focus)
@@ -236,12 +234,13 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  def equals(that: Any): Boolean =
      *    (this eq that) || {
      *      that match {
-     *        case x$0 @ (_: C @unchecked) => this.x == this$0.x && this.y == x$0.y
+     *        case x$0 @ (_: C @unchecked) => this.x == this$0.x && this.y == x$0.y && that.canEqual(this)
      *        case _ => false
      *     }
      *  ```
      *
-     *  If `C` is a value class the initial `eq` test is omitted.
+     *  If `C` is a value class, the initial `eq` test is omitted.
+     *  The `canEqual` test can be omitted if it is known that `canEqual` return always true.
      *
      *  `@unchecked` is needed for parametric case classes.
      *
@@ -254,8 +253,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val sortedAccessors = accessors.sortBy(accessor => if (accessor.info.typeSymbol.isPrimitiveValueClass) 0 else 1)
       val comparisons = sortedAccessors.map { accessor =>
         This(clazz).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
-      val rhs = // this.x == this$0.x && this.y == x$0.y
-        if (comparisons.isEmpty) Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
+      var rhs = // this.x == this$0.x && this.y == x$0.y && that.canEqual(this)
+        if comparisons.isEmpty then Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
+      val canEqualMeth = existingDef(defn.Product_canEqual, clazz)
+      if !clazz.is(Final) || canEqualMeth.exists && !canEqualMeth.is(Synthetic) then
+        rhs = rhs.and(
+            ref(thatAsClazz)
+            .select(canEqualMeth.orElse(defn.Product_canEqual))
+            .appliedTo(This(clazz)))
       val matchingCase = CaseDef(pattern, EmptyTree, rhs) // case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
       val defaultCase = CaseDef(Underscore(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
       val matchExpr = Match(that, List(matchingCase, defaultCase))
