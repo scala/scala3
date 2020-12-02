@@ -18,5 +18,5 @@ given [A]: Lub[A] with
 given [Left, Right](
     using lubLeft: Lub[Right], lubRight: Lub[Right])(
     using lub2: Lub2[lubLeft.Output, lubRight.Output])
-as Lub[Left | Right]:
+  : Lub[Left | Right] with
   type Output = lub2.Output

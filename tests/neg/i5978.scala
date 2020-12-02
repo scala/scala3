@@ -8,7 +8,7 @@ object TextParser {
   given TP: TokenParser[Char, Position[CharSequence]] with {}
 
   given FromCharToken(using T: TokenParser[Char, Position[CharSequence]])
-    as Conversion[Char, Position[CharSequence]] = ???
+    : Conversion[Char, Position[CharSequence]] = ???
 }
 
 object Testcase {

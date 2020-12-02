@@ -8,11 +8,11 @@ object Test {
     '{ "in staged" }
   }
 
-  given Expr[Int] // error
+  given Expr[Int] with {} // error
   new Expr[Int] // error
   class Expr2 extends Expr[Int] // error
 
-  given Type[Int] // error
+  given Type[Int] with {} // error
   new Type[Int] // error
   class Type2 extends Type[Int] // error
 
