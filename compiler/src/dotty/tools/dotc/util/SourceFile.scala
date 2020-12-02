@@ -209,6 +209,34 @@ object SourceFile {
     val src = new SourceFile(new VirtualFile(name, content.getBytes(StandardCharsets.UTF_8)), scala.io.Codec.UTF8)
     src._maybeInComplete = maybeIncomplete
     src
+
+  /** Returns the relative path of `source` within the `reference` path
+   *
+   *  It returns the absolute path of `source` if it is not contained in `reference`.
+   */
+  def relativePath(source: SourceFile, reference: String): String = {
+    val file = source.file
+    val jpath = file.jpath
+    if jpath eq null then
+      file.path // repl and other custom tests use abstract files with no path
+    else
+      val sourcePath = jpath.toAbsolutePath.normalize
+      val refPath = java.nio.file.Paths.get(reference).toAbsolutePath.normalize
+
+      if sourcePath.startsWith(refPath) then
+        // On Windows we can only relativize paths if root component matches
+        // (see implementation of sun.nio.fs.WindowsPath#relativize)
+        //
+        //     try refPath.relativize(sourcePath).toString
+        //     catch case _: IllegalArgumentException => sourcePath.toString
+        //
+        // As we already check that the prefix matches, the special handling for
+        // Windows is not needed.
+
+        refPath.relativize(sourcePath).toString
+      else
+        sourcePath.toString
+  }
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

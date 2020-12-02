@@ -8,20 +8,21 @@ import dotty.tools.tasty.TastyBuffer
 import TastyBuffer._
 
 import ast._
-import ast.Trees._
-import ast.Trees.WithLazyField
+import Trees.WithLazyField
 import util.{SourceFile, NoSource}
 import core._
-import Contexts._, Symbols._, Annotations._, Decorators._
+import Annotations._, Decorators._
 import collection.mutable
 import util.Spans._
 
 class PositionPickler(
     pickler: TastyPickler,
     addrOfTree: PositionPickler.TreeToAddr,
-    treeAnnots: untpd.MemberDef => List[tpd.Tree]) {
+    treeAnnots: untpd.MemberDef => List[tpd.Tree],
+    relativePathReference: String){
 
   import ast.tpd._
+
   val buf: TastyBuffer = new TastyBuffer(5000)
   pickler.newSection(PositionsSection, buf)
 
@@ -69,19 +70,8 @@ class PositionPickler(
 
     def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
-      val pathName = source.path
-      val pickledPath =
-        val originalPath = java.nio.file.Paths.get(pathName.toString).normalize()
-        if originalPath.isAbsolute then
-          val path = originalPath.toAbsolutePath().normalize()
-          val cwd = java.nio.file.Paths.get("").toAbsolutePath().normalize()
-          try cwd.relativize(path)
-          catch case _: IllegalArgumentException =>
-            warnings += "Could not relativize path for pickling: " + originalPath
-            originalPath
-        else
-          originalPath
-      buf.writeInt(pickler.nameBuffer.nameIndex(pickledPath.toString.toTermName).index)
+      val relativePath = SourceFile.relativePath(source, relativePathReference)
+      buf.writeInt(pickler.nameBuffer.nameIndex(relativePath.toTermName).index)
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span

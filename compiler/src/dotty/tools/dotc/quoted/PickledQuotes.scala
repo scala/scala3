@@ -167,7 +167,8 @@ object PickledQuotes {
     treePkl.compactify()
     if tree.span.exists then
       val positionWarnings = new mutable.ListBuffer[String]()
-      new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots)
+      val reference = ctx.settings.sourceroot.value
+      new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference)
         .picklePositions(ctx.compilationUnit.source, tree :: Nil, positionWarnings)
       positionWarnings.foreach(report.warning(_))
 
