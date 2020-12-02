@@ -45,9 +45,6 @@ jobs:
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scala3doc/generateScala3Documentation
 
-      - name: Generate Scala 3 stdlib documentation
-        run: ./project/scripts/sbt scala3doc/generateScala3StdlibDocumentation
-
       - name: Generate documentation for example project using dotty-sbt
         run: ./project/scripts/sbt "sbt-dotty/scripted sbt-dotty/scala3doc"
 
