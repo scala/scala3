@@ -359,11 +359,12 @@ object projects:
   )
 
   lazy val munit = SbtCommunityProject(
-    project          = "munit",
-    sbtTestCommand   = "testsJVM/test",
+    project = "munit",
+    sbtTestCommand  = "testsJVM/test;testsJS/test;",
     // Hardcode the version to avoid having to deal with something set by sbt-dynver
     sbtPublishCommand   = s"""set every version := "${Versions.munit}"; munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal""",
     sbtDocCommand   = "munitJVM/doc",
+    dependencies = List(scalacheck)
   )
 
   lazy val scodecBits = SbtCommunityProject(
@@ -451,50 +452,11 @@ object projects:
   lazy val verify = SbtCommunityProject(
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
+    sbtDocCommand = "verifyJVM/doc",
   )
-  
-  val projectMap = Map(
-    "utest" -> utest,
-    "sourcecode" -> sourcecode,
-    "oslib" -> oslib,
-    "oslibWatch" -> oslibWatch,
-    "ujson" -> ujson,
-    "upickle" -> upickle,
-    "upickleCore" -> upickleCore,
-    "geny" -> geny,
-    "fansi" -> fansi,
-    "pprint" -> pprint,
-    "requests" -> requests,
-    "scas" -> scas,
-    "intent" -> intent,
-    "algebra" -> algebra,
-    "scalacheck" -> scalacheck,
-    "scalatest" -> scalatest,
-    "scalatestplusScalacheck" -> scalatestplusScalacheck,
-    "scalaXml" -> scalaXml,
-    "scalap" -> scalap,
-    "betterfiles" -> betterfiles,
-    "ScalaPB" -> ScalaPB,
-    "minitest" -> minitest,
-    "fastparse" -> fastparse,
-    "stdLib213" -> stdLib213,
-    "shapeless" -> shapeless,
-    "xmlInterpolator" -> xmlInterpolator,
-    "effpi" -> effpi,
-    "sconfig" -> sconfig,
-    "zio" -> zio,
-    "munit" -> munit,
-    "scodecBits" -> scodecBits,
-    "scodec" -> scodec,
-    "scalaParserCombinators" -> scalaParserCombinators,
-    "dottyCpsAsync" -> dottyCpsAsync,
-    "scalaz" -> scalaz,
-    "endpoints4s" -> endpoints4s,
-    "catsEffect2" -> catsEffect2,
-    "catsEffect3" -> catsEffect3,
-    "scalaCollectionCompat" -> scalaCollectionCompat,
-    "scalaParallelCollections" -> scalaParallelCollections,
-  )
-  def apply(key: String) = projectMap(key)
 
 end projects
+
+def allProjects = projects.fields.of[CommunityProject].sortBy(_.project)
+
+lazy val projectMap = allProjects.map(p => p.project -> p).toMap

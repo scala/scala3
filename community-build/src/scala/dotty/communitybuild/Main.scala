@@ -7,7 +7,6 @@ import scala.sys.process._
 
 
 object Main:
-  def allProjects = projects.projectMap.keys.toList.sorted
 
   private def generateDocs(project: CommunityProject): Seq[Path] =
     val name = project.project
@@ -29,7 +28,7 @@ object Main:
         Seq("rm", "-rf", "destStr").!
         Files.createDirectory(dest)
         val (toRun, ignored) =
-          allProjects.map(projects.projectMap).partition(_.docCommand != null)
+          allProjects.partition(_.docCommand != null)
 
         val paths = toRun.map { project =>
           val name = project.project
@@ -67,13 +66,13 @@ object Main:
           sys.exit(1)
 
       case "doc" :: names if names.nonEmpty =>
-        val missing = names.filterNot(projects.projectMap.contains)
+        val missing = names.filterNot(projectMap.contains)
         if missing.nonEmpty then
           println(s"Missing projects: ${missing.mkString(", ")}. All projects: ${allProjects.mkString(", ")}")
           sys.exit(1)
 
         val failed = names.filter{ p =>
-          val docsRoots = generateDocs(projects.projectMap(p))
+          val docsRoots = generateDocs(projectMap(p))
           if docsRoots.nonEmpty then println(s"Docs for $p generated in $docsRoots")
           docsRoots.isEmpty
         }
