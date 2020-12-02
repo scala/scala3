@@ -34,6 +34,7 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
  *  projects to output the version number to a file.
  */
 object Versions:
+  val discipline = "1.1.3-SNAPSHOT"
   val scalacheck = "1.15.2-SNAPSHOT"
   val scalatest = "3.2.3"
   val munit = "0.7.19+DOTTY-SNAPSHOT"
@@ -114,6 +115,8 @@ final case class SbtCommunityProject(
     s""""org.scalameta" %% "junit-interface" % "${Versions.munit}"""",
     s""""org.scodec" %% "scodec-bits" % "${Versions.scodecBits}"""",
     s""""org.scodec" %% "scodec-bits_sjs1" % "${Versions.scodecBits}"""",
+    s""""org.typelevel" %% "discipline-core" % "${Versions.discipline}"""",
+    s""""org.typelevel" %% "discipline-core_sjs1" % "${Versions.discipline}"""",
   )
 
   private val baseCommand =
@@ -453,6 +456,13 @@ object projects:
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
     sbtDocCommand = "verifyJVM/doc",
+  )
+
+  lazy val discipline = SbtCommunityProject(
+    project = "discipline",
+    sbtTestCommand = "coreJVM/test;coreJS/test",
+    sbtPublishCommand = "set every credentials := Nil;coreJVM/publishLocal;coreJS/publishLocal",
+    dependencies = List(scalacheck)
   )
 
 end projects

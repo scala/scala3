@@ -120,3 +120,6 @@
 [submodule "community-build/community-projects/verify"]
 	path = community-build/community-projects/verify
 	url = https://github.com/dotty-staging/nanotest-strawman.git
+[submodule "community-build/community-projects/discipline"]
+	path = community-build/community-projects/discipline
+	url = https://github.com/dotty-staging/discipline.git
