@@ -1,6 +1,6 @@
-package dotty.dokka.linking
+package dotty.dokka
+package linking
 
-import org.jetbrains.dokka.links.DRI
 import org.junit.Ignore
 
 class ExtensionTest extends DriTest("extensionDRIs")

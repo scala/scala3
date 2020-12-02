@@ -8,24 +8,19 @@ import org.junit.Assert
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.nio.charset.Charset
-import dotty.tools.dotc.core.Contexts._
 
 class ReportingTest:
   import Scala3doc.Args
 
   private def checkReportedDiagnostics(
     newArgs: Args => Args = identity,
-    ctx: Context = testContext)(
+    ctx: CompilerContext = testContext)(
     op: ReportedDiagnostics => Unit): Unit =
 
     val dest = Files.createTempDirectory("test-doc")
     try
-      val args = Args(
-          name = "Test Project Name",
-          output = dest.toFile,
-          tastyFiles = tastyFiles("nested") // Random package
-        )
-      Scala3doc.run(newArgs(args))(using ctx)
+      // We are using random package
+      Scala3doc.run(newArgs(testArgs(tastyFiles("nested"), dest.toFile)))(using ctx)
       op(ctx.reportedDiagnostics)
 
     finally IO.delete(dest.toFile)

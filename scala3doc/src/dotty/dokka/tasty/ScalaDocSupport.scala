@@ -35,11 +35,12 @@ trait ScaladocSupport { self: TastyParser =>
       preparsed.syntax.headOption match {
         case Some(commentSetting) =>
           CommentSyntax.parse(commentSetting).getOrElse {
-            println(s"WARN: not a valid comment syntax: $commentSetting")
-            println(s"WARN: Defaulting to Markdown syntax.")
+            val msg = s"not a valid comment syntax: $commentSetting, defaulting to Markdown syntax."
+            // we should update pos with span from documentation
+            report.warning(msg, tree.pos)
             CommentSyntax.default
           }
-        case None => self.config.args.defaultSyntax
+        case None => ctx.args.defaultSyntax
       }
 
     val parser = commentSyntax match {

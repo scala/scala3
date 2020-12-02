@@ -42,7 +42,8 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
 
   def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
 
-class ScalaHtmlRenderer(ctx: DokkaContext, args: Scala3doc.Args) extends HtmlRenderer(ctx) {
+class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
+  val args = summon[DocContext].args
 
   // TODO #239
   val hackScalaSearchbarDataInstaller: SearchbarDataInstaller = {
@@ -264,7 +265,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Scala3doc.Args) extends HtmlRen
             .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
             .map(_ + prefix)
             .getOrElse {
-              println(s"[WARN] ${prc.template.file}: Unable to resolve link '$str'")
+              report.warn(s"Unable to resolve link '$str'", prc.template.file)
               str
             }
 

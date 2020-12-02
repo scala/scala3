@@ -25,15 +25,12 @@ import scala.util.Try
   *
   * Delegates most of the work to [[TastyParser]] [[dotty.dokka.tasty.TastyParser]].
   */
-case class DokkaTastyInspector(
-  sourceSet: SourceSetWrapper,
-  parser: Parser,
-  config: DottyDokkaConfig) extends DocTastyInspector:
+case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends DocTastyInspector:
 
   private val topLevels = Seq.newBuilder[Documentable]
 
   def processCompilationUnit(using q: Quotes)(root: q.reflect.Tree): Unit =
-    val parser = new TastyParser(q, this, config)
+    val parser = new TastyParser(q, this)
 
     def driFor(link: String): Option[DRI] =
       val symOps = new SymOps[q.type](q)
@@ -42,15 +39,15 @@ case class DokkaTastyInspector(
         MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
       )
 
-    config.staticSiteContext.foreach(_.memberLinkResolver = driFor)
+    ctx.staticSiteContext.foreach(_.memberLinkResolver = driFor)
     topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
 
   def result(): List[DPackage] =
     topLevels.clear()
-    val filePaths = config.args.tastyFiles.map(_.getAbsolutePath).toList
-    val classpath = config.args.classpath.split(java.io.File.pathSeparator).toList
+    val filePaths = ctx.args.tastyFiles.map(_.getAbsolutePath).toList
+    val classpath = ctx.args.classpath.split(java.io.File.pathSeparator).toList
 
-    inspectFilesInContext(classpath, filePaths)(using config.docContext)
+    inspectFilesInContext(classpath, filePaths)
 
     val all = topLevels.result()
     val packages = all
@@ -74,7 +71,7 @@ case class DokkaTastyInspector(
             JList(),
             f.getDocumentation,
             null,
-            sourceSet.toSet,
+            JSet(ctx.sourceSet),
             f.getExtra
           ).withNewMembers(entries.filterNot(_.isInstanceOf[DPackage]).toList).asInstanceOf[DPackage]
         )
@@ -83,7 +80,7 @@ case class DokkaTastyInspector(
     }.toList
 
   extension (self: DPackage) def mergeWith(other: DPackage): DPackage =
-    def nodes(p: DPackage): JList[TagWrapper] = p.getDocumentation.get(sourceSet) match
+    def nodes(p: DPackage): JList[TagWrapper] = p.getDocumentation.get(ctx.sourceSet) match
       case null => JList[TagWrapper]()
       case node => node.getChildren
 
@@ -94,9 +91,9 @@ case class DokkaTastyInspector(
         (self.getProperties.asScala ++ other.getProperties.asScala).asJava,
         JList(), // WARNING Merging is done before collecting classlikes, if it changes it needs to be refactored
         JList(),
-        sourceSet.toMap(DocumentationNode(nodes(self) ++ nodes(other))),
+        ctx.sourceSet.toMap(DocumentationNode(nodes(self) ++ nodes(other))),
         null,
-        sourceSet.toSet,
+        ctx.sourceSet.toSet,
         PropertyContainer.Companion.empty()
       ),
       self,
@@ -104,21 +101,25 @@ case class DokkaTastyInspector(
     )
 
 /** Parses a single Tasty compilation unit. */
-case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector, config: DottyDokkaConfig)
+case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using val ctx: DocContext)
     extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
   import qctx.reflect._
 
-  def sourceSet = inspector.sourceSet
+  def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch
+    case e: Exception  =>
+      report.warning(throwableToString(e), tree.pos)
+      None
+  def processTreeOpt[T](tree: Tree)(op: => Option[T]): Option[T] = try op catch
+    case e: Exception =>
+      report.warning(throwableToString(e), tree.pos)
+      None
 
-  def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch case e: Throwable => errorMsg(tree, tree.symbol.show, e)
-  def processTreeOpt[T](tree: Tree)(op: => Option[T]): Option[T] = try op catch case e: Throwable => errorMsg(tree, tree.symbol.show, e)
-  def processSymbol[T](sym: Symbol)(op: => T): Option[T] = try Option(op) catch case e: Throwable => errorMsg(sym, sym.show, e)
-
-  private def errorMsg[T](a: Any, m: => String, e: Throwable): Option[T] =
-    val msg = try m catch case e: Throwable => a.toString
-    println(s"ERROR: tree is faling: $msg")
-    e.printStackTrace()
-    throw e
+  def processSymbol[T](sym: Symbol)(op: => T): Option[T] = try Option(op) catch
+    case t: Throwable =>
+      try report.warning(throwableToString(t), sym.tree.pos) catch
+        case _: Throwable =>
+          report.warning(s"Failed to process ${sym.show}:\n${throwableToString(t)}")
+      None
 
   def parseRootTree(root: Tree): Seq[Documentable] =
     val docs = Seq.newBuilder[Documentable]

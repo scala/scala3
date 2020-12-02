@@ -13,27 +13,21 @@ import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.base.parsers.MarkdownParser
 import collection.JavaConverters._
 import kotlin.coroutines.Continuation
-import dotty.tools.dotc.core.Contexts._
 
-class ScalaModuleProvider(using DocContext) extends SourceToDocumentableTranslator:
+class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTranslator:
    override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =
-    cxt.getConfiguration match
-      case dottyConfig: DottyDokkaConfig =>
-        val parser = new MarkdownParser(_ => null)
-        val result = DokkaTastyInspector(sourceSet, parser, dottyConfig).result()
+    val result = DokkaTastyInspector(new MarkdownParser(_ => null)).result()
 
-        def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.allMembers.flatMap(flattenMember)
+    def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.allMembers.flatMap(flattenMember)
 
-        new DModule(
-          sourceSet.getDisplayName,
-          result.asJava,
-          JMap(),
-          null,
-          sourceSet.toSet,
-          PropertyContainer.Companion.empty() plus ModuleExtension(result.flatMap(flattenMember).toMap)
-        )
-      case _ =>
-        ???
+    new DModule(
+      sourceSet.getDisplayName,
+      result.asJava,
+      JMap(),
+      null,
+      sourceSet.toSet,
+      PropertyContainer.Companion.empty() plus ModuleExtension(result.flatMap(flattenMember).toMap)
+    )
 
 object EmptyModuleProvider extends SourceToDocumentableTranslator:
    override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =

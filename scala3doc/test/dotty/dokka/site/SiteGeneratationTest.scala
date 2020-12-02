@@ -9,7 +9,6 @@ import org.junit.Assert._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.nio.charset.Charset
-import dotty.tools.dotc.core.Contexts._
 
 class SiteGeneratationTest:
   val projectName = "Test Project Name"
@@ -60,7 +59,7 @@ class SiteGeneratationTest:
         content.assertTextsIn(".breadcrumbs a", (parents :+ title):_*)
     }
 
-    checkFile("index.html")(title = "Basic test", header = "Header")
+    checkFile("index.html")(title = "Basic test", header = "Header", parents = Seq(projectName))
     checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
     checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
     checkFile("docs/dir/index.html")(title = "A directory", header = "A directory", parents = Seq(projectName))

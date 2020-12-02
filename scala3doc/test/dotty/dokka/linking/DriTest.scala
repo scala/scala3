@@ -1,8 +1,8 @@
-package dotty.dokka.linking
+package dotty.dokka
+package linking
 
 import scala.jdk.CollectionConverters._
 import scala.Function.const
-import org.jetbrains.dokka.links.DRI
 import org.jetbrains.dokka.model.DModule
 import dotty.dokka.model.api._
 import dotty.dokka.{ScaladocTest, Assertion}

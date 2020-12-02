@@ -4,6 +4,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import liqp.Template
 import dotty.dokka.model.api._
+import dotty.tools.dotc.core.Contexts.Context
 
 case class SourceLink(val path: Option[Path], val urlTemplate: Template)
 
@@ -113,7 +114,11 @@ object SourceLinks:
       |
       |Template can defined only by subset of sources defined by path prefix represented by `<sub-path>`""".stripMargin
 
-  def load(configs: Seq[String], revision: Option[String], projectRoot: Path): SourceLinks =
+  def load(
+      configs: Seq[String],
+      revision: Option[String],
+      projectRoot: Path)(
+      using Context): SourceLinks =
     // TODO ...
     val mappings = configs.map(str => str -> SourceLink.parse(str, revision))
 
@@ -122,7 +127,7 @@ object SourceLinks:
         s"'$template': $message"
     }.mkString("\n")
 
-    if errors.nonEmpty then println(
+    if errors.nonEmpty then report.warning(
       s"""Following templates has invalid format:
          |$errors
          |
@@ -132,10 +137,10 @@ object SourceLinks:
 
     SourceLinks(mappings.collect {case (_, Right(link)) => link}, projectRoot)
 
-  def load(args: Scala3doc.Args): SourceLinks =
+  def load(using ctx: DocContext): SourceLinks =
     load(
-      args.sourceLinks,
-      args.revision,
+      ctx.args.sourceLinks,
+      ctx.args.revision,
       // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
       Paths.get("").toAbsolutePath
     )

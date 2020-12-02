@@ -17,8 +17,8 @@ trait ClassLikeSupport:
   self: TastyParser =>
   import qctx.reflect._
 
-  private val placeholderVisibility = JMap(sourceSet -> KotlinVisibility.Public.INSTANCE)
-  private val placeholderModifier = JMap(sourceSet -> KotlinModifier.Empty.INSTANCE)
+  private val placeholderVisibility = JMap(ctx.sourceSet -> KotlinVisibility.Public.INSTANCE)
+  private val placeholderModifier = JMap(ctx.sourceSet -> KotlinModifier.Empty.INSTANCE)
 
   private def kindForClasslike(sym: Symbol): Kind =
         if sym.flags.is(Flags.Object) then Kind.Object
@@ -90,7 +90,7 @@ trait ClassLikeSupport:
           classDef.symbol.documentation.asJava,
           null,
           placeholderModifier,
-          inspector.sourceSet.toSet,
+          ctx.sourceSet.toSet,
           /*isExpectActual =*/ false,
           fullExtra.asInstanceOf[PropertyContainer[DClass]]
       )
@@ -109,9 +109,9 @@ trait ClassLikeSupport:
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isSyntheticFunc && dd.symbol.isExtensionMethod =>
         dd.symbol.extendedSymbol.map { extSym =>
           val target = ExtensionTarget(
-            extSym.symbol.normalizedName, 
-            extSym.tpt.dokkaType.asSignature, 
-            extSym.tpt.symbol.dri, 
+            extSym.symbol.normalizedName,
+            extSym.tpt.dokkaType.asSignature,
+            extSym.tpt.symbol.dri,
             extSym.symbol.pos.start
           )
           parseMethod(dd.symbol, kind = Kind.Extension(target))
@@ -306,7 +306,7 @@ trait ClassLikeSupport:
       /*generics =*/ genericTypes.map(parseTypeArgument).asJava,
       /*receiver =*/ null, // Not used
       /*modifier =*/ placeholderModifier,
-      sourceSet.toSet,
+      ctx.sourceSet.toSet,
        /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty()
         plus MethodExtension(paramLists.map(_.size))
@@ -327,7 +327,7 @@ trait ClassLikeSupport:
       argument.symbol.documentation.asJava,
       null,
       argument.tpt.dokkaType,
-      sourceSet.toSet,
+      ctx.sourceSet.toSet,
       PropertyContainer.Companion.empty()
         .plus(ParameterExtension(isExtendedSymbol, isGrouped))
         .plus(MemberExtension.empty.copy(annotations = argument.symbol.getAnnotations()))
@@ -345,7 +345,7 @@ trait ClassLikeSupport:
       argument.symbol.documentation.asJava,
       null,
       JList(argument.rhs.dokkaType),
-      sourceSet.toSet,
+      ctx.sourceSet.toSet,
       PropertyContainer.Companion.empty()
     )
 
@@ -374,7 +374,7 @@ trait ClassLikeSupport:
       /*setter =*/ null,
       /*getter =*/ null,
       /*modifier =*/ placeholderModifier,
-      sourceSet.toSet,
+      ctx.sourceSet.toSet,
       /*generics =*/ generics.asJava, // TODO
        /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty() plus MemberExtension(
@@ -405,7 +405,7 @@ trait ClassLikeSupport:
       /*setter =*/ null,
       /*getter =*/ null,
       /*modifier =*/ placeholderModifier,
-      sourceSet.toSet,
+      ctx.sourceSet.toSet,
       /*generics =*/ JList(),
        /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty().plus(MemberExtension(

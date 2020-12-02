@@ -13,7 +13,6 @@ import java.nio.file.Files
 
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.CommonScalaSettings
-import dotty.tools.dotc.report
 import dotty.tools.dotc.core.Contexts._
 
 /** Main class for the doctool.
@@ -25,13 +24,13 @@ import dotty.tools.dotc.core.Contexts._
   *
   * - [](package.DottyDokkaPlugin) is our class that Dokka calls back and which
   *   actually generates the documentation.
-  * - [](package.DottyDokkaConfig) is our config for Dokka.
+  * - [](package.DocContext) is our config for Dokka
   */
 object Main:
   def main(args: Array[String]): Unit =
     try
       // We should create our own context here...
-      val reporter = Scala3doc.run(args)(using (new ContextBase).initialCtx)
+      val reporter = Scala3doc.run(args, (new ContextBase).initialCtx)
       // Sometimes jvm is hanging, so we want to be sure that we force shout down the jvm
       sys.exit(if reporter.hasErrors then 1 else 0)
     catch

@@ -22,4 +22,4 @@ object Main extends Driver:
     * how they're split).
     */
   override def process(args: Array[String], rootCtx: Context): Reporter =
-    dotty.dokka.Scala3doc.run(args)(using rootCtx)
+    dotty.dokka.Scala3doc.run(args, rootCtx)

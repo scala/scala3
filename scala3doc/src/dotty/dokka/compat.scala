@@ -29,6 +29,7 @@ type JHashMap[K, V] = java.util.HashMap[K, V]
 type JMapEntry[K, V] = java.util.Map.Entry[K, V]
 
 type DRI = org.jetbrains.dokka.links.DRI
+val topLevelDri = org.jetbrains.dokka.links.DRI.Companion.getTopLevel
 
 type SourceSetWrapper = DokkaConfiguration$DokkaSourceSet
 type DokkaSourceSet = DokkaConfiguration.DokkaSourceSet

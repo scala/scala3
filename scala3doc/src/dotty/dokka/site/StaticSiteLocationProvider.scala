@@ -7,30 +7,31 @@ import org.jetbrains.dokka.base.resolvers.local.LocationProviderFactory
 import org.jetbrains.dokka.pages.ContentPage
 import org.jetbrains.dokka.pages.PageNode
 import org.jetbrains.dokka.pages.RootPageNode
+import org.jetbrains.dokka.pages.ModulePage
 import org.jetbrains.dokka.plugability.DokkaContext
 
 import scala.collection.JavaConverters._
 import java.nio.file.Paths
 import java.nio.file.Path
 
-class StaticSiteLocationProviderFactory(private val ctx: DokkaContext) extends LocationProviderFactory:
+class StaticSiteLocationProviderFactory(using ctx: DokkaContext) extends LocationProviderFactory:
   override def getLocationProvider(pageNode: RootPageNode): LocationProvider =
-    try new StaticSiteLocationProvider(ctx, pageNode)
-    catch 
+    try new StaticSiteLocationProvider(pageNode)
+    catch
       case e: Error =>
         // TODO (https://github.com/lampepfl/scala3doc/issues/238) error handling
         e.printStackTrace()
         // We encounter bug in Kotlin coroutines (race) when this method throws exception
         // In such case we want to return null to trigger NPE in other piece of code to fail properly coroutine context
-        // Making generated DRIs not-unique will reproduce this behavior 
+        // Making generated DRIs not-unique will reproduce this behavior
         null
 
-class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
+class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext)
   extends DokkaLocationProvider(pageNode, ctx, ".html"):
     private def updatePageEntry(page: PageNode, jpath: JList[String]): JList[String] =
       page match
         case page: StaticPageNode =>
-          ctx.siteContext.fold(jpath) { context =>
+          summon[DocContext].staticSiteContext.fold(jpath) { context =>
             val rawFilePath = context.root.toPath.relativize(page.template.file.toPath)
             val pageName = page.template.file.getName
             val dotIndex = pageName.lastIndexOf('.')
@@ -41,7 +42,8 @@ class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
                 case regex(year, month, day, name) =>
                   rawFilePath.getParent.resolveSibling(Paths.get(year, month, day, name))
                 case _ =>
-                  println(s"Blog file at path: $rawFilePath doesn't match desired format.")
+                  val msg = s"Relative path for blog: $rawFilePath doesn't match `yyy-mm-dd-name.md` format."
+                  report.warn(msg, page.template.file)
                   rawFilePath.resolveSibling(pageName.substring(0, dotIndex))
               }
               blogPostPath.iterator.asScala.map(_.toString).toList.asJava
@@ -60,7 +62,7 @@ class StaticSiteLocationProvider(ctx: DokkaContext, pageNode: RootPageNode)
         case _ if jpath.size() > 1 && jpath.get(0) ==   "--root--" && jpath.get(1) == "-a-p-i" =>
           (List("api") ++ jpath.asScala.drop(2)).asJava
 
-        case _: org.jetbrains.dokka.pages.ModulePage if ctx.siteContext.isEmpty =>
+        case _: ModulePage if summon[DocContext].staticSiteContext.isEmpty =>
           JList("index")
         case _ =>
           jpath

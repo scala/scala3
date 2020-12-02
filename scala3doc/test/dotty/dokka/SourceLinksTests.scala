@@ -64,7 +64,7 @@ class SourceLinksTest:
   type Args = String | (String, Operation) | (String, Int) | (String, Int, Operation)
 
   private def testLink(config: Seq[String], revision: Option[String])(cases: (Args, String | None.type)*): Unit =
-    val links = SourceLinks.load(config, revision, projectRoot)
+    val links = SourceLinks.load(config, revision, projectRoot)(using testContext)
     cases.foreach { case (args, expected) =>
       val res = args match
         case path: String => links.pathTo(projectRoot.resolve(path))

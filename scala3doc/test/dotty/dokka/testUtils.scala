@@ -13,7 +13,7 @@ case class ReportedDiagnostics(errors: List[Diagnostic], warnings: List[Diagnost
   def infoMsgs = infos.map(_.msg.rawMessage)
 
 
-extension (c: Context) def reportedDiagnostics: ReportedDiagnostics =
+extension (c: CompilerContext) def reportedDiagnostics: ReportedDiagnostics =
   val t = c.reporter.asInstanceOf[TestReporter]
   ReportedDiagnostics(t.errors.result, t.warnings.result, t.infos.result)
 
@@ -48,7 +48,15 @@ class TestReporter extends ConsoleReporter:
       warnings += dia
       super.doReport(dia)
 
+def testArgs(files: Seq[File] = Nil, dest: File = new File("notUsed")) = Scala3doc.Args(
+          name = "Test Project Name",
+          output = dest,
+          tastyFiles = files
+        )
+
 def testContext = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
+
+def testDocContext = DocContext(testArgs(), testContext)
 
 def tastyFiles(name: String) =
   def listFilesSafe(dir: File) = Option(dir.listFiles).getOrElse {
