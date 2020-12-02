@@ -8,8 +8,14 @@ Some(6)
 Some(7.1)
 Some(8.1)
 
+Some(4)
+Some(5)
+Some(8.2)
+
 Some(a)
+Some(b)
 Some(abc)
+Some(def)
 
 Some(List(1, 2, 3))
 Some(List(1, 2, 3))
