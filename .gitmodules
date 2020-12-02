@@ -117,3 +117,6 @@
 [submodule "community-build/community-projects/scala-collection-compat"]
 	path = community-build/community-projects/scala-collection-compat
 	url = https://github.com/dotty-staging/scala-collection-compat.git
+[submodule "community-build/community-projects/verify"]
+	path = community-build/community-projects/verify
+	url = https://github.com/dotty-staging/nanotest-strawman.git
