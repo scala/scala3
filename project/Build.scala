@@ -1216,7 +1216,6 @@ object Build {
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScala3Documentation = inputKey[Unit]("Generate documentation for dotty lib")
-  val generateScala3StdlibDocumentation = taskKey[Unit]("Generate documentation for Scala3 standard library")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
   lazy val `scala3doc` = project.in(file("scala3doc")).asScala3doc
   lazy val `scala3doc-testcases` = project.in(file("scala3doc-testcases")).asScala3docTestcases
@@ -1566,9 +1565,9 @@ object Build {
             val majorVersion = (scalaBinaryVersion in LocalProject("scala3-library-bootstrapped")).value
 
             val dottyJars: Seq[java.io.File] = Seq(
+              (`stdlib-bootstrapped`/Compile/products).value,
               (`scala3-interfaces`/Compile/products).value,
               (`tasty-core-bootstrapped`/Compile/products).value,
-              (`scala3-library-bootstrapped`/Compile/products).value,
             ).flatten
 
             val roots = joinProducts(dottyJars)
@@ -1583,23 +1582,6 @@ object Build {
               roots, "Scala 3", dest.getAbsolutePath, "master",
               "-siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg"))
           }.evaluated,
-
-
-          generateScala3StdlibDocumentation:= Def.taskDyn {
-            val dottyJars: Seq[java.io.File] = Seq(
-              (`stdlib-bootstrapped`/Compile/products).value,
-              (`scala3-interfaces`/Compile/products).value,
-              (`tasty-core-bootstrapped`/Compile/products).value,
-            ).flatten
-
-            val roots = joinProducts(dottyJars)
-
-            if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
-            else generateDocumentation(
-              roots, "Scala 3", "scala3doc/output/scala3-stdlib", "maser",
-              "-siteroot scala3doc/scala3-docs -comment-syntax wiki -project-logo scala3doc/scala3-docs/logo.svg "
-            )
-          }.value,
 
           generateTestcasesDocumentation := Def.taskDyn {
             generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "scala3doc/output/testcases", "master")
