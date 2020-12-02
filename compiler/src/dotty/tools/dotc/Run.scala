@@ -85,7 +85,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var myCtx = rootContext(using ictx)
 
   /** The context created for this run */
-  given runContext[Dummy_so_its_a_def] as Context = myCtx
+  given runContext[Dummy_so_its_a_def]: Context = myCtx
   assert(runContext.runId <= Periods.MaxPossibleRunId)
 
   private var myUnits: List[CompilationUnit] = _

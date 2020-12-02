@@ -21,10 +21,10 @@ import scala.io.Codec
 
 type CompilerContext = dotty.tools.dotc.core.Contexts.Context
 
-given compilerContext(using docContext: DocContext) as CompilerContext =
+given compilerContext(using docContext: DocContext): CompilerContext =
   docContext.compilerContext
 
-given docContextFromDokka(using dokkaContext: DokkaContext) as DocContext =
+given docContextFromDokka(using dokkaContext: DokkaContext): DocContext =
   dokkaContext.getConfiguration.asInstanceOf[DocContext]
 
 val report = dotty.tools.dotc.report

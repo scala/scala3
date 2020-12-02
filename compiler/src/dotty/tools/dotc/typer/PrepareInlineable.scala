@@ -236,7 +236,7 @@ object PrepareInlineable {
         if (!ctx.isAfterTyper) {
           val inlineCtx = ctx
           inlined.updateAnnotation(LazyBodyAnnotation {
-            given ctx as Context = inlineCtx
+            given ctx: Context = inlineCtx
             var inlinedBody = dropInlineIfError(inlined, treeExpr)
             if inlined.isInlineMethod then
               inlinedBody = dropInlineIfError(inlined,

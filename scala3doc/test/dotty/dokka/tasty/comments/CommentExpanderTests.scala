@@ -30,7 +30,7 @@ class CommentExpanderTests {
     str: String
   ): Unit =
     import dotty.tools.dotc
-    given ctx as dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     val comment = CommentExpander.cookComment(sym).get
     assertEquals(comment.expanded.get, str)

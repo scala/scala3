@@ -27,7 +27,7 @@ final class Not[+T] private ()
 trait LowPriorityNot {
 
   /** A fallback method used to emulate negation in Scala 2 */
-  given default[T] as Not[T] = Not.value
+  given default[T]: Not[T] = Not.value
 }
 object Not extends LowPriorityNot {
 
@@ -38,8 +38,8 @@ object Not extends LowPriorityNot {
   def value: Not[Nothing] = new Not[Nothing]()
 
   /** One of two ambiguous methods used to emulate negation in Scala 2 */
-  given amb1[T](using ev: T) as Not[T] = ???
+  given amb1[T](using ev: T): Not[T] = ???
 
   /** One of two ambiguous methods used to emulate negation in Scala 2 */
-  given amb2[T](using ev: T) as Not[T] = ???
+  given amb2[T](using ev: T): Not[T] = ???
 }

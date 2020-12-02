@@ -669,7 +669,7 @@ class Namer { typer: Typer =>
     protected def localContext(owner: Symbol): FreshContext = ctx.fresh.setOwner(owner).setTree(original)
 
     /** The context with which this completer was created */
-    given creationContext as Context = ictx
+    given creationContext: Context = ictx
 
     // make sure testing contexts are not captured by completers
     assert(!ictx.reporter.isInstanceOf[ExploringReporter])
@@ -835,7 +835,7 @@ class Namer { typer: Typer =>
 
     override final def typeSig(sym: Symbol): Type =
       val tparamSyms = completerTypeParams(sym)(using ictx)
-      given ctx as Context = nestedCtx
+      given ctx: Context = nestedCtx
 
       def abstracted(tp: TypeBounds): TypeBounds =
         HKTypeLambda.boundsFromParams(tparamSyms, tp)

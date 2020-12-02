@@ -21,7 +21,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  Overridden in RefinedPrinter.
    */
   protected def curCtx: Context = _ctx.addMode(Mode.Printing)
-  protected given [DummyToEnforceDef] as Context = curCtx
+  protected given [DummyToEnforceDef]: Context = curCtx
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
@@ -39,7 +39,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     limiter.register(str)
     Texts.Str(str, lineRange)
 
-  given stringToText as Conversion[String, Text] = Str(_)
+  given stringToText: Conversion[String, Text] = Str(_)
 
   /** If true, tweak output so it is the same before and after pickling */
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value

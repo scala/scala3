@@ -68,7 +68,7 @@ object Scala3:
   end Symbols
 
 
-  given NameOps as AnyRef:
+  given NameOps: AnyRef with
     extension (name: Name):
       def isWildcard = name match
         case nme.WILDCARD | WILDCARDTypeName => true
@@ -89,7 +89,7 @@ object Scala3:
         }
   end NameOps
 
-  given SymbolOps as AnyRef:
+  given SymbolOps: AnyRef with
     extension (sym: Symbol):
 
       def ifExists(using Context): Option[Symbol] = if sym.exists then Some(sym) else None
@@ -145,7 +145,7 @@ object Scala3:
       case '/' | '.' | '#' | ']' | ')' => true
       case _                           => false
 
-  given StringOps as AnyRef:
+  given StringOps: AnyRef with
     extension (symbol: String):
       def isSymbol: Boolean = !symbol.isEmpty
       def isRootPackage: Boolean = RootPackage == symbol
@@ -169,7 +169,7 @@ object Scala3:
         isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
   end StringOps
 
-  given InfoOps as AnyRef:
+  given InfoOps: AnyRef with
     extension (info: SymbolInformation):
       def isAbstract: Boolean = (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
       def isFinal: Boolean = (info.properties & SymbolInformation.Property.FINAL.value) != 0
@@ -204,13 +204,13 @@ object Scala3:
       def isInterface: Boolean = info.kind.isInterface
   end InfoOps
 
-  given RangeOps as AnyRef:
+  given RangeOps: AnyRef with
     extension (range: Range):
       def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
   end RangeOps
 
   /** Sort symbol occurrences by their start position. */
-  given OccurrenceOrdering as Ordering[SymbolOccurrence] = (x, y) =>
+  given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>
     x.range -> y.range match
     case None -> _ | _ -> None => 0
     case Some(a) -> Some(b) =>
