@@ -174,8 +174,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *
    *  +- SourceFile
    *
-   *  +- Documentation
-   *
    *  +- Constant
    *
    *  +- Symbol
@@ -3089,7 +3087,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def pos: Option[Position]
 
         /** The documentation for this symbol, if any */
-        def documentation: Option[Documentation]
+        def docstring: Option[String]
 
         /** Tree of this definition
         *
@@ -3752,36 +3750,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
 
-    ///////////////////
-    // DOCUMENTATION //
-    ///////////////////
-
-    /** Attachment representing the documentation of a definition */
-    type Documentation <: AnyRef
-
-    /** Module object of `type Documentation`  */
-    val Documentation: DocumentationModule
-
-    /** Methods of the module object `val Documentation` */
-    trait DocumentationModule { this: Documentation.type => }
-
-    /** Makes extension methods on `Documentation` available without any imports */
-    given DocumentationMethods: DocumentationMethods
-
-    /** Extension methods of `Documentation` */
-    trait DocumentationMethods {
-      extension (self: Documentation):
-        /** Raw documentation string */
-        def raw: String
-
-        /** Expanded documentation string, if any */
-        def expanded: Option[String]
-
-        /** List of usecases and their corresponding trees, if any */
-        def usecases: List[(String, Option[DefDef])]
-
-      end extension
-    }
 
     ///////////////
     //   UTILS   //

@@ -34,9 +34,9 @@ trait BasicSupport:
 
 
   extension (sym: Symbol):
-    def documentation = sym.documentation match
-      case Some(comment) =>
-          Map(ctx.sourceSet -> parseComment(comment, sym.tree))
+    def documentation = sym.docstring match
+      case Some(docstring) =>
+          Map(ctx.sourceSet -> parseComment(docstring, sym.tree))
       case None =>
           Map.empty
 

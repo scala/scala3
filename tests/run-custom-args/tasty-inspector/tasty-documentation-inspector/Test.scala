@@ -21,8 +21,8 @@ class DocumentationInspector extends TastyInspector {
 
       override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {
         case tree: Definition =>
-          tree.symbol.documentation match {
-            case Some(doc) => println(doc.raw)
+          tree.symbol.docstring match {
+            case Some(doc) => println(doc)
             case None => println()
           }
           super.traverseTree(tree)(owner)

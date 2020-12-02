@@ -2316,14 +2316,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def pos: Option[Position] =
           if self.exists then Some(self.sourcePos) else None
 
-        def documentation: Option[Documentation] =
+        def docstring: Option[String] =
           import dotc.core.Comments.CommentsContext
           val docCtx = ctx.docCtx.getOrElse {
             throw new RuntimeException(
               "DocCtx could not be found and documentations are unavailable. This is a compiler-internal error."
             )
           }
-          docCtx.docstring(self)
+          docCtx.docstring(self).map(_.raw)
 
         def tree: Tree = FromSymbol.definitionFromSym(self)
 
@@ -2651,19 +2651,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         dotc.report.warning(msg, pos)
 
     end report
-
-    type Documentation = dotc.core.Comments.Comment
-
-    object Documentation extends DocumentationModule
-
-    given DocumentationMethods: DocumentationMethods with
-      extension (self: Documentation):
-        def raw: String = self.raw
-        def expanded: Option[String] = self.expanded
-        def usecases: List[(String, Option[DefDef])] =
-          self.usecases.map { uc => (uc.code, uc.tpdCode) }
-      end extension
-    end DocumentationMethods
 
     private def optional[T <: dotc.ast.Trees.Tree[?]](tree: T): Option[tree.type] =
       if tree.isEmpty then None else Some(tree)
