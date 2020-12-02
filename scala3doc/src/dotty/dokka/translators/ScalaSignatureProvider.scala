@@ -22,7 +22,9 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
 
   private def signatureContent(d: Documentable)(
     func: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
-  ) = contentBuilder.contentForDocumentable(d, kind = ContentKind.Symbol, styles = styles, buildBlock = func)
+  ) = 
+    val styles = stylesIfDeprecated(d)
+    contentBuilder.contentForDocumentable(d, kind = ContentKind.Symbol, styles = styles, buildBlock = func)
 
 
   case class ContentNodeBuilder(builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) extends SignatureBuilder{
@@ -41,6 +43,10 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
       val res = ScalaSignatureProvider.rawSignature(documentable, withAnnotations)
       res.asInstanceOf[ContentNodeBuilder].builder
     })
+
+  private def stylesIfDeprecated(m: Member): Set[Style] =
+    if m.isDeprecated then styles ++ Set(TextStyle.Strikethrough) else styles
+    
 
 object ScalaSignatureProvider:
   def rawSignature(documentable: Documentable, builder: SignatureBuilder): SignatureBuilder =

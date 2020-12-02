@@ -125,6 +125,12 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
       .name("implicitMembersExtensionTransformer")
   )
 
+  val deprecatedTransfomer = extend(
+    _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
+      .fromInstance(DeprecatedTransformer)
+      .name("deprecatedTransformer")
+  )
+
   val customDocumentationProvider = extend(
     _.extensionPoint(dokkaBase.getHtmlPreprocessors)
       .fromRecipe(c => SitePagesCreator(c.siteContext))

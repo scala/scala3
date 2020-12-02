@@ -124,6 +124,7 @@ extension[T] (member: Member):
 
   def signature: Signature = memberExt.fold(Signature(name))(_.signature)
   def asLink: LinkToType = LinkToType(signature, dri, kind)
+  def isDeprecated: Boolean = memberExt.fold(false)(_.deprecated)
 
   def modifiers: Seq[dotty.dokka.model.api.Modifier] = memberExt.fold(Nil)(_.modifiers)
   def kind: Kind = memberExt.fold(Kind.Unknown)(_.kind)

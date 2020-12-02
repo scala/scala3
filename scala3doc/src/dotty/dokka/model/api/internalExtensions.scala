@@ -24,11 +24,12 @@ private [model] case class MemberExtension(
   visibility: Visibility,
   modifiers: Seq[dotty.dokka.model.api.Modifier],
   kind: Kind,
-  val annotations: List[Annotation],
+  annotations: List[Annotation],
   signature: Signature,
   sources: Option[TastyDocumentableSource] = None,
   origin: Origin = Origin.DefinedWithin,
   graph: HierarchyGraph = HierarchyGraph.empty,
+  deprecated: Boolean = false, // directly or indirectly
 ) extends ExtraProperty[Documentable]:
  override def getKey = MemberExtension
 
@@ -71,6 +72,10 @@ extension (member: Member):
     val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(kind = kind)
     putInMember(ext)
 
+  def withDeprecated(deprecated: Boolean): Member =
+    val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(deprecated = deprecated)
+    putInMember(ext)
+  
   def withMembers(newMembers: Seq[Member]): Member =
     val original = member.compositeMemberExt.getOrElse(CompositeMemberExtension())
     val newExt = original.copy(members = newMembers)
