@@ -34,6 +34,7 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
  *  projects to output the version number to a file.
  */
 object Versions:
+  val cats = "2.3.1-SNAPSHOT"
   val discipline = "1.1.3-SNAPSHOT"
   val disciplineMunit = "1.0.3+DOTTY-SNAPSHOT"
   val disciplineSpecs2 = "1.1.3-SNAPSHOT"
@@ -126,6 +127,18 @@ final case class SbtCommunityProject(
     s""""org.typelevel" %% "discipline-specs2_sjs1" % "${Versions.disciplineSpecs2}"""",
     s""""org.typelevel" %% "simulacrum-scalafix-annotations" % "${Versions.simulacrumScalafix}"""",
     s""""org.typelevel" %% "simulacrum-scalafix-annotations_sjs1" % "${Versions.simulacrumScalafix}"""",
+    s""""org.typelevel" %% "cats-core" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-core_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-free" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-free_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-kernel" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-kernel_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-kernel-laws" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-kernel-laws_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-laws" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-laws_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-testkit" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-testkit_sjs1" % "${Versions.cats}"""",
   )
 
   private val baseCommand =
@@ -492,6 +505,13 @@ object projects:
     project = "simulacrum-scalafix",
     sbtTestCommand = "annotation/test:compile;annotationJS/test:compile",
     sbtPublishCommand = "annotation/publishLocal;annotationJS/publishLocal",
+  )
+
+  lazy val cats = SbtCommunityProject(
+    project = "cats",
+    sbtTestCommand = "set scalaJSStage in Global := FastOptStage;buildJVM;validateAllJS",
+    sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
+    dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations)
   )
 
 end projects

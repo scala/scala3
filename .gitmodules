@@ -132,3 +132,6 @@
 [submodule "community-build/community-projects/simulacrum-scalafix"]
 	path = community-build/community-projects/simulacrum-scalafix
 	url = https://github.com/dotty-staging/simulacrum-scalafix.git
+[submodule "community-build/community-projects/cats"]
+	path = community-build/community-projects/cats
+	url = https://github.com/dotty-staging/cats.git

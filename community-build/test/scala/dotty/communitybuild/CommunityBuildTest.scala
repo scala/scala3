@@ -105,6 +105,7 @@ class CommunityBuildTestB extends CommunityBuildTest:
   // temporarily disabled due to lampepfl/dotty#10478
   //@Test def catsEffect2 = projects.catsEffect2.run()
   //@Test def catsEffect3 = projects.catsEffect3.run()
+  @Test def cats = projects.cats.run()
   @Test def discipline = projects.discipline.run()
   @Test def disciplineMunit = projects.disciplineMunit.run()
   @Test def disciplineSpecs2 = projects.disciplineSpecs2.run()
