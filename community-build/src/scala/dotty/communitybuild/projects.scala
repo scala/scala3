@@ -36,6 +36,7 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
 object Versions:
   val cats = "2.3.1-SNAPSHOT"
   val catsMtl = "1.1+DOTTY-SNAPSHOT"
+  val coop = "1.0+DOTTY-SNAPSHOT"
   val discipline = "1.1.3-SNAPSHOT"
   val disciplineMunit = "1.0.3+DOTTY-SNAPSHOT"
   val disciplineSpecs2 = "1.1.3-SNAPSHOT"
@@ -144,6 +145,8 @@ final case class SbtCommunityProject(
     s""""org.typelevel" %% "cats-mtl_sjs1" % "${Versions.catsMtl}"""",
     s""""org.typelevel" %% "cats-mtl-laws" % "${Versions.catsMtl}"""",
     s""""org.typelevel" %% "cats-mtl-laws_sjs1" % "${Versions.catsMtl}"""",
+    s""""org.typelevel" %% "coop" % "${Versions.coop}"""",
+    s""""org.typelevel" %% "coop_sjs1" % "${Versions.coop}"""",
   )
 
   private val baseCommand =
@@ -524,6 +527,13 @@ object projects:
     sbtTestCommand = "testsJVM/test;testsJS/test",
     sbtPublishCommand = s"""set every version := "${Versions.catsMtl}";coreJVM/publishLocal;coreJS/publishLocal;lawsJVM/publishLocal;lawsJS/publishLocal""",
     dependencies = List(cats, disciplineMunit)
+  )
+
+  lazy val coop = SbtCommunityProject(
+    project = "coop",
+    sbtTestCommand = "test",
+    sbtPublishCommand = s"""set every version := "${Versions.coop}";coreJVM/publishLocal;coreJS/publishLocal""",
+    dependencies = List(cats, catsMtl)
   )
 
 end projects

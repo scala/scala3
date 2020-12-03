@@ -107,6 +107,7 @@ class CommunityBuildTestB extends CommunityBuildTest:
   //@Test def catsEffect3 = projects.catsEffect3.run()
   @Test def cats = projects.cats.run()
   @Test def catsMtl = projects.catsMtl.run()
+  @Test def coop = projects.coop.run()
   @Test def discipline = projects.discipline.run()
   @Test def disciplineMunit = projects.disciplineMunit.run()
   @Test def disciplineSpecs2 = projects.disciplineSpecs2.run()
