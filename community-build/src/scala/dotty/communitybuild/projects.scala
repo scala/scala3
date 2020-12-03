@@ -185,7 +185,7 @@ object projects:
 
   lazy val scas = MillCommunityProject(
     project = "scas",
-    baseCommand = "scas.application"
+    baseCommand = s"scas.application.jvm[$compilerVersion]"
   )
 
   lazy val intent = SbtCommunityProject(
