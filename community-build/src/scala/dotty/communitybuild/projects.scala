@@ -35,6 +35,7 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
  */
 object Versions:
   val cats = "2.3.1-SNAPSHOT"
+  val catsMtl = "1.1+DOTTY-SNAPSHOT"
   val discipline = "1.1.3-SNAPSHOT"
   val disciplineMunit = "1.0.3+DOTTY-SNAPSHOT"
   val disciplineSpecs2 = "1.1.3-SNAPSHOT"
@@ -139,6 +140,10 @@ final case class SbtCommunityProject(
     s""""org.typelevel" %% "cats-laws_sjs1" % "${Versions.cats}"""",
     s""""org.typelevel" %% "cats-testkit" % "${Versions.cats}"""",
     s""""org.typelevel" %% "cats-testkit_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-mtl" % "${Versions.catsMtl}"""",
+    s""""org.typelevel" %% "cats-mtl_sjs1" % "${Versions.catsMtl}"""",
+    s""""org.typelevel" %% "cats-mtl-laws" % "${Versions.catsMtl}"""",
+    s""""org.typelevel" %% "cats-mtl-laws_sjs1" % "${Versions.catsMtl}"""",
   )
 
   private val baseCommand =
@@ -512,6 +517,13 @@ object projects:
     sbtTestCommand = "set scalaJSStage in Global := FastOptStage;buildJVM;validateAllJS",
     sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations)
+  )
+
+  lazy val catsMtl = SbtCommunityProject(
+    project = "cats-mtl",
+    sbtTestCommand = "testsJVM/test;testsJS/test",
+    sbtPublishCommand = s"""set every version := "${Versions.catsMtl}";coreJVM/publishLocal;coreJS/publishLocal;lawsJVM/publishLocal;lawsJS/publishLocal""",
+    dependencies = List(cats, disciplineMunit)
   )
 
 end projects

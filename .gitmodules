@@ -135,3 +135,6 @@
 [submodule "community-build/community-projects/cats"]
 	path = community-build/community-projects/cats
 	url = https://github.com/dotty-staging/cats.git
+[submodule "community-build/community-projects/cats-mtl"]
+	path = community-build/community-projects/cats-mtl
+	url = https://github.com/dotty-staging/cats-mtl.git
