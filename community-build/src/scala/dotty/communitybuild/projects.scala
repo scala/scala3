@@ -35,6 +35,7 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
  */
 object Versions:
   val discipline = "1.1.3-SNAPSHOT"
+  val disciplineMunit = "1.0.3+DOTTY-SNAPSHOT"
   val scalacheck = "1.15.2-SNAPSHOT"
   val scalatest = "3.2.3"
   val munit = "0.7.19+DOTTY-SNAPSHOT"
@@ -117,6 +118,8 @@ final case class SbtCommunityProject(
     s""""org.scodec" %% "scodec-bits_sjs1" % "${Versions.scodecBits}"""",
     s""""org.typelevel" %% "discipline-core" % "${Versions.discipline}"""",
     s""""org.typelevel" %% "discipline-core_sjs1" % "${Versions.discipline}"""",
+    s""""org.typelevel" %% "discipline-munit" % "${Versions.disciplineMunit}"""",
+    s""""org.typelevel" %% "discipline-munit_sjs1" % "${Versions.disciplineMunit}"""",
   )
 
   private val baseCommand =
@@ -463,6 +466,13 @@ object projects:
     sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "set every credentials := Nil;coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(scalacheck)
+  )
+
+  lazy val disciplineMunit = SbtCommunityProject(
+    project = "discipline-munit",
+    sbtTestCommand = "test",
+    sbtPublishCommand = s"""set every version := "${Versions.disciplineMunit}";coreJVM/publishLocal;coreJS/publishLocal""",
+    dependencies = List(discipline, munit)
   )
 
 end projects

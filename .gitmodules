@@ -123,3 +123,6 @@
 [submodule "community-build/community-projects/discipline"]
 	path = community-build/community-projects/discipline
 	url = https://github.com/dotty-staging/discipline.git
+[submodule "community-build/community-projects/discipline-munit"]
+	path = community-build/community-projects/discipline-munit
+	url = https://github.com/dotty-staging/discipline-munit.git
