@@ -76,8 +76,8 @@ abstract class MacroStringInterpolator[T] {
     }
   }
 
-  protected implicit def StringContextIsLiftable: Liftable[StringContext] = new Liftable[StringContext] {
-    def toExpr(strCtx: StringContext) = '{StringContext(${Expr(strCtx.parts.toSeq)}: _*)}
+  protected implicit def StringContextIsToExpr: ToExpr[StringContext] = new ToExpr[StringContext] {
+    def apply(strCtx: StringContext)(using Quotes) = '{StringContext(${Expr(strCtx.parts.toSeq)}: _*)}
   }
 
   protected class NotStaticlyKnownError(msg: String, expr: Expr[Any]) extends Exception(msg)

@@ -110,19 +110,19 @@ object Test {
 
 
 package liftable {
-  import scala.quoted.Liftable
+  import scala.quoted.ToExpr
   import scala.reflect.ClassTag
 
   object Exprs {
     implicit class LiftExprOps[T](x: T) extends AnyVal {
-      def toExpr(using Liftable[T], Quotes): Expr[T] =
-        summon[Liftable[T]].toExpr(x)
+      def apply(using ToExpr[T], Quotes): Expr[T] =
+        summon[ToExpr[T]].apply(x)
     }
   }
 
   object Units {
-    implicit def UnitIsLiftable: Liftable[Unit] = new Liftable[Unit] {
-      def toExpr(x: Unit) = '{}
+    implicit def UnitIsToExpr: ToExpr[Unit] = new ToExpr[Unit] {
+      def apply(x: Unit)(using Quotes) = '{}
     }
   }
 
@@ -143,14 +143,14 @@ package liftable {
 
   object Lists {
 
-    implicit class LiftedOps[T: Liftable](list: Expr[List[T]])(implicit t: Type[T]) {
+    implicit class LiftedOps[T: ToExpr](list: Expr[List[T]])(implicit t: Type[T]) {
       def foldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U], qctx: Quotes): Expr[U] =
         '{ ($list).foldLeft[U]($acc)($f) }
       def foreach(f: Expr[T => Unit])(using Quotes): Expr[Unit] =
         '{ ($list).foreach($f) }
     }
 
-    implicit class UnrolledOps[T: Liftable](list: List[T])(implicit t: Type[T], qctx: Quotes) {
+    implicit class UnrolledOps[T: ToExpr](list: List[T])(implicit t: Type[T], qctx: Quotes) {
       def unrolledFoldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U]): Expr[U] = list match {
         case x :: xs => xs.unrolledFoldLeft('{ ($f).apply($acc, ${Expr(x)}) })(f)
         case Nil => acc

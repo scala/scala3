@@ -3,9 +3,9 @@ import scala.quoted.staging._
 import scala.reflect.ClassTag
 
 object Arrays {
-  implicit def ArrayIsLiftable[T: Liftable](implicit t: Type[T], ct: Expr[ClassTag[T]]): Liftable[Array[T]] = {
-    new Liftable[Array[T]] {
-      def toExpr(arr: Array[T]) = '{
+  implicit def ArrayIsToExpr[T: ToExpr](implicit t: Type[T], ct: Expr[ClassTag[T]]): ToExpr[Array[T]] = {
+    new ToExpr[Array[T]] {
+     def apply(arr: Array[T])(using Quotes) = '{
         new Array[t.Underlying](${Expr(arr.length)})($ct)
         // TODO add elements
       }

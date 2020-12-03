@@ -43,7 +43,7 @@ case class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
   override def toString(): String = s"RingComplex($u)"
 }
 
-case class RingPV[U: Liftable](staRing: Ring[U], dynRing: Ring[Expr[U]])(using Quotes) extends Ring[PV[U]] {
+case class RingPV[U: ToExpr](staRing: Ring[U], dynRing: Ring[Expr[U]])(using Quotes) extends Ring[PV[U]] {
   type T = PV[U]
 
   val dyn = Dyns.dyn[U]

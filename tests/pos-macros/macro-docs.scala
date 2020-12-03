@@ -1,25 +1,25 @@
 import scala.quoted._
 
-object MacrosMD_Liftable {
+object MacrosMD_ToExpr {
 
-  given Liftable[Boolean] with {
-    def toExpr(b: Boolean) =
+  given ToExpr[Boolean] with {
+    def apply(b: Boolean)(using Quotes) =
       if (b) '{ true } else '{ false }
   }
 
-  given Liftable[Int] with {
-    def toExpr(n: Int) = n match {
+  given ToExpr[Int] with {
+    def apply(n: Int)(using Quotes) = n match {
       case Int.MinValue    => '{ Int.MinValue }
-      case _ if n < 0      => '{ - ${ toExpr(-n) } }
+      case _ if n < 0      => '{ - ${ apply(-n) } }
       case 0               => '{ 0 }
-      case _ if n % 2 == 0 => '{ ${ toExpr(n / 2) } * 2 }
-      case _               => '{ ${ toExpr(n / 2) } * 2 + 1 }
+      case _ if n % 2 == 0 => '{ ${ apply(n / 2) } * 2 }
+      case _               => '{ ${ apply(n / 2) } * 2 + 1 }
     }
   }
 
-  given [T: Liftable : Type]: Liftable[List[T]] with {
-    def toExpr(xs: List[T]) = xs match {
-      case head :: tail => '{ ${ Expr(head) } :: ${ toExpr(tail) } }
+  given [T: ToExpr : Type]: ToExpr[List[T]] with {
+    def apply(xs: List[T])(using Quotes) = xs match {
+      case head :: tail => '{ ${ Expr(head) } :: ${ apply(tail) } }
       case Nil => '{ Nil: List[T] }
     }
   }

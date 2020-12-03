@@ -12,14 +12,14 @@ private def rewriteMacro[T: Type](x: Expr[T])(using Quotes): Expr[T] = {
     postTransform = List(
       Transformation[Int] {
         case '{ plus($x, $y) } =>
-          (x.unlift, y.unlift) match {
+          (x.value, y.value) match {
             case (Some(0), _) => y
             case (Some(a), Some(b)) => Expr(a + b)
             case (_, Some(_)) =>  '{ $y + $x }
             case _ => '{ $x + $y }
           }
         case '{ times($x, $y) } =>
-          (x.unlift, y.unlift) match {
+          (x.value, y.value) match {
             case (Some(0), _) => '{0}
             case (Some(1), _) => y
             case (Some(a), Some(b)) => Expr(a * b)

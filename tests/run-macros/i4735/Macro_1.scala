@@ -14,7 +14,7 @@ object Macro {
     while (i < size) {
       println("<log> start loop")
       ${
-        for (j <- new UnrolledRange(0, unrollSize.unliftOrError)) '{
+        for (j <- new UnrolledRange(0, unrollSize.valueOrError)) '{
           val element = ($seq)(i + ${Expr(j)})
           ${Expr.betaReduce('{$f(element)})} // or `($f)(element)` if `f` should not be inlined
         }

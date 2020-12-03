@@ -6,10 +6,10 @@ object E {
 
   inline def eval[T](inline x: E[T]): T = ${ impl('x) }
 
-  def impl[T: Type](x: Expr[E[T]]) (using Quotes): Expr[T] = x.unliftOrError.lift
+  def impl[T: Type](x: Expr[E[T]]) (using Quotes): Expr[T] = x.valueOrError.lift
 
-  implicit def ev1[T: Type]: Unliftable[E[T]] = new Unliftable {
-    def fromExpr(x: Expr[E[T]]) = x match {
+  implicit def ev1[T: Type]: FromExpr[E[T]] = new FromExpr {
+    def unapply(x: Expr[E[T]])(using Quotes) = x match {
       case '{ I(${Const(n)}) } => Some(I(n).asInstanceOf[E[T]])
       case '{ Plus[T](${Value(x)}, ${Value(y)})(using $op) } if op.matches('{Plus2.IPlus}) => Some(Plus(x, y)(using Plus2.IPlus.asInstanceOf[Plus2[T]]).asInstanceOf[E[T]])
       case _ => None
@@ -17,7 +17,7 @@ object E {
   }
 
   object Value {
-    def unapply[T](expr: Expr[T])(using Unliftable[T], Quotes): Option[T] = expr.unlift
+    def unapply[T](expr: Expr[T])(using FromExpr[T], Quotes): Option[T] = expr.value
   }
 }
 

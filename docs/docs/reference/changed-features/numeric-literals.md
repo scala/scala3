@@ -201,7 +201,7 @@ method in the `FromDigits` given instance. That method is defined in terms of a 
 implementation method `fromDigitsImpl`. Here is its definition:
 ```scala
   private def fromDigitsImpl(digits: Expr[String])(using ctx: Quotes): Expr[BigFloat] =
-    digits.unlift match {
+    digits.value match {
       case Some(ds) =>
         try {
           val BigFloat(m, e) = apply(ds)

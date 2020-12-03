@@ -25,7 +25,7 @@ private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] = {
       case arg => Seq(arg)
     }
     val args2 = args1.flatMap(flatSumArgs)
-    val staticSum: Int = args2.map(_.unlift.getOrElse(0)).sum
-    val dynamicSum: Seq[Expr[Int]] = args2.filter(_.unlift.isEmpty)
+    val staticSum: Int = args2.map(_.value.getOrElse(0)).sum
+    val dynamicSum: Seq[Expr[Int]] = args2.filter(_.value.isEmpty)
     dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
 }
