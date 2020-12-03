@@ -45,7 +45,7 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter, logge
     })
 
   private def stylesIfDeprecated(m: Member): Set[Style] =
-    if m.isDeprecated then styles ++ Set(TextStyle.Strikethrough) else styles
+    if m.deprecated.isDefined then styles ++ Set(TextStyle.Strikethrough) else styles
     
 
 object ScalaSignatureProvider:

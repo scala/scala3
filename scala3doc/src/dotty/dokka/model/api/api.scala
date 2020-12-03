@@ -80,10 +80,12 @@ enum Origin:
 case class Annotation(val dri: DRI, val params: List[Annotation.AnnotationParameter])
 
 object Annotation:
-  sealed trait AnnotationParameter
-  case class PrimitiveParameter(val name: Option[String] = None, val value: String) extends AnnotationParameter
-  case class LinkParameter(val name: Option[String] = None, val dri: DRI, val value: String) extends AnnotationParameter
-  case class UnresolvedParameter(val name: Option[String] = None, val unresolvedText: String) extends AnnotationParameter
+  sealed trait AnnotationParameter {
+    val name: Option[String]
+  }
+  case class PrimitiveParameter(name: Option[String] = None, value: String) extends AnnotationParameter
+  case class LinkParameter(name: Option[String] = None, dri: DRI, value: String) extends AnnotationParameter
+  case class UnresolvedParameter(name: Option[String] = None, unresolvedText: String) extends AnnotationParameter
 
 // TODO (longterm) properly represent signatures
 case class Link(name: String, dri: DRI)
@@ -124,7 +126,7 @@ extension[T] (member: Member):
 
   def signature: Signature = memberExt.fold(Signature(name))(_.signature)
   def asLink: LinkToType = LinkToType(signature, dri, kind)
-  def isDeprecated: Boolean = memberExt.fold(false)(_.deprecated)
+  def deprecated: Option[Annotation] = memberExt.flatMap(_.annotations.find(a => a.dri.getPackageName == "scala" && a.dri.getClassNames == "deprecated"))
 
   def modifiers: Seq[dotty.dokka.model.api.Modifier] = memberExt.fold(Nil)(_.modifiers)
   def kind: Kind = memberExt.fold(Kind.Unknown)(_.kind)

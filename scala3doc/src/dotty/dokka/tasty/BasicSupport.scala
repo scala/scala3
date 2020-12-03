@@ -22,10 +22,13 @@ trait BasicSupport:
             case s: String => "\"" + s"$s" + "\""
             case other => other.toString()
           })
-          case Select(qual, name) =>
+          case NamedArg(name, Literal(constant)) => Annotation.PrimitiveParameter(Some(name), constant.value match
+            case s: String => "\"" + s"$s" + "\""
+            case other => other.toString()
+          )
+          case x @ Select(qual, name) =>
             val dri = qual.tpe.termSymbol.companionClass.dri
             Annotation.LinkParameter(None, dri, s"${dri.getClassNames}.$name") // TODO this is a nasty hack!
-
           case other => Annotation.UnresolvedParameter(None, other.show)
         }
       }

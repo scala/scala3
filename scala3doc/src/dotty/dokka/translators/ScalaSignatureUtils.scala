@@ -55,7 +55,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
       else this
 
     private def addParameterName(txt: Option[String]): SignatureBuilder = txt match {
-        case Some(name) => this.text(s"$txt = ")
+        case Some(name) => this.text(s"$name = ")
         case _ => this
       }
 

@@ -323,14 +323,34 @@ class ScalaPageCreator(
             case _ => withCompanion
           }
 
-          d match
+          val withSource = d match
             case null => withExtensionInformation
             case m: Member =>
               sourceLinks.pathTo(m).fold(withCompanion){ link =>
                 val sourceSets = m.getSourceSets.asScala.toSet
                 withExtensionInformation.cell(sourceSets = sourceSets)(_.text("Source"))
                   .cell(sourceSets = sourceSets)(_.resolvedLink("(source)", link))
+
               }
+
+          d.deprecated match
+            case None => withSource
+            case Some(a) => 
+              extension (b: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) 
+                def annotationParameter(p: Option[Annotation.AnnotationParameter]): ScalaPageContentBuilder#ScalaDocumentableContentBuilder =
+                  p match
+                    case Some(Annotation.PrimitiveParameter(_, value)) => b.text(value.stripPrefix("\"").stripSuffix("\""))
+                    case Some(Annotation.LinkParameter(_, dri, text)) => b.driLink(text.stripPrefix("\"").stripSuffix("\""), dri)
+                    case Some(Annotation.UnresolvedParameter(_, value)) => b.text(value.stripPrefix("\"").stripSuffix("\""))
+                    case _ => b
+              val since = a.params.find(_.name.contains("since"))
+              val message = a.params.find(_.name.contains("message"))
+              val sourceSets = d.getSourceSets.asScala.toSet
+              withSource.cell(sourceSets = sourceSets)(_.text("Deprecated"))
+                .cell(sourceSets = sourceSets) { b =>
+                  val withPossibleSince = if (since.isDefined) b.text("(Since version ").annotationParameter(since).text(") ") else b
+                  withPossibleSince.annotationParameter(message)
+                }
         }
       }
     }
