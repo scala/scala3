@@ -913,7 +913,7 @@ object Parsers {
           lookahead.nextToken()
           skipParams()
       skipParams()
-      lookahead.token == COLON || lookahead.isIdent(nme.as)
+      lookahead.token == COLON
 
     def followingIsExtension() =
       val next = in.lookahead.token
@@ -3517,9 +3517,8 @@ object Parsers {
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
       var mods1 = addMod(mods, givenMod)
-      val hasGivenSig = followingIsGivenSig()
       val nameStart = in.offset
-      val name = if isIdent && hasGivenSig then ident() else EmptyTermName
+      val name = if isIdent && followingIsGivenSig() then ident() else EmptyTermName
 
       val gdef =
         val tparams = typeParamClauseOpt(ParamOwner.Def)
@@ -3530,10 +3529,7 @@ object Parsers {
           else Nil
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
-        val newSyntax = in.token == COLON
-        if !(name.isEmpty && noParams) then
-          if isIdent(nme.as) then in.nextToken()
-          else accept(COLON)
+        if !(name.isEmpty && noParams) then accept(COLON)
         val parents = constrApp() :: withConstrApps()
         val parentsIsType = parents.length == 1 && parents.head.isType
         if in.token == EQUALS && parentsIsType then
@@ -3544,7 +3540,7 @@ object Parsers {
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, tparams, vparamss, parents.head, subExpr())
-        else if newSyntax && in.token != WITH && in.token != WITHEOL && parentsIsType then
+        else if in.token != WITH && in.token != WITHEOL && parentsIsType then
           if name.isEmpty then
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, tparams, vparamss, parents.head, EmptyTree)
@@ -3552,14 +3548,8 @@ object Parsers {
           val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
           val vparamss1 = vparamss.map(_.map(vparam =>
             vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
-          val constr = makeConstructor(tparams1, vparamss1)
-          val templ =
-            if newSyntax || in.token == WITHEOL || in.token == WITH then
-              withTemplate(constr, parents)
-            else
-              possibleTemplateStart()
-              templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
-          if tparams.isEmpty && vparamss.isEmpty then ModuleDef(name, templ)
+          val templ = withTemplate(makeConstructor(tparams1, vparamss1), parents)
+          if noParams then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
       end gdef
       finalizeDef(gdef, mods1, start)

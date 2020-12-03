@@ -31,7 +31,7 @@ object Baz {
 
 class Arg
 
-given Arg
+given Arg with {}
 
 class Bam(val str: String)
 
@@ -62,7 +62,7 @@ object Test extends App {
   assert(summon[Bam2].str == "hi")
   assert(summon[Red].str == "reduced")
 
-  { given Arg2
+  { given Arg2 with {}
     assert(summon[Red].str == "normal")
   }
 }

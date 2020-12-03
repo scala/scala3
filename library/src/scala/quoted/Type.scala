@@ -25,6 +25,6 @@ object Type:
 
   /** Return a quoted.Type with the given type */
   @compileTimeOnly("Reference to `scala.quoted.Type.of` was not handled by PickleQuotes")
-  given of[T <: AnyKind] as (Quotes ?=> Type[T]) = ???
+  given of[T <: AnyKind]: (Quotes ?=> Type[T]) = ???
 
 end Type

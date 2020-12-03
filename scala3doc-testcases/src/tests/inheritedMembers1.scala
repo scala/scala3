@@ -10,7 +10,7 @@ class A
       = ???
     object X
     trait Z
-    given B
+    given B with {}
     type I = Int
     /*<-*/extension (a: A) /*->*/def extension: String
       = ???

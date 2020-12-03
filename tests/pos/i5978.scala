@@ -16,7 +16,7 @@ package p1 {
 
       // skipping newlines is OK here
 
-      as Conversion[Char, Position[CharSequence]] = ???
+      : Conversion[Char, Position[CharSequence]] = ???
   }
 
   object Testcase {

@@ -32,7 +32,7 @@ title: "Erased Terms Spec"
 
 3. Functions
    * `(erased x1: T1, x2: T2, ..., xN: TN) => y : (erased T1, T2, ..., TN) => R`
-   * `(given erased x1: T1, x2: T2, ..., xN: TN) => y as (given erased T1, T2, ..., TN) => R`
+   * `(given erased x1: T1, x2: T2, ..., xN: TN) => y: (given erased T1, T2, ..., TN) => R`
    * `(given erased T1) => R  <:<  erased T1 => R`
    * `(given erased T1, T2) => R  <:< (erased T1, T2) => R`
    *  ...

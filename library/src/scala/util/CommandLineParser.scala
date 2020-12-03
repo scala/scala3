@@ -54,36 +54,28 @@ object CommandLineParser {
   }
 
   object FromString {
-    given FromString[String] {
+    given FromString[String] with
       def fromString(s: String) = s
-    }
 
-    given FromString[Boolean] {
+    given FromString[Boolean] with
       def fromString(s: String) = s.toBoolean
-    }
 
-    given FromString[Byte] {
+    given FromString[Byte] with
       def fromString(s: String) = s.toByte
-    }
 
-    given FromString[Short] {
+    given FromString[Short] with
       def fromString(s: String) = s.toShort
-    }
 
-    given FromString[Int] {
+    given FromString[Int] with
       def fromString(s: String) = s.toInt
-    }
 
-    given FromString[Long] {
+    given FromString[Long] with
       def fromString(s: String) = s.toLong
-    }
 
-    given FromString[Float] {
+    given FromString[Float] with
       def fromString(s: String) = s.toFloat
-    }
 
-    given FromString[Double] {
+    given FromString[Double] with
       def fromString(s: String) = s.toDouble
-    }
   }
 }

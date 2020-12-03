@@ -942,7 +942,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
   private case object NoTypeTest extends RTTypeTest
 
   private object RTTypeTest {
-    given PartialOrdering[RTTypeTest] {
+    given PartialOrdering[RTTypeTest] with {
       override def tryCompare(lhs: RTTypeTest, rhs: RTTypeTest): Option[Int] = {
         if (lteq(lhs, rhs)) if (lteq(rhs, lhs)) Some(0) else Some(-1)
         else                if (lteq(rhs, lhs)) Some(1) else None

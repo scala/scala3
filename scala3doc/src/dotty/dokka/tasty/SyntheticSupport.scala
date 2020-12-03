@@ -14,13 +14,13 @@ trait SyntheticsSupport:
 
     def hackIsTupleType(using Quotes)(rtpe: qctx.reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
-      given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+      given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isTupleType(tpe)
 
     def hackIsCompiletimeAppliedType(using Quotes)(rtpe: qctx.reflect.TypeRepr): Boolean =
       import dotty.tools.dotc
-      given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+      given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isCompiletimeAppliedType(tpe.typeSymbol)
 
@@ -55,7 +55,7 @@ trait SyntheticsSupport:
   def hackIsInfix(using Quotes)(rsym: qctx.reflect.Symbol): Boolean = {
     import qctx.reflect._
     import dotty.tools.dotc
-    given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     ctx.definitions.isInfix(sym)
   }
@@ -66,7 +66,7 @@ trait SyntheticsSupport:
   def hackGetAllMembers(using Quotes)(rsym: qctx.reflect.Symbol): List[qctx.reflect.Symbol] = {
     import qctx.reflect._
     import dotty.tools.dotc
-    given ctx as dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef)).allMembers.iterator.map(_.symbol)
       .collect {

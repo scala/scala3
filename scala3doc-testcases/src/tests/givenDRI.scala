@@ -4,11 +4,11 @@ trait A[T]
 trait B[T]
 trait C
 
-given A[Int]
+given A[Int] with {}
 
-given A[String]
+given A[String] with {}
 
-given A[Seq[String]]
+given A[Seq[String]] with {}
 
 given [T: A]: A[Option[T]] with {}
 
@@ -16,7 +16,7 @@ given [T: B]: A[T] with {}
 
 given [C]: A[C] with {}
 
-given A[C]
+given A[C] with {}
 
 given [S <: C]: A[S] with {}
 

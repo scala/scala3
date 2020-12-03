@@ -20,7 +20,7 @@ object Generic2 {
 
 class SubGen extends Generic
 object SubGen {
-  given SubGen
+  given SubGen with {}
 }
 object Contextual {
   trait Context

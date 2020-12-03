@@ -23,12 +23,12 @@ object CanEqual {
   def canEqualAny[L, R]: CanEqual[L, R] = derived
 
   // Instances of `CanEqual` for common Java types
-  given canEqualNumber as CanEqual[Number, Number] = derived
-  given canEqualString as CanEqual[String, String] = derived
+  given canEqualNumber: CanEqual[Number, Number] = derived
+  given canEqualString: CanEqual[String, String] = derived
 
   // The next three definitions can go into the companion objects of classes
   // Seq and Set. For now they are here in order not to have to touch the
   // source code of these classes
-  given canEqualSeq[T, U](using eq: CanEqual[T, U]) as CanEqual[Seq[T], Seq[U]] = derived
-  given canEqualSet[T, U](using eq: CanEqual[T, U]) as CanEqual[Set[T], Set[U]] = derived
+  given canEqualSeq[T, U](using eq: CanEqual[T, U]): CanEqual[Seq[T], Seq[U]] = derived
+  given canEqualSet[T, U](using eq: CanEqual[T, U]): CanEqual[Set[T], Set[U]] = derived
 }

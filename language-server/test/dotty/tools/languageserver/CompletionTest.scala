@@ -361,7 +361,7 @@ class CompletionTest {
   @Test def completeExtensionMethodFromGivenInstanceDefinedInScope: Unit = {
     code"""object Foo
           |trait FooOps
-          |given FooOps {
+          |given FooOps with {
           |  extension (foo: Foo.type) def xxxx = 1
           |}
           |object Main { Foo.xx${m1} }""".withSource
@@ -372,7 +372,7 @@ class CompletionTest {
     code"""object Foo
           |trait FooOps
           |object Bar {
-          |  given FooOps {
+          |  given FooOps with {
           |    extension (foo: Foo.type) def xxxx = 1
           |  }
           |}
@@ -394,7 +394,7 @@ class CompletionTest {
     code"""trait Bar
           |case class Foo(i: Int)
           |object Foo {
-          |  given Bar {
+          |  given Bar with {
           |    extension (foo: Foo) def xxxx = foo.i
           |  }
           |}

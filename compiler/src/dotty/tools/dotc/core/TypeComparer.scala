@@ -34,7 +34,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private var myContext: Context = initctx
   def comparerContext: Context = myContext
 
-  protected given [DummySoItsADef] as Context = myContext
+  protected given [DummySoItsADef]: Context = myContext
 
   protected var state: TyperState = null
   def constraint: Constraint = state.constraint
