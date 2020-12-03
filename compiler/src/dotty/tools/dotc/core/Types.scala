@@ -264,9 +264,13 @@ object Types {
           // If the type is `T | Null` or `T | Nothing`, the class is != Nothing,
           // and `T` derivesFrom the class, then the OrType derivesFrom the class.
           // Otherwise, we need to check both sides derivesFrom the class.
-          if tp.tp1.isBottomType && cls != defn.NothingClass then
+          def isLowerBottomType(tp: Type) =
+            tp.isBottomType
+            && (tp.hasClassSymbol(defn.NothingClass)
+                || cls != defn.NothingClass && !cls.isValueClass)
+          if isLowerBottomType(tp.tp1) then
             loop(tp.tp2)
-          else if tp.tp2.isBottomType && cls != defn.NothingClass then
+          else if isLowerBottomType(tp.tp2) then
             loop(tp.tp1)
           else
             loop(tp.tp1) && loop(tp.tp2)
