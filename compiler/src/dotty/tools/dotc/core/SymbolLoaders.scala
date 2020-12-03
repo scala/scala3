@@ -326,7 +326,7 @@ abstract class SymbolLoader extends LazyType { self =>
    */
   def proxy: SymbolLoader = new SymbolLoader {
     export self.{doComplete, sourceFileOrNull}
-    def description(using Context): String = "proxy to ${self.description}"
+    def description(using Context): String = s"proxy to ${self.description}"
   }
 
   override def complete(root: SymDenotation)(using Context): Unit = {
