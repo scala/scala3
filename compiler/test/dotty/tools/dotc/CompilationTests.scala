@@ -40,7 +40,7 @@ class CompilationTests {
       compileFilesInDir("tests/new", defaultOptions),
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),
       compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-Yerased-terms")),
-      compileFilesInDir("tests/pos", defaultOptions),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Ycheck-init")),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileFile(
         // succeeds despite -Xfatal-warnings because of -nowarn
@@ -187,7 +187,7 @@ class CompilationTests {
       compileFile("tests/run-custom-args/defaults-serizaliable-no-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
       compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-Yerased-terms")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/run", defaultOptions)
+      compileFilesInDir("tests/run", defaultOptions.and("-Ycheck-init"))
     ).checkRuns()
   }
 

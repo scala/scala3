@@ -96,6 +96,7 @@ final case class SbtCommunityProject(
 
   private val baseCommand =
     "clean; set logLevel in Global := Level.Error; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
+    ++ """set scalacOptions in Global += "-Ycheck-init";"""
     ++ s"++$compilerVersion!; "
 
   override val testCommand =

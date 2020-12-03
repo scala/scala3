@@ -318,7 +318,7 @@ object Summarization {
               val ctor = cls.primaryConstructor
               val prefixEff =
                 if tref.prefix == NoPrefix then Effects.empty
-                else Summarization.analyze(New(ref.tpe))(env.withOwner(ctor.owner)).effs
+                else Summarization.analyze(tref.prefix, ref)(env.withOwner(ctor.owner)).effs
 
               prefixEff +  MethodCall(ThisRef()(ref), ctor)(ref)
             }
