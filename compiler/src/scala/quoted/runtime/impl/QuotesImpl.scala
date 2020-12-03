@@ -766,6 +766,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def cond: Term = self.cond
         def thenp: Term = self.thenp
         def elsep: Term = self.elsep
+        def isInline: Boolean = self.isInline
       end extension
     end IfMethodsImpl
 
@@ -792,6 +793,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       extension (self: Match):
         def scrutinee: Term = self.selector
         def cases: List[CaseDef] = self.cases
+        def isInline: Boolean = self.isInline
       end extension
     end MatchMethodsImpl
 
