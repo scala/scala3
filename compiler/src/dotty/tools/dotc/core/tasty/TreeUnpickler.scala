@@ -582,12 +582,15 @@ class TreeUnpickler(reader: TastyReader,
             else
               newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
         }
-      sym.annotations = annotFns.map(_(sym.owner))
+      val annots =  annotFns.map(_(sym.owner))
+      sym.annotations = annots
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
+      val isSyntheticBeanAccessor = flags.isAllOf(Method | Synthetic) &&
+        annots.exists(a => a.matches(defn.BeanPropertyAnnot) || a.matches(defn.BooleanBeanPropertyAnnot))
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
-        case cls: ClassSymbol if !isScala2MacroDefinedInScala3 || cls == defn.StringContextClass  =>
-          // Enter all members of classes that are not Scala 2 macros.
+        case cls: ClassSymbol if (!isScala2MacroDefinedInScala3 || cls == defn.StringContextClass) && !isSyntheticBeanAccessor  =>
+          // Enter all members of classes that are not Scala 2 macros or synthetic accessors.
           //
           // For `StringContext`, enter `s`, `f` and `raw`
           // These definitions will be entered when defined in Scala 2. It is fine to enter them
