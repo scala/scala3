@@ -459,15 +459,15 @@ object projects:
   lazy val catsEffect2 = SbtCommunityProject(
     project        = "cats-effect-2",
     sbtTestCommand = "test",
-    // Currently is excluded from community build
-    // sbtDocCommand = ";coreJVM/doc ;lawsJVM/doc",
+    sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc",
+    dependencies   = List(cats, disciplineMunit)
   )
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
-    sbtTestCommand = "testIfRelevant",
-    // The problem is that testIfRelevant does not compile and project does not compile
-    // sbtDocCommand = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
+    sbtTestCommand = "test",
+    sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
+    dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
   )
 
   lazy val scalaParallelCollections = SbtCommunityProject(
