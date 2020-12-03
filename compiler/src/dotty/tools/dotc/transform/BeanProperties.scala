@@ -3,7 +3,7 @@ package transform
 
 import core._
 import ast.tpd._
-import Contexts.Context
+import Contexts._
 import SymDenotations._
 import Symbols.newSymbol
 import Decorators._
@@ -27,9 +27,9 @@ class BeanProperties(thisPhase: DenotTransformer):
     def generateGetter(valDef: ValDef)(using Context) : Tree =
       val prefix = if valDef.symbol.denot.hasAnnotation(defn.BooleanBeanPropertyAnnot) then "is" else "get"
       val meth = newSymbol(
-        owner = summon[Context].owner,
+        owner = ctx.owner,
         name = prefixedName(prefix, valDef.name),
-        flags = Method | Permanent | Synthetic,
+        flags = Method | Synthetic,
         info = MethodType(Nil, valDef.denot.info))
         .enteredAfter(thisPhase).asTerm
       meth.addAnnotations(valDef.symbol.annotations)
@@ -38,7 +38,7 @@ class BeanProperties(thisPhase: DenotTransformer):
 
     def maybeGenerateSetter(valDef: ValDef)(using Context): Option[Tree] =
       Option.when(valDef.denot.asSymDenotation.flags.is(Mutable)) {
-        val owner = summon[Context].owner
+        val owner = ctx.owner
         val meth = newSymbol(
           owner,
           name = prefixedName("set", valDef.name),
@@ -53,9 +53,8 @@ class BeanProperties(thisPhase: DenotTransformer):
     def prefixedName(prefix: String, valName: Name) =
       (prefix + valName.lastPart.toString.capitalize).toTermName
 
-    extension(a: SymDenotation) def isApplicable = a.hasAnnotation(defn.BeanPropertyAnnot) || a.hasAnnotation(defn.BooleanBeanPropertyAnnot)
-
-    if valDef.denot.symbol.isApplicable then
+    val symbol = valDef.denot.symbol
+    if symbol.hasAnnotation(defn.BeanPropertyAnnot) || symbol.hasAnnotation(defn.BooleanBeanPropertyAnnot) then
       generateGetter(valDef) +: maybeGenerateSetter(valDef) ++: Nil
     else Nil
   end generateAccessors
