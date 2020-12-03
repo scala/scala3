@@ -334,6 +334,8 @@ class ImplicitSearchError(
    */
   private def userDefinedImplicitNotFoundTypeMessage: Option[String] =
     pt.baseClasses.iterator
+      // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
+      .filter(sym => Feature.migrateTo3 || sym != defn.Function1)
       .map(userDefinedImplicitNotFoundTypeMessage(_))
       .find(_.isDefined).flatten
 
