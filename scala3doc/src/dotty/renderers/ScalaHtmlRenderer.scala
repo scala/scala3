@@ -260,14 +260,11 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
             case HashRegex(path, prefix) => (path, prefix)
             case _ => (str, "")
 
-          // TODO (https://github.com/lampepfl/scala3doc/issues/238) proper warnings about unresolved links
-          prc.context.driForLink(prc.template.templateFile, path)
-            .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
-            .map(_ + prefix)
-            .getOrElse {
-              report.warn(s"Unable to resolve link '$str'", prc.template.file)
-              str
-            }
+          val dri = prc.context.driForLink(prc.template.templateFile, path)
+          val res = dri.flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
+          if res.isEmpty then
+            report.warn(s"Unable to resolve link '$str'", prc.template.file)
+          res.headOption.fold(str)(_ + prefix)
 
         def processLocalLink(str: String): String =
           if str.startsWith("#") || str.isEmpty then str

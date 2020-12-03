@@ -32,7 +32,6 @@ val report = dotty.tools.dotc.report
 def relativePath(p: Path)(using Context): Path =
   val root = Paths.get("").toAbsolutePath()
   val absPath = p.toAbsolutePath
-  println(Seq(p, absPath, absPath.startsWith(root), root.relativize(absPath)))
   if absPath.startsWith(root) then root.relativize(p.toAbsolutePath()) else p
 
 
