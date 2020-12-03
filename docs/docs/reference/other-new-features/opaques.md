@@ -123,4 +123,28 @@ object User {
 On the other hand, the call `roItem.rights.isOneOf(ReadWrite)` would give a type error
 since `Permissions` and `PermissionChoice` are different, unrelated types outside `Access`.
 
+## Opaque as new types
+
+Sometimes one might want to use opaque types as new types but having to declare `apply` and `value` methods is too much boilerplate.
+
+```scala
+
+trait NewType[Wrapped] {
+  opaque type Type = Wrapped
+  def apply(w: Wrapped): Type = w
+  extension (t: Type) def unwrap: Wrapped = t
+}
+
+object Username extends NewType[String]
+extension (username: Username.Type) def screenName: String = "@" + username.unwrap
+
+object Token extends NewType[String]
+
+object UserId extends NewType[String]
+
+@main def main() =
+  println(Username("odesky").screenName)
+
+```
+
 [More details](opaques-details.md)
