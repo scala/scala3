@@ -1676,6 +1676,21 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       extension (self: ConstantType) def constant: Constant = self.value
     end ConstantTypeMethods
 
+    type NamedType = dotc.core.Types.NamedType
+
+    object NamedTypeTypeTest extends TypeTest[TypeRepr, NamedType]:
+      def unapply(x: TypeRepr): Option[NamedType & x.type] = x match
+        case tpe: (Types.NamedType & x.type) => Some(tpe)
+        case _ => None
+    end NamedTypeTypeTest
+
+    given NamedTypeMethods: NamedTypeMethods with
+      extension (self: NamedType):
+        def qualifier: TypeRepr = self.prefix
+        def name: String = self.name.toString
+      end extension
+    end NamedTypeMethods
+
     type TermRef = dotc.core.Types.NamedType
 
     object TermRefTypeTest extends TypeTest[TypeRepr, TermRef]:
@@ -1690,13 +1705,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(x: TermRef): Option[(TypeRepr, String)] =
         Some((x.prefix, x.name.toString))
     end TermRef
-
-    given TermRefMethods: TermRefMethods with
-      extension (self: TermRef):
-        def qualifier: TypeRepr = self.prefix
-        def name: String = self.name.toString
-      end extension
-    end TermRefMethods
 
     type TypeRef = dotc.core.Types.NamedType
 
@@ -1713,8 +1721,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given TypeRefMethods: TypeRefMethods with
       extension (self: TypeRef):
-        def qualifier: TypeRepr = self.prefix
-        def name: String = self.name.toString
         def isOpaqueAlias: Boolean = self.symbol.isOpaqueAlias
         def translucentSuperType: TypeRepr = self.translucentSuperType
       end extension
@@ -1811,6 +1817,21 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end AnnotatedTypeMethods
 
+    type AndOrType = dotc.core.Types.AndOrType
+
+    object AndOrTypeTypeTest extends TypeTest[TypeRepr, AndOrType]:
+      def unapply(x: TypeRepr): Option[AndOrType & x.type] = x match
+        case tpe: (Types.AndOrType & x.type) => Some(tpe)
+        case _ => None
+    end AndOrTypeTypeTest
+
+    given AndOrTypeMethods: AndOrTypeMethods with
+      extension (self: AndOrType):
+        def left: TypeRepr = self.tp1.stripTypeVar
+        def right: TypeRepr = self.tp2.stripTypeVar
+      end extension
+    end AndOrTypeMethods
+
     type AndType = dotc.core.Types.AndType
 
     object AndTypeTypeTest extends TypeTest[TypeRepr, AndType]:
@@ -1824,13 +1845,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def unapply(x: AndType): Option[(TypeRepr, TypeRepr)] = Some((x.left, x.right))
     end AndType
 
-    given AndTypeMethods: AndTypeMethods with
-      extension (self: AndType):
-        def left: TypeRepr = self.tp1.stripTypeVar
-        def right: TypeRepr = self.tp2.stripTypeVar
-      end extension
-    end AndTypeMethods
-
     type OrType = dotc.core.Types.OrType
 
     object OrTypeTypeTest extends TypeTest[TypeRepr, OrType]:
@@ -1843,13 +1857,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def apply(lhs: TypeRepr, rhs: TypeRepr): OrType = Types.OrType(lhs, rhs, soft = false)
       def unapply(x: OrType): Option[(TypeRepr, TypeRepr)] = Some((x.left, x.right))
     end OrType
-
-    given OrTypeMethods: OrTypeMethods with
-      extension (self: OrType):
-        def left: TypeRepr = self.tp1.stripTypeVar
-        def right: TypeRepr = self.tp2.stripTypeVar
-      end extension
-    end OrTypeMethods
 
     type MatchType = dotc.core.Types.MatchType
 
@@ -1974,6 +1981,28 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     type LambdaType = dotc.core.Types.LambdaType
 
+    object LambdaTypeTypeTest extends TypeTest[TypeRepr, LambdaType]:
+      def unapply(x: TypeRepr): Option[LambdaType & x.type] = x match
+        case tpe: (Types.LambdaType & x.type) => Some(tpe)
+        case _ => None
+    end LambdaTypeTypeTest
+
+    given LambdaTypeMethods: LambdaTypeMethods with
+      extension (self: LambdaType):
+        def paramNames: List[String] = self.paramNames.map(_.toString)
+        def paramTypes: List[TypeRepr] = self.paramInfos
+        def resType: TypeRepr = self.resType
+      end extension
+    end LambdaTypeMethods
+
+    type MethodOrPoly = dotc.core.Types.MethodOrPoly
+
+    object MethodOrPolyTypeTest extends TypeTest[TypeRepr, MethodOrPoly]:
+      def unapply(x: TypeRepr): Option[MethodOrPoly & x.type] = x match
+        case tpe: (Types.MethodOrPoly & x.type) => Some(tpe)
+        case _ => None
+    end MethodOrPolyTypeTest
+
     type MethodType = dotc.core.Types.MethodType
 
     object MethodTypeTypeTest extends TypeTest[TypeRepr, MethodType]:
@@ -1994,9 +2023,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def isErased: Boolean = self.isErasedMethod
         def isImplicit: Boolean = self.isImplicitMethod
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramNames: List[String] = self.paramNames.map(_.toString)
-        def paramTypes: List[TypeRepr] = self.paramInfos
-        def resType: TypeRepr = self.resType
       end extension
     end MethodTypeMethods
 
@@ -2018,9 +2044,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given PolyTypeMethods: PolyTypeMethods with
       extension (self: PolyType):
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramNames: List[String] = self.paramNames.map(_.toString)
         def paramBounds: List[TypeBounds] = self.paramInfos
-        def resType: TypeRepr = self.resType
       end extension
     end PolyTypeMethods
 
@@ -2041,10 +2065,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given TypeLambdaMethods: TypeLambdaMethods with
       extension (self: TypeLambda):
-        def paramNames: List[String] = self.paramNames.map(_.toString)
-        def paramBounds: List[TypeBounds] = self.paramInfos
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def resType: TypeRepr = self.resType
+        def paramBounds: List[TypeBounds] = self.paramInfos
       end extension
     end TypeLambdaMethods
 

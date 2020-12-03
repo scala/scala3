@@ -142,24 +142,24 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           +- Alternatives
    *
    *
-   *  +- TypeRepr -+- ConstantType
-   *               +- TermRef
-   *               +- TypeRef
+   *  +- TypeRepr -+- NamedType -+- TermRef
+   *               |             +- TypeRef
+   *               +- ConstantType
    *               +- SuperType
    *               +- Refinement
    *               +- AppliedType
    *               +- AnnotatedType
-   *               +- AndType
-   *               +- OrType
+   *               +- AndOrType -+- AndType
+   *               |             +- OrType
    *               +- MatchType
    *               +- ByNameType
    *               +- ParamRef
    *               +- ThisType
    *               +- RecursiveThis
    *               +- RecursiveType
-   *               +- MethodType
-   *               +- PolyType
-   *               +- TypeLambda
+   *               +- LambdaType -+- MethodOrPoly -+- MethodType
+   *               |              |                +- PolyType
+   *               |              +- TypeLambda
    *               +- TypeBounds
    *               +- NoPrefix
    *
@@ -171,6 +171,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *  +- Signature
    *
    *  +- Position
+   *
+   *  +- SourceFile
    *
    *  +- Documentation
    *
@@ -2203,8 +2205,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ConstantTypeMethods
 
+    /** Type of a reference to a type or term symbol */
+    type NamedType <: TypeRepr
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `NamedType` */
+    given NamedTypeTypeTest: TypeTest[TypeRepr, NamedType]
+
+    /** Makes extension methods on `NamedType` available without any imports */
+    given NamedTypeMethods: NamedTypeMethods
+
+    /** Extension methods of `NamedType` */
+    trait NamedTypeMethods:
+      extension (self: NamedType):
+        def qualifier: TypeRepr
+        def name: String
+      end extension
+    end NamedTypeMethods
+
     /** Type of a reference to a term symbol */
-    type TermRef <: TypeRepr
+    type TermRef <: NamedType
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TermRef` */
     given TermRefTypeTest: TypeTest[TypeRepr, TermRef]
@@ -2218,19 +2237,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(x: TermRef): Option[(TypeRepr, String)]
     }
 
-    /** Makes extension methods on `TermRef` available without any imports */
-    given TermRefMethods: TermRefMethods
-
-    /** Extension methods of `TermRef` */
-    trait TermRefMethods:
-      extension (self: TermRef):
-        def qualifier: TypeRepr
-        def name: String
-      end extension
-    end TermRefMethods
-
     /** Type of a reference to a type symbol */
-    type TypeRef <: TypeRepr
+    type TypeRef <: NamedType
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeRef` */
     given TypeRefTypeTest: TypeTest[TypeRepr, TypeRef]
@@ -2249,8 +2257,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeRef` */
     trait TypeRefMethods:
       extension (self: TypeRef):
-        def qualifier: TypeRepr
-        def name: String
         def isOpaqueAlias: Boolean
         def translucentSuperType: TypeRepr
       end extension
@@ -2360,8 +2366,26 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end AnnotatedTypeMethods
 
+
+    /** Intersection type `T & U` or an union type `T | U` */
+    type AndOrType <: TypeRepr
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AndOrType` */
+    given AndOrTypeTypeTest: TypeTest[TypeRepr, AndOrType]
+
+    /** Makes extension methods on `AndOrType` available without any imports */
+    given AndOrTypeMethods: AndOrTypeMethods
+
+    /** Extension methods of `AndOrType` */
+    trait AndOrTypeMethods:
+      extension (self: AndOrType):
+        def left: TypeRepr
+        def right: TypeRepr
+      end extension
+    end AndOrTypeMethods
+
     /** Intersection type `T & U` */
-    type AndType <: TypeRepr
+    type AndType <: AndOrType
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AndType` */
     given AndTypeTypeTest: TypeTest[TypeRepr, AndType]
@@ -2375,19 +2399,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(x: AndType): Option[(TypeRepr, TypeRepr)]
     }
 
-    /** Makes extension methods on `AndType` available without any imports */
-    given AndTypeMethods: AndTypeMethods
-
-    /** Extension methods of `AndType` */
-    trait AndTypeMethods:
-      extension (self: AndType):
-        def left: TypeRepr
-        def right: TypeRepr
-      end extension
-    end AndTypeMethods
-
     /** Union type `T | U` */
-    type OrType <: TypeRepr
+    type OrType <: AndOrType
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `OrType` */
     given OrTypeTypeTest: TypeTest[TypeRepr, OrType]
@@ -2400,17 +2413,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def apply(lhs: TypeRepr, rhs: TypeRepr): OrType
       def unapply(x: OrType): Option[(TypeRepr, TypeRepr)]
     }
-
-    /** Makes extension methods on `OrType` available without any imports */
-    given OrTypeMethods: OrTypeMethods
-
-    /** Extension methods of `OrType` */
-    trait OrTypeMethods:
-      extension (self: OrType):
-        def left: TypeRepr
-        def right: TypeRepr
-      end extension
-    end OrTypeMethods
 
     /** Type match `T match { case U => ... }` */
     type MatchType <: TypeRepr
@@ -2573,8 +2575,32 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end RecursiveTypeMethods
 
+    /** Type of the definition of a method taking a single list of type or term parameters */
+    type LambdaType <: TypeRepr
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `LambdaType` */
+    given LambdaTypeTypeTest: TypeTest[TypeRepr, LambdaType]
+
+    /** Makes extension methods on `LambdaType` available without any imports */
+    given LambdaTypeMethods: LambdaTypeMethods
+
+    /** Extension methods of `LambdaType` */
+    trait LambdaTypeMethods:
+      extension (self: LambdaType):
+        def paramNames: List[String]
+        def paramTypes: List[TypeRepr]
+        def resType: TypeRepr
+      end extension
+    end LambdaTypeMethods
+
+    /** Type of the definition of a method taking a single list of type or term parameters */
+    type MethodOrPoly <: LambdaType
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodOrPoly` */
+    given MethodOrPolyTypeTest: TypeTest[TypeRepr, MethodOrPoly]
+
     /** Type of the definition of a method taking a single list of parameters. It's return type may be a MethodType. */
-    type MethodType <: TypeRepr
+    type MethodType <: MethodOrPoly
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodType` */
     given MethodTypeTypeTest: TypeTest[TypeRepr, MethodType]
@@ -2597,14 +2623,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def isImplicit: Boolean
         def isErased: Boolean
         def param(idx: Int): TypeRepr
-        def paramNames: List[String]
-        def paramTypes: List[TypeRepr]
-        def resType: TypeRepr
       end extension
     end MethodTypeMethods
 
     /** Type of the definition of a method taking a list of type parameters. It's return type may be a MethodType. */
-    type PolyType <: TypeRepr
+    type PolyType <: MethodOrPoly
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `PolyType` */
     given PolyTypeTypeTest: TypeTest[TypeRepr, PolyType]
@@ -2625,14 +2648,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait PolyTypeMethods:
       extension (self: PolyType):
         def param(idx: Int): TypeRepr
-        def paramNames: List[String]
         def paramBounds: List[TypeBounds]
-        def resType: TypeRepr
       end extension
     end PolyTypeMethods
 
     /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
-    type TypeLambda <: TypeRepr
+    type TypeLambda <: LambdaType
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeLambda` */
     given TypeLambdaTypeTest: TypeTest[TypeRepr, TypeLambda]
@@ -2652,10 +2673,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeLambda` */
     trait TypeLambdaMethods:
       extension (self: TypeLambda):
-        def paramNames: List[String]
-        def paramBounds: List[TypeBounds]
         def param(idx: Int) : TypeRepr
-        def resType: TypeRepr
+        def paramBounds: List[TypeBounds]
       end extension
     end TypeLambdaMethods
 
