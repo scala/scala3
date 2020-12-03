@@ -4067,6 +4067,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait PositionModule { this: Position.type =>
       /** Position of the expansion site of the macro */
       def ofMacroExpansion: Position
+
+      /** Create a new position in the source with the given range. The range must be contained in the file. */
+      def apply(sourceFile: SourceFile, start: Int, end: Int): Position
     }
 
     /** Makes extension methods on `Position` available without any imports */
@@ -4169,9 +4172,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Report an error message at the given position */
       def error(msg: String, pos: Position): Unit
 
-      /** Report an error at a specific range of a file. The positions must be contained in the file. */
-      def error(msg: String, source: SourceFile, start: Int, end: Int): Unit
-
       /** Report an error at the position of the macro expansion and throws a StopMacroExpansion */
       def throwError(msg: String): Nothing
 
@@ -4181,9 +4181,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Report an error message at the given position and throws a StopMacroExpansion */
       def throwError(msg: String, pos: Position): Nothing
 
-      /** Report an error at a specific range of a file and throws a StopMacroExpansion. The positions must be contained in the file. */
-      def throwError(msg: String, source: SourceFile, start: Int, end: Int): Nothing
-
       /** Report a warning at the position of the macro expansion */
       def warning(msg: String): Unit
 
@@ -4192,9 +4189,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** Report an warning message at the given position */
       def warning(msg: String, pos: Position): Unit
-
-      /** Emits a warning at a specific range of a file. The positions must be contained in the file. */
-      def warning(msg: String, source: SourceFile, start: Int, end: Int): Unit
 
     }
 

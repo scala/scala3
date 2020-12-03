@@ -2523,6 +2523,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Position extends PositionModule:
       def ofMacroExpansion: dotc.util.SourcePosition =
         MacroExpansion.position.getOrElse(dotc.util.SourcePosition(ctx.source, dotc.util.Spans.NoSpan))
+      def apply(sourceFile: SourceFile, start: Int, end: Int): Position =
+        dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end))
     end Position
 
     object PositionMethodsImpl extends PositionMethods:
@@ -2566,9 +2568,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def error(msg: String, pos: Position): Unit =
         dotc.report.error(msg, pos)
 
-      def error(msg: String, sourceFile: SourceFile, start: Int, end: Int): Unit =
-        dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
-
       def throwError(msg: String): Nothing =
         error(msg)
         throw new scala.quoted.runtime.StopMacroExpansion
@@ -2581,10 +2580,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         error(msg, pos)
         throw new scala.quoted.runtime.StopMacroExpansion
 
-      def throwError(msg: String, sourceFile: SourceFile, start: Int, end: Int): Nothing =
-        error(msg, sourceFile, start, end)
-        throw new scala.quoted.runtime.StopMacroExpansion
-
       def warning(msg: String): Unit =
         dotc.report.warning(msg, Position.ofMacroExpansion)
 
@@ -2593,9 +2588,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       def warning(msg: String, pos: Position): Unit =
         dotc.report.warning(msg, pos)
-
-      def warning(msg: String, sourceFile: SourceFile, start: Int, end: Int): Unit =
-        dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
 
     end report
 
