@@ -1208,6 +1208,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def cond: Term
         def thenp: Term
         def elsep: Term
+        def isInline: Boolean
       end extension
     end IfMethods
 
@@ -1246,6 +1247,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: Match):
         def scrutinee: Term
         def cases: List[CaseDef]
+        def isInline: Boolean
       end extension
     end MatchMethods
 
