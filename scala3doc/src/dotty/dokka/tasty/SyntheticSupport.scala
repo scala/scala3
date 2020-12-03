@@ -38,7 +38,7 @@ trait SyntheticsSupport:
     def getAllMembers: List[Symbol] = hackGetAllMembers(using qctx)(s)
 
   def isSyntheticField(c: Symbol) =
-    c.flags.is(Flags.CaseAccessor) || (c.flags.is(Flags.Object) && !c.flags.is(Flags.Given))
+    c.flags.is(Flags.CaseAccessor) || (c.flags.is(Flags.Module) && !c.flags.is(Flags.Given))
 
   def isValidPos(pos: Position) =
     pos.exists && pos.start != pos.end

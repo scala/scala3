@@ -78,7 +78,7 @@ class SymOps[Q <: Quotes](val q: Q):
 
     def getCompanionSymbol: Option[Symbol] = Some(sym.companionClass).filter(_.exists)
 
-    def isCompanionObject: Boolean = sym.flags.is(Flags.Object) && sym.companionClass.exists
+    def isCompanionObject: Boolean = sym.flags.is(Flags.Module) && sym.companionClass.exists
 
     def isGiven: Boolean = sym.flags.is(Flags.Given)
 

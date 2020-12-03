@@ -2462,6 +2462,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def CaseAccessor: Flags = dotc.core.Flags.CaseAccessor
       def Contravariant: Flags = dotc.core.Flags.Contravariant
       def Covariant: Flags = dotc.core.Flags.Covariant
+      def Deferred: Flags = dotc.core.Flags.Deferred
       def EmptyFlags = dotc.core.Flags.EmptyFlags
       def Enum: Flags = dotc.core.Flags.Enum
       def Erased: Flags = dotc.core.Flags.Erased
@@ -2472,14 +2473,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def Given: Flags = dotc.core.Flags.Given
       def HasDefault: Flags = dotc.core.Flags.HasDefault
       def Implicit: Flags = dotc.core.Flags.Implicit
+      def Infix: Flags = dotc.core.Flags.Infix
       def Inline: Flags = dotc.core.Flags.Inline
       def JavaDefined: Flags = dotc.core.Flags.JavaDefined
+      def JavaStatic: Flags = dotc.core.Flags.JavaStatic
       def Lazy: Flags = dotc.core.Flags.Lazy
       def Local: Flags = dotc.core.Flags.Local
       def Macro: Flags = dotc.core.Flags.Macro
-      def ModuleClass: Flags = dotc.core.Flags.ModuleClass
+      def Method: Flags = dotc.core.Flags.Method
+      def Module: Flags = dotc.core.Flags.Module
       def Mutable: Flags = dotc.core.Flags.Mutable
-      def Object: Flags = dotc.core.Flags.Module
+      def NoInits: Flags = dotc.core.Flags.NoInits
       def Opaque: Flags = dotc.core.Flags.Opaque
       def Open: Flags = dotc.core.Flags.Open
       def Override: Flags = dotc.core.Flags.Override
@@ -2495,6 +2499,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def Static: Flags = dotc.core.Flags.JavaStatic
       def Synthetic: Flags = dotc.core.Flags.Synthetic
       def Trait: Flags = dotc.core.Flags.Trait
+      def Transparent: Flags = dotc.core.Flags.Transparent
     end Flags
 
     object FlagsMethodsImpl extends FlagsMethods:

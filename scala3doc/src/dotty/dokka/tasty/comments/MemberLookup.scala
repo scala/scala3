@@ -101,7 +101,7 @@ trait MemberLookup {
         )
 
       def hackResolveModule(s: Symbol): Symbol =
-        if s.flags.is(Flags.Object) then s.moduleClass else s
+        if s.flags.is(Flags.Module) then s.moduleClass else s
 
       val matched = syms.find(matches)
 
