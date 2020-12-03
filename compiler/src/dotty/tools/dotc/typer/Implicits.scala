@@ -280,7 +280,7 @@ object Implicits:
     }
 
     /** The candidates that are eligible for expected type `tp` */
-    @threadUnsafe lazy val eligible: List[Candidate] =
+    def eligible(using Context): List[Candidate] =
       trace(i"eligible($tp), companions = ${companionRefs.showAsList}%, %", implicitsDetailed, show = true) {
         if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
         filterMatching(tp)
