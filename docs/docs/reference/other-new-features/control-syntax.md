@@ -26,16 +26,20 @@ for
   y <- ys
 do
   println(x + y)
+
+try body
+catch case ex: IOException => handle
 ```
 
 The rules in detail are:
 
- - The condition of an `if`-expression can be written without enclosing parentheses if it is followed by a `then`
-   or some [indented](./indentation.html) code on a following line.
+ - The condition of an `if`-expression can be written without enclosing parentheses if it is followed by a `then`.
  - The condition of a `while`-loop can be written without enclosing parentheses if it is followed by a `do`.
  - The enumerators of a `for`-expression can be written without enclosing parentheses or braces if they are followed by a `yield` or `do`.
  - A `do` in a `for`-expression expresses a `for`-loop.
-
+ - A `catch` can be followed by a single case on the same line.
+   If there are multiple cases, these have to be appear within braces (just like in Scala-2)
+   or an indented block.
 ### Rewrites
 
 The Dotty compiler can rewrite source code from old syntax to new syntax and back.

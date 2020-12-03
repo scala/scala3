@@ -1091,6 +1091,8 @@ object Parsers {
     /** Singleton    ::=  SimpleRef
      *                 |  SimpleLiteral
      *                 |  Singleton ‘.’ id
+     * -- not yet      |  Singleton ‘(’ Singletons ‘)’
+     * -- not yet      |  Singleton ‘[’ Types ‘]’
      */
     def singleton(): Tree =
       if isSimpleLiteral then simpleLiteral()
