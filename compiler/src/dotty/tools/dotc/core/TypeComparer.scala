@@ -434,7 +434,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def widenOK =
           (tp2.widenSingletons eq tp2)
           && (tp1.widenSingletons ne tp1)
-          && inFrozenGadt { recur(tp1.widenSingletons, tp2) }
+          && isSubType(tp1.widenSingletons, tp2, approx.addLow)
 
         def joinOK = tp2.dealiasKeepRefiningAnnots match {
           case tp2: AppliedType if !tp2.tycon.typeSymbol.isClass =>
@@ -442,7 +442,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // type parameter, we will instantiate `C` to `A` and then fail when comparing
             // with `B[Y]`. To do the right thing, we need to instantiate `C` to the
             // common superclass of `A` and `B`.
-            inFrozenGadt { recur(tp1.join, tp2) }
+            isSubType(tp1.join, tp2, approx.addLow)
           case _ =>
             false
         }
@@ -469,7 +469,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         widenOK
         || joinOK
         || (tp1.isSoft || constrainRHSVars(tp2)) && recur(tp11, tp2) && recur(tp12, tp2)
-        || containsAnd(tp1) && inFrozenGadt { recur(tp1.join, tp2) }
+        || containsAnd(tp1) && isSubType(tp1.join, tp2, approx.addLow)
      case tp1: MatchType =>
         val reduced = tp1.reduced
         if (reduced.exists) recur(reduced, tp2) else thirdTry
