@@ -382,7 +382,7 @@ class ReplDriver(settings: Array[String],
         case _  =>
           compiler.typeOf(expr)(newRun(state)).fold(
             displayErrors,
-            res => out.println(SyntaxHighlighting.highlight(res)(using state.context))
+            res => out.println(res)  // result has some highlights
           )
       }
       state
