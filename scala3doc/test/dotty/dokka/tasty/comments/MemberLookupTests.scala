@@ -86,7 +86,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
   case class Sym(symbol: q.reflect.Symbol) {
     def fld(name: String) =
       def hackResolveModule(s: q.reflect.Symbol): q.reflect.Symbol =
-        if s.flags.is(q.reflect.Flags.Object) then s.moduleClass else s
+        if s.flags.is(q.reflect.Flags.Module) then s.moduleClass else s
       Sym(hackResolveModule(symbol.field(name)))
     def fun(name: String) =
       val List(sym) = symbol.method(name)

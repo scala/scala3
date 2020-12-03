@@ -27,22 +27,26 @@ object SourceCode {
     if (flags.is(Flags.CaseAccessor)) flagList += "caseAccessor"
     if (flags.is(Flags.Contravariant)) flagList += "contravariant"
     if (flags.is(Flags.Covariant)) flagList += "covariant"
+    if (flags.is(Flags.Deferred)) flagList += "deferred"
     if (flags.is(Flags.Enum)) flagList += "enum"
     if (flags.is(Flags.Erased)) flagList += "erased"
-    if (flags.is(Flags.ExtensionMethod)) flagList += "extension"
     if (flags.is(Flags.Exported)) flagList += "exported"
+    if (flags.is(Flags.ExtensionMethod)) flagList += "extension"
     if (flags.is(Flags.FieldAccessor)) flagList += "accessor"
     if (flags.is(Flags.Final)) flagList += "final"
     if (flags.is(Flags.HasDefault)) flagList += "hasDefault"
     if (flags.is(Flags.Implicit)) flagList += "implicit"
+    if (flags.is(Flags.Infix)) flagList += "infix"
     if (flags.is(Flags.Inline)) flagList += "inline"
     if (flags.is(Flags.JavaDefined)) flagList += "javaDefined"
+    if (flags.is(Flags.JavaStatic)) flagList += "static"
     if (flags.is(Flags.Lazy)) flagList += "lazy"
     if (flags.is(Flags.Local)) flagList += "local"
     if (flags.is(Flags.Macro)) flagList += "macro"
-    if (flags.is(Flags.ModuleClass)) flagList += "moduleClass"
+    if (flags.is(Flags.Method)) flagList += "method"
+    if (flags.is(Flags.Module)) flagList += "object"
     if (flags.is(Flags.Mutable)) flagList += "mutable"
-    if (flags.is(Flags.Object)) flagList += "object"
+    if (flags.is(Flags.NoInits)) flagList += "noInits"
     if (flags.is(Flags.Override)) flagList += "override"
     if (flags.is(Flags.Package)) flagList += "package"
     if (flags.is(Flags.Param)) flagList += "param"
@@ -56,6 +60,7 @@ object SourceCode {
     if (flags.is(Flags.Static)) flagList += "javaStatic"
     if (flags.is(Flags.Synthetic)) flagList += "synthetic"
     if (flags.is(Flags.Trait)) flagList += "trait"
+    if (flags.is(Flags.Transparent)) flagList += "transparent"
     flagList.result().mkString("/*", " ", "*/")
   }
 
@@ -109,7 +114,7 @@ object SourceCode {
       case tree @ PackageClause(name, stats) =>
         val stats1 = stats.collect {
           case stat: PackageClause => stat
-          case stat: Definition if !(stat.symbol.flags.is(Flags.Object) && stat.symbol.flags.is(Flags.Lazy)) => stat
+          case stat: Definition if !(stat.symbol.flags.is(Flags.Module) && stat.symbol.flags.is(Flags.Lazy)) => stat
           case stat @ Import(_, _) => stat
         }
         name match {
@@ -133,19 +138,19 @@ object SourceCode {
         val flags = cdef.symbol.flags
         if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ")
         if (flags.is(Flags.Sealed)) this += highlightKeyword("sealed ")
-        if (flags.is(Flags.Final) && !flags.is(Flags.Object)) this += highlightKeyword("final ")
+        if (flags.is(Flags.Final) && !flags.is(Flags.Module)) this += highlightKeyword("final ")
         if (flags.is(Flags.Case)) this += highlightKeyword("case ")
 
         if (name == "package$") {
           this += highlightKeyword("package object ") += highlightTypeDef(cdef.symbol.owner.name.stripSuffix("$"))
         }
-        else if (flags.is(Flags.Object)) this += highlightKeyword("object ") += highlightTypeDef(name.stripSuffix("$"))
+        else if (flags.is(Flags.Module)) this += highlightKeyword("object ") += highlightTypeDef(name.stripSuffix("$"))
         else if (flags.is(Flags.Trait)) this += highlightKeyword("trait ") += highlightTypeDef(name)
         else if (flags.is(Flags.Abstract)) this += highlightKeyword("abstract class ") += highlightTypeDef(name)
         else this += highlightKeyword("class ") += highlightTypeDef(name)
 
         val typeParams = stats.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam).zip(targs)
-        if (!flags.is(Flags.Object)) {
+        if (!flags.is(Flags.Module)) {
           printTargsDefs(typeParams)
           val it = argss.iterator
           while (it.hasNext)
@@ -201,7 +206,7 @@ object SourceCode {
             // Currently the compiler does not allow overriding some of the methods generated for case classes
             d.symbol.flags.is(Flags.Synthetic) &&
             (d match {
-              case DefDef("apply" | "unapply" | "writeReplace", _, _, _, _) if d.symbol.owner.flags.is(Flags.Object) => true
+              case DefDef("apply" | "unapply" | "writeReplace", _, _, _, _) if d.symbol.owner.flags.is(Flags.Module) => true
               case DefDef(n, _, _, _, _) if d.symbol.owner.flags.is(Flags.Case) =>
                 n == "copy" ||
                 n.matches("copy\\$default\\$[1-9][0-9]*") || // default parameters for the copy method
@@ -210,7 +215,7 @@ object SourceCode {
               case _ => false
             })
           }
-          def isInnerModuleObject = d.symbol.flags.is(Flags.Lazy) && d.symbol.flags.is(Flags.Object)
+          def isInnerModuleObject = d.symbol.flags.is(Flags.Lazy) && d.symbol.flags.is(Flags.Module)
           !flags.is(Flags.Param) && !flags.is(Flags.ParamAccessor) && !flags.is(Flags.FieldAccessor) && !isUndecompilableCaseClassMethod && !isInnerModuleObject
         }
         val stats1 = stats.collect {
@@ -259,7 +264,7 @@ object SourceCode {
         val flags = vdef.symbol.flags
         if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ")
         if (flags.is(Flags.Override)) this += highlightKeyword("override ")
-        if (flags.is(Flags.Final) && !flags.is(Flags.Object)) this += highlightKeyword("final ")
+        if (flags.is(Flags.Final) && !flags.is(Flags.Module)) this += highlightKeyword("final ")
 
         printProtectedOrPrivate(vdef)
 
@@ -299,7 +304,7 @@ object SourceCode {
         if (flags.is(Flags.Implicit)) this += highlightKeyword("implicit ")
         if (flags.is(Flags.Inline)) this += highlightKeyword("inline ")
         if (flags.is(Flags.Override)) this += highlightKeyword("override ")
-        if (flags.is(Flags.Final) && !flags.is(Flags.Object)) this += highlightKeyword("final ")
+        if (flags.is(Flags.Final) && !flags.is(Flags.Module)) this += highlightKeyword("final ")
 
         printProtectedOrPrivate(ddef)
 
@@ -466,7 +471,7 @@ object SourceCode {
 
       case Block(stats0, expr) =>
         val stats = stats0.filter {
-          case tree: ValDef => !tree.symbol.flags.is(Flags.Object)
+          case tree: ValDef => !tree.symbol.flags.is(Flags.Module)
           case _ => true
         }
         printFlatBlock(stats, expr)
@@ -1158,7 +1163,7 @@ object SourceCode {
 
       case ThisType(tp) =>
         tp match {
-          case tp: TypeRef if !tp.typeSymbol.flags.is(Flags.Object) =>
+          case tp: TypeRef if !tp.typeSymbol.flags.is(Flags.Module) =>
             printFullClassName(tp)
             this += highlightTypeDef(".this")
           case TypeRef(prefix, name) if name.endsWith("$") =>

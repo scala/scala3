@@ -21,7 +21,7 @@ trait ClassLikeSupport:
   private val placeholderModifier = JMap(ctx.sourceSet -> KotlinModifier.Empty.INSTANCE)
 
   private def kindForClasslike(sym: Symbol): Kind =
-        if sym.flags.is(Flags.Object) then Kind.Object
+        if sym.flags.is(Flags.Module) then Kind.Object
         else if sym.flags.is(Flags.Trait) then Kind.Trait
         else if sym.flags.is(Flags.Enum) then Kind.Enum
         else Kind.Class
@@ -125,9 +125,9 @@ trait ClassLikeSupport:
           .map { _ =>
             parseMethod(dd.symbol, kind = Kind.Given(getGivenInstance(dd).map(_.asSignature), None))
           }
-          
+
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported =>
-        val exportedTarget = dd.rhs.collect { 
+        val exportedTarget = dd.rhs.collect {
           case a: Apply => a.fun.asInstanceOf[Select]
           case s: Select => s
         }
@@ -137,7 +137,7 @@ trait ClassLikeSupport:
           case Select(qualifier: Ident, _) => qualifier.tpe.typeSymbol.normalizedName
         }.getOrElse("instance")
         val dri = dd.rhs.collect {
-          case s: Select if s.symbol.isDefDef => s.symbol.dri 
+          case s: Select if s.symbol.isDefDef => s.symbol.dri
         }.orElse(exportedTarget.map(_.qualifier.tpe.typeSymbol.dri))
         Some(parseMethod(dd.symbol, kind = Kind.Exported).withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dri)))
 
@@ -151,7 +151,7 @@ trait ClassLikeSupport:
         && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
         && vd.symbol.isGiven =>
           val classDef = Some(vd.tpt.tpe).flatMap(_.classSymbol.map(_.tree.asInstanceOf[ClassDef]))
-          Some(classDef.filter(_.symbol.flags.is(Flags.ModuleClass)).fold[Member](parseValDef(vd))(parseGivenClasslike(_)))
+          Some(classDef.filter(_.symbol.flags.is(Flags.Module)).fold[Member](parseValDef(vd))(parseGivenClasslike(_)))
 
       case vd: ValDef if !isSyntheticField(vd.symbol) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) =>
         Some(parseValDef(vd))
@@ -261,7 +261,7 @@ trait ClassLikeSupport:
       )
 
   def parseClasslike(classDef: ClassDef, signatureOnly: Boolean = false): DClass = classDef match
-    case c: ClassDef if classDef.symbol.flags.is(Flags.Object) => parseObject(c, signatureOnly)
+    case c: ClassDef if classDef.symbol.flags.is(Flags.Module) => parseObject(c, signatureOnly)
     case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) => parseEnum(c, signatureOnly)
     case clazz => DClass(classDef)(signatureOnly = signatureOnly)
 
