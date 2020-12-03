@@ -157,20 +157,40 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ImportTypeTestImpl
 
     object Import extends ImportModule:
-      def apply(expr: Term, selectors: List[ImportSelector]): Import =
+      def apply(expr: Term, selectors: List[Selector]): Import =
         withDefaultPos(tpd.Import(expr, selectors))
-      def copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import =
+      def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import =
         tpd.cpy.Import(original)(expr, selectors)
-      def unapply(tree: Import): Option[(Term, List[ImportSelector])] =
+      def unapply(tree: Import): Option[(Term, List[Selector])] =
         Some((tree.expr, tree.selectors))
     end Import
 
     object ImportMethodsImpl extends ImportMethods:
       extension (self: Import):
         def expr: Term = self.expr
-        def selectors: List[ImportSelector] = self.selectors
+        def selectors: List[Selector] = self.selectors
       end extension
     end ImportMethodsImpl
+
+    type Export = tpd.Export
+
+    object ExportTypeTest extends TypeTest[Tree, Export]:
+      def unapply(x: Tree): Option[Export & x.type] = x match
+        case tree: (tpd.Export & x.type) => Some(tree)
+        case _ => None
+    end ExportTypeTest
+
+    object Export extends ExportModule:
+      def unapply(tree: Export): Option[(Term, List[Selector])] =
+        Some((tree.expr, tree.selectors))
+    end Export
+
+    object ExportMethodsImpl extends ExportMethods:
+      extension (self: Export):
+        def expr: Term = self.expr
+        def selectors: List[Selector] = self.selectors
+      end extension
+    end ExportMethodsImpl
 
     type Statement = tpd.Tree
 
@@ -1468,14 +1488,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end AlternativesMethodsImpl
 
-    type ImportSelector = untpd.ImportSelector
+    type Selector = untpd.ImportSelector
 
-    object ImportSelector extends ImportSelectorModule
+    object Selector extends SelectorModule
 
     type SimpleSelector = untpd.ImportSelector
 
-    object SimpleSelectorTypeTestImpl extends TypeTest[ImportSelector, SimpleSelector]:
-      def unapply(x: ImportSelector): Option[SimpleSelector & x.type] = x match
+    object SimpleSelectorTypeTestImpl extends TypeTest[Selector, SimpleSelector]:
+      def unapply(x: Selector): Option[SimpleSelector & x.type] = x match
         case x: (untpd.ImportSelector & x.type) if x.renamed.isEmpty && !x.isGiven => Some(x)
         case _ => None // TODO: handle import bounds
     end SimpleSelectorTypeTestImpl
@@ -1483,7 +1503,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object SimpleSelector extends SimpleSelectorModule:
       def unapply(x: SimpleSelector): Option[String] = Some(x.name.toString)
     end SimpleSelector
-
 
     object SimpleSelectorMethodsImpl extends SimpleSelectorMethods:
       extension (self: SimpleSelector):
@@ -1494,8 +1513,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     type RenameSelector = untpd.ImportSelector
 
-    object RenameSelectorTypeTestImpl extends TypeTest[ImportSelector, RenameSelector]:
-      def unapply(x: ImportSelector): Option[RenameSelector & x.type] = x match
+    object RenameSelectorTypeTestImpl extends TypeTest[Selector, RenameSelector]:
+      def unapply(x: Selector): Option[RenameSelector & x.type] = x match
         case x: (untpd.ImportSelector & x.type) if !x.renamed.isEmpty => Some(x)
         case _ => None
     end RenameSelectorTypeTestImpl
@@ -1515,8 +1534,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     type OmitSelector = untpd.ImportSelector
 
-    object OmitSelectorTypeTestImpl extends TypeTest[ImportSelector, OmitSelector]:
-      def unapply(x: ImportSelector): Option[OmitSelector & x.type] = x match {
+    object OmitSelectorTypeTestImpl extends TypeTest[Selector, OmitSelector]:
+      def unapply(x: Selector): Option[OmitSelector & x.type] = x match {
         case self: (untpd.ImportSelector & x.type) =>
           self.renamed match
             case dotc.ast.Trees.Ident(nme.WILDCARD) => Some(self)
@@ -1538,8 +1557,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     type GivenSelector = untpd.ImportSelector
 
-    object GivenSelectorTypeTestImpl extends TypeTest[ImportSelector, GivenSelector]:
-      def unapply(x: ImportSelector): Option[GivenSelector & x.type] = x match {
+    object GivenSelectorTypeTestImpl extends TypeTest[Selector, GivenSelector]:
+      def unapply(x: Selector): Option[GivenSelector & x.type] = x match {
         case self: (untpd.ImportSelector & x.type) if x.isGiven => Some(self)
         case _ => None
       }

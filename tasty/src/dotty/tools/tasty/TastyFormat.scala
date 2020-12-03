@@ -60,6 +60,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ValOrDefDef
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*   -- modifiers type name (= type | bounds)  |  modifiers class name template
                   IMPORT         Length qual_Term Selector*                        -- import qual selectors
+                  EXPORT         Length qual_Term Selector*                        -- export qual selectors
   ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*      -- modifiers val name : type (= rhs)?
                   DEFDEF         Length NameRef TypeParam* Params* returnType_Term
                                         rhs_Term? Modifier*                        -- modifiers def name [typeparams] paramss : returnType (= rhs)?
@@ -260,7 +261,7 @@ object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
   val MajorVersion: Int = 26
-  val MinorVersion: Int = 0
+  val MinorVersion: Int = 1
 
   final val ASTsSection = "ASTs"
   final val PositionsSection = "Positions"
@@ -475,6 +476,7 @@ object TastyFormat {
   final val TERMREFin = 174
   final val TYPEREFin = 175
   final val SELECTin = 176
+  final val EXPORT = 177
 
   final val METHODtype = 180
 
@@ -634,6 +636,7 @@ object TastyFormat {
     case DEFDEF => "DEFDEF"
     case TYPEDEF => "TYPEDEF"
     case IMPORT => "IMPORT"
+    case EXPORT => "EXPORT"
     case TYPEPARAM => "TYPEPARAM"
     case PARAM => "PARAM"
     case IMPORTED => "IMPORTED"

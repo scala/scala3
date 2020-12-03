@@ -328,14 +328,15 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
 
   private def addInheritanceDependencies(tree: Template)(using Context): Unit =
     if (tree.parents.nonEmpty) {
-      val depContext =
-        if (tree.symbol.owner.isLocal) LocalDependencyByInheritance
-        else DependencyByInheritance
+      val depContext = depContextOf(tree.symbol.owner)
       val from = resolveDependencySource
-      tree.parents.foreach { parent =>
+      for parent <- tree.parents do
         _dependencies += ClassDependency(from, parent.tpe.classSymbol, depContext)
-      }
     }
+
+  private def depContextOf(cls: Symbol)(using Context): DependencyContext =
+    if cls.isLocal then LocalDependencyByInheritance
+    else DependencyByInheritance
 
   private def ignoreDependency(sym: Symbol)(using Context) =
     !sym.exists ||
@@ -364,6 +365,20 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
           addImported(sel.name)
           if sel.rename != sel.name then
             addUsedName(sel.rename, UseScope.Default)
+      case exp @ Export(expr, selectors) =>
+        val dep = expr.tpe.classSymbol
+        if dep.exists && selectors.exists(_.isWildcard) then
+          // If an export is a wildcard, that means that the enclosing class
+          // has forwarders to all the applicable signatures in `dep`,
+          // those forwarders will cause member/type ref dependencies to be
+          // recorded. However, if `dep` adds more members with new names,
+          // there has been no record that the enclosing class needs to
+          // recompile to capture the new members. We add an
+          // inheritance dependency in the presence of wildcard exports
+          // to ensure all new members of `dep` are forwarded to.
+          val depContext = depContextOf(ctx.owner.lexicallyEnclosingClass)
+          val from = resolveDependencySource
+          _dependencies += ClassDependency(from, dep, depContext)
       case t: TypeTree =>
         addTypeDependency(t.tpe)
       case ref: RefTree =>

@@ -794,13 +794,29 @@ object Trees {
   }
 
 
+  abstract class ImportOrExport[-T >: Untyped](implicit @constructorOnly src: SourceFile)
+    extends DenotingTree[T] {
+    type ThisTree[-T >: Untyped] <: ImportOrExport[T]
+    val expr: Tree[T]
+    val selectors: List[untpd.ImportSelector]
+  }
+
   /** import expr.selectors
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped thicket consisting of `name` and `rename`.
    */
   case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[untpd.ImportSelector])(implicit @constructorOnly src: SourceFile)
-    extends DenotingTree[T] {
+    extends ImportOrExport[T] {
     type ThisTree[-T >: Untyped] = Import[T]
+  }
+
+  /** export expr.selectors
+   *  where a selector is either an untyped `Ident`, `name` or
+   *  an untyped thicket consisting of `name` and `rename`.
+   */
+  case class Export[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[untpd.ImportSelector])(implicit @constructorOnly src: SourceFile)
+    extends ImportOrExport[T] {
+      type ThisTree[-T >: Untyped] = Export[T]
   }
 
   /** package pid { stats } */
@@ -990,6 +1006,7 @@ object Trees {
     type TypeDef = Trees.TypeDef[T]
     type Template = Trees.Template[T]
     type Import = Trees.Import[T]
+    type Export = Trees.Export[T]
     type PackageDef = Trees.PackageDef[T]
     type Annotated = Trees.Annotated[T]
     type Thicket = Trees.Thicket[T]
@@ -1200,6 +1217,10 @@ object Trees {
         case tree: Import if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
         case _ => finalize(tree, untpd.Import(expr, selectors)(sourceFile(tree)))
       }
+      def Export(tree: Tree)(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Export = tree match {
+        case tree: Export if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+        case _ => finalize(tree, untpd.Export(expr, selectors)(sourceFile(tree)))
+      }
       def PackageDef(tree: Tree)(pid: RefTree, stats: List[Tree])(using Context): PackageDef = tree match {
         case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
         case _ => finalize(tree, untpd.PackageDef(pid, stats)(sourceFile(tree)))
@@ -1350,6 +1371,8 @@ object Trees {
               cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body))
             case Import(expr, selectors) =>
               cpy.Import(tree)(transform(expr), selectors)
+            case Export(expr, selectors) =>
+              cpy.Export(tree)(transform(expr), selectors)
             case PackageDef(pid, stats) =>
               cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(using localCtx))
             case Annotated(arg, annot) =>
@@ -1483,6 +1506,8 @@ object Trees {
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               this(this(this(this(x, constr), parents), self), tree.body)
             case Import(expr, _) =>
+              this(x, expr)
+            case Export(expr, _) =>
               this(x, expr)
             case PackageDef(pid, stats) =>
               this(this(x, pid), stats)(using localCtx)

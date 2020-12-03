@@ -3019,6 +3019,106 @@ Occurrences:
 [4:18..4:21): Int -> scala/Int#
 [4:26..4:30): Unit -> scala/Unit#
 
+expect/exports-example-Codec.scala
+----------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => exports-example-Codec.scala
+Text => empty
+Language => Scala
+Symbols => 21 entries
+Occurrences => 39 entries
+
+Symbols:
+exports/example/Codec# => trait Codec
+exports/example/Codec#[T] => typeparam T
+exports/example/Codec#`<init>`(). => primary ctor <init>
+exports/example/Codec#`<init>`().(decode) => param decode
+exports/example/Codec#`<init>`().(encode) => param encode
+exports/example/Codec#decode(). => final method decode
+exports/example/Codec#decode().(a) => param a
+exports/example/Codec#decode. => val method decode
+exports/example/Codec#encode(). => final method encode
+exports/example/Codec#encode().(t) => param t
+exports/example/Codec#encode. => val method encode
+exports/example/Decoder# => trait Decoder
+exports/example/Decoder#[T] => covariant typeparam T
+exports/example/Decoder#`<init>`(). => primary ctor <init>
+exports/example/Decoder#decode(). => abstract method decode
+exports/example/Decoder#decode().(a) => param a
+exports/example/Encoder# => trait Encoder
+exports/example/Encoder#[T] => contravariant typeparam T
+exports/example/Encoder#`<init>`(). => primary ctor <init>
+exports/example/Encoder#encode(). => abstract method encode
+exports/example/Encoder#encode().(t) => param t
+
+Occurrences:
+[0:8..0:15): exports -> exports/
+[0:16..0:23): example <- exports/example/
+[2:6..2:13): Decoder <- exports/example/Decoder#
+[2:13..2:13): <- exports/example/Decoder#`<init>`().
+[2:15..2:16): T <- exports/example/Decoder#[T]
+[3:6..3:12): decode <- exports/example/Decoder#decode().
+[3:13..3:14): a <- exports/example/Decoder#decode().(a)
+[3:16..3:21): Array -> scala/Array#
+[3:22..3:26): Byte -> scala/Byte#
+[3:30..3:31): T -> exports/example/Decoder#[T]
+[6:6..6:13): Encoder <- exports/example/Encoder#
+[6:13..6:13): <- exports/example/Encoder#`<init>`().
+[6:15..6:16): T <- exports/example/Encoder#[T]
+[7:6..7:12): encode <- exports/example/Encoder#encode().
+[7:13..7:14): t <- exports/example/Encoder#encode().(t)
+[7:16..7:17): T -> exports/example/Encoder#[T]
+[7:20..7:25): Array -> scala/Array#
+[7:26..7:30): Byte -> scala/Byte#
+[10:6..10:11): Codec <- exports/example/Codec#
+[10:11..10:11): <- exports/example/Codec#`<init>`().
+[10:12..10:13): T <- exports/example/Codec#[T]
+[10:15..10:21): decode <- exports/example/Codec#decode.
+[10:23..10:30): Decoder -> exports/example/Decoder#
+[10:31..10:32): T -> exports/example/Codec#[T]
+[10:35..10:41): encode <- exports/example/Codec#encode.
+[10:43..10:50): Encoder -> exports/example/Encoder#
+[10:51..10:52): T -> exports/example/Codec#[T]
+[11:10..11:17): Decoder -> exports/example/Decoder#
+[11:18..11:19): T -> exports/example/Codec#[T]
+[11:26..11:33): Encoder -> exports/example/Encoder#
+[11:34..11:35): T -> exports/example/Codec#[T]
+[12:9..12:15): decode -> exports/example/Codec#decode.
+[12:15..12:15): -> exports/example/Decoder#decode().
+[12:15..12:15): -> exports/example/Codec#decode().(a)
+[12:16..12:16): <- exports/example/Codec#decode().
+[13:9..13:15): encode -> exports/example/Codec#encode.
+[13:15..13:15): -> exports/example/Encoder#encode().
+[13:15..13:15): -> exports/example/Codec#encode().(t)
+[13:16..13:16): <- exports/example/Codec#encode().
+
+expect/exports-package.scala
+----------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => exports-package.scala
+Text => empty
+Language => Scala
+Symbols => 4 entries
+Occurrences => 6 entries
+
+Symbols:
+exports/`exports-package$package`. => final package object exports
+exports/`exports-package$package`.Codec# => final type Codec
+exports/`exports-package$package`.Decoder# => final type Decoder
+exports/`exports-package$package`.Encoder# => final type Encoder
+
+Occurrences:
+[0:8..0:15): exports <- exports/
+[2:0..2:0): <- exports/`exports-package$package`.
+[2:7..2:14): example -> exports/example/
+[2:16..2:23): Decoder <- exports/`exports-package$package`.Decoder#
+[2:25..2:32): Encoder <- exports/`exports-package$package`.Encoder#
+[2:34..2:39): Codec <- exports/`exports-package$package`.Codec#
+
 expect/filename with spaces.scala
 ---------------------------------
 

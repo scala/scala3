@@ -152,7 +152,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformOther(tree: Tree)(using Context): Tree = tree match {
-    case tree: Import => EmptyTree
+    case tree: ImportOrExport[_] => EmptyTree
     case tree: NamedArg => transformAllDeep(tree.arg)
     case tree => if (tree.isType) toTypeTree(tree) else tree
   }

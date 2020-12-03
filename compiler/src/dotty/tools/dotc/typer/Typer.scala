@@ -2235,16 +2235,26 @@ class Typer extends Namer
   def localDummy(cls: ClassSymbol, impl: untpd.Template)(using Context): Symbol =
     newLocalDummy(cls, impl.span)
 
-  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import = {
-    val expr1 = typedExpr(imp.expr, AnySelectionProto)
-    checkLegalImportPath(expr1)
-    val selectors1: List[untpd.ImportSelector] = imp.selectors.mapConserve { sel =>
+  inline private def typedSelectors(selectors: List[untpd.ImportSelector])(using Context): List[untpd.ImportSelector] =
+    selectors.mapConserve { sel =>
       if sel.bound.isEmpty then sel
       else cpy.ImportSelector(sel)(
         sel.imported, sel.renamed, untpd.TypedSplice(typedType(sel.bound)))
         .asInstanceOf[untpd.ImportSelector]
     }
+
+  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import = {
+    val expr1 = typedExpr(imp.expr, AnySelectionProto)
+    checkLegalImportPath(expr1)
+    val selectors1 = typedSelectors(imp.selectors)
     assignType(cpy.Import(imp)(expr1, selectors1), sym)
+  }
+
+  def typedExport(exp: untpd.Export)(using Context): Export = {
+    val expr1 = typedExpr(exp.expr, AnySelectionProto)
+    // already called `checkLegalExportPath` in Namer
+    val selectors1 = typedSelectors(exp.selectors)
+    assignType(cpy.Export(exp)(expr1, selectors1))
   }
 
   def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
@@ -2481,6 +2491,7 @@ class Typer extends Namer
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
           case tree: untpd.Import => typedImport(tree, retrieveSym(tree))
+          case tree: untpd.Export => typedExport(tree)
           case tree: untpd.Match => typedMatch(tree, pt)
           case tree: untpd.Return => typedReturn(tree)
           case tree: untpd.WhileDo => typedWhileDo(tree)
@@ -2643,6 +2654,7 @@ class Typer extends Namer
       case Thicket(stats) :: rest =>
         traverse(stats ::: rest)
       case (stat: untpd.Export) :: rest =>
+        buf +=  typed(stat)
         buf ++= stat.attachmentOrElse(ExportForwarders, Nil)
           // no attachment can happen in case of cyclic references
         traverse(rest)

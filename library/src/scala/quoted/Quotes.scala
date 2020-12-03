@@ -81,8 +81,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *  ```none
    *
    *  +- Tree -+- PackageClause
-   *           +- Import
-   *           +- Statement -+- Definition --+- ClassDef
+   *           |
+   *           +- Statement -+- Import
+   *           |             +- Export
+   *           |             +- Definition --+- ClassDef
    *           |             |               +- TypeDef
    *           |             |               +- DefDef
    *           |             |               +- ValDef
@@ -158,10 +160,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *               +- TypeBounds
    *               +- NoPrefix
    *
-   *  +- ImportSelector -+- SimpleSelector
-   *                     +- RenameSelector
-   *                     +- OmitSelector
-   *                     +- GivenSelector
+   *  +- Selector -+- SimpleSelector
+   *               +- RenameSelector
+   *               +- OmitSelector
+   *               +- GivenSelector
    *
    *  +- Signature
    *
@@ -291,9 +293,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Import` */
     trait ImportModule { this: Import.type =>
-      def apply(expr: Term, selectors: List[ImportSelector]): Import
-      def copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import
-      def unapply(tree: Import): Option[(Term, List[ImportSelector])]
+      def apply(expr: Term, selectors: List[Selector]): Import
+      def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import
+      def unapply(tree: Import): Option[(Term, List[Selector])]
     }
 
     /** Makes extension methods on `Import` available without any imports */
@@ -306,9 +308,33 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait ImportMethods:
       extension (self: Import):
         def expr: Term
-        def selectors: List[ImportSelector]
+        def selectors: List[Selector]
       end extension
     end ImportMethods
+
+    /** Tree representing an export clause in the source code.
+     *  Export forwarders generated from this clause appear in the same scope.
+     */
+    type Export <: Statement
+
+    given TypeTest[Tree, Export] = ExportTypeTest
+    protected val ExportTypeTest: TypeTest[Tree, Export]
+
+    val Export: ExportModule
+
+    trait ExportModule { this: Export.type =>
+      def unapply(tree: Export): Option[(Term, List[Selector])]
+    }
+
+    given ExportMethods: ExportMethods = ExportMethodsImpl
+    protected val ExportMethodsImpl: ExportMethods
+
+    trait ExportMethods:
+      extension (self: Export):
+        def expr: Term
+        def selectors: List[Selector]
+      end extension
+    end ExportMethods
 
     /** Tree representing a statement in the source code */
     type Statement <: Tree
@@ -2193,31 +2219,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end AlternativesMethods
 
     //////////////////////
-    // IMPORT SELECTORS //
+    //    SELECTORS     //
     /////////////////////
 
-    /** Import selectors:
+    /** Import/Export selectors:
     *   * SimpleSelector: `.bar` in `import foo.bar`
-    *   * RenameSelector: `.{bar => baz}` in `import foo.{bar => baz}`
+    *   * RenameSelector: `.{bar => baz}` in `export foo.{bar => baz}`
     *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
-    *   * GivneSelector: `.given`/`.{given T}` in `import foo.given`/`import foo.{given T}`
+    *   * GivenSelector: `.given`/`.{given T}` in `export foo.given`/`import foo.{given T}`
     */
-    type ImportSelector <: AnyRef
+    type Selector <: AnyRef
 
-    /** Module object of `type ImportSelector`  */
-    val ImportSelector: ImportSelectorModule
+    /** Module object of `type Selector`  */
+    val Selector: SelectorModule
 
-    /** Methods of the module object `val ImportSelector` */
-    trait ImportSelectorModule { this: ImportSelector.type => }
+    /** Methods of the module object `val Selector` */
+    trait SelectorModule { this: Selector.type => }
 
-    /** Simple import selector: `.bar` in `import foo.bar` */
-    type SimpleSelector <: ImportSelector
+    /** Simple import/export selector: `.bar` in `import foo.bar` */
+    type SimpleSelector <: Selector
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImportSelector` is a `SimpleSelector` */
-    given SimpleSelectorTypeTest: TypeTest[ImportSelector, SimpleSelector] = SimpleSelectorTypeTestImpl
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is a `SimpleSelector` */
+    given SimpleSelectorTypeTest: TypeTest[Selector, SimpleSelector] = SimpleSelectorTypeTestImpl
 
-    /** Implementation of `SimpleSelectorTypeTest` */
-    protected val SimpleSelectorTypeTestImpl: TypeTest[ImportSelector, SimpleSelector]
+    /** Implementation of `TypeTest[Selector, SimpleSelector]` */
+    protected val SimpleSelectorTypeTestImpl: TypeTest[Selector, SimpleSelector]
 
     /** Module object of `type SimpleSelector`  */
     val SimpleSelector: SimpleSelectorModule
@@ -2241,14 +2267,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end SimpleSelectorMethods
 
-    /** Rename import selector: `.{bar => baz}` in `import foo.{bar => baz}` */
-    type RenameSelector <: ImportSelector
+    /** Rename import/export selector: `.{bar => baz}` in `import foo.{bar => baz}` */
+    type RenameSelector <: Selector
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImportSelector` is a `RenameSelector` */
-    given RenameSelectorTypeTest: TypeTest[ImportSelector, RenameSelector] = RenameSelectorTypeTestImpl
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is a `RenameSelector` */
+    given RenameSelectorTypeTest: TypeTest[Selector, RenameSelector] = RenameSelectorTypeTestImpl
 
-    /** Implementation of `RenameSelectorTypeTest` */
-    protected val RenameSelectorTypeTestImpl: TypeTest[ImportSelector, RenameSelector]
+    /** Implementation of `TypeTest[Selector, RenameSelector]` */
+    protected val RenameSelectorTypeTestImpl: TypeTest[Selector, RenameSelector]
 
     /** Module object of `type RenameSelector`  */
     val RenameSelector: RenameSelectorModule
@@ -2274,14 +2300,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end RenameSelectorMethods
 
-    /** Omit import selector: `.{bar => _}` in `import foo.{bar => _}` */
-    type OmitSelector <: ImportSelector
+    /** Omit import/export selector: `.{bar => _}` in `import foo.{bar => _}` */
+    type OmitSelector <: Selector
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImportSelector` is an `OmitSelector` */
-    given OmitSelectorTypeTest: TypeTest[ImportSelector, OmitSelector] = OmitSelectorTypeTestImpl
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is an `OmitSelector` */
+    given OmitSelectorTypeTest: TypeTest[Selector, OmitSelector] = OmitSelectorTypeTestImpl
 
-    /** Implementation of `OmitSelectorTypeTest` */
-    protected val OmitSelectorTypeTestImpl: TypeTest[ImportSelector, OmitSelector]
+    /** Implementation of `TypeTest[Selector, OmitSelector]` */
+    protected val OmitSelectorTypeTestImpl: TypeTest[Selector, OmitSelector]
 
     /** Module object of `type OmitSelector`  */
     val OmitSelector: OmitSelectorModule
@@ -2304,14 +2330,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def namePos: Position
     end OmitSelectorMethods
 
-    /** Omit import selector: `.given`/`.{given T}` in `import foo.given`/`import foo.{given T}` */
-    type GivenSelector <: ImportSelector
+    /** given import/export selector: `.given`/`.{given T}` in `import foo.given`/`export foo.{given T}` */
+    type GivenSelector <: Selector
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if an `ImportSelector` is a `GivenSelector` */
-    given GivenSelectorTypeTest: TypeTest[ImportSelector, GivenSelector] = GivenSelectorTypeTestImpl
+    /** `TypeTest` that allows testing at runtime in a pattern match if an `Selector` is a `GivenSelector` */
+    given GivenSelectorTypeTest: TypeTest[Selector, GivenSelector] = GivenSelectorTypeTestImpl
 
-    /** Implementation of `GivenSelectorTypeTest` */
-    protected val GivenSelectorTypeTestImpl: TypeTest[ImportSelector, GivenSelector]
+    /** Implementation of `TypeTest[Selector, GivenSelector]` */
+    protected val GivenSelectorTypeTestImpl: TypeTest[Selector, GivenSelector]
 
     /** Module object of `type GivenSelector`  */
     val GivenSelector: GivenSelectorModule
@@ -4304,6 +4330,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr)(owner), parents)(owner), derived)(owner), self)(owner), body)(owner)
           case Import(expr, _) =>
             foldTree(x, expr)(owner)
+          case Export(expr, _) =>
+            foldTree(x, expr)(owner)
           case clause @ PackageClause(pid, stats) =>
             foldTrees(foldTree(x, pid)(owner), stats)(clause.symbol)
           case Inferred() => x
@@ -4370,6 +4398,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             PackageClause.copy(tree)(transformTerm(tree.pid).asInstanceOf[Ref], transformTrees(tree.stats)(tree.symbol))
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
+          case tree: Export =>
+            tree
           case tree: Statement =>
             transformStatement(tree)(owner)
           case tree: TypeTree => transformTypeTree(tree)(owner)
@@ -4408,6 +4438,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
+          case tree: Export =>
+            tree
         }
       }
 
