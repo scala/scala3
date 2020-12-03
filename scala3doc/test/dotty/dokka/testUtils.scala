@@ -4,8 +4,10 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.reporting.ConsoleReporter
 import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
+import dotty.dokka.test.BuildInfo
 import org.junit.Assert._
 import java.io.File
+
 
 case class ReportedDiagnostics(errors: List[Diagnostic], warnings: List[Diagnostic], infos: List[Diagnostic]):
   def errorMsgs = errors.map(_.msg.rawMessage)

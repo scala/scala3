@@ -62,3 +62,36 @@ jobs:
             echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
             az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
             az storage blob sync -s scala3doc/output -c $DOC_DEST --account-name scala3docstorage
+
+  community-docs:
+    env:
+      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+    runs-on: ubuntu-latest
+    if: "github.event_name == 'pull_request' || contains(github.event.ref, 'scala3doc') || contains(github.event.ref, 'master')"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+
+      - name: Init submodules
+        run: git submodule update --init --recursive --jobs 7
+
+      - name: Generate docs
+        run: ./project/scripts/sbt "community-build/run doc all docsOutput"
+
+      - name: Upload documentation to server
+        uses: azure/CLI@v1
+        if: env.AZURE_STORAGE_SAS_TOKEN
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          inlineScript: |
+            DOC_DEST=pr-${PR_NUMBER:-${GITHUB_REF##*/}}-docs
+            echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
+            az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
+            az storage blob sync -s community-build/docsOutput -c $DOC_DEST --account-name scala3docstorage

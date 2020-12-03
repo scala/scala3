@@ -45,16 +45,20 @@ sealed trait CommunityProject:
   val project: String
   val testCommand: String
   val publishCommand: String
+  val docCommand: String
   val dependencies: List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
 
+  final def publishDependencies(): Unit =
+    dependencies.foreach(_.publish())
+
   /** Publish this project to the local Maven repository */
   final def publish(): Unit =
     if !published then
-      dependencies.foreach(_.publish())
+      publishDependencies()
       log(s"Publishing $project")
       if publishCommand eq null then
         throw RuntimeException(s"Publish command is not specified for $project. Project details:\n$this")
@@ -62,6 +66,16 @@ sealed trait CommunityProject:
       if exitCode != 0 then
         throw RuntimeException(s"Publish command exited with code $exitCode for project $project. Project details:\n$this")
       published = true
+
+  final def doc(): Unit =
+    publishDependencies()
+    log(s"Documenting $project")
+    if docCommand eq null then
+      throw RuntimeException(s"Doc command is not specified for $project. Project details:\n$this")
+    val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ docCommand): _*)
+    if exitCode != 0 then
+      throw RuntimeException(s"Doc command exited with code $exitCode for project $project. Project details:\n$this")
+
 end CommunityProject
 
 final case class MillCommunityProject(
@@ -71,6 +85,7 @@ final case class MillCommunityProject(
   override val binaryName: String = "./mill"
   override val testCommand = s"$baseCommand.test"
   override val publishCommand = s"$baseCommand.publishLocal"
+  override val docCommand = null
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
 
 final case class SbtCommunityProject(
@@ -78,7 +93,9 @@ final case class SbtCommunityProject(
     sbtTestCommand: String,
     extraSbtArgs: List[String] = Nil,
     dependencies: List[CommunityProject] = Nil,
-    sbtPublishCommand: String = null) extends CommunityProject:
+    sbtPublishCommand: String = null,
+    sbtDocCommand: String = null
+  ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
   // A project in the community build can depend on an arbitrary version of
@@ -105,7 +122,11 @@ final case class SbtCommunityProject(
     ++ s"++$compilerVersion!; "
 
   override val testCommand = s"$baseCommand$sbtTestCommand"
-  override val publishCommand = s"$baseCommand$sbtPublishCommand"
+  override val publishCommand = if sbtPublishCommand eq null then null else s"$baseCommand$sbtPublishCommand"
+  override val docCommand =
+    if sbtDocCommand eq null then null else
+      val cmd = if sbtDocCommand.startsWith(";") then sbtDocCommand else s";$sbtDocCommand"
+      s"$baseCommand set every useScala3doc := true; set every doc/logLevel := Level.Warn $cmd "
 
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
@@ -119,6 +140,17 @@ final case class SbtCommunityProject(
     )
 
 object projects:
+
+  private def forceDoc(projects: String*) =
+    projects.map(project =>
+      s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/tastyFiles).value ;$project/doc"""
+    ).mkString(" ")
+
+  private def aggregateDoc(in: String)(projects: String*) =
+    val tastyFiles =
+      (in +: projects).map(p => s"($p/Compile/doc/tastyFiles).value").mkString(" ++ ")
+    s""";set $in/Compile/doc/sources ++= file("a.scala") +: ($tastyFiles) ;$in/doc"""
+
   lazy val utest = MillCommunityProject(
     project = "utest",
     baseCommand = s"utest.jvm[$compilerVersion]",
@@ -191,61 +223,81 @@ object projects:
   lazy val intent = SbtCommunityProject(
     project       = "intent",
     sbtTestCommand   = "test",
+    sbtDocCommand = "doc"
   )
 
   lazy val algebra = SbtCommunityProject(
     project       = "algebra",
     sbtTestCommand   = "coreJVM/compile",
+    sbtDocCommand = forceDoc("coreJVM")
   )
 
   lazy val scalacheck = SbtCommunityProject(
     project       = "scalacheck",
     sbtTestCommand   = "jvm/test;js/test",
-    sbtPublishCommand = "jvm/publishLocal;js/publishLocal"
+    sbtPublishCommand = "jvm/publishLocal;js/publishLocal",
+    sbtDocCommand = forceDoc("jvm")
   )
 
   lazy val scalatest = SbtCommunityProject(
     project       = "scalatest",
     sbtTestCommand   = "scalacticDotty/clean;scalacticTestDotty/test; scalatestTestDotty/test",
-    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal"
+    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal",
+    sbtDocCommand = ";scalacticDotty/doc" // fails with missing type ;scalatestDotty/doc"
+    // cannot take signature of (test: org.scalatest.concurrent.ConductorFixture#OneArgTest):
+    // org.scalatest.Outcome
+    // Problem parsing scalatest.dotty/target/scala-3.0.0-M2/src_managed/main/org/scalatest/concurrent/ConductorFixture.scala:[602..624..3843], documentation may not be generated.
+    // dotty.tools.dotc.core.MissingType:
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
     project = "scalatestplus-scalacheck",
     sbtTestCommand = "scalatestPlusScalaCheckJVM/test",
     sbtPublishCommand = "scalatestPlusScalaCheckJVM/publishLocal",
+    sbtDocCommand = "scalatestPlusScalaCheckJVM/doc",
     dependencies = List(scalatest, scalacheck)
   )
 
   lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
     sbtTestCommand   = "xml/test",
+    sbtDocCommand = "xml/doc"
   )
 
   lazy val scalap = SbtCommunityProject(
     project       = "scalap",
     sbtTestCommand   = "scalap/compile",
+    sbtDocCommand = "scalap/doc"
   )
 
   lazy val betterfiles = SbtCommunityProject(
     project       = "betterfiles",
     sbtTestCommand   = "dotty-community-build/compile",
+    sbtDocCommand   = ";core/doc ;akka/doc ;shapelessScanner/doc"
   )
 
   lazy val ScalaPB = SbtCommunityProject(
     project       = "ScalaPB",
     sbtTestCommand   = "dotty-community-build/compile",
+    // aggregateDoc("runtimeJVM")("scalapbc", "grpcRuntime", "compilerPlugin") fails with
+    // module class ScalaPbCodeGenerator$ has non-class parent: TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module protocbridge),ProtocCodeGenerator)
+    // Also it seems that we do not handle correctly aggreagation projects
+    // sbtDocCommand = "dotty-community-build/doc"
+    sbtDocCommand = forceDoc("scalapbc", "grpcRuntime","runtimeJVM", "compilerPlugin")
   )
 
   lazy val minitest = SbtCommunityProject(
     project       = "minitest",
     sbtTestCommand   = "test",
+    sbtDocCommand = aggregateDoc("lawsJVM")("minitestJVM"),
     dependencies = List(scalacheck)
   )
 
   lazy val fastparse = SbtCommunityProject(
     project       = "fastparse",
     sbtTestCommand   = "dotty-community-build/compile;dotty-community-build/test:compile",
+    // Problem parsing perftests/bench2/src/perftests/PythonParse.scala:[0..18..694]
+    // sbtDocCommand = "dotty-community-build/doc"
   )
 
   lazy val stdLib213 = SbtCommunityProject(
@@ -253,16 +305,20 @@ object projects:
     extraSbtArgs  = List("-Dscala.build.compileWithDotty=true"),
     sbtTestCommand   = """library/compile""",
     sbtPublishCommand = """set publishArtifact in (library, Compile, packageDoc) := false ;library/publishLocal""",
+    // sbtDocCommand = "library/doc" // Does no compile? No idea :/
   )
+
 
   lazy val shapeless = SbtCommunityProject(
     project       = "shapeless",
     sbtTestCommand   = "test",
+    sbtDocCommand = forceDoc("typeable", "deriving", "data")
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
     project       = "xml-interpolator",
     sbtTestCommand   = "test",
+    sbtDocCommand = "doc", // Again we've got problem with extensions
   )
 
   lazy val effpi = SbtCommunityProject(
@@ -278,6 +334,7 @@ object projects:
     // sbtTestCommand   = "set ThisBuild / useEffpiPlugin := false; effpi/test:compile; plugin/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
 
     sbtTestCommand   = "set ThisBuild / useEffpiPlugin := false; effpi/test:compile; benchmarks/test:compile; examples/test:compile; pluginBenchmarks/test:compile",
+    sbtDocCommand    = "set ThisBuild / useEffpiPlugin := false; effpi/doc; benchmarks/doc; examples/doc; pluginBenchmarks/doc",
   )
 
   // TODO @odersky? It got broken by #5458
@@ -289,11 +346,16 @@ object projects:
   lazy val sconfig = SbtCommunityProject(
     project       = "sconfig",
     sbtTestCommand   = "sconfigJVM/test",
+    // sbtDocCommand = "sconfigJVM/doc", // Fails with:
+    // Problem parsing sconfig/sharedScala3/src/main/scala/org/ekrich/config/ConfigSyntax.scala:[73..92..1340], documentation may not be generated.
+    // scala.MatchError: ValDef(JSON,TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class ekrich)),module config),class ConfigSyntax)],Apply(Ident($new),List(Literal(Constant(0)), Literal(Constant(JSON))))) (of class dotty.tools.dotc.ast.Trees$ValDef)
   )
 
   lazy val zio = SbtCommunityProject(
     project = "zio",
     sbtTestCommand = "testJVMDotty",
+    // sbtDocCommand  = forceDoc("coreJVM"),
+    // Fails on tasty unpickling https://github.com/lampepfl/dotty/issues/10499
   )
 
   lazy val munit = SbtCommunityProject(
@@ -301,6 +363,7 @@ object projects:
     sbtTestCommand  = "testsJVM/test;testsJS/test;",
     // Hardcode the version to avoid having to deal with something set by sbt-dynver
     sbtPublishCommand   = s"""set every version := "${Versions.munit}"; munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal""",
+    sbtDocCommand   = "munitJVM/doc",
     dependencies = List(scalacheck)
   )
 
@@ -309,50 +372,76 @@ object projects:
     sbtTestCommand   = "coreJVM/test;coreJS/test",
     // Hardcode the version to avoid having to deal with something set by sbt-git
     sbtPublishCommand = s"""set every version := "${Versions.scodecBits}"; coreJVM/publishLocal;coreJS/publishLocal""",
+    sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit)
   )
 
   lazy val scodec = SbtCommunityProject(
     project          = "scodec",
     sbtTestCommand   = "unitTests/test",
+    // Adds <empty> package
+    sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit, scodecBits)
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
     project          = "scala-parser-combinators",
     sbtTestCommand   = "parserCombinatorsJVM/test",
+    sbtDocCommand   = forceDoc("parserCombinatorsJVM"),
   )
 
   lazy val dottyCpsAsync = SbtCommunityProject(
     project          = "dotty-cps-async",
     sbtTestCommand   = "test",
+    // Does not compile (before reaches doc)
+    // sbtDocCommand = "cpsJVM/doc",
   )
 
   lazy val scalaz = SbtCommunityProject(
     project          = "scalaz",
     sbtTestCommand   = "rootJVM/test",
+
+    // sbtDocCommand = forceDoc("coreJVM"), // Fails with:
+    // [error] class scalaz.Conts cannot be unpickled because no class file was found
+    // [error] class scalaz.ContsT cannot be unpickled because no class file was found
+    // [error] class scalaz.IndexedCont cannot be unpickled because no class file was found
+
+    // aggregateDoc("rootJVM")("effectJVM", "iterateeJVM"), // Fails With
+    // [error] Caused by: java.lang.AssertionError: assertion failed:
+    // trait MonadIO has non-class parent: AppliedType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scalaz),Monad),List(TypeRef(ThisType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class scalaz)),module effect),trait MonadIO)),type F)))
+
+    // sbtDocCommand = forceDoc("iterateeJVM"), // Fails with
+    // [error] class scalaz.iteratee.Iteratee cannot be unpickled because no class file was found
+
+    sbtDocCommand = forceDoc("effectJVM"),
     dependencies     = List(scalacheck)
   )
 
   lazy val endpoints4s = SbtCommunityProject(
     project        = "endpoints4s",
-    sbtTestCommand = "json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile"
+    sbtTestCommand = "json-schemaJVM/compile;algebraJVM/compile;openapiJVM/compile;http4s-server/compile;http4s-client/compile;play-server/compile;play-client/compile;akka-http-server/compile;akka-http-client/compile",
+    sbtDocCommand = ";json-schemaJVM/doc ;algebraJVM/doc; openapiJVM/doc; http4s-server/doc ;http4s-client/doc ;play-server/doc ;play-client/doc ;akka-http-server/doc ;akka-http-client/doc",
   )
 
   lazy val catsEffect2 = SbtCommunityProject(
     project        = "cats-effect-2",
-    sbtTestCommand = "test"
+    sbtTestCommand = "test",
+    // Currently is excluded from community build
+    // sbtDocCommand = ";coreJVM/doc ;lawsJVM/doc",
   )
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
-    sbtTestCommand = "testIfRelevant"
+    sbtTestCommand = "testIfRelevant",
+    // The problem is that testIfRelevant does not compile and project does not compile
+    // sbtDocCommand = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
   )
 
   lazy val scalaParallelCollections = SbtCommunityProject(
     project        = "scala-parallel-collections",
     sbtTestCommand = "test",
-    dependencies     = List(scalacheck)
+    sbtDocCommand  = forceDoc("core"),
+    dependencies   = List(scalacheck)
   )
 
   lazy val scalaCollectionCompat = SbtCommunityProject(
@@ -363,6 +452,11 @@ object projects:
   lazy val verify = SbtCommunityProject(
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
+    sbtDocCommand = "verifyJVM/doc",
   )
 
 end projects
+
+def allProjects = projects.fields.of[CommunityProject].sortBy(_.project)
+
+lazy val projectMap = allProjects.map(p => p.project -> p).toMap
