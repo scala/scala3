@@ -32,10 +32,10 @@ class Driver {
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
   protected def doCompile(compiler: Compiler, fileNames: List[String])(using Context): Reporter =
-    if (fileNames.nonEmpty)
+    if fileNames.nonEmpty then
+      val run = compiler.newRun
+      val sources = run.getSources(fileNames)
       try
-        val run = compiler.newRun
-        val sources = run.getSources(fileNames)
         run.compileSources(sources)
 
         def finish(run: Run)(using Context): Unit =
