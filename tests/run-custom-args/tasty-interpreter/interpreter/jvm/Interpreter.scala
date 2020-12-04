@@ -29,7 +29,7 @@ class Interpreter[Q <: Quotes & Singleton](using q0: Q) extends TreeInterpreter[
                 }
 
                 // println(method)
-                val symbol = sym.methods.find(_.name == method.getName).get
+                val symbol = sym.memberMethods.find(_.name == method.getName).get
 
                 if (symbol.isDefinedInCurrentRun) {
                   val argsList = if (args == null) Nil else args.toList

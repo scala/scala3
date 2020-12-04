@@ -120,7 +120,7 @@ trait ClassLikeSupport:
         }
       // TODO check given methods?
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven =>
-        Some(dd.symbol.owner.typeMember(dd.name))
+        Some(dd.symbol.owner.memberType(dd.name))
           .filterNot(_.exists)
           .map { _ =>
             parseMethod(dd.symbol, kind = Kind.Given(getGivenInstance(dd).map(_.asSignature), None))
@@ -156,7 +156,7 @@ trait ClassLikeSupport:
       case vd: ValDef if !isSyntheticField(vd.symbol) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) =>
         Some(parseValDef(vd))
 
-      case c: ClassDef if c.symbol.owner.method(c.name).exists(_.flags.is(Flags.Given)) =>
+      case c: ClassDef if c.symbol.owner.memberMethod(c.name).exists(_.flags.is(Flags.Given)) =>
         Some(parseGivenClasslike(c))
 
       case c: ClassDef if c.symbol.shouldDocumentClasslike &&  !c.symbol.isGiven =>

@@ -58,25 +58,25 @@ object TypeToolbox {
   inline def methodIn[T](inline mem: String): Seq[String] = ${methodInImpl[T]('mem)}
   private def methodInImpl[T: Type](mem: Expr[String])(using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect._
-    Expr(TypeTree.of[T].symbol.classMethod(mem.valueOrError).map(_.name))
+    Expr(TypeTree.of[T].symbol.declaredMethod(mem.valueOrError).map(_.name))
   }
 
   inline def methodsIn[T]: Seq[String] = ${methodsInImpl[T]}
   private def methodsInImpl[T: Type](using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect._
-    Expr(TypeTree.of[T].symbol.classMethods.map(_.name))
+    Expr(TypeTree.of[T].symbol.declaredMethods.map(_.name))
   }
 
   inline def method[T](inline mem: String): Seq[String] = ${methodImpl[T]('mem)}
   private def methodImpl[T: Type](mem: Expr[String])(using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect._
-    Expr(TypeTree.of[T].symbol.method(mem.valueOrError).map(_.name))
+    Expr(TypeTree.of[T].symbol.memberMethod(mem.valueOrError).map(_.name))
   }
 
   inline def methods[T]: Seq[String] = ${methodsImpl[T]}
   private def methodsImpl[T: Type](using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect._
-    Expr(TypeTree.of[T].symbol.methods.map(_.name))
+    Expr(TypeTree.of[T].symbol.memberMethods.map(_.name))
   }
 
   inline def typeTag[T](x: T): String = ${typeTagImpl[T]}

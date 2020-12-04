@@ -2344,34 +2344,44 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
           if (isField(sym)) sym else dotc.core.Symbols.NoSymbol
 
-        def classMethod(name: String): List[Symbol] =
+        def declaredMethod(name: String): List[Symbol] =
           self.typeRef.decls.iterator.collect {
             case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
           }.toList
 
-        def classMethods: List[Symbol] =
+        def declaredMethods: List[Symbol] =
           self.typeRef.decls.iterator.collect {
             case sym if isMethod(sym) => sym.asTerm
           }.toList
 
-        def members: List[Symbol] =
-          self.typeRef.info.decls.toList
+        def memberMethod(name: String): List[Symbol] =
+          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
+            case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
+          }.toList
 
-        def typeMembers: List[Symbol] =
-          self.unforcedDecls.filter(_.isType)
+        def memberMethods: List[Symbol] =
+          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
+            case sym if isMethod(sym) => sym.asTerm
+          }.toList
 
-        def typeMember(name: String): Symbol =
+        def declaredType(name: String): List[Symbol] =
+          self.typeRef.decls.iterator.collect {
+            case sym if sym.isType && sym.name.toString == name => sym.asType
+          }.toList
+
+        def declaredTypes: List[Symbol] =
+          self.typeRef.decls.iterator.collect {
+            case sym if sym.isType => sym.asType
+          }.toList
+
+        def memberType(name: String): Symbol =
           self.unforcedDecls.find(sym => sym.name == name.toTypeName)
 
-        def method(name: String): List[Symbol] =
-          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
-            case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
-          }.toList
+        def memberTypes: List[Symbol] =
+          self.unforcedDecls.filter(_.isType)
 
-        def methods: List[Symbol] =
-          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
-            case sym if isMethod(sym) => sym.asTerm
-          }.toList
+        def declarations: List[Symbol] =
+          self.typeRef.info.decls.toList
 
         def paramSymss: List[List[Symbol]] = self.denot.paramSymss
         def primaryConstructor: Symbol = self.denot.primaryConstructor

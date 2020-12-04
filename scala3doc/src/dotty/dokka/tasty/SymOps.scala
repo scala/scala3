@@ -101,7 +101,7 @@ class SymOps[Q <: Quotes](val q: Q):
       else
         val pointsTo =
           if (!sym.isTypeDef) PointingToDeclaration.INSTANCE
-          else PointingToGenericParameters(sym.owner.typeMembers.indexOf(sym))
+          else PointingToGenericParameters(sym.owner.memberTypes.indexOf(sym))
 
         val method =
           if (sym.isDefDef) Some(sym)

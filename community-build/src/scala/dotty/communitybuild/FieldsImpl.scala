@@ -9,9 +9,9 @@ object FieldsImpl:
   def fieldsImpl[V: Type, T: Type](from: Expr[V])(using Quotes): Expr[Seq[T]] =
     import quotes.reflect._
     val retType = TypeTree.of[T].tpe
-    def isProjectField(s: Symbol) = 
+    def isProjectField(s: Symbol) =
       s.isValDef && s.tree.asInstanceOf[ValDef].tpt.tpe <:< retType
     val projectsTree = Term.of(from)
-    val symbols = TypeTree.of[V].symbol.members.filter(isProjectField)
+    val symbols = TypeTree.of[V].symbol.memberMethods.filter(isProjectField)
     val selects = symbols.map(Select(projectsTree, _).asExprOf[T])
     '{ println(${Expr(retType.show)}); ${Varargs(selects)} }
