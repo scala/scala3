@@ -120,7 +120,7 @@ This trait defines a single public method, `ordinal`:
 package scala.reflect
 
 /** A base trait of all Scala enum definitions */
-super trait Enum extends Any with Product with Serializable {
+transparent trait Enum extends Any with Product with Serializable {
 
   /** A number uniquely identifying a case of an enum */
   def ordinal: Int
