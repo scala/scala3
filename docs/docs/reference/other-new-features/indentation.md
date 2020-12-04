@@ -9,7 +9,7 @@ Scala 3 enforces some rules on indentation and allows some occurrences of braces
 - Second, some occurrences of braces `{...}` are made optional. Generally, the rule
   is that adding a pair of optional braces will not change the meaning of a well-indented program.
 
-These changes can be turned off with the compiler flag `-noindent`.
+These changes can be turned off with the compiler flag `-no-indent`.
 
 ### Indentation Rules
 
@@ -28,7 +28,7 @@ The compiler enforces two rules for well-indented programs, flagging violations 
     println("done")  // error: indented too far to the left
     ```
 
- 2. If significant indentation is turned off (i.e. under Scala 2 mode or under `-noindent`) and we are at the  start of an indented sub-part of an expression, and the indented part ends in a newline, the next statement must start at an indentation width less than the sub-part. This prevents errors where an opening brace was forgotten, as in
+ 2. If significant indentation is turned off (i.e. under Scala 2 mode or under `-no-indent`) and we are at the  start of an indented sub-part of an expression, and the indented part ends in a newline, the next statement must start at an indentation width less than the sub-part. This prevents errors where an opening brace was forgotten, as in
 
     ```scala
     if (x < 0)
@@ -379,13 +379,13 @@ end IndentWidth
 
 ### Settings and Rewrites
 
-Significant indentation is enabled by default. It can be turned off by giving any of the options `-noindent`, `old-syntax` and `language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues a warning.
+Significant indentation is enabled by default. It can be turned off by giving any of the options `-no-indent`, `old-syntax` and `language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues a warning.
 
 The Scala 3 compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to
-indented regions where possible. When invoked with options `-rewrite -noindent` it will rewrite in the reverse direction, inserting braces for indentation regions.
+indented regions where possible. When invoked with options `-rewrite -no-indent` it will rewrite in the reverse direction, inserting braces for indentation regions.
 The `-indent` option only works on [new-style syntax](./control-syntax.md). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options
-`-rewrite -indent`. To go in the opposite direction, from indented code to old-style syntax, it's `-rewrite -noindent`, followed by `-rewrite -old-syntax`.
+`-rewrite -indent`. To go in the opposite direction, from indented code to old-style syntax, it's `-rewrite -no-indent`, followed by `-rewrite -old-syntax`.
 
 ### Variant: Indentation Marker `:`
 
