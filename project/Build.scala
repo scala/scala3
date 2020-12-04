@@ -887,22 +887,28 @@ object Build {
 
         // NOTE `sourceDirectory` is used for actual copying,
         // but `sources` are used as cache keys
-        val dottyLibSourceDir = (`scala3-library-bootstrapped`/sourceDirectory).value
-        val dottyLibSources = (`scala3-library-bootstrapped`/Compile/sources).value
+        val dottyLibSourceDirs = (`scala3-library-bootstrapped`/Compile/unmanagedSourceDirectories).value
+        def dottyLibSources = dottyLibSourceDirs.foldLeft(PathFinder.empty) { (pf, dir) =>
+          if (!dir.exists) pf else pf +++ (dir ** "*.scala") +++ (dir ** "*.java")
+        }
 
         val cachedFun = FileFunction.cached(
           cacheDir / s"copyDottyLibrarySrc",
           FilesInfo.lastModified,
           FilesInfo.exists,
         ) { _ =>
-          s.log.info(s"Copying scala3-library sources from $dottyLibSourceDir to $trgDir...")
           if (trgDir.exists) IO.delete(trgDir)
-          IO.copyDirectory(dottyLibSourceDir, trgDir)
+          dottyLibSourceDirs.foreach { dir =>
+            if (dir.exists) {
+              s.log.info(s"Copying scala3-library sources from $dir to $trgDir...")
+              IO.copyDirectory(dir, trgDir)
+            }
+          }
 
           ((trgDir ** "*.scala") +++ (trgDir ** "*.java")).get.toSet
         }
 
-        cachedFun(dottyLibSources.toSet).toSeq
+        cachedFun(dottyLibSources.get.toSet).toSeq
       }.taskValue,
       sources in Compile ~= (_.filterNot(file =>
         // sources from https://github.com/scala/scala/tree/2.13.x/src/library-aux
