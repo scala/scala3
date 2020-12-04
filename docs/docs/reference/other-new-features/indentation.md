@@ -58,8 +58,8 @@ There are two rules:
 
     An indentation region can start
 
-     - after the condition of an `if-else`, or
      - after the leading parameters of an `extension`, or
+     - after a `with` in a given instance, or
      - after a ": at end of line" token (see below)
      - after one of the following tokens:
 
@@ -93,7 +93,7 @@ There are two rules:
 It is an error if the indentation width of the token following an `<outdent>` does not match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
 
 ```scala
-if x < 0
+if x < 0 then
     -x
   else   // error: `else` does not align correctly
      x
@@ -104,14 +104,14 @@ at the toplevel, inside braces `{...}`, but not inside parentheses `(...)`, patt
 
 ### Optional Braces Around Template Bodies
 
-The Scala grammar uses the term _template body_ for the definitions of a class, trait, object or given instance that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule
+The Scala grammar uses the term _template body_ for the definitions of a class, trait, or object that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule
 
 If at the point where a template body can start there is a `:` that occurs at the end
 of a line, and that is followed by at least one indented statement, the recognized
 token is changed from ":" to ": at end of line". The latter token is one of the tokens
 that can start an indentation region. The Scala grammar is changed so an optional ": at end of line" is allowed in front of a template body.
 
-Analogous rules apply for enum bodies, type refinements, definitions in an instance creation expressions, and local packages containing nested definitions.
+Analogous rules apply for enum bodies and local packages containing nested definitions.
 
 With these new rules, the following constructs are all valid:
 
@@ -128,15 +128,6 @@ object O:
 enum Color:
   case Red, Green, Blue
 
-type T = A:
-  def f: Int
-
-given [T](using Ord[T]): Ord[List[T]] with
-  def compare(x: List[T], y: List[T]) = ???
-
-extension (xs: List[Int])
-  def second: Int = xs.tail.head
-
 new A:
   def f = 3
 
@@ -145,14 +136,15 @@ package p:
 package q:
   def b = 2
 ```
+In each case, the `:` at the end of line can be replaced without change of meaning by a pair of braces that enclose the following indented definition(s).
 
 The syntax changes allowing this are as follows:
 
 ```
-TemplateBody ::=  [colonEol] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’
-EnumBody     ::=  [colonEol] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
-Packaging    ::=  ‘package’ QualId [colonEol] ‘{’ TopStatSeq ‘}’
-RefinedType  ::=  AnnotType {[colonEol] Refinement}
+Template    ::=  InheritClauses [colonEol] [TemplateBody]
+EnumDef     ::=  id ClassConstr InheritClauses [colonEol] EnumBody
+Packaging   ::=  ‘package’ QualId [nl | colonEol] ‘{’ TopStatSeq ‘}’
+SimpleExpr  ::=  ‘new’ ConstrApp {‘with’ ConstrApp} [[colonEol] TemplateBody]
 ```
 
 Here, `colonEol` stands for ": at end of line", as described above.
