@@ -354,8 +354,7 @@ object projects:
   lazy val zio = SbtCommunityProject(
     project = "zio",
     sbtTestCommand = "testJVMDotty",
-    // sbtDocCommand  = forceDoc("coreJVM"),
-    // Fails on tasty unpickling https://github.com/lampepfl/dotty/issues/10499
+    sbtDocCommand  = forceDoc("coreJVM"),
   )
 
   lazy val munit = SbtCommunityProject(
