@@ -124,10 +124,13 @@ trait ScalaSignatureUtils:
   extension (tokens: Seq[String]) def toSignatureString(): String =
     tokens.filter(_.trim.nonEmpty).mkString(""," "," ")
 
+private[dokka] val ignoredKeywords: Set[String] = Set("this")
+
 // TODO: remove after adding name abstraction to reflection api
 private[dokka] def hackEscapedName(name: String) =
   val simpleIdentifierRegex = raw"(?:\w+_[^\[\(\s_]+)|\w+|[^\[\(\s\w_]+".r
   name match
+    case n if ignoredKeywords(n) => n
     case n if keywords(termName(n)) => s"`$n`"
     case simpleIdentifierRegex() => name
     case n => s"`$n`"

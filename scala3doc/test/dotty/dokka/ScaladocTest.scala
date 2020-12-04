@@ -22,7 +22,7 @@ abstract class ScaladocTest(val name: String):
 
   private def args = Scala3doc.Args(
       name = "test",
-      tastyFiles = tastyFiles(name),
+      tastyFiles = tastyFiles,
       output = getTempDir().getRoot,
       projectVersion = Some("1.0")
     )
@@ -31,9 +31,9 @@ abstract class ScaladocTest(val name: String):
     def listFilesSafe(dir: File) = Option(dir.listFiles).getOrElse {
       throw AssertionError(s"$dir not found. The test name is incorrect or scala3doc-testcases were not recompiled.")
     }
-    def collectFiles(dir: File): List[String] = listFilesSafe(dir).toList.flatMap {
+    def collectFiles(dir: File): List[File] = listFilesSafe(dir).toList.flatMap {
         case f if f.isDirectory => collectFiles(f)
-        case f if f.getName endsWith ".tasty" => f.getAbsolutePath :: Nil
+        case f if f.getName endsWith ".tasty" => f :: Nil
         case _ => Nil
       }
     collectFiles(File(s"${BuildInfo.test_testcasesOutputDir}/tests/$name"))
