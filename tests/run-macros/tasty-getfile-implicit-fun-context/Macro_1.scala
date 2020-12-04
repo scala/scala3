@@ -10,7 +10,7 @@ object SourceFiles {
 
   def getThisFileImpl: Macro[String] = {
     val qctx = tastyContext
-    Expr(qctx.reflect.Source.path.getFileName.toString)
+    Expr(qctx.reflect.SourceFile.current.jpath.getFileName.toString)
   }
 
 }

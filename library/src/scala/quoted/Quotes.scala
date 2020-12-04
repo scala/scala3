@@ -4133,7 +4133,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def endColumn: Int
 
         /** Source code within the position */
-        def sourceCode: String
+        def sourceCode: Option[String]
 
       end extension
     }
@@ -4145,7 +4145,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val SourceFile: SourceFileModule
 
     /** Methods of the module object `val SourceFile` */
-    trait SourceFileModule { this: SourceFile.type => }
+    trait SourceFileModule { this: SourceFile.type =>
+      /** Returns the source file being compiled. The path is relative to the current working directory. */
+      def current: SourceFile
+    }
 
     /** Makes extension methods on `SourceFile` available without any imports */
     given SourceFileMethods: SourceFileMethods = SourceFileMethodsImpl
@@ -4160,23 +4163,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def jpath: java.nio.file.Path
 
         /** Content of this source file */
-        def content: String
+        def content: Option[String]
       end extension
-    }
-
-    ///////////////
-    //   Source  //
-    ///////////////
-
-    /** Module object of `type Source`  */
-    val Source: SourceModule
-
-    /** Methods of the module object `val Source` */
-    trait SourceModule { this: Source.type =>
-
-      /** Returns the source file being compiled. The path is relative to the current working directory. */
-      def path: java.nio.file.Path
-
     }
 
     ///////////////

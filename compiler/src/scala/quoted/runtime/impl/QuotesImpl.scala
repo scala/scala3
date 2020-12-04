@@ -2556,25 +2556,26 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def endLine: Int = self.endLine
         def startColumn: Int = self.startColumn
         def endColumn: Int = self.endColumn
-        def sourceCode: String =
-          new String(self.source.content(), self.start, self.end - self.start)
+        def sourceCode: Option[String] =
+          // TODO detect when we do not have a source and return None
+          Some(new String(self.source.content(), self.start, self.end - self.start))
       end extension
     end PositionMethodsImpl
 
     type SourceFile = dotc.util.SourceFile
 
-    object SourceFile extends SourceFileModule
+    object SourceFile extends SourceFileModule {
+      def current: SourceFile = ctx.compilationUnit.source
+    }
 
     object SourceFileMethodsImpl extends SourceFileMethods:
       extension (self: SourceFile):
         def jpath: java.nio.file.Path = self.file.jpath
-        def content: String = new String(self.content())
+        def content: Option[String] =
+          // TODO detect when we do not have a source and return None
+          Some(new String(self.content()))
       end extension
     end SourceFileMethodsImpl
-
-    object Source extends SourceModule:
-      def path: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
-    end Source
 
     object report extends reportModule:
 
