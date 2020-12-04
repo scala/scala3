@@ -232,7 +232,7 @@ class CompilationTests {
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
       ).mkString(File.pathSeparator),
-      Array("-Ycheck-reentrant", "-language:postfixOps", "-Ysemanticdb")
+      Array("-Ycheck-reentrant", "-language:postfixOps", "-Xsemanticdb")
     )
 
     val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))

@@ -148,7 +148,7 @@ class Compiler {
   def newRun(using Context): Run = {
     reset()
     val rctx =
-      if ctx.settings.Ysemanticdb.value then
+      if ctx.settings.Xsemanticdb.value then
         ctx.addMode(Mode.ReadPositions)
       else
         ctx

@@ -107,7 +107,7 @@ class SemanticdbTests:
     val exitJava = javac.run(null, null, null, javaArgs:_*)
     assert(exitJava == 0, "java compiler has errors")
     val args = Array(
-      "-Ysemanticdb",
+      "-Xsemanticdb",
       "-d", target.toString,
       "-feature",
       "-deprecation",

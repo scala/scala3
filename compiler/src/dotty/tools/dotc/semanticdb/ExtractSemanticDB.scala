@@ -35,7 +35,7 @@ class ExtractSemanticDB extends Phase:
   override val phaseName: String = ExtractSemanticDB.name
 
   override def isRunnable(using Context) =
-    super.isRunnable && ctx.settings.Ysemanticdb.value
+    super.isRunnable && ctx.settings.Xsemanticdb.value
 
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
