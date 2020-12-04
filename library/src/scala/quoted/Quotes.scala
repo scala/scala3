@@ -331,7 +331,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Extension methods of `Export` */
     trait ExportMethods:
-      extension (self: Export):
+      extension (self: Export)
         def expr: Term
         def selectors: List[Selector]
       end extension

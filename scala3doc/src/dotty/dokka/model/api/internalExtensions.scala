@@ -50,7 +50,7 @@ object CompositeMemberExtension extends BaseKey[Documentable, CompositeMemberExt
     new MergeStrategy$Replace(left.copy(members = left.members ++ right.members))
       .asInstanceOf[MergeStrategy[Documentable]]
 
-extension (member: Member):
+extension (member: Member)
   private def putInMember(ext: MemberExtension) =
     val memberWithExtra = member.asInstanceOf[WithExtraProperties[Member]]
     memberWithExtra.withNewExtras(memberWithExtra.getExtra plus ext).asInstanceOf[Member]
@@ -93,7 +93,7 @@ extension (member: Member):
 
   def updateRecusivly(op: Member => Member) = op(member).withMembers(member.allMembers.map(op))
 
-extension (bound: Bound):
+extension (bound: Bound)
   def asSignature: Signature = bound match
     case tc: TypeConstructor =>
       tc.getProjections.asScala.toSeq.map {
@@ -102,7 +102,7 @@ extension (bound: Bound):
           Link(link.getName, link.getDri)
       }
 
-extension (m: DModule):
+extension (m: DModule)
   def updatePackages(op: Seq[DPackage] => Seq[DPackage]): DModule =
     m.copy(
             m.getName,

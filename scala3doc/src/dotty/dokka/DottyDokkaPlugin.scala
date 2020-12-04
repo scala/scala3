@@ -170,7 +170,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
   )
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/232): remove once problem is fixed in Dokka
-extension [T]  (builder: ExtensionBuilder[T]):
+extension [T]  (builder: ExtensionBuilder[T])
   def ordered(before: Seq[Extension[_, _, _]], after: Seq[Extension[_, _, _]]): ExtensionBuilder[T] =
     val byDsl = new OrderingKind.ByDsl(dsl => {
       dsl.after(after:_*)

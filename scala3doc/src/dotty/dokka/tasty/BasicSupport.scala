@@ -34,7 +34,7 @@ trait BasicSupport:
     Annotation(dri, params)
 
 
-  extension (sym: Symbol):
+  extension (sym: Symbol)
     def documentation = sym.docstring match
       case Some(docstring) =>
           Map(ctx.sourceSet -> parseComment(docstring, sym.tree))

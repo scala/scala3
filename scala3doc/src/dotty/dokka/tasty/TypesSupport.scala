@@ -36,7 +36,7 @@ trait TypesSupport:
   }
 
   given TreeSyntax: AnyRef with
-    extension (tpeTree: Tree):
+    extension (tpeTree: Tree)
       def dokkaType: Bound =
         val data = tpeTree match
           case TypeBoundsTree(low, high) => typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
@@ -46,7 +46,7 @@ trait TypesSupport:
         new GenericTypeConstructor(tpeTree.symbol.dri, data.asJava, null)
 
   given TypeSyntax: AnyRef with
-    extension (tpe: TypeRepr):
+    extension (tpe: TypeRepr)
       def dokkaType: Bound =
         val data = inner(tpe)
         val dri = data.collect{

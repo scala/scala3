@@ -34,37 +34,37 @@ val topLevelDri = org.jetbrains.dokka.links.DRI.Companion.getTopLevel
 type SourceSetWrapper = DokkaConfiguration$DokkaSourceSet
 type DokkaSourceSet = DokkaConfiguration.DokkaSourceSet
 
-extension [T] (wrapper: SourceSetWrapper):
+extension [T] (wrapper: SourceSetWrapper)
     def toSet: JSet[DokkaConfiguration$DokkaSourceSet] = JSet(wrapper)
     def toMap(value: T): JMap[DokkaConfiguration$DokkaSourceSet, T] = JMap(wrapper -> value)
 
-extension [T] (wrapper: DokkaSourceSet):
+extension [T] (wrapper: DokkaSourceSet)
     // when named `toSet` fails in runtime -- TODO: create a minimal!
     // def toSet: JSet[DokkaConfiguration$DokkaSourceSet] = JSet(wrapper.asInstanceOf[SourceSetWrapper])
     def asSet: JSet[DokkaConfiguration$DokkaSourceSet] = JSet(wrapper.asInstanceOf[SourceSetWrapper])
     def asMap(value: T): JMap[DokkaConfiguration$DokkaSourceSet, T] = JMap(wrapper.asInstanceOf[SourceSetWrapper] -> value)
 
-extension (sourceSets: JList[DokkaSourceSet]):
+extension (sourceSets: JList[DokkaSourceSet])
   def asDokka: JSet[SourceSetWrapper] = sourceSets.asScala.toSet.asJava.asInstanceOf[JSet[SourceSetWrapper]]
   def toDisplaySourceSet = sourceSets.asScala.map(ss => DisplaySourceSet(ss.asInstanceOf[SourceSetWrapper])).toSet.asJava
 
-extension (sourceSets: Set[SourceSetWrapper]):
+extension (sourceSets: Set[SourceSetWrapper])
   def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava
 
-extension [V] (a: WithExtraProperties[_]):
+extension [V] (a: WithExtraProperties[_])
   def get(key: ExtraProperty.Key[_, V]): V = a.getExtra().getMap().get(key).asInstanceOf[V]
 
-extension [E <: WithExtraProperties[E]] (a: E):
+extension [E <: WithExtraProperties[E]] (a: E)
   def put(value: ExtraProperty[_ >: E]): E = a.withNewExtras(a.getExtra plus value)
 
-extension [V] (map: JMap[SourceSetWrapper, V]):
+extension [V] (map: JMap[SourceSetWrapper, V])
   def defaultValue: V = map.values.asScala.head
 
-extension [V](jlist: JList[V]):
+extension [V](jlist: JList[V])
   def ++ (other: JList[V]): JList[V] =
     Stream.of(jlist, other).flatMap(_.stream).collect(Collectors.toList())
 
-extension [V](jset: JSet[V]):
+extension [V](jset: JSet[V])
   def ++ (other: JSet[V]): JSet[V] =
     Stream.of(jset, other).flatMap(_.stream).collect(Collectors.toSet())
 

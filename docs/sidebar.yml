@@ -188,7 +188,7 @@ sidebar:
             - title: "[this] Qualifier"
               url: docs/reference/dropped-features/this-qualifier.html
         - title: Syntax Summary
-          url: doc/reference/syntax.html
+          url: docs/reference/syntax.html
     - title: Contributing
       subsection:
         - title: Contribute Knowledge

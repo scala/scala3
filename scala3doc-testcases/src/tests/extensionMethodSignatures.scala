@@ -23,7 +23,7 @@ class ClassOne
       = ???
 
   extension (c:ClassTwo)
-  :
+
     def getString(a: String): String
        = a
 

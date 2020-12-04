@@ -75,7 +75,7 @@ abstract class SignatureTest(
   private def findMissingSingatures(expected: Seq[String], actual: Seq[String]): Set[String] =
     expected.toSet &~ actual.toSet
 
-  extension (s: String):
+  extension (s: String)
     private def startWithAnyOfThese(c: String*) = c.exists(s.startsWith)
     private def compactWhitespaces = whitespaceRegex.replaceAllIn(s, " ")
 
