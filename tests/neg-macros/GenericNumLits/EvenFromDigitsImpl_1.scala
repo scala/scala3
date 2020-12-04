@@ -4,7 +4,7 @@ import scala.quoted._
 import Even._
 
 object EvenFromDigitsImpl:
-  def apply(digits: Expr[String])(using Quotes): Expr[Even] = digits.unlift match {
+  def apply(digits: Expr[String])(using Quotes): Expr[Even] = digits.value match {
     case Some(ds) =>
       val ev =
         try evenFromDigits(ds)

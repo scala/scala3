@@ -4,24 +4,24 @@ def test(using Quotes) = {
 
   given Quotes = ???
 
-  implicit def IntIsLiftable: Liftable[Int] = new {
-    def toExpr(n: Int) = n match {
+  implicit def IntIsToExpr: ToExpr[Int] = new {
+    def apply(n: Int)(using Quotes) = n match {
       case Int.MinValue    => '{Int.MinValue}
-      case _ if n < 0      => '{- ${toExpr(n)}}
+      case _ if n < 0      => '{- ${apply(n)}}
       case 0               => '{0}
-      case _ if n % 2 == 0 => '{ ${toExpr(n / 2)} * 2 }
-      case _               => '{ ${toExpr(n / 2)} * 2 + 1 }
+      case _ if n % 2 == 0 => '{ ${apply(n / 2)} * 2 }
+      case _               => '{ ${apply(n / 2)} * 2 + 1 }
     }
   }
 
-  implicit def BooleanIsLiftable: Liftable[Boolean] = new {
-    implicit def toExpr(b: Boolean) =
+  implicit def BooleanToExpr: ToExpr[Boolean] = new {
+    implicit def apply(b: Boolean)(using Quotes) =
       if (b) '{true} else '{false}
   }
 
-  implicit def ListIsLiftable[T: Liftable: Type]: Liftable[List[T]] = new {
-    def toExpr(xs: List[T]) = xs match {
-      case x :: xs1 => '{ ${ Expr(x) } :: ${ toExpr(xs1) } }
+  implicit def ListToExpr[T: ToExpr: Type]: ToExpr[List[T]] = new {
+    def apply(xs: List[T])(using Quotes) = xs match {
+      case x :: xs1 => '{ ${ Expr(x) } :: ${ apply(xs1) } }
       case Nil => '{Nil: List[T]}
     }
   }

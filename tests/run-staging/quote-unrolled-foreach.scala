@@ -117,8 +117,8 @@ object Test {
     }
   }
 
-  implicit object ArrayIntIsLiftable extends Liftable[Array[Int]] {
-    override def toExpr(x: Array[Int]) = '{
+  implicit object ArrayIntIsToExpr extends ToExpr[Array[Int]] {
+    override def apply(x: Array[Int])(using Quotes) = '{
       val array = new Array[Int](${Expr(x.length)})
       ${ foreachInRange(0, x.length)(i => '{ array(${Expr(i)}) = ${Expr(x(i))}}) }
       array

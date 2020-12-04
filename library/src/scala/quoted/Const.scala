@@ -16,7 +16,7 @@ object Const {
    *    // value: T
    *  ```
    *
-   *  To directly unlift an expression `expr: Expr[T]` consider using `expr.unlift`/`expr.unliftOrError` insead.
+   *  To directly unlift an expression `expr: Expr[T]` consider using `expr.value`/`expr.valueOrError` insead.
    */
   def unapply[T](expr: Expr[T])(using Quotes): Option[T] = {
     import quotes.reflect._

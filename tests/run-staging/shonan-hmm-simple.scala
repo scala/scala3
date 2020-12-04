@@ -32,15 +32,15 @@ class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]]:
   val mul  = (x, y) => Complex(u.sub(u.mul(x.re, y.re), u.mul(x.im, y.im)), u.add(u.mul(x.re, y.im), u.mul(x.im, y.re)))
 
 sealed trait PV[T]:
-  def expr(using Liftable[T], Quotes): Expr[T]
+  def expr(using ToExpr[T], Quotes): Expr[T]
 
 case class Sta[T](x: T) extends PV[T]:
-  def expr(using Liftable[T], Quotes): Expr[T] = Expr(x)
+  def expr(using ToExpr[T], Quotes): Expr[T] = Expr(x)
 
 case class Dyn[T](x: Expr[T]) extends PV[T]:
-  def expr(using Liftable[T], Quotes): Expr[T] = x
+  def expr(using ToExpr[T], Quotes): Expr[T] = x
 
-class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]])(using Quotes) extends Ring[PV[U]]:
+class RingPV[U: ToExpr](u: Ring[U], eu: Ring[Expr[U]])(using Quotes) extends Ring[PV[U]]:
   val zero: PV[U] = Sta(u.zero)
   val one: PV[U] = Sta(u.one)
   val add = (x: PV[U], y: PV[U]) => (x, y) match
@@ -63,8 +63,8 @@ class RingPV[U: Liftable](u: Ring[U], eu: Ring[Expr[U]])(using Quotes) extends R
 case class Complex[T](re: T, im: T)
 
 object Complex:
-  implicit def isLiftable[T: Type: Liftable]: Liftable[Complex[T]] = new Liftable[Complex[T]]:
-    def toExpr(comp: Complex[T]) = '{Complex(${Expr(comp.re)}, ${Expr(comp.im)})}
+  implicit def isToExpr[T: Type: ToExpr]: ToExpr[Complex[T]] = new ToExpr[Complex[T]]:
+    def apply(comp: Complex[T])(using Quotes) = '{Complex(${Expr(comp.re)}, ${Expr(comp.im)})}
 
 case class Vec[Idx, T](size: Idx, get: Idx => T):
   def map[U](f: T => U): Vec[Idx, U] = Vec(size, i => f(get(i)))
@@ -172,7 +172,7 @@ object Test:
     println(run(resCode4).apply(arr1))
     println()
 
-    import Complex.isLiftable
+    import Complex.isToExpr
     def blasExprComplexPVInt(using Quotes) = new Blas1[Int, Complex[PV[Int]]](new RingComplex(new RingPV[Int](new RingInt, new RingIntExpr)), new StaticVecOps)
     def resCode5(using Quotes): Expr[Array[Complex[Int]] => Complex[Int]] = '{
       arr =>

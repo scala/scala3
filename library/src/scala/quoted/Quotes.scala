@@ -33,24 +33,27 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     */
     def matches(that: Expr[Any]): Boolean
 
-    /** Return the unlifted value of this expression.
+    /** Return the value of this expression.
      *
-     *  Returns `None` if the expression does not contain a value or contains side effects.
+     *  Returns `None` if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the `Some` of the value.
      */
-    def unlift(using Unliftable[T]): Option[T] =
-      summon[Unliftable[T]].fromExpr(self)(using Quotes.this)
+    def value(using FromExpr[T]): Option[T] =
+      given Quotes = Quotes.this
+      summon[FromExpr[T]].unapply(self)
 
-    /** Return the unlifted value of this expression.
+    /** Return the value of this expression.
      *
-     *  Emits an error and throws if the expression does not contain a value or contains side effects.
+     *  Emits an error and throws if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
      */
-    def unliftOrError(using Unliftable[T]): T =
+    def valueOrError(using FromExpr[T]): T =
+      val fromExpr = summon[FromExpr[T]]
       def reportError =
-        val msg = s"Expected a known value. \n\nThe value of: ${self.show}\ncould not be unlifted using $unlift"
+        val msg = s"Expected a known value. \n\nThe value of: ${self.show}\ncould not be extracted using $fromExpr"
         reflect.report.throwError(msg, self)
-      summon[Unliftable[T]].fromExpr(self)(using Quotes.this).getOrElse(reportError)
+      given Quotes = Quotes.this
+      fromExpr.unapply(self).getOrElse(reportError)
 
   end extension
 
