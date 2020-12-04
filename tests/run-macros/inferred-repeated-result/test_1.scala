@@ -8,7 +8,7 @@ object Macros {
     val tree = Term.of(expr)
 
     val methods =
-      tree.tpe.classSymbol.get.classMethods.map { m =>
+      tree.tpe.classSymbol.get.declaredMethods.map { m =>
         val name = m.show
         m.tree match
           case ddef: DefDef =>

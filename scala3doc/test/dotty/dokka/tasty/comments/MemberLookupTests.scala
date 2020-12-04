@@ -89,9 +89,9 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
         if s.flags.is(q.reflect.Flags.Module) then s.moduleClass else s
       Sym(hackResolveModule(symbol.field(name)))
     def fun(name: String) =
-      val List(sym) = symbol.method(name)
+      val List(sym) = symbol.memberMethod(name)
       Sym(sym)
-    def tpe(name: String) = Sym(symbol.typeMember(name))
+    def tpe(name: String) = Sym(symbol.memberType(name))
   }
 
   def cls(fqn: String) = Sym(q.reflect.Symbol.classSymbol(fqn))

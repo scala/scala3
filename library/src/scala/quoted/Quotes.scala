@@ -3155,25 +3155,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def field(name: String): Symbol
 
         /** Get non-private named methods defined directly inside the class */
-        def classMethod(name: String): List[Symbol]
+        def declaredMethod(name: String): List[Symbol]
 
         /** Get all non-private methods defined directly inside the class, exluding constructors */
-        def classMethods: List[Symbol]
-
-        /** Type member directly declared in the class */
-        def typeMembers: List[Symbol]
-
-        /** Type member with the given name directly declared in the class */
-        def typeMember(name: String): Symbol
-
-        /** All members directly declared in the class */
-        def members: List[Symbol]
+        def declaredMethods: List[Symbol]
 
         /** Get named non-private methods declared or inherited */
-        def method(name: String): List[Symbol]
+        def memberMethod(name: String): List[Symbol]
 
         /** Get all non-private methods declared or inherited */
-        def methods: List[Symbol]
+        def memberMethods: List[Symbol]
+
+        /** Get non-private named methods defined directly inside the class */
+        def declaredType(name: String): List[Symbol]
+
+        /** Get all non-private methods defined directly inside the class, exluding constructors */
+        def declaredTypes: List[Symbol]
+
+        /** Type member with the given name directly declared in the class */
+        def memberType(name: String): Symbol
+
+        /** Type member directly declared in the class */
+        def memberTypes: List[Symbol]
+
+        /** All members directly declared in the class */
+        def declarations: List[Symbol]
 
         /** The symbols of each type parameter list and value parameter list of this
           *  method, or Nil if this isn't a method.

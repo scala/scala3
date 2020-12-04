@@ -10,7 +10,7 @@ import dotty.dokka.tasty.TastyParser
 class CommentExpanderTests {
   def check(using quoted.Quotes)(): Unit =
     assertCommentEquals(
-      qr.Symbol.requiredClass("tests.B").method("otherMethod").head,
+      qr.Symbol.requiredClass("tests.B").memberMethod("otherMethod").head,
       "/** This is my foo: Bar, actually. */",
     )
     assertCommentEquals(
@@ -18,7 +18,7 @@ class CommentExpanderTests {
       "/** This is foo: Foo expanded. */",
     )
     assertCommentEquals(
-      qr.Symbol.requiredModule("tests.O").method("method").head,
+      qr.Symbol.requiredModule("tests.O").memberMethod("method").head,
       "/** This is foo: O's foo. */",
     )
 
