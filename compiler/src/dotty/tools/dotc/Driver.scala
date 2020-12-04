@@ -13,6 +13,7 @@ import dotty.tools.io.File
 import reporting._
 import core.Decorators._
 import config.Feature
+import util.SourceFile
 
 import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}
@@ -35,32 +36,34 @@ class Driver {
     if fileNames.nonEmpty then
       val run = compiler.newRun
       val sources = run.getSources(fileNames)
-      try
-        run.compileSources(sources)
-
-        def finish(run: Run)(using Context): Unit =
-          run.printSummary()
-          if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
-            val suspendedUnits = run.suspendedUnits.toList
-            if (ctx.settings.XprintSuspension.value)
-              report.echo(i"compiling suspended $suspendedUnits%, %")
-            val run1 = compiler.newRun
-            for unit <- suspendedUnits do unit.suspended = false
-            run1.compileUnits(suspendedUnits)
-            finish(run1)(using MacroClassLoader.init(ctx.fresh))
-
-        finish(run)
-      catch
-        case ex: FatalError  =>
-          report.error(ex.getMessage) // signals that we should fail compilation.
-        case ex: TypeError =>
-          println(s"${ex.toMessage} while compiling ${fileNames.mkString(", ")}")
-          throw ex
-        case ex: Throwable =>
-          println(s"$ex while compiling ${fileNames.mkString(", ")}")
-          throw ex
+      doCompileImpl(compiler, run, sources)
     ctx.reporter
-  end doCompile
+
+  protected def doCompileImpl(compiler: Compiler, run: Run, sources: List[SourceFile])(using Context): Unit =
+    try
+      run.compileSources(sources)
+
+      def finish(run: Run)(using Context): Unit =
+        run.printSummary()
+        if !ctx.reporter.errorsReported && run.suspendedUnits.nonEmpty then
+          val suspendedUnits = run.suspendedUnits.toList
+          if (ctx.settings.XprintSuspension.value)
+            report.echo(i"compiling suspended $suspendedUnits%, %")
+          val run1 = compiler.newRun
+          for unit <- suspendedUnits do unit.suspended = false
+          run1.compileUnits(suspendedUnits)
+          finish(run1)(using MacroClassLoader.init(ctx.fresh))
+
+      finish(run)
+    catch
+      case ex: FatalError  =>
+        report.error(ex.getMessage) // signals that we should fail compilation.
+      case ex: TypeError =>
+        println(s"${ex.toMessage} while compiling ${sources.map(_.name).mkString(", ")}")
+        throw ex
+      case ex: Throwable =>
+        println(s"$ex while compiling ${sources.map(_.name).mkString(", ")}")
+        throw ex
 
   protected def initCtx: Context = (new ContextBase).initialCtx
 
