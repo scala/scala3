@@ -89,6 +89,8 @@ object Checking {
     val cls = cdef.symbol.asClass
     val tpl = cdef.rhs.asInstanceOf[Template]
 
+    if state.parentsInited.contains(cls) then return
+
     // mark current class as initialized, required for linearization
     state.parentsInited += cls
 
@@ -97,7 +99,7 @@ object Checking {
         case vdef : ValDef =>
           val summary = Summarization.analyze(vdef.rhs)
           theEnv.summaryOf(cls).cacheFor(vdef.symbol, summary)
-          if (!vdef.symbol.is(Flags.Lazy)) {
+          if (!vdef.symbol.isOneOf(Flags.Lazy | Flags.Deferred)) {
             checkEffects(summary.effs)
             traceIndented(vdef.symbol.show + " initialized", init)
             state.fieldsInited += vdef.symbol
@@ -163,7 +165,7 @@ object Checking {
 
       case ref =>
         val cls = ref.tpe.classSymbol.asClass
-        if (!state.parentsInited.contains(cls) && cls.primaryConstructor.exists)
+        if (cls.primaryConstructor.exists)
           checkConstructor(cls.primaryConstructor, ref.tpe, ref)
     }
 
