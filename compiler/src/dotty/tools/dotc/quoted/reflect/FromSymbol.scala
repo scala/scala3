@@ -19,8 +19,7 @@ object FromSymbol {
     else if (sym.isType && sym.is(Case)) typeBindFromSym(sym.asType)
     else if (sym.isType) typeDefFromSym(sym.asType)
     else if (sym.is(Method)) defDefFromSym(sym.asTerm)
-    else if (sym.is(ModuleVal)) valDefFromSym(sym.asTerm)
-    else if (sym.is(Case)) bindFromSym(sym.asTerm)
+    else if (sym.is(Case, butNot = ModuleVal | EnumVal)) bindFromSym(sym.asTerm)
     else valDefFromSym(sym.asTerm)
   }
 

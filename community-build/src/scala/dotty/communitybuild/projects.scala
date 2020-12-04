@@ -346,9 +346,7 @@ object projects:
   lazy val sconfig = SbtCommunityProject(
     project       = "sconfig",
     sbtTestCommand   = "sconfigJVM/test",
-    // sbtDocCommand = "sconfigJVM/doc", // Fails with:
-    // Problem parsing sconfig/sharedScala3/src/main/scala/org/ekrich/config/ConfigSyntax.scala:[73..92..1340], documentation may not be generated.
-    // scala.MatchError: ValDef(JSON,TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class ekrich)),module config),class ConfigSyntax)],Apply(Ident($new),List(Literal(Constant(0)), Literal(Constant(JSON))))) (of class dotty.tools.dotc.ast.Trees$ValDef)
+    sbtDocCommand = "sconfigJVM/doc",
   )
 
   lazy val zio = SbtCommunityProject(
@@ -409,7 +407,7 @@ object projects:
     // [error] Caused by: java.lang.AssertionError: assertion failed:
     // trait MonadIO has non-class parent: AppliedType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),module scalaz),Monad),List(TypeRef(ThisType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class scalaz)),module effect),trait MonadIO)),type F)))
 
-    // sbtDocCommand = forceDoc("iterateeJVM"), // Fails with
+    // forceDoc("iterateeJVM"), // Fails with
     // [error] class scalaz.iteratee.Iteratee cannot be unpickled because no class file was found
 
     sbtDocCommand = forceDoc("effectJVM"),
