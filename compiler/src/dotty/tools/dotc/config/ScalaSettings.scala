@@ -22,7 +22,7 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
   val classpath: Setting[String] = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp" withAbbreviation "--class-path"
   val outputDir: Setting[AbstractFile] = OutputSetting("-d", "directory|jar", "Destination for generated classfiles.",
     new PlainDirectory(Directory(".")))
-  val priorityclasspath: Setting[String] = PathSetting("-priorityclasspath", "Class path that takes precedence over all other paths (or testing only).", "") withAbbreviation "--priority-class-path"
+  val priorityclasspath: Setting[String] = PathSetting("-priorityclasspath", "Class path that takes precedence over all other paths (for testing only).", "") withAbbreviation "--priority-class-path"
   val color: Setting[String] = ChoiceSetting("-color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/) withAbbreviation "--color"
   val verbose: Setting[Boolean] = BooleanSetting("-verbose", "Output messages about what the compiler is doing.") withAbbreviation "--verbose"
   val version: Setting[Boolean] = BooleanSetting("-version", "Print product version and exit.") withAbbreviation "--version"
@@ -92,7 +92,7 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
 
   val newSyntax: Setting[Boolean] = BooleanSetting("-new-syntax", "Require `then` and `do` in control expressions.")
   val oldSyntax: Setting[Boolean] = BooleanSetting("-old-syntax", "Require `(...)` around conditions.")
-  val indent: Setting[Boolean] = BooleanSetting("-indent", "Allow significant indentation.")
+  val indent: Setting[Boolean] = BooleanSetting("-indent", "Together with -rewrite, remove {...} syntax when possible due to significant indentation.")
   val noindent: Setting[Boolean] = BooleanSetting("-noindent", "Require classical {...} syntax, indentation is not significant.")
   val YindentColons: Setting[Boolean] = BooleanSetting("-Yindent-colons", "Allow colons at ends-of-lines to start indentation blocks.")
 
