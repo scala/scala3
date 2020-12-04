@@ -60,7 +60,6 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
     ictx
 
   private def setToolboxSettings(ctx: FreshContext, settings: Toolbox.Settings): ctx.type =
-    ctx.setSetting(ctx.settings.YshowRawQuoteTrees, settings.showRawTree)
     // An error in the generated code is a bug in the compiler
     // Setting the throwing reporter however will report any exception
     ctx.setReporter(new ThrowingReporter(ctx.reporter))

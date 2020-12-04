@@ -44,7 +44,7 @@ object Toolbox:
     end new
 
   /** Setting of the Toolbox instance. */
-  case class Settings private (outDir: Option[String], showRawTree: Boolean, compilerArgs: List[String])
+  case class Settings private (outDir: Option[String], compilerArgs: List[String])
 
   object Settings:
 
@@ -52,15 +52,13 @@ object Toolbox:
 
     /** Make toolbox settings
      *  @param outDir Output directory for the compiled quote. If set to None the output will be in memory
-     *  @param showRawTree Do not remove quote tree artifacts
      *  @param compilerArgs Compiler arguments. Use only if you know what you are doing.
      */
     def make( // TODO avoid using default parameters (for binary compat)
-      showRawTree: Boolean = false,
       outDir: Option[String] = None,
       compilerArgs: List[String] = Nil
     ): Settings =
-      new Settings(outDir, showRawTree, compilerArgs)
+      new Settings(outDir, compilerArgs)
 
   end Settings
 
