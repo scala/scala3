@@ -78,8 +78,8 @@ ${'[T]} = T
 The type signatures of quotes and splices can be described using
 two fundamental types:
 
-  - `Expr[T]`: abstract syntax trees representing expressions of type `T`
-  - `Type[T]`: type structures representing type `T`.
+- `Expr[T]`: abstract syntax trees representing expressions of type `T`
+- `Type[T]`: type structures representing type `T`.
 
 Quoting takes expressions of type `T` to expressions of type `Expr[T]`
 and it takes types `T` to expressions of type `Type[T]`. Splicing
@@ -87,12 +87,14 @@ takes expressions of type `Expr[T]` to expressions of type `T` and it
 takes expressions of type `Type[T]` to types `T`.
 
 The two types can be defined in package `scala.quoted` as follows:
+
 ```scala
 package scala.quoted
 
 sealed abstract class Expr[+T]
 sealed abstract class Type[T]
 ```
+
 Both `Expr` and `Type` are abstract and sealed, so all constructors for
 these types are provided by the system. One way to construct values of
 these types is by quoting, the other is by type-specific lifting
@@ -103,7 +105,7 @@ operations that will be discussed later on.
 A fundamental *phase consistency principle* (PCP) regulates accesses
 to free variables in quoted and spliced code:
 
- - _For any free variable reference `x`, the number of quoted scopes and the number of spliced scopes between the reference to `x` and the definition of `x` must be equal_.
+- _For any free variable reference `x`, the number of quoted scopes and the number of spliced scopes between the reference to `x` and the definition of `x` must be equal_.
 
 Here, `this`-references count as free variables. On the other
 hand, we assume that all imports are fully expanded and that `_root_` is
@@ -129,8 +131,8 @@ situations described above.
 
 In what concerns the range of features it covers, this form of macros introduces
 a principled metaprogramming framework that is quite close to the MetaML family of
-languages. One difference is that MetaML does not have an equivalent of the PCP
-- quoted code in MetaML _can_ access variables in its immediately enclosing
+languages. One difference is that MetaML does not have an equivalent of the PCP -
+quoted code in MetaML _can_ access variables in its immediately enclosing
 environment, with some restrictions and caveats since such accesses involve
 serialization. However, this does not constitute a fundamental gain in
 expressiveness.
@@ -165,16 +167,19 @@ f2('{2}) // '{ ((x: Int) => x.toString)(2) }
 One limitation of `from` is that it does not β-reduce when a lambda is called immediately, as evidenced in the code `{ ((x: Int) => x.toString)(2) }`.
 In some cases we want to remove the lambda from the code, for this we provide the method `Expr.betaReduce` that turns a tree
 describing a function into a function mapping trees to trees.
+
 ```scala
 object Expr {
   ...
   def betaReduce[...](...)(...): ... = ...
 }
 ```
+
 The definition of `Expr.betaReduce(f)(x)` is assumed to be functionally the same as
 `'{($f)($x)}`, however it should optimize this call by returning the
 result of beta-reducing `f(x)` if `f` is a known lambda expression.
 `Expr.betaReduce` distributes applications of `Expr` over function arrows:
+
 ```scala
 Expr.betaReduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
 ```
@@ -188,10 +193,12 @@ The resulting value of `Type` will be subject to PCP.
 Indeed, the definition of `to` above uses `T` in the next stage, there is a
 quote but no splice between the parameter binding of `T` and its
 usage. But the code can be rewritten by adding a binding of a `Type[T]` tag:
+
 ```scala
 def to[T, R](f: Expr[T] => Expr[R])(using Type[T], Type[R], Quotes): Expr[T => R] =
   '{ (x: T) => ${ f('x) } }
 ```
+
 In this version of `to`, the type of `x` is now the result of
 splicing the `Type` value `t`. This operation _is_ splice correct -- there
 is one quote and one splice between the use of `t` and its definition.
@@ -222,6 +229,7 @@ phase-correct. If that was not the case, the phase inconsistency for
 
 Consider the following implementation of a staged interpreter that implements
 a compiler through staging.
+
 ```scala
 import scala.quoted._
 
@@ -232,15 +240,19 @@ enum Exp {
   case Let(x: String, e: Exp, in: Exp)
 }
 ```
+
 The interpreted language consists of numbers `Num`, addition `Plus`, and variables
 `Var` which are bound by `Let`. Here are two sample expressions in the language:
+
 ```scala
 val exp = Plus(Plus(Num(2), Var("x")), Num(4))
 val letExp = Let("x", Num(3), exp)
 ```
+
 Here’s a compiler that maps an expression given in the interpreted
 language to quoted Scala code of type `Expr[Int]`.
 The compiler takes an environment that maps variable names to Scala `Expr`s.
+
 ```scala
 import scala.quoted._
 
@@ -255,10 +267,13 @@ def compile(e: Exp, env: Map[String, Expr[Int]])(using Quotes): Expr[Int] = e ma
     '{ val y = ${ compile(e, env) }; ${ compile(body, env + (x -> 'y)) } }
 }
 ```
+
 Running `compile(letExp, Map())` would yield the following Scala code:
+
 ```scala
 '{ val y = 3; (2 + y) + 4 }
 ```
+
 The body of the first clause, `case Num(n) => Expr(n)`, looks suspicious. `n`
 is declared as an `Int`, yet it is converted to an `Expr[Int]` with `Expr()`.
 Shouldn’t `n` be quoted? In fact this would not
@@ -266,6 +281,7 @@ work since replacing `n` by `'n` in the clause would not be phase
 correct.
 
 The `Expr.apply` method is defined in package `quoted`:
+
 ```scala
 package quoted
 
@@ -275,6 +291,7 @@ object Expr {
   ...
 }
 ```
+
 This method says that values of types implementing the `ToExpr` type class can be
 converted to `Expr` values using `Expr.apply`.
 
@@ -287,15 +304,18 @@ efficiency. But the `ToExpr` instances are nevertheless not _magic_
 in the sense that they could all be defined in a user program without
 knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `ToExpr[Boolean]`:
+
 ```scala
 given ToExpr[Boolean] {
   def toExpr(b: Boolean) =
     if (b) '{ true } else '{ false }
 }
 ```
+
 Once we can lift bits, we can work our way up. For instance, here is a
 possible implementation of `ToExpr[Int]` that does not use the underlying
 tree machinery:
+
 ```scala
 given ToExpr[Int] {
   def toExpr(n: Int) = n match {
@@ -307,8 +327,10 @@ given ToExpr[Int] {
   }
 }
 ```
+
 Since `ToExpr` is a type class, its instances can be conditional. For example,
 a `List` is liftable if its element type is:
+
 ```scala
 given [T: ToExpr : Type]: ToExpr[List[T]] with
   def toExpr(xs: List[T]) = xs match {
@@ -316,6 +338,7 @@ given [T: ToExpr : Type]: ToExpr[List[T]] with
     case Nil => '{ Nil: List[T] }
   }
 ```
+
 In the end, `ToExpr` resembles very much a serialization
 framework. Like the latter it can be derived systematically for all
 collections, case classes and enums. Note also that the synthesis
@@ -323,12 +346,14 @@ of _type-tag_ values of type `Type[T]` is essentially the type-level
 analogue of lifting.
 
 Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
+
 ```scala
 def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] = {
   val code: String = expr.show
   Expr(code)
 }
 ```
+
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
 the result back to an `Expr[String]` using `Expr.apply`.
 
@@ -346,14 +371,18 @@ what to do for references to type parameters or local type definitions
 that are not defined in the current stage? Here, we cannot construct
 the `Type[T]` tree directly, so we need to get it from a recursive
 implicit search. For instance, to implement
+
 ```scala
 summon[Type[List[T]]]
 ```
+
 where `T` is not defined in the current stage, we construct the type constructor
 of `List` applied to the splice of the result of searching for a given instance for `Type[T]`:
+
 ```scala
 '[ List[ ${ summon[Type[T]] } ] ]
 ```
+
 This is exactly the algorithm that Scala 2 uses to search for type tags.
 In fact Scala 2's type tag feature can be understood as a more ad-hoc version of
 `quoted.Type`. As was the case for type tags, the implicit search for a `quoted.Type`
@@ -386,13 +415,16 @@ object App {
   }
 }
 ```
+
 Inlining the `assert` function would give the following program:
+
 ```scala
 val program = {
   val x = 1
   ${ Macros.assertImpl('{ x != 0) } }
 }
 ```
+
 The example is only phase correct because `Macros` is a global value and
 as such not subject to phase consistency checking. Conceptually that’s
 a bit unsatisfactory. If the PCP is so fundamental, it should be
@@ -408,12 +440,14 @@ macros would be to have the user program be in a phase after the macro
 definitions, reflecting the fact that macros have to be defined and
 compiled before they are used. Hence, conceptually the program part
 should be treated by the compiler as if it was quoted:
+
 ```scala
 val program = '{
   val x = 1
   ${ Macros.assertImpl('{ x != 0 }) }
 }
 ```
+
 If `program` is treated as a quoted expression, the call to
 `Macro.assertImpl` becomes phase correct even if macro library and
 program are conceptualized as local definitions.
@@ -438,6 +472,7 @@ expression contains value. Otherwise it will retrun `None` (or emit an error).
 To avoid having incidental val bindings generated by the inlining of the `def`
 it is recommended to use an inline parameter. To illustrate this, consider an
 implementation of the `power` function that makes use of a statically known exponent:
+
 ```scala
 inline def power(x: Double, inline n: Int) = ${ powerCode('x, 'n) }
 
@@ -482,6 +517,7 @@ that invokation of `run` in splices. Consider the following expression:
 ```scala
 '{ (x: Int) => ${ run('x); 1 } }
 ```
+
 This is again phase correct, but will lead us into trouble. Indeed, evaluating
 the splice will reduce the expression `run('x)` to `x`. But then the result
 
@@ -566,6 +602,7 @@ sum
 ```
 
 Finally cleanups and dead code elimination:
+
 ```scala
 val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
 var sum = 0
@@ -660,6 +697,7 @@ Quoted pattens allow deconstructing complex code that contains a precise structu
 Patterns `'{ ... }` can be placed in any location where Scala expects a pattern.
 
 For example
+
 ```scala
 optimize {
   sum(sum(1, a, 2), 3, b)
@@ -746,9 +784,11 @@ then the rest of the quote can refer to this definition.
 ```
 
 To match such a term we need to match the definition and the rest of the code, but we need to explicitly state that the rest of the code may refer to this definition.
+
 ```scala
 case '{ val y: Int = $x; $body(y): Int } =>
 ```
+
 Here `$x` will match any closed expression while `$body(y)` will match an expression that is closed under `y`. Then
 the subexpression of type `Expr[Int]` is bound to `body` as an `Expr[Int => Int]`. The extra argument represents the references to `y`. Usually this expression is used in combination with `Expr.betaReduce` to replace the extra argument.
 
