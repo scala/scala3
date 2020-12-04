@@ -1605,6 +1605,15 @@ object Build {
               IO.write(dest / "CNAME", "dotty.epfl.ch")
             }.dependsOn(generateDocumentation(
               roots, "Scala 3", dest.getAbsolutePath, "master",
+              // contains special definitions which are "transplanted" elsewhere
+              // and which therefore confuse Scala3doc when accessed from this pkg
+              "-skip-by-id:scala.runtime.stdLibPatches " +
+              // MatchCase is a special type that represents match type cases,
+              // Reflect doesn't expect to see it as a standalone definition
+              // and therefore it's easier just not to document it
+              "-skip-by-id:scala.runtime.MatchCase " +
+              "-skip-by-regex:.+\\.internal($|\\..+) " +
+              "-skip-by-regex:.+\\.impl($|\\..+) " +
               "-comment-syntax wiki -siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg " +
               "-external-mappings " + raw".*java.*" + "::" +
                 "javadoc" + "::" +
