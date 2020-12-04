@@ -1807,7 +1807,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given AnnotatedTypeMethods: AnnotatedTypeMethods with
       extension (self: AnnotatedType):
         def underlying: TypeRepr = self.underlying.stripTypeVar
-        def annot: Term = self.annot.tree
+        def annotation: Term = self.annot.tree
       end extension
     end AnnotatedTypeMethods
 
@@ -2304,8 +2304,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def tree: Tree = FromSymbol.definitionFromSym(self)
 
-        def annots: List[Term] =
-          self.annotations.flatMap {
+        def hasAnnotation(annotSym: Symbol): Boolean =
+          self.denot.hasAnnotation(annotSym)
+
+        def getAnnotation(annotSym: Symbol): Option[Term] =
+          self.denot.getAnnotation(annotSym).map(_.tree)
+
+        def annotations: List[Term] =
+          self.denot.annotations.flatMap {
             case _: dotc.core.Annotations.BodyAnnotation => Nil
             case annot => annot.tree :: Nil
           }
