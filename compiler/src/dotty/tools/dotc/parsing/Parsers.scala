@@ -603,7 +603,7 @@ object Parsers {
       in.currentRegion = f(cur)
       try op finally in.currentRegion = cur
 
-    /** Parse `body` while checking (under -noindent) that a `{` is not missing before it.
+    /** Parse `body` while checking (under -no-indent) that a `{` is not missing before it.
      *  This is done as follows:
      *    If the next token S is indented relative to the current region,
      *    and the end of `body` is followed by a new line and another statement,

@@ -105,7 +105,7 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val newSyntax: Setting[Boolean] = BooleanSetting("-new-syntax", "Require `then` and `do` in control expressions.")
   val oldSyntax: Setting[Boolean] = BooleanSetting("-old-syntax", "Require `(...)` around conditions.")
   val indent: Setting[Boolean] = BooleanSetting("-indent", "Together with -rewrite, remove {...} syntax when possible due to significant indentation.")
-  val noindent: Setting[Boolean] = BooleanSetting("-noindent", "Require classical {...} syntax, indentation is not significant.")
+  val noindent: Setting[Boolean] = BooleanSetting("-no-indent", "Require classical {...} syntax, indentation is not significant.", aliases = List("-noindent"))
   val YindentColons: Setting[Boolean] = BooleanSetting("-Yindent-colons", "Allow colons at ends-of-lines to start indentation blocks.")
 
   /** Decompiler settings */
