@@ -13,26 +13,3 @@ case class ModuleExtension(driMap: Map[DRI, Member]) extends ExtraProperty[DModu
   override def getKey = ModuleExtension
 
 object ModuleExtension extends BaseKey[DModule, ModuleExtension]
-
-case class MethodExtension(parametersListSizes: Seq[Int]) extends ExtraProperty[DFunction]:
-  override def getKey = MethodExtension
-
-object MethodExtension extends BaseKey[DFunction, MethodExtension]
-
-case class ParameterExtension(isExtendedSymbol: Boolean, isGrouped: Boolean) extends ExtraProperty[DParameter]:
-  override def getKey = ParameterExtension
-
-object ParameterExtension extends BaseKey[DParameter, ParameterExtension]
-
-case class ClasslikeExtension(
-  constructor: Option[DFunction], // will be replaced by signature
-  companion: Option[DRI], // moved to kind?
-) extends ExtraProperty[DClasslike]:
-  override def getKey = ClasslikeExtension
-
-object ClasslikeExtension extends BaseKey[DClasslike, ClasslikeExtension]
-
-case class IsInherited(flag: Boolean) extends ExtraProperty[Documentable]:
-  override def getKey = IsInherited
-
-object IsInherited extends BaseKey[Documentable, IsInherited]

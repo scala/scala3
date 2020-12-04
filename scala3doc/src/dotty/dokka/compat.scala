@@ -28,6 +28,12 @@ type JMap[K, V] = java.util.Map[K, V]
 type JHashMap[K, V] = java.util.HashMap[K, V]
 type JMapEntry[K, V] = java.util.Map.Entry[K, V]
 
+private val emptyListInst = JList()
+def JNil[A] = emptyListInst.asInstanceOf[JList[A]]
+
+private val emptyMapInst = JMap()
+def emptyJMap[A, B] = emptyMapInst.asInstanceOf[JMap[A, B]]
+
 type DRI = org.jetbrains.dokka.links.DRI
 val topLevelDri = org.jetbrains.dokka.links.DRI.Companion.getTopLevel
 

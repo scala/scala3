@@ -91,10 +91,11 @@ class SymOps[Q <: Quotes](val q: Q):
     def isLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
 
     def extendedSymbol: Option[ValDef] =
-      Option.when(sym.isExtensionMethod)(
-        if(isLeftAssoc(sym)) sym.tree.asInstanceOf[DefDef].paramss(0)(0)
-        else sym.tree.asInstanceOf[DefDef].paramss(1)(0)
-      )
+      Option.when(sym.isExtensionMethod){
+        val params = sym.tree.asInstanceOf[DefDef].paramss
+        if isLeftAssoc(sym) || params.size == 1 then params(0)(0)
+        else params(1)(0)
+      }
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri: DRI =

@@ -75,8 +75,8 @@ case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
     override def getOfflineMode: Boolean = false
     override def getFailOnWarning: Boolean = false
     override def getSourceSets: JList[DokkaSourceSet] = JList(mkSourceSet)
-    override def getModules: JList[DokkaConfiguration.DokkaModuleDescription] = JList()
-    override def getPluginsClasspath: JList[File] = JList()
+    override def getModules: JList[DokkaConfiguration.DokkaModuleDescription] = JNil
+    override def getPluginsClasspath: JList[File] = JNil
     override def getModuleName(): String = "ModuleName"
     override def getModuleVersion(): String = ""
 
@@ -94,13 +94,13 @@ case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
       )(using compilerContext))
 
     override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] =
-      JList()
+      JNil
 
     val mkSourceSet: DokkaSourceSet =
       new DokkaSourceSetImpl(
         /*displayName=*/ args.name,
         /*sourceSetID=*/ new DokkaSourceSetID(args.name, "main"),
-        /*classpath=*/ JList(),
+        /*classpath=*/ JNil,
         /*sourceRoots=*/ JSet(),
         /*dependentSourceSets=*/ JSet(),
         /*samples=*/ JSet(),

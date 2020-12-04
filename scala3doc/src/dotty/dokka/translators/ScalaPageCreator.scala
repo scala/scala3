@@ -34,47 +34,37 @@ class ScalaPageCreator(
 
   override def pageForModule(m: DModule): ModulePageNode = super.pageForModule(m)
 
-  private def updatePageNameForMember(page: PageNode, p: Member) =
-    val name = page.getName
-
-    page.modified(name, page.getChildren)
-
-  private def pagesForMembers(p: Member): Seq[PageNode] =
-    p.allMembers.filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty).collect {
-      case f: DFunction => updatePageNameForMember(pageForFunction(f), f)
-      case c: DClass => updatePageNameForMember(pageForDClass(c), c)
-    }
+  private def pagesForMembers(member: Member): JList[PageNode] =
+    val (all, _) = member.membersBy(_.kind.isInstanceOf[Classlike])
+    all.map(pageForMember(_)).asJava
 
   override def pageForPackage(p: DPackage): PackagePageNode =
-    val originalPage = super.pageForPackage(p)
-    val originalPages: Seq[PageNode] = originalPage.getChildren.asScala.toList
-    val allPage: Seq[PageNode] = originalPages ++ pagesForMembers(p)
-    originalPage.modified(p.getName, allPage.asJava)
-
-  override def pageForClasslike(c: DClasslike): ClasslikePageNode = c match {
-      case clazz: DClass => pageForDClass(clazz)
-      case other => throw UnsupportedOperationException("Only DClass classlike is supported.")
-    }
-
-  def pageForDClass(c: DClass): ClasslikePageNode = {
-    val constructors = c.getConstructors
-
-    val ext = c.get(ClasslikeExtension)
-
-    val name = if c.kind == Kind.Object && ext.companion.isDefined then c.getName + "$" else c.getName
-
-    ClasslikePageNode(
-      name,
-      contentForClasslike(c),
-      JSet(c.getDri),
-      c,
-      (constructors.asScala.map(pageForFunction) ++
-      c.getClasslikes.asScala.map(pageForClasslike) ++
-      c.getFunctions.asScala.map(pageForFunction) ++
-      pagesForMembers(c)).asJava,
-      List.empty.asJava
+    PackagePageNode(
+      p.name,
+      contentForPackage(p),
+      JSet(p.dri),
+      p,
+      pagesForMembers(p),
+      JNil
     )
 
+  override def pageForClasslike(c: DClasslike): ClasslikePageNode = ???
+
+  def pageForMember(c: Member): ClasslikePageNode = {
+    val name =
+      if c.kind == Kind.Object && c.companion.isDefined then
+        c.getName + "$"
+      else c.getName
+
+    // Hack, need our own page!
+    ClasslikePageNode(
+      name,
+      contentForClass(c.asInstanceOf[DClass]),
+      JSet(c.getDri),
+      c.asInstanceOf[DClass],
+      JNil,
+      JNil,
+    ).modified(name, pagesForMembers(c)) // We need override default page
   }
 
   override def pageForFunction(f: DFunction) = super.pageForFunction(f)
@@ -114,10 +104,8 @@ class ScalaPageCreator(
     contentBuilder.contentForDocumentable(p, buildBlock = buildBlock)
   }
 
-  override def contentForClasslike(c: DClasslike) = c match {
-    case d: DClass => contentForClass(d)
-    case other => throw UnsupportedOperationException("Only DClass classlike is supported.")
-  }
+  override def contentForClasslike(c: DClasslike) = throw UnsupportedOperationException(
+      s"Unable to generate DClasslike using default dokka method for $c!")
 
   def contentForClass(c: DClass) = {
     def buildBlock = (builder: DocBuilder) => builder
@@ -138,26 +126,6 @@ class ScalaPageCreator(
     contentBuilder.contentForDocumentable(c, buildBlock = buildBlock)
   }
 
-  override def contentForMember(d: Documentable) = {
-    def buildBlock = (builder: DocBuilder) => builder
-      .group(kind = ContentKind.Cover){ bd => bd.cover(d.getName)() }
-      .divergentGroup(
-        ContentDivergentGroup.GroupID("member")
-      ) { divbdr => divbdr
-        .instance(Set(d.getDri), sourceSets = d.getSourceSets.asScala.toSet) { insbdr => insbdr
-          .before(){ bbdr => bbdr
-            .contentForDescription(d)
-            .contentForComments(d)
-          }
-          .divergent(kind = ContentKind.Symbol) { dbdr => dbdr
-            .signature(d)
-          }
-        }
-      }
-    contentBuilder.contentForDocumentable(d, buildBlock = buildBlock)
-  }
-
-  override def contentForFunction(f: DFunction) = contentForMember(f)
 
   extension (b: DocBuilder)
     def descriptionIfNotEmpty(d: Documentable): DocBuilder = {
@@ -294,11 +262,7 @@ class ScalaPageCreator(
               })
           }
 
-          val withCompanion = d match {
-            case d: DClass =>
-              val ext = d.get(ClasslikeExtension)
-              val co = ext.companion
-              co.fold(withNamedTags) { co => withNamedTags
+          val withCompanion = d.companion.fold(withNamedTags){ co => withNamedTags
                 .cell(sourceSets = d.getSourceSets.asScala.toSet){ b => b
                   .text("Companion")
                 }
@@ -312,11 +276,9 @@ class ScalaPageCreator(
                   )
                 }
               }
-            case _ => withNamedTags
-          }
 
           val withExtensionInformation = d.kind match {
-            case Kind.Extension(on) =>
+            case Kind.Extension(on, _) =>
               val sourceSets = d.getSourceSets.asScala.toSet
               withCompanion.cell(sourceSets = sourceSets)(_.text("Extension"))
                 .cell(sourceSets = sourceSets)(_.text(s"This function is an extension on (${on.name}: ").inlineSignature(d, on.signature).text(")"))
@@ -335,8 +297,8 @@ class ScalaPageCreator(
 
           d.deprecated match
             case None => withSource
-            case Some(a) => 
-              extension (b: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) 
+            case Some(a) =>
+              extension (b: ScalaPageContentBuilder#ScalaDocumentableContentBuilder)
                 def annotationParameter(p: Option[Annotation.AnnotationParameter]): ScalaPageContentBuilder#ScalaDocumentableContentBuilder =
                   p match
                     case Some(Annotation.PrimitiveParameter(_, value)) => b.text(value.stripPrefix("\"").stripSuffix("\""))
@@ -358,21 +320,20 @@ class ScalaPageCreator(
     def contentForScope(s: Documentable & WithScope & WithExtraProperties[_]) =
       def groupExtensions(extensions: Seq[Member]): Seq[DocumentableSubGroup] =
         extensions.groupBy(_.kind).map {
-          case (Kind.Extension(on), members) =>
+          case (Kind.Extension(on, _), members) =>
             val signature = Signature(s"extension (${on.name}: ") join on.signature join Signature(")")
             DocumentableSubGroup(signature, members.toSeq)
           case other => sys.error(s"unexpected value: $other")
         }.toSeq
 
-
-      val (definedMethods, inheritedMethods) = s.membersByWithInheritancePartition(_.kind == Kind.Def)
-      val (definedFields, inheritedFiles) = s.membersByWithInheritancePartition(m => m.kind == Kind.Val || m.kind == Kind.Var)
-      val (definedClasslikes, inheritedClasslikes) = s.membersByWithInheritancePartition(m => m.kind.isInstanceOf[Classlike])
-      val (definedTypes, inheritedTypes) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Type])
-      val (definedGivens, inheritedGives) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Given])
-      val (definedExtensions, inheritedExtensions) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Extension])
-      val (definedExports, inheritedExports) = s.membersByWithInheritancePartition(_.kind == Kind.Exported)
-      val (definedImplicits, inheritedImplicits) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Implicit])
+      val (definedMethods, inheritedMethods) = s.membersBy(_.kind.isInstanceOf[Kind.Def]).byInheritance
+      val (definedFields, inheritedFiles) = s.membersBy(m => m.kind == Kind.Val || m.kind == Kind.Var).byInheritance
+      val (definedClasslikes, inheritedClasslikes) = s.membersBy(m => m.kind.isInstanceOf[Classlike]).byInheritance
+      val (definedTypes, inheritedTypes) = s.membersBy(_.kind.isInstanceOf[Kind.Type]).byInheritance
+      val (definedGivens, inheritedGives) = s.membersBy(_.kind.isInstanceOf[Kind.Given]).byInheritance
+      val (definedExtensions, inheritedExtensions) = s.membersBy(_.kind.isInstanceOf[Kind.Extension]).byInheritance
+      val (definedExports, inheritedExports) = s.membersBy(_.kind.isInstanceOf[Kind.Exported]).byInheritance
+      val (definedImplicits, inheritedImplicits) = s.membersBy(_.kind.isInstanceOf[Kind.Implicit]).byInheritance
 
       b
         .contentForComments(s)
@@ -416,7 +377,7 @@ class ScalaPageCreator(
 
     def contentForConstructors(c: DClass) =
        b.documentableTab("Constructors")(
-        DocumentableGroup(None, c.getConstructors.asScala.toList)
+        DocumentableGroup(None, c.membersBy(_.kind.isInstanceOf[Kind.Constructor])._1)
       )
 
 

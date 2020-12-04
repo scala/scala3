@@ -120,8 +120,9 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val implicitMembersExtensionTransformer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
-      .fromRecipe(ImplicitMembersExtensionTransformer(_))
-      .name("implicitMembersExtensionTransformer")
+      .fromRecipe { case ctx @ given DokkaContext =>
+        new ImplicitMembersExtensionTransformer
+      }.name("implicitMembersExtensionTransformer")
   )
 
   val customDocumentationProvider = extend(

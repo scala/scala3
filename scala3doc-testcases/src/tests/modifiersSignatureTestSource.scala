@@ -24,6 +24,9 @@ abstract class Methods()
 
   implicit def toImplicitString(): String
    = "asd"
+
+  inline def method2(inline name: String): String
+  = "ala"
 }
 
 class ImplementedMethods() extends Methods/*<-*/()/*->*/

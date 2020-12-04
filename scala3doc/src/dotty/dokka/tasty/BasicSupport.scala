@@ -48,4 +48,6 @@ trait BasicSupport:
     def getAnnotations(): List[Annotation] =
       sym.annotations.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse
 
+    def isLeftAssoc: Boolean = !sym.name.endsWith(":")
+
 

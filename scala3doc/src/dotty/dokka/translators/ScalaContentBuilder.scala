@@ -346,7 +346,7 @@ class ScalaPageContentBuilder(
     } else this
 
     def list[T](
-      elements: List[T],
+      elements: Seq[T],
       prefix: String = "",
       suffix: String = "",
       separator: String = ", ",
@@ -487,7 +487,7 @@ class ScalaPageContentBuilder(
         val originInfo = documentable.origin match {
           case Origin.ImplicitlyAddedBy(name, dri) => Signature("Implicitly added by ", SLink(name, dri))
           case Origin.ExtensionFrom(name, dri) => Signature("Extension method from ", SLink(name, dri))
-          case Origin.ExportedFrom(name, dri) => 
+          case Origin.ExportedFrom(name, dri) =>
             val signatureName: String | dotty.dokka.model.api.Link = dri match
               case Some(dri: DRI) => SLink(name, dri)
               case None => name

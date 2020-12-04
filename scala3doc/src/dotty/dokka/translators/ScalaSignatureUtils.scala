@@ -2,7 +2,7 @@ package dotty.dokka
 
 import org.jetbrains.dokka.base.signatures._
 import org.jetbrains.dokka.base.translators.documentables.PageContentBuilder
-import org.jetbrains.dokka.model._
+import org.jetbrains.dokka.model.{ TypeParameter => _, _ }
 import org.jetbrains.dokka.model.properties.WithExtraProperties
 import org.jetbrains.dokka.pages._
 import collection.JavaConverters._
@@ -12,6 +12,7 @@ case class InlineSignatureBuilder(names: Signature = Nil, preName: Signature = N
   override def text(str: String): SignatureBuilder = copy(names = str +: names)
   override def name(str: String, dri: DRI): SignatureBuilder = copy(names = Nil, preName = names)
   override def driLink(text: String, dri: DRI): SignatureBuilder = copy(names = Link(text, dri) +: names)
+  override def signature(s: Signature): SignatureBuilder = copy(names = s.reverse ++ names)
 
 object InlineSignatureBuilder:
   def typeSignatureFor(d: Documentable): Signature =
@@ -21,14 +22,16 @@ trait SignatureBuilder extends ScalaSignatureUtils {
   def text(str: String): SignatureBuilder
   def name(str: String, dri: DRI) = driLink(str, dri)
   def driLink(text: String, dri: DRI): SignatureBuilder
-
-  def signature(s: Signature) = s.foldLeft(this){ (b, e) => e match
-    case Link(name, dri) => b.driLink(name, dri)
-    case txt: String => b.text(txt)
+  def signature(s: Signature): SignatureBuilder = s.foldLeft(this){
+    case (bld, s: String) => bld.text(s)
+    case (bld, Link(text: String, dri: DRI)) => bld.driLink(text, dri)
   }
 
+  // Support properly once we rewrite signature builder
+  def memberName(name: String, dri: DRI) = text(name)
+
   def list[E](
-      elements: List[E],
+      elements: Seq[E],
       prefix: String = "",
       suffix: String = "",
       separator: String = ", ",
@@ -43,7 +46,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
   def annotationsBlock(d: Member): SignatureBuilder =
       d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation)}
 
-    def annotationsInline(d: Documentable with WithExtraProperties[_]): SignatureBuilder =
+    def annotationsInline(d: Parameter): SignatureBuilder =
         d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation) }
 
     private def buildAnnotation(a: Annotation): SignatureBuilder =
@@ -68,51 +71,28 @@ trait SignatureBuilder extends ScalaSignatureUtils {
         addParameterName(name).text(value)
     }
 
-    def modifiersAndVisibility(t: Documentable with WithAbstraction with WithVisibility with WithExtraProperties[_], kind: String) =
-      import org.jetbrains.dokka.model.properties._
-      val extras = t.getExtra.getMap()
+    def modifiersAndVisibility(t: Member, kind: String) =
       val (prefixMods, suffixMods) = t.modifiers.partition(_.prefix)
       val all = prefixMods.map(_.name) ++ Seq(t.visibility.asSignature) ++ suffixMods.map(_.name)
 
       text(all.toSignatureString()).text(kind + " ")
 
-    def typeSignature(b: Projection): SignatureBuilder = b match {
-      case tc: TypeConstructor =>
-        tc.getProjections.asScala.foldLeft(this) { (bdr, elem) => elem match {
-          case text: UnresolvedBound => bdr.text(text.getName)
-          case link: TypeParameter =>
-            bdr.driLink(link.getName, link.getDri)
-          case other =>
-            bdr.text(s"TODO($other)")
+    def generics(on: Seq[TypeParameter]) = list(on.toList, "[", "]"){ (bdr, e) =>
+      bdr.text(e.variance).memberName(e.name, e.dri).signature(e.signature)
+    }
+
+    def functionParameters(params: Seq[Seq[Parameter]]) =
+      if params.isEmpty then this.text("")
+      else if params == List(Nil) then this.text("()")
+      else this.list(params, separator = ""){ (bld, pList) =>
+        bld.list(pList, "(", ")"){ (bld, p) =>
+            bld.annotationsInline(p)
+              .text(p.modifiers)
+              .memberName(p.name, p.dri)
+              .text(": ")
+              .signature(p.signature)
         }
       }
-      case other =>
-        text(s"TODO: $other")
-    }
-
-    def generics(on: WithGenerics) = list(on.getGenerics.asScala.toList, "[", "]"){ (bdr, e) =>
-      val bldr = bdr.text(e.getName)
-      e.getBounds.asScala.foldLeft(bldr)( (b, bound) => b.typeSignature(bound))
-    }
-
-    def functionParameters(method: DFunction) =
-      val methodExtension = method.get(MethodExtension)
-      val receiverPos = if method.isRightAssociative() then methodExtension.parametersListSizes(0) else 0
-      val (bldr, index) = methodExtension.parametersListSizes.foldLeft(this, 0){
-        case ((builder, from), size) =>
-          val toIndex = from + size
-          if from == toIndex then (builder.text("()"), toIndex)
-          else if !method.kind.isInstanceOf[Kind.Extension] || from != receiverPos then
-            val b = builder.list(method.getParameters.subList(from, toIndex).asScala.toList, "(", ")"){ (bdr, param) => bdr
-              .annotationsInline(param)
-              .text(param.getName)
-              .text(": ")
-              .typeSignature(param.getType)
-            }
-            (b, toIndex)
-          else (builder, toIndex)
-      }
-      bldr
 }
 
 trait ScalaSignatureUtils:

@@ -20,7 +20,7 @@ import collection.JavaConverters._
 import org.jetbrains.dokka.model.doc.DocumentationNode
 import org.jetbrains.dokka.model.properties._
 
-private [model] case class MemberExtension(
+case class MemberExtension(
   visibility: Visibility,
   modifiers: Seq[dotty.dokka.model.api.Modifier],
   kind: Kind,
@@ -40,7 +40,8 @@ case class CompositeMemberExtension(
   members : Seq[Member] = Nil,
   directParents: Seq[Signature] = Nil,
   parents: Seq[LinkToType] = Nil,
-  knownChildren: Seq[LinkToType] = Nil
+  knownChildren: Seq[LinkToType] = Nil,
+  companion: Option[DRI] = None,
 ) extends ExtraProperty[Documentable]:
   override def getKey = CompositeMemberExtension
 
