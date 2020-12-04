@@ -25,7 +25,7 @@ package object tools {
     throw new UnsupportedOperationException(methodName)
 
   /** Forward-ported from the explicit-nulls branch. */
-  extension [T](x: T | Null):
+  extension [T](x: T | Null)
 
     /** Assert `x` is non null and strip `Null` from type */
     inline def nn: T =

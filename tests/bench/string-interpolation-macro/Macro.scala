@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Macro {
 
-  extension (inline sc: StringContext):
+  extension (inline sc: StringContext)
     inline def x(inline args: Int*): String = ${ code('sc, 'args) }
 
   def code(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Int]])(using Quotes): Expr[String] =

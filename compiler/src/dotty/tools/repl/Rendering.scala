@@ -142,7 +142,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
 object Rendering {
 
-  extension (s: Symbol):
+  extension (s: Symbol)
     def showUser(using Context): String = {
       val printer = new ReplPrinter(ctx)
       val text = printer.dclText(s)

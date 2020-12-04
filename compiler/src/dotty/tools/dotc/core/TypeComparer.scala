@@ -2571,7 +2571,7 @@ object TypeComparer {
      */
     val Fresh: Repr = 4
 
-    extension (approx: Repr):
+    extension (approx: Repr)
       def low: Boolean = (approx & LoApprox) != 0
       def high: Boolean = (approx & HiApprox) != 0
       def addLow: Repr = approx | LoApprox

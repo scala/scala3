@@ -15,7 +15,7 @@ object LinearMap:
   def empty[K <: AnyRef, V >: Null <: AnyRef]: LinearMap[K, V] =
     immutable.Map.empty[K, V]
 
-  extension [K <: AnyRef, V >: Null <: AnyRef](m: LinearMap[K, V]):
+  extension [K <: AnyRef, V >: Null <: AnyRef](m: LinearMap[K, V])
 
     def lookup(key: K): V /*| Null*/ = (m: @unchecked) match
       case m: immutable.AbstractMap[K, V] @unchecked =>

@@ -47,7 +47,7 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
   def fromInitialState[A](op: State => A): A =
     op(initialState)
 
-  extension [A](state: State):
+  extension [A](state: State)
     def andThen(op: State => A): A = op(state)
 
   def scripts(path: String): Array[JFile] = {

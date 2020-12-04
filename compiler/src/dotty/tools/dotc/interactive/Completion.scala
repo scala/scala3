@@ -241,7 +241,7 @@ object Completion {
             }
           }
 
-      // There are four possible ways for an extension method to be applicable:
+      // There are four possible ways for an extension method to be applicable
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
       val extMethodsInScope =
