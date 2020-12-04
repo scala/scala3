@@ -45,6 +45,6 @@ trait BasicSupport:
       path.map(TastyDocumentableSource(_, sym.pos.startLine))
 
     def getAnnotations(): List[Annotation] =
-      sym.annots.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse
+      sym.annotations.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse
 
 

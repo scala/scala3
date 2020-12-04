@@ -2356,7 +2356,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait AnnotatedTypeMethods:
       extension (self: AnnotatedType):
         def underlying: TypeRepr
-        def annot: Term
+        def annotation: Term
       end extension
     end AnnotatedTypeMethods
 
@@ -3083,8 +3083,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         */
         def tree: Tree
 
+        /** Is the annotation defined with `annotSym` attached to this symbol? */
+        def hasAnnotation(annotSym: Symbol): Boolean
+
+        /** Get the annotation defined with `annotSym` attached to this symbol */
+        def getAnnotation(annotSym: Symbol): Option[Term]
+
         /** Annotations attached to this symbol */
-        def annots: List[Term]
+        def annotations: List[Term]
 
         /** Does this symbol come from a currently compiled source file? */
         def isDefinedInCurrentRun: Boolean

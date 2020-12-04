@@ -370,7 +370,7 @@ object SourceCode {
         this += "throw "
         printTree(expr)
 
-      case Apply(fn, args) if fn.symbol == Symbol.requiredMethod("scala.internal.Quoted.exprQuote") =>
+      case Apply(fn, args) if fn.symbol == Symbol.requiredMethod("scala.quoted.runtime.quote") =>
         args.head match {
           case Block(stats, expr) =>
             this += "'{"
@@ -385,12 +385,7 @@ object SourceCode {
             this += "}"
         }
 
-      case TypeApply(fn, args) if fn.symbol == Symbol.requiredMethod("scala.internal.Quoted.typeQuote") =>
-        this += "'["
-        printTypeTree(args.head)
-        this += "]"
-
-      case Apply(fn, arg :: Nil) if fn.symbol == Symbol.requiredMethod("scala.internal.Quoted.exprSplice") =>
+      case Apply(fn, arg :: Nil) if fn.symbol == Symbol.requiredMethod("scala.quoted.runtime.splice") =>
         this += "${"
         printTree(arg)
         this += "}"
@@ -594,8 +589,9 @@ object SourceCode {
 
     private def printFlatBlock(stats: List[Statement], expr: Term)(using elideThis: Option[Symbol]): this.type = {
       val (stats1, expr1) = flatBlock(stats, expr)
+      val splicedTypeAnnot = Symbol.requiredClass("scala.quoted.runtime.SplicedType").primaryConstructor
       val stats2 = stats1.filter {
-        case tree: TypeDef => !tree.symbol.annots.exists(_.symbol.maybeOwner == Symbol.requiredClass("scala.internal.Quoted.quoteTypeTag"))
+        case tree: TypeDef => !tree.symbol.hasAnnotation(splicedTypeAnnot)
         case _ => true
       }
       if (stats2.isEmpty) {
@@ -1271,7 +1267,7 @@ object SourceCode {
     }
 
     private def printDefAnnotations(definition: Definition)(using elideThis: Option[Symbol]): this.type = {
-      val annots = definition.symbol.annots.filter {
+      val annots = definition.symbol.annotations.filter {
         case Annotation(annot, _) =>
           val sym = annot.tpe.typeSymbol
           sym != Symbol.requiredClass("scala.forceInline") &&
