@@ -202,7 +202,7 @@ object Summarization {
       case _: TypeDef =>
         Summary.empty
 
-      case _: Import =>
+      case _: Import | _: Export =>
         Summary.empty
 
       case _ =>
