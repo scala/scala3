@@ -204,10 +204,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Tree` available without any imports */
-    given TreeMethods: TreeMethods = TreeMethodsImpl
-
-    /** Implementation of extension methods on `Tree` */
-    protected val TreeMethodsImpl: TreeMethods
+    given TreeMethods: TreeMethods
 
     /** Extension methods of `Tree` */
     trait TreeMethods {
@@ -253,10 +250,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type PackageClause <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `PackageClause` */
-    given PackageClauseTypeTest: TypeTest[Tree, PackageClause] = PackageClauseTypeTestImpl
-
-    /** Implementation of `PackageClauseTypeTest` */
-    protected val PackageClauseTypeTestImpl: TypeTest[Tree, PackageClause]
+    given PackageClauseTypeTest: TypeTest[Tree, PackageClause]
 
     /** Module object of `type PackageClause`  */
     val PackageClause: PackageClauseModule
@@ -269,10 +263,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `PackageClause` available without any imports */
-    given PackageClauseMethods: PackageClauseMethods = PackageClauseMethodsImpl
-
-    /** Implementation of extension methods on `PackageClause` */
-    protected val PackageClauseMethodsImpl: PackageClauseMethods
+    given PackageClauseMethods: PackageClauseMethods
 
     /** Extension methods of `PackageClause` */
     trait PackageClauseMethods:
@@ -286,10 +277,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Import <: Statement
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Import` */
-    given ImportTypeTest: TypeTest[Tree, Import] = ImportTypeTestImpl
-
-    /** Implementation of `ImportTypeTest` */
-    protected val ImportTypeTestImpl: TypeTest[Tree, Import]
+    given ImportTypeTest: TypeTest[Tree, Import]
 
     /** Module object of `type Import`  */
     val Import: ImportModule
@@ -302,10 +290,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Import` available without any imports */
-    given ImportMethods: ImportMethods = ImportMethodsImpl
-
-    /** Implementation of extension methods on `Import` */
-    protected val ImportMethodsImpl: ImportMethods
+    given ImportMethods: ImportMethods
 
     /** Extension methods of `Import` */
     trait ImportMethods:
@@ -320,18 +305,21 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     type Export <: Statement
 
-    given TypeTest[Tree, Export] = ExportTypeTest
-    protected val ExportTypeTest: TypeTest[Tree, Export]
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Export` */
+    given ExportTypeTest: TypeTest[Tree, Export]
 
+    /** Module object of `type Export`  */
     val Export: ExportModule
 
+    /** Methods of the module object `val Export` */
     trait ExportModule { this: Export.type =>
       def unapply(tree: Export): Option[(Term, List[Selector])]
     }
 
-    given ExportMethods: ExportMethods = ExportMethodsImpl
-    protected val ExportMethodsImpl: ExportMethods
+    /** Makes extension methods on `Export` available without any imports */
+    given ExportMethods: ExportMethods
 
+    /** Extension methods of `Export` */
     trait ExportMethods:
       extension (self: Export):
         def expr: Term
@@ -343,10 +331,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Statement <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Statement` */
-    given StatementTypeTest: TypeTest[Tree, Statement] = StatementTypeTestImpl
-
-    /** Implementation of `StatementTypeTest` */
-    protected val StatementTypeTestImpl: TypeTest[Tree, Statement]
+    given StatementTypeTest: TypeTest[Tree, Statement]
 
     // ----- Definitions ----------------------------------------------
 
@@ -354,10 +339,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Definition <: Statement
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Definition` */
-    given DefinitionTypeTest: TypeTest[Tree, Definition] = DefinitionTypeTestImpl
-
-    /** Implementation of `DefinitionTypeTest` */
-    protected val DefinitionTypeTestImpl: TypeTest[Tree, Definition]
+    given DefinitionTypeTest: TypeTest[Tree, Definition]
 
     /** Module object of `type Definition`  */
     val Definition: DefinitionModule
@@ -366,10 +348,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait DefinitionModule { this: Definition.type => }
 
     /** Makes extension methods on `Definition` available without any imports */
-    given DefinitionMethods: DefinitionMethods = DefinitionMethodsImpl
-
-    /** Implementation of extension methods on `Definition` */
-    protected val DefinitionMethodsImpl: DefinitionMethods
+    given DefinitionMethods: DefinitionMethods
 
     /** Extension methods of `Definition` */
     trait DefinitionMethods:
@@ -384,10 +363,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type ClassDef <: Definition
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ClassDef` */
-    given ClassDefTypeTest: TypeTest[Tree, ClassDef] = ClassDefTypeTestImpl
-
-    /** Implementation of `ClassDefTypeTest` */
-    protected val ClassDefTypeTestImpl: TypeTest[Tree, ClassDef]
+    given ClassDefTypeTest: TypeTest[Tree, ClassDef]
 
     /** Module object of `type ClassDef`  */
     val ClassDef: ClassDefModule
@@ -400,10 +376,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `ClassDef` available without any imports */
-    given ClassDefMethods: ClassDefMethods = ClassDefMethodsImpl
-
-    /** Implementation of extension methods on `ClassDef` */
-    protected val ClassDefMethodsImpl: ClassDefMethods
+    given ClassDefMethods: ClassDefMethods
 
     /** Extension methods of `ClassDef` */
     trait ClassDefMethods:
@@ -422,10 +395,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type DefDef <: Definition
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `DefDef` */
-    given DefDefTypeTest: TypeTest[Tree, DefDef] = DefDefTypeTestImpl
-
-    /** Implementation of `DefDefTypeTest` */
-    protected val DefDefTypeTestImpl: TypeTest[Tree, DefDef]
+    given DefDefTypeTest: TypeTest[Tree, DefDef]
 
     /** Module object of `type DefDef`  */
     val DefDef: DefDefModule
@@ -438,10 +408,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `DefDef` available without any imports */
-    given DefDefMethods: DefDefMethods = DefDefMethodsImpl
-
-    /** Implementation of extension methods on `DefDef` */
-    protected val DefDefMethodsImpl: DefDefMethods
+    given DefDefMethods: DefDefMethods
 
     /** Extension methods of `DefDef` */
     trait DefDefMethods:
@@ -459,10 +426,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type ValDef <: Definition
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValDef` */
-    given ValDefTypeTest: TypeTest[Tree, ValDef] = ValDefTypeTestImpl
-
-    /** Implementation of `ValDefTypeTest` */
-    protected val ValDefTypeTestImpl: TypeTest[Tree, ValDef]
+    given ValDefTypeTest: TypeTest[Tree, ValDef]
 
     /** Module object of `type ValDef`  */
     val ValDef: ValDefModule
@@ -485,10 +449,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `ValDef` available without any imports */
-    given ValDefMethods: ValDefMethods = ValDefMethodsImpl
-
-    /** Implementation of extension methods on `ValDef` */
-    protected val ValDefMethodsImpl: ValDefMethods
+    given ValDefMethods: ValDefMethods
 
     /** Extension methods of `ValDef` */
     trait ValDefMethods:
@@ -504,10 +465,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeDef <: Definition
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeDef` */
-    given TypeDefTypeTest: TypeTest[Tree, TypeDef] = TypeDefTypeTestImpl
-
-    /** Implementation of `TypeDefTypeTest` */
-    protected val TypeDefTypeTestImpl: TypeTest[Tree, TypeDef]
+    given TypeDefTypeTest: TypeTest[Tree, TypeDef]
 
     /** Module object of `type TypeDef`  */
     val TypeDef: TypeDefModule
@@ -520,10 +478,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeDef` available without any imports */
-    given TypeDefMethods: TypeDefMethods = TypeDefMethodsImpl
-
-    /** Implementation of extension methods on `TypeDef` */
-    protected val TypeDefMethodsImpl: TypeDefMethods
+    given TypeDefMethods: TypeDefMethods
 
     /** Extension methods of `TypeDef` */
     trait TypeDefMethods:
@@ -539,10 +494,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Term <: Statement
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Term` */
-    given TermTypeTest: TypeTest[Tree, Term] = TermTypeTestImpl
-
-    /** Implementation of `TermTypeTest` */
-    protected val TermTypeTestImpl: TypeTest[Tree, Term]
+    given TermTypeTest: TypeTest[Tree, Term]
 
     /** Module object of `type Term`  */
     val Term: TermModule
@@ -567,10 +519,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Term` available without any imports */
-    given TermMethods: TermMethods = TermMethodsImpl
-
-    /** Implementation of extension methods on `Term` */
-    protected val TermMethodsImpl: TermMethods
+    given TermMethods: TermMethods
 
     /** Extension methods of `Term` */
     trait TermMethods {
@@ -625,10 +574,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Ref <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Ref` */
-    given RefTypeTest: TypeTest[Tree, Ref] = RefTypeTestImpl
-
-    /** Implementation of `RefTypeTest` */
-    protected val RefTypeTestImpl: TypeTest[Tree, Ref]
+    given RefTypeTest: TypeTest[Tree, Ref]
 
     /** Module object of `type Ref`  */
     val Ref: RefModule
@@ -660,10 +606,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Ident <: Ref
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Ident` */
-    given IdentTypeTest: TypeTest[Tree, Ident] = IdentTypeTestImpl
-
-    /** Implementation of `IdentTypeTest` */
-    protected val IdentTypeTestImpl: TypeTest[Tree, Ident]
+    given IdentTypeTest: TypeTest[Tree, Ident]
 
     /** Module object of `type Ident`  */
     val Ident: IdentModule
@@ -679,10 +622,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Ident` available without any imports */
-    given IdentMethods: IdentMethods = IdentMethodsImpl
-
-    /** Implementation of extension methods on `Ident` */
-    protected val IdentMethodsImpl: IdentMethods
+    given IdentMethods: IdentMethods
 
     /** Extension methods of `Ident` */
     trait IdentMethods:
@@ -695,10 +635,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Select <: Ref
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Select` */
-    given SelectTypeTest: TypeTest[Tree, Select] = SelectTypeTestImpl
-
-    /** Implementation of `SelectTypeTest` */
-    protected val SelectTypeTestImpl: TypeTest[Tree, Select]
+    given SelectTypeTest: TypeTest[Tree, Select]
 
     /** Module object of `type Select`  */
     val Select: SelectModule
@@ -729,10 +666,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Select` available without any imports */
-    given SelectMethods: SelectMethods = SelectMethodsImpl
-
-    /** Implementation of extension methods on `Select` */
-    protected val SelectMethodsImpl: SelectMethods
+    given SelectMethods: SelectMethods
 
     /** Extension methods of `Select` */
     trait SelectMethods:
@@ -744,10 +678,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end SelectMethods
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Literal` */
-    given LiteralTypeTest: TypeTest[Tree, Literal] = LiteralTypeTestImpl
-
-    /** Implementation of `LiteralTypeTest` */
-    protected val LiteralTypeTestImpl: TypeTest[Tree, Literal]
+    given LiteralTypeTest: TypeTest[Tree, Literal]
 
     /** Tree representing a literal value in the source code */
     type Literal <: Term
@@ -768,10 +699,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Literal` available without any imports */
-    given LiteralMethods: LiteralMethods = LiteralMethodsImpl
-
-    /** Implementation of extension methods on `Literal` */
-    protected val LiteralMethodsImpl: LiteralMethods
+    given LiteralMethods: LiteralMethods
 
     /** Extension methods of `Literal` */
     trait LiteralMethods:
@@ -784,10 +712,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type This <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `This` */
-    given ThisTypeTest: TypeTest[Tree, This] = ThisTypeTestImpl
-
-    /** Implementation of `ThisTypeTest` */
-    protected val ThisTypeTestImpl: TypeTest[Tree, This]
+    given ThisTypeTest: TypeTest[Tree, This]
 
     /** Module object of `type This`  */
     val This: ThisModule
@@ -805,10 +730,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `This` available without any imports */
-    given ThisMethods: ThisMethods = ThisMethodsImpl
-
-    /** Implementation of extension methods on `This` */
-    protected val ThisMethodsImpl: ThisMethods
+    given ThisMethods: ThisMethods
 
     /** Extension methods of `This` */
     trait ThisMethods:
@@ -821,10 +743,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type New <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `New` */
-    given NewTypeTest: TypeTest[Tree, New] = NewTypeTestImpl
-
-    /** Implementation of `NewTypeTest` */
-    protected val NewTypeTestImpl: TypeTest[Tree, New]
+    given NewTypeTest: TypeTest[Tree, New]
 
     /** Module object of `type New`  */
     val New: NewModule
@@ -842,10 +761,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `New` available without any imports */
-    given NewMethods: NewMethods = NewMethodsImpl
-
-    /** Implementation of extension methods on `New` */
-    protected val NewMethodsImpl: NewMethods
+    given NewMethods: NewMethods
 
     /** Extension methods of `New` */
     trait NewMethods:
@@ -858,10 +774,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type NamedArg <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `NamedArg` */
-    given NamedArgTypeTest: TypeTest[Tree, NamedArg] = NamedArgTypeTestImpl
-
-    /** Implementation of `NamedArgTypeTest` */
-    protected val NamedArgTypeTestImpl: TypeTest[Tree, NamedArg]
+    given NamedArgTypeTest: TypeTest[Tree, NamedArg]
 
     /** Module object of `type NamedArg`  */
     val NamedArg: NamedArgModule
@@ -879,10 +792,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `NamedArg` available without any imports */
-    given NamedArgMethods: NamedArgMethods = NamedArgMethodsImpl
-
-    /** Implementation of extension methods on `NamedArg` */
-    protected val NamedArgMethodsImpl: NamedArgMethods
+    given NamedArgMethods: NamedArgMethods
 
     /** Extension methods of `NamedArg` */
     trait NamedArgMethods:
@@ -896,10 +806,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Apply <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Apply` */
-    given ApplyTypeTest: TypeTest[Tree, Apply] = ApplyTypeTestImpl
-
-    /** Implementation of `ApplyTypeTest` */
-    protected val ApplyTypeTestImpl: TypeTest[Tree, Apply]
+    given ApplyTypeTest: TypeTest[Tree, Apply]
 
     /** Module object of `type Apply`  */
     val Apply: ApplyModule
@@ -917,10 +824,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Apply` available without any imports */
-    given ApplyMethods: ApplyMethods = ApplyMethodsImpl
-
-    /** Implementation of extension methods on `Apply` */
-    protected val ApplyMethodsImpl: ApplyMethods
+    given ApplyMethods: ApplyMethods
 
     /** Extension methods of `Apply` */
     trait ApplyMethods:
@@ -934,10 +838,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeApply <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeApply` */
-    given TypeApplyTypeTest: TypeTest[Tree, TypeApply] = TypeApplyTypeTestImpl
-
-    /** Implementation of `TypeApplyTypeTest` */
-    protected val TypeApplyTypeTestImpl: TypeTest[Tree, TypeApply]
+    given TypeApplyTypeTest: TypeTest[Tree, TypeApply]
 
     /** Module object of `type TypeApply`  */
     val TypeApply: TypeApplyModule
@@ -955,10 +856,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeApply` available without any imports */
-    given TypeApplyMethods: TypeApplyMethods = TypeApplyMethodsImpl
-
-    /** Implementation of extension methods on `TypeApply` */
-    protected val TypeApplyMethodsImpl: TypeApplyMethods
+    given TypeApplyMethods: TypeApplyMethods
 
     /** Extension methods of `TypeApply` */
     trait TypeApplyMethods:
@@ -969,10 +867,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end TypeApplyMethods
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Super` */
-    given SuperTypeTest: TypeTest[Tree, Super] = SuperTypeTestImpl
-
-    /** Implementation of `SuperTypeTest` */
-    protected val SuperTypeTestImpl: TypeTest[Tree, Super]
+    given SuperTypeTest: TypeTest[Tree, Super]
 
     /** Tree representing `super` in the source code */
     type Super <: Term
@@ -993,10 +888,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Super` available without any imports */
-    given SuperMethods: SuperMethods = SuperMethodsImpl
-
-    /** Implementation of extension methods on `Super` */
-    protected val SuperMethodsImpl: SuperMethods
+    given SuperMethods: SuperMethods
 
     /** Extension methods of `Super` */
     trait SuperMethods:
@@ -1008,10 +900,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end SuperMethods
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Typed` */
-    given TypedTypeTest: TypeTest[Tree, Typed] = TypedTypeTestImpl
-
-    /** Implementation of `TypedTypeTest` */
-    protected val TypedTypeTestImpl: TypeTest[Tree, Typed]
+    given TypedTypeTest: TypeTest[Tree, Typed]
 
     /** Tree representing a type ascription `x: T` in the source code */
     type Typed <: Term
@@ -1032,10 +921,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Typed` available without any imports */
-    given TypedMethods: TypedMethods = TypedMethodsImpl
-
-    /** Implementation of extension methods on `Typed` */
-    protected val TypedMethodsImpl: TypedMethods
+    given TypedMethods: TypedMethods
 
     /** Extension methods of `Typed` */
     trait TypedMethods:
@@ -1049,10 +935,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Assign <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Assign` */
-    given AssignTypeTest: TypeTest[Tree, Assign] = AssignTypeTestImpl
-
-    /** Implementation of `AssignTypeTest` */
-    protected val AssignTypeTestImpl: TypeTest[Tree, Assign]
+    given AssignTypeTest: TypeTest[Tree, Assign]
 
     /** Module object of `type Assign`  */
     val Assign: AssignModule
@@ -1070,10 +953,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Assign` available without any imports */
-    given AssignMethods: AssignMethods = AssignMethodsImpl
-
-    /** Implementation of extension methods on `Assign` */
-    protected val AssignMethodsImpl: AssignMethods
+    given AssignMethods: AssignMethods
 
     /** Extension methods of `Assign` */
     trait AssignMethods:
@@ -1087,10 +967,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Block <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Block` */
-    given BlockTypeTest: TypeTest[Tree, Block] = BlockTypeTestImpl
-
-    /** Implementation of `BlockTypeTest` */
-    protected val BlockTypeTestImpl: TypeTest[Tree, Block]
+    given BlockTypeTest: TypeTest[Tree, Block]
 
     /** Module object of `type Block`  */
     val Block: BlockModule
@@ -1108,10 +985,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Block` available without any imports */
-    given BlockMethods: BlockMethods = BlockMethodsImpl
-
-    /** Implementation of extension methods on `Block` */
-    protected val BlockMethodsImpl: BlockMethods
+    given BlockMethods: BlockMethods
 
     /** Extension methods of `Block` */
     trait BlockMethods:
@@ -1122,10 +996,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end BlockMethods
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Closure` */
-    given ClosureTypeTest: TypeTest[Tree, Closure] = ClosureTypeTestImpl
-
-    /** Implementation of `ClosureTypeTest` */
-    protected val ClosureTypeTestImpl: TypeTest[Tree, Closure]
+    given ClosureTypeTest: TypeTest[Tree, Closure]
 
     /** A lambda `(...) => ...` in the source code is represented as
      *  a local method and a closure:
@@ -1152,10 +1023,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Closure` available without any imports */
-    given ClosureMethods: ClosureMethods = ClosureMethodsImpl
-
-    /** Implementation of extension methods on `Closure` */
-    protected val ClosureMethodsImpl: ClosureMethods
+    given ClosureMethods: ClosureMethods
 
     /** Extension methods of `Closure` */
     trait ClosureMethods:
@@ -1202,10 +1070,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `If` */
-    given IfTypeTest: TypeTest[Tree, If] = IfTypeTestImpl
-
-    /** Implementation of `IfTypeTest` */
-    protected val IfTypeTestImpl: TypeTest[Tree, If]
+    given IfTypeTest: TypeTest[Tree, If]
 
     /** Tree representing an if/then/else `if (...) ... else ...` in the source code */
     type If <: Term
@@ -1226,10 +1091,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `If` available without any imports */
-    given IfMethods: IfMethods = IfMethodsImpl
-
-    /** Implementation of extension methods on `If` */
-    protected val IfMethodsImpl: IfMethods
+    given IfMethods: IfMethods
 
     /** Extension methods of `If` */
     trait IfMethods:
@@ -1245,10 +1107,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Match <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Match` */
-    given MatchTypeTest: TypeTest[Tree, Match] = MatchTypeTestImpl
-
-    /** Implementation of `MatchTypeTest` */
-    protected val MatchTypeTestImpl: TypeTest[Tree, Match]
+    given MatchTypeTest: TypeTest[Tree, Match]
 
     /** Module object of `type Match`  */
     val Match: MatchModule
@@ -1266,10 +1125,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Match` available without any imports */
-    given MatchMethods: MatchMethods = MatchMethodsImpl
-
-    /** Implementation of extension methods on `Match` */
-    protected val MatchMethodsImpl: MatchMethods
+    given MatchMethods: MatchMethods
 
     /** Extension methods of `Match` */
     trait MatchMethods:
@@ -1284,10 +1140,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type SummonFrom <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `SummonFrom` */
-    given SummonFromTypeTest: TypeTest[Tree, SummonFrom] = SummonFromTypeTestImpl
-
-    /** Implementation of `SummonFromTypeTest` */
-    protected val SummonFromTypeTestImpl: TypeTest[Tree, SummonFrom]
+    given SummonFromTypeTest: TypeTest[Tree, SummonFrom]
 
     /** Module object of `type SummonFrom`  */
     val SummonFrom: SummonFromModule
@@ -1305,10 +1158,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `SummonFrom` available without any imports */
-    given SummonFromMethods: SummonFromMethods = SummonFromMethodsImpl
-
-    /** Implementation of extension methods on `SummonFrom` */
-    protected val SummonFromMethodsImpl: SummonFromMethods
+    given SummonFromMethods: SummonFromMethods
 
     /** Extension methods of `SummonFrom` */
     trait SummonFromMethods:
@@ -1321,10 +1171,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Try <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Try` */
-    given TryTypeTest: TypeTest[Tree, Try] = TryTypeTestImpl
-
-    /** Implementation of `TryTypeTest` */
-    protected val TryTypeTestImpl: TypeTest[Tree, Try]
+    given TryTypeTest: TypeTest[Tree, Try]
 
     /** Module object of `type Try`  */
     val Try: TryModule
@@ -1342,10 +1189,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Try` available without any imports */
-    given TryMethods: TryMethods = TryMethodsImpl
-
-    /** Implementation of extension methods on `Try` */
-    protected val TryMethodsImpl: TryMethods
+    given TryMethods: TryMethods
 
     /** Extension methods of `Try` */
     trait TryMethods:
@@ -1357,10 +1201,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end TryMethods
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Return` */
-    given ReturnTypeTest: TypeTest[Tree, Return] = ReturnTypeTestImpl
-
-    /** Implementation of `ReturnTypeTest` */
-    protected val ReturnTypeTestImpl: TypeTest[Tree, Return]
+    given ReturnTypeTest: TypeTest[Tree, Return]
 
     /** Tree representing a `return` in the source code */
     type Return <: Term
@@ -1381,10 +1222,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Return` available without any imports */
-    given ReturnMethods: ReturnMethods = ReturnMethodsImpl
-
-    /** Implementation of extension methods on `Return` */
-    protected val ReturnMethodsImpl: ReturnMethods
+    given ReturnMethods: ReturnMethods
 
     /** Extension methods of `Return` */
     trait ReturnMethods:
@@ -1398,10 +1236,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Repeated <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Repeated` */
-    given RepeatedTypeTest: TypeTest[Tree, Repeated] = RepeatedTypeTestImpl
-
-    /** Implementation of `RepeatedTypeTest` */
-    protected val RepeatedTypeTestImpl: TypeTest[Tree, Repeated]
+    given RepeatedTypeTest: TypeTest[Tree, Repeated]
 
     /** Module object of `type Repeated`  */
     val Repeated: RepeatedModule
@@ -1414,10 +1249,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Repeated` available without any imports */
-    given RepeatedMethods: RepeatedMethods = RepeatedMethodsImpl
-
-    /** Implementation of extension methods on `Repeated` */
-    protected val RepeatedMethodsImpl: RepeatedMethods
+    given RepeatedMethods: RepeatedMethods
 
     /** Extension methods of `Repeated` */
     trait RepeatedMethods:
@@ -1431,10 +1263,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Inlined <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Inlined` */
-    given InlinedTypeTest: TypeTest[Tree, Inlined] = InlinedTypeTestImpl
-
-    /** Implementation of `InlinedTypeTest` */
-    protected val InlinedTypeTestImpl: TypeTest[Tree, Inlined]
+    given InlinedTypeTest: TypeTest[Tree, Inlined]
 
     /** Module object of `type Inlined`  */
     val Inlined: InlinedModule
@@ -1447,10 +1276,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Inlined` available without any imports */
-    given InlinedMethods: InlinedMethods = InlinedMethodsImpl
-
-    /** Implementation of extension methods on `Inlined` */
-    protected val InlinedMethodsImpl: InlinedMethods
+    given InlinedMethods: InlinedMethods
 
     /** Extension methods of `Inlined` */
     trait InlinedMethods:
@@ -1465,10 +1291,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type SelectOuter <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `SelectOuter` */
-    given SelectOuterTypeTest: TypeTest[Tree, SelectOuter] = SelectOuterTypeTestImpl
-
-    /** Implementation of `SelectOuterTypeTest` */
-    protected val SelectOuterTypeTestImpl: TypeTest[Tree, SelectOuter]
+    given SelectOuterTypeTest: TypeTest[Tree, SelectOuter]
 
     /** Module object of `type SelectOuter`  */
     val SelectOuter: SelectOuterModule
@@ -1481,10 +1304,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `SelectOuter` available without any imports */
-    given SelectOuterMethods: SelectOuterMethods = SelectOuterMethodsImpl
-
-    /** Implementation of extension methods on `SelectOuter` */
-    protected val SelectOuterMethodsImpl: SelectOuterMethods
+    given SelectOuterMethods: SelectOuterMethods
 
     /** Extension methods of `SelectOuter` */
     trait SelectOuterMethods:
@@ -1499,10 +1319,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type While <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `While` */
-    given WhileTypeTest: TypeTest[Tree, While] = WhileTypeTestImpl
-
-    /** Implementation of `WhileTypeTest` */
-    protected val WhileTypeTestImpl: TypeTest[Tree, While]
+    given WhileTypeTest: TypeTest[Tree, While]
 
     /** Module object of `type While`  */
     val While: WhileModule
@@ -1520,10 +1337,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `While` available without any imports */
-    given WhileMethods: WhileMethods = WhileMethodsImpl
-
-    /** Implementation of extension methods on `While` */
-    protected val WhileMethodsImpl: WhileMethods
+    given WhileMethods: WhileMethods
 
     /** Extension methods of `While` */
     trait WhileMethods:
@@ -1539,10 +1353,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeTree <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeTree` */
-    given TypeTreeTypeTest: TypeTest[Tree, TypeTree] = TypeTreeTypeTestImpl
-
-    /** Implementation of `TypeTreeTypeTest` */
-    protected val TypeTreeTypeTestImpl: TypeTest[Tree, TypeTree]
+    given TypeTreeTypeTest: TypeTest[Tree, TypeTree]
 
     /** Module object of `type TypeTree`  */
     val TypeTree: TypeTreeModule
@@ -1554,10 +1365,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeTree` available without any imports */
-    given TypeTreeMethods: TypeTreeMethods = TypeTreeMethodsImpl
-
-    /** Implementation of extension methods on `TypeTree` */
-    protected val TypeTreeMethodsImpl: TypeTreeMethods
+    given TypeTreeMethods: TypeTreeMethods
 
     /** Extension methods of `TypeTree` */
     trait TypeTreeMethods:
@@ -1571,10 +1379,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Inferred <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Inferred` */
-    given InferredTypeTest: TypeTest[Tree, Inferred] = InferredTypeTestImpl
-
-    /** Implementation of `InferredTypeTest` */
-    protected val InferredTypeTestImpl: TypeTest[Tree, Inferred]
+    given InferredTypeTest: TypeTest[Tree, Inferred]
 
     /** Module object of `type Inferred`  */
     val Inferred: InferredModule
@@ -1590,10 +1395,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeIdent <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeIdent` */
-    given TypeIdentTypeTest: TypeTest[Tree, TypeIdent] = TypeIdentTypeTestImpl
-
-    /** Implementation of `TypeIdentTypeTest` */
-    protected val TypeIdentTypeTestImpl: TypeTest[Tree, TypeIdent]
+    given TypeIdentTypeTest: TypeTest[Tree, TypeIdent]
 
     /** Module object of `type TypeIdent`  */
     val TypeIdent: TypeIdentModule
@@ -1606,10 +1408,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeIdent` available without any imports */
-    given TypeIdentMethods: TypeIdentMethods = TypeIdentMethodsImpl
-
-    /** Implementation of extension methods on `TypeIdent` */
-    protected val TypeIdentMethodsImpl: TypeIdentMethods
+    given TypeIdentMethods: TypeIdentMethods
 
     /** Extension methods of `TypeIdent` */
     trait TypeIdentMethods:
@@ -1622,10 +1421,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeSelect <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeSelect` */
-    given TypeSelectTypeTest: TypeTest[Tree, TypeSelect] = TypeSelectTypeTestImpl
-
-    /** Implementation of `TypeSelectTypeTest` */
-    protected val TypeSelectTypeTestImpl: TypeTest[Tree, TypeSelect]
+    given TypeSelectTypeTest: TypeTest[Tree, TypeSelect]
 
     /** Module object of `type TypeSelect`  */
     val TypeSelect: TypeSelectModule
@@ -1638,10 +1434,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeSelect` available without any imports */
-    given TypeSelectMethods: TypeSelectMethods = TypeSelectMethodsImpl
-
-    /** Implementation of extension methods on `TypeSelect` */
-    protected val TypeSelectMethodsImpl: TypeSelectMethods
+    given TypeSelectMethods: TypeSelectMethods
 
     /** Extension methods of `TypeSelect` */
     trait TypeSelectMethods:
@@ -1655,10 +1448,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeProjection <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeProjection` */
-    given TypeProjectionTypeTest: TypeTest[Tree, TypeProjection] = TypeProjectionTypeTestImpl
-
-    /** Implementation of `TypeProjectionTypeTest` */
-    protected val TypeProjectionTypeTestImpl: TypeTest[Tree, TypeProjection]
+    given TypeProjectionTypeTest: TypeTest[Tree, TypeProjection]
 
     /** Module object of `type TypeProjection`  */
     val TypeProjection: TypeProjectionModule
@@ -1671,10 +1461,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeProjection` available without any imports */
-    given TypeProjectionMethods: TypeProjectionMethods = TypeProjectionMethodsImpl
-
-    /** Implementation of extension methods on `TypeProjection` */
-    protected val TypeProjectionMethodsImpl: TypeProjectionMethods
+    given TypeProjectionMethods: TypeProjectionMethods
 
     /** Extension methods of `TypeProjection` */
     trait TypeProjectionMethods:
@@ -1688,10 +1475,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Singleton <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Singleton` */
-    given SingletonTypeTest: TypeTest[Tree, Singleton] = SingletonTypeTestImpl
-
-    /** Implementation of `SingletonTypeTest` */
-    protected val SingletonTypeTestImpl: TypeTest[Tree, Singleton]
+    given SingletonTypeTest: TypeTest[Tree, Singleton]
 
     /** Module object of `type Singleton`  */
     val Singleton: SingletonModule
@@ -1704,10 +1488,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Singleton` available without any imports */
-    given SingletonMethods: SingletonMethods = SingletonMethodsImpl
-
-    /** Implementation of extension methods on `Singleton` */
-    protected val SingletonMethodsImpl: SingletonMethods
+    given SingletonMethods: SingletonMethods
 
     /** Extension methods of `Singleton` */
     trait SingletonMethods:
@@ -1720,10 +1501,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Refined <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Refined` */
-    given RefinedTypeTest: TypeTest[Tree, Refined] = RefinedTypeTestImpl
-
-    /** Implementation of `RefinedTypeTest` */
-    protected val RefinedTypeTestImpl: TypeTest[Tree, Refined]
+    given RefinedTypeTest: TypeTest[Tree, Refined]
 
     /** Module object of `type Refined`  */
     val Refined: RefinedModule
@@ -1736,10 +1514,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Refined` available without any imports */
-    given RefinedMethods: RefinedMethods = RefinedMethodsImpl
-
-    /** Implementation of extension methods on `Refined` */
-    protected val RefinedMethodsImpl: RefinedMethods
+    given RefinedMethods: RefinedMethods
 
     /** Extension methods of `Refined` */
     trait RefinedMethods:
@@ -1753,10 +1528,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Applied <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Applied` */
-    given AppliedTypeTest: TypeTest[Tree, Applied] = AppliedTypeTestImpl
-
-    /** Implementation of `AppliedTypeTest` */
-    protected val AppliedTypeTestImpl: TypeTest[Tree, Applied]
+    given AppliedTypeTest: TypeTest[Tree, Applied]
 
     /** Module object of `type Applied`  */
     val Applied: AppliedModule
@@ -1769,10 +1541,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Applied` available without any imports */
-    given AppliedMethods: AppliedMethods = AppliedMethodsImpl
-
-    /** Implementation of extension methods on `Applied` */
-    protected val AppliedMethodsImpl: AppliedMethods
+    given AppliedMethods: AppliedMethods
 
     /** Extension methods of `Applied` */
     trait AppliedMethods:
@@ -1786,10 +1555,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Annotated <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Annotated` */
-    given AnnotatedTypeTest: TypeTest[Tree, Annotated] = AnnotatedTypeTestImpl
-
-    /** Implementation of `AnnotatedTypeTest` */
-    protected val AnnotatedTypeTestImpl: TypeTest[Tree, Annotated]
+    given AnnotatedTypeTest: TypeTest[Tree, Annotated]
 
     /** Module object of `type Annotated`  */
     val Annotated: AnnotatedModule
@@ -1802,10 +1568,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Annotated` available without any imports */
-    given AnnotatedMethods: AnnotatedMethods = AnnotatedMethodsImpl
-
-    /** Implementation of extension methods on `Annotated` */
-    protected val AnnotatedMethodsImpl: AnnotatedMethods
+    given AnnotatedMethods: AnnotatedMethods
 
     /** Extension methods of `Annotated` */
     trait AnnotatedMethods:
@@ -1819,10 +1582,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type MatchTypeTree <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `MatchTypeTree` */
-    given MatchTypeTreeTypeTest: TypeTest[Tree, MatchTypeTree] = MatchTypeTreeTypeTestImpl
-
-    /** Implementation of `MatchTypeTreeTypeTest` */
-    protected val MatchTypeTreeTypeTestImpl: TypeTest[Tree, MatchTypeTree]
+    given MatchTypeTreeTypeTest: TypeTest[Tree, MatchTypeTree]
 
     /** Module object of `type MatchTypeTree`  */
     val MatchTypeTree: MatchTypeTreeModule
@@ -1835,10 +1595,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `MatchTypeTree` available without any imports */
-    given MatchTypeTreeMethods: MatchTypeTreeMethods = MatchTypeTreeMethodsImpl
-
-    /** Implementation of extension methods on `MatchTypeTree` */
-    protected val MatchTypeTreeMethodsImpl: MatchTypeTreeMethods
+    given MatchTypeTreeMethods: MatchTypeTreeMethods
 
     /** Extension methods of `MatchTypeTree` */
     trait MatchTypeTreeMethods:
@@ -1853,10 +1610,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type ByName <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ByName` */
-    given ByNameTypeTest: TypeTest[Tree, ByName] = ByNameTypeTestImpl
-
-    /** Implementation of `ByNameTypeTest` */
-    protected val ByNameTypeTestImpl: TypeTest[Tree, ByName]
+    given ByNameTypeTest: TypeTest[Tree, ByName]
 
     /** Module object of `type ByName`  */
     val ByName: ByNameModule
@@ -1869,10 +1623,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `ByName` available without any imports */
-    given ByNameMethods: ByNameMethods = ByNameMethodsImpl
-
-    /** Implementation of extension methods on `ByName` */
-    protected val ByNameMethodsImpl: ByNameMethods
+    given ByNameMethods: ByNameMethods
 
     /** Extension methods of `ByName` */
     trait ByNameMethods:
@@ -1885,10 +1636,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type LambdaTypeTree <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `LambdaTypeTree` */
-    given LambdaTypeTreeTypeTest: TypeTest[Tree, LambdaTypeTree] = LambdaTypeTreeTypeTestImpl
-
-    /** Implementation of `LambdaTypeTreeTypeTest` */
-    protected val LambdaTypeTreeTypeTestImpl: TypeTest[Tree, LambdaTypeTree]
+    given LambdaTypeTreeTypeTest: TypeTest[Tree, LambdaTypeTree]
 
     /** Module object of `type LambdaTypeTree`  */
     val LambdaTypeTree: LambdaTypeTreeModule
@@ -1901,10 +1649,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `LambdaTypeTree` available without any imports */
-    given LambdaTypeTreeMethods: LambdaTypeTreeMethods = LambdaTypeTreeMethodsImpl
-
-    /** Implementation of extension methods on `LambdaTypeTree` */
-    protected val LambdaTypeTreeMethodsImpl: LambdaTypeTreeMethods
+    given LambdaTypeTreeMethods: LambdaTypeTreeMethods
 
     /** Extension methods of `LambdaTypeTree` */
     trait LambdaTypeTreeMethods:
@@ -1918,10 +1663,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeBind <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeBind` */
-    given TypeBindTypeTest: TypeTest[Tree, TypeBind] = TypeBindTypeTestImpl
-
-    /** Implementation of `TypeBindTypeTest` */
-    protected val TypeBindTypeTestImpl: TypeTest[Tree, TypeBind]
+    given TypeBindTypeTest: TypeTest[Tree, TypeBind]
 
     /** Module object of `type TypeBind`  */
     val TypeBind: TypeBindModule
@@ -1934,10 +1676,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeBind` available without any imports */
-    given TypeBindMethods: TypeBindMethods = TypeBindMethodsImpl
-
-    /** Implementation of extension methods on `TypeBind` */
-    protected val TypeBindMethodsImpl: TypeBindMethods
+    given TypeBindMethods: TypeBindMethods
 
     /** Extension methods of `TypeBind` */
     trait TypeBindMethods:
@@ -1951,10 +1690,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeBlock <: TypeTree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeBlock` */
-    given TypeBlockTypeTest: TypeTest[Tree, TypeBlock] = TypeBlockTypeTestImpl
-
-    /** Implementation of `TypeBlockTypeTest` */
-    protected val TypeBlockTypeTestImpl: TypeTest[Tree, TypeBlock]
+    given TypeBlockTypeTest: TypeTest[Tree, TypeBlock]
 
     /** Module object of `type TypeBlock`  */
     val TypeBlock: TypeBlockModule
@@ -1967,10 +1703,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeBlock` available without any imports */
-    given TypeBlockMethods: TypeBlockMethods = TypeBlockMethodsImpl
-
-    /** Implementation of extension methods on `TypeBlock` */
-    protected val TypeBlockMethodsImpl: TypeBlockMethods
+    given TypeBlockMethods: TypeBlockMethods
 
     /** Extension methods of `TypeBlock` */
     trait TypeBlockMethods:
@@ -1986,10 +1719,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeBoundsTree <: Tree /*TypeTree | TypeBoundsTree*/
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeBoundsTree` */
-    given TypeBoundsTreeTypeTest: TypeTest[Tree, TypeBoundsTree] = TypeBoundsTreeTypeTestImpl
-
-    /** Implementation of `TypeBoundsTreeTypeTest` */
-    protected val TypeBoundsTreeTypeTestImpl: TypeTest[Tree, TypeBoundsTree]
+    given TypeBoundsTreeTypeTest: TypeTest[Tree, TypeBoundsTree]
 
     /** Module object of `type TypeBoundsTree`  */
     val TypeBoundsTree: TypeBoundsTreeModule
@@ -2002,10 +1732,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeBoundsTree` available without any imports */
-    given TypeBoundsTreeMethods: TypeBoundsTreeMethods = TypeBoundsTreeMethodsImpl
-
-    /** Implementation of extension methods on `TypeBoundsTree` */
-    protected val TypeBoundsTreeMethodsImpl: TypeBoundsTreeMethods
+    given TypeBoundsTreeMethods: TypeBoundsTreeMethods
 
     /** Extension methods of `TypeBoundsTree` */
     trait TypeBoundsTreeMethods:
@@ -2023,10 +1750,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type WildcardTypeTree  <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `WildcardTypeTree` */
-    given WildcardTypeTreeTypeTest: TypeTest[Tree, WildcardTypeTree] = WildcardTypeTreeTypeTestImpl
-
-    /** Implementation of `WildcardTypeTreeTypeTest` */
-    protected val WildcardTypeTreeTypeTestImpl: TypeTest[Tree, WildcardTypeTree]
+    given WildcardTypeTreeTypeTest: TypeTest[Tree, WildcardTypeTree]
 
     /** Module object of `type WildcardTypeTree`  */
     val WildcardTypeTree: WildcardTypeTreeModule
@@ -2039,10 +1763,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `WildcardTypeTree` available without any imports */
-    given WildcardTypeTreeMethods: WildcardTypeTreeMethods = WildcardTypeTreeMethodsImpl
-
-    /** Implementation of extension methods on `WildcardTypeTree` */
-    protected val WildcardTypeTreeMethodsImpl: WildcardTypeTreeMethods
+    given WildcardTypeTreeMethods: WildcardTypeTreeMethods
 
     /** Extension methods of `WildcardTypeTree` */
     trait WildcardTypeTreeMethods:
@@ -2057,10 +1778,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type CaseDef <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `CaseDef` */
-    given CaseDefTypeTest: TypeTest[Tree, CaseDef] = CaseDefTypeTestImpl
-
-    /** Implementation of `CaseDefTypeTest` */
-    protected val CaseDefTypeTestImpl: TypeTest[Tree, CaseDef]
+    given CaseDefTypeTest: TypeTest[Tree, CaseDef]
 
     /** Module object of `type CaseDef`  */
     val CaseDef: CaseDefModule
@@ -2073,10 +1791,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `CaseDef` available without any imports */
-    given CaseDefMethods: CaseDefMethods = CaseDefMethodsImpl
-
-    /** Implementation of extension methods on `CaseDef` */
-    protected val CaseDefMethodsImpl: CaseDefMethods
+    given CaseDefMethods: CaseDefMethods
 
     /** Extension methods of `CaseDef` */
     trait CaseDefMethods:
@@ -2091,10 +1806,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeCaseDef <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeCaseDef` */
-    given TypeCaseDefTypeTest: TypeTest[Tree, TypeCaseDef] = TypeCaseDefTypeTestImpl
-
-    /** Implementation of `TypeCaseDefTypeTest` */
-    protected val TypeCaseDefTypeTestImpl: TypeTest[Tree, TypeCaseDef]
+    given TypeCaseDefTypeTest: TypeTest[Tree, TypeCaseDef]
 
     /** Module object of `type TypeCaseDef`  */
     val TypeCaseDef: TypeCaseDefModule
@@ -2107,10 +1819,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeCaseDef` available without any imports */
-    given TypeCaseDefMethods: TypeCaseDefMethods = TypeCaseDefMethodsImpl
-
-    /** Implementation of extension methods on `TypeCaseDef` */
-    protected val TypeCaseDefMethodsImpl: TypeCaseDefMethods
+    given TypeCaseDefMethods: TypeCaseDefMethods
 
     /** Extension methods of `TypeCaseDef` */
     trait TypeCaseDefMethods:
@@ -2126,10 +1835,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Bind <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Bind` */
-    given BindTypeTest: TypeTest[Tree, Bind] = BindTypeTestImpl
-
-    /** Implementation of `BindTypeTest` */
-    protected val BindTypeTestImpl: TypeTest[Tree, Bind]
+    given BindTypeTest: TypeTest[Tree, Bind]
 
     /** Module object of `type Bind`  */
     val Bind: BindModule
@@ -2142,10 +1848,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Bind` available without any imports */
-    given BindMethods: BindMethods = BindMethodsImpl
-
-    /** Implementation of extension methods on `Bind` */
-    protected val BindMethodsImpl: BindMethods
+    given BindMethods: BindMethods
 
     /** Extension methods of `Bind` */
     trait BindMethods:
@@ -2159,10 +1862,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Unapply <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Unapply` */
-    given UnapplyTypeTest: TypeTest[Tree, Unapply] = UnapplyTypeTestImpl
-
-    /** Implementation of `UnapplyTypeTest` */
-    protected val UnapplyTypeTestImpl: TypeTest[Tree, Unapply]
+    given UnapplyTypeTest: TypeTest[Tree, Unapply]
 
     /** Module object of `type Unapply`  */
     val Unapply: UnapplyModule
@@ -2175,10 +1875,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Unapply` available without any imports */
-    given UnapplyMethods: UnapplyMethods = UnapplyMethodsImpl
-
-    /** Implementation of extension methods on `Unapply` */
-    protected val UnapplyMethodsImpl: UnapplyMethods
+    given UnapplyMethods: UnapplyMethods
 
     /** Extension methods of `Unapply` */
     trait UnapplyMethods:
@@ -2193,10 +1890,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Alternatives <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Alternatives` */
-    given AlternativesTypeTest: TypeTest[Tree, Alternatives] = AlternativesTypeTestImpl
-
-    /** Implementation of `AlternativesTypeTest` */
-    protected val AlternativesTypeTestImpl: TypeTest[Tree, Alternatives]
+    given AlternativesTypeTest: TypeTest[Tree, Alternatives]
 
     /** Module object of `type Alternatives`  */
     val Alternatives: AlternativesModule
@@ -2209,10 +1903,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Alternatives` available without any imports */
-    given AlternativesMethods: AlternativesMethods = AlternativesMethodsImpl
-
-    /** Implementation of extension methods on `Alternatives` */
-    protected val AlternativesMethodsImpl: AlternativesMethods
+    given AlternativesMethods: AlternativesMethods
 
     /** Extension methods of `Alternatives` */
     trait AlternativesMethods:
@@ -2243,10 +1934,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type SimpleSelector <: Selector
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is a `SimpleSelector` */
-    given SimpleSelectorTypeTest: TypeTest[Selector, SimpleSelector] = SimpleSelectorTypeTestImpl
-
-    /** Implementation of `TypeTest[Selector, SimpleSelector]` */
-    protected val SimpleSelectorTypeTestImpl: TypeTest[Selector, SimpleSelector]
+    given SimpleSelectorTypeTest: TypeTest[Selector, SimpleSelector]
 
     /** Module object of `type SimpleSelector`  */
     val SimpleSelector: SimpleSelectorModule
@@ -2257,10 +1945,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `SimpleSelector` available without any imports */
-    given SimpleSelectorMethods: SimpleSelectorMethods = SimpleSelectorMethodsImpl
-
-    /** Implementation of extension methods on `SimpleSelector` */
-    protected val SimpleSelectorMethodsImpl: SimpleSelectorMethods
+    given SimpleSelectorMethods: SimpleSelectorMethods
 
     /** Extension methods of `SimpleSelector` */
     trait SimpleSelectorMethods:
@@ -2274,10 +1959,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type RenameSelector <: Selector
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is a `RenameSelector` */
-    given RenameSelectorTypeTest: TypeTest[Selector, RenameSelector] = RenameSelectorTypeTestImpl
-
-    /** Implementation of `TypeTest[Selector, RenameSelector]` */
-    protected val RenameSelectorTypeTestImpl: TypeTest[Selector, RenameSelector]
+    given RenameSelectorTypeTest: TypeTest[Selector, RenameSelector]
 
     /** Module object of `type RenameSelector`  */
     val RenameSelector: RenameSelectorModule
@@ -2288,10 +1970,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `RenameSelector` available without any imports */
-    given RenameSelectorMethods: RenameSelectorMethods = RenameSelectorMethodsImpl
-
-    /** Implementation of extension methods on `RenameSelector` */
-    protected val RenameSelectorMethodsImpl: RenameSelectorMethods
+    given RenameSelectorMethods: RenameSelectorMethods
 
     /** Extension methods of `RenameSelector` */
     trait RenameSelectorMethods:
@@ -2307,10 +1986,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type OmitSelector <: Selector
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Selector` is an `OmitSelector` */
-    given OmitSelectorTypeTest: TypeTest[Selector, OmitSelector] = OmitSelectorTypeTestImpl
-
-    /** Implementation of `TypeTest[Selector, OmitSelector]` */
-    protected val OmitSelectorTypeTestImpl: TypeTest[Selector, OmitSelector]
+    given OmitSelectorTypeTest: TypeTest[Selector, OmitSelector]
 
     /** Module object of `type OmitSelector`  */
     val OmitSelector: OmitSelectorModule
@@ -2321,10 +1997,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `OmitSelector` available without any imports */
-    given OmitSelectorMethods: OmitSelectorMethods = OmitSelectorMethodsImpl
-
-    /** Implementation of extension methods on `OmitSelector` */
-    protected val OmitSelectorMethodsImpl: OmitSelectorMethods
+    given OmitSelectorMethods: OmitSelectorMethods
 
     /** Extension methods of `OmitSelector` */
     trait OmitSelectorMethods:
@@ -2337,10 +2010,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type GivenSelector <: Selector
 
     /** `TypeTest` that allows testing at runtime in a pattern match if an `Selector` is a `GivenSelector` */
-    given GivenSelectorTypeTest: TypeTest[Selector, GivenSelector] = GivenSelectorTypeTestImpl
-
-    /** Implementation of `TypeTest[Selector, GivenSelector]` */
-    protected val GivenSelectorTypeTestImpl: TypeTest[Selector, GivenSelector]
+    given GivenSelectorTypeTest: TypeTest[Selector, GivenSelector]
 
     /** Module object of `type GivenSelector`  */
     val GivenSelector: GivenSelectorModule
@@ -2351,10 +2021,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `GivenSelector` available without any imports */
-    given GivenSelectorMethods: GivenSelectorMethods = GivenSelectorMethodsImpl
-
-    /** Implementation of extension methods on `GivenSelector` */
-    protected val GivenSelectorMethodsImpl: GivenSelectorMethods
+    given GivenSelectorMethods: GivenSelectorMethods
 
     /** Extension methods of `GivenSelector` */
     trait GivenSelectorMethods:
@@ -2384,10 +2051,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeRepr` available without any imports */
-    given TypeReprMethods: TypeReprMethods = TypeReprMethodsImpl
-
-    /** Implementation of extension methods on `TypeRepr` */
-    protected val TypeReprMethodsImpl: TypeReprMethods
+    given TypeReprMethods: TypeReprMethods
 
     /** Extension methods of `TypeRepr` */
     trait TypeReprMethods {
@@ -2518,10 +2182,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type ConstantType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ConstantType` */
-    given ConstantTypeTypeTest: TypeTest[TypeRepr, ConstantType] = ConstantTypeTypeTestImpl
-
-    /** Implementation of `ConstantTypeTypeTest` */
-    protected val ConstantTypeTypeTestImpl: TypeTest[TypeRepr, ConstantType]
+    given ConstantTypeTypeTest: TypeTest[TypeRepr, ConstantType]
 
     /** Module object of `type ConstantType`  */
     val ConstantType: ConstantTypeModule
@@ -2533,10 +2194,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `ConstantType` available without any imports */
-    given ConstantTypeMethods: ConstantTypeMethods = ConstantTypeMethodsImpl
-
-    /** Implementation of extension methods on `ConstantType` */
-    protected val ConstantTypeMethodsImpl: ConstantTypeMethods
+    given ConstantTypeMethods: ConstantTypeMethods
 
     /** Extension methods of `ConstantType` */
     trait ConstantTypeMethods:
@@ -2549,10 +2207,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TermRef <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TermRef` */
-    given TermRefTypeTest: TypeTest[TypeRepr, TermRef] = TermRefTypeTestImpl
-
-    /** Implementation of `TermRefTypeTest` */
-    protected val TermRefTypeTestImpl: TypeTest[TypeRepr, TermRef]
+    given TermRefTypeTest: TypeTest[TypeRepr, TermRef]
 
     /** Module object of `type TermRef`  */
     val TermRef: TermRefModule
@@ -2564,10 +2219,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TermRef` available without any imports */
-    given TermRefMethods: TermRefMethods = TermRefMethodsImpl
-
-    /** Implementation of extension methods on `TermRef` */
-    protected val TermRefMethodsImpl: TermRefMethods
+    given TermRefMethods: TermRefMethods
 
     /** Extension methods of `TermRef` */
     trait TermRefMethods:
@@ -2581,10 +2233,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeRef <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeRef` */
-    given TypeRefTypeTest: TypeTest[TypeRepr, TypeRef] = TypeRefTypeTestImpl
-
-    /** Implementation of `TypeRefTypeTest` */
-    protected val TypeRefTypeTestImpl: TypeTest[TypeRepr, TypeRef]
+    given TypeRefTypeTest: TypeTest[TypeRepr, TypeRef]
 
     /** Module object of `type TypeRef`  */
     val TypeRef: TypeRefModule
@@ -2595,10 +2244,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeRef` available without any imports */
-    given TypeRefMethods: TypeRefMethods = TypeRefMethodsImpl
-
-    /** Implementation of extension methods on `TypeRef` */
-    protected val TypeRefMethodsImpl: TypeRefMethods
+    given TypeRefMethods: TypeRefMethods
 
     /** Extension methods of `TypeRef` */
     trait TypeRefMethods:
@@ -2614,10 +2260,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type SuperType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `SuperType` */
-    given SuperTypeTypeTest: TypeTest[TypeRepr, SuperType] = SuperTypeTypeTestImpl
-
-    /** Implementation of `SuperTypeTypeTest` */
-    protected val SuperTypeTypeTestImpl: TypeTest[TypeRepr, SuperType]
+    given SuperTypeTypeTest: TypeTest[TypeRepr, SuperType]
 
     /** Module object of `type SuperType`  */
     val SuperType: SuperTypeModule
@@ -2629,10 +2272,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `SuperType` available without any imports */
-    given SuperTypeMethods: SuperTypeMethods = SuperTypeMethodsImpl
-
-    /** Implementation of extension methods on `SuperType` */
-    protected val SuperTypeMethodsImpl: SuperTypeMethods
+    given SuperTypeMethods: SuperTypeMethods
 
     /** Extension methods of `SuperType` */
     trait SuperTypeMethods { this: SuperTypeMethods =>
@@ -2646,10 +2286,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type Refinement <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `Refinement` */
-    given RefinementTypeTest: TypeTest[TypeRepr, Refinement] = RefinementTypeTestImpl
-
-    /** Implementation of `RefinementTypeTest` */
-    protected val RefinementTypeTestImpl: TypeTest[TypeRepr, Refinement]
+    given RefinementTypeTest: TypeTest[TypeRepr, Refinement]
 
     /** Module object of `type Refinement`  */
     val Refinement: RefinementModule
@@ -2661,10 +2298,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Refinement` available without any imports */
-    given RefinementMethods: RefinementMethods = RefinementMethodsImpl
-
-    /** Implementation of extension methods on `Refinement` */
-    protected val RefinementMethodsImpl: RefinementMethods
+    given RefinementMethods: RefinementMethods
 
     /** Extension methods of `Refinement` */
     trait RefinementMethods:
@@ -2679,10 +2313,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type AppliedType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AppliedType` */
-    given AppliedTypeTypeTest: TypeTest[TypeRepr, AppliedType] = AppliedTypeTypeTestImpl
-
-    /** Implementation of `AppliedTypeTypeTest` */
-    protected val AppliedTypeTypeTestImpl: TypeTest[TypeRepr, AppliedType]
+    given AppliedTypeTypeTest: TypeTest[TypeRepr, AppliedType]
 
     /** Module object of `type AppliedType`  */
     val AppliedType: AppliedTypeModule
@@ -2693,10 +2324,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `AppliedType` available without any imports */
-    given AppliedTypeMethods: AppliedTypeMethods = AppliedTypeMethodsImpl
-
-    /** Implementation of extension methods on `AppliedType` */
-    protected val AppliedTypeMethodsImpl: AppliedTypeMethods
+    given AppliedTypeMethods: AppliedTypeMethods
 
     /** Extension methods of `AppliedType` */
     trait AppliedTypeMethods:
@@ -2710,10 +2338,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type AnnotatedType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AnnotatedType` */
-    given AnnotatedTypeTypeTest: TypeTest[TypeRepr, AnnotatedType] = AnnotatedTypeTypeTestImpl
-
-    /** Implementation of `AnnotatedTypeTypeTest` */
-    protected val AnnotatedTypeTypeTestImpl: TypeTest[TypeRepr, AnnotatedType]
+    given AnnotatedTypeTypeTest: TypeTest[TypeRepr, AnnotatedType]
 
     /** Module object of `type AnnotatedType`  */
     val AnnotatedType: AnnotatedTypeModule
@@ -2725,10 +2350,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `AnnotatedType` available without any imports */
-    given AnnotatedTypeMethods: AnnotatedTypeMethods = AnnotatedTypeMethodsImpl
-
-    /** Implementation of extension methods on `AnnotatedType` */
-    protected val AnnotatedTypeMethodsImpl: AnnotatedTypeMethods
+    given AnnotatedTypeMethods: AnnotatedTypeMethods
 
     /** Extension methods of `AnnotatedType` */
     trait AnnotatedTypeMethods:
@@ -2742,10 +2364,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type AndType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AndType` */
-    given AndTypeTypeTest: TypeTest[TypeRepr, AndType] = AndTypeTypeTestImpl
-
-    /** Implementation of `AndTypeTypeTest` */
-    protected val AndTypeTypeTestImpl: TypeTest[TypeRepr, AndType]
+    given AndTypeTypeTest: TypeTest[TypeRepr, AndType]
 
     /** Module object of `type AndType`  */
     val AndType: AndTypeModule
@@ -2757,10 +2376,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `AndType` available without any imports */
-    given AndTypeMethods: AndTypeMethods = AndTypeMethodsImpl
-
-    /** Implementation of extension methods on `AndType` */
-    protected val AndTypeMethodsImpl: AndTypeMethods
+    given AndTypeMethods: AndTypeMethods
 
     /** Extension methods of `AndType` */
     trait AndTypeMethods:
@@ -2774,10 +2390,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type OrType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `OrType` */
-    given OrTypeTypeTest: TypeTest[TypeRepr, OrType] = OrTypeTypeTestImpl
-
-    /** Implementation of `OrTypeTypeTest` */
-    protected val OrTypeTypeTestImpl: TypeTest[TypeRepr, OrType]
+    given OrTypeTypeTest: TypeTest[TypeRepr, OrType]
 
     /** Module object of `type OrType`  */
     val OrType: OrTypeModule
@@ -2789,10 +2402,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `OrType` available without any imports */
-    given OrTypeMethods: OrTypeMethods = OrTypeMethodsImpl
-
-    /** Implementation of extension methods on `OrType` */
-    protected val OrTypeMethodsImpl: OrTypeMethods
+    given OrTypeMethods: OrTypeMethods
 
     /** Extension methods of `OrType` */
     trait OrTypeMethods:
@@ -2806,10 +2416,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type MatchType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MatchType` */
-    given MatchTypeTypeTest: TypeTest[TypeRepr, MatchType] = MatchTypeTypeTestImpl
-
-    /** Implementation of `MatchTypeTypeTest` */
-    protected val MatchTypeTypeTestImpl: TypeTest[TypeRepr, MatchType]
+    given MatchTypeTypeTest: TypeTest[TypeRepr, MatchType]
 
     /** Module object of `type MatchType`  */
     val MatchType: MatchTypeModule
@@ -2821,10 +2428,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `MatchType` available without any imports */
-    given MatchTypeMethods: MatchTypeMethods = MatchTypeMethodsImpl
-
-    /** Implementation of extension methods on `MatchType` */
-    protected val MatchTypeMethodsImpl: MatchTypeMethods
+    given MatchTypeMethods: MatchTypeMethods
 
     /** Extension methods of `MatchType` */
     trait MatchTypeMethods:
@@ -2839,10 +2443,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type ByNameType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ByNameType` */
-    given ByNameTypeTypeTest: TypeTest[TypeRepr, ByNameType] = ByNameTypeTypeTestImpl
-
-    /** Implementation of `ByNameTypeTypeTest` */
-    protected val ByNameTypeTypeTestImpl: TypeTest[TypeRepr, ByNameType]
+    given ByNameTypeTypeTest: TypeTest[TypeRepr, ByNameType]
 
     /** Module object of `type ByNameType`  */
     val ByNameType: ByNameTypeModule
@@ -2854,10 +2455,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `ByNameType` available without any imports */
-    given ByNameTypeMethods: ByNameTypeMethods = ByNameTypeMethodsImpl
-
-    /** Implementation of extension methods on `ByNameType` */
-    protected val ByNameTypeMethodsImpl: ByNameTypeMethods
+    given ByNameTypeMethods: ByNameTypeMethods
 
     /** Extension methods of `ByNameType` */
     trait ByNameTypeMethods:
@@ -2870,10 +2468,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type ParamRef <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ParamRef` */
-    given ParamRefTypeTest: TypeTest[TypeRepr, ParamRef] = ParamRefTypeTestImpl
-
-    /** Implementation of `ParamRefTypeTest` */
-    protected val ParamRefTypeTestImpl: TypeTest[TypeRepr, ParamRef]
+    given ParamRefTypeTest: TypeTest[TypeRepr, ParamRef]
 
     /** Module object of `type ParamRef`  */
     val ParamRef: ParamRefModule
@@ -2884,10 +2479,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `ParamRef` available without any imports */
-    given ParamRefMethods: ParamRefMethods = ParamRefMethodsImpl
-
-    /** Implementation of extension methods on `ParamRef` */
-    protected val ParamRefMethodsImpl: ParamRefMethods
+    given ParamRefMethods: ParamRefMethods
 
     /** Extension methods of `ParamRef` */
     trait ParamRefMethods:
@@ -2901,10 +2493,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type ThisType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ThisType` */
-    given ThisTypeTypeTest: TypeTest[TypeRepr, ThisType] = ThisTypeTypeTestImpl
-
-    /** Implementation of `ThisTypeTypeTest` */
-    protected val ThisTypeTypeTestImpl: TypeTest[TypeRepr, ThisType]
+    given ThisTypeTypeTest: TypeTest[TypeRepr, ThisType]
 
     /** Module object of `type ThisType`  */
     val ThisType: ThisTypeModule
@@ -2915,10 +2504,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `ThisType` available without any imports */
-    given ThisTypeMethods: ThisTypeMethods = ThisTypeMethodsImpl
-
-    /** Implementation of extension methods on `ThisType` */
-    protected val ThisTypeMethodsImpl: ThisTypeMethods
+    given ThisTypeMethods: ThisTypeMethods
 
     /** Extension methods of `ThisType` */
     trait ThisTypeMethods:
@@ -2931,10 +2517,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type RecursiveThis <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `RecursiveThis` */
-    given RecursiveThisTypeTest: TypeTest[TypeRepr, RecursiveThis] = RecursiveThisTypeTestImpl
-
-    /** Implementation of `RecursiveThisTypeTest` */
-    protected val RecursiveThisTypeTestImpl: TypeTest[TypeRepr, RecursiveThis]
+    given RecursiveThisTypeTest: TypeTest[TypeRepr, RecursiveThis]
 
     /** Module object of `type RecursiveThis`  */
     val RecursiveThis: RecursiveThisModule
@@ -2945,10 +2528,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `RecursiveThis` available without any imports */
-    given RecursiveThisMethods: RecursiveThisMethods = RecursiveThisMethodsImpl
-
-    /** Implementation of extension methods on `RecursiveThis` */
-    protected val RecursiveThisMethodsImpl: RecursiveThisMethods
+    given RecursiveThisMethods: RecursiveThisMethods
 
     /** Extension methods of `RecursiveThis` */
     trait RecursiveThisMethods:
@@ -2961,10 +2541,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type RecursiveType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `RecursiveType` */
-    given RecursiveTypeTypeTest: TypeTest[TypeRepr, RecursiveType] = RecursiveTypeTypeTestImpl
-
-    /** Implementation of `RecursiveTypeTypeTest` */
-    protected val RecursiveTypeTypeTestImpl: TypeTest[TypeRepr, RecursiveType]
+    given RecursiveTypeTypeTest: TypeTest[TypeRepr, RecursiveType]
 
     /** Module object of `type RecursiveType`  */
     val RecursiveType: RecursiveTypeModule
@@ -2986,10 +2563,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `RecursiveType` available without any imports */
-    given RecursiveTypeMethods: RecursiveTypeMethods = RecursiveTypeMethodsImpl
-
-    /** Implementation of extension methods on `RecursiveType` */
-    protected val RecursiveTypeMethodsImpl: RecursiveTypeMethods
+    given RecursiveTypeMethods: RecursiveTypeMethods
 
     /** Extension methods of `RecursiveType` */
     trait RecursiveTypeMethods:
@@ -3003,10 +2577,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type MethodType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MethodType` */
-    given MethodTypeTypeTest: TypeTest[TypeRepr, MethodType] = MethodTypeTypeTestImpl
-
-    /** Implementation of `MethodTypeTypeTest` */
-    protected val MethodTypeTypeTestImpl: TypeTest[TypeRepr, MethodType]
+    given MethodTypeTypeTest: TypeTest[TypeRepr, MethodType]
 
     /** Module object of `type MethodType`  */
     val MethodType: MethodTypeModule
@@ -3018,10 +2589,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `MethodType` available without any imports */
-    given MethodTypeMethods: MethodTypeMethods = MethodTypeMethodsImpl
-
-    /** Implementation of extension methods on `MethodType` */
-    protected val MethodTypeMethodsImpl: MethodTypeMethods
+    given MethodTypeMethods: MethodTypeMethods
 
     /** Extension methods of `MethodType` */
     trait MethodTypeMethods:
@@ -3039,10 +2607,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type PolyType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `PolyType` */
-    given PolyTypeTypeTest: TypeTest[TypeRepr, PolyType] = PolyTypeTypeTestImpl
-
-    /** Implementation of `PolyTypeTypeTest` */
-    protected val PolyTypeTypeTestImpl: TypeTest[TypeRepr, PolyType]
+    given PolyTypeTypeTest: TypeTest[TypeRepr, PolyType]
 
     /** Module object of `type PolyType`  */
     val PolyType: PolyTypeModule
@@ -3054,10 +2619,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `PolyType` available without any imports */
-    given PolyTypeMethods: PolyTypeMethods = PolyTypeMethodsImpl
-
-    /** Implementation of extension methods on `PolyType` */
-    protected val PolyTypeMethodsImpl: PolyTypeMethods
+    given PolyTypeMethods: PolyTypeMethods
 
     /** Extension methods of `PolyType` */
     trait PolyTypeMethods:
@@ -3073,10 +2635,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeLambda <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeLambda` */
-    given TypeLambdaTypeTest: TypeTest[TypeRepr, TypeLambda] = TypeLambdaTypeTestImpl
-
-    /** Implementation of `TypeLambdaTypeTest` */
-    protected val TypeLambdaTypeTestImpl: TypeTest[TypeRepr, TypeLambda]
+    given TypeLambdaTypeTest: TypeTest[TypeRepr, TypeLambda]
 
     /** Module object of `type TypeLambda`  */
     val TypeLambda: TypeLambdaModule
@@ -3088,10 +2647,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeLambda` available without any imports */
-    given TypeLambdaMethods: TypeLambdaMethods = TypeLambdaMethodsImpl
-
-    /** Implementation of extension methods on `TypeLambda` */
-    protected val TypeLambdaMethodsImpl: TypeLambdaMethods
+    given TypeLambdaMethods: TypeLambdaMethods
 
     /** Extension methods of `TypeLambda` */
     trait TypeLambdaMethods:
@@ -3109,10 +2665,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type TypeBounds <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeBounds` */
-    given TypeBoundsTypeTest: TypeTest[TypeRepr, TypeBounds] = TypeBoundsTypeTestImpl
-
-    /** Implementation of `TypeBoundsTypeTest` */
-    protected val TypeBoundsTypeTestImpl: TypeTest[TypeRepr, TypeBounds]
+    given TypeBoundsTypeTest: TypeTest[TypeRepr, TypeBounds]
 
     /** Module object of `type TypeBounds`  */
     val TypeBounds: TypeBoundsModule
@@ -3127,10 +2680,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `TypeBounds` available without any imports */
-    given TypeBoundsMethods: TypeBoundsMethods = TypeBoundsMethodsImpl
-
-    /** Implementation of extension methods on `TypeBounds` */
-    protected val TypeBoundsMethodsImpl: TypeBoundsMethods
+    given TypeBoundsMethods: TypeBoundsMethods
 
     /** Extension methods of `TypeBounds` */
     trait TypeBoundsMethods:
@@ -3146,10 +2696,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type NoPrefix <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `NoPrefix` */
-    given NoPrefixTypeTest: TypeTest[TypeRepr, NoPrefix] = NoPrefixTypeTestImpl
-
-    /** Implementation of `NoPrefixTypeTest` */
-    protected val NoPrefixTypeTestImpl: TypeTest[TypeRepr, NoPrefix]
+    given NoPrefixTypeTest: TypeTest[TypeRepr, NoPrefix]
 
     /** Module object of `type NoPrefix`  */
     val NoPrefix: NoPrefixModule
@@ -3314,10 +2861,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Constant` available without any imports */
-    given ConstantMethods: ConstantMethods = ConstantMethodsImpl
-
-    /** Implementation of extension methods on `Constant` */
-    protected val ConstantMethodsImpl: ConstantMethods
+    given ConstantMethods: ConstantMethods
 
     /** Extension methods of `Constant` */
     trait ConstantMethods {
@@ -3360,18 +2904,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type ImplicitSearchResult <: AnyRef
 
     /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is an `ImplicitSearchSuccess` */
-    given ImplicitSearchSuccessTypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchSuccess] = ImplicitSearchSuccessTypeTestImpl
-
-    /** Implementation of `ImplicitSearchSuccessTypeTest` */
-    protected val ImplicitSearchSuccessTypeTestImpl: TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
+    given ImplicitSearchSuccessTypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchSuccess]
 
     type ImplicitSearchSuccess <: ImplicitSearchResult
 
     /** Makes extension methods on `ImplicitSearchSuccess` available without any imports */
-    given ImplicitSearchSuccessMethods: ImplicitSearchSuccessMethods = ImplicitSearchSuccessMethodsImpl
-
-    /** Implementation of extension methods on `ImplicitSearchSuccess` */
-    protected val ImplicitSearchSuccessMethodsImpl: ImplicitSearchSuccessMethods
+    given ImplicitSearchSuccessMethods: ImplicitSearchSuccessMethods
 
     /** Extension methods of `ImplicitSearchSuccess` */
     trait ImplicitSearchSuccessMethods:
@@ -3383,16 +2921,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type ImplicitSearchFailure <: ImplicitSearchResult
 
     /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is an `ImplicitSearchFailure` */
-    given ImplicitSearchFailureTypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchFailure] = ImplicitSearchFailureTypeTestImpl
-
-    /** Implementation of `ImplicitSearchFailureTypeTest` */
-    protected val ImplicitSearchFailureTypeTestImpl: TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
+    given ImplicitSearchFailureTypeTest: TypeTest[ImplicitSearchResult, ImplicitSearchFailure]
 
     /** Makes extension methods on `ImplicitSearchFailure` available without any imports */
-    given ImplicitSearchFailureMethods: ImplicitSearchFailureMethods = ImplicitSearchFailureMethodsImpl
-
-    /** Implementation of extension methods on `ImplicitSearchFailure` */
-    protected val ImplicitSearchFailureMethodsImpl: ImplicitSearchFailureMethods
+    given ImplicitSearchFailureMethods: ImplicitSearchFailureMethods
 
     /** Extension methods of `ImplicitSearchFailure` */
     trait ImplicitSearchFailureMethods:
@@ -3404,26 +2936,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     type DivergingImplicit <: ImplicitSearchFailure
 
     /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is a `DivergingImplicit` */
-    given DivergingImplicitTypeTest: TypeTest[ImplicitSearchResult, DivergingImplicit] = DivergingImplicitTypeTestImpl
-
-    /** Implementation of `DivergingImplicitTypeTest` */
-    protected val DivergingImplicitTypeTestImpl: TypeTest[ImplicitSearchResult, DivergingImplicit]
+    given DivergingImplicitTypeTest: TypeTest[ImplicitSearchResult, DivergingImplicit]
 
     type NoMatchingImplicits <: ImplicitSearchFailure
 
     /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is a `NoMatchingImplicits` */
-    given NoMatchingImplicitsTypeTest: TypeTest[ImplicitSearchResult, NoMatchingImplicits] = NoMatchingImplicitsTypeTestImpl
-
-    /** Implementation of `NoMatchingImplicitsTypeTest` */
-    protected val NoMatchingImplicitsTypeTestImpl: TypeTest[ImplicitSearchResult, NoMatchingImplicits]
+    given NoMatchingImplicitsTypeTest: TypeTest[ImplicitSearchResult, NoMatchingImplicits]
 
     type AmbiguousImplicits <: ImplicitSearchFailure
 
     /** `TypeTest` that allows testing at runtime in a pattern match if an `ImplicitSearchResult` is an `AmbiguousImplicits` */
-    given AmbiguousImplicitsTypeTest: TypeTest[ImplicitSearchResult, AmbiguousImplicits] = AmbiguousImplicitsTypeTestImpl
-
-    /** Implementation of `AmbiguousImplicitsTypeTest` */
-    protected val AmbiguousImplicitsTypeTestImpl: TypeTest[ImplicitSearchResult, AmbiguousImplicits]
+    given AmbiguousImplicitsTypeTest: TypeTest[ImplicitSearchResult, AmbiguousImplicits]
 
     /////////////
     // SYMBOLS //
@@ -3516,10 +3039,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Symbol` available without any imports */
-    given SymbolMethods: SymbolMethods = SymbolMethodsImpl
-
-    /** Implementation of extension methods on `Symbol` */
-    protected val SymbolMethodsImpl: SymbolMethods
+    given SymbolMethods: SymbolMethods
 
     /** Extension methods of `Symbol` */
     trait SymbolMethods {
@@ -3708,10 +3228,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Signature` available without any imports */
-    given SignatureMethods: SignatureMethods = SignatureMethodsImpl
-
-    /** Implementation of extension methods on `Signature` */
-    protected val SignatureMethodsImpl: SignatureMethods
+    given SignatureMethods: SignatureMethods
 
     /** Extension methods of `Signature` */
     trait SignatureMethods {
@@ -4052,10 +3569,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Flags` available without any imports */
-    given FlagsMethods: FlagsMethods = FlagsMethodsImpl
-
-    /** Implementation of extension methods on `Flags` */
-    protected val FlagsMethodsImpl: FlagsMethods
+    given FlagsMethods: FlagsMethods
 
     /** Extension methods of `Flags` */
     trait FlagsMethods {
@@ -4102,10 +3616,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `Position` available without any imports */
-    given PositionMethods: PositionMethods = PositionMethodsImpl
-
-    /** Implementation of extension methods on `Position` */
-    protected val PositionMethodsImpl: PositionMethods
+    given PositionMethods: PositionMethods
 
     /** Extension methods of `Position` */
     trait PositionMethods {
@@ -4154,10 +3665,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
     /** Makes extension methods on `SourceFile` available without any imports */
-    given SourceFileMethods: SourceFileMethods = SourceFileMethodsImpl
-
-    /** Implementation of extension methods on `SourceFile` */
-    protected val SourceFileMethodsImpl: SourceFileMethods
+    given SourceFileMethods: SourceFileMethods
 
     /** Extension methods of `SourceFile` */
     trait SourceFileMethods {
@@ -4224,10 +3732,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait DocumentationModule { this: Documentation.type => }
 
     /** Makes extension methods on `Documentation` available without any imports */
-    given DocumentationMethods: DocumentationMethods = DocumentationMethodsImpl
-
-    /** Implementation of extension methods on `Documentation` */
-    protected val DocumentationMethodsImpl: DocumentationMethods
+    given DocumentationMethods: DocumentationMethods
 
     /** Extension methods of `Documentation` */
     trait DocumentationMethods {
