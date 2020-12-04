@@ -35,7 +35,8 @@ class Driver {
     if (fileNames.nonEmpty)
       try
         val run = compiler.newRun
-        run.compile(fileNames)
+        val sources = run.getSources(fileNames)
+        run.compileSources(sources)
 
         def finish(run: Run)(using Context): Unit =
           run.printSummary()
