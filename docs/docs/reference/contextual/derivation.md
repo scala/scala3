@@ -371,6 +371,16 @@ ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
                     |  ConstrApp {‘,’ ConstrApp}
 ```
 
+Note: To align `extends` clauses and `derives` clauses, Scala 3 also allows multiple
+extended types to be separated by commas. So the following is now legal:
+```
+class A extends B, C { ... }
+```
+It is equivalent to the old form
+```
+class A extends B with C { ... }
+```
+
 ### Discussion
 
 This type class derivation framework is intentionally very small and low-level. There are essentially two pieces of
