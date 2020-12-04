@@ -190,7 +190,7 @@ object Checking {
   private def promote(pot: Refinable, source: Tree)(using state: State): Errors = trace("promoting " + pot.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
     pot match
     case pot: ThisRef =>
-      val classRef = state.thisClass.typeRef
+      val classRef = state.thisClass.info.asInstanceOf[ClassInfo].appliedRef
       val allInit = classRef.fields.forall { denot =>
         val sym = denot.symbol
         sym.isOneOf(Flags.Lazy | Flags.Deferred) || state.fieldsInited.contains(sym)
@@ -203,7 +203,7 @@ object Checking {
         PromoteThis(pot, source, state.path).toErrors
 
     case warm: Warm =>
-      val classRef = warm.classSymbol.typeRef
+      val classRef = warm.classSymbol.info.asInstanceOf[ClassInfo].appliedRef
 
       // only check small classes
       val methods = classRef.decls.filter(sym => sym.is(Flags.Method))
