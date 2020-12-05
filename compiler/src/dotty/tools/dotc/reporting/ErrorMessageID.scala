@@ -84,7 +84,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     ValueClassesMayNotContainInitalizationID,
     ValueClassesMayNotBeAbstractID,
     ValueClassesMayNotBeContaintedID,
-    ValueClassesMayNotWrapItselfID,
+    ValueClassesMayNotWrapAnotherValueClassID,
     ValueClassParameterMayNotBeAVarID,
     ValueClassNeedsExactlyOneValParamID,
     OnlyCaseClassOrCaseObjectAllowedID,

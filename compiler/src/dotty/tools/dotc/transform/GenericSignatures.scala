@@ -212,12 +212,11 @@ object GenericSignatures {
             else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
             else builder.append(defn.typeTag(sym.info))
           else if (ValueClasses.isDerivedValueClass(sym)) {
-            val unboxed     = ValueClasses.valueClassUnbox(sym.asClass).info.finalResultType
-            val unboxedSeen = tp.memberInfo(ValueClasses.valueClassUnbox(sym.asClass)).finalResultType
-            if (unboxedSeen.isPrimitiveValueType && !primitiveOK)
+            val erasedUnderlying = core.TypeErasure.fullErasure(tp)
+            if (erasedUnderlying.isPrimitiveValueType && !primitiveOK)
               classSig(sym, pre, args)
             else
-              jsig(unboxedSeen, toplevel, primitiveOK)
+              jsig(erasedUnderlying, toplevel, primitiveOK)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
             val erasedSym = defn.erasedFunctionClass(sym)
