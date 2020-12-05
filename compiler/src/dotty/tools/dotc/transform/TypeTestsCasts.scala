@@ -53,7 +53,8 @@ object TypeTestsCasts {
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
    */
-  def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = {
+  def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = atPhase(Phases.refchecksPhase.next) {
+    // Run just before ElimOpaque transform (which follows RefChecks)
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
 
     def replaceP(tp: Type)(using Context) = new TypeMap {
@@ -71,7 +72,7 @@ object TypeTestsCasts {
         case tref: TypeRef if tref.typeSymbol.isPatternBound =>
           if (variance == 1) tref.info.hiBound
           else if (variance == -1) tref.info.loBound
-          else OrType(defn.AnyType, defn.NothingType, soft = true)
+          else OrType(defn.AnyType, defn.NothingType, soft = true) // TODO: what does this line do?
         case _ => mapOver(tp)
       }
     }.apply(tp)
