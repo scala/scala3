@@ -107,7 +107,7 @@ These are additions to the language that make it more powerful or pleasant to us
  - [Enums](enums/enums.md) provide concise syntax for enumerations and [algebraic data types](enums/adts.md).
  - [Parameter Untupling](other-new-features/parameter-untupling.md) avoids having to use `case` for tupled parameter destructuring.
  - [Dependent Function Types](new-types/dependent-function-types.md) generalize dependent methods to dependent function values and types.
- - [Polymorphic Function Types](https://github.com/lampepfl/dotty/pull/4672) generalize polymorphic methods to dependent function values and types. _Current status_: There is a proposal, and a prototype implementation, but the implementation has not been finalized or merged yet.
+ - [Polymorphic Function Types](new-types/polymorphic-function-types.md) generalize polymorphic methods to polymorphic function values and types. _Current status_: There is a proposal and a merged prototype implementation, but the implementation has not been finalized (it is notably missing type inference support).
  - [Kind Polymorphism](other-new-features/kind-polymorphism.md) allows the definition of operators working equally on types and type constructors.
  - [@targetName Annotations](other-new-features/targetName.md) make it easier to interoperate with code written in other languages and give more flexibility for avoiding name clashes.
 
