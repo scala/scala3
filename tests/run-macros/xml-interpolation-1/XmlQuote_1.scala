@@ -17,7 +17,7 @@ object XmlQuote {
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {
-      println(tree.showExtractors)
+      println(tree.show(using Printer.TreeStructure))
       println(tree.show)
     }
 
@@ -48,7 +48,7 @@ object XmlQuote {
              values.forall(isStringConstant) =>
         values.collect { case Literal(Constant.String(value)) => value }
       case tree =>
-        report.error(s"String literal expected, but ${tree.showExtractors} found")
+        report.error(s"String literal expected, but ${tree.show(using Printer.TreeStructure)} found")
         return '{ ??? }
     }
 

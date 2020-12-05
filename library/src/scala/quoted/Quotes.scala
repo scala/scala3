@@ -17,11 +17,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
   // Extension methods for `Expr[T]`
   extension [T](self: Expr[T]):
-    /** Show a source code like representation of this expression without syntax highlight */
+    /** Show a source code like representation of this expression */
     def show: String
-
-    /** Shows the tree as fully typed source code colored with ANSI */
-    def showAnsiColored: String
 
     /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
     *  It does the equivalent of
@@ -216,17 +213,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Symbol of defined or referred by this tree */
         def symbol: Symbol
 
-        /** Shows the tree as extractors */
-        def showExtractors: String
-
-        /** Shows the tree as fully typed source code */
-        def show: String
-
-        /** Shows the tree as without package prefix*/
-        def showShort: String
-
-        /** Shows the tree as fully typed source code colored with ANSI */
-        def showAnsiColored: String
+        /** Shows the tree as String */
+        def show(using Printer[Tree]): String
 
         /** Does this tree represent a valid expression? */
         def isExpr: Boolean
@@ -2057,17 +2045,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TypeReprMethods {
       extension (self: TypeRepr):
 
-        /** Shows the tree as extractors */
-        def showExtractors: String
-
-        /** Shows the tree as fully typed source code */
-        def show: String
-
-        /** Shows the tree as without package prefix*/
-        def showShort: String
-
-        /** Shows the tree as fully typed source code colored with ANSI */
-        def showAnsiColored: String
+        /** Shows the type as a String */
+        def show(using Printer[TypeRepr]): String
 
         /** Convert this `TypeRepr` to an `Type[?]`
         *
@@ -2869,17 +2848,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Returns the value of the constant */
         def value: Any
 
-        /** Shows the tree as extractors */
-        def showExtractors: String
+        /** Shows the constant as a String */
+        def show(using Printer[Constant]): String
 
-        /** Shows the tree as without package prefix*/
-        def showShort: String
-
-        /** Shows the tree as fully typed source code */
-        def show: String
-
-        /** Shows the tree as fully typed source code colored with ANSI */
-        def showAnsiColored: String
       end extension
     }
 
@@ -3214,15 +3185,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** The symbol of the companion module */
         def companionModule: Symbol
-
-        /** Shows the tree as extractors */
-        def showExtractors: String
-
-        /** Shows the tree as fully typed source code */
-        def show: String
-
-        /** Shows the tree as fully typed source code colored with ANSI */
-        def showAnsiColored: String
 
         /** Case class or case object children of a sealed trait */
         def children: List[Symbol]
@@ -3601,14 +3563,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Intersection of the two flag sets */
         def &(that: Flags): Flags
 
-        /** Shows the tree as extractors */
-        def showExtractors: String
-
-        /** Shows the tree as fully typed source code */
-        def show: String
-
-        /** Shows the tree as fully typed source code colored with ANSI */
-        def showAnsiColored: String
+        /** Shows the flags as a String */
+        def show(using Printer[Flags]): String
 
       end extension
     }
@@ -4056,6 +4012,76 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         transformTrees(trees)(owner).asInstanceOf[List[Tr]]
 
     end TreeMap
+
+    /** Type class used in `show` methods to provide customizable `String` representations */
+    trait Printer[T]:
+      /** Show the arguments as a `String` */
+      def show(x: T): String
+    end Printer
+
+    /** Default pinter for `Tree` used when calling `tree.show` */
+    given TreePrinter: Printer[Tree] = Printer.TreeCode
+
+    /** Default pinter for `TypeRepr` used when calling `tpe.show` */
+    given TypeReprPrinter: Printer[TypeRepr] = Printer.TypeReprCode
+
+    /** Default pinter for `Flags` used when calling `flags.show` */
+    given ConstantPrinter: Printer[Constant] = Printer.ConstantCase
+
+    /** Default pinter for `Flags` used when calling `flags.show` */
+    given FlagsPrinter: Printer[Flags] = Printer.FlagsCombination
+
+    /** Module object of `type Printer`.
+     *  Contains custom printers such as `TreeCode`, `TreeAnsiCode`, `TreeCases`, `TypeReprCode`, ..., `SymbolFullName` and `FlagsCombination`.
+     */
+    val Printer: PrinterModule
+
+    /** Methods of the module object `val Printer` */
+    trait PrinterModule { self: Printer.type =>
+      /** Prints fully elaborated vesion of the source code. */
+      def TreeCode: Printer[Tree]
+
+      /** Prints fully elaborated vesion of the source code.
+       *  Same as `TreeCode` but does not print full package prefixes.
+       */
+      def TreeShortCode: Printer[Tree]
+
+      /** Prints fully elaborated vesion of the source code using ANSI colors. */
+      def TreeAnsiCode: Printer[Tree]
+
+      /** Prints a pattern like representation of the `Tree`.
+       *  It displays the structure of the AST.
+       */
+      def TreeStructure: Printer[Tree]
+
+      /** Prints the type in source code. */
+      def TypeReprCode: Printer[TypeRepr]
+
+      /** Prints the type in source code.
+       *  Same as `TypeReprCode` but does not print full package prefixes.
+       */
+      def TypeReprShortCode: Printer[TypeRepr]
+
+      /** Prints the type in source code using ANSI colors. */
+      def TypeReprAnsiCode: Printer[TypeRepr]
+
+      /** Prints a pattern like representation of the `TypeRepr`.
+       *  It displays the structure of the type.
+       */
+      def TypeReprStructure: Printer[TypeRepr]
+
+      /** Prints the Constant as source code. */
+      def ConstantCode: Printer[Constant]
+
+      /** Prints the Constant as source code using ANSI colors. */
+      def ConstantAnsiCode: Printer[Constant]
+
+      /** Prints a pattern like representation of the `Constant`. */
+      def ConstantCase: Printer[Constant]
+
+      /** Prints compination of `Flags` that form this particular flag. */
+      def FlagsCombination: Printer[Flags]
+    }
 
   }
 

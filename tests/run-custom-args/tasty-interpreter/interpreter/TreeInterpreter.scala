@@ -155,7 +155,7 @@ abstract class TreeInterpreter[Q <: Quotes & Singleton](using val q: Q) {
       case Typed(expr, _)         => log("<interpretTyped>", tree)(eval(expr))
       case Repeated(elems, _)     => log("<interpretRepeated>", tree)(interpretRepeated(elems.map(elem => eval(elem))))
 
-      case _ => throw new MatchError(tree.showExtractors)
+      case _ => throw new MatchError(tree.show(using Printer.TreeStructure))
     }
   }
 
@@ -164,7 +164,7 @@ abstract class TreeInterpreter[Q <: Quotes & Singleton](using val q: Q) {
       println(
         s"""#> $tag:
            |${tree.show}
-           |${tree.showExtractors}
+           |${tree.show(using Printer.TreeStructure)}
            |
            |""".stripMargin)
     thunk

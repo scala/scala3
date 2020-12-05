@@ -33,7 +33,7 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
     // NOTE we avoid documenting definitions in the magical stdLibPatches directory;
     // the symbols there are "patched" through dark Dotty magic onto other stdlib
     // definitions, so if we documented their origin, we'd get defs with duplicate DRIs
-    if !root.symbol.show.startsWith("scala.runtime.stdLibPatches") then
+    if !root.symbol.fullName.startsWith("scala.runtime.stdLibPatches") then
       val parser = new TastyParser(q, this)
 
       def driFor(link: String): Option[DRI] =
@@ -123,7 +123,7 @@ case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using val c
     case t: Throwable =>
       try report.warning(throwableToString(t), sym.tree.pos) catch
         case _: Throwable =>
-          report.warning(s"Failed to process ${sym.show}:\n${throwableToString(t)}")
+          report.warning(s"Failed to process ${sym.fullName}:\n${throwableToString(t)}")
       None
 
   def parseRootTree(root: Tree): Seq[Documentable] =

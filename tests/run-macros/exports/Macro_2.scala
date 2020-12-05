@@ -22,7 +22,7 @@ private def visitExportsShowImpl[T: Type](e: Expr[T])(using Quotes): Expr[Any] =
 
 private def visitExportsShowExtractImpl[T: Type](e: Expr[T])(using Quotes): Expr[Any] =
   import quotes.reflect._
-  '{println(${Expr(Term.of(e).showExtractors)})}
+  '{println(${Expr(Term.of(e).show(using Printer.TreeStructure))})}
 
 private object IdempotentExprMap extends ExprMap {
 

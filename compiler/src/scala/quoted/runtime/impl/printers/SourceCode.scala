@@ -188,7 +188,7 @@ object SourceCode {
           case Select(newTree: New, _) =>
             printType(newTree.tpe)(using Some(cdef.symbol))
           case parent: Term =>
-            throw new MatchError(parent.showExtractors)
+            throw new MatchError(parent.show(using Printer.TreeStructure))
         }
 
         def printSeparated(list: List[Tree /* Term | TypeTree */]): Unit = list match {
@@ -535,7 +535,7 @@ object SourceCode {
         printTree(meth)
 
       case _ =>
-        throw new MatchError(tree.showExtractors)
+        throw new MatchError(tree.show(using Printer.TreeStructure))
 
     }
 
@@ -922,7 +922,7 @@ object SourceCode {
           case Ident("unapply" | "unapplySeq") =>
             this += fun.symbol.owner.fullName.stripSuffix("$")
           case _ =>
-            throw new MatchError(fun.showExtractors)
+            throw new MatchError(fun.show(using Printer.TreeStructure))
         }
         inParens(printPatterns(patterns, ", "))
 
@@ -937,7 +937,7 @@ object SourceCode {
         printTree(v)
 
       case _ =>
-        throw new MatchError(pattern.showExtractors)
+        throw new MatchError(pattern.show(using Printer.TreeStructure))
 
     }
 
@@ -1063,7 +1063,7 @@ object SourceCode {
         printTypeTree(tpt)
 
       case _ =>
-        throw new MatchError(tree.showExtractors)
+        throw new MatchError(tree.show(using Printer.TreeStructure))
 
     }
 
@@ -1233,7 +1233,7 @@ object SourceCode {
         printType(hi)
 
       case _ =>
-        throw new MatchError(tpe.showExtractors)
+        throw new MatchError(tpe.show(using Printer.TypeReprStructure))
     }
 
     private def printSelector(sel: Selector): this.type = sel match {
@@ -1272,7 +1272,7 @@ object SourceCode {
           val sym = annot.tpe.typeSymbol
           sym != Symbol.requiredClass("scala.forceInline") &&
           sym.maybeOwner != Symbol.requiredPackage("scala.annotation.internal")
-        case x => throw new MatchError(x.showExtractors)
+        case x => throw new MatchError(x.show(using Printer.TreeStructure))
       }
       printAnnotations(annots)
       if (annots.nonEmpty) this += " "
