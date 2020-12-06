@@ -195,7 +195,7 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
 object MarkdownConverter {
   def splitWikiLink(chars: String): (String, String) =
     // split on a space which is not backslash escaped (regex uses "zero-width negative lookbehind")
-    chars.split("(?<!\\\\) ", /*max*/ 2) match {
+    chars.split("(?<!(?<!\\\\)\\\\) ", /*max*/ 2) match {
       case Array(target) => (target, "")
       case Array(target, userText) => (target, userText)
     }
