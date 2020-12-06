@@ -5,7 +5,7 @@ import scala.reflect.TypeTest
 /** Current Quotes in scope */
 inline def quotes(using q: Quotes): q.type = q
 
-/** Quotation context provided by a macro expansion or in the scope of `scala.quoted.run`.
+/** Quotation context provided by a macro expansion or in the scope of `scala.quoted.staging.run`.
  *  Used to perform all operations on quoted `Expr` or `Type`.
  *
  *  It contains the low-level Typed AST API metaprogramming API.

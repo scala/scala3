@@ -1,8 +1,12 @@
 package scala.quoted
 
-/** Quoted expression of type `T` */
+/** Quoted expression of type `T`.
+ *
+ *  `Expr` has extension methods that are defined in `scala.quoted.Quotes`.
+ */
 abstract class Expr[+T] private[scala]
 
+/** Constructors for expressions */
 object Expr {
 
   /** `e.betaReduce` returns an expression that is functionally equivalent to `e`,
