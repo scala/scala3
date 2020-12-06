@@ -21,6 +21,7 @@ trait FromExpr[T] {
 
 }
 
+/** Default given instances of `FromExpr` */
 object FromExpr {
 
   /** Default implementation of `FromExpr[Boolean]`

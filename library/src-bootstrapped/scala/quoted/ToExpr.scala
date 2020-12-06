@@ -12,6 +12,7 @@ trait ToExpr[T] {
 
 }
 
+/** Default given instances of `ToExpr` */
 object ToExpr {
 
   // IMPORTANT Keep in sync with tests/run-staging/liftables.scala
