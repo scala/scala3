@@ -2,7 +2,7 @@ package scala.quoted
 
 import scala.annotation.compileTimeOnly
 
-/** Type (or kind) `T` needed contextually when using `T` in a quoted expression `'{... T ...}` */
+/** Type (or type constructor) `T` needed contextually when using `T` in a quoted expression `'{... T ...}` */
 abstract class Type[T <: AnyKind] private[scala]:
   /** The type represented `Type` */
   type Underlying = T
