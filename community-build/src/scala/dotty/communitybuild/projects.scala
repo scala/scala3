@@ -34,10 +34,17 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
  *  projects to output the version number to a file.
  */
 object Versions:
+  val cats = "2.3.1-SNAPSHOT"
+  val catsMtl = "1.1+DOTTY-SNAPSHOT"
+  val coop = "1.0+DOTTY-SNAPSHOT"
+  val discipline = "1.1.3-SNAPSHOT"
+  val disciplineMunit = "1.0.3+DOTTY-SNAPSHOT"
+  val disciplineSpecs2 = "1.1.3-SNAPSHOT"
   val scalacheck = "1.15.2-SNAPSHOT"
   val scalatest = "3.2.3"
   val munit = "0.7.19+DOTTY-SNAPSHOT"
   val scodecBits = "1.1+DOTTY-SNAPSHOT"
+  val simulacrumScalafix = "0.5.1-SNAPSHOT"
 
 sealed trait CommunityProject:
   private var published = false
@@ -114,6 +121,32 @@ final case class SbtCommunityProject(
     s""""org.scalameta" %% "junit-interface" % "${Versions.munit}"""",
     s""""org.scodec" %% "scodec-bits" % "${Versions.scodecBits}"""",
     s""""org.scodec" %% "scodec-bits_sjs1" % "${Versions.scodecBits}"""",
+    s""""org.typelevel" %% "discipline-core" % "${Versions.discipline}"""",
+    s""""org.typelevel" %% "discipline-core_sjs1" % "${Versions.discipline}"""",
+    s""""org.typelevel" %% "discipline-munit" % "${Versions.disciplineMunit}"""",
+    s""""org.typelevel" %% "discipline-munit_sjs1" % "${Versions.disciplineMunit}"""",
+    s""""org.typelevel" %% "discipline-specs2" % "${Versions.disciplineSpecs2}"""",
+    s""""org.typelevel" %% "discipline-specs2_sjs1" % "${Versions.disciplineSpecs2}"""",
+    s""""org.typelevel" %% "simulacrum-scalafix-annotations" % "${Versions.simulacrumScalafix}"""",
+    s""""org.typelevel" %% "simulacrum-scalafix-annotations_sjs1" % "${Versions.simulacrumScalafix}"""",
+    s""""org.typelevel" %% "cats-core" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-core_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-free" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-free_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-kernel" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-kernel_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-kernel-laws" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-kernel-laws_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-laws" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-laws_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-testkit" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-testkit_sjs1" % "${Versions.cats}"""",
+    s""""org.typelevel" %% "cats-mtl" % "${Versions.catsMtl}"""",
+    s""""org.typelevel" %% "cats-mtl_sjs1" % "${Versions.catsMtl}"""",
+    s""""org.typelevel" %% "cats-mtl-laws" % "${Versions.catsMtl}"""",
+    s""""org.typelevel" %% "cats-mtl-laws_sjs1" % "${Versions.catsMtl}"""",
+    s""""org.typelevel" %% "coop" % "${Versions.coop}"""",
+    s""""org.typelevel" %% "coop_sjs1" % "${Versions.coop}"""",
   )
 
   private val baseCommand =
@@ -425,15 +458,15 @@ object projects:
   lazy val catsEffect2 = SbtCommunityProject(
     project        = "cats-effect-2",
     sbtTestCommand = "test",
-    // Currently is excluded from community build
-    // sbtDocCommand = ";coreJVM/doc ;lawsJVM/doc",
+    sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc",
+    dependencies   = List(cats, disciplineMunit)
   )
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
-    sbtTestCommand = "testIfRelevant",
-    // The problem is that testIfRelevant does not compile and project does not compile
-    // sbtDocCommand = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
+    sbtTestCommand = "test",
+    sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
+    dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
   )
 
   lazy val scalaParallelCollections = SbtCommunityProject(
@@ -452,6 +485,54 @@ object projects:
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
     sbtDocCommand = "verifyJVM/doc",
+  )
+
+  lazy val discipline = SbtCommunityProject(
+    project = "discipline",
+    sbtTestCommand = "coreJVM/test;coreJS/test",
+    sbtPublishCommand = "set every credentials := Nil;coreJVM/publishLocal;coreJS/publishLocal",
+    dependencies = List(scalacheck)
+  )
+
+  lazy val disciplineMunit = SbtCommunityProject(
+    project = "discipline-munit",
+    sbtTestCommand = "test",
+    sbtPublishCommand = s"""set every version := "${Versions.disciplineMunit}";coreJVM/publishLocal;coreJS/publishLocal""",
+    dependencies = List(discipline, munit)
+  )
+
+  lazy val disciplineSpecs2 = SbtCommunityProject(
+    project = "discipline-specs2",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
+    dependencies = List(discipline)
+  )
+
+  lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
+    project = "simulacrum-scalafix",
+    sbtTestCommand = "annotation/test:compile;annotationJS/test:compile",
+    sbtPublishCommand = "annotation/publishLocal;annotationJS/publishLocal",
+  )
+
+  lazy val cats = SbtCommunityProject(
+    project = "cats",
+    sbtTestCommand = "set scalaJSStage in Global := FastOptStage;buildJVM;validateAllJS",
+    sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
+    dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations)
+  )
+
+  lazy val catsMtl = SbtCommunityProject(
+    project = "cats-mtl",
+    sbtTestCommand = "testsJVM/test;testsJS/test",
+    sbtPublishCommand = s"""set every version := "${Versions.catsMtl}";coreJVM/publishLocal;coreJS/publishLocal;lawsJVM/publishLocal;lawsJS/publishLocal""",
+    dependencies = List(cats, disciplineMunit)
+  )
+
+  lazy val coop = SbtCommunityProject(
+    project = "coop",
+    sbtTestCommand = "test",
+    sbtPublishCommand = s"""set every version := "${Versions.coop}";coreJVM/publishLocal;coreJS/publishLocal""",
+    dependencies = List(cats, catsMtl)
   )
 
 end projects

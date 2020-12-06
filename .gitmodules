@@ -120,3 +120,24 @@
 [submodule "community-build/community-projects/verify"]
 	path = community-build/community-projects/verify
 	url = https://github.com/dotty-staging/nanotest-strawman.git
+[submodule "community-build/community-projects/discipline"]
+	path = community-build/community-projects/discipline
+	url = https://github.com/dotty-staging/discipline.git
+[submodule "community-build/community-projects/discipline-munit"]
+	path = community-build/community-projects/discipline-munit
+	url = https://github.com/dotty-staging/discipline-munit.git
+[submodule "community-build/community-projects/discipline-specs2"]
+	path = community-build/community-projects/discipline-specs2
+	url = https://github.com/dotty-staging/discipline-specs2.git
+[submodule "community-build/community-projects/simulacrum-scalafix"]
+	path = community-build/community-projects/simulacrum-scalafix
+	url = https://github.com/dotty-staging/simulacrum-scalafix.git
+[submodule "community-build/community-projects/cats"]
+	path = community-build/community-projects/cats
+	url = https://github.com/dotty-staging/cats.git
+[submodule "community-build/community-projects/cats-mtl"]
+	path = community-build/community-projects/cats-mtl
+	url = https://github.com/dotty-staging/cats-mtl.git
+[submodule "community-build/community-projects/coop"]
+	path = community-build/community-projects/coop
+	url = https://github.com/dotty-staging/coop.git
