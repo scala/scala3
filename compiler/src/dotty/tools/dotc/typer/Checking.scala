@@ -722,6 +722,8 @@ trait Checking {
   private def checkLegalImportOrExportPath(path: Tree, kind: String)(using Context): Unit = {
     checkStable(path.tpe, path.srcPos, kind)
     if (!ctx.isAfterTyper) Checking.checkRealizable(path.tpe, path.srcPos)
+    if !isIdempotentExpr(path) then
+      report.error(em"import prefix is not a pure expression", path.srcPos)
   }
 
   /** Check that `path` is a legal prefix for an import clause */
