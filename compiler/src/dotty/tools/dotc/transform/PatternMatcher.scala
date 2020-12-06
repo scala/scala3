@@ -94,14 +94,15 @@ object PatternMatcher {
      */
     private val initializer = MutableSymbolMap[Tree]()
 
-    private def newVar(rhs: Tree, flags: FlagSet): TermSymbol =
+    private def newVar(rhs: Tree, flags: FlagSet, tpe: Type): TermSymbol =
       newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
-        sanitize(rhs.tpe), coord = rhs.span)
+        sanitize(tpe), coord = rhs.span)
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
     /** The plan `let x = rhs in body(x)` where `x` is a fresh variable */
-    private def letAbstract(rhs: Tree)(body: Symbol => Plan): Plan = {
-      val vble = newVar(rhs, EmptyFlags)
+    private def letAbstract(rhs: Tree, tpe: Type = NoType)(body: Symbol => Plan): Plan = {
+      val declTpe = if tpe.exists then tpe else rhs.tpe
+      val vble = newVar(rhs, EmptyFlags, declTpe)
       initializer(vble) = rhs
       LetPlan(vble, body(vble))
     }
@@ -223,6 +224,13 @@ object PatternMatcher {
     /** Plan for matching `scrutinee` symbol against `tree` pattern */
     private def patternPlan(scrutinee: Symbol, tree: Tree, onSuccess: Plan): Plan = {
 
+      extension (tree: Tree) def avoidPatBoundType(): Type =
+        tree.tpe.widen match
+        case tref: TypeRef if tref.symbol.isPatternBound =>
+          defn.AnyType
+        case _ =>
+          tree.tpe
+
       /** Plan for matching `selectors` against argument patterns `args` */
       def matchArgsPlan(selectors: List[Tree], args: List[Tree], onSuccess: Plan): Plan = {
         /* For a case with arguments that have some test on them such as
@@ -243,7 +251,7 @@ object PatternMatcher {
          */
         def matchArgsSelectorsPlan(selectors: List[Tree], syms: List[Symbol]): Plan =
           selectors match {
-            case selector :: selectors1 => letAbstract(selector)(sym => matchArgsSelectorsPlan(selectors1, sym :: syms))
+            case selector :: selectors1 => letAbstract(selector, selector.avoidPatBoundType())(sym => matchArgsSelectorsPlan(selectors1, sym :: syms))
             case Nil => matchArgsPatternPlan(args, syms.reverse)
           }
         def matchArgsPatternPlan(args: List[Tree], syms: List[Symbol]): Plan =
