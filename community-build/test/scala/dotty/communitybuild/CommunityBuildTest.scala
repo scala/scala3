@@ -82,6 +82,7 @@ end CommunityBuildTest
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestA extends CommunityBuildTest:
+  @Test def endpoints4s = projects.endpoints4s.run()
   @Test def fansi = projects.fansi.run()
   @Test def fastparse = projects.fastparse.run()
   @Test def geny = projects.geny.run()
@@ -90,12 +91,17 @@ class CommunityBuildTestA extends CommunityBuildTest:
   @Test def pprint = projects.pprint.run()
   @Test def requests = projects.requests.run()
   @Test def scalacheck = projects.scalacheck.run()
+  @Test def scalaCollectionCompat = projects.scalaCollectionCompat.run()
+  @Test def scalaParallelCollections = projects.scalaParallelCollections.run()
   @Test def scalatest = projects.scalatest.run()
   @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
+  @Test def scalaz = projects.scalaz.run()
   @Test def sourcecode = projects.sourcecode.run()
+  @Test def stdLib213 = projects.stdLib213.run()
   @Test def ujson = projects.ujson.run()
   @Test def upickle = projects.upickle.run()
   @Test def utest = projects.utest.run()
+  @Test def zio = projects.zio.run()
 end CommunityBuildTestA
 
 @Category(Array(classOf[TestCategory]))
@@ -113,27 +119,21 @@ class CommunityBuildTestB extends CommunityBuildTest:
   // Temporarily disabled until problem discovered in comments to #9449 is fixed
   // @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
   @Test def effpi = projects.effpi.run()
-  @Test def endpoints4s = projects.endpoints4s.run()
   @Test def intent = projects.intent.run()
   @Test def minitest = projects.minitest.run()
   @Test def munit = projects.munit.run()
   @Test def scodec = projects.scodec.run()
   @Test def scodecBits = projects.scodecBits.run()
   @Test def scalap = projects.scalap.run()
-  @Test def scalaCollectionCompat = projects.scalaCollectionCompat.run()
-  @Test def scalaParallelCollections = projects.scalaParallelCollections.run()
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
   @Test def ScalaPB = projects.ScalaPB.run()
   @Test def scalaXml = projects.scalaXml.run()
-  @Test def scalaz = projects.scalaz.run()
   @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()
   @Test def shapeless = projects.shapeless.run()
   @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
-  @Test def stdLib213 = projects.stdLib213.run()
   @Test def verify = projects.verify.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
-  @Test def zio = projects.zio.run()
 end CommunityBuildTestB
 
 class TestCategory
