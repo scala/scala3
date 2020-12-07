@@ -12,10 +12,10 @@ trait ScaladocSupport { self: TastyParser =>
   import qctx.reflect._
 
   def parseComment(
-    commentPre: Documentation,
+    docstring: String,
     tree: Tree
   ): dkkd.DocumentationNode = {
-    val commentNode =
+    val commentString: String =
       if tree.symbol.isClassDef || tree.symbol.owner.isClassDef then
         import dotty.tools.dotc
         given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
@@ -23,11 +23,10 @@ trait ScaladocSupport { self: TastyParser =>
         val sym = tree.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
 
         comments.CommentExpander.cookComment(sym)(using ctx)
-          .get.asInstanceOf[Documentation]
+          .get.expanded.get
       else
-        commentPre
+        docstring
 
-    val commentString = commentNode.expanded getOrElse commentNode.raw
     val preparsed =
       comments.Preparser.preparse(comments.Cleaner.clean(commentString))
 
