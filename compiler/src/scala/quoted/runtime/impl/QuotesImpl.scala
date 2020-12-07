@@ -2291,7 +2291,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def name: String = self.denot.name.toString
         def fullName: String = self.denot.fullName.toString
-        def pos: Position = self.sourcePos
+        def pos: Option[Position] =
+          if self.exists then Some(self.sourcePos) else None
 
         def documentation: Option[Documentation] =
           import dotc.core.Comments.CommentsContext
@@ -2569,7 +2570,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       extension (self: Position):
         def start: Int = self.start
         def end: Int = self.end
-        def exists: Boolean = self.exists
         def sourceFile: SourceFile = self.source
         def startLine: Int = self.startLine
         def endLine: Int = self.endLine

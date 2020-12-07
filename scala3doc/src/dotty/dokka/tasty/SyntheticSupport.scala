@@ -41,7 +41,7 @@ trait SyntheticsSupport:
     c.flags.is(Flags.CaseAccessor) || (c.flags.is(Flags.Module) && !c.flags.is(Flags.Given))
 
   def isValidPos(pos: Position) =
-    pos.exists && pos.start != pos.end
+    pos.start != pos.end
 
   def constructorWithoutParamLists(c: ClassDef): Boolean =
     !isValidPos(c.constructor.pos)  || {

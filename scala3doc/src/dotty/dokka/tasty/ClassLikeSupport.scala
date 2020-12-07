@@ -114,7 +114,7 @@ trait ClassLikeSupport:
             extSym.symbol.normalizedName,
             extSym.tpt.dokkaType.asSignature,
             extSym.tpt.symbol.dri,
-            extSym.symbol.pos.start
+            extSym.symbol.pos.get.start
           )
           parseMethod(dd.symbol, kind = Kind.Extension(target))
         }

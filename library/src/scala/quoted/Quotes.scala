@@ -3067,7 +3067,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def fullName: String
 
         /** The position of this symbol */
-        def pos: Position
+        def pos: Option[Position]
 
         /** The documentation for this symbol, if any */
         def documentation: Option[Documentation]
@@ -3645,9 +3645,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** The end offset in the source file */
         def end: Int
-
-        /** Does this position exist */
-        def exists: Boolean
 
         /** Source file in which this position is located */
         def sourceFile: SourceFile
