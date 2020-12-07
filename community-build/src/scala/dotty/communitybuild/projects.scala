@@ -548,12 +548,14 @@ object projects:
     project           = "Equal",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
+    dependencies      = List(scalatest),
   )
 
   lazy val scissFingerTree = SbtCommunityProject(
     project           = "FingerTree",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
+    dependencies      = List(scalatest),
   )
 
   lazy val scissLog = SbtCommunityProject(
@@ -566,32 +568,35 @@ object projects:
     project           = "Model",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
+    dependencies      = List(scalatest),
   )
 
   lazy val scissNumbers = SbtCommunityProject(
     project           = "Numbers",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
+    dependencies      = List(scalatest),
   )
 
   lazy val scissSerial = SbtCommunityProject(
     project           = "Serial",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
+    dependencies      = List(scalatest),
   )
 
   lazy val scissAsyncFile = SbtCommunityProject(
     project           = "AsyncFile",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scissLog),
+    dependencies      = List(scissLog, scalatest),
   )
 
   lazy val scissSpan = SbtCommunityProject(
     project           = "Span",
     sbtTestCommand    = "rootJVM/test",
     sbtPublishCommand = "rootJVM/publishLocal",
-    dependencies      = List(scissSerial),
+    dependencies      = List(scissSerial, scalatest),
   )
 
   lazy val scalaSTM = SbtCommunityProject(
@@ -605,7 +610,7 @@ object projects:
     project           = "Lucre",
     sbtTestCommand    = "adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;expr0JVM/test;expr1JVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test",
     sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;expr0JVM/publishLocal;expr1JVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
-    dependencies      = List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan),
+    dependencies      = List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan, scalatest),
   )
 
 end projects
