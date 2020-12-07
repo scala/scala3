@@ -733,7 +733,7 @@ private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] = {
 Sometimes it is necessary to get a more precise type for an expression. This can be achived using the following pattern match.
 
 ```scala
-def f(exp: Expr[Any])(using Quotes) =
+def f(expr: Expr[Any])(using Quotes) =
   expr match
     case '{ $x: t } =>
       // If the pattern match succeeds, then there is some type `t` such that
@@ -751,10 +751,11 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
   argsExpr match {
     case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {
-        case '{ $arg: t } =>
-          Expr.summon[Show[t]] match {
+        case '{ $arg: tp } =>
+          val showTp = Type.of[Show[tp]]
+          Expr.summon(using showTp) match {
             case Some(showExpr) => '{ $showExpr.show($arg) }
-            case None => report.error(s"could not find implicit for ${showTp.show}", arg); '{???}
+            case None           => report.error(s"could not find implicit for ${Type.show[Show[tp]]}", arg); '{???}
           }
       }
       val newArgsExpr = Varargs(argShowedExprs)
