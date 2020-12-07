@@ -291,6 +291,13 @@ object projects:
     dependencies = List(scalatest, scalacheck)
   )
 
+  lazy val scalatestplusJunit = SbtCommunityProject(
+    project           = "scalatestplus-junit",
+    sbtTestCommand    = "scalatestplus-junit/test",
+    sbtPublishCommand = "scalatestplus-junit/publishLocal",
+    dependencies      = List(scalatest)
+  )
+
   lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
     sbtTestCommand   = "xml/test",
@@ -533,6 +540,72 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = s"""set every version := "${Versions.coop}";coreJVM/publishLocal;coreJS/publishLocal""",
     dependencies = List(cats, catsMtl)
+  )
+
+  // 'Sciss/Lucre' with its dependencies:
+
+  lazy val scissEqual = SbtCommunityProject(
+    project           = "Equal",
+    sbtTestCommand    = "rootJVM/test",
+    sbtPublishCommand = "rootJVM/publishLocal",
+  )
+
+  lazy val scissFingerTree = SbtCommunityProject(
+    project           = "FingerTree",
+    sbtTestCommand    = "rootJVM/test",
+    sbtPublishCommand = "rootJVM/publishLocal",
+  )
+
+  lazy val scissLog = SbtCommunityProject(
+    project           = "Log",
+    sbtTestCommand    = "rootJVM/test",
+    sbtPublishCommand = "rootJVM/publishLocal",
+  )
+
+  lazy val scissModel = SbtCommunityProject(
+    project           = "Model",
+    sbtTestCommand    = "rootJVM/test",
+    sbtPublishCommand = "rootJVM/publishLocal",
+  )
+
+  lazy val scissNumbers = SbtCommunityProject(
+    project           = "Numbers",
+    sbtTestCommand    = "rootJVM/test",
+    sbtPublishCommand = "rootJVM/publishLocal",
+  )
+
+  lazy val scissSerial = SbtCommunityProject(
+    project           = "Serial",
+    sbtTestCommand    = "rootJVM/test",
+    sbtPublishCommand = "rootJVM/publishLocal",
+  )
+
+  lazy val scissAsyncFile = SbtCommunityProject(
+    project           = "AsyncFile",
+    sbtTestCommand    = "rootJVM/test",
+    sbtPublishCommand = "rootJVM/publishLocal",
+    dependencies      = List(scissLog),
+  )
+
+  lazy val scissSpan = SbtCommunityProject(
+    project           = "Span",
+    sbtTestCommand    = "rootJVM/test",
+    sbtPublishCommand = "rootJVM/publishLocal",
+    dependencies      = List(scissSerial),
+  )
+
+  lazy val scalaSTM = SbtCommunityProject(
+    project           = "scala-stm",
+    sbtTestCommand    = "rootJVM/test",
+    sbtPublishCommand = "rootJVM/publishLocal",
+    dependencies      = List(scalatestplusJunit),
+  )
+
+  lazy val scissLucre = SbtCommunityProject(
+    project           = "Lucre",
+    sbtTestCommand    = "adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;expr0JVM/test;expr1JVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test",
+    sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;expr0JVM/publishLocal;expr1JVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
+    dependencies      = List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan),
   )
 
 end projects

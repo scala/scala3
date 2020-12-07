@@ -141,3 +141,36 @@
 [submodule "community-build/community-projects/coop"]
 	path = community-build/community-projects/coop
 	url = https://github.com/dotty-staging/coop.git
+[submodule "community-build/community-projects/AsyncFile"]
+	path = community-build/community-projects/AsyncFile
+	url = https://github.com/dotty-staging/AsyncFile.git
+[submodule "community-build/community-projects/Equal"]
+	path = community-build/community-projects/Equal
+	url = https://github.com/dotty-staging/Equal.git
+[submodule "community-build/community-projects/FingerTree"]
+	path = community-build/community-projects/FingerTree
+	url = https://github.com/dotty-staging/FingerTree.git
+[submodule "community-build/community-projects/Log"]
+	path = community-build/community-projects/Log
+	url = https://github.com/dotty-staging/Log.git
+[submodule "community-build/community-projects/Model"]
+	path = community-build/community-projects/Model
+	url = https://github.com/dotty-staging/Model.git
+[submodule "community-build/community-projects/Numbers"]
+	path = community-build/community-projects/Numbers
+	url = https://github.com/dotty-staging/Numbers.git
+[submodule "community-build/community-projects/Serial"]
+	path = community-build/community-projects/Serial
+	url = https://github.com/dotty-staging/Serial.git
+[submodule "community-build/community-projects/Span"]
+	path = community-build/community-projects/Span
+	url = https://github.com/dotty-staging/Span.git
+[submodule "community-build/community-projects/Lucre"]
+	path = community-build/community-projects/Lucre
+	url = https://github.com/dotty-staging/Lucre.git
+[submodule "community-build/community-projects/scala-stm"]
+	path = community-build/community-projects/scala-stm
+	url = https://github.com/dotty-staging/scala-stm.git
+[submodule "community-build/community-projects/scalatestplus-junit"]
+	path = community-build/community-projects/scalatestplus-junit
+	url = https://github.com/dotty-staging/scalatestplus-junit.git
