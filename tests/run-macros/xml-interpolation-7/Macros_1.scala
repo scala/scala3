@@ -26,8 +26,8 @@ object XmlQuote {
 
   def impl(receiver: Expr[XMLOps.StringContext], args: Expr[Seq[Any]])(using Quotes): Expr[Xml] = {
     val string = receiver match {
-      case '{ XMLOps.xml(${Expr(sc)}) } => sc.parts.mkString("??")
+      case '{ XMLOps.xml(${Value(sc)}) } => sc.parts.mkString("??")
     }
-    '{new Xml(${Expr(string)}, $args.toList)}
+    '{new Xml(${Value(string)}, $args.toList)}
   }
 }

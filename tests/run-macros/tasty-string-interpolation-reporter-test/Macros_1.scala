@@ -39,7 +39,7 @@ object Macro {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
             import quotes.reflect._
             val pos = Term.of(parts(partIdx)).pos
-            errors += '{ Tuple4(${Expr(partIdx)}, ${Expr(pos.start)}, ${Expr(pos.end)}, ${Expr(msg)}) }
+            errors += '{ Tuple4(${Value(partIdx)}, ${Value(pos.start)}, ${Value(pos.end)}, ${Value(msg)}) }
           }
         }
         fooCore(parts, args, reporter) // Discard result

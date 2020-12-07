@@ -14,17 +14,17 @@ object Macro {
 
 object SIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
-    '{(${Expr(strCtx)}).s(${Expr.ofList(args)}: _*)}
+    '{(${Value(strCtx)}).s(${Expr.ofList(args)}: _*)}
 }
 
 object RawIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
-    '{(${Expr(strCtx)}).raw(${Expr.ofList(args)}: _*)}
+    '{(${Value(strCtx)}).raw(${Expr.ofList(args)}: _*)}
 }
 
 object FooIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
-    '{(${Expr(strCtx)}).s(${Expr.ofList(args.map(_ => '{"foo"}))}: _*)}
+    '{(${Value(strCtx)}).s(${Expr.ofList(args.map(_ => '{"foo"}))}: _*)}
 }
 
 // TODO put this class in the stdlib or separate project?
@@ -77,7 +77,7 @@ abstract class MacroStringInterpolator[T] {
   }
 
   protected implicit def StringContextIsToExpr: ToExpr[StringContext] = new ToExpr[StringContext] {
-    def apply(strCtx: StringContext)(using Quotes) = '{StringContext(${Expr(strCtx.parts.toSeq)}: _*)}
+    def apply(strCtx: StringContext)(using Quotes) = '{StringContext(${Value(strCtx.parts.toSeq)}: _*)}
   }
 
   protected class NotStaticlyKnownError(msg: String, expr: Expr[Any]) extends Exception(msg)

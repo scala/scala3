@@ -10,17 +10,17 @@ object Macros {
 
   def unrolledForeachImpl(seq: Expr[IndexedSeq[Int]], f: Expr[Int => Unit], unrollSize: Int)(using Quotes): Expr[Unit] = '{
     val size = ($seq).length
-    assert(size % (${Expr(unrollSize)}) == 0) // for simplicity of the implementation
+    assert(size % (${Value(unrollSize)}) == 0) // for simplicity of the implementation
     var i = 0
     while (i < size) {
       ${
         for (j <- new UnrolledRange(0, unrollSize)) '{
-          val index = i + ${Expr(j)}
+          val index = i + ${Value(j)}
           val element = ($seq)(index)
           ${ Expr.betaReduce('{$f(element)}) } // or `($f)(element)` if `f` should not be inlined
         }
       }
-      i += ${Expr(unrollSize)}
+      i += ${Value(unrollSize)}
     }
 
   }

@@ -10,7 +10,7 @@ object LineNumber {
 
   def lineImpl(using Quotes) : Expr[LineNumber] = {
     import quotes.reflect._
-    '{new LineNumber(${Expr(Position.ofMacroExpansion.startLine)})}
+    '{new LineNumber(${Value(Position.ofMacroExpansion.startLine)})}
   }
 
 }

@@ -21,21 +21,21 @@ def test(using Quotes) = {
 
   implicit def ListToExpr[T: ToExpr: Type]: ToExpr[List[T]] = new {
     def apply(xs: List[T])(using Quotes) = xs match {
-      case x :: xs1 => '{ ${ Expr(x) } :: ${ apply(xs1) } }
+      case x :: xs1 => '{ ${ Value(x) } :: ${ apply(xs1) } }
       case Nil => '{Nil: List[T]}
     }
   }
 
-  Expr(true)
-  Expr(1)
-  Expr('a')
-  Expr(1)
-  Expr(1)
-  Expr(1L)
-  Expr(1.0f)
-  Expr(1.0)
-  Expr("abc")
-  Expr(StringContext("a", "b", "c"))
+  Value(true)
+  Value(1)
+  Value('a')
+  Value(1)
+  Value(1)
+  Value(1L)
+  Value(1.0f)
+  Value(1.0)
+  Value("abc")
+  Value(StringContext("a", "b", "c"))
 
-  val xs: Expr[List[Int]] = Expr(1 :: 2 :: 3 :: Nil)
+  val xs: Expr[List[Int]] = Value(1 :: 2 :: 3 :: Nil)
 }

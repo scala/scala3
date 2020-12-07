@@ -14,6 +14,6 @@ object Macros {
 
   def thisLineNumberImpl(using Quotes) : Expr[Int] = {
     import quotes.reflect._
-    Expr(Position.ofMacroExpansion.startLine)
+    Value(Position.ofMacroExpansion.startLine)
   }
 }

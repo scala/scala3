@@ -7,6 +7,6 @@ object Macro {
 
   def impl(strExpr: Expr[String]) (using Quotes)=
     val str = strExpr.valueOrError
-    if (str.length == 1) Expr(str.charAt(0)) else Expr(str)
+    if (str.length == 1) Value(str.charAt(0)) else Value(str)
 
 }

@@ -6,7 +6,7 @@ object api {
 
   private def reflImpl(x: Expr[String])(using Quotes) : Expr[String] = {
     import quotes.reflect._
-    Expr(x.show)
+    Value(x.show)
   }
 
   extension (x: => String) inline def reflectColor : String =
@@ -14,6 +14,6 @@ object api {
 
   private def reflImplColor(x: Expr[String])(using Quotes) : Expr[String] = {
     import quotes.reflect._
-    Expr(x.showAnsiColored)
+    Value(x.showAnsiColored)
   }
 }

@@ -20,44 +20,44 @@ object Test {
     liftedWhile('{true})('{ println(1) }).show
     liftedDoWhile('{ println(1) })('{true}).show
 
-    val t1: Expr[Tuple1[Int]] = Expr(Tuple1(4))
-    val t2: Expr[(Int, Int)] = Expr((2, 3))
-    val t3: Expr[(Int, Int, Int)] = Expr((2, 3, 4))
-    val t4: Expr[(Int, Int, Int, Int)] = Expr((2, 3, 4, 5))
-    Expr((1, 2, 3, 4))
-    Expr((1, 2, 3, 4, 5))
-    Expr((1, 2, 3, 4, 5, 6))
-    Expr((1, 2, 3, 4, 5, 6, 7))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24))
-    Expr((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25))
+    val t1: Expr[Tuple1[Int]] = Value(Tuple1(4))
+    val t2: Expr[(Int, Int)] = Value((2, 3))
+    val t3: Expr[(Int, Int, Int)] = Value((2, 3, 4))
+    val t4: Expr[(Int, Int, Int, Int)] = Value((2, 3, 4, 5))
+    Value((1, 2, 3, 4))
+    Value((1, 2, 3, 4, 5))
+    Value((1, 2, 3, 4, 5, 6))
+    Value((1, 2, 3, 4, 5, 6, 7))
+    Value((1, 2, 3, 4, 5, 6, 7, 8))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24))
+    Value((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25))
 
     val list: List[Int] = List(1, 2, 3)
-    val liftedList: Expr[List[Int]] = Expr(list)
+    val liftedList: Expr[List[Int]] = Value(list)
 
     val seq: Seq[Int] = Seq(1, 2, 3)
-    val liftedSeq: Expr[Seq[Int]] = Expr(seq)
+    val liftedSeq: Expr[Seq[Int]] = Value(seq)
 
     val set: Set[Int] = Set(1, 2, 3)
-    val liftedSet: Expr[Set[Int]] = Expr(set)
+    val liftedSet: Expr[Set[Int]] = Value(set)
 
     val map: Map[Int, Char] = Map(1 -> 'a', 2 -> 'b', 3 -> 'c')
-    val liftedMap: Expr[Map[Int, Char]] = Expr(map)
+    val liftedMap: Expr[Map[Int, Char]] = Value(map)
 
     liftedList.foldLeft[Int]('{0})('{ (acc: Int, x: Int) => acc + x }).show
     liftedList.foreach('{ (x: Int) => println(x) }).show
@@ -66,43 +66,43 @@ object Test {
     list.unrolledForeach('{ (x: Int) => println(x) }).show
 
     val iarray: IArray[Int] = IArray(1, 2, 3)
-    val liftedIArray: Expr[IArray[Int]] = Expr(iarray)
+    val liftedIArray: Expr[IArray[Int]] = Value(iarray)
 
     val iarray2: IArray[String] = IArray("a", "b", "c")
-    Expr(iarray2)
+    Value(iarray2)
 
-    Expr(IArray(false))
-    Expr(IArray(1: Byte))
-    Expr(IArray(1: Short))
-    Expr(IArray(1))
-    Expr(IArray(1L))
-    Expr(IArray(1.1f))
-    Expr(IArray(1.1d))
-    Expr(IArray('a'))
-    Expr(IArray((1, 3)))
+    Value(IArray(false))
+    Value(IArray(1: Byte))
+    Value(IArray(1: Short))
+    Value(IArray(1))
+    Value(IArray(1L))
+    Value(IArray(1.1f))
+    Value(IArray(1.1d))
+    Value(IArray('a'))
+    Value(IArray((1, 3)))
 
     val array: Array[Int] = Array(1, 2, 3)
-    val liftedArray: Expr[Array[Int]] = Expr(array)
+    val liftedArray: Expr[Array[Int]] = Value(array)
 
-    Expr(Array(false))
-    Expr(Array(1: Byte))
-    Expr(Array(1: Short))
-    Expr(Array(1))
-    Expr(Array(1L))
-    Expr(Array(1.1f))
-    Expr(Array(1.1d))
-    Expr(Array('a'))
-    Expr(Array((1, 3)))
+    Value(Array(false))
+    Value(Array(1: Byte))
+    Value(Array(1: Short))
+    Value(Array(1))
+    Value(Array(1L))
+    Value(Array(1.1f))
+    Value(Array(1.1d))
+    Value(Array('a'))
+    Value(Array((1, 3)))
 
     val some: Option[Int] = Some(2)
     val none: Option[Int] = Some(2)
-    val liftedSome: Expr[Option[Int]] = Expr(some)
-    val liftedNone: Expr[Option[Int]] = Expr(none)
+    val liftedSome: Expr[Option[Int]] = Value(some)
+    val liftedNone: Expr[Option[Int]] = Value(none)
 
     val left: Either[Int, Long] = Left(1)
     val right: Either[Int, Long] = Right(2L)
-    Expr(left)
-    Expr(right)
+    Value(left)
+    Value(right)
 
     println("quote lib ok")
   }
@@ -152,11 +152,11 @@ package liftable {
 
     implicit class UnrolledOps[T: ToExpr](list: List[T])(implicit t: Type[T], qctx: Quotes) {
       def unrolledFoldLeft[U](acc: Expr[U])(f: Expr[(U, T) => U])(implicit u: Type[U]): Expr[U] = list match {
-        case x :: xs => xs.unrolledFoldLeft('{ ($f).apply($acc, ${Expr(x)}) })(f)
+        case x :: xs => xs.unrolledFoldLeft('{ ($f).apply($acc, ${Value(x)}) })(f)
         case Nil => acc
       }
        def unrolledForeach(f: Expr[T => Unit]): Expr[Unit] = list match {
-         case x :: xs => '{ ($f).apply(${Expr(x)}); ${ xs.unrolledForeach(f) } }
+         case x :: xs => '{ ($f).apply(${Value(x)}); ${ xs.unrolledForeach(f) } }
          case Nil => '{}
        }
     }

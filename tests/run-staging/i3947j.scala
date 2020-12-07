@@ -7,7 +7,7 @@ object Test {
 
   def main(args: Array[String]): Unit = run {
     def test[T: Type](clazz: java.lang.Class[T]) = {
-      val lclazz = Expr(clazz)
+      val lclazz = Value(clazz)
       val name = '{ ($lclazz).getCanonicalName }
       println(name.show)
       '{ println($name) }

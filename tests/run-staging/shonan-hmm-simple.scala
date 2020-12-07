@@ -35,7 +35,7 @@ sealed trait PV[T]:
   def expr(using ToExpr[T], Quotes): Expr[T]
 
 case class Sta[T](x: T) extends PV[T]:
-  def expr(using ToExpr[T], Quotes): Expr[T] = Expr(x)
+  def expr(using ToExpr[T], Quotes): Expr[T] = Value(x)
 
 case class Dyn[T](x: Expr[T]) extends PV[T]:
   def expr(using ToExpr[T], Quotes): Expr[T] = x
@@ -64,7 +64,7 @@ case class Complex[T](re: T, im: T)
 
 object Complex:
   implicit def isToExpr[T: Type: ToExpr]: ToExpr[Complex[T]] = new ToExpr[Complex[T]]:
-    def apply(comp: Complex[T])(using Quotes) = '{Complex(${Expr(comp.re)}, ${Expr(comp.im)})}
+    def apply(comp: Complex[T])(using Quotes) = '{Complex(${Value(comp.re)}, ${Value(comp.im)})}
 
 case class Vec[Idx, T](size: Idx, get: Idx => T):
   def map[U](f: T => U): Vec[Idx, U] = Vec(size, i => f(get(i)))
@@ -125,8 +125,8 @@ object Test:
 
     def blasStaticIntExpr(using Quotes) = new Blas1(new RingIntExpr, new StaticVecOps)
     def resCode1(using Quotes) = blasStaticIntExpr.dot(
-      vec1.map(Expr(_)),
-      vec2.map(Expr(_))
+      vec1.map(Value(_)),
+      vec2.map(Value(_))
     )
     println(withQuotes(resCode1.show))
     println(run(resCode1))
@@ -149,7 +149,7 @@ object Test:
 
     def blasStaticIntPVExpr(using Quotes) = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
     def resCode3(using Quotes) = blasStaticIntPVExpr.dot(
-      vec1.map(i => Dyn(Expr(i))),
+      vec1.map(i => Dyn(Value(i))),
       vec2.map(i => Sta(i))
     ).expr
     println(withQuotes(resCode3.show))
@@ -159,10 +159,10 @@ object Test:
     def blasExprIntPVExpr(using Quotes) = new Blas1(new RingPV[Int](new RingInt, new RingIntExpr), new StaticVecOps)
     def resCode4(using Quotes): Expr[Array[Int] => Int] = '{
       arr =>
-        if (arr.length != ${Expr(vec2.size)}) throw new Exception("...")
+        if (arr.length != ${Value(vec2.size)}) throw new Exception("...")
         ${
           blasExprIntPVExpr.dot(
-            new Vec(vec2.size, i => Dyn('{arr(${Expr(i)})})),
+            new Vec(vec2.size, i => Dyn('{arr(${Value(i)})})),
             vec2.map(i => Sta(i))
           ).expr
         }
@@ -176,10 +176,10 @@ object Test:
     def blasExprComplexPVInt(using Quotes) = new Blas1[Int, Complex[PV[Int]]](new RingComplex(new RingPV[Int](new RingInt, new RingIntExpr)), new StaticVecOps)
     def resCode5(using Quotes): Expr[Array[Complex[Int]] => Complex[Int]] = '{
       arr =>
-        if (arr.length != ${Expr(cmpxVec2.size)}) throw new Exception("...")
+        if (arr.length != ${Value(cmpxVec2.size)}) throw new Exception("...")
         ${
           val cpx = blasExprComplexPVInt.dot(
-            new Vec(cmpxVec2.size, i => Complex(Dyn('{arr(${Expr(i)}).re}), Dyn('{arr(${Expr(i)}).im}))),
+            new Vec(cmpxVec2.size, i => Complex(Dyn('{arr(${Value(i)}).re}), Dyn('{arr(${Value(i)}).im}))),
             new Vec(cmpxVec2.size, i => Complex(Sta(cmpxVec2.get(i).re), Sta(cmpxVec2.get(i).im)))
           )
           '{Complex(${cpx.re.expr}, ${cpx.im.expr})}
@@ -194,7 +194,7 @@ object Test:
     def dotIntOptExpr(using Quotes) = new Blas1(RingPVInt, new StaticVecOps).dot
     // will generate the code '{ ((arr: scala.Array[scala.Int]) => arr.apply(1).+(arr.apply(3))) }
     def staticVec(using Quotes) = Vec[Int, PV[Int]](5, i => Sta((i % 2)))
-    def code(using Quotes) = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${Expr(i)})})), staticVec).expr} }
+    def code(using Quotes) = '{(arr: Array[Int]) => ${dotIntOptExpr(Vec(5, i => Dyn('{arr(${Value(i)})})), staticVec).expr} }
     println(withQuotes(code.show))
     println()
 

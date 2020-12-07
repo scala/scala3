@@ -246,7 +246,7 @@ import scala.quoted._
 
 def compile(e: Exp, env: Map[String, Expr[Int]])(using Quotes): Expr[Int] = e match {
   case Num(n) =>
-    Expr(n)
+    Value(n)
   case Plus(e1, e2) =>
     '{ ${ compile(e1, env) } + ${ compile(e2, env) } }
   case Var(x) =>
@@ -259,8 +259,8 @@ Running `compile(letExp, Map())` would yield the following Scala code:
 ```scala
 '{ val y = 3; (2 + y) + 4 }
 ```
-The body of the first clause, `case Num(n) => Expr(n)`, looks suspicious. `n`
-is declared as an `Int`, yet it is converted to an `Expr[Int]` with `Expr()`.
+The body of the first clause, `case Num(n) => Value(n)`, looks suspicious. `n`
+is declared as an `Int`, yet it is converted to an `Expr[Int]` with `Value()`.
 Shouldn’t `n` be quoted? In fact this would not
 work since replacing `n` by `'n` in the clause would not be phase
 correct.
@@ -312,7 +312,7 @@ a `List` is liftable if its element type is:
 ```scala
 given [T: ToExpr : Type]: ToExpr[List[T]] with
   def toExpr(xs: List[T]) = xs match {
-    case head :: tail => '{ ${ Expr(head) } :: ${ toExpr(tail) } }
+    case head :: tail => '{ ${ Value(head) } :: ${ toExpr(tail) } }
     case Nil => '{ Nil: List[T] }
   }
 ```
@@ -326,7 +326,7 @@ Using lifting, we can now give the missing definition of `showExpr` in the intro
 ```scala
 def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] = {
   val code: String = expr.show
-  Expr(code)
+  Value(code)
 }
 ```
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
@@ -375,7 +375,7 @@ object Macros {
     ${ assertImpl('expr) }
 
   def assertImpl(expr: Expr[Boolean])(using Quotes) =
-    val failMsg: Expr[String] = Expr("failed assertion: " + expr.show)
+    val failMsg: Expr[String] = Value("failed assertion: " + expr.show)
     '{ if !($expr) then throw new AssertionError($failMsg) }
 }
 
@@ -641,14 +641,14 @@ These could be used in the following way to optimize any call to `sum` that has 
 ```scala
 inline def sum(inline args: Int*): Int = ${ sumExpr('args) }
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match {
-  case Varargs(args @ Exprs(argValues)) =>
+  case Varargs(args @ Values(argValues)) =>
     // args is of type Seq[Expr[Int]]
     // argValues is of type Seq[Int]
-    Expr(argValues.sum) // precompute result of sum
+    Value(argValues.sum) // precompute result of sum
   case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
     val staticSum: Int = argExprs.map(_.value.getOrElse(0))
     val dynamicSum: Seq[Expr[Int]] = argExprs.filter(_.value.isEmpty)
-    dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
+    dynamicSum.foldLeft(Value(staticSum))((acc, arg) => '{ $acc + $arg })
   case _ =>
     '{ $argsExpr.sum }
 }
@@ -671,7 +671,7 @@ def sum(args: Int*): Int = args.sum
 inline def optimize(inline arg: Int): Int = ${ optimizeExpr('arg) }
 private def optimizeExpr(body: Expr[Int])(using Quotes): Expr[Int] = body match {
   // Match a call to sum without any arguments
-  case '{ sum() } => Expr(0)
+  case '{ sum() } => Value(0)
   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
   case '{ sum($n) } => n
   // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
@@ -686,7 +686,7 @@ private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] = {
     val args2 = args1.flatMap(flatSumArgs)
     val staticSum: Int = args2.map(_.value.getOrElse(0)).sum
     val dynamicSum: Seq[Expr[Int]] = args2.filter(_.value.isEmpty)
-    dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
+    dynamicSum.foldLeft(Value(staticSum))((acc, arg) => '{ $acc + $arg })
 }
 ```
 
@@ -762,7 +762,7 @@ private def evalExpr(e: Expr[Int])(using Quotes): Expr[Int] = {
       evalExpr(Expr.betaReduce(body)(evalExpr(x)))
     case '{ ($x: Int) * ($y: Int) } =>
       (x.value, y.value) match
-        case (Some(a), Some(b)) => Expr(a * b)
+        case (Some(a), Some(b)) => Value(a * b)
         case _ => e
     case _ => e
   }

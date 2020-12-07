@@ -19,14 +19,14 @@ object MacrosMD_ToExpr {
 
   given [T: ToExpr : Type]: ToExpr[List[T]] with {
     def apply(xs: List[T])(using Quotes) = xs match {
-      case head :: tail => '{ ${ Expr(head) } :: ${ apply(tail) } }
+      case head :: tail => '{ ${ Value(head) } :: ${ apply(tail) } }
       case Nil => '{ Nil: List[T] }
     }
   }
 
   def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] = {
     val code: String = expr.show
-    Expr(code)
+    Value(code)
   }
 
 }

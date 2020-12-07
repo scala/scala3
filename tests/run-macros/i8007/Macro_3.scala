@@ -41,10 +41,10 @@ object Eq {
       case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
         val elemInstances = summonAll[elementTypes]
         val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
-          elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
+          elemInstances.zipWithIndex.foldLeft(Value(true: Boolean)) {
             case (acc, (elem, index)) =>
-              val e1 = '{$x.asInstanceOf[Product].productElement(${Expr(index)})}
-              val e2 = '{$y.asInstanceOf[Product].productElement(${Expr(index)})}
+              val e1 = '{$x.asInstanceOf[Product].productElement(${Value(index)})}
+              val e2 = '{$y.asInstanceOf[Product].productElement(${Value(index)})}
 
               '{ $acc && $elem.asInstanceOf[Eq[Any]].eqv($e1, $e2) }
           }

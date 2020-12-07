@@ -4,7 +4,7 @@ inline def diveInto[T]: String = ${ diveIntoImpl[T]() }
 
 def diveIntoImpl[T]()(implicit qctx: Quotes, ttype: Type[T]): Expr[String] =
   import quotes.reflect._
-  Expr( unwindType(TypeRepr.of[T]) )
+  Value( unwindType(TypeRepr.of[T]) )
 
 def unwindType(using Quotes)(aType: quotes.reflect.TypeRepr): String =
   import quotes.reflect._
@@ -20,4 +20,3 @@ def unwindType(using Quotes)(aType: quotes.reflect.TypeRepr): String =
     case _ =>
   }
   "OK!"
-

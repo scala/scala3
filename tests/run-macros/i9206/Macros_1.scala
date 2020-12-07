@@ -7,6 +7,6 @@ object Inspect {
   def inspectTpe[T <: AnyKind: Type](using Quotes): Expr[String] = {
     import quotes.reflect.TypeRepr
     val tree = TypeRepr.of[T].typeSymbol.tree
-    Expr(tree.show)
+    Value(tree.show)
   }
 }

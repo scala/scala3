@@ -7,7 +7,7 @@ object Main {
     val bodyTerm = Term.of(underlyingArgument(body))
     val showed = bodyTerm.show
     '{
-      println(${Expr(showed)})
+      println(${Value(showed)})
       ${bodyTerm.asExpr}
     }
   }

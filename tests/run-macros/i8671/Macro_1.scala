@@ -17,7 +17,7 @@ object FileName {
       case Some(s) =>
         fileNameFromString(s) match {
             case Right(fn) =>
-              '{FileName.unsafe(${Expr(fn.name)})} // Or `Expr(fn)` if there is a `ToExpr[FileName]`
+              '{FileName.unsafe(${Value(fn.name)})} // Or `Value(fn)` if there is a `ToExpr[FileName]`
             case Left(_) =>
               report.throwError(s"$s is not a valid file name! It must not contain a /", fileName)
          }

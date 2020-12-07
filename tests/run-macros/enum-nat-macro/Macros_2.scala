@@ -13,7 +13,7 @@ import Nat._
        case '{ Succ($nat) } => inner(nat, acc + 1)
        case '{ Zero       } => acc
 
-     Expr(inner(nat, 0))
+     Value(inner(nat, 0))
 
    def natZero(using Quotes): Expr[Nat.Zero.type] = '{Zero}
 

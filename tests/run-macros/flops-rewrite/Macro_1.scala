@@ -16,8 +16,8 @@ private def rewriteMacro[T: Type](x: Expr[T])(using Quotes): Expr[T] = {
   val x2 = rewriter.transform(x)
 
   '{
-    println(${Expr(x.show)})
-    println(${Expr(x2.show)})
+    println(${Value(x.show)})
+    println(${Value(x2.show)})
     println()
     $x2
   }

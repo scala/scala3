@@ -47,12 +47,12 @@ object FQuote {
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
       if (part.startsWith("%d") && !(arg.tpe <:< TypeRepr.of[Int])) {
-        return '{s"`${${Expr(arg.show)}}` is not of type Int"}
+        return '{s"`${${Value(arg.show)}}` is not of type Int"}
       }
 
     }
 
     val string = parts.mkString("")
-    '{ new collection.immutable.StringOps(${Expr(string)}).format($args: _*) }
+    '{ new collection.immutable.StringOps(${Value(string)}).format($args: _*) }
   }
 }

@@ -15,7 +15,7 @@ object Test {
   def stage1(x: Expr[Int])(using Quotes): Expr[Quotes ?=> Expr[Int]] =
     val code = '{ (using q1: Quotes) =>
       val x1 = $x
-      '{ 1 + ${Expr(x1)} }
+      '{ 1 + ${Value(x1)} }
     }
     println("stage1 code: " + code.show)
     code

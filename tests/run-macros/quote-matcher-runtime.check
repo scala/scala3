@@ -20,35 +20,35 @@ Result: Some(List())
 
 Scrutinee: 3
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Int]
-Result: Some(List(Expr(3)))
+Result: Some(List(Value(3)))
 
 Scrutinee: x
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Int]
-Result: Some(List(Expr(x)))
+Result: Some(List(Value(x)))
 
 Scrutinee: 5
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Any]
-Result: Some(List(Expr(5)))
+Result: Some(List(Value(5)))
 
 Scrutinee: 6.+(x)
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Int]
-Result: Some(List(Expr(6.+(x))))
+Result: Some(List(Value(6.+(x))))
 
 Scrutinee: 6.+(x)
 Pattern: 6.+(scala.quoted.runtime.Patterns.patternHole[scala.Int])
-Result: Some(List(Expr(x)))
+Result: Some(List(Value(x)))
 
 Scrutinee: 6.+(x)
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Int].+(x)
-Result: Some(List(Expr(6)))
+Result: Some(List(Value(6)))
 
 Scrutinee: 6.+(x)
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Int].+(scala.quoted.runtime.Patterns.patternHole[scala.Int])
-Result: Some(List(Expr(6), Expr(x)))
+Result: Some(List(Value(6), Value(x)))
 
 Scrutinee: 6.+(x).+(y)
 Pattern: 6.+(scala.quoted.runtime.Patterns.patternHole[scala.Int]).+(y)
-Result: Some(List(Expr(x)))
+Result: Some(List(Value(x)))
 
 Scrutinee: 4
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Predef.String]
@@ -84,23 +84,23 @@ Result: None
 
 Scrutinee: f(4)
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Int]
-Result: Some(List(Expr(f(4))))
+Result: Some(List(Value(f(4))))
 
 Scrutinee: f(5)
 Pattern: f(scala.quoted.runtime.Patterns.patternHole[scala.Int])
-Result: Some(List(Expr(5)))
+Result: Some(List(Value(5)))
 
 Scrutinee: g[scala.Int]
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Int]
-Result: Some(List(Expr(g[scala.Int])))
+Result: Some(List(Value(g[scala.Int])))
 
 Scrutinee: h[scala.Int](7)
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Int]
-Result: Some(List(Expr(h[scala.Int](7))))
+Result: Some(List(Value(h[scala.Int](7))))
 
 Scrutinee: h[scala.Int](8)
 Pattern: h[scala.Int](scala.quoted.runtime.Patterns.patternHole[scala.Int])
-Result: Some(List(Expr(8)))
+Result: Some(List(Value(8)))
 
 Scrutinee: Test.this
 Pattern: Test.this
@@ -108,7 +108,7 @@ Result: Some(List())
 
 Scrutinee: Test.this
 Pattern: scala.quoted.runtime.Patterns.patternHole[this.type]
-Result: Some(List(Expr(Test.this)))
+Result: Some(List(Value(Test.this)))
 
 Scrutinee: new Foo(1)
 Pattern: new Foo(1)
@@ -116,11 +116,11 @@ Result: Some(List())
 
 Scrutinee: new Foo(1)
 Pattern: scala.quoted.runtime.Patterns.patternHole[Foo]
-Result: Some(List(Expr(new Foo(1))))
+Result: Some(List(Value(new Foo(1))))
 
 Scrutinee: new Foo(1)
 Pattern: new Foo(scala.quoted.runtime.Patterns.patternHole[scala.Int])
-Result: Some(List(Expr(1)))
+Result: Some(List(Value(1)))
 
 Scrutinee: if (b) x else y
 Pattern: if (b) x else y
@@ -128,11 +128,11 @@ Result: Some(List())
 
 Scrutinee: if (b) x else y
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Int]
-Result: Some(List(Expr(if (b) x else y)))
+Result: Some(List(Value(if (b) x else y)))
 
 Scrutinee: if (b) x else y
 Pattern: if (scala.quoted.runtime.Patterns.patternHole[scala.Boolean]) scala.quoted.runtime.Patterns.patternHole[scala.Int] else scala.quoted.runtime.Patterns.patternHole[scala.Int]
-Result: Some(List(Expr(b), Expr(x), Expr(y)))
+Result: Some(List(Value(b), Value(x), Value(y)))
 
 Scrutinee: while (b) {
   x
@@ -149,7 +149,7 @@ Scrutinee: while (b) {
   ()
 }
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Unit]
-Result: Some(List(Expr(while (b) {
+Result: Some(List(Value(while (b) {
   x
   ()
 })))
@@ -162,7 +162,7 @@ Pattern: while (scala.quoted.runtime.Patterns.patternHole[scala.Boolean]) {
   scala.quoted.runtime.Patterns.patternHole[scala.Int]
   ()
 }
-Result: Some(List(Expr(b), Expr(x)))
+Result: Some(List(Value(b), Value(x)))
 
 Scrutinee: z = 4
 Pattern: z = 4
@@ -170,11 +170,11 @@ Result: Some(List())
 
 Scrutinee: z = 4
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Unit]
-Result: Some(List(Expr(z = 4)))
+Result: Some(List(Value(z = 4)))
 
 Scrutinee: z = 4
 Pattern: z = scala.quoted.runtime.Patterns.patternHole[scala.Int]
-Result: Some(List(Expr(4)))
+Result: Some(List(Value(4)))
 
 Scrutinee: 1
 Pattern: 1
@@ -190,7 +190,7 @@ Result: Some(List())
 
 Scrutinee: fs()
 Pattern: fs(scala.quoted.runtime.Patterns.patternHole[scala.Seq[scala.Int]]: _*)
-Result: Some(List(Expr()))
+Result: Some(List(Value()))
 
 Scrutinee: fs(1, 2, 3)
 Pattern: fs(1, 2, 3)
@@ -198,11 +198,11 @@ Result: Some(List())
 
 Scrutinee: fs(1, 2, 3)
 Pattern: fs(scala.quoted.runtime.Patterns.patternHole[scala.Int], scala.quoted.runtime.Patterns.patternHole[scala.Int], 3)
-Result: Some(List(Expr(1), Expr(2)))
+Result: Some(List(Value(1), Value(2)))
 
 Scrutinee: fs(1, 2, 3)
 Pattern: fs(scala.quoted.runtime.Patterns.patternHole[scala.Seq[scala.Int]]: _*)
-Result: Some(List(Expr(1, 2, 3)))
+Result: Some(List(Value(1, 2, 3)))
 
 Scrutinee: f2(1, 2)
 Pattern: f2(1, 2)
@@ -214,7 +214,7 @@ Result: Some(List())
 
 Scrutinee: f2(a = 1, b = 2)
 Pattern: f2(a = scala.quoted.runtime.Patterns.patternHole[scala.Int], b = scala.quoted.runtime.Patterns.patternHole[scala.Int])
-Result: Some(List(Expr(1), Expr(2)))
+Result: Some(List(Value(1), Value(2)))
 
 Scrutinee: super.toString()
 Pattern: super.toString()
@@ -222,23 +222,23 @@ Result: Some(List())
 
 Scrutinee: (() => "abc")
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Function0[scala.Predef.String]]
-Result: Some(List(Expr((() => "abc"))))
+Result: Some(List(Value((() => "abc"))))
 
 Scrutinee: (() => "abc").apply()
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Function0[scala.Predef.String]].apply()
-Result: Some(List(Expr((() => "abc"))))
+Result: Some(List(Value((() => "abc"))))
 
 Scrutinee: ((x: scala.Int) => "abc")
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Function1[scala.Int, scala.Predef.String]]
-Result: Some(List(Expr(((x: scala.Int) => "abc"))))
+Result: Some(List(Value(((x: scala.Int) => "abc"))))
 
 Scrutinee: ((x: scala.Int) => "abc").apply(4)
 Pattern: scala.quoted.runtime.Patterns.patternHole[scala.Function1[scala.Int, scala.Predef.String]].apply(4)
-Result: Some(List(Expr(((x: scala.Int) => "abc"))))
+Result: Some(List(Value(((x: scala.Int) => "abc"))))
 
 Scrutinee: ((x: scala.Int) => "abc")
 Pattern: ((x: scala.Int) => scala.quoted.runtime.Patterns.patternHole[scala.Predef.String])
-Result: Some(List(Expr("abc")))
+Result: Some(List(Value("abc")))
 
 Scrutinee: scala.StringContext.apply("abc", "xyz")
 Pattern: scala.StringContext.apply("abc", "xyz")
@@ -246,11 +246,11 @@ Result: Some(List())
 
 Scrutinee: scala.StringContext.apply("abc", "xyz")
 Pattern: scala.StringContext.apply(scala.quoted.runtime.Patterns.patternHole[java.lang.String], scala.quoted.runtime.Patterns.patternHole[java.lang.String])
-Result: Some(List(Expr("abc"), Expr("xyz")))
+Result: Some(List(Value("abc"), Value("xyz")))
 
 Scrutinee: scala.StringContext.apply("abc", "xyz")
 Pattern: scala.StringContext.apply(scala.quoted.runtime.Patterns.patternHole[scala.Seq[scala.Predef.String]]: _*)
-Result: Some(List(Expr("abc", "xyz")))
+Result: Some(List(Value("abc", "xyz")))
 
 Scrutinee: {
   val a: scala.Int = 45
@@ -270,7 +270,7 @@ Pattern: {
   val a: scala.Int = scala.quoted.runtime.Patterns.patternHole[scala.Int]
   ()
 }
-Result: Some(List(Expr(45)))
+Result: Some(List(Value(45)))
 
 Scrutinee: {
   val a: scala.Int = 45
@@ -502,7 +502,7 @@ Pattern: {
   def a: scala.Int = scala.quoted.runtime.Patterns.patternHole[scala.Int]
   ()
 }
-Result: Some(List(Expr(45)))
+Result: Some(List(Value(45)))
 
 Scrutinee: {
   def a(x: scala.Int): scala.Int = 45
@@ -639,14 +639,14 @@ Pattern: {
   @scala.quoted.runtime.Patterns.patternType type T
   scala.quoted.runtime.Patterns.patternHole[scala.List[scala.Int]].foreach[T](scala.quoted.runtime.Patterns.patternHole[scala.Function1[scala.Int, T]])
 }
-Result: Some(List(Type(scala.Unit), Expr(scala.List.apply[scala.Int](1, 2, 3)), Expr(((x: scala.Int) => scala.Predef.println(x)))))
+Result: Some(List(Type(scala.Unit), Value(scala.List.apply[scala.Int](1, 2, 3)), Value(((x: scala.Int) => scala.Predef.println(x)))))
 
 Scrutinee: scala.List.apply[scala.Int](1, 2, 3).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
 Pattern: {
   @scala.quoted.runtime.Patterns.patternType type T = scala.Unit
   scala.quoted.runtime.Patterns.patternHole[scala.List[scala.Int]].foreach[T](scala.quoted.runtime.Patterns.patternHole[scala.Function1[scala.Int, T]])
 }
-Result: Some(List(Type(scala.Unit), Expr(scala.List.apply[scala.Int](1, 2, 3)), Expr(((x: scala.Int) => scala.Predef.println(x)))))
+Result: Some(List(Type(scala.Unit), Value(scala.List.apply[scala.Int](1, 2, 3)), Value(((x: scala.Int) => scala.Predef.println(x)))))
 
 Scrutinee: scala.List.apply[scala.Int](1, 2, 3).foreach[scala.Unit](((x: scala.Int) => scala.Predef.println(x)))
 Pattern: {
@@ -666,7 +666,7 @@ Pattern: {
   val b: T = scala.quoted.runtime.Patterns.patternHole[T]
   ()
 }
-Result: Some(List(Type(scala.Int), Expr(4), Expr(4)))
+Result: Some(List(Type(scala.Int), Value(4), Value(4)))
 
 Scrutinee: {
   val a: scala.Int = 4
@@ -679,7 +679,7 @@ Pattern: {
   val b: T = scala.quoted.runtime.Patterns.patternHole[T]
   ()
 }
-Result: Some(List(Type(scala.Int), Expr(4), Expr(5)))
+Result: Some(List(Type(scala.Int), Value(4), Value(5)))
 
 Scrutinee: {
   val a: scala.Int = 4
@@ -692,7 +692,7 @@ Pattern: {
   val b: T = scala.quoted.runtime.Patterns.patternHole[T]
   ()
 }
-Result: Some(List(Type(scala.Int | java.lang.String), Expr(4), Expr("x")))
+Result: Some(List(Type(scala.Int | java.lang.String), Value(4), Value("x")))
 
 Scrutinee: {
   val a: scala.Int = 4
@@ -715,7 +715,7 @@ Pattern: {
 
   (scala.quoted.runtime.Patterns.patternHole[scala.List[T]].map[U](scala.quoted.runtime.Patterns.patternHole[scala.Function1[T, U]]).map[V](scala.quoted.runtime.Patterns.patternHole[scala.Function1[U, V]]): scala.collection.immutable.List[scala.Any])
 }
-Result: Some(List(Type(scala.Int), Type(scala.Double), Type(java.lang.String), Expr(scala.List.apply[scala.Int](1, 2, 3)), Expr(((x: scala.Int) => x.toDouble./(2))), Expr(((y: scala.Double) => y.toString()))))
+Result: Some(List(Type(scala.Int), Type(scala.Double), Type(java.lang.String), Value(scala.List.apply[scala.Int](1, 2, 3)), Value(((x: scala.Int) => x.toDouble./(2))), Value(((y: scala.Double) => y.toString()))))
 
 Scrutinee: ((x: scala.Int) => x)
 Pattern: {
@@ -723,7 +723,7 @@ Pattern: {
 
   (scala.quoted.runtime.Patterns.patternHole[scala.Function1[T, T]]: scala.Function1[scala.Nothing, scala.Any])
 }
-Result: Some(List(Type(scala.Int), Expr(((x: scala.Int) => x))))
+Result: Some(List(Type(scala.Int), Value(((x: scala.Int) => x))))
 
 Scrutinee: ((x: scala.Int) => x.toString())
 Pattern: {
@@ -739,7 +739,7 @@ Pattern: {
 
   (scala.quoted.runtime.Patterns.patternHole[scala.Function1[T, T]]: scala.Function1[scala.Nothing, scala.Any])
 }
-Result: Some(List(Type(scala.Nothing), Expr(((x: scala.Any) => scala.Predef.???))))
+Result: Some(List(Type(scala.Nothing), Value(((x: scala.Any) => scala.Predef.???))))
 
 Scrutinee: ((x: scala.Nothing) => (1: scala.Any))
 Pattern: {

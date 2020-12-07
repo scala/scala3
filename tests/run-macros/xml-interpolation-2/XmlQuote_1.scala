@@ -64,7 +64,7 @@ object XmlQuote {
 
     }
 
-    val string = Expr(parts.mkString("??"))
+    val string = Value(parts.mkString("??"))
     '{new Xml(${string}, $args2)}
   }
 }

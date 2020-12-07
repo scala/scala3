@@ -1,6 +1,6 @@
 package scala.quoted
 
-object Exprs:
+object Values:
 
   /** Matches literal sequence of literal constant value expressions and return a sequence of values.
    *
@@ -8,8 +8,7 @@ object Exprs:
    *  ```scala
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
-   *    case Varargs(Exprs(args)) =>
-   *    case Varargs(Exprs(args)) =>
+   *    case Varargs(Values(args)) =>
    *      // args: Seq[Int]
    *      ...
    *  }
@@ -25,4 +24,4 @@ object Exprs:
         case _ => return None
     Some(builder.result())
 
-end Exprs
+end Values

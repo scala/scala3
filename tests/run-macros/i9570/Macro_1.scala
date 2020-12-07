@@ -13,7 +13,7 @@ object Macros {
         case '{HCons($_,$t)} =>
         //case '{HCons($a,$t)} =>
           sizeImpl(t,n+1)
-        case '{HNil} => Expr(n)
+        case '{HNil} => Value(n)
       }
     }
 

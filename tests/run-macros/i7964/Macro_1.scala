@@ -12,7 +12,7 @@ private def fooExpr(numExpr: Expr[Num]) (using Quotes): Expr[Int] =
     case '{ Num.One } => Num.One
     case '{ Num.Two } => Num.Two
   }
-  Expr(toInt(num))
+  Value(toInt(num))
 
 private def toInt(num: Num): Int = num match {
   case Num.One => 1

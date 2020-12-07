@@ -100,9 +100,9 @@ object FromExpr {
    */
   given OptionFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Option[T]] with {
     def unapply(x: Expr[Option[T]])(using Quotes) = x match {
-      case '{ Option[T](${Expr(y)}) } => Some(Option(y))
+      case '{ Option[T](${Value(y)}) } => Some(Option(y))
       case '{ None } => Some(None)
-      case '{ ${Expr(opt)} : Some[T] } => Some(opt)
+      case '{ ${Value(opt)} : Some[T] } => Some(opt)
       case _ => None
     }
   }
@@ -124,8 +124,8 @@ object FromExpr {
    */
   given SomeFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Some[T]] with {
     def unapply(x: Expr[Some[T]])(using Quotes) = x match {
-      case '{ new Some[T](${Expr(y)}) } => Some(Some(y))
-      case '{     Some[T](${Expr(y)}) } => Some(Some(y))
+      case '{ new Some[T](${Value(y)}) } => Some(Some(y))
+      case '{     Some[T](${Value(y)}) } => Some(Some(y))
       case _ => None
     }
   }
@@ -136,8 +136,8 @@ object FromExpr {
    */
   given StringContextFromExpr: FromExpr[StringContext] with {
     def unapply(x: Expr[StringContext])(using Quotes) = x match {
-      case '{ new StringContext(${Varargs(Consts(args))}: _*) } => Some(StringContext(args: _*))
-      case '{     StringContext(${Varargs(Consts(args))}: _*) } => Some(StringContext(args: _*))
+      case '{ new StringContext(${Varargs(Values(args))}: _*) } => Some(StringContext(args: _*))
+      case '{     StringContext(${Varargs(Values(args))}: _*) } => Some(StringContext(args: _*))
       case _ => None
     }
   }
@@ -159,8 +159,8 @@ object FromExpr {
    */
   given Tuple1FromExpr[T1](using Type[T1], FromExpr[T1]): FromExpr[Tuple1[T1]] with {
     def unapply(x: Expr[Tuple1[T1]])(using Quotes) = x match {
-      case '{ new Tuple1[T1](${Expr(y)}) } => Some(Tuple1(y))
-      case '{     Tuple1[T1](${Expr(y)}) } => Some(Tuple1(y))
+      case '{ new Tuple1[T1](${Value(y)}) } => Some(Tuple1(y))
+      case '{     Tuple1[T1](${Value(y)}) } => Some(Tuple1(y))
       case _ => None
     }
   }
@@ -171,9 +171,9 @@ object FromExpr {
    */
   given Tuple2FromExpr[T1, T2](using Type[T1], Type[T2], FromExpr[T1], FromExpr[T2]): FromExpr[Tuple2[T1, T2]] with {
     def unapply(x: Expr[Tuple2[T1, T2]])(using Quotes) = x match {
-      case '{ new Tuple2[T1, T2](${Expr(y1)}, ${Expr(y2)}) } => Some(Tuple2(y1, y2))
-      case '{     Tuple2[T1, T2](${Expr(y1)}, ${Expr(y2)}) } => Some(Tuple2(y1, y2))
-      case '{ (${Expr(y1)}: T1) -> (${Expr(y2)}: T2) } => Some(Tuple2(y1, y2))
+      case '{ new Tuple2[T1, T2](${Value(y1)}, ${Value(y2)}) } => Some(Tuple2(y1, y2))
+      case '{     Tuple2[T1, T2](${Value(y1)}, ${Value(y2)}) } => Some(Tuple2(y1, y2))
+      case '{ (${Value(y1)}: T1) -> (${Value(y2)}: T2) } => Some(Tuple2(y1, y2))
       case _ => None
     }
   }
@@ -184,8 +184,8 @@ object FromExpr {
    */
   given Tuple3FromExpr[T1, T2, T3](using Type[T1], Type[T2], Type[T3], FromExpr[T1], FromExpr[T2], FromExpr[T3]): FromExpr[Tuple3[T1, T2, T3]] with {
     def unapply(x: Expr[Tuple3[T1, T2, T3]])(using Quotes) = x match {
-      case '{ new Tuple3[T1, T2, T3](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}) } => Some(Tuple3(y1, y2, y3))
-      case '{     Tuple3[T1, T2, T3](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}) } => Some(Tuple3(y1, y2, y3))
+      case '{ new Tuple3[T1, T2, T3](${Value(y1)}, ${Value(y2)}, ${Value(y3)}) } => Some(Tuple3(y1, y2, y3))
+      case '{     Tuple3[T1, T2, T3](${Value(y1)}, ${Value(y2)}, ${Value(y3)}) } => Some(Tuple3(y1, y2, y3))
       case _ => None
     }
   }
@@ -196,8 +196,8 @@ object FromExpr {
    */
   given Tuple4FromExpr[T1, T2, T3, T4](using Type[T1], Type[T2], Type[T3], Type[T4], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4]): FromExpr[Tuple4[T1, T2, T3, T4]] with {
     def unapply(x: Expr[Tuple4[T1, T2, T3, T4]])(using Quotes) = x match {
-      case '{ new Tuple4[T1, T2, T3, T4](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}) } => Some(Tuple4(y1, y2, y3, y4))
-      case '{     Tuple4[T1, T2, T3, T4](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}) } => Some(Tuple4(y1, y2, y3, y4))
+      case '{ new Tuple4[T1, T2, T3, T4](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}) } => Some(Tuple4(y1, y2, y3, y4))
+      case '{     Tuple4[T1, T2, T3, T4](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}) } => Some(Tuple4(y1, y2, y3, y4))
       case _ => None
     }
   }
@@ -208,8 +208,8 @@ object FromExpr {
    */
   given Tuple5FromExpr[T1, T2, T3, T4, T5](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5]): FromExpr[Tuple5[T1, T2, T3, T4, T5]] with {
     def unapply(x: Expr[Tuple5[T1, T2, T3, T4, T5]])(using Quotes) = x match {
-      case '{ new Tuple5[T1, T2, T3, T4, T5](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}) } => Some(Tuple5(y1, y2, y3, y4, y5))
-      case '{     Tuple5[T1, T2, T3, T4, T5](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}) } => Some(Tuple5(y1, y2, y3, y4, y5))
+      case '{ new Tuple5[T1, T2, T3, T4, T5](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}) } => Some(Tuple5(y1, y2, y3, y4, y5))
+      case '{     Tuple5[T1, T2, T3, T4, T5](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}) } => Some(Tuple5(y1, y2, y3, y4, y5))
       case _ => None
     }
   }
@@ -220,8 +220,8 @@ object FromExpr {
    */
   given Tuple6FromExpr[T1, T2, T3, T4, T5, T6](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6]): FromExpr[Tuple6[T1, T2, T3, T4, T5, T6]] with {
     def unapply(x: Expr[Tuple6[T1, T2, T3, T4, T5, T6]])(using Quotes) = x match {
-      case '{ new Tuple6[T1, T2, T3, T4, T5, T6](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}) } => Some(Tuple6(y1, y2, y3, y4, y5, y6))
-      case '{     Tuple6[T1, T2, T3, T4, T5, T6](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}) } => Some(Tuple6(y1, y2, y3, y4, y5, y6))
+      case '{ new Tuple6[T1, T2, T3, T4, T5, T6](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}) } => Some(Tuple6(y1, y2, y3, y4, y5, y6))
+      case '{     Tuple6[T1, T2, T3, T4, T5, T6](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}) } => Some(Tuple6(y1, y2, y3, y4, y5, y6))
       case _ => None
     }
   }
@@ -232,8 +232,8 @@ object FromExpr {
    */
   given Tuple7FromExpr[T1, T2, T3, T4, T5, T6, T7](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7]): FromExpr[Tuple7[T1, T2, T3, T4, T5, T6, T7]] with {
     def unapply(x: Expr[Tuple7[T1, T2, T3, T4, T5, T6, T7]])(using Quotes) = x match {
-      case '{ new Tuple7[T1, T2, T3, T4, T5, T6, T7](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}) } => Some(Tuple7(y1, y2, y3, y4, y5, y6, y7))
-      case '{     Tuple7[T1, T2, T3, T4, T5, T6, T7](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}) } => Some(Tuple7(y1, y2, y3, y4, y5, y6, y7))
+      case '{ new Tuple7[T1, T2, T3, T4, T5, T6, T7](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}) } => Some(Tuple7(y1, y2, y3, y4, y5, y6, y7))
+      case '{     Tuple7[T1, T2, T3, T4, T5, T6, T7](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}) } => Some(Tuple7(y1, y2, y3, y4, y5, y6, y7))
       case _ => None
     }
   }
@@ -244,8 +244,8 @@ object FromExpr {
    */
   given Tuple8FromExpr[T1, T2, T3, T4, T5, T6, T7, T8](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8]): FromExpr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]] with {
     def unapply(x: Expr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]])(using Quotes) = x match {
-      case '{ new Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}) } => Some(Tuple8(y1, y2, y3, y4, y5, y6, y7, y8))
-      case '{     Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}) } => Some(Tuple8(y1, y2, y3, y4, y5, y6, y7, y8))
+      case '{ new Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}) } => Some(Tuple8(y1, y2, y3, y4, y5, y6, y7, y8))
+      case '{     Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}) } => Some(Tuple8(y1, y2, y3, y4, y5, y6, y7, y8))
       case _ => None
     }
   }
@@ -256,8 +256,8 @@ object FromExpr {
    */
   given Tuple9FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9]): FromExpr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]] with {
     def unapply(x: Expr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]])(using Quotes) = x match {
-      case '{ new Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}) } => Some(Tuple9(y1, y2, y3, y4, y5, y6, y7, y8, y9))
-      case '{     Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}) } => Some(Tuple9(y1, y2, y3, y4, y5, y6, y7, y8, y9))
+      case '{ new Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}) } => Some(Tuple9(y1, y2, y3, y4, y5, y6, y7, y8, y9))
+      case '{     Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}) } => Some(Tuple9(y1, y2, y3, y4, y5, y6, y7, y8, y9))
       case _ => None
     }
   }
@@ -268,8 +268,8 @@ object FromExpr {
    */
   given Tuple10FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10]): FromExpr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]] with {
     def unapply(x: Expr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]])(using Quotes) = x match {
-      case '{ new Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}) } => Some(Tuple10(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10))
-      case '{     Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}) } => Some(Tuple10(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10))
+      case '{ new Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}) } => Some(Tuple10(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10))
+      case '{     Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}) } => Some(Tuple10(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10))
       case _ => None
     }
   }
@@ -280,8 +280,8 @@ object FromExpr {
    */
   given Tuple11FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11]): FromExpr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]] with {
     def unapply(x: Expr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]])(using Quotes) = x match {
-      case '{ new Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}) } => Some(Tuple11(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11))
-      case '{     Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}) } => Some(Tuple11(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11))
+      case '{ new Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}) } => Some(Tuple11(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11))
+      case '{     Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}) } => Some(Tuple11(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11))
       case _ => None
     }
   }
@@ -292,8 +292,8 @@ object FromExpr {
    */
   given Tuple12FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12]): FromExpr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]] with {
     def unapply(x: Expr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]])(using Quotes) = x match {
-      case '{ new Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}) } => Some(Tuple12(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12))
-      case '{     Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}) } => Some(Tuple12(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12))
+      case '{ new Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}) } => Some(Tuple12(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12))
+      case '{     Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}) } => Some(Tuple12(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12))
       case _ => None
     }
   }
@@ -304,8 +304,8 @@ object FromExpr {
    */
   given Tuple13FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13]): FromExpr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]] with {
     def unapply(x: Expr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]])(using Quotes) = x match {
-      case '{ new Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}) } => Some(Tuple13(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13))
-      case '{     Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}) } => Some(Tuple13(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13))
+      case '{ new Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}) } => Some(Tuple13(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13))
+      case '{     Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}) } => Some(Tuple13(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13))
       case _ => None
     }
   }
@@ -316,8 +316,8 @@ object FromExpr {
    */
   given Tuple14FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14]): FromExpr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]] with {
     def unapply(x: Expr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]])(using Quotes) = x match {
-      case '{ new Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}) } => Some(Tuple14(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14))
-      case '{     Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}) } => Some(Tuple14(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14))
+      case '{ new Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}) } => Some(Tuple14(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14))
+      case '{     Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}) } => Some(Tuple14(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14))
       case _ => None
     }
   }
@@ -328,8 +328,8 @@ object FromExpr {
    */
   given Tuple15FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15]): FromExpr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]] with {
     def unapply(x: Expr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]])(using Quotes) = x match {
-      case '{ new Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}) } => Some(Tuple15(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15))
-      case '{     Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}) } => Some(Tuple15(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15))
+      case '{ new Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}) } => Some(Tuple15(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15))
+      case '{     Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}) } => Some(Tuple15(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15))
       case _ => None
     }
   }
@@ -340,8 +340,8 @@ object FromExpr {
    */
   given Tuple16FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16]): FromExpr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]] with {
     def unapply(x: Expr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]])(using Quotes) = x match {
-      case '{ new Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}) } => Some(Tuple16(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16))
-      case '{     Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}) } => Some(Tuple16(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16))
+      case '{ new Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}) } => Some(Tuple16(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16))
+      case '{     Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}) } => Some(Tuple16(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16))
       case _ => None
     }
   }
@@ -352,8 +352,8 @@ object FromExpr {
    */
   given Tuple17FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17]): FromExpr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]] with {
     def unapply(x: Expr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]])(using Quotes) = x match {
-      case '{ new Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}) } => Some(Tuple17(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17))
-      case '{     Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}) } => Some(Tuple17(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17))
+      case '{ new Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}) } => Some(Tuple17(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17))
+      case '{     Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}) } => Some(Tuple17(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17))
       case _ => None
     }
   }
@@ -364,8 +364,8 @@ object FromExpr {
    */
   given Tuple18FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17], FromExpr[T18]): FromExpr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]] with {
     def unapply(x: Expr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]])(using Quotes) = x match {
-      case '{ new Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}) } => Some(Tuple18(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18))
-      case '{     Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}) } => Some(Tuple18(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18))
+      case '{ new Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}) } => Some(Tuple18(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18))
+      case '{     Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}) } => Some(Tuple18(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18))
       case _ => None
     }
   }
@@ -376,8 +376,8 @@ object FromExpr {
    */
   given Tuple19FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17], FromExpr[T18], FromExpr[T19]): FromExpr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]] with {
     def unapply(x: Expr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]])(using Quotes) = x match {
-      case '{ new Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}) } => Some(Tuple19(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19))
-      case '{     Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}) } => Some(Tuple19(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19))
+      case '{ new Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}) } => Some(Tuple19(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19))
+      case '{     Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}) } => Some(Tuple19(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19))
       case _ => None
     }
   }
@@ -388,8 +388,8 @@ object FromExpr {
    */
   given Tuple20FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], Type[T20], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17], FromExpr[T18], FromExpr[T19], FromExpr[T20]): FromExpr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]] with {
     def unapply(x: Expr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]])(using Quotes) = x match {
-      case '{ new Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}) } => Some(Tuple20(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20))
-      case '{     Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}) } => Some(Tuple20(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20))
+      case '{ new Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}) } => Some(Tuple20(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20))
+      case '{     Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}) } => Some(Tuple20(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20))
       case _ => None
     }
   }
@@ -400,8 +400,8 @@ object FromExpr {
    */
   given Tuple21FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], Type[T20], Type[T21], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17], FromExpr[T18], FromExpr[T19], FromExpr[T20], FromExpr[T21]): FromExpr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]] with {
     def unapply(x: Expr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]])(using Quotes) = x match {
-      case '{ new Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}, ${Expr(y21)}) } => Some(Tuple21(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21))
-      case '{     Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}, ${Expr(y21)}) } => Some(Tuple21(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21))
+      case '{ new Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}, ${Value(y21)}) } => Some(Tuple21(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21))
+      case '{     Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}, ${Value(y21)}) } => Some(Tuple21(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21))
       case _ => None
     }
   }
@@ -412,8 +412,8 @@ object FromExpr {
    */
   given Tuple22FromExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](using Type[T1], Type[T2], Type[T3], Type[T4], Type[T5], Type[T6], Type[T7], Type[T8], Type[T9], Type[T10], Type[T11], Type[T12], Type[T13], Type[T14], Type[T15], Type[T16], Type[T17], Type[T18], Type[T19], Type[T20], Type[T21], Type[T22], FromExpr[T1], FromExpr[T2], FromExpr[T3], FromExpr[T4], FromExpr[T5], FromExpr[T6], FromExpr[T7], FromExpr[T8], FromExpr[T9], FromExpr[T10], FromExpr[T11], FromExpr[T12], FromExpr[T13], FromExpr[T14], FromExpr[T15], FromExpr[T16], FromExpr[T17], FromExpr[T18], FromExpr[T19], FromExpr[T20], FromExpr[T21], FromExpr[T22]): FromExpr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]] with {
     def unapply(x: Expr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]])(using Quotes) = x match {
-      case '{ new Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}, ${Expr(y21)}, ${Expr(y22)}) } => Some(Tuple22(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21, y22))
-      case '{     Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](${Expr(y1)}, ${Expr(y2)}, ${Expr(y3)}, ${Expr(y4)}, ${Expr(y5)}, ${Expr(y6)}, ${Expr(y7)}, ${Expr(y8)}, ${Expr(y9)}, ${Expr(y10)}, ${Expr(y11)}, ${Expr(y12)}, ${Expr(y13)}, ${Expr(y14)}, ${Expr(y15)}, ${Expr(y16)}, ${Expr(y17)}, ${Expr(y18)}, ${Expr(y19)}, ${Expr(y20)}, ${Expr(y21)}, ${Expr(y22)}) } => Some(Tuple22(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21, y22))
+      case '{ new Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}, ${Value(y21)}, ${Value(y22)}) } => Some(Tuple22(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21, y22))
+      case '{     Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22](${Value(y1)}, ${Value(y2)}, ${Value(y3)}, ${Value(y4)}, ${Value(y5)}, ${Value(y6)}, ${Value(y7)}, ${Value(y8)}, ${Value(y9)}, ${Value(y10)}, ${Value(y11)}, ${Value(y12)}, ${Value(y13)}, ${Value(y14)}, ${Value(y15)}, ${Value(y16)}, ${Value(y17)}, ${Value(y18)}, ${Value(y19)}, ${Value(y20)}, ${Value(y21)}, ${Value(y22)}) } => Some(Tuple22(y1, y2, y3, y4, y5, y6, y7, y8, y9, y10, y11, y12, y13, y14, y15, y16, y17, y18, y19, y20, y21, y22))
       case _ => None
     }
   }
@@ -425,10 +425,10 @@ object FromExpr {
    */
   given SeqFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Seq[T]] with {
     def unapply(x: Expr[Seq[T]])(using Quotes) = x match {
-      case Varargs(Exprs(elems)) => Some(elems)
-      case '{ scala.Seq[T](${Varargs(Exprs(elems))}: _*) } => Some(elems)
-      case '{ scala.collection.immutable.Seq[T](${Varargs(Exprs(elems))}: _*) } => Some(elems)
-      case '{  ${Expr(x)}: List[T] } => Some(x)
+      case Varargs(Values(elems)) => Some(elems)
+      case '{ scala.Seq[T](${Varargs(Values(elems))}: _*) } => Some(elems)
+      case '{ scala.collection.immutable.Seq[T](${Varargs(Values(elems))}: _*) } => Some(elems)
+      case '{  ${Value(x)}: List[T] } => Some(x)
       case _ => None
     }
   }
@@ -452,10 +452,10 @@ object FromExpr {
    */
   given ListFromExpr[T](using Type[T], FromExpr[T]): FromExpr[List[T]] with {
     def unapply(x: Expr[List[T]])(using Quotes) = x match {
-      case '{ scala.List[T](${Varargs(Exprs(elems))}: _*) } => Some(elems.toList)
+      case '{ scala.List[T](${Varargs(Values(elems))}: _*) } => Some(elems.toList)
       case '{ scala.List.empty[T] } => Some(Nil)
       case '{ Nil } => Some(Nil)
-      case '{ scala.collection.immutable.List[T](${Varargs(Exprs(elems))}: _*) } => Some(elems.toList)
+      case '{ scala.collection.immutable.List[T](${Varargs(Values(elems))}: _*) } => Some(elems.toList)
       case '{ scala.collection.immutable.List.empty[T] } => Some(Nil)
       case _ => None
     }
@@ -468,9 +468,9 @@ object FromExpr {
    */
   given SetFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Set[T]] with {
     def unapply(x: Expr[Set[T]])(using Quotes) = x match {
-      case '{ Set[T](${Varargs(Exprs(elems))}: _*) } => Some(elems.toSet)
+      case '{ Set[T](${Varargs(Values(elems))}: _*) } => Some(elems.toSet)
       case '{ Set.empty[T] } => Some(Set.empty[T])
-      case '{ scala.collection.immutable.Set[T](${Varargs(Exprs(elems))}: _*) } => Some(elems.toSet)
+      case '{ scala.collection.immutable.Set[T](${Varargs(Values(elems))}: _*) } => Some(elems.toSet)
       case '{ scala.collection.immutable.Set.empty[T] } => Some(Set.empty[T])
       case _ => None
     }
@@ -483,9 +483,9 @@ object FromExpr {
    */
   given MapFromExpr[T, U](using Type[T], Type[U], FromExpr[T], FromExpr[U]): FromExpr[Map[T, U]] with {
     def unapply(x: Expr[Map[T, U]])(using Quotes) = x match {
-      case '{ Map[T, U](${Varargs(Exprs(elems))}: _*) } => Some(elems.toMap)
+      case '{ Map[T, U](${Varargs(Values(elems))}: _*) } => Some(elems.toMap)
       case '{ Map.empty[T, U] } => Some(Map.empty)
-      case '{ scala.collection.immutable.Map[T, U](${Varargs(Exprs(elems))}: _*) } => Some(elems.toMap)
+      case '{ scala.collection.immutable.Map[T, U](${Varargs(Values(elems))}: _*) } => Some(elems.toMap)
       case '{ scala.collection.immutable.Map.empty[T, U] } => Some(Map.empty)
       case _ => None
     }
@@ -510,7 +510,7 @@ object FromExpr {
    */
   given LeftFromExpr[L, R](using Type[L], Type[R], FromExpr[L]): FromExpr[Left[L, R]] with {
     def unapply(x: Expr[Left[L, R]])(using Quotes) = x match {
-      case '{ Left[L, R](${Expr(x)}) } => Some(Left(x))
+      case '{ Left[L, R](${Value(x)}) } => Some(Left(x))
       case _ => None
     }
   }
@@ -521,7 +521,7 @@ object FromExpr {
    */
   given RightFromExpr[L, R](using Type[L], Type[R], FromExpr[R]): FromExpr[Right[L, R]] with {
     def unapply(x: Expr[Right[L, R]])(using Quotes) = x match {
-      case '{ Right[L, R](${Expr(x)}) } => Some(Right(x))
+      case '{ Right[L, R](${Value(x)}) } => Some(Right(x))
       case _ => None
     }
   }

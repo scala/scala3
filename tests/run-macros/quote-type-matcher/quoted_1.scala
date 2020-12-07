@@ -15,9 +15,9 @@ object Macros {
     }
 
     '{
-      println("Scrutinee: " + ${Expr(TypeTree.of[A].show)})
-      println("Pattern: " + ${Expr(TypeTree.of[B].show)})
-      println("Result: " + ${Expr(res.toString)})
+      println("Scrutinee: " + ${Value(TypeTree.of[A].show)})
+      println("Pattern: " + ${Value(TypeTree.of[B].show)})
+      println("Result: " + ${Value(res.toString)})
       println()
     }
   }

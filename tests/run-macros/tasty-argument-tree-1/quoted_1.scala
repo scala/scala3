@@ -9,8 +9,8 @@ object Macros {
     val tree = Term.of(x)
     '{
       println()
-      println("tree: " + ${Expr(tree.showExtractors)})
-      println("tree deref. vals: " + ${Expr(tree.underlying.showExtractors)})
+      println("tree: " + ${Value(tree.showExtractors)})
+      println("tree deref. vals: " + ${Value(tree.underlying.showExtractors)})
     }
   }
 }

@@ -25,8 +25,8 @@ object Macros {
     }
 
     def lift[T: Type](e: Expr[T])(using env: Env): Expr[R[T]] = ((e: Expr[Any]) match {
-      case Const(e: Int) => '{ $sym.int(${Expr(e)}).asInstanceOf[R[T]] }
-      case Const(e: Boolean) => '{ $sym.bool(${Expr(e)}).asInstanceOf[R[T]] }
+      case Const(e: Int) => '{ $sym.int(${Value(e)}).asInstanceOf[R[T]] }
+      case Const(e: Boolean) => '{ $sym.bool(${Value(e)}).asInstanceOf[R[T]] }
 
       case '{ ($x: Int) + ($y: Int) } =>
         '{ $sym.add(${lift(x)}, ${lift(y)}).asInstanceOf[R[T]] }
@@ -101,7 +101,7 @@ object UnsafeExpr {
 
 def freshEnvVar[T: Type]()(using Quotes): (Int, Expr[T]) = {
   v += 1
-  (v, '{envVar[T](${Expr(v)})})
+  (v, '{envVar[T](${Value(v)})})
 }
 var v = 0
 def envVar[T](i: Int): T = ???

@@ -11,7 +11,7 @@ object Macros {
       case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args1)) =>
         val strParts = parts.map(_.valueOrError.reverse)
         val strArgs = args1.map(_.valueOrError)
-        Expr(StringContext(strParts: _*).s(strArgs: _*))
+        Value(StringContext(strParts: _*).s(strArgs: _*))
       case _ => ???
     }
 

@@ -11,12 +11,12 @@ object Macros {
   def isTypeEqualImpl[T: Type, U: Type](using Quotes) : Expr[Boolean] = {
     import quotes.reflect._
     val isTypeEqual = TypeRepr.of[T] =:= TypeRepr.of[U]
-    Expr(isTypeEqual)
+    Value(isTypeEqual)
   }
 
   def isSubTypeOfImpl[T: Type, U: Type](using Quotes) : Expr[Boolean] = {
     import quotes.reflect._
     val isTypeEqual = TypeRepr.of[T] <:< TypeRepr.of[U]
-    Expr(isTypeEqual)
+    Value(isTypeEqual)
   }
 }

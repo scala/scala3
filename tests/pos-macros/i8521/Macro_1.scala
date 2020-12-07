@@ -21,6 +21,6 @@ object Foo {
           }
       }
     }
-    Expr("")
+    Value("")
   }
 }

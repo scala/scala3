@@ -73,7 +73,7 @@ object StagedTuple {
     val res =
       if (!specialize) '{scala.runtime.Tuple.size($tup)}
       else size match {
-        case Some(n) => Expr(n)
+        case Some(n) => Value(n)
         case None => '{scala.runtime.Tuple.size($tup)}
       }
     res.as[Res]
@@ -133,7 +133,7 @@ object StagedTuple {
       def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
         case Some(n) =>
           quotes.reflect.report.error("index out of bounds: " + n, tup)
-          '{ throw new IndexOutOfBoundsException(${Expr(n.toString)}) }
+          '{ throw new IndexOutOfBoundsException(${Value(n.toString)}) }
         case None => '{scala.runtime.Tuple.apply($tup, $n)}.as[Elem[Tup, N]]
       }
       val res = size match {
@@ -170,13 +170,13 @@ object StagedTuple {
         case Some(s) if s > 4 && s <= MaxSpecialized =>
           val t = tup.as[Product]
           nValue match {
-            case Some(n) if n >= 0 && n < s => '{$t.productElement(${ Expr(n) })}
+            case Some(n) if n >= 0 && n < s => '{$t.productElement(${ Value(n) })}
             case _ => fallbackApply()
           }
         case Some(s) if s > MaxSpecialized =>
           val t = tup.as[TupleXXL]
           nValue match {
-            case Some(n) if n >= 0 && n < s => '{$t.elems(${ Expr(n) })}
+            case Some(n) if n >= 0 && n < s => '{$t.elems(${ Value(n) })}
             case _ => fallbackApply()
           }
         case _ => fallbackApply()

@@ -10,7 +10,7 @@ object AsObject {
     inline given LineNo = ${impl}
     private def impl(using Quotes): Expr[LineNo] = {
       import quotes.reflect._
-      '{unsafe(${Expr(Position.ofMacroExpansion.startLine)})}
+      '{unsafe(${Value(Position.ofMacroExpansion.startLine)})}
     }
   }
 }
@@ -22,7 +22,7 @@ package AsPackage {
     inline given LineNo = ${impl}
     private def impl(using Quotes): Expr[LineNo] = {
       import quotes.reflect._
-      '{unsafe(${Expr(Position.ofMacroExpansion.startLine)})}
+      '{unsafe(${Value(Position.ofMacroExpansion.startLine)})}
     }
   }
 }

@@ -56,6 +56,6 @@ object XmlQuote {
     val Typed(Repeated(args0, _), _) = Term.of(args).underlyingArgument
 
     val string = parts.mkString("??")
-    '{new Xml(${Expr(string)}, ${liftListOfAny(args0)})}
+    '{new Xml(${Value(string)}, ${liftListOfAny(args0)})}
   }
 }

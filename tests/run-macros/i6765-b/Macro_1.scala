@@ -4,5 +4,5 @@ inline def foo = ${fooImpl}
 
 def fooImpl(using Quotes) = {
   val res = Expr.ofList(List('{"One"}))
-  Expr(res.show)
+  Value(res.show)
 }

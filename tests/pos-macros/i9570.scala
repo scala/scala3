@@ -12,7 +12,7 @@ object Macros {
       e match {
         case '{HCons(_,$t)} => // error if run with fatal warinings in BootstrappedOnlyCompilationTests
           sizeImpl(t,n+1)
-        case '{HNil} => Expr(n)
+        case '{HNil} => Value(n)
       }
     }
 

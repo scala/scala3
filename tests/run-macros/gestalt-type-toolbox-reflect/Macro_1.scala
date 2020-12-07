@@ -8,21 +8,21 @@ object TypeToolbox {
   inline def =:=[A, B]: Boolean = ${tpEqImpl[A, B]}
   private def tpEqImpl[A: Type, B: Type](using Quotes) : Expr[Boolean] = {
     import quotes.reflect._
-    Expr(TypeRepr.of[A] =:= TypeRepr.of[B])
+    Value(TypeRepr.of[A] =:= TypeRepr.of[B])
   }
 
   /** is `tp1` a subtype of `tp2` */
   inline def <:<[A, B]: Boolean = ${tpLEqImpl[A, B]}
   private def tpLEqImpl[A: Type, B: Type](using Quotes) : Expr[Boolean] = {
     import quotes.reflect._
-    Expr(TypeRepr.of[A] <:< TypeRepr.of[B])
+    Value(TypeRepr.of[A] <:< TypeRepr.of[B])
   }
 
   /** type associated with the tree */
   inline def typeOf[T, Expected](a: T): Boolean = ${typeOfImpl[T, Expected]('a)}
   private def typeOfImpl[A: Type, E: Type](a: Expr[A])(using Quotes) : Expr[Boolean] = {
     import quotes.reflect._
-    Expr(TypeRepr.of[A] =:= TypeRepr.of[E])
+    Value(TypeRepr.of[A] =:= TypeRepr.of[E])
   }
 
   /** does the type refer to a case class? */
@@ -30,7 +30,7 @@ object TypeToolbox {
   private def isCaseClassImpl[T: Type](using Quotes) : Expr[Boolean] = {
     import quotes.reflect._
     val sym = TypeTree.of[T].symbol
-    Expr(sym.isClassDef && sym.flags.is(Flags.Case))
+    Value(sym.isClassDef && sym.flags.is(Flags.Case))
   }
 
   /** val fields of a case class Type -- only the ones declared in primary constructor */
@@ -38,59 +38,59 @@ object TypeToolbox {
   private def caseFieldsImpl[T: Type](using Quotes) : Expr[List[String]] = {
     import quotes.reflect._
     val fields = TypeTree.of[T].symbol.caseFields.map(_.name)
-    Expr(fields)
+    Value(fields)
   }
 
   inline def fieldIn[T](inline mem: String): String = ${fieldInImpl[T]('mem)}
   private def fieldInImpl[T: Type](mem: Expr[String])(using Quotes) : Expr[String] = {
     import quotes.reflect._
     val field = TypeTree.of[T].symbol.field(mem.valueOrError)
-    Expr(if field.isNoSymbol then "" else field.name)
+    Value(if field.isNoSymbol then "" else field.name)
   }
 
   inline def fieldsIn[T]: Seq[String] = ${fieldsInImpl[T]}
   private def fieldsInImpl[T: Type](using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect._
     val fields = TypeTree.of[T].symbol.fields
-    Expr(fields.map(_.name).toList)
+    Value(fields.map(_.name).toList)
   }
 
   inline def methodIn[T](inline mem: String): Seq[String] = ${methodInImpl[T]('mem)}
   private def methodInImpl[T: Type](mem: Expr[String])(using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect._
-    Expr(TypeTree.of[T].symbol.declaredMethod(mem.valueOrError).map(_.name))
+    Value(TypeTree.of[T].symbol.declaredMethod(mem.valueOrError).map(_.name))
   }
 
   inline def methodsIn[T]: Seq[String] = ${methodsInImpl[T]}
   private def methodsInImpl[T: Type](using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect._
-    Expr(TypeTree.of[T].symbol.declaredMethods.map(_.name))
+    Value(TypeTree.of[T].symbol.declaredMethods.map(_.name))
   }
 
   inline def method[T](inline mem: String): Seq[String] = ${methodImpl[T]('mem)}
   private def methodImpl[T: Type](mem: Expr[String])(using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect._
-    Expr(TypeTree.of[T].symbol.memberMethod(mem.valueOrError).map(_.name))
+    Value(TypeTree.of[T].symbol.memberMethod(mem.valueOrError).map(_.name))
   }
 
   inline def methods[T]: Seq[String] = ${methodsImpl[T]}
   private def methodsImpl[T: Type](using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect._
-    Expr(TypeTree.of[T].symbol.memberMethods.map(_.name))
+    Value(TypeTree.of[T].symbol.memberMethods.map(_.name))
   }
 
   inline def typeTag[T](x: T): String = ${typeTagImpl[T]}
   private def typeTagImpl[T: Type](using Quotes) : Expr[String] = {
     import quotes.reflect._
     val res = TypeRepr.of[T].show
-    Expr(res)
+    Value(res)
   }
 
   inline def companion[T1, T2]: Boolean = ${companionImpl[T1, T2]}
   private def companionImpl[T1: Type, T2: Type](using Quotes) : Expr[Boolean] = {
     import quotes.reflect._
     val res = TypeTree.of[T1].symbol.companionModule == TypeTree.of[T2].symbol
-    Expr(res)
+    Value(res)
   }
 
   inline def companionName[T1]: String = ${companionNameImpl[T1]}
@@ -101,7 +101,7 @@ object TypeToolbox {
       if sym.isClassDef then sym.companionModule.companionClass
       else if sym.isValDef then sym.companionClass
       else Symbol.noSymbol
-    Expr(if companionClass.isNoSymbol then "" else companionClass.fullName)
+    Value(if companionClass.isNoSymbol then "" else companionClass.fullName)
   }
 
 }

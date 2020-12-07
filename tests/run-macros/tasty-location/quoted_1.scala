@@ -14,7 +14,7 @@ object Location {
       else listOwnerNames(sym.owner, sym.name :: acc)
 
     val list = listOwnerNames(Symbol.spliceOwner, Nil)
-    '{new Location(${Expr(list)})}
+    '{new Location(${Value(list)})}
   }
 
 }

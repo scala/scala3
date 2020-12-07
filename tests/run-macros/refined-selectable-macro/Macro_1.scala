@@ -37,7 +37,7 @@ object Macro {
     }
 
     def tupleElem(name: String, info: TypeRepr): Expr[Any] = {
-      val nameExpr = Expr(name)
+      val nameExpr = Value(name)
       info.asType match { case '[t] =>
           Expr.ofTupleFromSeq(Seq(nameExpr, '{ $s.selectDynamic($nameExpr).asInstanceOf[t] }))
       }

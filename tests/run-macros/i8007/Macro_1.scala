@@ -23,7 +23,7 @@ object Macro1 {
 
     Expr.summon(using mirrorTpe).get match {
       case '{ $m: Mirror.ProductOf[T]{ type MirroredElemLabels = elems } } => {
-        Expr(mirrorFields[elems])
+        Value(mirrorFields[elems])
       }
     }
   }

@@ -11,7 +11,7 @@ object Macros {
     '{ if !($expr) then throw new AssertionError(s"failed assertion: ${${showExpr(expr)}}") }
 
 
-  def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] = Expr(expr.toString)
+  def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] = Value(expr.toString)
 
   inline def power(inline n: Int, x: Double) = ${ powerCode('n, 'x) }
 

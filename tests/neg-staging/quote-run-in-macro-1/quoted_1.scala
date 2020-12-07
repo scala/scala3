@@ -7,6 +7,6 @@ object Macros {
   inline def foo(i: => Int): Int = ${ fooImpl('i) }
   def fooImpl(i: Expr[Int])(using Quotes): Expr[Int] = {
     val y: Int = run(i)
-    Expr(y)
+    Value(y)
   }
 }

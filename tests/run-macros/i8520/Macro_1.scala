@@ -9,5 +9,5 @@ def testExpr[T[_]: Type](using Quotes): Expr[Unit] = {
      else if f.is(Flags.Contravariant) then "-"
      else " "
   val t = TypeRepr.of[T].typeSymbol.memberTypes.map(x => (x.name, variance(x.flags)))
-  '{ println(${Expr(t.toString)}) }
+  '{ println(${Value(t.toString)}) }
 }

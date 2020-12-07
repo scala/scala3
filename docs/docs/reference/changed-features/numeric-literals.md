@@ -205,7 +205,7 @@ implementation method `fromDigitsImpl`. Here is its definition:
       case Some(ds) =>
         try {
           val BigFloat(m, e) = apply(ds)
-          '{BigFloat(${Expr(m)}, ${Expr(e)})}
+          '{BigFloat(${Value(m)}, ${Value(e)})}
         }
         catch {
           case ex: FromDigits.FromDigitsException =>

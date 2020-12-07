@@ -13,7 +13,7 @@ object EvenFromDigitsImpl:
             quotes.reflect.report.error(ex.getMessage)
             Even(0)
         }
-      '{Even(${Expr(ev.n)})}
+      '{Even(${Value(ev.n)})}
     case _ =>
       '{evenFromDigits($digits)}
   }

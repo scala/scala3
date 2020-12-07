@@ -12,6 +12,6 @@ object Index {
 
   def succImpl[K: Type, H: Type, T: Type](prev: Expr[Index[K, T]])(using Quotes): Expr[Index[K, (H, T)]] = {
     val value = s"1 + {${prev.show}}"
-    '{new Index(${Expr(value)})}
+    '{new Index(${Value(value)})}
   }
 }

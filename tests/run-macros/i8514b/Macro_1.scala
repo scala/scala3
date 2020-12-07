@@ -13,6 +13,6 @@ def testExpr(using Quotes): Expr[Unit] = {
   val baseTypes = t.baseClasses.map(b => t.baseType(b))
 
   '{
-    println(${Expr(baseTypes.map(_.show).mkString("\n"))})
+    println(${Value(baseTypes.map(_.show).mkString("\n"))})
   }
 }

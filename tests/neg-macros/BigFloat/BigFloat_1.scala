@@ -45,7 +45,7 @@ object BigFloat extends App {
 
   given ToExpr[BigInt] with {
     def apply(x: BigInt)(using Quotes) =
-      '{BigInt(${Expr(x.toString)})}
+      '{BigInt(${Value(x.toString)})}
   }
 }
 

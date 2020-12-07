@@ -11,7 +11,7 @@ object Macros {
       case '{ foo.Bar } => foo.Bar
       case '{ foo.Bar.Baz } => foo.Bar.Baz
     }
-    Expr(obj.getClass.getCanonicalName)
+    Value(obj.getClass.getCanonicalName)
 }
 
 case object Bar {

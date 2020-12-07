@@ -40,12 +40,12 @@ object MVmult {
     val MV = new MVmult[Int, Expr[Int], Expr[Unit]](new RingIntExpr, new VecRStaDim(new RingIntExpr))
     '{
       (vout, a, v) => {
-        if (${Expr(n)} != vout.length) throw new IndexOutOfBoundsException(${Expr(n.toString)})
-        if (${Expr(m)} != v.length) throw new IndexOutOfBoundsException(${Expr(m.toString)})
+        if (${Value(n)} != vout.length) throw new IndexOutOfBoundsException(${Value(n.toString)})
+        if (${Value(m)} != v.length) throw new IndexOutOfBoundsException(${Value(m.toString)})
         ${
-          val vout_ = OVec(n, (i, x: Expr[Int]) => '{vout(${Expr(i)}) = $x})
-          val a_ = Vec(n, i => Vec(m, j => '{ a(${Expr(i)})(${Expr(j)}) } ))
-          val v_ = Vec(m, i => '{v(${Expr(i)})})
+          val vout_ = OVec(n, (i, x: Expr[Int]) => '{vout(${Value(i)}) = $x})
+          val a_ = Vec(n, i => Vec(m, j => '{ a(${Value(i)})(${Value(j)}) } ))
+          val v_ = Vec(m, i => '{v(${Value(i)})})
 
           MV.mvmult(vout_, a_, v_)
         }
@@ -56,7 +56,7 @@ object MVmult {
   def mvmult_ac(a: Array[Array[Int]])(using Quotes): Expr[(Array[Int], Array[Int]) => Unit] = {
     import Lifters._
     '{
-      val arr = ${Expr(a)}
+      val arr = ${Value(a)}
       ${
         val (n, m, a2) = amat1(a, 'arr)
         mvmult_abs0(new RingIntPExpr, new VecRStaDyn(new RingIntPExpr))(n, m, a2)
@@ -67,7 +67,7 @@ object MVmult {
   def mvmult_opt(a: Array[Array[Int]])(using Quotes): Expr[(Array[Int], Array[Int]) => Unit] = {
     import Lifters._
     '{
-      val arr = ${Expr(a)}
+      val arr = ${Value(a)}
       ${
         val (n, m, a2) = amat1(a, 'arr)
         mvmult_abs0(new RingIntOPExpr, new VecRStaDyn(new RingIntPExpr))(n, m, a2)
@@ -78,7 +78,7 @@ object MVmult {
   def mvmult_roll(a: Array[Array[Int]])(using Quotes): Expr[(Array[Int], Array[Int]) => Unit] = {
     import Lifters._
     '{
-      val arr = ${Expr(a)}
+      val arr = ${Value(a)}
       ${
         val (n, m, a2) = amat1(a, 'arr)
         mvmult_abs0(new RingIntOPExpr, new VecRStaOptDynInt(new RingIntPExpr))(n, m, a2)
@@ -106,7 +106,7 @@ object MVmult {
         val default: Expr[Array[Int]] = '{null.asInstanceOf[Array[Int]]} // never accessed
         loop(i + 1, default :: acc)
       } else '{
-        val row = ${Expr(a(i))}
+        val row = ${Value(a(i))}
         ${ loop(i + 1, 'row :: acc) }
       }
     }
@@ -118,7 +118,7 @@ object MVmult {
     val m = a(0).length
     val vec: Vec[PV[Int], Vec[PV[Int], PV[Int]]] = Vec(Sta(n), i => Vec(Sta(m), j => (i, j) match {
       case (Sta(i), Sta(j)) => Sta(a(i)(j))
-      case (Sta(i), Dyn(j)) => Dyn('{$aa(${Expr(i)})($j)})
+      case (Sta(i), Dyn(j)) => Dyn('{$aa(${Value(i)})($j)})
       case (i, j) => Dyn('{ $aa(${Dyns.dyni(i)})(${Dyns.dyni(j)}) })
     }))
     (n, m, vec)
@@ -149,7 +149,7 @@ object MVmult {
 
   def copy_row1(using Quotes): Array[Int] => (Expr[Int] => Expr[Int]) = v => {
     import Lifters._
-    val arr = Expr(v)
+    val arr = Value(v)
     i => '{ ($arr).apply($i) }
   }
 
@@ -162,8 +162,8 @@ object MVmult {
   private def mvmult_abs0(ring: Ring[PV[Int]], vecOp: VecROp[PV[Int], PV[Int], Expr[Unit]])(n: Int, m: Int, a: Vec[PV[Int], Vec[PV[Int], PV[Int]]])(using Quotes): Expr[(Array[Int], Array[Int]) => Unit] = {
     '{
       (vout, v) => {
-        if (${Expr(n)} != vout.length) throw new IndexOutOfBoundsException(${Expr(n.toString)})
-        if (${Expr(m)} != v.length) throw new IndexOutOfBoundsException(${Expr(m.toString)})
+        if (${Value(n)} != vout.length) throw new IndexOutOfBoundsException(${Value(n.toString)})
+        if (${Value(m)} != v.length) throw new IndexOutOfBoundsException(${Value(m.toString)})
         ${
           val vout_ : OVec[PV[Int], PV[Int], Expr[Unit]] = OVec(Sta(n), (i, x) => '{vout(${Dyns.dyni(i)}) = ${Dyns.dyn(x)}})
           val v_ : Vec[PV[Int], PV[Int]] = Vec(Sta(m), i => Dyn('{v(${Dyns.dyni(i)})}))

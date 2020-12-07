@@ -6,7 +6,7 @@ object Macros {
     ${ impl('i) }
 
   def impl(i: Expr[Int]) (using Quotes): Expr[String] = {
-    Expr(value(i).toString)
+    Value(value(i).toString)
   }
 
   inline implicit def value[X](e: Expr[X])(implicit qctx: Quotes, ev: Valuable[X]): Option[X] = ev.value(e)

@@ -14,7 +14,7 @@ object Macros {
 
     val tree = Term.of(x)
     output.traverseTree(tree)(Symbol.spliceOwner)
-    '{print(${Expr(buff.result())})}
+    '{print(${Value(buff.result())})}
   }
 
 

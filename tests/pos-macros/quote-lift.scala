@@ -9,7 +9,7 @@ class Test(using Quotes) {
 
     '{ ${summon[ToExpr[Int]].apply(1)} }
 
-    '{ ${Expr(1)} }
+    '{ ${Value(1)} }
 
   }
 

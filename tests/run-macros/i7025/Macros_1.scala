@@ -13,7 +13,7 @@ object Macros {
     val x = nearestEnclosingDef(Symbol.spliceOwner)
     if x.isDefDef then
       val code = x.signature.toString
-      '{ println(${Expr(code)}) }
+      '{ println(${Value(code)}) }
     else
       '{()}
   }

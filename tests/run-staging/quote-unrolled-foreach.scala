@@ -29,13 +29,13 @@ object Test {
     println(code4.show)
     println()
 
-    def liftedArray(using Quotes): Expr[Array[Int]] = Expr(Array(1, 2, 3, 4))
+    def liftedArray(using Quotes): Expr[Array[Int]] = Value(Array(1, 2, 3, 4))
     println(liftedArray.show)
     println()
 
 
     def printAll(arr: Array[Int]) = '{
-      val arr1 = ${ Expr(arr) }
+      val arr1 = ${ Value(arr) }
       ${ foreach1('arr1, '{x => println(x)}) }
     }
 
@@ -110,17 +110,17 @@ object Test {
   def foreach4(arrRef: Expr[Array[Int]], f: Expr[Int => Unit], unrollSize: Int)(using Quotes): Expr[Unit] = '{
     val size = ($arrRef).length
     var i = 0
-    if (size % ${Expr(unrollSize)} != 0) throw new Exception("...") // for simplicity of the implementation
+    if (size % ${Value(unrollSize)} != 0) throw new Exception("...") // for simplicity of the implementation
     while (i < size) {
-      ${ foreachInRange(0, unrollSize)(j => '{ ($f)(($arrRef)(i + ${Expr(j)})) }) }
-      i += ${Expr(unrollSize)}
+      ${ foreachInRange(0, unrollSize)(j => '{ ($f)(($arrRef)(i + ${Value(j)})) }) }
+      i += ${Value(unrollSize)}
     }
   }
 
   implicit object ArrayIntIsToExpr extends ToExpr[Array[Int]] {
     override def apply(x: Array[Int])(using Quotes) = '{
-      val array = new Array[Int](${Expr(x.length)})
-      ${ foreachInRange(0, x.length)(i => '{ array(${Expr(i)}) = ${Expr(x(i))}}) }
+      val array = new Array[Int](${Value(x.length)})
+      ${ foreachInRange(0, x.length)(i => '{ array(${Value(i)}) = ${Value(x(i))}}) }
       array
     }
   }

@@ -29,6 +29,6 @@ object Async {
             val fType = TypeRepr.of[F]
             val ptp = tparams1.tail.head
             val ptpTree = Inferred(fType.appliedTo(ptp))
-            '{ println(${Expr(ptpTree.show)}) }
+            '{ println(${Value(ptpTree.show)}) }
 
 }

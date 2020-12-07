@@ -22,7 +22,7 @@ package scala {
       import ctx.reflect._
       try {
         body match {
-          case '{$x: Foo} => Expr(run(x).x)
+          case '{$x: Foo} => Value(run(x).x)
         }
       } catch {
         case ex: Exception if ex.getClass.getName == "scala.quoted.runtime.impl.ScopeException" =>

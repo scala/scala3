@@ -33,21 +33,23 @@ object Expr {
   }
 
   /** Creates an expression that will construct the value `x` */
+  @deprecated("Use `scala.quoted.Value.apply` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
   def apply[T](x: T)(using ToExpr[T])(using Quotes): Expr[T] =
     scala.Predef.summon[ToExpr[T]].apply(x)
 
   /** Get `Some` of a copy of the value if the expression contains a literal constant or constructor of `T`.
-   *  Otherwise returns `None`.
-   *
-   *  Usage:
-   *  ```
-   *  case '{ ... ${expr @ Expr(value)}: T ...} =>
-   *    // expr: Expr[T]
-   *    // value: T
-   *  ```
-   *
-   *  To directly get the value of an expression `expr: Expr[T]` consider using `expr.value`/`expr.valueOrError` insead.
-   */
+    *  Otherwise returns `None`.
+    *
+    *  Usage:
+    *  ```
+    *  case '{ ... ${expr @ Expr(value)}: T ...} =>
+    *    // expr: Expr[T]
+    *    // value: T
+    *  ```
+    *
+    *  To directly get the value of an expression `expr: Expr[T]` consider using `expr.value`/`expr.valueOrError` insead.
+    */
+  @deprecated("Use `scala.quoted.Value.unapply` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
   def unapply[T](x: Expr[T])(using FromExpr[T])(using Quotes): Option[T] =
     scala.Predef.summon[FromExpr[T]].unapply(x)
 
@@ -70,7 +72,7 @@ object Expr {
    *    `'{ List($e1, $e2, ...) }` typed as an `Expr[List[T]]`
    */
   def  ofList[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[List[T]] =
-    if (xs.isEmpty) Expr(Nil) else '{ List(${Varargs(xs)}: _*) }
+    if (xs.isEmpty) Value(Nil) else '{ List(${Varargs(xs)}: _*) }
 
   /** Creates an expression that will construct a copy of this tuple
    *

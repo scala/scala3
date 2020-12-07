@@ -7,7 +7,7 @@ object Test {
   def main(args: Array[String]): Unit = withQuotes {
     assert('{1} matches '{1})
     assert('{println("foo")} matches '{println("foo")})
-    assert('{println("foo")} matches '{println(${Expr("foo")})})
+    assert('{println("foo")} matches '{println(${Value("foo")})})
     assert('{println(Some("foo"))} matches '{println(${ val a = '{Some("foo")}; a})})
   }
 }

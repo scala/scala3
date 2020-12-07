@@ -10,9 +10,9 @@ def testExpr(using Quotes): Expr[Unit] = {
   import quotes.reflect._
 
   '{
-    println(${Expr(TypeRepr.of[Object].baseClasses.toString)})
-    println(${Expr(TypeRepr.of[A].baseClasses.toString)})
-    println(${Expr(TypeRepr.of[B].baseClasses.toString)})
-    println(${Expr(TypeRepr.of[C].baseClasses.toString)})
+    println(${Value(TypeRepr.of[Object].baseClasses.toString)})
+    println(${Value(TypeRepr.of[A].baseClasses.toString)})
+    println(${Value(TypeRepr.of[B].baseClasses.toString)})
+    println(${Value(TypeRepr.of[C].baseClasses.toString)})
   }
 }

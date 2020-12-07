@@ -10,7 +10,7 @@ object MatchMac {
         case '{ ($f: Person).name } => "matched!"
         case _ => "not matched"
       }
-      '{ println(${Expr(res)}) }
+      '{ println(${Value(res)}) }
     }
 
 }

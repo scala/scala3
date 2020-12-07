@@ -10,8 +10,8 @@ object Macros {
 
     val tree = Term.of(x)
 
-    val treeStr = Expr(tree.showExtractors)
-    val treeTpeStr = Expr(tree.tpe.showExtractors)
+    val treeStr = Value(tree.showExtractors)
+    val treeTpeStr = Value(tree.tpe.showExtractors)
 
     '{
       println(${treeStr})

@@ -10,7 +10,7 @@ object Macros {
     classSym.declaredMethod("apply")
     classSym.declaredMethods
     classSym.memberMethod("apply")
-    Expr(classSym.memberMethods.map(_.name).sorted.mkString("\n"))
+    Value(classSym.memberMethods.map(_.name).sorted.mkString("\n"))
   }
 
 }

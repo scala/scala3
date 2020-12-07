@@ -18,11 +18,11 @@ private def visitExportsTreeMapImpl[T: Type](e: Expr[T], f: Expr[T => Any])(usin
 
 private def visitExportsShowImpl[T: Type](e: Expr[T])(using Quotes): Expr[Any] =
   import quotes.reflect._
-  '{println(${Expr(Term.of(e).show)})}
+  '{println(${Value(Term.of(e).show)})}
 
 private def visitExportsShowExtractImpl[T: Type](e: Expr[T])(using Quotes): Expr[Any] =
   import quotes.reflect._
-  '{println(${Expr(Term.of(e).showExtractors)})}
+  '{println(${Value(Term.of(e).showExtractors)})}
 
 private object IdempotentExprMap extends ExprMap {
 
@@ -45,7 +45,7 @@ private def traverseExportsImpl(e: Expr[Any], f: Expr[String => Any])(using Quot
   val res =
     ExportAccumulator.foldTree(mutable.Buffer.empty, Term.of(e))(Symbol.spliceOwner).mkString(", ")
 
-  '{ $f(${Expr(res)}) }
+  '{ $f(${Value(res)}) }
 }
 
 private def mixinLoggerImpl(l: Expr[Logger])(using Quotes): Expr[Logger] =

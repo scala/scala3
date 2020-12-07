@@ -16,6 +16,6 @@ object Macros {
             s"$name : $returnType"
       }.sorted
 
-    methods.foldLeft('{}) { (res, m) => '{ $res; println(${Expr(m)}) } }
+    methods.foldLeft('{}) { (res, m) => '{ $res; println(${Value(m)}) } }
   }
 }

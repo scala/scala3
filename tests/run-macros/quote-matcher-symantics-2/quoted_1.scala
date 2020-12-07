@@ -88,7 +88,7 @@ object UnsafeExpr {
 
 def freshEnvVar()(using Quotes): (Int, Expr[DSL]) = {
   v += 1
-  (v, '{envVar(${Expr(v)})})
+  (v, '{envVar(${Value(v)})})
 }
 var v = 0
 def envVar(i: Int): DSL = ???
@@ -116,7 +116,7 @@ trait Symantics[Num] {
 }
 
 object StringNum extends Symantics[String] {
-  def value(x: Int)(using Quotes): Expr[String] = Expr(x.toString)
+  def value(x: Int)(using Quotes): Expr[String] = Value(x.toString)
   def plus(x: Expr[String], y: Expr[String])(using Quotes): Expr[String] = '{ s"${$x} + ${$y}" } // '{ x + " + " + y }
   def times(x: Expr[String], y: Expr[String])(using Quotes): Expr[String] = '{ s"${$x} * ${$y}" }
   def app(f: Expr[String => String], x: Expr[String])(using Quotes): Expr[String] = Expr.betaReduce('{ $f($x) })
@@ -124,7 +124,7 @@ object StringNum extends Symantics[String] {
 }
 
 object ComputeNum extends Symantics[Int] {
-  def value(x: Int)(using Quotes): Expr[Int] = Expr(x)
+  def value(x: Int)(using Quotes): Expr[Int] = Value(x)
   def plus(x: Expr[Int], y: Expr[Int])(using Quotes): Expr[Int] = '{ $x + $y }
   def times(x: Expr[Int], y: Expr[Int])(using Quotes): Expr[Int] = '{ $x * $y }
   def app(f: Expr[Int => Int], x: Expr[Int])(using Quotes): Expr[Int] = '{ $f($x) }
@@ -132,7 +132,7 @@ object ComputeNum extends Symantics[Int] {
 }
 
 object ASTNum extends Symantics[ASTNum] {
-  def value(x: Int)(using Quotes): Expr[ASTNum] = '{ LitAST(${Expr(x)}) }
+  def value(x: Int)(using Quotes): Expr[ASTNum] = '{ LitAST(${Value(x)}) }
   def plus(x: Expr[ASTNum], y: Expr[ASTNum])(using Quotes): Expr[ASTNum] = '{ PlusAST($x, $y) }
   def times(x: Expr[ASTNum], y: Expr[ASTNum])(using Quotes): Expr[ASTNum] = '{ TimesAST($x, $y) }
   def app(f: Expr[ASTNum => ASTNum], x: Expr[ASTNum])(using Quotes): Expr[ASTNum] = '{ AppAST($f, $x) }

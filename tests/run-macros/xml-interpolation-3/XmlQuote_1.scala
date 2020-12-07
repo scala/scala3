@@ -13,6 +13,6 @@ object XmlQuote {
 
   def impl(receiver: Expr[StringContext], args: Expr[Seq[Any]])(using Quotes): Expr[Xml] = {
     val string = receiver.valueOrError.parts.mkString("??")
-    '{new Xml(${Expr(string)}, $args.toList)}
+    '{new Xml(${Value(string)}, $args.toList)}
   }
 }

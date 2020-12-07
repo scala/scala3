@@ -18,7 +18,7 @@ object Macros {
     import internal._
     val ttag = c.weakTypeTag[U]
     f match {
-      case Expr(Function(List(ValDef(_,n,tp,_)),b)) =>
+      case Value(Function(List(ValDef(_,n,tp,_)),b)) =>
         // normalize argument name
         var b1 = new Transformer {
           override def transform(tree: Tree): Tree = tree match {

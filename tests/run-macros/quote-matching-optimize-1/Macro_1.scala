@@ -23,8 +23,8 @@ object Macro {
 
     '{
       val result = $res
-      val originalCode = ${Expr(x.show)}
-      val optimizeCode = ${Expr(res.show)}
+      val originalCode = ${Value(x.show)}
+      val optimizeCode = ${Value(res.show)}
       println("Original: " + originalCode)
       println("Optimized: " + optimizeCode)
       println("Result: " + result)

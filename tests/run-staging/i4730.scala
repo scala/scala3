@@ -6,7 +6,7 @@ object Test {
   def ret(using Quotes): Expr[Int => Int] = '{ (x: Int) =>
     ${
       val z = run('{x + 1}) // throws scala.quoted.runtime.impl.ScopeException =>
-      Expr(z)
+      Value(z)
     }
   }
   def main(args: Array[String]): Unit = {

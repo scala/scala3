@@ -91,7 +91,7 @@ object Macros {
     printout(TypeRepr.of[String].showExtractors)
 
 
-    '{println(${Expr(buff.result().mkString("\n"))})}
+    '{println(${Value(buff.result().mkString("\n"))})}
   }
 
 }

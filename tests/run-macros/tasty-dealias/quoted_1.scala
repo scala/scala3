@@ -6,6 +6,6 @@ object Macros {
 
   def impl[T: Type](using Quotes) : Expr[String] = {
     import quotes.reflect._
-    Expr(TypeRepr.of[T].dealias.show)
+    Value(TypeRepr.of[T].dealias.show)
   }
 }

@@ -13,13 +13,13 @@ object Positioned {
     import quotes.reflect.{Position => Pos, _}
     val pos = Pos.ofMacroExpansion
 
-    val path = Expr(pos.sourceFile.jpath.toString)
-    val start = Expr(pos.start)
-    val end = Expr(pos.end)
-    val startLine = Expr(pos.startLine)
-    val endLine = Expr(pos.endLine)
-    val startColumn = Expr(pos.startColumn)
-    val endColumn = Expr(pos.endColumn)
+    val path = Value(pos.sourceFile.jpath.toString)
+    val start = Value(pos.start)
+    val end = Value(pos.end)
+    val startLine = Value(pos.startLine)
+    val endLine = Value(pos.endLine)
+    val startColumn = Value(pos.startColumn)
+    val endColumn = Value(pos.endColumn)
 
     val liftedPosition = '{new Position($path, $start, $end, $startLine, $startColumn, $endLine, $endColumn)}
     '{Positioned[T]($x, $liftedPosition)}

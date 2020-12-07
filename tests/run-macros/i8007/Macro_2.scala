@@ -29,7 +29,7 @@ object Macro2 {
       }
 
       val body: Expr[T] => Expr[String] = elem =>
-        fields.reverse.foldLeft(Expr("")){ (acc, field) =>
+        fields.reverse.foldLeft(Value("")){ (acc, field) =>
           val res = Select.unique(Term.of(elem), field).asExpr
           '{ $res.toString + " " + $acc }
         }

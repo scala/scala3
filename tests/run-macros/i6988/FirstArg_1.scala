@@ -27,6 +27,6 @@ object Macros {
     val paramss = enclosingParamList(Symbol.spliceOwner)
     val firstArg = paramss.flatten.head
     val ref = Select.unique(This(enclosingClass()), firstArg.name)
-    '{ FirstArg(${ref.asExpr}, ${Expr(firstArg.name)}) }
+    '{ FirstArg(${ref.asExpr}, ${Value(firstArg.name)}) }
   }
 }

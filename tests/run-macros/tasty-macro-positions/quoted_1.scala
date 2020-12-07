@@ -14,7 +14,7 @@ object Macros {
     val code = Term.of(x).underlyingArgument.show
     '{
       println($pos)
-      println(${Expr(code)})
+      println(${Value(code)})
     }
   }
 
@@ -24,12 +24,12 @@ object Macros {
     val code = TypeTree.of[T].show
     '{
       println($pos)
-      println(${Expr(code)})
+      println(${Value(code)})
     }
   }
 
   def posStr(using Quotes)(pos: quotes.reflect.Position): Expr[String] = {
     import quotes.reflect._
-    Expr(s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]")
+    Value(s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]")
   }
 }

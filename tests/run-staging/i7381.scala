@@ -6,7 +6,7 @@ object Test {
   def main(args: Array[String]): Unit = {
     given Toolbox = Toolbox.make(getClass.getClassLoader)
     withQuotes {
-      val expr = Expr(List(1, 2, 3))
+      val expr = Value(List(1, 2, 3))
       println(expr.show)
     }
   }

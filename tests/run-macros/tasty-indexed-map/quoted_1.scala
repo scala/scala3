@@ -41,6 +41,6 @@ object Index {
 
     val index = keys.indexOf(key)
 
-    '{new Index(${Expr(index)})}
+    '{new Index(${Value(index)})}
   }
 }

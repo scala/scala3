@@ -9,7 +9,7 @@ object Test {
       val y = 1
       ${
         inline def a(z: Int): Int = ${ impl('z) }
-        val b = Expr(a(7))
+        val b = Value(a(7))
         '{ y + $b }
       }
     }

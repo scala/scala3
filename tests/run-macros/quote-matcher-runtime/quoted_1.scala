@@ -10,16 +10,16 @@ object Macros {
     val res = quotes.asInstanceOf[scala.quoted.runtime.QuoteMatching].ExprMatch.unapply[Tuple, Tuple](a)(using b).map { tup =>
       tup.toArray.toList.map {
         case r: Expr[_] =>
-          s"Expr(${r.show})"
+          s"Value(${r.show})"
         case t: Type[_] =>
           s"Type(${Type.show(using t)})"
       }
     }
 
     '{
-      println("Scrutinee: " + ${Expr(Term.of(a).show)})
-      println("Pattern: " + ${Expr(Term.of(b).show)})
-      println("Result: " + ${Expr(res.toString)})
+      println("Scrutinee: " + ${Value(Term.of(a).show)})
+      println("Pattern: " + ${Value(Term.of(b).show)})
+      println("Result: " + ${Value(res.toString)})
       println()
     }
   }

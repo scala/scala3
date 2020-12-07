@@ -10,7 +10,7 @@ object Macros {
     self match {
       case '{ StringContext(${Varargs(Consts(parts))}: _*) } =>
         val upprerParts: List[String] = parts.toList.map(_.toUpperCase)
-        val upprerPartsExpr: Expr[List[String]] = Expr.ofList(upprerParts.map(Expr(_)))
+        val upprerPartsExpr: Expr[List[String]] = Expr.ofList(upprerParts.map(Value(_)))
         '{ StringContext($upprerPartsExpr: _*).s($args: _*) }
       case _ =>
         '{

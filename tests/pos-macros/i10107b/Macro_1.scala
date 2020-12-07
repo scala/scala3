@@ -2,7 +2,7 @@ import scala.quoted._
 
 inline def isTrue: Boolean = ${ isTrueImpl }
 def isTrueImpl(using Quotes) = {
-  Expr(true)
+  Value(true)
 }
 
 inline def oneOf(): String = {

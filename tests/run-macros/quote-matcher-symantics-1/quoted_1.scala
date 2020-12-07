@@ -11,7 +11,7 @@ object Macros {
     def lift(e: Expr[DSL]): Expr[T] = e match {
 
       case '{ LitDSL(${ Const(c) }) } =>
-        '{ $sym.value(${Expr(c)}) }
+        '{ $sym.value(${Value(c)}) }
 
       case '{ ($x: DSL) + ($y: DSL) } =>
         '{ $sym.plus(${lift(x)}, ${lift(y)}) }

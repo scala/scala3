@@ -8,7 +8,7 @@ private def evalExpr(using Quotes)(e: Expr[Int]): Expr[Int] = {
       evalExpr(Expr.betaReduce('{$body(${evalExpr(x)})}))
     case '{ ($x: Int) * ($y: Int) } =>
       (x.value, y.value) match
-        case (Some(a), Some(b)) => Expr(a * b)
+        case (Some(a), Some(b)) => Value(a * b)
         case _ => e
     case _ => e
   }

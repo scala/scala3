@@ -10,7 +10,7 @@ object Macro {
     for _ <- 0 to 5_000 do
       (strCtxExpr, argsExpr) match {
         case ('{ StringContext(${Varargs(Consts(parts))}: _*) }, Varargs(Consts(args))) =>
-          res = Expr(StringContext(parts: _*).s(args: _*))
+          res = Value(StringContext(parts: _*).s(args: _*))
         case _ => ???
       }
     res

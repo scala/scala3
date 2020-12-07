@@ -14,4 +14,4 @@ object FieldsImpl:
     val projectsTree = Term.of(from)
     val symbols = TypeTree.of[V].symbol.memberMethods.filter(isProjectField)
     val selects = symbols.map(Select(projectsTree, _).asExprOf[T])
-    '{ println(${Expr(retType.show)}); ${Varargs(selects)} }
+    '{ println(${Value(retType.show)}); ${Varargs(selects)} }

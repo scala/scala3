@@ -10,7 +10,7 @@ object Macro {
   def macImpl(tree: Expr[String])(using Quotes): Expr[String] = {
     tree match {
         case vv @ '{ ($s: Trait).fun($arg) } => arg
-        case _ => Expr("not matched")
+        case _ => Value("not matched")
     }
   }
 }

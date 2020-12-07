@@ -9,7 +9,7 @@ object BigFloatFromDigitsImpl:
       case Some(ds) =>
         try
           val BigFloat(m, e) = BigFloat(ds)
-          '{BigFloat(${Expr(m)}, ${Expr(e)})}
+          '{BigFloat(${Value(m)}, ${Value(e)})}
         catch case ex: FromDigits.FromDigitsException =>
           import quotes.reflect.report
           report.error(ex.getMessage)
