@@ -236,15 +236,4 @@ object Expr {
     }
   }
 
-  object StringContext {
-    /** Matches a `StringContext(part0, part1, ...)` and extracts the parts of a call to if the
-     *  parts are passed explicitly. Returns the equvalent to `Seq('{part0}, '{part1}, ...)`.
-     */
-    def unapply(sc: Expr[StringContext])(using Quotes): Option[Seq[Expr[String]]] =
-      sc match
-        case '{ scala.StringContext(${Varargs(parts)}: _*) } => Some(parts)
-        case '{ new scala.StringContext(${Varargs(parts)}: _*) } => Some(parts)
-        case _ => None
-  }
-
 }
